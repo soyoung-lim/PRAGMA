@@ -11,6 +11,7 @@ import Pdr from "./pages/Pdr.tsx";
 import Translate from "./pages/Translate.tsx";
 import Finalize from "./pages/Finalize.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/scenario" element={<ScenarioSelect />} />
