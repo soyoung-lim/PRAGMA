@@ -115,7 +115,7 @@ const Translate = () => {
   const [aiTranslation1, setAiTranslation1] = useState("");
   const [aiTranslation2, setAiTranslation2] = useState("");
   const [ratings, setRatings] = useState<Ratings>(EMPTY_RATINGS);
-  const [contextOpen, setContextOpen] = useState(true);
+  const [contextOpen, setContextOpen] = useState(false);
 
   useEffect(() => {
     ensureSession();
@@ -256,17 +256,15 @@ const Translate = () => {
 
         {/* Context summary */}
         <section className="mt-6 rounded-lg border border-border bg-muted px-6 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-bold">앞 단계 입력 요약</h3>
-            <button
-              type="button"
-              onClick={() => setContextOpen((v) => !v)}
-              className="rounded-md border border-foreground px-3 py-1 text-xs font-medium hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-              aria-expanded={contextOpen}
-            >
-              {contextOpen ? "접기" : "펼치기"}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setContextOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+            aria-expanded={contextOpen}
+          >
+            <h3 className="text-sm font-bold">📋 앞 단계 입력 요약</h3>
+            <span className="text-xs text-muted-foreground">{contextOpen ? "▲ 접기" : "▼ 펼치기"}</span>
+          </button>
           {contextOpen && (
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex flex-wrap gap-x-2">
@@ -329,7 +327,7 @@ const Translate = () => {
 
         {/* Evaluation framework intro */}
         <section className="mt-12">
-          <h3 className="text-2xl font-bold sm:text-3xl">평가 프레임워크</h3>
+          <h3 className="text-2xl font-bold sm:text-3xl">번역 평가 기준</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             두 번역을 다음 3가지 기준으로 평가합니다
           </p>
@@ -340,23 +338,14 @@ const Translate = () => {
                 n: 1,
                 title: "화용 재현성",
                 en: "Pragmatic Equivalence",
-                lead: "원래 한국어가 전하려던 뜻과 말투가 중국어 번역에 잘 살아났는가?",
-                checks: [
-                  "원문의 핵심 의도와 화행이 유지되었는가?",
-                  "의미가 명확하게 전달되었는가?",
-                ],
+                body: "원문의 핵심 의도와 화행이 유지되었는가? 의미가 명확하게 전달되었는가?",
                 tooltip: "Pragmatic Equivalence — Levinson (1983) Pragmatics",
               },
               {
                 n: 2,
                 title: "관계 적합성",
                 en: "Relational Appropriateness",
-                lead: "내가 분석한 상대와의 관계(권력·거리·부담도)에 어울리는 표현인가?",
-                checks: [
-                  "상대와의 관계에 맞는 공손성을 유지하는가?",
-                  "지나치게 딱딱하거나 과잉 공손하게 들리지 않는가?",
-                  "자연스럽고 실제 이메일처럼 보이는가?",
-                ],
+                body: "상대와의 권력·거리·부담도 관계에 어울리는 공손성을 유지하면서, 지나치게 딱딱하거나 과잉 공손하지 않고 자연스러운가?",
                 tooltip:
                   "Relational Appropriateness — Brown & Levinson (1987) Politeness Theory",
               },
@@ -364,18 +353,14 @@ const Translate = () => {
                 n: 3,
                 title: "리스크 관리",
                 en: "Risk Management",
-                lead: "이 번역을 보낸 후 일어날 수 있는 위험을 잘 피했는가?",
-                checks: [
-                  "무례하거나 강압적으로 읽히지 않는가?",
-                  "책임을 과도하게 인정하지 않았는가?",
-                  "오해나 관계 손상 위험이 없는가?",
-                ],
+                body: "무례하거나 강압적으로 읽히지 않고, 책임을 과도하게 인정하지 않으며, 오해나 관계 손상 위험이 없는가?",
                 tooltip: "Risk Management — Business Communication Risk",
               },
             ].map((c) => (
               <div
                 key={c.n}
-                className="relative rounded-lg border border-foreground bg-secondary p-6 pr-10"
+                className="relative rounded-lg border border-foreground p-6 pr-10"
+                style={{ backgroundColor: "#F0EFEB" }}
               >
                 <div className="absolute right-3 top-3">
                   <InfoTooltip content={c.tooltip} />
@@ -383,19 +368,15 @@ const Translate = () => {
                 <span className="inline-flex h-7 w-7 items-center justify-center bg-accent text-sm font-bold text-foreground">
                   {c.n}
                 </span>
-                <h4 className="mt-3 text-lg font-bold">{c.title}</h4>
-                <p className="mt-1 text-sm font-medium text-foreground">
+                <h4 className="mt-3 text-[22px] font-bold leading-snug" style={{ color: "#1A1A2E" }}>
+                  {c.title}
+                </h4>
+                <p className="mt-1 text-[12px] italic text-muted-foreground">
                   {c.en}
                 </p>
-                <p className="mt-3 text-sm leading-relaxed">{c.lead}</p>
-                <div className="mt-3 text-[12px] font-medium text-muted-foreground">
-                  점검 질문:
-                </div>
-                <ul className="mt-1 space-y-1 pl-3 text-sm leading-relaxed">
-                  {c.checks.map((q) => (
-                    <li key={q}>· {q}</li>
-                  ))}
-                </ul>
+                <p className="mt-4 text-[15px] leading-[1.6]" style={{ color: "#1A1A2E" }}>
+                  {c.body}
+                </p>
               </div>
             ))}
           </div>

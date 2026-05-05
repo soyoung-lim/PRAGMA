@@ -22,7 +22,7 @@ import {
   type PowerLevel,
 } from "@/lib/strategies";
 
-const EMAIL_MAX = 500;
+const EMAIL_MAX = 150;
 const EMAIL_MIN = 30;
 const INTENT_MAX = 50;
 
@@ -32,7 +32,7 @@ const DISTANCE_OPTIONS: { value: DistanceLevel; hint: string }[] = [
   { value: "중간", hint: "업무상 관계" },
   { value: "가깝다", hint: "장기 거래·친숙" },
 ];
-const BURDEN_OPTIONS: BurdenLevel[] = ["낮음", "중간", "높음"];
+const BURDEN_OPTIONS: BurdenLevel[] = ["높음", "중간", "낮음"];
 
 interface SegmentedProps<T extends string> {
   options: { value: T; hint?: string }[];
@@ -267,6 +267,9 @@ const Pdr = () => {
               {scenarioSummary || "1단계에서 시나리오를 먼저 선택하세요."}
             </p>
           </div>
+          <p className="px-2 pt-3 text-left text-[13px] text-muted-foreground">
+            위 시나리오에서 권력·거리·부담도 단서를 찾아 다음 항목을 선택하세요.
+          </p>
         </section>
 
         {/* Section 2: Power */}
@@ -397,8 +400,8 @@ const Pdr = () => {
                 logAction("input", { field: "koreanEmail", length: koreanEmail.length })
               }
               maxLength={EMAIL_MAX}
-              placeholder="여기에 한국어로 이메일 본문을 작성하세요"
-              style={{ minHeight: 200, maxHeight: 400, lineHeight: 1.6 }}
+              placeholder="여기에 한국어로 이메일 본문을 작성하세요 (최대 150자)"
+              style={{ minHeight: 120, maxHeight: 200, lineHeight: 1.6 }}
               className="block w-full resize-y rounded-lg bg-background p-4 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             />
             <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs">
@@ -413,10 +416,12 @@ const Pdr = () => {
                 className={
                   koreanEmail.length >= EMAIL_MAX
                     ? "rounded-md bg-accent px-2 py-0.5 font-bold text-foreground"
-                    : "font-medium text-muted-foreground"
+                    : koreanEmail.length > 100
+                      ? "font-medium text-foreground/70"
+                      : "font-medium text-muted-foreground"
                 }
               >
-                {koreanEmail.length} / {EMAIL_MAX}
+                현재 글자수 {koreanEmail.length} / {EMAIL_MAX}
               </span>
             </div>
           </div>
