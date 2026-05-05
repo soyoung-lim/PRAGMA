@@ -256,10 +256,10 @@ const Dashboard = () => {
 
   const insightMsg =
     diff >= 0.5
-      ? `✓ 화행 전략 적용형 프롬프트가 평균 +${diff.toFixed(1)}점 더 우수했습니다. 프롬프트 설계가 번역 결과에 유의미한 차이를 만들었습니다.`
+      ? `사용자 평가에서 전략 적용형 번역이 평균 +${diff.toFixed(1)}점 더 높게 평가되었습니다. 사용자 평가에서 두 프롬프트 간 차이가 관찰되었습니다.`
       : diff <= -0.5
-        ? `기본형 프롬프트가 평균 +${Math.abs(diff).toFixed(1)}점 더 높게 평가되었습니다. 이는 화행 전략 명시가 모든 상황에서 우월하지 않을 수 있음을 시사합니다.`
-        : "두 프롬프트의 평가 차이가 작습니다. 본 시나리오에서는 프롬프트 설계의 영향이 제한적이었습니다.";
+        ? `기본형 프롬프트가 평균 +${Math.abs(diff).toFixed(1)}점 더 높게 평가되었습니다.`
+        : "두 프롬프트의 평가 차이가 작습니다. 본 시나리오에서는 사용자 평가에서 두 프롬프트 간 차이가 크지 않았습니다.";
 
   const decisionRevised = finalize?.finalDecision === "수정 후 확정";
   const decisionMsg = decisionRevised
@@ -374,9 +374,9 @@ const Dashboard = () => {
       <main className="mx-auto max-w-6xl px-6 py-12">
         {/* Title */}
         <div>
-          <h2 className="text-2xl font-bold sm:text-3xl">학습 분석 대시보드</h2>
+          <h2 className="text-2xl font-bold sm:text-3xl">번역 의사결정 리포트</h2>
           <p className="mt-2 text-base text-muted-foreground">
-            본 AI 기반 한·중 통번역 학습 워크플로우 수행 결과를 한눈에 확인합니다
+            AI 번역 검토 과정과 수정 판단을 기록합니다
           </p>
         </div>
 
@@ -503,9 +503,7 @@ const Dashboard = () => {
                 <div className="text-xs font-medium text-muted-foreground">
                   프롬프트 2 (화행 전략 적용형)
                 </div>
-                <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-foreground">
-                  ★ 박사논문 핵심 변수
-                </span>
+                <span className="sr-only">전략 적용형</span>
               </div>
               <div
                 className="mt-4 text-4xl font-bold"
@@ -634,9 +632,9 @@ const Dashboard = () => {
 
         {/* E2. Learning analytics */}
         <section className="mt-16">
-          <h3 className="text-2xl font-bold">학습 과정 분석</h3>
+          <h3 className="text-2xl font-bold">의사결정 기록</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            본 학습 세션의 행동 데이터입니다 (연구 데이터 export 가능)
+            본 세션의 판단 기록입니다 (연구 데이터 export 가능)
           </p>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -683,7 +681,7 @@ const Dashboard = () => {
               variant="outline"
               className="h-10 border-foreground text-sm"
             >
-              학습 행동 데이터 다운로드 (JSON)
+              판단 기록 다운로드 (JSON)
             </Button>
           </div>
         </section>
@@ -692,9 +690,6 @@ const Dashboard = () => {
         <section className="mt-16">
           <div className="flex items-center gap-2">
             <h3 className="text-2xl font-bold">본 워크플로우의 학술 좌표</h3>
-            <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-foreground">
-              ★ 시연용 정보
-            </span>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
             본 시스템이 위치한 학술 분야
