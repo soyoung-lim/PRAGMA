@@ -407,7 +407,7 @@ const Translate = () => {
         <section className="mt-12">
           <div className="flex items-center gap-2">
             <h3 className="text-2xl font-bold sm:text-3xl">
-              두 번역을 3가지 기준으로 비교 평가하세요
+              두 번역을 3가지 기준으로 비교해 보세요
             </h3>
             {allRated && (
               <span
@@ -448,7 +448,7 @@ const Translate = () => {
           <div className="mt-6 overflow-hidden rounded-lg border border-foreground">
             {/* Header (desktop) */}
             <div className="hidden grid-cols-[1.4fr_1fr_1fr] gap-px bg-border md:grid">
-              <div className="bg-muted px-4 py-3 text-sm font-bold">기준</div>
+              <div className="bg-muted px-4 py-3 text-sm font-bold">비교 기록</div>
               <div className="bg-muted px-4 py-3 text-sm font-bold">
                 AI 번역 1
               </div>
