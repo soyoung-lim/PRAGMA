@@ -390,12 +390,12 @@ const Dashboard = () => {
           </MetaCard>
           <div className="rounded-lg border border-foreground bg-secondary p-6">
             <div className="text-xs font-medium text-muted-foreground">
-              Power · Distance · Imposition
+              권력(P) · 거리(D) · 부담도(R)
             </div>
             <div className="mt-3 space-y-2">
-              <MiniBar label="Power" level={pdrLevels.P} />
-              <MiniBar label="Distance" level={pdrLevels.D} />
-              <MiniBar label="Imposition" level={pdrLevels.R} />
+              <MiniBar label="권력(P)" level={pdrLevels.P} />
+              <MiniBar label="거리(D)" level={pdrLevels.D} />
+              <MiniBar label="부담도(R)" level={pdrLevels.R} />
             </div>
           </div>
           <MetaCard label="선택한 화행 전략">

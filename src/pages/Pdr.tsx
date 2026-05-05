@@ -22,7 +22,8 @@ import {
   type PowerLevel,
 } from "@/lib/strategies";
 
-const EMAIL_MAX = 100;
+const EMAIL_MAX = 500;
+const EMAIL_MIN = 30;
 const INTENT_MAX = 50;
 
 const POWER_OPTIONS: PowerLevel[] = ["상대가 우위", "동등", "내가 우위"];
@@ -126,16 +127,16 @@ const Pdr = () => {
   const [speechStrategy, setSpeechStrategy] = useState<string | null>(null);
   const [overflowWarn, setOverflowWarn] = useState(false);
 
-  // load step 1 selection
   useEffect(() => {
     ensureSession();
     logAction("page_visit", { page: "/pdr" }, "/pdr");
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    try {
-      setSelection(JSON.parse(raw));
-    } catch {
-      /* ignore */
+    if (raw) {
+      try {
+        setSelection(JSON.parse(raw));
+      } catch {
+        /* ignore */
+      }
     }
 
     const pdrRaw = localStorage.getItem(PDR_STORAGE_KEY);
@@ -160,21 +161,36 @@ const Pdr = () => {
     [speechAct]
   );
 
+  const scenarioObj = useMemo(() => {
+    if (!selection || !speechAct) return null;
+    if (selection.scenarioId === "custom") return null;
+    return SCENARIOS[speechAct].find((x) => x.id === selection.scenarioId) ?? null;
+  }, [selection, speechAct]);
+
   const scenarioLabel = useMemo(() => {
     if (!selection || !speechAct) return "—";
     if (selection.scenarioId === "custom") return "직접 작성하기";
-    const s = SCENARIOS[speechAct].find((x) => x.id === selection.scenarioId);
-    return s ? `시나리오 ${s.number} — ${s.title}` : "—";
-  }, [selection, speechAct]);
+    return scenarioObj ? `시나리오 ${scenarioObj.number} — ${scenarioObj.title}` : "—";
+  }, [selection, speechAct, scenarioObj]);
+
+  const scenarioSummary = useMemo(() => {
+    if (!selection || !speechAct) return "";
+    if (selection.scenarioId === "custom") {
+      return (
+        selection.customScenario ??
+        "직접 작성한 시나리오입니다. 상황을 자유롭게 가정하고 진행하세요."
+      );
+    }
+    return scenarioObj?.summary ?? "";
+  }, [selection, speechAct, scenarioObj]);
 
   const strategies = speechAct ? STRATEGIES[speechAct] : [];
 
   const canProceed =
-    koreanEmail.trim().length > 0 &&
+    koreanEmail.trim().length >= EMAIL_MIN &&
     !!powerLevel &&
     !!distanceLevel &&
     !!burdenLevel &&
-    intent.trim().length > 0 &&
     !!speechStrategy;
 
   const handleEmailChange = (v: string) => {
@@ -214,22 +230,20 @@ const Pdr = () => {
     navigate("/translate");
   };
 
-  const emailFilled = koreanEmail.trim().length > 0;
-  const pdrFilled = !!(powerLevel && distanceLevel && burdenLevel);
-  const intentFilled = intent.trim().length > 0;
+  const emailFilled = koreanEmail.trim().length >= EMAIL_MIN;
   const strategyFilled = !!speechStrategy;
+  const tooltipMsg = "P·D·R, 화행 전략, 한국어 이메일을 모두 입력해주세요";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <WorkflowHeader currentStep={2} />
-      
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         {/* Page title */}
         <div>
           <h2 className="text-2xl font-bold sm:text-3xl">상황 분석 및 전략 선택</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            한국어 이메일을 작성하고, P·D·R 분석과 화행 전략을 선택합니다.
+            시나리오를 확인하고, P·D·R 분석과 화행 전략을 선택한 뒤 한국어 이메일을 작성합니다.
           </p>
         </div>
 
@@ -242,153 +256,70 @@ const Pdr = () => {
           <span className="font-bold">[{scenarioLabel}]</span>
         </div>
 
-        {/* Section 1: Korean email */}
+        {/* Section 1: Scenario summary */}
         <section className="mt-8">
-          <FilledLabel
-            filled={emailFilled}
-            tooltip={
-              speechAct
-                ? EMAIL_TIP[speechAct]
-                : "1단계에서 화행을 먼저 선택하세요."
-            }
+          <FilledLabel filled={!!scenarioSummary}>1. 구체적인 시나리오</FilledLabel>
+          <div
+            className="mt-4 rounded-lg border border-foreground p-6"
+            style={{ backgroundColor: "#F0EFEB" }}
           >
-            1. 한국어 비즈니스 이메일 작성
-          </FilledLabel>
+            <p className="whitespace-pre-wrap text-[15px] leading-[1.6] text-foreground">
+              {scenarioSummary || "1단계에서 시나리오를 먼저 선택하세요."}
+            </p>
+          </div>
+        </section>
 
-          <div className="mt-4 rounded-lg border border-foreground bg-background">
-            <textarea
-              value={koreanEmail}
-              onChange={(e) => handleEmailChange(e.target.value)}
-              onBlur={() =>
-                koreanEmail.trim() &&
-                logAction("input", { field: "koreanEmail", length: koreanEmail.length })
-              }
-              maxLength={EMAIL_MAX}
-              placeholder="한국어로 비즈니스 이메일을 3~5문장으로 작성하세요"
-              className="block h-[120px] w-full resize-none rounded-lg bg-background p-4 text-base leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        {/* Section 2: Power */}
+        <section className="mt-8">
+          <div className="flex items-center gap-2">
+            <FilledLabel filled={!!powerLevel}>2. 권력(P) 선택</FilledLabel>
+            <InfoTooltip content={"Power — 발화자와 청자 간 위계·권한 차이.\n대표·상급자·주요 고객은 '상대가 우위'.\n— Brown & Levinson (1987)"} />
+          </div>
+          <div className="mt-4 rounded-lg border border-foreground bg-background p-4">
+            <Segmented<PowerLevel>
+              ariaLabel="권력(P) 수준"
+              options={POWER_OPTIONS.map((v) => ({ value: v }))}
+              value={powerLevel}
+              onChange={trackedSet("powerLevel", powerLevel, setPowerLevel)}
             />
-            <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs">
-              <span className="text-muted-foreground">
-                {overflowWarn ? "100자까지만 작성할 수 있습니다" : ""}
-              </span>
-              <span
-                className={
-                  koreanEmail.length >= EMAIL_MAX
-                    ? "rounded-md bg-accent px-2 py-0.5 font-bold text-foreground"
-                    : "font-medium text-muted-foreground"
-                }
-              >
-                {koreanEmail.length} / {EMAIL_MAX}
-              </span>
-            </div>
           </div>
         </section>
 
-        {/* Section 2: P·D·R */}
+        {/* Section 3: Distance */}
         <section className="mt-8">
-          <FilledLabel filled={pdrFilled}>2. 상황을 분석하세요</FilledLabel>
-          <p className="mt-2 text-sm text-muted-foreground">
-            이메일을 보내는 상황을 세 가지 변수로 분석합니다.
-          </p>
-
-          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {/* P */}
-            <div className="rounded-lg border border-foreground bg-background p-4">
-              <FilledLabel
-                size="md"
-                filled={!!powerLevel}
-                tooltip={"Power — 발화자와 청자 간 위계·권한 차이.\n대표·상급자·주요 고객은 '상대가 우위'.\n— Brown & Levinson (1987)"}
-              >
-                권력 (Power)
-              </FilledLabel>
-              <div className="mt-3">
-                <Segmented<PowerLevel>
-                  ariaLabel="권력 수준"
-                  options={POWER_OPTIONS.map((v) => ({ value: v }))}
-                  value={powerLevel}
-                  onChange={trackedSet("powerLevel", powerLevel, setPowerLevel)}
-                />
-              </div>
-            </div>
-
-            {/* D */}
-            <div className="rounded-lg border border-foreground bg-background p-4">
-              <FilledLabel
-                size="md"
-                filled={!!distanceLevel}
-                tooltip={"Social Distance — 친밀도·거래 빈도·공식성 정도.\n첫 거래·공식 관계는 '멀다'.\n— Brown & Levinson (1987)"}
-              >
-                거리 (Distance)
-              </FilledLabel>
-              <div className="mt-3">
-                <Segmented<DistanceLevel>
-                  ariaLabel="거리 수준"
-                  options={DISTANCE_OPTIONS}
-                  value={distanceLevel}
-                  onChange={trackedSet("distanceLevel", distanceLevel, setDistanceLevel)}
-                />
-              </div>
-            </div>
-
-            {/* R */}
-            <div className="rounded-lg border border-foreground bg-background p-4">
-              <FilledLabel
-                size="md"
-                filled={!!burdenLevel}
-                tooltip={"Rate of Imposition — 발화가 청자에게 주는 부담의 크기.\n거절·요구·사과는 부담이 높음.\n— Brown & Levinson (1987)"}
-              >
-                부담도 (Imposition)
-              </FilledLabel>
-              <div className="mt-3">
-                <Segmented<BurdenLevel>
-                  ariaLabel="부담도 수준"
-                  options={BURDEN_OPTIONS.map((v) => ({ value: v }))}
-                  value={burdenLevel}
-                  onChange={trackedSet("burdenLevel", burdenLevel, setBurdenLevel)}
-                />
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <FilledLabel filled={!!distanceLevel}>3. 거리(D) 선택</FilledLabel>
+            <InfoTooltip content={"Social Distance — 친밀도·거래 빈도·공식성 정도.\n첫 거래·공식 관계는 '멀다'.\n— Brown & Levinson (1987)"} />
           </div>
-        </section>
-
-        {/* Section 3: Intent */}
-        <section className="mt-8">
-          <FilledLabel filled={intentFilled}>
-            3. 이 이메일의 목표를 한 줄로 작성하세요
-          </FilledLabel>
-
-          <div className="mt-4 rounded-lg border border-foreground bg-background">
-            <input
-              type="text"
-              value={intent}
-              onChange={(e) => setIntent(e.target.value.slice(0, INTENT_MAX))}
-              onBlur={() =>
-                intent.trim() &&
-                logAction("input", { field: "intent", length: intent.length })
-              }
-              maxLength={INTENT_MAX}
-              placeholder="예: 관계를 유지하면서 합작 제안을 정중히 거절"
-              className="block w-full rounded-lg bg-background px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          <div className="mt-4 rounded-lg border border-foreground bg-background p-4">
+            <Segmented<DistanceLevel>
+              ariaLabel="거리(D) 수준"
+              options={DISTANCE_OPTIONS}
+              value={distanceLevel}
+              onChange={trackedSet("distanceLevel", distanceLevel, setDistanceLevel)}
             />
-            <div className="flex justify-end border-t border-border px-4 py-2 text-xs">
-              <span
-                className={
-                  intent.length >= INTENT_MAX
-                    ? "rounded-md bg-accent px-2 py-0.5 font-bold text-foreground"
-                    : "font-medium text-muted-foreground"
-                }
-              >
-                {intent.length} / {INTENT_MAX}
-              </span>
-            </div>
           </div>
         </section>
 
-        {/* Section 4: Strategy */}
+        {/* Section 4: Imposition */}
         <section className="mt-8">
-          <FilledLabel filled={strategyFilled}>
-            4. 화행 전략을 선택하세요
-          </FilledLabel>
+          <div className="flex items-center gap-2">
+            <FilledLabel filled={!!burdenLevel}>4. 부담도(R) 선택</FilledLabel>
+            <InfoTooltip content={"Rate of Imposition — 발화가 청자에게 주는 부담의 크기.\n거절·요구·사과는 부담이 높음.\n— Brown & Levinson (1987)"} />
+          </div>
+          <div className="mt-4 rounded-lg border border-foreground bg-background p-4">
+            <Segmented<BurdenLevel>
+              ariaLabel="부담도(R) 수준"
+              options={BURDEN_OPTIONS.map((v) => ({ value: v }))}
+              value={burdenLevel}
+              onChange={trackedSet("burdenLevel", burdenLevel, setBurdenLevel)}
+            />
+          </div>
+        </section>
+
+        {/* Section 5: Strategy */}
+        <section className="mt-8">
+          <FilledLabel filled={strategyFilled}>5. 화행 전략 선택</FilledLabel>
           <p className="mt-2 text-sm text-muted-foreground">
             P·D·R을 고려해 가장 적합한 전략 1개를 선택합니다.
           </p>
@@ -444,11 +375,58 @@ const Pdr = () => {
           </div>
         </section>
 
+        {/* Section 6: Korean email */}
+        <section className="mt-8">
+          <FilledLabel
+            filled={emailFilled}
+            tooltip={
+              speechAct
+                ? EMAIL_TIP[speechAct]
+                : "1단계에서 화행을 먼저 선택하세요."
+            }
+          >
+            6. 한국어 이메일 작성
+          </FilledLabel>
+
+          <div className="mt-4 rounded-lg border border-foreground bg-background">
+            <textarea
+              value={koreanEmail}
+              onChange={(e) => handleEmailChange(e.target.value)}
+              onBlur={() =>
+                koreanEmail.trim() &&
+                logAction("input", { field: "koreanEmail", length: koreanEmail.length })
+              }
+              maxLength={EMAIL_MAX}
+              placeholder="여기에 한국어로 이메일 본문을 작성하세요"
+              style={{ minHeight: 200, maxHeight: 400, lineHeight: 1.6 }}
+              className="block w-full resize-y rounded-lg bg-background p-4 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            />
+            <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs">
+              <span className="text-muted-foreground">
+                {overflowWarn
+                  ? `${EMAIL_MAX}자까지만 작성할 수 있습니다`
+                  : koreanEmail.trim().length > 0 && koreanEmail.trim().length < EMAIL_MIN
+                    ? `최소 ${EMAIL_MIN}자 이상 입력해주세요 (현재 ${koreanEmail.trim().length}자)`
+                    : ""}
+              </span>
+              <span
+                className={
+                  koreanEmail.length >= EMAIL_MAX
+                    ? "rounded-md bg-accent px-2 py-0.5 font-bold text-foreground"
+                    : "font-medium text-muted-foreground"
+                }
+              >
+                {koreanEmail.length} / {EMAIL_MAX}
+              </span>
+            </div>
+          </div>
+        </section>
+
         {/* Footer */}
         <div className="mt-8 border-t border-border pt-6">
           {!canProceed && (
             <p className="mb-3 text-right text-sm text-muted-foreground">
-              모든 항목을 입력해주세요.
+              {tooltipMsg}
             </p>
           )}
           <div className="flex items-center justify-between gap-3">
@@ -457,6 +435,7 @@ const Pdr = () => {
               type="button"
               onClick={handleNext}
               disabled={!canProceed}
+              title={canProceed ? undefined : tooltipMsg}
               className={[
                 "rounded-lg px-6 py-3 text-base font-medium transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",

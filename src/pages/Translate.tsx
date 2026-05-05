@@ -180,7 +180,7 @@ const Translate = () => {
       "",
       "[상황 정보]",
       `- 화행: ${speechActLabel}`,
-      `- 권력 관계(P): ${pdr?.powerLevel ?? "—"}`,
+      `- 권력(P): ${pdr?.powerLevel ?? "—"}`,
       `- 거리(D): ${pdr?.distanceLevel ?? "—"}`,
       `- 부담도(R): ${pdr?.burdenLevel ?? "—"}`,
       `- 화행 전략: ${strategy}`,
@@ -286,11 +286,9 @@ const Translate = () => {
               <div className="flex flex-wrap gap-x-2">
                 <dt className="font-medium">P·D·R:</dt>
                 <dd>
-                  Power=<span className="font-bold">{pdr?.powerLevel ?? "—"}</span>{" "}
-                  / Distance=
-                  <span className="font-bold">{pdr?.distanceLevel ?? "—"}</span>{" "}
-                  / Imposition=
-                  <span className="font-bold">{pdr?.burdenLevel ?? "—"}</span>
+                  권력(P) = <span className="font-bold">{pdr?.powerLevel ?? "—"}</span>
+                  {" / "}거리(D) = <span className="font-bold">{pdr?.distanceLevel ?? "—"}</span>
+                  {" / "}부담도(R) = <span className="font-bold">{pdr?.burdenLevel ?? "—"}</span>
                 </dd>
               </div>
               <div className="flex flex-wrap gap-x-2">
