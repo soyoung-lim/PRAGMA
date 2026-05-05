@@ -319,7 +319,6 @@ const Translate = () => {
         <PromptSection
           title="프롬프트 2 — 화행 전략 적용형 번역 요청"
           subtitle="P·D·R 분석과 화행 전략을 명시한 프롬프트입니다"
-          badge="★ 박사논문 핵심 변수"
           promptText={prompt2Text}
           onCopy={() => handleCopy(prompt2Text)}
           guide="이 프롬프트를 같은 AI 도구에 붙여넣고(또는 새 채팅으로) 결과를 아래에 입력하세요."
@@ -343,16 +342,23 @@ const Translate = () => {
                 n: 1,
                 title: "화용 재현성",
                 en: "Pragmatic Equivalence",
-                body:
-                  "원래 한국어가 전하려던 뜻과 말투가 중국어 번역에 잘 살아났는가? 내가 의도한 말의 톤과 분위기가 그대로 전해지는지를 봅니다.",
+                lead: "원래 한국어가 전하려던 뜻과 말투가 중국어 번역에 잘 살아났는가?",
+                checks: [
+                  "원문의 핵심 의도와 화행이 유지되었는가?",
+                  "의미가 명확하게 전달되었는가?",
+                ],
                 tooltip: "Pragmatic Equivalence — Levinson (1983) Pragmatics",
               },
               {
                 n: 2,
                 title: "관계 적합성",
                 en: "Relational Appropriateness",
-                body:
-                  "내가 분석한 상대와의 관계(권력·거리·부담도)에 어울리는 표현인가? 너무 친근하거나, 반대로 너무 딱딱하지는 않은지 봅니다.",
+                lead: "내가 분석한 상대와의 관계(권력·거리·부담도)에 어울리는 표현인가?",
+                checks: [
+                  "상대와의 관계에 맞는 공손성을 유지하는가?",
+                  "지나치게 딱딱하거나 과잉 공손하게 들리지 않는가?",
+                  "자연스럽고 실제 이메일처럼 보이는가?",
+                ],
                 tooltip:
                   "Relational Appropriateness — Brown & Levinson (1987) Politeness Theory",
               },
@@ -360,8 +366,12 @@ const Translate = () => {
                 n: 3,
                 title: "리스크 관리",
                 en: "Risk Management",
-                body:
-                  "이 번역을 보낸 후 발생할 수 있는 리스크를 잘 피했는가? 내가 너무 책임을 많이 지게 된 건 아닌지, 다른 오해의 소지는 없는지 등을 봅니다.",
+                lead: "이 번역을 보낸 후 일어날 수 있는 위험을 잘 피했는가?",
+                checks: [
+                  "무례하거나 강압적으로 읽히지 않는가?",
+                  "책임을 과도하게 인정하지 않았는가?",
+                  "오해나 관계 손상 위험이 없는가?",
+                ],
                 tooltip: "Risk Management — Business Communication Risk",
               },
             ].map((c) => (
@@ -379,7 +389,15 @@ const Translate = () => {
                 <p className="mt-1 text-sm font-medium text-foreground">
                   {c.en}
                 </p>
-                <p className="mt-3 text-sm leading-relaxed">{c.body}</p>
+                <p className="mt-3 text-sm leading-relaxed">{c.lead}</p>
+                <div className="mt-3 text-[12px] font-medium text-muted-foreground">
+                  점검 질문:
+                </div>
+                <ul className="mt-1 space-y-1 pl-3 text-sm leading-relaxed">
+                  {c.checks.map((q) => (
+                    <li key={q}>· {q}</li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
@@ -389,7 +407,7 @@ const Translate = () => {
         <section className="mt-12">
           <div className="flex items-center gap-2">
             <h3 className="text-2xl font-bold sm:text-3xl">
-              두 번역을 3가지 기준으로 비교 평가하세요
+              두 번역을 3가지 기준으로 비교해 보세요
             </h3>
             {allRated && (
               <span
@@ -430,7 +448,7 @@ const Translate = () => {
           <div className="mt-6 overflow-hidden rounded-lg border border-foreground">
             {/* Header (desktop) */}
             <div className="hidden grid-cols-[1.4fr_1fr_1fr] gap-px bg-border md:grid">
-              <div className="bg-muted px-4 py-3 text-sm font-bold">기준</div>
+              <div className="bg-muted px-4 py-3 text-sm font-bold">비교 기록</div>
               <div className="bg-muted px-4 py-3 text-sm font-bold">
                 AI 번역 1
               </div>
