@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Info } from "lucide-react";
 import { ensureSession } from "@/lib/tracking";
 
 const STEPS = [
@@ -73,20 +72,6 @@ const Landing = () => {
           <p className="mt-4 text-center text-xs text-muted-foreground">
             비선형 학습 — 언제든 이전 단계로 돌아가 수정 가능합니다
           </p>
-        </section>
-
-        {/* Data ethics notice */}
-        <section className="mt-8 sm:mt-10">
-          <div
-            className="mx-auto flex max-w-3xl items-start gap-2 rounded-md border border-border p-3 text-[12px] leading-relaxed text-muted-foreground sm:p-4 sm:text-[13px]"
-            style={{ backgroundColor: "#F0EFEB" }}
-          >
-            <Info aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <p>
-              입력 내용은 학습자의 자기점검과 연구 설계 개선을 위한 참고 자료로만 활용됩니다.
-              민감한 개인정보나 실제 거래처 정보는 입력하지 마세요.
-            </p>
-          </div>
         </section>
 
         {/* CTA */}
