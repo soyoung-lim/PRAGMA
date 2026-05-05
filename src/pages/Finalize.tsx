@@ -487,9 +487,6 @@ export default function Finalize() {
             <h3 className="text-xl font-bold">
               3. 4명의 가상 평가자가 본인의 최종안을 평가합니다
             </h3>
-            <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-bold text-accent-foreground">
-              ★ 박사논문 핵심 메커니즘
-            </span>
             <Dot on={data.personaFeedbackReceived} />
           </div>
           <p className="mb-5 text-sm text-muted-foreground">
@@ -667,7 +664,7 @@ export default function Finalize() {
               onClick={() => navigate("/dashboard")}
               className="h-12 px-8 text-base"
             >
-              학습 분석 결과 보기 →
+              의사결정 리포트 보기 →
             </Button>
           </div>
         </div>
