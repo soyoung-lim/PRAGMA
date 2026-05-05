@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { Info } from "lucide-react";
 import { ensureSession } from "@/lib/tracking";
 
 const STEPS = [
@@ -7,7 +8,7 @@ const STEPS = [
   { n: 2, title: "원문 작성·화용 분석", sub: "권력 · 거리 · 부담도 · 화행 전략" },
   { n: 3, title: "AI 번역 후보 생성·비교", sub: "기본 프롬프트 vs 전략 프롬프트" },
   { n: 4, title: "멀티-페르소나 피드백", sub: "의미 재현성 · 관계 적합성 · 리스크 관리" },
-  { n: 5, title: "학습 분석 대시보드", sub: "워크플로우 결과 시각화" },
+  { n: 5, title: "번역 의사결정 리포트", sub: "AI 번역 검토와 수정 판단 기록" },
 ];
 
 const Landing = () => {
@@ -74,8 +75,22 @@ const Landing = () => {
           </p>
         </section>
 
+        {/* Data ethics notice */}
+        <section className="mt-8 sm:mt-10">
+          <div
+            className="mx-auto flex max-w-3xl items-start gap-2 rounded-md border border-border p-3 text-[12px] leading-relaxed text-muted-foreground sm:p-4 sm:text-[13px]"
+            style={{ backgroundColor: "#F0EFEB" }}
+          >
+            <Info aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <p>
+              입력 내용은 학습자의 자기점검과 연구 설계 개선을 위한 참고 자료로만 활용됩니다.
+              민감한 개인정보나 실제 거래처 정보는 입력하지 마세요.
+            </p>
+          </div>
+        </section>
+
         {/* CTA */}
-        <section className="mt-10 flex flex-col items-center justify-center gap-3 sm:mt-14 sm:flex-row sm:gap-4">
+        <section className="mt-6 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-4">
           <Link
             to="/scenario"
             className="rounded-lg bg-accent px-8 py-4 text-base font-bold text-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"

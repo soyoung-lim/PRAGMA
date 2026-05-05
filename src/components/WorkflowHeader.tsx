@@ -13,7 +13,7 @@ const STEPS = [
   { num: 2, label: "원문·화용 분석", path: "/pdr" },
   { num: 3, label: "AI 번역 비교", path: "/translate" },
   { num: 4, label: "페르소나 피드백", path: "/finalize" },
-  { num: 5, label: "결과 대시보드", path: "/dashboard" },
+  { num: 5, label: "의사결정 리포트", path: "/dashboard" },
 ];
 
 export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) => {
