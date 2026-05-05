@@ -55,6 +55,11 @@ const ScenarioSelect = () => {
       ...(wasRevision ? { oldValue: scenarioId, newValue: id } : { value: id }),
     });
     setScenarioId(id);
+    if (speechAct) {
+      const payload: WorkflowSelection = { speechAct, scenarioId: id };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      navigate("/pdr");
+    }
   };
 
   const handleNext = () => {
@@ -140,92 +145,49 @@ const ScenarioSelect = () => {
               {scenarios.map((s) => {
                 const selected = scenarioId === s.id;
                 return (
-                  <article
+                  <button
                     key={s.id}
+                    type="button"
+                    onClick={() => handleScenario(s.id)}
+                    aria-pressed={selected}
                     className={[
-                      "relative flex flex-col rounded-lg p-6 transition-all duration-200",
+                      "relative flex flex-col rounded-lg border border-foreground p-6 text-left transition-all duration-200",
+                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                       selected
-                        ? "border-2 border-foreground bg-[#F8F6F0]"
-                        : "border border-foreground bg-background hover:-translate-y-0.5 hover:shadow-md",
+                        ? "bg-[#FBC91B] text-foreground"
+                        : "bg-background hover:-translate-y-0.5 hover:shadow-md",
                     ].join(" ")}
                   >
-                    {selected && (
-                      <span aria-hidden className="absolute left-3 top-3 h-2 w-2 rounded-full bg-accent" />
-                    )}
-                    <div className="text-xs font-medium text-muted-foreground">
-                      시나리오 {s.number}
+                    <div className={["text-xs font-medium", selected ? "text-foreground/70" : "text-muted-foreground"].join(" ")}>
+                      {s.field}
                     </div>
-                    <h3 className={["mt-1 text-lg leading-snug", selected ? "font-extrabold" : "font-bold"].join(" ")}>
+                    <h3 className={["mt-3 text-base leading-snug sm:text-lg", selected ? "font-extrabold" : "font-bold"].join(" ")}>
                       {s.title}
                     </h3>
-                    <span className="mt-3 inline-flex w-fit rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-                      {s.field}
-                    </span>
-                    <p className="mt-3 flex-1 text-sm leading-relaxed text-foreground">
-                      {s.summary}
-                    </p>
-                    <div className="mt-6 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => handleScenario(s.id)}
-                        aria-pressed={selected}
-                        className={[
-                          "rounded-lg border border-foreground px-4 py-2 text-sm font-medium transition-colors",
-                          "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                          selected
-                            ? "bg-foreground text-background"
-                            : "bg-background hover:bg-[#F8F6F0]",
-                        ].join(" ")}
-                      >
-                        {selected ? "선택됨" : "선택"}
-                      </button>
-                    </div>
-                  </article>
+                  </button>
                 );
               })}
 
               {/* 직접 작성 */}
-              <article
+              <button
+                type="button"
+                onClick={() => handleScenario("custom")}
+                aria-pressed={scenarioId === "custom"}
                 className={[
-                  "relative flex flex-col rounded-lg border-2 border-dashed p-6 transition-all duration-200",
+                  "relative flex flex-col rounded-lg border border-dashed p-6 text-left transition-all duration-200",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                   scenarioId === "custom"
-                    ? "border-foreground bg-[#F8F6F0]"
+                    ? "border-foreground bg-[#FBC91B] text-foreground"
                     : "border-foreground/60 bg-background hover:-translate-y-0.5 hover:shadow-md",
                 ].join(" ")}
               >
-                {scenarioId === "custom" && (
-                  <span aria-hidden className="absolute left-3 top-3 h-2 w-2 rounded-full bg-accent" />
-                )}
-                <div className="text-xs font-medium text-muted-foreground">
-                  사용자 정의
+                <div className={["text-xs font-medium", scenarioId === "custom" ? "text-foreground/70" : "text-muted-foreground"].join(" ")}>
+                  자유 주제
                 </div>
-                <h3 className="mt-1 text-lg font-bold leading-snug">
+                <h3 className="mt-3 text-base font-bold leading-snug sm:text-lg">
                   직접 작성하기
                 </h3>
-                <span className="mt-3 inline-flex w-fit rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-                  자유 주제
-                </span>
-                <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                  본인이 경험했거나 연습하고 싶은 비즈니스 상황을 직접
-                  설정합니다. 다음 단계에서 상세 내용을 입력합니다.
-                </p>
-                <div className="mt-6 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => handleScenario("custom")}
-                    aria-pressed={scenarioId === "custom"}
-                    className={[
-                      "rounded-lg border border-foreground px-4 py-2 text-sm font-medium transition-colors",
-                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                      scenarioId === "custom"
-                        ? "bg-foreground text-background"
-                        : "bg-background hover:bg-[#F8F6F0]",
-                    ].join(" ")}
-                  >
-                    {scenarioId === "custom" ? "선택됨" : "선택"}
-                  </button>
-                </div>
-              </article>
+              </button>
             </div>
           </section>
         )}
