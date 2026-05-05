@@ -1,0 +1,477 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { WorkflowHeader } from "@/components/WorkflowHeader";
+import { Rollback } from "@/components/Rollback";
+import { ensureSession, logAction } from "@/lib/tracking";
+import { InfoTooltip } from "@/components/InfoTooltip";
+import { Check } from "lucide-react";
+import {
+  SCENARIOS,
+  SPEECH_ACTS,
+  STORAGE_KEY,
+  type SpeechAct,
+  type WorkflowSelection,
+} from "@/lib/scenarios";
+import {
+  EMAIL_TIP,
+  PDR_STORAGE_KEY,
+  STRATEGIES,
+  type BurdenLevel,
+  type DistanceLevel,
+  type PdrData,
+  type PowerLevel,
+} from "@/lib/strategies";
+
+const EMAIL_MAX = 100;
+const INTENT_MAX = 50;
+
+const POWER_OPTIONS: PowerLevel[] = ["상대가 우위", "동등", "내가 우위"];
+const DISTANCE_OPTIONS: { value: DistanceLevel; hint: string }[] = [
+  { value: "멀다", hint: "초면·공식" },
+  { value: "중간", hint: "업무상 관계" },
+  { value: "가깝다", hint: "장기 거래·친숙" },
+];
+const BURDEN_OPTIONS: BurdenLevel[] = ["낮음", "중간", "높음"];
+
+interface SegmentedProps<T extends string> {
+  options: { value: T; hint?: string }[];
+  value: T | null;
+  onChange: (v: T) => void;
+  ariaLabel: string;
+}
+
+function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+}: SegmentedProps<T>) {
+  return (
+    <div role="radiogroup" aria-label={ariaLabel} className="grid grid-cols-3 gap-2">
+      {options.map((opt) => {
+        const selected = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(opt.value)}
+            className={[
+              "flex flex-col items-center justify-center rounded-lg px-3 py-3 text-sm transition-all duration-200",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+              selected
+                ? "border border-foreground bg-foreground text-background font-bold"
+                : "border border-foreground bg-background text-foreground font-medium hover:bg-[#F8F6F0]",
+            ].join(" ")}
+          >
+            <span>{opt.value}</span>
+            {opt.hint && (
+              <span
+                className={[
+                  "mt-1 text-[11px] font-normal",
+                  selected ? "text-background/70" : "text-muted-foreground",
+                ].join(" ")}
+              >
+                {opt.hint}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+interface FilledLabelProps {
+  children: React.ReactNode;
+  filled: boolean;
+  tooltip?: string;
+  size?: "lg" | "md";
+}
+
+const FilledLabel = ({ children, filled, tooltip, size = "lg" }: FilledLabelProps) => {
+  return (
+    <div className="flex items-center gap-2">
+      <h2
+        className={
+          size === "lg"
+            ? "text-2xl font-bold sm:text-3xl"
+            : "text-lg font-bold"
+        }
+      >
+        {children}
+      </h2>
+      {tooltip && <InfoTooltip content={tooltip} />}
+      {filled && (
+        <span
+          aria-label="입력 완료"
+          className="ml-1 inline-block h-2 w-2 rounded-full bg-foreground"
+        />
+      )}
+    </div>
+  );
+};
+
+const Pdr = () => {
+  const navigate = useNavigate();
+
+  const [selection, setSelection] = useState<WorkflowSelection | null>(null);
+
+  const [koreanEmail, setKoreanEmail] = useState("");
+  const [powerLevel, setPowerLevel] = useState<PowerLevel | null>(null);
+  const [distanceLevel, setDistanceLevel] = useState<DistanceLevel | null>(null);
+  const [burdenLevel, setBurdenLevel] = useState<BurdenLevel | null>(null);
+  const [intent, setIntent] = useState("");
+  const [speechStrategy, setSpeechStrategy] = useState<string | null>(null);
+  const [overflowWarn, setOverflowWarn] = useState(false);
+
+  // load step 1 selection
+  useEffect(() => {
+    ensureSession();
+    logAction("page_visit", { page: "/pdr" }, "/pdr");
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      setSelection(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+
+    const pdrRaw = localStorage.getItem(PDR_STORAGE_KEY);
+    if (pdrRaw) {
+      try {
+        const p: PdrData = JSON.parse(pdrRaw);
+        setKoreanEmail(p.koreanEmail || "");
+        setPowerLevel(p.powerLevel);
+        setDistanceLevel(p.distanceLevel);
+        setBurdenLevel(p.burdenLevel);
+        setIntent(p.intent || "");
+        setSpeechStrategy(p.speechStrategy);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  const speechAct: SpeechAct | null = selection?.speechAct ?? null;
+  const speechActLabel = useMemo(
+    () => SPEECH_ACTS.find((a) => a.id === speechAct)?.label ?? "—",
+    [speechAct]
+  );
+
+  const scenarioLabel = useMemo(() => {
+    if (!selection || !speechAct) return "—";
+    if (selection.scenarioId === "custom") return "직접 작성하기";
+    const s = SCENARIOS[speechAct].find((x) => x.id === selection.scenarioId);
+    return s ? `시나리오 ${s.number} — ${s.title}` : "—";
+  }, [selection, speechAct]);
+
+  const strategies = speechAct ? STRATEGIES[speechAct] : [];
+
+  const canProceed =
+    koreanEmail.trim().length > 0 &&
+    !!powerLevel &&
+    !!distanceLevel &&
+    !!burdenLevel &&
+    intent.trim().length > 0 &&
+    !!speechStrategy;
+
+  const handleEmailChange = (v: string) => {
+    if (v.length > EMAIL_MAX) {
+      setKoreanEmail(v.slice(0, EMAIL_MAX));
+      setOverflowWarn(true);
+      return;
+    }
+    setKoreanEmail(v);
+    if (overflowWarn && v.length < EMAIL_MAX) setOverflowWarn(false);
+  };
+
+  const trackedSet = <T,>(
+    field: string,
+    prev: T | null,
+    setter: (v: T) => void,
+  ) => (v: T) => {
+    const isRevision = prev != null && prev !== v;
+    logAction(isRevision ? "revision" : "selection", {
+      field,
+      ...(isRevision ? { oldValue: prev, newValue: v } : { value: v }),
+    });
+    setter(v);
+  };
+
+  const handleNext = () => {
+    if (!canProceed) return;
+    const payload: PdrData = {
+      koreanEmail,
+      powerLevel,
+      distanceLevel,
+      burdenLevel,
+      intent,
+      speechStrategy,
+    };
+    localStorage.setItem(PDR_STORAGE_KEY, JSON.stringify(payload));
+    navigate("/translate");
+  };
+
+  const emailFilled = koreanEmail.trim().length > 0;
+  const pdrFilled = !!(powerLevel && distanceLevel && burdenLevel);
+  const intentFilled = intent.trim().length > 0;
+  const strategyFilled = !!speechStrategy;
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <WorkflowHeader currentStep={2} />
+      
+
+      <main className="mx-auto max-w-6xl px-6 py-8">
+        {/* Page title */}
+        <div>
+          <h2 className="text-2xl font-bold sm:text-3xl">상황 분석 및 전략 선택</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            한국어 이메일을 작성하고, P·D·R 분석과 화행 전략을 선택합니다.
+          </p>
+        </div>
+
+        {/* Reminder */}
+        <div className="mt-6 rounded-lg border border-border bg-muted px-6 py-4 text-sm">
+          <span className="font-medium">선택한 화행:</span>{" "}
+          <span className="font-bold">[{speechActLabel}]</span>
+          <span className="mx-2 text-muted-foreground">/</span>
+          <span className="font-medium">시나리오:</span>{" "}
+          <span className="font-bold">[{scenarioLabel}]</span>
+        </div>
+
+        {/* Section 1: Korean email */}
+        <section className="mt-8">
+          <FilledLabel
+            filled={emailFilled}
+            tooltip={
+              speechAct
+                ? EMAIL_TIP[speechAct]
+                : "1단계에서 화행을 먼저 선택하세요."
+            }
+          >
+            1. 한국어 비즈니스 이메일 작성
+          </FilledLabel>
+
+          <div className="mt-4 rounded-lg border border-foreground bg-background">
+            <textarea
+              value={koreanEmail}
+              onChange={(e) => handleEmailChange(e.target.value)}
+              onBlur={() =>
+                koreanEmail.trim() &&
+                logAction("input", { field: "koreanEmail", length: koreanEmail.length })
+              }
+              maxLength={EMAIL_MAX}
+              placeholder="한국어로 비즈니스 이메일을 3~5문장으로 작성하세요"
+              className="block h-[120px] w-full resize-none rounded-lg bg-background p-4 text-base leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            />
+            <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs">
+              <span className="text-muted-foreground">
+                {overflowWarn ? "100자까지만 작성할 수 있습니다" : ""}
+              </span>
+              <span
+                className={
+                  koreanEmail.length >= EMAIL_MAX
+                    ? "rounded-md bg-accent px-2 py-0.5 font-bold text-foreground"
+                    : "font-medium text-muted-foreground"
+                }
+              >
+                {koreanEmail.length} / {EMAIL_MAX}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 2: P·D·R */}
+        <section className="mt-8">
+          <FilledLabel filled={pdrFilled}>2. 상황을 분석하세요</FilledLabel>
+          <p className="mt-2 text-sm text-muted-foreground">
+            이메일을 보내는 상황을 세 가지 변수로 분석합니다.
+          </p>
+
+          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {/* P */}
+            <div className="rounded-lg border border-foreground bg-background p-4">
+              <FilledLabel
+                size="md"
+                filled={!!powerLevel}
+                tooltip={"Power — 발화자와 청자 간 위계·권한 차이.\n대표·상급자·주요 고객은 '상대가 우위'.\n— Brown & Levinson (1987)"}
+              >
+                권력 (Power)
+              </FilledLabel>
+              <div className="mt-3">
+                <Segmented<PowerLevel>
+                  ariaLabel="권력 수준"
+                  options={POWER_OPTIONS.map((v) => ({ value: v }))}
+                  value={powerLevel}
+                  onChange={trackedSet("powerLevel", powerLevel, setPowerLevel)}
+                />
+              </div>
+            </div>
+
+            {/* D */}
+            <div className="rounded-lg border border-foreground bg-background p-4">
+              <FilledLabel
+                size="md"
+                filled={!!distanceLevel}
+                tooltip={"Social Distance — 친밀도·거래 빈도·공식성 정도.\n첫 거래·공식 관계는 '멀다'.\n— Brown & Levinson (1987)"}
+              >
+                거리 (Distance)
+              </FilledLabel>
+              <div className="mt-3">
+                <Segmented<DistanceLevel>
+                  ariaLabel="거리 수준"
+                  options={DISTANCE_OPTIONS}
+                  value={distanceLevel}
+                  onChange={trackedSet("distanceLevel", distanceLevel, setDistanceLevel)}
+                />
+              </div>
+            </div>
+
+            {/* R */}
+            <div className="rounded-lg border border-foreground bg-background p-4">
+              <FilledLabel
+                size="md"
+                filled={!!burdenLevel}
+                tooltip={"Rate of Imposition — 발화가 청자에게 주는 부담의 크기.\n거절·요구·사과는 부담이 높음.\n— Brown & Levinson (1987)"}
+              >
+                부담도 (Imposition)
+              </FilledLabel>
+              <div className="mt-3">
+                <Segmented<BurdenLevel>
+                  ariaLabel="부담도 수준"
+                  options={BURDEN_OPTIONS.map((v) => ({ value: v }))}
+                  value={burdenLevel}
+                  onChange={trackedSet("burdenLevel", burdenLevel, setBurdenLevel)}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 3: Intent */}
+        <section className="mt-8">
+          <FilledLabel filled={intentFilled}>
+            3. 이 이메일의 목표를 한 줄로 작성하세요
+          </FilledLabel>
+
+          <div className="mt-4 rounded-lg border border-foreground bg-background">
+            <input
+              type="text"
+              value={intent}
+              onChange={(e) => setIntent(e.target.value.slice(0, INTENT_MAX))}
+              onBlur={() =>
+                intent.trim() &&
+                logAction("input", { field: "intent", length: intent.length })
+              }
+              maxLength={INTENT_MAX}
+              placeholder="예: 관계를 유지하면서 합작 제안을 정중히 거절"
+              className="block w-full rounded-lg bg-background px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            />
+            <div className="flex justify-end border-t border-border px-4 py-2 text-xs">
+              <span
+                className={
+                  intent.length >= INTENT_MAX
+                    ? "rounded-md bg-accent px-2 py-0.5 font-bold text-foreground"
+                    : "font-medium text-muted-foreground"
+                }
+              >
+                {intent.length} / {INTENT_MAX}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 4: Strategy */}
+        <section className="mt-8">
+          <FilledLabel filled={strategyFilled}>
+            4. 화행 전략을 선택하세요
+          </FilledLabel>
+          <p className="mt-2 text-sm text-muted-foreground">
+            P·D·R을 고려해 가장 적합한 전략 1개를 선택합니다.
+          </p>
+
+          <div className="mt-4 flex items-start gap-2 rounded-lg border border-foreground bg-secondary px-4 py-3 text-[13px] leading-relaxed">
+            <span className="flex-1">
+              ※ 화행 전략은 메시지 부담을 완화하는 표현 방식입니다.
+            </span>
+            <InfoTooltip content={"모든 화행은 FTA(Face Threatening Act)이며,\n화행 전략은 FTA를 완화하는 방법입니다.\n— Brown & Levinson (1987)"} />
+          </div>
+
+          {!speechAct && (
+            <p className="mt-4 text-sm text-muted-foreground">
+              1단계에서 화행을 먼저 선택해주세요.
+            </p>
+          )}
+
+          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {strategies.map((s) => {
+              const selected = speechStrategy === s.title;
+              return (
+                <div key={s.id} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => trackedSet("speechStrategy", speechStrategy, setSpeechStrategy)(s.title)}
+                    aria-pressed={selected}
+                    className={[
+                      "flex h-full w-full flex-col rounded-lg p-6 pr-10 text-left transition-all duration-200",
+                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                      selected
+                        ? "border-2 border-foreground bg-[#F8F6F0] text-foreground"
+                        : "border border-foreground bg-background hover:-translate-y-0.5 hover:shadow-md",
+                    ].join(" ")}
+                  >
+                    {selected && (
+                      <Check aria-hidden className="absolute right-3 top-3 h-4 w-4 text-foreground" strokeWidth={3} />
+                    )}
+                    <h3 className={["text-lg leading-snug", selected ? "font-extrabold" : "font-bold"].join(" ")}>{s.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {s.subtitle}
+                    </p>
+                  </button>
+                  {!selected && (
+                    <div className="absolute right-3 top-3">
+                      <InfoTooltip
+                        content={`${s.title} (${s.english})\n${s.tooltip}\n— ${s.citation}`}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Footer */}
+        <div className="mt-8 border-t border-border pt-6">
+          {!canProceed && (
+            <p className="mb-3 text-right text-sm text-muted-foreground">
+              모든 항목을 입력해주세요.
+            </p>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <Rollback currentStep={2} />
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={!canProceed}
+              className={[
+                "rounded-lg px-6 py-3 text-base font-medium transition-colors",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                canProceed
+                  ? "bg-foreground text-background hover:opacity-90"
+                  : "cursor-not-allowed bg-muted text-muted-foreground",
+              ].join(" ")}
+            >
+              다음 단계로 → AI 번역 생성
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default Pdr;
