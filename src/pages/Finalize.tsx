@@ -307,7 +307,7 @@ export default function Finalize() {
                 </div>
                 <div>
                   <span className="font-semibold">P·D·R: </span>
-                  Power {pdr?.powerLevel ?? "-"} / Distance {pdr?.distanceLevel ?? "-"} / Imposition {pdr?.burdenLevel ?? "-"}
+                  권력(P) = {pdr?.powerLevel ?? "-"} / 거리(D) = {pdr?.distanceLevel ?? "-"} / 부담도(R) = {pdr?.burdenLevel ?? "-"}
                 </div>
                 <div>
                   <span className="font-semibold">의도: </span>
