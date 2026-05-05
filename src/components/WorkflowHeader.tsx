@@ -62,7 +62,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
                   onClick={() => jumpTo(s)}
                   disabled={!clickable}
                   className={[
-                    "flex flex-1 flex-col items-center justify-center rounded-lg px-2 py-1.5 text-center transition-colors",
+                    "flex flex-1 min-h-[52px] items-center justify-center rounded-lg px-2 py-1.5 text-center transition-colors",
                     isCurrent
                       ? "bg-accent text-foreground font-bold border-2 border-foreground"
                       : isDone
@@ -75,9 +75,6 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
                   <span className="text-[11px] sm:text-xs leading-tight">
                     {s.num}. {s.label}
                   </span>
-                  {isCurrent && (
-                    <span aria-hidden className="mt-1 h-1.5 w-1.5 rounded-full bg-accent" />
-                  )}
                 </button>
                 {idx < STEPS.length - 1 && (
                   <span
