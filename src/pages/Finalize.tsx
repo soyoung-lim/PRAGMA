@@ -179,7 +179,7 @@ export default function Finalize() {
 
   // 본 페이지 상태
   const [data, setData] = useState<FinalizeData>(EMPTY);
-  const [contextOpen, setContextOpen] = useState(true);
+  const [contextOpen, setContextOpen] = useState(false);
   const [revealedPersonas, setRevealedPersonas] = useState(0);
 
   useEffect(() => {
