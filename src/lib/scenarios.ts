@@ -38,6 +38,7 @@ export interface Scenario {
   title: string;
   field: string;
   summary: string;
+  description?: string;
 }
 
 export const SCENARIOS: Record<SpeechAct, Scenario[]> = {
@@ -75,6 +76,7 @@ export const SCENARIOS: Record<SpeechAct, Scenario[]> = {
       field: "사업 개발",
       summary:
         "당신은 한국 회사의 사업개발 매니저입니다. 중국 거래처 D사의 합작 제안을 거절하되 향후 관계는 유지하고 싶습니다.",
+      description: "초면 중국 기업의 사업 제휴 제안에 대한 정중한 거절",
     },
     {
       id: "ref-2",
@@ -83,6 +85,7 @@ export const SCENARIOS: Record<SpeechAct, Scenario[]> = {
       field: "영업/협상",
       summary:
         "당신은 영업팀장입니다. 중국 고객사 E사의 추가 할인 요구를 거절하면서 다른 혜택을 제안해야 합니다.",
+      description: "장기 거래처의 추가 할인 요구를 관계 손상 없이 거절",
     },
     {
       id: "ref-3",
@@ -91,6 +94,7 @@ export const SCENARIOS: Record<SpeechAct, Scenario[]> = {
       field: "일반 업무",
       summary:
         "당신은 프로젝트 매니저입니다. 중국 거래처 F사의 회의 일정 변경 요청을 거절해야 하는 상황입니다.",
+      description: "중국 거래처의 회의 일정 변경 요청을 거절해야 하는 상황",
     },
   ],
   apology: [
