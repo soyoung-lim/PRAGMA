@@ -23,15 +23,15 @@ const Landing = () => {
   }, []);
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="border-b border-border bg-background">
+      <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <span className="flex items-center gap-2 text-base font-bold sm:text-lg">
-            <span aria-hidden className="inline-block h-[1.15em] w-[3px] rounded-full bg-accent" />
+            <span aria-hidden className="inline-block h-4 w-[2px] rounded-full bg-accent" />
             AI 기반 한·중 통번역 학습 워크플로우
           </span>
           <Link
             to="/scenario"
-            className="hidden rounded-md border border-border bg-transparent px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary sm:inline-block"
+            className="hidden rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:border-foreground hover:bg-muted hover:text-foreground sm:inline-block"
           >
             바로 시작 →
           </Link>
