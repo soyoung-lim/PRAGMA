@@ -45,21 +45,15 @@ const EMPTY_RATINGS: Ratings = {
 };
 
 interface Rationales {
-  pragmatic1: string;
-  pragmatic2: string;
-  relational1: string;
-  relational2: string;
-  risk1: string;
-  risk2: string;
+  pragmatic: string;
+  relational: string;
+  risk: string;
 }
 
 const EMPTY_RATIONALES: Rationales = {
-  pragmatic1: "",
-  pragmatic2: "",
-  relational1: "",
-  relational2: "",
-  risk1: "",
-  risk2: "",
+  pragmatic: "",
+  relational: "",
+  risk: "",
 };
 
 type ExperimentVar = "P" | "D" | "R";
@@ -637,10 +631,7 @@ const Translate = () => {
             {CRITERIA.map((c) => {
               const k1 = `${c.key}1` as keyof Ratings;
               const k2 = `${c.key}2` as keyof Ratings;
-              const rk1 = `${c.key}1` as keyof Rationales;
-              const rk2 = `${c.key}2` as keyof Rationales;
               return (
-                <div key={c.key}>
                 <div
                   key={c.key}
                   className="grid grid-cols-1 gap-px border-t border-border bg-border first:border-t-0 md:grid-cols-[1.4fr_1fr_1fr]"
@@ -670,35 +661,37 @@ const Translate = () => {
                     />
                   </div>
                 </div>
-                {/* Rationale row */}
-                <div className="grid grid-cols-1 gap-px border-t border-border bg-border md:grid-cols-[1.4fr_1fr_1fr]">
-                  <div className="flex items-center gap-1 bg-background px-4 py-3 text-xs text-muted-foreground">
-                    ↳ 평가 근거 <span className="text-[10px]">(선택)</span>
-                  </div>
-                  <div className="bg-background px-4 py-3">
-                    <input
-                      type="text"
-                      maxLength={50}
-                      value={rationales[rk1]}
-                      onChange={(e) => setRationales((r) => ({ ...r, [rk1]: e.target.value.slice(0, 50) }))}
-                      placeholder="예: 호칭 표현이 어색함 / 자연스러운 거절 어조"
-                      className="block w-full rounded-md border border-border bg-background px-3 py-2 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                    />
-                  </div>
-                  <div className="bg-background px-4 py-3">
-                    <input
-                      type="text"
-                      maxLength={50}
-                      value={rationales[rk2]}
-                      onChange={(e) => setRationales((r) => ({ ...r, [rk2]: e.target.value.slice(0, 50) }))}
-                      placeholder="예: 호칭 표현이 어색함 / 자연스러운 거절 어조"
-                      className="block w-full rounded-md border border-border bg-background px-3 py-2 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                    />
-                  </div>
-                </div>
-                </div>
               );
             })}
+          </div>
+
+          {/* Per-criterion comments */}
+          <div className="mt-6 rounded-lg border border-border bg-background p-5">
+            <h4 className="text-base font-bold">기준별 비교 코멘트 (선택)</h4>
+            <p className="mt-1 text-sm text-muted-foreground">
+              두 번역의 차이를 한 줄로 기록해두면 다음 단계에서 활용됩니다
+            </p>
+            <div className="mt-4 space-y-3">
+              {([
+                { key: "pragmatic" as const, label: "화용 재현성", ph: "예: 번역 2가 의도를 더 정확히 전달함" },
+                { key: "relational" as const, label: "관계 적합성", ph: "예: 번역 1의 호칭 표현이 더 자연스러움" },
+                { key: "risk" as const, label: "리스크 관리", ph: "예: 두 번역 모두 책임 회피 표현 적절" },
+              ]).map((f) => (
+                <div key={f.key} className="grid grid-cols-1 gap-2 sm:grid-cols-[140px_1fr] sm:items-center">
+                  <label className="text-sm font-medium">{f.label}</label>
+                  <input
+                    type="text"
+                    maxLength={80}
+                    value={rationales[f.key]}
+                    onChange={(e) =>
+                      setRationales((r) => ({ ...r, [f.key]: e.target.value.slice(0, 80) }))
+                    }
+                    placeholder={f.ph}
+                    className="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Averages */}
