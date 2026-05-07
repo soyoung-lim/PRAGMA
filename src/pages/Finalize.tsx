@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Info } from "lucide-react";
+import { ChevronDown, ChevronUp, Info, Lock } from "lucide-react";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { Rollback } from "@/components/Rollback";
 import { ensureSession, logAction } from "@/lib/tracking";
@@ -21,20 +21,20 @@ const FINALIZE_STORAGE_KEY = "translation-workflow-finalize";
 
 type RevisionReason =
   | "화용 재현성 부족"
-  | "관계 적합성 문제"
-  | "리스크 관리 필요"
-  | "복합 (2가지 이상)"
-  | "수정 사항 없음";
+  | "관계 적합성 부족"
+  | "리스크 관리 부족"
+  | "표현 자연스러움"
+  | "어휘 정확성"
+  | "기타";
 
 const REASON_OPTIONS: RevisionReason[] = [
   "화용 재현성 부족",
-  "관계 적합성 문제",
-  "리스크 관리 필요",
-  "복합 (2가지 이상)",
-  "수정 사항 없음",
+  "관계 적합성 부족",
+  "리스크 관리 부족",
+  "표현 자연스러움",
+  "어휘 정확성",
+  "기타",
 ];
-
-const NO_REVISION: RevisionReason = "수정 사항 없음";
 
 interface RevisionCase {
   aiResult: string;
@@ -43,23 +43,52 @@ interface RevisionCase {
   explanation: string;
 }
 
-type FinalDecision = "그대로 확정" | "수정 후 확정" | "";
+type FinalDecision = "as-is" | "partial" | "full-revision" | "";
+
+interface PersonaInfluence {
+  persona1: boolean;
+  persona2: boolean;
+  persona3: boolean;
+  persona4: boolean;
+}
 
 interface FinalizeData {
   finalTranslation: string;
   revisionCase: RevisionCase;
   personaFeedbackReceived: boolean;
-  finalDecision: FinalDecision;
+  preFeedbackTranslation: string;
+  postFeedbackDecision: FinalDecision;
+  personaInfluence: PersonaInfluence;
+  postFeedbackTranslation: string;
   finalDecisionReason: string;
 }
+
+const EMPTY_INFLUENCE: PersonaInfluence = {
+  persona1: false,
+  persona2: false,
+  persona3: false,
+  persona4: false,
+};
 
 const EMPTY: FinalizeData = {
   finalTranslation: "",
   revisionCase: { aiResult: "", myRevision: "", reason: "", explanation: "" },
   personaFeedbackReceived: false,
-  finalDecision: "",
+  preFeedbackTranslation: "",
+  postFeedbackDecision: "",
+  personaInfluence: { ...EMPTY_INFLUENCE },
+  postFeedbackTranslation: "",
   finalDecisionReason: "",
 };
+
+const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub: string }[] = [
+  { value: "as-is", label: "그대로 확정", sub: "피드백을 검토했으나 변경 없이 위 번역을 최종안으로 확정합니다" },
+  { value: "partial", label: "부분 반영", sub: "일부 페르소나의 일부 지적만 수용해 수정합니다" },
+  { value: "full-revision", label: "전면 수정", sub: "피드백 기반으로 번역을 재작성합니다" },
+];
+
+const FINAL_TRANSLATION_MAX = 200;
+const DECISION_REASON_MAX = 200;
 
 interface Persona {
   number: number;
@@ -218,7 +247,7 @@ export default function Finalize() {
       toast.error(`AI 번역 ${n}이(가) 비어 있습니다`);
       return;
     }
-    update("finalTranslation", txt);
+    update("finalTranslation", txt.slice(0, FINAL_TRANSLATION_MAX));
     toast.success(`AI 번역 ${n}을(를) 최종 번역에 복사했습니다`);
   };
 
@@ -246,19 +275,49 @@ export default function Finalize() {
     }, 50);
   };
 
+  // 피드백 받은 시점에 피드백 전 최종안 자동 보존
+  useEffect(() => {
+    if (
+      data.personaFeedbackReceived &&
+      !data.preFeedbackTranslation &&
+      data.finalTranslation.trim().length > 0
+    ) {
+      setData((d) => ({
+        ...d,
+        preFeedbackTranslation: d.finalTranslation,
+        postFeedbackTranslation: d.postFeedbackTranslation || d.finalTranslation,
+      }));
+    }
+  }, [data.personaFeedbackReceived, data.preFeedbackTranslation, data.finalTranslation]);
+
   // 검증
-  const noRevision = data.revisionCase.reason === NO_REVISION;
   const finalTranslationDone = data.finalTranslation.trim().length > 0;
   const revisionDone =
     data.revisionCase.aiResult.trim().length > 0 &&
     data.revisionCase.reason !== "" &&
-    (noRevision || data.revisionCase.myRevision.trim().length > 0);
-  const decisionDone = data.finalDecision !== "";
+    data.revisionCase.myRevision.trim().length > 0;
+  const needsRevisionFields =
+    data.postFeedbackDecision === "partial" || data.postFeedbackDecision === "full-revision";
+  const influenceCount = Object.values(data.personaInfluence).filter(Boolean).length;
+  const decisionDone =
+    data.postFeedbackDecision !== "" &&
+    (!needsRevisionFields ||
+      (influenceCount >= 1 && data.postFeedbackTranslation.trim().length > 0)) &&
+    data.finalDecisionReason.trim().length > 0;
   const allDone =
     finalTranslationDone &&
     revisionDone &&
     data.personaFeedbackReceived &&
     decisionDone;
+
+  const reasonHelper =
+    data.postFeedbackDecision === "as-is"
+      ? "왜 피드백을 반영하지 않았는지 설명해주세요"
+      : data.postFeedbackDecision === "partial"
+        ? "어떤 지적을 어떻게 반영했는지 설명해주세요"
+        : data.postFeedbackDecision === "full-revision"
+          ? "어떤 방향으로 재작성했는지 설명해주세요"
+          : "결정 후 이유를 작성해주세요";
 
   return (
     <div className="min-h-screen bg-background">
@@ -361,12 +420,15 @@ export default function Finalize() {
               <div className="mb-2 flex items-center justify-between text-sm">
                 <span className="font-semibold">최종 중국어 번역</span>
                 <span className="text-xs text-muted-foreground">
-                  {data.finalTranslation.length}자
+                  현재 글자수 {data.finalTranslation.length} / {FINAL_TRANSLATION_MAX}
                 </span>
               </div>
               <Textarea
                 value={data.finalTranslation}
-                onChange={(e) => update("finalTranslation", e.target.value)}
+                onChange={(e) =>
+                  update("finalTranslation", e.target.value.slice(0, FINAL_TRANSLATION_MAX))
+                }
+                maxLength={FINAL_TRANSLATION_MAX}
                 placeholder="두 AI 번역에서 좋은 부분을 골라 조합하거나, 본인이 직접 수정·재작성하세요"
                 className="min-h-[200px] resize-y text-base"
               />
@@ -422,16 +484,8 @@ export default function Finalize() {
                   onChange={(e) =>
                     updateRevision("myRevision", e.target.value.slice(0, 100))
                   }
-                  disabled={noRevision}
-                  placeholder={
-                    noRevision
-                      ? "AI 번역 2를 그대로 채택"
-                      : "내가 어떻게 수정했는지"
-                  }
-                  className={[
-                    "min-h-[80px] text-base",
-                    noRevision ? "bg-muted text-muted-foreground" : "",
-                  ].join(" ")}
+                  placeholder="내가 어떻게 수정했는지"
+                  className="min-h-[80px] text-base"
                 />
               </div>
               <div>
@@ -443,7 +497,7 @@ export default function Finalize() {
                   }
                   className="h-11 w-full rounded-md border border-border bg-background px-3 text-base"
                 >
-                  <option value="">선택하세요</option>
+                  <option value="">수정 이유를 선택하세요</option>
                   {REASON_OPTIONS.map((r) => (
                     <option key={r} value={r}>
                       {r}
@@ -465,16 +519,8 @@ export default function Finalize() {
                   onChange={(e) =>
                     updateRevision("explanation", e.target.value.slice(0, 200))
                   }
-                  disabled={noRevision}
-                  placeholder={
-                    noRevision
-                      ? "AI 번역 2를 그대로 채택"
-                      : "필요하면 더 자세히 설명해주세요"
-                  }
-                  className={[
-                    "min-h-[80px] text-base",
-                    noRevision ? "bg-muted text-muted-foreground" : "",
-                  ].join(" ")}
+                  placeholder="필요하면 더 자세히 설명해주세요"
+                  className="min-h-[80px] text-base"
                 />
               </div>
             </div>
@@ -517,11 +563,6 @@ export default function Finalize() {
                 ? "피드백 받음"
                 : "멀티-페르소나 피드백 받기"}
             </Button>
-            {data.personaFeedbackReceived && (
-              <Button variant="outline" size="sm" onClick={resetPersonaFeedback}>
-                다시 받기
-              </Button>
-            )}
           </div>
           {!data.personaFeedbackReceived &&
             data.finalTranslation.trim().length < 30 && (
@@ -582,69 +623,153 @@ export default function Finalize() {
           )}
         </section>
 
-        {/* E. 섹션 4 — 최종 확정 */}
+        {/* E. 섹션 4 — 피드백 후 의사결정 */}
         <section className="mb-12">
           <div className="mb-4 flex items-center">
             <h3 className="text-xl font-bold">4. 피드백을 반영해 최종안을 확정합니다</h3>
             <Dot on={decisionDone} />
           </div>
-          <p className="mb-5 text-sm text-muted-foreground">
-            필요 시 위 최종안 텍스트 영역을 수정하거나 그대로 확정합니다
-          </p>
 
-          <div className="space-y-3">
-            {(["그대로 확정", "수정 후 확정"] as const).map((opt) => {
-              const active = data.finalDecision === opt;
-              return (
-                <label
-                  key={opt}
-                  className={[
-                    "flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors",
-                    active
-                      ? "border-foreground bg-accent/10"
-                      : "border-border hover:bg-secondary",
-                  ].join(" ")}
-                >
-                  <input
-                    type="radio"
-                    name="finalDecision"
-                    className="mt-1 h-4 w-4 accent-foreground"
-                    checked={active}
-                    onChange={() => {
-                      logAction("final_decision", {
-                        decision: opt,
-                        revisionReason: data.revisionCase.reason,
-                      });
-                      update("finalDecision", opt);
-                    }}
-                  />
-                  <div>
-                    <div className="text-base font-semibold">{opt}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {opt === "그대로 확정"
-                        ? "피드백을 받았지만 최종안을 그대로 유지합니다"
-                        : "위 최종 번역 텍스트 영역을 수정한 후 확정합니다"}
-                    </div>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-
-          <div className="mt-5">
-            <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="font-semibold">유지/수정 이유</span>
-              <span className="text-xs text-muted-foreground">
-                {data.finalDecisionReason.length}/200
+          {/* 블록 1: 피드백 전 최종안 (잠금) */}
+          <div className="mb-6 rounded-lg border border-border bg-muted/40 p-4">
+            <div className="mb-1 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold">피드백 전 최종안 (자동 보존됨)</div>
+                <div className="text-xs text-muted-foreground">
+                  섹션 1에서 작성한 번역이 자동으로 저장되었습니다
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1 text-xs text-muted-foreground">
+                <Lock className="h-3 w-3" aria-hidden /> 보존됨
               </span>
             </div>
             <Textarea
+              value={data.preFeedbackTranslation || data.finalTranslation}
+              readOnly
+              className="mt-2 min-h-[120px] resize-none bg-background text-sm text-muted-foreground"
+            />
+          </div>
+
+          {/* 블록 2: 의사결정 라디오 */}
+          <div className="mb-6">
+            <div className="mb-3 text-sm font-semibold">
+              피드백을 검토하고 어떻게 결정하시겠습니까?
+            </div>
+            <div className="space-y-3">
+              {DECISION_OPTIONS.map((opt) => {
+                const active = data.postFeedbackDecision === opt.value;
+                return (
+                  <label
+                    key={opt.value}
+                    className={[
+                      "flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors",
+                      active
+                        ? "border-foreground bg-accent/10"
+                        : "border-border hover:bg-secondary",
+                    ].join(" ")}
+                  >
+                    <input
+                      type="radio"
+                      name="postFeedbackDecision"
+                      className="mt-1 h-4 w-4 accent-foreground"
+                      checked={active}
+                      onChange={() => {
+                        logAction("final_decision", {
+                          decision: opt.value,
+                          revisionReason: data.revisionCase.reason,
+                        });
+                        update("postFeedbackDecision", opt.value);
+                      }}
+                    />
+                    <div>
+                      <div className="text-base font-semibold">{opt.label}</div>
+                      <div className="text-sm text-muted-foreground">{opt.sub}</div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 블록 3 + 4: 조건부 표시 */}
+          {needsRevisionFields && (
+            <>
+              <div className="mb-6">
+                <div className="mb-1 text-sm font-semibold">
+                  어느 페르소나의 지적을 반영하시겠습니까? (복수 선택 가능)
+                </div>
+                <div className="mb-3 text-xs text-muted-foreground">
+                  선택한 페르소나의 지적이 수정에 반영되었음을 기록합니다
+                </div>
+                <div className="space-y-2">
+                  {PERSONAS.map((p) => {
+                    const key = `persona${p.number}` as keyof PersonaInfluence;
+                    const checked = data.personaInfluence[key];
+                    return (
+                      <label
+                        key={p.number}
+                        className="flex cursor-pointer items-center gap-3 rounded-md border border-border p-3 hover:bg-secondary"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-foreground"
+                          checked={checked}
+                          onChange={(e) =>
+                            update("personaInfluence", {
+                              ...data.personaInfluence,
+                              [key]: e.target.checked,
+                            })
+                          }
+                        />
+                        <span className="text-sm">
+                          페르소나 {p.number} — {p.name}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="mb-2 flex items-center justify-between text-sm">
+                  <span className="font-semibold">피드백 후 수정안</span>
+                  <span className="text-xs text-muted-foreground">
+                    현재 글자수 {data.postFeedbackTranslation.length} / {FINAL_TRANSLATION_MAX}
+                  </span>
+                </div>
+                <Textarea
+                  value={data.postFeedbackTranslation}
+                  onChange={(e) =>
+                    update(
+                      "postFeedbackTranslation",
+                      e.target.value.slice(0, FINAL_TRANSLATION_MAX),
+                    )
+                  }
+                  maxLength={FINAL_TRANSLATION_MAX}
+                  placeholder="피드백을 반영해 수정한 번역을 입력하세요"
+                  className="min-h-[140px] resize-y text-base"
+                />
+              </div>
+            </>
+          )}
+
+          {/* 블록 5: 유지/수정 이유 */}
+          <div>
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <span className="font-semibold">유지/수정 이유</span>
+              <span className="text-xs text-muted-foreground">
+                현재 글자수 {data.finalDecisionReason.length} / {DECISION_REASON_MAX}
+              </span>
+            </div>
+            <div className="mb-2 text-xs text-muted-foreground">{reasonHelper}</div>
+            <Textarea
               value={data.finalDecisionReason}
               onChange={(e) =>
-                update("finalDecisionReason", e.target.value.slice(0, 200))
+                update("finalDecisionReason", e.target.value.slice(0, DECISION_REASON_MAX))
               }
-              placeholder="왜 그대로 확정 / 수정했는지 간단히 설명"
-              className="min-h-[80px] text-base"
+              maxLength={DECISION_REASON_MAX}
+              placeholder="결정의 이유를 200자 이내로 설명해주세요"
+              className="min-h-[100px] text-base"
             />
           </div>
         </section>
