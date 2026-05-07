@@ -31,6 +31,8 @@ interface TranslateData {
   aiTranslation1: string;
   aiTranslation2: string;
   ratings: Ratings;
+  rationales?: Rationales;
+  experiment?: ExperimentData;
 }
 
 const EMPTY_RATINGS: Ratings = {
@@ -40,6 +42,40 @@ const EMPTY_RATINGS: Ratings = {
   relational2: 0,
   risk1: 0,
   risk2: 0,
+};
+
+interface Rationales {
+  pragmatic1: string;
+  pragmatic2: string;
+  relational1: string;
+  relational2: string;
+  risk1: string;
+  risk2: string;
+}
+
+const EMPTY_RATIONALES: Rationales = {
+  pragmatic1: "",
+  pragmatic2: "",
+  relational1: "",
+  relational2: "",
+  risk1: "",
+  risk2: "",
+};
+
+type ExperimentVar = "P" | "D" | "R";
+
+export interface ExperimentData {
+  variable: ExperimentVar | null;
+  newValue: string | null;
+  aiTranslation3: string;
+  comparisonNote: string;
+}
+
+const EMPTY_EXPERIMENT: ExperimentData = {
+  variable: null,
+  newValue: null,
+  aiTranslation3: "",
+  comparisonNote: "",
 };
 
 const CRITERIA = [
@@ -115,6 +151,9 @@ const Translate = () => {
   const [aiTranslation1, setAiTranslation1] = useState("");
   const [aiTranslation2, setAiTranslation2] = useState("");
   const [ratings, setRatings] = useState<Ratings>(EMPTY_RATINGS);
+  const [rationales, setRationales] = useState<Rationales>(EMPTY_RATIONALES);
+  const [experiment, setExperiment] = useState<ExperimentData>(EMPTY_EXPERIMENT);
+  const [experimentOpen, setExperimentOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
 
   useEffect(() => {
@@ -143,6 +182,8 @@ const Translate = () => {
         setAiTranslation1(t.aiTranslation1 || "");
         setAiTranslation2(t.aiTranslation2 || "");
         setRatings({ ...EMPTY_RATINGS, ...(t.ratings || {}) });
+        if (t.rationales) setRationales({ ...EMPTY_RATIONALES, ...t.rationales });
+        if (t.experiment) setExperiment({ ...EMPTY_EXPERIMENT, ...t.experiment });
       } catch {
         /* ignore */
       }
@@ -184,11 +225,31 @@ const Translate = () => {
       `- 거리(D): ${pdr?.distanceLevel ?? "—"}`,
       `- 부담도(R): ${pdr?.burdenLevel ?? "—"}`,
       `- 화행 전략: ${strategy}`,
-      `- 의도: ${pdr?.intent ?? "—"}`,
       "",
       `위 상황 정보를 반영하여, ${strategy}에 맞는 어조와 표현으로 중국 비즈니스 이메일에 적합하게 번역해 주세요.`,
     ].join("\n");
   }, [koreanEmail, pdr, speechActLabel]);
+
+  const prompt3Text = useMemo(() => {
+    const strategy = pdr?.speechStrategy ?? "[전략값]";
+    const power = experiment.variable === "P" && experiment.newValue ? experiment.newValue : (pdr?.powerLevel ?? "—");
+    const distance = experiment.variable === "D" && experiment.newValue ? experiment.newValue : (pdr?.distanceLevel ?? "—");
+    const burden = experiment.variable === "R" && experiment.newValue ? experiment.newValue : (pdr?.burdenLevel ?? "—");
+    return [
+      "다음 한국어 비즈니스 이메일을 중국어로 번역해 주세요.",
+      "",
+      koreanEmail || "[한국어 이메일]",
+      "",
+      "[상황 정보]",
+      `- 화행: ${speechActLabel}`,
+      `- 권력(P): ${power}`,
+      `- 거리(D): ${distance}`,
+      `- 부담도(R): ${burden}`,
+      `- 화행 전략: ${strategy}`,
+      "",
+      `위 상황 정보를 반영하여, ${strategy}에 맞는 어조와 표현으로 중국 비즈니스 이메일에 적합하게 번역해 주세요.`,
+    ].join("\n");
+  }, [koreanEmail, pdr, speechActLabel, experiment]);
 
   // Persist
   useEffect(() => {
@@ -198,9 +259,11 @@ const Translate = () => {
       aiTranslation1,
       aiTranslation2,
       ratings,
+      rationales,
+      experiment,
     };
     localStorage.setItem(TRANSLATE_STORAGE_KEY, JSON.stringify(payload));
-  }, [prompt1Text, prompt2Text, aiTranslation1, aiTranslation2, ratings]);
+  }, [prompt1Text, prompt2Text, aiTranslation1, aiTranslation2, ratings, rationales, experiment]);
 
   const handleCopy = async (text: string) => {
     try {
