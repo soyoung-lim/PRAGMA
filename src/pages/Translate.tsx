@@ -317,6 +317,15 @@ const Translate = () => {
           </p>
         </div>
 
+        {/* v1 안내 박스 */}
+        <div className="mt-4 flex items-start gap-2 rounded-lg bg-gray-50 px-4 py-3 text-sm text-muted-foreground">
+          <span aria-hidden className="mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border border-muted-foreground text-[10px] font-bold">i</span>
+          <span className="leading-relaxed">
+            <span className="font-bold text-foreground">v1 단계 안내</span> — 현재는 외부 AI 도구(ChatGPT/Gemini/Claude)에 프롬프트를 직접 복붙하는 방식입니다.
+            v2에서는 Claude API 연동으로 자동화됩니다.
+          </span>
+        </div>
+
         {/* Context summary */}
         <section className="mt-6 rounded-lg border border-border bg-muted px-6 py-4">
           <button
