@@ -23,39 +23,37 @@ const Landing = () => {
   }, []);
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="border-b border-border">
+      <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <span className="flex items-center gap-2 text-base font-bold sm:text-lg">
-            <span aria-hidden className="inline-block h-5 w-1 rounded-sm bg-accent" />
+            <span aria-hidden className="inline-block h-4 w-[2px] rounded-full bg-accent" />
             AI 기반 한·중 통번역 학습 워크플로우
           </span>
           <Link
             to="/scenario"
-            className="hidden rounded-md border border-foreground px-3 py-1.5 text-sm font-medium hover:bg-muted sm:inline-block"
+            className="hidden rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:border-foreground hover:bg-muted hover:text-foreground sm:inline-block"
           >
             바로 시작 →
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 py-8">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pt-12 pb-10 sm:pt-16">
         {/* HERO */}
         <section className="text-center">
-          <h1 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-[44px]">
+          <h1 className="text-3xl font-bold sm:text-4xl lg:text-[44px]">
             AI 기반 한·중 통번역 학습 워크플로우
           </h1>
-          <p className="mt-3 text-base text-muted-foreground sm:text-lg">
+          <p className="mt-4 text-base leading-relaxed text-foreground/70 sm:text-[17px]">
             화용 전략 기반 번역 의사결정과 멀티-페르소나 피드백을 통합한 학습 시스템
           </p>
-        </section>
 
-        {/* VALUE BADGES */}
-        <section className="mt-6 sm:mt-8">
-          <div className="mx-auto flex max-w-3xl flex-wrap justify-center gap-2 sm:gap-3">
+          {/* VALUE BADGES */}
+          <div className="mx-auto mt-6 flex max-w-3xl flex-wrap justify-center gap-2">
             {BADGES.map((text) => (
               <span
                 key={text}
-                className="rounded-full border border-foreground/20 bg-background px-4 py-1.5 text-sm font-medium text-foreground shadow-sm"
+                className="rounded-full border border-border bg-card px-3.5 py-1.5 text-[13px] font-medium text-foreground/80"
               >
                 {text}
               </span>
@@ -64,11 +62,11 @@ const Landing = () => {
         </section>
 
         {/* WORKFLOW DIAGRAM */}
-        <section className="mt-10 sm:mt-14">
+        <section className="mt-14 sm:mt-16">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-1">
             {STEPS.map((s, idx) => (
               <div key={s.n} className="relative flex items-center">
-                <div className="h-full w-full rounded-lg border border-foreground bg-background p-3 text-center">
+                <div className="h-full w-full rounded-lg border border-border bg-card p-3 text-center">
                   <span className="inline-block rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-accent-foreground">
                     {s.n}
                   </span>
@@ -93,16 +91,16 @@ const Landing = () => {
         </section>
 
         {/* CTA */}
-        <section className="mt-6 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-4">
+        <section className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
           <Link
             to="/scenario"
-            className="rounded-lg bg-accent px-8 py-4 text-base font-bold text-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+            className="rounded-lg bg-primary px-8 py-4 text-base font-bold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
           >
             학습 시작하기 →
           </Link>
           <Link
             to="/dashboard?demo=true"
-            className="rounded-lg border border-foreground bg-background px-8 py-4 text-base font-medium text-foreground transition-colors hover:bg-muted"
+            className="rounded-lg border border-border bg-card px-8 py-4 text-base font-medium text-foreground transition-colors hover:border-foreground hover:bg-muted"
           >
             데모 모드로 보기
           </Link>
