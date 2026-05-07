@@ -250,7 +250,7 @@ const Pdr = () => {
       <main className="mx-auto max-w-6xl px-6 py-8">
         {/* Page title */}
         <div>
-          <h2 className="text-2xl font-bold sm:text-3xl">상황 분석 및 전략 선택</h2>
+          <h2 className="text-2xl font-bold sm:text-3xl">상황 분석과 전략 선택</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             시나리오를 확인하고, P·D·R 분석과 화행 전략을 선택한 뒤 한국어 이메일을 작성합니다.
           </p>
@@ -276,62 +276,62 @@ const Pdr = () => {
               {scenarioSummary || "1단계에서 시나리오를 먼저 선택하세요."}
             </p>
           </div>
-          <p className="px-2 pt-3 text-left text-[13px] text-muted-foreground">
-            위 시나리오에서 권력·거리·부담도 단서를 찾아 다음 항목을 선택하세요.
+        </section>
+
+        {/* Section 2: P/D/R combined */}
+        <section className="mt-8">
+          <FilledLabel filled={!!powerLevel && !!distanceLevel && !!burdenLevel}>
+            2. 권력·거리·부담도 선택
+          </FilledLabel>
+          <p className="mt-2 text-sm text-muted-foreground">
+            시나리오에서 권력·거리·부담도 단서를 찾아 선택하세요.
           </p>
-        </section>
-
-        {/* Section 2: Power */}
-        <section className="mt-8">
-          <div className="flex items-center gap-2">
-            <FilledLabel filled={!!powerLevel}>2. 권력(P) 선택</FilledLabel>
-            <InfoTooltip content={"Power — 발화자와 청자 간 위계·권한 차이.\n대표·상급자·주요 고객은 '상대가 우위'.\n— Brown & Levinson (1987)"} />
-          </div>
-          <div className="mt-4 rounded-lg border border-foreground bg-background p-4">
-            <Segmented<PowerLevel>
-              ariaLabel="권력(P) 수준"
-              options={POWER_OPTIONS.map((v) => ({ value: v }))}
-              value={powerLevel}
-              onChange={trackedSet("powerLevel", powerLevel, setPowerLevel)}
-            />
-          </div>
-        </section>
-
-        {/* Section 3: Distance */}
-        <section className="mt-8">
-          <div className="flex items-center gap-2">
-            <FilledLabel filled={!!distanceLevel}>3. 거리(D) 선택</FilledLabel>
-            <InfoTooltip content={"Social Distance — 친밀도·거래 빈도·공식성 정도.\n첫 거래·공식 관계는 '멀다'.\n— Brown & Levinson (1987)"} />
-          </div>
-          <div className="mt-4 rounded-lg border border-foreground bg-background p-4">
-            <Segmented<DistanceLevel>
-              ariaLabel="거리(D) 수준"
-              options={DISTANCE_OPTIONS}
-              value={distanceLevel}
-              onChange={trackedSet("distanceLevel", distanceLevel, setDistanceLevel)}
-            />
-          </div>
-        </section>
-
-        {/* Section 4: Imposition */}
-        <section className="mt-8">
-          <div className="flex items-center gap-2">
-            <FilledLabel filled={!!burdenLevel}>4. 부담도(R) 선택</FilledLabel>
-            <InfoTooltip content={"Rate of Imposition — 발화가 청자에게 주는 부담의 크기.\n거절·요구·사과는 부담이 높음.\n— Brown & Levinson (1987)"} />
-          </div>
-          <div className="mt-4 rounded-lg border border-foreground bg-background p-4">
-            <Segmented<BurdenLevel>
-              ariaLabel="부담도(R) 수준"
-              options={BURDEN_OPTIONS.map((v) => ({ value: v }))}
-              value={burdenLevel}
-              onChange={trackedSet("burdenLevel", burdenLevel, setBurdenLevel)}
-            />
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {/* Power column */}
+            <div className="rounded-lg border border-foreground bg-background p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <h3 className="text-base font-bold">권력(P)</h3>
+                <InfoTooltip content={"Power — 발화자와 청자 간 위계·권한 차이.\n대표·상급자·주요 고객은 '상대가 우위'.\n— Brown & Levinson (1987)"} />
+              </div>
+              <VerticalRadio<PowerLevel>
+                ariaLabel="권력(P) 수준"
+                options={POWER_OPTIONS.map((v) => ({ value: v }))}
+                value={powerLevel}
+                onChange={trackedSet("powerLevel", powerLevel, setPowerLevel)}
+              />
+            </div>
+            {/* Distance column */}
+            <div className="rounded-lg border border-foreground bg-background p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <h3 className="text-base font-bold">거리(D)</h3>
+                <InfoTooltip content={"Social Distance — 친밀도·거래 빈도·공식성 정도.\n첫 거래·공식 관계는 '멀다'.\n— Brown & Levinson (1987)"} />
+              </div>
+              <VerticalRadio<DistanceLevel>
+                ariaLabel="거리(D) 수준"
+                options={DISTANCE_OPTIONS}
+                value={distanceLevel}
+                onChange={trackedSet("distanceLevel", distanceLevel, setDistanceLevel)}
+              />
+            </div>
+            {/* Burden column */}
+            <div className="rounded-lg border border-foreground bg-background p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <h3 className="text-base font-bold">부담도(R)</h3>
+                <InfoTooltip content={"Rate of Imposition — 발화가 청자에게 주는 부담의 크기.\n거절·요구·사과는 부담이 높음.\n— Brown & Levinson (1987)"} />
+              </div>
+              <VerticalRadio<BurdenLevel>
+                ariaLabel="부담도(R) 수준"
+                options={BURDEN_OPTIONS.map((v) => ({ value: v }))}
+                value={burdenLevel}
+                onChange={trackedSet("burdenLevel", burdenLevel, setBurdenLevel)}
+              />
+            </div>
           </div>
         </section>
 
-        {/* Section 5: Strategy */}
+        {/* Section 3: Strategy */}
         <section className="mt-8">
-          <FilledLabel filled={strategyFilled}>5. 화행 전략 선택</FilledLabel>
+          <FilledLabel filled={strategyFilled}>3. 화행 전략 선택</FilledLabel>
           <p className="mt-2 text-sm text-muted-foreground">
             P·D·R을 고려해 가장 적합한 전략 1개를 선택합니다.
           </p>
@@ -397,7 +397,7 @@ const Pdr = () => {
                 : "1단계에서 화행을 먼저 선택하세요."
             }
           >
-            6. 한국어 이메일 작성
+            4. 한국어 이메일 작성
           </FilledLabel>
 
           <div className="mt-4 rounded-lg border border-foreground bg-background">
