@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { logAction } from "@/lib/tracking";
 
-const ORDER = ["/prep", "/scenario", "/pdr", "/translate", "/finalize", "/dashboard"];
+const ORDER = ["/scenario", "/pdr", "/translate", "/finalize", "/dashboard"];
 
 interface RollbackProps {
   /** 현재 단계 (0-5) */

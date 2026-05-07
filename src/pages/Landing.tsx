@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ensureSession } from "@/lib/tracking";
 
 const STEPS = [
-  { n: 0, title: "학습 준비", sub: "프로필·목표" },
   { n: 1, title: "화행 시나리오 선택", sub: "요청·거절·사과" },
   { n: 2, title: "상황 분석 및 이메일 작성", sub: "권력·거리·부담도·화행 전략" },
   { n: 3, title: "AI 번역 후보 생성·비교", sub: "기본 프롬프트 vs 전략 프롬프트" },
@@ -24,7 +23,7 @@ const Landing = () => {
             AI 기반 한·중 통번역 의사결정 워크플로우
           </span>
           <Link
-            to="/prep"
+            to="/scenario"
             className="hidden rounded-md border border-foreground px-3 py-1.5 text-sm font-medium hover:bg-muted sm:inline-block"
           >
             바로 시작 →
@@ -78,7 +77,7 @@ const Landing = () => {
         {/* CTA */}
         <section className="mt-6 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-4">
           <Link
-            to="/prep"
+            to="/scenario"
             className="rounded-lg bg-accent px-8 py-4 text-base font-bold text-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
           >
             학습 시작하기 →
