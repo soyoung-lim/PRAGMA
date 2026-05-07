@@ -247,7 +247,7 @@ export default function Finalize() {
       toast.error(`AI 번역 ${n}이(가) 비어 있습니다`);
       return;
     }
-    update("finalTranslation", txt);
+    update("finalTranslation", txt.slice(0, FINAL_TRANSLATION_MAX));
     toast.success(`AI 번역 ${n}을(를) 최종 번역에 복사했습니다`);
   };
 
