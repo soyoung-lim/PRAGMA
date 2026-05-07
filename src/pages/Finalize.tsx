@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Info } from "lucide-react";
+import { ChevronDown, ChevronUp, Info, Lock } from "lucide-react";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { Rollback } from "@/components/Rollback";
 import { ensureSession, logAction } from "@/lib/tracking";
@@ -21,20 +21,20 @@ const FINALIZE_STORAGE_KEY = "translation-workflow-finalize";
 
 type RevisionReason =
   | "화용 재현성 부족"
-  | "관계 적합성 문제"
-  | "리스크 관리 필요"
-  | "복합 (2가지 이상)"
-  | "수정 사항 없음";
+  | "관계 적합성 부족"
+  | "리스크 관리 부족"
+  | "표현 자연스러움"
+  | "어휘 정확성"
+  | "기타";
 
 const REASON_OPTIONS: RevisionReason[] = [
   "화용 재현성 부족",
-  "관계 적합성 문제",
-  "리스크 관리 필요",
-  "복합 (2가지 이상)",
-  "수정 사항 없음",
+  "관계 적합성 부족",
+  "리스크 관리 부족",
+  "표현 자연스러움",
+  "어휘 정확성",
+  "기타",
 ];
-
-const NO_REVISION: RevisionReason = "수정 사항 없음";
 
 interface RevisionCase {
   aiResult: string;
@@ -43,23 +43,52 @@ interface RevisionCase {
   explanation: string;
 }
 
-type FinalDecision = "그대로 확정" | "수정 후 확정" | "";
+type FinalDecision = "as-is" | "partial" | "full-revision" | "";
+
+interface PersonaInfluence {
+  persona1: boolean;
+  persona2: boolean;
+  persona3: boolean;
+  persona4: boolean;
+}
 
 interface FinalizeData {
   finalTranslation: string;
   revisionCase: RevisionCase;
   personaFeedbackReceived: boolean;
-  finalDecision: FinalDecision;
+  preFeedbackTranslation: string;
+  postFeedbackDecision: FinalDecision;
+  personaInfluence: PersonaInfluence;
+  postFeedbackTranslation: string;
   finalDecisionReason: string;
 }
+
+const EMPTY_INFLUENCE: PersonaInfluence = {
+  persona1: false,
+  persona2: false,
+  persona3: false,
+  persona4: false,
+};
 
 const EMPTY: FinalizeData = {
   finalTranslation: "",
   revisionCase: { aiResult: "", myRevision: "", reason: "", explanation: "" },
   personaFeedbackReceived: false,
-  finalDecision: "",
+  preFeedbackTranslation: "",
+  postFeedbackDecision: "",
+  personaInfluence: { ...EMPTY_INFLUENCE },
+  postFeedbackTranslation: "",
   finalDecisionReason: "",
 };
+
+const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub: string }[] = [
+  { value: "as-is", label: "그대로 확정", sub: "피드백을 검토했으나 변경 없이 위 번역을 최종안으로 확정합니다" },
+  { value: "partial", label: "부분 반영", sub: "일부 페르소나의 일부 지적만 수용해 수정합니다" },
+  { value: "full-revision", label: "전면 수정", sub: "피드백 기반으로 번역을 재작성합니다" },
+];
+
+const FINAL_TRANSLATION_MAX = 200;
+const DECISION_REASON_MAX = 200;
 
 interface Persona {
   number: number;
