@@ -511,7 +511,10 @@ const Translate = () => {
             {CRITERIA.map((c) => {
               const k1 = `${c.key}1` as keyof Ratings;
               const k2 = `${c.key}2` as keyof Ratings;
+              const rk1 = `${c.key}1` as keyof Rationales;
+              const rk2 = `${c.key}2` as keyof Rationales;
               return (
+                <div key={c.key}>
                 <div
                   key={c.key}
                   className="grid grid-cols-1 gap-px border-t border-border bg-border first:border-t-0 md:grid-cols-[1.4fr_1fr_1fr]"
@@ -540,6 +543,33 @@ const Translate = () => {
                       ariaLabel={`${c.label} - AI 번역 2`}
                     />
                   </div>
+                </div>
+                {/* Rationale row */}
+                <div className="grid grid-cols-1 gap-px border-t border-border bg-border md:grid-cols-[1.4fr_1fr_1fr]">
+                  <div className="flex items-center gap-1 bg-background px-4 py-3 text-xs text-muted-foreground">
+                    ↳ 평가 근거 <span className="text-[10px]">(선택)</span>
+                  </div>
+                  <div className="bg-background px-4 py-3">
+                    <input
+                      type="text"
+                      maxLength={50}
+                      value={rationales[rk1]}
+                      onChange={(e) => setRationales((r) => ({ ...r, [rk1]: e.target.value.slice(0, 50) }))}
+                      placeholder="예: 호칭 표현이 어색함 / 자연스러운 거절 어조"
+                      className="block w-full rounded-md border border-border bg-background px-3 py-2 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    />
+                  </div>
+                  <div className="bg-background px-4 py-3">
+                    <input
+                      type="text"
+                      maxLength={50}
+                      value={rationales[rk2]}
+                      onChange={(e) => setRationales((r) => ({ ...r, [rk2]: e.target.value.slice(0, 50) }))}
+                      placeholder="예: 호칭 표현이 어색함 / 자연스러운 거절 어조"
+                      className="block w-full rounded-md border border-border bg-background px-3 py-2 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    />
+                  </div>
+                </div>
                 </div>
               );
             })}
