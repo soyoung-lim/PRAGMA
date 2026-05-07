@@ -27,7 +27,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
   };
 
   return (
-    <header className="border-b border-border/60 bg-background print:hidden">
+    <header className="border-b border-border bg-background print:hidden">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 pt-4 pb-2">
         <Link
           to="/"
@@ -36,7 +36,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
         >
           <span
             aria-hidden
-            className="inline-block h-4 w-[2px] rounded-full bg-accent transition-all duration-200 group-hover:h-5"
+            className="inline-block h-[1.15em] w-[3px] rounded-full bg-accent transition-all duration-200 group-hover:h-[1.3em]"
           />
           <span>AI 기반 한·중 통번역 의사결정 워크플로우</span>
         </Link>
