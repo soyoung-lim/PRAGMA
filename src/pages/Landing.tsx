@@ -10,6 +10,13 @@ const STEPS = [
   { n: 5, title: "번역 의사결정 리포트", sub: "AI 번역 검토와 수정 판단 기록" },
 ];
 
+const BADGES = [
+  "화용 전략 기반 판단",
+  "AI 번역 후보 비교",
+  "멀티-페르소나 피드백",
+  "의사결정 기록",
+];
+
 const Landing = () => {
   useEffect(() => {
     ensureSession();
@@ -20,7 +27,7 @@ const Landing = () => {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <span className="flex items-center gap-2 text-base font-bold sm:text-lg">
             <span aria-hidden className="inline-block h-5 w-1 rounded-sm bg-accent" />
-            AI 기반 한·중 통번역 의사결정 워크플로우
+            AI 기반 한·중 통번역 학습 워크플로우
           </span>
           <Link
             to="/scenario"
@@ -35,11 +42,25 @@ const Landing = () => {
         {/* HERO */}
         <section className="text-center">
           <h1 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-[44px]">
-            AI 기반 한·중 통번역 의사결정 워크플로우
+            AI 기반 한·중 통번역 학습 워크플로우
           </h1>
           <p className="mt-3 text-base text-muted-foreground sm:text-lg">
-            AI 번역 앞에서 무엇을 판단·수정·결정하는지 훈련하고 기록하는 도구
+            화용 전략 기반 번역 의사결정과 멀티-페르소나 피드백을 통합한 학습 시스템
           </p>
+        </section>
+
+        {/* VALUE BADGES */}
+        <section className="mt-6 sm:mt-8">
+          <div className="mx-auto flex max-w-3xl flex-wrap justify-center gap-2 sm:gap-3">
+            {BADGES.map((text) => (
+              <span
+                key={text}
+                className="rounded-full border border-foreground/20 bg-background px-4 py-1.5 text-sm font-medium text-foreground shadow-sm"
+              >
+                {text}
+              </span>
+            ))}
+          </div>
         </section>
 
         {/* WORKFLOW DIAGRAM */}
@@ -69,9 +90,6 @@ const Landing = () => {
               </div>
             ))}
           </div>
-          <blockquote className="mx-auto mt-6 max-w-3xl border-l-4 border-accent bg-muted/60 px-4 py-3 text-left text-sm text-gray-700">
-            이 도구는 'AI가 좋은 번역을 해주는가'가 아니라, '학습자가 AI 번역 앞에서 어떻게 판단하고 수정하는가'를 구조화·기록합니다.
-          </blockquote>
         </section>
 
         {/* CTA */}
