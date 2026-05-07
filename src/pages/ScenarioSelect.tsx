@@ -164,6 +164,11 @@ const ScenarioSelect = () => {
                     <h3 className={["mt-3 text-base leading-snug sm:text-lg", selected ? "font-extrabold" : "font-bold"].join(" ")}>
                       {s.title}
                     </h3>
+                    {s.description && (
+                      <p className={["mt-2 text-xs leading-snug", selected ? "text-foreground/70" : "text-gray-500"].join(" ")}>
+                        {s.description}
+                      </p>
+                    )}
                   </button>
                 );
               })}

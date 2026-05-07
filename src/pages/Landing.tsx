@@ -38,7 +38,7 @@ const Landing = () => {
             AI 기반 한·중 통번역 학습 워크플로우
           </h1>
           <p className="mt-3 text-base text-muted-foreground sm:text-lg">
-            화용적 의사결정과 멀티-페르소나 피드백을 통합한 학습 시스템
+            AI 번역 앞에서 무엇을 판단·수정·결정하는지 훈련하고 기록하는 도구
           </p>
         </section>
 
@@ -69,6 +69,9 @@ const Landing = () => {
               </div>
             ))}
           </div>
+          <blockquote className="mx-auto mt-6 max-w-3xl border-l-4 border-accent bg-muted/60 px-4 py-3 text-left text-sm text-gray-700">
+            이 도구는 'AI가 좋은 번역을 해주는가'가 아니라, '학습자가 AI 번역 앞에서 어떻게 판단하고 수정하는가'를 구조화·기록합니다.
+          </blockquote>
           <p className="mt-4 text-center text-xs text-muted-foreground">
             비선형 학습 — 언제든 이전 단계로 돌아가 수정 가능합니다
           </p>
