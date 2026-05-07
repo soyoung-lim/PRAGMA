@@ -275,19 +275,49 @@ export default function Finalize() {
     }, 50);
   };
 
+  // 피드백 받은 시점에 피드백 전 최종안 자동 보존
+  useEffect(() => {
+    if (
+      data.personaFeedbackReceived &&
+      !data.preFeedbackTranslation &&
+      data.finalTranslation.trim().length > 0
+    ) {
+      setData((d) => ({
+        ...d,
+        preFeedbackTranslation: d.finalTranslation,
+        postFeedbackTranslation: d.postFeedbackTranslation || d.finalTranslation,
+      }));
+    }
+  }, [data.personaFeedbackReceived, data.preFeedbackTranslation, data.finalTranslation]);
+
   // 검증
-  const noRevision = data.revisionCase.reason === NO_REVISION;
   const finalTranslationDone = data.finalTranslation.trim().length > 0;
   const revisionDone =
     data.revisionCase.aiResult.trim().length > 0 &&
     data.revisionCase.reason !== "" &&
-    (noRevision || data.revisionCase.myRevision.trim().length > 0);
-  const decisionDone = data.finalDecision !== "";
+    data.revisionCase.myRevision.trim().length > 0;
+  const needsRevisionFields =
+    data.postFeedbackDecision === "partial" || data.postFeedbackDecision === "full-revision";
+  const influenceCount = Object.values(data.personaInfluence).filter(Boolean).length;
+  const decisionDone =
+    data.postFeedbackDecision !== "" &&
+    (!needsRevisionFields ||
+      (influenceCount >= 1 && data.postFeedbackTranslation.trim().length > 0)) &&
+    data.finalDecisionReason.trim().length > 0;
   const allDone =
     finalTranslationDone &&
     revisionDone &&
     data.personaFeedbackReceived &&
     decisionDone;
+
+  const reasonHelper =
+    data.postFeedbackDecision === "as-is"
+      ? "왜 피드백을 반영하지 않았는지 설명해주세요"
+      : data.postFeedbackDecision === "partial"
+        ? "어떤 지적을 어떻게 반영했는지 설명해주세요"
+        : data.postFeedbackDecision === "full-revision"
+          ? "어떤 방향으로 재작성했는지 설명해주세요"
+          : "결정 후 이유를 작성해주세요";
 
   return (
     <div className="min-h-screen bg-background">
