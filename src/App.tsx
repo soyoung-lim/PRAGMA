@@ -11,6 +11,7 @@ import Pdr from "./pages/Pdr.tsx";
 import Translate from "./pages/Translate.tsx";
 import Finalize from "./pages/Finalize.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import Prep from "./pages/Prep.tsx";
 import { ScrollToTop } from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/prep" element={<Prep />} />
           <Route path="/scenario" element={<ScenarioSelect />} />
           <Route path="/pdr" element={<Pdr />} />
           <Route path="/translate" element={<Translate />} />
