@@ -2,91 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================
-   Design Tokens (Phase 1)
-   Hex reference:
-     background-primary:   #FAF8F2  → hsl(45 44% 96%)
-     background-secondary: #F7F4EC  → hsl(44 41% 95%)
-     text-primary:         #1D2230  → hsl(224 25% 15%)
-     text-secondary:       #6B7280  → hsl(220  9% 46%)
-     text-tertiary:        #9CA3AF  → hsl(218 11% 65%)
-     border-default:       #E5E1D8  → hsl(42  20% 87%)
-     border-strong:        #D4CFC2  → hsl(43  17% 80%)
-     accent-mustard:       #D6AA2F  → hsl(44  67% 51%)
-     accent-mustard-soft:  #E1B93F  → hsl(45  73% 56%)
-     accent-deep-green:    #163A35  → hsl(172 45% 16%)
-     surface-card:         #FDFBF6  → hsl(43  64% 98%)
-   ============================================ */
+/* Design system: 흑백 + 노랑 한 점. 모든 색은 HSL. */
 
 @layer base {
   :root {
-    /* Background: warm ivory */
-    --background: 45 44% 96%;
-    --foreground: 224 25% 15%;
+    /* Background: near-white with subtle ivory tint */
+    --background: 40 25% 99%;
+    /* Primary text: deep navy #1A2332 */
+    --foreground: 215 32% 15%;
 
-    /* Surface: slightly lighter than background */
-    --card: 43 64% 98%;
-    --card-foreground: 224 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 32% 15%;
 
-    --popover: 43 64% 98%;
-    --popover-foreground: 224 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 32% 15%;
 
-    /* Primary: charcoal navy */
-    --primary: 224 25% 15%;
-    --primary-foreground: 45 44% 96%;
+    --primary: 215 32% 15%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary / Muted: background-secondary */
-    --secondary: 44 41% 95%;
-    --secondary-foreground: 224 25% 15%;
+    /* Muted surface: very light gray */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 215 32% 15%;
 
-    --muted: 44 41% 95%;
-    /* text-secondary */
+    --muted: 220 14% 96%;
+    /* Secondary text: medium gray #6B7280 */
     --muted-foreground: 220 9% 46%;
 
-    /* Accent: muted mustard — used sparingly */
-    --accent: 44 67% 51%;
-    --accent-foreground: 224 25% 15%;
+    /* Accent yellow #F5C842 — used sparingly */
+    --accent: 46 89% 62%;
+    --accent-foreground: 215 32% 15%;
 
     --destructive: 0 70% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Border: warm beige */
-    --border: 42 20% 87%;
-    --input: 42 20% 87%;
-    --ring: 44 67% 51%;
+    /* Border: light gray #E5E7EB */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 46 89% 62%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 45 44% 96%;
-    --sidebar-foreground: 224 25% 15%;
-    --sidebar-primary: 224 25% 15%;
-    --sidebar-primary-foreground: 45 44% 96%;
-    --sidebar-accent: 44 41% 95%;
-    --sidebar-accent-foreground: 224 25% 15%;
-    --sidebar-border: 42 20% 87%;
-    --sidebar-ring: 44 67% 51%;
+    --sidebar-background: 40 25% 99%;
+    --sidebar-foreground: 215 32% 15%;
+    --sidebar-primary: 215 32% 15%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 215 32% 15%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 46 89% 62%;
   }
 
   .dark {
-    --background: 45 44% 96%;
-    --foreground: 224 25% 15%;
-    --card: 43 64% 98%;
-    --card-foreground: 224 25% 15%;
-    --popover: 43 64% 98%;
-    --popover-foreground: 224 25% 15%;
-    --primary: 224 25% 15%;
-    --primary-foreground: 45 44% 96%;
-    --secondary: 44 41% 95%;
-    --secondary-foreground: 224 25% 15%;
-    --muted: 44 41% 95%;
+    --background: 40 25% 99%;
+    --foreground: 215 32% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 32% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 32% 15%;
+    --primary: 215 32% 15%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 215 32% 15%;
+    --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
-    --accent: 44 67% 51%;
-    --accent-foreground: 224 25% 15%;
+    --accent: 46 89% 62%;
+    --accent-foreground: 215 32% 15%;
     --destructive: 0 70% 45%;
     --destructive-foreground: 0 0% 100%;
-    --border: 42 20% 87%;
-    --input: 42 20% 87%;
-    --ring: 44 67% 51%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 46 89% 62%;
   }
 }
 
@@ -107,15 +92,11 @@
   }
 
   h1, h2, h3, h4 {
-    @apply tracking-tight;
+    @apply font-bold tracking-tight;
   }
 
-  /* H1: bold, line-height 1.2, letter-spacing -0.02em */
-  h1 { @apply font-bold; letter-spacing: -0.02em; line-height: 1.2; }
-  /* H2: semibold, line-height 1.3 */
-  h2 { @apply font-semibold; letter-spacing: -0.01em; line-height: 1.3; }
-  h3 { @apply font-bold; }
-  h4 { @apply font-bold; }
+  h1 { letter-spacing: -0.02em; line-height: 1.15; }
+  h2 { letter-spacing: -0.01em; line-height: 1.25; }
 }
 
 @layer utilities {
