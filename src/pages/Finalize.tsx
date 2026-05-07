@@ -420,12 +420,15 @@ export default function Finalize() {
               <div className="mb-2 flex items-center justify-between text-sm">
                 <span className="font-semibold">최종 중국어 번역</span>
                 <span className="text-xs text-muted-foreground">
-                  {data.finalTranslation.length}자
+                  현재 글자수 {data.finalTranslation.length} / {FINAL_TRANSLATION_MAX}
                 </span>
               </div>
               <Textarea
                 value={data.finalTranslation}
-                onChange={(e) => update("finalTranslation", e.target.value)}
+                onChange={(e) =>
+                  update("finalTranslation", e.target.value.slice(0, FINAL_TRANSLATION_MAX))
+                }
+                maxLength={FINAL_TRANSLATION_MAX}
                 placeholder="두 AI 번역에서 좋은 부분을 골라 조합하거나, 본인이 직접 수정·재작성하세요"
                 className="min-h-[200px] resize-y text-base"
               />
@@ -481,16 +484,8 @@ export default function Finalize() {
                   onChange={(e) =>
                     updateRevision("myRevision", e.target.value.slice(0, 100))
                   }
-                  disabled={noRevision}
-                  placeholder={
-                    noRevision
-                      ? "AI 번역 2를 그대로 채택"
-                      : "내가 어떻게 수정했는지"
-                  }
-                  className={[
-                    "min-h-[80px] text-base",
-                    noRevision ? "bg-muted text-muted-foreground" : "",
-                  ].join(" ")}
+                  placeholder="내가 어떻게 수정했는지"
+                  className="min-h-[80px] text-base"
                 />
               </div>
               <div>
@@ -502,7 +497,7 @@ export default function Finalize() {
                   }
                   className="h-11 w-full rounded-md border border-border bg-background px-3 text-base"
                 >
-                  <option value="">선택하세요</option>
+                  <option value="">수정 이유를 선택하세요</option>
                   {REASON_OPTIONS.map((r) => (
                     <option key={r} value={r}>
                       {r}
@@ -524,16 +519,8 @@ export default function Finalize() {
                   onChange={(e) =>
                     updateRevision("explanation", e.target.value.slice(0, 200))
                   }
-                  disabled={noRevision}
-                  placeholder={
-                    noRevision
-                      ? "AI 번역 2를 그대로 채택"
-                      : "필요하면 더 자세히 설명해주세요"
-                  }
-                  className={[
-                    "min-h-[80px] text-base",
-                    noRevision ? "bg-muted text-muted-foreground" : "",
-                  ].join(" ")}
+                  placeholder="필요하면 더 자세히 설명해주세요"
+                  className="min-h-[80px] text-base"
                 />
               </div>
             </div>
@@ -576,11 +563,6 @@ export default function Finalize() {
                 ? "피드백 받음"
                 : "멀티-페르소나 피드백 받기"}
             </Button>
-            {data.personaFeedbackReceived && (
-              <Button variant="outline" size="sm" onClick={resetPersonaFeedback}>
-                다시 받기
-              </Button>
-            )}
           </div>
           {!data.personaFeedbackReceived &&
             data.finalTranslation.trim().length < 30 && (
