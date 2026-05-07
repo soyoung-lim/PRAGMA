@@ -26,29 +26,29 @@ const EMAIL_MAX = 150;
 const EMAIL_MIN = 30;
 const INTENT_MAX = 50;
 
-const POWER_OPTIONS: PowerLevel[] = ["상대가 우위", "동등", "내가 우위"];
-const DISTANCE_OPTIONS: { value: DistanceLevel; hint: string }[] = [
-  { value: "멀다", hint: "초면·공식" },
-  { value: "중간", hint: "업무상 관계" },
+const POWER_OPTIONS: PowerLevel[] = ["내가 우위", "동등", "상대가 우위"];
+const DISTANCE_OPTIONS: { value: DistanceLevel; hint?: string }[] = [
   { value: "가깝다", hint: "장기 거래·친숙" },
+  { value: "중간", hint: "업무상 관계" },
+  { value: "멀다", hint: "초면·공식" },
 ];
-const BURDEN_OPTIONS: BurdenLevel[] = ["높음", "중간", "낮음"];
+const BURDEN_OPTIONS: BurdenLevel[] = ["낮음", "중간", "높음"];
 
-interface SegmentedProps<T extends string> {
+interface VerticalRadioProps<T extends string> {
   options: { value: T; hint?: string }[];
   value: T | null;
   onChange: (v: T) => void;
   ariaLabel: string;
 }
 
-function Segmented<T extends string>({
+function VerticalRadio<T extends string>({
   options,
   value,
   onChange,
   ariaLabel,
-}: SegmentedProps<T>) {
+}: VerticalRadioProps<T>) {
   return (
-    <div role="radiogroup" aria-label={ariaLabel} className="grid grid-cols-3 gap-2">
+    <div role="radiogroup" aria-label={ariaLabel} className="flex flex-col gap-2">
       {options.map((opt) => {
         const selected = value === opt.value;
         return (
@@ -59,18 +59,27 @@ function Segmented<T extends string>({
             aria-checked={selected}
             onClick={() => onChange(opt.value)}
             className={[
-              "flex flex-col items-center justify-center rounded-lg px-3 py-3 text-sm transition-all duration-200",
+              "flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
               selected
                 ? "border border-foreground bg-foreground text-background font-bold"
                 : "border border-foreground bg-background text-foreground font-medium hover:bg-[#F8F6F0]",
             ].join(" ")}
           >
-            <span>{opt.value}</span>
+            <span
+              aria-hidden
+              className={[
+                "inline-block h-3 w-3 rounded-full border",
+                selected
+                  ? "border-background bg-background"
+                  : "border-foreground bg-background",
+              ].join(" ")}
+            />
+            <span className="flex-1 text-left">{opt.value}</span>
             {opt.hint && (
               <span
                 className={[
-                  "mt-1 text-[11px] font-normal",
+                  "text-[11px] font-normal",
                   selected ? "text-background/70" : "text-muted-foreground",
                 ].join(" ")}
               >
