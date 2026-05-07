@@ -9,7 +9,6 @@ interface WorkflowHeaderProps {
 }
 
 const STEPS = [
-  { num: 0, label: "학습 준비", path: "/prep" },
   { num: 1, label: "화행 시나리오", path: "/scenario" },
   { num: 2, label: "상황 분석 및 메일 작성", path: "/pdr" },
   { num: 3, label: "AI 번역 비교", path: "/translate" },
