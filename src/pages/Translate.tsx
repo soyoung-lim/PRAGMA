@@ -577,31 +577,34 @@ const Translate = () => {
 
           {/* Averages */}
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-5 py-4">
-              <span className="text-sm font-medium">AI 번역 1 평균</span>
-              <span className="flex items-center gap-2 text-lg font-bold">
-                {showAvg ? avg1.toFixed(1) : "—"}점
-                {showAvg && avg1 > avg2 && (
-                  <span
-                    aria-label="더 높음"
-                    className="inline-block h-2 w-2 rounded-full bg-accent"
-                  />
-                )}
-              </span>
+            <div className="rounded-lg border border-border bg-muted px-5 py-4">
+              <div className="text-xs text-gray-500">본인이 평가한 결과입니다</div>
+              <div className="mt-1 flex items-center justify-between">
+                <span className="text-sm font-medium">AI 번역 1 평균</span>
+                <span className="flex items-center gap-2 text-lg font-bold">
+                  {showAvg ? avg1.toFixed(1) : "—"}점
+                  {showAvg && avg1 > avg2 && (
+                    <span aria-label="더 높음" className="inline-block h-2 w-2 rounded-full bg-accent" />
+                  )}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-5 py-4">
-              <span className="text-sm font-medium">AI 번역 2 평균</span>
-              <span className="flex items-center gap-2 text-lg font-bold">
-                {showAvg ? avg2.toFixed(1) : "—"}점
-                {showAvg && avg2 > avg1 && (
-                  <span
-                    aria-label="더 높음"
-                    className="inline-block h-2 w-2 rounded-full bg-accent"
-                  />
-                )}
-              </span>
+            <div className="rounded-lg border border-border bg-muted px-5 py-4">
+              <div className="text-xs text-gray-500">본인이 평가한 결과입니다</div>
+              <div className="mt-1 flex items-center justify-between">
+                <span className="text-sm font-medium">AI 번역 2 평균</span>
+                <span className="flex items-center gap-2 text-lg font-bold">
+                  {showAvg ? avg2.toFixed(1) : "—"}점
+                  {showAvg && avg2 > avg1 && (
+                    <span aria-label="더 높음" className="inline-block h-2 w-2 rounded-full bg-accent" />
+                  )}
+                </span>
+              </div>
             </div>
           </div>
+          <p className="mt-3 text-xs text-gray-600">
+            이 점수는 본인의 화용적 직관을 기록한 것입니다. 다음 단계에서 4명 가상 평가자의 다관점 피드백을 받게 됩니다.
+          </p>
         </section>
 
         {/* Footer */}
