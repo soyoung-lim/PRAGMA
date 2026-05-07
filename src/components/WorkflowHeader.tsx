@@ -9,10 +9,11 @@ interface WorkflowHeaderProps {
 }
 
 const STEPS = [
+  { num: 0, label: "학습 준비", path: "/prep" },
   { num: 1, label: "화행 시나리오", path: "/scenario" },
-  { num: 2, label: "원문·화용 분석", path: "/pdr" },
+  { num: 2, label: "상황 분석 및 이메일 작성", path: "/pdr" },
   { num: 3, label: "AI 번역 비교", path: "/translate" },
-  { num: 4, label: "페르소나 피드백", path: "/finalize" },
+  { num: 4, label: "멀티-페르소나 피드백", path: "/finalize" },
   { num: 5, label: "의사결정 리포트", path: "/dashboard" },
 ];
 
@@ -22,7 +23,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
   const jumpTo = (s: { num: number; path: string }) => {
     if (!(s.num < currentStep || completed)) return;
     if (s.num === currentStep) return;
-    logAction("step_jump", { from: STEPS[currentStep - 1]?.path, to: s.path });
+    logAction("step_jump", { from: STEPS.find((x) => x.num === currentStep)?.path, to: s.path });
     navigate(s.path);
   };
 
@@ -38,7 +39,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
             aria-hidden
             className="inline-block h-5 w-[3px] rounded-sm bg-accent transition-all duration-200 group-hover:w-[5px]"
           />
-          <span>AI 기반 한·중 통번역 학습 워크플로우</span>
+          <span>AI 기반 한·중 통번역 의사결정 워크플로우</span>
         </Link>
         {completed && (
           <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold text-foreground">
