@@ -44,7 +44,7 @@ const Landing = () => {
 
         {/* WORKFLOW DIAGRAM */}
         <section className="mt-10 sm:mt-14">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 lg:gap-1">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-1">
             {STEPS.map((s, idx) => (
               <div key={s.n} className="relative flex items-center">
                 <div className="h-full w-full rounded-lg border border-foreground bg-background p-3 text-center">
