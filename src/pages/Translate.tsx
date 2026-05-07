@@ -45,21 +45,15 @@ const EMPTY_RATINGS: Ratings = {
 };
 
 interface Rationales {
-  pragmatic1: string;
-  pragmatic2: string;
-  relational1: string;
-  relational2: string;
-  risk1: string;
-  risk2: string;
+  pragmatic: string;
+  relational: string;
+  risk: string;
 }
 
 const EMPTY_RATIONALES: Rationales = {
-  pragmatic1: "",
-  pragmatic2: "",
-  relational1: "",
-  relational2: "",
-  risk1: "",
-  risk2: "",
+  pragmatic: "",
+  relational: "",
+  risk: "",
 };
 
 type ExperimentVar = "P" | "D" | "R";
