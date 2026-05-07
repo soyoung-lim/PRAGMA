@@ -17,8 +17,8 @@ export const Rollback = ({ currentStep, className }: RollbackProps) => {
   const navigate = useNavigate();
   if (currentStep <= 0) return null;
 
-  const from = ORDER[currentStep + 1];
-  const to = ORDER[currentStep];
+  const from = ORDER[currentStep];
+  const to = ORDER[currentStep - 1];
 
   const handle = () => {
     logAction("rollback", { from, to });
