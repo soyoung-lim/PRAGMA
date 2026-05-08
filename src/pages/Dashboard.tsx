@@ -546,55 +546,28 @@ const Dashboard = () => {
             각 평가자가 제시한 강점·우려·제안을 한눈에 봅니다
           </p>
 
-          {/* Desktop table */}
-          <div className="mt-6 hidden overflow-hidden rounded-lg border border-foreground md:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-foreground text-background">
-                  <th className="px-4 py-3 text-left font-bold">평가자</th>
-                  <th className="px-4 py-3 text-left font-bold">강점</th>
-                  <th className="px-4 py-3 text-left font-bold">우려</th>
-                  <th className="px-4 py-3 text-left font-bold">제안</th>
-                </tr>
-              </thead>
-              <tbody>
-                {PERSONA_FEEDBACK.map((p, i) => (
-                  <tr
-                    key={p.name}
-                    className={[
-                      "border-t border-border bg-secondary",
-                      i === 0 ? "border-t-0" : "",
-                    ].join(" ")}
-                  >
-                    <td className="px-4 py-3 font-bold">{p.name}</td>
-                    <td className="px-4 py-3">{p.strength}</td>
-                    <td className="px-4 py-3">{p.concern}</td>
-                    <td className="px-4 py-3">{p.suggestion}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile stack */}
-          <div className="mt-6 grid grid-cols-1 gap-3 md:hidden">
-            {PERSONA_FEEDBACK.map((p) => (
+          <div className="mt-6 space-y-4">
+            {PERSONA_FEEDBACK.map((p, i) => (
               <div
                 key={p.name}
-                className="rounded-lg border border-foreground bg-secondary p-4 text-sm"
+                className="rounded-lg border border-border border-t-[3px] bg-secondary p-5"
+                style={{ borderTopColor: PERSONA_COLORS[i] }}
               >
-                <div className="font-bold">{p.name}</div>
-                <dl className="mt-3 space-y-1.5">
+                <div className="text-[11px] font-medium text-muted-foreground/60">
+                  관점 {i + 1}
+                </div>
+                <div className="mt-0.5 text-lg font-bold">{p.name}</div>
+                <dl className="mt-3 space-y-1.5 text-sm">
                   <div className="flex gap-2">
-                    <dt className="w-12 shrink-0 text-muted-foreground">강점</dt>
+                    <dt className="w-12 shrink-0 font-semibold">강점</dt>
                     <dd>{p.strength}</dd>
                   </div>
                   <div className="flex gap-2">
-                    <dt className="w-12 shrink-0 text-muted-foreground">우려</dt>
+                    <dt className="w-12 shrink-0 font-semibold">우려</dt>
                     <dd>{p.concern}</dd>
                   </div>
                   <div className="flex gap-2">
-                    <dt className="w-12 shrink-0 text-muted-foreground">제안</dt>
+                    <dt className="w-12 shrink-0 font-semibold">제안</dt>
                     <dd>{p.suggestion}</dd>
                   </div>
                 </dl>
