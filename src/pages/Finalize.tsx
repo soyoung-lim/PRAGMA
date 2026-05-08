@@ -712,7 +712,7 @@ export default function Finalize() {
                     className={[
                       "flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors",
                       active
-                        ? "border-foreground bg-accent/10"
+                        ? "border-[#E5C97A] bg-[#FAF1D7]"
                         : "border-border hover:bg-secondary",
                     ].join(" ")}
                   >
