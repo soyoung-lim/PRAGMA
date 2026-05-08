@@ -20,7 +20,6 @@ import {
   logAction,
   getActions,
   getSessionStart,
-  downloadActions,
 } from "@/lib/tracking";
 import {
   SCENARIOS,
@@ -106,26 +105,6 @@ const PERSONA_FEEDBACK = [
     strength: "관계 손상 위험 낮음",
     concern: "법률 어휘 사용 주의",
     suggestion: "비즈니스 어휘로 대체",
-  },
-];
-
-const ACADEMIC_CARDS = [
-  {
-    field: "AI 통번역 학습",
-    citations:
-      "Cui, Li, Zhuang (2025). ITT 특집호.\nTian et al. (2025). Guidance-based GenAI MTPE.",
-    position: "화행 전략 명시 프롬프트 + 학습자 메타인지",
-  },
-  {
-    field: "Learning Analytics + GenAI",
-    citations:
-      "Khosravi et al. (2025). JLA.\nBauer et al. (2023). BJET.",
-    position: "자동 피드백 + LA 대시보드 통합",
-  },
-  {
-    field: "Multi-Persona AI Feedback",
-    citations: "Jiao et al. (2025). LLM TQE Pipeline.",
-    position: "단일 평가가 아닌 4축 다관점 평가",
   },
 ];
 
@@ -337,20 +316,9 @@ const Dashboard = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleReset = () => {
-    if (!confirm("모든 입력 데이터를 초기화하고 처음부터 다시 시작하시겠습니까?"))
-      return;
-    logAction("session_end", { reason: "reset" });
-    [
-      STORAGE_KEY,
-      PDR_STORAGE_KEY,
-      TRANSLATE_STORAGE_KEY,
-      FINALIZE_STORAGE_KEY,
-      "learnerActions",
-      "sessionId",
-      "sessionStartAt",
-    ].forEach((k) => localStorage.removeItem(k));
-    navigate("/scenario");
+  const handleHome = () => {
+    logAction("session_end", { reason: "home" });
+    navigate("/");
   };
 
   const pdrLevels = {
@@ -747,70 +715,35 @@ const Dashboard = () => {
           })()}
         </section>
 
-        {/* 6. 의사결정 기록 */}
-        <section className="mt-16">
-          <h3 className="text-2xl font-bold">6. 의사결정 기록</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            본 세션의 판단 기록 및 학술 좌표 (연구 데이터 export 가능)
-          </p>
-
-          <div className="mt-6 flex flex-wrap gap-3 print:hidden">
-            <Button
-              onClick={handleExport}
-              variant="outline"
-              className="h-10 border-foreground text-sm"
-            >
-              데이터 내보내기 (JSON)
-            </Button>
-            <Button
-              onClick={downloadActions}
-              variant="outline"
-              className="h-10 border-foreground text-sm"
-            >
-              판단 기록 다운로드 (JSON)
-            </Button>
-            <Button onClick={handlePrint} variant="outline" className="h-10 border-foreground text-sm">
-              PDF로 저장
-            </Button>
-          </div>
-
-          <div className="mt-6">
-            <h4 className="text-base font-bold">본 워크플로우의 학술 좌표</h4>
-            <p className="mt-1 text-xs text-muted-foreground">본 시스템이 위치한 학술 분야</p>
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {ACADEMIC_CARDS.map((c) => (
-              <div
-                key={c.field}
-                className="flex flex-col rounded-lg border border-foreground bg-secondary p-6"
-              >
-                <div className="text-xs font-medium text-muted-foreground">
-                  분야
-                </div>
-                <div className="mt-1 text-lg font-bold">{c.field}</div>
-
-                <div className="mt-4 text-xs font-medium text-muted-foreground">
-                  본 시스템의 위치
-                </div>
-                <div className="mt-1 text-sm font-bold leading-relaxed">
-                  {c.position}
-                </div>
-              </div>
-            ))}
-          </div>
-          </div>
-        </section>
-
         {/* G. Action area */}
         <section className="mt-16 border-t border-border pt-8 print:hidden">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr] sm:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Rollback currentStep={5} className="!py-3 !px-5" />
-            <Button
-              onClick={handleReset}
-              variant="outline"
-              className="h-12 border-foreground text-base"
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                onClick={handlePrint}
+                className="h-12 bg-primary px-6 text-base font-bold text-primary-foreground hover:bg-primary/90"
+              >
+                리포트 PDF 저장
+              </Button>
+              <Button
+                onClick={handleHome}
+                variant="outline"
+                className="h-12 border-foreground px-6 text-base"
+              >
+                홈으로 돌아가기
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <button
+              type="button"
+              onClick={handleExport}
+              className="text-xs text-muted-foreground/70 underline-offset-4 hover:text-muted-foreground hover:underline"
             >
-              처음부터 다시
-            </Button>
+              연구 데이터 내보내기 (JSON)
+            </button>
           </div>
         </section>
       </main>
