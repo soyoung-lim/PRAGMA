@@ -650,98 +650,26 @@ export default function Finalize() {
                       <div className="mt-1 text-xs text-muted-foreground">
                         {p.role}
                       </div>
-                      <dl className="mt-3 space-y-1 text-xs">
+                      <dl className="mt-3 space-y-2 text-xs leading-relaxed">
                         <div className="flex gap-2">
                           <dt className="w-8 shrink-0 font-semibold">강점</dt>
-                          <dd className="line-clamp-2">{p.strength}</dd>
+                          <dd>{p.strength}</dd>
                         </div>
                         <div className="flex gap-2">
                           <dt className="w-8 shrink-0 font-semibold">우려</dt>
-                          <dd className="line-clamp-2">{p.concern}</dd>
+                          <dd>{p.concern}</dd>
                         </div>
                         <div className="flex gap-2">
                           <dt className="w-8 shrink-0 font-semibold">제안</dt>
-                          <dd className="line-clamp-2">{p.suggestion}</dd>
+                          <dd>{p.suggestion}</dd>
                         </div>
                       </dl>
-                      <div className="mt-4 pt-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => setDetailPersona(p.number)}
-                        >
-                          상세 보기
-                        </Button>
-                      </div>
                     </div>
                   );
                 })}
               </div>
             </div>
           )}
-
-          <DialogPrimitive.Root
-            open={detailPersona !== null}
-            onOpenChange={(o) => !o && setDetailPersona(null)}
-          >
-            <DialogPrimitive.Portal>
-              <DialogPrimitive.Overlay
-                className="fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-                style={{ backgroundColor: "rgba(29, 34, 48, 0.4)" }}
-              />
-              <DialogPrimitive.Content
-                className="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-2xl max-h-[85vh] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-xl border border-border shadow-sm p-8 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2"
-                style={(() => {
-                  const sel = PERSONAS.find((p) => p.number === detailPersona);
-                  const idx = sel ? PERSONAS.indexOf(sel) : 0;
-                  return {
-                    backgroundColor: PERSONA_BG_COLORS[idx],
-                    borderLeftWidth: 4,
-                    borderLeftColor: PERSONA_LINE_COLORS[idx],
-                  };
-                })()}
-              >
-                {(() => {
-                  const sel = PERSONAS.find((p) => p.number === detailPersona);
-                  if (!sel) return null;
-                  return (
-                    <>
-                      <div className="space-y-1.5">
-                        <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight text-[#1D2230]">
-                          상세 피드백: {sel.name} 관점
-                        </DialogPrimitive.Title>
-                        <DialogPrimitive.Description className="text-xs text-muted-foreground">
-                          {sel.role}
-                        </DialogPrimitive.Description>
-                      </div>
-                      <p
-                        className="text-sm text-[#1D2230]"
-                        style={{ lineHeight: 1.6 }}
-                      >
-                        {sel.feedback}
-                      </p>
-                      <div className="flex justify-end pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDetailPersona(null)}
-                        >
-                          닫기
-                        </Button>
-                      </div>
-                      <DialogPrimitive.Close
-                        className="absolute right-4 top-4 rounded-sm text-muted-foreground opacity-60 transition-opacity hover:text-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                        aria-label="닫기"
-                      >
-                        <X className="h-4 w-4" />
-                      </DialogPrimitive.Close>
-                    </>
-                  );
-                })()}
-              </DialogPrimitive.Content>
-            </DialogPrimitive.Portal>
-          </DialogPrimitive.Root>
         </section>
 
         {/* E. 섹션 4 — 피드백 후 의사결정 */}
