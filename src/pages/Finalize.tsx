@@ -282,10 +282,13 @@ export default function Finalize() {
 
   // 검증
   const finalTranslationDone = data.finalTranslation.trim().length > 0;
+  const noRevision = data.revisionCase.reason === "수정 사항 없음";
   const revisionDone =
-    data.revisionCase.aiResult.trim().length > 0 &&
     data.revisionCase.reason !== "" &&
-    data.revisionCase.myRevision.trim().length > 0;
+    (noRevision
+      ? data.revisionCase.explanation.trim().length > 0
+      : data.revisionCase.aiResult.trim().length > 0 &&
+        data.revisionCase.myRevision.trim().length > 0);
   const needsRevisionFields =
     data.postFeedbackDecision === "partial" || data.postFeedbackDecision === "full-revision";
   const influenceCount = Object.values(data.personaInfluence).filter(Boolean).length;
