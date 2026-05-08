@@ -74,7 +74,7 @@ const ScenarioSelect = () => {
       <WorkflowHeader currentStep={1} />
 
       <main className="mx-auto max-w-6xl px-6 py-6">
-        <h1 className="text-2xl font-bold sm:text-3xl">화행 시나리오 선택</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">화행·시나리오 선택</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           오늘 연습할 화행과 시나리오를 선택합니다.
         </p>

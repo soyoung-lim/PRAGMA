@@ -250,7 +250,7 @@ const Pdr = () => {
       <main className="mx-auto max-w-6xl px-6 py-6">
         {/* Page title */}
         <div>
-          <h2 className="text-2xl font-bold sm:text-3xl">상황 분석과 전략 선택</h2>
+          <h2 className="text-2xl font-bold sm:text-3xl">상황 판단·원문 작성</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             시나리오를 확인하고, P·D·R 분석과 화행 전략을 선택한 뒤 한국어 이메일을 작성합니다.
           </p>
