@@ -25,7 +25,7 @@ const ScenarioSelect = () => {
     try {
       const parsed: WorkflowSelection = JSON.parse(raw);
       if (parsed.speechAct) setSpeechAct(parsed.speechAct);
-      if (parsed.scenarioId) setScenarioId(parsed.scenarioId);
+      // 진입 시 시나리오는 자동 선택하지 않음 — 사용자가 직접 클릭해야 함
     } catch {
       /* ignore */
     }
@@ -104,7 +104,7 @@ const ScenarioSelect = () => {
                       "w-full rounded-lg p-6 pr-10 text-left transition-all duration-200",
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       selected
-                        ? "border-2 border-foreground bg-[#F8F6F0] text-foreground font-bold"
+                        ? "border-2 border-[#E5C97A] bg-[#FAF1D7] text-[#1D2230] font-bold"
                         : "border border-foreground bg-background hover:-translate-y-0.5 hover:shadow-md",
                     ].join(" ")}
                   >
@@ -159,7 +159,7 @@ const ScenarioSelect = () => {
                       "relative flex flex-col rounded-lg border border-foreground p-6 text-left transition-all duration-200",
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                       selected
-                        ? "bg-[#FBC91B] text-foreground"
+                        ? "border-[#E5C97A] bg-[#FAF1D7] text-[#1D2230]"
                         : "bg-background hover:-translate-y-0.5 hover:shadow-md",
                     ].join(" ")}
                   >
@@ -187,7 +187,7 @@ const ScenarioSelect = () => {
                   "relative flex flex-col rounded-lg border border-dashed p-6 text-left transition-all duration-200",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                   scenarioId === "custom"
-                    ? "border-foreground bg-[#FBC91B] text-foreground"
+                    ? "border-[#E5C97A] bg-[#FAF1D7] text-[#1D2230]"
                     : "border-foreground/60 bg-background hover:-translate-y-0.5 hover:shadow-md",
                 ].join(" ")}
               >

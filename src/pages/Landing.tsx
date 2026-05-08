@@ -11,13 +11,6 @@ const STEPS = [
   { n: 5, title: "번역 의사결정 리포트", sub: "AI 번역 검토와 수정 판단 기록" },
 ];
 
-const BADGES = [
-  "화용 전략 기반 판단",
-  "AI 번역 후보 비교",
-  "멀티-페르소나 피드백",
-  "의사결정 기록",
-];
-
 const Landing = () => {
   const navigate = useNavigate();
   useEffect(() => {
@@ -44,7 +37,7 @@ const Landing = () => {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pt-8 pb-7 sm:pt-10">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pt-16 pb-10 sm:pt-24">
         {/* HERO */}
         <section className="text-center">
           <h1 className="text-3xl font-bold sm:text-4xl lg:text-[44px]">
@@ -53,22 +46,10 @@ const Landing = () => {
           <p className="mt-4 text-base leading-relaxed text-foreground/70 sm:text-[17px]">
             화용 전략 기반 번역 의사결정과 멀티-페르소나 피드백을 통합한 학습 시스템
           </p>
-
-          {/* VALUE BADGES */}
-          <div className="mx-auto mt-6 flex max-w-3xl flex-wrap justify-center gap-2">
-            {BADGES.map((text) => (
-              <span
-                key={text}
-                className="rounded-full border border-border bg-card px-3.5 py-1.5 text-[13px] font-medium text-foreground/80"
-              >
-                {text}
-              </span>
-            ))}
-          </div>
         </section>
 
         {/* WORKFLOW DIAGRAM */}
-        <section className="mt-14 sm:mt-16">
+        <section className="mt-12 sm:mt-14">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-1">
             {STEPS.map((s, idx) => (
               <div key={s.n} className="relative flex items-center">
