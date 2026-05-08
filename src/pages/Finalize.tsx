@@ -98,38 +98,72 @@ interface Persona {
   suggestion: string;
 }
 
-const PERSONAS: Persona[] = [
-  {
-    number: 1,
-    name: "이메일 수신자",
-    role: "이 이메일을 받은 중국 거래처의 시점",
-    feedback:
-      "전반적으로 정중한 어조로 잘 작성되었습니다. 다만 '请您理解' 표현은 다소 형식적으로 느껴질 수 있습니다. 중국 비즈니스 관계에서는 '希望我们能继续保持良好的合作关系'와 같이 관계 지속에 대한 명시적 표현이 신뢰를 더 쌓을 수 있습니다. 첫 거래 관계임을 고려할 때, 다음 미팅 가능성을 언급하면 더욱 좋습니다.",
-    strength: "정중한 거절 어조 유지",
-    concern: "관계 지속 표현이 약함",
-    suggestion: "구체적 후속 제안 추가",
-  },
-  {
-    number: 2,
-    name: "통번역 교수자",
-    role: "교육적 관점에서 번역 기법을 분석",
-    feedback:
-      "본 번역은 화행 전략 '대안 제시 거절형'에 적절히 부합합니다. 어휘 선택은 비즈니스 격식체로 일관되게 유지되었고, 문장 구조도 중국어 자연스러움에 맞게 재구성되었습니다. 다만 P·D·R 분석에서 '거리: 멂'으로 설정한 점을 고려하면, 호칭 표현에 '贵公司' 사용이 더 적절합니다.",
-    strength: "화행 전략 부합도 높음",
-    concern: "호칭 표현 미세 조정 필요",
-    suggestion: "공식 호칭 강화",
-  },
-  {
-    number: 3,
-    name: "리스크 관리자",
-    role: "비즈니스 관계와 사후 리스크 관점에서 검토",
-    feedback:
-      "본 번역은 비즈니스 관계 손상 위험이 낮은 수준입니다. 거절 사유를 외부 요인에 귀속시킨 점이 책임 회피 인상을 주지 않으면서도 자사 입장을 보호합니다. 다만 '不可抗力'와 같은 법률적 어휘 사용은 신중해야 하며, 본 상황에서는 '业务方向调整'와 같은 비즈니스 어휘가 더 적합합니다.",
-    strength: "관계 손상 위험 낮음",
-    concern: "법률 어휘 사용 주의",
-    suggestion: "비즈니스 어휘로 대체",
-  },
+const PERSONA_META: { number: number; name: string; role: string }[] = [
+  { number: 1, name: "이메일 수신자", role: "이 이메일을 받은 중국 거래처의 시점" },
+  { number: 2, name: "통번역 교수자", role: "교육적 관점에서 번역 기법을 분석" },
+  { number: 3, name: "리스크 관리자", role: "비즈니스 관계와 사후 리스크 관점에서 검토" },
 ];
+
+type PersonaTriple = { strength: string; concern: string; suggestion: string }[];
+
+const PERSONAS_BY_SCENARIO: Record<string, PersonaTriple> = {
+  "ref-1": [
+    {
+      strength: "정중한 거절 어조 유지",
+      concern: "관계 지속 표현이 약함",
+      suggestion: "“希望未来仍有合作机会” 또는 “期待在合适的时机再深入交流” 같은 관계 지속 표현 추가",
+    },
+    {
+      strength: "화행 전략 ‘대안 제시 거절형’에 부합",
+      concern: "초면·공식 관계임을 고려할 때 호칭 표현 강화 필요",
+      suggestion: "“贵公司”를 사용하여 공식적 거리감과 존중을 동시에 표현",
+    },
+    {
+      strength: "관계 손상 위험 낮음",
+      concern: "법률 어휘 사용 시 책임 회피 인상 우려",
+      suggestion: "“不可抗力” 같은 법률 어휘 대신 “业务方向调整” 같은 비즈니스 어휘로 대체",
+    },
+  ],
+  "ref-2": [
+    {
+      strength: "거절 의사가 명확하게 전달됨",
+      concern: "장기 거래처 관계에서 친숙함이 부족함",
+      suggestion: "“一直以来的合作我们非常珍惜” 같은 관계 인정 표현으로 시작",
+    },
+    {
+      strength: "비즈니스 격식체 일관성 유지",
+      concern: "가까운 관계임에도 표현이 다소 형식적",
+      suggestion: "“贵司” 또는 회사명 직접 사용으로 친밀감 균형 조정",
+    },
+    {
+      strength: "가격 정책 일관성 유지",
+      concern: "거절 사유가 모호하면 향후 협상력 약화 가능",
+      suggestion: "“本次报价已是最优条件” 같은 명확한 사유 명시",
+    },
+  ],
+  "ref-3": [
+    {
+      strength: "일정 변경 불가 사유가 정중히 전달됨",
+      concern: "대안 일정 제시 부족",
+      suggestion: "“建议改为X月X日” 같은 구체적 대체 일정 제안 추가",
+    },
+    {
+      strength: "P·D·R 분석에 부합한 어조",
+      concern: "업무상 관계의 적정 거리감 표현 미세 조정 필요",
+      suggestion: "“如方便的话” 같은 완곡 표현으로 강요 인상 회피",
+    },
+    {
+      strength: "일정 책임 명확화",
+      concern: "거절 후 협력 관계 영향 가능",
+      suggestion: "“下次会议可优先安排贵公司议程” 같은 후속 보상 표현 명시",
+    },
+  ],
+};
+
+function getPersonas(scenarioId: string | null | undefined): Persona[] {
+  const triple = (scenarioId && PERSONAS_BY_SCENARIO[scenarioId]) || PERSONAS_BY_SCENARIO["ref-1"];
+  return PERSONA_META.map((m, i) => ({ ...m, ...triple[i] }));
+}
 
 function Dot({ on }: { on: boolean }) {
   return (
