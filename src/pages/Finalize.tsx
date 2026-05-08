@@ -1,19 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Info, Lock } from "lucide-react";
+import { ChevronDown, ChevronUp, Info, Lock, X } from "lucide-react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { Rollback } from "@/components/Rollback";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   SCENARIOS,
   SPEECH_ACTS,
@@ -86,8 +81,7 @@ const EMPTY: FinalizeData = {
 
 const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub: string }[] = [
   { value: "as-is", label: "그대로 확정", sub: "피드백을 검토했으나 변경 없이 위 번역을 최종안으로 확정합니다" },
-  { value: "partial", label: "부분 반영", sub: "일부 페르소나의 일부 지적만 수용해 수정합니다" },
-  { value: "full-revision", label: "전면 수정", sub: "피드백 기반으로 번역을 재작성합니다" },
+  { value: "full-revision", label: "수정 후 확정", sub: "위 최종 번역 텍스트 영역을 수정한 후 확정합니다" },
 ];
 
 const FINAL_TRANSLATION_MAX = 200;
@@ -217,7 +211,16 @@ export default function Finalize() {
       const raw = localStorage.getItem(FINALIZE_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as FinalizeData;
-        setData({ ...EMPTY, ...parsed, revisionCase: { ...EMPTY.revisionCase, ...parsed.revisionCase } });
+        const migratedDecision: FinalDecision =
+          parsed.postFeedbackDecision === "partial"
+            ? "full-revision"
+            : parsed.postFeedbackDecision;
+        setData({
+          ...EMPTY,
+          ...parsed,
+          postFeedbackDecision: migratedDecision,
+          revisionCase: { ...EMPTY.revisionCase, ...parsed.revisionCase },
+        });
         if (parsed.personaFeedbackReceived) setRevealedPersonas(4);
       }
     } catch {
@@ -296,7 +299,7 @@ export default function Finalize() {
       : data.revisionCase.aiResult.trim().length > 0 &&
         data.revisionCase.myRevision.trim().length > 0);
   const needsRevisionFields =
-    data.postFeedbackDecision === "partial" || data.postFeedbackDecision === "full-revision";
+    data.postFeedbackDecision === "full-revision";
   const influenceCount = Object.values(data.personaInfluence).filter(Boolean).length;
   const decisionDone =
     data.postFeedbackDecision !== "" &&
@@ -312,11 +315,9 @@ export default function Finalize() {
   const reasonHelper =
     data.postFeedbackDecision === "as-is"
       ? "왜 피드백을 반영하지 않았는지 설명해주세요"
-      : data.postFeedbackDecision === "partial"
-        ? "어떤 지적을 어떻게 반영했는지 설명해주세요"
-        : data.postFeedbackDecision === "full-revision"
-          ? "어떤 방향으로 재작성했는지 설명해주세요"
-          : "결정 후 이유를 작성해주세요";
+      : data.postFeedbackDecision === "full-revision"
+        ? "어떤 부분을 어떻게 수정했는지 설명해주세요"
+        : "결정 후 이유를 작성해주세요";
 
   return (
     <div className="min-h-screen bg-background">
@@ -654,33 +655,63 @@ export default function Finalize() {
             </div>
           )}
 
-          <Dialog
+          <DialogPrimitive.Root
             open={detailPersona !== null}
             onOpenChange={(o) => !o && setDetailPersona(null)}
           >
-            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-              {(() => {
-                const sel = PERSONAS.find((p) => p.number === detailPersona);
-                if (!sel) return null;
-                const idx = PERSONAS.indexOf(sel);
-                return (
-                  <>
-                    <div
-                      className="-mx-6 -mt-6 h-1 rounded-t-lg"
-                      style={{ backgroundColor: PERSONA_COLORS[idx] }}
-                    />
-                    <DialogHeader>
-                      <DialogTitle className="text-[#1F2A5C]">
-                        상세 피드백: {sel.name} 관점
-                      </DialogTitle>
-                      <p className="text-xs text-muted-foreground">{sel.role}</p>
-                    </DialogHeader>
-                    <p className="text-sm leading-relaxed">{sel.feedback}</p>
-                  </>
-                );
-              })()}
-            </DialogContent>
-          </Dialog>
+            <DialogPrimitive.Portal>
+              <DialogPrimitive.Overlay
+                className="fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+                style={{ backgroundColor: "rgba(29, 34, 48, 0.4)" }}
+              />
+              <DialogPrimitive.Content
+                className="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-2xl max-h-[85vh] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-2xl border border-border bg-background p-8 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2"
+              >
+                {(() => {
+                  const sel = PERSONAS.find((p) => p.number === detailPersona);
+                  if (!sel) return null;
+                  const idx = PERSONAS.indexOf(sel);
+                  return (
+                    <>
+                      <div
+                        className="-mx-8 -mt-8 h-1 rounded-t-2xl"
+                        style={{ backgroundColor: PERSONA_COLORS[idx] }}
+                      />
+                      <div className="space-y-1.5">
+                        <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight text-[#1F2A5C]">
+                          상세 피드백: {sel.name} 관점
+                        </DialogPrimitive.Title>
+                        <DialogPrimitive.Description className="text-xs text-muted-foreground">
+                          {sel.role}
+                        </DialogPrimitive.Description>
+                      </div>
+                      <p
+                        className="text-sm text-foreground"
+                        style={{ lineHeight: 1.6 }}
+                      >
+                        {sel.feedback}
+                      </p>
+                      <div className="flex justify-end pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDetailPersona(null)}
+                        >
+                          닫기
+                        </Button>
+                      </div>
+                      <DialogPrimitive.Close
+                        className="absolute right-4 top-4 rounded-sm opacity-60 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        aria-label="닫기"
+                      >
+                        <X className="h-4 w-4" />
+                      </DialogPrimitive.Close>
+                    </>
+                  );
+                })()}
+              </DialogPrimitive.Content>
+            </DialogPrimitive.Portal>
+          </DialogPrimitive.Root>
         </section>
 
         {/* E. 섹션 4 — 피드백 후 의사결정 */}
