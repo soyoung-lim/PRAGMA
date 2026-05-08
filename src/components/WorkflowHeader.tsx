@@ -64,9 +64,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
                     "flex flex-1 h-[54px] items-center justify-center rounded-lg box-border px-2 py-0 text-center leading-none transition-colors",
                     isCurrent
                       ? "bg-[#E8C547] text-[#1D2230] font-bold border-[1.5px] border-solid border-[#1D2230] shadow-sm"
-                      : isDone
-                      ? "bg-transparent text-muted-foreground font-medium"
-                      : "bg-transparent text-muted-foreground font-normal",
+                      : "bg-[#FAF7EC] text-muted-foreground font-normal border border-solid border-[#D9D4C5]",
                     clickable ? "cursor-pointer hover:bg-background/60 hover:text-foreground" : "cursor-default",
                   ].join(" ")}
                   aria-current={isCurrent ? "step" : undefined}

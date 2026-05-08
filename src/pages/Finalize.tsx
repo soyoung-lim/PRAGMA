@@ -85,7 +85,7 @@ const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub:
 
 const FINAL_TRANSLATION_MAX = 200;
 
-const PERSONA_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
+const PERSONA_COLORS = ["#A82E25", "#A87E1C", "#161E47"];
 
 const PERSONA_BODIES_BY_SCENARIO: Record<string, string[]> = {
   "ref-1": [
@@ -644,7 +644,7 @@ export default function Finalize() {
               위 버튼을 클릭하면 세 가지 관점의 멀티 AI 페르소나가 최종안을 검토합니다
             </div>
           ) : (
-            <div className="mx-auto flex max-w-3xl flex-col gap-4">
+            <div className="mx-auto flex max-w-5xl flex-col gap-4">
               {PERSONAS.map((p, i) => {
                 const revealed = i < revealedPersonas;
                 if (!revealed) {
@@ -659,7 +659,7 @@ export default function Finalize() {
                 return (
                   <article
                     key={p.number}
-                    className="fade-in rounded-xl border border-border border-t-[4px] bg-[#FAF9F5] p-7 sm:p-8"
+                    className="fade-in rounded-xl border border-border border-t-[4px] bg-[#FAF9F5] px-6 py-5 sm:px-8 sm:py-6"
                     style={{ borderTopColor: color }}
                   >
                     {/* Header */}
@@ -677,7 +677,7 @@ export default function Finalize() {
                     </header>
 
                     {/* Body */}
-                    <p className="mt-4 text-[15px] leading-[1.7] text-foreground">
+                    <p className="mt-3 text-[14.5px] leading-[1.7] text-foreground">
                       {p.body}
                     </p>
 
