@@ -660,20 +660,24 @@ export default function Finalize() {
                 style={{ backgroundColor: "rgba(29, 34, 48, 0.4)" }}
               />
               <DialogPrimitive.Content
-                className="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-2xl max-h-[85vh] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-2xl border border-border bg-background p-8 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2"
+                className="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-2xl max-h-[85vh] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-xl border border-border shadow-sm p-8 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2"
+                style={(() => {
+                  const sel = PERSONAS.find((p) => p.number === detailPersona);
+                  const idx = sel ? PERSONAS.indexOf(sel) : 0;
+                  return {
+                    backgroundColor: PERSONA_BG_COLORS[idx],
+                    borderLeftWidth: 4,
+                    borderLeftColor: PERSONA_LINE_COLORS[idx],
+                  };
+                })()}
               >
                 {(() => {
                   const sel = PERSONAS.find((p) => p.number === detailPersona);
                   if (!sel) return null;
-                  const idx = PERSONAS.indexOf(sel);
                   return (
                     <>
-                      <div
-                        className="-mx-8 -mt-8 h-1 rounded-t-2xl"
-                        style={{ backgroundColor: PERSONA_COLORS[idx] }}
-                      />
                       <div className="space-y-1.5">
-                        <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight text-[#1F2A5C]">
+                        <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight text-[#1D2230]">
                           상세 피드백: {sel.name} 관점
                         </DialogPrimitive.Title>
                         <DialogPrimitive.Description className="text-xs text-muted-foreground">
@@ -681,7 +685,7 @@ export default function Finalize() {
                         </DialogPrimitive.Description>
                       </div>
                       <p
-                        className="text-sm text-foreground"
+                        className="text-sm text-[#1D2230]"
                         style={{ lineHeight: 1.6 }}
                       >
                         {sel.feedback}
@@ -696,7 +700,7 @@ export default function Finalize() {
                         </Button>
                       </div>
                       <DialogPrimitive.Close
-                        className="absolute right-4 top-4 rounded-sm opacity-60 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        className="absolute right-4 top-4 rounded-sm text-muted-foreground opacity-60 transition-opacity hover:text-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                         aria-label="닫기"
                       >
                         <X className="h-4 w-4" />
