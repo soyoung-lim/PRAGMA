@@ -26,29 +26,41 @@ const EMAIL_MAX = 150;
 const EMAIL_MIN = 30;
 const INTENT_MAX = 50;
 
-const POWER_OPTIONS: PowerLevel[] = ["내가 우위", "동등", "상대가 우위"];
-const DISTANCE_OPTIONS: { value: DistanceLevel; hint?: string }[] = [
-  { value: "가깝다", hint: "장기 거래·친숙" },
-  { value: "중간", hint: "업무상 관계" },
-  { value: "멀다", hint: "초면·공식" },
+const POWER_OPTIONS: { value: PowerLevel; hint?: string }[] = [
+  { value: "상대가 우위", hint: "상대가 결정권" },
+  { value: "동등", hint: "수평 관계" },
+  { value: "내가 우위", hint: "내가 결정권" },
 ];
-const BURDEN_OPTIONS: BurdenLevel[] = ["낮음", "중간", "높음"];
+const DISTANCE_OPTIONS: { value: DistanceLevel; hint?: string }[] = [
+  { value: "멀다", hint: "초면·공식" },
+  { value: "중간", hint: "업무상 관계" },
+  { value: "가깝다", hint: "장기 거래·친숙" },
+];
+const BURDEN_OPTIONS: { value: BurdenLevel; hint?: string }[] = [
+  { value: "낮음", hint: "가벼운 요청" },
+  { value: "중간", hint: "일반 업무" },
+  { value: "높음", hint: "거절·민감" },
+];
 
-interface VerticalRadioProps<T extends string> {
+interface SegmentedRadioProps<T extends string> {
   options: { value: T; hint?: string }[];
   value: T | null;
   onChange: (v: T) => void;
   ariaLabel: string;
 }
 
-function VerticalRadio<T extends string>({
+function SegmentedRadio<T extends string>({
   options,
   value,
   onChange,
   ariaLabel,
-}: VerticalRadioProps<T>) {
+}: SegmentedRadioProps<T>) {
   return (
-    <div role="radiogroup" aria-label={ariaLabel} className="flex flex-col gap-2">
+    <div
+      role="radiogroup"
+      aria-label={ariaLabel}
+      className="grid grid-cols-3 gap-2"
+    >
       {options.map((opt) => {
         const selected = value === opt.value;
         return (
@@ -59,28 +71,28 @@ function VerticalRadio<T extends string>({
             aria-checked={selected}
             onClick={() => onChange(opt.value)}
             className={[
-              "flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
+              "flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-center text-sm transition-all duration-200",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
               selected
-                ? "border border-[#E5C97A] bg-[#FAF1D7] text-[#1D2230] font-bold"
-                : "border border-foreground bg-background text-foreground font-medium hover:bg-[#FAF1D7]/60",
+                ? "border border-[#1D2230] bg-[#1D2230] text-white font-bold shadow-sm"
+                : "border border-[#E5E1D8] bg-background text-foreground font-medium hover:bg-[#FAF1D7]/60",
             ].join(" ")}
           >
-            <span
-              aria-hidden
-              className={[
-              "inline-block h-3 w-3 rounded-full border",
-                selected
-                  ? "border-[#1D2230] bg-[#1D2230]"
-                  : "border-foreground bg-background",
-              ].join(" ")}
-            />
-            <span className="flex-1 text-left">{opt.value}</span>
+            <span className="flex items-center gap-1.5 leading-none">
+              <span
+                aria-hidden
+                className={[
+                  "inline-block h-2.5 w-2.5 rounded-full border",
+                  selected ? "border-white bg-white" : "border-foreground/60 bg-background",
+                ].join(" ")}
+              />
+              <span>{opt.value}</span>
+            </span>
             {opt.hint && (
               <span
                 className={[
-                  "text-[11px] font-normal",
-                  selected ? "text-[#1D2230]/70" : "text-muted-foreground",
+                  "text-[11px] font-normal leading-tight",
+                  selected ? "text-white/75" : "text-muted-foreground",
                 ].join(" ")}
               >
                 {opt.hint}
@@ -257,12 +269,15 @@ const Pdr = () => {
         </div>
 
         {/* Reminder */}
-        <div className="mt-6 rounded-lg border border-border bg-muted px-6 py-4 text-sm">
-          <span className="font-medium">선택한 화행:</span>{" "}
-          <span className="font-bold">[{speechActLabel}]</span>
-          <span className="mx-2 text-muted-foreground">/</span>
-          <span className="font-medium">시나리오:</span>{" "}
-          <span className="font-bold">[{scenarioLabel}]</span>
+        <div
+          className="mt-6 rounded-xl border border-[#EBD68A] border-l-4 border-l-[#C99A24] px-5 py-4 text-sm"
+          style={{ backgroundColor: "#FAF1D7" }}
+        >
+          <span className="font-medium text-[#1D2230]">선택한 화행:</span>{" "}
+          <span className="font-bold text-[#1D2230]">[{speechActLabel}]</span>
+          <span className="mx-2 text-[#1D2230]/50">/</span>
+          <span className="font-medium text-[#1D2230]">시나리오:</span>{" "}
+          <span className="font-bold text-[#1D2230]">[{scenarioLabel}]</span>
         </div>
 
         {/* Section 1: Scenario summary */}
@@ -302,9 +317,9 @@ const Pdr = () => {
                 <h3 className="text-base font-bold">권력(P)</h3>
                 <InfoTooltip content={"Power — 발화자와 청자 간 위계·권한 차이.\n대표·상급자·주요 고객은 '상대가 우위'.\n— Brown & Levinson (1987)"} />
               </div>
-              <VerticalRadio<PowerLevel>
+              <SegmentedRadio<PowerLevel>
                 ariaLabel="권력(P) 수준"
-                options={POWER_OPTIONS.map((v) => ({ value: v }))}
+                options={POWER_OPTIONS}
                 value={powerLevel}
                 onChange={trackedSet("powerLevel", powerLevel, setPowerLevel)}
               />
@@ -315,7 +330,7 @@ const Pdr = () => {
                 <h3 className="text-base font-bold">거리(D)</h3>
                 <InfoTooltip content={"Social Distance — 친밀도·거래 빈도·공식성 정도.\n첫 거래·공식 관계는 '멀다'.\n— Brown & Levinson (1987)"} />
               </div>
-              <VerticalRadio<DistanceLevel>
+              <SegmentedRadio<DistanceLevel>
                 ariaLabel="거리(D) 수준"
                 options={DISTANCE_OPTIONS}
                 value={distanceLevel}
@@ -328,9 +343,9 @@ const Pdr = () => {
                 <h3 className="text-base font-bold">부담도(R)</h3>
                 <InfoTooltip content={"Rate of Imposition — 발화가 청자에게 주는 부담의 크기.\n거절·요구·사과는 부담이 높음.\n— Brown & Levinson (1987)"} />
               </div>
-              <VerticalRadio<BurdenLevel>
+              <SegmentedRadio<BurdenLevel>
                 ariaLabel="부담도(R) 수준"
-                options={BURDEN_OPTIONS.map((v) => ({ value: v }))}
+                options={BURDEN_OPTIONS}
                 value={burdenLevel}
                 onChange={trackedSet("burdenLevel", burdenLevel, setBurdenLevel)}
               />
