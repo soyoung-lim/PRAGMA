@@ -583,7 +583,7 @@ export default function Finalize() {
                       <div className="text-[11px] font-medium text-muted-foreground/60">
                         페르소나 {p.number}
                       </div>
-                      <div className="mt-1 text-lg font-bold">{p.name}</div>
+                      <div className="mt-1 text-lg font-bold" style={{ color: PERSONA_COLORS[i] }}>{p.name}</div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         {p.role}
                       </div>
