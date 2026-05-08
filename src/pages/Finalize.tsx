@@ -232,7 +232,6 @@ export default function Finalize() {
   const [data, setData] = useState<FinalizeData>(EMPTY);
   const [contextOpen, setContextOpen] = useState(false);
   const [revealedPersonas, setRevealedPersonas] = useState(0);
-  const [detailPersona, setDetailPersona] = useState<number | null>(null);
 
   useEffect(() => {
     ensureSession();
