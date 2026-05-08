@@ -49,7 +49,6 @@ interface PersonaInfluence {
   persona1: boolean;
   persona2: boolean;
   persona3: boolean;
-  persona4: boolean;
 }
 
 interface FinalizeData {
@@ -67,7 +66,6 @@ const EMPTY_INFLUENCE: PersonaInfluence = {
   persona1: false,
   persona2: false,
   persona3: false,
-  persona4: false,
 };
 
 const EMPTY: FinalizeData = {
@@ -113,16 +111,6 @@ const PERSONAS: Persona[] = [
   },
   {
     number: 2,
-    name: "한국 발신자(나) 입장",
-    role: "내가 의도한 메시지가 잘 전달되는지의 시점",
-    feedback:
-      "원문의 거절 의도는 명확히 전달되었습니다. 다만 '我们暂时无法接受' 표현은 원문의 '검토 후 어렵다고 판단'보다 강한 거절로 들릴 수 있습니다. 본인이 의도한 '여지를 남기는 거절'에 가까운 표현으로는 '目前阶段不太适合'와 같은 완곡 표현이 더 적합할 수 있습니다.",
-    strength: "의도 명확 전달",
-    concern: "거절 강도가 원문보다 강함",
-    suggestion: "완곡 표현으로 조정",
-  },
-  {
-    number: 3,
     name: "통번역 교수자",
     role: "교육적 관점에서 번역 기법을 분석",
     feedback:
@@ -132,9 +120,9 @@ const PERSONAS: Persona[] = [
     suggestion: "공식 호칭 강화",
   },
   {
-    number: 4,
-    name: "비즈니스 리스크 관리자",
-    role: "이 이메일이 가져올 잠재적 위험 분석",
+    number: 3,
+    name: "기업 리스크 관리자",
+    role: "비즈니스 관계와 사후 리스크 관점에서 검토",
     feedback:
       "본 번역은 비즈니스 관계 손상 위험이 낮은 수준입니다. 거절 사유를 외부 요인에 귀속시킨 점이 책임 회피 인상을 주지 않으면서도 자사 입장을 보호합니다. 다만 '不可抗力'와 같은 법률적 어휘 사용은 신중해야 하며, 본 상황에서는 '业务方向调整'와 같은 비즈니스 어휘가 더 적합합니다.",
     strength: "관계 손상 위험 낮음",
@@ -332,7 +320,7 @@ export default function Finalize() {
             최종안 작성 및 멀티-페르소나 피드백
           </h2>
           <p className="mt-2 text-base text-muted-foreground">
-            두 번역을 참고해 최종 중국어 번역을 작성하고, 4개 관점의 피드백을 받습니다
+            두 번역을 참고해 최종 중국어 번역을 작성하고, 3개 관점의 피드백을 받습니다
           </p>
         </div>
 
@@ -532,12 +520,12 @@ export default function Finalize() {
         <section className="mb-12">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <h3 className="text-xl font-bold">
-              3. 4개 관점의 AI 페르소나가 본인의 최종안을 평가합니다
+              3. 3개 관점의 AI 페르소나가 최종안을 검토합니다
             </h3>
             <Dot on={data.personaFeedbackReceived} />
           </div>
           <p className="mb-5 text-sm text-muted-foreground">
-            각 평가자는 다른 관점에서 본인의 번역을 분석합니다
+            각 페르소나는 수신자·교수자·리스크 관점에서 최종 번역을 검토합니다
           </p>
 
           <div className="mb-5 flex items-start gap-2 rounded-md border border-border bg-secondary p-3 text-[13px]">
@@ -562,7 +550,7 @@ export default function Finalize() {
             >
               {data.personaFeedbackReceived
                 ? "피드백 받음"
-                : "4개 관점의 AI 페르소나 피드백 받기"}
+                : "3개 관점의 AI 페르소나 피드백 받기"}
             </Button>
           </div>
           {!data.personaFeedbackReceived &&
@@ -578,7 +566,7 @@ export default function Finalize() {
 
           {!data.personaFeedbackReceived ? (
             <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed border-border bg-secondary p-8 text-sm text-muted-foreground">
-              위 버튼을 클릭하면 4개 관점의 AI 페르소나가 본인의 번역을 분석합니다
+              위 버튼을 클릭하면 3개 관점의 AI 페르소나가 최종안을 검토합니다
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2">
