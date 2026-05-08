@@ -87,15 +87,14 @@ const Landing = () => {
         <section className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
           <Link
             to="/scenario"
-            className="rounded-lg px-10 py-4 text-base font-bold text-[#1D2230] shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
-            style={{ backgroundColor: "#EBD68A" }}
+            className="rounded-lg bg-[#FACC15] px-10 py-4 text-base font-bold text-[#1D2230] shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:bg-[#EAB308] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
           >
             학습 시작하기 →
           </Link>
           <button
             type="button"
             onClick={handleDemo}
-            className="rounded-lg border-2 border-foreground/80 bg-card px-10 py-4 text-base font-medium text-foreground transition-colors hover:bg-muted"
+            className="rounded-lg border-[1.5px] border-[#1D2230] bg-transparent px-10 py-4 text-base font-medium text-[#1D2230] transition-colors hover:bg-[#1D2230]/[0.04]"
           >
             데모 모드로 보기
           </button>
