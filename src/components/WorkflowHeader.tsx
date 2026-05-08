@@ -20,7 +20,6 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
   const navigate = useNavigate();
 
   const jumpTo = (s: { num: number; path: string }) => {
-    if (!(s.num < currentStep || completed)) return;
     if (s.num === currentStep) return;
     logAction("step_jump", { from: STEPS.find((x) => x.num === currentStep)?.path, to: s.path });
     navigate(s.path);
@@ -50,9 +49,9 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
       <nav aria-label="진행 단계" className="mx-auto max-w-6xl px-6 pb-3">
         <ol className="flex items-stretch gap-1.5 sm:gap-2">
           {STEPS.map((s, idx) => {
-            const isDone = s.num < currentStep || !!completed;
-            const isCurrent = !completed && s.num === currentStep;
-            const clickable = isDone && s.num !== currentStep;
+            const isCurrent = s.num === currentStep;
+            const isDone = s.num < currentStep || (!!completed && !isCurrent);
+            const clickable = !isCurrent;
             const connectorDone = s.num < currentStep;
 
             return (
