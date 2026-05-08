@@ -58,6 +58,9 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      maxWidth: {
+        '6xl': '1240px',
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
