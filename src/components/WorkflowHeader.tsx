@@ -26,7 +26,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
   };
 
   return (
-    <header className="border-b-2 border-foreground/80 bg-[#EFEAE0] print:hidden">
+    <header className="border-b-2 border-foreground/80 bg-[#F5F1E6] print:hidden">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 pt-3 pb-1.5">
         <Link
           to="/"
