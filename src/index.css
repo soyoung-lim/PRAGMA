@@ -35,12 +35,12 @@
     --destructive: 0 70% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Border: light gray #E5E7EB */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    /* Border: medium gray (slightly darker for clearer card edges, matches v1) */
+    --border: 220 10% 80%;
+    --input: 220 10% 80%;
     --ring: 46 89% 62%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --sidebar-background: 44 36% 97%;
     --sidebar-foreground: 215 32% 15%;
@@ -48,7 +48,7 @@
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 96%;
     --sidebar-accent-foreground: 215 32% 15%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 220 10% 80%;
     --sidebar-ring: 46 89% 62%;
   }
 
@@ -69,8 +69,8 @@
     --accent-foreground: 215 32% 15%;
     --destructive: 0 70% 45%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    --border: 220 10% 80%;
+    --input: 220 10% 80%;
     --ring: 46 89% 62%;
   }
 }
