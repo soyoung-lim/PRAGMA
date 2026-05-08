@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    /* Background: warm ivory #FAF8F2 */
-    --background: 44 36% 97%;
+    /* Background: lighter warm ivory #FCFAF4 */
+    --background: 45 57% 97%;
     /* Primary text: deep navy #1A2332 */
     --foreground: 215 32% 15%;
 
