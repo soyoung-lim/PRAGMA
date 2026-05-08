@@ -88,6 +88,8 @@ const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub:
 const FINAL_TRANSLATION_MAX = 200;
 const DECISION_REASON_MAX = 200;
 
+const PERSONA_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
+
 interface Persona {
   number: number;
   name: string;
