@@ -103,8 +103,8 @@ interface Persona {
 const PERSONAS: Persona[] = [
   {
     number: 1,
-    name: "중국 비즈니스 상대방",
-    role: "이 이메일을 받은 중국인 거래처의 시점",
+    name: "이메일 수신자",
+    role: "이 이메일을 받은 중국 거래처의 시점",
     feedback:
       "전반적으로 정중한 어조로 잘 작성되었습니다. 다만 '请您理解' 표현은 다소 형식적으로 느껴질 수 있습니다. 중국 비즈니스 관계에서는 '希望我们能继续保持良好的合作关系'와 같이 관계 지속에 대한 명시적 표현이 신뢰를 더 쌓을 수 있습니다. 첫 거래 관계임을 고려할 때, 다음 미팅 가능성을 언급하면 더욱 좋습니다.",
     strength: "정중한 거절 어조 유지",
@@ -123,7 +123,7 @@ const PERSONAS: Persona[] = [
   },
   {
     number: 3,
-    name: "기업 리스크 관리자",
+    name: "리스크 관리자",
     role: "비즈니스 관계와 사후 리스크 관점에서 검토",
     feedback:
       "본 번역은 비즈니스 관계 손상 위험이 낮은 수준입니다. 거절 사유를 외부 요인에 귀속시킨 점이 책임 회피 인상을 주지 않으면서도 자사 입장을 보호합니다. 다만 '不可抗力'와 같은 법률적 어휘 사용은 신중해야 하며, 본 상황에서는 '业务方向调整'와 같은 비즈니스 어휘가 더 적합합니다.",
@@ -322,7 +322,7 @@ export default function Finalize() {
             최종안 작성 및 멀티-페르소나 피드백
           </h2>
           <p className="mt-2 text-base text-muted-foreground">
-            두 번역을 참고해 최종 중국어 번역을 작성하고, 3개 관점의 피드백을 받습니다
+            두 번역을 참고해 최종 중국어 번역을 작성하고, 세 가지 관점의 피드백을 받습니다
           </p>
         </div>
 
@@ -522,7 +522,7 @@ export default function Finalize() {
         <section className="mb-12">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <h3 className="text-xl font-bold">
-              3. 3개 관점의 AI 페르소나가 최종안을 검토합니다
+              3. 세 가지 관점의 멀티 AI 페르소나가 최종안을 검토합니다
             </h3>
             <Dot on={data.personaFeedbackReceived} />
           </div>
@@ -552,7 +552,7 @@ export default function Finalize() {
             >
               {data.personaFeedbackReceived
                 ? "피드백 받음"
-                : "3개 관점의 AI 페르소나 피드백 받기"}
+                : "세 가지 관점의 멀티 AI 페르소나 피드백 받기"}
             </Button>
           </div>
           {!data.personaFeedbackReceived &&
@@ -568,7 +568,7 @@ export default function Finalize() {
 
           {!data.personaFeedbackReceived ? (
             <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed border-border bg-secondary p-8 text-sm text-muted-foreground">
-              위 버튼을 클릭하면 3개 관점의 AI 페르소나가 최종안을 검토합니다
+              위 버튼을 클릭하면 세 가지 관점의 멀티 AI 페르소나가 최종안을 검토합니다
             </div>
           ) : (
             <div className="space-y-5">
@@ -583,7 +583,7 @@ export default function Finalize() {
                       <div className="text-[11px] font-medium text-muted-foreground/60">
                         페르소나 {p.number}
                       </div>
-                      <div className="mt-1 text-lg font-bold">{p.name}</div>
+                      <div className="mt-1 text-lg font-bold" style={{ color: PERSONA_COLORS[i] }}>{p.name}</div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         {p.role}
                       </div>
