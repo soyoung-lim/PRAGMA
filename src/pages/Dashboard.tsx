@@ -250,6 +250,17 @@ const Dashboard = () => {
   const avg2 = (r.pragmatic2 + r.relational2 + r.risk2) / 3;
   const diff = avg2 - avg1;
 
+  const chosenTranslationLabel =
+    avg2 > avg1
+      ? "AI 번역 2 (전략 적용형)"
+      : avg1 > avg2
+        ? "AI 번역 1 (기본형)"
+        : "동점 — 명시적 선택 없음";
+  const comparisonChoice =
+    (translate as unknown as { comparisonChoice?: string } | null)?.comparisonChoice || "";
+  const comparisonReason =
+    (translate as unknown as { comparisonReason?: string } | null)?.comparisonReason || "";
+
   const insightMsg =
     diff >= 0.5
       ? `사용자 평가에서 전략 적용형 번역이 평균 +${diff.toFixed(1)}점 더 높게 평가되었습니다. 사용자 평가에서 두 프롬프트 간 차이가 관찰되었습니다.`
