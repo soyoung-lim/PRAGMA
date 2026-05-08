@@ -44,7 +44,7 @@ const Landing = () => {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pt-12 pb-10 sm:pt-16">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pt-8 pb-7 sm:pt-10">
         {/* HERO */}
         <section className="text-center">
           <h1 className="text-3xl font-bold sm:text-4xl lg:text-[44px]">
