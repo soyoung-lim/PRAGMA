@@ -87,6 +87,24 @@ const FINAL_TRANSLATION_MAX = 200;
 
 const PERSONA_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
 
+const PERSONA_BODIES_BY_SCENARIO: Record<string, string[]> = {
+  "ref-1": [
+    "이메일을 받은 입장에서 보면, 거절 의사는 분명히 전달되지만 향후 관계를 이어가고 싶다는 신호가 약하게 느껴집니다. 첫 거래 단계에서 받는 거절 메일이라 더욱 그렇습니다. 마지막 한 줄에 가벼운 관계 지속 표현이 더해지면 인상이 크게 달라질 것입니다.",
+    "거절 화행을 ‘대안 제시 거절형’ 전략으로 풀어낸 점은 적절합니다. 다만 초면·공식 관계라는 P·D·R 분석을 더 강하게 표면에 드러낼 수 있는 호칭·격식 표현이 비어 있습니다. 호칭 선택을 통해 분석과 표현 사이의 일관성을 확보하면 학습 효과가 큽니다.",
+    "관계 손상 위험은 낮은 편입니다. 그러나 거절 사유에 법률 어휘를 사용한 부분은 향후 책임 회피로 해석될 여지가 있어 비즈니스 리스크가 잠재합니다. 표현을 비즈니스 사유 어휘로 바꾸면 같은 의미를 안전하게 전달할 수 있습니다.",
+  ],
+  "ref-2": [
+    "장기 거래처로부터 받는 메일이라는 맥락에서 보면, 거절 메시지의 명확성은 좋습니다. 다만 그동안 쌓인 관계에 대한 인정 한 줄이 서두에 없어 다소 차갑게 읽힐 수 있습니다. 첫 문장에서 관계를 짚어주는 표현이 핵심입니다.",
+    "비즈니스 격식체의 일관성은 잘 유지되고 있어 기본기는 탄탄합니다. 다만 가까운 관계라는 D 변수에 비해 표현이 다소 형식적이라 P·D·R 판단과 화행 구현이 어긋나는 지점이 있습니다. 호칭과 마무리 표현에서 친밀감의 균형을 잡아주세요.",
+    "가격 정책의 일관성을 지킨 결정은 향후 협상에서 유리하게 작용합니다. 다만 거절 사유가 모호하면 상대가 추가 요구로 해석할 수 있어 협상력이 약화될 가능성이 있습니다. 사유를 한 줄로 명확히 못 박는 문장이 필요합니다.",
+  ],
+  "ref-3": [
+    "일정 변경이 어렵다는 사실 자체는 정중하게 잘 전달되었습니다. 다만 받는 입장에서는 ‘그래서 언제 가능한가’라는 다음 질문이 자연스럽게 떠오르므로, 대안 일정이 함께 제시되어야 의사결정을 이어갈 수 있습니다.",
+    "P·D·R 분석에 부합하는 어조는 잘 잡혀 있습니다. 업무상 관계의 적정한 거리감은 거의 정확하나, 강요로 읽힐 수 있는 표현이 한두 군데 있습니다. 완곡 표현 한 단어를 더하는 것만으로 톤이 안정됩니다.",
+    "일정 책임 소재가 명확해 단기 리스크는 낮습니다. 다만 거절 자체가 협력 분위기에 미세한 영향을 줄 수 있으므로, 향후 보상이나 우선 순위에 대한 신호를 한 줄로 제시해 두는 것이 장기 관계에 안전합니다.",
+  ],
+};
+
 
 interface Persona {
   number: number;
@@ -95,6 +113,7 @@ interface Persona {
   strength: string;
   concern: string;
   suggestion: string;
+  body: string;
 }
 
 const PERSONA_META: { number: number; name: string; role: string }[] = [
@@ -161,7 +180,10 @@ const PERSONAS_BY_SCENARIO: Record<string, PersonaTriple> = {
 
 function getPersonas(scenarioId: string | null | undefined): Persona[] {
   const triple = (scenarioId && PERSONAS_BY_SCENARIO[scenarioId]) || PERSONAS_BY_SCENARIO["ref-1"];
-  return PERSONA_META.map((m, i) => ({ ...m, ...triple[i] }));
+  const bodies =
+    (scenarioId && PERSONA_BODIES_BY_SCENARIO[scenarioId]) ||
+    PERSONA_BODIES_BY_SCENARIO["ref-1"];
+  return PERSONA_META.map((m, i) => ({ ...m, ...triple[i], body: bodies[i] }));
 }
 
 function Dot({ on }: { on: boolean }) {
