@@ -250,6 +250,17 @@ const Dashboard = () => {
   const avg2 = (r.pragmatic2 + r.relational2 + r.risk2) / 3;
   const diff = avg2 - avg1;
 
+  const chosenTranslationLabel =
+    avg2 > avg1
+      ? "AI 번역 2 (전략 적용형)"
+      : avg1 > avg2
+        ? "AI 번역 1 (기본형)"
+        : "동점 — 명시적 선택 없음";
+  const comparisonChoice =
+    (translate as unknown as { comparisonChoice?: string } | null)?.comparisonChoice || "";
+  const comparisonReason =
+    (translate as unknown as { comparisonReason?: string } | null)?.comparisonReason || "";
+
   const insightMsg =
     diff >= 0.5
       ? `사용자 평가에서 전략 적용형 번역이 평균 +${diff.toFixed(1)}점 더 높게 평가되었습니다. 사용자 평가에서 두 프롬프트 간 차이가 관찰되었습니다.`
@@ -390,8 +401,46 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* A. Meta cards */}
-        <section className="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {/* 0. Decision flow diagram (top) */}
+        <section className="mt-10">
+          <h3 className="text-2xl font-bold">나의 번역 의사결정 흐름</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            상황 해석부터 최종 결정까지 6단계 판단 흐름
+          </p>
+
+          <div className="mt-6 flex flex-wrap items-stretch gap-2">
+            {flow.map((f, i) => (
+              <div key={f.step} className="flex items-center gap-2">
+                <div
+                  className={[
+                    "min-w-[120px] rounded-lg border p-3 text-center",
+                    f.highlight
+                      ? "border-2 border-foreground bg-accent"
+                      : "border-foreground bg-background",
+                  ].join(" ")}
+                >
+                  <div className="text-[11px] text-muted-foreground">{f.step}</div>
+                  <div className="mt-1 text-sm font-bold">{f.value}</div>
+                </div>
+                {i < flow.length - 1 && (
+                  <span aria-hidden className="text-lg text-muted-foreground">→</span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-md border border-border bg-secondary p-4 text-sm">
+            {decisionMsg}
+          </div>
+        </section>
+
+        {/* 1. 상황 판단 */}
+        <section className="mt-16">
+          <h3 className="text-2xl font-bold">1. 상황 판단</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            화행·시나리오·P·D·R·전략 선택 결과
+          </p>
+        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
           <MetaCard label="선택한 화행">{speechActLabel}</MetaCard>
           <MetaCard label="선택한 시나리오">
             <span className="text-base">
@@ -411,15 +460,14 @@ const Dashboard = () => {
           <MetaCard label="선택한 화행 전략">
             <span className="text-base">{strategyLabel}</span>
           </MetaCard>
+        </div>
         </section>
 
-        {/* B. Main chart */}
+        {/* 2. AI 번역 비교 판단 */}
         <section className="mt-16">
-          <h3 className="text-2xl font-bold">
-            AI 번역 1 vs AI 번역 2 — 3기준 평가 비교
-          </h3>
+          <h3 className="text-2xl font-bold">2. AI 번역 비교 판단</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            본인이 두 번역을 평가한 결과입니다
+            두 번역에 대한 평가, 선택, 그리고 판단 기준
           </p>
 
           <div className="mt-6 rounded-lg border border-foreground bg-secondary p-6">
@@ -487,11 +535,6 @@ const Dashboard = () => {
               {insightMsg}
             </div>
           </div>
-        </section>
-
-        {/* C. Prompt effect comparison */}
-        <section className="mt-16">
-          <h3 className="text-2xl font-bold">화용 정보 반영 효과 비교</h3>
 
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-lg border border-foreground bg-secondary p-6">
@@ -537,11 +580,78 @@ const Dashboard = () => {
               {diff.toFixed(1)}점
             </span>
           </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="rounded-lg border border-foreground bg-secondary p-5">
+              <div className="text-xs font-medium text-muted-foreground">선택한 번역</div>
+              <div className="mt-2 text-base font-bold">{chosenTranslationLabel}</div>
+            </div>
+            <div className="rounded-lg border border-foreground bg-secondary p-5">
+              <div className="text-xs font-medium text-muted-foreground">가장 중요하게 본 기준</div>
+              <div className="mt-2 text-base font-bold">{comparisonChoice || "—"}</div>
+            </div>
+            <div className="rounded-lg border border-foreground bg-secondary p-5">
+              <div className="text-xs font-medium text-muted-foreground">판단 이유</div>
+              <div className="mt-2 text-sm leading-relaxed">{comparisonReason || "—"}</div>
+            </div>
+          </div>
         </section>
 
-        {/* D. Multi-persona summary */}
+        {/* 3. 핵심 수정 표현 */}
         <section className="mt-16">
-          <h3 className="text-2xl font-bold">세 가지 관점의 종합 피드백 요약</h3>
+          <h3 className="text-2xl font-bold">3. 핵심 수정 표현</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            AI 번역에서 가장 중요하게 바꾼 표현 한 가지
+          </p>
+
+          {(() => {
+            const rc = (finalize as unknown as {
+              revisionCase?: { aiResult: string; myRevision: string; reason: string; explanation: string };
+            } | null)?.revisionCase;
+            const noRev = rc?.reason === "수정 사항 없음";
+            if (!rc || (!rc.aiResult && !rc.myRevision && !rc.reason && !rc.explanation)) {
+              return (
+                <div className="mt-6 rounded-lg border border-border bg-background p-5 text-sm text-muted-foreground">
+                  기록된 수정 표현이 없습니다.
+                </div>
+              );
+            }
+            return (
+              <div className="mt-6 space-y-4">
+                {!noRev ? (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
+                    <div className="rounded-lg border border-border bg-background p-5">
+                      <div className="text-xs font-medium text-muted-foreground">AI 번역 표현</div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{rc.aiResult || "—"}</p>
+                    </div>
+                    <div className="text-center text-xl text-muted-foreground" aria-hidden>→</div>
+                    <div className="rounded-lg border-2 border-foreground bg-accent/10 p-5">
+                      <div className="text-xs font-medium text-muted-foreground">내가 수정한 표현</div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{rc.myRevision || "—"}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border bg-background p-5">
+                    <div className="text-xs font-medium text-muted-foreground">수정 여부</div>
+                    <p className="mt-2 text-sm font-bold">수정 사항 없음</p>
+                  </div>
+                )}
+                <div className="rounded-lg border border-border bg-secondary p-5">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    {noRev ? "수정하지 않은 이유" : "수정 이유"}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed">
+                    {noRev ? (rc.explanation || "—") : `${rc.reason || "—"}${rc.explanation ? ` — ${rc.explanation}` : ""}`}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+        </section>
+
+        {/* 4. 멀티-페르소나 피드백 */}
+        <section className="mt-16">
+          <h3 className="text-2xl font-bold">4. 멀티-페르소나 피드백</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             각 평가자가 제시한 강점·우려·제안을 한눈에 봅니다
           </p>
@@ -576,40 +686,32 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* E. Decision flow */}
+        {/* 5. 최종 결정 */}
         <section className="mt-16">
-          <h3 className="text-2xl font-bold">본인의 의사결정 흐름</h3>
+          <h3 className="text-2xl font-bold">5. 최종 결정</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            워크플로우 전반에서 본인이 내린 판단의 일관성을 시각화합니다
+            피드백 반영 여부와 최종 확정안
           </p>
 
-          <div className="mt-6 flex flex-wrap items-stretch gap-2">
-            {flow.map((f, i) => (
-              <div key={f.step} className="flex items-center gap-2">
-                <div
-                  className={[
-                    "min-w-[120px] rounded-lg border p-3 text-center",
-                    f.highlight
-                      ? "border-2 border-foreground bg-accent"
-                      : "border-foreground bg-background",
-                  ].join(" ")}
-                >
-                  <div className="text-[11px] text-muted-foreground">
-                    {i + 1}. {f.step}
-                  </div>
-                  <div className="mt-1 text-sm font-bold">{f.value}</div>
-                </div>
-                {i < flow.length - 1 && (
-                  <span aria-hidden className="text-lg text-muted-foreground">
-                    →
-                  </span>
-                )}
-              </div>
-            ))}
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="rounded-lg border border-foreground bg-secondary p-5">
+              <div className="text-xs font-medium text-muted-foreground">피드백 반영 여부</div>
+              <div className="mt-2 text-base font-bold">{finalize?.finalDecision || "—"}</div>
+            </div>
+            <div className="rounded-lg border border-foreground bg-secondary p-5">
+              <div className="text-xs font-medium text-muted-foreground">유지/수정 이유</div>
+              <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap">
+                {(finalize as unknown as { finalDecisionReason?: string } | null)?.finalDecisionReason || "—"}
+              </p>
+            </div>
           </div>
 
-          <div className="mt-4 rounded-md border border-border bg-secondary p-4 text-sm">
-            {decisionMsg}
+          <div className="mt-4 rounded-lg border-2 border-foreground bg-accent/10 p-5">
+            <div className="text-xs font-medium text-muted-foreground">최종 중국어 번역</div>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
+              {(finalize as unknown as { postFeedbackTranslation?: string; finalTranslation?: string } | null)?.postFeedbackTranslation
+                || finalize?.finalTranslation || "—"}
+            </p>
           </div>
 
           {/* Before / After comparison */}
@@ -621,6 +723,7 @@ const Dashboard = () => {
               postFeedbackDecision?: string;
               finalDecisionReason?: string;
             } | null;
+            if (finalize?.finalDecision !== "수정 후 확정") return null;
             const before = f?.preFeedbackTranslation || f?.finalTranslation || "";
             const after =
               f?.postFeedbackDecision === "as-is"
@@ -650,30 +753,21 @@ const Dashboard = () => {
           })()}
         </section>
 
-        {/* E2. Learning analytics */}
+        {/* 6. 의사결정 기록 */}
         <section className="mt-16">
-          <h3 className="text-2xl font-bold">의사결정 기록</h3>
+          <h3 className="text-2xl font-bold">6. 의사결정 기록</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            본 세션의 판단 기록입니다 (연구 데이터 export 가능)
+            본 세션의 판단 기록 및 학술 좌표 (연구 데이터 export 가능)
           </p>
 
-          <div className="mt-6 grid grid-cols-1 gap-4">
-            <div className="rounded-lg border border-foreground bg-secondary p-5">
-              <div className="text-xs font-medium text-muted-foreground">
-                페르소나 피드백 활용
-              </div>
-              <div className="mt-2 text-3xl font-bold">
-                {analytics.personaReceived ? "받음" : "받지 않음"}
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {analytics.personaReceived
-                  ? `피드백 받은 후 수정 ${analytics.revisionsAfterPersona}회`
-                  : "—"}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 print:hidden">
+          <div className="mt-6 flex flex-wrap gap-3 print:hidden">
+            <Button
+              onClick={handleExport}
+              variant="outline"
+              className="h-10 border-foreground text-sm"
+            >
+              데이터 내보내기 (JSON)
+            </Button>
             <Button
               onClick={downloadActions}
               variant="outline"
@@ -681,19 +775,15 @@ const Dashboard = () => {
             >
               판단 기록 다운로드 (JSON)
             </Button>
+            <Button onClick={handlePrint} variant="outline" className="h-10 border-foreground text-sm">
+              PDF로 저장
+            </Button>
           </div>
-        </section>
 
-        {/* F. Academic coordinates */}
-        <section className="mt-16">
-          <div className="flex items-center gap-2">
-            <h3 className="text-2xl font-bold">본 워크플로우의 학술 좌표</h3>
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            본 시스템이 위치한 학술 분야
-          </p>
-
-          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="mt-6">
+            <h4 className="text-base font-bold">본 워크플로우의 학술 좌표</h4>
+            <p className="mt-1 text-xs text-muted-foreground">본 시스템이 위치한 학술 분야</p>
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
             {ACADEMIC_CARDS.map((c) => (
               <div
                 key={c.field}
@@ -713,22 +803,13 @@ const Dashboard = () => {
               </div>
             ))}
           </div>
+          </div>
         </section>
 
         {/* G. Action area */}
         <section className="mt-16 border-t border-border pt-8 print:hidden">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr_1fr_1fr] sm:items-center">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr] sm:items-center">
             <Rollback currentStep={5} className="!py-3 !px-5" />
-            <Button onClick={handlePrint} className="h-12 text-base">
-              PDF로 저장
-            </Button>
-            <Button
-              onClick={handleExport}
-              variant="outline"
-              className="h-12 border-foreground text-base"
-            >
-              데이터 내보내기 (JSON)
-            </Button>
             <Button
               onClick={handleReset}
               variant="outline"
