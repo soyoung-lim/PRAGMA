@@ -4,11 +4,11 @@ import { ensureSession } from "@/lib/tracking";
 import { seedDemoData } from "@/lib/demo";
 
 const STEPS = [
-  { n: 1, title: "화행 시나리오 선택", sub: "요청·거절·사과" },
-  { n: 2, title: "상황 분석 및 이메일 작성", sub: "권력·거리·부담도·화행 전략" },
-  { n: 3, title: "AI 번역 후보 생성·비교", sub: "기본 프롬프트 vs 전략 프롬프트" },
-  { n: 4, title: "멀티-페르소나 피드백", sub: "의미 재현성 · 관계 적합성 · 리스크 관리" },
-  { n: 5, title: "번역 의사결정 리포트", sub: "AI 번역 검토와 수정 판단 기록" },
+  { n: 1, title: "화행·시나리오 선택", sub: "요청·거절·사과" },
+  { n: 2, title: "상황 판단·원문 작성", sub: "P·D·R·화행 전략" },
+  { n: 3, title: "AI 번역 비교", sub: "기본형 vs 화용 정보 반영형" },
+  { n: 4, title: "페르소나 피드백", sub: "수신자·교수자·리스크 관점" },
+  { n: 5, title: "의사결정 리포트", sub: "판단·수정·최종 결정 기록" },
 ];
 
 const Landing = () => {
