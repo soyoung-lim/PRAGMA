@@ -283,6 +283,15 @@ const Pdr = () => {
           <FilledLabel filled={!!powerLevel && !!distanceLevel && !!burdenLevel}>
             2. 권력·거리·부담도 선택
           </FilledLabel>
+          {/* Scenario hint block */}
+          <div className="mt-3 rounded-lg border-l-4 border-accent bg-[#F8F6F0] px-4 py-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              상황 단서
+            </span>
+            <p className="mt-1 text-sm leading-relaxed text-foreground/80">
+              {scenarioSummary || "1단계에서 시나리오를 먼저 선택하세요."}
+            </p>
+          </div>
           <p className="mt-2 text-sm text-muted-foreground">
             시나리오에서 권력·거리·부담도 단서를 찾아 선택하세요.
           </p>
