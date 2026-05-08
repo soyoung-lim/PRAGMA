@@ -642,6 +642,43 @@ const Dashboard = () => {
           <div className="mt-4 rounded-md border border-border bg-secondary p-4 text-sm">
             {decisionMsg}
           </div>
+
+          {/* Before / After comparison */}
+          {(() => {
+            const f = finalize as unknown as {
+              preFeedbackTranslation?: string;
+              postFeedbackTranslation?: string;
+              finalTranslation?: string;
+              postFeedbackDecision?: string;
+              finalDecisionReason?: string;
+            } | null;
+            const before = f?.preFeedbackTranslation || f?.finalTranslation || "";
+            const after =
+              f?.postFeedbackDecision === "as-is"
+                ? before
+                : f?.postFeedbackTranslation || before;
+            if (!before && !after) return null;
+            return (
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-lg border border-border bg-background p-5">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    피드백 전 최종안
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
+                    {before || "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg border-2 border-foreground bg-accent/10 p-5">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    피드백 후 최종안
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
+                    {after || "—"}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {/* E2. Learning analytics */}
