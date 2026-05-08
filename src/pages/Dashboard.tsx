@@ -556,7 +556,7 @@ const Dashboard = () => {
                 <div className="text-[11px] font-medium text-muted-foreground/60">
                   관점 {i + 1}
                 </div>
-                <div className="mt-0.5 text-lg font-bold">{p.name}</div>
+                <div className="mt-0.5 text-lg font-bold" style={{ color: PERSONA_COLORS[i] }}>{p.name}</div>
                 <dl className="mt-3 space-y-1.5 text-sm">
                   <div className="flex gap-2">
                     <dt className="w-12 shrink-0 font-semibold">강점</dt>
