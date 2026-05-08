@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ensureSession, logAction } from "@/lib/tracking";
+import { ensureSession } from "@/lib/tracking";
 import { seedDemoData } from "@/lib/demo";
 
 const STEPS = [
@@ -25,7 +25,6 @@ const Landing = () => {
   }, []);
   const handleDemo = () => {
     seedDemoData();
-    logAction("demo_start", { from: "/" }, "/");
     navigate("/scenario");
   };
   return (
