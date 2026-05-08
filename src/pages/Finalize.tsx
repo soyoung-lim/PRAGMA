@@ -550,6 +550,9 @@ export default function Finalize() {
           <p className="mb-5 text-sm text-muted-foreground">
             각 페르소나는 수신자·교수자·리스크 관점에서 최종 번역을 검토합니다
           </p>
+          <p className="mb-5 text-xs text-secondary-foreground/60">
+            카드를 클릭하면 해당 관점의 상세 피드백을 아래에서 확인할 수 있습니다.
+          </p>
 
           <div className="mb-5 flex items-start gap-2 rounded-md border border-border bg-secondary p-3 text-[13px]">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
@@ -613,10 +616,10 @@ export default function Finalize() {
                       onClick={() => setSelectedPersona(p.number)}
                       aria-pressed={active}
                       className={[
-                        "fade-in rounded-lg border border-t-[3px] p-5 text-left transition-colors",
+                        "fade-in rounded-lg border border-t-[3px] p-5 text-left transition-all duration-200 cursor-pointer",
                         active
                           ? "border-foreground bg-accent/10 shadow-sm"
-                          : "border-border bg-secondary hover:bg-secondary/70",
+                          : "border-border bg-secondary hover:border-foreground/40 hover:bg-secondary/70 hover:shadow-sm hover:-translate-y-0.5",
                       ].join(" ")}
                       style={{ borderTopColor: PERSONA_COLORS[i] }}
                     >
@@ -669,20 +672,6 @@ export default function Finalize() {
                       </div>
                     </header>
                     <p className="text-sm leading-relaxed">{sel.feedback}</p>
-                    <dl className="mt-4 space-y-1.5 text-sm">
-                      <div className="flex gap-2">
-                        <dt className="w-12 shrink-0 font-semibold">강점</dt>
-                        <dd>{sel.strength}</dd>
-                      </div>
-                      <div className="flex gap-2">
-                        <dt className="w-12 shrink-0 font-semibold">우려</dt>
-                        <dd>{sel.concern}</dd>
-                      </div>
-                      <div className="flex gap-2">
-                        <dt className="w-12 shrink-0 font-semibold">제안</dt>
-                        <dd>{sel.suggestion}</dd>
-                      </div>
-                    </dl>
                   </article>
                 );
               })()}
