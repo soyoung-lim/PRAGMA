@@ -493,12 +493,8 @@ const Dashboard = () => {
                 </div>
                 <span className="sr-only">전략 적용형</span>
               </div>
-              <div
-                className="mt-4 text-4xl font-bold"
-                style={{ color: "hsl(var(--foreground))" }}
-              >
-                <span style={{ color: "hsl(var(--accent))" }}>{avg2.toFixed(1)}</span>{" "}
-                <span className="text-xl text-muted-foreground">/ 5</span>
+              <div className="mt-4 text-4xl font-bold text-foreground">
+                {avg2.toFixed(1)} <span className="text-xl text-muted-foreground">/ 5</span>
               </div>
               <div className="mt-3 text-sm text-foreground/80">
                 P·D·R + 전략 명시
