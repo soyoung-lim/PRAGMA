@@ -199,7 +199,7 @@ export default function Finalize() {
   const [data, setData] = useState<FinalizeData>(EMPTY);
   const [contextOpen, setContextOpen] = useState(false);
   const [revealedPersonas, setRevealedPersonas] = useState(0);
-  const [expandedPersonas, setExpandedPersonas] = useState<Record<number, boolean>>({});
+  const [selectedPersona, setSelectedPersona] = useState<number>(1);
 
   useEffect(() => {
     ensureSession();
