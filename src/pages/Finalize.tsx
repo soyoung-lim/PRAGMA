@@ -7,6 +7,7 @@ import { Rollback } from "@/components/Rollback";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   SCENARIOS,
   SPEECH_ACTS,
@@ -21,19 +22,17 @@ const FINALIZE_STORAGE_KEY = "translation-workflow-finalize";
 
 type RevisionReason =
   | "화용 재현성 부족"
-  | "관계 적합성 부족"
-  | "리스크 관리 부족"
-  | "표현 자연스러움"
-  | "어휘 정확성"
-  | "기타";
+  | "관계 적합성 문제"
+  | "리스크 관리 필요"
+  | "복합 (2가지 이상)"
+  | "수정 사항 없음";
 
 const REASON_OPTIONS: RevisionReason[] = [
   "화용 재현성 부족",
-  "관계 적합성 부족",
-  "리스크 관리 부족",
-  "표현 자연스러움",
-  "어휘 정확성",
-  "기타",
+  "관계 적합성 문제",
+  "리스크 관리 필요",
+  "복합 (2가지 이상)",
+  "수정 사항 없음",
 ];
 
 interface RevisionCase {
@@ -283,10 +282,13 @@ export default function Finalize() {
 
   // 검증
   const finalTranslationDone = data.finalTranslation.trim().length > 0;
+  const noRevision = data.revisionCase.reason === "수정 사항 없음";
   const revisionDone =
-    data.revisionCase.aiResult.trim().length > 0 &&
     data.revisionCase.reason !== "" &&
-    data.revisionCase.myRevision.trim().length > 0;
+    (noRevision
+      ? data.revisionCase.explanation.trim().length > 0
+      : data.revisionCase.aiResult.trim().length > 0 &&
+        data.revisionCase.myRevision.trim().length > 0);
   const needsRevisionFields =
     data.postFeedbackDecision === "partial" || data.postFeedbackDecision === "full-revision";
   const influenceCount = Object.values(data.personaInfluence).filter(Boolean).length;
@@ -438,47 +440,57 @@ export default function Finalize() {
         {/* C. 섹션 2 — 핵심 수정 사례 */}
         <section className="mb-12">
           <div className="mb-4 flex items-center">
-            <h3 className="text-xl font-bold">2. 핵심 수정 사례 작성</h3>
+            <h3 className="text-xl font-bold">2. 내가 고친 핵심 표현</h3>
             <Dot on={revisionDone} />
           </div>
           <p className="mb-5 text-sm text-muted-foreground">
-            AI 번역에서 가장 중요하게 수정한 부분 1개를 기록합니다
+            AI 번역에서 가장 중요하게 바꾼 표현 1개를 기록하세요. 전체 번역을 다시 설명하지 말고, 핵심 표현 하나만 선택합니다.
           </p>
 
           <div className="rounded-lg border border-border p-6">
             <div className="space-y-5">
-              <div>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="font-semibold">AI 번역 결과</span>
-                  <span className="text-xs text-muted-foreground">
-                    {data.revisionCase.aiResult.length}/100
-                  </span>
+              {!noRevision && (
+                <div className="grid items-start gap-4 md:grid-cols-[1fr_auto_1fr]">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="font-semibold">AI 번역 표현</span>
+                      <span className="text-xs text-muted-foreground">
+                        {data.revisionCase.aiResult.length}/100
+                      </span>
+                    </div>
+                    <Textarea
+                      value={data.revisionCase.aiResult}
+                      onChange={(e) =>
+                        updateRevision("aiResult", e.target.value.slice(0, 100))
+                      }
+                      placeholder="예: 请您理解"
+                      className="min-h-[72px] text-base"
+                    />
+                  </div>
+                  <div
+                    aria-hidden
+                    className="hidden self-center pt-7 text-xl text-muted-foreground md:block"
+                  >
+                    →
+                  </div>
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="font-semibold">내가 수정한 표현</span>
+                      <span className="text-xs text-muted-foreground">
+                        {data.revisionCase.myRevision.length}/100
+                      </span>
+                    </div>
+                    <Textarea
+                      value={data.revisionCase.myRevision}
+                      onChange={(e) =>
+                        updateRevision("myRevision", e.target.value.slice(0, 100))
+                      }
+                      placeholder="예: 希望我们能继续保持良好的合作关系"
+                      className="min-h-[72px] text-base"
+                    />
+                  </div>
                 </div>
-                <Textarea
-                  value={data.revisionCase.aiResult}
-                  onChange={(e) =>
-                    updateRevision("aiResult", e.target.value.slice(0, 100))
-                  }
-                  placeholder="AI 번역에서 수정한 부분을 발췌"
-                  className="min-h-[80px] text-base"
-                />
-              </div>
-              <div>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="font-semibold">내가 수정한 부분</span>
-                  <span className="text-xs text-muted-foreground">
-                    {data.revisionCase.myRevision.length}/100
-                  </span>
-                </div>
-                <Textarea
-                  value={data.revisionCase.myRevision}
-                  onChange={(e) =>
-                    updateRevision("myRevision", e.target.value.slice(0, 100))
-                  }
-                  placeholder="내가 어떻게 수정했는지"
-                  className="min-h-[80px] text-base"
-                />
-              </div>
+              )}
               <div>
                 <div className="mb-2 text-sm font-semibold">수정 이유</div>
                 <select
@@ -499,19 +511,28 @@ export default function Finalize() {
               <div>
                 <div className="mb-2 flex items-center justify-between text-sm">
                   <span className="font-semibold">
-                    추가 설명 <span className="text-muted-foreground">(선택)</span>
+                    {noRevision ? (
+                      <>수정하지 않은 이유 <span className="text-muted-foreground">(한 줄)</span></>
+                    ) : (
+                      <>한 줄 설명 <span className="text-muted-foreground">(선택)</span></>
+                    )}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {data.revisionCase.explanation.length}/200
                   </span>
                 </div>
-                <Textarea
+                <Input
                   value={data.revisionCase.explanation}
                   onChange={(e) =>
                     updateRevision("explanation", e.target.value.slice(0, 200))
                   }
-                  placeholder="필요하면 더 자세히 설명해주세요"
-                  className="min-h-[80px] text-base"
+                  maxLength={200}
+                  placeholder={
+                    noRevision
+                      ? "예: AI 번역이 화용 전략에 적절히 부합한다고 판단함"
+                      : "예: 직접적 거절 표현을 더 완곡하게 조정"
+                  }
+                  className="text-base"
                 />
               </div>
             </div>
