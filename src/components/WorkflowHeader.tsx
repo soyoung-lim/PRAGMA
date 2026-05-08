@@ -63,7 +63,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
                   className={[
                     "flex flex-1 h-[54px] items-center justify-center rounded-lg border-2 box-border px-2 py-0 text-center leading-none transition-colors",
                     isCurrent
-                      ? "bg-[#EBD68A] text-[#1D2230] font-bold border-[#EBD68A] shadow-sm"
+                      ? "bg-[#D6AA2F] text-[#1D2230] font-bold border-[#D6AA2F] shadow-sm"
                       : isDone
                       ? "bg-transparent border-foreground/70 text-foreground font-medium"
                       : "bg-transparent border-muted-foreground/30 text-muted-foreground font-normal",
