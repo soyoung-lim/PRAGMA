@@ -85,9 +85,11 @@ const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub:
 ];
 
 const FINAL_TRANSLATION_MAX = 200;
-const DECISION_REASON_MAX = 200;
 
 const PERSONA_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
+const PERSONA_BG_COLORS = ["#FBEAE6", "#FAF1D7", "#E8EAF2"];
+const PERSONA_LINE_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
+
 
 interface Persona {
   number: number;
@@ -304,20 +306,13 @@ export default function Finalize() {
   const decisionDone =
     data.postFeedbackDecision !== "" &&
     (!needsRevisionFields ||
-      (influenceCount >= 1 && data.postFeedbackTranslation.trim().length > 0)) &&
-    data.finalDecisionReason.trim().length > 0;
+      (influenceCount >= 1 && data.postFeedbackTranslation.trim().length > 0));
   const allDone =
     finalTranslationDone &&
     revisionDone &&
     data.personaFeedbackReceived &&
     decisionDone;
 
-  const reasonHelper =
-    data.postFeedbackDecision === "as-is"
-      ? "왜 피드백을 반영하지 않았는지 설명해주세요"
-      : data.postFeedbackDecision === "full-revision"
-        ? "어떤 부분을 어떻게 수정했는지 설명해주세요"
-        : "결정 후 이유를 작성해주세요";
 
   return (
     <div className="min-h-screen bg-background">
@@ -665,20 +660,24 @@ export default function Finalize() {
                 style={{ backgroundColor: "rgba(29, 34, 48, 0.4)" }}
               />
               <DialogPrimitive.Content
-                className="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-2xl max-h-[85vh] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-2xl border border-border bg-background p-8 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2"
+                className="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-2xl max-h-[85vh] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-xl border border-border shadow-sm p-8 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2"
+                style={(() => {
+                  const sel = PERSONAS.find((p) => p.number === detailPersona);
+                  const idx = sel ? PERSONAS.indexOf(sel) : 0;
+                  return {
+                    backgroundColor: PERSONA_BG_COLORS[idx],
+                    borderLeftWidth: 4,
+                    borderLeftColor: PERSONA_LINE_COLORS[idx],
+                  };
+                })()}
               >
                 {(() => {
                   const sel = PERSONAS.find((p) => p.number === detailPersona);
                   if (!sel) return null;
-                  const idx = PERSONAS.indexOf(sel);
                   return (
                     <>
-                      <div
-                        className="-mx-8 -mt-8 h-1 rounded-t-2xl"
-                        style={{ backgroundColor: PERSONA_COLORS[idx] }}
-                      />
                       <div className="space-y-1.5">
-                        <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight text-[#1F2A5C]">
+                        <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight text-[#1D2230]">
                           상세 피드백: {sel.name} 관점
                         </DialogPrimitive.Title>
                         <DialogPrimitive.Description className="text-xs text-muted-foreground">
@@ -686,7 +685,7 @@ export default function Finalize() {
                         </DialogPrimitive.Description>
                       </div>
                       <p
-                        className="text-sm text-foreground"
+                        className="text-sm text-[#1D2230]"
                         style={{ lineHeight: 1.6 }}
                       >
                         {sel.feedback}
@@ -701,7 +700,7 @@ export default function Finalize() {
                         </Button>
                       </div>
                       <DialogPrimitive.Close
-                        className="absolute right-4 top-4 rounded-sm opacity-60 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        className="absolute right-4 top-4 rounded-sm text-muted-foreground opacity-60 transition-opacity hover:text-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                         aria-label="닫기"
                       >
                         <X className="h-4 w-4" />
@@ -844,25 +843,6 @@ export default function Finalize() {
             </>
           )}
 
-          {/* 블록 5: 유지/수정 이유 */}
-          <div>
-            <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="font-semibold">유지/수정 이유</span>
-              <span className="text-xs text-muted-foreground">
-                현재 글자수 {data.finalDecisionReason.length} / {DECISION_REASON_MAX}
-              </span>
-            </div>
-            <div className="mb-2 text-xs text-muted-foreground">{reasonHelper}</div>
-            <Textarea
-              value={data.finalDecisionReason}
-              onChange={(e) =>
-                update("finalDecisionReason", e.target.value.slice(0, DECISION_REASON_MAX))
-              }
-              maxLength={DECISION_REASON_MAX}
-              placeholder="결정의 이유를 200자 이내로 설명해주세요"
-              className="min-h-[100px] text-base"
-            />
-          </div>
         </section>
 
         {/* F. 하단 */}

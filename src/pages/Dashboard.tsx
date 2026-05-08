@@ -693,16 +693,10 @@ const Dashboard = () => {
             피드백 반영 여부와 최종 확정안
           </p>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="mt-6 grid grid-cols-1 gap-4">
             <div className="rounded-lg border border-foreground bg-secondary p-5">
               <div className="text-xs font-medium text-muted-foreground">피드백 반영 여부</div>
               <div className="mt-2 text-base font-bold">{finalize?.finalDecision || "—"}</div>
-            </div>
-            <div className="rounded-lg border border-foreground bg-secondary p-5">
-              <div className="text-xs font-medium text-muted-foreground">유지/수정 이유</div>
-              <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap">
-                {(finalize as unknown as { finalDecisionReason?: string } | null)?.finalDecisionReason || "—"}
-              </p>
             </div>
           </div>
 
