@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Info, Lock, X } from "lucide-react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { ChevronDown, ChevronUp, Info, Lock } from "lucide-react";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { Rollback } from "@/components/Rollback";
 import { ensureSession, logAction } from "@/lib/tracking";
@@ -87,52 +86,83 @@ const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub:
 const FINAL_TRANSLATION_MAX = 200;
 
 const PERSONA_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
-const PERSONA_BG_COLORS = ["#FBEAE6", "#FAF1D7", "#E8EAF2"];
-const PERSONA_LINE_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
 
 
 interface Persona {
   number: number;
   name: string;
   role: string;
-  feedback: string;
   strength: string;
   concern: string;
   suggestion: string;
 }
 
-const PERSONAS: Persona[] = [
-  {
-    number: 1,
-    name: "이메일 수신자",
-    role: "이 이메일을 받은 중국 거래처의 시점",
-    feedback:
-      "전반적으로 정중한 어조로 잘 작성되었습니다. 다만 '请您理解' 표현은 다소 형식적으로 느껴질 수 있습니다. 중국 비즈니스 관계에서는 '希望我们能继续保持良好的合作关系'와 같이 관계 지속에 대한 명시적 표현이 신뢰를 더 쌓을 수 있습니다. 첫 거래 관계임을 고려할 때, 다음 미팅 가능성을 언급하면 더욱 좋습니다.",
-    strength: "정중한 거절 어조 유지",
-    concern: "관계 지속 표현이 약함",
-    suggestion: "구체적 후속 제안 추가",
-  },
-  {
-    number: 2,
-    name: "통번역 교수자",
-    role: "교육적 관점에서 번역 기법을 분석",
-    feedback:
-      "본 번역은 화행 전략 '대안 제시 거절형'에 적절히 부합합니다. 어휘 선택은 비즈니스 격식체로 일관되게 유지되었고, 문장 구조도 중국어 자연스러움에 맞게 재구성되었습니다. 다만 P·D·R 분석에서 '거리: 멂'으로 설정한 점을 고려하면, 호칭 표현에 '贵公司' 사용이 더 적절합니다.",
-    strength: "화행 전략 부합도 높음",
-    concern: "호칭 표현 미세 조정 필요",
-    suggestion: "공식 호칭 강화",
-  },
-  {
-    number: 3,
-    name: "리스크 관리자",
-    role: "비즈니스 관계와 사후 리스크 관점에서 검토",
-    feedback:
-      "본 번역은 비즈니스 관계 손상 위험이 낮은 수준입니다. 거절 사유를 외부 요인에 귀속시킨 점이 책임 회피 인상을 주지 않으면서도 자사 입장을 보호합니다. 다만 '不可抗力'와 같은 법률적 어휘 사용은 신중해야 하며, 본 상황에서는 '业务方向调整'와 같은 비즈니스 어휘가 더 적합합니다.",
-    strength: "관계 손상 위험 낮음",
-    concern: "법률 어휘 사용 주의",
-    suggestion: "비즈니스 어휘로 대체",
-  },
+const PERSONA_META: { number: number; name: string; role: string }[] = [
+  { number: 1, name: "이메일 수신자", role: "이 이메일을 받은 중국 거래처의 시점" },
+  { number: 2, name: "통번역 교수자", role: "교육적 관점에서 번역 기법을 분석" },
+  { number: 3, name: "리스크 관리자", role: "비즈니스 관계와 사후 리스크 관점에서 검토" },
 ];
+
+type PersonaTriple = { strength: string; concern: string; suggestion: string }[];
+
+const PERSONAS_BY_SCENARIO: Record<string, PersonaTriple> = {
+  "ref-1": [
+    {
+      strength: "정중한 거절 어조 유지",
+      concern: "관계 지속 표현이 약함",
+      suggestion: "“希望未来仍有合作机会” 또는 “期待在合适的时机再深入交流” 같은 관계 지속 표현 추가",
+    },
+    {
+      strength: "화행 전략 ‘대안 제시 거절형’에 부합",
+      concern: "초면·공식 관계임을 고려할 때 호칭 표현 강화 필요",
+      suggestion: "“贵公司”를 사용하여 공식적 거리감과 존중을 동시에 표현",
+    },
+    {
+      strength: "관계 손상 위험 낮음",
+      concern: "법률 어휘 사용 시 책임 회피 인상 우려",
+      suggestion: "“不可抗力” 같은 법률 어휘 대신 “业务方向调整” 같은 비즈니스 어휘로 대체",
+    },
+  ],
+  "ref-2": [
+    {
+      strength: "거절 의사가 명확하게 전달됨",
+      concern: "장기 거래처 관계에서 친숙함이 부족함",
+      suggestion: "“一直以来的合作我们非常珍惜” 같은 관계 인정 표현으로 시작",
+    },
+    {
+      strength: "비즈니스 격식체 일관성 유지",
+      concern: "가까운 관계임에도 표현이 다소 형식적",
+      suggestion: "“贵司” 또는 회사명 직접 사용으로 친밀감 균형 조정",
+    },
+    {
+      strength: "가격 정책 일관성 유지",
+      concern: "거절 사유가 모호하면 향후 협상력 약화 가능",
+      suggestion: "“本次报价已是最优条件” 같은 명확한 사유 명시",
+    },
+  ],
+  "ref-3": [
+    {
+      strength: "일정 변경 불가 사유가 정중히 전달됨",
+      concern: "대안 일정 제시 부족",
+      suggestion: "“建议改为X月X日” 같은 구체적 대체 일정 제안 추가",
+    },
+    {
+      strength: "P·D·R 분석에 부합한 어조",
+      concern: "업무상 관계의 적정 거리감 표현 미세 조정 필요",
+      suggestion: "“如方便的话” 같은 완곡 표현으로 강요 인상 회피",
+    },
+    {
+      strength: "일정 책임 명확화",
+      concern: "거절 후 협력 관계 영향 가능",
+      suggestion: "“下次会议可优先安排贵公司议程” 같은 후속 보상 표현 명시",
+    },
+  ],
+};
+
+function getPersonas(scenarioId: string | null | undefined): Persona[] {
+  const triple = (scenarioId && PERSONAS_BY_SCENARIO[scenarioId]) || PERSONAS_BY_SCENARIO["ref-1"];
+  return PERSONA_META.map((m, i) => ({ ...m, ...triple[i] }));
+}
 
 function Dot({ on }: { on: boolean }) {
   return (
@@ -178,6 +208,7 @@ export default function Finalize() {
   const speechAct = (selection?.speechAct ?? null) as SpeechAct | null;
   const speechActLabel =
     SPEECH_ACTS.find((a) => a.id === speechAct)?.label ?? "-";
+  const PERSONAS = useMemo(() => getPersonas(selection?.scenarioId ?? null), [selection?.scenarioId]);
   const scenario =
     speechAct && selection?.scenarioId
       ? SCENARIOS[speechAct].find((s) => s.id === selection.scenarioId) ?? null
@@ -201,7 +232,6 @@ export default function Finalize() {
   const [data, setData] = useState<FinalizeData>(EMPTY);
   const [contextOpen, setContextOpen] = useState(false);
   const [revealedPersonas, setRevealedPersonas] = useState(0);
-  const [detailPersona, setDetailPersona] = useState<number | null>(null);
 
   useEffect(() => {
     ensureSession();
@@ -619,98 +649,26 @@ export default function Finalize() {
                       <div className="mt-1 text-xs text-muted-foreground">
                         {p.role}
                       </div>
-                      <dl className="mt-3 space-y-1 text-xs">
+                      <dl className="mt-3 space-y-2 text-xs leading-relaxed">
                         <div className="flex gap-2">
                           <dt className="w-8 shrink-0 font-semibold">강점</dt>
-                          <dd className="line-clamp-2">{p.strength}</dd>
+                          <dd>{p.strength}</dd>
                         </div>
                         <div className="flex gap-2">
                           <dt className="w-8 shrink-0 font-semibold">우려</dt>
-                          <dd className="line-clamp-2">{p.concern}</dd>
+                          <dd>{p.concern}</dd>
                         </div>
                         <div className="flex gap-2">
                           <dt className="w-8 shrink-0 font-semibold">제안</dt>
-                          <dd className="line-clamp-2">{p.suggestion}</dd>
+                          <dd>{p.suggestion}</dd>
                         </div>
                       </dl>
-                      <div className="mt-4 pt-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => setDetailPersona(p.number)}
-                        >
-                          상세 보기
-                        </Button>
-                      </div>
                     </div>
                   );
                 })}
               </div>
             </div>
           )}
-
-          <DialogPrimitive.Root
-            open={detailPersona !== null}
-            onOpenChange={(o) => !o && setDetailPersona(null)}
-          >
-            <DialogPrimitive.Portal>
-              <DialogPrimitive.Overlay
-                className="fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-                style={{ backgroundColor: "rgba(29, 34, 48, 0.4)" }}
-              />
-              <DialogPrimitive.Content
-                className="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-2xl max-h-[85vh] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-xl border border-border shadow-sm p-8 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2"
-                style={(() => {
-                  const sel = PERSONAS.find((p) => p.number === detailPersona);
-                  const idx = sel ? PERSONAS.indexOf(sel) : 0;
-                  return {
-                    backgroundColor: PERSONA_BG_COLORS[idx],
-                    borderLeftWidth: 4,
-                    borderLeftColor: PERSONA_LINE_COLORS[idx],
-                  };
-                })()}
-              >
-                {(() => {
-                  const sel = PERSONAS.find((p) => p.number === detailPersona);
-                  if (!sel) return null;
-                  return (
-                    <>
-                      <div className="space-y-1.5">
-                        <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight text-[#1D2230]">
-                          상세 피드백: {sel.name} 관점
-                        </DialogPrimitive.Title>
-                        <DialogPrimitive.Description className="text-xs text-muted-foreground">
-                          {sel.role}
-                        </DialogPrimitive.Description>
-                      </div>
-                      <p
-                        className="text-sm text-[#1D2230]"
-                        style={{ lineHeight: 1.6 }}
-                      >
-                        {sel.feedback}
-                      </p>
-                      <div className="flex justify-end pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDetailPersona(null)}
-                        >
-                          닫기
-                        </Button>
-                      </div>
-                      <DialogPrimitive.Close
-                        className="absolute right-4 top-4 rounded-sm text-muted-foreground opacity-60 transition-opacity hover:text-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                        aria-label="닫기"
-                      >
-                        <X className="h-4 w-4" />
-                      </DialogPrimitive.Close>
-                    </>
-                  );
-                })()}
-              </DialogPrimitive.Content>
-            </DialogPrimitive.Portal>
-          </DialogPrimitive.Root>
         </section>
 
         {/* E. 섹션 4 — 피드백 후 의사결정 */}
