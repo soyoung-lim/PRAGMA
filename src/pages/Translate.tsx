@@ -380,52 +380,33 @@ const Translate = () => {
           <p className="mt-2 text-sm text-muted-foreground">
             두 번역을 다음 3가지 기준으로 평가합니다
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            각 기준 옆 ? 아이콘을 클릭하면 상세 설명을 볼 수 있습니다.
+          </p>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-6">
             {[
               {
-                n: 1,
                 title: "화용 재현성",
-                en: "Pragmatic Equivalence",
-                body: "원문의 핵심 의도와 화행이 유지되었는가? 의미가 명확하게 전달되었는가?",
-                tooltip: "Pragmatic Equivalence — Levinson (1983) Pragmatics",
-              },
-              {
-                n: 2,
-                title: "관계 적합성",
-                en: "Relational Appropriateness",
-                body: "상대와의 권력·거리·부담도 관계에 어울리는 공손성을 유지하면서, 지나치게 딱딱하거나 과잉 공손하지 않고 자연스러운가?",
                 tooltip:
-                  "Relational Appropriateness — Brown & Levinson (1987) Politeness Theory",
+                  "Pragmatic Equivalence — 원문의 핵심 의도와 화행이 유지되었는가? 의미가 명확하게 전달되었는가?",
               },
               {
-                n: 3,
-                title: "리스크 관리",
-                en: "Risk Management",
-                body: "무례하거나 강압적으로 읽히지 않고, 책임을 과도하게 인정하지 않으며, 오해나 관계 손상 위험이 없는가?",
-                tooltip: "Risk Management — Business Communication Risk",
+                title: "관계 적합성",
+                tooltip:
+                  "Relational Appropriateness — 상대와의 권력·거리·부담도 관계에 어울리는 공손성을 유지하면서, 지나치게 딱딱하거나 과잉 공손하지 않고 자연스러운가?",
               },
-            ].map((c) => (
-              <div
-                key={c.n}
-                className="relative rounded-lg border border-foreground p-6 pr-10"
-                style={{ backgroundColor: "#F0EFEB" }}
-              >
-                <div className="absolute right-3 top-3">
-                  <InfoTooltip content={c.tooltip} />
-                </div>
-                <span className="inline-flex h-7 w-7 items-center justify-center bg-accent text-sm font-bold text-foreground">
-                  {c.n}
+              {
+                title: "리스크 관리",
+                tooltip:
+                  "Risk Management — 무례하거나 강압적으로 읽히지 않고, 책임을 과도하게 인정하지 않으며, 오해나 관계 손상 위험이 없는가?",
+              },
+            ].map((c, i) => (
+              <div key={c.title} className="inline-flex items-center gap-2">
+                <span className="text-[15px] font-semibold text-foreground">
+                  {i + 1}. {c.title}
                 </span>
-                <h4 className="mt-3 text-[22px] font-bold leading-snug" style={{ color: "#1A1A2E" }}>
-                  {c.title}
-                </h4>
-                <p className="mt-1 text-[12px] italic text-muted-foreground">
-                  {c.en}
-                </p>
-                <p className="mt-4 text-[15px] leading-[1.6]" style={{ color: "#1A1A2E" }}>
-                  {c.body}
-                </p>
+                <InfoTooltip content={c.tooltip} />
               </div>
             ))}
           </div>
