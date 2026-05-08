@@ -336,6 +336,9 @@ const Pdr = () => {
               />
             </div>
           </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            ※ 정답을 맞히는 단계가 아니라, 번역 전에 상황을 어떻게 해석했는지 기록하는 단계입니다.
+          </p>
         </section>
 
         {/* Section 3: Strategy */}
