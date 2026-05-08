@@ -1,6 +1,7 @@
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ensureSession } from "@/lib/tracking";
+import { seedDemoData } from "@/lib/demo";
 
 const STEPS = [
   { n: 1, title: "화행 시나리오 선택", sub: "요청·거절·사과" },
@@ -18,9 +19,14 @@ const BADGES = [
 ];
 
 const Landing = () => {
+  const navigate = useNavigate();
   useEffect(() => {
     ensureSession();
   }, []);
+  const handleDemo = () => {
+    seedDemoData();
+    navigate("/scenario");
+  };
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="border-b border-border/60">
@@ -98,12 +104,13 @@ const Landing = () => {
           >
             학습 시작하기 →
           </Link>
-          <Link
-            to="/dashboard?demo=true"
+          <button
+            type="button"
+            onClick={handleDemo}
             className="rounded-lg border border-border bg-card px-8 py-4 text-base font-medium text-foreground transition-colors hover:border-foreground hover:bg-muted"
           >
             데모 모드로 보기
-          </Link>
+          </button>
         </section>
       </main>
     </div>
