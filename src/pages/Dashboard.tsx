@@ -90,7 +90,7 @@ const PERSONA_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
 
 const PERSONA_FEEDBACK = [
   {
-    name: "중국 비즈니스 상대방",
+    name: "이메일 수신자",
     strength: "정중한 거절 어조 유지",
     concern: "관계 지속 표현 약함",
     suggestion: "구체적 후속 제안 추가",
@@ -102,7 +102,7 @@ const PERSONA_FEEDBACK = [
     suggestion: "공식 호칭 강화",
   },
   {
-    name: "기업 리스크 관리자",
+    name: "리스크 관리자",
     strength: "관계 손상 위험 낮음",
     concern: "법률 어휘 사용 주의",
     suggestion: "비즈니스 어휘로 대체",
@@ -541,7 +541,7 @@ const Dashboard = () => {
 
         {/* D. Multi-persona summary */}
         <section className="mt-16">
-          <h3 className="text-2xl font-bold">3개 관점의 종합 피드백 요약</h3>
+          <h3 className="text-2xl font-bold">세 가지 관점의 종합 피드백 요약</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             각 평가자가 제시한 강점·우려·제안을 한눈에 봅니다
           </p>
