@@ -352,6 +352,9 @@ const Translate = () => {
           value={aiTranslation1}
           onChange={setAiTranslation1}
           filled={t1Filled}
+          exampleText={EXAMPLE_AI_1}
+          mode={t1Mode}
+          onModeChange={setT1Mode}
         />
 
         {/* Section 2: Prompt 2 */}
@@ -366,133 +369,10 @@ const Translate = () => {
           value={aiTranslation2}
           onChange={setAiTranslation2}
           filled={t2Filled}
+          exampleText={EXAMPLE_AI_2}
+          mode={t2Mode}
+          onModeChange={setT2Mode}
         />
-
-        {/* Mini experiment */}
-        <section className="mt-12">
-          <div
-            className="rounded-lg border border-dashed border-foreground p-5"
-            style={{ backgroundColor: "rgba(254, 252, 232, 0.5)" }}
-          >
-            <button
-              type="button"
-              onClick={() => setExperimentOpen((v) => !v)}
-              className="flex w-full items-start justify-between gap-3 text-left"
-              aria-expanded={experimentOpen}
-            >
-              <div>
-                <h3 className="text-lg font-bold">
-                  화용 변수 미니 실험 <span className="text-xs font-medium text-muted-foreground">[선택]</span>
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  같은 시나리오에서 P·D·R 변수 하나만 바꾸면 표현이 어떻게 달라질까?
-                </p>
-              </div>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {experimentOpen ? "접기 ▲" : "펼치기 ▼"}
-              </span>
-            </button>
-
-            {experimentOpen && (
-              <div className="mt-5 space-y-5">
-                <p className="text-sm leading-relaxed text-foreground/80">
-                  P, D, R 중 하나의 변수만 변경한 프롬프트를 추가로 생성합니다. 외부 AI 도구에 복붙하여 결과를 비교해보세요.
-                  본 단계는 선택 사항이며, 건너뛰어도 다음 단계로 진행할 수 있습니다.
-                </p>
-
-                <div>
-                  <h4 className="text-sm font-bold">변경할 변수 선택</h4>
-                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-4">
-                    {([
-                      { v: "P" as ExperimentVar, label: "권력(P) 바꾸기" },
-                      { v: "D" as ExperimentVar, label: "거리(D) 바꾸기" },
-                      { v: "R" as ExperimentVar, label: "부담도(R) 바꾸기" },
-                    ]).map((opt) => (
-                      <label key={opt.v} className="flex items-center gap-2 text-sm">
-                        <input
-                          type="radio"
-                          name="exp-var"
-                          checked={experiment.variable === opt.v}
-                          onChange={() => setExperiment((e) => ({ ...e, variable: opt.v, newValue: null }))}
-                        />
-                        {opt.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {experiment.variable && (
-                  <div>
-                    <h4 className="text-sm font-bold">변경 후 값 선택</h4>
-                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-4">
-                      {(experiment.variable === "P"
-                        ? ["내가 우위", "동등", "상대가 우위"].filter((v) => v !== pdr?.powerLevel)
-                        : experiment.variable === "D"
-                        ? ["가깝다", "중간", "멀다"].filter((v) => v !== pdr?.distanceLevel)
-                        : ["낮음", "중간", "높음"].filter((v) => v !== pdr?.burdenLevel)
-                      ).map((v) => (
-                        <label key={v} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="radio"
-                            name="exp-newval"
-                            checked={experiment.newValue === v}
-                            onChange={() => setExperiment((e) => ({ ...e, newValue: v }))}
-                          />
-                          {v}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {experiment.variable && experiment.newValue && (
-                  <>
-                    <div className="relative rounded-lg bg-foreground p-6 pr-28">
-                      <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-background">
-                        {prompt3Text}
-                      </pre>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(prompt3Text)}
-                        className="absolute right-4 top-4 rounded-md border border-background bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-background hover:text-foreground"
-                      >
-                        복사하기
-                      </button>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        위 프롬프트를 외부 AI 도구에 붙여넣고 결과를 아래에 입력하세요.
-                      </p>
-                      <textarea
-                        value={experiment.aiTranslation3}
-                        onChange={(e) => setExperiment((p) => ({ ...p, aiTranslation3: e.target.value }))}
-                        placeholder="변수 변경 프롬프트로 생성한 중국어 번역을 붙여넣으세요"
-                        className="mt-2 block h-[110px] w-full resize-none rounded-lg border border-foreground bg-background p-4 text-sm leading-relaxed focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                      />
-                    </div>
-
-                    {experiment.aiTranslation3.trim().length > 0 && (
-                      <div>
-                        <label className="text-sm font-bold">원래 조건과 비교해 무엇이 달라졌나요?</label>
-                        <textarea
-                          maxLength={100}
-                          value={experiment.comparisonNote}
-                          onChange={(e) => setExperiment((p) => ({ ...p, comparisonNote: e.target.value.slice(0, 100) }))}
-                          placeholder="예: 거리를 '가깝다'로 바꾸니 호칭이 더 친근해짐"
-                          className="mt-2 block h-[80px] w-full resize-none rounded-lg border border-foreground bg-background p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        />
-                        <div className="mt-1 text-right text-xs text-muted-foreground">
-                          {experiment.comparisonNote.length} / 100
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
 
         {/* Evaluation framework intro */}
         <section className="mt-12">
