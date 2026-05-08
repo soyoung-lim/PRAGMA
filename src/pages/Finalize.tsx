@@ -92,7 +92,6 @@ interface Persona {
   number: number;
   name: string;
   role: string;
-  feedback: string;
   strength: string;
   concern: string;
   suggestion: string;
