@@ -247,7 +247,7 @@ const Pdr = () => {
     <div className="min-h-screen bg-background text-foreground">
       <WorkflowHeader currentStep={2} />
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-6 py-6">
         {/* Page title */}
         <div>
           <h2 className="text-2xl font-bold sm:text-3xl">상황 분석과 전략 선택</h2>

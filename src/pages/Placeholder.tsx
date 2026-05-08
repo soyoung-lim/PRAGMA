@@ -10,7 +10,7 @@ const Placeholder = ({ step, title }: PlaceholderProps) => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <WorkflowHeader currentStep={step} />
-      <main className="mx-auto max-w-6xl px-6 py-12">
+      <main className="mx-auto max-w-6xl px-6 py-6">
         <h2 className="text-2xl font-bold sm:text-3xl">{step}. {title}</h2>
         <p className="mt-4 text-sm text-muted-foreground">
           이 단계는 다음 작업에서 구현될 예정입니다.
