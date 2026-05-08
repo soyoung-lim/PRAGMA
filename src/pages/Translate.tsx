@@ -279,7 +279,7 @@ const Translate = () => {
       <WorkflowHeader currentStep={3} />
       
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-6 py-6">
         {/* Title */}
         <div>
           <h2 className="text-2xl font-bold sm:text-3xl">AI 번역 생성 및 비교</h2>

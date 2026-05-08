@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    /* Background: near-white with subtle ivory tint */
-    --background: 40 25% 99%;
+    /* Background: warm ivory #FAF8F2 */
+    --background: 44 36% 97%;
     /* Primary text: deep navy #1A2332 */
     --foreground: 215 32% 15%;
 
@@ -42,7 +42,7 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 40 25% 99%;
+    --sidebar-background: 44 36% 97%;
     --sidebar-foreground: 215 32% 15%;
     --sidebar-primary: 215 32% 15%;
     --sidebar-primary-foreground: 0 0% 100%;
@@ -108,6 +108,28 @@
     to { opacity: 1; transform: translateY(0); }
   }
 }
+
+/* ============================================
+   글로벌 Spacing 압축 (전역 적용, 약 70~80% 수준)
+   가독성(line-height) 영향 없음, 컴포넌트 간 간격만 축소
+   ============================================ */
+@layer base {
+  /* 섹션 vertical margin: ~70% */
+  main section.mt-16 { margin-top: 2.75rem; }   /* 64 → 44 */
+  main section.mt-14 { margin-top: 2.25rem; }   /* 56 → 36 */
+  main section.mt-12 { margin-top: 2rem; }      /* 48 → 32 */
+  main section.mt-10 { margin-top: 1.75rem; }   /* 40 → 28 */
+  main section.mt-8  { margin-top: 1.5rem; }    /* 32 → 24 */
+
+  /* 카드/박스 padding: ~80% */
+  main .p-8 { padding: 1.5rem; }     /* 32 → 24 */
+  main .p-6 { padding: 1.25rem; }    /* 24 → 20 */
+
+  /* 폼 요소 간 간격: ~75% */
+  main .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.125rem; } /* 24 → 18 */
+  main .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem; }  /* 16 → 12 */
+}
+/* Dashboard 전용 압축 규칙은 아래에서 더 강하게 덮어씀 */
 
 @media print {
   .print\:hidden { display: none !important; }
