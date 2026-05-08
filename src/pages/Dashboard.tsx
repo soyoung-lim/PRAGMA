@@ -94,19 +94,13 @@ const PERSONA_FEEDBACK = [
     suggestion: "구체적 후속 제안 추가",
   },
   {
-    name: "한국 발신자(나) 입장",
-    strength: "의도 명확 전달",
-    concern: "거절 강도가 다소 강함",
-    suggestion: "완곡 표현으로 조정",
-  },
-  {
     name: "통번역 교수자",
     strength: "화행 전략 부합도 높음",
     concern: "호칭 표현 미세 조정 필요",
     suggestion: "공식 호칭 강화",
   },
   {
-    name: "비즈니스 리스크 관리자",
+    name: "기업 리스크 관리자",
     strength: "관계 손상 위험 낮음",
     concern: "법률 어휘 사용 주의",
     suggestion: "비즈니스 어휘로 대체",
@@ -545,7 +539,7 @@ const Dashboard = () => {
 
         {/* D. Multi-persona summary */}
         <section className="mt-16">
-          <h3 className="text-2xl font-bold">4개 관점의 AI 페르소나 피드백 요약</h3>
+          <h3 className="text-2xl font-bold">3개 관점의 종합 피드백 요약</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             각 평가자가 제시한 강점·우려·제안을 한눈에 봅니다
           </p>
