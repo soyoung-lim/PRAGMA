@@ -593,56 +593,99 @@ export default function Finalize() {
             </div>
           ) : (
             <div className="space-y-5">
-              {PERSONAS.map((p, i) =>
-                i < revealedPersonas ? (
-                  <article
-                    key={p.number}
-                    className="fade-in rounded-lg border border-border border-t-[3px] bg-secondary p-6"
-                    style={{ borderTopColor: PERSONA_COLORS[i] }}
-                  >
-                    <header className="mb-3 border-b border-border/40 pb-3">
+              {/* 상단: 3개 요약 카드 */}
+              <div className="grid gap-3 md:grid-cols-3">
+                {PERSONAS.map((p, i) => {
+                  const revealed = i < revealedPersonas;
+                  const active = selectedPersona === p.number;
+                  if (!revealed) {
+                    return (
+                      <div
+                        key={p.number}
+                        className="min-h-[180px] rounded-lg border border-dashed border-border/60 bg-background"
+                      />
+                    );
+                  }
+                  return (
+                    <button
+                      key={p.number}
+                      type="button"
+                      onClick={() => setSelectedPersona(p.number)}
+                      aria-pressed={active}
+                      className={[
+                        "fade-in rounded-lg border border-t-[3px] p-5 text-left transition-colors",
+                        active
+                          ? "border-foreground bg-accent/10 shadow-sm"
+                          : "border-border bg-secondary hover:bg-secondary/70",
+                      ].join(" ")}
+                      style={{ borderTopColor: PERSONA_COLORS[i] }}
+                    >
                       <div className="text-[11px] font-medium text-muted-foreground/60">
                         페르소나 {p.number}
                       </div>
-                      <div className="mt-1 text-lg font-bold" style={{ color: PERSONA_COLORS[i] }}>{p.name}</div>
+                      <div className="mt-1 text-base font-bold text-[#1F2A5C]">
+                        {p.name}
+                      </div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         {p.role}
                       </div>
+                      <dl className="mt-3 space-y-1 text-xs">
+                        <div className="flex gap-2">
+                          <dt className="w-8 shrink-0 font-semibold">강점</dt>
+                          <dd className="line-clamp-2">{p.strength}</dd>
+                        </div>
+                        <div className="flex gap-2">
+                          <dt className="w-8 shrink-0 font-semibold">우려</dt>
+                          <dd className="line-clamp-2">{p.concern}</dd>
+                        </div>
+                        <div className="flex gap-2">
+                          <dt className="w-8 shrink-0 font-semibold">제안</dt>
+                          <dd className="line-clamp-2">{p.suggestion}</dd>
+                        </div>
+                      </dl>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 하단: 상세 패널 */}
+              {(() => {
+                const sel = PERSONAS.find((p) => p.number === selectedPersona) ?? PERSONAS[0];
+                const idx = PERSONAS.indexOf(sel);
+                return (
+                  <article
+                    className="rounded-lg border border-border border-t-[3px] bg-background p-6"
+                    style={{ borderTopColor: PERSONA_COLORS[idx] }}
+                  >
+                    <header className="mb-4 border-b border-border/40 pb-3">
+                      <div className="text-[11px] font-medium text-muted-foreground/60">
+                        선택된 관점 · 페르소나 {sel.number}
+                      </div>
+                      <div className="mt-1 text-lg font-bold text-[#1F2A5C]">
+                        {sel.name}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {sel.role}
+                      </div>
                     </header>
-                    <dl className="space-y-1.5 text-sm">
+                    <p className="text-sm leading-relaxed">{sel.feedback}</p>
+                    <dl className="mt-4 space-y-1.5 text-sm">
                       <div className="flex gap-2">
                         <dt className="w-12 shrink-0 font-semibold">강점</dt>
-                        <dd>{p.strength}</dd>
+                        <dd>{sel.strength}</dd>
                       </div>
                       <div className="flex gap-2">
                         <dt className="w-12 shrink-0 font-semibold">우려</dt>
-                        <dd>{p.concern}</dd>
+                        <dd>{sel.concern}</dd>
                       </div>
                       <div className="flex gap-2">
                         <dt className="w-12 shrink-0 font-semibold">제안</dt>
-                        <dd>{p.suggestion}</dd>
+                        <dd>{sel.suggestion}</dd>
                       </div>
                     </dl>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedPersonas((s) => ({ ...s, [p.number]: !s[p.number] }))
-                      }
-                      className="mt-3 text-xs font-medium text-muted-foreground underline-offset-2 hover:underline"
-                    >
-                      {expandedPersonas[p.number] ? "상세 보기 접기 ▲" : "상세 보기 ▼"}
-                    </button>
-                    {expandedPersonas[p.number] && (
-                      <p className="mt-3 text-sm leading-relaxed">{p.feedback}</p>
-                    )}
                   </article>
-                ) : (
-                  <div
-                    key={p.number}
-                    className="min-h-[200px] rounded-lg border border-dashed border-border/60 bg-background"
-                  />
-                ),
-              )}
+                );
+              })()}
             </div>
           )}
         </section>
