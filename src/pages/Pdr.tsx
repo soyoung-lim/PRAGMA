@@ -62,16 +62,16 @@ function VerticalRadio<T extends string>({
               "flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
               selected
-                ? "border border-foreground bg-foreground text-background font-bold"
-                : "border border-foreground bg-background text-foreground font-medium hover:bg-[#F8F6F0]",
+                ? "border border-[#E5C97A] bg-[#FAF1D7] text-[#1D2230] font-bold"
+                : "border border-foreground bg-background text-foreground font-medium hover:bg-[#FAF1D7]/60",
             ].join(" ")}
           >
             <span
               aria-hidden
               className={[
-                "inline-block h-3 w-3 rounded-full border",
+              "inline-block h-3 w-3 rounded-full border",
                 selected
-                  ? "border-background bg-background"
+                  ? "border-[#1D2230] bg-[#1D2230]"
                   : "border-foreground bg-background",
               ].join(" ")}
             />
@@ -80,7 +80,7 @@ function VerticalRadio<T extends string>({
               <span
                 className={[
                   "text-[11px] font-normal",
-                  selected ? "text-background/70" : "text-muted-foreground",
+                  selected ? "text-[#1D2230]/70" : "text-muted-foreground",
                 ].join(" ")}
               >
                 {opt.hint}
@@ -377,7 +377,7 @@ const Pdr = () => {
                       "flex h-full w-full flex-col rounded-lg p-6 pr-10 text-left transition-all duration-200",
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                       selected
-                        ? "border-2 border-foreground bg-[#F8F6F0] text-foreground"
+                        ? "border-2 border-[#E5C97A] bg-[#FAF1D7] text-[#1D2230]"
                         : "border border-foreground bg-background hover:-translate-y-0.5 hover:shadow-md",
                     ].join(" ")}
                   >
