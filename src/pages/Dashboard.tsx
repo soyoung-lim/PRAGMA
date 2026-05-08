@@ -305,6 +305,20 @@ const Dashboard = () => {
         dump[k] = null;
       }
     });
+    dump["analytics"] = {
+      totalLearningTime: analytics.timeLabel,
+      nonlinearRevisionCount: analytics.rollbackCount,
+      personaFeedbackReceived: analytics.personaReceived,
+      revisionsAfterPersona: analytics.revisionsAfterPersona,
+      sessionStart: localStorage.getItem("sessionStartAt"),
+      exportedAt: new Date().toISOString(),
+    };
+    try {
+      const raw = localStorage.getItem("learnerActions");
+      dump["learnerActions"] = raw ? JSON.parse(raw) : [];
+    } catch {
+      dump["learnerActions"] = [];
+    }
     const blob = new Blob([JSON.stringify(dump, null, 2)], {
       type: "application/json",
     });
