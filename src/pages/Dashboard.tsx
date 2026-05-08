@@ -546,7 +546,7 @@ const Dashboard = () => {
             각 평가자가 제시한 강점·우려·제안을 한눈에 봅니다
           </p>
 
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
             {PERSONA_FEEDBACK.map((p, i) => (
               <div
                 key={p.name}
@@ -556,7 +556,7 @@ const Dashboard = () => {
                 <div className="text-[11px] font-medium text-muted-foreground/60">
                   관점 {i + 1}
                 </div>
-                <div className="mt-0.5 text-lg font-bold" style={{ color: PERSONA_COLORS[i] }}>{p.name}</div>
+                <div className="mt-0.5 text-base font-bold text-[#1F2A5C]">{p.name}</div>
                 <dl className="mt-3 space-y-1.5 text-sm">
                   <div className="flex gap-2">
                     <dt className="w-12 shrink-0 font-semibold">강점</dt>
