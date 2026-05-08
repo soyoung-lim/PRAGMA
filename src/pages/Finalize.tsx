@@ -550,6 +550,9 @@ export default function Finalize() {
           <p className="mb-5 text-sm text-muted-foreground">
             각 페르소나는 수신자·교수자·리스크 관점에서 최종 번역을 검토합니다
           </p>
+          <p className="mb-5 text-xs text-secondary-foreground/60">
+            카드를 클릭하면 해당 관점의 상세 피드백을 아래에서 확인할 수 있습니다.
+          </p>
 
           <div className="mb-5 flex items-start gap-2 rounded-md border border-border bg-secondary p-3 text-[13px]">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
