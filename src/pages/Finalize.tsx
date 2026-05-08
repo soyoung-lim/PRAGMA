@@ -672,20 +672,6 @@ export default function Finalize() {
                       </div>
                     </header>
                     <p className="text-sm leading-relaxed">{sel.feedback}</p>
-                    <dl className="mt-4 space-y-1.5 text-sm">
-                      <div className="flex gap-2">
-                        <dt className="w-12 shrink-0 font-semibold">강점</dt>
-                        <dd>{sel.strength}</dd>
-                      </div>
-                      <div className="flex gap-2">
-                        <dt className="w-12 shrink-0 font-semibold">우려</dt>
-                        <dd>{sel.concern}</dd>
-                      </div>
-                      <div className="flex gap-2">
-                        <dt className="w-12 shrink-0 font-semibold">제안</dt>
-                        <dd>{sel.suggestion}</dd>
-                      </div>
-                    </dl>
                   </article>
                 );
               })()}
