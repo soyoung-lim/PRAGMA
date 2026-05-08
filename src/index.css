@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    /* Background: near-white with subtle ivory tint */
-    --background: 40 25% 99%;
+    /* Background: warm ivory #FAF8F2 */
+    --background: 44 36% 97%;
     /* Primary text: deep navy #1A2332 */
     --foreground: 215 32% 15%;
 
@@ -42,7 +42,7 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 40 25% 99%;
+    --sidebar-background: 44 36% 97%;
     --sidebar-foreground: 215 32% 15%;
     --sidebar-primary: 215 32% 15%;
     --sidebar-primary-foreground: 0 0% 100%;
