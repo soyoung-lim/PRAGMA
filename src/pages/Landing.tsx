@@ -22,7 +22,7 @@ const Landing = () => {
   };
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="border-b border-border/60">
+      <header className="border-b-2 border-foreground/80">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <span className="flex items-center gap-2 text-base font-bold sm:text-lg">
             <span aria-hidden className="inline-block h-4 w-[2px] rounded-full bg-accent" />
@@ -30,7 +30,7 @@ const Landing = () => {
           </span>
           <Link
             to="/scenario"
-            className="hidden rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:border-foreground hover:bg-muted hover:text-foreground sm:inline-block"
+            className="hidden rounded-md border border-foreground/80 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:inline-block"
           >
             바로 시작 →
           </Link>
@@ -53,9 +53,9 @@ const Landing = () => {
           <div className="flex flex-col items-stretch gap-3 sm:grid sm:grid-cols-2 sm:gap-3 lg:flex lg:flex-row lg:items-stretch lg:justify-between lg:gap-0">
             {STEPS.map((s, idx) => (
               <div key={s.n} className="flex items-center lg:flex-1">
-                <div className="relative w-full rounded-2xl border border-border bg-card px-4 pt-7 pb-5 text-center shadow-sm">
+                <div className="relative w-full rounded-2xl border-2 border-foreground/80 bg-card px-4 pt-7 pb-5 text-center shadow-sm">
                   <span
-                    className="absolute -top-3 left-1/2 inline-flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-[#1D2230]"
+                    className="absolute -top-3 left-1/2 inline-flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-[#1D2230] ring-2 ring-card"
                     style={{ backgroundColor: "#D6AA2F" }}
                   >
                     {s.n}
@@ -70,7 +70,7 @@ const Landing = () => {
                 {idx < STEPS.length - 1 && (
                   <span
                     aria-hidden
-                    className="hidden shrink-0 px-2 text-xl font-bold text-muted-foreground lg:inline-block"
+                    className="hidden shrink-0 px-2 text-2xl font-bold text-foreground lg:inline-block"
                   >
                     →
                   </span>
@@ -95,7 +95,7 @@ const Landing = () => {
           <button
             type="button"
             onClick={handleDemo}
-            className="rounded-lg border border-border bg-card px-10 py-4 text-base font-medium text-foreground transition-colors hover:border-foreground hover:bg-muted"
+            className="rounded-lg border-2 border-foreground/80 bg-card px-10 py-4 text-base font-medium text-foreground transition-colors hover:bg-muted"
           >
             데모 모드로 보기
           </button>
