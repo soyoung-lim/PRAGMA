@@ -44,7 +44,7 @@ const Landing = () => {
             AI 기반 한·중 통번역 학습 워크플로우
           </h1>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-[17px]">
-            화용적 의사결정과 멀티-페르소나 피드백을 통합한 학습 시스템
+            AI 번역을 비교하고, 수정 이유를 기록하며, 최종 번역 결정을 설명하는 학습 시스템
           </p>
         </section>
 
