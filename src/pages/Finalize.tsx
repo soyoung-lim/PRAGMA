@@ -7,6 +7,7 @@ import { Rollback } from "@/components/Rollback";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   SCENARIOS,
   SPEECH_ACTS,
@@ -21,19 +22,17 @@ const FINALIZE_STORAGE_KEY = "translation-workflow-finalize";
 
 type RevisionReason =
   | "화용 재현성 부족"
-  | "관계 적합성 부족"
-  | "리스크 관리 부족"
-  | "표현 자연스러움"
-  | "어휘 정확성"
-  | "기타";
+  | "관계 적합성 문제"
+  | "리스크 관리 필요"
+  | "복합 (2가지 이상)"
+  | "수정 사항 없음";
 
 const REASON_OPTIONS: RevisionReason[] = [
   "화용 재현성 부족",
-  "관계 적합성 부족",
-  "리스크 관리 부족",
-  "표현 자연스러움",
-  "어휘 정확성",
-  "기타",
+  "관계 적합성 문제",
+  "리스크 관리 필요",
+  "복합 (2가지 이상)",
+  "수정 사항 없음",
 ];
 
 interface RevisionCase {
