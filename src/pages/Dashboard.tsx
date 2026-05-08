@@ -363,44 +363,11 @@ const Dashboard = () => {
       <main className="mx-auto max-w-6xl px-6 py-6">
         {/* Title */}
         <div>
-          <h2 className="text-2xl font-bold sm:text-3xl">번역 의사결정 리포트</h2>
+          <h2 className="text-2xl font-bold sm:text-3xl">의사결정 리포트</h2>
           <p className="mt-2 text-base text-muted-foreground">
             AI 번역 검토 과정과 수정 판단을 기록합니다
           </p>
         </div>
-
-        {/* 0. Decision flow diagram (top) */}
-        <section className="mt-10">
-          <h3 className="text-2xl font-bold">나의 번역 의사결정 흐름</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            상황 해석부터 최종 결정까지 6단계 판단 흐름
-          </p>
-
-          <div className="mt-6 flex flex-wrap items-stretch gap-2">
-            {flow.map((f, i) => (
-              <div key={f.step} className="flex items-center gap-2">
-                <div
-                  className={[
-                    "min-w-[120px] rounded-lg border p-3 text-center",
-                    f.highlight
-                      ? "border-2 border-foreground bg-accent"
-                      : "border-foreground bg-background",
-                  ].join(" ")}
-                >
-                  <div className="text-[11px] text-muted-foreground">{f.step}</div>
-                  <div className="mt-1 text-sm font-bold">{f.value}</div>
-                </div>
-                {i < flow.length - 1 && (
-                  <span aria-hidden className="text-lg text-muted-foreground">→</span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 rounded-md border border-border bg-secondary p-4 text-sm">
-            {decisionMsg}
-          </div>
-        </section>
 
         {/* 1. 상황 판단 */}
         <section className="mt-16">
@@ -526,12 +493,8 @@ const Dashboard = () => {
                 </div>
                 <span className="sr-only">전략 적용형</span>
               </div>
-              <div
-                className="mt-4 text-4xl font-bold"
-                style={{ color: "hsl(var(--foreground))" }}
-              >
-                <span style={{ color: "hsl(var(--accent))" }}>{avg2.toFixed(1)}</span>{" "}
-                <span className="text-xl text-muted-foreground">/ 5</span>
+              <div className="mt-4 text-4xl font-bold text-foreground">
+                {avg2.toFixed(1)} <span className="text-xl text-muted-foreground">/ 5</span>
               </div>
               <div className="mt-3 text-sm text-foreground/80">
                 P·D·R + 전략 명시
