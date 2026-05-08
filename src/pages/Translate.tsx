@@ -522,32 +522,32 @@ const Translate = () => {
             })}
           </div>
 
-          {/* Per-criterion comments */}
+          {/* Single comparison question */}
           <div className="mt-6 rounded-lg border border-border bg-background p-5">
-            <h4 className="text-base font-bold">기준별 비교 코멘트 (선택)</h4>
-            <p className="mt-1 text-sm text-muted-foreground">
-              두 번역의 차이를 한 줄로 기록해두면 다음 단계에서 활용됩니다
-            </p>
-            <div className="mt-4 space-y-3">
-              {([
-                { key: "pragmatic" as const, label: "화용 재현성", ph: "예: 번역 2가 의도를 더 정확히 전달함" },
-                { key: "relational" as const, label: "관계 적합성", ph: "예: 번역 1의 호칭 표현이 더 자연스러움" },
-                { key: "risk" as const, label: "리스크 관리", ph: "예: 두 번역 모두 책임 회피 표현 적절" },
-              ]).map((f) => (
-                <div key={f.key} className="grid grid-cols-1 gap-2 sm:grid-cols-[140px_1fr] sm:items-center">
-                  <label className="text-sm font-medium">{f.label}</label>
+            <h4 className="text-base font-bold">두 번역을 비교할 때 가장 중요하게 본 기준은 무엇인가요?</h4>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-4">
+              {COMPARISON_CHOICES.map((c) => (
+                <label key={c} className="flex items-center gap-2 text-sm">
                   <input
-                    type="text"
-                    maxLength={80}
-                    value={rationales[f.key]}
-                    onChange={(e) =>
-                      setRationales((r) => ({ ...r, [f.key]: e.target.value.slice(0, 80) }))
-                    }
-                    placeholder={f.ph}
-                    className="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    type="radio"
+                    name="comparison-choice"
+                    checked={comparisonChoice === c}
+                    onChange={() => setComparisonChoice(c)}
                   />
-                </div>
+                  {c}
+                </label>
               ))}
+            </div>
+            <div className="mt-4">
+              <label className="text-sm font-medium">그렇게 판단한 이유를 한 줄로 적어보세요.</label>
+              <input
+                type="text"
+                maxLength={120}
+                value={comparisonReason}
+                onChange={(e) => setComparisonReason(e.target.value.slice(0, 120))}
+                placeholder="예: 거절 의도를 살리면서도 관계를 유지하는 표현이 더 적절했음"
+                className="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              />
             </div>
           </div>
 
@@ -625,6 +625,9 @@ interface PromptSectionProps {
   value: string;
   onChange: (v: string) => void;
   filled: boolean;
+  exampleText?: string;
+  mode?: "example" | "manual";
+  onModeChange?: (m: "example" | "manual") => void;
 }
 
 const PromptSection = ({
@@ -639,6 +642,9 @@ const PromptSection = ({
   value,
   onChange,
   filled,
+  exampleText,
+  mode,
+  onModeChange,
 }: PromptSectionProps) => {
   return (
     <section className="mt-12">
@@ -677,6 +683,40 @@ const PromptSection = ({
       {/* Input area */}
       <div className="mt-4">
         <label className="text-sm font-bold">{inputLabel}</label>
+        {exampleText && onModeChange && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onModeChange("example");
+                onChange(exampleText);
+              }}
+              className={[
+                "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                mode === "example"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-foreground hover:bg-muted",
+              ].join(" ")}
+            >
+              예시 결과 사용하기
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onModeChange("manual");
+                if (value === exampleText) onChange("");
+              }}
+              className={[
+                "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                mode === "manual"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-foreground hover:bg-muted",
+              ].join(" ")}
+            >
+              직접 붙여넣기
+            </button>
+          </div>
+        )}
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
