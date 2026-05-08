@@ -644,51 +644,61 @@ export default function Finalize() {
               위 버튼을 클릭하면 세 가지 관점의 멀티 AI 페르소나가 최종안을 검토합니다
             </div>
           ) : (
-            <div>
-              <div className="grid gap-3 md:grid-cols-3">
-                {PERSONAS.map((p, i) => {
-                  const revealed = i < revealedPersonas;
-                  if (!revealed) {
-                    return (
-                      <div
-                        key={p.number}
-                        className="min-h-[180px] rounded-lg border border-dashed border-border/60 bg-background"
-                      />
-                    );
-                  }
+            <div className="mx-auto flex max-w-3xl flex-col gap-4">
+              {PERSONAS.map((p, i) => {
+                const revealed = i < revealedPersonas;
+                if (!revealed) {
                   return (
                     <div
                       key={p.number}
-                      className="fade-in flex h-full flex-col rounded-lg border border-t-[3px] border-border bg-secondary p-5"
-                      style={{ borderTopColor: PERSONA_COLORS[i] }}
-                    >
-                      <div className="text-[11px] font-medium text-muted-foreground/60">
+                      className="min-h-[180px] rounded-xl border border-dashed border-border/60 bg-background"
+                    />
+                  );
+                }
+                const color = PERSONA_COLORS[i];
+                return (
+                  <article
+                    key={p.number}
+                    className="fade-in rounded-xl border border-border border-t-[4px] bg-[#FAF9F5] p-7 sm:p-8"
+                    style={{ borderTopColor: color }}
+                  >
+                    {/* Header */}
+                    <header className="border-b border-border/60 pb-4">
+                      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                         페르소나 {p.number}
                       </div>
-                      <div className="mt-1 text-base font-bold text-[#1F2A5C]">
+                      <h4
+                        className="mt-1 text-xl font-bold leading-snug sm:text-2xl"
+                        style={{ color }}
+                      >
                         {p.name}
+                      </h4>
+                      <p className="mt-1 text-sm text-muted-foreground">{p.role}</p>
+                    </header>
+
+                    {/* Body */}
+                    <p className="mt-4 text-[15px] leading-[1.7] text-foreground">
+                      {p.body}
+                    </p>
+
+                    {/* Footer — 강점/우려/제안 */}
+                    <dl className="mt-5 space-y-2 text-sm leading-relaxed">
+                      <div className="flex gap-3">
+                        <dt className="w-12 shrink-0 font-bold text-foreground">강점</dt>
+                        <dd className="flex-1 text-foreground/85">{p.strength}</dd>
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {p.role}
+                      <div className="flex gap-3">
+                        <dt className="w-12 shrink-0 font-bold text-foreground">우려</dt>
+                        <dd className="flex-1 text-foreground/85">{p.concern}</dd>
                       </div>
-                      <dl className="mt-3 space-y-2 text-xs leading-relaxed">
-                        <div className="flex gap-2">
-                          <dt className="w-8 shrink-0 font-semibold">강점</dt>
-                          <dd>{p.strength}</dd>
-                        </div>
-                        <div className="flex gap-2">
-                          <dt className="w-8 shrink-0 font-semibold">우려</dt>
-                          <dd>{p.concern}</dd>
-                        </div>
-                        <div className="flex gap-2">
-                          <dt className="w-8 shrink-0 font-semibold">제안</dt>
-                          <dd>{p.suggestion}</dd>
-                        </div>
-                      </dl>
-                    </div>
-                  );
-                })}
-              </div>
+                      <div className="flex gap-3">
+                        <dt className="w-12 shrink-0 font-bold text-foreground">제안</dt>
+                        <dd className="flex-1 text-foreground/85">{p.suggestion}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
