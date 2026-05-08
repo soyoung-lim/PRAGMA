@@ -31,8 +31,8 @@ interface TranslateData {
   aiTranslation1: string;
   aiTranslation2: string;
   ratings: Ratings;
-  rationales?: Rationales;
-  experiment?: ExperimentData;
+  comparisonChoice?: string;
+  comparisonReason?: string;
 }
 
 const EMPTY_RATINGS: Ratings = {
@@ -44,33 +44,17 @@ const EMPTY_RATINGS: Ratings = {
   risk2: 0,
 };
 
-interface Rationales {
-  pragmatic: string;
-  relational: string;
-  risk: string;
-}
+const COMPARISON_CHOICES = [
+  "화용 재현성",
+  "관계 적합성",
+  "리스크 관리",
+  "복합 (2가지 이상)",
+] as const;
 
-const EMPTY_RATIONALES: Rationales = {
-  pragmatic: "",
-  relational: "",
-  risk: "",
-};
-
-type ExperimentVar = "P" | "D" | "R";
-
-export interface ExperimentData {
-  variable: ExperimentVar | null;
-  newValue: string | null;
-  aiTranslation3: string;
-  comparisonNote: string;
-}
-
-const EMPTY_EXPERIMENT: ExperimentData = {
-  variable: null,
-  newValue: null,
-  aiTranslation3: "",
-  comparisonNote: "",
-};
+const EXAMPLE_AI_1 =
+  "您好。我们已收到并审阅了您的合作提案。经过内部讨论，我方暂时无法接受该提案。希望未来仍有合作机会。";
+const EXAMPLE_AI_2 =
+  "尊敬的李经理：\n承蒙贵公司的合作提议，我方已认真研究。目前阶段，由于业务方向调整，本次合作恐难推进。期待未来在更合适的时机与贵公司深入交流，继续保持良好关系。";
 
 const CRITERIA = [
   {
@@ -145,9 +129,10 @@ const Translate = () => {
   const [aiTranslation1, setAiTranslation1] = useState("");
   const [aiTranslation2, setAiTranslation2] = useState("");
   const [ratings, setRatings] = useState<Ratings>(EMPTY_RATINGS);
-  const [rationales, setRationales] = useState<Rationales>(EMPTY_RATIONALES);
-  const [experiment, setExperiment] = useState<ExperimentData>(EMPTY_EXPERIMENT);
-  const [experimentOpen, setExperimentOpen] = useState(false);
+  const [comparisonChoice, setComparisonChoice] = useState<string>("");
+  const [comparisonReason, setComparisonReason] = useState<string>("");
+  const [t1Mode, setT1Mode] = useState<"example" | "manual">("example");
+  const [t2Mode, setT2Mode] = useState<"example" | "manual">("example");
   const [contextOpen, setContextOpen] = useState(false);
 
   useEffect(() => {
@@ -173,14 +158,27 @@ const Translate = () => {
     if (rawT) {
       try {
         const t: TranslateData = JSON.parse(rawT);
-        setAiTranslation1(t.aiTranslation1 || "");
-        setAiTranslation2(t.aiTranslation2 || "");
+        if (t.aiTranslation1) {
+          setAiTranslation1(t.aiTranslation1);
+          setT1Mode(t.aiTranslation1 === EXAMPLE_AI_1 ? "example" : "manual");
+        } else {
+          setAiTranslation1(EXAMPLE_AI_1);
+        }
+        if (t.aiTranslation2) {
+          setAiTranslation2(t.aiTranslation2);
+          setT2Mode(t.aiTranslation2 === EXAMPLE_AI_2 ? "example" : "manual");
+        } else {
+          setAiTranslation2(EXAMPLE_AI_2);
+        }
         setRatings({ ...EMPTY_RATINGS, ...(t.ratings || {}) });
-        if (t.rationales) setRationales({ ...EMPTY_RATIONALES, ...t.rationales });
-        if (t.experiment) setExperiment({ ...EMPTY_EXPERIMENT, ...t.experiment });
+        if (t.comparisonChoice) setComparisonChoice(t.comparisonChoice);
+        if (t.comparisonReason) setComparisonReason(t.comparisonReason);
       } catch {
         /* ignore */
       }
+    } else {
+      setAiTranslation1(EXAMPLE_AI_1);
+      setAiTranslation2(EXAMPLE_AI_2);
     }
   }, []);
 
@@ -224,27 +222,6 @@ const Translate = () => {
     ].join("\n");
   }, [koreanEmail, pdr, speechActLabel]);
 
-  const prompt3Text = useMemo(() => {
-    const strategy = pdr?.speechStrategy ?? "[전략값]";
-    const power = experiment.variable === "P" && experiment.newValue ? experiment.newValue : (pdr?.powerLevel ?? "—");
-    const distance = experiment.variable === "D" && experiment.newValue ? experiment.newValue : (pdr?.distanceLevel ?? "—");
-    const burden = experiment.variable === "R" && experiment.newValue ? experiment.newValue : (pdr?.burdenLevel ?? "—");
-    return [
-      "다음 한국어 비즈니스 이메일을 중국어로 번역해 주세요.",
-      "",
-      koreanEmail || "[한국어 이메일]",
-      "",
-      "[상황 정보]",
-      `- 화행: ${speechActLabel}`,
-      `- 권력(P): ${power}`,
-      `- 거리(D): ${distance}`,
-      `- 부담도(R): ${burden}`,
-      `- 화행 전략: ${strategy}`,
-      "",
-      `위 상황 정보를 반영하여, ${strategy}에 맞는 어조와 표현으로 중국 비즈니스 이메일에 적합하게 번역해 주세요.`,
-    ].join("\n");
-  }, [koreanEmail, pdr, speechActLabel, experiment]);
-
   // Persist
   useEffect(() => {
     const payload: TranslateData = {
@@ -253,11 +230,11 @@ const Translate = () => {
       aiTranslation1,
       aiTranslation2,
       ratings,
-      rationales,
-      experiment,
+      comparisonChoice,
+      comparisonReason,
     };
     localStorage.setItem(TRANSLATE_STORAGE_KEY, JSON.stringify(payload));
-  }, [prompt1Text, prompt2Text, aiTranslation1, aiTranslation2, ratings, rationales, experiment]);
+  }, [prompt1Text, prompt2Text, aiTranslation1, aiTranslation2, ratings, comparisonChoice, comparisonReason]);
 
   const handleCopy = async (text: string) => {
     try {
