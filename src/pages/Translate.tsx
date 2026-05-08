@@ -31,8 +31,8 @@ interface TranslateData {
   aiTranslation1: string;
   aiTranslation2: string;
   ratings: Ratings;
-  rationales?: Rationales;
-  experiment?: ExperimentData;
+  comparisonChoice?: string;
+  comparisonReason?: string;
 }
 
 const EMPTY_RATINGS: Ratings = {
@@ -44,33 +44,17 @@ const EMPTY_RATINGS: Ratings = {
   risk2: 0,
 };
 
-interface Rationales {
-  pragmatic: string;
-  relational: string;
-  risk: string;
-}
+const COMPARISON_CHOICES = [
+  "화용 재현성",
+  "관계 적합성",
+  "리스크 관리",
+  "복합 (2가지 이상)",
+] as const;
 
-const EMPTY_RATIONALES: Rationales = {
-  pragmatic: "",
-  relational: "",
-  risk: "",
-};
-
-type ExperimentVar = "P" | "D" | "R";
-
-export interface ExperimentData {
-  variable: ExperimentVar | null;
-  newValue: string | null;
-  aiTranslation3: string;
-  comparisonNote: string;
-}
-
-const EMPTY_EXPERIMENT: ExperimentData = {
-  variable: null,
-  newValue: null,
-  aiTranslation3: "",
-  comparisonNote: "",
-};
+const EXAMPLE_AI_1 =
+  "您好。我们已收到并审阅了您的合作提案。经过内部讨论，我方暂时无法接受该提案。希望未来仍有合作机会。";
+const EXAMPLE_AI_2 =
+  "尊敬的李经理：\n承蒙贵公司的合作提议，我方已认真研究。目前阶段，由于业务方向调整，本次合作恐难推进。期待未来在更合适的时机与贵公司深入交流，继续保持良好关系。";
 
 const CRITERIA = [
   {
@@ -145,9 +129,10 @@ const Translate = () => {
   const [aiTranslation1, setAiTranslation1] = useState("");
   const [aiTranslation2, setAiTranslation2] = useState("");
   const [ratings, setRatings] = useState<Ratings>(EMPTY_RATINGS);
-  const [rationales, setRationales] = useState<Rationales>(EMPTY_RATIONALES);
-  const [experiment, setExperiment] = useState<ExperimentData>(EMPTY_EXPERIMENT);
-  const [experimentOpen, setExperimentOpen] = useState(false);
+  const [comparisonChoice, setComparisonChoice] = useState<string>("");
+  const [comparisonReason, setComparisonReason] = useState<string>("");
+  const [t1Mode, setT1Mode] = useState<"example" | "manual">("example");
+  const [t2Mode, setT2Mode] = useState<"example" | "manual">("example");
   const [contextOpen, setContextOpen] = useState(false);
 
   useEffect(() => {
@@ -173,14 +158,27 @@ const Translate = () => {
     if (rawT) {
       try {
         const t: TranslateData = JSON.parse(rawT);
-        setAiTranslation1(t.aiTranslation1 || "");
-        setAiTranslation2(t.aiTranslation2 || "");
+        if (t.aiTranslation1) {
+          setAiTranslation1(t.aiTranslation1);
+          setT1Mode(t.aiTranslation1 === EXAMPLE_AI_1 ? "example" : "manual");
+        } else {
+          setAiTranslation1(EXAMPLE_AI_1);
+        }
+        if (t.aiTranslation2) {
+          setAiTranslation2(t.aiTranslation2);
+          setT2Mode(t.aiTranslation2 === EXAMPLE_AI_2 ? "example" : "manual");
+        } else {
+          setAiTranslation2(EXAMPLE_AI_2);
+        }
         setRatings({ ...EMPTY_RATINGS, ...(t.ratings || {}) });
-        if (t.rationales) setRationales({ ...EMPTY_RATIONALES, ...t.rationales });
-        if (t.experiment) setExperiment({ ...EMPTY_EXPERIMENT, ...t.experiment });
+        if (t.comparisonChoice) setComparisonChoice(t.comparisonChoice);
+        if (t.comparisonReason) setComparisonReason(t.comparisonReason);
       } catch {
         /* ignore */
       }
+    } else {
+      setAiTranslation1(EXAMPLE_AI_1);
+      setAiTranslation2(EXAMPLE_AI_2);
     }
   }, []);
 
@@ -224,27 +222,6 @@ const Translate = () => {
     ].join("\n");
   }, [koreanEmail, pdr, speechActLabel]);
 
-  const prompt3Text = useMemo(() => {
-    const strategy = pdr?.speechStrategy ?? "[전략값]";
-    const power = experiment.variable === "P" && experiment.newValue ? experiment.newValue : (pdr?.powerLevel ?? "—");
-    const distance = experiment.variable === "D" && experiment.newValue ? experiment.newValue : (pdr?.distanceLevel ?? "—");
-    const burden = experiment.variable === "R" && experiment.newValue ? experiment.newValue : (pdr?.burdenLevel ?? "—");
-    return [
-      "다음 한국어 비즈니스 이메일을 중국어로 번역해 주세요.",
-      "",
-      koreanEmail || "[한국어 이메일]",
-      "",
-      "[상황 정보]",
-      `- 화행: ${speechActLabel}`,
-      `- 권력(P): ${power}`,
-      `- 거리(D): ${distance}`,
-      `- 부담도(R): ${burden}`,
-      `- 화행 전략: ${strategy}`,
-      "",
-      `위 상황 정보를 반영하여, ${strategy}에 맞는 어조와 표현으로 중국 비즈니스 이메일에 적합하게 번역해 주세요.`,
-    ].join("\n");
-  }, [koreanEmail, pdr, speechActLabel, experiment]);
-
   // Persist
   useEffect(() => {
     const payload: TranslateData = {
@@ -253,11 +230,11 @@ const Translate = () => {
       aiTranslation1,
       aiTranslation2,
       ratings,
-      rationales,
-      experiment,
+      comparisonChoice,
+      comparisonReason,
     };
     localStorage.setItem(TRANSLATE_STORAGE_KEY, JSON.stringify(payload));
-  }, [prompt1Text, prompt2Text, aiTranslation1, aiTranslation2, ratings, rationales, experiment]);
+  }, [prompt1Text, prompt2Text, aiTranslation1, aiTranslation2, ratings, comparisonChoice, comparisonReason]);
 
   const handleCopy = async (text: string) => {
     try {
@@ -375,6 +352,9 @@ const Translate = () => {
           value={aiTranslation1}
           onChange={setAiTranslation1}
           filled={t1Filled}
+          exampleText={EXAMPLE_AI_1}
+          mode={t1Mode}
+          onModeChange={setT1Mode}
         />
 
         {/* Section 2: Prompt 2 */}
@@ -389,133 +369,10 @@ const Translate = () => {
           value={aiTranslation2}
           onChange={setAiTranslation2}
           filled={t2Filled}
+          exampleText={EXAMPLE_AI_2}
+          mode={t2Mode}
+          onModeChange={setT2Mode}
         />
-
-        {/* Mini experiment */}
-        <section className="mt-12">
-          <div
-            className="rounded-lg border border-dashed border-foreground p-5"
-            style={{ backgroundColor: "rgba(254, 252, 232, 0.5)" }}
-          >
-            <button
-              type="button"
-              onClick={() => setExperimentOpen((v) => !v)}
-              className="flex w-full items-start justify-between gap-3 text-left"
-              aria-expanded={experimentOpen}
-            >
-              <div>
-                <h3 className="text-lg font-bold">
-                  화용 변수 미니 실험 <span className="text-xs font-medium text-muted-foreground">[선택]</span>
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  같은 시나리오에서 P·D·R 변수 하나만 바꾸면 표현이 어떻게 달라질까?
-                </p>
-              </div>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {experimentOpen ? "접기 ▲" : "펼치기 ▼"}
-              </span>
-            </button>
-
-            {experimentOpen && (
-              <div className="mt-5 space-y-5">
-                <p className="text-sm leading-relaxed text-foreground/80">
-                  P, D, R 중 하나의 변수만 변경한 프롬프트를 추가로 생성합니다. 외부 AI 도구에 복붙하여 결과를 비교해보세요.
-                  본 단계는 선택 사항이며, 건너뛰어도 다음 단계로 진행할 수 있습니다.
-                </p>
-
-                <div>
-                  <h4 className="text-sm font-bold">변경할 변수 선택</h4>
-                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-4">
-                    {([
-                      { v: "P" as ExperimentVar, label: "권력(P) 바꾸기" },
-                      { v: "D" as ExperimentVar, label: "거리(D) 바꾸기" },
-                      { v: "R" as ExperimentVar, label: "부담도(R) 바꾸기" },
-                    ]).map((opt) => (
-                      <label key={opt.v} className="flex items-center gap-2 text-sm">
-                        <input
-                          type="radio"
-                          name="exp-var"
-                          checked={experiment.variable === opt.v}
-                          onChange={() => setExperiment((e) => ({ ...e, variable: opt.v, newValue: null }))}
-                        />
-                        {opt.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {experiment.variable && (
-                  <div>
-                    <h4 className="text-sm font-bold">변경 후 값 선택</h4>
-                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-4">
-                      {(experiment.variable === "P"
-                        ? ["내가 우위", "동등", "상대가 우위"].filter((v) => v !== pdr?.powerLevel)
-                        : experiment.variable === "D"
-                        ? ["가깝다", "중간", "멀다"].filter((v) => v !== pdr?.distanceLevel)
-                        : ["낮음", "중간", "높음"].filter((v) => v !== pdr?.burdenLevel)
-                      ).map((v) => (
-                        <label key={v} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="radio"
-                            name="exp-newval"
-                            checked={experiment.newValue === v}
-                            onChange={() => setExperiment((e) => ({ ...e, newValue: v }))}
-                          />
-                          {v}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {experiment.variable && experiment.newValue && (
-                  <>
-                    <div className="relative rounded-lg bg-foreground p-6 pr-28">
-                      <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-background">
-                        {prompt3Text}
-                      </pre>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(prompt3Text)}
-                        className="absolute right-4 top-4 rounded-md border border-background bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-background hover:text-foreground"
-                      >
-                        복사하기
-                      </button>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        위 프롬프트를 외부 AI 도구에 붙여넣고 결과를 아래에 입력하세요.
-                      </p>
-                      <textarea
-                        value={experiment.aiTranslation3}
-                        onChange={(e) => setExperiment((p) => ({ ...p, aiTranslation3: e.target.value }))}
-                        placeholder="변수 변경 프롬프트로 생성한 중국어 번역을 붙여넣으세요"
-                        className="mt-2 block h-[110px] w-full resize-none rounded-lg border border-foreground bg-background p-4 text-sm leading-relaxed focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                      />
-                    </div>
-
-                    {experiment.aiTranslation3.trim().length > 0 && (
-                      <div>
-                        <label className="text-sm font-bold">원래 조건과 비교해 무엇이 달라졌나요?</label>
-                        <textarea
-                          maxLength={100}
-                          value={experiment.comparisonNote}
-                          onChange={(e) => setExperiment((p) => ({ ...p, comparisonNote: e.target.value.slice(0, 100) }))}
-                          placeholder="예: 거리를 '가깝다'로 바꾸니 호칭이 더 친근해짐"
-                          className="mt-2 block h-[80px] w-full resize-none rounded-lg border border-foreground bg-background p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        />
-                        <div className="mt-1 text-right text-xs text-muted-foreground">
-                          {experiment.comparisonNote.length} / 100
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
 
         {/* Evaluation framework intro */}
         <section className="mt-12">
@@ -665,32 +522,32 @@ const Translate = () => {
             })}
           </div>
 
-          {/* Per-criterion comments */}
+          {/* Single comparison question */}
           <div className="mt-6 rounded-lg border border-border bg-background p-5">
-            <h4 className="text-base font-bold">기준별 비교 코멘트 (선택)</h4>
-            <p className="mt-1 text-sm text-muted-foreground">
-              두 번역의 차이를 한 줄로 기록해두면 다음 단계에서 활용됩니다
-            </p>
-            <div className="mt-4 space-y-3">
-              {([
-                { key: "pragmatic" as const, label: "화용 재현성", ph: "예: 번역 2가 의도를 더 정확히 전달함" },
-                { key: "relational" as const, label: "관계 적합성", ph: "예: 번역 1의 호칭 표현이 더 자연스러움" },
-                { key: "risk" as const, label: "리스크 관리", ph: "예: 두 번역 모두 책임 회피 표현 적절" },
-              ]).map((f) => (
-                <div key={f.key} className="grid grid-cols-1 gap-2 sm:grid-cols-[140px_1fr] sm:items-center">
-                  <label className="text-sm font-medium">{f.label}</label>
+            <h4 className="text-base font-bold">두 번역을 비교할 때 가장 중요하게 본 기준은 무엇인가요?</h4>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-4">
+              {COMPARISON_CHOICES.map((c) => (
+                <label key={c} className="flex items-center gap-2 text-sm">
                   <input
-                    type="text"
-                    maxLength={80}
-                    value={rationales[f.key]}
-                    onChange={(e) =>
-                      setRationales((r) => ({ ...r, [f.key]: e.target.value.slice(0, 80) }))
-                    }
-                    placeholder={f.ph}
-                    className="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    type="radio"
+                    name="comparison-choice"
+                    checked={comparisonChoice === c}
+                    onChange={() => setComparisonChoice(c)}
                   />
-                </div>
+                  {c}
+                </label>
               ))}
+            </div>
+            <div className="mt-4">
+              <label className="text-sm font-medium">그렇게 판단한 이유를 한 줄로 적어보세요.</label>
+              <input
+                type="text"
+                maxLength={120}
+                value={comparisonReason}
+                onChange={(e) => setComparisonReason(e.target.value.slice(0, 120))}
+                placeholder="예: 거절 의도를 살리면서도 관계를 유지하는 표현이 더 적절했음"
+                className="mt-2 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              />
             </div>
           </div>
 
@@ -722,7 +579,7 @@ const Translate = () => {
             </div>
           </div>
           <p className="mt-3 text-xs text-gray-600">
-            이 점수는 본인의 화용적 직관을 기록한 것입니다. 다음 단계에서 4명 가상 평가자의 다관점 피드백을 받게 됩니다.
+            이 점수는 본인의 화용적 직관을 기록한 것입니다. 다음 단계에서 4개 관점의 AI 페르소나 피드백을 받게 됩니다.
           </p>
         </section>
 
@@ -768,6 +625,9 @@ interface PromptSectionProps {
   value: string;
   onChange: (v: string) => void;
   filled: boolean;
+  exampleText?: string;
+  mode?: "example" | "manual";
+  onModeChange?: (m: "example" | "manual") => void;
 }
 
 const PromptSection = ({
@@ -782,6 +642,9 @@ const PromptSection = ({
   value,
   onChange,
   filled,
+  exampleText,
+  mode,
+  onModeChange,
 }: PromptSectionProps) => {
   return (
     <section className="mt-12">
@@ -820,6 +683,40 @@ const PromptSection = ({
       {/* Input area */}
       <div className="mt-4">
         <label className="text-sm font-bold">{inputLabel}</label>
+        {exampleText && onModeChange && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onModeChange("example");
+                onChange(exampleText);
+              }}
+              className={[
+                "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                mode === "example"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-foreground hover:bg-muted",
+              ].join(" ")}
+            >
+              예시 결과 사용하기
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onModeChange("manual");
+                if (value === exampleText) onChange("");
+              }}
+              className={[
+                "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                mode === "manual"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-foreground hover:bg-muted",
+              ].join(" ")}
+            >
+              직접 붙여넣기
+            </button>
+          </div>
+        )}
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}

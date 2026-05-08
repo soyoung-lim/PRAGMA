@@ -263,7 +263,7 @@ const Dashboard = () => {
 
   const decisionRevised = finalize?.finalDecision === "수정 후 확정";
   const decisionMsg = decisionRevised
-    ? "페르소나 피드백을 반영해 최종안을 조정했습니다. 메타인지적 학습이 일어났습니다."
+    ? "페르소나 피드백을 반영해 최종안을 조정했습니다. 피드백을 바탕으로 자신의 판단을 재검토했습니다."
     : finalize?.finalDecision === "그대로 확정"
       ? "초기 판단과 최종 결정이 일관됩니다. 본인의 화용론적 직관이 검증되었습니다."
       : "최종 의사결정 정보가 없습니다.";
@@ -305,6 +305,20 @@ const Dashboard = () => {
         dump[k] = null;
       }
     });
+    dump["analytics"] = {
+      totalLearningTime: analytics.timeLabel,
+      nonlinearRevisionCount: analytics.rollbackCount,
+      personaFeedbackReceived: analytics.personaReceived,
+      revisionsAfterPersona: analytics.revisionsAfterPersona,
+      sessionStart: localStorage.getItem("sessionStartAt"),
+      exportedAt: new Date().toISOString(),
+    };
+    try {
+      const raw = localStorage.getItem("learnerActions");
+      dump["learnerActions"] = raw ? JSON.parse(raw) : [];
+    } catch {
+      dump["learnerActions"] = [];
+    }
     const blob = new Blob([JSON.stringify(dump, null, 2)], {
       type: "application/json",
     });
@@ -481,7 +495,7 @@ const Dashboard = () => {
 
         {/* C. Prompt effect comparison */}
         <section className="mt-16">
-          <h3 className="text-2xl font-bold">프롬프트 효과 비교</h3>
+          <h3 className="text-2xl font-bold">화용 정보 반영 효과 비교</h3>
 
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-lg border border-foreground bg-secondary p-6">
@@ -531,7 +545,7 @@ const Dashboard = () => {
 
         {/* D. Multi-persona summary */}
         <section className="mt-16">
-          <h3 className="text-2xl font-bold">4명 평가자의 종합 피드백 요약</h3>
+          <h3 className="text-2xl font-bold">4개 관점의 AI 페르소나 피드백 요약</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             각 평가자가 제시한 강점·우려·제안을 한눈에 봅니다
           </p>
@@ -628,6 +642,43 @@ const Dashboard = () => {
           <div className="mt-4 rounded-md border border-border bg-secondary p-4 text-sm">
             {decisionMsg}
           </div>
+
+          {/* Before / After comparison */}
+          {(() => {
+            const f = finalize as unknown as {
+              preFeedbackTranslation?: string;
+              postFeedbackTranslation?: string;
+              finalTranslation?: string;
+              postFeedbackDecision?: string;
+              finalDecisionReason?: string;
+            } | null;
+            const before = f?.preFeedbackTranslation || f?.finalTranslation || "";
+            const after =
+              f?.postFeedbackDecision === "as-is"
+                ? before
+                : f?.postFeedbackTranslation || before;
+            if (!before && !after) return null;
+            return (
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-lg border border-border bg-background p-5">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    피드백 전 최종안
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
+                    {before || "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg border-2 border-foreground bg-accent/10 p-5">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    피드백 후 최종안
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
+                    {after || "—"}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {/* E2. Learning analytics */}
@@ -637,29 +688,7 @@ const Dashboard = () => {
             본 세션의 판단 기록입니다 (연구 데이터 export 가능)
           </p>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-lg border border-foreground bg-secondary p-5">
-              <div className="text-xs font-medium text-muted-foreground">
-                총 학습 시간
-              </div>
-              <div className="mt-2 text-3xl font-bold">{analytics.timeLabel}</div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                session_start ~ 현재까지
-              </div>
-            </div>
-            <div className="rounded-lg border border-foreground bg-secondary p-5">
-              <div className="text-xs font-medium text-muted-foreground">
-                비선형 수정 횟수
-              </div>
-              <div className="mt-2 text-3xl font-bold">
-                {analytics.rollbackCount}회
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {analytics.rollbackCount === 0
-                  ? "선형 학습 진행"
-                  : "이전 단계로 돌아가 수정한 횟수"}
-              </div>
-            </div>
+          <div className="mt-6 grid grid-cols-1 gap-4">
             <div className="rounded-lg border border-foreground bg-secondary p-5">
               <div className="text-xs font-medium text-muted-foreground">
                 페르소나 피드백 활용

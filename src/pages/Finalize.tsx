@@ -210,6 +210,7 @@ export default function Finalize() {
   const [data, setData] = useState<FinalizeData>(EMPTY);
   const [contextOpen, setContextOpen] = useState(false);
   const [revealedPersonas, setRevealedPersonas] = useState(0);
+  const [expandedPersonas, setExpandedPersonas] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     ensureSession();
@@ -531,7 +532,7 @@ export default function Finalize() {
         <section className="mb-12">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <h3 className="text-xl font-bold">
-              3. 4명의 가상 평가자가 본인의 최종안을 평가합니다
+              3. 4개 관점의 AI 페르소나가 본인의 최종안을 평가합니다
             </h3>
             <Dot on={data.personaFeedbackReceived} />
           </div>
@@ -561,7 +562,7 @@ export default function Finalize() {
             >
               {data.personaFeedbackReceived
                 ? "피드백 받음"
-                : "멀티-페르소나 피드백 받기"}
+                : "4개 관점의 AI 페르소나 피드백 받기"}
             </Button>
           </div>
           {!data.personaFeedbackReceived &&
@@ -577,7 +578,7 @@ export default function Finalize() {
 
           {!data.personaFeedbackReceived ? (
             <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed border-border bg-secondary p-8 text-sm text-muted-foreground">
-              위 버튼을 클릭하면 4명의 가상 평가자가 본인의 번역을 분석합니다
+              위 버튼을 클릭하면 4개 관점의 AI 페르소나가 본인의 번역을 분석합니다
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2">
@@ -596,7 +597,6 @@ export default function Finalize() {
                         {p.role}
                       </div>
                     </header>
-                    <p className="mb-4 text-sm leading-relaxed">{p.feedback}</p>
                     <dl className="space-y-1.5 text-sm">
                       <div className="flex gap-2">
                         <dt className="w-12 shrink-0 font-semibold">강점</dt>
@@ -611,6 +611,18 @@ export default function Finalize() {
                         <dd>{p.suggestion}</dd>
                       </div>
                     </dl>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedPersonas((s) => ({ ...s, [p.number]: !s[p.number] }))
+                      }
+                      className="mt-3 text-xs font-medium text-muted-foreground underline-offset-2 hover:underline"
+                    >
+                      {expandedPersonas[p.number] ? "상세 보기 접기 ▲" : "상세 보기 ▼"}
+                    </button>
+                    {expandedPersonas[p.number] && (
+                      <p className="mt-3 text-sm leading-relaxed">{p.feedback}</p>
+                    )}
                   </article>
                 ) : (
                   <div
