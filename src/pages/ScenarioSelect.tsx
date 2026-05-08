@@ -58,7 +58,6 @@ const ScenarioSelect = () => {
     if (speechAct) {
       const payload: WorkflowSelection = { speechAct, scenarioId: id };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      navigate("/pdr");
     }
   };
 
