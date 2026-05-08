@@ -306,20 +306,13 @@ export default function Finalize() {
   const decisionDone =
     data.postFeedbackDecision !== "" &&
     (!needsRevisionFields ||
-      (influenceCount >= 1 && data.postFeedbackTranslation.trim().length > 0)) &&
-    data.finalDecisionReason.trim().length > 0;
+      (influenceCount >= 1 && data.postFeedbackTranslation.trim().length > 0));
   const allDone =
     finalTranslationDone &&
     revisionDone &&
     data.personaFeedbackReceived &&
     decisionDone;
 
-  const reasonHelper =
-    data.postFeedbackDecision === "as-is"
-      ? "왜 피드백을 반영하지 않았는지 설명해주세요"
-      : data.postFeedbackDecision === "full-revision"
-        ? "어떤 부분을 어떻게 수정했는지 설명해주세요"
-        : "결정 후 이유를 작성해주세요";
 
   return (
     <div className="min-h-screen bg-background">
