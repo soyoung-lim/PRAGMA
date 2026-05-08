@@ -53,10 +53,10 @@ const Landing = () => {
           <div className="flex flex-col items-stretch gap-3 sm:grid sm:grid-cols-2 sm:gap-3 lg:flex lg:flex-row lg:items-stretch lg:justify-between lg:gap-0">
             {STEPS.map((s, idx) => (
               <div key={s.n} className="flex items-center lg:flex-1">
-                <div className="relative w-full rounded-2xl border-2 border-foreground/80 bg-card px-4 pt-7 pb-5 text-center shadow-sm">
+                <div className="relative w-full rounded-2xl border-[1.5px] border-[#1D2230] bg-card px-4 pt-7 pb-5 text-center shadow-sm">
                   <span
                     className="absolute -top-3 left-1/2 inline-flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-[#1D2230] ring-2 ring-card"
-                    style={{ backgroundColor: "#D6AA2F" }}
+                    style={{ backgroundColor: "#E8C547" }}
                   >
                     {s.n}
                   </span>
