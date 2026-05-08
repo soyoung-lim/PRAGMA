@@ -571,18 +571,19 @@ export default function Finalize() {
               위 버튼을 클릭하면 3개 관점의 AI 페르소나가 최종안을 검토합니다
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-5">
               {PERSONAS.map((p, i) =>
                 i < revealedPersonas ? (
                   <article
                     key={p.number}
-                    className="fade-in rounded-lg border border-border bg-secondary p-6"
+                    className="fade-in rounded-lg border border-border border-t-[3px] bg-secondary p-6"
+                    style={{ borderTopColor: PERSONA_COLORS[i] }}
                   >
                     <header className="mb-3 border-b border-border/40 pb-3">
-                      <div className="text-xs font-semibold text-muted-foreground">
+                      <div className="text-[11px] font-medium text-muted-foreground/60">
                         페르소나 {p.number}
                       </div>
-                      <div className="mt-1 text-base font-bold">{p.name}</div>
+                      <div className="mt-1 text-lg font-bold">{p.name}</div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         {p.role}
                       </div>
@@ -617,7 +618,7 @@ export default function Finalize() {
                 ) : (
                   <div
                     key={p.number}
-                    className="min-h-[260px] rounded-lg border border-dashed border-border/60 bg-background"
+                    className="min-h-[200px] rounded-lg border border-dashed border-border/60 bg-background"
                   />
                 ),
               )}
