@@ -85,7 +85,7 @@ const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub:
 
 const FINAL_TRANSLATION_MAX = 200;
 
-const PERSONA_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
+const PERSONA_COLORS = ["#A82E25", "#A87E1C", "#161E47"];
 
 const PERSONA_BODIES_BY_SCENARIO: Record<string, string[]> = {
   "ref-1": [
