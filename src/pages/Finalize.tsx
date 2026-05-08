@@ -839,25 +839,6 @@ export default function Finalize() {
             </>
           )}
 
-          {/* 블록 5: 유지/수정 이유 */}
-          <div>
-            <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="font-semibold">유지/수정 이유</span>
-              <span className="text-xs text-muted-foreground">
-                현재 글자수 {data.finalDecisionReason.length} / {DECISION_REASON_MAX}
-              </span>
-            </div>
-            <div className="mb-2 text-xs text-muted-foreground">{reasonHelper}</div>
-            <Textarea
-              value={data.finalDecisionReason}
-              onChange={(e) =>
-                update("finalDecisionReason", e.target.value.slice(0, DECISION_REASON_MAX))
-              }
-              maxLength={DECISION_REASON_MAX}
-              placeholder="결정의 이유를 200자 이내로 설명해주세요"
-              className="min-h-[100px] text-base"
-            />
-          </div>
         </section>
 
         {/* F. 하단 */}
