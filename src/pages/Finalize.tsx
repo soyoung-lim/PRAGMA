@@ -616,10 +616,10 @@ export default function Finalize() {
                       onClick={() => setSelectedPersona(p.number)}
                       aria-pressed={active}
                       className={[
-                        "fade-in rounded-lg border border-t-[3px] p-5 text-left transition-colors",
+                        "fade-in rounded-lg border border-t-[3px] p-5 text-left transition-all duration-200 cursor-pointer",
                         active
                           ? "border-foreground bg-accent/10 shadow-sm"
-                          : "border-border bg-secondary hover:bg-secondary/70",
+                          : "border-border bg-secondary hover:border-foreground/40 hover:bg-secondary/70 hover:shadow-sm hover:-translate-y-0.5",
                       ].join(" ")}
                       style={{ borderTopColor: PERSONA_COLORS[i] }}
                     >
