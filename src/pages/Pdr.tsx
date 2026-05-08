@@ -283,6 +283,15 @@ const Pdr = () => {
           <FilledLabel filled={!!powerLevel && !!distanceLevel && !!burdenLevel}>
             2. 권력·거리·부담도 선택
           </FilledLabel>
+          {/* Scenario hint block */}
+          <div className="mt-3 rounded-lg border-l-4 border-accent bg-[#F8F6F0] px-4 py-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              상황 단서
+            </span>
+            <p className="mt-1 text-sm leading-relaxed text-foreground/80">
+              {scenarioSummary || "1단계에서 시나리오를 먼저 선택하세요."}
+            </p>
+          </div>
           <p className="mt-2 text-sm text-muted-foreground">
             시나리오에서 권력·거리·부담도 단서를 찾아 선택하세요.
           </p>
@@ -327,6 +336,9 @@ const Pdr = () => {
               />
             </div>
           </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            ※ 정답을 맞히는 단계가 아니라, 번역 전에 상황을 어떻게 해석했는지 기록하는 단계입니다.
+          </p>
         </section>
 
         {/* Section 3: Strategy */}
@@ -334,6 +346,9 @@ const Pdr = () => {
           <FilledLabel filled={strategyFilled}>3. 화행 전략 선택</FilledLabel>
           <p className="mt-2 text-sm text-muted-foreground">
             P·D·R을 고려해 가장 적합한 전략 1개를 선택합니다.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            ※ 정답을 고르는 단계가 아니라, 현재 상황에서 어떤 표현 방식이 적절하다고 판단하는지 기록하는 단계입니다.
           </p>
 
           <div className="mt-4 flex items-start gap-2 rounded-lg border border-foreground bg-secondary px-4 py-3 text-[13px] leading-relaxed">
