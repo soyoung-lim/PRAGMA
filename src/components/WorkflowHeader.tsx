@@ -26,8 +26,8 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
   };
 
   return (
-    <header className="border-b border-border/60 bg-background print:hidden">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 pt-4 pb-2">
+    <header className="border-b border-[#D4CFC2] bg-[#EFEAE0] print:hidden">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 pt-3 pb-1.5">
         <Link
           to="/"
           aria-label="홈으로"
@@ -46,7 +46,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
         )}
       </div>
 
-      <nav aria-label="진행 단계" className="mx-auto max-w-6xl px-6 pb-3">
+      <nav aria-label="진행 단계" className="mx-auto max-w-6xl px-6 pb-2.5">
         <ol className="flex items-stretch gap-1.5 sm:gap-2">
           {STEPS.map((s, idx) => {
             const isCurrent = s.num === currentStep;
@@ -61,17 +61,22 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
                   onClick={() => jumpTo(s)}
                   disabled={!clickable}
                   className={[
-                    "flex flex-1 h-[52px] items-center justify-center rounded-lg border-2 box-border px-2 py-0 text-center leading-none transition-colors",
+                    "flex flex-1 h-[54px] items-center justify-center rounded-lg border-2 box-border px-2 py-0 text-center leading-none transition-colors",
                     isCurrent
-                      ? "bg-accent text-foreground font-bold border-foreground"
+                      ? "bg-[#C99A24] text-white font-bold border-[#C99A24] shadow-sm"
                       : isDone
-                      ? "bg-background border-foreground text-foreground font-medium"
-                      : "bg-background border-muted-foreground/30 text-muted-foreground/70 font-normal",
-                    clickable ? "cursor-pointer hover:bg-muted" : "cursor-default",
+                      ? "bg-transparent border-foreground/70 text-foreground font-medium"
+                      : "bg-transparent border-muted-foreground/30 text-muted-foreground font-normal",
+                    clickable ? "cursor-pointer hover:bg-background/60 hover:text-foreground" : "cursor-default",
                   ].join(" ")}
                   aria-current={isCurrent ? "step" : undefined}
                 >
-                  <span className="text-[11px] sm:text-xs leading-none">
+                  <span
+                    className={[
+                      "leading-none",
+                      isCurrent ? "text-[12px] sm:text-[13px]" : "text-[11px] sm:text-xs",
+                    ].join(" ")}
+                  >
                     {s.num}. {s.label}
                   </span>
                 </button>

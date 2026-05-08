@@ -349,7 +349,7 @@ export default function Finalize() {
       <WorkflowHeader currentStep={4} />
       
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-6 py-6">
         {/* 페이지 제목 */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold sm:text-3xl">

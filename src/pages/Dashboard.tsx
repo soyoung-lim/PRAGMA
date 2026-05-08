@@ -360,7 +360,7 @@ const Dashboard = () => {
     <div className="dashboard-page min-h-screen bg-background text-foreground">
       <WorkflowHeader currentStep={5} completed />
 
-      <main className="mx-auto max-w-6xl px-6 py-12">
+      <main className="mx-auto max-w-6xl px-6 py-6">
         {/* Title */}
         <div>
           <h2 className="text-2xl font-bold sm:text-3xl">번역 의사결정 리포트</h2>
