@@ -25,7 +25,7 @@ const ScenarioSelect = () => {
     try {
       const parsed: WorkflowSelection = JSON.parse(raw);
       if (parsed.speechAct) setSpeechAct(parsed.speechAct);
-      if (parsed.scenarioId) setScenarioId(parsed.scenarioId);
+      // 진입 시 시나리오는 자동 선택하지 않음 — 사용자가 직접 클릭해야 함
     } catch {
       /* ignore */
     }
