@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Info, Lock, X } from "lucide-react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { ChevronDown, ChevronUp, Info, Lock } from "lucide-react";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { Rollback } from "@/components/Rollback";
 import { ensureSession, logAction } from "@/lib/tracking";
@@ -87,8 +86,6 @@ const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub:
 const FINAL_TRANSLATION_MAX = 200;
 
 const PERSONA_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
-const PERSONA_BG_COLORS = ["#FBEAE6", "#FAF1D7", "#E8EAF2"];
-const PERSONA_LINE_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
 
 
 interface Persona {
