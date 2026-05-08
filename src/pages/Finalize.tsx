@@ -208,6 +208,7 @@ export default function Finalize() {
   const speechAct = (selection?.speechAct ?? null) as SpeechAct | null;
   const speechActLabel =
     SPEECH_ACTS.find((a) => a.id === speechAct)?.label ?? "-";
+  const PERSONAS = useMemo(() => getPersonas(selection?.scenarioId ?? null), [selection?.scenarioId]);
   const scenario =
     speechAct && selection?.scenarioId
       ? SCENARIOS[speechAct].find((s) => s.id === selection.scenarioId) ?? null
