@@ -344,6 +344,9 @@ const Pdr = () => {
           <p className="mt-2 text-sm text-muted-foreground">
             P·D·R을 고려해 가장 적합한 전략 1개를 선택합니다.
           </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            ※ 정답을 고르는 단계가 아니라, 현재 상황에서 어떤 표현 방식이 적절하다고 판단하는지 기록하는 단계입니다.
+          </p>
 
           <div className="mt-4 flex items-start gap-2 rounded-lg border border-foreground bg-secondary px-4 py-3 text-[13px] leading-relaxed">
             <span className="flex-1">
