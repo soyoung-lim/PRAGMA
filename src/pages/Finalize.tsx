@@ -9,6 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   SCENARIOS,
   SPEECH_ACTS,
   STORAGE_KEY,
@@ -199,7 +205,7 @@ export default function Finalize() {
   const [data, setData] = useState<FinalizeData>(EMPTY);
   const [contextOpen, setContextOpen] = useState(false);
   const [revealedPersonas, setRevealedPersonas] = useState(0);
-  const [selectedPersona, setSelectedPersona] = useState<number>(1);
+  const [detailPersona, setDetailPersona] = useState<number | null>(null);
 
   useEffect(() => {
     ensureSession();
@@ -405,9 +411,10 @@ export default function Finalize() {
           <div className="grid gap-5 md:grid-cols-5">
             <div className="md:col-span-2">
               <div className="mb-2 text-sm font-semibold">한국어 원문</div>
-              <div className="min-h-[200px] whitespace-pre-wrap rounded-md border border-border bg-secondary p-4 text-sm">
+              <div className="whitespace-pre-wrap rounded-md border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
                 {koreanEmail || "(이전 단계에서 작성한 한국어 이메일이 여기에 표시됩니다)"}
               </div>
+              <div className="mt-1 text-[11px] text-muted-foreground/70">읽기 전용</div>
             </div>
             <div className="md:col-span-3">
               <div className="mb-2 flex items-center justify-between text-sm">
@@ -423,7 +430,7 @@ export default function Finalize() {
                 }
                 maxLength={FINAL_TRANSLATION_MAX}
                 placeholder="두 AI 번역에서 좋은 부분을 골라 조합하거나, 본인이 직접 수정·재작성하세요"
-                className="min-h-[200px] resize-y text-base"
+                className="min-h-[96px] resize-y text-base"
               />
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={() => copyAi(1)}>
@@ -543,16 +550,10 @@ export default function Finalize() {
         <section className="mb-12">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <h3 className="text-xl font-bold">
-              3. 세 가지 관점의 멀티 AI 페르소나가 최종안을 검토합니다
+              3. 멀티 AI 페르소나가 최종안을 검토합니다
             </h3>
             <Dot on={data.personaFeedbackReceived} />
           </div>
-          <p className="mb-5 text-sm text-muted-foreground">
-            각 페르소나는 수신자·교수자·리스크 관점에서 최종 번역을 검토합니다
-          </p>
-          <p className="mb-5 text-xs text-secondary-foreground/60">
-            카드를 클릭하면 해당 관점의 상세 피드백을 아래에서 확인할 수 있습니다.
-          </p>
 
           <div className="mb-5 flex items-start gap-2 rounded-md border border-border bg-secondary p-3 text-[13px]">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
@@ -595,12 +596,10 @@ export default function Finalize() {
               위 버튼을 클릭하면 세 가지 관점의 멀티 AI 페르소나가 최종안을 검토합니다
             </div>
           ) : (
-            <div className="space-y-5">
-              {/* 상단: 3개 요약 카드 */}
+            <div>
               <div className="grid gap-3 md:grid-cols-3">
                 {PERSONAS.map((p, i) => {
                   const revealed = i < revealedPersonas;
-                  const active = selectedPersona === p.number;
                   if (!revealed) {
                     return (
                       <div
@@ -610,17 +609,9 @@ export default function Finalize() {
                     );
                   }
                   return (
-                    <button
+                    <div
                       key={p.number}
-                      type="button"
-                      onClick={() => setSelectedPersona(p.number)}
-                      aria-pressed={active}
-                      className={[
-                        "fade-in rounded-lg border border-t-[3px] p-5 text-left transition-all duration-200 cursor-pointer",
-                        active
-                          ? "border-foreground bg-accent/10 shadow-sm"
-                          : "border-border bg-secondary hover:border-foreground/40 hover:bg-secondary/70 hover:shadow-sm hover:-translate-y-0.5",
-                      ].join(" ")}
+                      className="fade-in flex h-full flex-col rounded-lg border border-t-[3px] border-border bg-secondary p-5"
                       style={{ borderTopColor: PERSONA_COLORS[i] }}
                     >
                       <div className="text-[11px] font-medium text-muted-foreground/60">
@@ -646,37 +637,50 @@ export default function Finalize() {
                           <dd className="line-clamp-2">{p.suggestion}</dd>
                         </div>
                       </dl>
-                    </button>
+                      <div className="mt-4 pt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setDetailPersona(p.number)}
+                        >
+                          상세 보기
+                        </Button>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
-
-              {/* 하단: 상세 패널 */}
-              {(() => {
-                const sel = PERSONAS.find((p) => p.number === selectedPersona) ?? PERSONAS[0];
-                const idx = PERSONAS.indexOf(sel);
-                return (
-                  <article
-                    className="rounded-lg border border-border border-t-[3px] bg-background p-6"
-                    style={{ borderTopColor: PERSONA_COLORS[idx] }}
-                  >
-                    <header className="mb-4 border-b border-border/40 pb-3">
-                      <div className="text-[11px] font-medium text-muted-foreground/60">
-                        선택된 관점 · 페르소나 {sel.number}
-                      </div>
-                      <div className="mt-1 text-lg font-bold text-[#1F2A5C]">
-                        {sel.name}
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {sel.role}
-                      </div>
-                    </header>
-                    <p className="text-sm leading-relaxed">{sel.feedback}</p>
-                  </article>
-                );
-              })()}
             </div>
           )}
+
+          <Dialog
+            open={detailPersona !== null}
+            onOpenChange={(o) => !o && setDetailPersona(null)}
+          >
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+              {(() => {
+                const sel = PERSONAS.find((p) => p.number === detailPersona);
+                if (!sel) return null;
+                const idx = PERSONAS.indexOf(sel);
+                return (
+                  <>
+                    <div
+                      className="-mx-6 -mt-6 h-1 rounded-t-lg"
+                      style={{ backgroundColor: PERSONA_COLORS[idx] }}
+                    />
+                    <DialogHeader>
+                      <DialogTitle className="text-[#1F2A5C]">
+                        상세 피드백: {sel.name} 관점
+                      </DialogTitle>
+                      <p className="text-xs text-muted-foreground">{sel.role}</p>
+                    </DialogHeader>
+                    <p className="text-sm leading-relaxed">{sel.feedback}</p>
+                  </>
+                );
+              })()}
+            </DialogContent>
+          </Dialog>
         </section>
 
         {/* E. 섹션 4 — 피드백 후 의사결정 */}
