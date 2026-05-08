@@ -86,6 +86,8 @@ const DEMO_FINALIZE = {
 };
 
 // 4단계 페르소나 (Finalize와 동일 데이터)
+const PERSONA_COLORS = ["#C8392E", "#C99A24", "#1F2A5C"];
+
 const PERSONA_FEEDBACK = [
   {
     name: "중국 비즈니스 상대방",
