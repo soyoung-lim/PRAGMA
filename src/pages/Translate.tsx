@@ -627,6 +627,7 @@ const PromptSection = ({
   mode,
   onModeChange,
 }: PromptSectionProps) => {
+  const [expanded, setExpanded] = useState(false);
   return (
     <section className="mt-12">
       <div className="flex flex-wrap items-center gap-3">
@@ -645,19 +646,33 @@ const PromptSection = ({
       </div>
       <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
 
-      {/* Prompt box */}
-      <div className="relative mt-4 rounded-lg bg-foreground p-6 pr-28">
-        <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-background">
-          {promptText}
-        </pre>
+      {/* Prompt controls */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="rounded-md border border-foreground bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          {expanded ? "접기 ▲" : "펼치기 ▼"}
+        </button>
         <button
           type="button"
           onClick={onCopy}
-          className="absolute right-4 top-4 rounded-md border border-background bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="rounded-md border border-foreground bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           복사하기
         </button>
       </div>
+
+      {/* Prompt box (collapsible) */}
+      {expanded && (
+        <div className="relative mt-3 rounded-lg bg-foreground p-6">
+          <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-background">
+            {promptText}
+          </pre>
+        </div>
+      )}
 
       <p className="mt-3 text-xs text-muted-foreground">{guide}</p>
 
