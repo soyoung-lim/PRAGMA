@@ -254,7 +254,7 @@ const Dashboard = () => {
   const decisionMsg = decisionRevised
     ? "페르소나 피드백을 반영해 최종안을 조정했습니다. 피드백을 바탕으로 자신의 판단을 재검토했습니다."
     : finalize?.finalDecision === "그대로 확정"
-      ? "초기 판단과 최종 결정이 일관됩니다. 본인의 화용론적 직관이 검증되었습니다."
+      ? "초기 판단과 최종 결정이 일관됩니다. 본인의 화용 재현성 판단이 검증되었습니다."
       : "최종 의사결정 정보가 없습니다.";
 
   const flow = [
@@ -280,33 +280,90 @@ const Dashboard = () => {
   const handlePrint = () => window.print();
 
   const handleExport = () => {
-    const dump: Record<string, unknown> = {};
-    [
-      STORAGE_KEY,
-      PDR_STORAGE_KEY,
-      TRANSLATE_STORAGE_KEY,
-      FINALIZE_STORAGE_KEY,
-    ].forEach((k) => {
+    // ----- 정규화된 export 스키마 -----
+    const finalizeRaw = (() => {
       try {
-        const raw = localStorage.getItem(k);
-        dump[k] = raw ? JSON.parse(raw) : null;
+        const raw = localStorage.getItem(FINALIZE_STORAGE_KEY);
+        return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
       } catch {
-        dump[k] = null;
+        return null;
       }
-    });
-    dump["analytics"] = {
-      totalLearningTime: analytics.timeLabel,
-      nonlinearRevisionCount: analytics.rollbackCount,
-      personaFeedbackReceived: analytics.personaReceived,
-      revisionsAfterPersona: analytics.revisionsAfterPersona,
-      sessionStart: localStorage.getItem("sessionStartAt"),
-      exportedAt: new Date().toISOString(),
+    })();
+    const rc = (finalizeRaw?.revisionCase ?? {}) as {
+      aiResult?: string;
+      myRevision?: string;
+      reason?: string;
+      explanation?: string;
+    };
+    const keyRevisions =
+      rc.aiResult || rc.myRevision || rc.reason
+        ? [
+            {
+              original: rc.aiResult ?? "",
+              revised: rc.myRevision ?? "",
+              revision_reason: rc.reason ?? "",
+              note: rc.explanation ?? "",
+            },
+          ]
+        : [];
+
+    const personaBodies = PERSONA_FEEDBACK.map(
+      (p) => `${p.name} — 강점: ${p.strength} / 우려: ${p.concern} / 제안: ${p.suggestion}`,
+    );
+
+    const dump: Record<string, unknown> = {
+      speech_act: speechAct ?? "",
+      speech_act_label_ko: speechActLabel,
+      scenario_id: selection?.scenarioId ?? "",
+      scenario_title: scenario ? scenario.title : selection?.customScenario ?? "",
+      pdr: {
+        power: pdr?.powerLevel ?? "",
+        distance: pdr?.distanceLevel ?? "",
+        rank_of_imposition: pdr?.burdenLevel ?? "",
+      },
+      speech_act_strategy: strategyLabel === "—" ? "" : strategyLabel,
+      source_text_ko: pdr?.koreanEmail ?? "",
+      ai_translation_basic: translate?.aiTranslation1 ?? "",
+      ai_translation_strategic: translate?.aiTranslation2 ?? "",
+      evaluation: {
+        pragmatic_reproduction: r.pragmatic2 ?? 0,
+        relational_appropriateness: r.relational2 ?? 0,
+        risk_management: r.risk2 ?? 0,
+      },
+      evaluation_basic: {
+        pragmatic_reproduction: r.pragmatic1 ?? 0,
+        relational_appropriateness: r.relational1 ?? 0,
+        risk_management: r.risk1 ?? 0,
+      },
+      most_important_criterion: "",
+      judgment_reason: comparisonReason ?? "",
+      key_revisions: keyRevisions,
+      persona_feedback: {
+        email_recipient: personaBodies[0] ?? "",
+        translation_instructor: personaBodies[1] ?? "",
+        risk_manager: personaBodies[2] ?? "",
+      },
+      feedback_applied: Boolean(finalizeRaw?.personaFeedbackReceived),
+      final_translation_before_feedback:
+        (finalizeRaw?.preFeedbackTranslation as string) ?? "",
+      final_translation_after_feedback:
+        (finalizeRaw?.postFeedbackTranslation as string) ??
+        (finalizeRaw?.finalTranslation as string) ??
+        "",
+      timestamp: new Date().toISOString(),
+      analytics: {
+        totalLearningTime: analytics.timeLabel,
+        nonlinearRevisionCount: analytics.rollbackCount,
+        personaFeedbackReceived: analytics.personaReceived,
+        revisionsAfterPersona: analytics.revisionsAfterPersona,
+        sessionStart: localStorage.getItem("sessionStartAt"),
+      },
     };
     try {
       const raw = localStorage.getItem("learnerActions");
-      dump["learnerActions"] = raw ? JSON.parse(raw) : [];
+      dump["learner_actions"] = raw ? JSON.parse(raw) : [];
     } catch {
-      dump["learnerActions"] = [];
+      dump["learner_actions"] = [];
     }
     const blob = new Blob([JSON.stringify(dump, null, 2)], {
       type: "application/json",
