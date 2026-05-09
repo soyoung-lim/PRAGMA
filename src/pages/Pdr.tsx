@@ -147,6 +147,7 @@ const Pdr = () => {
   const [intent, setIntent] = useState("");
   const [speechStrategy, setSpeechStrategy] = useState<string | null>(null);
   const [overflowWarn, setOverflowWarn] = useState(false);
+  const [pdrIntegratedReason, setPdrIntegratedReason] = useState("");
 
   useEffect(() => {
     ensureSession();
@@ -170,6 +171,7 @@ const Pdr = () => {
         setBurdenLevel(p.burdenLevel);
         setIntent(p.intent || "");
         setSpeechStrategy(p.speechStrategy);
+        setPdrIntegratedReason(p.pdrIntegratedReason || "");
       } catch {
         /* ignore */
       }
@@ -246,6 +248,7 @@ const Pdr = () => {
       burdenLevel,
       intent,
       speechStrategy,
+      pdrIntegratedReason,
     };
     localStorage.setItem(PDR_STORAGE_KEY, JSON.stringify(payload));
     navigate("/translate");
