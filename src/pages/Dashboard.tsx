@@ -849,6 +849,45 @@ const Dashboard = () => {
               </div>
             ))}
           </div>
+
+          {/* 페르소나별 처리 결과 */}
+          {(() => {
+            const f = finalize as unknown as {
+              personaDecisions?: { persona1?: string; persona2?: string; persona3?: string };
+              personaFeedbackIntegratedReason?: string;
+            } | null;
+            const pd = f?.personaDecisions ?? {};
+            const integrated = (f?.personaFeedbackIntegratedReason ?? "").trim();
+            const rows = [
+              { name: "이메일 수신자", value: pd.persona1 ?? "" },
+              { name: "통번역 교수자", value: pd.persona2 ?? "" },
+              { name: "리스크 관리자", value: pd.persona3 ?? "" },
+            ];
+            return (
+              <div className="mt-6 rounded-lg border border-foreground bg-secondary p-6">
+                <h4 className="text-base font-bold">페르소나별 피드백 처리 결과</h4>
+                <ul className="mt-3 divide-y divide-border/60 rounded-md border border-border bg-background">
+                  {rows.map((r) => (
+                    <li
+                      key={r.name}
+                      className="flex items-center justify-between px-4 py-2.5 text-sm"
+                    >
+                      <span className="font-medium text-foreground">{r.name}</span>
+                      <span className="font-bold text-foreground">
+                        {PERSONA_DECISION_LABEL[r.value] ?? "미선택"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-5">
+                  <div className="text-xs font-semibold text-muted-foreground">통합 판단 이유</div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                    {integrated || "미입력"}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {/* 5. 최종 결정 */}
