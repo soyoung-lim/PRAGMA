@@ -388,10 +388,16 @@ export default function Finalize() {
     data.postFeedbackDecision !== "" &&
     (!needsRevisionFields ||
       (influenceCount >= 1 && data.postFeedbackTranslation.trim().length > 0));
+  const personaDecisionsDone =
+    !data.personaFeedbackReceived ||
+    (data.personaDecisions.persona1 !== "" &&
+      data.personaDecisions.persona2 !== "" &&
+      data.personaDecisions.persona3 !== "");
   const allDone =
     finalTranslationDone &&
     revisionDone &&
     data.personaFeedbackReceived &&
+    personaDecisionsDone &&
     decisionDone;
 
 
