@@ -15,6 +15,7 @@ import {
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { Rollback } from "@/components/Rollback";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ensureSession,
   logAction,
@@ -39,6 +40,22 @@ import {
 import { TRANSLATE_STORAGE_KEY } from "./Translate";
 
 const FINALIZE_STORAGE_KEY = "translation-workflow-finalize";
+const RETROSPECTIVE_STORAGE_KEY = "translation-workflow-retrospective";
+
+type RetroVariable = "power" | "distance" | "rank_of_imposition" | "all_equal";
+const RETRO_OPTIONS: { value: RetroVariable; label: string }[] = [
+  { value: "power", label: "권력 (Power)" },
+  { value: "distance", label: "거리 (Distance)" },
+  { value: "rank_of_imposition", label: "부담도 (Rank of Imposition)" },
+  { value: "all_equal", label: "세 변수 모두 비슷하게 중요했음" },
+];
+
+const CRITERION_KEY_MAP: Record<string, string> = {
+  "화용 재현성": "pragmatic_reproduction",
+  "관계 적합성": "relational_appropriateness",
+  "리스크 관리": "risk_management",
+  "복합 (2가지 이상)": "",
+};
 
 // ----- 데모 데이터 -----
 const DEMO_SELECTION: WorkflowSelection = {
@@ -160,6 +177,8 @@ const Dashboard = () => {
   const isDemo = searchParams.get("demo") === "true";
 
   const [hydrated, setHydrated] = useState(false);
+  const [retroVariable, setRetroVariable] = useState<RetroVariable | "">("");
+  const [retroReason, setRetroReason] = useState("");
 
   useEffect(() => {
     if (isDemo) {
@@ -173,6 +192,26 @@ const Dashboard = () => {
     logAction("session_end", { reason: "reached_dashboard" }, "/dashboard");
     setHydrated(true);
   }, [isDemo]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RETROSPECTIVE_STORAGE_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as { variable?: RetroVariable; reason?: string };
+        if (p.variable) setRetroVariable(p.variable);
+        if (p.reason) setRetroReason(p.reason);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      RETROSPECTIVE_STORAGE_KEY,
+      JSON.stringify({ variable: retroVariable, reason: retroReason }),
+    );
+  }, [retroVariable, retroReason]);
 
   const { selection, pdr, translate, finalize } = useMemo(() => {
     const safe = <T,>(k: string): T | null => {
@@ -320,6 +359,11 @@ const Dashboard = () => {
         power: pdr?.powerLevel ?? "",
         distance: pdr?.distanceLevel ?? "",
         rank_of_imposition: pdr?.burdenLevel ?? "",
+        pdr_integrated_reason: pdr?.pdrIntegratedReason ?? "",
+      },
+      pdr_retrospective: {
+        most_important_variable: retroVariable || "",
+        retrospective_reason: retroReason,
       },
       speech_act_strategy: strategyLabel === "—" ? "" : strategyLabel,
       source_text_ko: pdr?.koreanEmail ?? "",
@@ -335,7 +379,7 @@ const Dashboard = () => {
         relational_appropriateness: r.relational1 ?? 0,
         risk_management: r.risk1 ?? 0,
       },
-      most_important_criterion: "",
+      most_important_criterion: CRITERION_KEY_MAP[comparisonChoice] ?? "",
       judgment_reason: comparisonReason ?? "",
       key_revisions: keyRevisions,
       persona_feedback: {
@@ -431,6 +475,57 @@ const Dashboard = () => {
             AI 번역 검토 과정과 수정 판단을 기록합니다
           </p>
         </div>
+
+        {/* P·D·R 회고 */}
+        <section className="mt-10 rounded-lg border border-border bg-secondary p-6 print:hidden">
+          <h3 className="text-lg font-bold">
+            처음 판단을 돌아보며 — 가장 중요했던 변수는 무엇이었나요?
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            번역과 피드백을 거친 후 자신의 판단을 회고해보세요. (선택사항이며 입력하지 않아도 모든 기능은 정상 작동합니다.)
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label
+                htmlFor="retro-variable"
+                className="block text-xs font-semibold text-foreground"
+              >
+                가장 중요했던 변수
+              </label>
+              <select
+                id="retro-variable"
+                value={retroVariable}
+                onChange={(e) => setRetroVariable(e.target.value as RetroVariable | "")}
+                className="mt-2 h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <option value="">선택해주세요</option>
+                {RETRO_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="retro-reason"
+                className="block text-xs font-semibold text-foreground"
+              >
+                왜 그렇게 생각했나요? <span className="font-normal text-muted-foreground">(선택)</span>
+              </label>
+              <Textarea
+                id="retro-reason"
+                value={retroReason}
+                onChange={(e) => setRetroReason(e.target.value.slice(0, 200))}
+                placeholder="예: 번역과 피드백을 거치며 보니, 거절 부담이 가장 핵심이었고 그 부담이 다른 두 변수보다 결정적이었다."
+                className="mt-2 min-h-[72px] text-[14px] leading-relaxed"
+              />
+              <div className="mt-1 text-right text-xs text-muted-foreground">
+                {retroReason.length} / 200
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* 1. 상황 판단 */}
         <section className="mt-16">
