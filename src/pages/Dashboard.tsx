@@ -982,6 +982,7 @@ const Dashboard = () => {
                 : f?.postFeedbackTranslation || before;
             if (!before && !after) return null;
             return (
+              <>
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="rounded-lg border border-border bg-background p-5">
                   <div className="text-xs font-medium text-muted-foreground">
@@ -1000,6 +1001,10 @@ const Dashboard = () => {
                   </p>
                 </div>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                피드백 전후 번역 비교는 멀티 페르소나 피드백이 학습자의 번역 판단에 어떤 변화를 만들었는지 확인하기 위한 자료입니다.
+              </p>
+              </>
             );
           })()}
         </section>
