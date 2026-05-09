@@ -1030,14 +1030,17 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="mt-8 text-center">
-            <button
-              type="button"
+          <div className="mt-8 flex flex-col items-center gap-2 text-center">
+            <Button
               onClick={handleExport}
-              className="text-xs text-muted-foreground/70 underline-offset-4 hover:text-muted-foreground hover:underline"
+              variant="outline"
+              className="h-11 border-foreground px-5 text-sm font-semibold"
             >
               연구 데이터 내보내기 (JSON)
-            </button>
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              본 리포트는 학습자의 판단 흐름을 연구 데이터로 저장합니다.
+            </p>
           </div>
         </section>
       </main>
