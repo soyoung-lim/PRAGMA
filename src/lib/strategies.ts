@@ -113,4 +113,5 @@ export interface PdrData {
   burdenLevel: BurdenLevel | null;
   intent: string;
   speechStrategy: string | null;
+  pdrIntegratedReason?: string;
 }
