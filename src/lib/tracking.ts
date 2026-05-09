@@ -15,6 +15,7 @@ export type ActionType =
   | "step_jump"
   | "revision"
   | "persona_feedback_request"
+  | "persona_decision"
   | "final_decision"
   | "session_end";
 

@@ -49,6 +49,14 @@ interface PersonaInfluence {
   persona3: boolean;
 }
 
+export type PersonaDecision = "accept" | "partial" | "reject" | "";
+
+export interface PersonaDecisions {
+  persona1: PersonaDecision;
+  persona2: PersonaDecision;
+  persona3: PersonaDecision;
+}
+
 interface FinalizeData {
   finalTranslation: string;
   revisionCase: RevisionCase;
@@ -58,12 +66,20 @@ interface FinalizeData {
   personaInfluence: PersonaInfluence;
   postFeedbackTranslation: string;
   finalDecisionReason: string;
+  personaDecisions: PersonaDecisions;
+  personaFeedbackIntegratedReason: string;
 }
 
 const EMPTY_INFLUENCE: PersonaInfluence = {
   persona1: false,
   persona2: false,
   persona3: false,
+};
+
+const EMPTY_PERSONA_DECISIONS: PersonaDecisions = {
+  persona1: "",
+  persona2: "",
+  persona3: "",
 };
 
 const EMPTY: FinalizeData = {
@@ -75,7 +91,15 @@ const EMPTY: FinalizeData = {
   personaInfluence: { ...EMPTY_INFLUENCE },
   postFeedbackTranslation: "",
   finalDecisionReason: "",
+  personaDecisions: { ...EMPTY_PERSONA_DECISIONS },
+  personaFeedbackIntegratedReason: "",
 };
+
+const PERSONA_DECISION_OPTIONS: { value: Exclude<PersonaDecision, "">; label: string }[] = [
+  { value: "accept", label: "수용" },
+  { value: "partial", label: "부분 수용" },
+  { value: "reject", label: "거부" },
+];
 
 const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub: string }[] = [
   { value: "as-is", label: "그대로 확정", sub: "피드백을 검토했으나 변경 없이 위 번역을 최종안으로 확정합니다" },
@@ -273,6 +297,12 @@ export default function Finalize() {
           ...parsed,
           postFeedbackDecision: migratedDecision,
           revisionCase: { ...EMPTY.revisionCase, ...parsed.revisionCase },
+          personaDecisions: {
+            ...EMPTY_PERSONA_DECISIONS,
+            ...(parsed.personaDecisions ?? {}),
+          },
+          personaFeedbackIntegratedReason:
+            parsed.personaFeedbackIntegratedReason ?? "",
         });
         if (parsed.personaFeedbackReceived) setRevealedPersonas(4);
       }
@@ -358,10 +388,16 @@ export default function Finalize() {
     data.postFeedbackDecision !== "" &&
     (!needsRevisionFields ||
       (influenceCount >= 1 && data.postFeedbackTranslation.trim().length > 0));
+  const personaDecisionsDone =
+    !data.personaFeedbackReceived ||
+    (data.personaDecisions.persona1 !== "" &&
+      data.personaDecisions.persona2 !== "" &&
+      data.personaDecisions.persona3 !== "");
   const allDone =
     finalTranslationDone &&
     revisionDone &&
     data.personaFeedbackReceived &&
+    personaDecisionsDone &&
     decisionDone;
 
 
@@ -612,6 +648,15 @@ export default function Finalize() {
             </div>
           </div>
 
+          <div className="mb-5 flex items-start gap-2 rounded-md border border-accent/40 bg-[#FAF1D7]/60 p-3 text-[13px] leading-relaxed text-foreground">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground/70" aria-hidden />
+            <span>
+              모든 피드백을 반드시 반영할 필요는 없습니다. 본인의 번역 목적과 판단 기준에 따라
+              <strong> 수용·부분 수용·거부</strong>를 선택하세요. 단, 세 페르소나 처리를 모두 마친 후
+              그 판단의 이유를 한 번에 정리해 적어 주세요.
+            </span>
+          </div>
+
           <div className="mb-2 flex flex-wrap items-center gap-3">
             <Button
               size="lg"
@@ -695,9 +740,84 @@ export default function Finalize() {
                         <dd className="flex-1 text-foreground/85">{p.suggestion}</dd>
                       </div>
                     </dl>
+
+                    {/* 처리 선택 */}
+                    {(() => {
+                      const key = `persona${p.number}` as keyof PersonaDecisions;
+                      const current = data.personaDecisions[key];
+                      return (
+                        <div className="mt-5 border-t border-border/60 pt-4">
+                          <div className="mb-2 text-xs font-semibold text-foreground">
+                            이 피드백을 어떻게 처리하시겠습니까? <span className="text-destructive">*</span>
+                          </div>
+                          <div
+                            role="radiogroup"
+                            aria-label={`${p.name} 피드백 처리`}
+                            className="grid grid-cols-3 gap-2"
+                          >
+                            {PERSONA_DECISION_OPTIONS.map((opt) => {
+                              const active = current === opt.value;
+                              return (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={active}
+                                  onClick={() => {
+                                    logAction("persona_decision", {
+                                      persona: p.number,
+                                      decision: opt.value,
+                                    });
+                                    update("personaDecisions", {
+                                      ...data.personaDecisions,
+                                      [key]: opt.value,
+                                    });
+                                  }}
+                                  className={[
+                                    "rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                                    active
+                                      ? "border-foreground bg-foreground text-background"
+                                      : "border-border bg-background text-foreground hover:bg-secondary",
+                                  ].join(" ")}
+                                >
+                                  {opt.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </article>
                 );
               })}
+
+              {/* 통합 이유 입력칸 */}
+              <div className="mt-2 rounded-xl border border-border bg-background p-5">
+                <label
+                  htmlFor="persona-feedback-integrated-reason"
+                  className="block text-sm font-semibold text-foreground"
+                >
+                  세 피드백을 각각 다르게 처리한 이유를 한두 단락으로 적어주세요{" "}
+                  <span className="font-normal text-muted-foreground">(선택)</span>
+                </label>
+                <Textarea
+                  id="persona-feedback-integrated-reason"
+                  value={data.personaFeedbackIntegratedReason}
+                  onChange={(e) =>
+                    update(
+                      "personaFeedbackIntegratedReason",
+                      e.target.value.slice(0, 400),
+                    )
+                  }
+                  placeholder="예: 이메일 수신자의 관계 유지 제안은 받아들였지만, 교수자의 호칭 강화는 중국어에서 과하다고 판단해 부분만 반영했고, 리스크 관리자의 책임 범위 명확화는 핵심이라 모두 수용했다."
+                  className="mt-3 min-h-[110px] text-[14px] leading-relaxed"
+                />
+                <div className="mt-1 text-right text-xs text-muted-foreground">
+                  {data.personaFeedbackIntegratedReason.length} / 400
+                </div>
+              </div>
             </div>
           )}
         </section>
