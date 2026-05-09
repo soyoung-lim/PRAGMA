@@ -50,6 +50,27 @@ const RETRO_OPTIONS: { value: RetroVariable; label: string }[] = [
   { value: "all_equal", label: "세 변수 모두 비슷하게 중요했음" },
 ];
 
+type InfluentialPersona =
+  | "email_recipient"
+  | "translation_instructor"
+  | "risk_manager"
+  | "all_equal";
+const INFLUENTIAL_OPTIONS: { value: InfluentialPersona; label: string }[] = [
+  { value: "email_recipient", label: "이메일 수신자" },
+  { value: "translation_instructor", label: "통번역 교수자" },
+  { value: "risk_manager", label: "리스크 관리자" },
+  { value: "all_equal", label: "세 피드백 모두 비슷하게 영향을 줬음" },
+];
+
+const PERSONA_DECISION_LABEL: Record<string, string> = {
+  accept: "수용",
+  partial: "부분 수용",
+  reject: "거부",
+  "": "미선택",
+};
+
+const PERSONA_RETROSPECTIVE_KEY = "translation-workflow-persona-retrospective";
+
 const CRITERION_KEY_MAP: Record<string, string> = {
   "화용 재현성": "pragmatic_reproduction",
   "관계 적합성": "relational_appropriateness",
