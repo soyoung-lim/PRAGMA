@@ -192,8 +192,11 @@ const Dashboard = () => {
   }, [hydrated]);
 
   const speechAct = (selection?.speechAct ?? null) as SpeechAct | null;
-  const speechActLabel =
-    SPEECH_ACTS.find((a) => a.id === speechAct)?.label ?? "—";
+  const speechActMeta = SPEECH_ACTS.find((a) => a.id === speechAct);
+  const speechActLabel = speechActMeta?.label ?? "—";
+  const speechActFull = speechActMeta
+    ? `${speechActMeta.label} (${speechActMeta.english})`
+    : "—";
   const scenario =
     speechAct && selection?.scenarioId
       ? SCENARIOS[speechAct].find((s) => s.id === selection.scenarioId) ?? null
@@ -242,10 +245,10 @@ const Dashboard = () => {
 
   const insightMsg =
     diff >= 0.5
-      ? `사용자 평가에서 전략 적용형 번역이 평균 +${diff.toFixed(1)}점 더 높게 평가되었습니다. 사용자 평가에서 두 프롬프트 간 차이가 관찰되었습니다.`
+      ? `현재 사용자가 입력한 평가에서는 전략 적용형 번역이 +${diff.toFixed(1)}점 높게 기록되었습니다.`
       : diff <= -0.5
-        ? `기본형 프롬프트가 평균 +${Math.abs(diff).toFixed(1)}점 더 높게 평가되었습니다.`
-        : "두 프롬프트의 평가 차이가 작습니다. 본 시나리오에서는 사용자 평가에서 두 프롬프트 간 차이가 크지 않았습니다.";
+        ? `현재 사용자가 입력한 평가에서는 기본형 번역이 +${Math.abs(diff).toFixed(1)}점 높게 기록되었습니다.`
+        : "현재 사용자가 입력한 평가에서는 두 번역의 점수 차이가 크지 않습니다.";
 
   const decisionRevised = finalize?.finalDecision === "수정 후 확정";
   const decisionMsg = decisionRevised
@@ -364,6 +367,9 @@ const Dashboard = () => {
         {/* Title */}
         <div>
           <h2 className="text-2xl font-bold sm:text-3xl">의사결정 리포트</h2>
+          <p className="mt-3 text-sm font-semibold text-foreground">
+            선택한 화행: {speechActFull}
+          </p>
           <p className="mt-2 text-base text-muted-foreground">
             AI 번역 검토 과정과 수정 판단을 기록합니다
           </p>
@@ -436,7 +442,10 @@ const Dashboard = () => {
                   <Legend
                     verticalAlign="top"
                     align="right"
-                    wrapperStyle={{ paddingBottom: 12, fontSize: 13 }}
+                    wrapperStyle={{ paddingBottom: 12, fontSize: 13, color: "hsl(var(--foreground))" }}
+                    formatter={(value) => (
+                      <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>
+                    )}
                   />
                   <Bar
                     dataKey="AI 1"
@@ -469,6 +478,9 @@ const Dashboard = () => {
             <div className="mt-6 rounded-md border border-border bg-background p-4 text-sm leading-relaxed">
               {insightMsg}
             </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              이 수치는 연구 결과가 아니라, 현재 학습자가 입력한 평가와 판단 기록입니다.
+            </p>
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
