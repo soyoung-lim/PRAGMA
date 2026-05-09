@@ -307,7 +307,9 @@ const Dashboard = () => {
           ]
         : [];
 
-    const personaBodies = PERSONA_BODIES_BY_SCENARIO[selection?.scenarioId ?? ""] ?? [];
+    const personaBodies = PERSONA_FEEDBACK.map(
+      (p) => `${p.name} — 강점: ${p.strength} / 우려: ${p.concern} / 제안: ${p.suggestion}`,
+    );
 
     const dump: Record<string, unknown> = {
       speech_act: speechAct ?? "",
