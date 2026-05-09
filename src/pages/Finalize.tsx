@@ -648,6 +648,15 @@ export default function Finalize() {
             </div>
           </div>
 
+          <div className="mb-5 flex items-start gap-2 rounded-md border border-accent/40 bg-[#FAF1D7]/60 p-3 text-[13px] leading-relaxed text-foreground">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground/70" aria-hidden />
+            <span>
+              모든 피드백을 반드시 반영할 필요는 없습니다. 본인의 번역 목적과 판단 기준에 따라
+              <strong> 수용·부분 수용·거부</strong>를 선택하세요. 단, 세 페르소나 처리를 모두 마친 후
+              그 판단의 이유를 한 번에 정리해 적어 주세요.
+            </span>
+          </div>
+
           <div className="mb-2 flex flex-wrap items-center gap-3">
             <Button
               size="lg"
