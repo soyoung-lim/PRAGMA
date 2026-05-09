@@ -595,6 +595,59 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
+
+          <div className="mt-6 border-t border-border/60 pt-5">
+            <h4 className="text-base font-bold">
+              세 피드백 중 가장 영향력이 컸던 것은 누구의 피드백이었나요?
+            </h4>
+            <p className="mt-1 text-xs text-muted-foreground">
+              입력하지 않아도 JSON 내보내기와 PDF 저장은 정상 작동합니다.
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="influential-persona"
+                  className="block text-xs font-semibold text-foreground"
+                >
+                  가장 영향력이 컸던 피드백
+                </label>
+                <select
+                  id="influential-persona"
+                  value={influentialPersona}
+                  onChange={(e) =>
+                    setInfluentialPersona(e.target.value as InfluentialPersona | "")
+                  }
+                  className="mt-2 h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <option value="">선택해주세요</option>
+                  {INFLUENTIAL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label
+                  htmlFor="influential-reason"
+                  className="block text-xs font-semibold text-foreground"
+                >
+                  왜 그렇게 생각했나요?{" "}
+                  <span className="font-normal text-muted-foreground">(선택)</span>
+                </label>
+                <Textarea
+                  id="influential-reason"
+                  value={influentialReason}
+                  onChange={(e) => setInfluentialReason(e.target.value.slice(0, 200))}
+                  placeholder="예: 리스크 관리자의 지적이 최종 번역의 방향을 가장 크게 바꿨다."
+                  className="mt-2 min-h-[72px] text-[14px] leading-relaxed"
+                />
+                <div className="mt-1 text-right text-xs text-muted-foreground">
+                  {influentialReason.length} / 200
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* 1. 상황 판단 */}
