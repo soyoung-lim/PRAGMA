@@ -49,6 +49,14 @@ interface PersonaInfluence {
   persona3: boolean;
 }
 
+export type PersonaDecision = "accept" | "partial" | "reject" | "";
+
+export interface PersonaDecisions {
+  persona1: PersonaDecision;
+  persona2: PersonaDecision;
+  persona3: PersonaDecision;
+}
+
 interface FinalizeData {
   finalTranslation: string;
   revisionCase: RevisionCase;
@@ -58,12 +66,20 @@ interface FinalizeData {
   personaInfluence: PersonaInfluence;
   postFeedbackTranslation: string;
   finalDecisionReason: string;
+  personaDecisions: PersonaDecisions;
+  personaFeedbackIntegratedReason: string;
 }
 
 const EMPTY_INFLUENCE: PersonaInfluence = {
   persona1: false,
   persona2: false,
   persona3: false,
+};
+
+const EMPTY_PERSONA_DECISIONS: PersonaDecisions = {
+  persona1: "",
+  persona2: "",
+  persona3: "",
 };
 
 const EMPTY: FinalizeData = {
@@ -75,7 +91,15 @@ const EMPTY: FinalizeData = {
   personaInfluence: { ...EMPTY_INFLUENCE },
   postFeedbackTranslation: "",
   finalDecisionReason: "",
+  personaDecisions: { ...EMPTY_PERSONA_DECISIONS },
+  personaFeedbackIntegratedReason: "",
 };
+
+const PERSONA_DECISION_OPTIONS: { value: Exclude<PersonaDecision, "">; label: string }[] = [
+  { value: "accept", label: "수용" },
+  { value: "partial", label: "부분 수용" },
+  { value: "reject", label: "거부" },
+];
 
 const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub: string }[] = [
   { value: "as-is", label: "그대로 확정", sub: "피드백을 검토했으나 변경 없이 위 번역을 최종안으로 확정합니다" },
