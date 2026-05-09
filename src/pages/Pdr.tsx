@@ -4,6 +4,7 @@ import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { Rollback } from "@/components/Rollback";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { InfoTooltip } from "@/components/InfoTooltip";
+import { Textarea } from "@/components/ui/textarea";
 import { Check } from "lucide-react";
 import {
   SCENARIOS,
