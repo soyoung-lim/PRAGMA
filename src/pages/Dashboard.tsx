@@ -398,6 +398,13 @@ const Dashboard = () => {
     const personaBodies = PERSONA_FEEDBACK.map(
       (p) => `${p.name} — 강점: ${p.strength} / 우려: ${p.concern} / 제안: ${p.suggestion}`,
     );
+    const personaDecisions = (finalizeRaw?.personaDecisions ?? {}) as {
+      persona1?: string;
+      persona2?: string;
+      persona3?: string;
+    };
+    const personaFeedbackIntegratedReason =
+      (finalizeRaw?.personaFeedbackIntegratedReason as string | undefined) ?? "";
 
     const dump: Record<string, unknown> = {
       speech_act: speechAct ?? "",
@@ -432,9 +439,23 @@ const Dashboard = () => {
       judgment_reason: comparisonReason ?? "",
       key_revisions: keyRevisions,
       persona_feedback: {
-        email_recipient: personaBodies[0] ?? "",
-        translation_instructor: personaBodies[1] ?? "",
-        risk_manager: personaBodies[2] ?? "",
+        email_recipient: {
+          feedback_text: personaBodies[0] ?? "",
+          decision: personaDecisions.persona1 ?? "",
+        },
+        translation_instructor: {
+          feedback_text: personaBodies[1] ?? "",
+          decision: personaDecisions.persona2 ?? "",
+        },
+        risk_manager: {
+          feedback_text: personaBodies[2] ?? "",
+          decision: personaDecisions.persona3 ?? "",
+        },
+      },
+      persona_feedback_integrated_reason: personaFeedbackIntegratedReason,
+      persona_feedback_retrospective: {
+        most_influential_persona: influentialPersona || null,
+        retrospective_reason: influentialReason,
       },
       feedback_applied: Boolean(finalizeRaw?.personaFeedbackReceived),
       final_translation_before_feedback:
