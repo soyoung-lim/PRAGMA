@@ -15,6 +15,7 @@ import {
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { Rollback } from "@/components/Rollback";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ensureSession,
   logAction,
@@ -39,6 +40,22 @@ import {
 import { TRANSLATE_STORAGE_KEY } from "./Translate";
 
 const FINALIZE_STORAGE_KEY = "translation-workflow-finalize";
+const RETROSPECTIVE_STORAGE_KEY = "translation-workflow-retrospective";
+
+type RetroVariable = "power" | "distance" | "rank_of_imposition" | "all_equal";
+const RETRO_OPTIONS: { value: RetroVariable; label: string }[] = [
+  { value: "power", label: "권력 (Power)" },
+  { value: "distance", label: "거리 (Distance)" },
+  { value: "rank_of_imposition", label: "부담도 (Rank of Imposition)" },
+  { value: "all_equal", label: "세 변수 모두 비슷하게 중요했음" },
+];
+
+const CRITERION_KEY_MAP: Record<string, string> = {
+  "화용 재현성": "pragmatic_reproduction",
+  "관계 적합성": "relational_appropriateness",
+  "리스크 관리": "risk_management",
+  "복합 (2가지 이상)": "",
+};
 
 // ----- 데모 데이터 -----
 const DEMO_SELECTION: WorkflowSelection = {
