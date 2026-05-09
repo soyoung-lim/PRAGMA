@@ -740,9 +740,84 @@ export default function Finalize() {
                         <dd className="flex-1 text-foreground/85">{p.suggestion}</dd>
                       </div>
                     </dl>
+
+                    {/* 처리 선택 */}
+                    {(() => {
+                      const key = `persona${p.number}` as keyof PersonaDecisions;
+                      const current = data.personaDecisions[key];
+                      return (
+                        <div className="mt-5 border-t border-border/60 pt-4">
+                          <div className="mb-2 text-xs font-semibold text-foreground">
+                            이 피드백을 어떻게 처리하시겠습니까? <span className="text-destructive">*</span>
+                          </div>
+                          <div
+                            role="radiogroup"
+                            aria-label={`${p.name} 피드백 처리`}
+                            className="grid grid-cols-3 gap-2"
+                          >
+                            {PERSONA_DECISION_OPTIONS.map((opt) => {
+                              const active = current === opt.value;
+                              return (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={active}
+                                  onClick={() => {
+                                    logAction("persona_decision", {
+                                      persona: p.number,
+                                      decision: opt.value,
+                                    });
+                                    update("personaDecisions", {
+                                      ...data.personaDecisions,
+                                      [key]: opt.value,
+                                    });
+                                  }}
+                                  className={[
+                                    "rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                                    active
+                                      ? "border-foreground bg-foreground text-background"
+                                      : "border-border bg-background text-foreground hover:bg-secondary",
+                                  ].join(" ")}
+                                >
+                                  {opt.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </article>
                 );
               })}
+
+              {/* 통합 이유 입력칸 */}
+              <div className="mt-2 rounded-xl border border-border bg-background p-5">
+                <label
+                  htmlFor="persona-feedback-integrated-reason"
+                  className="block text-sm font-semibold text-foreground"
+                >
+                  세 피드백을 각각 다르게 처리한 이유를 한두 단락으로 적어주세요{" "}
+                  <span className="font-normal text-muted-foreground">(선택)</span>
+                </label>
+                <Textarea
+                  id="persona-feedback-integrated-reason"
+                  value={data.personaFeedbackIntegratedReason}
+                  onChange={(e) =>
+                    update(
+                      "personaFeedbackIntegratedReason",
+                      e.target.value.slice(0, 400),
+                    )
+                  }
+                  placeholder="예: 이메일 수신자의 관계 유지 제안은 받아들였지만, 교수자의 호칭 강화는 중국어에서 과하다고 판단해 부분만 반영했고, 리스크 관리자의 책임 범위 명확화는 핵심이라 모두 수용했다."
+                  className="mt-3 min-h-[110px] text-[14px] leading-relaxed"
+                />
+                <div className="mt-1 text-right text-xs text-muted-foreground">
+                  {data.personaFeedbackIntegratedReason.length} / 400
+                </div>
+              </div>
             </div>
           )}
         </section>
