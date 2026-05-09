@@ -359,6 +359,11 @@ const Dashboard = () => {
         power: pdr?.powerLevel ?? "",
         distance: pdr?.distanceLevel ?? "",
         rank_of_imposition: pdr?.burdenLevel ?? "",
+        pdr_integrated_reason: pdr?.pdrIntegratedReason ?? "",
+      },
+      pdr_retrospective: {
+        most_important_variable: retroVariable || "",
+        retrospective_reason: retroReason,
       },
       speech_act_strategy: strategyLabel === "—" ? "" : strategyLabel,
       source_text_ko: pdr?.koreanEmail ?? "",
@@ -374,7 +379,7 @@ const Dashboard = () => {
         relational_appropriateness: r.relational1 ?? 0,
         risk_management: r.risk1 ?? 0,
       },
-      most_important_criterion: "",
+      most_important_criterion: CRITERION_KEY_MAP[comparisonChoice] ?? "",
       judgment_reason: comparisonReason ?? "",
       key_revisions: keyRevisions,
       persona_feedback: {
