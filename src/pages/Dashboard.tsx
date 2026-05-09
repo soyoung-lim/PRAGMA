@@ -50,6 +50,27 @@ const RETRO_OPTIONS: { value: RetroVariable; label: string }[] = [
   { value: "all_equal", label: "세 변수 모두 비슷하게 중요했음" },
 ];
 
+type InfluentialPersona =
+  | "email_recipient"
+  | "translation_instructor"
+  | "risk_manager"
+  | "all_equal";
+const INFLUENTIAL_OPTIONS: { value: InfluentialPersona; label: string }[] = [
+  { value: "email_recipient", label: "이메일 수신자" },
+  { value: "translation_instructor", label: "통번역 교수자" },
+  { value: "risk_manager", label: "리스크 관리자" },
+  { value: "all_equal", label: "세 피드백 모두 비슷하게 영향을 줬음" },
+];
+
+const PERSONA_DECISION_LABEL: Record<string, string> = {
+  accept: "수용",
+  partial: "부분 수용",
+  reject: "거부",
+  "": "미선택",
+};
+
+const PERSONA_RETROSPECTIVE_KEY = "translation-workflow-persona-retrospective";
+
 const CRITERION_KEY_MAP: Record<string, string> = {
   "화용 재현성": "pragmatic_reproduction",
   "관계 적합성": "relational_appropriateness",
@@ -179,6 +200,8 @@ const Dashboard = () => {
   const [hydrated, setHydrated] = useState(false);
   const [retroVariable, setRetroVariable] = useState<RetroVariable | "">("");
   const [retroReason, setRetroReason] = useState("");
+  const [influentialPersona, setInfluentialPersona] = useState<InfluentialPersona | "">("");
+  const [influentialReason, setInfluentialReason] = useState("");
 
   useEffect(() => {
     if (isDemo) {
@@ -212,6 +235,32 @@ const Dashboard = () => {
       JSON.stringify({ variable: retroVariable, reason: retroReason }),
     );
   }, [retroVariable, retroReason]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PERSONA_RETROSPECTIVE_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as {
+          influentialPersona?: InfluentialPersona;
+          reason?: string;
+        };
+        if (p.influentialPersona) setInfluentialPersona(p.influentialPersona);
+        if (p.reason) setInfluentialReason(p.reason);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      PERSONA_RETROSPECTIVE_KEY,
+      JSON.stringify({
+        influentialPersona,
+        reason: influentialReason,
+      }),
+    );
+  }, [influentialPersona, influentialReason]);
 
   const { selection, pdr, translate, finalize } = useMemo(() => {
     const safe = <T,>(k: string): T | null => {
@@ -349,6 +398,13 @@ const Dashboard = () => {
     const personaBodies = PERSONA_FEEDBACK.map(
       (p) => `${p.name} — 강점: ${p.strength} / 우려: ${p.concern} / 제안: ${p.suggestion}`,
     );
+    const personaDecisions = (finalizeRaw?.personaDecisions ?? {}) as {
+      persona1?: string;
+      persona2?: string;
+      persona3?: string;
+    };
+    const personaFeedbackIntegratedReason =
+      (finalizeRaw?.personaFeedbackIntegratedReason as string | undefined) ?? "";
 
     const dump: Record<string, unknown> = {
       speech_act: speechAct ?? "",
@@ -383,9 +439,23 @@ const Dashboard = () => {
       judgment_reason: comparisonReason ?? "",
       key_revisions: keyRevisions,
       persona_feedback: {
-        email_recipient: personaBodies[0] ?? "",
-        translation_instructor: personaBodies[1] ?? "",
-        risk_manager: personaBodies[2] ?? "",
+        email_recipient: {
+          feedback_text: personaBodies[0] ?? "",
+          decision: personaDecisions.persona1 ?? "",
+        },
+        translation_instructor: {
+          feedback_text: personaBodies[1] ?? "",
+          decision: personaDecisions.persona2 ?? "",
+        },
+        risk_manager: {
+          feedback_text: personaBodies[2] ?? "",
+          decision: personaDecisions.persona3 ?? "",
+        },
+      },
+      persona_feedback_integrated_reason: personaFeedbackIntegratedReason,
+      persona_feedback_retrospective: {
+        most_influential_persona: influentialPersona || null,
+        retrospective_reason: influentialReason,
       },
       feedback_applied: Boolean(finalizeRaw?.personaFeedbackReceived),
       final_translation_before_feedback:
@@ -522,6 +592,59 @@ const Dashboard = () => {
               />
               <div className="mt-1 text-right text-xs text-muted-foreground">
                 {retroReason.length} / 200
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 border-t border-border/60 pt-5">
+            <h4 className="text-base font-bold">
+              세 피드백 중 가장 영향력이 컸던 것은 누구의 피드백이었나요?
+            </h4>
+            <p className="mt-1 text-xs text-muted-foreground">
+              입력하지 않아도 JSON 내보내기와 PDF 저장은 정상 작동합니다.
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="influential-persona"
+                  className="block text-xs font-semibold text-foreground"
+                >
+                  가장 영향력이 컸던 피드백
+                </label>
+                <select
+                  id="influential-persona"
+                  value={influentialPersona}
+                  onChange={(e) =>
+                    setInfluentialPersona(e.target.value as InfluentialPersona | "")
+                  }
+                  className="mt-2 h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <option value="">선택해주세요</option>
+                  {INFLUENTIAL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label
+                  htmlFor="influential-reason"
+                  className="block text-xs font-semibold text-foreground"
+                >
+                  왜 그렇게 생각했나요?{" "}
+                  <span className="font-normal text-muted-foreground">(선택)</span>
+                </label>
+                <Textarea
+                  id="influential-reason"
+                  value={influentialReason}
+                  onChange={(e) => setInfluentialReason(e.target.value.slice(0, 200))}
+                  placeholder="예: 리스크 관리자의 지적이 최종 번역의 방향을 가장 크게 바꿨다."
+                  className="mt-2 min-h-[72px] text-[14px] leading-relaxed"
+                />
+                <div className="mt-1 text-right text-xs text-muted-foreground">
+                  {influentialReason.length} / 200
+                </div>
               </div>
             </div>
           </div>
@@ -779,6 +902,45 @@ const Dashboard = () => {
               </div>
             ))}
           </div>
+
+          {/* 페르소나별 처리 결과 */}
+          {(() => {
+            const f = finalize as unknown as {
+              personaDecisions?: { persona1?: string; persona2?: string; persona3?: string };
+              personaFeedbackIntegratedReason?: string;
+            } | null;
+            const pd = f?.personaDecisions ?? {};
+            const integrated = (f?.personaFeedbackIntegratedReason ?? "").trim();
+            const rows = [
+              { name: "이메일 수신자", value: pd.persona1 ?? "" },
+              { name: "통번역 교수자", value: pd.persona2 ?? "" },
+              { name: "리스크 관리자", value: pd.persona3 ?? "" },
+            ];
+            return (
+              <div className="mt-6 rounded-lg border border-foreground bg-secondary p-6">
+                <h4 className="text-base font-bold">페르소나별 피드백 처리 결과</h4>
+                <ul className="mt-3 divide-y divide-border/60 rounded-md border border-border bg-background">
+                  {rows.map((r) => (
+                    <li
+                      key={r.name}
+                      className="flex items-center justify-between px-4 py-2.5 text-sm"
+                    >
+                      <span className="font-medium text-foreground">{r.name}</span>
+                      <span className="font-bold text-foreground">
+                        {PERSONA_DECISION_LABEL[r.value] ?? "미선택"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-5">
+                  <div className="text-xs font-semibold text-muted-foreground">통합 판단 이유</div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                    {integrated || "미입력"}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {/* 5. 최종 결정 */}
@@ -820,6 +982,7 @@ const Dashboard = () => {
                 : f?.postFeedbackTranslation || before;
             if (!before && !after) return null;
             return (
+              <>
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="rounded-lg border border-border bg-background p-5">
                   <div className="text-xs font-medium text-muted-foreground">
@@ -838,6 +1001,10 @@ const Dashboard = () => {
                   </p>
                 </div>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                피드백 전후 번역 비교는 멀티 페르소나 피드백이 학습자의 번역 판단에 어떤 변화를 만들었는지 확인하기 위한 자료입니다.
+              </p>
+              </>
             );
           })()}
         </section>
@@ -863,14 +1030,17 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="mt-8 text-center">
-            <button
-              type="button"
+          <div className="mt-8 flex flex-col items-center gap-2 text-center">
+            <Button
               onClick={handleExport}
-              className="text-xs text-muted-foreground/70 underline-offset-4 hover:text-muted-foreground hover:underline"
+              variant="outline"
+              className="h-11 border-foreground px-5 text-sm font-semibold"
             >
               연구 데이터 내보내기 (JSON)
-            </button>
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              본 리포트는 학습자의 판단 흐름을 연구 데이터로 저장합니다.
+            </p>
           </div>
         </section>
       </main>
