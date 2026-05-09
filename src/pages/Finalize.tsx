@@ -21,18 +21,17 @@ import { TRANSLATE_STORAGE_KEY } from "./Translate";
 const FINALIZE_STORAGE_KEY = "translation-workflow-finalize";
 
 type RevisionReason =
-  | "화용 재현성 부족"
+  | "화용 재현성 문제"
   | "관계 적합성 문제"
-  | "리스크 관리 필요"
-  | "복합 (2가지 이상)"
+  | "리스크 관리 문제"
+  | "복합: 2가지 이상"
   | "수정 사항 없음";
 
 const REASON_OPTIONS: RevisionReason[] = [
-  "화용 재현성 부족",
+  "화용 재현성 문제",
   "관계 적합성 문제",
-  "리스크 관리 필요",
-  "복합 (2가지 이상)",
-  "수정 사항 없음",
+  "리스크 관리 문제",
+  "복합: 2가지 이상",
 ];
 
 interface RevisionCase {
