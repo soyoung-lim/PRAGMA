@@ -200,6 +200,8 @@ const Dashboard = () => {
   const [hydrated, setHydrated] = useState(false);
   const [retroVariable, setRetroVariable] = useState<RetroVariable | "">("");
   const [retroReason, setRetroReason] = useState("");
+  const [influentialPersona, setInfluentialPersona] = useState<InfluentialPersona | "">("");
+  const [influentialReason, setInfluentialReason] = useState("");
 
   useEffect(() => {
     if (isDemo) {
@@ -233,6 +235,32 @@ const Dashboard = () => {
       JSON.stringify({ variable: retroVariable, reason: retroReason }),
     );
   }, [retroVariable, retroReason]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PERSONA_RETROSPECTIVE_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as {
+          influentialPersona?: InfluentialPersona;
+          reason?: string;
+        };
+        if (p.influentialPersona) setInfluentialPersona(p.influentialPersona);
+        if (p.reason) setInfluentialReason(p.reason);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      PERSONA_RETROSPECTIVE_KEY,
+      JSON.stringify({
+        influentialPersona,
+        reason: influentialReason,
+      }),
+    );
+  }, [influentialPersona, influentialReason]);
 
   const { selection, pdr, translate, finalize } = useMemo(() => {
     const safe = <T,>(k: string): T | null => {
