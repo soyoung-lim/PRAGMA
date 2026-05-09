@@ -357,6 +357,27 @@ const Pdr = () => {
           <p className="mt-4 text-xs text-muted-foreground">
             ※ 정답을 맞히는 단계가 아니라, 번역 전에 상황을 어떻게 해석했는지 기록하는 단계입니다.
           </p>
+
+          {/* P·D·R 통합 이유 입력칸 (선택) */}
+          <div className="mt-6 rounded-lg border border-border bg-background p-4">
+            <label
+              htmlFor="pdr-integrated-reason"
+              className="block text-sm font-semibold text-foreground"
+            >
+              이 상황의 권력·거리·부담도를 이렇게 판단한 이유를 한두 문장으로 적어주세요{" "}
+              <span className="font-normal text-muted-foreground">(선택)</span>
+            </label>
+            <Textarea
+              id="pdr-integrated-reason"
+              value={pdrIntegratedReason}
+              onChange={(e) => setPdrIntegratedReason(e.target.value.slice(0, 200))}
+              placeholder="예: 첫 거래 상대라 거리감이 있고, 제안을 거절해야 하는 부담스러운 메시지이기 때문에 관계 부담이 크다고 판단했다."
+              className="mt-3 min-h-[80px] text-[14px] leading-relaxed"
+            />
+            <div className="mt-1 text-right text-xs text-muted-foreground">
+              {pdrIntegratedReason.length} / 200
+            </div>
+          </div>
         </section>
 
         {/* Section 3: Strategy */}
