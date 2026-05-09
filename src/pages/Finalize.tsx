@@ -297,6 +297,12 @@ export default function Finalize() {
           ...parsed,
           postFeedbackDecision: migratedDecision,
           revisionCase: { ...EMPTY.revisionCase, ...parsed.revisionCase },
+          personaDecisions: {
+            ...EMPTY_PERSONA_DECISIONS,
+            ...(parsed.personaDecisions ?? {}),
+          },
+          personaFeedbackIntegratedReason:
+            parsed.personaFeedbackIntegratedReason ?? "",
         });
         if (parsed.personaFeedbackReceived) setRevealedPersonas(4);
       }
