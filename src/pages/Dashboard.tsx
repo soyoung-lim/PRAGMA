@@ -177,6 +177,8 @@ const Dashboard = () => {
   const isDemo = searchParams.get("demo") === "true";
 
   const [hydrated, setHydrated] = useState(false);
+  const [retroVariable, setRetroVariable] = useState<RetroVariable | "">("");
+  const [retroReason, setRetroReason] = useState("");
 
   useEffect(() => {
     if (isDemo) {
@@ -190,6 +192,26 @@ const Dashboard = () => {
     logAction("session_end", { reason: "reached_dashboard" }, "/dashboard");
     setHydrated(true);
   }, [isDemo]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RETROSPECTIVE_STORAGE_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as { variable?: RetroVariable; reason?: string };
+        if (p.variable) setRetroVariable(p.variable);
+        if (p.reason) setRetroReason(p.reason);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      RETROSPECTIVE_STORAGE_KEY,
+      JSON.stringify({ variable: retroVariable, reason: retroReason }),
+    );
+  }, [retroVariable, retroReason]);
 
   const { selection, pdr, translate, finalize } = useMemo(() => {
     const safe = <T,>(k: string): T | null => {
