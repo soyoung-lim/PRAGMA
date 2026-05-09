@@ -476,6 +476,57 @@ const Dashboard = () => {
           </p>
         </div>
 
+        {/* P·D·R 회고 */}
+        <section className="mt-10 rounded-lg border border-border bg-secondary p-6 print:hidden">
+          <h3 className="text-lg font-bold">
+            처음 판단을 돌아보며 — 가장 중요했던 변수는 무엇이었나요?
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            번역과 피드백을 거친 후 자신의 판단을 회고해보세요. (선택사항이며 입력하지 않아도 모든 기능은 정상 작동합니다.)
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label
+                htmlFor="retro-variable"
+                className="block text-xs font-semibold text-foreground"
+              >
+                가장 중요했던 변수
+              </label>
+              <select
+                id="retro-variable"
+                value={retroVariable}
+                onChange={(e) => setRetroVariable(e.target.value as RetroVariable | "")}
+                className="mt-2 h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <option value="">선택해주세요</option>
+                {RETRO_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="retro-reason"
+                className="block text-xs font-semibold text-foreground"
+              >
+                왜 그렇게 생각했나요? <span className="font-normal text-muted-foreground">(선택)</span>
+              </label>
+              <Textarea
+                id="retro-reason"
+                value={retroReason}
+                onChange={(e) => setRetroReason(e.target.value.slice(0, 200))}
+                placeholder="예: 번역과 피드백을 거치며 보니, 거절 부담이 가장 핵심이었고 그 부담이 다른 두 변수보다 결정적이었다."
+                className="mt-2 min-h-[72px] text-[14px] leading-relaxed"
+              />
+              <div className="mt-1 text-right text-xs text-muted-foreground">
+                {retroReason.length} / 200
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* 1. 상황 판단 */}
         <section className="mt-16">
           <h3 className="text-2xl font-bold">1. 상황 판단</h3>
