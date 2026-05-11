@@ -241,7 +241,7 @@ const Dashboard = () => {
     ].forEach((k) => {
       try { localStorage.removeItem(k); } catch { /* ignore */ }
     });
-    logAction("restart", { reason: "another_scenario" }, "/dashboard");
+    logAction("session_end", { reason: "another_scenario" }, "/dashboard");
     navigate("/scenario");
   };
 
