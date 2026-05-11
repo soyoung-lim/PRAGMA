@@ -128,6 +128,9 @@ const Pdr = () => {
         <p className="mt-2 text-sm text-muted-foreground">
           세 가지 AI 번역안을 비교하고, 어느 쪽이 가장 적절하고 가장 부적절한지 골라보세요.
         </p>
+        <p className="mt-2 text-xs text-muted-foreground/70">
+          정답을 찾는 문제가 아닙니다. 이 상황에 가장 어울린다고 느끼는 표현을 골라 주세요.
+        </p>
 
         {/* Comparison hint box */}
         <div className="mt-6 rounded-lg border border-foreground/20 bg-muted/40 p-5">
