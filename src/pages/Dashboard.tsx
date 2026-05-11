@@ -298,47 +298,58 @@ const Dashboard = () => {
 
           {/* Card 2 — 번역안 비교 결과 */}
           <Card>
-            <SectionLabel>번역안 비교 결과</SectionLabel>
-            <div className="space-y-4">
-              {/* Best (highlighted) */}
-              <div className="rounded-lg border-2 border-[#E5C97A] bg-[#FAF1D7] p-5">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-[#1D2230]/70">
-                  가장 적절하다고 본 번역안
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="rounded-md bg-[#E8C547] px-2 py-0.5 text-xs font-bold text-[#1D2230]">
-                    번역안 {best ?? "—"}
-                  </span>
-                </div>
-                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
-                  {act && best ? TRANSLATIONS[act][best] : "—"}
-                </p>
+            <SectionLabel>내가 본 번역안 비교</SectionLabel>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {(["A", "B", "C"] as Choice[]).map((c) => {
+                const isBest = best === c;
+                const isWorst = worst === c;
+                const cardCls = isBest
+                  ? "rounded-lg border-2 border-[#E5C97A] bg-[#FAF1D7] p-5"
+                  : isWorst
+                  ? "rounded-lg border border-foreground/15 bg-muted/40 p-5 opacity-70"
+                  : "rounded-lg border border-foreground/15 bg-background p-5";
+                const textCls = isBest
+                  ? "text-foreground"
+                  : isWorst
+                  ? "text-foreground/60"
+                  : "text-foreground/90";
+                return (
+                  <div key={c} className={cardCls}>
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={
+                          isBest
+                            ? "rounded-md bg-[#E8C547] px-2 py-0.5 text-xs font-bold text-[#1D2230]"
+                            : "rounded-md border border-foreground/30 bg-background px-2 py-0.5 text-xs font-semibold text-foreground/80"
+                        }
+                      >
+                        번역안 {c}
+                      </span>
+                      {isBest && (
+                        <span className="text-[11px] font-semibold text-[#1D2230]/70">
+                          가장 적절
+                        </span>
+                      )}
+                      {isWorst && (
+                        <span className="text-[11px] font-semibold text-muted-foreground">
+                          가장 부적절
+                        </span>
+                      )}
+                    </div>
+                    <p className={`mt-3 whitespace-pre-wrap text-sm leading-relaxed ${textCls}`}>
+                      {act ? TRANSLATIONS[act][c] : "—"}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-4 rounded-md border border-foreground/15 bg-background p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                선택 이유
               </div>
-
-              {/* Worst (subdued) */}
-              <div className="rounded-md border border-foreground/15 bg-muted/30 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  가장 부적절하다고 본 번역안
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="rounded-md border border-foreground/30 bg-background px-2 py-0.5 text-xs font-semibold text-foreground/80">
-                    번역안 {worst ?? "—"}
-                  </span>
-                </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
-                  {act && worst ? TRANSLATIONS[act][worst] : "—"}
-                </p>
-              </div>
-
-              {/* Reason */}
-              <div className="rounded-md border border-foreground/15 bg-background p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  선택 이유
-                </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                  {step2Reason || "—"}
-                </p>
-              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                {step2Reason || "—"}
+              </p>
             </div>
           </Card>
 
@@ -419,6 +430,52 @@ const Dashboard = () => {
             </dl>
           </Card>
 
+          {/* Card 5 — 피드백 영향 */}
+          <Card>
+            <SectionLabel>피드백 영향</SectionLabel>
+            {(() => {
+              const side = step3.side;
+              const tone = (target: "receiver" | "expert") => {
+                if (!side || side === "neither")
+                  return "border border-foreground/15 bg-muted/30 opacity-80";
+                if (side === "both")
+                  return "border border-foreground/20 bg-muted/40";
+                return side === target
+                  ? "border-2 border-[#E5C97A] bg-[#FAF1D7]"
+                  : "border border-foreground/15 bg-muted/30 opacity-60";
+              };
+              return (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className={`rounded-lg p-5 ${tone("receiver")}`}>
+                    <div className="text-sm font-bold text-foreground">
+                      중국 측 비즈니스 수신자
+                    </div>
+                    <p className="mt-3 text-xs italic leading-relaxed text-foreground/80">
+                      {side === "receiver"
+                        ? `“${step3.reason || "—"}”`
+                        : "—"}
+                    </p>
+                  </div>
+                  <div className={`rounded-lg p-5 ${tone("expert")}`}>
+                    <div className="text-sm font-bold text-foreground">
+                      통번역·화용 전문가
+                    </div>
+                    <p className="mt-3 text-xs italic leading-relaxed text-foreground/80">
+                      {side === "expert"
+                        ? `“${step3.reason || "—"}”`
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+            {(step3.side === "both" || step3.side === "neither") && step3.reason && (
+              <p className="mt-3 text-xs italic leading-relaxed text-foreground/70">
+                “{step3.reason}”
+              </p>
+            )}
+          </Card>
+
           {/* Card 5 — 번역 변화 비교 */}
           <Card>
             <SectionLabel>번역 변화 비교</SectionLabel>
@@ -453,6 +510,53 @@ const Dashboard = () => {
                 {step4.justification || "—"}
               </p>
             </div>
+          </Card>
+
+          {/* Card 8 — 단계별 의사결정 시간 */}
+          <Card>
+            <SectionLabel>단계별 의사결정 시간</SectionLabel>
+            <p className="mb-4 text-xs text-muted-foreground">
+              각 단계에서 얼마나 고민했는지 보여줍니다.
+            </p>
+            {(() => {
+              const stages: { label: string; seconds: number; display: string }[] = [
+                { label: "1. 상황 이해", seconds: 90, display: "1분 30초" },
+                { label: "2. 번역안 비교", seconds: 195, display: "3분 15초" },
+                { label: "3. 피드백 확인", seconds: 250, display: "4분 10초" },
+                { label: "4. 최종 작성", seconds: 170, display: "2분 50초" },
+                { label: "5. 리포트 보기", seconds: 65, display: "1분 5초" },
+              ];
+              const max = Math.max(...stages.map((s) => s.seconds));
+              return (
+                <div className="space-y-3">
+                  {stages.map((s) => {
+                    const pct = Math.round((s.seconds / max) * 100);
+                    const isMax = s.seconds === max;
+                    return (
+                      <div key={s.label} className="grid grid-cols-[140px_1fr_70px] items-center gap-3">
+                        <div className="text-xs font-medium text-foreground/80">
+                          {s.label}
+                        </div>
+                        <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className={`h-full rounded-full ${
+                              isMax ? "bg-[#E8C547]" : "bg-foreground/30"
+                            }`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="text-right text-xs tabular-nums text-muted-foreground">
+                          {s.display}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            <p className="mt-4 text-[11px] text-muted-foreground">
+              본 실험에서는 실제 측정값으로 표시됩니다. 현재는 시연용 예시 값입니다.
+            </p>
           </Card>
         </div>
 
