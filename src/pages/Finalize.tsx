@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
+import { isDemoMode } from "@/lib/demo";
 
 type ActId = "request" | "refusal";
 type Choice = "A" | "B" | "C";
@@ -113,6 +114,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 const Finalize = () => {
   const navigate = useNavigate();
+  const demo = isDemoMode();
   const [act, setAct] = useState<ActId | null>(null);
   const [best, setBest] = useState<Choice | null>(null);
   const [finalTranslation, setFinalTranslation] = useState("");
@@ -151,7 +153,7 @@ const Finalize = () => {
 
   const justOk = justification.trim().length >= 50;
   const transOk = finalTranslation.trim().length >= 1;
-  const canProceed = justOk && transOk;
+  const canProceed = demo || (justOk && transOk);
 
   const fb = act && best ? FEEDBACK[act][best] : null;
 
@@ -260,7 +262,8 @@ const Finalize = () => {
           <textarea
             id="final-translation"
             value={finalTranslation}
-            onChange={(e) => setFinalTranslation(e.target.value)}
+            onChange={(e) => !demo && setFinalTranslation(e.target.value)}
+            readOnly={demo}
             placeholder="여기에 본인이 결정한 최종 중국어 번역안을 직접 입력하세요. 번역안 A/B/C 중 하나를 그대로 붙여 넣지 말고, 본인의 판단으로 다듬어 작성해 주세요."
             rows={6}
             maxLength={2000}
@@ -279,7 +282,8 @@ const Finalize = () => {
           <textarea
             id="final-justification"
             value={justification}
-            onChange={(e) => setJustification(e.target.value)}
+            onChange={(e) => !demo && setJustification(e.target.value)}
+            readOnly={demo}
             placeholder="예) 처음에는 B가 적절하다고 봤지만, 전문가 관점 피드백을 보고 상대 입장이 더 잘 드러나는 표현이 필요하다고 느껴 격식을 유지하면서도 협력 의사를 한 문장 더 넣었습니다."
             rows={5}
             maxLength={2000}
