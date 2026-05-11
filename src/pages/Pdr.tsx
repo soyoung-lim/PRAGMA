@@ -188,11 +188,16 @@ const Pdr = () => {
             <span className="h-px flex-1 bg-foreground/15" />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="flex flex-col gap-4">
             {OPTIONS.map((c) => (
               <div
                 key={c}
-                className="flex flex-col rounded-lg border border-foreground p-5"
+                className={[
+                  "flex w-full flex-col rounded-lg p-5",
+                  c === "A"
+                    ? "border-[0.5px] border-[#E0CDBF]"
+                    : "border border-foreground",
+                ].join(" ")}
                 style={{ backgroundColor: TRANSLATION_CARD_BG[c] }}
               >
                 <div className="text-base font-bold">번역안 {c}</div>
@@ -242,7 +247,7 @@ const Pdr = () => {
             }}
             readOnly={demo}
             placeholder="의미와 말투, 관계 적합성, 오해·부담 가능성을 참고해 왜 이 번역안이 적절하거나 부적절하다고 보았는지 적어 주세요."
-            rows={5}
+            rows={3}
             className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
           />
           <div className="mt-2 flex items-center justify-between">

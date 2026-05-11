@@ -153,8 +153,8 @@ const IMPACT_LABEL: Record<ImpactLevel, string> = {
 };
 
 const SIDE_LABEL: Record<SideChoice, string> = {
-  receiver: "수용자 관점이 더 와닿았다",
-  expert: "분석자 관점이 더 와닿았다",
+  receiver: "이메일 수신자 페르소나가 더 와닿았다",
+  expert: "통번역 교수자 페르소나가 더 와닿았다",
   both: "두 관점이 비슷하게 영향을 줬다",
   neither: "어느 쪽도 특별히 영향을 주지 않았다",
 };
@@ -471,8 +471,8 @@ const Dashboard = () => {
               const tone = (target: "receiver" | "expert") => {
                 const base =
                   target === "receiver"
-                    ? "border-[0.5px] border-[#D9C5A8] bg-[#F5EBDB]"
-                    : "border-[0.5px] border-[#BFC9C3] bg-[#E0E8E3]";
+                    ? "border-[0.5px] border-[#E8D5C4] bg-[#F8EDE3]"
+                    : "border-[0.5px] border-[#CDD6CF] bg-[#E8EFE9]";
                 if (!side || side === "neither") return `${base} opacity-80`;
                 if (side === "both") return base;
                 return side === target
@@ -483,10 +483,10 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className={`rounded-lg p-5 ${tone("receiver")}`}>
                     <div className="text-[15px] font-medium text-[#15202B]">
-                      수용자 관점
+                      이메일 수신자 페르소나
                     </div>
-                    <div className="mt-1 text-[12px] font-normal text-[#8B7355]">
-                      중국어권 비즈니스 커뮤니케이션 실무 관점
+                    <div className="mt-1 text-[12px] font-normal text-[#A88766]">
+                      중국어권 비즈니스 커뮤니케이션 담당자 관점
                     </div>
                     <p className="mt-3 text-xs italic leading-relaxed text-foreground/80">
                       {side === "receiver"
@@ -496,10 +496,10 @@ const Dashboard = () => {
                   </div>
                   <div className={`rounded-lg p-5 ${tone("expert")}`}>
                     <div className="text-[15px] font-medium text-[#15202B]">
-                      분석자 관점
+                      통번역 교수자 페르소나
                     </div>
                     <div className="mt-1 text-[12px] font-normal text-[#3F5852]">
-                      한·중 번역 비교 분석의 학술 관점
+                      한·중 통번역 분석의 학술적 관점
                     </div>
                     <p className="mt-3 text-xs italic leading-relaxed text-foreground/80">
                       {side === "expert"
@@ -546,22 +546,22 @@ const Dashboard = () => {
           <Card>
             <SectionLabel>다관점 피드백 요약</SectionLabel>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-md border-[0.5px] border-[#D9C5A8] bg-[#F5EBDB] p-5">
+              <div className="rounded-md border-[0.5px] border-[#E8D5C4] bg-[#F8EDE3] p-5">
                 <div className="text-[15px] font-medium text-[#15202B]">
-                  수용자 관점
+                  이메일 수신자 페르소나
                 </div>
-                <div className="mt-1 text-[12px] font-normal text-[#8B7355]">
-                  중국어권 비즈니스 커뮤니케이션 실무 관점
+                <div className="mt-1 text-[12px] font-normal text-[#A88766]">
+                  중국어권 비즈니스 커뮤니케이션 담당자 관점
                 </div>
                 <div className="mt-3 space-y-3 text-sm leading-relaxed text-[#15202B]">
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#8B7355]">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#A88766]">
                       수용 양상
                     </div>
                     <p className="mt-1">{fb ? fb.receiver.impression : "—"}</p>
                   </div>
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#8B7355]">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#A88766]">
                       재고 지점
                     </div>
                     <p className="mt-1">{fb ? fb.receiver.reconsider : "—"}</p>
@@ -569,12 +569,12 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="rounded-md border-[0.5px] border-[#BFC9C3] bg-[#E0E8E3] p-5">
+              <div className="rounded-md border-[0.5px] border-[#CDD6CF] bg-[#E8EFE9] p-5">
                 <div className="text-[15px] font-medium text-[#15202B]">
-                  분석자 관점
+                  통번역 교수자 페르소나
                 </div>
                 <div className="mt-1 text-[12px] font-normal text-[#3F5852]">
-                  한·중 번역 비교 분석의 학술 관점
+                  한·중 통번역 분석의 학술적 관점
                 </div>
                 <div className="mt-3 space-y-3 text-sm leading-relaxed text-[#15202B]">
                   <div>
