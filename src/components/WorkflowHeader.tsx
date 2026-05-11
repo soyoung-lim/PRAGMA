@@ -28,7 +28,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
   };
 
   return (
-    <header className="border-b-2 border-foreground/80 bg-[#F5F1E6] print:hidden">
+    <header className="border-b-2 border-foreground/80 bg-[#FAF8F2] print:hidden">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 pt-3 pb-1.5">
         <Link
           to="/"
@@ -84,8 +84,8 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
                   className={[
                     "flex flex-1 h-[54px] items-center justify-center rounded-lg box-border px-2 py-0 text-center leading-none transition-colors",
                     isCurrent
-                      ? "bg-[#E8C547] text-[#1D2230] font-bold border-[1.5px] border-solid border-[#1D2230] shadow-sm"
-                      : "bg-[#FAF7EC] text-muted-foreground font-normal border border-solid border-[#D9D4C5]",
+                      ? "bg-[#15202B] text-[#15202B] font-bold border-[1.5px] border-solid border-[#15202B] shadow-sm"
+                      : "bg-[#DCE0E5] text-muted-foreground font-normal border border-solid border-[#D3D1C7]",
                     clickable ? "cursor-pointer hover:bg-background/60 hover:text-foreground" : "cursor-default",
                   ].join(" ")}
                   aria-current={isCurrent ? "step" : undefined}

@@ -162,7 +162,7 @@ const ScenarioSelect = () => {
                   "rounded-lg p-6 text-left transition-all duration-200",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                   isSel
-                    ? "border-2 border-[#E5C97A] bg-[#FAF1D7] text-[#1D2230] font-bold"
+                    ? "border-2 border-[#15202B] bg-[#FFFFFF] text-[#15202B] font-bold"
                     : "border border-foreground bg-background hover:-translate-y-0.5 hover:shadow-md",
                   demo ? "cursor-default" : "",
                 ].join(" ")}
@@ -177,7 +177,7 @@ const ScenarioSelect = () => {
         {selected && (
           <section key={selected} className="fade-in mt-6 space-y-6">
             {/* Block 1: scenario detail */}
-            <div className="rounded-lg border border-foreground/30 bg-[#FAF7EC] p-6">
+            <div className="rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
               <SectionLabel>이 상황을 읽어주세요</SectionLabel>
               <div className="space-y-3 text-[15px] leading-relaxed text-foreground">
                 {SCENARIO_DETAIL[selected].map((p, i) => (
@@ -200,15 +200,15 @@ const ScenarioSelect = () => {
             </div>
 
             {/* Block 2: source text — most visually prominent */}
-            <div className="rounded-lg border-2 border-[#E5C97A] bg-[#FAF1D7] p-6 shadow-sm">
+            <div className="rounded-lg border-2 border-[#15202B] bg-[#FFFFFF] p-6 shadow-sm">
               <SectionLabel>번역해야 할 한국어 원문</SectionLabel>
-              <p className="text-[18px] font-semibold leading-relaxed text-[#1D2230]">
+              <p className="text-[18px] font-semibold leading-relaxed text-[#15202B]">
                 {SOURCE_TEXT[selected]}
               </p>
             </div>
 
             {/* Block 3: situation judgment */}
-            <div className="rounded-lg border border-foreground/30 bg-[#FAF7EC] p-6">
+            <div className="rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
               <SectionLabel>상황을 읽고, 본인이 느낀 그대로 골라주세요</SectionLabel>
 
               <div className="mt-2 space-y-6">
@@ -224,14 +224,14 @@ const ScenarioSelect = () => {
                             className={[
                               "flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm transition-colors",
                               checked
-                                ? "border-[#E5C97A] bg-[#FAF1D7]"
+                                ? "border-[#15202B] bg-[#FFFFFF]"
                                 : "border-foreground/20 bg-background hover:bg-muted/40",
                             ].join(" ")}
                           >
                             <input
                               type="radio"
                               name={q.id}
-                              className="mt-0.5 accent-[#E8C547]"
+                              className="mt-0.5 accent-[#15202B]"
                               checked={checked}
                               disabled={demo}
                               onChange={() => setAnswer(q.id, idx)}
@@ -261,7 +261,7 @@ const ScenarioSelect = () => {
               "rounded-lg px-6 py-3 text-base font-medium transition-colors",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
               canProceed
-                ? "bg-[#E8C547] text-[#1D2230] hover:brightness-95"
+                ? "bg-[#FAD338] text-[#15202B] hover:bg-[#E8B91F]"
                 : "cursor-not-allowed bg-muted text-muted-foreground",
             ].join(" ")}
           >
