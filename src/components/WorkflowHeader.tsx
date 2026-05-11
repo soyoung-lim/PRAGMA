@@ -10,7 +10,7 @@ interface WorkflowHeaderProps {
 }
 
 const STEPS = [
-  { num: 1, label: "상황 이해", path: "/scenario" },
+  { num: 1, label: "상황 판단", path: "/scenario" },
   { num: 2, label: "번역안 비교", path: "/pdr" },
   { num: 3, label: "피드백 확인", path: "/translate" },
   { num: 4, label: "최종 작성", path: "/finalize" },
@@ -40,7 +40,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
               aria-hidden
               className="inline-block h-4 w-[2px] rounded-full bg-[#FAD338] transition-all duration-200 group-hover:h-5"
             />
-            <span>AI 기반 한·중 통번역 의사결정 워크플로우</span>
+            <span>AI 기반 한·중 통번역 학습 워크플로우</span>
           </Link>
           <div className="flex items-center gap-2">
             {demo && (
