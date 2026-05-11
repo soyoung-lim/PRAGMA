@@ -13,6 +13,24 @@ const STEP2_REASON_KEY = "step2-reason";
 const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP3_STORAGE_KEY = "step3-feedback-impact";
 
+const SOURCE_TEXT: Record<ActId, string> = {
+  request: "이번 자료 전달 일정을 10일 정도 연장해 주실 수 있을지 검토 부탁드립니다.",
+  refusal: "검토해 봤는데 이번에는 프로모션 비용 인하가 어려울 것 같습니다.",
+};
+
+const TRANSLATIONS: Record<ActId, Record<Choice, string>> = {
+  request: {
+    A: "请将本次资料提交时间延后十天。",
+    B: "不知贵方是否方便将本次资料提交时间延后十天,烦请考虑。",
+    C: "由于我方仍需等待艺人方面的最终确认,恳请贵方酌情考虑将本次资料提交时间延后十天。由此可能给贵方上线安排带来的不便,我们深表歉意。",
+  },
+  refusal: {
+    A: "我们研究过了,这次不能降低推广费用。",
+    B: "我们内部讨论过了,这次推广费用方面确实很难再调整,还请您理解。",
+    C: "感谢贵方一直以来的支持。关于此次推广费用调整,我们已认真进行内部讨论,但由于项目预算和执行安排已经基本确定,实在难以再下调。还请您理解,我们也会继续积极配合后续活动推进。",
+  },
+};
+
 interface FeedbackBlock {
   receiver: { impression: string; reconsider: string };
   expert: { strength: string; revision: string };
@@ -163,6 +181,11 @@ const Translate = () => {
     act && (best === "A" || best === "B" || best === "C")
       ? FEEDBACK[act][best as Choice]
       : null;
+  const bestTranslation =
+    act && (best === "A" || best === "B" || best === "C")
+      ? TRANSLATIONS[act][best as Choice]
+      : "";
+  const sourceText = act ? SOURCE_TEXT[act] : "";
   const summaryReason = step2Reason
     ? step2Reason.length > 80
       ? step2Reason.slice(0, 80) + "…"
@@ -220,25 +243,34 @@ const Translate = () => {
           방금 선택한 번역안에 대해, 두 가지 관점에서 본 피드백을 확인해 보세요.
         </p>
 
-        {/* Step 2 summary */}
-        <section className="mt-6 rounded-lg border border-foreground/20 bg-muted/40 p-4">
-          <SectionLabel>Step 2에서 내가 선택한 것</SectionLabel>
-          <ul className="space-y-1 text-sm text-foreground/90">
-            <li>
-              내가 가장 적절하다고 본 번역안:{" "}
-              <span className="font-semibold">{best || "—"}</span>
-            </li>
-            <li>
-              내가 가장 부적절하다고 본 번역안:{" "}
-              <span className="font-semibold">{worst || "—"}</span>
-            </li>
-            <li className="whitespace-pre-wrap">
-              내가 적은 이유:{" "}
-              <span className="text-muted-foreground">
-                {summaryReason || "[학생 입력 요약 — Step 2에서 입력해주세요]"}
-              </span>
-            </li>
-          </ul>
+        {/* Source ↔ chosen best translation pairing */}
+        <section className="mt-6 rounded-xl border-2 border-foreground/30 bg-background p-5">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+            지금 피드백을 받고 있는 번역안
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="rounded-lg border border-foreground/20 bg-muted/30 p-4">
+              <SectionLabel>한국어 원문 (출발어)</SectionLabel>
+              <p className="text-[15px] leading-relaxed text-foreground">
+                {sourceText || "[Step 1에서 화행을 먼저 선택해주세요]"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-foreground/20 bg-muted/30 p-4">
+              <SectionLabel>
+                내가 고른 중국어 번역안 (도착어){best ? ` · ${best}` : ""}
+              </SectionLabel>
+              <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
+                {bestTranslation || "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
+              </p>
+            </div>
+          </div>
+          {(worst || summaryReason) && (
+            <div className="mt-4 border-t border-foreground/10 pt-3 text-xs text-muted-foreground">
+              {worst && <span>가장 부적절하다고 본 번역안: <span className="font-semibold text-foreground/80">{worst}</span></span>}
+              {worst && summaryReason && <span> · </span>}
+              {summaryReason && <span className="whitespace-pre-wrap">내가 적은 이유: {summaryReason}</span>}
+            </div>
+          )}
         </section>
 
         {/* Two-perspective feedback cards */}
