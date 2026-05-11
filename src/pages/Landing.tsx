@@ -22,15 +22,15 @@ const Landing = () => {
   };
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="border-b-2 border-foreground/80">
+      <header className="bg-[#15202B]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <span className="flex items-center gap-2 text-base font-bold sm:text-lg">
-            <span aria-hidden className="inline-block h-4 w-[2px] rounded-full bg-accent" />
+          <span className="flex items-center gap-2 text-base font-medium text-[#F1EFE8] sm:text-lg">
+            <span aria-hidden className="inline-block h-4 w-[2px] rounded-full bg-[#FAD338]" />
             AI 기반 한·중 통번역 의사결정 워크플로우
           </span>
           <Link
             to="/scenario"
-            className="hidden rounded-md border border-foreground/80 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:inline-block"
+            className="hidden rounded-md border border-[#5C6A7A] bg-transparent px-3 py-1.5 text-sm font-medium text-[#F1EFE8] transition-colors hover:bg-white/5 sm:inline-block"
           >
             바로 시작 →
           </Link>
