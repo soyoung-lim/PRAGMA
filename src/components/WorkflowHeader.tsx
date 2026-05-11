@@ -69,7 +69,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
         </div>
       </div>
 
-      <nav aria-label="진행 단계" className="mx-auto max-w-6xl px-6 pt-3 pb-2.5">
+      <nav aria-label="진행 단계" className="mx-auto max-w-6xl px-6 pt-5 pb-2.5">
         <ol className="flex items-stretch gap-1.5 sm:gap-2">
           {STEPS.map((s, idx) => {
             const isCurrent = s.num === currentStep;
@@ -84,25 +84,26 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
                   onClick={() => jumpTo(s)}
                   disabled={!clickable}
                   className={[
-                    "flex flex-1 h-[54px] items-center justify-center gap-1.5 rounded-lg box-border px-2 py-0 text-center leading-none transition-colors",
+                    "relative flex flex-1 items-center justify-center rounded-[10px] box-border text-center leading-none transition-colors",
                     isCurrent
-                      ? "bg-[#FAD338] text-[#15202B] font-medium border-[1.5px] border-solid border-[#FAD338] shadow-sm"
-                      : "bg-[#FFFFFF] text-muted-foreground font-normal border border-solid border-[#D3D1C7]",
+                      ? "bg-[#FAD338] text-[#15202B] font-medium border-[1.5px] border-solid border-[#15202B] shadow-sm"
+                      : "bg-[#FFFFFF] text-[#5C6A7A] font-normal border-[0.5px] border-solid border-[#D3D1C7]",
                     clickable ? "cursor-pointer hover:bg-background/60 hover:text-foreground" : "cursor-default",
                   ].join(" ")}
+                  style={{ padding: "16px 8px 12px" }}
                   aria-current={isCurrent ? "step" : undefined}
                 >
                   <span
                     className={[
-                      "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-medium leading-none",
-                      isCurrent ? "bg-[#FAD338] text-[#15202B]" : "bg-[#DCE0E5] text-[#5C6A7A]",
+                      "absolute -top-[10px] left-1/2 -translate-x-1/2 flex h-[22px] w-[22px] items-center justify-center rounded-full text-[11px] font-medium leading-none",
+                      isCurrent ? "bg-[#15202B] text-[#FFFFFF]" : "bg-[#DCE0E5] text-[#5C6A7A]",
                     ].join(" ")}
                   >
                     {s.num}
                   </span>
                   <span
                     className={[
-                      "leading-none",
+                      "mt-1 leading-none",
                       isCurrent ? "text-[12px] sm:text-[13px]" : "text-[11px] sm:text-xs",
                     ].join(" ")}
                   >
@@ -112,11 +113,10 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
                 {idx < STEPS.length - 1 && (
                   <span
                     aria-hidden
-                    className={[
-                      "hidden sm:block h-px w-3 sm:w-4",
-                      connectorDone ? "bg-foreground" : "bg-muted-foreground/30",
-                    ].join(" ")}
-                  />
+                    className="hidden sm:block text-[#B4B2A9] text-xs leading-none"
+                  >
+                    →
+                  </span>
                 )}
               </li>
             );
