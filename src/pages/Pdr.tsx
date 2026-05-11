@@ -136,7 +136,7 @@ const Pdr = () => {
         </p>
 
         {/* Comparison hint box */}
-        <div className="mt-6 rounded-lg border border-foreground/20 bg-muted/40 p-5">
+        <div className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
           <div className="flex items-start gap-2">
             <span aria-hidden className="mt-0.5 text-base">ⓘ</span>
             <div className="flex-1">
@@ -171,7 +171,7 @@ const Pdr = () => {
         </div>
 
         {/* Source ↔ translations pairing */}
-        <div className="mt-6 rounded-xl border-2 border-foreground/30 bg-background p-5">
+        <div className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
           <SectionLabel>번역해야 할 한국어 원문 (출발어)</SectionLabel>
           <p className="text-[17px] font-medium leading-relaxed text-foreground">
             {sourceText}
@@ -217,7 +217,7 @@ const Pdr = () => {
         </div>
 
         {/* Reason */}
-        <div className="mt-6 rounded-lg border border-foreground/30 bg-background p-6">
+        <div className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
           <label htmlFor="reason" className="text-sm font-semibold">
             왜 그렇게 판단했는지 자유롭게 적어주세요
           </label>
