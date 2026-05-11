@@ -26,7 +26,7 @@ const Landing = () => {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <span className="flex items-center gap-2 text-base font-bold sm:text-lg">
             <span aria-hidden className="inline-block h-4 w-[2px] rounded-full bg-accent" />
-            AI 기반 한·중 통번역 학습 워크플로우
+            AI 기반 한·중 통번역 의사결정 워크플로우
           </span>
           <Link
             to="/scenario"
@@ -41,10 +41,10 @@ const Landing = () => {
         {/* HERO */}
         <section className="text-center">
           <h1 className="text-4xl font-bold sm:text-5xl lg:text-[56px]">
-            AI 기반 한·중 통번역 학습 워크플로우
+            AI 기반 한·중 통번역 의사결정 워크플로우
           </h1>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-[17px]">
-            AI 번역을 비교하고, 수정 이유를 기록하며, 최종 번역 결정을 설명하는 학습 시스템
+            학습자가 AI 번역안을 비교하고, 피드백을 검토한 뒤, 최종 번역 결정을 직접 설명하는 워크플로우
           </p>
         </section>
 
@@ -78,9 +78,6 @@ const Landing = () => {
               </div>
             ))}
           </div>
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            비선형 학습 — 언제든 이전 단계로 돌아가 수정 가능합니다
-          </p>
         </section>
 
         {/* CTA */}
