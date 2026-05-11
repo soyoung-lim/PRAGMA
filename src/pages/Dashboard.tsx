@@ -516,7 +516,6 @@ const Dashboard = () => {
           <Card>
             <SectionLabel>단계별 의사결정 시간</SectionLabel>
             {(() => {
-            {(() => {
               const stages = [
                 { label: "1. 상황 이해", seconds: 90, display: "1분 30초" },
                 { label: "2. 번역안 비교", seconds: 195, display: "3분 15초" },
