@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
+import { isDemoMode } from "@/lib/demo";
 
 type ImpactLevel = "same" | "partial" | "major";
 type SideChoice = "receiver" | "expert" | "both" | "neither";
@@ -131,6 +133,8 @@ interface Step3Data {
 }
 
 const Translate = () => {
+  const navigate = useNavigate();
+  const demo = isDemoMode();
   const [act, setAct] = useState<ActId | null>(null);
   const [best, setBest] = useState<string>("");
   const [worst, setWorst] = useState<string>("");
@@ -175,7 +179,7 @@ const Translate = () => {
   }, [impact, side, reason]);
 
   const reasonOk = reason.trim().length >= 15;
-  const canProceed = !!impact && !!side && reasonOk;
+  const canProceed = demo || (!!impact && !!side && reasonOk);
 
   const fb =
     act && (best === "A" || best === "B" || best === "C")
@@ -219,6 +223,7 @@ const Translate = () => {
           checked
             ? "border-[#E5C97A] bg-[#FAF1D7] font-semibold"
             : "border-foreground/20 bg-background hover:bg-muted/40",
+          demo ? "cursor-default" : "",
         ].join(" ")}
       >
         <input
@@ -226,7 +231,8 @@ const Translate = () => {
           name={name}
           className="mt-0.5 accent-[#E8C547]"
           checked={checked}
-          onChange={() => onChange(value)}
+          disabled={demo}
+          onChange={() => !demo && onChange(value)}
         />
         <span className="leading-relaxed">{children}</span>
       </label>
@@ -365,7 +371,8 @@ const Translate = () => {
               <textarea
                 id="step3-reason"
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => !demo && setReason(e.target.value)}
+                readOnly={demo}
                 placeholder="예) 수신자가 어떻게 느낄지 구체적인 인상을 들으니 다시 보게 됐습니다."
                 rows={3}
                 className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#E5C97A] focus:outline-none focus:ring-2 focus:ring-[#E8C547]/40"
@@ -389,6 +396,7 @@ const Translate = () => {
             <button
               type="button"
               disabled={!canProceed}
+              onClick={() => canProceed && navigate("/finalize")}
               className={[
                 "rounded-lg px-6 py-3 text-base font-medium transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
