@@ -6,31 +6,43 @@ type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
 
 const ACTS: { id: ActId; title: string; desc: string }[] = [
-  { id: "request", title: "요청 상황", desc: "K-pop 온라인 팬 이벤트 페이지 일정 연장 요청" },
-  { id: "refusal", title: "거절 상황", desc: "K-pop 디지털 캠페인 단가 인하 요청 거절" },
+  { id: "request", title: "요청 상황", desc: "K-pop 팬 이벤트 자료 전달 일정 연장 요청" },
+  { id: "refusal", title: "거절 상황", desc: "K-pop 팬 이벤트 공동 프로모션 비용 인하 요청 거절" },
 ];
 
 const SCENARIO_DETAIL: Record<ActId, string[]> = {
   request: [
-    "당신은 한국의 엔터테인먼트 테크 스타트업에서 글로벌 프로젝트를 담당하고 있습니다. 귀사는 K-pop 아티스트의 온라인 팬 이벤트 페이지와 참여 기능을 개발하여 중국의 대형 콘텐츠 플랫폼에 제공하기로 했습니다.",
-    "상대는 중국 대형 콘텐츠 플랫폼의 콘텐츠 제휴팀장입니다. 이 플랫폼은 중국 내 공개 일정과 프로모션 편성을 결정하는 쪽이며, 귀사와는 이번이 첫 공식 협업입니다. 지금까지는 공식 이메일과 화상회의로만 소통했습니다.",
-    "원래 이번 주 금요일까지 최종 페이지 파일을 전달해야 하지만, 베타 테스트 과정에서 팬 인증 기능과 결제 연동 기능에 수정이 필요한 문제가 발견되었습니다. 최종 파일 전달을 10일 정도 연장해 달라고 요청해야 합니다.",
-    "이미 중국 플랫폼 쪽에서는 사전 홍보 일정과 공개 일정을 잡아 둔 상태이므로, 이 요청은 상대에게 부담이 큽니다.",
+    "당신은 한국 엔터테인먼트 기획사의 해외사업팀 직원입니다.",
+    "중국 대형 콘텐츠 플랫폼에 K-pop 아티스트 온라인 팬 이벤트 페이지 자료를 이번 주 금요일까지 전달하기로 했지만, 아티스트 측 최종 확인이 늦어져 일정 연장이 필요합니다.",
+    "상대는 처음 공식 협업하는 중국 플랫폼 담당자이며, 일정 연장은 상대의 공개 일정에 부담이 될 수 있습니다.",
   ],
   refusal: [
-    "당신은 한국 엔터테인먼트 IP 회사의 글로벌 마케팅 담당자입니다. 귀사는 중국 현지 프로모션 에이전시와 함께 K-pop 아티스트의 디지털 캠페인을 준비하고 있습니다.",
-    "상대는 중국 에이전시의 캠페인 운영 담당자입니다. 직급은 당신과 비슷하지만, 중국 현지 플랫폼 운영과 광고 집행을 조율하는 실무 파트너이기 때문에 향후 캠페인 진행에 영향력이 있습니다.",
-    "양사는 지난 캠페인에서 한 차례 협업한 적이 있고, 이번 캠페인 준비 과정에서도 메신저와 이메일로 몇 차례 소통했습니다. 다만 오래된 거래처나 개인적으로 가까운 사이는 아니며, 기본적으로 업무상 예의를 지켜야 하는 관계입니다.",
-    "상대가 다음 달 디지털 캠페인의 IP 사용료와 제작 지원비를 20% 낮춰 달라고 요청했습니다. 내부 검토 결과, 아티스트 IP 계약 기준과 제작 비용 구조상 이번 캠페인에는 단가 인하를 적용하기 어렵습니다.",
-    "상대와의 협업 관계는 유지해야 하지만, 이번 요청은 분명하게 거절해야 합니다.",
+    "당신은 한국 엔터테인먼트 기획사의 해외사업팀 직원입니다.",
+    "중국 콘텐츠 플랫폼 담당자가 K-pop 아티스트 온라인 팬 이벤트 공동 프로모션 비용을 낮춰 달라고 요청했습니다.",
+    "상대와는 여러 번 연락해 온 실무 관계이지만, 내부 검토 결과 이번에는 비용 인하가 어렵다는 답변을 보내야 합니다.",
+  ],
+};
+
+const KEY_INFO: Record<ActId, { label: string; value: string }[]> = {
+  request: [
+    { label: "나의 역할", value: "한국 엔터테인먼트 기획사 해외사업팀 직원" },
+    { label: "상대", value: "중국 대형 콘텐츠 플랫폼 담당자" },
+    { label: "관계", value: "첫 공식 협업, 격식 있는 관계" },
+    { label: "해야 할 일", value: "K-pop 팬 이벤트 페이지 자료 전달 일정 연장 요청" },
+    { label: "부담도", value: "상대의 공개 일정에 부담 있음" },
+  ],
+  refusal: [
+    { label: "나의 역할", value: "한국 엔터테인먼트 기획사 해외사업팀 직원" },
+    { label: "상대", value: "중국 콘텐츠 플랫폼 실무 담당자" },
+    { label: "관계", value: "여러 번 연락해 온 실무 관계" },
+    { label: "해야 할 일", value: "공동 프로모션 비용 인하 요청 거절" },
+    { label: "부담도", value: "비용 문제라 민감함" },
   ],
 };
 
 const SOURCE_TEXT: Record<ActId, string> = {
-  request:
-    "안녕하십니까. 이번 온라인 팬 이벤트 페이지 개발 건과 관련하여 부득이하게 일정 조정을 요청드리고자 합니다. 베타 테스트 과정에서 팬 인증 기능과 결제 연동 기능에 추가 수정이 필요한 문제가 확인되어, 당초 이번 주 금요일로 예정된 최종 파일 전달 일정을 10일 정도 연장해 주실 수 있을지 검토 부탁드립니다. 귀사의 공개 일정과 사전 홍보에 부담을 드릴 수 있다는 점을 잘 알고 있으며, 수정 범위와 임시 대응 방안을 함께 공유드리겠습니다.",
-  refusal:
-    "안녕하세요. 보내주신 다음 달 디지털 캠페인 단가 조정 요청은 내부적으로 검토했습니다. 요청하신 20% 인하는 현재 아티스트 IP 계약 기준과 제작 비용 구조상 이번 캠페인에는 적용하기 어렵습니다. 다만 콘텐츠 제공 범위, 노출 기간, 결제 일정 등 단가 외의 조건은 조정 가능한지 함께 검토하고 싶습니다. 이번 건은 양해 부탁드리며, 이후 캠페인에서도 현실적인 협력 방안을 계속 논의하겠습니다.",
+  request: "이번 자료 전달 일정을 10일 정도 연장해 주실 수 있을지 검토 부탁드립니다.",
+  refusal: "검토해 봤는데 이번에는 프로모션 비용 인하가 어려울 것 같습니다.",
 };
 
 const QUESTIONS: { id: "q1" | "q2" | "q3"; label: string; options: string[] }[] = [
@@ -151,10 +163,23 @@ const ScenarioSelect = () => {
               </div>
             </div>
 
-            {/* Block 2: source text — visually distinct */}
-            <div className="rounded-lg border-2 border-foreground bg-background p-6 shadow-sm">
+            {/* Key info */}
+            <div className="rounded-lg border border-foreground/30 bg-background p-6">
+              <SectionLabel>핵심 정보</SectionLabel>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {KEY_INFO[selected].map((item, i) => (
+                  <div key={i} className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
+                    <span className="text-sm font-semibold text-foreground">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Block 2: source text — most visually prominent */}
+            <div className="rounded-lg border-2 border-[#E5C97A] bg-[#FAF1D7] p-6 shadow-sm">
               <SectionLabel>번역해야 할 한국어 원문</SectionLabel>
-              <p className="text-[16px] leading-relaxed text-foreground">
+              <p className="text-[18px] font-semibold leading-relaxed text-[#1D2230]">
                 {SOURCE_TEXT[selected]}
               </p>
             </div>
