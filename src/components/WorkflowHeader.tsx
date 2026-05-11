@@ -84,7 +84,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
                   className={[
                     "flex flex-1 h-[54px] items-center justify-center rounded-lg box-border px-2 py-0 text-center leading-none transition-colors",
                     isCurrent
-                      ? "bg-[#15202B] text-[#15202B] font-bold border-[1.5px] border-solid border-[#15202B] shadow-sm"
+                      ? "bg-[#15202B] text-white font-bold border-[1.5px] border-solid border-[#15202B] shadow-sm"
                       : "bg-[#DCE0E5] text-muted-foreground font-normal border border-solid border-[#D3D1C7]",
                     clickable ? "cursor-pointer hover:bg-background/60 hover:text-foreground" : "cursor-default",
                   ].join(" ")}
