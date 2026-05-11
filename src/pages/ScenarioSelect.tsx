@@ -163,10 +163,23 @@ const ScenarioSelect = () => {
               </div>
             </div>
 
-            {/* Block 2: source text — visually distinct */}
-            <div className="rounded-lg border-2 border-foreground bg-background p-6 shadow-sm">
+            {/* Key info */}
+            <div className="rounded-lg border border-foreground/30 bg-background p-6">
+              <SectionLabel>핵심 정보</SectionLabel>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {KEY_INFO[selected].map((item, i) => (
+                  <div key={i} className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
+                    <span className="text-sm font-semibold text-foreground">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Block 2: source text — most visually prominent */}
+            <div className="rounded-lg border-2 border-[#E5C97A] bg-[#FAF1D7] p-6 shadow-sm">
               <SectionLabel>번역해야 할 한국어 원문</SectionLabel>
-              <p className="text-[16px] leading-relaxed text-foreground">
+              <p className="text-[18px] font-semibold leading-relaxed text-[#1D2230]">
                 {SOURCE_TEXT[selected]}
               </p>
             </div>
