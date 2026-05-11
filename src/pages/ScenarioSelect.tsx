@@ -177,7 +177,7 @@ const ScenarioSelect = () => {
         {selected && (
           <section key={selected} className="fade-in mt-6 space-y-6">
             {/* Block 1: scenario detail */}
-            <div className="rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
               <SectionLabel>이 상황을 읽어주세요</SectionLabel>
               <div className="space-y-3 text-[15px] leading-relaxed text-foreground">
                 {SCENARIO_DETAIL[selected].map((p, i) => (
@@ -208,7 +208,7 @@ const ScenarioSelect = () => {
             </div>
 
             {/* Block 3: situation judgment */}
-            <div className="rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
               <SectionLabel>상황을 읽고, 본인이 느낀 그대로 골라주세요</SectionLabel>
 
               <div className="mt-2 space-y-6">
@@ -222,16 +222,16 @@ const ScenarioSelect = () => {
                           <label
                             key={idx}
                             className={[
-                              "flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm transition-colors",
+                              "flex cursor-pointer items-start gap-3 rounded-md p-3 text-sm transition-colors text-[#15202B]",
                               checked
-                                ? "border-[#15202B] bg-[#FFFFFF]"
-                                : "border-foreground/20 bg-background hover:bg-muted/40",
+                                ? "border-[1.5px] border-[#15202B] bg-[#EEF2F7] font-medium"
+                                : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] font-normal hover:bg-muted/30",
                             ].join(" ")}
                           >
                             <input
                               type="radio"
                               name={q.id}
-                              className="mt-0.5 accent-[#15202B]"
+                              className="mt-0.5 h-[14px] w-[14px] shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-[#B4B2A9] bg-white checked:border-[#15202B] checked:bg-[radial-gradient(circle,_#FAD338_0_3.5px,_transparent_3.5px)]"
                               checked={checked}
                               disabled={demo}
                               onChange={() => setAnswer(q.id, idx)}

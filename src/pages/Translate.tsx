@@ -219,17 +219,17 @@ const Translate = () => {
     return (
       <label
         className={[
-          "flex cursor-pointer items-start gap-3 rounded-md border px-4 py-3 text-sm transition-colors",
+          "flex cursor-pointer items-start gap-3 rounded-md px-4 py-3 text-sm transition-colors text-[#15202B]",
           checked
-            ? "border-[#15202B] bg-[#FFFFFF] font-semibold"
-            : "border-foreground/20 bg-background hover:bg-muted/40",
+            ? "border-[1.5px] border-[#15202B] bg-[#EEF2F7] font-medium"
+            : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] font-normal hover:bg-muted/30",
           demo ? "cursor-default" : "",
         ].join(" ")}
       >
         <input
           type="radio"
           name={name}
-          className="mt-0.5 accent-[#15202B]"
+          className="mt-0.5 h-[14px] w-[14px] shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-[#B4B2A9] bg-white checked:border-[#15202B] checked:bg-[radial-gradient(circle,_#FAD338_0_3.5px,_transparent_3.5px)]"
           checked={checked}
           disabled={demo}
           onChange={() => !demo && onChange(value)}
@@ -250,18 +250,18 @@ const Translate = () => {
         </p>
 
         {/* Source ↔ chosen best translation pairing */}
-        <section className="mt-6 rounded-xl border-2 border-foreground/30 bg-background p-5">
+        <section className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">
             지금 피드백을 받고 있는 번역안
           </div>
           <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-foreground/20 bg-muted/30 p-4">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
               <SectionLabel>한국어 원문 (출발어)</SectionLabel>
               <p className="text-[15px] leading-relaxed text-foreground">
                 {sourceText || "[Step 1에서 화행을 먼저 선택해주세요]"}
               </p>
             </div>
-            <div className="rounded-lg border border-foreground/20 bg-muted/30 p-4">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
               <SectionLabel>
                 내가 고른 중국어 번역안 (도착어){best ? ` · ${best}` : ""}
               </SectionLabel>
@@ -323,7 +323,7 @@ const Translate = () => {
         </div>
 
         {/* Impact log */}
-        <section className="mt-8 rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
+        <section className="mt-8 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
           <SectionLabel>피드백을 본 뒤</SectionLabel>
 
           <div className="mt-2 space-y-6">
