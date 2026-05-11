@@ -168,7 +168,7 @@ const Finalize = () => {
         </p>
 
         {/* Reference panel (collapsed by default) */}
-        <section className="mt-6 rounded-lg border border-foreground/20 bg-muted/40">
+        <section className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF]">
           <button
             type="button"
             onClick={() => setRefOpen((v) => !v)}
@@ -184,7 +184,7 @@ const Finalize = () => {
             <div className="space-y-6 border-t border-foreground/10 px-5 py-5 text-foreground/80">
               <div>
                 <SectionLabel>Step 1 — 한국어 원문</SectionLabel>
-                <p className="rounded-md border border-foreground/10 bg-background/60 p-3 text-sm leading-relaxed">
+                <p className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-3 text-sm leading-relaxed">
                   {act ? SOURCE_TEXT[act] : "[Step 1에서 화행을 먼저 선택해주세요]"}
                 </p>
               </div>
@@ -196,7 +196,7 @@ const Finalize = () => {
                     {(["A", "B", "C"] as Choice[]).map((c) => (
                       <div
                         key={c}
-                        className="rounded-md border border-foreground/10 bg-background/60 p-3"
+                        className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-3"
                       >
                         <div className="text-xs font-bold text-foreground/70">번역안 {c}</div>
                         <p className="mt-1.5 text-[13px] leading-relaxed">
@@ -214,7 +214,7 @@ const Finalize = () => {
                 <SectionLabel>Step 3 — 두 관점 피드백</SectionLabel>
                 {fb ? (
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className="rounded-md border border-foreground/10 bg-background/60 p-3">
+                    <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-3">
                       <div className="text-xs font-bold text-foreground/70">
                         중국 측 비즈니스 수신자
                       </div>
@@ -223,7 +223,7 @@ const Finalize = () => {
                         <p><span className="font-semibold">다시 생각해 볼 점</span> — {fb.receiver.reconsider}</p>
                       </div>
                     </div>
-                    <div className="rounded-md border border-foreground/10 bg-background/60 p-3">
+                    <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-3">
                       <div className="text-xs font-bold text-foreground/70">
                         통번역·화용 전문가
                       </div>
@@ -244,7 +244,7 @@ const Finalize = () => {
         </section>
 
         {/* Always-visible source text pairing with author area */}
-        <section className="mt-8 rounded-xl border-2 border-foreground/30 bg-background p-5">
+        <section className="mt-8 rounded-xl border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
           <SectionLabel>번역해야 할 한국어 원문 (출발어)</SectionLabel>
           <p className="text-[17px] font-medium leading-relaxed text-foreground">
             {act ? SOURCE_TEXT[act] : "[Step 1에서 화행을 먼저 선택해주세요]"}

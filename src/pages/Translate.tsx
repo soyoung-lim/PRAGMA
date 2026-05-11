@@ -250,18 +250,18 @@ const Translate = () => {
         </p>
 
         {/* Source ↔ chosen best translation pairing */}
-        <section className="mt-6 rounded-xl border-2 border-foreground/30 bg-background p-5">
+        <section className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">
             지금 피드백을 받고 있는 번역안
           </div>
           <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-foreground/20 bg-muted/30 p-4">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
               <SectionLabel>한국어 원문 (출발어)</SectionLabel>
               <p className="text-[15px] leading-relaxed text-foreground">
                 {sourceText || "[Step 1에서 화행을 먼저 선택해주세요]"}
               </p>
             </div>
-            <div className="rounded-lg border border-foreground/20 bg-muted/30 p-4">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
               <SectionLabel>
                 내가 고른 중국어 번역안 (도착어){best ? ` · ${best}` : ""}
               </SectionLabel>
