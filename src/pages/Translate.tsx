@@ -10,6 +10,9 @@ const STEP2_WORST_KEY = "step2-worst";
 const STEP2_REASON_KEY = "step2-reason";
 const STEP3_STORAGE_KEY = "step3-feedback-impact";
 
+// Legacy export kept for backward compatibility with older imports.
+export const TRANSLATE_STORAGE_KEY = "translation-workflow-translate";
+
 interface Step3Data {
   impact?: ImpactLevel;
   side?: SideChoice;
