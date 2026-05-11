@@ -84,21 +84,29 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
                   onClick={() => jumpTo(s)}
                   disabled={!clickable}
                   className={[
-                    "flex flex-1 h-[54px] items-center justify-center rounded-lg box-border px-2 py-0 text-center leading-none transition-colors",
+                    "flex flex-1 h-[54px] items-center justify-center gap-1.5 rounded-lg box-border px-2 py-0 text-center leading-none transition-colors",
                     isCurrent
                       ? "bg-[#15202B] text-white font-bold border-[1.5px] border-solid border-[#15202B] shadow-sm"
-                      : "bg-[#DCE0E5] text-muted-foreground font-normal border border-solid border-[#D3D1C7]",
+                      : "bg-[#FFFFFF] text-muted-foreground font-normal border border-solid border-[#D3D1C7]",
                     clickable ? "cursor-pointer hover:bg-background/60 hover:text-foreground" : "cursor-default",
                   ].join(" ")}
                   aria-current={isCurrent ? "step" : undefined}
                 >
                   <span
                     className={[
+                      "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-medium leading-none",
+                      isCurrent ? "bg-[#FAD338] text-[#15202B]" : "bg-[#DCE0E5] text-[#5C6A7A]",
+                    ].join(" ")}
+                  >
+                    {s.num}
+                  </span>
+                  <span
+                    className={[
                       "leading-none",
                       isCurrent ? "text-[12px] sm:text-[13px]" : "text-[11px] sm:text-xs",
                     ].join(" ")}
                   >
-                    {s.num}. {s.label}
+                    {s.label}
                   </span>
                 </button>
                 {idx < STEPS.length - 1 && (
