@@ -4,11 +4,104 @@ import { ensureSession, logAction } from "@/lib/tracking";
 
 type ImpactLevel = "same" | "partial" | "major";
 type SideChoice = "receiver" | "expert" | "both" | "neither";
+type ActId = "request" | "refusal";
+type Choice = "A" | "B" | "C";
 
 const STEP2_BEST_KEY = "step2-best";
 const STEP2_WORST_KEY = "step2-worst";
 const STEP2_REASON_KEY = "step2-reason";
+const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP3_STORAGE_KEY = "step3-feedback-impact";
+
+interface FeedbackBlock {
+  receiver: { impression: string; reconsider: string };
+  expert: { strength: string; revision: string };
+}
+
+const FEEDBACK: Record<ActId, Record<Choice, FeedbackBlock>> = {
+  request: {
+    A: {
+      receiver: {
+        impression:
+          "요청 내용은 분명하지만, 첫 협업 상대로부터 받기에는 조금 직접적으로 느껴질 수 있습니다.",
+        reconsider:
+          "이유나 양해 표현이 없어, 상대 일정에 미치는 영향을 충분히 고려했다는 느낌이 약할 수 있습니다.",
+      },
+      expert: {
+        strength: "10일 연장을 요청한다는 핵심 의미는 정확히 전달되었습니다.",
+        revision:
+          "명령처럼 보이는 구조를 줄이고, 사유와 상대가 결정할 여지를 남기는 표현을 보완해 보세요.",
+      },
+    },
+    B: {
+      receiver: {
+        impression: "정중하고 실무적으로 무리 없이 받아들일 수 있는 요청입니다.",
+        reconsider:
+          "다만 왜 일정 조정이 필요한지에 대한 설명이 없어, 첫 협업에서는 다소 정보가 부족하게 느껴질 수 있습니다.",
+      },
+      expert: {
+        strength: "원문의 완곡한 요청 느낌이 자연스럽게 살아 있습니다.",
+        revision:
+          "현재의 정중함을 유지하면서, 사유나 상대 일정에 대한 고려를 한 문장 정도 더 드러내면 좋습니다.",
+      },
+    },
+    C: {
+      receiver: {
+        impression:
+          "사유와 상대 일정에 대한 배려가 함께 보여, 첫 협업에서도 비교적 안정적으로 받아들일 수 있습니다.",
+        reconsider:
+          "다만 사과 표현이 다소 무겁게 느껴질 수 있어, 요청 단계에 맞는 강도인지 생각해 볼 필요가 있습니다.",
+      },
+      expert: {
+        strength: "사유 제시, 상대 배려, 검토 요청의 완곡함이 잘 드러납니다.",
+        revision:
+          "원문보다 사과의 강도가 높아졌으므로, 이 정도로 정중하게 강화할 필요가 있는지 스스로 판단해 보세요.",
+      },
+    },
+  },
+  refusal: {
+    A: {
+      receiver: {
+        impression:
+          "거절 의도는 분명하지만, 여러 번 연락해 온 실무 관계에서 받기에는 다소 짧고 단정적으로 느껴질 수 있습니다.",
+        reconsider:
+          "양해 표현이나 검토 과정에 대한 언급이 없어, 이번 제안을 충분히 검토했다는 느낌이 약하게 전달될 수 있습니다.",
+      },
+      expert: {
+        strength: "비용 인하가 어렵다는 핵심 메시지는 정확히 전달되었습니다.",
+        revision:
+          "원문의 '검토해 봤는데', '어려울 것 같습니다'에 담긴 완곡함이 약해졌습니다. 거절의 명확성은 유지하면서 양해 표현을 한 줄 정도 보완해 보세요.",
+      },
+    },
+    B: {
+      receiver: {
+        impression:
+          "격식과 양해 표현이 잘 갖춰져, 공식 답변으로 무리 없이 받을 만한 톤입니다.",
+        reconsider:
+          "다만 앞으로의 협업에 대한 언급이 없어, 관계가 이어진다는 느낌은 다소 약하게 남을 수 있습니다.",
+      },
+      expert: {
+        strength: "거절 사유와 양해 요청이 격식 있게 잘 전달되었습니다.",
+        revision:
+          "여러 번 연락해 온 관계라는 점을 고려하면, 후속 협업에 대한 의지를 한 문장 정도 더 드러내면 좋습니다.",
+      },
+    },
+    C: {
+      receiver: {
+        impression:
+          "감사 표현과 후속 협업 의지가 함께 담겨, 거절이지만 협업 관계를 계속 이어가려는 의지가 분명히 전해집니다.",
+        reconsider:
+          "다만 후속 협업 의지가 비교적 강하게 표현되어, 다음 협의에서 그 기대만큼 조정이 어려울 경우 오히려 부담이 될 수 있습니다.",
+      },
+      expert: {
+        strength:
+          "감사 표현, 거절 사유, 양해, 후속 협업 의지가 자연스럽게 흐르고 있습니다.",
+        revision:
+          "후속 협업에 대한 표현이 실제로 약속할 수 있는 범위와 맞는지 스스로 점검해 보세요.",
+      },
+    },
+  },
+};
 
 // Legacy export kept for backward compatibility with older imports.
 export const TRANSLATE_STORAGE_KEY = "translation-workflow-translate";
@@ -20,6 +113,7 @@ interface Step3Data {
 }
 
 const Translate = () => {
+  const [act, setAct] = useState<ActId | null>(null);
   const [best, setBest] = useState<string>("");
   const [worst, setWorst] = useState<string>("");
   const [step2Reason, setStep2Reason] = useState<string>("");
@@ -32,6 +126,8 @@ const Translate = () => {
     ensureSession();
     logAction("page_visit", { page: "/translate" }, "/translate");
     try {
+      const a = localStorage.getItem(ACT_STORAGE_KEY);
+      if (a === "request" || a === "refusal") setAct(a);
       setBest(localStorage.getItem(STEP2_BEST_KEY) || "");
       setWorst(localStorage.getItem(STEP2_WORST_KEY) || "");
       setStep2Reason(localStorage.getItem(STEP2_REASON_KEY) || "");
@@ -61,6 +157,17 @@ const Translate = () => {
   }, [impact, side, reason]);
 
   const reasonOk = reason.trim().length >= 15;
+  const canProceed = !!impact && !!side && reasonOk;
+
+  const fb =
+    act && (best === "A" || best === "B" || best === "C")
+      ? FEEDBACK[act][best as Choice]
+      : null;
+  const summaryReason = step2Reason
+    ? step2Reason.length > 80
+      ? step2Reason.slice(0, 80) + "…"
+      : step2Reason
+    : "";
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -128,7 +235,7 @@ const Translate = () => {
             <li className="whitespace-pre-wrap">
               내가 적은 이유:{" "}
               <span className="text-muted-foreground">
-                {step2Reason || "[학생 입력 요약 — 다음 단계에서 연결됩니다]"}
+                {summaryReason || "[학생 입력 요약 — Step 2에서 입력해주세요]"}
               </span>
             </li>
           </ul>
@@ -143,14 +250,14 @@ const Translate = () => {
             <div className="mt-5 space-y-5">
               <div>
                 <SectionLabel>받는 입장에서의 인상</SectionLabel>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  [수신자 피드백 — 다음 단계에서 추가됩니다]
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {fb ? fb.receiver.impression : "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
                 </p>
               </div>
               <div>
                 <SectionLabel>다시 생각해 볼 점</SectionLabel>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  [수신자 피드백 — 다음 단계에서 추가됩니다]
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {fb ? fb.receiver.reconsider : "[Step 2 선택 후 표시됩니다]"}
                 </p>
               </div>
             </div>
@@ -163,14 +270,14 @@ const Translate = () => {
             <div className="mt-5 space-y-5">
               <div>
                 <SectionLabel>잘 전달된 부분</SectionLabel>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  [전문가 피드백 — 다음 단계에서 추가됩니다]
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {fb ? fb.expert.strength : "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
                 </p>
               </div>
               <div>
                 <SectionLabel>수정 방향</SectionLabel>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  [전문가 피드백 — 다음 단계에서 추가됩니다]
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {fb ? fb.expert.revision : "[Step 2 선택 후 표시됩니다]"}
                 </p>
               </div>
             </div>
@@ -249,8 +356,14 @@ const Translate = () => {
           <div className="mt-3 flex justify-end">
             <button
               type="button"
-              disabled
-              className="cursor-not-allowed rounded-lg bg-muted px-6 py-3 text-base font-medium text-muted-foreground"
+              disabled={!canProceed}
+              className={[
+                "rounded-lg px-6 py-3 text-base font-medium transition-colors",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                canProceed
+                  ? "bg-[#E8C547] text-[#1D2230] hover:brightness-95"
+                  : "cursor-not-allowed bg-muted text-muted-foreground",
+              ].join(" ")}
             >
               최종 번역 작성하기 →
             </button>
