@@ -279,7 +279,23 @@ const Dashboard = () => {
         </div>
 
         <div className="mt-8 space-y-6">
-          {/* Card 1 — 나의 상황 판단 */}
+          {/* Learning Point — most prominent card */}
+          <Card className="border-2 border-[#E8C547] bg-[#FAF1D7]">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#E8C547] text-sm font-bold text-[#1D2230]">
+                !
+              </span>
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#1D2230]/70">
+                  오늘의 학습 포인트
+                </div>
+                <p className="text-[15px] font-medium leading-relaxed text-[#1D2230]">
+                  {act ? LEARNING_POINT[act] : "—"}
+                </p>
+              </div>
+            </div>
+          </Card>
+
           <Card>
             <SectionLabel>나의 상황 판단</SectionLabel>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
