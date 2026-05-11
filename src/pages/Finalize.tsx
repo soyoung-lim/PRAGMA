@@ -241,8 +241,19 @@ const Finalize = () => {
           )}
         </section>
 
-        {/* Final Chinese translation */}
-        <section className="mt-8 rounded-lg border border-foreground/30 bg-background p-6">
+        {/* Always-visible source text pairing with author area */}
+        <section className="mt-8 rounded-xl border-2 border-foreground/30 bg-background p-5">
+          <SectionLabel>번역해야 할 한국어 원문 (출발어)</SectionLabel>
+          <p className="text-[17px] font-medium leading-relaxed text-foreground">
+            {act ? SOURCE_TEXT[act] : "[Step 1에서 화행을 먼저 선택해주세요]"}
+          </p>
+
+          <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+            <span className="h-px flex-1 bg-foreground/15" />
+            <span>↓ 본인이 직접 작성하는 중국어 번역 (도착어)</span>
+            <span className="h-px flex-1 bg-foreground/15" />
+          </div>
+
           <label htmlFor="final-translation" className="text-sm font-semibold">
             본인이 결정한 최종 중국어 번역을 직접 작성하세요
           </label>
