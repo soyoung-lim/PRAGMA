@@ -515,43 +515,75 @@ const Dashboard = () => {
           {/* Card 8 — 단계별 의사결정 시간 */}
           <Card>
             <SectionLabel>단계별 의사결정 시간</SectionLabel>
-            <p className="mb-4 text-xs text-muted-foreground">
-              각 단계에서 얼마나 고민했는지 보여줍니다.
-            </p>
             {(() => {
-              const stages: { label: string; seconds: number; display: string }[] = [
+            {(() => {
+              const stages = [
                 { label: "1. 상황 이해", seconds: 90, display: "1분 30초" },
                 { label: "2. 번역안 비교", seconds: 195, display: "3분 15초" },
                 { label: "3. 피드백 확인", seconds: 250, display: "4분 10초" },
                 { label: "4. 최종 작성", seconds: 170, display: "2분 50초" },
                 { label: "5. 리포트 보기", seconds: 65, display: "1분 5초" },
               ];
+              const total = stages.reduce((a, s) => a + s.seconds, 0);
               const max = Math.max(...stages.map((s) => s.seconds));
+              const totalDisplay = `${Math.floor(total / 60)}분 ${total % 60}초`;
+              const colorFor = (s: { seconds: number }) =>
+                s.seconds === max ? "bg-[#E8C547]" : "bg-foreground/30";
+              const shadeFor = (i: number) => {
+                // muted gray gradient, highlight max separately
+                const shades = [
+                  "bg-foreground/15",
+                  "bg-foreground/25",
+                  "bg-foreground/35",
+                  "bg-foreground/45",
+                  "bg-foreground/55",
+                ];
+                return shades[i] ?? "bg-foreground/30";
+              };
               return (
-                <div className="space-y-3">
-                  {stages.map((s) => {
-                    const pct = Math.round((s.seconds / max) * 100);
-                    const isMax = s.seconds === max;
-                    return (
-                      <div key={s.label} className="grid grid-cols-[140px_1fr_70px] items-center gap-3">
-                        <div className="text-xs font-medium text-foreground/80">
-                          {s.label}
-                        </div>
-                        <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className={`h-full rounded-full ${
-                              isMax ? "bg-[#E8C547]" : "bg-foreground/30"
-                            }`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <div className="text-right text-xs tabular-nums text-muted-foreground">
-                          {s.display}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    총 {totalDisplay} 동안 각 단계에 얼마나 집중했는지 보여줍니다.
+                  </p>
+                  <div className="mb-3 text-sm font-semibold text-foreground">
+                    총 체류 시간 · {totalDisplay}
+                  </div>
+                  {/* Stacked horizontal bar */}
+                  <div className="mb-4 flex h-4 w-full overflow-hidden rounded-full border border-border">
+                    {stages.map((s, i) => {
+                      const pct = (s.seconds / total) * 100;
+                      const cls = s.seconds === max ? "bg-[#E8C547]" : shadeFor(i);
+                      return (
+                        <div
+                          key={s.label}
+                          className={cls}
+                          style={{ width: `${pct}%` }}
+                          title={`${s.label} · ${s.display} · ${Math.round(pct)}%`}
+                        />
+                      );
+                    })}
+                  </div>
+                  {/* Legend rows */}
+                  <ul className="space-y-1.5">
+                    {stages.map((s, i) => {
+                      const pct = Math.round((s.seconds / total) * 100);
+                      const cls = s.seconds === max ? "bg-[#E8C547]" : shadeFor(i);
+                      return (
+                        <li
+                          key={s.label}
+                          className="grid grid-cols-[12px_1fr_auto_48px] items-center gap-2 text-xs"
+                        >
+                          <span className={`h-3 w-3 rounded-sm ${cls}`} />
+                          <span className="text-foreground/80">{s.label}</span>
+                          <span className="tabular-nums text-muted-foreground">{s.display}</span>
+                          <span className="text-right tabular-nums text-muted-foreground">
+                            {pct}%
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
               );
             })()}
             <p className="mt-4 text-[11px] text-muted-foreground">
