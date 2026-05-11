@@ -3,6 +3,7 @@ import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 
 type ActId = "request" | "refusal";
+const ACT_STORAGE_KEY = "step1-speech-act";
 
 const ACTS: { id: ActId; title: string; desc: string }[] = [
   { id: "request", title: "요청 상황", desc: "K-pop 온라인 팬 이벤트 페이지 일정 연장 요청" },
@@ -78,6 +79,10 @@ const ScenarioSelect = () => {
   useEffect(() => {
     ensureSession();
     logAction("page_visit", { page: "/scenario" }, "/scenario");
+    try {
+      const saved = localStorage.getItem(ACT_STORAGE_KEY);
+      if (saved === "request" || saved === "refusal") setSelected(saved);
+    } catch { /* ignore */ }
   }, []);
 
   const handleSelect = (id: ActId) => {
@@ -88,6 +93,7 @@ const ScenarioSelect = () => {
     });
     setSelected(id);
     setAnswers(EMPTY);
+    try { localStorage.setItem(ACT_STORAGE_KEY, id); } catch { /* ignore */ }
   };
 
   const setAnswer = (q: "q1" | "q2" | "q3", idx: number) => {
