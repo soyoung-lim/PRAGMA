@@ -6,8 +6,8 @@ type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
 
 const ACTS: { id: ActId; title: string; desc: string }[] = [
-  { id: "request", title: "요청 상황", desc: "K-pop 온라인 팬 이벤트 페이지 일정 연장 요청" },
-  { id: "refusal", title: "거절 상황", desc: "K-pop 디지털 캠페인 단가 인하 요청 거절" },
+  { id: "request", title: "요청 상황", desc: "K-pop 팬 이벤트 자료 전달 일정 연장 요청" },
+  { id: "refusal", title: "거절 상황", desc: "K-pop 팬 이벤트 공동 프로모션 비용 인하 요청 거절" },
 ];
 
 const SCENARIO_DETAIL: Record<ActId, string[]> = {
