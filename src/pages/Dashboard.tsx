@@ -27,6 +27,14 @@ const ACTIVITY_LABEL: Record<ActId, string> = {
   refusal: "K-pop 팬 이벤트 공동 프로모션 비용 인하 요청 거절",
 };
 
+const LEARNING_POINT: Record<ActId, string> = {
+  request:
+    "요청 상황에서는 단순히 '해 달라'고 말하는 것보다, 요청의 명확성과 상대 입장에 대한 배려 표현을 함께 조정하는 것이 중요합니다.",
+  refusal:
+    "거절 상황에서는 단순히 '안 된다'고 말하는 것보다, 거절의 명확성과 관계 유지 표현을 함께 조정하는 것이 중요합니다.",
+};
+
+
 const SOURCE_TEXT: Record<ActId, string> = {
   request: "이번 자료 전달 일정을 10일 정도 연장해 주실 수 있을지 검토 부탁드립니다.",
   refusal: "검토해 봤는데 이번에는 프로모션 비용 인하가 어려울 것 같습니다.",
