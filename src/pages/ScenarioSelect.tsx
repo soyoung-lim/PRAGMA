@@ -3,10 +3,36 @@ import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { isDemoMode } from "@/lib/demo";
+import { toast } from "sonner";
 
 type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP1_ANSWERS_KEY = "step1-answers";
+const BODY_OPEN_KEY = "step1-body-open";
+
+type LibItem = {
+  sector: string;
+  title: string;
+  desc: string;
+  available: boolean;
+};
+
+const LIBRARY: Record<ActId, LibItem[]> = {
+  request: [
+    { sector: "엔터콘텐츠", title: "팬 이벤트 자료 전달 일정 연장", desc: "K-pop 팬 이벤트 자료 전달 일정을 늦춰 달라고 요청합니다.", available: true },
+    { sector: "뷰티산업", title: "상세페이지 문구 재검토", desc: "중국어 제품 설명 문구를 한 번 더 검토해 달라고 요청합니다.", available: false },
+    { sector: "게임산업", title: "이벤트 공지 일정 조정", desc: "중국 서버 이벤트 공지 공개 일정을 조정해 달라고 요청합니다.", available: false },
+    { sector: "이커머스", title: "상품 이미지 추가 제공", desc: "중국 라이브커머스용 상품 이미지를 추가로 제공해 달라고 요청합니다.", available: false },
+    { sector: "기업실무", title: "회의 자료 수정", desc: "중국 협력사와의 회의 자료 일부 수정을 요청합니다.", available: false },
+  ],
+  refusal: [
+    { sector: "엔터콘텐츠", title: "공동 프로모션 비용 인하 거절", desc: "공동 프로모션 비용 인하가 어렵다고 답합니다.", available: true },
+    { sector: "뷰티산업", title: "샘플 물량 추가 제공 거절", desc: "신제품 샘플 물량 추가 제공이 어렵다고 답합니다.", available: false },
+    { sector: "게임산업", title: "이벤트 보상 확대 거절", desc: "이벤트 보상 확대 요청을 수용하기 어렵다고 답합니다.", available: false },
+    { sector: "이커머스", title: "배송 일정 앞당기기 거절", desc: "상품 배송 일정을 앞당기기 어렵다고 답합니다.", available: false },
+    { sector: "기업실무", title: "회의 일정 앞당기기 거절", desc: "중국 협력사의 회의 일정 앞당기기 요청을 수용하기 어렵다고 답합니다.", available: false },
+  ],
+};
 
 const ACTS: { id: ActId; title: string; desc: string }[] = [
   { id: "request", title: "요청 상황", desc: "K-pop 팬 이벤트 자료 전달 일정 연장 요청" },
@@ -92,6 +118,7 @@ const ScenarioSelect = () => {
   const demo = isDemoMode();
   const [selected, setSelected] = useState<ActId | null>(null);
   const [answers, setAnswers] = useState<Answers>(EMPTY);
+  const [bodyOpen, setBodyOpen] = useState<boolean>(false);
 
   useEffect(() => {
     ensureSession();
@@ -108,6 +135,8 @@ const ScenarioSelect = () => {
           q3: typeof parsed.q3 === "number" ? parsed.q3 : null,
         });
       }
+      const b = localStorage.getItem(BODY_OPEN_KEY);
+      if (b === "1") setBodyOpen(true);
     } catch { /* ignore */ }
   }, []);
 
@@ -120,8 +149,24 @@ const ScenarioSelect = () => {
     });
     setSelected(id);
     setAnswers(EMPTY);
+    setBodyOpen(false);
     try { localStorage.setItem(ACT_STORAGE_KEY, id); } catch { /* ignore */ }
     try { localStorage.setItem(STEP1_ANSWERS_KEY, JSON.stringify(EMPTY)); } catch { /* ignore */ }
+    try { localStorage.setItem(BODY_OPEN_KEY, "0"); } catch { /* ignore */ }
+  };
+
+  const openBody = () => {
+    setBodyOpen(true);
+    try { localStorage.setItem(BODY_OPEN_KEY, "1"); } catch { /* ignore */ }
+    logAction("selection", { field: "libraryScenario", value: "available" });
+  };
+
+  const handleLibraryClick = (item: LibItem) => {
+    if (item.available) {
+      openBody();
+    } else {
+      toast("이 시나리오는 수업용 확장 버전에서 제공될 예정입니다.");
+    }
   };
 
   const setAnswer = (q: "q1" | "q2" | "q3", idx: number) => {
@@ -135,7 +180,7 @@ const ScenarioSelect = () => {
   };
 
   const allAnswered = answers.q1 !== null && answers.q2 !== null && answers.q3 !== null;
-  const canProceed = demo || (Boolean(selected) && allAnswered);
+  const canProceed = demo || (Boolean(selected) && bodyOpen && allAnswered);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -176,6 +221,46 @@ const ScenarioSelect = () => {
 
         {selected && (
           <section key={selected} className="fade-in mt-6 space-y-6">
+            {!demo && (
+              <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+                <SectionLabel>상황 설정 라이브러리</SectionLabel>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  현재 시연에서는 요청 1개와 거절 1개를 체험할 수 있습니다. 향후 수업용 버전에서는 다양한 산업과 업무 상황으로 확장할 수 있습니다.
+                </p>
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {LIBRARY[selected].map((item, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleLibraryClick(item)}
+                      className={[
+                        "flex flex-col gap-2 rounded-lg p-4 text-left transition-all duration-200",
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                        item.available
+                          ? "border-[1.5px] border-[#15202B] bg-[#FFFFFF] hover:-translate-y-0.5 hover:shadow-md"
+                          : "border-[0.5px] border-[#D3D1C7] bg-[#F5F3EC] hover:bg-[#EFEDE5]",
+                      ].join(" ")}
+                    >
+                      <span className="text-xs font-medium text-muted-foreground">{item.sector}</span>
+                      <span className="text-[15px] font-semibold leading-snug text-[#15202B]">{item.title}</span>
+                      <span className="text-xs leading-relaxed text-foreground/80">{item.desc}</span>
+                      <span
+                        className={[
+                          "mt-2 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                          item.available
+                            ? "bg-[#FAD338] text-[#15202B]"
+                            : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] text-[#5C6A7A]",
+                        ].join(" ")}
+                      >
+                        {item.available ? "체험 가능" : "수업용 확장 예정"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(demo || bodyOpen) && (<>
             {/* Block 1: scenario detail */}
             <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
               <SectionLabel>이 상황을 읽어주세요</SectionLabel>
@@ -249,6 +334,7 @@ const ScenarioSelect = () => {
                 정답이 있는 질문이 아닙니다. 본인이 상황을 어떻게 받아들였는지 그대로 골라주세요.
               </p>
             </div>
+            </>)}
           </section>
         )}
 
