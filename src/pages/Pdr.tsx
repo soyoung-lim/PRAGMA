@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { isDemoMode } from "@/lib/demo";
+import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
 
 type Choice = "A" | "B" | "C";
 type ActId = "request" | "refusal";
@@ -94,6 +95,7 @@ const Pdr = () => {
       {OPTIONS.map((c) => {
         const disabled = disabledValue === c || demo;
         const checked = value === c;
+        const label = act ? TRANSLATION_LABELS[act][c] : "";
         return (
           <label
             key={c}
@@ -115,6 +117,9 @@ const Pdr = () => {
               onChange={() => onChange(c)}
             />
             <span>번역안 {c}</span>
+            {label && (
+              <span className="text-[12px] font-normal text-[#5C6A7A]">· {label}</span>
+            )}
           </label>
         );
       })}
@@ -187,9 +192,15 @@ const Pdr = () => {
             {OPTIONS.map((c) => (
               <div
                 key={c}
-                className="flex flex-col rounded-lg border border-foreground bg-background p-5"
+                className="flex flex-col rounded-lg border border-foreground p-5"
+                style={{ backgroundColor: TRANSLATION_CARD_BG[c] }}
               >
                 <div className="text-base font-bold">번역안 {c}</div>
+                {act && (
+                  <div className="mt-1 text-[12px] font-normal text-[#5C6A7A]">
+                    {TRANSLATION_LABELS[act][c]}
+                  </div>
+                )}
                 <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
                   {act
                     ? TRANSLATIONS[act][c]

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { exitDemoMode } from "@/lib/demo";
+import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
 
 type ActId = "request" | "refusal";
 type Choice = "A" | "B" | "C";
@@ -408,17 +409,17 @@ const Dashboard = () => {
                 const isBest = best === c;
                 const isWorst = worst === c;
                 const cardCls = isBest
-                  ? "rounded-lg border-2 border-[#15202B] bg-[#FFFFFF] p-5"
+                  ? "rounded-lg border-2 border-[#15202B] p-5"
                   : isWorst
-                  ? "rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5 opacity-70"
-                  : "rounded-lg border border-foreground/15 bg-background p-5";
+                  ? "rounded-lg border-[0.5px] border-[#D3D1C7] p-5 opacity-70"
+                  : "rounded-lg border border-foreground/15 p-5";
                 const textCls = isBest
                   ? "text-foreground"
                   : isWorst
                   ? "text-foreground/60"
                   : "text-foreground/90";
                 return (
-                  <div key={c} className={cardCls}>
+                  <div key={c} className={cardCls} style={{ backgroundColor: TRANSLATION_CARD_BG[c] }}>
                     <div className="flex items-center justify-between">
                       <span
                         className={
@@ -440,6 +441,11 @@ const Dashboard = () => {
                         </span>
                       )}
                     </div>
+                    {act && (
+                      <div className="mt-1.5 text-[12px] font-normal text-[#5C6A7A]">
+                        {TRANSLATION_LABELS[act][c]}
+                      </div>
+                    )}
                     <p className={`mt-3 whitespace-pre-wrap text-sm leading-relaxed ${textCls}`}>
                       {act ? TRANSLATIONS[act][c] : "—"}
                     </p>
