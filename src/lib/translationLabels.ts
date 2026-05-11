@@ -16,7 +16,7 @@ export const TRANSLATION_LABELS: Record<ActId, Record<Choice, string>> = {
 
 // Equal lightness/saturation pastel tints for A/B/C cards.
 export const TRANSLATION_CARD_BG: Record<Choice, string> = {
-  A: "#EFE9DD",
+  A: "#F4E5DA",
   B: "#EEF1F5",
   C: "#EFF3EE",
 };
