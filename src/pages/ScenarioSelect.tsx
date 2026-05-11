@@ -162,6 +162,10 @@ const ScenarioSelect = () => {
   };
 
   const handleLibraryClick = (item: LibItem) => {
+    if (demo) {
+      toast("데모 모드에서는 미리보기만 가능합니다. 시나리오를 직접 체험하려면 학습 모드로 진입해 주세요.");
+      return;
+    }
     if (item.available) {
       openBody();
     } else {
@@ -221,8 +225,7 @@ const ScenarioSelect = () => {
 
         {selected && (
           <section key={selected} className="fade-in mt-6 space-y-6">
-            {!demo && (
-              <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
                 <SectionLabel>상황 설정 라이브러리</SectionLabel>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   현재 시연에서는 요청 1개와 거절 1개를 체험할 수 있습니다. 향후 수업용 버전에서는 다양한 산업과 업무 상황으로 확장할 수 있습니다.
@@ -257,8 +260,7 @@ const ScenarioSelect = () => {
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+            </div>
 
             {(demo || bodyOpen) && (<>
             {/* Block 1: scenario detail */}
