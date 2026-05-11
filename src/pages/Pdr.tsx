@@ -98,18 +98,18 @@ const Pdr = () => {
           <label
             key={c}
             className={[
-              "flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm transition-colors",
-              disabled
-                ? "cursor-not-allowed border-foreground/10 bg-muted/40 text-muted-foreground"
+              "flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm transition-colors text-[#15202B]",
+              disabled && !checked
+                ? "cursor-not-allowed border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] text-muted-foreground"
                 : checked
-                ? "border-[#15202B] bg-[#FFFFFF] font-semibold"
-                : "border-foreground/20 bg-background hover:bg-muted/40",
+                ? "border-[1.5px] border-[#15202B] bg-[#EEF2F7] font-medium"
+                : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] font-normal hover:bg-muted/30",
             ].join(" ")}
           >
             <input
               type="radio"
               name={name}
-              className="accent-[#15202B]"
+              className="h-[14px] w-[14px] shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-[#B4B2A9] bg-white checked:border-[#15202B] checked:bg-[radial-gradient(circle,_#FAD338_0_3.5px,_transparent_3.5px)]"
               checked={checked}
               disabled={disabled}
               onChange={() => onChange(c)}
@@ -136,7 +136,7 @@ const Pdr = () => {
         </p>
 
         {/* Comparison hint box */}
-        <div className="mt-6 rounded-lg border border-foreground/20 bg-muted/40 p-5">
+        <div className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
           <div className="flex items-start gap-2">
             <span aria-hidden className="mt-0.5 text-base">ⓘ</span>
             <div className="flex-1">
@@ -171,7 +171,7 @@ const Pdr = () => {
         </div>
 
         {/* Source ↔ translations pairing */}
-        <div className="mt-6 rounded-xl border-2 border-foreground/30 bg-background p-5">
+        <div className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
           <SectionLabel>번역해야 할 한국어 원문 (출발어)</SectionLabel>
           <p className="text-[17px] font-medium leading-relaxed text-foreground">
             {sourceText}
@@ -201,7 +201,7 @@ const Pdr = () => {
         </div>
 
         {/* Selection inputs */}
-        <div className="mt-6 space-y-6 rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
+        <div className="mt-6 space-y-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
           <div>
             <div className="text-sm font-semibold">가장 적절하다고 생각하는 번역안은?</div>
             <div className="mt-3">
@@ -217,7 +217,7 @@ const Pdr = () => {
         </div>
 
         {/* Reason */}
-        <div className="mt-6 rounded-lg border border-foreground/30 bg-background p-6">
+        <div className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
           <label htmlFor="reason" className="text-sm font-semibold">
             왜 그렇게 판단했는지 자유롭게 적어주세요
           </label>

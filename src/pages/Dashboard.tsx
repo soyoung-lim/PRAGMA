@@ -176,7 +176,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 const Card = ({ children, className }: { children: React.ReactNode; className?: string }) => (
   <section
     className={[
-      "rounded-lg border border-foreground/30 bg-background p-6",
+      "rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6",
       className ?? "",
     ].join(" ")}
   >
@@ -275,7 +275,7 @@ const Dashboard = () => {
             </p>
           </div>
           {act && (
-            <span className="inline-flex h-fit items-center self-start rounded-full border border-foreground/30 bg-[#DCE0E5] px-3 py-1 text-xs font-semibold text-foreground sm:self-auto">
+            <span className="inline-flex h-fit items-center self-start rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-3 py-1 text-xs font-semibold text-foreground sm:self-auto">
               {ACT_BADGE[act]}
             </span>
           )}
@@ -378,7 +378,7 @@ const Dashboard = () => {
           <Card>
             <SectionLabel>번역 변화 비교</SectionLabel>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-md border border-foreground/15 bg-muted/30 p-5">
+              <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Step 2에서 가장 적절하다고 본 번역안
                 </div>
@@ -410,7 +410,7 @@ const Dashboard = () => {
                 const cardCls = isBest
                   ? "rounded-lg border-2 border-[#15202B] bg-[#FFFFFF] p-5"
                   : isWorst
-                  ? "rounded-lg border border-foreground/15 bg-muted/40 p-5 opacity-70"
+                  ? "rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5 opacity-70"
                   : "rounded-lg border border-foreground/15 bg-background p-5";
                 const textCls = isBest
                   ? "text-foreground"
@@ -424,7 +424,7 @@ const Dashboard = () => {
                         className={
                           isBest
                             ? "rounded-md bg-[#15202B] px-2 py-0.5 text-xs font-bold text-white"
-                            : "rounded-md border border-foreground/30 bg-background px-2 py-0.5 text-xs font-semibold text-foreground/80"
+                            : "rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-2 py-0.5 text-xs font-semibold text-foreground/80"
                         }
                       >
                         번역안 {c}
@@ -464,12 +464,12 @@ const Dashboard = () => {
               const side = step3.side;
               const tone = (target: "receiver" | "expert") => {
                 if (!side || side === "neither")
-                  return "border border-foreground/15 bg-muted/30 opacity-80";
+                  return "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] opacity-80";
                 if (side === "both")
-                  return "border border-foreground/20 bg-muted/40";
+                  return "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF]";
                 return side === target
                   ? "border-2 border-[#15202B] bg-[#FFFFFF]"
-                  : "border border-foreground/15 bg-muted/30 opacity-60";
+                  : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] opacity-60";
               };
               return (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -515,7 +515,7 @@ const Dashboard = () => {
               ].map((it) => (
                 <div
                   key={it.label}
-                  className="rounded-md border border-foreground/15 bg-muted/30 p-4"
+                  className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4"
                 >
                   <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     {it.label}
@@ -532,7 +532,7 @@ const Dashboard = () => {
           <Card>
             <SectionLabel>다관점 피드백 요약</SectionLabel>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-md border border-foreground/15 bg-muted/30 p-5">
+              <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
                 <div className="text-sm font-bold text-foreground">
                   중국 측 비즈니스 수신자
                 </div>
@@ -552,7 +552,7 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="rounded-md border border-foreground/15 bg-muted/30 p-5">
+              <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
                 <div className="text-sm font-bold text-foreground">
                   통번역·화용 전문가
                 </div>
@@ -608,7 +608,7 @@ const Dashboard = () => {
           {/* 9. 최종 결정 이유 */}
           <Card>
             <SectionLabel>최종 결정 이유</SectionLabel>
-            <div className="rounded-md border border-foreground/15 bg-muted/30 p-5">
+            <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
                 {step4.justification || "—"}
               </p>
@@ -616,7 +616,7 @@ const Dashboard = () => {
           </Card>
 
           {/* 10. 연구용 로그 미리보기 */}
-          <details className="rounded-lg border border-foreground/15 bg-muted/20">
+          <details className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF]">
             <summary className="cursor-pointer select-none p-6 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
               연구용 로그 미리보기
             </summary>
