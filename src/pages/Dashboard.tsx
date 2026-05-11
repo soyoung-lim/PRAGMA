@@ -275,7 +275,7 @@ const Dashboard = () => {
             </p>
           </div>
           {act && (
-            <span className="inline-flex h-fit items-center self-start rounded-full border border-foreground/30 bg-[#FAF7EC] px-3 py-1 text-xs font-semibold text-foreground sm:self-auto">
+            <span className="inline-flex h-fit items-center self-start rounded-full border border-foreground/30 bg-[#DCE0E5] px-3 py-1 text-xs font-semibold text-foreground sm:self-auto">
               {ACT_BADGE[act]}
             </span>
           )}
@@ -283,16 +283,16 @@ const Dashboard = () => {
 
         <div className="mt-8 space-y-6">
           {/* 1. Learning Point — most prominent */}
-          <Card className="border-2 border-[#E8C547] bg-[#FAF1D7]">
+          <Card className="border-2 border-[#15202B] bg-[#FFFFFF]">
             <div className="flex items-start gap-3">
-              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#E8C547] text-sm font-bold text-[#1D2230]">
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#15202B] text-sm font-bold text-[#15202B]">
                 !
               </span>
               <div>
-                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#1D2230]/70">
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#15202B]/70">
                   오늘의 학습 포인트
                 </div>
-                <p className="text-[15px] font-medium leading-relaxed text-[#1D2230]">
+                <p className="text-[15px] font-medium leading-relaxed text-[#15202B]">
                   {act ? LEARNING_POINT[act] : "—"}
                 </p>
               </div>
@@ -335,7 +335,7 @@ const Dashboard = () => {
                   <div className="mb-4 flex h-4 w-full overflow-hidden rounded-full border border-border">
                     {stages.map((s, i) => {
                       const pct = (s.seconds / total) * 100;
-                      const cls = s.seconds === max ? "bg-[#E8C547]" : shadeFor(i);
+                      const cls = s.seconds === max ? "bg-[#15202B]" : shadeFor(i);
                       return (
                         <div
                           key={s.label}
@@ -350,7 +350,7 @@ const Dashboard = () => {
                   <ul className="space-y-1.5">
                     {stages.map((s, i) => {
                       const pct = Math.round((s.seconds / total) * 100);
-                      const cls = s.seconds === max ? "bg-[#E8C547]" : shadeFor(i);
+                      const cls = s.seconds === max ? "bg-[#15202B]" : shadeFor(i);
                       return (
                         <li
                           key={s.label}
@@ -386,8 +386,8 @@ const Dashboard = () => {
                   {act && best ? TRANSLATIONS[act][best] : "—"}
                 </p>
               </div>
-              <div className="rounded-lg border-2 border-[#E5C97A] bg-[#FAF1D7] p-5">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-[#1D2230]/70">
+              <div className="rounded-lg border-2 border-[#15202B] bg-[#FFFFFF] p-5">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-[#15202B]/70">
                   Step 4에서 직접 작성한 최종안
                 </div>
                 <p className="mt-3 whitespace-pre-wrap text-[15px] font-medium leading-relaxed text-foreground">
@@ -408,7 +408,7 @@ const Dashboard = () => {
                 const isBest = best === c;
                 const isWorst = worst === c;
                 const cardCls = isBest
-                  ? "rounded-lg border-2 border-[#E5C97A] bg-[#FAF1D7] p-5"
+                  ? "rounded-lg border-2 border-[#15202B] bg-[#FFFFFF] p-5"
                   : isWorst
                   ? "rounded-lg border border-foreground/15 bg-muted/40 p-5 opacity-70"
                   : "rounded-lg border border-foreground/15 bg-background p-5";
@@ -423,14 +423,14 @@ const Dashboard = () => {
                       <span
                         className={
                           isBest
-                            ? "rounded-md bg-[#E8C547] px-2 py-0.5 text-xs font-bold text-[#1D2230]"
+                            ? "rounded-md bg-[#15202B] px-2 py-0.5 text-xs font-bold text-[#15202B]"
                             : "rounded-md border border-foreground/30 bg-background px-2 py-0.5 text-xs font-semibold text-foreground/80"
                         }
                       >
                         번역안 {c}
                       </span>
                       {isBest && (
-                        <span className="text-[11px] font-semibold text-[#1D2230]/70">
+                        <span className="text-[11px] font-semibold text-[#15202B]/70">
                           가장 적절
                         </span>
                       )}
@@ -468,7 +468,7 @@ const Dashboard = () => {
                 if (side === "both")
                   return "border border-foreground/20 bg-muted/40";
                 return side === target
-                  ? "border-2 border-[#E5C97A] bg-[#FAF1D7]"
+                  ? "border-2 border-[#15202B] bg-[#FFFFFF]"
                   : "border border-foreground/15 bg-muted/30 opacity-60";
               };
               return (
@@ -648,7 +648,7 @@ const Dashboard = () => {
             <button
               type="button"
               onClick={handleSavePdf}
-              className="rounded-lg bg-[#E8C547] px-6 py-3 text-base font-semibold text-[#1D2230] transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              className="rounded-lg bg-[#15202B] px-6 py-3 text-base font-semibold text-[#15202B] transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               리포트 PDF 저장
             </button>

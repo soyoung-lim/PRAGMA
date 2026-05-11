@@ -267,7 +267,7 @@ const Finalize = () => {
             placeholder="여기에 본인이 결정한 최종 중국어 번역안을 직접 입력하세요. 번역안 A/B/C 중 하나를 그대로 붙여 넣지 말고, 본인의 판단으로 다듬어 작성해 주세요."
             rows={6}
             maxLength={2000}
-            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-[15px] leading-relaxed focus:border-[#E5C97A] focus:outline-none focus:ring-2 focus:ring-[#E8C547]/40"
+            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-[15px] leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
           />
           <div className="mt-2 flex justify-end">
             <span className="text-xs text-muted-foreground">{finalTranslation.length}자</span>
@@ -275,7 +275,7 @@ const Finalize = () => {
         </section>
 
         {/* Justification */}
-        <section className="mt-6 rounded-lg border border-foreground/30 bg-[#FAF7EC] p-6">
+        <section className="mt-6 rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
           <label htmlFor="final-justification" className="text-sm font-semibold">
             이 번역안을 최종으로 결정한 이유를 자유롭게 적어주세요 (최소 50자)
           </label>
@@ -287,7 +287,7 @@ const Finalize = () => {
             placeholder="예) 처음에는 B가 적절하다고 봤지만, 전문가 관점 피드백을 보고 상대 입장이 더 잘 드러나는 표현이 필요하다고 느껴 격식을 유지하면서도 협력 의사를 한 문장 더 넣었습니다."
             rows={5}
             maxLength={2000}
-            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#E5C97A] focus:outline-none focus:ring-2 focus:ring-[#E8C547]/40"
+            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
           />
           <div className="mt-2 flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
@@ -308,7 +308,7 @@ const Finalize = () => {
                 "rounded-lg px-6 py-3 text-base font-medium transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                 canProceed
-                  ? "bg-[#E8C547] text-[#1D2230] hover:brightness-95"
+                  ? "bg-[#FAD338] text-[#15202B] hover:bg-[#E8B91F]"
                   : "cursor-not-allowed bg-muted text-muted-foreground",
               ].join(" ")}
             >

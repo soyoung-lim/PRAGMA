@@ -221,7 +221,7 @@ const Translate = () => {
         className={[
           "flex cursor-pointer items-start gap-3 rounded-md border px-4 py-3 text-sm transition-colors",
           checked
-            ? "border-[#E5C97A] bg-[#FAF1D7] font-semibold"
+            ? "border-[#15202B] bg-[#FFFFFF] font-semibold"
             : "border-foreground/20 bg-background hover:bg-muted/40",
           demo ? "cursor-default" : "",
         ].join(" ")}
@@ -229,7 +229,7 @@ const Translate = () => {
         <input
           type="radio"
           name={name}
-          className="mt-0.5 accent-[#E8C547]"
+          className="mt-0.5 accent-[#15202B]"
           checked={checked}
           disabled={demo}
           onChange={() => !demo && onChange(value)}
@@ -323,7 +323,7 @@ const Translate = () => {
         </div>
 
         {/* Impact log */}
-        <section className="mt-8 rounded-lg border border-foreground/30 bg-[#FAF7EC] p-6">
+        <section className="mt-8 rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
           <SectionLabel>피드백을 본 뒤</SectionLabel>
 
           <div className="mt-2 space-y-6">
@@ -375,7 +375,7 @@ const Translate = () => {
                 readOnly={demo}
                 placeholder="예) 수신자가 어떻게 느낄지 구체적인 인상을 들으니 다시 보게 됐습니다."
                 rows={3}
-                className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#E5C97A] focus:outline-none focus:ring-2 focus:ring-[#E8C547]/40"
+                className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
               />
               <div className="mt-2 flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">
@@ -401,7 +401,7 @@ const Translate = () => {
                 "rounded-lg px-6 py-3 text-base font-medium transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                 canProceed
-                  ? "bg-[#E8C547] text-[#1D2230] hover:brightness-95"
+                  ? "bg-[#FAD338] text-[#15202B] hover:bg-[#E8B91F]"
                   : "cursor-not-allowed bg-muted text-muted-foreground",
               ].join(" ")}
             >

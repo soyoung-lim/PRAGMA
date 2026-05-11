@@ -102,14 +102,14 @@ const Pdr = () => {
               disabled
                 ? "cursor-not-allowed border-foreground/10 bg-muted/40 text-muted-foreground"
                 : checked
-                ? "border-[#E5C97A] bg-[#FAF1D7] font-semibold"
+                ? "border-[#15202B] bg-[#FFFFFF] font-semibold"
                 : "border-foreground/20 bg-background hover:bg-muted/40",
             ].join(" ")}
           >
             <input
               type="radio"
               name={name}
-              className="accent-[#E8C547]"
+              className="accent-[#15202B]"
               checked={checked}
               disabled={disabled}
               onChange={() => onChange(c)}
@@ -201,7 +201,7 @@ const Pdr = () => {
         </div>
 
         {/* Selection inputs */}
-        <div className="mt-6 space-y-6 rounded-lg border border-foreground/30 bg-[#FAF7EC] p-6">
+        <div className="mt-6 space-y-6 rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
           <div>
             <div className="text-sm font-semibold">가장 적절하다고 생각하는 번역안은?</div>
             <div className="mt-3">
@@ -232,7 +232,7 @@ const Pdr = () => {
             readOnly={demo}
             placeholder="의미와 말투, 관계 적합성, 오해·부담 가능성을 참고해 왜 이 번역안이 적절하거나 부적절하다고 보았는지 적어 주세요."
             rows={5}
-            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#E5C97A] focus:outline-none focus:ring-2 focus:ring-[#E8C547]/40"
+            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
           />
           <div className="mt-2 flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
@@ -256,7 +256,7 @@ const Pdr = () => {
                 "rounded-lg px-6 py-3 text-base font-medium transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                 canProceed
-                  ? "bg-[#E8C547] text-[#1D2230] hover:brightness-95"
+                  ? "bg-[#FAD338] text-[#15202B] hover:bg-[#E8B91F]"
                   : "cursor-not-allowed bg-muted text-muted-foreground",
               ].join(" ")}
             >
