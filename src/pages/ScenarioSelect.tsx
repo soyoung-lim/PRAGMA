@@ -177,7 +177,7 @@ const ScenarioSelect = () => {
         {selected && (
           <section key={selected} className="fade-in mt-6 space-y-6">
             {/* Block 1: scenario detail */}
-            <div className="rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
               <SectionLabel>이 상황을 읽어주세요</SectionLabel>
               <div className="space-y-3 text-[15px] leading-relaxed text-foreground">
                 {SCENARIO_DETAIL[selected].map((p, i) => (
@@ -208,7 +208,7 @@ const ScenarioSelect = () => {
             </div>
 
             {/* Block 3: situation judgment */}
-            <div className="rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
               <SectionLabel>상황을 읽고, 본인이 느낀 그대로 골라주세요</SectionLabel>
 
               <div className="mt-2 space-y-6">
