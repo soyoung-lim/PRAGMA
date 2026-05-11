@@ -157,6 +157,17 @@ const Translate = () => {
   }, [impact, side, reason]);
 
   const reasonOk = reason.trim().length >= 15;
+  const canProceed = !!impact && !!side && reasonOk;
+
+  const fb =
+    act && (best === "A" || best === "B" || best === "C")
+      ? FEEDBACK[act][best as Choice]
+      : null;
+  const summaryReason = step2Reason
+    ? step2Reason.length > 80
+      ? step2Reason.slice(0, 80) + "…"
+      : step2Reason
+    : "";
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -224,7 +235,7 @@ const Translate = () => {
             <li className="whitespace-pre-wrap">
               내가 적은 이유:{" "}
               <span className="text-muted-foreground">
-                {step2Reason || "[학생 입력 요약 — 다음 단계에서 연결됩니다]"}
+                {summaryReason || "[학생 입력 요약 — Step 2에서 입력해주세요]"}
               </span>
             </li>
           </ul>
@@ -239,14 +250,14 @@ const Translate = () => {
             <div className="mt-5 space-y-5">
               <div>
                 <SectionLabel>받는 입장에서의 인상</SectionLabel>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  [수신자 피드백 — 다음 단계에서 추가됩니다]
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {fb ? fb.receiver.impression : "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
                 </p>
               </div>
               <div>
                 <SectionLabel>다시 생각해 볼 점</SectionLabel>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  [수신자 피드백 — 다음 단계에서 추가됩니다]
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {fb ? fb.receiver.reconsider : "[Step 2 선택 후 표시됩니다]"}
                 </p>
               </div>
             </div>
@@ -259,14 +270,14 @@ const Translate = () => {
             <div className="mt-5 space-y-5">
               <div>
                 <SectionLabel>잘 전달된 부분</SectionLabel>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  [전문가 피드백 — 다음 단계에서 추가됩니다]
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {fb ? fb.expert.strength : "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
                 </p>
               </div>
               <div>
                 <SectionLabel>수정 방향</SectionLabel>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  [전문가 피드백 — 다음 단계에서 추가됩니다]
+                <p className="text-sm leading-relaxed text-foreground/90">
+                  {fb ? fb.expert.revision : "[Step 2 선택 후 표시됩니다]"}
                 </p>
               </div>
             </div>
@@ -345,8 +356,14 @@ const Translate = () => {
           <div className="mt-3 flex justify-end">
             <button
               type="button"
-              disabled
-              className="cursor-not-allowed rounded-lg bg-muted px-6 py-3 text-base font-medium text-muted-foreground"
+              disabled={!canProceed}
+              className={[
+                "rounded-lg px-6 py-3 text-base font-medium transition-colors",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                canProceed
+                  ? "bg-[#E8C547] text-[#1D2230] hover:brightness-95"
+                  : "cursor-not-allowed bg-muted text-muted-foreground",
+              ].join(" ")}
             >
               최종 번역 작성하기 →
             </button>
