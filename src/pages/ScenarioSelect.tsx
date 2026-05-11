@@ -24,6 +24,7 @@ const LIBRARY: Record<ActId, LibItem[]> = {
     { sector: "게임산업", title: "이벤트 공지 일정 조정", desc: "중국 서버 이벤트 공지 공개 일정을 조정해 달라고 요청합니다.", available: false },
     { sector: "이커머스", title: "상품 이미지 추가 제공", desc: "중국 라이브커머스용 상품 이미지를 추가로 제공해 달라고 요청합니다.", available: false },
     { sector: "기업실무", title: "회의 자료 수정", desc: "중국 협력사와의 회의 자료 일부 수정을 요청합니다.", available: false },
+    { sector: "테크산업", title: "앱 화면 문구 수정 요청", desc: "중국 사용자용 앱 화면에 들어갈 안내 문구 수정을 요청합니다.", available: false },
   ],
   refusal: [
     { sector: "엔터콘텐츠", title: "공동 프로모션 비용 인하 거절", desc: "공동 프로모션 비용 인하가 어렵다고 답합니다.", available: true },
@@ -31,6 +32,7 @@ const LIBRARY: Record<ActId, LibItem[]> = {
     { sector: "게임산업", title: "이벤트 보상 확대 거절", desc: "이벤트 보상 확대 요청을 수용하기 어렵다고 답합니다.", available: false },
     { sector: "이커머스", title: "배송 일정 앞당기기 거절", desc: "상품 배송 일정을 앞당기기 어렵다고 답합니다.", available: false },
     { sector: "기업실무", title: "회의 일정 앞당기기 거절", desc: "중국 협력사의 회의 일정 앞당기기 요청을 수용하기 어렵다고 답합니다.", available: false },
+    { sector: "테크산업", title: "기능 추가 요청 거절", desc: "중국 파트너사의 앱 기능 추가 요청을 수용하기 어렵다고 답합니다.", available: false },
   ],
 };
 
