@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { isDemoMode } from "@/lib/demo";
+import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
 
 type ActId = "request" | "refusal";
 type Choice = "A" | "B" | "C";
@@ -196,9 +197,13 @@ const Finalize = () => {
                     {(["A", "B", "C"] as Choice[]).map((c) => (
                       <div
                         key={c}
-                        className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-3"
+                        className="rounded-md border-[0.5px] border-[#D3D1C7] p-3"
+                        style={{ backgroundColor: TRANSLATION_CARD_BG[c] }}
                       >
-                        <div className="text-xs font-bold text-foreground/70">번역안 {c}</div>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-xs font-bold text-foreground/70">번역안 {c}</span>
+                          <span className="text-[12px] font-normal text-[#5C6A7A]">· {TRANSLATION_LABELS[act][c]}</span>
+                        </div>
                         <p className="mt-1.5 text-[13px] leading-relaxed">
                           {TRANSLATIONS[act][c]}
                         </p>
