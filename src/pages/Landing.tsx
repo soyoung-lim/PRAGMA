@@ -55,7 +55,7 @@ const Landing = () => {
               <div key={s.n} className="flex items-center lg:flex-1">
                 <div className="relative w-full rounded-2xl border-[1.5px] border-[#15202B] bg-card px-4 pt-7 pb-5 text-center shadow-sm">
                   <span
-                    className="absolute -top-3 left-1/2 inline-flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-[#15202B] ring-2 ring-card"
+                    className="absolute -top-3 left-1/2 inline-flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-white ring-2 ring-card"
                     style={{ backgroundColor: "#15202B" }}
                   >
                     {s.n}
