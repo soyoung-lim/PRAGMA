@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
+import { exitDemoMode } from "@/lib/demo";
 
 type ActId = "request" | "refusal";
 type Choice = "A" | "B" | "C";
@@ -238,6 +239,7 @@ const Dashboard = () => {
   };
 
   const handleAnother = () => {
+    exitDemoMode();
     [
       ACT_STORAGE_KEY,
       STEP1_ANSWERS_KEY,
@@ -254,6 +256,7 @@ const Dashboard = () => {
   };
 
   const handleHome = () => {
+    exitDemoMode();
     logAction("session_end", { reason: "home" }, "/dashboard");
     navigate("/");
   };
