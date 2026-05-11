@@ -98,18 +98,18 @@ const Pdr = () => {
           <label
             key={c}
             className={[
-              "flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm transition-colors",
-              disabled
-                ? "cursor-not-allowed border-foreground/10 bg-muted/40 text-muted-foreground"
+              "flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm transition-colors text-[#15202B]",
+              disabled && !checked
+                ? "cursor-not-allowed border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] text-muted-foreground"
                 : checked
-                ? "border-[#15202B] bg-[#FFFFFF] font-semibold"
-                : "border-foreground/20 bg-background hover:bg-muted/40",
+                ? "border-[1.5px] border-[#15202B] bg-[#EEF2F7] font-medium"
+                : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] font-normal hover:bg-muted/30",
             ].join(" ")}
           >
             <input
               type="radio"
               name={name}
-              className="accent-[#15202B]"
+              className="h-[14px] w-[14px] shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-[#B4B2A9] bg-white checked:border-[#15202B] checked:bg-[radial-gradient(circle,_#FAD338_0_3.5px,_transparent_3.5px)]"
               checked={checked}
               disabled={disabled}
               onChange={() => onChange(c)}
