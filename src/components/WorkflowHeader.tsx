@@ -9,10 +9,10 @@ interface WorkflowHeaderProps {
 }
 
 const STEPS = [
-  { num: 1, label: "화행·시나리오 선택", path: "/scenario" },
-  { num: 2, label: "상황 판단·원문 작성", path: "/pdr" },
-  { num: 3, label: "AI 번역 비교", path: "/translate" },
-  { num: 4, label: "페르소나 피드백", path: "/finalize" },
+  { num: 1, label: "상황 이해", path: "/scenario" },
+  { num: 2, label: "번역안 비교", path: "/pdr" },
+  { num: 3, label: "피드백 확인", path: "/translate" },
+  { num: 4, label: "최종 작성", path: "/finalize" },
   { num: 5, label: "의사결정 리포트", path: "/dashboard" },
 ];
 
