@@ -27,7 +27,6 @@ const Pdr = () => {
   };
 
   const reasonOk = reason.trim().length >= 30;
-  const canProceed = !!best && !!worst && best !== worst && reasonOk;
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -155,14 +154,8 @@ const Pdr = () => {
           <div className="mt-3 flex justify-end">
             <button
               type="button"
-              disabled={!canProceed}
-              className={[
-                "rounded-lg px-6 py-3 text-base font-medium transition-colors",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                canProceed
-                  ? "bg-[#E8C547] text-[#1D2230] hover:brightness-95"
-                  : "cursor-not-allowed bg-muted text-muted-foreground",
-              ].join(" ")}
+              disabled
+              className="cursor-not-allowed rounded-lg bg-muted px-6 py-3 text-base font-medium text-muted-foreground"
             >
               피드백 확인하기 →
             </button>
