@@ -1,310 +1,137 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Info, Lock } from "lucide-react";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
-import { Rollback } from "@/components/Rollback";
 import { ensureSession, logAction } from "@/lib/tracking";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import {
-  SCENARIOS,
-  SPEECH_ACTS,
-  STORAGE_KEY,
-  type SpeechAct,
-  type WorkflowSelection,
-} from "@/lib/scenarios";
-import { PDR_STORAGE_KEY, STRATEGIES, type PdrData } from "@/lib/strategies";
-import { TRANSLATE_STORAGE_KEY } from "./Translate";
 
-const FINALIZE_STORAGE_KEY = "translation-workflow-finalize";
+type ActId = "request" | "refusal";
+type Choice = "A" | "B" | "C";
 
-type RevisionReason =
-  | "화용 재현성 문제"
-  | "관계 적합성 문제"
-  | "리스크 관리 문제"
-  | "복합: 2가지 이상"
-  | "수정 사항 없음";
+const ACT_STORAGE_KEY = "step1-speech-act";
+const STEP2_BEST_KEY = "step2-best";
+const FINALIZE_STORAGE_KEY = "step4-final-translation";
 
-const REASON_OPTIONS: RevisionReason[] = [
-  "화용 재현성 문제",
-  "관계 적합성 문제",
-  "리스크 관리 문제",
-  "복합: 2가지 이상",
-];
-
-interface RevisionCase {
-  aiResult: string;
-  myRevision: string;
-  reason: RevisionReason | "";
-  explanation: string;
-}
-
-type FinalDecision = "as-is" | "partial" | "full-revision" | "";
-
-interface PersonaInfluence {
-  persona1: boolean;
-  persona2: boolean;
-  persona3: boolean;
-}
-
-export type PersonaDecision = "accept" | "partial" | "reject" | "";
-
-export interface PersonaDecisions {
-  persona1: PersonaDecision;
-  persona2: PersonaDecision;
-  persona3: PersonaDecision;
-}
-
-interface FinalizeData {
-  finalTranslation: string;
-  revisionCase: RevisionCase;
-  personaFeedbackReceived: boolean;
-  preFeedbackTranslation: string;
-  postFeedbackDecision: FinalDecision;
-  personaInfluence: PersonaInfluence;
-  postFeedbackTranslation: string;
-  finalDecisionReason: string;
-  personaDecisions: PersonaDecisions;
-  personaFeedbackIntegratedReason: string;
-}
-
-const EMPTY_INFLUENCE: PersonaInfluence = {
-  persona1: false,
-  persona2: false,
-  persona3: false,
+const SOURCE_TEXT: Record<ActId, string> = {
+  request: "이번 자료 전달 일정을 10일 정도 연장해 주실 수 있을지 검토 부탁드립니다.",
+  refusal: "검토해 봤는데 이번에는 프로모션 비용 인하가 어려울 것 같습니다.",
 };
 
-const EMPTY_PERSONA_DECISIONS: PersonaDecisions = {
-  persona1: "",
-  persona2: "",
-  persona3: "",
+const TRANSLATIONS: Record<ActId, Record<Choice, string>> = {
+  request: {
+    A: "请将本次资料提交时间延后十天。",
+    B: "不知贵方是否方便将本次资料提交时间延后十天,烦请考虑。",
+    C: "由于我方仍需等待艺人方面的最终确认,恳请贵方酌情考虑将本次资料提交时间延后十天。由此可能给贵方上线安排带来的不便,我们深表歉意。",
+  },
+  refusal: {
+    A: "我们研究过了,这次不能降低推广费用。",
+    B: "我们内部讨论过了,这次推广费用方面确实很难再调整,还请您理解。",
+    C: "感谢贵方一直以来的支持。关于此次推广费用调整,我们已认真进行内部讨论,但由于项目预算和执行安排已经基本确定,实在难以再下调。还请您理解,我们也会继续积极配合后续活动推进。",
+  },
 };
 
-const EMPTY: FinalizeData = {
-  finalTranslation: "",
-  revisionCase: { aiResult: "", myRevision: "", reason: "", explanation: "" },
-  personaFeedbackReceived: false,
-  preFeedbackTranslation: "",
-  postFeedbackDecision: "",
-  personaInfluence: { ...EMPTY_INFLUENCE },
-  postFeedbackTranslation: "",
-  finalDecisionReason: "",
-  personaDecisions: { ...EMPTY_PERSONA_DECISIONS },
-  personaFeedbackIntegratedReason: "",
-};
-
-const PERSONA_DECISION_OPTIONS: { value: Exclude<PersonaDecision, "">; label: string }[] = [
-  { value: "accept", label: "수용" },
-  { value: "partial", label: "부분 수용" },
-  { value: "reject", label: "거부" },
-];
-
-const DECISION_OPTIONS: { value: Exclude<FinalDecision, "">; label: string; sub: string }[] = [
-  { value: "as-is", label: "그대로 확정", sub: "피드백을 검토했으나 변경 없이 위 번역을 최종안으로 확정합니다" },
-  { value: "full-revision", label: "수정 후 확정", sub: "위 최종 번역 텍스트 영역을 수정한 후 확정합니다" },
-];
-
-const FINAL_TRANSLATION_MAX = 200;
-
-const PERSONA_COLORS = ["#A82E25", "#A87E1C", "#161E47"];
-
-const PERSONA_BODIES_BY_SCENARIO: Record<string, string[]> = {
-  "ref-1": [
-    "이메일을 받은 입장에서 보면, 거절 의사는 분명히 전달되지만 향후 관계를 이어가고 싶다는 신호가 약하게 느껴집니다. 첫 거래 단계에서 받는 거절 메일이라 더욱 그렇습니다. 마지막 한 줄에 가벼운 관계 지속 표현이 더해지면 인상이 크게 달라질 것입니다.",
-    "거절 화행을 ‘대안 제시 거절형’ 전략으로 풀어낸 점은 적절합니다. 다만 초면·공식 관계라는 P·D·R 분석을 더 강하게 표면에 드러낼 수 있는 호칭·격식 표현이 비어 있습니다. 호칭 선택을 통해 분석과 표현 사이의 일관성을 확보하면 학습 효과가 큽니다.",
-    "관계 손상 위험은 낮은 편입니다. 그러나 거절 사유에 법률 어휘를 사용한 부분은 향후 책임 회피로 해석될 여지가 있어 비즈니스 리스크가 잠재합니다. 표현을 비즈니스 사유 어휘로 바꾸면 같은 의미를 안전하게 전달할 수 있습니다.",
-  ],
-  "ref-2": [
-    "장기 거래처로부터 받는 메일이라는 맥락에서 보면, 거절 메시지의 명확성은 좋습니다. 다만 그동안 쌓인 관계에 대한 인정 한 줄이 서두에 없어 다소 차갑게 읽힐 수 있습니다. 첫 문장에서 관계를 짚어주는 표현이 핵심입니다.",
-    "비즈니스 격식체의 일관성은 잘 유지되고 있어 기본기는 탄탄합니다. 다만 가까운 관계라는 D 변수에 비해 표현이 다소 형식적이라 P·D·R 판단과 화행 구현이 어긋나는 지점이 있습니다. 호칭과 마무리 표현에서 친밀감의 균형을 잡아주세요.",
-    "가격 정책의 일관성을 지킨 결정은 향후 협상에서 유리하게 작용합니다. 다만 거절 사유가 모호하면 상대가 추가 요구로 해석할 수 있어 협상력이 약화될 가능성이 있습니다. 사유를 한 줄로 명확히 못 박는 문장이 필요합니다.",
-  ],
-  "ref-3": [
-    "일정 변경이 어렵다는 사실 자체는 정중하게 잘 전달되었습니다. 다만 받는 입장에서는 ‘그래서 언제 가능한가’라는 다음 질문이 자연스럽게 떠오르므로, 대안 일정이 함께 제시되어야 의사결정을 이어갈 수 있습니다.",
-    "P·D·R 분석에 부합하는 어조는 잘 잡혀 있습니다. 업무상 관계의 적정한 거리감은 거의 정확하나, 강요로 읽힐 수 있는 표현이 한두 군데 있습니다. 완곡 표현 한 단어를 더하는 것만으로 톤이 안정됩니다.",
-    "일정 책임 소재가 명확해 단기 리스크는 낮습니다. 다만 거절 자체가 협력 분위기에 미세한 영향을 줄 수 있으므로, 향후 보상이나 우선 순위에 대한 신호를 한 줄로 제시해 두는 것이 장기 관계에 안전합니다.",
-  ],
-};
-
-
-interface Persona {
-  number: number;
-  name: string;
-  role: string;
-  strength: string;
-  concern: string;
-  suggestion: string;
-  body: string;
+interface FeedbackBlock {
+  receiver: { impression: string; reconsider: string };
+  expert: { strength: string; revision: string };
 }
 
-const PERSONA_META: { number: number; name: string; role: string }[] = [
-  { number: 1, name: "이메일 수신자", role: "이 이메일을 받은 중국 거래처의 시점" },
-  { number: 2, name: "통번역 교수자", role: "교육적 관점에서 번역 기법을 분석" },
-  { number: 3, name: "리스크 관리자", role: "비즈니스 관계와 사후 리스크 관점에서 검토" },
-];
-
-type PersonaTriple = { strength: string; concern: string; suggestion: string }[];
-
-const PERSONAS_BY_SCENARIO: Record<string, PersonaTriple> = {
-  "ref-1": [
-    {
-      strength: "정중한 거절 어조 유지",
-      concern: "관계 지속 표현이 약함",
-      suggestion: "“希望未来仍有合作机会” 또는 “期待在合适的时机再深入交流” 같은 관계 지속 표현 추가",
+const FEEDBACK: Record<ActId, Record<Choice, FeedbackBlock>> = {
+  request: {
+    A: {
+      receiver: {
+        impression: "요청 내용은 분명하지만, 첫 협업 상대로부터 받기에는 조금 직접적으로 느껴질 수 있습니다.",
+        reconsider: "이유나 양해 표현이 없어, 상대 일정에 미치는 영향을 충분히 고려했다는 느낌이 약할 수 있습니다.",
+      },
+      expert: {
+        strength: "10일 연장을 요청한다는 핵심 의미는 정확히 전달되었습니다.",
+        revision: "명령처럼 보이는 구조를 줄이고, 사유와 상대가 결정할 여지를 남기는 표현을 보완해 보세요.",
+      },
     },
-    {
-      strength: "화행 전략 ‘대안 제시 거절형’에 부합",
-      concern: "초면·공식 관계임을 고려할 때 호칭 표현 강화 필요",
-      suggestion: "“贵公司”를 사용하여 공식적 거리감과 존중을 동시에 표현",
+    B: {
+      receiver: {
+        impression: "정중하고 실무적으로 무리 없이 받아들일 수 있는 요청입니다.",
+        reconsider: "다만 왜 일정 조정이 필요한지에 대한 설명이 없어, 첫 협업에서는 다소 정보가 부족하게 느껴질 수 있습니다.",
+      },
+      expert: {
+        strength: "원문의 완곡한 요청 느낌이 자연스럽게 살아 있습니다.",
+        revision: "현재의 정중함을 유지하면서, 사유나 상대 일정에 대한 고려를 한 문장 정도 더 드러내면 좋습니다.",
+      },
     },
-    {
-      strength: "관계 손상 위험 낮음",
-      concern: "법률 어휘 사용 시 책임 회피 인상 우려",
-      suggestion: "“不可抗力” 같은 법률 어휘 대신 “业务方向调整” 같은 비즈니스 어휘로 대체",
+    C: {
+      receiver: {
+        impression: "사유와 상대 일정에 대한 배려가 함께 보여, 첫 협업에서도 비교적 안정적으로 받아들일 수 있습니다.",
+        reconsider: "다만 사과 표현이 다소 무겁게 느껴질 수 있어, 요청 단계에 맞는 강도인지 생각해 볼 필요가 있습니다.",
+      },
+      expert: {
+        strength: "사유 제시, 상대 배려, 검토 요청의 완곡함이 잘 드러납니다.",
+        revision: "원문보다 사과의 강도가 높아졌으므로, 이 정도로 정중하게 강화할 필요가 있는지 스스로 판단해 보세요.",
+      },
     },
-  ],
-  "ref-2": [
-    {
-      strength: "거절 의사가 명확하게 전달됨",
-      concern: "장기 거래처 관계에서 친숙함이 부족함",
-      suggestion: "“一直以来的合作我们非常珍惜” 같은 관계 인정 표현으로 시작",
+  },
+  refusal: {
+    A: {
+      receiver: {
+        impression: "거절 의도는 분명하지만, 여러 번 연락해 온 실무 관계에서 받기에는 다소 짧고 단정적으로 느껴질 수 있습니다.",
+        reconsider: "양해 표현이나 검토 과정에 대한 언급이 없어, 이번 제안을 충분히 검토했다는 느낌이 약하게 전달될 수 있습니다.",
+      },
+      expert: {
+        strength: "비용 인하가 어렵다는 핵심 메시지는 정확히 전달되었습니다.",
+        revision: "원문의 '검토해 봤는데', '어려울 것 같습니다'에 담긴 완곡함이 약해졌습니다. 거절의 명확성은 유지하면서 양해 표현을 한 줄 정도 보완해 보세요.",
+      },
     },
-    {
-      strength: "비즈니스 격식체 일관성 유지",
-      concern: "가까운 관계임에도 표현이 다소 형식적",
-      suggestion: "“贵司” 또는 회사명 직접 사용으로 친밀감 균형 조정",
+    B: {
+      receiver: {
+        impression: "격식과 양해 표현이 잘 갖춰져, 공식 답변으로 무리 없이 받을 만한 톤입니다.",
+        reconsider: "다만 앞으로의 협업에 대한 언급이 없어, 관계가 이어진다는 느낌은 다소 약하게 남을 수 있습니다.",
+      },
+      expert: {
+        strength: "거절 사유와 양해 요청이 격식 있게 잘 전달되었습니다.",
+        revision: "여러 번 연락해 온 관계라는 점을 고려하면, 후속 협업에 대한 의지를 한 문장 정도 더 드러내면 좋습니다.",
+      },
     },
-    {
-      strength: "가격 정책 일관성 유지",
-      concern: "거절 사유가 모호하면 향후 협상력 약화 가능",
-      suggestion: "“本次报价已是最优条件” 같은 명확한 사유 명시",
+    C: {
+      receiver: {
+        impression: "감사 표현과 후속 협업 의지가 함께 담겨, 거절이지만 협업 관계를 계속 이어가려는 의지가 분명히 전해집니다.",
+        reconsider: "다만 후속 협업 의지가 비교적 강하게 표현되어, 다음 협의에서 그 기대만큼 조정이 어려울 경우 오히려 부담이 될 수 있습니다.",
+      },
+      expert: {
+        strength: "감사 표현, 거절 사유, 양해, 후속 협업 의지가 자연스럽게 흐르고 있습니다.",
+        revision: "후속 협업에 대한 표현이 실제로 약속할 수 있는 범위와 맞는지 스스로 점검해 보세요.",
+      },
     },
-  ],
-  "ref-3": [
-    {
-      strength: "일정 변경 불가 사유가 정중히 전달됨",
-      concern: "대안 일정 제시 부족",
-      suggestion: "“建议改为X月X日” 같은 구체적 대체 일정 제안 추가",
-    },
-    {
-      strength: "P·D·R 분석에 부합한 어조",
-      concern: "업무상 관계의 적정 거리감 표현 미세 조정 필요",
-      suggestion: "“如方便的话” 같은 완곡 표현으로 강요 인상 회피",
-    },
-    {
-      strength: "일정 책임 명확화",
-      concern: "거절 후 협력 관계 영향 가능",
-      suggestion: "“下次会议可优先安排贵公司议程” 같은 후속 보상 표현 명시",
-    },
-  ],
+  },
 };
 
-function getPersonas(scenarioId: string | null | undefined): Persona[] {
-  const triple = (scenarioId && PERSONAS_BY_SCENARIO[scenarioId]) || PERSONAS_BY_SCENARIO["ref-1"];
-  const bodies =
-    (scenarioId && PERSONA_BODIES_BY_SCENARIO[scenarioId]) ||
-    PERSONA_BODIES_BY_SCENARIO["ref-1"];
-  return PERSONA_META.map((m, i) => ({ ...m, ...triple[i], body: bodies[i] }));
+interface Step4Data {
+  finalTranslation?: string;
+  justification?: string;
 }
 
-function Dot({ on }: { on: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className={[
-        "ml-2 inline-block h-2 w-2 rounded-full",
-        on ? "bg-accent" : "bg-transparent",
-      ].join(" ")}
-    />
-  );
-}
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    {children}
+  </div>
+);
 
-export default function Finalize() {
+const Finalize = () => {
   const navigate = useNavigate();
-
-  // 이전 단계 데이터
-  const selection = useMemo<WorkflowSelection | null>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as WorkflowSelection) : null;
-    } catch {
-      return null;
-    }
-  }, []);
-  const pdr = useMemo<PdrData | null>(() => {
-    try {
-      const raw = localStorage.getItem(PDR_STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as PdrData) : null;
-    } catch {
-      return null;
-    }
-  }, []);
-  const translate = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(TRANSLATE_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  const speechAct = (selection?.speechAct ?? null) as SpeechAct | null;
-  const speechActLabel =
-    SPEECH_ACTS.find((a) => a.id === speechAct)?.label ?? "-";
-  const PERSONAS = useMemo(() => getPersonas(selection?.scenarioId ?? null), [selection?.scenarioId]);
-  const scenario =
-    speechAct && selection?.scenarioId
-      ? SCENARIOS[speechAct].find((s) => s.id === selection.scenarioId) ?? null
-      : null;
-  const scenarioLabel = scenario
-    ? `시나리오 ${scenario.number} — ${scenario.title}`
-    : selection?.customScenario
-      ? "직접 작성"
-      : "-";
-  const strategyLabel = useMemo(() => {
-    if (!speechAct || !pdr?.speechStrategy) return "-";
-    const s = STRATEGIES[speechAct].find((x) => x.id === pdr.speechStrategy);
-    return s?.title ?? "-";
-  }, [speechAct, pdr]);
-
-  const aiTranslation1: string = translate?.aiTranslation1 ?? "";
-  const aiTranslation2: string = translate?.aiTranslation2 ?? "";
-  const koreanEmail: string = pdr?.koreanEmail ?? "";
-
-  // 본 페이지 상태
-  const [data, setData] = useState<FinalizeData>(EMPTY);
-  const [contextOpen, setContextOpen] = useState(false);
-  const [revealedPersonas, setRevealedPersonas] = useState(0);
+  const [act, setAct] = useState<ActId | null>(null);
+  const [best, setBest] = useState<Choice | null>(null);
+  const [finalTranslation, setFinalTranslation] = useState("");
+  const [justification, setJustification] = useState("");
+  const [refOpen, setRefOpen] = useState(false);
 
   useEffect(() => {
     ensureSession();
     logAction("page_visit", { page: "/finalize" }, "/finalize");
-  }, []);
-
-  useEffect(() => {
     try {
+      const a = localStorage.getItem(ACT_STORAGE_KEY);
+      if (a === "request" || a === "refusal") setAct(a);
+      const b = localStorage.getItem(STEP2_BEST_KEY);
+      if (b === "A" || b === "B" || b === "C") setBest(b);
       const raw = localStorage.getItem(FINALIZE_STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as FinalizeData;
-        const migratedDecision: FinalDecision =
-          parsed.postFeedbackDecision === "partial"
-            ? "full-revision"
-            : parsed.postFeedbackDecision;
-        setData({
-          ...EMPTY,
-          ...parsed,
-          postFeedbackDecision: migratedDecision,
-          revisionCase: { ...EMPTY.revisionCase, ...parsed.revisionCase },
-          personaDecisions: {
-            ...EMPTY_PERSONA_DECISIONS,
-            ...(parsed.personaDecisions ?? {}),
-          },
-          personaFeedbackIntegratedReason:
-            parsed.personaFeedbackIntegratedReason ?? "",
-        });
-        if (parsed.personaFeedbackReceived) setRevealedPersonas(4);
+        const d: Step4Data = JSON.parse(raw);
+        if (d.finalTranslation) setFinalTranslation(d.finalTranslation);
+        if (d.justification) setJustification(d.justification);
       }
     } catch {
       /* ignore */
@@ -312,668 +139,171 @@ export default function Finalize() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(FINALIZE_STORAGE_KEY, JSON.stringify(data));
-  }, [data]);
-
-  const update = <K extends keyof FinalizeData>(k: K, v: FinalizeData[K]) =>
-    setData((d) => ({ ...d, [k]: v }));
-  const updateRevision = <K extends keyof RevisionCase>(
-    k: K,
-    v: RevisionCase[K],
-  ) =>
-    setData((d) => ({ ...d, revisionCase: { ...d.revisionCase, [k]: v } }));
-
-  const copyAi = (n: 1 | 2) => {
-    const txt = n === 1 ? aiTranslation1 : aiTranslation2;
-    if (!txt.trim()) {
-      toast.error(`AI 번역 ${n}이(가) 비어 있습니다`);
-      return;
+    try {
+      localStorage.setItem(
+        FINALIZE_STORAGE_KEY,
+        JSON.stringify({ finalTranslation, justification }),
+      );
+    } catch {
+      /* ignore */
     }
-    update("finalTranslation", txt.slice(0, FINAL_TRANSLATION_MAX));
-    toast.success(`AI 번역 ${n}을(를) 최종 번역에 복사했습니다`);
-  };
+  }, [finalTranslation, justification]);
 
-  const requestPersonaFeedback = () => {
-    if (data.finalTranslation.trim().length < 30) {
-      toast.error("최종 번역을 30자 이상 작성해주세요");
-      return;
-    }
-    logAction("persona_feedback_request", {
-      finalTranslationLength: data.finalTranslation.length,
-    });
-    update("personaFeedbackReceived", true);
-    setRevealedPersonas(0);
-    PERSONAS.forEach((_, i) => {
-      setTimeout(() => setRevealedPersonas((n) => Math.max(n, i + 1)), i * 300);
-    });
-  };
+  const justOk = justification.trim().length >= 50;
+  const transOk = finalTranslation.trim().length >= 1;
+  const canProceed = justOk && transOk;
 
-  const resetPersonaFeedback = () => {
-    setRevealedPersonas(0);
-    setTimeout(() => {
-      PERSONAS.forEach((_, i) => {
-        setTimeout(() => setRevealedPersonas((n) => Math.max(n, i + 1)), i * 300);
-      });
-    }, 50);
-  };
-
-  // 피드백 받은 시점에 피드백 전 최종안 자동 보존
-  useEffect(() => {
-    if (
-      data.personaFeedbackReceived &&
-      !data.preFeedbackTranslation &&
-      data.finalTranslation.trim().length > 0
-    ) {
-      setData((d) => ({
-        ...d,
-        preFeedbackTranslation: d.finalTranslation,
-        postFeedbackTranslation: d.postFeedbackTranslation || d.finalTranslation,
-      }));
-    }
-  }, [data.personaFeedbackReceived, data.preFeedbackTranslation, data.finalTranslation]);
-
-  // 검증
-  const finalTranslationDone = data.finalTranslation.trim().length > 0;
-  const noRevision = data.revisionCase.reason === "수정 사항 없음";
-  const revisionDone =
-    data.revisionCase.reason !== "" &&
-    (noRevision
-      ? data.revisionCase.explanation.trim().length > 0
-      : data.revisionCase.aiResult.trim().length > 0 &&
-        data.revisionCase.myRevision.trim().length > 0);
-  const needsRevisionFields =
-    data.postFeedbackDecision === "full-revision";
-  const influenceCount = Object.values(data.personaInfluence).filter(Boolean).length;
-  const decisionDone =
-    data.postFeedbackDecision !== "" &&
-    (!needsRevisionFields ||
-      (influenceCount >= 1 && data.postFeedbackTranslation.trim().length > 0));
-  const personaDecisionsDone =
-    !data.personaFeedbackReceived ||
-    (data.personaDecisions.persona1 !== "" &&
-      data.personaDecisions.persona2 !== "" &&
-      data.personaDecisions.persona3 !== "");
-  const allDone =
-    finalTranslationDone &&
-    revisionDone &&
-    data.personaFeedbackReceived &&
-    personaDecisionsDone &&
-    decisionDone;
-
+  const fb = act && best ? FEEDBACK[act][best] : null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <WorkflowHeader currentStep={4} />
-      
 
-      <main className="mx-auto max-w-6xl px-6 py-6">
-        {/* 페이지 제목 */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold sm:text-3xl">
-            최종안 작성 및 멀티-페르소나 피드백
-          </h2>
-          <p className="mt-2 text-base text-muted-foreground">
-            두 번역을 참고해 최종 중국어 번역을 작성하고, 세 가지 관점의 피드백을 받습니다
-          </p>
-        </div>
+      <main className="mx-auto max-w-6xl px-6 py-8">
+        <h1 className="text-2xl font-bold sm:text-3xl">최종 번역 작성</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          이제 본인이 결정한 중국어 번역안을 직접 작성해 주세요. AI 번역안을 참고할 수는 있지만, 최종안은 본인의 표현으로 적어주세요.
+        </p>
 
-        {/* A. 컨텍스트 요약 */}
-        <section className="mb-10 rounded-lg bg-secondary p-6">
+        {/* Reference panel (collapsed by default) */}
+        <section className="mt-6 rounded-lg border border-foreground/20 bg-muted/40">
           <button
             type="button"
-            onClick={() => setContextOpen((v) => !v)}
-            className="flex w-full items-center justify-between gap-3 text-left"
+            onClick={() => setRefOpen((v) => !v)}
+            aria-expanded={refOpen}
+            className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm font-semibold text-foreground hover:bg-muted/60"
           >
-            <span className="text-sm font-bold">컨텍스트 요약</span>
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              {contextOpen ? "접기" : "펼치기"}
-              {contextOpen ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
+            <span>이전 단계 자료 다시 보기</span>
+            <span aria-hidden className="text-xs text-muted-foreground">
+              {refOpen ? "▲" : "▼"}
             </span>
           </button>
-
-          {contextOpen && (
-            <div className="mt-4 space-y-4 text-sm">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <span className="font-semibold">화행 / 시나리오: </span>
-                  [{speechActLabel}] / {scenarioLabel}
-                </div>
-                <div>
-                  <span className="font-semibold">화행 전략: </span>
-                  {strategyLabel}
-                </div>
-                <div>
-                  <span className="font-semibold">P·D·R: </span>
-                  권력(P) = {pdr?.powerLevel ?? "-"} / 거리(D) = {pdr?.distanceLevel ?? "-"} / 부담도(R) = {pdr?.burdenLevel ?? "-"}
-                </div>
-                <div>
-                  <span className="font-semibold">의도: </span>
-                  {pdr?.intent || "-"}
-                </div>
+          {refOpen && (
+            <div className="space-y-6 border-t border-foreground/10 px-5 py-5 text-foreground/80">
+              <div>
+                <SectionLabel>Step 1 — 한국어 원문</SectionLabel>
+                <p className="rounded-md border border-foreground/10 bg-background/60 p-3 text-sm leading-relaxed">
+                  {act ? SOURCE_TEXT[act] : "[Step 1에서 화행을 먼저 선택해주세요]"}
+                </p>
               </div>
 
               <div>
-                <div className="mb-1 font-semibold">한국어 이메일</div>
-                <div className="whitespace-pre-wrap rounded-md border border-border bg-background p-3 text-sm">
-                  {koreanEmail || "(없음)"}
-                </div>
+                <SectionLabel>Step 2 — 번역안 A · B · C</SectionLabel>
+                {act ? (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {(["A", "B", "C"] as Choice[]).map((c) => (
+                      <div
+                        key={c}
+                        className="rounded-md border border-foreground/10 bg-background/60 p-3"
+                      >
+                        <div className="text-xs font-bold text-foreground/70">번역안 {c}</div>
+                        <p className="mt-1.5 text-[13px] leading-relaxed">
+                          {TRANSLATIONS[act][c]}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">[Step 1에서 화행을 먼저 선택해주세요]</p>
+                )}
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <div className="mb-1 font-semibold">AI 번역 1</div>
-                  <div className="whitespace-pre-wrap rounded-md border border-border bg-background p-3 text-sm">
-                    {aiTranslation1 || "(없음)"}
+              <div>
+                <SectionLabel>Step 3 — 두 관점 피드백</SectionLabel>
+                {fb ? (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className="rounded-md border border-foreground/10 bg-background/60 p-3">
+                      <div className="text-xs font-bold text-foreground/70">
+                        중국 측 비즈니스 수신자
+                      </div>
+                      <div className="mt-2 space-y-2 text-[13px] leading-relaxed">
+                        <p><span className="font-semibold">받는 입장에서의 인상</span> — {fb.receiver.impression}</p>
+                        <p><span className="font-semibold">다시 생각해 볼 점</span> — {fb.receiver.reconsider}</p>
+                      </div>
+                    </div>
+                    <div className="rounded-md border border-foreground/10 bg-background/60 p-3">
+                      <div className="text-xs font-bold text-foreground/70">
+                        통번역·화용 전문가
+                      </div>
+                      <div className="mt-2 space-y-2 text-[13px] leading-relaxed">
+                        <p><span className="font-semibold">잘 전달된 부분</span> — {fb.expert.strength}</p>
+                        <p><span className="font-semibold">수정 방향</span> — {fb.expert.revision}</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <div className="mb-1 font-semibold">AI 번역 2</div>
-                  <div className="whitespace-pre-wrap rounded-md border border-border bg-background p-3 text-sm">
-                    {aiTranslation2 || "(없음)"}
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    [Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]
+                  </p>
+                )}
               </div>
             </div>
           )}
         </section>
 
-        {/* B. 섹션 1 — 최종 번역 작성 */}
-        <section className="mb-12">
-          <div className="mb-4 flex items-center">
-            <h3 className="text-xl font-bold">1. 최종 중국어 번역을 작성하세요</h3>
-            <Dot on={finalTranslationDone} />
-          </div>
-          <p className="mb-5 text-sm text-muted-foreground">
-            두 AI 번역을 참고해 본인이 판단한 최종 번역을 작성합니다
-          </p>
-
-          <div className="grid gap-5 md:grid-cols-5">
-            <div className="md:col-span-2">
-              <div className="mb-2 text-sm font-semibold">한국어 원문</div>
-              <div className="whitespace-pre-wrap rounded-md border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
-                {koreanEmail || "(이전 단계에서 작성한 한국어 이메일이 여기에 표시됩니다)"}
-              </div>
-              <div className="mt-1 text-[11px] text-muted-foreground/70">읽기 전용</div>
-            </div>
-            <div className="md:col-span-3">
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="font-semibold">최종 중국어 번역</span>
-                <span className="text-xs text-muted-foreground">
-                  현재 글자수 {data.finalTranslation.length} / {FINAL_TRANSLATION_MAX}
-                </span>
-              </div>
-              <Textarea
-                value={data.finalTranslation}
-                onChange={(e) =>
-                  update("finalTranslation", e.target.value.slice(0, FINAL_TRANSLATION_MAX))
-                }
-                maxLength={FINAL_TRANSLATION_MAX}
-                placeholder="두 AI 번역에서 좋은 부분을 골라 조합하거나, 본인이 직접 수정·재작성하세요"
-                className="min-h-[96px] resize-y text-base"
-              />
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => copyAi(1)}>
-                  AI 번역 1 복사하기
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => copyAi(2)}>
-                  AI 번역 2 복사하기
-                </Button>
-              </div>
-            </div>
+        {/* Final Chinese translation */}
+        <section className="mt-8 rounded-lg border border-foreground/30 bg-background p-6">
+          <label htmlFor="final-translation" className="text-sm font-semibold">
+            본인이 결정한 최종 중국어 번역을 직접 작성하세요
+          </label>
+          <textarea
+            id="final-translation"
+            value={finalTranslation}
+            onChange={(e) => setFinalTranslation(e.target.value)}
+            placeholder="여기에 본인이 결정한 최종 중국어 번역안을 직접 입력하세요. 번역안 A/B/C 중 하나를 그대로 붙여 넣지 말고, 본인의 판단으로 다듬어 작성해 주세요."
+            rows={6}
+            maxLength={2000}
+            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-[15px] leading-relaxed focus:border-[#E5C97A] focus:outline-none focus:ring-2 focus:ring-[#E8C547]/40"
+          />
+          <div className="mt-2 flex justify-end">
+            <span className="text-xs text-muted-foreground">{finalTranslation.length}자</span>
           </div>
         </section>
 
-        {/* C. 섹션 2 — 핵심 수정 사례 */}
-        <section className="mb-12">
-          <div className="mb-4 flex items-center">
-            <h3 className="text-xl font-bold">2. 내가 고친 핵심 표현</h3>
-            <Dot on={revisionDone} />
-          </div>
-          <p className="mb-5 text-sm text-muted-foreground">
-            AI 번역에서 가장 중요하게 바꾼 표현 1개를 기록하세요. 전체 번역을 다시 설명하지 말고, 핵심 표현 하나만 선택합니다.
-          </p>
-
-          <div className="rounded-lg border border-border p-6">
-            <div className="space-y-5">
-              {!noRevision && (
-                <div className="grid items-start gap-4 md:grid-cols-[1fr_auto_1fr]">
-                  <div>
-                    <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="font-semibold">AI 번역 표현</span>
-                      <span className="text-xs text-muted-foreground">
-                        {data.revisionCase.aiResult.length}/100
-                      </span>
-                    </div>
-                    <Textarea
-                      value={data.revisionCase.aiResult}
-                      onChange={(e) =>
-                        updateRevision("aiResult", e.target.value.slice(0, 100))
-                      }
-                      placeholder="예: 请您理解"
-                      className="min-h-[72px] text-base"
-                    />
-                  </div>
-                  <div
-                    aria-hidden
-                    className="hidden self-center pt-7 text-xl text-muted-foreground md:block"
-                  >
-                    →
-                  </div>
-                  <div>
-                    <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="font-semibold">내가 수정한 표현</span>
-                      <span className="text-xs text-muted-foreground">
-                        {data.revisionCase.myRevision.length}/100
-                      </span>
-                    </div>
-                    <Textarea
-                      value={data.revisionCase.myRevision}
-                      onChange={(e) =>
-                        updateRevision("myRevision", e.target.value.slice(0, 100))
-                      }
-                      placeholder="예: 希望我们能继续保持良好的合作关系"
-                      className="min-h-[72px] text-base"
-                    />
-                  </div>
-                </div>
-              )}
-              <div>
-                <div className="mb-2 text-sm font-semibold">수정 이유</div>
-                <select
-                  value={data.revisionCase.reason}
-                  onChange={(e) =>
-                    updateRevision("reason", e.target.value as RevisionReason)
-                  }
-                  className="h-11 w-full rounded-md border border-border bg-background px-3 text-base"
-                >
-                  <option value="">수정 이유를 선택하세요</option>
-                  {REASON_OPTIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="font-semibold">
-                    {noRevision ? (
-                      <>수정하지 않은 이유 <span className="text-muted-foreground">(한 줄)</span></>
-                    ) : (
-                      <>한 줄 설명 <span className="text-muted-foreground">(선택)</span></>
-                    )}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {data.revisionCase.explanation.length}/200
-                  </span>
-                </div>
-                <Input
-                  value={data.revisionCase.explanation}
-                  onChange={(e) =>
-                    updateRevision("explanation", e.target.value.slice(0, 200))
-                  }
-                  maxLength={200}
-                  placeholder={
-                    noRevision
-                      ? "예: AI 번역이 화용 전략에 적절히 부합한다고 판단함"
-                      : "예: 직접적 거절 표현을 더 완곡하게 조정"
-                  }
-                  className="text-base"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* D. 섹션 3 — 멀티-페르소나 피드백 */}
-        <section className="mb-12">
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <h3 className="text-xl font-bold">
-              3. 멀티 AI 페르소나가 최종안을 검토합니다
-            </h3>
-            <Dot on={data.personaFeedbackReceived} />
-          </div>
-
-          <div className="mb-5 flex items-start gap-2 rounded-md border border-border bg-secondary p-3 text-[13px]">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-            <div className="leading-relaxed">
-              <div className="font-medium">v1 데모 모드 — 사전 작성된 피드백입니다.</div>
-              <div className="text-muted-foreground">
-                v2에서는 Claude API 연동으로 학습자 입력 기반 실시간 피드백이 생성됩니다.
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-5 flex items-start gap-2 rounded-md border border-accent/40 bg-[#FAF1D7]/60 p-3 text-[13px] leading-relaxed text-foreground">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground/70" aria-hidden />
-            <span>
-              모든 피드백을 반드시 반영할 필요는 없습니다. 본인의 번역 목적과 판단 기준에 따라
-              <strong> 수용·부분 수용·거부</strong>를 선택하세요. 단, 세 페르소나 처리를 모두 마친 후
-              그 판단의 이유를 한 번에 정리해 적어 주세요.
+        {/* Justification */}
+        <section className="mt-6 rounded-lg border border-foreground/30 bg-[#FAF7EC] p-6">
+          <label htmlFor="final-justification" className="text-sm font-semibold">
+            이 번역안을 최종으로 결정한 이유를 자유롭게 적어주세요 (최소 50자)
+          </label>
+          <textarea
+            id="final-justification"
+            value={justification}
+            onChange={(e) => setJustification(e.target.value)}
+            placeholder="예) 처음에는 B가 적절하다고 봤지만, 전문가 관점 피드백을 보고 상대 입장이 더 잘 드러나는 표현이 필요하다고 느껴 격식을 유지하면서도 협력 의사를 한 문장 더 넣었습니다."
+            rows={5}
+            maxLength={2000}
+            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#E5C97A] focus:outline-none focus:ring-2 focus:ring-[#E8C547]/40"
+          />
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {!justOk && justification.length > 0 ? "조금 더 적어주세요" : ""}
             </span>
+            <span className="text-xs text-muted-foreground">{justification.length}자</span>
           </div>
-
-          <div className="mb-2 flex flex-wrap items-center gap-3">
-            <Button
-              size="lg"
-              onClick={requestPersonaFeedback}
-              disabled={
-                data.personaFeedbackReceived ||
-                data.finalTranslation.trim().length < 30
-              }
-              className="h-12 px-6 text-base"
-            >
-              {data.personaFeedbackReceived
-                ? "피드백 받음"
-                : "세 가지 관점의 멀티 AI 페르소나 피드백 받기"}
-            </Button>
-          </div>
-          {!data.personaFeedbackReceived &&
-            data.finalTranslation.trim().length < 30 && (
-              <p className="mb-6 text-xs text-muted-foreground">
-                최종 번역을 30자 이상 작성해주세요
-              </p>
-            )}
-          {(data.personaFeedbackReceived ||
-            data.finalTranslation.trim().length >= 30) && (
-            <div className="mb-6" />
-          )}
-
-          {!data.personaFeedbackReceived ? (
-            <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed border-border bg-secondary p-8 text-sm text-muted-foreground">
-              위 버튼을 클릭하면 세 가지 관점의 멀티 AI 페르소나가 최종안을 검토합니다
-            </div>
-          ) : (
-            <div className="mx-auto flex max-w-5xl flex-col gap-4">
-              {PERSONAS.map((p, i) => {
-                const revealed = i < revealedPersonas;
-                if (!revealed) {
-                  return (
-                    <div
-                      key={p.number}
-                      className="min-h-[180px] rounded-xl border border-dashed border-border/60 bg-background"
-                    />
-                  );
-                }
-                const color = PERSONA_COLORS[i];
-                return (
-                  <article
-                    key={p.number}
-                    className="fade-in rounded-xl border border-border border-t-[4px] bg-[#FAF9F5] px-6 py-5 sm:px-8 sm:py-6"
-                    style={{ borderTopColor: color }}
-                  >
-                    {/* Header */}
-                    <header className="border-b border-border/60 pb-4">
-                      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        페르소나 {p.number}
-                      </div>
-                      <h4
-                        className="mt-1 text-xl font-bold leading-snug sm:text-2xl"
-                        style={{ color }}
-                      >
-                        {p.name}
-                      </h4>
-                      <p className="mt-1 text-sm text-muted-foreground">{p.role}</p>
-                    </header>
-
-                    {/* Body */}
-                    <p className="mt-3 text-[14.5px] leading-[1.7] text-foreground">
-                      {p.body}
-                    </p>
-
-                    {/* Footer — 강점/우려/제안 */}
-                    <dl className="mt-5 space-y-2 text-sm leading-relaxed">
-                      <div className="flex gap-3">
-                        <dt className="w-12 shrink-0 font-bold text-foreground">강점</dt>
-                        <dd className="flex-1 text-foreground/85">{p.strength}</dd>
-                      </div>
-                      <div className="flex gap-3">
-                        <dt className="w-12 shrink-0 font-bold text-foreground">우려</dt>
-                        <dd className="flex-1 text-foreground/85">{p.concern}</dd>
-                      </div>
-                      <div className="flex gap-3">
-                        <dt className="w-12 shrink-0 font-bold text-foreground">제안</dt>
-                        <dd className="flex-1 text-foreground/85">{p.suggestion}</dd>
-                      </div>
-                    </dl>
-
-                    {/* 처리 선택 */}
-                    {(() => {
-                      const key = `persona${p.number}` as keyof PersonaDecisions;
-                      const current = data.personaDecisions[key];
-                      return (
-                        <div className="mt-5 border-t border-border/60 pt-4">
-                          <div className="mb-2 text-xs font-semibold text-foreground">
-                            이 피드백을 어떻게 처리하시겠습니까? <span className="text-destructive">*</span>
-                          </div>
-                          <div
-                            role="radiogroup"
-                            aria-label={`${p.name} 피드백 처리`}
-                            className="grid grid-cols-3 gap-2"
-                          >
-                            {PERSONA_DECISION_OPTIONS.map((opt) => {
-                              const active = current === opt.value;
-                              return (
-                                <button
-                                  key={opt.value}
-                                  type="button"
-                                  role="radio"
-                                  aria-checked={active}
-                                  onClick={() => {
-                                    logAction("persona_decision", {
-                                      persona: p.number,
-                                      decision: opt.value,
-                                    });
-                                    update("personaDecisions", {
-                                      ...data.personaDecisions,
-                                      [key]: opt.value,
-                                    });
-                                  }}
-                                  className={[
-                                    "rounded-md border px-3 py-2 text-sm font-medium transition-colors",
-                                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-                                    active
-                                      ? "border-foreground bg-foreground text-background"
-                                      : "border-border bg-background text-foreground hover:bg-secondary",
-                                  ].join(" ")}
-                                >
-                                  {opt.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </article>
-                );
-              })}
-
-              {/* 통합 이유 입력칸 */}
-              <div className="mt-2 rounded-xl border border-border bg-background p-5">
-                <label
-                  htmlFor="persona-feedback-integrated-reason"
-                  className="block text-sm font-semibold text-foreground"
-                >
-                  세 피드백을 각각 다르게 처리한 이유를 한두 단락으로 적어주세요{" "}
-                  <span className="font-normal text-muted-foreground">(선택)</span>
-                </label>
-                <Textarea
-                  id="persona-feedback-integrated-reason"
-                  value={data.personaFeedbackIntegratedReason}
-                  onChange={(e) =>
-                    update(
-                      "personaFeedbackIntegratedReason",
-                      e.target.value.slice(0, 400),
-                    )
-                  }
-                  placeholder="예: 이메일 수신자의 관계 유지 제안은 받아들였지만, 교수자의 호칭 강화는 중국어에서 과하다고 판단해 부분만 반영했고, 리스크 관리자의 책임 범위 명확화는 핵심이라 모두 수용했다."
-                  className="mt-3 min-h-[110px] text-[14px] leading-relaxed"
-                />
-                <div className="mt-1 text-right text-xs text-muted-foreground">
-                  {data.personaFeedbackIntegratedReason.length} / 400
-                </div>
-              </div>
-            </div>
-          )}
         </section>
 
-        {/* E. 섹션 4 — 피드백 후 의사결정 */}
-        <section className="mb-12">
-          <div className="mb-4 flex items-center">
-            <h3 className="text-xl font-bold">4. 피드백을 반영해 최종안을 확정합니다</h3>
-            <Dot on={decisionDone} />
-          </div>
-
-          {/* 블록 1: 피드백 전 최종안 (잠금) */}
-          <div className="mb-6 rounded-lg border border-border bg-muted/40 p-4">
-            <div className="mb-1 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-semibold">피드백 전 최종안 (자동 보존됨)</div>
-                <div className="text-xs text-muted-foreground">
-                  섹션 1에서 작성한 번역이 자동으로 저장되었습니다
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1 text-xs text-muted-foreground">
-                <Lock className="h-3 w-3" aria-hidden /> 보존됨
-              </span>
-            </div>
-            <Textarea
-              value={data.preFeedbackTranslation || data.finalTranslation}
-              readOnly
-              className="mt-2 min-h-[120px] resize-none bg-background text-sm text-muted-foreground"
-            />
-          </div>
-
-          {/* 블록 2: 의사결정 라디오 */}
-          <div className="mb-6">
-            <div className="mb-3 text-sm font-semibold">
-              피드백을 검토하고 어떻게 결정하시겠습니까?
-            </div>
-            <div className="space-y-3">
-              {DECISION_OPTIONS.map((opt) => {
-                const active = data.postFeedbackDecision === opt.value;
-                return (
-                  <label
-                    key={opt.value}
-                    className={[
-                      "flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors",
-                      active
-                        ? "border-[#E5C97A] bg-[#FAF1D7]"
-                        : "border-border hover:bg-secondary",
-                    ].join(" ")}
-                  >
-                    <input
-                      type="radio"
-                      name="postFeedbackDecision"
-                      className="mt-1 h-4 w-4 accent-foreground"
-                      checked={active}
-                      onChange={() => {
-                        logAction("final_decision", {
-                          decision: opt.value,
-                          revisionReason: data.revisionCase.reason,
-                        });
-                        update("postFeedbackDecision", opt.value);
-                      }}
-                    />
-                    <div>
-                      <div className="text-base font-semibold">{opt.label}</div>
-                      <div className="text-sm text-muted-foreground">{opt.sub}</div>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 블록 3 + 4: 조건부 표시 */}
-          {needsRevisionFields && (
-            <>
-              <div className="mb-6">
-                <div className="mb-1 text-sm font-semibold">
-                  어느 페르소나의 지적을 반영하시겠습니까? (복수 선택 가능)
-                </div>
-                <div className="mb-3 text-xs text-muted-foreground">
-                  선택한 페르소나의 지적이 수정에 반영되었음을 기록합니다
-                </div>
-                <div className="space-y-2">
-                  {PERSONAS.map((p) => {
-                    const key = `persona${p.number}` as keyof PersonaInfluence;
-                    const checked = data.personaInfluence[key];
-                    return (
-                      <label
-                        key={p.number}
-                        className="flex cursor-pointer items-center gap-3 rounded-md border border-border p-3 hover:bg-secondary"
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-foreground"
-                          checked={checked}
-                          onChange={(e) =>
-                            update("personaInfluence", {
-                              ...data.personaInfluence,
-                              [key]: e.target.checked,
-                            })
-                          }
-                        />
-                        <span className="text-sm">
-                          페르소나 {p.number} — {p.name}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="font-semibold">피드백 후 수정안</span>
-                  <span className="text-xs text-muted-foreground">
-                    현재 글자수 {data.postFeedbackTranslation.length} / {FINAL_TRANSLATION_MAX}
-                  </span>
-                </div>
-                <Textarea
-                  value={data.postFeedbackTranslation}
-                  onChange={(e) =>
-                    update(
-                      "postFeedbackTranslation",
-                      e.target.value.slice(0, FINAL_TRANSLATION_MAX),
-                    )
-                  }
-                  maxLength={FINAL_TRANSLATION_MAX}
-                  placeholder="피드백을 반영해 수정한 번역을 입력하세요"
-                  className="min-h-[140px] resize-y text-base"
-                />
-              </div>
-            </>
-          )}
-
-        </section>
-
-        {/* F. 하단 */}
-        <div className="border-t border-border pt-8">
-          {!allDone && (
-            <p className="mb-3 text-right text-xs text-muted-foreground">
-              최종 번역 · 수정 사례 · 페르소나 피드백 · 최종 확정 선택을 모두 완료하면 다음 단계로 이동할 수 있습니다
-            </p>
-          )}
-          <div className="flex items-center justify-between gap-3">
-            <Rollback currentStep={4} />
-            <Button
-              size="lg"
-              disabled={!allDone}
-              onClick={() => navigate("/dashboard")}
-              className="h-12 px-8 text-base"
+        {/* Footer */}
+        <div className="mt-12 border-t border-border pt-6">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              disabled={!canProceed}
+              onClick={() => canProceed && navigate("/dashboard")}
+              className={[
+                "rounded-lg px-6 py-3 text-base font-medium transition-colors",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                canProceed
+                  ? "bg-[#E8C547] text-[#1D2230] hover:brightness-95"
+                  : "cursor-not-allowed bg-muted text-muted-foreground",
+              ].join(" ")}
             >
-              의사결정 리포트 보기 →
-            </Button>
+              내 판단 리포트 보기 →
+            </button>
           </div>
         </div>
       </main>
     </div>
   );
-}
+};
+
+export default Finalize;
