@@ -117,7 +117,7 @@ const Finalize = () => {
   const [best, setBest] = useState<Choice | null>(null);
   const [finalTranslation, setFinalTranslation] = useState("");
   const [justification, setJustification] = useState("");
-  const [refOpen, setRefOpen] = useState(false);
+  const [refOpen, setRefOpen] = useState(true);
 
   useEffect(() => {
     ensureSession();
