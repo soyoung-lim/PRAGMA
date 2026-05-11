@@ -46,9 +46,6 @@ const Landing = () => {
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-[17px]">
             학습자가 AI 번역안을 비교하고, 피드백을 검토한 뒤, 최종 번역 결정을 직접 설명하는 워크플로우
           </p>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground/70">
-            AI 번역안을 그대로 쓰는 것이 아니라, 상황에 맞게 고르고 다듬는 힘을 기릅니다.
-          </p>
         </section>
 
         {/* WORKFLOW DIAGRAM */}
