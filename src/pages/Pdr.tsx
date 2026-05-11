@@ -6,6 +6,9 @@ type Choice = "A" | "B" | "C";
 type ActId = "request" | "refusal";
 const OPTIONS: Choice[] = ["A", "B", "C"];
 const ACT_STORAGE_KEY = "step1-speech-act";
+const STEP2_BEST_KEY = "step2-best";
+const STEP2_WORST_KEY = "step2-worst";
+const STEP2_REASON_KEY = "step2-reason";
 
 const SOURCE_TEXT: Record<ActId, string> = {
   request: "이번 자료 전달 일정을 10일 정도 연장해 주실 수 있을지 검토 부탁드립니다.",
@@ -37,6 +40,12 @@ const Pdr = () => {
     try {
       const saved = localStorage.getItem(ACT_STORAGE_KEY);
       if (saved === "request" || saved === "refusal") setAct(saved);
+      const b = localStorage.getItem(STEP2_BEST_KEY);
+      if (b === "A" || b === "B" || b === "C") setBest(b);
+      const w = localStorage.getItem(STEP2_WORST_KEY);
+      if (w === "A" || w === "B" || w === "C") setWorst(w);
+      const r = localStorage.getItem(STEP2_REASON_KEY);
+      if (r) setReason(r);
     } catch {
       /* ignore */
     }
@@ -45,11 +54,13 @@ const Pdr = () => {
   const setBestSafe = (c: Choice) => {
     setBest(c);
     if (worst === c) setWorst(null);
+    try { localStorage.setItem(STEP2_BEST_KEY, c); } catch { /* ignore */ }
     logAction("selection", { field: "best", value: c });
   };
   const setWorstSafe = (c: Choice) => {
     if (best === c) return;
     setWorst(c);
+    try { localStorage.setItem(STEP2_WORST_KEY, c); } catch { /* ignore */ }
     logAction("selection", { field: "worst", value: c });
   };
 
@@ -200,7 +211,10 @@ const Pdr = () => {
           <textarea
             id="reason"
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => {
+              setReason(e.target.value);
+              try { localStorage.setItem(STEP2_REASON_KEY, e.target.value); } catch { /* ignore */ }
+            }}
             placeholder="의미와 말투, 관계 적합성, 오해·부담 가능성을 참고해 왜 이 번역안이 적절하거나 부적절하다고 보았는지 적어 주세요."
             rows={5}
             className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#E5C97A] focus:outline-none focus:ring-2 focus:ring-[#E8C547]/40"
