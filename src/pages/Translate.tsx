@@ -323,7 +323,7 @@ const Translate = () => {
         </div>
 
         {/* Impact log */}
-        <section className="mt-8 rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
+        <section className="mt-8 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
           <SectionLabel>피드백을 본 뒤</SectionLabel>
 
           <div className="mt-2 space-y-6">

@@ -201,7 +201,7 @@ const Pdr = () => {
         </div>
 
         {/* Selection inputs */}
-        <div className="mt-6 space-y-6 rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
+        <div className="mt-6 space-y-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
           <div>
             <div className="text-sm font-semibold">가장 적절하다고 생각하는 번역안은?</div>
             <div className="mt-3">

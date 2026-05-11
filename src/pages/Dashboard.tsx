@@ -275,7 +275,7 @@ const Dashboard = () => {
             </p>
           </div>
           {act && (
-            <span className="inline-flex h-fit items-center self-start rounded-full border border-foreground/30 bg-[#DCE0E5] px-3 py-1 text-xs font-semibold text-foreground sm:self-auto">
+            <span className="inline-flex h-fit items-center self-start rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-3 py-1 text-xs font-semibold text-foreground sm:self-auto">
               {ACT_BADGE[act]}
             </span>
           )}

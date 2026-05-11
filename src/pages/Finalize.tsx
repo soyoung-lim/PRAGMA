@@ -275,7 +275,7 @@ const Finalize = () => {
         </section>
 
         {/* Justification */}
-        <section className="mt-6 rounded-lg border border-foreground/30 bg-[#DCE0E5] p-6">
+        <section className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
           <label htmlFor="final-justification" className="text-sm font-semibold">
             이 번역안을 최종으로 결정한 이유를 자유롭게 적어주세요 (최소 50자)
           </label>
