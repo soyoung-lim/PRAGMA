@@ -8,22 +8,20 @@ const OPTIONS: Choice[] = ["A", "B", "C"];
 const ACT_STORAGE_KEY = "step1-speech-act";
 
 const SOURCE_TEXT: Record<ActId, string> = {
-  request:
-    "안녕하십니까. 이번 온라인 팬 이벤트 페이지 개발 건과 관련하여 부득이하게 일정 조정을 요청드리고자 합니다. 베타 테스트 과정에서 팬 인증 기능과 결제 연동 기능에 추가 수정이 필요한 문제가 확인되어, 당초 이번 주 금요일로 예정된 최종 파일 전달 일정을 10일 정도 연장해 주실 수 있을지 검토 부탁드립니다. 귀사의 공개 일정과 사전 홍보에 부담을 드릴 수 있다는 점을 잘 알고 있으며, 수정 범위와 임시 대응 방안을 함께 공유드리겠습니다.",
-  refusal:
-    "안녕하세요. 보내주신 다음 달 디지털 캠페인 단가 조정 요청은 내부적으로 검토했습니다. 요청하신 20% 인하는 현재 아티스트 IP 계약 기준과 제작 비용 구조상 이번 캠페인에는 적용하기 어렵습니다. 다만 콘텐츠 제공 범위, 노출 기간, 결제 일정 등 단가 외의 조건은 조정 가능한지 함께 검토하고 싶습니다. 이번 건은 양해 부탁드리며, 이후 캠페인에서도 현실적인 협력 방안을 계속 논의하겠습니다.",
+  request: "이번 자료 전달 일정을 10일 정도 연장해 주실 수 있을지 검토 부탁드립니다.",
+  refusal: "검토해 봤는데 이번에는 프로모션 비용 인하가 어려울 것 같습니다.",
 };
 
 const TRANSLATIONS: Record<ActId, Record<Choice, string>> = {
   request: {
-    A: "您好。关于此次线上粉丝活动页面开发事宜,我们希望调整交付时间。测试过程中发现,粉丝认证功能和支付对接功能还需要进一步修改,因此原定本周五交付的最终文件,希望可以延后十天左右。此次调整可能会影响贵公司的公开安排和前期宣传,我们会分享修改范围和临时方案。",
-    B: "您好。关于本次线上粉丝活动页面开发项目,我方需就交付安排向贵公司提出调整申请。由于Beta测试过程中发现粉丝认证功能和支付对接功能仍需进一步修改,烦请贵公司评估,能否将原定本周五的最终文件交付时间延后十天左右。我方了解此次调整可能影响贵公司的公开安排及前期宣传,后续将及时同步修改范围和临时应对方案。",
-    C: "您好。关于本次线上粉丝活动页面开发项目,我方需就交付安排向贵公司提出调整请求。由于Beta测试过程中发现粉丝认证功能和支付对接功能仍需进一步修改,为确保最终交付质量,烦请贵公司评估是否可将原定本周五的最终文件交付时间延后十天左右。我方充分理解此次调整可能给贵公司的公开安排及前期宣传带来不便。为尽量减少影响,我方将尽快同步修改范围和临时应对方案,并希望就后续推进安排与贵公司进一步协商。",
+    A: "请将本次资料提交时间延后十天。",
+    B: "不知贵方是否方便将本次资料提交时间延后十天,烦请考虑。",
+    C: "由于我方仍需等待艺人方面的最终确认,恳请贵方酌情考虑将本次资料提交时间延后十天。由此可能给贵方上线安排带来的不便,我们深表歉意。",
   },
   refusal: {
-    A: "您好。关于您提出的下个月数字营销活动单价调整请求,我们内部已经讨论过。由于目前艺人IP合约标准和制作成本结构的限制,本次活动暂时无法进行20%的降价。不过,单价以外的条件,例如内容范围、投放周期、付款时间等,可以一起看看是否有调整空间。此次情况请您理解,之后的活动我们也会继续讨论可行的合作方案。",
-    B: "您好。关于贵方提出的下月数字营销活动单价调整需求,我方已进行内部评估。由于当前艺人IP合约标准及制作成本结构所限,贵方提出的20%下调暂无法适用于本次活动。不过,单价之外的条件,例如内容提供范围、投放周期、付款节点等,我方可与贵方共同评估是否存在调整空间。本次情况还请贵方理解,后续合作中我方也将继续与贵方沟通切实可行的协作方案。",
-    C: "您好。感谢贵方提出下月数字营销活动单价调整方案。我方已认真进行内部评估,也理解贵方在预算和执行节奏上的考虑。由于当前艺人IP合约标准及制作成本结构所限,本次活动暂时无法按20%的比例下调,还请贵方理解。不过,我方愿与贵方一起进一步评估单价之外的调整空间,例如内容提供范围、投放周期、付款节点等,以尽可能找到双方都可执行的合作方式。后续也希望继续与贵方保持沟通,推进更可行的协作方案。",
+    A: "我们研究过了,这次不能降低推广费用。",
+    B: "我们内部讨论过了,这次推广费用方面确实很难再调整,还请您理解。",
+    C: "感谢贵方一直以来的支持。关于此次推广费用调整,我们已认真进行内部讨论,但由于项目预算和执行安排已经基本确定,实在难以再下调。还请您理解,我们也会继续积极配合后续活动推进。",
   },
 };
 
@@ -126,6 +124,41 @@ const Pdr = () => {
           <p className="text-sm leading-relaxed text-foreground">{sourceText}</p>
         </div>
 
+        {/* Comparison hint box */}
+        <div className="mt-6 rounded-lg border border-foreground/20 bg-muted/40 p-5">
+          <div className="flex items-start gap-2">
+            <span aria-hidden className="mt-0.5 text-base">ⓘ</span>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-foreground">
+                번역안을 고를 때 생각해 볼 점
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                뜻이 맞는지만 보지 말고, 상황에 맞게 느껴지는지도 함께 살펴보세요.
+              </p>
+              <ol className="mt-3 space-y-2 text-sm text-foreground">
+                <li>
+                  <span className="font-semibold">1. 의미와 말투</span>{" "}
+                  <span className="text-muted-foreground">
+                    원래 말하려던 뜻과 어조가 잘 전달되는가
+                  </span>
+                </li>
+                <li>
+                  <span className="font-semibold">2. 관계 적합성</span>{" "}
+                  <span className="text-muted-foreground">
+                    상대와의 관계와 상황의 격식에 어울리는가
+                  </span>
+                </li>
+                <li>
+                  <span className="font-semibold">3. 오해·부담 가능성</span>{" "}
+                  <span className="text-muted-foreground">
+                    너무 직접적이거나, 지나치게 장황하거나, 불편하게 받아들여질 가능성은 없는가
+                  </span>
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
         {/* 3 translation cards */}
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           {OPTIONS.map((c) => (
@@ -134,7 +167,7 @@ const Pdr = () => {
               className="flex flex-col rounded-lg border border-foreground bg-background p-5"
             >
               <div className="text-base font-bold">번역안 {c}</div>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
                 {act
                   ? TRANSLATIONS[act][c]
                   : `[번역안 ${c} — Step 1을 먼저 선택해주세요]`}
@@ -168,7 +201,7 @@ const Pdr = () => {
             id="reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="예) 번역안 C가 격식이 있으면서도 상대에게 부담을 덜 주는 표현이라고 생각했습니다."
+            placeholder="의미와 말투, 관계 적합성, 오해·부담 가능성을 참고해 왜 이 번역안이 적절하거나 부적절하다고 보았는지 적어 주세요."
             rows={5}
             className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#E5C97A] focus:outline-none focus:ring-2 focus:ring-[#E8C547]/40"
           />
