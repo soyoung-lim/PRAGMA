@@ -4,6 +4,7 @@ import { ensureSession, logAction } from "@/lib/tracking";
 
 type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
+const STEP1_ANSWERS_KEY = "step1-answers";
 
 const ACTS: { id: ActId; title: string; desc: string }[] = [
   { id: "request", title: "요청 상황", desc: "K-pop 팬 이벤트 자료 전달 일정 연장 요청" },
@@ -94,6 +95,15 @@ const ScenarioSelect = () => {
     try {
       const saved = localStorage.getItem(ACT_STORAGE_KEY);
       if (saved === "request" || saved === "refusal") setSelected(saved);
+      const a = localStorage.getItem(STEP1_ANSWERS_KEY);
+      if (a) {
+        const parsed = JSON.parse(a) as Partial<Answers>;
+        setAnswers({
+          q1: typeof parsed.q1 === "number" ? parsed.q1 : null,
+          q2: typeof parsed.q2 === "number" ? parsed.q2 : null,
+          q3: typeof parsed.q3 === "number" ? parsed.q3 : null,
+        });
+      }
     } catch { /* ignore */ }
   }, []);
 
@@ -106,10 +116,15 @@ const ScenarioSelect = () => {
     setSelected(id);
     setAnswers(EMPTY);
     try { localStorage.setItem(ACT_STORAGE_KEY, id); } catch { /* ignore */ }
+    try { localStorage.setItem(STEP1_ANSWERS_KEY, JSON.stringify(EMPTY)); } catch { /* ignore */ }
   };
 
   const setAnswer = (q: "q1" | "q2" | "q3", idx: number) => {
-    setAnswers((prev) => ({ ...prev, [q]: idx }));
+    setAnswers((prev) => {
+      const next = { ...prev, [q]: idx };
+      try { localStorage.setItem(STEP1_ANSWERS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
     logAction("selection", { field: q, value: idx });
   };
 
