@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
+import { isDemoMode } from "@/lib/demo";
 
 type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
@@ -86,6 +88,8 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 );
 
 const ScenarioSelect = () => {
+  const navigate = useNavigate();
+  const demo = isDemoMode();
   const [selected, setSelected] = useState<ActId | null>(null);
   const [answers, setAnswers] = useState<Answers>(EMPTY);
 
@@ -108,6 +112,7 @@ const ScenarioSelect = () => {
   }, []);
 
   const handleSelect = (id: ActId) => {
+    if (demo) return;
     if (selected === id) return;
     logAction(selected ? "revision" : "selection", {
       field: "speechAct",
@@ -120,6 +125,7 @@ const ScenarioSelect = () => {
   };
 
   const setAnswer = (q: "q1" | "q2" | "q3", idx: number) => {
+    if (demo) return;
     setAnswers((prev) => {
       const next = { ...prev, [q]: idx };
       try { localStorage.setItem(STEP1_ANSWERS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
@@ -129,7 +135,7 @@ const ScenarioSelect = () => {
   };
 
   const allAnswered = answers.q1 !== null && answers.q2 !== null && answers.q3 !== null;
-  const canProceed = Boolean(selected) && allAnswered;
+  const canProceed = demo || (Boolean(selected) && allAnswered);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -151,12 +157,14 @@ const ScenarioSelect = () => {
                 onClick={() => handleSelect(act.id)}
                 aria-pressed={isSel}
                 aria-expanded={isSel}
+                disabled={demo}
                 className={[
                   "rounded-lg p-6 text-left transition-all duration-200",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                   isSel
                     ? "border-2 border-[#E5C97A] bg-[#FAF1D7] text-[#1D2230] font-bold"
                     : "border border-foreground bg-background hover:-translate-y-0.5 hover:shadow-md",
+                  demo ? "cursor-default" : "",
                 ].join(" ")}
               >
                 <div className="text-xl font-bold">{act.title}</div>
@@ -225,6 +233,7 @@ const ScenarioSelect = () => {
                               name={q.id}
                               className="mt-0.5 accent-[#E8C547]"
                               checked={checked}
+                              disabled={demo}
                               onChange={() => setAnswer(q.id, idx)}
                             />
                             <span className="leading-snug">{opt}</span>
@@ -247,6 +256,7 @@ const ScenarioSelect = () => {
           <button
             type="button"
             disabled={!canProceed}
+            onClick={() => canProceed && navigate("/pdr")}
             className={[
               "rounded-lg px-6 py-3 text-base font-medium transition-colors",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",

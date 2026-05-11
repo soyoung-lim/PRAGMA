@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ensureSession } from "@/lib/tracking";
-import { seedDemoData } from "@/lib/demo";
+import { enterDemoMode } from "@/lib/demo";
 
 const STEPS = [
   { n: 1, title: "상황 이해", sub: "요청·거절 상황 판단" },
@@ -17,7 +17,7 @@ const Landing = () => {
     ensureSession();
   }, []);
   const handleDemo = () => {
-    seedDemoData();
+    enterDemoMode();
     navigate("/scenario");
   };
   return (

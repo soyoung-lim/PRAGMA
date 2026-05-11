@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
+import { isDemoMode } from "@/lib/demo";
 
 type Choice = "A" | "B" | "C";
 type ActId = "request" | "refusal";
@@ -29,6 +31,8 @@ const TRANSLATIONS: Record<ActId, Record<Choice, string>> = {
 };
 
 const Pdr = () => {
+  const navigate = useNavigate();
+  const demo = isDemoMode();
   const [act, setAct] = useState<ActId | null>(null);
   const [best, setBest] = useState<Choice | null>(null);
   const [worst, setWorst] = useState<Choice | null>(null);
@@ -52,12 +56,14 @@ const Pdr = () => {
   }, []);
 
   const setBestSafe = (c: Choice) => {
+    if (demo) return;
     setBest(c);
     if (worst === c) setWorst(null);
     try { localStorage.setItem(STEP2_BEST_KEY, c); } catch { /* ignore */ }
     logAction("selection", { field: "best", value: c });
   };
   const setWorstSafe = (c: Choice) => {
+    if (demo) return;
     if (best === c) return;
     setWorst(c);
     try { localStorage.setItem(STEP2_WORST_KEY, c); } catch { /* ignore */ }
@@ -65,7 +71,7 @@ const Pdr = () => {
   };
 
   const reasonOk = reason.trim().length >= 30;
-  const canProceed = !!best && !!worst && best !== worst && reasonOk;
+  const canProceed = demo || (!!best && !!worst && best !== worst && reasonOk);
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -86,7 +92,7 @@ const Pdr = () => {
   }) => (
     <div className="flex flex-wrap gap-2">
       {OPTIONS.map((c) => {
-        const disabled = disabledValue === c;
+        const disabled = disabledValue === c || demo;
         const checked = value === c;
         return (
           <label
@@ -219,9 +225,11 @@ const Pdr = () => {
             id="reason"
             value={reason}
             onChange={(e) => {
+              if (demo) return;
               setReason(e.target.value);
               try { localStorage.setItem(STEP2_REASON_KEY, e.target.value); } catch { /* ignore */ }
             }}
+            readOnly={demo}
             placeholder="의미와 말투, 관계 적합성, 오해·부담 가능성을 참고해 왜 이 번역안이 적절하거나 부적절하다고 보았는지 적어 주세요."
             rows={5}
             className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#E5C97A] focus:outline-none focus:ring-2 focus:ring-[#E8C547]/40"
@@ -243,6 +251,7 @@ const Pdr = () => {
             <button
               type="button"
               disabled={!canProceed}
+              onClick={() => canProceed && navigate("/translate")}
               className={[
                 "rounded-lg px-6 py-3 text-base font-medium transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
