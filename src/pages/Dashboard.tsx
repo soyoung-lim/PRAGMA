@@ -285,7 +285,7 @@ const Dashboard = () => {
           {/* 1. Learning Point — most prominent */}
           <Card className="border-2 border-[#15202B] bg-[#FFFFFF]">
             <div className="flex items-start gap-3">
-              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#15202B] text-sm font-bold text-[#15202B]">
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#15202B] text-sm font-bold text-white">
                 !
               </span>
               <div>
@@ -423,7 +423,7 @@ const Dashboard = () => {
                       <span
                         className={
                           isBest
-                            ? "rounded-md bg-[#15202B] px-2 py-0.5 text-xs font-bold text-[#15202B]"
+                            ? "rounded-md bg-[#15202B] px-2 py-0.5 text-xs font-bold text-white"
                             : "rounded-md border border-foreground/30 bg-background px-2 py-0.5 text-xs font-semibold text-foreground/80"
                         }
                       >
@@ -648,7 +648,7 @@ const Dashboard = () => {
             <button
               type="button"
               onClick={handleSavePdf}
-              className="rounded-lg bg-[#15202B] px-6 py-3 text-base font-semibold text-[#15202B] transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              className="rounded-lg bg-[#FAD338] px-6 py-3 text-base font-semibold text-[#15202B] transition-colors hover:bg-[#E8B91F] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               리포트 PDF 저장
             </button>
