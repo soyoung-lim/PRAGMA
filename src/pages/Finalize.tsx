@@ -219,22 +219,28 @@ const Finalize = () => {
                 <SectionLabel>Step 3 — 두 관점 피드백</SectionLabel>
                 {fb ? (
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-3">
-                      <div className="text-xs font-bold text-foreground/70">
-                        중국 측 비즈니스 수신자
+                    <div className="rounded-md border-[0.5px] border-[#D9C5A8] bg-[#F5EBDB] p-3">
+                      <div className="text-[15px] font-medium text-[#15202B]">
+                        수용자 관점
                       </div>
-                      <div className="mt-2 space-y-2 text-[13px] leading-relaxed">
-                        <p><span className="font-semibold">받는 입장에서의 인상</span> — {fb.receiver.impression}</p>
-                        <p><span className="font-semibold">다시 생각해 볼 점</span> — {fb.receiver.reconsider}</p>
+                      <div className="mt-1 text-[12px] font-normal text-[#8B7355]">
+                        중국어권 비즈니스 커뮤니케이션 실무 관점
+                      </div>
+                      <div className="mt-2 space-y-2 text-[13px] leading-relaxed text-[#15202B]">
+                        <p><span className="font-semibold text-[#8B7355]">수용 양상</span> — {fb.receiver.impression}</p>
+                        <p><span className="font-semibold text-[#8B7355]">재고 지점</span> — {fb.receiver.reconsider}</p>
                       </div>
                     </div>
-                    <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-3">
-                      <div className="text-xs font-bold text-foreground/70">
-                        통번역·화용 전문가
+                    <div className="rounded-md border-[0.5px] border-[#BFC9C3] bg-[#E0E8E3] p-3">
+                      <div className="text-[15px] font-medium text-[#15202B]">
+                        분석자 관점
                       </div>
-                      <div className="mt-2 space-y-2 text-[13px] leading-relaxed">
-                        <p><span className="font-semibold">잘 전달된 부분</span> — {fb.expert.strength}</p>
-                        <p><span className="font-semibold">수정 방향</span> — {fb.expert.revision}</p>
+                      <div className="mt-1 text-[12px] font-normal text-[#3F5852]">
+                        한·중 번역 비교 분석의 학술 관점
+                      </div>
+                      <div className="mt-2 space-y-2 text-[13px] leading-relaxed text-[#15202B]">
+                        <p><span className="font-semibold text-[#3F5852]">전달 강점</span> — {fb.expert.strength}</p>
+                        <p><span className="font-semibold text-[#3F5852]">개선 방향</span> — {fb.expert.revision}</p>
                       </div>
                     </div>
                   </div>

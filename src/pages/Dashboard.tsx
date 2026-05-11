@@ -153,8 +153,8 @@ const IMPACT_LABEL: Record<ImpactLevel, string> = {
 };
 
 const SIDE_LABEL: Record<SideChoice, string> = {
-  receiver: "중국 측 수신자 관점이 더 와닿았다",
-  expert: "통번역·화용 전문가 관점이 더 와닿았다",
+  receiver: "수용자 관점이 더 와닿았다",
+  expert: "분석자 관점이 더 와닿았다",
   both: "두 관점이 비슷하게 영향을 줬다",
   neither: "어느 쪽도 특별히 영향을 주지 않았다",
 };
@@ -469,19 +469,24 @@ const Dashboard = () => {
             {(() => {
               const side = step3.side;
               const tone = (target: "receiver" | "expert") => {
-                if (!side || side === "neither")
-                  return "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] opacity-80";
-                if (side === "both")
-                  return "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF]";
+                const base =
+                  target === "receiver"
+                    ? "border-[0.5px] border-[#D9C5A8] bg-[#F5EBDB]"
+                    : "border-[0.5px] border-[#BFC9C3] bg-[#E0E8E3]";
+                if (!side || side === "neither") return `${base} opacity-80`;
+                if (side === "both") return base;
                 return side === target
-                  ? "border-2 border-[#15202B] bg-[#FFFFFF]"
-                  : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] opacity-60";
+                  ? `${base} border-2 border-[#15202B]`
+                  : `${base} opacity-60`;
               };
               return (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className={`rounded-lg p-5 ${tone("receiver")}`}>
-                    <div className="text-sm font-bold text-foreground">
-                      중국 측 비즈니스 수신자
+                    <div className="text-[15px] font-medium text-[#15202B]">
+                      수용자 관점
+                    </div>
+                    <div className="mt-1 text-[12px] font-normal text-[#8B7355]">
+                      중국어권 비즈니스 커뮤니케이션 실무 관점
                     </div>
                     <p className="mt-3 text-xs italic leading-relaxed text-foreground/80">
                       {side === "receiver"
@@ -490,8 +495,11 @@ const Dashboard = () => {
                     </p>
                   </div>
                   <div className={`rounded-lg p-5 ${tone("expert")}`}>
-                    <div className="text-sm font-bold text-foreground">
-                      통번역·화용 전문가
+                    <div className="text-[15px] font-medium text-[#15202B]">
+                      분석자 관점
+                    </div>
+                    <div className="mt-1 text-[12px] font-normal text-[#3F5852]">
+                      한·중 번역 비교 분석의 학술 관점
                     </div>
                     <p className="mt-3 text-xs italic leading-relaxed text-foreground/80">
                       {side === "expert"
@@ -538,40 +546,46 @@ const Dashboard = () => {
           <Card>
             <SectionLabel>다관점 피드백 요약</SectionLabel>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
-                <div className="text-sm font-bold text-foreground">
-                  중국 측 비즈니스 수신자
+              <div className="rounded-md border-[0.5px] border-[#D9C5A8] bg-[#F5EBDB] p-5">
+                <div className="text-[15px] font-medium text-[#15202B]">
+                  수용자 관점
                 </div>
-                <div className="mt-3 space-y-3 text-sm leading-relaxed text-foreground/90">
+                <div className="mt-1 text-[12px] font-normal text-[#8B7355]">
+                  중국어권 비즈니스 커뮤니케이션 실무 관점
+                </div>
+                <div className="mt-3 space-y-3 text-sm leading-relaxed text-[#15202B]">
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      받는 입장에서의 인상
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#8B7355]">
+                      수용 양상
                     </div>
                     <p className="mt-1">{fb ? fb.receiver.impression : "—"}</p>
                   </div>
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      다시 생각해 볼 점
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#8B7355]">
+                      재고 지점
                     </div>
                     <p className="mt-1">{fb ? fb.receiver.reconsider : "—"}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
-                <div className="text-sm font-bold text-foreground">
-                  통번역·화용 전문가
+              <div className="rounded-md border-[0.5px] border-[#BFC9C3] bg-[#E0E8E3] p-5">
+                <div className="text-[15px] font-medium text-[#15202B]">
+                  분석자 관점
                 </div>
-                <div className="mt-3 space-y-3 text-sm leading-relaxed text-foreground/90">
+                <div className="mt-1 text-[12px] font-normal text-[#3F5852]">
+                  한·중 번역 비교 분석의 학술 관점
+                </div>
+                <div className="mt-3 space-y-3 text-sm leading-relaxed text-[#15202B]">
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      잘 전달된 부분
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#3F5852]">
+                      전달 강점
                     </div>
                     <p className="mt-1">{fb ? fb.expert.strength : "—"}</p>
                   </div>
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      수정 방향
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#3F5852]">
+                      개선 방향
                     </div>
                     <p className="mt-1">{fb ? fb.expert.revision : "—"}</p>
                   </div>
