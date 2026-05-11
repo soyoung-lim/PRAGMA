@@ -281,40 +281,46 @@ const Translate = () => {
 
         {/* Two-perspective feedback cards */}
         <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <article className="rounded-lg border border-foreground bg-background p-6">
-            <h2 className="text-base font-bold">
-              중국 측 비즈니스 수신자라면 어떻게 받아들일까요?
+          <article className="rounded-lg border-[0.5px] border-[#D9C5A8] bg-[#F5EBDB] p-6">
+            <h2 className="text-[15px] font-medium text-[#15202B]">
+              수용자 관점
             </h2>
+            <p className="mt-1 text-[12px] font-normal text-[#8B7355]">
+              중국어권 비즈니스 커뮤니케이션 실무 관점
+            </p>
             <div className="mt-5 space-y-5">
               <div>
-                <SectionLabel>받는 입장에서의 인상</SectionLabel>
-                <p className="text-sm leading-relaxed text-foreground/90">
+                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[#8B7355]">수용 양상</div>
+                <p className="text-sm leading-relaxed text-[#15202B]">
                   {fb ? fb.receiver.impression : "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
                 </p>
               </div>
               <div>
-                <SectionLabel>다시 생각해 볼 점</SectionLabel>
-                <p className="text-sm leading-relaxed text-foreground/90">
+                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[#8B7355]">재고 지점</div>
+                <p className="text-sm leading-relaxed text-[#15202B]">
                   {fb ? fb.receiver.reconsider : "[Step 2 선택 후 표시됩니다]"}
                 </p>
               </div>
             </div>
           </article>
 
-          <article className="rounded-lg border border-foreground bg-background p-6">
-            <h2 className="text-base font-bold">
-              통번역·화용 전문가가 본다면?
+          <article className="rounded-lg border-[0.5px] border-[#BFC9C3] bg-[#E0E8E3] p-6">
+            <h2 className="text-[15px] font-medium text-[#15202B]">
+              분석자 관점
             </h2>
+            <p className="mt-1 text-[12px] font-normal text-[#3F5852]">
+              한·중 번역 비교 분석의 학술 관점
+            </p>
             <div className="mt-5 space-y-5">
               <div>
-                <SectionLabel>잘 전달된 부분</SectionLabel>
-                <p className="text-sm leading-relaxed text-foreground/90">
+                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[#3F5852]">전달 강점</div>
+                <p className="text-sm leading-relaxed text-[#15202B]">
                   {fb ? fb.expert.strength : "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
                 </p>
               </div>
               <div>
-                <SectionLabel>수정 방향</SectionLabel>
-                <p className="text-sm leading-relaxed text-foreground/90">
+                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[#3F5852]">개선 방향</div>
+                <p className="text-sm leading-relaxed text-[#15202B]">
                   {fb ? fb.expert.revision : "[Step 2 선택 후 표시됩니다]"}
                 </p>
               </div>
@@ -350,10 +356,10 @@ const Translate = () => {
               </div>
               <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <Radio name="side" value="receiver" current={side} onChange={(v) => setSide(v as SideChoice)}>
-                  중국 측 수신자 관점이 더 와닿았다
+                  수용자 관점이 더 와닿았다
                 </Radio>
                 <Radio name="side" value="expert" current={side} onChange={(v) => setSide(v as SideChoice)}>
-                  통번역·화용 전문가 관점이 더 와닿았다
+                  분석자 관점이 더 와닿았다
                 </Radio>
                 <Radio name="side" value="both" current={side} onChange={(v) => setSide(v as SideChoice)}>
                   두 관점이 비슷하게 영향을 줬다
