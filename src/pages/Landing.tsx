@@ -4,11 +4,11 @@ import { ensureSession } from "@/lib/tracking";
 import { enterDemoMode } from "@/lib/demo";
 
 const STEPS = [
-  { n: 1, title: "상황 이해", sub: "요청·거절 상황 판단" },
-  { n: 2, title: "번역안 비교", sub: "AI 번역안 3종 비교·선택" },
-  { n: 3, title: "피드백 확인", sub: "다관점 피드백 검토" },
+  { n: 1, title: "상황 판단", sub: "요청·거절 상황 판단" },
+  { n: 2, title: "번역안 비교", sub: "번역안 3종 비교·선택" },
+  { n: 3, title: "피드백 확인", sub: "멀티 페르소나 피드백 검토" },
   { n: 4, title: "최종 작성", sub: "최종 번역안 직접 작성" },
-  { n: 5, title: "의사결정 리포트", sub: "의사결정 단계별 흐름 요약" },
+  { n: 5, title: "의사결정 리포트", sub: "의사결정 흐름 요약" },
 ];
 
 const Landing = () => {
@@ -26,7 +26,7 @@ const Landing = () => {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <span className="flex items-center gap-2 text-base font-medium text-[#F1EFE8] sm:text-lg">
             <span aria-hidden className="inline-block h-4 w-[2px] rounded-full bg-[#FAD338]" />
-            AI 기반 한·중 통번역 의사결정 워크플로우
+            AI 기반 한·중 통번역 학습 워크플로우
           </span>
           <Link
             to="/scenario"
@@ -41,10 +41,10 @@ const Landing = () => {
         {/* HERO */}
         <section className="text-center">
           <h1 className="text-4xl font-bold sm:text-5xl lg:text-[56px]">
-            AI 기반 한·중 통번역 의사결정 워크플로우
+            AI 기반 한·중 통번역 학습 워크플로우
           </h1>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-[17px]">
-            학습자가 AI 번역안을 비교하고, 피드백을 검토한 뒤, 최종 번역 결정을 직접 설명하는 워크플로우
+            AI 번역안을 상황에 맞게 고르고 다듬는 번역 의사결정 능력을 기릅니다.
           </p>
         </section>
 
