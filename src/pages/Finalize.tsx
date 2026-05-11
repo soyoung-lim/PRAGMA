@@ -117,7 +117,7 @@ const Finalize = () => {
   const [best, setBest] = useState<Choice | null>(null);
   const [finalTranslation, setFinalTranslation] = useState("");
   const [justification, setJustification] = useState("");
-  const [refOpen, setRefOpen] = useState(false);
+  const [refOpen, setRefOpen] = useState(true);
 
   useEffect(() => {
     ensureSession();
@@ -173,7 +173,7 @@ const Finalize = () => {
             aria-expanded={refOpen}
             className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm font-semibold text-foreground hover:bg-muted/60"
           >
-            <span>이전 단계 자료 다시 보기</span>
+            <span>이전 단계 자료</span>
             <span aria-hidden className="text-xs text-muted-foreground">
               {refOpen ? "▲" : "▼"}
             </span>
