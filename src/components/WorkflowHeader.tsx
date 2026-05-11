@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { logAction } from "@/lib/tracking";
+import { exitDemoMode, isDemoMode } from "@/lib/demo";
 
 interface WorkflowHeaderProps {
   /** 현재 단계 (1-5). */
@@ -18,6 +19,7 @@ const STEPS = [
 
 export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) => {
   const navigate = useNavigate();
+  const demo = isDemoMode();
 
   const jumpTo = (s: { num: number; path: string }) => {
     if (s.num === currentStep) return;
@@ -39,11 +41,30 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
           />
           <span>AI 기반 한·중 통번역 의사결정 워크플로우</span>
         </Link>
-        {completed && (
-          <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold text-foreground">
-            완료
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {demo && (
+            <>
+              <span className="rounded-full border border-foreground/30 bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                데모 모드 — 시연용 예시
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  exitDemoMode();
+                  navigate("/");
+                }}
+                className="text-[11px] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                학습 시작하기로 돌아가기
+              </button>
+            </>
+          )}
+          {completed && (
+            <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold text-foreground">
+              완료
+            </span>
+          )}
+        </div>
       </div>
 
       <nav aria-label="진행 단계" className="mx-auto max-w-6xl px-6 pb-2.5">
