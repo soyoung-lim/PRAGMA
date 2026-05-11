@@ -129,12 +129,6 @@ const Pdr = () => {
           세 가지 AI 번역안을 비교하고, 어느 쪽이 가장 적절하고 가장 부적절한지 골라보세요.
         </p>
 
-        {/* Source text reference */}
-        <div className="mt-6 rounded-lg border border-foreground/30 bg-[#FAF7EC] p-4">
-          <SectionLabel>번역해야 할 한국어 원문</SectionLabel>
-          <p className="text-sm leading-relaxed text-foreground">{sourceText}</p>
-        </div>
-
         {/* Comparison hint box */}
         <div className="mt-6 rounded-lg border border-foreground/20 bg-muted/40 p-5">
           <div className="flex items-start gap-2">
@@ -170,21 +164,34 @@ const Pdr = () => {
           </div>
         </div>
 
-        {/* 3 translation cards */}
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {OPTIONS.map((c) => (
-            <div
-              key={c}
-              className="flex flex-col rounded-lg border border-foreground bg-background p-5"
-            >
-              <div className="text-base font-bold">번역안 {c}</div>
-              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
-                {act
-                  ? TRANSLATIONS[act][c]
-                  : `[번역안 ${c} — Step 1을 먼저 선택해주세요]`}
-              </p>
-            </div>
-          ))}
+        {/* Source ↔ translations pairing */}
+        <div className="mt-6 rounded-xl border-2 border-foreground/30 bg-background p-5">
+          <SectionLabel>번역해야 할 한국어 원문 (출발어)</SectionLabel>
+          <p className="text-[17px] font-medium leading-relaxed text-foreground">
+            {sourceText}
+          </p>
+
+          <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+            <span className="h-px flex-1 bg-foreground/15" />
+            <span>↓ 중국어 번역안 3종 (도착어)</span>
+            <span className="h-px flex-1 bg-foreground/15" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {OPTIONS.map((c) => (
+              <div
+                key={c}
+                className="flex flex-col rounded-lg border border-foreground bg-background p-5"
+              >
+                <div className="text-base font-bold">번역안 {c}</div>
+                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
+                  {act
+                    ? TRANSLATIONS[act][c]
+                    : `[번역안 ${c} — Step 1을 먼저 선택해주세요]`}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Selection inputs */}
