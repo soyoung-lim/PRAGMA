@@ -4,6 +4,7 @@ import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { isDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
+import { PageTitle } from "@/components/PageTitle";
 
 type ActId = "request" | "refusal";
 type Choice = "A" | "B" | "C";
@@ -163,10 +164,10 @@ const Finalize = () => {
       <WorkflowHeader currentStep={4} />
 
       <main className="mx-auto max-w-6xl px-6 py-8">
-        <h1 className="text-2xl font-bold sm:text-3xl">최종 번역 작성</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          이제 본인이 결정한 중국어 번역안을 직접 작성해 주세요. AI 번역안을 참고할 수는 있지만, 최종안은 본인의 표현으로 적어주세요.
-        </p>
+        <PageTitle
+          title="최종 번역 작성"
+          description="이제 본인이 결정한 중국어 번역안을 직접 작성해 주세요. AI 번역안을 참고할 수는 있지만, 최종안은 본인의 표현으로 적어주세요."
+        />
 
         {/* Reference panel (collapsed by default) */}
         <section className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF]">
@@ -184,8 +185,10 @@ const Finalize = () => {
           {refOpen && (
             <div className="space-y-6 border-t border-foreground/10 px-5 py-5 text-foreground/80">
               <div>
-                <SectionLabel>Step 1 — 한국어 원문</SectionLabel>
-                <p className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-3 text-sm leading-relaxed">
+                <div className="mb-2 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
+                  Step 1 — 한국어 원문 (출발어)
+                </div>
+                <p className="rounded-md border-[0.5px] border-[#D3D1C7] border-l-[3px] border-l-[#15202B] bg-[#FFFFFF] p-4 text-[17px] font-semibold leading-relaxed text-[#15202B]">
                   {act ? SOURCE_TEXT[act] : "[Step 1에서 화행을 먼저 선택해주세요]"}
                 </p>
               </div>
@@ -204,7 +207,7 @@ const Finalize = () => {
                           <span className="text-xs font-bold text-foreground/70">번역안 {c}</span>
                           <span className="text-[12px] font-normal text-[#5C6A7A]">· {TRANSLATION_LABELS[act][c]}</span>
                         </div>
-                        <p className="mt-1.5 text-[13px] leading-relaxed">
+                        <p className="mt-1.5 text-[14px] font-medium leading-relaxed text-[#15202B]">
                           {TRANSLATIONS[act][c]}
                         </p>
                       </div>
@@ -254,20 +257,22 @@ const Finalize = () => {
           )}
         </section>
 
-        {/* Always-visible source text pairing with author area */}
-        <section className="mt-8 rounded-xl border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
-          <SectionLabel>번역해야 할 한국어 원문 (출발어)</SectionLabel>
-          <p className="text-[17px] font-medium leading-relaxed text-foreground">
+        {/* Always-visible source text pairing with author area — hero pair */}
+        <section className="mt-8 rounded-xl border-[0.5px] border-[#D3D1C7] border-l-[4px] border-l-[#15202B] bg-[#FFFFFF] p-7">
+          <div className="mb-3 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
+            번역해야 할 한국어 원문 (출발어)
+          </div>
+          <p className="text-[19px] font-semibold leading-relaxed text-[#15202B]">
             {act ? SOURCE_TEXT[act] : "[Step 1에서 화행을 먼저 선택해주세요]"}
           </p>
 
-          <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
             <span className="h-px flex-1 bg-foreground/15" />
             <span>↓ 본인이 직접 작성하는 중국어 번역 (도착어)</span>
             <span className="h-px flex-1 bg-foreground/15" />
           </div>
 
-          <label htmlFor="final-translation" className="text-sm font-semibold">
+          <label htmlFor="final-translation" className="text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
             본인이 결정한 최종 중국어 번역을 직접 작성하세요
           </label>
           <textarea
@@ -278,7 +283,7 @@ const Finalize = () => {
             placeholder="여기에 본인이 결정한 최종 중국어 번역안을 직접 입력하세요. 번역안 A/B/C 중 하나를 그대로 붙여 넣지 말고, 본인의 판단으로 다듬어 작성해 주세요."
             rows={6}
             maxLength={2000}
-            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-[15px] leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
+            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-4 text-[17px] font-medium leading-relaxed text-[#15202B] focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
           />
           <div className="mt-2 flex justify-end">
             <span className="text-xs text-muted-foreground">{finalTranslation.length}자</span>
