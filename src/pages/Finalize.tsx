@@ -220,7 +220,7 @@ const Finalize = () => {
                 {fb ? (
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div className="rounded-md border-[0.5px] border-[#E8D5C4] bg-[#F8EDE3] p-3">
-                      <div className="text-[15px] font-medium text-[#15202B]">
+                      <div className="text-[15px] font-bold text-[#4A2F1A]">
                         이메일 수신자 페르소나
                       </div>
                       <div className="mt-1 text-[12px] font-normal text-[#A88766]">
@@ -232,7 +232,7 @@ const Finalize = () => {
                       </div>
                     </div>
                     <div className="rounded-md border-[0.5px] border-[#CDD6CF] bg-[#E8EFE9] p-3">
-                      <div className="text-[15px] font-medium text-[#15202B]">
+                      <div className="text-[15px] font-bold text-[#1A2820]">
                         통번역 교수자 페르소나
                       </div>
                       <div className="mt-1 text-[12px] font-normal text-[#3F5852]">
