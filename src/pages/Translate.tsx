@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { isDemoMode } from "@/lib/demo";
+import { PageTitle } from "@/components/PageTitle";
 
 type ImpactLevel = "same" | "partial" | "major";
 type SideChoice = "receiver" | "expert" | "both" | "neither";
@@ -244,28 +245,30 @@ const Translate = () => {
       <WorkflowHeader currentStep={3} />
 
       <main className="mx-auto max-w-6xl px-6 py-8">
-        <h1 className="text-2xl font-bold sm:text-3xl">피드백 확인</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          방금 선택한 번역안에 대해, 두 가지 관점에서 본 피드백을 확인해 보세요.
-        </p>
+        <PageTitle
+          title="피드백 확인"
+          description="방금 선택한 번역안에 대해, 두 가지 관점에서 본 피드백을 확인해 보세요."
+        />
 
-        {/* Source ↔ chosen best translation pairing */}
-        <section className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+        {/* Source ↔ chosen best translation pairing — hero pair (page protagonist) */}
+        <section className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] border-l-[4px] border-l-[#15202B] bg-[#FFFFFF] p-6">
+          <div className="text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
             지금 피드백을 받고 있는 번역안
           </div>
-          <div className="mt-3 flex flex-col gap-3">
-            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-4 py-3">
-              <SectionLabel>한국어 원문 (출발어)</SectionLabel>
-              <p className="text-[15px] leading-relaxed text-foreground">
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-5 py-4">
+              <div className="mb-2 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
+                한국어 원문 (출발어)
+              </div>
+              <p className="text-[18px] font-semibold leading-relaxed text-[#15202B]">
                 {sourceText || "[Step 1에서 화행을 먼저 선택해주세요]"}
               </p>
             </div>
-            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-4 py-3">
-              <SectionLabel>
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-5 py-4">
+              <div className="mb-2 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
                 내가 고른 중국어 번역안 (도착어){best ? ` · ${best}` : ""}
-              </SectionLabel>
-              <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
+              </div>
+              <p className="whitespace-pre-wrap text-[18px] font-semibold leading-relaxed text-[#15202B]">
                 {bestTranslation || "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
               </p>
             </div>

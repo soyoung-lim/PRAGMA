@@ -5,6 +5,7 @@ import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { exitDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
+import { PageTitle } from "@/components/PageTitle";
 
 type ActId = "request" | "refusal";
 type Choice = "A" | "B" | "C";
@@ -268,37 +269,35 @@ const Dashboard = () => {
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold sm:text-3xl">의사결정 리포트</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              이번 활동에서 어떤 상황을 판단하고, 어떤 피드백을 참고해 최종 번역안을 작성했는지 확인해 보세요.
-            </p>
-          </div>
-          {act && (
-            <span className="inline-flex h-fit items-center self-start rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-3 py-1 text-xs font-semibold text-foreground sm:self-auto">
-              {ACT_BADGE[act]}
-            </span>
-          )}
-        </div>
+        <PageTitle
+          title="의사결정 리포트"
+          description="이번 활동에서 어떤 상황을 판단하고, 어떤 피드백을 참고해 최종 번역안을 작성했는지 확인해 보세요."
+          right={
+            act ? (
+              <span className="inline-flex h-fit items-center self-start rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-3 py-1 text-xs font-semibold text-foreground sm:self-auto">
+                {ACT_BADGE[act]}
+              </span>
+            ) : null
+          }
+        />
 
         <div className="mt-8 space-y-6">
-          {/* 1. Learning Point — most prominent */}
-          <Card className="border-2 border-[#15202B] bg-[#FFFFFF]">
+          {/* 1. Learning Point — signature card (report conclusion) */}
+          <section className="rounded-lg border-[0.5px] border-[#E8CFB5] border-l-[6px] border-l-[#FAD338] bg-[#FFF8E1] p-6">
             <div className="flex items-start gap-3">
-              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#15202B] text-sm font-bold text-white">
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FAD338] text-sm font-bold text-[#15202B]">
                 !
               </span>
               <div>
-                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#15202B]/70">
+                <div className="mb-1 text-xs font-bold uppercase tracking-wide text-[#15202B]">
                   오늘의 학습 포인트
                 </div>
-                <p className="text-[15px] font-medium leading-relaxed text-[#15202B]">
+                <p className="text-[16px] font-semibold leading-relaxed text-[#15202B]">
                   {act ? LEARNING_POINT[act] : "—"}
                 </p>
               </div>
             </div>
-          </Card>
+          </section>
 
           {/* 2. 단계별 의사결정 시간 */}
           <Card>
@@ -375,23 +374,33 @@ const Dashboard = () => {
             </p>
           </Card>
 
-          {/* 3. 번역 변화 비교 */}
-          <Card>
+          {/* 3. 번역 변화 비교 — hero pair */}
+          <section className="rounded-lg border-[0.5px] border-[#D3D1C7] border-l-[4px] border-l-[#15202B] bg-[#FFFFFF] p-6">
             <SectionLabel>번역 변화 비교</SectionLabel>
+            {act && (
+              <div className="mb-4 rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-5 py-4">
+                <div className="mb-2 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
+                  한국어 원문 (출발어)
+                </div>
+                <p className="text-[18px] font-semibold leading-relaxed text-[#15202B]">
+                  {SOURCE_TEXT[act]}
+                </p>
+              </div>
+            )}
             <div className="flex flex-col gap-3">
               <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-5 py-4">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Step 2에서 가장 적절하다고 본 번역안
+                <div className="mb-2 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
+                  Step 2에서 가장 적절하다고 본 중국어 번역안 (도착어)
                 </div>
-                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/90">
+                <p className="whitespace-pre-wrap text-[17px] font-semibold leading-relaxed text-[#15202B]">
                   {act && best ? TRANSLATIONS[act][best] : "—"}
                 </p>
               </div>
-              <div className="rounded-lg border-2 border-[#15202B] bg-[#FFFFFF] px-5 py-4">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-[#15202B]/70">
-                  Step 4에서 직접 작성한 최종안
+              <div className="rounded-lg border-[0.5px] border-[#D3D1C7] border-l-[3px] border-l-[#15202B] bg-[#FFFFFF] px-5 py-4">
+                <div className="mb-2 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
+                  Step 4에서 직접 작성한 최종 중국어 번역 (도착어)
                 </div>
-                <p className="mt-3 whitespace-pre-wrap text-[15px] font-medium leading-relaxed text-foreground">
+                <p className="whitespace-pre-wrap text-[17px] font-semibold leading-relaxed text-[#15202B]">
                   {step4.finalTranslation || "—"}
                 </p>
               </div>
@@ -399,7 +408,7 @@ const Dashboard = () => {
             <p className="mt-4 text-xs text-muted-foreground">
               참고했던 AI 번역안과 직접 작성한 최종안의 차이를 비교해 보세요.
             </p>
-          </Card>
+          </section>
 
           {/* 4. 번역안 비교 결과 */}
           <Card>
