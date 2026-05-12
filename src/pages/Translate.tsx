@@ -254,14 +254,14 @@ const Translate = () => {
           <div className="text-xs uppercase tracking-wide text-muted-foreground">
             지금 피드백을 받고 있는 번역안
           </div>
-          <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
+          <div className="mt-3 flex flex-col gap-3">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-4 py-3">
               <SectionLabel>한국어 원문 (출발어)</SectionLabel>
               <p className="text-[15px] leading-relaxed text-foreground">
                 {sourceText || "[Step 1에서 화행을 먼저 선택해주세요]"}
               </p>
             </div>
-            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
+            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-4 py-3">
               <SectionLabel>
                 내가 고른 중국어 번역안 (도착어){best ? ` · ${best}` : ""}
               </SectionLabel>
@@ -282,7 +282,7 @@ const Translate = () => {
         {/* Two-perspective feedback cards */}
         <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
           <article className="rounded-lg border-[0.5px] border-[#E8D5C4] bg-[#F8EDE3] p-6">
-            <h2 className="text-[15px] font-medium text-[#15202B]">
+            <h2 className="text-[15px] font-bold text-[#4A2F1A]">
               이메일 수신자 페르소나
             </h2>
             <p className="mt-1 text-[12px] font-normal text-[#A88766]">
@@ -305,7 +305,7 @@ const Translate = () => {
           </article>
 
           <article className="rounded-lg border-[0.5px] border-[#CDD6CF] bg-[#E8EFE9] p-6">
-            <h2 className="text-[15px] font-medium text-[#15202B]">
+            <h2 className="text-[15px] font-bold text-[#1A2820]">
               통번역 교수자 페르소나
             </h2>
             <p className="mt-1 text-[12px] font-normal text-[#3F5852]">
@@ -372,7 +372,7 @@ const Translate = () => {
 
             <div>
               <label htmlFor="step3-reason" className="text-sm font-semibold">
-                3. 그 이유를 한 문장으로 적어주세요. (최소 15자)
+                3. 그 이유를 구체적으로 적어주세요.
               </label>
               <textarea
                 id="step3-reason"
@@ -380,7 +380,7 @@ const Translate = () => {
                 onChange={(e) => !demo && setReason(e.target.value)}
                 readOnly={demo}
                 placeholder="예) 수신자가 어떻게 느낄지 구체적인 인상을 들으니 다시 보게 됐습니다."
-                rows={2}
+                rows={4}
                 className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
               />
               <div className="mt-2 flex items-center justify-between">
