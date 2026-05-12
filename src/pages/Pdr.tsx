@@ -4,6 +4,7 @@ import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { isDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
+import { PageTitle } from "@/components/PageTitle";
 
 type Choice = "A" | "B" | "C";
 type ActId = "request" | "refusal";
@@ -135,10 +136,10 @@ const Pdr = () => {
       <WorkflowHeader currentStep={2} />
 
       <main className="mx-auto max-w-6xl px-6 py-8">
-        <h1 className="text-2xl font-bold sm:text-3xl">번역안 비교</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          세 가지 AI 번역안을 비교하고, 어느 쪽이 가장 적절하고 가장 부적절한지 골라보세요.
-        </p>
+        <PageTitle
+          title="번역안 비교"
+          description="세 가지 AI 번역안을 비교하고, 어느 쪽이 가장 적절하고 가장 부적절한지 골라보세요."
+        />
 
         {/* Comparison hint box */}
         <div className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
@@ -175,10 +176,12 @@ const Pdr = () => {
           </div>
         </div>
 
-        {/* Source ↔ translations pairing */}
-        <div className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
-          <SectionLabel>번역해야 할 한국어 원문 (출발어)</SectionLabel>
-          <p className="text-[17px] font-medium leading-relaxed text-foreground">
+        {/* Source ↔ translations pairing — hero pair (page protagonist) */}
+        <div className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] border-l-[4px] border-l-[#15202B] bg-[#FFFFFF] p-7">
+          <div className="mb-3 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
+            번역해야 할 한국어 원문 (출발어)
+          </div>
+          <p className="text-[19px] font-semibold leading-relaxed text-[#15202B]">
             {sourceText}
           </p>
 
@@ -208,7 +211,7 @@ const Pdr = () => {
                     {TRANSLATION_LABELS[act][c]}
                   </div>
                 )}
-                <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
+                <p className="mt-3 whitespace-pre-wrap text-[17px] font-semibold leading-relaxed text-[#15202B]">
                   {act
                     ? TRANSLATIONS[act][c]
                     : `[번역안 ${c} — Step 1을 먼저 선택해주세요]`}
