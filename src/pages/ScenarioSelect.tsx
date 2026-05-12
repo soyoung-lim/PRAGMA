@@ -4,6 +4,7 @@ import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { isDemoMode } from "@/lib/demo";
 import { toast } from "sonner";
+import { PageTitle } from "@/components/PageTitle";
 
 type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
@@ -193,7 +194,7 @@ const ScenarioSelect = () => {
       <WorkflowHeader currentStep={1} />
 
       <main className="mx-auto max-w-6xl px-6 py-8">
-        <h1 className="text-2xl font-bold sm:text-3xl">상황 판단</h1>
+        <PageTitle title="상황 판단" />
         <p className="mt-2 text-sm text-muted-foreground">
           오늘 연습할 상황을 고르고, 이 상황을 어떻게 느꼈는지 알려주세요.
         </p>
@@ -288,10 +289,12 @@ const ScenarioSelect = () => {
               </div>
             </div>
 
-            {/* Block 2: source text — most visually prominent */}
-            <div className="rounded-lg border-2 border-[#15202B] bg-[#FFFFFF] p-6 shadow-sm">
-              <SectionLabel>번역해야 할 한국어 원문</SectionLabel>
-              <p className="text-[18px] font-semibold leading-relaxed text-[#15202B]">
+            {/* Block 2: source text — hero pair (page protagonist) */}
+            <div className="rounded-xl border-[0.5px] border-[#D3D1C7] border-l-[4px] border-l-[#15202B] bg-[#FFFFFF] p-7 shadow-sm">
+              <div className="mb-3 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
+                번역해야 할 한국어 원문 (출발어)
+              </div>
+              <p className="text-[19px] font-semibold leading-relaxed text-[#15202B]">
                 {SOURCE_TEXT[selected]}
               </p>
             </div>
