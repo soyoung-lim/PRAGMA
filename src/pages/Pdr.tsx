@@ -188,19 +188,21 @@ const Pdr = () => {
             <span className="h-px flex-1 bg-foreground/15" />
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {OPTIONS.map((c) => (
               <div
                 key={c}
                 className={[
-                  "flex w-full flex-col rounded-lg p-5",
+                  "flex w-full flex-col rounded-lg p-4",
                   c === "A"
-                    ? "border-[0.5px] border-[#E0CDBF]"
-                    : "border border-foreground",
+                    ? "border-[0.5px] border-[#E8CFB5]"
+                    : c === "B"
+                    ? "border-[0.5px] border-[#C8CFC4]"
+                    : "border-[0.5px] border-[#C5CED9]",
                 ].join(" ")}
                 style={{ backgroundColor: TRANSLATION_CARD_BG[c] }}
               >
-                <div className="text-base font-bold">번역안 {c}</div>
+                <div className="text-base font-[700]">번역안 {c}</div>
                 {act && (
                   <div className="mt-1 text-[12px] font-normal text-[#5C6A7A]">
                     {TRANSLATION_LABELS[act][c]}
