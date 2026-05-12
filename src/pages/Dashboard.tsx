@@ -378,8 +378,8 @@ const Dashboard = () => {
           {/* 3. 번역 변화 비교 */}
           <Card>
             <SectionLabel>번역 변화 비교</SectionLabel>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
+            <div className="flex flex-col gap-3">
+              <div className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-5 py-4">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Step 2에서 가장 적절하다고 본 번역안
                 </div>
@@ -387,7 +387,7 @@ const Dashboard = () => {
                   {act && best ? TRANSLATIONS[act][best] : "—"}
                 </p>
               </div>
-              <div className="rounded-lg border-2 border-[#15202B] bg-[#FFFFFF] p-5">
+              <div className="rounded-lg border-2 border-[#15202B] bg-[#FFFFFF] px-5 py-4">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-[#15202B]/70">
                   Step 4에서 직접 작성한 최종안
                 </div>
