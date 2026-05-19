@@ -56,7 +56,7 @@ const Pdr = () => {
         logPrefix: "[TTS Step2]",
       });
 
-      if (!result.ok) {
+      if (result.ok === false) {
         setTtsError({ c, msg: result.message || "음성 생성에 실패했습니다. 다시 시도해 주세요." });
         return;
       }
