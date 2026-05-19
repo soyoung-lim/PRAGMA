@@ -5,6 +5,8 @@ import { ensureSession, logAction } from "@/lib/tracking";
 import { isDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
 import { PageTitle } from "@/components/PageTitle";
+import { supabase } from "@/integrations/supabase/client";
+import { Volume2, Loader2 } from "lucide-react";
 
 type Choice = "A" | "B" | "C";
 type ActId = "request" | "refusal";
@@ -39,6 +41,36 @@ const Pdr = () => {
   const [best, setBest] = useState<Choice | null>(null);
   const [worst, setWorst] = useState<Choice | null>(null);
   const [reason, setReason] = useState("");
+  const [ttsLoading, setTtsLoading] = useState<Choice | null>(null);
+  const [ttsError, setTtsError] = useState<Choice | null>(null);
+  const [ttsUrl, setTtsUrl] = useState<Partial<Record<Choice, string>>>({});
+
+  const playChinese = async (c: Choice, text: string) => {
+    setTtsError(null);
+    setTtsLoading(c);
+    try {
+      const { data, error } = await supabase.functions.invoke("tts", {
+        body: { text, lang: "zh" },
+      });
+      if (error) throw error;
+      const blob = data instanceof Blob ? data : new Blob([data as ArrayBuffer], { type: "audio/mpeg" });
+      const url = URL.createObjectURL(blob);
+      setTtsUrl((prev) => {
+        if (prev[c]) URL.revokeObjectURL(prev[c]!);
+        return { ...prev, [c]: url };
+      });
+      // auto-play
+      setTimeout(() => {
+        const el = document.getElementById(`tts-audio-${c}`) as HTMLAudioElement | null;
+        el?.play().catch(() => { /* ignore autoplay block */ });
+      }, 0);
+    } catch (e) {
+      console.error("TTS error:", e);
+      setTtsError(c);
+    } finally {
+      setTtsLoading(null);
+    }
+  };
 
   useEffect(() => {
     ensureSession();
@@ -216,6 +248,42 @@ const Pdr = () => {
                     ? TRANSLATIONS[act][c]
                     : `[번역안 ${c} — Step 1을 먼저 선택해주세요]`}
                 </p>
+                {act && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => playChinese(c, TRANSLATIONS[act][c])}
+                      disabled={ttsLoading === c}
+                      aria-label={`번역안 ${c} 중국어 발음 듣기`}
+                      className="inline-flex w-fit items-center gap-1.5 rounded-full border-[0.5px] border-[#15202B]/30 bg-[#FFFFFF]/70 px-3 py-1 text-[12px] font-medium text-[#15202B] transition-colors hover:bg-[#FFFFFF] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {ttsLoading === c ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          생성 중...
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="h-3 w-3" />
+                          중국어 듣기
+                        </>
+                      )}
+                    </button>
+                    {ttsUrl[c] && (
+                      <audio
+                        id={`tts-audio-${c}`}
+                        src={ttsUrl[c]}
+                        controls
+                        className="h-8 w-full max-w-xs"
+                      />
+                    )}
+                    {ttsError === c && (
+                      <p className="text-[12px] text-[#B91C1C]">
+                        음성 생성에 실패했습니다. 다시 시도해 주세요.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
