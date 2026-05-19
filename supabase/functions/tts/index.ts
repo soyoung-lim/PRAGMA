@@ -62,11 +62,16 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       const err = await response.text()
       console.error('ElevenLabs API Error:', response.status, err)
-      let errorMessage = err || `TTS failed: ${response.status}`
       if (response.status === 402 || err.includes('paid_plan_required')) {
-        errorMessage = '이 음성은 무료 API 플랜에서 사용할 수 없습니다. 기본 음성으로 다시 시도합니다.'
+        return new Response(
+          JSON.stringify({
+            error: '이 음성은 무료 API 플랜에서 사용할 수 없습니다. 기본 음성으로 다시 시도합니다.',
+            fallback: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
       }
-      return new Response(JSON.stringify({ error: errorMessage }), {
+      return new Response(JSON.stringify({ error: err || `TTS failed: ${response.status}` }), {
         status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
