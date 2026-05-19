@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
@@ -6,9 +6,7 @@ import { isDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
 import { PageTitle } from "@/components/PageTitle";
 import { Volume2, Loader2 } from "lucide-react";
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+import { requestTtsAudio } from "@/lib/tts";
 
 type Choice = "A" | "B" | "C";
 type ActId = "request" | "refusal";
@@ -46,61 +44,38 @@ const Pdr = () => {
   const [ttsLoading, setTtsLoading] = useState<Choice | null>(null);
   const [ttsError, setTtsError] = useState<{ c: Choice; msg: string } | null>(null);
   const [ttsUrl, setTtsUrl] = useState<Partial<Record<Choice, string>>>({});
+  const audioRefs = useRef<Partial<Record<Choice, HTMLAudioElement | null>>>({});
 
   const playChinese = async (c: Choice, text: string) => {
-    console.log("[TTS] sending:", { text, lang: "zh" });
     setTtsError(null);
     setTtsLoading(c);
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/tts`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          apikey: SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ text, lang: "zh" }),
+      const result = await requestTtsAudio({
+        text,
+        lang: "zh",
+        logPrefix: "[TTS Step2]",
       });
-      console.log("[TTS] status:", response.status, "content-type:", response.headers.get("content-type"));
 
-      if (!response.ok) {
-        let msg = `TTS 실패 (${response.status})`;
-        try {
-          const errJson = await response.json();
-          msg = errJson.error || msg;
-        } catch { /* not json */ }
-        throw new Error(msg);
+      if (!result.ok) {
+        setTtsError({ c, msg: result.message || "음성 생성에 실패했습니다. 다시 시도해 주세요." });
+        return;
       }
 
-      const contentType = response.headers.get("content-type") || "";
-      if (!contentType.includes("audio")) {
-        let msg = "오디오 응답이 아닙니다.";
-        try {
-          const j = await response.json();
-          msg = j.error || msg;
-        } catch { /* ignore */ }
-        throw new Error(msg);
-      }
-
-      const blob = await response.blob();
-      console.log("[TTS] blob size:", blob.size, "type:", blob.type);
-      if (blob.size === 0) {
-        throw new Error("빈 오디오 응답입니다.");
-      }
-
-      const url = URL.createObjectURL(blob);
-      console.log("[TTS] audio URL:", url);
+      const url = URL.createObjectURL(result.blob);
+      console.log("[TTS Step2] audio URL:", url);
       setTtsUrl((prev) => {
         if (prev[c]) URL.revokeObjectURL(prev[c]!);
         return { ...prev, [c]: url };
       });
-      // auto-play
+
       setTimeout(() => {
-        const el = document.getElementById(`tts-audio-${c}`) as HTMLAudioElement | null;
-        el?.play().catch((err) => console.warn("[TTS] autoplay blocked:", err));
+        audioRefs.current[c]?.play().catch((err) => {
+          console.warn("[TTS Step2] autoplay blocked:", err);
+          setTtsError({ c, msg: "음성 재생에 실패했습니다. 다시 시도해 주세요." });
+        });
       }, 0);
     } catch (e) {
-      console.error("[TTS] error:", e);
+      console.error("[TTS Step2] error:", e);
       setTtsError({ c, msg: (e as Error).message || "음성 생성에 실패했습니다." });
     } finally {
       setTtsLoading(null);
@@ -309,6 +284,9 @@ const Pdr = () => {
                         id={`tts-audio-${c}`}
                         src={ttsUrl[c]}
                         controls
+                        ref={(node) => {
+                          audioRefs.current[c] = node;
+                        }}
                         className="h-8 w-full max-w-xs"
                       />
                     )}
