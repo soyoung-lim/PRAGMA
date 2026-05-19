@@ -5,8 +5,10 @@ import { ensureSession, logAction } from "@/lib/tracking";
 import { isDemoMode } from "@/lib/demo";
 import { toast } from "sonner";
 import { PageTitle } from "@/components/PageTitle";
-import { supabase } from "@/integrations/supabase/client";
 import { Volume2, Loader2 } from "lucide-react";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
@@ -129,34 +131,64 @@ const ScenarioSelect = () => {
   const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null);
 
   const playTTS = async (key: string, text: string, lang: "ko" | "zh") => {
+    console.log("[TTS Step1] sending:", { key, lang, text });
     try {
       if (audioEl) {
         audioEl.pause();
         setAudioEl(null);
       }
       setPlaying(key);
-      const { data, error } = await supabase.functions.invoke("tts", {
-        body: { text, lang },
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/tts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          apikey: SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ text, lang }),
       });
-      if (error) throw error;
-      const blob = data instanceof Blob ? data : new Blob([data as ArrayBuffer], { type: "audio/mpeg" });
+      console.log("[TTS Step1] status:", response.status, "content-type:", response.headers.get("content-type"));
+
+      if (!response.ok) {
+        let msg = `TTS 실패 (${response.status})`;
+        try {
+          const errJson = await response.json();
+          msg = errJson.error || msg;
+        } catch { /* not json */ }
+        throw new Error(msg);
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("audio")) {
+        const body = await response.text();
+        throw new Error(`오디오 응답이 아닙니다: ${body.slice(0, 100)}`);
+      }
+
+      const blob = await response.blob();
+      console.log("[TTS Step1] blob size:", blob.size, "type:", blob.type);
+      if (blob.size === 0) {
+        throw new Error("빈 오디오 응답입니다.");
+      }
+
       const url = URL.createObjectURL(blob);
+      console.log("[TTS Step1] audio URL:", url);
       const audio = new Audio(url);
       setAudioEl(audio);
       audio.onended = () => {
         setPlaying(null);
         URL.revokeObjectURL(url);
       };
-      audio.onerror = () => {
+      audio.onerror = (err) => {
+        console.error("[TTS Step1] audio error:", err);
         setPlaying(null);
         URL.revokeObjectURL(url);
         toast("음성 재생에 실패했습니다.");
       };
       await audio.play();
     } catch (e) {
-      console.error("TTS error:", e);
+      console.error("[TTS Step1] error:", e);
       setPlaying(null);
-      toast("음성 생성에 실패했습니다.");
+      toast((e as Error).message || "음성 생성에 실패했습니다.");
     }
   };
 
