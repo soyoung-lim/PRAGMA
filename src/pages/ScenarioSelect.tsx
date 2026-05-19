@@ -5,6 +5,8 @@ import { ensureSession, logAction } from "@/lib/tracking";
 import { isDemoMode } from "@/lib/demo";
 import { toast } from "sonner";
 import { PageTitle } from "@/components/PageTitle";
+import { supabase } from "@/integrations/supabase/client";
+import { Volume2, Loader2 } from "lucide-react";
 
 type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
@@ -15,25 +17,26 @@ type LibItem = {
   sector: string;
   title: string;
   desc: string;
+  descZh: string;
   available: boolean;
 };
 
 const LIBRARY: Record<ActId, LibItem[]> = {
   request: [
-    { sector: "엔터콘텐츠", title: "팬 이벤트 자료 전달 일정 연장", desc: "K-pop 팬 이벤트 자료 전달 일정을 늦춰 달라고 요청합니다.", available: true },
-    { sector: "뷰티산업", title: "상세페이지 문구 재검토", desc: "중국어 제품 설명 문구를 한 번 더 검토해 달라고 요청합니다.", available: false },
-    { sector: "게임산업", title: "이벤트 공지 일정 조정", desc: "중국 서버 이벤트 공지 공개 일정을 조정해 달라고 요청합니다.", available: false },
-    { sector: "이커머스", title: "상품 이미지 추가 제공", desc: "중국 라이브커머스용 상품 이미지를 추가로 제공해 달라고 요청합니다.", available: false },
-    { sector: "기업실무", title: "회의 자료 수정", desc: "중국 협력사와의 회의 자료 일부 수정을 요청합니다.", available: false },
-    { sector: "테크산업", title: "앱 화면 문구 수정 요청", desc: "중국 사용자용 앱 화면에 들어갈 안내 문구 수정을 요청합니다.", available: false },
+    { sector: "엔터콘텐츠", title: "팬 이벤트 자료 전달 일정 연장", desc: "K-pop 팬 이벤트 자료 전달 일정을 늦춰 달라고 요청합니다.", descZh: "请求推迟K-pop粉丝活动资料的交付日程。", available: true },
+    { sector: "뷰티산업", title: "상세페이지 문구 재검토", desc: "중국어 제품 설명 문구를 한 번 더 검토해 달라고 요청합니다.", descZh: "请求再次审核中文产品说明文案。", available: false },
+    { sector: "게임산업", title: "이벤트 공지 일정 조정", desc: "중국 서버 이벤트 공지 공개 일정을 조정해 달라고 요청합니다.", descZh: "请求调整中国服务器活动公告的发布日程。", available: false },
+    { sector: "이커머스", title: "상품 이미지 추가 제공", desc: "중국 라이브커머스용 상품 이미지를 추가로 제공해 달라고 요청합니다.", descZh: "请求为中国直播电商额外提供商品图片。", available: false },
+    { sector: "기업실무", title: "회의 자료 수정", desc: "중국 협력사와의 회의 자료 일부 수정을 요청합니다.", descZh: "请求修改与中国合作方会议资料的部分内容。", available: false },
+    { sector: "테크산업", title: "앱 화면 문구 수정 요청", desc: "중국 사용자용 앱 화면에 들어갈 안내 문구 수정을 요청합니다.", descZh: "请求修改面向中国用户的应用界面提示文案。", available: false },
   ],
   refusal: [
-    { sector: "엔터콘텐츠", title: "공동 프로모션 비용 인하 거절", desc: "공동 프로모션 비용 인하가 어렵다고 답합니다.", available: true },
-    { sector: "뷰티산업", title: "샘플 물량 추가 제공 거절", desc: "신제품 샘플 물량 추가 제공이 어렵다고 답합니다.", available: false },
-    { sector: "게임산업", title: "이벤트 보상 확대 거절", desc: "이벤트 보상 확대 요청을 수용하기 어렵다고 답합니다.", available: false },
-    { sector: "이커머스", title: "배송 일정 앞당기기 거절", desc: "상품 배송 일정을 앞당기기 어렵다고 답합니다.", available: false },
-    { sector: "기업실무", title: "회의 일정 앞당기기 거절", desc: "중국 협력사의 회의 일정 앞당기기 요청을 수용하기 어렵다고 답합니다.", available: false },
-    { sector: "테크산업", title: "기능 추가 요청 거절", desc: "중국 파트너사의 앱 기능 추가 요청을 수용하기 어렵다고 답합니다.", available: false },
+    { sector: "엔터콘텐츠", title: "공동 프로모션 비용 인하 거절", desc: "공동 프로모션 비용 인하가 어렵다고 답합니다.", descZh: "回复表示难以下调共同促销费用。", available: true },
+    { sector: "뷰티산업", title: "샘플 물량 추가 제공 거절", desc: "신제품 샘플 물량 추가 제공이 어렵다고 답합니다.", descZh: "回复表示难以追加提供新品样品数量。", available: false },
+    { sector: "게임산업", title: "이벤트 보상 확대 거절", desc: "이벤트 보상 확대 요청을 수용하기 어렵다고 답합니다.", descZh: "回复表示难以接受扩大活动奖励的请求。", available: false },
+    { sector: "이커머스", title: "배송 일정 앞당기기 거절", desc: "상품 배송 일정을 앞당기기 어렵다고 답합니다.", descZh: "回复表示难以提前商品配送日程。", available: false },
+    { sector: "기업실무", title: "회의 일정 앞당기기 거절", desc: "중국 협력사의 회의 일정 앞당기기 요청을 수용하기 어렵다고 답합니다.", descZh: "回复表示难以接受中国合作方提前会议日程的请求。", available: false },
+    { sector: "테크산업", title: "기능 추가 요청 거절", desc: "중국 파트너사의 앱 기능 추가 요청을 수용하기 어렵다고 답합니다.", descZh: "回复表示难以接受中国合作伙伴追加应用功能的请求。", available: false },
   ],
 };
 
@@ -122,6 +125,40 @@ const ScenarioSelect = () => {
   const [selected, setSelected] = useState<ActId | null>(null);
   const [answers, setAnswers] = useState<Answers>(EMPTY);
   const [bodyOpen, setBodyOpen] = useState<boolean>(false);
+  const [playing, setPlaying] = useState<string | null>(null);
+  const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null);
+
+  const playTTS = async (key: string, text: string, lang: "ko" | "zh") => {
+    try {
+      if (audioEl) {
+        audioEl.pause();
+        setAudioEl(null);
+      }
+      setPlaying(key);
+      const { data, error } = await supabase.functions.invoke("tts", {
+        body: { text, lang },
+      });
+      if (error) throw error;
+      const blob = data instanceof Blob ? data : new Blob([data as ArrayBuffer], { type: "audio/mpeg" });
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      setAudioEl(audio);
+      audio.onended = () => {
+        setPlaying(null);
+        URL.revokeObjectURL(url);
+      };
+      audio.onerror = () => {
+        setPlaying(null);
+        URL.revokeObjectURL(url);
+        toast("음성 재생에 실패했습니다.");
+      };
+      await audio.play();
+    } catch (e) {
+      console.error("TTS error:", e);
+      setPlaying(null);
+      toast("음성 생성에 실패했습니다.");
+    }
+  };
 
   useEffect(() => {
     ensureSession();
@@ -250,16 +287,54 @@ const ScenarioSelect = () => {
                       <span className="text-xs font-medium text-muted-foreground">{item.sector}</span>
                       <span className="text-[15px] font-semibold leading-snug text-[#15202B]">{item.title}</span>
                       <span className="text-xs leading-relaxed text-foreground/80">{item.desc}</span>
-                      <span
-                        className={[
-                          "mt-2 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                          item.available
-                            ? "bg-[#FAD338] text-[#15202B]"
-                            : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] text-[#5C6A7A]",
-                        ].join(" ")}
-                      >
-                        {item.available ? "체험 가능" : "수업용 확장 예정"}
-                      </span>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <span
+                          className={[
+                            "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                            item.available
+                              ? "bg-[#FAD338] text-[#15202B]"
+                              : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] text-[#5C6A7A]",
+                          ].join(" ")}
+                        >
+                          {item.available ? "체험 가능" : "수업용 확장 예정"}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {([
+                            { lang: "ko" as const, label: "한", text: item.desc },
+                            { lang: "zh" as const, label: "中", text: item.descZh },
+                          ]).map(({ lang, label, text }) => {
+                            const key = `${selected}-${i}-${lang}`;
+                            const isPlaying = playing === key;
+                            return (
+                              <span
+                                key={lang}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`${label} 듣기`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isPlaying) playTTS(key, text, lang);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (!isPlaying) playTTS(key, text, lang);
+                                  }
+                                }}
+                                className="inline-flex cursor-pointer items-center gap-1 rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-2 py-0.5 text-[11px] font-medium text-[#15202B] hover:bg-[#FAF8F2]"
+                              >
+                                {isPlaying ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Volume2 className="h-3 w-3" />
+                                )}
+                                {label}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </button>
                   ))}
                 </div>
