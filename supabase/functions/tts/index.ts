@@ -1,8 +1,8 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 
 const VOICE_MAP: Record<string, string> = {
-  ko: '21m00Tcm4TlvDq8ikWAM', // default Korean voice
-  zh: 'DowyQ68vDpgFYdWVGjc3', // Chinese native speaker voice
+  ko: '21m00Tcm4TlvDq8ikWAM', // default free voice
+  zh: '21m00Tcm4TlvDq8ikWAM', // reverted to default free voice (library voices require paid plan)
 }
 
 Deno.serve(async (req) => {
@@ -62,7 +62,11 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       const err = await response.text()
       console.error('ElevenLabs API Error:', response.status, err)
-      return new Response(JSON.stringify({ error: err || `TTS failed: ${response.status}` }), {
+      let errorMessage = err || `TTS failed: ${response.status}`
+      if (response.status === 402 || err.includes('paid_plan_required')) {
+        errorMessage = '이 음성은 무료 API 플랜에서 사용할 수 없습니다. 기본 음성으로 다시 시도합니다.'
+      }
+      return new Response(JSON.stringify({ error: errorMessage }), {
         status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
