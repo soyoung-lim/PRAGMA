@@ -1,8 +1,8 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 
 const VOICE_MAP: Record<string, string> = {
-  ko: 'JBFqnCBsd6RMkjVDRZzb', // George - multilingual, handles Korean
-  zh: 'XrExE9yKIg1WjnnlVkGX', // Matilda - multilingual, handles Chinese
+  ko: '21m00Tcm4TlvDq8ikWAM', // default Korean voice
+  zh: 'DowyQ68vDpgFYdWVGjc3', // Chinese native speaker voice
 }
 
 Deno.serve(async (req) => {
