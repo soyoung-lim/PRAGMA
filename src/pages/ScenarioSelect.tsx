@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
@@ -6,9 +6,7 @@ import { isDemoMode } from "@/lib/demo";
 import { toast } from "sonner";
 import { PageTitle } from "@/components/PageTitle";
 import { Volume2, Loader2 } from "lucide-react";
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+import { requestTtsAudio } from "@/lib/tts";
 
 type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
@@ -129,70 +127,68 @@ const ScenarioSelect = () => {
   const [bodyOpen, setBodyOpen] = useState<boolean>(false);
   const [playing, setPlaying] = useState<string | null>(null);
   const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null);
+  const [ttsError, setTtsError] = useState<{ cardKey: string; msg: string } | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
 
-  const playTTS = async (key: string, text: string, lang: "ko" | "zh") => {
-    console.log("[TTS Step1] sending:", { key, lang, text });
+  const cleanupAudio = () => {
+    if (audioEl) {
+      audioEl.pause();
+      audioEl.currentTime = 0;
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+    setAudioEl(null);
+  };
+
+  const playTTS = async (cardKey: string, buttonKey: string, text: string, lang: "ko" | "zh") => {
+    console.log("[TTS Step1] sending:", { scenarioId: selected, cardKey, language: lang, text });
+    setTtsError(null);
+    cleanupAudio();
+    setPlaying(buttonKey);
     try {
-      if (audioEl) {
-        audioEl.pause();
-        setAudioEl(null);
-      }
-      setPlaying(key);
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/tts`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          apikey: SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ text, lang }),
+      const result = await requestTtsAudio({
+        text,
+        lang,
+        logPrefix: "[TTS Step1]",
       });
-      console.log("[TTS Step1] status:", response.status, "content-type:", response.headers.get("content-type"));
 
-      if (!response.ok) {
-        let msg = `TTS 실패 (${response.status})`;
-        try {
-          const errJson = await response.json();
-          msg = errJson.error || msg;
-        } catch { /* not json */ }
-        throw new Error(msg);
+      if (result.ok === false) {
+        setTtsError({ cardKey, msg: result.message || "음성 생성에 실패했습니다. 다시 시도해 주세요." });
+        return;
       }
 
-      const contentType = response.headers.get("content-type") || "";
-      if (!contentType.includes("audio")) {
-        let msg = "오디오 응답이 아닙니다.";
-        try {
-          const j = await response.json();
-          msg = j.error || msg;
-        } catch { /* ignore */ }
-        throw new Error(msg);
-      }
-
-      const blob = await response.blob();
-      console.log("[TTS Step1] blob size:", blob.size, "type:", blob.type);
-      if (blob.size === 0) {
-        throw new Error("빈 오디오 응답입니다.");
-      }
-
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(result.blob);
+      audioUrlRef.current = url;
       console.log("[TTS Step1] audio URL:", url);
       const audio = new Audio(url);
       setAudioEl(audio);
       audio.onended = () => {
-        setPlaying(null);
-        URL.revokeObjectURL(url);
+        if (audioUrlRef.current === url) {
+          URL.revokeObjectURL(url);
+          audioUrlRef.current = null;
+        }
+        setAudioEl(null);
       };
       audio.onerror = (err) => {
         console.error("[TTS Step1] audio error:", err);
-        setPlaying(null);
-        URL.revokeObjectURL(url);
-        toast("음성 재생에 실패했습니다.");
+        if (audioUrlRef.current === url) {
+          URL.revokeObjectURL(url);
+          audioUrlRef.current = null;
+        }
+        setAudioEl(null);
+        setTtsError({ cardKey, msg: "음성 재생에 실패했습니다. 다시 시도해 주세요." });
       };
-      await audio.play();
+      await audio.play().catch((err) => {
+        console.error("[TTS Step1] play error:", err);
+        setTtsError({ cardKey, msg: "음성 재생에 실패했습니다. 다시 시도해 주세요." });
+      });
     } catch (e) {
       console.error("[TTS Step1] error:", e);
+      setTtsError({ cardKey, msg: (e as Error).message || "음성 생성에 실패했습니다." });
+    } finally {
       setPlaying(null);
-      toast((e as Error).message || "음성 생성에 실패했습니다.");
     }
   };
 
@@ -215,6 +211,17 @@ const ScenarioSelect = () => {
       if (b === "1") setBodyOpen(true);
     } catch { /* ignore */ }
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (audioEl) {
+        audioEl.pause();
+      }
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+      }
+    };
+  }, [audioEl]);
 
   const handleSelect = (id: ActId) => {
     if (demo) return;
@@ -339,7 +346,8 @@ const ScenarioSelect = () => {
                             { lang: "ko" as const, label: "한", text: item.desc },
                             { lang: "zh" as const, label: "中", text: item.descZh },
                           ]).map(({ lang, label, text }) => {
-                            const key = `${selected}-${i}-${lang}`;
+                            const cardKey = `${selected}-${i}`;
+                            const key = `${cardKey}-${lang}`;
                             const isPlaying = playing === key;
                             return (
                               <span
@@ -349,13 +357,13 @@ const ScenarioSelect = () => {
                                 aria-label={`${label} 듣기`}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (!isPlaying) playTTS(key, text, lang);
+                                  if (!isPlaying) playTTS(cardKey, key, text, lang);
                                 }}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" || e.key === " ") {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    if (!isPlaying) playTTS(key, text, lang);
+                                    if (!isPlaying) playTTS(cardKey, key, text, lang);
                                   }
                                 }}
                                 className="inline-flex cursor-pointer items-center gap-1 rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-2 py-0.5 text-[11px] font-medium text-[#15202B] hover:bg-[#FAF8F2]"
@@ -371,6 +379,9 @@ const ScenarioSelect = () => {
                           })}
                         </div>
                       </div>
+                      {ttsError?.cardKey === `${selected}-${i}` && (
+                        <p className="mt-2 text-[12px] text-[#B91C1C]">{ttsError.msg}</p>
+                      )}
                     </button>
                   ))}
                 </div>
