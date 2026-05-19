@@ -72,7 +72,7 @@ const toUserMessage = (status: number, raw: string, fallbackAttempted: boolean) 
     }
   }
 
-  return parsed?.detail?.message ?? parsed?.error ?? raw || '음성 생성에 실패했습니다. 다시 시도해 주세요.'
+  return (parsed?.detail?.message ?? parsed?.error ?? raw) || '음성 생성에 실패했습니다. 다시 시도해 주세요.'
 }
 
 const requestAudio = async (text: string, voiceId: string, apiKey: string) => {
