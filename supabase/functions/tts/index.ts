@@ -12,6 +12,7 @@ Deno.serve(async (req) => {
 
   try {
     const { text, lang } = await req.json()
+    console.log('TTS Request:', { lang, textLength: typeof text === 'string' ? text.length : 0, textPreview: typeof text === 'string' ? text.slice(0, 60) : null })
 
     if (!text || typeof text !== 'string') {
       return new Response(JSON.stringify({ error: 'text is required' }), {
@@ -60,6 +61,7 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const err = await response.text()
+      console.error('ElevenLabs API Error:', response.status, err)
       return new Response(JSON.stringify({ error: err || `TTS failed: ${response.status}` }), {
         status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -67,15 +69,17 @@ Deno.serve(async (req) => {
     }
 
     const audio = await response.arrayBuffer()
+    console.log('TTS Success: audio bytes =', audio.byteLength)
     return new Response(audio, {
       status: 200,
       headers: {
         ...corsHeaders,
         'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control': 'no-store',
       },
     })
   } catch (e) {
+    console.error('TTS function error:', e)
     return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

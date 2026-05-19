@@ -5,8 +5,10 @@ import { ensureSession, logAction } from "@/lib/tracking";
 import { isDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
 import { PageTitle } from "@/components/PageTitle";
-import { supabase } from "@/integrations/supabase/client";
 import { Volume2, Loader2 } from "lucide-react";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 type Choice = "A" | "B" | "C";
 type ActId = "request" | "refusal";
@@ -42,19 +44,48 @@ const Pdr = () => {
   const [worst, setWorst] = useState<Choice | null>(null);
   const [reason, setReason] = useState("");
   const [ttsLoading, setTtsLoading] = useState<Choice | null>(null);
-  const [ttsError, setTtsError] = useState<Choice | null>(null);
+  const [ttsError, setTtsError] = useState<{ c: Choice; msg: string } | null>(null);
   const [ttsUrl, setTtsUrl] = useState<Partial<Record<Choice, string>>>({});
 
   const playChinese = async (c: Choice, text: string) => {
+    console.log("[TTS] sending:", { text, lang: "zh" });
     setTtsError(null);
     setTtsLoading(c);
     try {
-      const { data, error } = await supabase.functions.invoke("tts", {
-        body: { text, lang: "zh" },
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/tts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          apikey: SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ text, lang: "zh" }),
       });
-      if (error) throw error;
-      const blob = data instanceof Blob ? data : new Blob([data as ArrayBuffer], { type: "audio/mpeg" });
+      console.log("[TTS] status:", response.status, "content-type:", response.headers.get("content-type"));
+
+      if (!response.ok) {
+        let msg = `TTS 실패 (${response.status})`;
+        try {
+          const errJson = await response.json();
+          msg = errJson.error || msg;
+        } catch { /* not json */ }
+        throw new Error(msg);
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("audio")) {
+        const body = await response.text();
+        throw new Error(`오디오 응답이 아닙니다: ${body.slice(0, 100)}`);
+      }
+
+      const blob = await response.blob();
+      console.log("[TTS] blob size:", blob.size, "type:", blob.type);
+      if (blob.size === 0) {
+        throw new Error("빈 오디오 응답입니다.");
+      }
+
       const url = URL.createObjectURL(blob);
+      console.log("[TTS] audio URL:", url);
       setTtsUrl((prev) => {
         if (prev[c]) URL.revokeObjectURL(prev[c]!);
         return { ...prev, [c]: url };
@@ -62,11 +93,11 @@ const Pdr = () => {
       // auto-play
       setTimeout(() => {
         const el = document.getElementById(`tts-audio-${c}`) as HTMLAudioElement | null;
-        el?.play().catch(() => { /* ignore autoplay block */ });
+        el?.play().catch((err) => console.warn("[TTS] autoplay blocked:", err));
       }, 0);
     } catch (e) {
-      console.error("TTS error:", e);
-      setTtsError(c);
+      console.error("[TTS] error:", e);
+      setTtsError({ c, msg: (e as Error).message || "음성 생성에 실패했습니다." });
     } finally {
       setTtsLoading(null);
     }
@@ -277,9 +308,9 @@ const Pdr = () => {
                         className="h-8 w-full max-w-xs"
                       />
                     )}
-                    {ttsError === c && (
+                    {ttsError?.c === c && (
                       <p className="text-[12px] text-[#B91C1C]">
-                        음성 생성에 실패했습니다. 다시 시도해 주세요.
+                        {ttsError.msg}
                       </p>
                     )}
                   </div>
