@@ -160,8 +160,12 @@ const ScenarioSelect = () => {
 
       const contentType = response.headers.get("content-type") || "";
       if (!contentType.includes("audio")) {
-        const body = await response.text();
-        throw new Error(`오디오 응답이 아닙니다: ${body.slice(0, 100)}`);
+        let msg = "오디오 응답이 아닙니다.";
+        try {
+          const j = await response.json();
+          msg = j.error || msg;
+        } catch { /* ignore */ }
+        throw new Error(msg);
       }
 
       const blob = await response.blob();
