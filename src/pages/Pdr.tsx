@@ -308,9 +308,9 @@ const Pdr = () => {
                         className="h-8 w-full max-w-xs"
                       />
                     )}
-                    {ttsError === c && (
+                    {ttsError?.c === c && (
                       <p className="text-[12px] text-[#B91C1C]">
-                        음성 생성에 실패했습니다. 다시 시도해 주세요.
+                        {ttsError.msg}
                       </p>
                     )}
                   </div>
