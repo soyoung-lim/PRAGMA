@@ -123,7 +123,7 @@ const AdminArchive = () => {
                   <div>
                     <SectionHeader title="기본 정보" />
                     <div className="space-y-5">
-                      <FieldRow label="title" required htmlFor="title">
+                      <FieldRow label="제목" required htmlFor="title">
                         <div className="flex flex-col gap-2 sm:flex-row">
                           <Input id="title" placeholder="자료 제목" />
                           <Button
@@ -137,7 +137,7 @@ const AdminArchive = () => {
                         </div>
                       </FieldRow>
 
-                      <FieldRow label="mode" required>
+                      <FieldRow label="모드" required>
                         <RadioGroup defaultValue="번역" className="flex gap-6 pt-1">
                           <div className="flex items-center gap-2">
                             <RadioGroupItem value="번역" id="mode-trans" />
@@ -150,15 +150,15 @@ const AdminArchive = () => {
                         </RadioGroup>
                       </FieldRow>
 
-                      <FieldRow label="topic" htmlFor="topic">
+                      <FieldRow label="주제" htmlFor="topic">
                         <Input id="topic" placeholder="예: 신제품 출시 회의" />
                       </FieldRow>
 
-                      <FieldRow label="item_type" htmlFor="item_type">
+                      <FieldRow label="자료 유형" htmlFor="item_type">
                         <Input id="item_type" placeholder="예: dialogue, email, monologue" />
                       </FieldRow>
 
-                      <FieldRow label="difficulty">
+                      <FieldRow label="난이도">
                         <Select>
                           <SelectTrigger>
                             <SelectValue placeholder="선택" />
@@ -177,38 +177,42 @@ const AdminArchive = () => {
                   <div>
                     <SectionHeader title="화행·맥락 메타데이터" />
                     <div className="space-y-5">
-                      <FieldRow label="speech_act" htmlFor="speech_act">
-                        <Input id="speech_act" list="speech_act_list" placeholder="요청 / 거절 (직접 입력 가능)" />
-                        <datalist id="speech_act_list">
-                          <option value="요청" />
-                          <option value="거절" />
-                        </datalist>
+                      <FieldRow label="화행">
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="선택" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="요청">요청</SelectItem>
+                            <SelectItem value="거절">거절</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </FieldRow>
 
-                      <FieldRow label="discourse_genre" htmlFor="discourse_genre">
-                        <Input
-                          id="discourse_genre"
-                          list="discourse_genre_list"
-                          placeholder="비즈니스 이메일 / 업무 메신저 / 회의 발화 (직접 입력 가능)"
-                        />
-                        <datalist id="discourse_genre_list">
-                          <option value="비즈니스 이메일" />
-                          <option value="업무 메신저" />
-                          <option value="회의 발화" />
-                        </datalist>
+                      <FieldRow label="담화 장르">
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="선택" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="비즈니스 이메일">비즈니스 이메일</SelectItem>
+                            <SelectItem value="업무 메신저">업무 메신저</SelectItem>
+                            <SelectItem value="회의 발화">회의 발화</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </FieldRow>
 
-                      <FieldRow label="sector" htmlFor="sector">
-                        <Input
-                          id="sector"
-                          list="sector_list"
-                          placeholder="엔터테인먼트 / 테크·IT / 무역·비즈니스 (직접 입력 가능)"
-                        />
-                        <datalist id="sector_list">
-                          <option value="엔터테인먼트" />
-                          <option value="테크·IT" />
-                          <option value="무역·비즈니스" />
-                        </datalist>
+                      <FieldRow label="섹터">
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="선택" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="엔터테인먼트">엔터테인먼트</SelectItem>
+                            <SelectItem value="테크·IT">테크·IT</SelectItem>
+                            <SelectItem value="무역·비즈니스">무역·비즈니스</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </FieldRow>
                     </div>
                   </div>
@@ -217,7 +221,7 @@ const AdminArchive = () => {
                   <div>
                     <SectionHeader title="원문·출처" />
                     <div className="space-y-5">
-                      <FieldRow label="source_text" htmlFor="source_text">
+                      <FieldRow label="원문 / 전사 텍스트" htmlFor="source_text">
                         <Textarea
                           id="source_text"
                           rows={6}
@@ -226,29 +230,29 @@ const AdminArchive = () => {
                         />
                       </FieldRow>
 
-                      <FieldRow label="source_origin">
+                      <FieldRow label="자료 출처">
                         <Select defaultValue="manual">
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="manual">manual</SelectItem>
-                            <SelectItem value="ai_draft">ai_draft</SelectItem>
-                            <SelectItem value="stt">stt</SelectItem>
-                            <SelectItem value="youtube">youtube</SelectItem>
+                            <SelectItem value="manual">manual · 직접 입력</SelectItem>
+                            <SelectItem value="ai_draft">ai_draft · AI 초안</SelectItem>
+                            <SelectItem value="stt">stt · 음성 인식</SelectItem>
+                            <SelectItem value="youtube">youtube · YouTube</SelectItem>
                           </SelectContent>
                         </Select>
                       </FieldRow>
 
-                      <FieldRow label="audio_url" htmlFor="audio_url">
+                      <FieldRow label="오디오 URL" htmlFor="audio_url">
                         <Input id="audio_url" type="url" placeholder="https://..." />
                       </FieldRow>
 
-                      <FieldRow label="youtube_url" htmlFor="youtube_url">
+                      <FieldRow label="YouTube URL" htmlFor="youtube_url">
                         <Input id="youtube_url" type="url" placeholder="https://www.youtube.com/watch?v=..." />
                       </FieldRow>
 
-                      <FieldRow label="youtube_id" htmlFor="youtube_id">
+                      <FieldRow label="YouTube ID" htmlFor="youtube_id">
                         <Input id="youtube_id" placeholder="예: dQw4w9WgXcQ" />
                       </FieldRow>
                     </div>
@@ -258,7 +262,7 @@ const AdminArchive = () => {
                   <div>
                     <SectionHeader title="운영 태그" />
                     <div className="space-y-5">
-                      <FieldRow label="is_learning_pick">
+                      <FieldRow label="학습자료 후보">
                         <div className="flex items-center gap-2 pt-1">
                           <Checkbox id="is_learning_pick" />
                           <Label htmlFor="is_learning_pick" className="font-normal">
@@ -267,7 +271,7 @@ const AdminArchive = () => {
                         </div>
                       </FieldRow>
 
-                      <FieldRow label="status">
+                      <FieldRow label="상태">
                         <Select defaultValue="archive">
                           <SelectTrigger>
                             <SelectValue />
@@ -280,13 +284,13 @@ const AdminArchive = () => {
                             <SelectItem value="experiment_candidate">
                               experiment_candidate · 본실험 후보
                             </SelectItem>
-                            <SelectItem value="locked">locked · 본실험 확정(locked)</SelectItem>
+                            <SelectItem value="locked">locked · 본실험 확정</SelectItem>
                             <SelectItem value="excluded">excluded · 제외</SelectItem>
                           </SelectContent>
                         </Select>
                       </FieldRow>
 
-                      <FieldRow label="researcher_notes" htmlFor="researcher_notes">
+                      <FieldRow label="연구자 메모" htmlFor="researcher_notes">
                         <Textarea
                           id="researcher_notes"
                           rows={3}
