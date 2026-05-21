@@ -40,10 +40,10 @@ const Landing = () => {
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-6 py-16 sm:py-24">
         {/* HERO */}
         <section className="text-center">
-          <h1 className="text-[28px] font-bold leading-[1.15] tracking-tight sm:text-[34px] lg:text-[40px] lg:whitespace-nowrap">
+          <h1 className="text-[30px] font-bold leading-[1.15] tracking-tight sm:text-[36px] lg:text-[42px] lg:whitespace-nowrap">
             AI 기반 한·중 통번역 학습 워크플로우
           </h1>
-          <p className="mt-3 text-[14px] leading-snug text-muted-foreground sm:text-[15px]">
+          <p className="mt-3 text-[15px] leading-snug text-muted-foreground sm:text-[16px]">
             AI 번역안을 상황에 맞게 고르고 다듬는 번역 의사결정 능력을 기릅니다.
           </p>
         </section>
@@ -53,17 +53,14 @@ const Landing = () => {
           <div className="flex flex-col items-stretch gap-3 sm:grid sm:grid-cols-2 sm:gap-3 lg:flex lg:flex-row lg:items-stretch lg:justify-between lg:gap-0">
             {STEPS.map((s, idx) => (
               <div key={s.n} className="flex items-center lg:flex-1">
-                <div className="relative w-full rounded-lg border border-[#15202B] bg-card px-3 pt-5 pb-3.5 text-center shadow-sm">
-                  <span
-                    className="absolute -top-2.5 left-1/2 inline-flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full text-[10px] font-bold text-[#15202B] ring-2 ring-card"
-                    style={{ backgroundColor: "#15202B" }}
-                  >
+                <div className="relative w-full rounded-lg border border-[#15202B] bg-transparent px-3 pt-3 pb-3.5 text-center shadow-sm">
+                  <span className="mx-auto mb-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#FAD338] text-[10px] font-bold text-[#15202B]">
                     {s.n}
                   </span>
-                  <div className="text-[13px] font-bold leading-tight tracking-tight">
+                  <div className="text-[14px] font-bold leading-tight tracking-tight">
                     {s.title}
                   </div>
-                  <div className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                  <div className="mt-1 text-[12px] leading-snug text-muted-foreground">
                     {s.sub}
                   </div>
                 </div>
@@ -87,14 +84,14 @@ const Landing = () => {
         <section className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-3">
           <Link
             to="/scenario"
-            className="rounded-md bg-[#FAD338] px-7 py-3 text-[14px] font-bold text-[#15202B] shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:bg-[#E8B91F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+            className="rounded-md bg-[#FAD338] px-7 py-3 text-[15px] font-bold text-[#15202B] shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:bg-[#E8B91F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
           >
             학습 시작하기 →
           </Link>
           <button
             type="button"
             onClick={handleDemo}
-            className="rounded-md border border-[#15202B] bg-transparent px-7 py-3 text-[14px] font-medium text-[#15202B] transition-colors hover:bg-[#15202B]/[0.04]"
+            className="rounded-md border border-[#15202B] bg-transparent px-7 py-3 text-[15px] font-medium text-[#15202B] transition-colors hover:bg-[#15202B]/[0.04]"
           >
             데모 모드로 보기
           </button>
