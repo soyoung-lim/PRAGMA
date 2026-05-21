@@ -14,7 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      archive_items: {
+        Row: {
+          audio_url: string | null
+          created_at: string | null
+          difficulty: string | null
+          discourse_genre: string | null
+          id: string
+          is_learning_pick: boolean | null
+          item_type: string | null
+          mode: string
+          researcher_notes: string | null
+          sector: string | null
+          source_origin: string | null
+          source_text: string | null
+          speech_act: string | null
+          status: string | null
+          title: string
+          title_auto_generated: boolean | null
+          topic: string | null
+          updated_at: string | null
+          youtube_id: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string | null
+          difficulty?: string | null
+          discourse_genre?: string | null
+          id?: string
+          is_learning_pick?: boolean | null
+          item_type?: string | null
+          mode: string
+          researcher_notes?: string | null
+          sector?: string | null
+          source_origin?: string | null
+          source_text?: string | null
+          speech_act?: string | null
+          status?: string | null
+          title: string
+          title_auto_generated?: boolean | null
+          topic?: string | null
+          updated_at?: string | null
+          youtube_id?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string | null
+          difficulty?: string | null
+          discourse_genre?: string | null
+          id?: string
+          is_learning_pick?: boolean | null
+          item_type?: string | null
+          mode?: string
+          researcher_notes?: string | null
+          sector?: string | null
+          source_origin?: string | null
+          source_text?: string | null
+          speech_act?: string | null
+          status?: string | null
+          title?: string
+          title_auto_generated?: boolean | null
+          topic?: string | null
+          updated_at?: string | null
+          youtube_id?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
