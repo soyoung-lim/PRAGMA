@@ -40,11 +40,14 @@ const Landing = () => {
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-6 py-16 sm:py-24">
         {/* HERO */}
         <section className="text-center">
+          <span className="mb-3 inline-flex items-center rounded-full bg-[#E4EDE2] px-4 py-1.5 text-[13px] font-medium text-[#3F5D3A]">
+            AI 리터러시 기반
+          </span>
           <h1 className="text-4xl font-bold leading-[1.15] sm:text-5xl lg:text-[44px] lg:whitespace-nowrap">
-            AI 리터러시 기반 한·중 통번역 학습 워크플로우
+            한·중 통번역 학습 워크플로우
           </h1>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-[17px]">
-            AI 번역안을 상황에 맞게 고르고 다듬는 번역 의사결정 능력을 기릅니다.
+            AI 번역 결과를 판단하고 최종안을 정당화합니다.
           </p>
         </section>
 
