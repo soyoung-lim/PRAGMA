@@ -40,7 +40,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
               aria-hidden
               className="inline-block h-4 w-[2px] rounded-full bg-[#FAD338] transition-all duration-200 group-hover:h-5"
             />
-            <span>AI 리터러시 기반 한·중 통번역 학습 워크플로우</span>
+            <span>AI 기반 한·중 통번역 학습 워크플로우</span>
           </Link>
           <div className="flex items-center gap-2">
             {demo && (
