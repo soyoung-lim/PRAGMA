@@ -95,6 +95,8 @@ const AdminArchive = () => {
   const [errors, setErrors] = useState<{ title?: string; mode?: string }>({});
   const [saving, setSaving] = useState(false);
   const [count, setCount] = useState<number | null>(null);
+  const [items, setItems] = useState<ArchiveItem[] | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -110,8 +112,27 @@ const AdminArchive = () => {
     setCount(c ?? 0);
   };
 
+  const fetchItems = async () => {
+    setListError(null);
+    const { data, error } = await supabase
+      .from("archive_items")
+      .select(
+        "id,title,mode,speech_act,discourse_genre,sector,difficulty,source_text,is_learning_pick,status,updated_at",
+      )
+      .order("updated_at", { ascending: false });
+    if (error) {
+      console.error("archive_items fetch error", error);
+      setListError("자료를 불러오는 중 오류가 발생했습니다.");
+      toast.error("자료를 불러오는 중 오류가 발생했습니다.");
+      setItems([]);
+      return;
+    }
+    setItems((data ?? []) as ArchiveItem[]);
+  };
+
   useEffect(() => {
     fetchCount();
+    fetchItems();
   }, []);
 
   const resetForm = () => {
@@ -168,6 +189,7 @@ const AdminArchive = () => {
     resetForm();
     setCount((c) => (c === null ? 1 : c + 1));
     fetchCount();
+    fetchItems();
   };
 
   const handleAiTitle = () => toast("후속 구현 예정");
