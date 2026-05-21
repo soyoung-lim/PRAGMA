@@ -56,7 +56,6 @@ const AdminArchive = () => {
   const handleAiTitle = () => toast("후속 구현 예정");
 
   return (
-  return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="bg-[#15202B]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
