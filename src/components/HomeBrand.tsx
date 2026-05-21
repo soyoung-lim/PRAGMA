@@ -22,7 +22,7 @@ export const HomeBrand = () => {
       onClick={handleClick}
       aria-label="홈으로"
       className={[
-        "group inline-flex items-center gap-1.5 text-base font-bold text-[#F1EFE8] sm:text-lg",
+        "group inline-flex items-center gap-1.5 text-base font-medium text-[#F1EFE8] sm:text-lg",
         "cursor-pointer transition-all duration-200 hover:text-white",
         pulse ? "scale-[0.98] opacity-90" : "scale-100 opacity-100",
       ].join(" ")}
