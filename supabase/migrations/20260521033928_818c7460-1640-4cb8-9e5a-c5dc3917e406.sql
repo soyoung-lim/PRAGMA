@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS archive_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  title_auto_generated boolean DEFAULT false,
+  mode text NOT NULL,
+  topic text,
+  item_type text,
+  difficulty text,
+  speech_act text,
+  discourse_genre text,
+  sector text,
+  source_text text,
+  source_origin text DEFAULT 'manual',
+  audio_url text,
+  youtube_url text,
+  youtube_id text,
+  is_learning_pick boolean DEFAULT false,
+  status text DEFAULT 'archive',
+  researcher_notes text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
