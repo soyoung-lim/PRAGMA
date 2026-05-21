@@ -1,5 +1,3 @@
-import { PageTitle } from "@/components/PageTitle";
-
 const AdminArchive = () => {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -17,19 +15,23 @@ const AdminArchive = () => {
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-10 sm:py-14">
         <section>
-          <PageTitle
-            title={
-              <div className="flex flex-col">
-                <span>통번역 데이터 아카이브</span>
-                <span className="text-xl font-normal text-muted-foreground sm:text-2xl">
-                  Interpretation & Translation Archive
-                </span>
-                <span className="text-base font-normal text-muted-foreground sm:text-lg">
-                  한·중 AI 통번역 학습자료 큐레이션
-                </span>
-              </div>
-            }
-          />
+          <div className="flex items-stretch gap-3">
+            <span
+              aria-hidden
+              className="mt-1 w-[5px] shrink-0 self-stretch rounded-sm bg-[#FAD338]"
+            />
+            <div>
+              <h1 className="text-2xl font-bold leading-tight text-foreground sm:text-3xl">
+                통번역 데이터 아카이브
+              </h1>
+              <p className="mt-1 text-xl text-muted-foreground sm:text-2xl">
+                Interpretation & Translation Archive
+              </p>
+              <p className="mt-1 text-base text-muted-foreground sm:text-lg">
+                한·중 AI 통번역 학습자료 큐레이션
+              </p>
+            </div>
+          </div>
         </section>
 
         <section className="mt-8">
