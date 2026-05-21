@@ -40,10 +40,10 @@ const Landing = () => {
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-6 py-16 sm:py-24">
         {/* HERO */}
         <section className="text-center">
-          <h1 className="text-4xl font-bold leading-[1.15] sm:text-5xl lg:text-[44px] lg:whitespace-nowrap">
+          <h1 className="text-[40px] font-bold leading-[1.15] sm:text-[53px] lg:text-[48px] lg:whitespace-nowrap">
             AI 기반 한·중 통번역 학습 워크플로우
           </h1>
-          <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-[17px]">
+          <p className="mt-5 text-[18px] leading-relaxed text-muted-foreground sm:text-[19px]">
             AI 번역안을 상황에 맞게 고르고 다듬는 번역 의사결정 능력을 기릅니다.
           </p>
         </section>
@@ -60,10 +60,10 @@ const Landing = () => {
                   >
                     {s.n}
                   </span>
-                  <div className="text-[15px] font-bold leading-snug sm:text-[16px]">
+                  <div className="text-[17px] font-bold leading-snug sm:text-[18px]">
                     {s.title}
                   </div>
-                  <div className="mt-2 text-[12px] leading-snug text-muted-foreground">
+                  <div className="mt-2 text-[13px] leading-snug text-muted-foreground">
                     {s.sub}
                   </div>
                 </div>
@@ -84,14 +84,14 @@ const Landing = () => {
         <section className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
           <Link
             to="/scenario"
-            className="rounded-lg bg-[#FAD338] px-10 py-4 text-base font-bold text-[#15202B] shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:bg-[#E8B91F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+            className="rounded-lg bg-[#FAD338] px-11 py-[18px] text-[17px] font-bold text-[#15202B] shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:bg-[#E8B91F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
           >
             학습 시작하기 →
           </Link>
           <button
             type="button"
             onClick={handleDemo}
-            className="rounded-lg border-[1.5px] border-[#15202B] bg-transparent px-10 py-4 text-base font-medium text-[#15202B] transition-colors hover:bg-[#15202B]/[0.04]"
+            className="rounded-lg border-[1.5px] border-[#15202B] bg-transparent px-11 py-[18px] text-[17px] font-medium text-[#15202B] transition-colors hover:bg-[#15202B]/[0.04]"
           >
             데모 모드로 보기
           </button>
