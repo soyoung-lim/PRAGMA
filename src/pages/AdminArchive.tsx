@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { HomeBrand } from "@/components/HomeBrand";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -244,27 +245,23 @@ const AdminArchive = () => {
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="bg-[#15202B]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <span className="flex items-center gap-2 text-base font-medium text-[#F1EFE8] sm:text-lg">
-            <span aria-hidden className="inline-block h-4 w-[2px] rounded-full bg-[#FAD338]" />
-            통번역 데이터 아카이브
-          </span>
-          <span className="rounded-md border border-[#5C6A7A] bg-transparent px-3 py-1.5 text-sm font-medium text-[#F1EFE8]">
-            관리자 영역
-          </span>
+          <HomeBrand />
+          <div className="flex items-center gap-3">
+            <Link
+              to="/"
+              className="text-sm text-[#8899A6] transition-colors hover:text-[#F1EFE8]"
+            >
+              ← 학습자 화면으로
+            </Link>
+            <span className="rounded-md border border-[#5C6A7A] bg-transparent px-3 py-1.5 text-sm font-medium text-[#F1EFE8]">
+              관리자 영역
+            </span>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-10 sm:py-14">
         <section>
-          <Link
-            to="/"
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            ← 학습자 화면으로
-          </Link>
-        </section>
-
-        <section className="mt-6">
           <div className="flex items-stretch gap-3">
             <span
               aria-hidden

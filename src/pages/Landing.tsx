@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ensureSession } from "@/lib/tracking";
 import { enterDemoMode } from "@/lib/demo";
+import { HomeBrand } from "@/components/HomeBrand";
 
 const STEPS = [
   { n: 1, title: "상황 판단", sub: "요청·거절 상황 판단" },
@@ -24,17 +25,8 @@ const Landing = () => {
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="bg-[#15202B]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <span className="flex items-center gap-2 text-base font-medium text-[#F1EFE8] sm:text-lg">
-            <span aria-hidden className="inline-block h-4 w-[2px] rounded-full bg-[#FAD338]" />
-            AI 기반 한·중 통번역 학습 워크플로우
-          </span>
+          <HomeBrand />
           <div className="flex items-center gap-3">
-            <Link
-              to="/scenario"
-              className="hidden rounded-md border border-[#5C6A7A] bg-transparent px-3 py-1.5 text-sm font-medium text-[#F1EFE8] transition-colors hover:bg-white/5 sm:inline-block"
-            >
-              바로 시작 →
-            </Link>
             <Link
               to="/admin/archive"
               className="text-sm text-[#8899A6] transition-colors hover:text-[#F1EFE8]"
