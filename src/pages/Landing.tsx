@@ -28,12 +28,20 @@ const Landing = () => {
             <span aria-hidden className="inline-block h-4 w-[2px] rounded-full bg-[#FAD338]" />
             AI 기반 한·중 통번역 학습 워크플로우
           </span>
-          <Link
-            to="/scenario"
-            className="hidden rounded-md border border-[#5C6A7A] bg-transparent px-3 py-1.5 text-sm font-medium text-[#F1EFE8] transition-colors hover:bg-white/5 sm:inline-block"
-          >
-            바로 시작 →
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/scenario"
+              className="hidden rounded-md border border-[#5C6A7A] bg-transparent px-3 py-1.5 text-sm font-medium text-[#F1EFE8] transition-colors hover:bg-white/5 sm:inline-block"
+            >
+              바로 시작 →
+            </Link>
+            <Link
+              to="/admin/archive"
+              className="text-sm text-[#8899A6] transition-colors hover:text-[#F1EFE8]"
+            >
+              관리자 영역 →
+            </Link>
+          </div>
         </div>
       </header>
 
