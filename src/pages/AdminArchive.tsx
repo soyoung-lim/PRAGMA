@@ -70,6 +70,51 @@ type FormState = {
   researcher_notes: string;
 };
 
+type ArchiveItem = {
+  id: string;
+  title: string;
+  mode: string;
+  speech_act: string | null;
+  discourse_genre: string | null;
+  sector: string | null;
+  difficulty: string | null;
+  source_text: string | null;
+  is_learning_pick: boolean | null;
+  status: string | null;
+  updated_at: string | null;
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  archive: "아카이브",
+  coursework_candidate: "수업자료 후보",
+  experiment_candidate: "본실험 후보",
+  locked: "본실험 확정",
+  excluded: "제외",
+};
+
+const STATUS_STYLES: Record<string, string> = {
+  archive: "bg-[#E5E5E5] text-[#444]",
+  coursework_candidate: "bg-[#E0EAF5] text-[#274A6E]",
+  experiment_candidate: "bg-[#C9DCF0] text-[#1B3A5C]",
+  locked: "bg-[#F5E8C0] text-[#6E5320]",
+  excluded: "bg-[#F0DDDD] text-[#8A2A2A] line-through",
+};
+
+const MODE_STYLES: Record<string, string> = {
+  번역: "bg-[#F1E8DA] text-[#6B533A]",
+  통역: "bg-[#DDE7F2] text-[#2F4E73]",
+};
+
+const formatUpdatedAt = (iso: string | null) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day} 수정`;
+};
+
 const initialForm: FormState = {
   title: "",
   mode: "번역",
