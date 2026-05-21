@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -255,6 +256,15 @@ const AdminArchive = () => {
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-10 sm:py-14">
         <section>
+          <Link
+            to="/"
+            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            ← 학습자 화면으로
+          </Link>
+        </section>
+
+        <section className="mt-6">
           <div className="flex items-stretch gap-3">
             <span
               aria-hidden
