@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,11 +33,13 @@ const FieldRow = ({
   required,
   htmlFor,
   children,
+  error,
 }: {
   label: string;
   required?: boolean;
   htmlFor?: string;
   children: React.ReactNode;
+  error?: string;
 }) => (
   <div className="space-y-1.5">
     <Label htmlFor={htmlFor} className="text-sm text-foreground">
@@ -44,15 +47,129 @@ const FieldRow = ({
       {required && <Required />}
     </Label>
     {children}
+    {error && <p className="text-xs text-[#D14343]">{error}</p>}
   </div>
 );
 
+type FormState = {
+  title: string;
+  mode: string;
+  topic: string;
+  item_type: string;
+  difficulty: string;
+  speech_act: string;
+  discourse_genre: string;
+  sector: string;
+  source_text: string;
+  source_origin: string;
+  audio_url: string;
+  youtube_url: string;
+  youtube_id: string;
+  is_learning_pick: boolean;
+  status: string;
+  researcher_notes: string;
+};
+
+const initialForm: FormState = {
+  title: "",
+  mode: "번역",
+  topic: "",
+  item_type: "",
+  difficulty: "",
+  speech_act: "",
+  discourse_genre: "",
+  sector: "",
+  source_text: "",
+  source_origin: "manual",
+  audio_url: "",
+  youtube_url: "",
+  youtube_id: "",
+  is_learning_pick: false,
+  status: "archive",
+  researcher_notes: "",
+};
+
 const AdminArchive = () => {
   const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(initialForm);
+  const [errors, setErrors] = useState<{ title?: string; mode?: string }>({});
+  const [saving, setSaving] = useState(false);
+  const [count, setCount] = useState<number | null>(null);
 
-  const handleCancel = () => setOpen(false);
-  const handleSave = () =>
-    toast("저장 동작은 다음 단계에서 구현됩니다");
+  const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  const fetchCount = async () => {
+    const { count: c, error } = await supabase
+      .from("archive_items")
+      .select("*", { count: "exact", head: true });
+    if (error) {
+      console.error("count fetch error", error);
+      return;
+    }
+    setCount(c ?? 0);
+  };
+
+  useEffect(() => {
+    fetchCount();
+  }, []);
+
+  const resetForm = () => {
+    setForm(initialForm);
+    setErrors({});
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setOpen(false);
+  };
+
+  const handleSave = async () => {
+    const nextErrors: { title?: string; mode?: string } = {};
+    if (!form.title.trim()) nextErrors.title = "제목을 입력해주세요";
+    if (form.mode !== "번역" && form.mode !== "통역")
+      nextErrors.mode = "모드를 선택해주세요";
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
+    const nullIfEmpty = (v: string) => (v.trim() === "" ? null : v);
+
+    const payload = {
+      title: form.title.trim(),
+      mode: form.mode,
+      topic: nullIfEmpty(form.topic),
+      item_type: nullIfEmpty(form.item_type),
+      difficulty: form.difficulty || null,
+      speech_act: form.speech_act || null,
+      discourse_genre: form.discourse_genre || null,
+      sector: form.sector || null,
+      source_text: nullIfEmpty(form.source_text),
+      source_origin: form.source_origin || "manual",
+      audio_url: nullIfEmpty(form.audio_url),
+      youtube_url: nullIfEmpty(form.youtube_url),
+      youtube_id: nullIfEmpty(form.youtube_id),
+      is_learning_pick: form.is_learning_pick,
+      status: form.status || "archive",
+      researcher_notes: nullIfEmpty(form.researcher_notes),
+      title_auto_generated: false,
+    };
+
+    setSaving(true);
+    const { error } = await supabase.from("archive_items").insert(payload);
+    setSaving(false);
+
+    if (error) {
+      console.error("archive_items insert error", error);
+      toast.error("저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
+    toast.success("자료가 저장되었습니다.");
+    resetForm();
+    setCount((c) => (c === null ? 1 : c + 1));
+    fetchCount();
+  };
+
   const handleAiTitle = () => toast("후속 구현 예정");
 
   return (
@@ -90,6 +207,15 @@ const AdminArchive = () => {
           </div>
         </section>
 
+        <section className="mt-6">
+          <div className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm text-muted-foreground shadow-sm">
+            <span className="text-foreground">전체 자료</span>
+            <span className="font-semibold text-foreground">
+              {count === null ? "—" : `${count}건`}
+            </span>
+          </div>
+        </section>
+
         <section className="mt-8">
           <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
             <p className="text-sm leading-relaxed text-muted-foreground">
@@ -123,9 +249,14 @@ const AdminArchive = () => {
                   <div>
                     <SectionHeader title="기본 정보" />
                     <div className="space-y-5">
-                      <FieldRow label="제목" required htmlFor="title">
+                      <FieldRow label="제목" required htmlFor="title" error={errors.title}>
                         <div className="flex flex-col gap-2 sm:flex-row">
-                          <Input id="title" placeholder="자료 제목" />
+                          <Input
+                            id="title"
+                            placeholder="자료 제목"
+                            value={form.title}
+                            onChange={(e) => setField("title", e.target.value)}
+                          />
                           <Button
                             type="button"
                             variant="outline"
@@ -137,8 +268,12 @@ const AdminArchive = () => {
                         </div>
                       </FieldRow>
 
-                      <FieldRow label="모드" required>
-                        <RadioGroup defaultValue="번역" className="flex gap-6 pt-1">
+                      <FieldRow label="모드" required error={errors.mode}>
+                        <RadioGroup
+                          value={form.mode}
+                          onValueChange={(v) => setField("mode", v)}
+                          className="flex gap-6 pt-1"
+                        >
                           <div className="flex items-center gap-2">
                             <RadioGroupItem value="번역" id="mode-trans" />
                             <Label htmlFor="mode-trans" className="font-normal">번역</Label>
@@ -151,15 +286,28 @@ const AdminArchive = () => {
                       </FieldRow>
 
                       <FieldRow label="주제" htmlFor="topic">
-                        <Input id="topic" placeholder="예: 신제품 출시 회의" />
+                        <Input
+                          id="topic"
+                          placeholder="예: 신제품 출시 회의"
+                          value={form.topic}
+                          onChange={(e) => setField("topic", e.target.value)}
+                        />
                       </FieldRow>
 
                       <FieldRow label="자료 유형" htmlFor="item_type">
-                        <Input id="item_type" placeholder="예: dialogue, email, monologue" />
+                        <Input
+                          id="item_type"
+                          placeholder="예: dialogue, email, monologue"
+                          value={form.item_type}
+                          onChange={(e) => setField("item_type", e.target.value)}
+                        />
                       </FieldRow>
 
                       <FieldRow label="난이도">
-                        <Select>
+                        <Select
+                          value={form.difficulty}
+                          onValueChange={(v) => setField("difficulty", v)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="선택" />
                           </SelectTrigger>
@@ -178,7 +326,10 @@ const AdminArchive = () => {
                     <SectionHeader title="화행·맥락 메타데이터" />
                     <div className="space-y-5">
                       <FieldRow label="화행">
-                        <Select>
+                        <Select
+                          value={form.speech_act}
+                          onValueChange={(v) => setField("speech_act", v)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="선택" />
                           </SelectTrigger>
@@ -190,7 +341,10 @@ const AdminArchive = () => {
                       </FieldRow>
 
                       <FieldRow label="담화 장르">
-                        <Select>
+                        <Select
+                          value={form.discourse_genre}
+                          onValueChange={(v) => setField("discourse_genre", v)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="선택" />
                           </SelectTrigger>
@@ -203,7 +357,10 @@ const AdminArchive = () => {
                       </FieldRow>
 
                       <FieldRow label="섹터">
-                        <Select>
+                        <Select
+                          value={form.sector}
+                          onValueChange={(v) => setField("sector", v)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="선택" />
                           </SelectTrigger>
@@ -227,11 +384,16 @@ const AdminArchive = () => {
                           rows={6}
                           placeholder="원문을 붙여넣거나 직접 입력"
                           className="min-h-[160px]"
+                          value={form.source_text}
+                          onChange={(e) => setField("source_text", e.target.value)}
                         />
                       </FieldRow>
 
                       <FieldRow label="자료 출처">
-                        <Select defaultValue="manual">
+                        <Select
+                          value={form.source_origin}
+                          onValueChange={(v) => setField("source_origin", v)}
+                        >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -245,15 +407,32 @@ const AdminArchive = () => {
                       </FieldRow>
 
                       <FieldRow label="오디오 URL" htmlFor="audio_url">
-                        <Input id="audio_url" type="url" placeholder="https://..." />
+                        <Input
+                          id="audio_url"
+                          type="url"
+                          placeholder="https://..."
+                          value={form.audio_url}
+                          onChange={(e) => setField("audio_url", e.target.value)}
+                        />
                       </FieldRow>
 
                       <FieldRow label="YouTube URL" htmlFor="youtube_url">
-                        <Input id="youtube_url" type="url" placeholder="https://www.youtube.com/watch?v=..." />
+                        <Input
+                          id="youtube_url"
+                          type="url"
+                          placeholder="https://www.youtube.com/watch?v=..."
+                          value={form.youtube_url}
+                          onChange={(e) => setField("youtube_url", e.target.value)}
+                        />
                       </FieldRow>
 
                       <FieldRow label="YouTube ID" htmlFor="youtube_id">
-                        <Input id="youtube_id" placeholder="예: dQw4w9WgXcQ" />
+                        <Input
+                          id="youtube_id"
+                          placeholder="예: dQw4w9WgXcQ"
+                          value={form.youtube_id}
+                          onChange={(e) => setField("youtube_id", e.target.value)}
+                        />
                       </FieldRow>
                     </div>
                   </div>
@@ -264,7 +443,13 @@ const AdminArchive = () => {
                     <div className="space-y-5">
                       <FieldRow label="학습자료 후보">
                         <div className="flex items-center gap-2 pt-1">
-                          <Checkbox id="is_learning_pick" />
+                          <Checkbox
+                            id="is_learning_pick"
+                            checked={form.is_learning_pick}
+                            onCheckedChange={(c) =>
+                              setField("is_learning_pick", c === true)
+                            }
+                          />
                           <Label htmlFor="is_learning_pick" className="font-normal">
                             학습자료
                           </Label>
@@ -272,7 +457,10 @@ const AdminArchive = () => {
                       </FieldRow>
 
                       <FieldRow label="상태">
-                        <Select defaultValue="archive">
+                        <Select
+                          value={form.status}
+                          onValueChange={(v) => setField("status", v)}
+                        >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -296,6 +484,8 @@ const AdminArchive = () => {
                           rows={3}
                           placeholder="연구자 메모 (선택)"
                           className="min-h-[88px]"
+                          value={form.researcher_notes}
+                          onChange={(e) => setField("researcher_notes", e.target.value)}
                         />
                       </FieldRow>
                     </div>
@@ -309,9 +499,10 @@ const AdminArchive = () => {
                   <Button
                     type="button"
                     onClick={handleSave}
+                    disabled={saving}
                     className="bg-[#FAD338] text-[#15202B] hover:bg-[#f0c722]"
                   >
-                    저장
+                    {saving ? "저장 중..." : "저장"}
                   </Button>
                 </div>
               </div>
