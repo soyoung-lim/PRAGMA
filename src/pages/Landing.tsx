@@ -26,7 +26,7 @@ const Landing = () => {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <span className="flex items-center gap-2 text-base font-medium text-[#F1EFE8] sm:text-lg">
             <span aria-hidden className="inline-block h-4 w-[2px] rounded-full bg-[#FAD338]" />
-            AI 기반 한·중 통번역 학습 워크플로우
+            AI 리터러시 기반 한·중 통번역 학습 워크플로우
           </span>
           <Link
             to="/scenario"
@@ -40,10 +40,8 @@ const Landing = () => {
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-6 py-16 sm:py-24">
         {/* HERO */}
         <section className="text-center">
-          <h1 className="text-4xl font-bold leading-[1.15] sm:text-5xl lg:text-[56px]">
-            AI 리터러시 기반
-            <br />
-            한·중 통번역 교수학습 워크플로우
+          <h1 className="text-4xl font-bold leading-[1.15] sm:text-5xl lg:text-[44px] lg:whitespace-nowrap">
+            AI 리터러시 기반 한·중 통번역 학습 워크플로우
           </h1>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-[17px]">
             AI 번역안을 상황에 맞게 고르고 다듬는 번역 의사결정 능력을 기릅니다.
