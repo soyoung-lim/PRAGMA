@@ -70,6 +70,51 @@ type FormState = {
   researcher_notes: string;
 };
 
+type ArchiveItem = {
+  id: string;
+  title: string;
+  mode: string;
+  speech_act: string | null;
+  discourse_genre: string | null;
+  sector: string | null;
+  difficulty: string | null;
+  source_text: string | null;
+  is_learning_pick: boolean | null;
+  status: string | null;
+  updated_at: string | null;
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  archive: "아카이브",
+  coursework_candidate: "수업자료 후보",
+  experiment_candidate: "본실험 후보",
+  locked: "본실험 확정",
+  excluded: "제외",
+};
+
+const STATUS_STYLES: Record<string, string> = {
+  archive: "bg-[#E5E5E5] text-[#444]",
+  coursework_candidate: "bg-[#E0EAF5] text-[#274A6E]",
+  experiment_candidate: "bg-[#C9DCF0] text-[#1B3A5C]",
+  locked: "bg-[#F5E8C0] text-[#6E5320]",
+  excluded: "bg-[#F0DDDD] text-[#8A2A2A] line-through",
+};
+
+const MODE_STYLES: Record<string, string> = {
+  번역: "bg-[#F1E8DA] text-[#6B533A]",
+  통역: "bg-[#DDE7F2] text-[#2F4E73]",
+};
+
+const formatUpdatedAt = (iso: string | null) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day} 수정`;
+};
+
 const initialForm: FormState = {
   title: "",
   mode: "번역",
@@ -95,6 +140,8 @@ const AdminArchive = () => {
   const [errors, setErrors] = useState<{ title?: string; mode?: string }>({});
   const [saving, setSaving] = useState(false);
   const [count, setCount] = useState<number | null>(null);
+  const [items, setItems] = useState<ArchiveItem[] | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -110,8 +157,27 @@ const AdminArchive = () => {
     setCount(c ?? 0);
   };
 
+  const fetchItems = async () => {
+    setListError(null);
+    const { data, error } = await supabase
+      .from("archive_items")
+      .select(
+        "id,title,mode,speech_act,discourse_genre,sector,difficulty,source_text,is_learning_pick,status,updated_at",
+      )
+      .order("updated_at", { ascending: false });
+    if (error) {
+      console.error("archive_items fetch error", error);
+      setListError("자료를 불러오는 중 오류가 발생했습니다.");
+      toast.error("자료를 불러오는 중 오류가 발생했습니다.");
+      setItems([]);
+      return;
+    }
+    setItems((data ?? []) as ArchiveItem[]);
+  };
+
   useEffect(() => {
     fetchCount();
+    fetchItems();
   }, []);
 
   const resetForm = () => {
@@ -168,6 +234,7 @@ const AdminArchive = () => {
     resetForm();
     setCount((c) => (c === null ? 1 : c + 1));
     fetchCount();
+    fetchItems();
   };
 
   const handleAiTitle = () => toast("후속 구현 예정");
@@ -506,6 +573,118 @@ const AdminArchive = () => {
                   </Button>
                 </div>
               </div>
+            </div>
+          )}
+        </section>
+
+        <section className="mt-12">
+          <div className="mb-5 flex items-center gap-2 border-b border-border pb-2">
+            <span aria-hidden className="inline-block h-4 w-[3px] rounded-sm bg-[#FAD338]" />
+            <h2 className="text-base font-semibold text-foreground">등록된 자료</h2>
+          </div>
+
+          {items === null ? (
+            <p className="text-sm text-muted-foreground">자료를 불러오는 중입니다.</p>
+          ) : listError ? (
+            <p className="text-sm text-[#D14343]">{listError}</p>
+          ) : items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              아직 등록된 자료가 없습니다. 위 폼에서 자료를 등록해 주세요.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {items.map((it) => {
+                const tags = [it.speech_act, it.discourse_genre, it.sector].filter(
+                  (t): t is string => !!t,
+                );
+                const statusKey = it.status ?? "archive";
+                const statusLabel = STATUS_LABELS[statusKey] ?? statusKey;
+                const statusClass =
+                  STATUS_STYLES[statusKey] ?? "bg-[#E5E5E5] text-[#444]";
+                const modeClass =
+                  MODE_STYLES[it.mode] ?? "bg-muted text-foreground";
+                return (
+                  <article
+                    key={it.id}
+                    className="flex flex-col rounded-lg border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <h3
+                      className="text-base font-semibold leading-snug text-foreground"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {it.title}
+                    </h3>
+
+                    <div className="mt-2">
+                      <span
+                        className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${modeClass}`}
+                      >
+                        {it.mode}
+                      </span>
+                    </div>
+
+                    {tags.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {tags.map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-full bg-[#EFEAE0] px-2 py-0.5 text-[11px] text-[#5A5343]"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {it.difficulty && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        난이도 · {it.difficulty}
+                      </p>
+                    )}
+
+                    {it.source_text && (
+                      <p
+                        className="mt-3 text-xs leading-relaxed text-muted-foreground"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {it.source_text}
+                      </p>
+                    )}
+
+                    <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3">
+                      <span className="text-[11px]">
+                        {it.is_learning_pick ? (
+                          <span className="rounded-md bg-[#FFF6D6] px-2 py-0.5 text-[#7a5e00]">
+                            ★ 학습자료 후보
+                          </span>
+                        ) : (
+                          <span className="text-transparent">·</span>
+                        )}
+                      </span>
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusClass}`}
+                      >
+                        {statusKey} · {statusLabel}
+                      </span>
+                    </div>
+                    {it.updated_at && (
+                      <p className="mt-2 text-right text-[10px] text-muted-foreground">
+                        {formatUpdatedAt(it.updated_at)}
+                      </p>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
