@@ -1,6 +1,7 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { logAction } from "@/lib/tracking";
 import { exitDemoMode, isDemoMode } from "@/lib/demo";
+import { HomeBrand } from "@/components/HomeBrand";
 
 interface WorkflowHeaderProps {
   /** 현재 단계 (1-5). */
@@ -31,17 +32,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
     <header className="print:hidden">
       <div className="bg-[#15202B]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-          <Link
-            to="/"
-            aria-label="홈으로"
-            className="group inline-flex items-center gap-2 text-base font-medium text-[#F1EFE8] transition-all duration-200 hover:translate-x-0.5 sm:text-lg"
-          >
-            <span
-              aria-hidden
-              className="inline-block h-4 w-[2px] rounded-full bg-[#FAD338] transition-all duration-200 group-hover:h-5"
-            />
-            <span>AI 기반 한·중 통번역 학습 워크플로우</span>
-          </Link>
+          <HomeBrand />
           <div className="flex items-center gap-2">
             {demo && (
               <>
