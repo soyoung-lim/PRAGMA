@@ -40,17 +40,17 @@ const AccordionSection = ({
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className="flex h-11 w-full items-center justify-between gap-2 border-b border-transparent px-4 text-left hover:bg-muted/40"
+      className="flex w-full items-center justify-between gap-2 border-b border-transparent px-2.5 py-1.5 text-left hover:bg-muted/40"
     >
       <span className="flex items-center gap-2">
-        <span aria-hidden className="inline-block h-4 w-[3px] rounded-sm bg-[#FAD338]" />
-        <span className="text-base font-semibold text-foreground">{title}</span>
+        <span aria-hidden className="inline-block h-3.5 w-[2px] rounded-sm bg-[#FAD338]" />
+        <span className="text-[12px] font-medium text-foreground">{title}</span>
       </span>
-      <span aria-hidden className="text-xs text-muted-foreground">
+      <span aria-hidden className="text-[10px] text-muted-foreground/70">
         {open ? "▼" : "▶"}
       </span>
     </button>
-    {open && <div className="space-y-4 border-t border-border px-4 py-4 sm:px-5">{children}</div>}
+    {open && <div className="space-y-4 border-t border-border px-3 py-3">{children}</div>}
   </div>
 );
 
@@ -319,22 +319,22 @@ const AdminArchive = () => {
               aria-hidden
               className="mt-1 w-[5px] shrink-0 self-stretch rounded-sm bg-[#FAD338]"
             />
-            <div>
-              <h1 className="text-2xl font-bold leading-tight text-foreground sm:text-3xl">
+            <div className="leading-[1.3]">
+              <h1 className="text-[22px] font-medium text-foreground">
                 통번역 데이터 아카이브
               </h1>
-              <p className="mt-1 text-xl text-muted-foreground sm:text-2xl">
+              <p className="text-[13px] text-[#888780]">
                 Interpretation & Translation Archive
               </p>
-              <p className="mt-1 text-base text-muted-foreground sm:text-lg">
+              <p className="text-[12px] text-[#B4B2A9]">
                 한·중 AI 통번역 학습자료 큐레이션
               </p>
             </div>
           </div>
         </section>
 
-        <section className="mt-6">
-          <div className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm text-muted-foreground shadow-sm">
+        <section className="mt-3.5">
+          <div className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1 text-xs text-muted-foreground shadow-sm">
             <span className="text-foreground">전체 자료</span>
             <span className="font-semibold text-foreground">
               {count === null ? "—" : `${count}건`}
@@ -342,15 +342,15 @@ const AdminArchive = () => {
           </div>
         </section>
 
-        <section className="mt-8">
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-            <p className="text-sm leading-relaxed text-muted-foreground">
+        <section className="mt-3.5">
+          <div className="rounded-lg border border-border bg-card px-4 py-2.5 shadow-sm">
+            <p className="text-[12px] leading-snug text-muted-foreground">
               이 메타데이터는 자료 큐레이션·검색을 위한 운영 태그이며, 본실험 통제 조건은 별도 locked scenario 단계에서 확정됩니다.
             </p>
           </div>
         </section>
 
-        <section className="mt-8">
+        <section className="mt-4">
           <div className="flex flex-wrap items-center gap-2">
             {!open && (
               <Button
@@ -370,7 +370,302 @@ const AdminArchive = () => {
           </div>
         </section>
 
-        <section className="mt-12">
+        {open && (
+          <section className="mt-5">
+            <div className="mx-auto max-w-[420px]">
+              <div className="rounded-lg border border-border bg-card px-4 py-3.5 shadow-sm">
+                <div className="mb-2.5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-[14px] font-medium text-foreground">
+                      새 자료 등록
+                    </h2>
+                    <span className="rounded-md border border-border bg-[#FFF8DC] px-1.5 py-0.5 text-[11px] text-[#7a5e00]">
+                      초안
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancel}
+                    className="h-auto px-2.5 py-[3px] text-[11px]"
+                  >
+                    취소
+                  </Button>
+                </div>
+
+                <div className="space-y-1">
+                  <AccordionSection
+                    title="기본 정보"
+                    open={sectionsOpen.basic}
+                    onToggle={() => toggleSection("basic")}
+                  >
+                    <FieldRow label="제목" required htmlFor="title" error={errors.title}>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                          id="title"
+                          placeholder="자료 제목"
+                          value={form.title}
+                          onChange={(e) => setField("title", e.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleAiTitle}
+                          className="shrink-0"
+                        >
+                          AI 제목 생성
+                        </Button>
+                      </div>
+                    </FieldRow>
+
+                    <FieldRow label="모드" required error={errors.mode}>
+                      <RadioGroup
+                        value={form.mode}
+                        onValueChange={(v) => setField("mode", v)}
+                        className="flex gap-6 pt-1"
+                      >
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="번역" id="mode-trans" />
+                          <Label htmlFor="mode-trans" className="font-normal">번역</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="통역" id="mode-interp" />
+                          <Label htmlFor="mode-interp" className="font-normal">통역</Label>
+                        </div>
+                      </RadioGroup>
+                    </FieldRow>
+
+                    <FieldRow
+                      label="원문"
+                      required
+                      htmlFor="source_text"
+                      error={errors.source_text}
+                    >
+                      <Textarea
+                        id="source_text"
+                        rows={6}
+                        placeholder="원문을 붙여넣거나 직접 입력"
+                        className="min-h-[160px]"
+                        value={form.source_text}
+                        onChange={(e) => setField("source_text", e.target.value)}
+                      />
+                    </FieldRow>
+
+                    <FieldRow label="난이도" required error={errors.difficulty}>
+                      <Select
+                        value={form.difficulty}
+                        onValueChange={(v) => setField("difficulty", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="중급">중급</SelectItem>
+                          <SelectItem value="고급">고급</SelectItem>
+                          <SelectItem value="전문가">전문가</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FieldRow>
+
+                    <FieldRow label="화행" required error={errors.speech_act}>
+                      <Select
+                        value={form.speech_act}
+                        onValueChange={(v) => setField("speech_act", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="요청">요청</SelectItem>
+                          <SelectItem value="거절">거절</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FieldRow>
+                  </AccordionSection>
+
+                  <AccordionSection
+                    title="화행·맥락 메타데이터"
+                    open={sectionsOpen.meta}
+                    onToggle={() => toggleSection("meta")}
+                  >
+                    <FieldRow label="담화 장르">
+                      <Select
+                        value={form.discourse_genre}
+                        onValueChange={(v) => setField("discourse_genre", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="비즈니스 이메일">비즈니스 이메일</SelectItem>
+                          <SelectItem value="업무 메신저">업무 메신저</SelectItem>
+                          <SelectItem value="회의 발화">회의 발화</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FieldRow>
+
+                    <FieldRow label="섹터">
+                      <Select
+                        value={form.sector}
+                        onValueChange={(v) => setField("sector", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="엔터테인먼트">엔터테인먼트</SelectItem>
+                          <SelectItem value="테크·IT">테크·IT</SelectItem>
+                          <SelectItem value="무역·비즈니스">무역·비즈니스</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FieldRow>
+
+                    <FieldRow label="자료 유형" htmlFor="item_type">
+                      <Input
+                        id="item_type"
+                        placeholder="예: dialogue, email, monologue"
+                        value={form.item_type}
+                        onChange={(e) => setField("item_type", e.target.value)}
+                      />
+                    </FieldRow>
+
+                    <FieldRow label="주제" htmlFor="topic">
+                      <Input
+                        id="topic"
+                        placeholder="예: 신제품 출시 회의"
+                        value={form.topic}
+                        onChange={(e) => setField("topic", e.target.value)}
+                      />
+                    </FieldRow>
+                  </AccordionSection>
+
+                  <AccordionSection
+                    title="미디어·출처"
+                    open={sectionsOpen.media}
+                    onToggle={() => toggleSection("media")}
+                  >
+                    <FieldRow label="자료 출처">
+                      <Select
+                        value={form.source_origin}
+                        onValueChange={(v) => setField("source_origin", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manual">manual · 직접 입력</SelectItem>
+                          <SelectItem value="ai_draft">ai_draft · AI 초안</SelectItem>
+                          <SelectItem value="stt">stt · 음성 인식</SelectItem>
+                          <SelectItem value="youtube">youtube · YouTube</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FieldRow>
+
+                    <FieldRow label="오디오 URL" htmlFor="audio_url">
+                      <Input
+                        id="audio_url"
+                        type="url"
+                        placeholder="https://..."
+                        value={form.audio_url}
+                        onChange={(e) => setField("audio_url", e.target.value)}
+                      />
+                    </FieldRow>
+
+                    <FieldRow label="YouTube URL" htmlFor="youtube_url">
+                      <Input
+                        id="youtube_url"
+                        type="url"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={form.youtube_url}
+                        onChange={(e) => setField("youtube_url", e.target.value)}
+                      />
+                    </FieldRow>
+
+                    <FieldRow label="YouTube ID" htmlFor="youtube_id">
+                      <Input
+                        id="youtube_id"
+                        placeholder="예: dQw4w9WgXcQ"
+                        value={form.youtube_id}
+                        onChange={(e) => setField("youtube_id", e.target.value)}
+                      />
+                    </FieldRow>
+                  </AccordionSection>
+
+                  <AccordionSection
+                    title="연구·운영 태그"
+                    open={sectionsOpen.tags}
+                    onToggle={() => toggleSection("tags")}
+                  >
+                    <FieldRow label="학습자료 후보">
+                      <div className="flex items-center gap-2 pt-1">
+                        <Checkbox
+                          id="is_learning_pick"
+                          checked={form.is_learning_pick}
+                          onCheckedChange={(c) =>
+                            setField("is_learning_pick", c === true)
+                          }
+                        />
+                        <Label htmlFor="is_learning_pick" className="font-normal">
+                          학습자료
+                        </Label>
+                      </div>
+                    </FieldRow>
+
+                    <FieldRow label="상태">
+                      <Select
+                        value={form.status}
+                        onValueChange={(v) => setField("status", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="archive">archive · 아카이브</SelectItem>
+                          <SelectItem value="coursework_candidate">
+                            coursework_candidate · 수업자료 후보
+                          </SelectItem>
+                          <SelectItem value="experiment_candidate">
+                            experiment_candidate · 본실험 후보
+                          </SelectItem>
+                          <SelectItem value="locked">locked · 본실험 확정</SelectItem>
+                          <SelectItem value="excluded">excluded · 제외</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FieldRow>
+
+                    <FieldRow label="연구자 메모" htmlFor="researcher_notes">
+                      <Textarea
+                        id="researcher_notes"
+                        rows={3}
+                        placeholder="연구자 메모 (선택)"
+                        className="min-h-[88px]"
+                        value={form.researcher_notes}
+                        onChange={(e) => setField("researcher_notes", e.target.value)}
+                      />
+                    </FieldRow>
+                  </AccordionSection>
+                </div>
+
+                <div className="mt-2.5 flex justify-end">
+                  <Button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving || missingRequired}
+                    className={
+                      missingRequired
+                        ? "h-auto cursor-not-allowed px-4 py-1.5 text-[12px] bg-[#F5E8B8] text-[#15202B]/60"
+                        : "h-auto px-4 py-1.5 text-[12px] bg-[#FAD338] text-[#15202B] hover:bg-[#f0c722]"
+                    }
+                  >
+                    {saving ? "저장 중..." : "저장"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section className="mt-10">
           <div className="mb-5 flex items-center gap-2 border-b border-border pb-2">
             <span aria-hidden className="inline-block h-4 w-[3px] rounded-sm bg-[#FAD338]" />
             <h2 className="text-base font-semibold text-foreground">등록된 자료</h2>
@@ -482,297 +777,6 @@ const AdminArchive = () => {
           )}
         </section>
 
-        {open && (
-          <section className="mt-16 border-t border-border/60 pt-8">
-            <div className="mx-auto max-w-[480px]">
-              <div className="rounded-lg border border-border bg-card px-6 py-6 shadow-sm">
-                <div className="mb-5 flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    새 자료 등록
-                  </h2>
-                  <span className="rounded-md border border-border bg-[#FFF8DC] px-2 py-0.5 text-xs text-[#7a5e00]">
-                    초안
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  {/* Section 1: 기본 정보 */}
-                  <AccordionSection
-                    title="기본 정보"
-                    open={sectionsOpen.basic}
-                    onToggle={() => toggleSection("basic")}
-                  >
-                    <FieldRow label="제목" required htmlFor="title" error={errors.title}>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Input
-                          id="title"
-                          placeholder="자료 제목"
-                          value={form.title}
-                          onChange={(e) => setField("title", e.target.value)}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleAiTitle}
-                          className="shrink-0"
-                        >
-                          AI 제목 생성
-                        </Button>
-                      </div>
-                    </FieldRow>
-
-                    <FieldRow label="모드" required error={errors.mode}>
-                      <RadioGroup
-                        value={form.mode}
-                        onValueChange={(v) => setField("mode", v)}
-                        className="flex gap-6 pt-1"
-                      >
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem value="번역" id="mode-trans" />
-                          <Label htmlFor="mode-trans" className="font-normal">번역</Label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem value="통역" id="mode-interp" />
-                          <Label htmlFor="mode-interp" className="font-normal">통역</Label>
-                        </div>
-                      </RadioGroup>
-                    </FieldRow>
-
-                    <FieldRow
-                      label="원문"
-                      required
-                      htmlFor="source_text"
-                      error={errors.source_text}
-                    >
-                      <Textarea
-                        id="source_text"
-                        rows={6}
-                        placeholder="원문을 붙여넣거나 직접 입력"
-                        className="min-h-[160px]"
-                        value={form.source_text}
-                        onChange={(e) => setField("source_text", e.target.value)}
-                      />
-                    </FieldRow>
-
-                    <FieldRow label="난이도" required error={errors.difficulty}>
-                      <Select
-                        value={form.difficulty}
-                        onValueChange={(v) => setField("difficulty", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="중급">중급</SelectItem>
-                          <SelectItem value="고급">고급</SelectItem>
-                          <SelectItem value="전문가">전문가</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-
-                    <FieldRow label="화행" required error={errors.speech_act}>
-                      <Select
-                        value={form.speech_act}
-                        onValueChange={(v) => setField("speech_act", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="요청">요청</SelectItem>
-                          <SelectItem value="거절">거절</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-                  </AccordionSection>
-
-                  {/* Section 2: 화행·맥락 메타데이터 */}
-                  <AccordionSection
-                    title="화행·맥락 메타데이터"
-                    open={sectionsOpen.meta}
-                    onToggle={() => toggleSection("meta")}
-                  >
-                    <FieldRow label="담화 장르">
-                      <Select
-                        value={form.discourse_genre}
-                        onValueChange={(v) => setField("discourse_genre", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="비즈니스 이메일">비즈니스 이메일</SelectItem>
-                          <SelectItem value="업무 메신저">업무 메신저</SelectItem>
-                          <SelectItem value="회의 발화">회의 발화</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-
-                    <FieldRow label="섹터">
-                      <Select
-                        value={form.sector}
-                        onValueChange={(v) => setField("sector", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="엔터테인먼트">엔터테인먼트</SelectItem>
-                          <SelectItem value="테크·IT">테크·IT</SelectItem>
-                          <SelectItem value="무역·비즈니스">무역·비즈니스</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-
-                    <FieldRow label="자료 유형" htmlFor="item_type">
-                      <Input
-                        id="item_type"
-                        placeholder="예: dialogue, email, monologue"
-                        value={form.item_type}
-                        onChange={(e) => setField("item_type", e.target.value)}
-                      />
-                    </FieldRow>
-
-                    <FieldRow label="주제" htmlFor="topic">
-                      <Input
-                        id="topic"
-                        placeholder="예: 신제품 출시 회의"
-                        value={form.topic}
-                        onChange={(e) => setField("topic", e.target.value)}
-                      />
-                    </FieldRow>
-                  </AccordionSection>
-
-                  {/* Section 3: 미디어·출처 */}
-                  <AccordionSection
-                    title="미디어·출처"
-                    open={sectionsOpen.media}
-                    onToggle={() => toggleSection("media")}
-                  >
-                    <FieldRow label="자료 출처">
-                      <Select
-                        value={form.source_origin}
-                        onValueChange={(v) => setField("source_origin", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="manual">manual · 직접 입력</SelectItem>
-                          <SelectItem value="ai_draft">ai_draft · AI 초안</SelectItem>
-                          <SelectItem value="stt">stt · 음성 인식</SelectItem>
-                          <SelectItem value="youtube">youtube · YouTube</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-
-                    <FieldRow label="오디오 URL" htmlFor="audio_url">
-                      <Input
-                        id="audio_url"
-                        type="url"
-                        placeholder="https://..."
-                        value={form.audio_url}
-                        onChange={(e) => setField("audio_url", e.target.value)}
-                      />
-                    </FieldRow>
-
-                    <FieldRow label="YouTube URL" htmlFor="youtube_url">
-                      <Input
-                        id="youtube_url"
-                        type="url"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        value={form.youtube_url}
-                        onChange={(e) => setField("youtube_url", e.target.value)}
-                      />
-                    </FieldRow>
-
-                    <FieldRow label="YouTube ID" htmlFor="youtube_id">
-                      <Input
-                        id="youtube_id"
-                        placeholder="예: dQw4w9WgXcQ"
-                        value={form.youtube_id}
-                        onChange={(e) => setField("youtube_id", e.target.value)}
-                      />
-                    </FieldRow>
-                  </AccordionSection>
-
-                  {/* Section 4: 연구·운영 태그 */}
-                  <AccordionSection
-                    title="연구·운영 태그"
-                    open={sectionsOpen.tags}
-                    onToggle={() => toggleSection("tags")}
-                  >
-                    <FieldRow label="학습자료 후보">
-                      <div className="flex items-center gap-2 pt-1">
-                        <Checkbox
-                          id="is_learning_pick"
-                          checked={form.is_learning_pick}
-                          onCheckedChange={(c) =>
-                            setField("is_learning_pick", c === true)
-                          }
-                        />
-                        <Label htmlFor="is_learning_pick" className="font-normal">
-                          학습자료
-                        </Label>
-                      </div>
-                    </FieldRow>
-
-                    <FieldRow label="상태">
-                      <Select
-                        value={form.status}
-                        onValueChange={(v) => setField("status", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="archive">archive · 아카이브</SelectItem>
-                          <SelectItem value="coursework_candidate">
-                            coursework_candidate · 수업자료 후보
-                          </SelectItem>
-                          <SelectItem value="experiment_candidate">
-                            experiment_candidate · 본실험 후보
-                          </SelectItem>
-                          <SelectItem value="locked">locked · 본실험 확정</SelectItem>
-                          <SelectItem value="excluded">excluded · 제외</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-
-                    <FieldRow label="연구자 메모" htmlFor="researcher_notes">
-                      <Textarea
-                        id="researcher_notes"
-                        rows={3}
-                        placeholder="연구자 메모 (선택)"
-                        className="min-h-[88px]"
-                        value={form.researcher_notes}
-                        onChange={(e) => setField("researcher_notes", e.target.value)}
-                      />
-                    </FieldRow>
-                  </AccordionSection>
-                </div>
-
-                <div className="mt-5 flex items-center justify-end gap-2 border-t border-border pt-4">
-                  <Button type="button" variant="outline" onClick={handleCancel}>
-                    취소
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving || missingRequired}
-                    className={
-                      missingRequired
-                        ? "cursor-not-allowed bg-[#F5E8B8] text-[#15202B]/60"
-                        : "bg-[#FAD338] text-[#15202B] hover:bg-[#f0c722]"
-                    }
-                  >
-                    {saving ? "저장 중..." : "저장"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
       </main>
       <ExportSessionsDialog open={exportOpen} onOpenChange={setExportOpen} />
     </div>
