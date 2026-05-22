@@ -154,6 +154,8 @@ const Finalize = () => {
     }
   }, [finalTranslation, justification]);
 
+  useStageTimer(4);
+
   const justOk = justification.trim().length >= 50;
   const transOk = finalTranslation.trim().length >= 1;
   const canProceed = demo || (justOk && transOk);
