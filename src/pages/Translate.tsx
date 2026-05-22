@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
+import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
 import { PageTitle } from "@/components/PageTitle";
 
