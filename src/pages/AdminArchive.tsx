@@ -35,12 +35,12 @@ const AccordionSection = ({
   onToggle: () => void;
   children: React.ReactNode;
 }) => (
-  <div className="rounded-md border border-border bg-card">
+    <div className="rounded-md border border-border bg-card">
     <button
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className="flex w-full items-center justify-between gap-2 border-b border-transparent px-4 py-3 text-left hover:bg-muted/40"
+      className="flex h-11 w-full items-center justify-between gap-2 border-b border-transparent px-4 text-left hover:bg-muted/40"
     >
       <span className="flex items-center gap-2">
         <span aria-hidden className="inline-block h-4 w-[3px] rounded-sm bg-[#FAD338]" />
@@ -50,7 +50,7 @@ const AccordionSection = ({
         {open ? "▼" : "▶"}
       </span>
     </button>
-    {open && <div className="space-y-5 border-t border-border px-4 py-5 sm:px-5">{children}</div>}
+    {open && <div className="space-y-4 border-t border-border px-4 py-4 sm:px-5">{children}</div>}
   </div>
 );
 
