@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
+import { useStageTimer, saveCompletedSession, resetDraft } from "@/lib/learningSessions";
 import { exitDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
 import { PageTitle } from "@/components/PageTitle";
@@ -197,6 +198,28 @@ const Dashboard = () => {
     setHydrated(true);
   }, []);
 
+  useStageTimer(5);
+
+  const persistSession = (): boolean => {
+    try {
+      const saved = saveCompletedSession();
+      if (saved) {
+        toast.success("학습 데이터가 저장되었습니다.");
+        return true;
+      }
+      // already saved earlier
+      return false;
+    } catch (e) {
+      console.error("saveCompletedSession failed", e);
+      toast.error("학습 데이터 저장 중 오류가 발생했습니다.");
+      return false;
+    }
+  };
+
+  const handleComplete = () => {
+    persistSession();
+  };
+
   const data = useMemo(() => {
     const actRaw = localStorage.getItem(ACT_STORAGE_KEY);
     const act: ActId | null =
@@ -237,11 +260,14 @@ const Dashboard = () => {
   };
 
   const handleSavePdf = () => {
+    persistSession();
     toast("PDF 저장 기능은 본 실험 운영 시 활성화됩니다.");
   };
 
   const handleAnother = () => {
+    persistSession();
     exitDemoMode();
+    resetDraft();
     [
       ACT_STORAGE_KEY,
       STEP1_ANSWERS_KEY,
@@ -258,7 +284,9 @@ const Dashboard = () => {
   };
 
   const handleHome = () => {
+    persistSession();
     exitDemoMode();
+    resetDraft();
     logAction("session_end", { reason: "home" }, "/dashboard");
     navigate("/");
   };
@@ -680,6 +708,13 @@ const Dashboard = () => {
               className="rounded-lg bg-[#FAD338] px-6 py-3 text-base font-semibold text-[#15202B] transition-colors hover:bg-[#E8B91F] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               리포트 PDF 저장
+            </button>
+            <button
+              type="button"
+              onClick={handleComplete}
+              className="rounded-lg bg-[#15202B] px-6 py-3 text-base font-semibold text-[#F1EFE8] transition-colors hover:bg-[#1f2d3a] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+            >
+              학습 완료
             </button>
           </div>
         </div>
