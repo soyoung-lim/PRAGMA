@@ -3,13 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { ensureSession } from "@/lib/tracking";
 import { enterDemoMode } from "@/lib/demo";
 import { HomeBrand } from "@/components/HomeBrand";
+import { WORKFLOW_STEPS } from "@/lib/workflowSteps";
 
 const STEPS = [
-  { n: 1, title: "발화 상황 판단", sub: "요청·거절 화행 시나리오" },
-  { n: 2, title: "AI 번역안 비교", sub: "기본 vs 전략 프롬프트" },
-  { n: 3, title: "AI 피드백 확인", sub: "의미 충실 · 관계 유지 · 리스크 관리" },
-  { n: 4, title: "최종 번역안 확정", sub: "AI 번역 참고 → 최종안 확정" },
-  { n: 5, title: "의사결정 리포트", sub: "학습 흐름 시각화" },
+  { n: 1, title: WORKFLOW_STEPS[1].full, sub: "요청·거절 화행 시나리오" },
+  { n: 2, title: WORKFLOW_STEPS[2].full, sub: "기본 vs 전략 프롬프트" },
+  { n: 3, title: WORKFLOW_STEPS[3].full, sub: "의미 충실 · 관계 유지 · 리스크 관리" },
+  { n: 4, title: WORKFLOW_STEPS[4].full, sub: "AI 번역 참고 → 최종안 확정" },
+  { n: 5, title: WORKFLOW_STEPS[5].full, sub: "학습 흐름 시각화" },
 ];
 
 const Landing = () => {
