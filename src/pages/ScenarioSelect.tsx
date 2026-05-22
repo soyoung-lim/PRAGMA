@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
+import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
 import { toast } from "sonner";
 import { PageTitle } from "@/components/PageTitle";
@@ -211,6 +212,8 @@ const ScenarioSelect = () => {
       if (b === "1") setBodyOpen(true);
     } catch { /* ignore */ }
   }, []);
+
+  useStageTimer(1);
 
   useEffect(() => {
     return () => {

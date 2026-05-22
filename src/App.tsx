@@ -13,6 +13,9 @@ import Finalize from "./pages/Finalize.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import AdminArchive from "./pages/AdminArchive.tsx";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { seedIfEmpty } from "./lib/learningSessions";
+
+seedIfEmpty();
 
 const queryClient = new QueryClient();
 
