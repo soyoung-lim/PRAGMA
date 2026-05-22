@@ -766,6 +766,7 @@ const AdminArchive = () => {
           )}
         </section>
       </main>
+      <ExportSessionsDialog open={exportOpen} onOpenChange={setExportOpen} />
     </div>
   );
 };
