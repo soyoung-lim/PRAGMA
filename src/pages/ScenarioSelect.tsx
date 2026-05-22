@@ -213,6 +213,8 @@ const ScenarioSelect = () => {
     } catch { /* ignore */ }
   }, []);
 
+  useStageTimer(1);
+
   useEffect(() => {
     return () => {
       if (audioEl) {
