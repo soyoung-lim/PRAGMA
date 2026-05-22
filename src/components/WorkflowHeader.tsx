@@ -59,7 +59,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
   };
 
   return (
-    <header className="print:hidden sticky top-0 z-[100]">
+    <header className="print:hidden">
       <div className="sticky top-0 z-[100] bg-[#15202B]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
           <HomeBrand />
@@ -92,7 +92,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
 
       <nav
         aria-label="진행 단계"
-        className="sticky top-[48px] z-[90] border-b border-black/5 backdrop-blur"
+        className="sticky top-[44px] z-[90] border-b border-black/5 backdrop-blur"
         style={{ backgroundColor: "rgba(252, 248, 238, 0.95)" }}
       >
         <ol className="mx-auto flex max-w-6xl flex-nowrap items-center justify-between gap-1.5 px-5 py-2.5">
