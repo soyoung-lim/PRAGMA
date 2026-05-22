@@ -143,7 +143,6 @@ export function ensureDraft(): Draft {
 export function resetDraft() {
   try {
     localStorage.removeItem(DRAFT_KEY);
-    localStorage.removeItem("max-reached-step");
   } catch {
     /* ignore */
   }
