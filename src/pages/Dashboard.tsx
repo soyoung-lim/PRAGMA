@@ -709,6 +709,13 @@ const Dashboard = () => {
             >
               리포트 PDF 저장
             </button>
+            <button
+              type="button"
+              onClick={handleComplete}
+              className="rounded-lg bg-[#15202B] px-6 py-3 text-base font-semibold text-[#F1EFE8] transition-colors hover:bg-[#1f2d3a] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+            >
+              학습 완료
+            </button>
           </div>
         </div>
       </main>
