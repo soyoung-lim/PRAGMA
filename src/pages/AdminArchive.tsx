@@ -40,17 +40,17 @@ const AccordionSection = ({
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className="flex h-11 w-full items-center justify-between gap-2 border-b border-transparent px-4 text-left hover:bg-muted/40"
+      className="flex w-full items-center justify-between gap-2 border-b border-transparent px-2.5 py-1.5 text-left hover:bg-muted/40"
     >
       <span className="flex items-center gap-2">
-        <span aria-hidden className="inline-block h-4 w-[3px] rounded-sm bg-[#FAD338]" />
-        <span className="text-base font-semibold text-foreground">{title}</span>
+        <span aria-hidden className="inline-block h-3.5 w-[2px] rounded-sm bg-[#FAD338]" />
+        <span className="text-[12px] font-medium text-foreground">{title}</span>
       </span>
-      <span aria-hidden className="text-xs text-muted-foreground">
+      <span aria-hidden className="text-[10px] text-muted-foreground/70">
         {open ? "▼" : "▶"}
       </span>
     </button>
-    {open && <div className="space-y-4 border-t border-border px-4 py-4 sm:px-5">{children}</div>}
+    {open && <div className="space-y-4 border-t border-border px-3 py-3">{children}</div>}
   </div>
 );
 
