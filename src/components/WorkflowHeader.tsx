@@ -74,7 +74,7 @@ export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) 
         className="sticky top-[48px] z-[90] border-b border-black/5 backdrop-blur-md"
         style={{ backgroundColor: "rgba(252,248,238,0.95)" }}
       >
-        <ol className="mx-auto flex max-w-6xl items-stretch gap-1.5 px-6 py-1.5 sm:gap-2">
+        <ol className="mx-auto flex max-w-6xl items-stretch gap-1.5 px-6 py-3.5 sm:gap-2">
           {STEPS.map((s, idx) => {
             const isCurrent = s.num === currentStep;
             const isDone = s.num < currentStep || (!!completed && !isCurrent);
