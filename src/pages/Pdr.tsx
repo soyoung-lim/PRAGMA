@@ -179,7 +179,7 @@ const Pdr = () => {
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         <PageTitle
-          title="번역안 비교"
+          title="AI 번역안 비교"
           description="세 가지 AI 번역안을 비교하고, 어느 쪽이 가장 적절하고 가장 부적절한지 골라보세요."
         />
 

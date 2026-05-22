@@ -246,7 +246,7 @@ const Translate = () => {
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         <PageTitle
-          title="피드백 확인"
+          title="AI 피드백 확인"
           description="방금 선택한 번역안에 대해, 두 가지 관점에서 본 피드백을 확인해 보세요."
         />
 

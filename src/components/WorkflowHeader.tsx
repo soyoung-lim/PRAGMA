@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { logAction } from "@/lib/tracking";
 import { exitDemoMode, isDemoMode } from "@/lib/demo";
 import { HomeBrand } from "@/components/HomeBrand";
+import { WORKFLOW_STEPS } from "@/lib/workflowSteps";
 
 interface WorkflowHeaderProps {
   /** 현재 단계 (1-5). */
@@ -11,11 +12,11 @@ interface WorkflowHeaderProps {
 }
 
 const STEPS = [
-  { num: 1, label: "상황 판단", path: "/scenario" },
-  { num: 2, label: "번역안 비교", path: "/pdr" },
-  { num: 3, label: "피드백 확인", path: "/translate" },
-  { num: 4, label: "최종 작성", path: "/finalize" },
-  { num: 5, label: "의사결정 리포트", path: "/dashboard" },
+  { num: 1, label: WORKFLOW_STEPS[1].short, path: "/scenario" },
+  { num: 2, label: WORKFLOW_STEPS[2].short, path: "/pdr" },
+  { num: 3, label: WORKFLOW_STEPS[3].short, path: "/translate" },
+  { num: 4, label: WORKFLOW_STEPS[4].short, path: "/finalize" },
+  { num: 5, label: WORKFLOW_STEPS[5].short, path: "/dashboard" },
 ];
 
 export const WorkflowHeader = ({ currentStep, completed }: WorkflowHeaderProps) => {
