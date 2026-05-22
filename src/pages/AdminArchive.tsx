@@ -40,17 +40,17 @@ const AccordionSection = ({
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className="flex w-full items-center justify-between gap-2 border-b border-transparent px-2.5 py-1.5 text-left hover:bg-muted/40"
+      className="flex w-full items-center justify-between gap-2 border-b border-transparent px-3 py-2 text-left hover:bg-muted/40"
     >
       <span className="flex items-center gap-2">
-        <span aria-hidden className="inline-block h-3.5 w-[2px] rounded-sm bg-[#FAD338]" />
-        <span className="text-[12px] font-medium text-foreground">{title}</span>
+        <span aria-hidden className="inline-block h-4 w-[2.5px] rounded-sm bg-[#FAD338]" />
+        <span className="text-[13px] font-medium text-foreground">{title}</span>
       </span>
-      <span aria-hidden className="text-[10px] text-muted-foreground/70">
+      <span aria-hidden className="text-[11px] text-muted-foreground/70">
         {open ? "▼" : "▶"}
       </span>
     </button>
-    {open && <div className="space-y-4 border-t border-border px-3 py-3">{children}</div>}
+    {open && <div className="space-y-4 border-t border-border px-4 py-4">{children}</div>}
   </div>
 );
 
@@ -320,13 +320,13 @@ const AdminArchive = () => {
               className="mt-1 w-[5px] shrink-0 self-stretch rounded-sm bg-[#FAD338]"
             />
             <div className="leading-[1.3]">
-              <h1 className="text-[22px] font-medium text-foreground">
+              <h1 className="text-[24px] font-medium text-foreground">
                 통번역 데이터 아카이브
               </h1>
-              <p className="text-[13px] text-[#888780]">
+              <p className="text-[14px] text-[#888780]">
                 Interpretation & Translation Archive
               </p>
-              <p className="text-[12px] text-[#B4B2A9]">
+              <p className="text-[13px] text-[#B4B2A9]">
                 한·중 AI 통번역 학습자료 큐레이션
               </p>
             </div>
@@ -343,8 +343,8 @@ const AdminArchive = () => {
         </section>
 
         <section className="mt-3.5">
-          <div className="rounded-lg border border-border bg-card px-4 py-2.5 shadow-sm">
-            <p className="text-[12px] leading-snug text-muted-foreground">
+          <div className="rounded-lg border border-border bg-card px-5 py-3 shadow-sm">
+            <p className="text-[13px] leading-snug text-muted-foreground">
               이 메타데이터는 자료 큐레이션·검색을 위한 운영 태그이며, 본실험 통제 조건은 별도 locked scenario 단계에서 확정됩니다.
             </p>
           </div>
@@ -372,14 +372,14 @@ const AdminArchive = () => {
 
         {open && (
           <section className="mt-5">
-            <div className="mx-auto max-w-[420px]">
-              <div className="rounded-lg border border-border bg-card px-4 py-3.5 shadow-sm">
-                <div className="mb-2.5 flex items-center justify-between gap-2">
+            <div className="mx-auto max-w-[460px]">
+              <div className="rounded-lg border border-border bg-card px-5 py-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-[14px] font-medium text-foreground">
+                    <h2 className="text-[15px] font-medium text-foreground">
                       새 자료 등록
                     </h2>
-                    <span className="rounded-md border border-border bg-[#FFF8DC] px-1.5 py-0.5 text-[11px] text-[#7a5e00]">
+                    <span className="rounded-md border border-border bg-[#FFF8DC] px-2 py-0.5 text-[12px] text-[#7a5e00]">
                       초안
                     </span>
                   </div>
@@ -387,13 +387,13 @@ const AdminArchive = () => {
                     type="button"
                     variant="outline"
                     onClick={handleCancel}
-                    className="h-auto px-2.5 py-[3px] text-[11px]"
+                    className="h-auto px-3 py-1 text-[12px]"
                   >
                     취소
                   </Button>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <AccordionSection
                     title="기본 정보"
                     open={sectionsOpen.basic}
@@ -445,7 +445,7 @@ const AdminArchive = () => {
                         id="source_text"
                         rows={6}
                         placeholder="원문을 붙여넣거나 직접 입력"
-                        className="min-h-[160px]"
+                        className="min-h-[176px]"
                         value={form.source_text}
                         onChange={(e) => setField("source_text", e.target.value)}
                       />
@@ -638,7 +638,7 @@ const AdminArchive = () => {
                         id="researcher_notes"
                         rows={3}
                         placeholder="연구자 메모 (선택)"
-                        className="min-h-[88px]"
+                        className="min-h-[96px]"
                         value={form.researcher_notes}
                         onChange={(e) => setField("researcher_notes", e.target.value)}
                       />
@@ -646,15 +646,15 @@ const AdminArchive = () => {
                   </AccordionSection>
                 </div>
 
-                <div className="mt-2.5 flex justify-end">
+                <div className="mt-3.5 flex justify-end">
                   <Button
                     type="button"
                     onClick={handleSave}
                     disabled={saving || missingRequired}
                     className={
                       missingRequired
-                        ? "h-auto cursor-not-allowed px-4 py-1.5 text-[12px] bg-[#F5E8B8] text-[#15202B]/60"
-                        : "h-auto px-4 py-1.5 text-[12px] bg-[#FAD338] text-[#15202B] hover:bg-[#f0c722]"
+                        ? "h-auto cursor-not-allowed px-5 py-2 text-[13px] bg-[#F5E8B8] text-[#15202B]/60"
+                        : "h-auto px-5 py-2 text-[13px] bg-[#FAD338] text-[#15202B] hover:bg-[#f0c722]"
                     }
                   >
                     {saving ? "저장 중..." : "저장"}
