@@ -167,6 +167,8 @@ const Translate = () => {
     }
   }, []);
 
+  useStageTimer(3);
+
   useEffect(() => {
     const payload: Step3Data = {
       impact: (impact || undefined) as ImpactLevel | undefined,

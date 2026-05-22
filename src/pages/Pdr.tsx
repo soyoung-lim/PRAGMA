@@ -100,6 +100,8 @@ const Pdr = () => {
     }
   }, []);
 
+  useStageTimer(2);
+
   const setBestSafe = (c: Choice) => {
     if (demo) return;
     setBest(c);
