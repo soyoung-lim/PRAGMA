@@ -368,9 +368,9 @@ const AdminArchive = () => {
               </Button>
             </div>
           ) : (
-            <div className="mx-auto w-full lg:w-[70%]">
+            <div className="max-w-[480px]">
               <div className="rounded-lg border border-border bg-card p-6 shadow-sm sm:p-8">
-                <div className="mb-6 flex items-center justify-between">
+                <div className="mb-6 flex items-center gap-2">
                   <h2 className="text-lg font-semibold text-foreground">
                     새 자료 등록
                   </h2>
@@ -644,7 +644,11 @@ const AdminArchive = () => {
                     type="button"
                     onClick={handleSave}
                     disabled={saving || missingRequired}
-                    className="bg-[#FAD338] text-[#15202B] hover:bg-[#f0c722]"
+                    className={
+                      missingRequired
+                        ? "cursor-not-allowed bg-[#F5E8B8] text-[#15202B]/60"
+                        : "bg-[#FAD338] text-[#15202B] hover:bg-[#f0c722]"
+                    }
                   >
                     {saving ? "저장 중..." : "저장"}
                   </Button>
