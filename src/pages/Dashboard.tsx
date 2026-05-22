@@ -304,11 +304,11 @@ const Dashboard = () => {
             <SectionLabel>단계별 의사결정 소요 시간</SectionLabel>
             {(() => {
               const stages = [
-                { label: "1. 상황 이해", seconds: 90, display: "1분 30초" },
-                { label: "2. 번역안 비교", seconds: 195, display: "3분 15초" },
-                { label: "3. 피드백 확인", seconds: 250, display: "4분 10초" },
-                { label: "4. 최종 작성", seconds: 170, display: "2분 50초" },
-                { label: "5. 리포트 보기", seconds: 65, display: "1분 5초" },
+                { label: "1. 발화 상황 판단", seconds: 90, display: "1분 30초" },
+                { label: "2. AI 번역안 비교", seconds: 195, display: "3분 15초" },
+                { label: "3. AI 피드백 확인", seconds: 250, display: "4분 10초" },
+                { label: "4. 최종 번역안 확정", seconds: 170, display: "2분 50초" },
+                { label: "5. 의사결정 리포트", seconds: 65, display: "1분 5초" },
               ];
               const total = stages.reduce((a, s) => a + s.seconds, 0);
               const max = Math.max(...stages.map((s) => s.seconds));

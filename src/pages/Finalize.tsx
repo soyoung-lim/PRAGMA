@@ -165,8 +165,8 @@ const Finalize = () => {
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         <PageTitle
-          title="최종 번역 작성"
-          description="이제 본인이 결정한 중국어 번역안을 직접 작성해 주세요. AI 번역안을 참고할 수는 있지만, 최종안은 본인의 표현으로 적어주세요."
+          title="최종 번역안 확정"
+          description="AI 번역안 비교와 피드백을 거쳐, 본인이 최종 확정한 중국어 번역안을 작성해 주세요. AI 번역안을 참고할 수는 있지만, 최종안은 본인의 판단과 표현으로 다듬어 확정해 주세요."
         />
 
         {/* Reference panel (collapsed by default) */}
@@ -280,7 +280,7 @@ const Finalize = () => {
             value={finalTranslation}
             onChange={(e) => !demo && setFinalTranslation(e.target.value)}
             readOnly={demo}
-            placeholder="여기에 본인이 결정한 최종 중국어 번역안을 직접 입력하세요. 번역안 A/B/C 중 하나를 그대로 붙여 넣지 말고, 본인의 판단으로 다듬어 작성해 주세요."
+            placeholder="여기에 본인이 최종 확정한 중국어 번역안을 입력하세요. 번역안 A/B/C 중 하나를 그대로 붙여 넣지 말고, 본인의 판단으로 다듬어 확정해 주세요."
             rows={6}
             maxLength={2000}
             className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-4 text-[17px] font-medium leading-relaxed text-[#15202B] focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
