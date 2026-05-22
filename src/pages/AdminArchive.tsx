@@ -174,8 +174,8 @@ const AdminArchive = () => {
   const [items, setItems] = useState<ArchiveItem[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [sectionsOpen, setSectionsOpen] = useState({
-    basic: true,
-    meta: true,
+    basic: false,
+    meta: false,
     media: false,
     tags: false,
   });
