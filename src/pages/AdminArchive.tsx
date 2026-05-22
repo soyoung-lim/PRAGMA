@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { HomeBrand } from "@/components/HomeBrand";
@@ -23,10 +23,33 @@ const Required = () => (
   </span>
 );
 
-const SectionHeader = ({ title }: { title: string }) => (
-  <div className="mb-4 flex items-center gap-2 border-b border-border pb-2">
-    <span aria-hidden className="inline-block h-4 w-[3px] rounded-sm bg-[#FAD338]" />
-    <h3 className="text-base font-semibold text-foreground">{title}</h3>
+const AccordionSection = ({
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) => (
+  <div className="rounded-md border border-border bg-card">
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="flex w-full items-center justify-between gap-2 border-b border-transparent px-4 py-3 text-left hover:bg-muted/40"
+    >
+      <span className="flex items-center gap-2">
+        <span aria-hidden className="inline-block h-4 w-[3px] rounded-sm bg-[#FAD338]" />
+        <span className="text-base font-semibold text-foreground">{title}</span>
+      </span>
+      <span aria-hidden className="text-xs text-muted-foreground">
+        {open ? "▼" : "▶"}
+      </span>
+    </button>
+    {open && <div className="space-y-5 border-t border-border px-4 py-5 sm:px-5">{children}</div>}
   </div>
 );
 
@@ -139,11 +162,35 @@ const initialForm: FormState = {
 const AdminArchive = () => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(initialForm);
-  const [errors, setErrors] = useState<{ title?: string; mode?: string }>({});
+  const [errors, setErrors] = useState<{
+    title?: string;
+    mode?: string;
+    source_text?: string;
+    difficulty?: string;
+    speech_act?: string;
+  }>({});
   const [saving, setSaving] = useState(false);
   const [count, setCount] = useState<number | null>(null);
   const [items, setItems] = useState<ArchiveItem[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  const [sectionsOpen, setSectionsOpen] = useState({
+    basic: true,
+    meta: true,
+    media: false,
+    tags: false,
+  });
+  const toggleSection = (k: keyof typeof sectionsOpen) =>
+    setSectionsOpen((s) => ({ ...s, [k]: !s[k] }));
+
+  const missingRequired = useMemo(
+    () =>
+      !form.title.trim() ||
+      (form.mode !== "번역" && form.mode !== "통역") ||
+      !form.source_text.trim() ||
+      !form.difficulty ||
+      !form.speech_act,
+    [form],
+  );
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -193,10 +240,13 @@ const AdminArchive = () => {
   };
 
   const handleSave = async () => {
-    const nextErrors: { title?: string; mode?: string } = {};
+    const nextErrors: typeof errors = {};
     if (!form.title.trim()) nextErrors.title = "제목을 입력해주세요";
     if (form.mode !== "번역" && form.mode !== "통역")
       nextErrors.mode = "모드를 선택해주세요";
+    if (!form.source_text.trim()) nextErrors.source_text = "원문을 입력해주세요";
+    if (!form.difficulty) nextErrors.difficulty = "난이도를 선택해주세요";
+    if (!form.speech_act) nextErrors.speech_act = "화행을 선택해주세요";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
