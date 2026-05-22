@@ -274,7 +274,7 @@ const ScenarioSelect = () => {
       <WorkflowHeader currentStep={1} />
 
       <main className="mx-auto max-w-6xl px-6 py-8">
-        <PageTitle title="상황 판단" />
+        <PageTitle title="발화 상황 판단" />
         <p className="mt-2 text-sm text-muted-foreground">
           오늘 연습할 상황을 고르고, 이 상황을 어떻게 느꼈는지 알려주세요.
         </p>
