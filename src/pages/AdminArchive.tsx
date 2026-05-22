@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ExportSessionsDialog } from "@/components/ExportSessionsDialog";
 
 const Required = () => (
   <span className="ml-1 text-[#D14343]" aria-label="필수">
@@ -179,6 +180,7 @@ const AdminArchive = () => {
     media: false,
     tags: false,
   });
+  const [exportOpen, setExportOpen] = useState(false);
   const toggleSection = (k: keyof typeof sectionsOpen) =>
     setSectionsOpen((s) => ({ ...s, [k]: !s[k] }));
 
@@ -350,12 +352,21 @@ const AdminArchive = () => {
 
         <section className="mt-8">
           {!open ? (
-            <Button
-              onClick={() => setOpen(true)}
-              className="bg-[#15202B] text-[#F1EFE8] hover:bg-[#1f2d3a]"
-            >
-              + 새 자료 등록
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={() => setOpen(true)}
+                className="bg-[#15202B] text-[#F1EFE8] hover:bg-[#1f2d3a]"
+              >
+                + 새 자료 등록
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setExportOpen(true)}
+                className="border-[#15202B] bg-white text-[#15202B] hover:bg-[#F1EFE8]"
+              >
+                ↓ 학습 데이터 내보내기
+              </Button>
+            </div>
           ) : (
             <div className="mx-auto w-full lg:w-[70%]">
               <div className="rounded-lg border border-border bg-card p-6 shadow-sm sm:p-8">
