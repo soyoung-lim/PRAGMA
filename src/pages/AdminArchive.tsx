@@ -35,12 +35,12 @@ const AccordionSection = ({
   onToggle: () => void;
   children: React.ReactNode;
 }) => (
-  <div className="rounded-md border border-border bg-card">
+    <div className="rounded-md border border-border bg-card">
     <button
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className="flex w-full items-center justify-between gap-2 border-b border-transparent px-4 py-3 text-left hover:bg-muted/40"
+      className="flex h-11 w-full items-center justify-between gap-2 border-b border-transparent px-4 text-left hover:bg-muted/40"
     >
       <span className="flex items-center gap-2">
         <span aria-hidden className="inline-block h-4 w-[3px] rounded-sm bg-[#FAD338]" />
@@ -50,7 +50,7 @@ const AccordionSection = ({
         {open ? "▼" : "▶"}
       </span>
     </button>
-    {open && <div className="space-y-5 border-t border-border px-4 py-5 sm:px-5">{children}</div>}
+    {open && <div className="space-y-4 border-t border-border px-4 py-4 sm:px-5">{children}</div>}
   </div>
 );
 
@@ -351,26 +351,142 @@ const AdminArchive = () => {
         </section>
 
         <section className="mt-8">
-          {!open ? (
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {!open && (
               <Button
                 onClick={() => setOpen(true)}
                 className="bg-[#15202B] text-[#F1EFE8] hover:bg-[#1f2d3a]"
               >
                 + 새 자료 등록
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setExportOpen(true)}
-                className="border-[#15202B] bg-white text-[#15202B] hover:bg-[#F1EFE8]"
-              >
-                ↓ 학습 데이터 내보내기
-              </Button>
-            </div>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => setExportOpen(true)}
+              className="border-[#15202B] bg-white text-[#15202B] hover:bg-[#F1EFE8]"
+            >
+              ↓ 학습 데이터 내보내기
+            </Button>
+          </div>
+        </section>
+
+        <section className="mt-12">
+          <div className="mb-5 flex items-center gap-2 border-b border-border pb-2">
+            <span aria-hidden className="inline-block h-4 w-[3px] rounded-sm bg-[#FAD338]" />
+            <h2 className="text-base font-semibold text-foreground">등록된 자료</h2>
+          </div>
+
+          {items === null ? (
+            <p className="text-sm text-muted-foreground">자료를 불러오는 중입니다.</p>
+          ) : listError ? (
+            <p className="text-sm text-[#D14343]">{listError}</p>
+          ) : items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              아직 등록된 자료가 없습니다. 아래 폼에서 자료를 등록해 주세요.
+            </p>
           ) : (
-            <div className="max-w-[480px]">
-              <div className="rounded-lg border border-border bg-card p-6 shadow-sm sm:p-8">
-                <div className="mb-6 flex items-center gap-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {items.map((it) => {
+                const tags = [it.speech_act, it.discourse_genre, it.sector].filter(
+                  (t): t is string => !!t,
+                );
+                const statusKey = it.status ?? "archive";
+                const statusLabel = STATUS_LABELS[statusKey] ?? statusKey;
+                const statusClass =
+                  STATUS_STYLES[statusKey] ?? "bg-[#E5E5E5] text-[#444]";
+                const modeClass =
+                  MODE_STYLES[it.mode] ?? "bg-muted text-foreground";
+                return (
+                  <article
+                    key={it.id}
+                    className="flex flex-col rounded-lg border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <h3
+                      className="text-base font-semibold leading-snug text-foreground"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {it.title}
+                    </h3>
+
+                    <div className="mt-2">
+                      <span
+                        className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${modeClass}`}
+                      >
+                        {it.mode}
+                      </span>
+                    </div>
+
+                    {tags.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {tags.map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-full bg-[#EFEAE0] px-2 py-0.5 text-[11px] text-[#5A5343]"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {it.difficulty && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        난이도 · {it.difficulty}
+                      </p>
+                    )}
+
+                    {it.source_text && (
+                      <p
+                        className="mt-3 text-xs leading-relaxed text-muted-foreground"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {it.source_text}
+                      </p>
+                    )}
+
+                    <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3">
+                      <span className="text-[11px]">
+                        {it.is_learning_pick ? (
+                          <span className="rounded-md bg-[#FFF6D6] px-2 py-0.5 text-[#7a5e00]">
+                            ★ 학습자료 후보
+                          </span>
+                        ) : (
+                          <span className="text-transparent">·</span>
+                        )}
+                      </span>
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusClass}`}
+                      >
+                        {statusKey} · {statusLabel}
+                      </span>
+                    </div>
+                    {it.updated_at && (
+                      <p className="mt-2 text-right text-[10px] text-muted-foreground">
+                        {formatUpdatedAt(it.updated_at)}
+                      </p>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {open && (
+          <section className="mt-16 border-t border-border/60 pt-8">
+            <div className="mx-auto max-w-[480px]">
+              <div className="rounded-lg border border-border bg-card px-6 py-6 shadow-sm">
+                <div className="mb-5 flex items-center gap-2">
                   <h2 className="text-lg font-semibold text-foreground">
                     새 자료 등록
                   </h2>
@@ -379,7 +495,7 @@ const AdminArchive = () => {
                   </span>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {/* Section 1: 기본 정보 */}
                   <AccordionSection
                     title="기본 정보"
@@ -636,7 +752,7 @@ const AdminArchive = () => {
                   </AccordionSection>
                 </div>
 
-                <div className="mt-8 flex items-center justify-end gap-3 border-t border-border pt-6">
+                <div className="mt-5 flex items-center justify-end gap-2 border-t border-border pt-4">
                   <Button type="button" variant="outline" onClick={handleCancel}>
                     취소
                   </Button>
@@ -655,120 +771,8 @@ const AdminArchive = () => {
                 </div>
               </div>
             </div>
-          )}
-        </section>
-
-        <section className="mt-12">
-          <div className="mb-5 flex items-center gap-2 border-b border-border pb-2">
-            <span aria-hidden className="inline-block h-4 w-[3px] rounded-sm bg-[#FAD338]" />
-            <h2 className="text-base font-semibold text-foreground">등록된 자료</h2>
-          </div>
-
-          {items === null ? (
-            <p className="text-sm text-muted-foreground">자료를 불러오는 중입니다.</p>
-          ) : listError ? (
-            <p className="text-sm text-[#D14343]">{listError}</p>
-          ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              아직 등록된 자료가 없습니다. 위 폼에서 자료를 등록해 주세요.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {items.map((it) => {
-                const tags = [it.speech_act, it.discourse_genre, it.sector].filter(
-                  (t): t is string => !!t,
-                );
-                const statusKey = it.status ?? "archive";
-                const statusLabel = STATUS_LABELS[statusKey] ?? statusKey;
-                const statusClass =
-                  STATUS_STYLES[statusKey] ?? "bg-[#E5E5E5] text-[#444]";
-                const modeClass =
-                  MODE_STYLES[it.mode] ?? "bg-muted text-foreground";
-                return (
-                  <article
-                    key={it.id}
-                    className="flex flex-col rounded-lg border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
-                  >
-                    <h3
-                      className="text-base font-semibold leading-snug text-foreground"
-                      style={{
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {it.title}
-                    </h3>
-
-                    <div className="mt-2">
-                      <span
-                        className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${modeClass}`}
-                      >
-                        {it.mode}
-                      </span>
-                    </div>
-
-                    {tags.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {tags.map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full bg-[#EFEAE0] px-2 py-0.5 text-[11px] text-[#5A5343]"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {it.difficulty && (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        난이도 · {it.difficulty}
-                      </p>
-                    )}
-
-                    {it.source_text && (
-                      <p
-                        className="mt-3 text-xs leading-relaxed text-muted-foreground"
-                        style={{
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {it.source_text}
-                      </p>
-                    )}
-
-                    <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3">
-                      <span className="text-[11px]">
-                        {it.is_learning_pick ? (
-                          <span className="rounded-md bg-[#FFF6D6] px-2 py-0.5 text-[#7a5e00]">
-                            ★ 학습자료 후보
-                          </span>
-                        ) : (
-                          <span className="text-transparent">·</span>
-                        )}
-                      </span>
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusClass}`}
-                      >
-                        {statusKey} · {statusLabel}
-                      </span>
-                    </div>
-                    {it.updated_at && (
-                      <p className="mt-2 text-right text-[10px] text-muted-foreground">
-                        {formatUpdatedAt(it.updated_at)}
-                      </p>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
+          </section>
+        )}
       </main>
       <ExportSessionsDialog open={exportOpen} onOpenChange={setExportOpen} />
     </div>
