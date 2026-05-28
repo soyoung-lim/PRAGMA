@@ -12,6 +12,15 @@ import Translate from "./pages/Translate.tsx";
 import Finalize from "./pages/Finalize.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import AdminArchive from "./pages/AdminArchive.tsx";
+import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
+import AdminGenerator from "./pages/admin/AdminGenerator.tsx";
+import AdminPromptHarness from "./pages/admin/AdminPromptHarness.tsx";
+import AdminReview from "./pages/admin/AdminReview.tsx";
+import AdminLearners from "./pages/admin/AdminLearners.tsx";
+import AdminReports from "./pages/admin/AdminReports.tsx";
+import AdminAnalytics from "./pages/admin/AdminAnalytics.tsx";
+import AdminExport from "./pages/admin/AdminExport.tsx";
+import AdminLogin from "./pages/admin/AdminLogin.tsx";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { seedIfEmpty } from "./lib/learningSessions";
 
@@ -33,8 +42,17 @@ const App = () => (
           <Route path="/translate" element={<Translate />} />
           <Route path="/finalize" element={<Finalize />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin" element={<Navigate to="/admin/archive" replace />} />
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/archive" element={<AdminArchive />} />
+          <Route path="/admin/generator" element={<AdminGenerator />} />
+          <Route path="/admin/prompt-harness" element={<AdminPromptHarness />} />
+          <Route path="/admin/review" element={<AdminReview />} />
+          <Route path="/admin/learners" element={<AdminLearners />} />
+          <Route path="/admin/reports" element={<AdminReports />} />
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/export" element={<AdminExport />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
