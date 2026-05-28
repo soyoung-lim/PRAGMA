@@ -29,7 +29,7 @@ const Landing = () => {
           <HomeBrand />
           <div className="flex items-center gap-3">
             <Link
-              to="/admin/archive"
+              to="/admin/dashboard"
               className="text-sm text-[#8899A6] transition-colors hover:text-[#F1EFE8]"
             >
               관리자 영역 →
