@@ -83,6 +83,101 @@ export type Database = {
         }
         Relationships: []
       }
+      scenario_feedback: {
+        Row: {
+          created_at: string | null
+          feedback_id: string
+          field_expert_perspective: string | null
+          recipient_perspective: string | null
+          scenario_id: string | null
+          teacher_perspective: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          feedback_id?: string
+          field_expert_perspective?: string | null
+          recipient_perspective?: string | null
+          scenario_id?: string | null
+          teacher_perspective?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          feedback_id?: string
+          field_expert_perspective?: string | null
+          recipient_perspective?: string | null
+          scenario_id?: string | null
+          teacher_perspective?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_feedback_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["scenario_id"]
+          },
+        ]
+      }
+      scenarios: {
+        Row: {
+          auto_check_result:
+            | Database["public"]["Enums"]["auto_check_result"]
+            | null
+          business_function: string | null
+          created_at: string | null
+          genre: string | null
+          industry_sector: string | null
+          interaction_context: string | null
+          learner_level: string | null
+          review_status: Database["public"]["Enums"]["review_status"]
+          scenario_id: string
+          source_text: string | null
+          speech_act: Database["public"]["Enums"]["speech_act"]
+          title: string
+          topic: string | null
+          updated_at: string | null
+          usage_assignment: Database["public"]["Enums"]["usage_assignment"]
+        }
+        Insert: {
+          auto_check_result?:
+            | Database["public"]["Enums"]["auto_check_result"]
+            | null
+          business_function?: string | null
+          created_at?: string | null
+          genre?: string | null
+          industry_sector?: string | null
+          interaction_context?: string | null
+          learner_level?: string | null
+          review_status?: Database["public"]["Enums"]["review_status"]
+          scenario_id?: string
+          source_text?: string | null
+          speech_act: Database["public"]["Enums"]["speech_act"]
+          title: string
+          topic?: string | null
+          updated_at?: string | null
+          usage_assignment?: Database["public"]["Enums"]["usage_assignment"]
+        }
+        Update: {
+          auto_check_result?:
+            | Database["public"]["Enums"]["auto_check_result"]
+            | null
+          business_function?: string | null
+          created_at?: string | null
+          genre?: string | null
+          industry_sector?: string | null
+          interaction_context?: string | null
+          learner_level?: string | null
+          review_status?: Database["public"]["Enums"]["review_status"]
+          scenario_id?: string
+          source_text?: string | null
+          speech_act?: Database["public"]["Enums"]["speech_act"]
+          title?: string
+          topic?: string | null
+          updated_at?: string | null
+          usage_assignment?: Database["public"]["Enums"]["usage_assignment"]
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -91,7 +186,19 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      auto_check_result: "pass" | "warning" | "fail"
+      review_status:
+        | "generated"
+        | "needs_review"
+        | "revise_required"
+        | "revised"
+        | "approved"
+      speech_act: "request" | "refusal"
+      usage_assignment:
+        | "archived_only"
+        | "coursework_published"
+        | "experiment_locked"
+        | "excluded"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -218,6 +325,22 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      auto_check_result: ["pass", "warning", "fail"],
+      review_status: [
+        "generated",
+        "needs_review",
+        "revise_required",
+        "revised",
+        "approved",
+      ],
+      speech_act: ["request", "refusal"],
+      usage_assignment: [
+        "archived_only",
+        "coursework_published",
+        "experiment_locked",
+        "excluded",
+      ],
+    },
   },
 } as const
