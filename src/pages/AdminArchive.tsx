@@ -138,6 +138,21 @@ const AUTO_CHECK_COLOR: Record<AutoCheck, string> = {
   fail: "text-[#B91C1C]",
 };
 
+const REVIEW_LABEL: Record<ReviewStatus, string> = {
+  generated: "생성됨",
+  needs_review: "검수 대기",
+  revise_required: "보완 필요",
+  revised: "재검수 대기",
+  approved: "승인 완료",
+};
+
+const USAGE_LABEL: Record<UsageAssignment, string> = {
+  archived_only: "아카이브 전용",
+  coursework_published: "수업용 공개",
+  experiment_locked: "본실험 locked",
+  excluded: "제외",
+};
+
 const MOCK: Scenario[] = [
   {
     id: "s1",
@@ -274,30 +289,34 @@ const MetaTag = ({ children }: { children: React.ReactNode }) => (
 const FilterSelect = ({
   value,
   onChange,
-  placeholder,
+  category,
   options,
   width = "w-[140px]",
 }: {
   value: string;
   onChange: (v: string) => void;
-  placeholder: string;
+  category: string;
   options: { value: string; label: string }[];
   width?: string;
-}) => (
-  <Select value={value} onValueChange={onChange}>
-    <SelectTrigger className={`${width} h-9 text-[12px]`}>
-      <SelectValue placeholder={placeholder} />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value={ALL}>전체</SelectItem>
-      {options.map((o) => (
-        <SelectItem key={o.value} value={o.value}>
-          {o.label}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-);
+}) => {
+  const selected = options.find((o) => o.value === value);
+  const display = `${category}: ${selected ? selected.label : "전체"}`;
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={`${width} h-9 text-[12px]`}>
+        <span className="truncate">{display}</span>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL}>전체</SelectItem>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
 
 const AdminArchive = () => {
   const [fReview, setFReview] = useState(ALL);
@@ -388,79 +407,77 @@ const AdminArchive = () => {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters — row 1: 운영 게이팅 */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <FilterSelect
           value={fReview}
           onChange={setFReview}
-          placeholder="검수 상태"
-          options={[
-            { value: "needs_review", label: "검수 대기 (needs_review)" },
-            { value: "revise_required", label: "보완 필요 (revise_required)" },
-            { value: "revised", label: "재검수 대기 (revised)" },
-            { value: "approved", label: "승인 완료 (approved)" },
-          ]}
-          width="w-[170px]"
+          category="검수 상태"
+          options={(Object.keys(REVIEW_LABEL) as ReviewStatus[])
+            .filter((k) => k !== "generated")
+            .map((k) => ({ value: k, label: REVIEW_LABEL[k] }))}
+          width="w-[180px]"
         />
         <FilterSelect
           value={fUsage}
           onChange={setFUsage}
-          placeholder="용도 배정"
-          options={[
-            { value: "archived_only", label: "archived_only" },
-            { value: "coursework_published", label: "coursework_published" },
-            { value: "experiment_locked", label: "experiment_locked" },
-            { value: "excluded", label: "excluded" },
-          ]}
-          width="w-[180px]"
+          category="용도 배정"
+          options={(Object.keys(USAGE_LABEL) as UsageAssignment[]).map((k) => ({
+            value: k,
+            label: USAGE_LABEL[k],
+          }))}
+          width="w-[200px]"
         />
         <FilterSelect
           value={fSpeech}
           onChange={setFSpeech}
-          placeholder="화행"
+          category="화행"
           options={[
             { value: "request", label: "요청" },
             { value: "refusal", label: "거절" },
           ]}
-          width="w-[110px]"
+          width="w-[140px]"
         />
         <FilterSelect
           value={fGenre}
           onChange={setFGenre}
-          placeholder="장르"
+          category="장르"
           options={(Object.keys(GENRE_LABEL) as Genre[]).map((k) => ({
             value: k,
             label: GENRE_LABEL[k],
           }))}
-          width="w-[140px]"
+          width="w-[180px]"
         />
+      </div>
+      {/* Filters — row 2: 큐레이션 검색 */}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <FilterSelect
           value={fLevel}
           onChange={setFLevel}
-          placeholder="학습자 수준"
+          category="학습자 수준"
           options={(Object.keys(LEVEL_LABEL) as LearnerLevel[]).map((k) => ({
             value: k,
             label: LEVEL_LABEL[k],
           }))}
-          width="w-[140px]"
+          width="w-[180px]"
         />
         <FilterSelect
           value={fIndustry}
           onChange={setFIndustry}
-          placeholder="산업 분야"
+          category="산업 분야"
           options={(Object.keys(INDUSTRY_LABEL) as IndustrySector[]).map(
             (k) => ({ value: k, label: INDUSTRY_LABEL[k] }),
           )}
-          width="w-[200px]"
+          width="w-[240px]"
         />
         <FilterSelect
           value={fFunction}
           onChange={setFFunction}
-          placeholder="업무 기능"
+          category="업무 기능"
           options={(Object.keys(FUNCTION_LABEL) as BusinessFunction[]).map(
             (k) => ({ value: k, label: FUNCTION_LABEL[k] }),
           )}
-          width="w-[200px]"
+          width="w-[240px]"
         />
       </div>
 
