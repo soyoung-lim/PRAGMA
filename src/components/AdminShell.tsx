@@ -46,12 +46,20 @@ interface AdminShellProps {
 export const AdminShell = ({ title, description, children }: AdminShellProps) => {
   const { pathname } = useLocation();
 
-  const linkClasses = (active: boolean) =>
+  const standaloneClasses = (active: boolean) =>
     [
-      "rounded-md px-3 py-2 text-sm transition-colors",
+      "rounded-md px-3 py-2 text-base font-medium transition-colors",
       active
-        ? "bg-[#FAD338] font-medium text-[#15202B]"
-        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        ? "bg-[#FAD338] text-[#15202B]"
+        : "text-foreground hover:bg-muted hover:text-foreground",
+    ].join(" ");
+
+  const itemClasses = (active: boolean) =>
+    [
+      "rounded-md pl-4 pr-3 py-2 text-base font-medium transition-colors",
+      active
+        ? "bg-[#FAD338] text-[#15202B]"
+        : "text-foreground hover:bg-muted hover:text-foreground",
     ].join(" ");
 
   return (
@@ -70,24 +78,24 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
 
       <div className="mx-auto flex max-w-6xl gap-6 px-6 py-8">
         <aside className="hidden w-56 shrink-0 md:block">
-          <nav className="flex flex-col gap-1">
+          <nav className="flex flex-col">
             <Link
               to={STANDALONE.to}
-              className={linkClasses(pathname === STANDALONE.to)}
+              className={standaloneClasses(pathname === STANDALONE.to)}
             >
               {STANDALONE.label}
             </Link>
 
             {GROUPS.map((group) => (
-              <div key={group.header} className="mt-3 flex flex-col gap-1">
-                <span className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+              <div key={group.header} className="mt-6 mb-2 flex flex-col gap-1">
+                <span className="px-3 text-[13px] font-bold tracking-[0.02em] text-muted-foreground/80">
                   {group.header}
                 </span>
                 {group.items.map((item) => (
                   <Link
                     key={item.to}
                     to={item.to}
-                    className={linkClasses(pathname === item.to)}
+                    className={itemClasses(pathname === item.to)}
                   >
                     {item.label}
                   </Link>
