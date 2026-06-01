@@ -12,16 +12,16 @@ const STANDALONE: NavItem = { to: "/admin/dashboard", label: "대시보드" };
 
 const GROUPS: NavGroup[] = [
   {
-    header: "시나리오 운영",
+    header: "시나리오 생성·검수",
     items: [
-      { to: "/admin/archive", label: "시나리오 아카이브" },
-      { to: "/admin/generator", label: "AI 시나리오 생성" },
       { to: "/admin/prompt-harness", label: "프롬프트 관리" },
+      { to: "/admin/generator", label: "AI 시나리오 생성" },
       { to: "/admin/review", label: "시나리오 검수" },
+      { to: "/admin/archive", label: "시나리오 아카이브" },
     ],
   },
   {
-    header: "학습자 운영",
+    header: "학습자 수행 관리",
     items: [
       { to: "/admin/learners", label: "학습자 관리" },
       { to: "/admin/decision-traces", label: "의사결정 기록" },
@@ -29,10 +29,10 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    header: "분석·보내기",
+    header: "연구 분석·내보내기",
     items: [
       { to: "/admin/analytics", label: "관리자 종합 분석" },
-      { to: "/admin/export", label: "데이터보내기" },
+      { to: "/admin/export", label: "데이터 내보내기" },
     ],
   },
 ];
@@ -48,18 +48,18 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
 
   const standaloneClasses = (active: boolean) =>
     [
-      "rounded-md px-3 py-2 text-base font-medium transition-colors",
+      "rounded-md px-3 py-2 text-[14px] transition-colors mr-2",
       active
-        ? "bg-[#FAD338] text-[#15202B]"
-        : "text-foreground hover:bg-muted hover:text-foreground",
+        ? "bg-[#FAD338] text-[#15202B] font-medium"
+        : "text-foreground font-normal hover:bg-muted hover:text-foreground",
     ].join(" ");
 
   const itemClasses = (active: boolean) =>
     [
-      "rounded-md pl-4 pr-3 py-2 text-base font-medium transition-colors",
+      "rounded-md px-3 py-2 text-[14px] transition-colors mr-2",
       active
-        ? "bg-[#FAD338] text-[#15202B]"
-        : "text-foreground hover:bg-muted hover:text-foreground",
+        ? "bg-[#FAD338] text-[#15202B] font-medium"
+        : "text-foreground font-normal hover:bg-muted hover:text-foreground",
     ].join(" ");
 
   return (
@@ -78,7 +78,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
 
       <div className="mx-auto flex max-w-6xl gap-6 px-6 py-8">
         <aside className="hidden w-56 shrink-0 md:block">
-          <nav className="flex flex-col">
+          <nav className="flex flex-col px-3">
             <Link
               to={STANDALONE.to}
               className={standaloneClasses(pathname === STANDALONE.to)}
@@ -87,19 +87,23 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
             </Link>
 
             {GROUPS.map((group) => (
-              <div key={group.header} className="mt-6 mb-2 flex flex-col gap-1">
-                <span className="px-3 text-[13px] font-bold tracking-[0.02em] text-muted-foreground/80">
+              <div key={group.header} className="flex flex-col">
+                <span
+                  className="mt-7 mb-[6px] px-3 text-[12px] font-medium uppercase tracking-[0.08em] text-[#8a857c] cursor-default select-none"
+                >
                   {group.header}
                 </span>
-                {group.items.map((item) => (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className={itemClasses(pathname === item.to)}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                <div className="flex flex-col gap-[2px] border-l border-[#e5e1d8] pl-4">
+                  {group.items.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      className={itemClasses(pathname === item.to)}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
               </div>
             ))}
           </nav>
