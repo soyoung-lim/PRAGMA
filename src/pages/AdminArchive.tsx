@@ -289,30 +289,34 @@ const MetaTag = ({ children }: { children: React.ReactNode }) => (
 const FilterSelect = ({
   value,
   onChange,
-  placeholder,
+  category,
   options,
   width = "w-[140px]",
 }: {
   value: string;
   onChange: (v: string) => void;
-  placeholder: string;
+  category: string;
   options: { value: string; label: string }[];
   width?: string;
-}) => (
-  <Select value={value} onValueChange={onChange}>
-    <SelectTrigger className={`${width} h-9 text-[12px]`}>
-      <SelectValue placeholder={placeholder} />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value={ALL}>전체</SelectItem>
-      {options.map((o) => (
-        <SelectItem key={o.value} value={o.value}>
-          {o.label}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-);
+}) => {
+  const selected = options.find((o) => o.value === value);
+  const display = `${category}: ${selected ? selected.label : "전체"}`;
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={`${width} h-9 text-[12px]`}>
+        <span className="truncate">{display}</span>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL}>전체</SelectItem>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
 
 const AdminArchive = () => {
   const [fReview, setFReview] = useState(ALL);
