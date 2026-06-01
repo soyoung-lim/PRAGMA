@@ -138,6 +138,21 @@ const AUTO_CHECK_COLOR: Record<AutoCheck, string> = {
   fail: "text-[#B91C1C]",
 };
 
+const REVIEW_LABEL: Record<ReviewStatus, string> = {
+  generated: "생성됨",
+  needs_review: "검수 대기",
+  revise_required: "보완 필요",
+  revised: "재검수 대기",
+  approved: "승인 완료",
+};
+
+const USAGE_LABEL: Record<UsageAssignment, string> = {
+  archived_only: "아카이브 전용",
+  coursework_published: "수업용 공개",
+  experiment_locked: "본실험 locked",
+  excluded: "제외",
+};
+
 const MOCK: Scenario[] = [
   {
     id: "s1",
