@@ -1,13 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { toast } from "sonner";
-import { HomeBrand } from "@/components/HomeBrand";
-import { supabase } from "@/integrations/supabase/client";
+import { useMemo, useState } from "react";
+import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -15,771 +8,546 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ExportSessionsDialog } from "@/components/ExportSessionsDialog";
 
-const Required = () => (
-  <span className="ml-1 text-[#D14343]" aria-label="필수">
-    *
+type ReviewStatus =
+  | "generated"
+  | "needs_review"
+  | "revise_required"
+  | "revised"
+  | "approved";
+
+type UsageAssignment =
+  | "archived_only"
+  | "coursework_published"
+  | "experiment_locked"
+  | "excluded";
+
+type SpeechAct = "request" | "refusal";
+type Genre = "business_email" | "business_messenger" | "meeting_speech";
+type LearnerLevel = "beginner_intermediate" | "intermediate" | "advanced";
+type InteractionContext = "coordination" | "negotiation" | "follow_up";
+type AutoCheck = "pass" | "warning" | "fail";
+
+type IndustrySector =
+  | "trade_distribution"
+  | "IT_platform"
+  | "manufacturing"
+  | "tourism_hospitality"
+  | "education_research"
+  | "public_international_affairs"
+  | "culture_content_media";
+
+type BusinessFunction =
+  | "overseas_sales"
+  | "marketing_pr"
+  | "customer_partner_support"
+  | "SCM_logistics"
+  | "contract_terms"
+  | "project_coordination"
+  | "research_admin"
+  | "localization_translation"
+  | "event_operations"
+  | "international_collaboration";
+
+interface Scenario {
+  id: string;
+  title: string;
+  source_text: string;
+  speech_act: SpeechAct;
+  genre: Genre;
+  learner_level: LearnerLevel;
+  industry_sector: IndustrySector;
+  business_function: BusinessFunction;
+  interaction_context: InteractionContext;
+  review_status: ReviewStatus;
+  usage_assignment: UsageAssignment;
+  auto_check_result: AutoCheck;
+  updated_at: string;
+}
+
+const SPEECH_ACT_LABEL: Record<SpeechAct, string> = {
+  request: "요청",
+  refusal: "거절",
+};
+
+const GENRE_LABEL: Record<Genre, string> = {
+  business_email: "업무 이메일",
+  business_messenger: "업무 메신저",
+  meeting_speech: "회의 발화",
+};
+
+const LEVEL_LABEL: Record<LearnerLevel, string> = {
+  beginner_intermediate: "초중급",
+  intermediate: "중급",
+  advanced: "고급",
+};
+
+const CONTEXT_LABEL: Record<InteractionContext, string> = {
+  coordination: "조율",
+  negotiation: "협의",
+  follow_up: "후속 확인",
+};
+
+const INDUSTRY_LABEL: Record<IndustrySector, string> = {
+  trade_distribution: "무역·유통",
+  IT_platform: "IT·플랫폼·커머스",
+  manufacturing: "제조·소비재",
+  tourism_hospitality: "관광·호텔·서비스",
+  education_research: "교육·연구",
+  public_international_affairs: "공공·국제교류",
+  culture_content_media: "문화콘텐츠·미디어·출판·행사",
+};
+
+const FUNCTION_LABEL: Record<BusinessFunction, string> = {
+  overseas_sales: "해외영업·거래처 관리",
+  marketing_pr: "마케팅·홍보",
+  customer_partner_support: "고객·파트너 응대",
+  SCM_logistics: "구매·물류·공급망",
+  contract_terms: "계약·거래 조건 조율",
+  project_coordination: "프로젝트 조율",
+  research_admin: "연구·행정 협력",
+  localization_translation: "번역·로컬라이제이션",
+  event_operations: "행사·현장 운영",
+  international_collaboration: "국제협력·제휴",
+};
+
+const REVIEW_BADGE: Record<ReviewStatus, string> = {
+  generated: "bg-[#E5E7EB] text-[#374151] border-[#D1D5DB]",
+  needs_review: "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]",
+  revise_required: "bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]",
+  revised: "bg-[#DBEAFE] text-[#1E40AF] border-[#93C5FD]",
+  approved: "bg-[#D1FAE5] text-[#065F46] border-[#6EE7B7]",
+};
+
+const USAGE_BADGE: Record<UsageAssignment, string> = {
+  archived_only: "bg-[#E5E7EB] text-[#374151] border-[#D1D5DB]",
+  coursework_published: "bg-[#CFFAFE] text-[#155E75] border-[#67E8F9]",
+  experiment_locked: "bg-[#FEF3C7] text-[#854D0E] border-[#FCD34D]",
+  excluded: "bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]",
+};
+
+const AUTO_CHECK_LABEL: Record<AutoCheck, string> = {
+  pass: "pass",
+  warning: "warning",
+  fail: "fail",
+};
+
+const AUTO_CHECK_COLOR: Record<AutoCheck, string> = {
+  pass: "text-[#15803D]",
+  warning: "text-[#B45309]",
+  fail: "text-[#B91C1C]",
+};
+
+const MOCK: Scenario[] = [
+  {
+    id: "s1",
+    title: "납기 단축 요청 — 광저우 가구 공급사",
+    source_text:
+      "안녕하세요, 저희 측 매장 오픈 일정이 앞당겨져 다음 컨테이너 출고를 2주 앞당겨 주실 수 있을지 확인 부탁드립니다. 가능하시다면 추가 비용 산정 기준도 함께 공유해 주세요.",
+    speech_act: "request",
+    genre: "business_email",
+    learner_level: "intermediate",
+    industry_sector: "trade_distribution",
+    business_function: "overseas_sales",
+    interaction_context: "coordination",
+    review_status: "needs_review",
+    usage_assignment: "archived_only",
+    auto_check_result: "warning",
+    updated_at: "2026-05-22",
+  },
+  {
+    id: "s2",
+    title: "신규 SaaS 파트너십 제안 — 상하이 커머스 플랫폼",
+    source_text:
+      "귀사의 B2B 셀러 도구와 연동을 검토 중입니다. 다음 주 화상회의에서 API 연동 범위와 데이터 처리 정책을 함께 논의하고 싶습니다.",
+    speech_act: "request",
+    genre: "business_messenger",
+    learner_level: "advanced",
+    industry_sector: "IT_platform",
+    business_function: "project_coordination",
+    interaction_context: "negotiation",
+    review_status: "approved",
+    usage_assignment: "coursework_published",
+    auto_check_result: "pass",
+    updated_at: "2026-05-20",
+  },
+  {
+    id: "s3",
+    title: "본실험 — 광고 단가 인상 통보 거절",
+    source_text:
+      "이번 분기 캠페인 예산이 확정되어 제안 주신 단가 인상은 수용이 어렵습니다. 기존 단가 유지가 가능한 범위에서 노출 비중을 조정하는 방향을 검토 부탁드립니다.",
+    speech_act: "refusal",
+    genre: "meeting_speech",
+    learner_level: "advanced",
+    industry_sector: "culture_content_media",
+    business_function: "marketing_pr",
+    interaction_context: "negotiation",
+    review_status: "approved",
+    usage_assignment: "experiment_locked",
+    auto_check_result: "pass",
+    updated_at: "2026-05-18",
+  },
+  {
+    id: "s4",
+    title: "호텔 단체 예약 변경 요청 — 칭다오 인센티브 투어",
+    source_text:
+      "3월 단체 투숙 일정이 조정되어 객실 타입과 체크인 날짜 변경을 요청드립니다. 변경에 따른 추가 비용이 있다면 사전에 안내 부탁드립니다.",
+    speech_act: "request",
+    genre: "business_email",
+    learner_level: "beginner_intermediate",
+    industry_sector: "tourism_hospitality",
+    business_function: "customer_partner_support",
+    interaction_context: "follow_up",
+    review_status: "revise_required",
+    usage_assignment: "archived_only",
+    auto_check_result: "fail",
+    updated_at: "2026-05-15",
+  },
+  {
+    id: "s5",
+    title: "공동 연구 일정 재조정 — 베이징 대학 연구실",
+    source_text:
+      "내부 검토 일정이 지연되어 다음 주 공동 워크숍 일정을 한 주 미루는 방안을 제안드립니다. 가능하신 시간대를 회신 부탁드립니다.",
+    speech_act: "request",
+    genre: "business_messenger",
+    learner_level: "intermediate",
+    industry_sector: "education_research",
+    business_function: "research_admin",
+    interaction_context: "coordination",
+    review_status: "revised",
+    usage_assignment: "archived_only",
+    auto_check_result: "warning",
+    updated_at: "2026-05-12",
+  },
+  {
+    id: "s6",
+    title: "MOU 체결 연기 요청 거절 — 공공 국제교류",
+    source_text:
+      "양측 일정 합의가 이미 공표되어 체결식 자체의 연기는 어렵습니다. 다만 부대 행사 일부는 별도 일정으로 분리 진행이 가능합니다.",
+    speech_act: "refusal",
+    genre: "meeting_speech",
+    learner_level: "advanced",
+    industry_sector: "public_international_affairs",
+    business_function: "international_collaboration",
+    interaction_context: "negotiation",
+    review_status: "approved",
+    usage_assignment: "excluded",
+    auto_check_result: "pass",
+    updated_at: "2026-05-10",
+  },
+];
+
+const ALL = "__all__";
+
+const Chip = ({
+  label,
+  count,
+  tone,
+}: {
+  label: string;
+  count: number;
+  tone: "neutral" | "amber" | "green" | "red" | "mustard";
+}) => {
+  const tones: Record<typeof tone, string> = {
+    neutral: "bg-[#F1EFE8] text-[#3F3F46] border-[#E5E7EB]",
+    amber: "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]",
+    green: "bg-[#D1FAE5] text-[#065F46] border-[#6EE7B7]",
+    red: "bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]",
+    mustard: "bg-[#FAD338]/30 text-[#7A5A0A] border-[#FAD338]",
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] ${tones[tone]}`}
+    >
+      <span>{label}</span>
+      <span className="font-semibold tabular-nums">{count}</span>
+    </span>
+  );
+};
+
+const MetaTag = ({ children }: { children: React.ReactNode }) => (
+  <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+    {children}
   </span>
 );
 
-const AccordionSection = ({
-  title,
-  open,
-  onToggle,
-  children,
+const FilterSelect = ({
+  value,
+  onChange,
+  placeholder,
+  options,
+  width = "w-[140px]",
 }: {
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  options: { value: string; label: string }[];
+  width?: string;
 }) => (
-    <div className="rounded-md border border-border bg-card">
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-expanded={open}
-      className="flex w-full items-center justify-between gap-2 border-b border-transparent px-3 py-2 text-left hover:bg-muted/40"
-    >
-      <span className="flex items-center gap-2">
-        <span aria-hidden className="inline-block h-4 w-[2.5px] rounded-sm bg-[#FAD338]" />
-        <span className="text-[13px] font-medium text-foreground">{title}</span>
-      </span>
-      <span aria-hidden className="text-[11px] text-muted-foreground/70">
-        {open ? "▼" : "▶"}
-      </span>
-    </button>
-    {open && <div className="space-y-4 border-t border-border px-4 py-4">{children}</div>}
-  </div>
+  <Select value={value} onValueChange={onChange}>
+    <SelectTrigger className={`${width} h-9 text-[12px]`}>
+      <SelectValue placeholder={placeholder} />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value={ALL}>전체</SelectItem>
+      {options.map((o) => (
+        <SelectItem key={o.value} value={o.value}>
+          {o.label}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
 );
-
-const FieldRow = ({
-  label,
-  required,
-  htmlFor,
-  children,
-  error,
-}: {
-  label: string;
-  required?: boolean;
-  htmlFor?: string;
-  children: React.ReactNode;
-  error?: string;
-}) => (
-  <div className="space-y-1.5">
-    <Label htmlFor={htmlFor} className="text-sm text-foreground">
-      {label}
-      {required && <Required />}
-    </Label>
-    {children}
-    {error && <p className="text-xs text-[#D14343]">{error}</p>}
-  </div>
-);
-
-type FormState = {
-  title: string;
-  mode: string;
-  topic: string;
-  item_type: string;
-  difficulty: string;
-  speech_act: string;
-  discourse_genre: string;
-  sector: string;
-  source_text: string;
-  source_origin: string;
-  audio_url: string;
-  youtube_url: string;
-  youtube_id: string;
-  is_learning_pick: boolean;
-  status: string;
-  researcher_notes: string;
-};
-
-type ArchiveItem = {
-  id: string;
-  title: string;
-  mode: string;
-  speech_act: string | null;
-  discourse_genre: string | null;
-  sector: string | null;
-  difficulty: string | null;
-  source_text: string | null;
-  is_learning_pick: boolean | null;
-  status: string | null;
-  updated_at: string | null;
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  archive: "아카이브",
-  coursework_candidate: "수업자료 후보",
-  experiment_candidate: "본실험 후보",
-  locked: "본실험 확정",
-  excluded: "제외",
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  archive: "bg-[#E5E5E5] text-[#444]",
-  coursework_candidate: "bg-[#E0EAF5] text-[#274A6E]",
-  experiment_candidate: "bg-[#C9DCF0] text-[#1B3A5C]",
-  locked: "bg-[#F5E8C0] text-[#6E5320]",
-  excluded: "bg-[#F0DDDD] text-[#8A2A2A] line-through",
-};
-
-const MODE_STYLES: Record<string, string> = {
-  번역: "bg-[#F1E8DA] text-[#6B533A]",
-  통역: "bg-[#DDE7F2] text-[#2F4E73]",
-};
-
-const formatUpdatedAt = (iso: string | null) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day} 수정`;
-};
-
-const initialForm: FormState = {
-  title: "",
-  mode: "번역",
-  topic: "",
-  item_type: "",
-  difficulty: "",
-  speech_act: "",
-  discourse_genre: "",
-  sector: "",
-  source_text: "",
-  source_origin: "manual",
-  audio_url: "",
-  youtube_url: "",
-  youtube_id: "",
-  is_learning_pick: false,
-  status: "archive",
-  researcher_notes: "",
-};
 
 const AdminArchive = () => {
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<FormState>(initialForm);
-  const [errors, setErrors] = useState<{
-    title?: string;
-    mode?: string;
-    source_text?: string;
-    difficulty?: string;
-    speech_act?: string;
-  }>({});
-  const [saving, setSaving] = useState(false);
-  const [count, setCount] = useState<number | null>(null);
-  const [items, setItems] = useState<ArchiveItem[] | null>(null);
-  const [listError, setListError] = useState<string | null>(null);
-  const [sectionsOpen, setSectionsOpen] = useState({
-    basic: false,
-    meta: false,
-    media: false,
-    tags: false,
-  });
-  const [exportOpen, setExportOpen] = useState(false);
-  const toggleSection = (k: keyof typeof sectionsOpen) =>
-    setSectionsOpen((s) => ({ ...s, [k]: !s[k] }));
+  const [fReview, setFReview] = useState(ALL);
+  const [fUsage, setFUsage] = useState(ALL);
+  const [fSpeech, setFSpeech] = useState(ALL);
+  const [fGenre, setFGenre] = useState(ALL);
+  const [fLevel, setFLevel] = useState(ALL);
+  const [fIndustry, setFIndustry] = useState(ALL);
+  const [fFunction, setFFunction] = useState(ALL);
 
-  const missingRequired = useMemo(
-    () =>
-      !form.title.trim() ||
-      (form.mode !== "번역" && form.mode !== "통역") ||
-      !form.source_text.trim() ||
-      !form.difficulty ||
-      !form.speech_act,
-    [form],
+  const visible = useMemo(
+    () => MOCK.filter((s) => s.review_status !== "generated"),
+    [],
   );
 
-  const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const filtered = useMemo(() => {
+    return visible.filter((s) => {
+      if (fReview !== ALL && s.review_status !== fReview) return false;
+      if (fUsage !== ALL && s.usage_assignment !== fUsage) return false;
+      if (fSpeech !== ALL && s.speech_act !== fSpeech) return false;
+      if (fGenre !== ALL && s.genre !== fGenre) return false;
+      if (fLevel !== ALL && s.learner_level !== fLevel) return false;
+      if (fIndustry !== ALL && s.industry_sector !== fIndustry) return false;
+      if (fFunction !== ALL && s.business_function !== fFunction) return false;
+      return true;
+    });
+  }, [visible, fReview, fUsage, fSpeech, fGenre, fLevel, fIndustry, fFunction]);
 
-  const fetchCount = async () => {
-    const { count: c, error } = await supabase
-      .from("archive_items")
-      .select("*", { count: "exact", head: true });
-    if (error) {
-      console.error("count fetch error", error);
-      return;
-    }
-    setCount(c ?? 0);
-  };
-
-  const fetchItems = async () => {
-    setListError(null);
-    const { data, error } = await supabase
-      .from("archive_items")
-      .select(
-        "id,title,mode,speech_act,discourse_genre,sector,difficulty,source_text,is_learning_pick,status,updated_at",
-      )
-      .order("updated_at", { ascending: false });
-    if (error) {
-      console.error("archive_items fetch error", error);
-      setListError("자료를 불러오는 중 오류가 발생했습니다.");
-      toast.error("자료를 불러오는 중 오류가 발생했습니다.");
-      setItems([]);
-      return;
-    }
-    setItems((data ?? []) as ArchiveItem[]);
-  };
-
-  useEffect(() => {
-    fetchCount();
-    fetchItems();
-  }, []);
-
-  const resetForm = () => {
-    setForm(initialForm);
-    setErrors({});
-  };
-
-  const handleCancel = () => {
-    resetForm();
-    setOpen(false);
-  };
-
-  const handleSave = async () => {
-    const nextErrors: typeof errors = {};
-    if (!form.title.trim()) nextErrors.title = "제목을 입력해주세요";
-    if (form.mode !== "번역" && form.mode !== "통역")
-      nextErrors.mode = "모드를 선택해주세요";
-    if (!form.source_text.trim()) nextErrors.source_text = "원문을 입력해주세요";
-    if (!form.difficulty) nextErrors.difficulty = "난이도를 선택해주세요";
-    if (!form.speech_act) nextErrors.speech_act = "화행을 선택해주세요";
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
-
-    const nullIfEmpty = (v: string) => (v.trim() === "" ? null : v);
-
-    const payload = {
-      title: form.title.trim(),
-      mode: form.mode,
-      topic: nullIfEmpty(form.topic),
-      item_type: nullIfEmpty(form.item_type),
-      difficulty: form.difficulty || null,
-      speech_act: form.speech_act || null,
-      discourse_genre: form.discourse_genre || null,
-      sector: form.sector || null,
-      source_text: nullIfEmpty(form.source_text),
-      source_origin: form.source_origin || "manual",
-      audio_url: nullIfEmpty(form.audio_url),
-      youtube_url: nullIfEmpty(form.youtube_url),
-      youtube_id: nullIfEmpty(form.youtube_id),
-      is_learning_pick: form.is_learning_pick,
-      status: form.status || "archive",
-      researcher_notes: nullIfEmpty(form.researcher_notes),
-      title_auto_generated: false,
+  const counts = useMemo(() => {
+    const base = filtered;
+    return {
+      total: base.length,
+      needsReview: base.filter((s) => s.review_status === "needs_review").length,
+      approved: base.filter((s) => s.review_status === "approved").length,
+      reviseRequired: base.filter((s) => s.review_status === "revise_required")
+        .length,
+      experimentLocked: base.filter(
+        (s) =>
+          s.review_status === "approved" &&
+          s.usage_assignment === "experiment_locked",
+      ).length,
     };
-
-    setSaving(true);
-    const { error } = await supabase.from("archive_items").insert(payload);
-    setSaving(false);
-
-    if (error) {
-      console.error("archive_items insert error", error);
-      toast.error("저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-      return;
-    }
-
-    toast.success("자료가 저장되었습니다.");
-    resetForm();
-    setCount((c) => (c === null ? 1 : c + 1));
-    fetchCount();
-    fetchItems();
-  };
-
-  const handleAiTitle = () => toast("후속 구현 예정");
+  }, [filtered]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="bg-[#15202B]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <HomeBrand />
-          <div className="flex items-center gap-3">
-            <Link
-              to="/"
-              className="text-sm text-[#8899A6] transition-colors hover:text-[#F1EFE8]"
-            >
-              ← 학습자 화면으로
-            </Link>
-            <span className="rounded-md border border-[#5C6A7A] bg-transparent px-3 py-1.5 text-sm font-medium text-[#F1EFE8]">
-              관리자 영역
-            </span>
-          </div>
+    <AdminShell
+      title="시나리오 아카이브"
+      description="AI 생성 한·중 통번역 학습 시나리오 관리"
+    >
+      {/* Helper note */}
+      <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-3">
+        <p className="text-[11px] leading-relaxed text-[#5B5446]">
+          AI 생성 시나리오는 검수 전 학생에게 공개되지 않습니다.
+          <br />
+          연구자 검수 후 승인된 자료만 수업용 공개 또는 본실험 locked로 지정할 수 있습니다.
+          <br />
+          자동 점검 결과는 참고용이며, 최종 공개 여부는 연구자 검수와 용도 지정에 따라 결정됩니다.
+        </p>
+      </div>
+
+      {/* Count chips + actions */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip label="전체" count={counts.total} tone="neutral" />
+          <Chip label="검수 대기" count={counts.needsReview} tone="amber" />
+          <Chip label="승인 완료" count={counts.approved} tone="green" />
+          <Chip label="보완 필요" count={counts.reviseRequired} tone="red" />
+          <Chip
+            label="본실험 locked"
+            count={counts.experimentLocked}
+            tone="mustard"
+          />
         </div>
-      </header>
+        <div className="flex items-center gap-2">
+          <Button
+            className="h-9 bg-[#1d2336] text-white hover:bg-[#1d2336]/90"
+            onClick={() => {}}
+          >
+            + 시나리오 추가
+          </Button>
+          <Button
+            variant="outline"
+            className="h-9 border-[#D6D2C7] bg-transparent text-[#2c2c2a] hover:bg-muted"
+            onClick={() => {}}
+          >
+            ↓ 데이터 내보내기
+          </Button>
+        </div>
+      </div>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-10 sm:py-14">
-        <section>
-          <div className="flex items-stretch gap-3">
-            <span
-              aria-hidden
-              className="mt-1 w-[5px] shrink-0 self-stretch rounded-sm bg-[#FAD338]"
-            />
-            <div className="leading-[1.3]">
-              <h1 className="text-[24px] font-medium text-foreground">
-                통번역 데이터 아카이브
-              </h1>
-              <p className="text-[14px] text-[#888780]">
-                Interpretation & Translation Archive
-              </p>
-              <p className="text-[13px] text-[#B4B2A9]">
-                한·중 AI 통번역 학습자료 큐레이션
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-3.5">
-          <div className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1 text-xs text-muted-foreground shadow-sm">
-            <span className="text-foreground">전체 자료</span>
-            <span className="font-semibold text-foreground">
-              {count === null ? "—" : `${count}건`}
-            </span>
-          </div>
-        </section>
-
-        <section className="mt-3.5">
-          <div className="rounded-lg border border-border bg-card px-5 py-3 shadow-sm">
-            <p className="text-[13px] leading-snug text-muted-foreground">
-              이 메타데이터는 자료 큐레이션·검색을 위한 운영 태그이며, 본실험 통제 조건은 별도 locked scenario 단계에서 확정됩니다.
-            </p>
-          </div>
-        </section>
-
-        <section className="mt-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {!open && (
-              <Button
-                onClick={() => setOpen(true)}
-                className="bg-[#15202B] text-[#F1EFE8] hover:bg-[#1f2d3a]"
-              >
-                + 새 자료 등록
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => setExportOpen(true)}
-              className="border-[#15202B] bg-white text-[#15202B] hover:bg-[#F1EFE8]"
-            >
-              ↓ 학습 데이터 내보내기
-            </Button>
-          </div>
-        </section>
-
-        {open && (
-          <section className="mt-5">
-            <div className="mx-auto max-w-[460px]">
-              <div className="rounded-lg border border-border bg-card px-5 py-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-[15px] font-medium text-foreground">
-                      새 자료 등록
-                    </h2>
-                    <span className="rounded-md border border-border bg-[#FFF8DC] px-2 py-0.5 text-[12px] text-[#7a5e00]">
-                      초안
-                    </span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCancel}
-                    className="h-auto px-3 py-1 text-[12px]"
-                  >
-                    취소
-                  </Button>
-                </div>
-
-                <div className="space-y-2">
-                  <AccordionSection
-                    title="기본 정보"
-                    open={sectionsOpen.basic}
-                    onToggle={() => toggleSection("basic")}
-                  >
-                    <FieldRow label="제목" required htmlFor="title" error={errors.title}>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Input
-                          id="title"
-                          placeholder="자료 제목"
-                          value={form.title}
-                          onChange={(e) => setField("title", e.target.value)}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleAiTitle}
-                          className="shrink-0"
-                        >
-                          AI 제목 생성
-                        </Button>
-                      </div>
-                    </FieldRow>
-
-                    <FieldRow label="모드" required error={errors.mode}>
-                      <RadioGroup
-                        value={form.mode}
-                        onValueChange={(v) => setField("mode", v)}
-                        className="flex gap-6 pt-1"
-                      >
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem value="번역" id="mode-trans" />
-                          <Label htmlFor="mode-trans" className="font-normal">번역</Label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem value="통역" id="mode-interp" />
-                          <Label htmlFor="mode-interp" className="font-normal">통역</Label>
-                        </div>
-                      </RadioGroup>
-                    </FieldRow>
-
-                    <FieldRow
-                      label="원문"
-                      required
-                      htmlFor="source_text"
-                      error={errors.source_text}
-                    >
-                      <Textarea
-                        id="source_text"
-                        rows={6}
-                        placeholder="원문을 붙여넣거나 직접 입력"
-                        className="min-h-[176px]"
-                        value={form.source_text}
-                        onChange={(e) => setField("source_text", e.target.value)}
-                      />
-                    </FieldRow>
-
-                    <FieldRow label="난이도" required error={errors.difficulty}>
-                      <Select
-                        value={form.difficulty}
-                        onValueChange={(v) => setField("difficulty", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="중급">중급</SelectItem>
-                          <SelectItem value="고급">고급</SelectItem>
-                          <SelectItem value="전문가">전문가</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-
-                    <FieldRow label="화행" required error={errors.speech_act}>
-                      <Select
-                        value={form.speech_act}
-                        onValueChange={(v) => setField("speech_act", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="요청">요청</SelectItem>
-                          <SelectItem value="거절">거절</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-                  </AccordionSection>
-
-                  <AccordionSection
-                    title="화행·맥락 메타데이터"
-                    open={sectionsOpen.meta}
-                    onToggle={() => toggleSection("meta")}
-                  >
-                    <FieldRow label="담화 장르">
-                      <Select
-                        value={form.discourse_genre}
-                        onValueChange={(v) => setField("discourse_genre", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="비즈니스 이메일">비즈니스 이메일</SelectItem>
-                          <SelectItem value="업무 메신저">업무 메신저</SelectItem>
-                          <SelectItem value="회의 발화">회의 발화</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-
-                    <FieldRow label="섹터">
-                      <Select
-                        value={form.sector}
-                        onValueChange={(v) => setField("sector", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="엔터테인먼트">엔터테인먼트</SelectItem>
-                          <SelectItem value="테크·IT">테크·IT</SelectItem>
-                          <SelectItem value="무역·비즈니스">무역·비즈니스</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-
-                    <FieldRow label="자료 유형" htmlFor="item_type">
-                      <Input
-                        id="item_type"
-                        placeholder="예: dialogue, email, monologue"
-                        value={form.item_type}
-                        onChange={(e) => setField("item_type", e.target.value)}
-                      />
-                    </FieldRow>
-
-                    <FieldRow label="주제" htmlFor="topic">
-                      <Input
-                        id="topic"
-                        placeholder="예: 신제품 출시 회의"
-                        value={form.topic}
-                        onChange={(e) => setField("topic", e.target.value)}
-                      />
-                    </FieldRow>
-                  </AccordionSection>
-
-                  <AccordionSection
-                    title="미디어·출처"
-                    open={sectionsOpen.media}
-                    onToggle={() => toggleSection("media")}
-                  >
-                    <FieldRow label="자료 출처">
-                      <Select
-                        value={form.source_origin}
-                        onValueChange={(v) => setField("source_origin", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="manual">manual · 직접 입력</SelectItem>
-                          <SelectItem value="ai_draft">ai_draft · AI 초안</SelectItem>
-                          <SelectItem value="stt">stt · 음성 인식</SelectItem>
-                          <SelectItem value="youtube">youtube · YouTube</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-
-                    <FieldRow label="오디오 URL" htmlFor="audio_url">
-                      <Input
-                        id="audio_url"
-                        type="url"
-                        placeholder="https://..."
-                        value={form.audio_url}
-                        onChange={(e) => setField("audio_url", e.target.value)}
-                      />
-                    </FieldRow>
-
-                    <FieldRow label="YouTube URL" htmlFor="youtube_url">
-                      <Input
-                        id="youtube_url"
-                        type="url"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        value={form.youtube_url}
-                        onChange={(e) => setField("youtube_url", e.target.value)}
-                      />
-                    </FieldRow>
-
-                    <FieldRow label="YouTube ID" htmlFor="youtube_id">
-                      <Input
-                        id="youtube_id"
-                        placeholder="예: dQw4w9WgXcQ"
-                        value={form.youtube_id}
-                        onChange={(e) => setField("youtube_id", e.target.value)}
-                      />
-                    </FieldRow>
-                  </AccordionSection>
-
-                  <AccordionSection
-                    title="연구·운영 태그"
-                    open={sectionsOpen.tags}
-                    onToggle={() => toggleSection("tags")}
-                  >
-                    <FieldRow label="학습자료 후보">
-                      <div className="flex items-center gap-2 pt-1">
-                        <Checkbox
-                          id="is_learning_pick"
-                          checked={form.is_learning_pick}
-                          onCheckedChange={(c) =>
-                            setField("is_learning_pick", c === true)
-                          }
-                        />
-                        <Label htmlFor="is_learning_pick" className="font-normal">
-                          학습자료
-                        </Label>
-                      </div>
-                    </FieldRow>
-
-                    <FieldRow label="상태">
-                      <Select
-                        value={form.status}
-                        onValueChange={(v) => setField("status", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="archive">archive · 아카이브</SelectItem>
-                          <SelectItem value="coursework_candidate">
-                            coursework_candidate · 수업자료 후보
-                          </SelectItem>
-                          <SelectItem value="experiment_candidate">
-                            experiment_candidate · 본실험 후보
-                          </SelectItem>
-                          <SelectItem value="locked">locked · 본실험 확정</SelectItem>
-                          <SelectItem value="excluded">excluded · 제외</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldRow>
-
-                    <FieldRow label="연구자 메모" htmlFor="researcher_notes">
-                      <Textarea
-                        id="researcher_notes"
-                        rows={3}
-                        placeholder="연구자 메모 (선택)"
-                        className="min-h-[96px]"
-                        value={form.researcher_notes}
-                        onChange={(e) => setField("researcher_notes", e.target.value)}
-                      />
-                    </FieldRow>
-                  </AccordionSection>
-                </div>
-
-                <div className="mt-3.5 flex justify-end">
-                  <Button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving || missingRequired}
-                    className={
-                      missingRequired
-                        ? "h-auto cursor-not-allowed px-5 py-2 text-[13px] bg-[#F5E8B8] text-[#15202B]/60"
-                        : "h-auto px-5 py-2 text-[13px] bg-[#FAD338] text-[#15202B] hover:bg-[#f0c722]"
-                    }
-                  >
-                    {saving ? "저장 중..." : "저장"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        <section className="mt-10">
-          <div className="mb-5 flex items-center gap-2 border-b border-border pb-2">
-            <span aria-hidden className="inline-block h-4 w-[3px] rounded-sm bg-[#FAD338]" />
-            <h2 className="text-base font-semibold text-foreground">등록된 자료</h2>
-          </div>
-
-          {items === null ? (
-            <p className="text-sm text-muted-foreground">자료를 불러오는 중입니다.</p>
-          ) : listError ? (
-            <p className="text-sm text-[#D14343]">{listError}</p>
-          ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              아직 등록된 자료가 없습니다. 아래 폼에서 자료를 등록해 주세요.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {items.map((it) => {
-                const tags = [it.speech_act, it.discourse_genre, it.sector].filter(
-                  (t): t is string => !!t,
-                );
-                const statusKey = it.status ?? "archive";
-                const statusLabel = STATUS_LABELS[statusKey] ?? statusKey;
-                const statusClass =
-                  STATUS_STYLES[statusKey] ?? "bg-[#E5E5E5] text-[#444]";
-                const modeClass =
-                  MODE_STYLES[it.mode] ?? "bg-muted text-foreground";
-                return (
-                  <article
-                    key={it.id}
-                    className="flex flex-col rounded-lg border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
-                  >
-                    <h3
-                      className="text-base font-semibold leading-snug text-foreground"
-                      style={{
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {it.title}
-                    </h3>
-
-                    <div className="mt-2">
-                      <span
-                        className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${modeClass}`}
-                      >
-                        {it.mode}
-                      </span>
-                    </div>
-
-                    {tags.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {tags.map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full bg-[#EFEAE0] px-2 py-0.5 text-[11px] text-[#5A5343]"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {it.difficulty && (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        난이도 · {it.difficulty}
-                      </p>
-                    )}
-
-                    {it.source_text && (
-                      <p
-                        className="mt-3 text-xs leading-relaxed text-muted-foreground"
-                        style={{
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {it.source_text}
-                      </p>
-                    )}
-
-                    <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3">
-                      <span className="text-[11px]">
-                        {it.is_learning_pick ? (
-                          <span className="rounded-md bg-[#FFF6D6] px-2 py-0.5 text-[#7a5e00]">
-                            ★ 학습자료 후보
-                          </span>
-                        ) : (
-                          <span className="text-transparent">·</span>
-                        )}
-                      </span>
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${statusClass}`}
-                      >
-                        {statusKey} · {statusLabel}
-                      </span>
-                    </div>
-                    {it.updated_at && (
-                      <p className="mt-2 text-right text-[10px] text-muted-foreground">
-                        {formatUpdatedAt(it.updated_at)}
-                      </p>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
+      {/* Filters */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <FilterSelect
+          value={fReview}
+          onChange={setFReview}
+          placeholder="검수 상태"
+          options={[
+            { value: "needs_review", label: "검수 대기 (needs_review)" },
+            { value: "revise_required", label: "보완 필요 (revise_required)" },
+            { value: "revised", label: "재검수 대기 (revised)" },
+            { value: "approved", label: "승인 완료 (approved)" },
+          ]}
+          width="w-[170px]"
+        />
+        <FilterSelect
+          value={fUsage}
+          onChange={setFUsage}
+          placeholder="용도 배정"
+          options={[
+            { value: "archived_only", label: "archived_only" },
+            { value: "coursework_published", label: "coursework_published" },
+            { value: "experiment_locked", label: "experiment_locked" },
+            { value: "excluded", label: "excluded" },
+          ]}
+          width="w-[180px]"
+        />
+        <FilterSelect
+          value={fSpeech}
+          onChange={setFSpeech}
+          placeholder="화행"
+          options={[
+            { value: "request", label: "요청" },
+            { value: "refusal", label: "거절" },
+          ]}
+          width="w-[110px]"
+        />
+        <FilterSelect
+          value={fGenre}
+          onChange={setFGenre}
+          placeholder="장르"
+          options={(Object.keys(GENRE_LABEL) as Genre[]).map((k) => ({
+            value: k,
+            label: GENRE_LABEL[k],
+          }))}
+          width="w-[140px]"
+        />
+        <FilterSelect
+          value={fLevel}
+          onChange={setFLevel}
+          placeholder="학습자 수준"
+          options={(Object.keys(LEVEL_LABEL) as LearnerLevel[]).map((k) => ({
+            value: k,
+            label: LEVEL_LABEL[k],
+          }))}
+          width="w-[140px]"
+        />
+        <FilterSelect
+          value={fIndustry}
+          onChange={setFIndustry}
+          placeholder="산업 분야"
+          options={(Object.keys(INDUSTRY_LABEL) as IndustrySector[]).map(
+            (k) => ({ value: k, label: INDUSTRY_LABEL[k] }),
           )}
-        </section>
+          width="w-[200px]"
+        />
+        <FilterSelect
+          value={fFunction}
+          onChange={setFFunction}
+          placeholder="업무 기능"
+          options={(Object.keys(FUNCTION_LABEL) as BusinessFunction[]).map(
+            (k) => ({ value: k, label: FUNCTION_LABEL[k] }),
+          )}
+          width="w-[200px]"
+        />
+      </div>
 
-      </main>
-      <ExportSessionsDialog open={exportOpen} onOpenChange={setExportOpen} />
-    </div>
+      {/* Cards grid */}
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {filtered.map((s) => {
+          const isExcluded = s.usage_assignment === "excluded";
+          return (
+            <article
+              key={s.id}
+              className={`flex flex-col rounded-lg border border-border bg-card p-4 shadow-sm ${
+                isExcluded ? "opacity-85" : ""
+              }`}
+            >
+              <h3
+                className={`text-[14px] font-medium leading-snug text-foreground ${
+                  isExcluded ? "line-through" : ""
+                }`}
+              >
+                {s.title}
+              </h3>
+              <p className="mt-2 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
+                {s.source_text}
+              </p>
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <MetaTag>{SPEECH_ACT_LABEL[s.speech_act]}</MetaTag>
+                <MetaTag>{GENRE_LABEL[s.genre]}</MetaTag>
+                <MetaTag>{LEVEL_LABEL[s.learner_level]}</MetaTag>
+                <MetaTag>{INDUSTRY_LABEL[s.industry_sector]}</MetaTag>
+                <MetaTag>{FUNCTION_LABEL[s.business_function]}</MetaTag>
+                <MetaTag>{CONTEXT_LABEL[s.interaction_context]}</MetaTag>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <span
+                  className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${REVIEW_BADGE[s.review_status]} ${
+                    isExcluded ? "line-through" : ""
+                  }`}
+                >
+                  검수: {s.review_status}
+                </span>
+                <span
+                  className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${USAGE_BADGE[s.usage_assignment]} ${
+                    isExcluded ? "line-through" : ""
+                  }`}
+                >
+                  용도: {s.usage_assignment}
+                </span>
+              </div>
+
+              <hr className="my-3 border-border" />
+
+              <div className="flex items-center justify-between text-[11px]">
+                <span className={AUTO_CHECK_COLOR[s.auto_check_result]}>
+                  자동 점검: {AUTO_CHECK_LABEL[s.auto_check_result]}
+                </span>
+                <span className="text-muted-foreground">
+                  {s.updated_at} 수정
+                </span>
+              </div>
+
+              <div className="mt-3 flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  className="h-8 border-[#D6D2C7] bg-transparent text-[12px] text-[#2c2c2a] hover:bg-muted"
+                  onClick={() => {}}
+                >
+                  상세 보기
+                </Button>
+                <Button
+                  className="h-8 bg-[#1d2336] text-[12px] text-white hover:bg-[#1d2336]/90"
+                  onClick={() => {}}
+                >
+                  검수하기
+                </Button>
+              </div>
+            </article>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="col-span-full rounded-md border border-dashed border-border bg-card px-6 py-10 text-center text-sm text-muted-foreground">
+            조건에 해당하는 시나리오가 없습니다.
+          </div>
+        )}
+      </div>
+    </AdminShell>
   );
 };
 
