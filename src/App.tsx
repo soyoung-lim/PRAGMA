@@ -20,6 +20,7 @@ import AdminLearners from "./pages/admin/AdminLearners.tsx";
 import AdminReports from "./pages/admin/AdminReports.tsx";
 import AdminAnalytics from "./pages/admin/AdminAnalytics.tsx";
 import AdminExport from "./pages/admin/AdminExport.tsx";
+import AdminDecisionTraces from "./pages/admin/AdminDecisionTraces.tsx";
 import AdminLogin from "./pages/admin/AdminLogin.tsx";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { seedIfEmpty } from "./lib/learningSessions";
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/admin/prompt-harness" element={<AdminPromptHarness />} />
           <Route path="/admin/review" element={<AdminReview />} />
           <Route path="/admin/learners" element={<AdminLearners />} />
+          <Route path="/admin/decision-traces" element={<AdminDecisionTraces />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route path="/admin/export" element={<AdminExport />} />
