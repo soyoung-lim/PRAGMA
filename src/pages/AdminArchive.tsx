@@ -84,33 +84,45 @@ const LEVEL_LABEL: Record<LearnerLevel, string> = {
 };
 
 const CONTEXT_LABEL: Record<InteractionContext, string> = {
-  coordination: "조율",
-  negotiation: "협의",
+  coordination: "일정 조정",
+  negotiation: "조건 협의",
   follow_up: "후속 확인",
 };
 
 const INDUSTRY_LABEL: Record<IndustrySector, string> = {
   trade_distribution: "무역·유통",
-  IT_platform: "IT·플랫폼·커머스",
+  IT_platform: "IT·플랫폼",
   manufacturing: "제조·소비재",
-  tourism_hospitality: "관광·호텔·서비스",
+  tourism_hospitality: "관광·서비스",
   education_research: "교육·연구",
   public_international_affairs: "공공·국제교류",
-  culture_content_media: "문화콘텐츠·미디어·출판·행사",
+  culture_content_media: "문화·콘텐츠",
 };
 
+// 7 primary labels shown to users. Orphan enums map to a consolidated label.
 const FUNCTION_LABEL: Record<BusinessFunction, string> = {
-  overseas_sales: "해외영업·거래처 관리",
+  overseas_sales: "해외영업·거래",
   marketing_pr: "마케팅·홍보",
   customer_partner_support: "고객·파트너 응대",
-  SCM_logistics: "구매·물류·공급망",
-  contract_terms: "계약·거래 조건 조율",
-  project_coordination: "프로젝트 조율",
-  research_admin: "연구·행정 협력",
+  SCM_logistics: "구매·물류",
+  contract_terms: "해외영업·거래",
+  project_coordination: "프로젝트 운영",
+  research_admin: "대외협력·제휴",
   localization_translation: "번역·로컬라이제이션",
-  event_operations: "행사·현장 운영",
-  international_collaboration: "국제협력·제휴",
+  event_operations: "프로젝트 운영",
+  international_collaboration: "대외협력·제휴",
 };
+
+// Only the 7 primary enum values are exposed in the business-function filter.
+const FUNCTION_FILTER_KEYS: BusinessFunction[] = [
+  "overseas_sales",
+  "marketing_pr",
+  "customer_partner_support",
+  "SCM_logistics",
+  "project_coordination",
+  "localization_translation",
+  "international_collaboration",
+];
 
 const REVIEW_BADGE: Record<ReviewStatus, string> = {
   generated: "bg-[#E5E7EB] text-[#374151] border-[#D1D5DB]",
@@ -228,7 +240,7 @@ const MOCK: Scenario[] = [
     genre: "business_messenger",
     learner_level: "intermediate",
     industry_sector: "education_research",
-    business_function: "research_admin",
+    business_function: "international_collaboration",
     interaction_context: "coordination",
     review_status: "revised",
     usage_assignment: "archived_only",
@@ -493,9 +505,10 @@ const AdminArchive = () => {
           value={fFunction}
           onChange={setFFunction}
           category="업무 기능"
-          options={(Object.keys(FUNCTION_LABEL) as BusinessFunction[]).map(
-            (k) => ({ value: k, label: FUNCTION_LABEL[k] }),
-          )}
+          options={FUNCTION_FILTER_KEYS.map((k) => ({
+            value: k,
+            label: FUNCTION_LABEL[k],
+          }))}
           width="w-[240px]"
         />
       </div>
