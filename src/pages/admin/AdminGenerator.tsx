@@ -832,6 +832,10 @@ const AdminGenerator = () => {
                   <div className="mb-1.5 text-[11px] font-medium text-[#8a857c] uppercase tracking-wide">
                     AI 번역안 A / B / C
                   </div>
+                  <p className="mb-2 text-[11.5px] leading-relaxed text-muted-foreground">
+                    세 번역안은 같은 한국어 원문을 바탕으로 생성되며, A는 기본형, B는 P-D-R 상황 조건 반영형,
+                    C는 P-D-R에 관계 유지 목표를 더한 버전입니다.
+                  </p>
                   <div className="flex gap-1 border-b border-border">
                     {result.variants.map((v, i) => (
                       <button
