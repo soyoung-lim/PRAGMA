@@ -590,7 +590,8 @@ const AdminGenerator = () => {
           {saved && (
             <div className="mt-3 rounded-lg border border-[#6EE7B7] bg-[#D1FAE5] p-3">
               <p className="text-[12.5px] font-medium text-[#065F46]">
-                ✓ 생성된 시나리오는 검수 대기 상태로 아카이브에 저장되었습니다.
+                ✓ 생성된 {batchItems ? `${batchItems.length}개의 ` : ""}시나리오
+                {batchItems ? "가" : "는"} 검수 대기 상태로 아카이브에 저장되었습니다.
               </p>
               <p className="mt-1 text-[11.5px] text-[#065F46]/85">
                 검수: needs_review &nbsp;/&nbsp; 용도: archived_only
@@ -621,8 +622,69 @@ const AdminGenerator = () => {
 
             {!loading && result && (
               <div className="space-y-5">
+                {form.mode === "batch" && batchItems && (
+                  <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2">
+                    <p className="text-[12.5px] font-medium text-[#5B5446]">
+                      총 {batchItems.length}개의 시나리오가 생성되었습니다.
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[#8a857c]">
+                      첫 번째 항목만 전체 상세를 미리보기로 표시합니다. 나머지는 동일한 설정으로 생성된 lightweight 카드입니다.
+                    </p>
+                  </div>
+                )}
+
+                {form.mode === "batch" && batchItems && (
+                  <div>
+                    <div className="mb-1.5 text-[11px] font-medium text-[#8a857c] uppercase tracking-wide">
+                      생성된 시나리오 목록
+                    </div>
+                    <ul className="divide-y divide-border rounded-md border border-border bg-background">
+                      {batchItems.map((it, i) => (
+                        <li key={i} className="flex flex-col gap-1 px-3 py-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-[12.5px] font-medium text-foreground">
+                              {i + 1}. {it.title}
+                              {i === 0 && (
+                                <span className="ml-2 inline-flex items-center rounded bg-[#FAD338]/30 px-1.5 py-0.5 text-[10px] text-[#7A5A0A]">
+                                  상세 미리보기
+                                </span>
+                              )}
+                            </span>
+                            <span
+                              className={`shrink-0 text-[11px] ${
+                                it.auto_check === "pass"
+                                  ? "text-[#15803D]"
+                                  : "text-[#B45309]"
+                              }`}
+                            >
+                              자동 점검: {it.auto_check}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {[
+                              SPEECH_ACT[form.speech_act],
+                              GENRE[form.genre],
+                              LEVEL[form.level],
+                              INDUSTRY[form.industry],
+                              FUNCTION[form.func],
+                              CONTEXT[form.context],
+                            ].map((t) => (
+                              <span
+                                key={t}
+                                className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[10.5px] text-muted-foreground"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <h3 className="text-[15px] font-medium text-foreground leading-snug">
-                  {result.title}
+                  {form.mode === "batch" ? `상세 미리보기 — ${result.title}` : result.title}
                 </h3>
 
                 <div className="flex flex-wrap gap-1.5">
@@ -721,7 +783,11 @@ const AdminGenerator = () => {
                     disabled={saved}
                     className="bg-[#1d2336] text-[13px] text-white hover:bg-[#1d2336]/90 disabled:cursor-not-allowed disabled:bg-[#9ca3af] disabled:text-white disabled:opacity-100"
                   >
-                    {saved ? "✓ 저장됨" : "💾 아카이브에 저장"}
+                    {saved
+                      ? `✓ ${form.mode === "batch" && batchItems ? `${batchItems.length}개 ` : ""}저장됨`
+                      : form.mode === "batch" && batchItems
+                      ? `💾 전체 ${batchItems.length}개 아카이브에 저장`
+                      : "💾 아카이브에 저장"}
                   </Button>
                 </div>
               </div>
