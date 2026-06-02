@@ -534,7 +534,7 @@ const AdminGenerator = () => {
               P-D-R 조건
             </h3>
             <div className="mt-2 space-y-3">
-              <Field label="상대 지위">
+              <Field label="Power (P) · 지위">
                 <Select
                   value={form.pdr_power}
                   onValueChange={(v) => update("pdr_power", v as PdrPower)}
@@ -555,7 +555,7 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="관계 거리">
+              <Field label="Distance (D) · 거리">
                 <Select
                   value={form.pdr_distance}
                   onValueChange={(v) => update("pdr_distance", v as PdrDistance)}
@@ -576,7 +576,7 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="부담도">
+              <Field label="Imposition (R) · 부담도">
                 <Select
                   value={form.pdr_burden}
                   onValueChange={(v) => update("pdr_burden", v as PdrBurden)}
