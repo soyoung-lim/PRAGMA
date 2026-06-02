@@ -55,34 +55,34 @@ const CONTEXT: Record<InteractionContext, string> = {
   follow_up: "후속 확인",
 };
 const PDR_POWER: Record<PdrPower, string> = {
-  higher: "상대가 나보다 높다",
-  equal: "상대와 나는 비슷하다",
-  lower: "상대가 나보다 낮다",
+  higher: "High",
+  equal: "Medium",
+  lower: "Low",
 };
 const PDR_DISTANCE: Record<PdrDistance, string> = {
-  formal: "처음이거나 매우 격식 있는 관계",
-  occasional: "업무상 몇 차례 소통했지만 친밀하지는 않다",
-  close: "자주 소통하고 비교적 가까운 관계",
+  formal: "High",
+  occasional: "Medium",
+  close: "Low",
 };
 const PDR_BURDEN: Record<PdrBurden, string> = {
-  high: "상대의 일정·비용·계획에 영향을 줄 수 있다",
-  mid: "어느 정도 조정이 필요하지만 감당 가능한 수준이다",
-  low: "부담이 크지 않은 간단한 요청 또는 거절이다",
+  high: "High",
+  mid: "Medium",
+  low: "Low",
 };
 const PDR_POWER_SHORT: Record<PdrPower, string> = {
-  higher: "상대 지위 높음",
-  equal: "상대 지위 비슷",
-  lower: "상대 지위 낮음",
+  higher: "P: High",
+  equal: "P: Medium",
+  lower: "P: Low",
 };
 const PDR_DISTANCE_SHORT: Record<PdrDistance, string> = {
-  formal: "관계 거리 멂",
-  occasional: "관계 거리 중간",
-  close: "관계 거리 가까움",
+  formal: "D: High",
+  occasional: "D: Medium",
+  close: "D: Low",
 };
 const PDR_BURDEN_SHORT: Record<PdrBurden, string> = {
-  high: "부담도 높음",
-  mid: "부담도 중간",
-  low: "부담도 낮음",
+  high: "R: High",
+  mid: "R: Medium",
+  low: "R: Low",
 };
 const INDUSTRY: Record<IndustrySector, string> = {
   trade_distribution: "무역·유통",
@@ -204,7 +204,7 @@ function buildScenario(f: FormState): Generated {
         {
           icon: "📚",
           role: "통번역 교수자 관점",
-          text: "거절 화행을 직접 표현하지 않고 '难以接受', '难以通过审批' 등 완곡 표현으로 처리한 점이 적절합니다. A안은 격식체 사용이 안정적이며, C안은 조율·대안 제시 구조가 잘 드러납니다. B안은 간결하지만 비즈니스 이메일 격식 측면에서 약간 미흡할 수 있습니다.",
+          text: "거절 화행을 직접 표현하지 않고 '难以接受', '难以通过审批' 등 완곡 표현으로 처리한 점이 적절합니다. A안은 기본형으로 격식체 사용이 안정적이며, B안은 P-D-R 조건을 반영한 완곡·격식 조정이 적용되었고, C안은 P-D-R 반영에 관계 유지 표현까지 추가되어 가장 완성도가 높습니다.",
         },
         {
           icon: "💼",
@@ -248,7 +248,7 @@ function buildScenario(f: FormState): Generated {
         {
           icon: "📚",
           role: "통번역 교수자 관점",
-          text: "요청 화행을 '恳请', '请问' 등으로 격식 수준에 맞게 처리한 점이 좋습니다. A는 정중도가 가장 높고, B는 정보 전달 효율이 높으며, C는 조율·대안 표현이 잘 드러납니다. 비즈니스 이메일 첫 인사는 '您好' 외에 회사명/담당자 호칭을 추가하는 변형도 학습 포인트가 됩니다.",
+          text: "요청 화행을 '恳请', '请问' 등으로 격식 수준에 맞게 처리한 점이 좋습니다. A는 기본형으로 정중도가 가장 높고, B는 P-D-R 조건 반영형으로 정보 전달 효율이 높으며, C는 P-D-R + 관계 유지형으로 조율·대안 표현이 잘 드러납니다. 비즈니스 이메일 첫 인사는 '您好' 외에 회사명/담당자 호칭을 추가하는 변형도 학습 포인트가 됩니다.",
         },
         {
           icon: "💼",
@@ -302,10 +302,10 @@ function buildScenario(f: FormState): Generated {
         text: "수신자는 일방적 통보가 아닌 협의 여지가 있는 메시지로 받아들이게 됩니다. 격식과 배려가 모두 드러나, 관계 단절 없이 다음 단계를 논의할 수 있는 분위기를 만들어 줍니다. 단, 구체적인 조정안이나 시점이 함께 제시되면 회신이 더 명확해질 것입니다.",
       },
       {
-        icon: "📚",
-        role: "통번역 교수자 관점",
-        text: "화행 표현과 격식 수준이 한국어 원문 의도와 일치하도록 처리되었습니다. A는 격식 강조, B는 정보 전달 중심, C는 조율·대안 표현 중심으로 차이가 분명합니다. 학습자는 격식과 간결성, 협상 표현 사이의 trade-off를 학습할 수 있습니다.",
-      },
+          icon: "📚",
+          role: "통번역 교수자 관점",
+          text: "화행 표현과 격식 수준이 한국어 원문 의도와 일치하도록 처리되었습니다. A는 기본형으로 안정적인 직역, B는 P-D-R 반영형으로 상황 조건에 맞는 격식·완곡 조정, C는 P-D-R + 관계 유지형으로 관계 유지 표현이 추가되어 차이가 분명합니다. 학습자는 기본형과 상황 반영형, 관계 유지형 사이의 trade-off를 학습할 수 있습니다.",
+        },
       {
         icon: "💼",
         role: "업무 현장 전문가 관점",
@@ -534,7 +534,7 @@ const AdminGenerator = () => {
               P-D-R 조건
             </h3>
             <div className="mt-2 space-y-3">
-              <Field label="상대 지위">
+              <Field label="Power (P) · 지위">
                 <Select
                   value={form.pdr_power}
                   onValueChange={(v) => update("pdr_power", v as PdrPower)}
@@ -555,7 +555,7 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="관계 거리">
+              <Field label="Distance (D) · 거리">
                 <Select
                   value={form.pdr_distance}
                   onValueChange={(v) => update("pdr_distance", v as PdrDistance)}
@@ -576,7 +576,7 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="부담도">
+              <Field label="Imposition (R) · 부담도">
                 <Select
                   value={form.pdr_burden}
                   onValueChange={(v) => update("pdr_burden", v as PdrBurden)}
