@@ -15,6 +15,9 @@ type SpeechAct = "request" | "refusal";
 type Genre = "business_email" | "business_messenger" | "meeting_speech";
 type LearnerLevel = "beginner_intermediate" | "intermediate" | "advanced";
 type InteractionContext = "coordination" | "negotiation" | "follow_up";
+type PdrPower = "higher" | "equal" | "lower";
+type PdrDistance = "formal" | "occasional" | "close";
+type PdrBurden = "high" | "mid" | "low";
 type IndustrySector =
   | "trade_distribution"
   | "IT_platform"
@@ -50,6 +53,36 @@ const CONTEXT: Record<InteractionContext, string> = {
   coordination: "일정 조정",
   negotiation: "조건 협의",
   follow_up: "후속 확인",
+};
+const PDR_POWER: Record<PdrPower, string> = {
+  higher: "상대가 나보다 높다",
+  equal: "상대와 나는 비슷하다",
+  lower: "상대가 나보다 낮다",
+};
+const PDR_DISTANCE: Record<PdrDistance, string> = {
+  formal: "처음이거나 매우 격식 있는 관계",
+  occasional: "업무상 몇 차례 소통했지만 친밀하지는 않다",
+  close: "자주 소통하고 비교적 가까운 관계",
+};
+const PDR_BURDEN: Record<PdrBurden, string> = {
+  high: "상대의 일정·비용·계획에 영향을 줄 수 있다",
+  mid: "어느 정도 조정이 필요하지만 감당 가능한 수준이다",
+  low: "부담이 크지 않은 간단한 요청 또는 거절이다",
+};
+const PDR_POWER_SHORT: Record<PdrPower, string> = {
+  higher: "상대 지위 높음",
+  equal: "상대 지위 비슷",
+  lower: "상대 지위 낮음",
+};
+const PDR_DISTANCE_SHORT: Record<PdrDistance, string> = {
+  formal: "관계 거리 멂",
+  occasional: "관계 거리 중간",
+  close: "관계 거리 가까움",
+};
+const PDR_BURDEN_SHORT: Record<PdrBurden, string> = {
+  high: "부담도 높음",
+  mid: "부담도 중간",
+  low: "부담도 낮음",
 };
 const INDUSTRY: Record<IndustrySector, string> = {
   trade_distribution: "무역·유통",
@@ -99,6 +132,9 @@ interface FormState {
   multi: boolean;
   reasons: "1" | "2" | "3";
   coordination: boolean;
+  pdr_power: PdrPower;
+  pdr_distance: PdrDistance;
+  pdr_burden: PdrBurden;
 }
 
 const DEFAULT_FORM: FormState = {
@@ -113,6 +149,9 @@ const DEFAULT_FORM: FormState = {
   multi: false,
   reasons: "2",
   coordination: true,
+  pdr_power: "higher",
+  pdr_distance: "occasional",
+  pdr_burden: "mid",
 };
 
 interface Generated {
@@ -141,18 +180,18 @@ function buildScenario(f: FormState): Generated {
       task: "상하이 광고 에이전시 담당자에게 거절 의사를 명확히 전하되, 향후 협력 가능성을 열어두는 격식 있는 톤으로 중국어로 번역하세요.",
       variants: [
         {
-          label: "번역안 A",
-          note: "격식 강조",
+          label: "A",
+          note: "기본형",
           text: "经过认真研究,我方此次恐难以接受共同推广费用的下调请求。由于本部财年结算时间已近,且全球营销预算分配业已确定,目前阶段进行单价调整难以通过内部审批。期望在下一轮营销活动中,双方能够进一步探讨更加深入的合作方案。",
         },
         {
-          label: "번역안 B",
-          note: "간결",
+          label: "B",
+          note: "P-D-R 반영형",
           text: "经过研究,本次共同推广费用的下调暂时无法接受。由于财年结算和全球预算已经确定,目前难以调整单价。下次合作时希望能再讨论。",
         },
         {
-          label: "번역안 C",
-          note: "조율 표현 강조",
+          label: "C",
+          note: "P-D-R + 관계 유지형",
           text: "我们认真讨论了贵方的提议,但因本部财年结算和全球营销预算分配的限制,此次单价调整确实有难度。如果方便的话,希望可以就替代方案(例如调整投放比例)继续交流,并在下次合作中进一步深化双方合作。",
         },
       ],
@@ -185,18 +224,18 @@ function buildScenario(f: FormState): Generated {
       task: "광저우 가구 공급사 담당자에게 납기 단축 요청을 정중히 전달하고, 추가 비용·부분 출고 가능성을 함께 문의하는 격식 있는 톤으로 중국어로 번역하세요.",
       variants: [
         {
-          label: "번역안 A",
-          note: "격식 강조",
+          label: "A",
+          note: "기본형",
           text: "您好,因我方门店开业时间提前,恳请贵司确认是否可将下一批集装箱出货时间提前两周。若可行,烦请一并告知额外费用的核算标准。如调整确有难度,我方也可考虑分批出货的方案。",
         },
         {
-          label: "번역안 B",
-          note: "간결",
+          label: "B",
+          note: "P-D-R 반영형",
           text: "您好,门店开业提前,请问下一批集装箱能否提前两周出货?如果可以,请告知额外费用。若不便调整,可以考虑分批出货。",
         },
         {
-          label: "번역안 C",
-          note: "조율 표현 강조",
+          label: "C",
+          note: "P-D-R + 관계 유지형",
           text: "您好,由于我方门店开业时间提前,想与贵司确认下一批集装箱是否能够提前两周出货。如方便,希望同时了解额外费用的计算方式;如全量提前确有难度,我们也愿意讨论分批出货等灵活方案,以便共同找到合适的安排。",
         },
       ],
@@ -235,22 +274,22 @@ function buildScenario(f: FormState): Generated {
       : "상대방에게 협조 요청을 정중히 전달하고, 후속 일정 조율 의사를 함께 표현하는 격식 있는 톤으로 중국어로 번역하세요.",
     variants: [
       {
-        label: "번역안 A",
-        note: "격식 강조",
+        label: "A",
+        note: "기본형",
         text: isRefusal
           ? "贵方所提建议,我方内部已审慎研究。然而,在现有条件下确难以接受。若能在日程或条件上做出部分调整,我方愿与贵方继续推进下一阶段的协商。"
           : "继上次沟通之后,谨向贵方汇报最新进展,并请贵方协助下一阶段的工作。烦请告知贵方可行的日程与范围,我方将据此与内部安排进行协调后回复。",
       },
       {
-        label: "번역안 B",
-        note: "간결",
+        label: "B",
+        note: "P-D-R 반영형",
         text: isRefusal
           ? "经研究,目前条件下我们难以接受您的提议。如能调整部分日程或条件,可以继续讨论下一步。"
           : "上次沟通后向您汇报进展,并希望就下一步工作得到您的协助。请告知您方便的时间和范围。",
       },
       {
-        label: "번역안 C",
-        note: "조율 표현 강조",
+        label: "C",
+        note: "P-D-R + 관계 유지형",
         text: isRefusal
           ? "我们认真讨论了您的提议,在现有条件下确有难度。如果可以在日程或条件上稍作调整,我们非常愿意就替代方案与贵方继续探讨,共同推进下一阶段。"
           : "想就上次沟通的内容向您同步进展,并希望与贵方协商下一步安排。如方便,请告知您的日程与可行范围,我方会据此与内部对齐后再行回复。",
@@ -358,6 +397,7 @@ const AdminGenerator = () => {
         INDUSTRY[form.industry],
         FUNCTION[form.func],
         CONTEXT[form.context],
+        `${PDR_POWER_SHORT[form.pdr_power]} / ${PDR_DISTANCE_SHORT[form.pdr_distance]} / ${PDR_BURDEN_SHORT[form.pdr_burden]}`,
       ]
     : [];
 
@@ -480,6 +520,78 @@ const AdminGenerator = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(CONTEXT).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+          </div>
+
+          {/* P-D-R 조건 */}
+          <div>
+            <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
+              P-D-R 조건
+            </h3>
+            <div className="mt-2 space-y-3">
+              <Field label="상대 지위">
+                <Select
+                  value={form.pdr_power}
+                  onValueChange={(v) => update("pdr_power", v as PdrPower)}
+                >
+                  <SelectTrigger className={formField}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                    className="max-h-60 overflow-y-auto z-50"
+                  >
+                    {Object.entries(PDR_POWER).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="관계 거리">
+                <Select
+                  value={form.pdr_distance}
+                  onValueChange={(v) => update("pdr_distance", v as PdrDistance)}
+                >
+                  <SelectTrigger className={formField}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                    className="max-h-60 overflow-y-auto z-50"
+                  >
+                    {Object.entries(PDR_DISTANCE).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="부담도">
+                <Select
+                  value={form.pdr_burden}
+                  onValueChange={(v) => update("pdr_burden", v as PdrBurden)}
+                >
+                  <SelectTrigger className={formField}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                    className="max-h-60 overflow-y-auto z-50"
+                  >
+                    {Object.entries(PDR_BURDEN).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
@@ -720,6 +832,10 @@ const AdminGenerator = () => {
                   <div className="mb-1.5 text-[11px] font-medium text-[#8a857c] uppercase tracking-wide">
                     AI 번역안 A / B / C
                   </div>
+                  <p className="mb-2 text-[11.5px] leading-relaxed text-muted-foreground">
+                    세 번역안은 같은 한국어 원문을 바탕으로 생성되며, A는 기본형, B는 P-D-R 상황 조건 반영형,
+                    C는 P-D-R에 관계 유지 목표를 더한 버전입니다.
+                  </p>
                   <div className="flex gap-1 border-b border-border">
                     {result.variants.map((v, i) => (
                       <button
