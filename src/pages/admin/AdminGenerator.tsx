@@ -528,6 +528,78 @@ const AdminGenerator = () => {
             </div>
           </div>
 
+          {/* P-D-R 조건 */}
+          <div>
+            <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
+              P-D-R 조건
+            </h3>
+            <div className="mt-2 space-y-3">
+              <Field label="상대 지위">
+                <Select
+                  value={form.pdr_power}
+                  onValueChange={(v) => update("pdr_power", v as PdrPower)}
+                >
+                  <SelectTrigger className={formField}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                    className="max-h-60 overflow-y-auto z-50"
+                  >
+                    {Object.entries(PDR_POWER).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="관계 거리">
+                <Select
+                  value={form.pdr_distance}
+                  onValueChange={(v) => update("pdr_distance", v as PdrDistance)}
+                >
+                  <SelectTrigger className={formField}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                    className="max-h-60 overflow-y-auto z-50"
+                  >
+                    {Object.entries(PDR_DISTANCE).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="부담도">
+                <Select
+                  value={form.pdr_burden}
+                  onValueChange={(v) => update("pdr_burden", v as PdrBurden)}
+                >
+                  <SelectTrigger className={formField}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                    className="max-h-60 overflow-y-auto z-50"
+                  >
+                    {Object.entries(PDR_BURDEN).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+          </div>
+
           {/* 도메인 */}
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
