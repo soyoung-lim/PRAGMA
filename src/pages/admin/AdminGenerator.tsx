@@ -55,34 +55,34 @@ const CONTEXT: Record<InteractionContext, string> = {
   follow_up: "후속 확인",
 };
 const PDR_POWER: Record<PdrPower, string> = {
-  higher: "상대가 나보다 높다",
-  equal: "상대와 나는 비슷하다",
-  lower: "상대가 나보다 낮다",
+  higher: "High",
+  equal: "Medium",
+  lower: "Low",
 };
 const PDR_DISTANCE: Record<PdrDistance, string> = {
-  formal: "처음이거나 매우 격식 있는 관계",
-  occasional: "업무상 몇 차례 소통했지만 친밀하지는 않다",
-  close: "자주 소통하고 비교적 가까운 관계",
+  formal: "High",
+  occasional: "Medium",
+  close: "Low",
 };
 const PDR_BURDEN: Record<PdrBurden, string> = {
-  high: "상대의 일정·비용·계획에 영향을 줄 수 있다",
-  mid: "어느 정도 조정이 필요하지만 감당 가능한 수준이다",
-  low: "부담이 크지 않은 간단한 요청 또는 거절이다",
+  high: "High",
+  mid: "Medium",
+  low: "Low",
 };
 const PDR_POWER_SHORT: Record<PdrPower, string> = {
-  higher: "상대 지위 높음",
-  equal: "상대 지위 비슷",
-  lower: "상대 지위 낮음",
+  higher: "P: High",
+  equal: "P: Medium",
+  lower: "P: Low",
 };
 const PDR_DISTANCE_SHORT: Record<PdrDistance, string> = {
-  formal: "관계 거리 멂",
-  occasional: "관계 거리 중간",
-  close: "관계 거리 가까움",
+  formal: "D: High",
+  occasional: "D: Medium",
+  close: "D: Low",
 };
 const PDR_BURDEN_SHORT: Record<PdrBurden, string> = {
-  high: "부담도 높음",
-  mid: "부담도 중간",
-  low: "부담도 낮음",
+  high: "R: High",
+  mid: "R: Medium",
+  low: "R: Low",
 };
 const INDUSTRY: Record<IndustrySector, string> = {
   trade_distribution: "무역·유통",
