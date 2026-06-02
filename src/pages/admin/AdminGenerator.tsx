@@ -265,6 +265,7 @@ const AdminGenerator = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Generated | null>(null);
   const [activeVariant, setActiveVariant] = useState(0);
+  const [saved, setSaved] = useState(false);
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
@@ -273,10 +274,36 @@ const AdminGenerator = () => {
     setLoading(true);
     setResult(null);
     setActiveVariant(0);
+    setSaved(false);
     setTimeout(() => {
       setResult(buildScenario(form));
       setLoading(false);
     }, 1400);
+  };
+
+  const saveToArchive = () => {
+    if (!result || saved) return;
+    const now = new Date();
+    addDraftScenario({
+      id: `draft-${now.getTime()}`,
+      title: result.title,
+      source_text: result.source_text,
+      task: result.task,
+      variants: result.variants,
+      feedback: result.feedback,
+      speech_act: form.speech_act,
+      genre: form.genre,
+      learner_level: form.level,
+      industry_sector: form.industry,
+      business_function: form.func,
+      interaction_context: form.context,
+      auto_check_result: result.auto_check,
+      review_status: "needs_review",
+      usage_assignment: "archived_only",
+      created_at: now.toISOString(),
+      updated_at: now.toISOString().slice(0, 10),
+    });
+    setSaved(true);
   };
 
   const tags = result
