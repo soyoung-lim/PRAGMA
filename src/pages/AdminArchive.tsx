@@ -74,13 +74,13 @@ const SPEECH_ACT_LABEL: Record<SpeechAct, string> = {
 const GENRE_LABEL: Record<Genre, string> = {
   business_email: "업무 이메일",
   business_messenger: "업무 메신저",
-  meeting_speech: "회의 발화",
+  meeting_speech: "업무 회의",
 };
 
 const LEVEL_LABEL: Record<LearnerLevel, string> = {
-  beginner_intermediate: "초중급",
-  intermediate: "중급",
-  advanced: "고급",
+  beginner_intermediate: "중급 · HSK 4급",
+  intermediate: "상급 · HSK 5급",
+  advanced: "고급 · HSK 6급",
 };
 
 const CONTEXT_LABEL: Record<InteractionContext, string> = {
