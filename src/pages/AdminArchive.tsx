@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
+import { useDraftScenarios } from "@/lib/scenarioDrafts";
 import {
   Select,
   SelectContent,
@@ -327,10 +328,28 @@ const AdminArchive = () => {
   const [fIndustry, setFIndustry] = useState(ALL);
   const [fFunction, setFFunction] = useState(ALL);
 
-  const visible = useMemo(
-    () => MOCK.filter((s) => s.review_status !== "generated"),
-    [],
-  );
+  const drafts = useDraftScenarios();
+  const visible = useMemo(() => {
+    const draftsAsScenario: Scenario[] = drafts.map((d) => ({
+      id: d.id,
+      title: d.title,
+      source_text: d.source_text,
+      speech_act: d.speech_act,
+      genre: d.genre,
+      learner_level: d.learner_level,
+      industry_sector: d.industry_sector,
+      business_function: d.business_function,
+      interaction_context: d.interaction_context,
+      review_status: "needs_review",
+      usage_assignment: "archived_only",
+      auto_check_result: d.auto_check_result,
+      updated_at: d.updated_at,
+    }));
+    return [
+      ...draftsAsScenario,
+      ...MOCK.filter((s) => s.review_status !== "generated"),
+    ];
+  }, [drafts]);
 
   const filtered = useMemo(() => {
     return visible.filter((s) => {
