@@ -124,6 +124,11 @@ interface Generated {
   auto_check: "pass" | "warning";
 }
 
+interface BatchItem {
+  title: string;
+  auto_check: "pass" | "warning";
+}
+
 function buildScenario(f: FormState): Generated {
   // Demo-safe mode: pick best-fit pre-baked scenario based on speech_act + genre.
   const key = `${f.speech_act}-${f.genre}`;
@@ -280,6 +285,7 @@ const AdminGenerator = () => {
   const [result, setResult] = useState<Generated | null>(null);
   const [activeVariant, setActiveVariant] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [batchItems, setBatchItems] = useState<BatchItem[] | null>(null);
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
@@ -289,8 +295,22 @@ const AdminGenerator = () => {
     setResult(null);
     setActiveVariant(0);
     setSaved(false);
+    setBatchItems(null);
     setTimeout(() => {
-      setResult(buildScenario(form));
+      const detailed = buildScenario(form);
+      setResult(detailed);
+      if (form.mode === "batch") {
+        const n = parseInt(form.batchSize, 10);
+        const checks: BatchItem["auto_check"][] = ["pass", "warning"];
+        const items: BatchItem[] = Array.from({ length: n }, (_, i) => {
+          if (i === 0) return { title: detailed.title, auto_check: detailed.auto_check };
+          return {
+            title: `${INDUSTRY[form.industry]} — ${FUNCTION[form.func]} 사례 #${i + 1} (${SPEECH_ACT[form.speech_act]} · ${GENRE[form.genre]})`,
+            auto_check: checks[i % checks.length],
+          };
+        });
+        setBatchItems(items);
+      }
       setLoading(false);
     }, 1400);
   };
@@ -298,24 +318,34 @@ const AdminGenerator = () => {
   const saveToArchive = () => {
     if (!result || saved) return;
     const now = new Date();
-    addDraftScenario({
-      id: `draft-${now.getTime()}`,
-      title: result.title,
-      source_text: result.source_text,
-      task: result.task,
-      variants: result.variants,
-      feedback: result.feedback,
-      speech_act: form.speech_act,
-      genre: form.genre,
-      learner_level: form.level,
-      industry_sector: form.industry,
-      business_function: form.func,
-      interaction_context: form.context,
-      auto_check_result: result.auto_check,
-      review_status: "needs_review",
-      usage_assignment: "archived_only",
-      created_at: now.toISOString(),
-      updated_at: now.toISOString().slice(0, 10),
+    const baseISO = now.toISOString();
+    const dateStr = baseISO.slice(0, 10);
+    const items: BatchItem[] =
+      form.mode === "batch" && batchItems
+        ? batchItems
+        : [{ title: result.title, auto_check: result.auto_check }];
+    // Save in reverse so the first item ends up at the very top of the archive.
+    [...items].reverse().forEach((it, idx) => {
+      const isFirst = it.title === items[0].title && idx === items.length - 1;
+      addDraftScenario({
+        id: `draft-${now.getTime()}-${idx}`,
+        title: it.title,
+        source_text: isFirst ? result.source_text : result.source_text,
+        task: result.task,
+        variants: result.variants,
+        feedback: result.feedback,
+        speech_act: form.speech_act,
+        genre: form.genre,
+        learner_level: form.level,
+        industry_sector: form.industry,
+        business_function: form.func,
+        interaction_context: form.context,
+        auto_check_result: it.auto_check,
+        review_status: "needs_review",
+        usage_assignment: "archived_only",
+        created_at: baseISO,
+        updated_at: dateStr,
+      });
     });
     setSaved(true);
   };
