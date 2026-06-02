@@ -39,12 +39,12 @@ const SPEECH_ACT: Record<SpeechAct, string> = { request: "요청", refusal: "거
 const GENRE: Record<Genre, string> = {
   business_email: "업무 이메일",
   business_messenger: "업무 메신저",
-  meeting_speech: "회의 발화",
+  meeting_speech: "업무 회의",
 };
 const LEVEL: Record<LearnerLevel, string> = {
-  beginner_intermediate: "초중급",
-  intermediate: "중급",
-  advanced: "고급",
+  beginner_intermediate: "중급 · HSK 4급",
+  intermediate: "상급 · HSK 5급",
+  advanced: "고급 · HSK 6급",
 };
 const CONTEXT: Record<InteractionContext, string> = {
   coordination: "조율",
@@ -75,7 +75,7 @@ const FUNCTION: Record<BusinessFunction, string> = {
 
 interface FormState {
   mode: "single" | "batch";
-  batchSize: "10" | "50" | "100" | "500";
+  batchSize: "5" | "10" | "20";
   speech_act: SpeechAct;
   genre: Genre;
   level: LearnerLevel;
@@ -370,7 +370,7 @@ const AdminGenerator = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {["10", "50", "100", "500"].map((n) => (
+                    {["5", "10", "20"].map((n) => (
                       <SelectItem key={n} value={n}>
                         {n}
                       </SelectItem>
