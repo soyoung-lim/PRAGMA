@@ -397,6 +397,7 @@ const AdminGenerator = () => {
         INDUSTRY[form.industry],
         FUNCTION[form.func],
         CONTEXT[form.context],
+        `${PDR_POWER_SHORT[form.pdr_power]} / ${PDR_DISTANCE_SHORT[form.pdr_distance]} / ${PDR_BURDEN_SHORT[form.pdr_burden]}`,
       ]
     : [];
 
