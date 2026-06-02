@@ -47,31 +47,45 @@ const LEVEL: Record<LearnerLevel, string> = {
   advanced: "고급 · HSK 6급",
 };
 const CONTEXT: Record<InteractionContext, string> = {
-  coordination: "조율",
-  negotiation: "협의",
+  coordination: "일정 조정",
+  negotiation: "조건 협의",
   follow_up: "후속 확인",
 };
 const INDUSTRY: Record<IndustrySector, string> = {
   trade_distribution: "무역·유통",
-  IT_platform: "IT·플랫폼·커머스",
+  IT_platform: "IT·플랫폼",
   manufacturing: "제조·소비재",
-  tourism_hospitality: "관광·호텔·서비스",
+  tourism_hospitality: "관광·서비스",
   education_research: "교육·연구",
   public_international_affairs: "공공·국제교류",
-  culture_content_media: "문화콘텐츠·미디어·출판·행사",
+  culture_content_media: "문화·콘텐츠",
 };
+// UI display map for business functions. The DB enum keeps all 10 values,
+// but only 7 primary keys are surfaced in dropdowns. Orphan enums map to a
+// consolidated label so legacy data still displays a valid new label.
 const FUNCTION: Record<BusinessFunction, string> = {
-  overseas_sales: "해외영업·거래처 관리",
+  overseas_sales: "해외영업·거래",
   marketing_pr: "마케팅·홍보",
   customer_partner_support: "고객·파트너 응대",
-  SCM_logistics: "구매·물류·공급망",
-  contract_terms: "계약·거래 조건 조율",
-  project_coordination: "프로젝트 조율",
-  research_admin: "연구·행정 협력",
+  SCM_logistics: "구매·물류",
+  contract_terms: "해외영업·거래",
+  project_coordination: "프로젝트 운영",
+  research_admin: "대외협력·제휴",
   localization_translation: "번역·로컬라이제이션",
-  event_operations: "행사·현장 운영",
-  international_collaboration: "국제협력·제휴",
+  event_operations: "프로젝트 운영",
+  international_collaboration: "대외협력·제휴",
 };
+
+// Primary 7 business-function enum values exposed in dropdowns.
+const FUNCTION_PRIMARY: BusinessFunction[] = [
+  "overseas_sales",
+  "marketing_pr",
+  "customer_partner_support",
+  "SCM_logistics",
+  "project_coordination",
+  "localization_translation",
+  "international_collaboration",
+];
 
 interface FormState {
   mode: "single" | "batch";
@@ -426,7 +440,7 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="상호작용 맥락">
+              <Field label="상황 유형">
                 <Select
                   value={form.context}
                   onValueChange={(v) => update("context", v as InteractionContext)}
@@ -473,9 +487,15 @@ const AdminGenerator = () => {
                   <SelectTrigger className={formField}>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(FUNCTION).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                  <SelectContent
+                    position="popper"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                    className="max-h-60 overflow-y-auto z-50"
+                  >
+                    {FUNCTION_PRIMARY.map((k) => (
+                      <SelectItem key={k} value={k}>{FUNCTION[k]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
