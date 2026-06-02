@@ -505,9 +505,10 @@ const AdminArchive = () => {
           value={fFunction}
           onChange={setFFunction}
           category="업무 기능"
-          options={(Object.keys(FUNCTION_LABEL) as BusinessFunction[]).map(
-            (k) => ({ value: k, label: FUNCTION_LABEL[k] }),
-          )}
+          options={FUNCTION_FILTER_KEYS.map((k) => ({
+            value: k,
+            label: FUNCTION_LABEL[k],
+          }))}
           width="w-[240px]"
         />
       </div>
