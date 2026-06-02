@@ -15,6 +15,9 @@ type SpeechAct = "request" | "refusal";
 type Genre = "business_email" | "business_messenger" | "meeting_speech";
 type LearnerLevel = "beginner_intermediate" | "intermediate" | "advanced";
 type InteractionContext = "coordination" | "negotiation" | "follow_up";
+type PdrPower = "higher" | "equal" | "lower";
+type PdrDistance = "formal" | "occasional" | "close";
+type PdrBurden = "high" | "mid" | "low";
 type IndustrySector =
   | "trade_distribution"
   | "IT_platform"
@@ -50,6 +53,36 @@ const CONTEXT: Record<InteractionContext, string> = {
   coordination: "일정 조정",
   negotiation: "조건 협의",
   follow_up: "후속 확인",
+};
+const PDR_POWER: Record<PdrPower, string> = {
+  higher: "상대가 나보다 높다",
+  equal: "상대와 나는 비슷하다",
+  lower: "상대가 나보다 낮다",
+};
+const PDR_DISTANCE: Record<PdrDistance, string> = {
+  formal: "처음이거나 매우 격식 있는 관계",
+  occasional: "업무상 몇 차례 소통했지만 친밀하지는 않다",
+  close: "자주 소통하고 비교적 가까운 관계",
+};
+const PDR_BURDEN: Record<PdrBurden, string> = {
+  high: "상대의 일정·비용·계획에 영향을 줄 수 있다",
+  mid: "어느 정도 조정이 필요하지만 감당 가능한 수준이다",
+  low: "부담이 크지 않은 간단한 요청 또는 거절이다",
+};
+const PDR_POWER_SHORT: Record<PdrPower, string> = {
+  higher: "상대 지위 높음",
+  equal: "상대 지위 비슷",
+  lower: "상대 지위 낮음",
+};
+const PDR_DISTANCE_SHORT: Record<PdrDistance, string> = {
+  formal: "관계 거리 멂",
+  occasional: "관계 거리 중간",
+  close: "관계 거리 가까움",
+};
+const PDR_BURDEN_SHORT: Record<PdrBurden, string> = {
+  high: "부담도 높음",
+  mid: "부담도 중간",
+  low: "부담도 낮음",
 };
 const INDUSTRY: Record<IndustrySector, string> = {
   trade_distribution: "무역·유통",
@@ -99,6 +132,9 @@ interface FormState {
   multi: boolean;
   reasons: "1" | "2" | "3";
   coordination: boolean;
+  pdr_power: PdrPower;
+  pdr_distance: PdrDistance;
+  pdr_burden: PdrBurden;
 }
 
 const DEFAULT_FORM: FormState = {
@@ -113,6 +149,9 @@ const DEFAULT_FORM: FormState = {
   multi: false,
   reasons: "2",
   coordination: true,
+  pdr_power: "higher",
+  pdr_distance: "occasional",
+  pdr_burden: "mid",
 };
 
 interface Generated {
