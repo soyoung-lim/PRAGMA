@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { addDraftScenario } from "@/lib/scenarioDrafts";
 import {
   Select,
   SelectContent,
