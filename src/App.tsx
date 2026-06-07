@@ -22,6 +22,9 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics.tsx";
 import AdminExport from "./pages/admin/AdminExport.tsx";
 import AdminDecisionTraces from "./pages/admin/AdminDecisionTraces.tsx";
 import AdminLogin from "./pages/admin/AdminLogin.tsx";
+import StudentLogin from "./pages/StudentLogin.tsx";
+import PendingApproval from "./pages/PendingApproval.tsx";
+import { RequireApproved } from "./components/RequireApproved";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { seedIfEmpty } from "./lib/learningSessions";
 
@@ -38,11 +41,13 @@ const App = () => (
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/scenario" element={<ScenarioSelect />} />
-          <Route path="/pdr" element={<Pdr />} />
-          <Route path="/translate" element={<Translate />} />
-          <Route path="/finalize" element={<Finalize />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/student-login" element={<StudentLogin />} />
+          <Route path="/pending-approval" element={<PendingApproval />} />
+          <Route path="/scenario" element={<RequireApproved><ScenarioSelect /></RequireApproved>} />
+          <Route path="/pdr" element={<RequireApproved><Pdr /></RequireApproved>} />
+          <Route path="/translate" element={<RequireApproved><Translate /></RequireApproved>} />
+          <Route path="/finalize" element={<RequireApproved><Finalize /></RequireApproved>} />
+          <Route path="/dashboard" element={<RequireApproved><Dashboard /></RequireApproved>} />
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/archive" element={<AdminArchive />} />
