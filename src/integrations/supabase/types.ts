@@ -85,47 +85,80 @@ export type Database = {
       }
       profiles: {
         Row: {
+          academic_year_or_program: string | null
+          affiliation_or_status: string | null
+          ai_prompting_style_for_ti: string | null
           anonymization_notice_confirmed: boolean
           anonymous_participant_id: string | null
           approval_status: Database["public"]["Enums"]["approval_status"]
+          business_chinese_experience: string | null
+          chinese_proficiency_self_report: string | null
           created_at: string
           email: string | null
           full_name: string | null
+          genai_use_frequency: string | null
           id: string
+          language_background: string | null
+          perceived_ai_ti_difficulty: string | null
+          perceived_business_chinese_ti_risk: string | null
           profile_completed: boolean
           report_email_consent: boolean | null
           research_use_consent: boolean
           role: Database["public"]["Enums"]["app_role"]
+          ti_experience_level: string | null
+          ti_experience_modes: string[] | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          academic_year_or_program?: string | null
+          affiliation_or_status?: string | null
+          ai_prompting_style_for_ti?: string | null
           anonymization_notice_confirmed?: boolean
           anonymous_participant_id?: string | null
           approval_status?: Database["public"]["Enums"]["approval_status"]
+          business_chinese_experience?: string | null
+          chinese_proficiency_self_report?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
+          genai_use_frequency?: string | null
           id?: string
+          language_background?: string | null
+          perceived_ai_ti_difficulty?: string | null
+          perceived_business_chinese_ti_risk?: string | null
           profile_completed?: boolean
           report_email_consent?: boolean | null
           research_use_consent?: boolean
           role?: Database["public"]["Enums"]["app_role"]
+          ti_experience_level?: string | null
+          ti_experience_modes?: string[] | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          academic_year_or_program?: string | null
+          affiliation_or_status?: string | null
+          ai_prompting_style_for_ti?: string | null
           anonymization_notice_confirmed?: boolean
           anonymous_participant_id?: string | null
           approval_status?: Database["public"]["Enums"]["approval_status"]
+          business_chinese_experience?: string | null
+          chinese_proficiency_self_report?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
+          genai_use_frequency?: string | null
           id?: string
+          language_background?: string | null
+          perceived_ai_ti_difficulty?: string | null
+          perceived_business_chinese_ti_risk?: string | null
           profile_completed?: boolean
           report_email_consent?: boolean | null
           research_use_consent?: boolean
           role?: Database["public"]["Enums"]["app_role"]
+          ti_experience_level?: string | null
+          ti_experience_modes?: string[] | null
           updated_at?: string
           user_id?: string
         }
