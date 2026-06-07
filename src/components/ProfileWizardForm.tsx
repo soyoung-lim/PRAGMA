@@ -153,7 +153,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
   const [genaiFreq, setGenaiFreq] = useState("");
   const [promptStyle, setPromptStyle] = useState("");
   const [perceivedDifficulty, setPerceivedDifficulty] = useState("");
-  const [perceivedRisk, setPerceivedRisk] = useState("");
 
   // Screen 3
   const [researchConsent, setResearchConsent] = useState(false);
@@ -201,7 +200,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
           genai_use_frequency: genaiFreq,
           ai_prompting_style_for_ti: promptStyle,
           perceived_ai_ti_difficulty: perceivedDifficulty || null,
-          perceived_business_chinese_ti_risk: perceivedRisk || null,
           research_use_consent: researchConsent,
           anonymization_notice_confirmed: anonConfirmed,
           report_email_consent: reportConsent,
@@ -345,15 +343,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               value={perceivedDifficulty}
               onChange={setPerceivedDifficulty}
               options={PERCEIVED_DIFFICULTY_OPTIONS}
-            />
-          </Field>
-
-          <Field label="비즈니스 중국어 통번역의 체감 리스크">
-            <RadioGroup
-              name="perceived_risk"
-              value={perceivedRisk}
-              onChange={setPerceivedRisk}
-              options={PERCEIVED_RISK_OPTIONS}
             />
           </Field>
         </div>
