@@ -25,6 +25,7 @@ import AdminLogin from "./pages/admin/AdminLogin.tsx";
 import StudentLogin from "./pages/StudentLogin.tsx";
 import PendingApproval from "./pages/PendingApproval.tsx";
 import ProfileSetup from "./pages/ProfileSetup.tsx";
+import Home from "./pages/Home.tsx";
 import { RequireApproved } from "./components/RequireApproved";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { seedIfEmpty } from "./lib/learningSessions";
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/student-login" element={<StudentLogin />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/profile-setup" element={<ProfileSetup />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/scenario" element={<RequireApproved><ScenarioSelect /></RequireApproved>} />
           <Route path="/pdr" element={<RequireApproved><Pdr /></RequireApproved>} />
           <Route path="/translate" element={<RequireApproved><Translate /></RequireApproved>} />
