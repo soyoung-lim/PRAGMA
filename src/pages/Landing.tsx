@@ -31,12 +31,14 @@ const Landing = () => {
             to="/student-login"
             className="group flex flex-col items-start rounded-xl border border-[#15202B] bg-[#FAD338] px-6 py-7 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#E8B91F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
           >
-            <span className="text-xs font-medium uppercase tracking-wide text-[#15202B]/70">
-              Student
+            <span className="flex items-center gap-2 text-[20px] font-bold text-[#15202B]">
+              <span aria-hidden>👤</span> 학습자 입장
             </span>
-            <span className="mt-2 text-[20px] font-bold text-[#15202B]">학습자 입장 →</span>
-            <span className="mt-1 text-[13px] leading-snug text-[#15202B]/80">
-              Google 계정으로 로그인하여 학습 참여를 신청합니다.
+            <span className="mt-3 text-[14px] leading-relaxed text-[#15202B]/80">
+              시나리오를 선택하고 AI 번역안을 비교·평가하며 통번역 의사결정 역량을 키웁니다.
+            </span>
+            <span className="mt-5 inline-flex items-center gap-1 rounded-md border border-[#15202B] bg-transparent px-4 py-2 text-[14px] font-medium text-[#15202B]">
+              학습 시작하기 →
             </span>
           </Link>
 
@@ -44,12 +46,14 @@ const Landing = () => {
             to="/admin-login"
             className="group flex flex-col items-start rounded-xl border border-[#15202B] bg-[#FAFAFA] px-6 py-7 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
           >
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Instructor
+            <span className="flex items-center gap-2 text-[20px] font-bold text-[#15202B]">
+              <span aria-hidden>⚙️</span> 교수자 입장
             </span>
-            <span className="mt-2 text-[20px] font-bold text-[#15202B]">교수자 입장 →</span>
-            <span className="mt-1 text-[13px] leading-snug text-muted-foreground">
-              관리자 계정으로 로그인하여 학습자·시나리오를 관리합니다.
+            <span className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
+              AI로 시나리오를 생성·검수하고 학습자 데이터를 분석·관리합니다.
+            </span>
+            <span className="mt-5 inline-flex items-center gap-1 rounded-md border border-[#15202B] bg-transparent px-4 py-2 text-[14px] font-medium text-[#15202B]">
+              관리자 영역 진입 →
             </span>
           </Link>
         </section>
