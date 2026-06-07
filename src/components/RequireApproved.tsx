@@ -1,9 +1,10 @@
 import { Navigate } from "react-router-dom";
 import { useProfile } from "@/lib/auth/useProfile";
-import { APPROVAL_STATUS } from "@/lib/auth/constants";
 
 type Props = { children: React.ReactNode };
 
+// Gate semantics (Sprint 1B-1a): login + profile_completed only.
+// approval_status is no longer checked here.
 export const RequireApproved = ({ children }: Props) => {
   const { loading, session, profile, isDevStub } = useProfile();
 
@@ -19,8 +20,8 @@ export const RequireApproved = ({ children }: Props) => {
     return <Navigate to="/student-login" replace />;
   }
 
-  if (!profile || profile.approval_status !== APPROVAL_STATUS.APPROVED) {
-    return <Navigate to="/pending-approval" replace />;
+  if (!profile || !profile.profile_completed) {
+    return <Navigate to="/profile-setup" replace />;
   }
 
   return <>{children}</>;
