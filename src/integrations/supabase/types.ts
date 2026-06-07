@@ -83,6 +83,42 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          anonymous_participant_id: string | null
+          approval_status: Database["public"]["Enums"]["approval_status"]
+          created_at: string
+          email: string | null
+          id: string
+          profile_completed: boolean
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          anonymous_participant_id?: string | null
+          approval_status?: Database["public"]["Enums"]["approval_status"]
+          created_at?: string
+          email?: string | null
+          id?: string
+          profile_completed?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          anonymous_participant_id?: string | null
+          approval_status?: Database["public"]["Enums"]["approval_status"]
+          created_at?: string
+          email?: string | null
+          id?: string
+          profile_completed?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       scenario_feedback: {
         Row: {
           created_at: string | null
@@ -186,6 +222,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      app_role: "learner" | "admin"
+      approval_status: "pending_approval" | "approved" | "rejected" | "inactive"
       auto_check_result: "pass" | "warning" | "fail"
       review_status:
         | "generated"
@@ -326,6 +364,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["learner", "admin"],
+      approval_status: ["pending_approval", "approved", "rejected", "inactive"],
       auto_check_result: ["pass", "warning", "fail"],
       review_status: [
         "generated",
