@@ -74,7 +74,7 @@ const PendingApproval = () => {
         >
           로그아웃
         </button>
-        {IS_DEV && profile?.approval_status !== APPROVAL_STATUS.APPROVED && (
+        {IS_DEV && (
           <button
             type="button"
             onClick={handleDevApprove}
