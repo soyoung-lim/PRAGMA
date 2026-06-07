@@ -85,34 +85,46 @@ export type Database = {
       }
       profiles: {
         Row: {
+          anonymization_notice_confirmed: boolean
           anonymous_participant_id: string | null
           approval_status: Database["public"]["Enums"]["approval_status"]
           created_at: string
           email: string | null
+          full_name: string | null
           id: string
           profile_completed: boolean
+          report_email_consent: boolean | null
+          research_use_consent: boolean
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string
           user_id: string
         }
         Insert: {
+          anonymization_notice_confirmed?: boolean
           anonymous_participant_id?: string | null
           approval_status?: Database["public"]["Enums"]["approval_status"]
           created_at?: string
           email?: string | null
+          full_name?: string | null
           id?: string
           profile_completed?: boolean
+          report_email_consent?: boolean | null
+          research_use_consent?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
           user_id: string
         }
         Update: {
+          anonymization_notice_confirmed?: boolean
           anonymous_participant_id?: string | null
           approval_status?: Database["public"]["Enums"]["approval_status"]
           created_at?: string
           email?: string | null
+          full_name?: string | null
           id?: string
           profile_completed?: boolean
+          report_email_consent?: boolean | null
+          research_use_consent?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
           user_id?: string

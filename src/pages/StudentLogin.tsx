@@ -13,7 +13,7 @@ const StudentLogin = () => {
     setBusy(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/pending-approval",
+        redirect_uri: window.location.origin + "/profile-setup",
       });
       if (result.error) {
         toast.error("Google 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.");
@@ -21,7 +21,7 @@ const StudentLogin = () => {
         return;
       }
       if (result.redirected) return;
-      navigate("/pending-approval", { replace: true });
+      navigate("/profile-setup", { replace: true });
     } catch {
       toast.error("Google 로그인 중 오류가 발생했습니다.");
       setBusy(false);
@@ -30,7 +30,7 @@ const StudentLogin = () => {
 
   const handleDevStub = () => {
     devStubSignIn();
-    navigate("/pending-approval", { replace: true });
+    navigate("/profile-setup", { replace: true });
   };
 
   return (
@@ -43,7 +43,7 @@ const StudentLogin = () => {
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 py-16">
         <h1 className="text-center text-2xl font-bold tracking-tight">학습자 로그인</h1>
         <p className="mt-3 text-center text-sm text-muted-foreground">
-          Google 계정으로 로그인하여 학습 참여를 신청해 주세요.
+          Google 계정으로 로그인한 뒤 간단한 프로필을 작성하면 바로 학습을 시작할 수 있습니다.
         </p>
         <button
           type="button"
