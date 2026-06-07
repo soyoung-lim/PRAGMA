@@ -46,6 +46,92 @@ const PROMPT_STYLE_OPTIONS = [
 const PERCEIVED_DIFFICULTY_OPTIONS = ["매우 쉬움", "쉬움", "보통", "어려움", "매우 어려움"];
 const PERCEIVED_RISK_OPTIONS = ["매우 낮음", "낮음", "보통", "높음", "매우 높음"];
 
+const inputCls =
+  "mt-2 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+const RadioGroup = ({
+  name,
+  value,
+  onChange,
+  options,
+}: {
+  name: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+}) => (
+  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+    {options.map((opt) => (
+      <label
+        key={opt}
+        className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+          value === opt ? "border-[#15202B] bg-muted/40" : "border-border"
+        }`}
+      >
+        <input
+          type="radio"
+          name={name}
+          value={opt}
+          checked={value === opt}
+          onChange={() => onChange(opt)}
+          className="h-4 w-4"
+        />
+        <span>{opt}</span>
+      </label>
+    ))}
+  </div>
+);
+
+const Field = ({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) => (
+  <div>
+    <label className="block text-sm font-medium">
+      {label}{" "}
+      {required ? (
+        <span className="text-destructive">*</span>
+      ) : (
+        <span className="text-xs text-muted-foreground">(선택)</span>
+      )}
+    </label>
+    {children}
+  </div>
+);
+
+const StepIndicator = ({ step }: { step: Step }) => (
+  <div className="mb-6 flex items-center gap-2 text-xs">
+    {[1, 2, 3].map((n) => {
+      const active = step === (n as Step);
+      const done = step > n;
+      return (
+        <div key={n} className="flex items-center gap-2">
+          <div
+            className={`flex h-7 w-7 items-center justify-center rounded-full border text-[12px] font-semibold ${
+              active
+                ? "border-[#15202B] bg-[#15202B] text-white"
+                : done
+                ? "border-[#15202B] bg-background text-[#15202B]"
+                : "border-border bg-background text-muted-foreground"
+            }`}
+          >
+            {n}
+          </div>
+          <span className={active ? "font-medium" : "text-muted-foreground"}>
+            {n === 1 ? "기본 정보" : n === 2 ? "언어·통번역 배경" : "동의·연락"}
+          </span>
+          {n < 3 && <span className="text-muted-foreground">›</span>}
+        </div>
+      );
+    })}
+  </div>
+);
+
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { loading, session, profile, isDevStub, refresh } = useProfile();
@@ -150,98 +236,6 @@ const ProfileSetup = () => {
     }
   };
 
-  const StepIndicator = () => (
-    <div className="mb-6 flex items-center gap-2 text-xs">
-      {[1, 2, 3].map((n) => {
-        const active = step === (n as Step);
-        const done = step > n;
-        return (
-          <div key={n} className="flex items-center gap-2">
-            <div
-              className={`flex h-7 w-7 items-center justify-center rounded-full border text-[12px] font-semibold ${
-                active
-                  ? "border-[#15202B] bg-[#15202B] text-white"
-                  : done
-                  ? "border-[#15202B] bg-background text-[#15202B]"
-                  : "border-border bg-background text-muted-foreground"
-              }`}
-            >
-              {n}
-            </div>
-            <span
-              className={
-                active
-                  ? "font-medium"
-                  : "text-muted-foreground"
-              }
-            >
-              {n === 1 ? "기본 정보" : n === 2 ? "언어·통번역 배경" : "동의·연락"}
-            </span>
-            {n < 3 && <span className="text-muted-foreground">›</span>}
-          </div>
-        );
-      })}
-    </div>
-  );
-
-  const inputCls =
-    "mt-2 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
-  const RadioGroup = ({
-    name,
-    value,
-    onChange,
-    options,
-  }: {
-    name: string;
-    value: string;
-    onChange: (v: string) => void;
-    options: string[];
-  }) => (
-    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-      {options.map((opt) => (
-        <label
-          key={opt}
-          className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-            value === opt ? "border-[#15202B] bg-muted/40" : "border-border"
-          }`}
-        >
-          <input
-            type="radio"
-            name={name}
-            value={opt}
-            checked={value === opt}
-            onChange={() => onChange(opt)}
-            className="h-4 w-4"
-          />
-          <span>{opt}</span>
-        </label>
-      ))}
-    </div>
-  );
-
-  const Field = ({
-    label,
-    required,
-    children,
-  }: {
-    label: string;
-    required?: boolean;
-    children: React.ReactNode;
-  }) => (
-    <div>
-      <label className="block text-sm font-medium">
-        {label}{" "}
-        {required ? (
-          <span className="text-destructive">*</span>
-        ) : (
-          <span className="text-xs text-muted-foreground">(선택)</span>
-        )}
-      </label>
-      {children}
-    </div>
-  );
-
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="bg-[#15202B]">
@@ -256,7 +250,7 @@ const ProfileSetup = () => {
         </p>
 
         <div className="mt-8">
-          <StepIndicator />
+          <StepIndicator step={step} />
         </div>
 
         {step === 1 && (
