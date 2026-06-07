@@ -8,7 +8,13 @@ const DEV_STUB_KEY = "dev-stub-session";
 // dev-only flag — exposed only in dev builds. Never reachable in production.
 export const IS_DEV = import.meta.env.DEV;
 
-type DevStub = { user_id: string; email: string; approval_status: Profile["approval_status"] };
+type DevStub = {
+  user_id: string;
+  email: string;
+  approval_status: Profile["approval_status"];
+  profile_completed?: boolean;
+  full_name?: string;
+};
 
 function readDevStub(): DevStub | null {
   if (!IS_DEV) return null;
@@ -51,6 +57,14 @@ export function devStubApproveCurrent() {
   window.dispatchEvent(new Event("dev-stub-changed"));
 }
 
+export function devStubCompleteProfile(full_name: string) {
+  if (!IS_DEV) return;
+  const stub = readDevStub();
+  if (!stub) return;
+  writeDevStub({ ...stub, profile_completed: true, full_name });
+  window.dispatchEvent(new Event("dev-stub-changed"));
+}
+
 export type UseProfileResult = {
   loading: boolean;
   session: Session | null;
@@ -84,7 +98,7 @@ export function useProfile(): UseProfileResult {
         user_id: stub.user_id,
         role: APP_ROLE.LEARNER,
         approval_status: stub.approval_status,
-        profile_completed: false,
+        profile_completed: !!stub.profile_completed,
         email: stub.email,
         anonymous_participant_id: null,
       });
