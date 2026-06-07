@@ -13,7 +13,7 @@ const StudentLogin = () => {
     setBusy(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/profile-setup",
+        redirect_uri: window.location.origin + "/home",
       });
       if (result.error) {
         toast.error("Google 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.");
@@ -21,7 +21,7 @@ const StudentLogin = () => {
         return;
       }
       if (result.redirected) return;
-      navigate("/profile-setup", { replace: true });
+      navigate("/home", { replace: true });
     } catch {
       toast.error("Google 로그인 중 오류가 발생했습니다.");
       setBusy(false);
@@ -30,7 +30,7 @@ const StudentLogin = () => {
 
   const handleDevStub = () => {
     devStubSignIn();
-    navigate("/profile-setup", { replace: true });
+    navigate("/home", { replace: true });
   };
 
   return (
