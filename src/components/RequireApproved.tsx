@@ -21,7 +21,7 @@ export const RequireApproved = ({ children }: Props) => {
   }
 
   if (!profile || !profile.profile_completed) {
-    return <Navigate to="/profile-setup" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   return <>{children}</>;
