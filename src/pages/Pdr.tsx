@@ -4,13 +4,17 @@ import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
-import { TRANSLATION_LABELS, TRANSLATION_CARD_BG, TRANSLATION_DISPLAY_LABEL } from "@/lib/translationLabels";
+import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
 import { TRANSLATIONS, SOURCE_TEXT, type ActId, type Choice } from "@/lib/translationOptions";
+import {
+  getOrCreateMapping,
+  getDisplayOrder,
+  type OptionDisplayMapping,
+} from "@/lib/optionDisplayMapping";
 import { PageTitle } from "@/components/PageTitle";
 import { Volume2, Loader2 } from "lucide-react";
 import { requestTtsAudio } from "@/lib/tts";
 
-const OPTIONS: Choice[] = ["A", "B", "C"];
 const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP2_BEST_KEY = "step2-best";
 const STEP2_WORST_KEY = "step2-worst";
@@ -20,6 +24,7 @@ const Pdr = () => {
   const navigate = useNavigate();
   const demo = isDemoMode();
   const [act, setAct] = useState<ActId | null>(null);
+  const [mapping, setMapping] = useState<OptionDisplayMapping | null>(null);
   const [best, setBest] = useState<Choice | null>(null);
   const [worst, setWorst] = useState<Choice | null>(null);
   const [reason, setReason] = useState("");
@@ -69,7 +74,10 @@ const Pdr = () => {
     logAction("page_visit", { page: "/pdr" }, "/pdr");
     try {
       const saved = localStorage.getItem(ACT_STORAGE_KEY);
-      if (saved === "request" || saved === "refusal") setAct(saved);
+      if (saved === "request" || saved === "refusal") {
+        setAct(saved);
+        setMapping(getOrCreateMapping(saved));
+      }
       const b = localStorage.getItem(STEP2_BEST_KEY);
       if (b === "A" || b === "B" || b === "C") setBest(b);
       const w = localStorage.getItem(STEP2_WORST_KEY);
@@ -119,10 +127,11 @@ const Pdr = () => {
     disabledValue?: Choice | null;
   }) => (
     <div className="flex flex-wrap gap-2">
-      {OPTIONS.map((c) => {
+      {(mapping ? getDisplayOrder(mapping) : (["A", "B", "C"] as Choice[])).map((c, idx) => {
         const disabled = disabledValue === c || demo;
         const checked = value === c;
         const label = act ? TRANSLATION_LABELS[act][c] : "";
+        const displayPos = String(idx + 1);
         return (
           <label
             key={c}
@@ -143,7 +152,7 @@ const Pdr = () => {
               disabled={disabled}
               onChange={() => onChange(c)}
             />
-            <span>번역안 {TRANSLATION_DISPLAY_LABEL[c]}</span>
+            <span>번역안 {displayPos}</span>
             {label && (
               <span className="text-[12px] font-normal text-[#5C6A7A]">· {label}</span>
             )}
@@ -218,7 +227,7 @@ const Pdr = () => {
           </div>
 
           <div className="flex flex-col gap-3">
-            {OPTIONS.map((c) => (
+            {(mapping ? getDisplayOrder(mapping) : (["A", "B", "C"] as Choice[])).map((c, idx) => (
               <div
                 key={c}
                 className={[
@@ -231,7 +240,7 @@ const Pdr = () => {
                 ].join(" ")}
                 style={{ backgroundColor: TRANSLATION_CARD_BG[c] }}
               >
-                <div className="text-base font-[700]">번역안 {TRANSLATION_DISPLAY_LABEL[c]}</div>
+                <div className="text-base font-[700]">번역안 {idx + 1}</div>
                 {act && (
                   <div className="mt-1 text-[12px] font-normal text-[#5C6A7A]">
                     {TRANSLATION_LABELS[act][c]}
@@ -240,7 +249,7 @@ const Pdr = () => {
                 <p className="mt-3 whitespace-pre-wrap text-[17px] font-semibold leading-relaxed text-[#15202B]">
                   {act
                     ? TRANSLATIONS[act][c]
-                    : `[번역안 ${TRANSLATION_DISPLAY_LABEL[c]} — Step 1을 먼저 선택해주세요]`}
+                    : `[번역안 ${idx + 1} — Step 1을 먼저 선택해주세요]`}
                 </p>
                 {act && (
                   <div className="mt-3 flex flex-col gap-2">
@@ -248,7 +257,7 @@ const Pdr = () => {
                       type="button"
                       onClick={() => playChinese(c, TRANSLATIONS[act][c])}
                       disabled={ttsLoading === c}
-                      aria-label={`번역안 ${TRANSLATION_DISPLAY_LABEL[c]} 중국어 발음 듣기`}
+                      aria-label={`번역안 ${idx + 1} 중국어 발음 듣기`}
                       className="inline-flex w-fit items-center gap-1.5 rounded-full border-[0.5px] border-[#15202B]/30 bg-[#FFFFFF]/70 px-3 py-1 text-[12px] font-medium text-[#15202B] transition-colors hover:bg-[#FFFFFF] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {ttsLoading === c ? (
