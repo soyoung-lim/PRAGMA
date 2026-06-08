@@ -5,6 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 type ActId = "request" | "refusal";
 
+// Single source of truth for task_mode / language_direction on decision_traces.
+// The future learning-type / language-direction gate (P1.5) will override these
+// per-attempt values with the learner's selection. Until then, the core
+// workflow records the current scope explicitly here — no DB-level DEFAULT.
+export const DEFAULT_TASK_MODE = "translation" as const;
+export const DEFAULT_LANGUAGE_DIRECTION = "ko_to_zh" as const;
+
 const SCENARIO_KEY_BY_ACT: Record<ActId, string> = {
   request: "material_001_request_business_email",
   refusal: "material_002_refusal_business_email",
@@ -87,6 +94,8 @@ export async function writeDecisionTraceOnComplete(): Promise<void> {
     speech_act: act,
     genre: GENRE_BY_ACT[act],
     analysis_scope: "core",
+    task_mode: DEFAULT_TASK_MODE,
+    language_direction: DEFAULT_LANGUAGE_DIRECTION,
     pdr_response: {
       q1_power: answers.q1,
       q2_distance: answers.q2,
