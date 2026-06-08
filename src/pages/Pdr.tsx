@@ -20,6 +20,9 @@ const STEP2_BEST_KEY = "step2-best";
 const STEP2_WORST_KEY = "step2-worst";
 const STEP2_BEST_REASON_KEY = "step2-best-reason";
 const STEP2_WORST_REASON_KEY = "step2-worst-reason";
+const STEP2_PROPOSAL_TEXT_KEY = "step2-proposal-text";
+const STEP2_PROPOSAL_REASON_KEY = "step2-proposal-reason";
+const STEP2_PROPOSAL_FROZEN_KEY = "step2-proposal-frozen";
 
 const Pdr = () => {
   const navigate = useNavigate();
@@ -30,6 +33,9 @@ const Pdr = () => {
   const [worst, setWorst] = useState<Choice | null>(null);
   const [bestReason, setBestReason] = useState("");
   const [worstReason, setWorstReason] = useState("");
+  const [proposalText, setProposalText] = useState("");
+  const [proposalReason, setProposalReason] = useState("");
+  const [proposalFrozen, setProposalFrozen] = useState(false);
   const [ttsLoading, setTtsLoading] = useState<Choice | null>(null);
   const [ttsError, setTtsError] = useState<{ c: Choice; msg: string } | null>(null);
   const [ttsUrl, setTtsUrl] = useState<Partial<Record<Choice, string>>>({});
@@ -88,6 +94,13 @@ const Pdr = () => {
       if (br) setBestReason(br);
       const wr = localStorage.getItem(STEP2_WORST_REASON_KEY);
       if (wr) setWorstReason(wr);
+      const pt = localStorage.getItem(STEP2_PROPOSAL_TEXT_KEY);
+      if (pt) setProposalText(pt);
+      const pr = localStorage.getItem(STEP2_PROPOSAL_REASON_KEY);
+      if (pr) setProposalReason(pr);
+      if (localStorage.getItem(STEP2_PROPOSAL_FROZEN_KEY) === "1") {
+        setProposalFrozen(true);
+      }
     } catch {
       /* ignore */
     }
@@ -115,6 +128,18 @@ const Pdr = () => {
   const canProceed =
     demo ||
     (!!best && !!worst && best !== worst && bestReasonOk && worstReasonOk);
+
+  const proposalReadOnly = demo || proposalFrozen;
+
+  const handleProceed = () => {
+    if (!canProceed) return;
+    try {
+      localStorage.setItem(STEP2_PROPOSAL_FROZEN_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    navigate("/translate");
+  };
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -370,16 +395,79 @@ const Pdr = () => {
           </div>
         </div>
 
+        {/* Pre-feedback direct proposal (optional, freezes when proceeding) */}
+        <div className="mt-6 space-y-4 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+          <div>
+            <div className="text-sm font-semibold">
+              피드백을 보기 전에, 당신이라면 어떻게 번역하시겠어요?{" "}
+              <span className="text-xs font-normal text-muted-foreground">(선택)</span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              평가가 아닙니다. 떠오르는 표현을 자유롭게 적어주세요. 비워두고 다음으로 넘어가도 됩니다.
+            </p>
+            <textarea
+              id="proposal-text"
+              value={proposalText}
+              onChange={(e) => {
+                if (proposalReadOnly) return;
+                setProposalText(e.target.value);
+                try { localStorage.setItem(STEP2_PROPOSAL_TEXT_KEY, e.target.value); } catch { /* ignore */ }
+              }}
+              readOnly={proposalReadOnly}
+              placeholder="당신이 직접 번역한다면 어떻게 쓰시겠어요?"
+              rows={3}
+              className={[
+                "mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40",
+                proposalReadOnly ? "bg-muted/30 text-foreground/80" : "",
+              ].join(" ")}
+            />
+            <div className="mt-2 text-right text-xs text-muted-foreground">{proposalText.length}자</div>
+          </div>
+          <div>
+            <label htmlFor="proposal-reason" className="text-sm font-semibold">
+              그렇게 제안한 이유를 적어주세요{" "}
+              <span className="text-xs font-normal text-muted-foreground">(선택)</span>
+            </label>
+            <textarea
+              id="proposal-reason"
+              value={proposalReason}
+              onChange={(e) => {
+                if (proposalReadOnly) return;
+                setProposalReason(e.target.value);
+                try { localStorage.setItem(STEP2_PROPOSAL_REASON_KEY, e.target.value); } catch { /* ignore */ }
+              }}
+              readOnly={proposalReadOnly}
+              placeholder="왜 그렇게 번역하고 싶었는지 적어주세요."
+              rows={3}
+              className={[
+                "mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40",
+                proposalReadOnly ? "bg-muted/30 text-foreground/80" : "",
+              ].join(" ")}
+            />
+            <div className="mt-2 text-right text-xs text-muted-foreground">{proposalReason.length}자</div>
+          </div>
+          {proposalFrozen && (
+            <p className="text-xs text-muted-foreground">
+              피드백 공개 이후에는 이 입력을 수정할 수 없습니다.
+            </p>
+          )}
+        </div>
+
         {/* Footer */}
         <div className="mt-12 border-t border-border pt-6">
           <p className="text-xs text-muted-foreground">
             이 선택과 이유는 평가가 아닙니다. 본인의 판단을 그대로 적어주세요.
           </p>
+          {!proposalFrozen && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              위 ‘직접 제안’ 입력은 피드백을 보기 전 판단이라, 다음으로 넘어가면 수정할 수 없습니다.
+            </p>
+          )}
           <div className="mt-3 flex justify-end">
             <button
               type="button"
               disabled={!canProceed}
-              onClick={() => canProceed && navigate("/translate")}
+              onClick={handleProceed}
               className={[
                 "rounded-lg px-6 py-3 text-base font-medium transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
