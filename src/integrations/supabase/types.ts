@@ -95,6 +95,7 @@ export type Database = {
           genre: string | null
           id: string
           language_direction: string | null
+          option_display_mapping: Json | null
           pdr_response: Json | null
           profile_id: string
           scenario_id: string | null
@@ -118,6 +119,7 @@ export type Database = {
           genre?: string | null
           id?: string
           language_direction?: string | null
+          option_display_mapping?: Json | null
           pdr_response?: Json | null
           profile_id: string
           scenario_id?: string | null
@@ -141,6 +143,7 @@ export type Database = {
           genre?: string | null
           id?: string
           language_direction?: string | null
+          option_display_mapping?: Json | null
           pdr_response?: Json | null
           profile_id?: string
           scenario_id?: string | null
