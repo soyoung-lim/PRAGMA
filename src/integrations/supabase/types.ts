@@ -90,6 +90,7 @@ export type Database = {
           choice_reason_legacy: string | null
           created_at: string
           decision_trace_complete: boolean | null
+          feedback_decisions: Json | null
           feedback_legacy: Json | null
           final_justification: string | null
           final_translation: string | null
@@ -118,6 +119,7 @@ export type Database = {
           choice_reason_legacy?: string | null
           created_at?: string
           decision_trace_complete?: boolean | null
+          feedback_decisions?: Json | null
           feedback_legacy?: Json | null
           final_justification?: string | null
           final_translation?: string | null
@@ -146,6 +148,7 @@ export type Database = {
           choice_reason_legacy?: string | null
           created_at?: string
           decision_trace_complete?: boolean | null
+          feedback_decisions?: Json | null
           feedback_legacy?: Json | null
           final_justification?: string | null
           final_translation?: string | null
