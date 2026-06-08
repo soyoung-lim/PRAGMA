@@ -4,7 +4,7 @@ import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
-import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
+import { TRANSLATION_LABELS, TRANSLATION_CARD_BG, TRANSLATION_DISPLAY_LABEL } from "@/lib/translationLabels";
 import { TRANSLATIONS, SOURCE_TEXT, FEEDBACK, type ActId, type Choice } from "@/lib/translationOptions";
 import { PageTitle } from "@/components/PageTitle";
 
@@ -105,7 +105,7 @@ const Finalize = () => {
               </div>
 
               <div>
-                <SectionLabel>Step 2 — 번역안 A · B · C</SectionLabel>
+                <SectionLabel>Step 2 — 번역안 1 · 2 · 3</SectionLabel>
                 {act ? (
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                     {(["A", "B", "C"] as Choice[]).map((c) => (
@@ -115,7 +115,7 @@ const Finalize = () => {
                         style={{ backgroundColor: TRANSLATION_CARD_BG[c] }}
                       >
                         <div className="flex items-baseline gap-1.5">
-                          <span className="text-xs font-bold text-foreground/70">번역안 {c}</span>
+                          <span className="text-xs font-bold text-foreground/70">번역안 {TRANSLATION_DISPLAY_LABEL[c]}</span>
                           <span className="text-[12px] font-normal text-[#5C6A7A]">· {TRANSLATION_LABELS[act][c]}</span>
                         </div>
                         <p className="mt-1.5 text-[14px] font-medium leading-relaxed text-[#15202B]">
@@ -191,7 +191,7 @@ const Finalize = () => {
             value={finalTranslation}
             onChange={(e) => !demo && setFinalTranslation(e.target.value)}
             readOnly={demo}
-            placeholder="여기에 본인이 최종 확정한 중국어 번역안을 입력하세요. 번역안 A/B/C 중 하나를 그대로 붙여 넣지 말고, 본인의 판단으로 다듬어 확정해 주세요."
+            placeholder="여기에 본인이 최종 확정한 중국어 번역안을 입력하세요. 번역안 1/2/3 중 하나를 그대로 붙여 넣지 말고, 본인의 판단으로 다듬어 확정해 주세요."
             rows={6}
             maxLength={2000}
             className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-4 text-[17px] font-medium leading-relaxed text-[#15202B] focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"

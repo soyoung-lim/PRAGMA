@@ -4,7 +4,7 @@ import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
-import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
+import { TRANSLATION_LABELS, TRANSLATION_CARD_BG, TRANSLATION_DISPLAY_LABEL } from "@/lib/translationLabels";
 import { TRANSLATIONS, SOURCE_TEXT, type ActId, type Choice } from "@/lib/translationOptions";
 import { PageTitle } from "@/components/PageTitle";
 import { Volume2, Loader2 } from "lucide-react";
@@ -143,7 +143,7 @@ const Pdr = () => {
               disabled={disabled}
               onChange={() => onChange(c)}
             />
-            <span>번역안 {c}</span>
+            <span>번역안 {TRANSLATION_DISPLAY_LABEL[c]}</span>
             {label && (
               <span className="text-[12px] font-normal text-[#5C6A7A]">· {label}</span>
             )}
@@ -231,7 +231,7 @@ const Pdr = () => {
                 ].join(" ")}
                 style={{ backgroundColor: TRANSLATION_CARD_BG[c] }}
               >
-                <div className="text-base font-[700]">번역안 {c}</div>
+                <div className="text-base font-[700]">번역안 {TRANSLATION_DISPLAY_LABEL[c]}</div>
                 {act && (
                   <div className="mt-1 text-[12px] font-normal text-[#5C6A7A]">
                     {TRANSLATION_LABELS[act][c]}
@@ -240,7 +240,7 @@ const Pdr = () => {
                 <p className="mt-3 whitespace-pre-wrap text-[17px] font-semibold leading-relaxed text-[#15202B]">
                   {act
                     ? TRANSLATIONS[act][c]
-                    : `[번역안 ${c} — Step 1을 먼저 선택해주세요]`}
+                    : `[번역안 ${TRANSLATION_DISPLAY_LABEL[c]} — Step 1을 먼저 선택해주세요]`}
                 </p>
                 {act && (
                   <div className="mt-3 flex flex-col gap-2">
@@ -248,7 +248,7 @@ const Pdr = () => {
                       type="button"
                       onClick={() => playChinese(c, TRANSLATIONS[act][c])}
                       disabled={ttsLoading === c}
-                      aria-label={`번역안 ${c} 중국어 발음 듣기`}
+                      aria-label={`번역안 ${TRANSLATION_DISPLAY_LABEL[c]} 중국어 발음 듣기`}
                       className="inline-flex w-fit items-center gap-1.5 rounded-full border-[0.5px] border-[#15202B]/30 bg-[#FFFFFF]/70 px-3 py-1 text-[12px] font-medium text-[#15202B] transition-colors hover:bg-[#FFFFFF] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {ttsLoading === c ? (
