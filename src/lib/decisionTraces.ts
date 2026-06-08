@@ -75,7 +75,8 @@ export async function writeDecisionTraceOnComplete(): Promise<void> {
 
   const best = localStorage.getItem("step2-best");
   const worst = localStorage.getItem("step2-worst");
-  const choiceReason = localStorage.getItem("step2-reason") ?? "";
+  const bestReason = localStorage.getItem("step2-best-reason") ?? "";
+  const worstReason = localStorage.getItem("step2-worst-reason") ?? "";
 
   const feedback =
     safeParse<{ impact?: string; side?: string; reason?: string }>(
@@ -105,7 +106,8 @@ export async function writeDecisionTraceOnComplete(): Promise<void> {
     },
     selected_best_option_id: best ?? null,
     selected_worst_option_id: worst ?? null,
-    choice_reason_legacy: choiceReason || null,
+    best_choice_reason: bestReason || null,
+    worst_choice_reason: worstReason || null,
     feedback_legacy: feedback,
     final_translation: step4.finalTranslation ?? null,
     final_justification: step4.justification ?? null,
