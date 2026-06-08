@@ -85,7 +85,6 @@ export type Database = {
       }
       decision_traces: {
         Row: {
-          analysis_scope: string | null
           auth_user_id: string
           choice_reason_legacy: string | null
           created_at: string
@@ -109,7 +108,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          analysis_scope?: string | null
           auth_user_id: string
           choice_reason_legacy?: string | null
           created_at?: string
@@ -133,7 +131,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          analysis_scope?: string | null
           auth_user_id?: string
           choice_reason_legacy?: string | null
           created_at?: string
