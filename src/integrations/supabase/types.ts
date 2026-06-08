@@ -95,6 +95,7 @@ export type Database = {
           final_translation: string | null
           genre: string | null
           id: string
+          language_direction: string | null
           pdr_response: Json | null
           profile_id: string
           scenario_id: string | null
@@ -104,6 +105,7 @@ export type Database = {
           session_id: string | null
           speech_act: string
           submitted_at: string | null
+          task_mode: string | null
           updated_at: string
         }
         Insert: {
@@ -117,6 +119,7 @@ export type Database = {
           final_translation?: string | null
           genre?: string | null
           id?: string
+          language_direction?: string | null
           pdr_response?: Json | null
           profile_id: string
           scenario_id?: string | null
@@ -126,6 +129,7 @@ export type Database = {
           session_id?: string | null
           speech_act: string
           submitted_at?: string | null
+          task_mode?: string | null
           updated_at?: string
         }
         Update: {
@@ -139,6 +143,7 @@ export type Database = {
           final_translation?: string | null
           genre?: string | null
           id?: string
+          language_direction?: string | null
           pdr_response?: Json | null
           profile_id?: string
           scenario_id?: string | null
@@ -148,6 +153,7 @@ export type Database = {
           session_id?: string | null
           speech_act?: string
           submitted_at?: string | null
+          task_mode?: string | null
           updated_at?: string
         }
         Relationships: [
