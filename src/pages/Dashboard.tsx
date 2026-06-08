@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { useStageTimer, saveCompletedSession, resetDraft } from "@/lib/learningSessions";
+import { writeDecisionTraceOnComplete } from "@/lib/decisionTraces";
 import { exitDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
 import { PageTitle } from "@/components/PageTitle";
@@ -196,6 +197,7 @@ const Dashboard = () => {
     logAction("page_visit", { page: "/dashboard" }, "/dashboard");
     logAction("session_end", { reason: "reached_dashboard" }, "/dashboard");
     setHydrated(true);
+    void writeDecisionTraceOnComplete();
   }, []);
 
   useStageTimer(5);
