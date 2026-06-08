@@ -18,7 +18,8 @@ import { requestTtsAudio } from "@/lib/tts";
 const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP2_BEST_KEY = "step2-best";
 const STEP2_WORST_KEY = "step2-worst";
-const STEP2_REASON_KEY = "step2-reason";
+const STEP2_BEST_REASON_KEY = "step2-best-reason";
+const STEP2_WORST_REASON_KEY = "step2-worst-reason";
 
 const Pdr = () => {
   const navigate = useNavigate();
@@ -27,7 +28,8 @@ const Pdr = () => {
   const [mapping, setMapping] = useState<OptionDisplayMapping | null>(null);
   const [best, setBest] = useState<Choice | null>(null);
   const [worst, setWorst] = useState<Choice | null>(null);
-  const [reason, setReason] = useState("");
+  const [bestReason, setBestReason] = useState("");
+  const [worstReason, setWorstReason] = useState("");
   const [ttsLoading, setTtsLoading] = useState<Choice | null>(null);
   const [ttsError, setTtsError] = useState<{ c: Choice; msg: string } | null>(null);
   const [ttsUrl, setTtsUrl] = useState<Partial<Record<Choice, string>>>({});
@@ -82,8 +84,10 @@ const Pdr = () => {
       if (b === "A" || b === "B" || b === "C") setBest(b);
       const w = localStorage.getItem(STEP2_WORST_KEY);
       if (w === "A" || w === "B" || w === "C") setWorst(w);
-      const r = localStorage.getItem(STEP2_REASON_KEY);
-      if (r) setReason(r);
+      const br = localStorage.getItem(STEP2_BEST_REASON_KEY);
+      if (br) setBestReason(br);
+      const wr = localStorage.getItem(STEP2_WORST_REASON_KEY);
+      if (wr) setWorstReason(wr);
     } catch {
       /* ignore */
     }
@@ -106,8 +110,11 @@ const Pdr = () => {
     logAction("selection", { field: "worst", value: c });
   };
 
-  const reasonOk = reason.trim().length >= 30;
-  const canProceed = demo || (!!best && !!worst && best !== worst && reasonOk);
+  const bestReasonOk = bestReason.trim().length >= 30;
+  const worstReasonOk = worstReason.trim().length >= 30;
+  const canProceed =
+    demo ||
+    (!!best && !!worst && best !== worst && bestReasonOk && worstReasonOk);
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
