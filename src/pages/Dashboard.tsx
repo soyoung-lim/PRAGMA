@@ -193,6 +193,9 @@ const Dashboard = () => {
       STEP2_WORST_KEY,
       STEP2_BEST_REASON_KEY,
       STEP2_WORST_REASON_KEY,
+      "step2-proposal-text",
+      "step2-proposal-reason",
+      "step2-proposal-frozen",
       STEP3_STORAGE_KEY,
       STEP4_STORAGE_KEY,
     ].forEach((k) => {
