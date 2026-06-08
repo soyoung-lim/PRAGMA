@@ -7,7 +7,17 @@ import { useStageTimer, saveCompletedSession, resetDraft } from "@/lib/learningS
 import { writeDecisionTraceOnComplete } from "@/lib/decisionTraces";
 import { exitDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
-import { TRANSLATIONS, SOURCE_TEXT, FEEDBACK, type ActId, type Choice } from "@/lib/translationOptions";
+import {
+  TRANSLATIONS,
+  SOURCE_TEXT,
+  FEEDBACK,
+  PERSPECTIVE_KEYS,
+  PERSPECTIVE_LABEL,
+  PERSPECTIVE_SUBLABEL,
+  type ActId,
+  type Choice,
+  type PerspectiveKey,
+} from "@/lib/translationOptions";
 import {
   getMapping,
   getDisplayOrder,
@@ -15,8 +25,12 @@ import {
 } from "@/lib/optionDisplayMapping";
 import { PageTitle } from "@/components/PageTitle";
 
-type ImpactLevel = "same" | "partial" | "major";
-type SideChoice = "receiver" | "expert" | "both" | "neither";
+type Decision = "accept" | "hold" | "reject";
+interface FeedbackDecisionEntry {
+  perspective: PerspectiveKey;
+  decision: Decision | "";
+  reason: string;
+}
 
 const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP1_ANSWERS_KEY = "step1-answers";
@@ -24,7 +38,7 @@ const STEP2_BEST_KEY = "step2-best";
 const STEP2_WORST_KEY = "step2-worst";
 const STEP2_BEST_REASON_KEY = "step2-best-reason";
 const STEP2_WORST_REASON_KEY = "step2-worst-reason";
-const STEP3_STORAGE_KEY = "step3-feedback-impact";
+const STEP3_DECISIONS_KEY = "step3-feedback-decisions";
 const STEP4_STORAGE_KEY = "step4-final-translation";
 
 const ACT_BADGE: Record<ActId, string> = {
@@ -63,17 +77,15 @@ const Q_OPTIONS: Record<"q1" | "q2" | "q3", string[]> = {
   ],
 };
 
-const IMPACT_LABEL: Record<ImpactLevel, string> = {
-  same: "그대로다 (바뀌지 않음)",
-  partial: "일부 다시 생각하게 됐다",
-  major: "크게 다시 생각하게 됐다",
+const DECISION_LABEL: Record<Decision, string> = {
+  accept: "수용",
+  hold: "보류",
+  reject: "기각",
 };
-
-const SIDE_LABEL: Record<SideChoice, string> = {
-  receiver: "이메일 수신자 페르소나가 더 와닿았다",
-  expert: "통번역 교수자 페르소나가 더 와닿았다",
-  both: "두 관점이 비슷하게 영향을 줬다",
-  neither: "어느 쪽도 특별히 영향을 주지 않았다",
+const DECISION_BADGE: Record<Decision, string> = {
+  accept: "bg-[#15202B] text-white",
+  hold: "bg-[#FAD338] text-[#15202B]",
+  reject: "bg-[#FFFFFF] text-[#15202B] border border-[#15202B]",
 };
 
 function safeParse<T>(key: string): T | null {
