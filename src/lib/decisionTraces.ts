@@ -4,6 +4,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getTaskMode, getLanguageDirection } from "@/lib/entryGate";
 import { getMapping } from "@/lib/optionDisplayMapping";
+import { PERSPECTIVE_KEYS, type PerspectiveKey } from "@/lib/translationOptions";
 
 type ActId = "request" | "refusal";
 
@@ -80,10 +81,30 @@ export async function writeDecisionTraceOnComplete(): Promise<void> {
   const proposalText = localStorage.getItem("step2-proposal-text") ?? "";
   const proposalReason = localStorage.getItem("step2-proposal-reason") ?? "";
 
-  const feedback =
-    safeParse<{ impact?: string; side?: string; reason?: string }>(
-      "step3-feedback-impact",
-    ) ?? {};
+  // P0-e: post-feedback three-perspective decisions (accept/hold/reject + reason).
+  // Only write feedback_decisions when ALL three perspectives have a valid
+  // decision and a non-empty reason — no partial saves.
+  type Decision = "accept" | "hold" | "reject";
+  type RawEntry = { perspective?: string; decision?: string; reason?: string };
+  const rawDecisions =
+    safeParse<RawEntry[]>("step3-feedback-decisions") ?? [];
+  const decisionsByPerspective = new Map<PerspectiveKey, { decision: Decision; reason: string }>();
+  for (const p of PERSPECTIVE_KEYS) {
+    const found = rawDecisions.find((e) => e?.perspective === p);
+    const d = found?.decision;
+    const reason = (found?.reason ?? "").trim();
+    if ((d === "accept" || d === "hold" || d === "reject") && reason.length > 0) {
+      decisionsByPerspective.set(p, { decision: d, reason });
+    }
+  }
+  const feedbackDecisions =
+    decisionsByPerspective.size === PERSPECTIVE_KEYS.length
+      ? PERSPECTIVE_KEYS.map((p) => ({
+          perspective: p,
+          decision: decisionsByPerspective.get(p)!.decision,
+          reason: decisionsByPerspective.get(p)!.reason,
+        }))
+      : null;
 
   const step4 =
     safeParse<{ finalTranslation?: string; justification?: string }>(
@@ -112,7 +133,7 @@ export async function writeDecisionTraceOnComplete(): Promise<void> {
     worst_choice_reason: worstReason || null,
     student_proposed_translation_pre_feedback: proposalText || null,
     student_proposal_reason_pre_feedback: proposalReason || null,
-    feedback_legacy: feedback,
+    feedback_decisions: feedbackDecisions,
     final_translation: step4.finalTranslation ?? null,
     final_justification: step4.justification ?? null,
     decision_trace_complete: true,
