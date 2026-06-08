@@ -454,58 +454,40 @@ const Dashboard = () => {
             </div>
           </Card>
 
-          {/* 5. 피드백 영향 */}
+          {/* 5. 관점별 결정 (수용/보류/기각 + 근거) */}
           <Card>
-            <SectionLabel>피드백 영향</SectionLabel>
-            {(() => {
-              const side = step3.side;
-              const tone = (target: "receiver" | "expert") => {
-                const base =
-                  target === "receiver"
-                    ? "border-[0.5px] border-[#E8D5C4] bg-[#F8EDE3]"
-                    : "border-[0.5px] border-[#CDD6CF] bg-[#E8EFE9]";
-                if (!side || side === "neither") return `${base} opacity-80`;
-                if (side === "both") return base;
-                return side === target
-                  ? `${base} border-2 border-[#15202B]`
-                  : `${base} opacity-60`;
-              };
-              return (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className={`rounded-lg p-5 ${tone("receiver")}`}>
-                    <div className="text-[15px] font-bold text-[#4A2F1A]">
-                      이메일 수신자 페르소나
+            <SectionLabel>관점별 피드백 결정</SectionLabel>
+            <div className="space-y-3">
+              {feedbackDecisions.map((e) => (
+                <div
+                  key={e.perspective}
+                  className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-bold text-[#15202B]">
+                        {PERSPECTIVE_LABEL[e.perspective]}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {PERSPECTIVE_SUBLABEL[e.perspective]}
+                      </div>
                     </div>
-                    <div className="mt-1 text-[12px] font-normal text-[#A88766]">
-                      중국어권 비즈니스 커뮤니케이션 담당자 관점
-                    </div>
-                    <p className="mt-3 text-xs italic leading-relaxed text-foreground/80">
-                      {side === "receiver"
-                        ? `“${step3.reason || "—"}”`
-                        : "—"}
-                    </p>
+                    {e.decision ? (
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-xs font-bold ${DECISION_BADGE[e.decision]}`}
+                      >
+                        {DECISION_LABEL[e.decision]}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </div>
-                  <div className={`rounded-lg p-5 ${tone("expert")}`}>
-                    <div className="text-[15px] font-bold text-[#1A2820]">
-                      통번역 교수자 페르소나
-                    </div>
-                    <div className="mt-1 text-[12px] font-normal text-[#3F5852]">
-                      한·중 통번역 분석의 학술적 관점
-                    </div>
-                    <p className="mt-3 text-xs italic leading-relaxed text-foreground/80">
-                      {side === "expert"
-                        ? `“${step3.reason || "—"}”`
-                        : "—"}
-                    </p>
-                  </div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                    {e.reason || "—"}
+                  </p>
                 </div>
-              );
-            })()}
-            {(step3.side === "both" || step3.side === "neither") && step3.reason && (
-              <p className="mt-3 text-xs italic leading-relaxed text-foreground/70">
-                “{step3.reason}”
-              </p>
-            )}
+              ))}
+            </div>
           </Card>
 
           {/* 6. 나의 상황 판단 */}
@@ -536,84 +518,35 @@ const Dashboard = () => {
           {/* 7. 다관점 피드백 요약 */}
           <Card>
             <SectionLabel>다관점 피드백 요약</SectionLabel>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-md border-[0.5px] border-[#E8D5C4] bg-[#F8EDE3] p-5">
-                <div className="text-[15px] font-bold text-[#4A2F1A]">
-                  이메일 수신자 페르소나
-                </div>
-                <div className="mt-1 text-[12px] font-normal text-[#A88766]">
-                  중국어권 비즈니스 커뮤니케이션 담당자 관점
-                </div>
-                <div className="mt-3 space-y-3 text-sm leading-relaxed text-[#15202B]">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#A88766]">
-                      수용 양상
-                    </div>
-                    <p className="mt-1">{fb ? fb.receiver.impression : "—"}</p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {PERSPECTIVE_KEYS.map((p) => (
+                <div
+                  key={p}
+                  className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5"
+                >
+                  <div className="text-[15px] font-bold text-[#15202B]">
+                    {PERSPECTIVE_LABEL[p]}
                   </div>
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#A88766]">
-                      재고 지점
-                    </div>
-                    <p className="mt-1">{fb ? fb.receiver.reconsider : "—"}</p>
+                  <div className="mt-1 text-[12px] font-normal text-muted-foreground">
+                    {PERSPECTIVE_SUBLABEL[p]}
                   </div>
-                </div>
-              </div>
-
-              <div className="rounded-md border-[0.5px] border-[#CDD6CF] bg-[#E8EFE9] p-5">
-                <div className="text-[15px] font-bold text-[#1A2820]">
-                  통번역 교수자 페르소나
-                </div>
-                <div className="mt-1 text-[12px] font-normal text-[#3F5852]">
-                  한·중 통번역 분석의 학술적 관점
-                </div>
-                <div className="mt-3 space-y-3 text-sm leading-relaxed text-[#15202B]">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#3F5852]">
-                      전달 강점
+                  <div className="mt-3 space-y-3 text-sm leading-relaxed text-[#15202B]">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        수용 양상
+                      </div>
+                      <p className="mt-1">{fb ? fb[p].impression : "—"}</p>
                     </div>
-                    <p className="mt-1">{fb ? fb.expert.strength : "—"}</p>
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#3F5852]">
-                      개선 방향
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        재고 지점
+                      </div>
+                      <p className="mt-1">{fb ? fb[p].reconsider : "—"}</p>
                     </div>
-                    <p className="mt-1">{fb ? fb.expert.revision : "—"}</p>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          </Card>
-
-          {/* 8. 피드백 반영 기록 */}
-          <Card>
-            <SectionLabel>피드백 반영 기록</SectionLabel>
-            <dl className="space-y-4">
-              <div>
-                <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  처음 판단이 바뀌었나요?
-                </dt>
-                <dd className="mt-1 text-sm text-foreground">
-                  {step3.impact ? IMPACT_LABEL[step3.impact] : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  가장 영향을 준 피드백
-                </dt>
-                <dd className="mt-1 text-sm text-foreground">
-                  {step3.side ? SIDE_LABEL[step3.side] : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  이유
-                </dt>
-                <dd className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                  {step3.reason || "—"}
-                </dd>
-              </div>
-            </dl>
           </Card>
 
           {/* 9. 최종 결정 이유 */}
