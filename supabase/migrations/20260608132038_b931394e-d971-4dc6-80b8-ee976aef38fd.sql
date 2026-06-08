@@ -1,0 +1,1 @@
+ALTER TABLE public.decision_traces DROP COLUMN IF EXISTS analysis_scope;
