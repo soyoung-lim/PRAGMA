@@ -5,35 +5,16 @@ import { ensureSession, logAction } from "@/lib/tracking";
 import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
+import { TRANSLATIONS, SOURCE_TEXT, type ActId, type Choice } from "@/lib/translationOptions";
 import { PageTitle } from "@/components/PageTitle";
 import { Volume2, Loader2 } from "lucide-react";
 import { requestTtsAudio } from "@/lib/tts";
 
-type Choice = "A" | "B" | "C";
-type ActId = "request" | "refusal";
 const OPTIONS: Choice[] = ["A", "B", "C"];
 const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP2_BEST_KEY = "step2-best";
 const STEP2_WORST_KEY = "step2-worst";
 const STEP2_REASON_KEY = "step2-reason";
-
-const SOURCE_TEXT: Record<ActId, string> = {
-  request: "이번 자료 전달 일정을 10일 정도 연장해 주실 수 있을지 검토 부탁드립니다.",
-  refusal: "검토해 봤는데 이번에는 프로모션 비용 인하가 어려울 것 같습니다.",
-};
-
-const TRANSLATIONS: Record<ActId, Record<Choice, string>> = {
-  request: {
-    A: "请将本次资料提交时间延后十天。",
-    B: "不知贵方是否方便将本次资料提交时间延后十天,烦请考虑。",
-    C: "由于我方仍需等待艺人方面的最终确认,恳请贵方酌情考虑将本次资料提交时间延后十天。由此可能给贵方上线安排带来的不便,我们深表歉意。",
-  },
-  refusal: {
-    A: "我们研究过了,这次不能降低推广费用。",
-    B: "我们内部讨论过了,这次推广费用方面确实很难再调整,还请您理解。",
-    C: "感谢贵方一直以来的支持。关于此次推广费用调整,我们已认真进行内部讨论,但由于项目预算和执行安排已经基本确定,实在难以再下调。还请您理解,我们也会继续积极配合后续活动推进。",
-  },
-};
 
 const Pdr = () => {
   const navigate = useNavigate();
