@@ -1,6 +1,16 @@
 export type ActId = "request" | "refusal";
 export type Choice = "A" | "B" | "C";
 
+// Student-facing neutral display label for each internal option_id.
+// Internal option_id ("A"/"B"/"C") stays as-is in localStorage and decision_traces;
+// only the displayed string changes. Display order remains fixed (A=1, B=2, C=3).
+// Randomization / option_display_mapping is intentionally out of scope here (B-2b-ii).
+export const TRANSLATION_DISPLAY_LABEL: Record<Choice, string> = {
+  A: "1",
+  B: "2",
+  C: "3",
+};
+
 export const TRANSLATION_LABELS: Record<ActId, Record<Choice, string>> = {
   request: {
     A: "간결한 직접 요청",
