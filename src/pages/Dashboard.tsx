@@ -22,7 +22,8 @@ const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP1_ANSWERS_KEY = "step1-answers";
 const STEP2_BEST_KEY = "step2-best";
 const STEP2_WORST_KEY = "step2-worst";
-const STEP2_REASON_KEY = "step2-reason";
+const STEP2_BEST_REASON_KEY = "step2-best-reason";
+const STEP2_WORST_REASON_KEY = "step2-worst-reason";
 const STEP3_STORAGE_KEY = "step3-feedback-impact";
 const STEP4_STORAGE_KEY = "step4-final-translation";
 
@@ -151,7 +152,8 @@ const Dashboard = () => {
     const worstRaw = localStorage.getItem(STEP2_WORST_KEY);
     const worst: Choice | null =
       worstRaw === "A" || worstRaw === "B" || worstRaw === "C" ? worstRaw : null;
-    const step2Reason = localStorage.getItem(STEP2_REASON_KEY) ?? "";
+    const bestReason = localStorage.getItem(STEP2_BEST_REASON_KEY) ?? "";
+    const worstReason = localStorage.getItem(STEP2_WORST_REASON_KEY) ?? "";
 
     const step3 =
       safeParse<{ impact?: ImpactLevel; side?: SideChoice; reason?: string }>(
@@ -164,10 +166,10 @@ const Dashboard = () => {
       ) ?? {};
 
     const mapping = act ? getMapping(act) : null;
-    return { act, answers, best, worst, step2Reason, step3, step4, mapping };
+    return { act, answers, best, worst, bestReason, worstReason, step3, step4, mapping };
   }, [hydrated]);
 
-  const { act, answers, best, worst, step2Reason, step3, step4, mapping } = data;
+  const { act, answers, best, worst, bestReason, worstReason, step3, step4, mapping } = data;
   const fb = act && best ? FEEDBACK[act][best] : null;
 
   const optText = (q: "q1" | "q2" | "q3") => {
@@ -189,7 +191,8 @@ const Dashboard = () => {
       STEP1_ANSWERS_KEY,
       STEP2_BEST_KEY,
       STEP2_WORST_KEY,
-      STEP2_REASON_KEY,
+      STEP2_BEST_REASON_KEY,
+      STEP2_WORST_REASON_KEY,
       STEP3_STORAGE_KEY,
       STEP4_STORAGE_KEY,
     ].forEach((k) => {
@@ -407,13 +410,23 @@ const Dashboard = () => {
                 );
               })}
             </div>
-            <div className="mt-4 rounded-md border border-foreground/15 bg-background p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                선택 이유
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="rounded-md border border-foreground/15 bg-background p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  가장 적절한 번역안을 고른 이유
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                  {bestReason || "—"}
+                </p>
               </div>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                {step2Reason || "—"}
-              </p>
+              <div className="rounded-md border border-foreground/15 bg-background p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  가장 부적절(위험)한 번역안을 고른 이유
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                  {worstReason || "—"}
+                </p>
+              </div>
             </div>
           </Card>
 
