@@ -18,7 +18,8 @@ import { requestTtsAudio } from "@/lib/tts";
 const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP2_BEST_KEY = "step2-best";
 const STEP2_WORST_KEY = "step2-worst";
-const STEP2_REASON_KEY = "step2-reason";
+const STEP2_BEST_REASON_KEY = "step2-best-reason";
+const STEP2_WORST_REASON_KEY = "step2-worst-reason";
 
 const Pdr = () => {
   const navigate = useNavigate();
@@ -27,7 +28,8 @@ const Pdr = () => {
   const [mapping, setMapping] = useState<OptionDisplayMapping | null>(null);
   const [best, setBest] = useState<Choice | null>(null);
   const [worst, setWorst] = useState<Choice | null>(null);
-  const [reason, setReason] = useState("");
+  const [bestReason, setBestReason] = useState("");
+  const [worstReason, setWorstReason] = useState("");
   const [ttsLoading, setTtsLoading] = useState<Choice | null>(null);
   const [ttsError, setTtsError] = useState<{ c: Choice; msg: string } | null>(null);
   const [ttsUrl, setTtsUrl] = useState<Partial<Record<Choice, string>>>({});
@@ -82,8 +84,10 @@ const Pdr = () => {
       if (b === "A" || b === "B" || b === "C") setBest(b);
       const w = localStorage.getItem(STEP2_WORST_KEY);
       if (w === "A" || w === "B" || w === "C") setWorst(w);
-      const r = localStorage.getItem(STEP2_REASON_KEY);
-      if (r) setReason(r);
+      const br = localStorage.getItem(STEP2_BEST_REASON_KEY);
+      if (br) setBestReason(br);
+      const wr = localStorage.getItem(STEP2_WORST_REASON_KEY);
+      if (wr) setWorstReason(wr);
     } catch {
       /* ignore */
     }
@@ -106,8 +110,11 @@ const Pdr = () => {
     logAction("selection", { field: "worst", value: c });
   };
 
-  const reasonOk = reason.trim().length >= 30;
-  const canProceed = demo || (!!best && !!worst && best !== worst && reasonOk);
+  const bestReasonOk = bestReason.trim().length >= 30;
+  const worstReasonOk = worstReason.trim().length >= 30;
+  const canProceed =
+    demo ||
+    (!!best && !!worst && best !== worst && bestReasonOk && worstReasonOk);
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -295,45 +302,71 @@ const Pdr = () => {
           </div>
         </div>
 
-        {/* Selection inputs */}
-        <div className="mt-6 space-y-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+        {/* Best (most appropriate) — situation-matching frame */}
+        <div className="mt-6 space-y-4 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
           <div>
-            <div className="text-sm font-semibold">가장 적절하다고 생각하는 번역안은?</div>
+            <div className="text-sm font-semibold">이 상황에 가장 적절한 번역안은?</div>
             <div className="mt-3">
               <RadioRow name="best" value={best} onChange={setBestSafe} disabledValue={worst} />
             </div>
           </div>
           <div>
-            <div className="text-sm font-semibold">가장 부적절하다고 생각하는 번역안은?</div>
-            <div className="mt-3">
-              <RadioRow name="worst" value={worst} onChange={setWorstSafe} disabledValue={best} />
+            <label htmlFor="best-reason" className="text-sm font-semibold">
+              그렇게 판단한 이유를 적어주세요
+            </label>
+            <textarea
+              id="best-reason"
+              value={bestReason}
+              onChange={(e) => {
+                if (demo) return;
+                setBestReason(e.target.value);
+                try { localStorage.setItem(STEP2_BEST_REASON_KEY, e.target.value); } catch { /* ignore */ }
+              }}
+              readOnly={demo}
+              placeholder="이 상황에 왜 이 번역안이 가장 잘 어울린다고 보았는지 적어주세요."
+              rows={3}
+              className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
+            />
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {!bestReasonOk && bestReason.length > 0 ? "조금 더 설명해 주세요" : ""}
+              </span>
+              <span className="text-xs text-muted-foreground">{bestReason.length}자</span>
             </div>
           </div>
         </div>
 
-        {/* Reason */}
-        <div className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
-          <label htmlFor="reason" className="text-sm font-semibold">
-            왜 그렇게 판단했는지 자유롭게 적어주세요
-          </label>
-          <textarea
-            id="reason"
-            value={reason}
-            onChange={(e) => {
-              if (demo) return;
-              setReason(e.target.value);
-              try { localStorage.setItem(STEP2_REASON_KEY, e.target.value); } catch { /* ignore */ }
-            }}
-            readOnly={demo}
-            placeholder="의미와 말투, 관계 적합성, 오해·부담 가능성을 참고해 왜 이 번역안이 적절하거나 부적절하다고 보았는지 적어 주세요."
-            rows={3}
-            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
-          />
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {!reasonOk && reason.length > 0 ? "조금 더 설명해 주세요" : ""}
-            </span>
-            <span className="text-xs text-muted-foreground">{reason.length}자</span>
+        {/* Worst (most inappropriate/risky) — situation-matching frame */}
+        <div className="mt-6 space-y-4 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+          <div>
+            <div className="text-sm font-semibold">이 상황에서 가장 부적절(위험)하다고 본 번역안은?</div>
+            <div className="mt-3">
+              <RadioRow name="worst" value={worst} onChange={setWorstSafe} disabledValue={best} />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="worst-reason" className="text-sm font-semibold">
+              그렇게 판단한 이유를 적어주세요
+            </label>
+            <textarea
+              id="worst-reason"
+              value={worstReason}
+              onChange={(e) => {
+                if (demo) return;
+                setWorstReason(e.target.value);
+                try { localStorage.setItem(STEP2_WORST_REASON_KEY, e.target.value); } catch { /* ignore */ }
+              }}
+              readOnly={demo}
+              placeholder="이 상황에서 왜 이 번역안이 어울리지 않거나 오해·부담을 줄 수 있다고 보았는지 적어주세요."
+              rows={3}
+              className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
+            />
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {!worstReasonOk && worstReason.length > 0 ? "조금 더 설명해 주세요" : ""}
+              </span>
+              <span className="text-xs text-muted-foreground">{worstReason.length}자</span>
+            </div>
           </div>
         </div>
 
