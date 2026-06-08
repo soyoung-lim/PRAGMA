@@ -344,6 +344,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ensure_test_dev_profile: { Args: never; Returns: undefined }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {

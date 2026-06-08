@@ -2,11 +2,29 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ensureSession } from "@/lib/tracking";
 import { HomeBrand } from "@/components/HomeBrand";
+import { IS_DEV_TEST_ENTRY_ENABLED } from "@/lib/auth/useProfile";
+import { devTestEntrySignIn } from "@/lib/auth/devTestEntry";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { toast } from "sonner";
 
 const Landing = () => {
+  const navigate = useNavigate();
+  const [devBusy, setDevBusy] = useState(false);
   useEffect(() => {
     ensureSession();
   }, []);
+
+  const handleDevEntry = async () => {
+    setDevBusy(true);
+    const res = await devTestEntrySignIn();
+    if (res.ok === false) {
+      toast.error(res.message);
+      setDevBusy(false);
+      return;
+    }
+    navigate("/scenario", { replace: true });
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -57,6 +75,24 @@ const Landing = () => {
             </span>
           </Link>
         </section>
+
+        {IS_DEV_TEST_ENTRY_ENABLED && (
+          <section className="mt-10 w-full max-w-md">
+            <div className="rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30 p-4 text-center">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                DEV ONLY · 본실험에는 노출되지 않음
+              </div>
+              <button
+                type="button"
+                onClick={handleDevEntry}
+                disabled={devBusy}
+                className="mt-2 w-full rounded-md border border-muted-foreground/40 bg-background px-4 py-2 text-[13px] font-medium text-foreground hover:bg-muted/60 disabled:opacity-60"
+              >
+                {devBusy ? "진입 중…" : "테스트 진입 (TEST-DEV-001 → /scenario)"}
+              </button>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
