@@ -5,29 +5,95 @@ import { ensureSession, logAction } from "@/lib/tracking";
 import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
 import { PageTitle } from "@/components/PageTitle";
-import { TRANSLATIONS, SOURCE_TEXT, FEEDBACK, type ActId, type Choice } from "@/lib/translationOptions";
+import {
+  TRANSLATIONS,
+  SOURCE_TEXT,
+  FEEDBACK,
+  PERSPECTIVE_KEYS,
+  PERSPECTIVE_LABEL,
+  PERSPECTIVE_SUBLABEL,
+  type ActId,
+  type Choice,
+  type PerspectiveKey,
+} from "@/lib/translationOptions";
 import {
   getMapping,
   displayPositionFor,
   type OptionDisplayMapping,
 } from "@/lib/optionDisplayMapping";
 
-type ImpactLevel = "same" | "partial" | "major";
-type SideChoice = "receiver" | "expert" | "both" | "neither";
+type Decision = "accept" | "hold" | "reject";
+
+interface FeedbackDecisionEntry {
+  perspective: PerspectiveKey;
+  decision: Decision | "";
+  reason: string;
+}
 
 const STEP2_BEST_KEY = "step2-best";
 const STEP2_WORST_KEY = "step2-worst";
 const STEP2_BEST_REASON_KEY = "step2-best-reason";
+const STEP2_PROPOSAL_TEXT_KEY = "step2-proposal-text";
+const STEP2_PROPOSAL_REASON_KEY = "step2-proposal-reason";
 const ACT_STORAGE_KEY = "step1-speech-act";
-const STEP3_STORAGE_KEY = "step3-feedback-impact";
+const STEP3_DECISIONS_KEY = "step3-feedback-decisions";
 
 // Legacy export kept for backward compatibility with older imports.
 export const TRANSLATE_STORAGE_KEY = "translation-workflow-translate";
 
-interface Step3Data {
-  impact?: ImpactLevel;
-  side?: SideChoice;
-  reason?: string;
+const DECISION_LABEL: Record<Decision, string> = {
+  accept: "수용",
+  hold: "보류",
+  reject: "기각",
+};
+
+const PERSPECTIVE_THEME: Record<
+  PerspectiveKey,
+  { card: string; title: string; sub: string; tag: string }
+> = {
+  recipient: {
+    card: "border-[0.5px] border-[#E8D5C4] bg-[#F8EDE3]",
+    title: "text-[#4A2F1A]",
+    sub: "text-[#A88766]",
+    tag: "text-[#A88766]",
+  },
+  teacher: {
+    card: "border-[0.5px] border-[#CDD6CF] bg-[#E8EFE9]",
+    title: "text-[#1A2820]",
+    sub: "text-[#3F5852]",
+    tag: "text-[#3F5852]",
+  },
+  field_expert: {
+    card: "border-[0.5px] border-[#C5CED9] bg-[#EEF2F7]",
+    title: "text-[#1A2030]",
+    sub: "text-[#4A5468]",
+    tag: "text-[#4A5468]",
+  },
+};
+
+function emptyDecisions(): FeedbackDecisionEntry[] {
+  return PERSPECTIVE_KEYS.map((p) => ({ perspective: p, decision: "", reason: "" }));
+}
+
+function loadDecisions(): FeedbackDecisionEntry[] {
+  try {
+    const raw = localStorage.getItem(STEP3_DECISIONS_KEY);
+    if (!raw) return emptyDecisions();
+    const parsed = JSON.parse(raw) as Partial<FeedbackDecisionEntry>[];
+    return PERSPECTIVE_KEYS.map((p) => {
+      const found = parsed.find((e) => e?.perspective === p);
+      const dec = found?.decision;
+      const decision: Decision | "" =
+        dec === "accept" || dec === "hold" || dec === "reject" ? dec : "";
+      return {
+        perspective: p,
+        decision,
+        reason: typeof found?.reason === "string" ? found.reason : "",
+      };
+    });
+  } catch {
+    return emptyDecisions();
+  }
 }
 
 const Translate = () => {
@@ -38,10 +104,9 @@ const Translate = () => {
   const [best, setBest] = useState<string>("");
   const [worst, setWorst] = useState<string>("");
   const [step2Reason, setStep2Reason] = useState<string>("");
-
-  const [impact, setImpact] = useState<ImpactLevel | "">("");
-  const [side, setSide] = useState<SideChoice | "">("");
-  const [reason, setReason] = useState<string>("");
+  const [proposalText, setProposalText] = useState<string>("");
+  const [proposalReason, setProposalReason] = useState<string>("");
+  const [decisions, setDecisions] = useState<FeedbackDecisionEntry[]>(emptyDecisions());
 
   useEffect(() => {
     ensureSession();
@@ -55,13 +120,9 @@ const Translate = () => {
       setBest(localStorage.getItem(STEP2_BEST_KEY) || "");
       setWorst(localStorage.getItem(STEP2_WORST_KEY) || "");
       setStep2Reason(localStorage.getItem(STEP2_BEST_REASON_KEY) || "");
-      const raw = localStorage.getItem(STEP3_STORAGE_KEY);
-      if (raw) {
-        const d: Step3Data = JSON.parse(raw);
-        if (d.impact) setImpact(d.impact);
-        if (d.side) setSide(d.side);
-        if (d.reason) setReason(d.reason);
-      }
+      setProposalText(localStorage.getItem(STEP2_PROPOSAL_TEXT_KEY) || "");
+      setProposalReason(localStorage.getItem(STEP2_PROPOSAL_REASON_KEY) || "");
+      setDecisions(loadDecisions());
     } catch {
       /* ignore */
     }
@@ -69,21 +130,35 @@ const Translate = () => {
 
   useStageTimer(3);
 
-  useEffect(() => {
-    const payload: Step3Data = {
-      impact: (impact || undefined) as ImpactLevel | undefined,
-      side: (side || undefined) as SideChoice | undefined,
-      reason,
-    };
+  const persistDecisions = (next: FeedbackDecisionEntry[]) => {
+    setDecisions(next);
     try {
-      localStorage.setItem(STEP3_STORAGE_KEY, JSON.stringify(payload));
+      localStorage.setItem(STEP3_DECISIONS_KEY, JSON.stringify(next));
     } catch {
       /* ignore */
     }
-  }, [impact, side, reason]);
+  };
 
-  const reasonOk = reason.trim().length >= 15;
-  const canProceed = demo || (!!impact && !!side && reasonOk);
+  const setDecisionFor = (p: PerspectiveKey, value: Decision) => {
+    if (demo) return;
+    persistDecisions(
+      decisions.map((d) => (d.perspective === p ? { ...d, decision: value } : d)),
+    );
+    logAction("selection", { field: "feedback_decision", perspective: p, value });
+  };
+
+  const setReasonFor = (p: PerspectiveKey, value: string) => {
+    if (demo) return;
+    persistDecisions(
+      decisions.map((d) => (d.perspective === p ? { ...d, reason: value } : d)),
+    );
+  };
+
+  const allDecided = decisions.every(
+    (d) => (d.decision === "accept" || d.decision === "hold" || d.decision === "reject") &&
+      d.reason.trim().length >= 15,
+  );
+  const canProceed = demo || allDecided;
 
   const fb =
     act && (best === "A" || best === "B" || best === "C")
@@ -100,49 +175,6 @@ const Translate = () => {
       : step2Reason
     : "";
 
-  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-      {children}
-    </div>
-  );
-
-  const Radio = ({
-    name,
-    value,
-    current,
-    onChange,
-    children,
-  }: {
-    name: string;
-    value: string;
-    current: string;
-    onChange: (v: string) => void;
-    children: React.ReactNode;
-  }) => {
-    const checked = current === value;
-    return (
-      <label
-        className={[
-          "flex cursor-pointer items-start gap-3 rounded-md px-4 py-3 text-sm transition-colors text-[#15202B]",
-          checked
-            ? "border-[1.5px] border-[#15202B] bg-[#EEF2F7] font-medium"
-            : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] font-normal hover:bg-muted/30",
-          demo ? "cursor-default" : "",
-        ].join(" ")}
-      >
-        <input
-          type="radio"
-          name={name}
-          className="mt-0.5 h-[14px] w-[14px] shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-[#B4B2A9] bg-white checked:border-[#15202B] checked:bg-[radial-gradient(circle,_#FAD338_0_3.5px,_transparent_3.5px)]"
-          checked={checked}
-          disabled={demo}
-          onChange={() => !demo && onChange(value)}
-        />
-        <span className="leading-relaxed">{children}</span>
-      </label>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <WorkflowHeader currentStep={3} />
@@ -150,10 +182,10 @@ const Translate = () => {
       <main className="mx-auto max-w-6xl px-6 py-8">
         <PageTitle
           title="AI 피드백 확인"
-          description="방금 선택한 번역안에 대해, 두 가지 관점에서 본 피드백을 확인해 보세요."
+          description="세 관점의 피드백을 확인하고, 각 관점에 대해 수용·보류·기각과 그 근거를 적어주세요. 피드백은 참고 자료이며 평가가 아닙니다."
         />
 
-        {/* Source ↔ chosen best translation pairing — hero pair (page protagonist) */}
+        {/* Source ↔ chosen best translation pairing */}
         <section className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] border-l-[4px] border-l-[#15202B] bg-[#FFFFFF] p-6">
           <div className="text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
             지금 피드백을 받고 있는 번역안
@@ -193,119 +225,124 @@ const Translate = () => {
           )}
         </section>
 
-        {/* Two-perspective feedback cards */}
-        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <article className="rounded-lg border-[0.5px] border-[#E8D5C4] bg-[#F8EDE3] p-6">
-            <h2 className="text-[15px] font-bold text-[#4A2F1A]">
-              이메일 수신자 페르소나
-            </h2>
-            <p className="mt-1 text-[12px] font-normal text-[#A88766]">
-              중국어권 비즈니스 커뮤니케이션 담당자 관점
-            </p>
-            <div className="mt-5 space-y-5">
+        {/* Frozen pre-feedback proposal — read-only reference */}
+        {(proposalText || proposalReason) && (
+          <section className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FAFAF6] p-6">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              피드백을 보기 전 직접 제안 (참고용 · 수정 불가)
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
               <div>
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[#A88766]">수용 양상</div>
-                <p className="text-sm leading-relaxed text-[#15202B]">
-                  {fb ? fb.receiver.impression : "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">직접 제안</div>
+                <p className="mt-1 whitespace-pre-wrap rounded-md border border-foreground/10 bg-background/60 p-3 text-sm leading-relaxed text-foreground/80">
+                  {proposalText || "—"}
                 </p>
               </div>
               <div>
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[#A88766]">재고 지점</div>
-                <p className="text-sm leading-relaxed text-[#15202B]">
-                  {fb ? fb.receiver.reconsider : "[Step 2 선택 후 표시됩니다]"}
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">제안 이유</div>
+                <p className="mt-1 whitespace-pre-wrap rounded-md border border-foreground/10 bg-background/60 p-3 text-sm leading-relaxed text-foreground/80">
+                  {proposalReason || "—"}
                 </p>
               </div>
             </div>
-          </article>
+          </section>
+        )}
 
-          <article className="rounded-lg border-[0.5px] border-[#CDD6CF] bg-[#E8EFE9] p-6">
-            <h2 className="text-[15px] font-bold text-[#1A2820]">
-              통번역 교수자 페르소나
-            </h2>
-            <p className="mt-1 text-[12px] font-normal text-[#3F5852]">
-              한·중 통번역 분석의 학술적 관점
-            </p>
-            <div className="mt-5 space-y-5">
-              <div>
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[#3F5852]">전달 강점</div>
-                <p className="text-sm leading-relaxed text-[#15202B]">
-                  {fb ? fb.expert.strength : "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
-                </p>
-              </div>
-              <div>
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[#3F5852]">개선 방향</div>
-                <p className="text-sm leading-relaxed text-[#15202B]">
-                  {fb ? fb.expert.revision : "[Step 2 선택 후 표시됩니다]"}
-                </p>
-              </div>
-            </div>
-          </article>
+        {/* Three-perspective feedback + per-perspective decision/reason */}
+        <div className="mt-8 space-y-5">
+          {PERSPECTIVE_KEYS.map((p) => {
+            const theme = PERSPECTIVE_THEME[p];
+            const block = fb ? fb[p] : null;
+            const entry =
+              decisions.find((d) => d.perspective === p) ??
+              { perspective: p, decision: "" as Decision | "", reason: "" };
+            return (
+              <article key={p} className={`rounded-lg p-6 ${theme.card}`}>
+                <header>
+                  <h2 className={`text-[15px] font-bold ${theme.title}`}>
+                    {PERSPECTIVE_LABEL[p]}
+                  </h2>
+                  <p className={`mt-1 text-[12px] font-normal ${theme.sub}`}>
+                    {PERSPECTIVE_SUBLABEL[p]}
+                  </p>
+                </header>
+                <div className="mt-5 space-y-4">
+                  <div>
+                    <div className={`mb-2 text-xs font-medium uppercase tracking-wide ${theme.tag}`}>
+                      수용 양상
+                    </div>
+                    <p className="text-sm leading-relaxed text-[#15202B]">
+                      {block ? block.impression : "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
+                    </p>
+                  </div>
+                  <div>
+                    <div className={`mb-2 text-xs font-medium uppercase tracking-wide ${theme.tag}`}>
+                      재고 지점
+                    </div>
+                    <p className="text-sm leading-relaxed text-[#15202B]">
+                      {block ? block.reconsider : "[Step 2 선택 후 표시됩니다]"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 border-t border-foreground/10 pt-4">
+                  <div className="text-sm font-semibold text-[#15202B]">
+                    이 피드백을 어떻게 받아들이시겠어요?
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    {(["accept", "hold", "reject"] as Decision[]).map((d) => {
+                      const checked = entry.decision === d;
+                      return (
+                        <label
+                          key={d}
+                          className={[
+                            "flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm transition-colors text-[#15202B]",
+                            checked
+                              ? "border-[1.5px] border-[#15202B] bg-white font-medium"
+                              : "border-[0.5px] border-[#D3D1C7] bg-white/70 font-normal hover:bg-white",
+                            demo ? "cursor-default" : "",
+                          ].join(" ")}
+                        >
+                          <input
+                            type="radio"
+                            name={`decision-${p}`}
+                            className="h-[14px] w-[14px] shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-[#B4B2A9] bg-white checked:border-[#15202B] checked:bg-[radial-gradient(circle,_#FAD338_0_3.5px,_transparent_3.5px)]"
+                            checked={checked}
+                            disabled={demo}
+                            onChange={() => setDecisionFor(p, d)}
+                          />
+                          <span>{DECISION_LABEL[d]}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3">
+                    <label htmlFor={`reason-${p}`} className="text-sm font-semibold text-[#15202B]">
+                      그렇게 판단한 근거를 적어주세요
+                    </label>
+                    <textarea
+                      id={`reason-${p}`}
+                      value={entry.reason}
+                      onChange={(e) => setReasonFor(p, e.target.value)}
+                      readOnly={demo}
+                      placeholder="이 관점의 피드백을 어떻게 해석했는지, 어떤 부분을 받아들이거나 보류·기각했는지 적어주세요."
+                      rows={3}
+                      className="mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
+                    />
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        {entry.reason.length > 0 && entry.reason.trim().length < 15
+                          ? "조금 더 적어주세요"
+                          : ""}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{entry.reason.length}자</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
-
-        {/* Impact log */}
-        <section className="mt-8 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
-          <SectionLabel>피드백을 본 뒤</SectionLabel>
-
-          <div className="mt-2 space-y-6">
-            <div>
-              <div className="text-sm font-semibold">
-                1. 두 피드백을 본 뒤, 처음 판단이 어떻게 달라졌나요?
-              </div>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <Radio name="impact" value="same" current={impact} onChange={(v) => setImpact(v as ImpactLevel)}>
-                  그대로다 (바뀌지 않음)
-                </Radio>
-                <Radio name="impact" value="partial" current={impact} onChange={(v) => setImpact(v as ImpactLevel)}>
-                  일부 다시 생각하게 됐다
-                </Radio>
-                <Radio name="impact" value="major" current={impact} onChange={(v) => setImpact(v as ImpactLevel)}>
-                  크게 다시 생각하게 됐다
-                </Radio>
-              </div>
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold">
-                2. 어느 쪽 피드백이 더 와닿았나요?
-              </div>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <Radio name="side" value="receiver" current={side} onChange={(v) => setSide(v as SideChoice)}>
-                  이메일 수신자 페르소나가 더 와닿았다
-                </Radio>
-                <Radio name="side" value="expert" current={side} onChange={(v) => setSide(v as SideChoice)}>
-                  통번역 교수자 페르소나가 더 와닿았다
-                </Radio>
-                <Radio name="side" value="both" current={side} onChange={(v) => setSide(v as SideChoice)}>
-                  두 관점이 비슷하게 영향을 줬다
-                </Radio>
-                <Radio name="side" value="neither" current={side} onChange={(v) => setSide(v as SideChoice)}>
-                  어느 쪽도 특별히 영향을 주지 않았다
-                </Radio>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="step3-reason" className="text-sm font-semibold">
-                3. 그 이유를 구체적으로 적어주세요.
-              </label>
-              <textarea
-                id="step3-reason"
-                value={reason}
-                onChange={(e) => !demo && setReason(e.target.value)}
-                readOnly={demo}
-                placeholder="예) 수신자가 어떻게 느낄지 구체적인 인상을 들으니 다시 보게 됐습니다."
-                rows={4}
-                className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
-              />
-              <div className="mt-2 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {!reasonOk && reason.length > 0 ? "조금 더 적어주세요" : ""}
-                </span>
-                <span className="text-xs text-muted-foreground">{reason.length}자</span>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Footer */}
         <div className="mt-12 border-t border-border pt-6">

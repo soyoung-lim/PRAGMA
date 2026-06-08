@@ -7,7 +7,17 @@ import { useStageTimer, saveCompletedSession, resetDraft } from "@/lib/learningS
 import { writeDecisionTraceOnComplete } from "@/lib/decisionTraces";
 import { exitDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
-import { TRANSLATIONS, SOURCE_TEXT, FEEDBACK, type ActId, type Choice } from "@/lib/translationOptions";
+import {
+  TRANSLATIONS,
+  SOURCE_TEXT,
+  FEEDBACK,
+  PERSPECTIVE_KEYS,
+  PERSPECTIVE_LABEL,
+  PERSPECTIVE_SUBLABEL,
+  type ActId,
+  type Choice,
+  type PerspectiveKey,
+} from "@/lib/translationOptions";
 import {
   getMapping,
   getDisplayOrder,
@@ -15,8 +25,12 @@ import {
 } from "@/lib/optionDisplayMapping";
 import { PageTitle } from "@/components/PageTitle";
 
-type ImpactLevel = "same" | "partial" | "major";
-type SideChoice = "receiver" | "expert" | "both" | "neither";
+type Decision = "accept" | "hold" | "reject";
+interface FeedbackDecisionEntry {
+  perspective: PerspectiveKey;
+  decision: Decision | "";
+  reason: string;
+}
 
 const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP1_ANSWERS_KEY = "step1-answers";
@@ -24,7 +38,7 @@ const STEP2_BEST_KEY = "step2-best";
 const STEP2_WORST_KEY = "step2-worst";
 const STEP2_BEST_REASON_KEY = "step2-best-reason";
 const STEP2_WORST_REASON_KEY = "step2-worst-reason";
-const STEP3_STORAGE_KEY = "step3-feedback-impact";
+const STEP3_DECISIONS_KEY = "step3-feedback-decisions";
 const STEP4_STORAGE_KEY = "step4-final-translation";
 
 const ACT_BADGE: Record<ActId, string> = {
@@ -63,17 +77,15 @@ const Q_OPTIONS: Record<"q1" | "q2" | "q3", string[]> = {
   ],
 };
 
-const IMPACT_LABEL: Record<ImpactLevel, string> = {
-  same: "그대로다 (바뀌지 않음)",
-  partial: "일부 다시 생각하게 됐다",
-  major: "크게 다시 생각하게 됐다",
+const DECISION_LABEL: Record<Decision, string> = {
+  accept: "수용",
+  hold: "보류",
+  reject: "기각",
 };
-
-const SIDE_LABEL: Record<SideChoice, string> = {
-  receiver: "이메일 수신자 페르소나가 더 와닿았다",
-  expert: "통번역 교수자 페르소나가 더 와닿았다",
-  both: "두 관점이 비슷하게 영향을 줬다",
-  neither: "어느 쪽도 특별히 영향을 주지 않았다",
+const DECISION_BADGE: Record<Decision, string> = {
+  accept: "bg-[#15202B] text-white",
+  hold: "bg-[#FAD338] text-[#15202B]",
+  reject: "bg-[#FFFFFF] text-[#15202B] border border-[#15202B]",
 };
 
 function safeParse<T>(key: string): T | null {
@@ -155,10 +167,19 @@ const Dashboard = () => {
     const bestReason = localStorage.getItem(STEP2_BEST_REASON_KEY) ?? "";
     const worstReason = localStorage.getItem(STEP2_WORST_REASON_KEY) ?? "";
 
-    const step3 =
-      safeParse<{ impact?: ImpactLevel; side?: SideChoice; reason?: string }>(
-        STEP3_STORAGE_KEY,
-      ) ?? {};
+    const feedbackDecisionsRaw =
+      safeParse<Partial<FeedbackDecisionEntry>[]>(STEP3_DECISIONS_KEY) ?? [];
+    const feedbackDecisions: FeedbackDecisionEntry[] = PERSPECTIVE_KEYS.map((p) => {
+      const found = feedbackDecisionsRaw.find((e) => e?.perspective === p);
+      const dec = found?.decision;
+      const decision: Decision | "" =
+        dec === "accept" || dec === "hold" || dec === "reject" ? dec : "";
+      return {
+        perspective: p,
+        decision,
+        reason: typeof found?.reason === "string" ? found.reason : "",
+      };
+    });
 
     const step4 =
       safeParse<{ finalTranslation?: string; justification?: string }>(
@@ -166,10 +187,10 @@ const Dashboard = () => {
       ) ?? {};
 
     const mapping = act ? getMapping(act) : null;
-    return { act, answers, best, worst, bestReason, worstReason, step3, step4, mapping };
+    return { act, answers, best, worst, bestReason, worstReason, feedbackDecisions, step4, mapping };
   }, [hydrated]);
 
-  const { act, answers, best, worst, bestReason, worstReason, step3, step4, mapping } = data;
+  const { act, answers, best, worst, bestReason, worstReason, feedbackDecisions, step4, mapping } = data;
   const fb = act && best ? FEEDBACK[act][best] : null;
 
   const optText = (q: "q1" | "q2" | "q3") => {
@@ -196,7 +217,7 @@ const Dashboard = () => {
       "step2-proposal-text",
       "step2-proposal-reason",
       "step2-proposal-frozen",
-      STEP3_STORAGE_KEY,
+      STEP3_DECISIONS_KEY,
       STEP4_STORAGE_KEY,
     ].forEach((k) => {
       try { localStorage.removeItem(k); } catch { /* ignore */ }
@@ -433,58 +454,40 @@ const Dashboard = () => {
             </div>
           </Card>
 
-          {/* 5. 피드백 영향 */}
+          {/* 5. 관점별 결정 (수용/보류/기각 + 근거) */}
           <Card>
-            <SectionLabel>피드백 영향</SectionLabel>
-            {(() => {
-              const side = step3.side;
-              const tone = (target: "receiver" | "expert") => {
-                const base =
-                  target === "receiver"
-                    ? "border-[0.5px] border-[#E8D5C4] bg-[#F8EDE3]"
-                    : "border-[0.5px] border-[#CDD6CF] bg-[#E8EFE9]";
-                if (!side || side === "neither") return `${base} opacity-80`;
-                if (side === "both") return base;
-                return side === target
-                  ? `${base} border-2 border-[#15202B]`
-                  : `${base} opacity-60`;
-              };
-              return (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className={`rounded-lg p-5 ${tone("receiver")}`}>
-                    <div className="text-[15px] font-bold text-[#4A2F1A]">
-                      이메일 수신자 페르소나
+            <SectionLabel>관점별 피드백 결정</SectionLabel>
+            <div className="space-y-3">
+              {feedbackDecisions.map((e) => (
+                <div
+                  key={e.perspective}
+                  className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-bold text-[#15202B]">
+                        {PERSPECTIVE_LABEL[e.perspective]}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {PERSPECTIVE_SUBLABEL[e.perspective]}
+                      </div>
                     </div>
-                    <div className="mt-1 text-[12px] font-normal text-[#A88766]">
-                      중국어권 비즈니스 커뮤니케이션 담당자 관점
-                    </div>
-                    <p className="mt-3 text-xs italic leading-relaxed text-foreground/80">
-                      {side === "receiver"
-                        ? `“${step3.reason || "—"}”`
-                        : "—"}
-                    </p>
+                    {e.decision ? (
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-xs font-bold ${DECISION_BADGE[e.decision]}`}
+                      >
+                        {DECISION_LABEL[e.decision]}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </div>
-                  <div className={`rounded-lg p-5 ${tone("expert")}`}>
-                    <div className="text-[15px] font-bold text-[#1A2820]">
-                      통번역 교수자 페르소나
-                    </div>
-                    <div className="mt-1 text-[12px] font-normal text-[#3F5852]">
-                      한·중 통번역 분석의 학술적 관점
-                    </div>
-                    <p className="mt-3 text-xs italic leading-relaxed text-foreground/80">
-                      {side === "expert"
-                        ? `“${step3.reason || "—"}”`
-                        : "—"}
-                    </p>
-                  </div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                    {e.reason || "—"}
+                  </p>
                 </div>
-              );
-            })()}
-            {(step3.side === "both" || step3.side === "neither") && step3.reason && (
-              <p className="mt-3 text-xs italic leading-relaxed text-foreground/70">
-                “{step3.reason}”
-              </p>
-            )}
+              ))}
+            </div>
           </Card>
 
           {/* 6. 나의 상황 판단 */}
@@ -515,84 +518,35 @@ const Dashboard = () => {
           {/* 7. 다관점 피드백 요약 */}
           <Card>
             <SectionLabel>다관점 피드백 요약</SectionLabel>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-md border-[0.5px] border-[#E8D5C4] bg-[#F8EDE3] p-5">
-                <div className="text-[15px] font-bold text-[#4A2F1A]">
-                  이메일 수신자 페르소나
-                </div>
-                <div className="mt-1 text-[12px] font-normal text-[#A88766]">
-                  중국어권 비즈니스 커뮤니케이션 담당자 관점
-                </div>
-                <div className="mt-3 space-y-3 text-sm leading-relaxed text-[#15202B]">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#A88766]">
-                      수용 양상
-                    </div>
-                    <p className="mt-1">{fb ? fb.receiver.impression : "—"}</p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {PERSPECTIVE_KEYS.map((p) => (
+                <div
+                  key={p}
+                  className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5"
+                >
+                  <div className="text-[15px] font-bold text-[#15202B]">
+                    {PERSPECTIVE_LABEL[p]}
                   </div>
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#A88766]">
-                      재고 지점
-                    </div>
-                    <p className="mt-1">{fb ? fb.receiver.reconsider : "—"}</p>
+                  <div className="mt-1 text-[12px] font-normal text-muted-foreground">
+                    {PERSPECTIVE_SUBLABEL[p]}
                   </div>
-                </div>
-              </div>
-
-              <div className="rounded-md border-[0.5px] border-[#CDD6CF] bg-[#E8EFE9] p-5">
-                <div className="text-[15px] font-bold text-[#1A2820]">
-                  통번역 교수자 페르소나
-                </div>
-                <div className="mt-1 text-[12px] font-normal text-[#3F5852]">
-                  한·중 통번역 분석의 학술적 관점
-                </div>
-                <div className="mt-3 space-y-3 text-sm leading-relaxed text-[#15202B]">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#3F5852]">
-                      전달 강점
+                  <div className="mt-3 space-y-3 text-sm leading-relaxed text-[#15202B]">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        수용 양상
+                      </div>
+                      <p className="mt-1">{fb ? fb[p].impression : "—"}</p>
                     </div>
-                    <p className="mt-1">{fb ? fb.expert.strength : "—"}</p>
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#3F5852]">
-                      개선 방향
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        재고 지점
+                      </div>
+                      <p className="mt-1">{fb ? fb[p].reconsider : "—"}</p>
                     </div>
-                    <p className="mt-1">{fb ? fb.expert.revision : "—"}</p>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          </Card>
-
-          {/* 8. 피드백 반영 기록 */}
-          <Card>
-            <SectionLabel>피드백 반영 기록</SectionLabel>
-            <dl className="space-y-4">
-              <div>
-                <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  처음 판단이 바뀌었나요?
-                </dt>
-                <dd className="mt-1 text-sm text-foreground">
-                  {step3.impact ? IMPACT_LABEL[step3.impact] : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  가장 영향을 준 피드백
-                </dt>
-                <dd className="mt-1 text-sm text-foreground">
-                  {step3.side ? SIDE_LABEL[step3.side] : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  이유
-                </dt>
-                <dd className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                  {step3.reason || "—"}
-                </dd>
-              </div>
-            </dl>
           </Card>
 
           {/* 9. 최종 결정 이유 */}
