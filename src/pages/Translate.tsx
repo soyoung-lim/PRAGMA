@@ -6,6 +6,7 @@ import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
 import { PageTitle } from "@/components/PageTitle";
 import { TRANSLATIONS, SOURCE_TEXT, FEEDBACK, type ActId, type Choice } from "@/lib/translationOptions";
+import { TRANSLATION_DISPLAY_LABEL } from "@/lib/translationLabels";
 
 type ImpactLevel = "same" | "partial" | "major";
 type SideChoice = "receiver" | "expert" | "both" | "neither";
