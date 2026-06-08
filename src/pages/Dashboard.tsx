@@ -6,8 +6,13 @@ import { ensureSession, logAction } from "@/lib/tracking";
 import { useStageTimer, saveCompletedSession, resetDraft } from "@/lib/learningSessions";
 import { writeDecisionTraceOnComplete } from "@/lib/decisionTraces";
 import { exitDemoMode } from "@/lib/demo";
-import { TRANSLATION_LABELS, TRANSLATION_CARD_BG, TRANSLATION_DISPLAY_LABEL } from "@/lib/translationLabels";
+import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
 import { TRANSLATIONS, SOURCE_TEXT, FEEDBACK, type ActId, type Choice } from "@/lib/translationOptions";
+import {
+  getMapping,
+  getDisplayOrder,
+  clearAllMappings,
+} from "@/lib/optionDisplayMapping";
 import { PageTitle } from "@/components/PageTitle";
 
 type ImpactLevel = "same" | "partial" | "major";
@@ -158,10 +163,11 @@ const Dashboard = () => {
         STEP4_STORAGE_KEY,
       ) ?? {};
 
-    return { act, answers, best, worst, step2Reason, step3, step4 };
+    const mapping = act ? getMapping(act) : null;
+    return { act, answers, best, worst, step2Reason, step3, step4, mapping };
   }, [hydrated]);
 
-  const { act, answers, best, worst, step2Reason, step3, step4 } = data;
+  const { act, answers, best, worst, step2Reason, step3, step4, mapping } = data;
   const fb = act && best ? FEEDBACK[act][best] : null;
 
   const optText = (q: "q1" | "q2" | "q3") => {
@@ -189,6 +195,7 @@ const Dashboard = () => {
     ].forEach((k) => {
       try { localStorage.removeItem(k); } catch { /* ignore */ }
     });
+    clearAllMappings();
     logAction("session_end", { reason: "another_scenario" }, "/dashboard");
     navigate("/scenario");
   };
@@ -352,7 +359,7 @@ const Dashboard = () => {
           <Card>
             <SectionLabel>내가 본 번역안 비교</SectionLabel>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {(["A", "B", "C"] as Choice[]).map((c) => {
+              {(mapping ? getDisplayOrder(mapping) : (["A", "B", "C"] as Choice[])).map((c, idx) => {
                 const isBest = best === c;
                 const isWorst = worst === c;
                 const cardCls = isBest
@@ -375,7 +382,7 @@ const Dashboard = () => {
                             : "rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-2 py-0.5 text-xs font-semibold text-foreground/80"
                         }
                       >
-                        번역안 {TRANSLATION_DISPLAY_LABEL[c]}
+                        번역안 {idx + 1}
                       </span>
                       {isBest && (
                         <span className="text-[11px] font-semibold text-[#15202B]/70">
