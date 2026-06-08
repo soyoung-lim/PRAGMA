@@ -1,0 +1,1 @@
+ALTER TABLE public.decision_traces ADD COLUMN IF NOT EXISTS feedback_decisions jsonb;

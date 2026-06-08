@@ -5,7 +5,16 @@ import { ensureSession, logAction } from "@/lib/tracking";
 import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
-import { TRANSLATIONS, SOURCE_TEXT, FEEDBACK, type ActId, type Choice } from "@/lib/translationOptions";
+import {
+  TRANSLATIONS,
+  SOURCE_TEXT,
+  FEEDBACK,
+  PERSPECTIVE_KEYS,
+  PERSPECTIVE_LABEL,
+  PERSPECTIVE_SUBLABEL,
+  type ActId,
+  type Choice,
+} from "@/lib/translationOptions";
 import {
   getMapping,
   getDisplayOrder,
@@ -139,33 +148,26 @@ const Finalize = () => {
               </div>
 
               <div>
-                <SectionLabel>Step 3 — 두 관점 피드백</SectionLabel>
+                <SectionLabel>Step 3 — 세 관점 피드백</SectionLabel>
                 {fb ? (
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className="rounded-md border-[0.5px] border-[#E8D5C4] bg-[#F8EDE3] p-3">
-                      <div className="text-[15px] font-bold text-[#4A2F1A]">
-                        이메일 수신자 페르소나
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {PERSPECTIVE_KEYS.map((p) => (
+                      <div
+                        key={p}
+                        className="rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-3"
+                      >
+                        <div className="text-[15px] font-bold text-[#15202B]">
+                          {PERSPECTIVE_LABEL[p]}
+                        </div>
+                        <div className="mt-1 text-[12px] font-normal text-muted-foreground">
+                          {PERSPECTIVE_SUBLABEL[p]}
+                        </div>
+                        <div className="mt-2 space-y-2 text-[13px] leading-relaxed text-[#15202B]">
+                          <p><span className="font-semibold text-muted-foreground">수용 양상</span> — {fb[p].impression}</p>
+                          <p><span className="font-semibold text-muted-foreground">재고 지점</span> — {fb[p].reconsider}</p>
+                        </div>
                       </div>
-                      <div className="mt-1 text-[12px] font-normal text-[#A88766]">
-                        중국어권 비즈니스 커뮤니케이션 담당자 관점
-                      </div>
-                      <div className="mt-2 space-y-2 text-[13px] leading-relaxed text-[#15202B]">
-                        <p><span className="font-semibold text-[#A88766]">수용 양상</span> — {fb.receiver.impression}</p>
-                        <p><span className="font-semibold text-[#A88766]">재고 지점</span> — {fb.receiver.reconsider}</p>
-                      </div>
-                    </div>
-                    <div className="rounded-md border-[0.5px] border-[#CDD6CF] bg-[#E8EFE9] p-3">
-                      <div className="text-[15px] font-bold text-[#1A2820]">
-                        통번역 교수자 페르소나
-                      </div>
-                      <div className="mt-1 text-[12px] font-normal text-[#3F5852]">
-                        한·중 통번역 분석의 학술적 관점
-                      </div>
-                      <div className="mt-2 space-y-2 text-[13px] leading-relaxed text-[#15202B]">
-                        <p><span className="font-semibold text-[#3F5852]">전달 강점</span> — {fb.expert.strength}</p>
-                        <p><span className="font-semibold text-[#3F5852]">개선 방향</span> — {fb.expert.revision}</p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
