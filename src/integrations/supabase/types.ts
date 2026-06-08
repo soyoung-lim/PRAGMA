@@ -85,7 +85,6 @@ export type Database = {
       }
       decision_traces: {
         Row: {
-          analysis_scope: string | null
           auth_user_id: string
           choice_reason_legacy: string | null
           created_at: string
@@ -95,6 +94,7 @@ export type Database = {
           final_translation: string | null
           genre: string | null
           id: string
+          language_direction: string | null
           pdr_response: Json | null
           profile_id: string
           scenario_id: string | null
@@ -104,10 +104,10 @@ export type Database = {
           session_id: string | null
           speech_act: string
           submitted_at: string | null
+          task_mode: string | null
           updated_at: string
         }
         Insert: {
-          analysis_scope?: string | null
           auth_user_id: string
           choice_reason_legacy?: string | null
           created_at?: string
@@ -117,6 +117,7 @@ export type Database = {
           final_translation?: string | null
           genre?: string | null
           id?: string
+          language_direction?: string | null
           pdr_response?: Json | null
           profile_id: string
           scenario_id?: string | null
@@ -126,10 +127,10 @@ export type Database = {
           session_id?: string | null
           speech_act: string
           submitted_at?: string | null
+          task_mode?: string | null
           updated_at?: string
         }
         Update: {
-          analysis_scope?: string | null
           auth_user_id?: string
           choice_reason_legacy?: string | null
           created_at?: string
@@ -139,6 +140,7 @@ export type Database = {
           final_translation?: string | null
           genre?: string | null
           id?: string
+          language_direction?: string | null
           pdr_response?: Json | null
           profile_id?: string
           scenario_id?: string | null
@@ -148,6 +150,7 @@ export type Database = {
           session_id?: string | null
           speech_act?: string
           submitted_at?: string | null
+          task_mode?: string | null
           updated_at?: string
         }
         Relationships: [
