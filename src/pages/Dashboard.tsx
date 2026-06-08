@@ -167,10 +167,19 @@ const Dashboard = () => {
     const bestReason = localStorage.getItem(STEP2_BEST_REASON_KEY) ?? "";
     const worstReason = localStorage.getItem(STEP2_WORST_REASON_KEY) ?? "";
 
-    const step3 =
-      safeParse<{ impact?: ImpactLevel; side?: SideChoice; reason?: string }>(
-        STEP3_STORAGE_KEY,
-      ) ?? {};
+    const feedbackDecisionsRaw =
+      safeParse<Partial<FeedbackDecisionEntry>[]>(STEP3_DECISIONS_KEY) ?? [];
+    const feedbackDecisions: FeedbackDecisionEntry[] = PERSPECTIVE_KEYS.map((p) => {
+      const found = feedbackDecisionsRaw.find((e) => e?.perspective === p);
+      const dec = found?.decision;
+      const decision: Decision | "" =
+        dec === "accept" || dec === "hold" || dec === "reject" ? dec : "";
+      return {
+        perspective: p,
+        decision,
+        reason: typeof found?.reason === "string" ? found.reason : "",
+      };
+    });
 
     const step4 =
       safeParse<{ finalTranslation?: string; justification?: string }>(
@@ -178,10 +187,10 @@ const Dashboard = () => {
       ) ?? {};
 
     const mapping = act ? getMapping(act) : null;
-    return { act, answers, best, worst, bestReason, worstReason, step3, step4, mapping };
+    return { act, answers, best, worst, bestReason, worstReason, feedbackDecisions, step4, mapping };
   }, [hydrated]);
 
-  const { act, answers, best, worst, bestReason, worstReason, step3, step4, mapping } = data;
+  const { act, answers, best, worst, bestReason, worstReason, feedbackDecisions, step4, mapping } = data;
   const fb = act && best ? FEEDBACK[act][best] : null;
 
   const optText = (q: "q1" | "q2" | "q3") => {
@@ -208,7 +217,7 @@ const Dashboard = () => {
       "step2-proposal-text",
       "step2-proposal-reason",
       "step2-proposal-frozen",
-      STEP3_STORAGE_KEY,
+      STEP3_DECISIONS_KEY,
       STEP4_STORAGE_KEY,
     ].forEach((k) => {
       try { localStorage.removeItem(k); } catch { /* ignore */ }
