@@ -18,7 +18,7 @@ const Landing = () => {
   const handleDevEntry = async () => {
     setDevBusy(true);
     const res = await devTestEntrySignIn();
-    if (!res.ok) {
+    if (res.ok === false) {
       toast.error(res.message);
       setDevBusy(false);
       return;
