@@ -6,7 +6,7 @@ import { ensureSession, logAction } from "@/lib/tracking";
 import { useStageTimer, saveCompletedSession, resetDraft } from "@/lib/learningSessions";
 import { writeDecisionTraceOnComplete } from "@/lib/decisionTraces";
 import { exitDemoMode } from "@/lib/demo";
-import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
+import { TRANSLATION_LABELS, TRANSLATION_CARD_BG, TRANSLATION_DISPLAY_LABEL } from "@/lib/translationLabels";
 import { TRANSLATIONS, SOURCE_TEXT, FEEDBACK, type ActId, type Choice } from "@/lib/translationOptions";
 import { PageTitle } from "@/components/PageTitle";
 
@@ -375,7 +375,7 @@ const Dashboard = () => {
                             : "rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-2 py-0.5 text-xs font-semibold text-foreground/80"
                         }
                       >
-                        번역안 {c}
+                        번역안 {TRANSLATION_DISPLAY_LABEL[c]}
                       </span>
                       {isBest && (
                         <span className="text-[11px] font-semibold text-[#15202B]/70">

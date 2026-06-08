@@ -6,6 +6,7 @@ import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
 import { PageTitle } from "@/components/PageTitle";
 import { TRANSLATIONS, SOURCE_TEXT, FEEDBACK, type ActId, type Choice } from "@/lib/translationOptions";
+import { TRANSLATION_DISPLAY_LABEL } from "@/lib/translationLabels";
 
 type ImpactLevel = "same" | "partial" | "major";
 type SideChoice = "receiver" | "expert" | "both" | "neither";
@@ -160,7 +161,7 @@ const Translate = () => {
             </div>
             <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-5 py-4">
               <div className="mb-2 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
-                내가 고른 중국어 번역안 (도착어){best ? ` · ${best}` : ""}
+                내가 고른 중국어 번역안 (도착어){best ? ` · 번역안 ${TRANSLATION_DISPLAY_LABEL[best]}` : ""}
               </div>
               <p className="whitespace-pre-wrap text-[18px] font-semibold leading-relaxed text-[#15202B]">
                 {bestTranslation || "[Step 2에서 가장 적절한 번역안을 먼저 선택해주세요]"}
@@ -169,7 +170,7 @@ const Translate = () => {
           </div>
           {(worst || summaryReason) && (
             <div className="mt-4 border-t border-foreground/10 pt-3 text-xs text-muted-foreground">
-              {worst && <span>가장 부적절하다고 본 번역안: <span className="font-semibold text-foreground/80">{worst}</span></span>}
+              {worst && <span>가장 부적절하다고 본 번역안: <span className="font-semibold text-foreground/80">번역안 {TRANSLATION_DISPLAY_LABEL[worst]}</span></span>}
               {worst && summaryReason && <span> · </span>}
               {summaryReason && <span className="whitespace-pre-wrap">내가 적은 이유: {summaryReason}</span>}
             </div>
