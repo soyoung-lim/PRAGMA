@@ -17,7 +17,7 @@ type SideChoice = "receiver" | "expert" | "both" | "neither";
 
 const STEP2_BEST_KEY = "step2-best";
 const STEP2_WORST_KEY = "step2-worst";
-const STEP2_REASON_KEY = "step2-reason";
+const STEP2_BEST_REASON_KEY = "step2-best-reason";
 const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP3_STORAGE_KEY = "step3-feedback-impact";
 
@@ -54,7 +54,7 @@ const Translate = () => {
       }
       setBest(localStorage.getItem(STEP2_BEST_KEY) || "");
       setWorst(localStorage.getItem(STEP2_WORST_KEY) || "");
-      setStep2Reason(localStorage.getItem(STEP2_REASON_KEY) || "");
+      setStep2Reason(localStorage.getItem(STEP2_BEST_REASON_KEY) || "");
       const raw = localStorage.getItem(STEP3_STORAGE_KEY);
       if (raw) {
         const d: Step3Data = JSON.parse(raw);

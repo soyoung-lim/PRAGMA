@@ -86,6 +86,7 @@ export type Database = {
       decision_traces: {
         Row: {
           auth_user_id: string
+          best_choice_reason: string | null
           choice_reason_legacy: string | null
           created_at: string
           decision_trace_complete: boolean | null
@@ -107,9 +108,11 @@ export type Database = {
           submitted_at: string | null
           task_mode: string | null
           updated_at: string
+          worst_choice_reason: string | null
         }
         Insert: {
           auth_user_id: string
+          best_choice_reason?: string | null
           choice_reason_legacy?: string | null
           created_at?: string
           decision_trace_complete?: boolean | null
@@ -131,9 +134,11 @@ export type Database = {
           submitted_at?: string | null
           task_mode?: string | null
           updated_at?: string
+          worst_choice_reason?: string | null
         }
         Update: {
           auth_user_id?: string
+          best_choice_reason?: string | null
           choice_reason_legacy?: string | null
           created_at?: string
           decision_trace_complete?: boolean | null
@@ -155,6 +160,7 @@ export type Database = {
           submitted_at?: string | null
           task_mode?: string | null
           updated_at?: string
+          worst_choice_reason?: string | null
         }
         Relationships: [
           {
