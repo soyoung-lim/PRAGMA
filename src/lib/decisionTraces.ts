@@ -93,7 +93,6 @@ export async function writeDecisionTraceOnComplete(): Promise<void> {
     scenario_key: scenarioKey,
     speech_act: act,
     genre: GENRE_BY_ACT[act],
-    analysis_scope: "core",
     task_mode: DEFAULT_TASK_MODE,
     language_direction: DEFAULT_LANGUAGE_DIRECTION,
     pdr_response: {
