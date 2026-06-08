@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useProfile } from "@/lib/auth/useProfile";
@@ -18,6 +19,18 @@ const Home = () => {
   const navigate = useNavigate();
   const { loading, session, profile, isDevStub } = useProfile();
 
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const needsProfile = !profile?.profile_completed;
+
+  useEffect(() => {
+    if (needsProfile) {
+      const timer = setTimeout(() => setProfileOpen(true), 600);
+      return () => clearTimeout(timer);
+    }
+    setProfileOpen(false);
+  }, [needsProfile]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
@@ -29,8 +42,6 @@ const Home = () => {
   if (!session && !isDevStub) {
     return <Navigate to="/student-login" replace />;
   }
-
-  const needsProfile = !profile?.profile_completed;
 
   const stepEntries = Object.entries(WORKFLOW_STEPS)
     .map(([k, v]) => ({ n: Number(k), ...v }))
@@ -92,24 +103,37 @@ const Home = () => {
         </section>
       </main>
 
-      {/* Non-dismissible profile modal — required before /scenario */}
-      <DialogPrimitive.Root open={needsProfile}>
+      {/* Profile modal — opens gently after a short delay so the home page is visible first */}
+      <DialogPrimitive.Root open={profileOpen}>
         <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Overlay
+            className={cn(
+              "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
+              "data-[state=open]:animate-in data-[state=open]:fade-in-0",
+              "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+              "duration-300",
+            )}
+          />
           <DialogPrimitive.Content
             onEscapeKeyDown={(e) => e.preventDefault()}
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
-            className="fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[95vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-lg border bg-background p-6 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+            className={cn(
+              "fixed left-[50%] top-[50%] z-50 grid w-[95vw] max-w-2xl translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg",
+              "duration-300",
+              "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+              "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+            )}
           >
             <DialogPrimitive.Title className="text-xl font-bold tracking-tight">
-              프로필 설정
+              학습을 시작하기 전에
             </DialogPrimitive.Title>
             <DialogPrimitive.Description className="text-sm text-muted-foreground">
-              학습을 시작하기 전에 연구 배경 정보를 입력해 주세요. (3단계)
+              아래 정보는 연구 배경 분석에만 익명으로 활용되며, 2~3분이면 입력할
+              수 있어요.
             </DialogPrimitive.Description>
             <div className="-mx-2 mt-2 max-h-[65vh] overflow-y-auto px-2">
-              <ProfileWizardForm />
+              <ProfileWizardForm onCompleted={() => setProfileOpen(false)} />
             </div>
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
