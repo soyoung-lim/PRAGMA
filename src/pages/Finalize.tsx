@@ -5,7 +5,16 @@ import { ensureSession, logAction } from "@/lib/tracking";
 import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
 import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
-import { TRANSLATIONS, SOURCE_TEXT, FEEDBACK, type ActId, type Choice } from "@/lib/translationOptions";
+import {
+  TRANSLATIONS,
+  SOURCE_TEXT,
+  FEEDBACK,
+  PERSPECTIVE_KEYS,
+  PERSPECTIVE_LABEL,
+  PERSPECTIVE_SUBLABEL,
+  type ActId,
+  type Choice,
+} from "@/lib/translationOptions";
 import {
   getMapping,
   getDisplayOrder,
