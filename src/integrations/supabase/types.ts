@@ -105,6 +105,8 @@ export type Database = {
           selected_worst_option_id: string | null
           session_id: string | null
           speech_act: string
+          student_proposal_reason_pre_feedback: string | null
+          student_proposed_translation_pre_feedback: string | null
           submitted_at: string | null
           task_mode: string | null
           updated_at: string
@@ -131,6 +133,8 @@ export type Database = {
           selected_worst_option_id?: string | null
           session_id?: string | null
           speech_act: string
+          student_proposal_reason_pre_feedback?: string | null
+          student_proposed_translation_pre_feedback?: string | null
           submitted_at?: string | null
           task_mode?: string | null
           updated_at?: string
@@ -157,6 +161,8 @@ export type Database = {
           selected_worst_option_id?: string | null
           session_id?: string | null
           speech_act?: string
+          student_proposal_reason_pre_feedback?: string | null
+          student_proposed_translation_pre_feedback?: string | null
           submitted_at?: string | null
           task_mode?: string | null
           updated_at?: string
