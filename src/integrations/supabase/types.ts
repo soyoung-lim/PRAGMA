@@ -83,6 +83,83 @@ export type Database = {
         }
         Relationships: []
       }
+      decision_traces: {
+        Row: {
+          analysis_scope: string | null
+          auth_user_id: string
+          choice_reason_legacy: string | null
+          created_at: string
+          decision_trace_complete: boolean | null
+          feedback_legacy: Json | null
+          final_justification: string | null
+          final_translation: string | null
+          genre: string | null
+          id: string
+          pdr_response: Json | null
+          profile_id: string
+          scenario_id: string | null
+          scenario_key: string
+          selected_best_option_id: string | null
+          selected_worst_option_id: string | null
+          session_id: string | null
+          speech_act: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          analysis_scope?: string | null
+          auth_user_id: string
+          choice_reason_legacy?: string | null
+          created_at?: string
+          decision_trace_complete?: boolean | null
+          feedback_legacy?: Json | null
+          final_justification?: string | null
+          final_translation?: string | null
+          genre?: string | null
+          id?: string
+          pdr_response?: Json | null
+          profile_id: string
+          scenario_id?: string | null
+          scenario_key: string
+          selected_best_option_id?: string | null
+          selected_worst_option_id?: string | null
+          session_id?: string | null
+          speech_act: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          analysis_scope?: string | null
+          auth_user_id?: string
+          choice_reason_legacy?: string | null
+          created_at?: string
+          decision_trace_complete?: boolean | null
+          feedback_legacy?: Json | null
+          final_justification?: string | null
+          final_translation?: string | null
+          genre?: string | null
+          id?: string
+          pdr_response?: Json | null
+          profile_id?: string
+          scenario_id?: string | null
+          scenario_key?: string
+          selected_best_option_id?: string | null
+          selected_worst_option_id?: string | null
+          session_id?: string | null
+          speech_act?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_traces_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           academic_year_or_program: string | null
