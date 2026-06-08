@@ -8,6 +8,12 @@ const DEV_STUB_KEY = "dev-stub-session";
 // dev-only flag — exposed only in dev builds. Never reachable in production.
 export const IS_DEV = import.meta.env.DEV;
 
+// Secondary kill-switch: even in DEV, hide the test entry when
+// VITE_ENABLE_TEST_ENTRY === 'false'. Primary gate is import.meta.env.DEV
+// so production builds never expose the dev entry regardless of env.
+export const IS_DEV_TEST_ENTRY_ENABLED =
+  IS_DEV && import.meta.env.VITE_ENABLE_TEST_ENTRY !== "false";
+
 type DevStub = {
   user_id: string;
   email: string;
