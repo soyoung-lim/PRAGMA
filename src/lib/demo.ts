@@ -10,7 +10,8 @@ const STORAGE_KEYS = [
   "step1-answers",
   "step2-best",
   "step2-worst",
-  "step2-reason",
+  "step2-best-reason",
+  "step2-worst-reason",
   "step3-feedback-impact",
   "step4-final-translation",
 ] as const;
@@ -21,7 +22,9 @@ const DEMO_VALUES: Record<(typeof STORAGE_KEYS)[number], string> = {
   "step1-answers": JSON.stringify({ q1: 1, q2: 1, q3: 0 }),
   "step2-best": "C",
   "step2-worst": "A",
-  "step2-reason":
+  "step2-best-reason":
+    "C는 감사 표현과 후속 협업 의지가 함께 담겨 있어, 거절이지만 관계를 잇는 신호가 잘 드러난다고 보았습니다. 여러 차례 소통해 온 실무 관계에서 이 정도 톤이 가장 자연스럽다고 느꼈습니다.",
+  "step2-worst-reason":
     "A는 너무 짧고 단정적이라 여러 번 연락해 온 실무 관계에서 받기에 부담스럽다고 느꼈습니다. C는 감사 표현과 후속 협업 의지가 함께 담겨 있어 거절이지만 관계를 잇는 신호가 잘 드러난다고 봤습니다.",
   "step3-feedback-impact": JSON.stringify({
     impact: "partial",
