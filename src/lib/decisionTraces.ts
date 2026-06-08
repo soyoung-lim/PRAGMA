@@ -2,6 +2,7 @@
 // Reads existing localStorage keys (no refactor of storage layer).
 
 import { supabase } from "@/integrations/supabase/client";
+import { getTaskMode, getLanguageDirection } from "@/lib/entryGate";
 
 type ActId = "request" | "refusal";
 
@@ -93,8 +94,8 @@ export async function writeDecisionTraceOnComplete(): Promise<void> {
     scenario_key: scenarioKey,
     speech_act: act,
     genre: GENRE_BY_ACT[act],
-    task_mode: DEFAULT_TASK_MODE,
-    language_direction: DEFAULT_LANGUAGE_DIRECTION,
+    task_mode: getTaskMode() ?? DEFAULT_TASK_MODE,
+    language_direction: getLanguageDirection() ?? DEFAULT_LANGUAGE_DIRECTION,
     pdr_response: {
       q1_power: answers.q1,
       q2_distance: answers.q2,

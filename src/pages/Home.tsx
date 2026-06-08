@@ -86,7 +86,7 @@ const Home = () => {
         <section className="mt-10">
           <button
             type="button"
-            onClick={() => navigate("/scenario")}
+            onClick={() => navigate("/entry/task-mode")}
             disabled={needsProfile}
             className={cn(
               "inline-flex items-center gap-1 rounded-md bg-[#15202B] px-6 py-3 text-[15px] font-medium text-white shadow-sm",
