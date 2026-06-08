@@ -3,6 +3,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getTaskMode, getLanguageDirection } from "@/lib/entryGate";
+import { getMapping } from "@/lib/optionDisplayMapping";
 
 type ActId = "request" | "refusal";
 
@@ -96,6 +97,7 @@ export async function writeDecisionTraceOnComplete(): Promise<void> {
     genre: GENRE_BY_ACT[act],
     task_mode: getTaskMode() ?? DEFAULT_TASK_MODE,
     language_direction: getLanguageDirection() ?? DEFAULT_LANGUAGE_DIRECTION,
+    option_display_mapping: getMapping(act),
     pdr_response: {
       q1_power: answers.q1,
       q2_distance: answers.q2,

@@ -4,8 +4,13 @@ import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
 import { useStageTimer } from "@/lib/learningSessions";
 import { isDemoMode } from "@/lib/demo";
-import { TRANSLATION_LABELS, TRANSLATION_CARD_BG, TRANSLATION_DISPLAY_LABEL } from "@/lib/translationLabels";
+import { TRANSLATION_LABELS, TRANSLATION_CARD_BG } from "@/lib/translationLabels";
 import { TRANSLATIONS, SOURCE_TEXT, FEEDBACK, type ActId, type Choice } from "@/lib/translationOptions";
+import {
+  getMapping,
+  getDisplayOrder,
+  type OptionDisplayMapping,
+} from "@/lib/optionDisplayMapping";
 import { PageTitle } from "@/components/PageTitle";
 
 const ACT_STORAGE_KEY = "step1-speech-act";
@@ -27,6 +32,7 @@ const Finalize = () => {
   const navigate = useNavigate();
   const demo = isDemoMode();
   const [act, setAct] = useState<ActId | null>(null);
+  const [mapping, setMapping] = useState<OptionDisplayMapping | null>(null);
   const [best, setBest] = useState<Choice | null>(null);
   const [finalTranslation, setFinalTranslation] = useState("");
   const [justification, setJustification] = useState("");
@@ -37,7 +43,10 @@ const Finalize = () => {
     logAction("page_visit", { page: "/finalize" }, "/finalize");
     try {
       const a = localStorage.getItem(ACT_STORAGE_KEY);
-      if (a === "request" || a === "refusal") setAct(a);
+      if (a === "request" || a === "refusal") {
+        setAct(a);
+        setMapping(getMapping(a));
+      }
       const b = localStorage.getItem(STEP2_BEST_KEY);
       if (b === "A" || b === "B" || b === "C") setBest(b);
       const raw = localStorage.getItem(FINALIZE_STORAGE_KEY);
@@ -108,14 +117,14 @@ const Finalize = () => {
                 <SectionLabel>Step 2 — 번역안 1 · 2 · 3</SectionLabel>
                 {act ? (
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    {(["A", "B", "C"] as Choice[]).map((c) => (
+                    {(mapping ? getDisplayOrder(mapping) : (["A", "B", "C"] as Choice[])).map((c, idx) => (
                       <div
                         key={c}
                         className="rounded-md border-[0.5px] border-[#D3D1C7] p-3"
                         style={{ backgroundColor: TRANSLATION_CARD_BG[c] }}
                       >
                         <div className="flex items-baseline gap-1.5">
-                          <span className="text-xs font-bold text-foreground/70">번역안 {TRANSLATION_DISPLAY_LABEL[c]}</span>
+                          <span className="text-xs font-bold text-foreground/70">번역안 {idx + 1}</span>
                           <span className="text-[12px] font-normal text-[#5C6A7A]">· {TRANSLATION_LABELS[act][c]}</span>
                         </div>
                         <p className="mt-1.5 text-[14px] font-medium leading-relaxed text-[#15202B]">
