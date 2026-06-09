@@ -11,7 +11,7 @@ import Pdr from "./pages/Pdr.tsx";
 import Translate from "./pages/Translate.tsx";
 import Finalize from "./pages/Finalize.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
-import AdminArchive from "./pages/AdminArchive.tsx";
+import AdminCorpus from "./pages/admin/AdminCorpus.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminGenerator from "./pages/admin/AdminGenerator.tsx";
 import AdminPromptHarness from "./pages/admin/AdminPromptHarness.tsx";
@@ -60,6 +60,7 @@ const App = () => (
           <Route path="/dashboard" element={<RequireApproved><Dashboard /></RequireApproved>} />
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/corpus" element={<AdminCorpus />} />
           <Route path="/admin/archive" element={<AdminArchive />} />
           <Route path="/admin/generator" element={<AdminGenerator />} />
           <Route path="/admin/prompt-harness" element={<AdminPromptHarness />} />

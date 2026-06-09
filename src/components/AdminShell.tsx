@@ -14,6 +14,7 @@ const GROUPS: NavGroup[] = [
   {
     header: "시나리오 생성·검수",
     items: [
+      { to: "/admin/corpus", label: "코퍼스" },
       { to: "/admin/prompt-harness", label: "프롬프트 관리" },
       { to: "/admin/generator", label: "AI 시나리오 생성" },
       { to: "/admin/review", label: "시나리오 검수" },
