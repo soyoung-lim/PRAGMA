@@ -249,7 +249,7 @@ const Translate = () => {
         )}
 
         {/* Three-perspective feedback + per-perspective decision/reason */}
-        <div className="mt-8 space-y-5">
+        <div className="mt-5 space-y-4">
           {PERSPECTIVE_KEYS.map((p) => {
             const theme = PERSPECTIVE_THEME[p];
             const block = fb ? fb[p] : null;
@@ -257,7 +257,7 @@ const Translate = () => {
               decisions.find((d) => d.perspective === p) ??
               { perspective: p, decision: "" as Decision | "", reason: "" };
             return (
-              <article key={p} className={`rounded-lg p-6 ${theme.card}`}>
+              <article key={p} className={`rounded-lg p-4 ${theme.card}`}>
                 <header>
                   <h2 className={`text-[15px] font-bold ${theme.title}`}>
                     {PERSPECTIVE_LABEL[p]}
@@ -266,9 +266,9 @@ const Translate = () => {
                     {PERSPECTIVE_SUBLABEL[p]}
                   </p>
                 </header>
-                <div className="mt-5 space-y-4">
+                <div className="mt-3 space-y-3">
                   <div>
-                    <div className={`mb-2 text-xs font-medium uppercase tracking-wide ${theme.tag}`}>
+                    <div className={`mb-1 text-xs font-medium uppercase tracking-wide ${theme.tag}`}>
                       수용 양상
                     </div>
                     <p className="text-sm leading-relaxed text-[#15202B]">
@@ -276,7 +276,7 @@ const Translate = () => {
                     </p>
                   </div>
                   <div>
-                    <div className={`mb-2 text-xs font-medium uppercase tracking-wide ${theme.tag}`}>
+                    <div className={`mb-1 text-xs font-medium uppercase tracking-wide ${theme.tag}`}>
                       재고 지점
                     </div>
                     <p className="text-sm leading-relaxed text-[#15202B]">
@@ -285,18 +285,18 @@ const Translate = () => {
                   </div>
                 </div>
 
-                <div className="mt-5 border-t border-foreground/10 pt-4">
+                <div className="mt-3 border-t border-foreground/10 pt-3">
                   <div className="text-sm font-semibold text-[#15202B]">
                     이 피드백을 어떻게 받아들이시겠어요?
                   </div>
-                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {(["accept", "hold", "reject"] as Decision[]).map((d) => {
                       const checked = entry.decision === d;
                       return (
                         <label
                           key={d}
                           className={[
-                            "flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-sm transition-colors text-[#15202B]",
+                            "flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors text-[#15202B]",
                             checked
                               ? "border-[1.5px] border-[#15202B] bg-white font-medium"
                               : "border-[0.5px] border-[#D3D1C7] bg-white/70 font-normal hover:bg-white",
@@ -316,7 +316,7 @@ const Translate = () => {
                       );
                     })}
                   </div>
-                  <div className="mt-3">
+                  <div className="mt-2">
                     <label htmlFor={`reason-${p}`} className="text-sm font-semibold text-[#15202B]">
                       그렇게 판단한 근거를 적어주세요
                     </label>
@@ -326,8 +326,8 @@ const Translate = () => {
                       onChange={(e) => setReasonFor(p, e.target.value)}
                       readOnly={demo}
                       placeholder="이 관점의 피드백을 어떻게 해석했는지, 어떤 부분을 받아들이거나 보류·기각했는지 적어주세요."
-                      rows={3}
-                      className="mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
+                      rows={2}
+                      className="mt-1.5 w-full resize-y rounded-md border border-foreground/20 bg-background p-2.5 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
                     />
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">

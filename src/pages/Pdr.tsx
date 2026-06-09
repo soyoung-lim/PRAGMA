@@ -328,10 +328,10 @@ const Pdr = () => {
         </div>
 
         {/* Best (most appropriate) — situation-matching frame */}
-        <div className="mt-6 space-y-4 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+        <div className="mt-4 space-y-3 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
           <div>
             <div className="text-sm font-semibold">이 상황에 가장 적절한 번역안은?</div>
-            <div className="mt-3">
+            <div className="mt-2">
               <RadioRow name="best" value={best} onChange={setBestSafe} disabledValue={worst} />
             </div>
           </div>
@@ -349,10 +349,10 @@ const Pdr = () => {
               }}
               readOnly={demo}
               placeholder="이 상황에 왜 이 번역안이 가장 잘 어울린다고 보았는지 적어주세요."
-              rows={3}
-              className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
+              rows={2}
+              className="mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-2.5 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
             />
-            <div className="mt-2 flex items-center justify-between">
+            <div className="mt-1 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
                 {!bestReasonOk && bestReason.length > 0 ? "조금 더 설명해 주세요" : ""}
               </span>
@@ -362,10 +362,10 @@ const Pdr = () => {
         </div>
 
         {/* Worst (most inappropriate/risky) — situation-matching frame */}
-        <div className="mt-6 space-y-4 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+        <div className="mt-4 space-y-3 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
           <div>
             <div className="text-sm font-semibold">이 상황에서 가장 부적절(위험)하다고 본 번역안은?</div>
-            <div className="mt-3">
+            <div className="mt-2">
               <RadioRow name="worst" value={worst} onChange={setWorstSafe} disabledValue={best} />
             </div>
           </div>
@@ -383,10 +383,10 @@ const Pdr = () => {
               }}
               readOnly={demo}
               placeholder="이 상황에서 왜 이 번역안이 어울리지 않거나 오해·부담을 줄 수 있다고 보았는지 적어주세요."
-              rows={3}
-              className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
+              rows={2}
+              className="mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-2.5 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
             />
-            <div className="mt-2 flex items-center justify-between">
+            <div className="mt-1 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
                 {!worstReasonOk && worstReason.length > 0 ? "조금 더 설명해 주세요" : ""}
               </span>
@@ -396,7 +396,7 @@ const Pdr = () => {
         </div>
 
         {/* Pre-feedback direct proposal (optional, freezes when proceeding) */}
-        <div className="mt-6 space-y-4 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+        <div className="mt-4 space-y-3 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
           <div>
             <div className="text-sm font-semibold">
               피드백을 보기 전에, 당신이라면 어떻게 번역하시겠어요?{" "}
@@ -415,13 +415,13 @@ const Pdr = () => {
               }}
               readOnly={proposalReadOnly}
               placeholder="당신이 직접 번역한다면 어떻게 쓰시겠어요?"
-              rows={3}
+              rows={2}
               className={[
-                "mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40",
+                "mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-2.5 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40",
                 proposalReadOnly ? "bg-muted/30 text-foreground/80" : "",
               ].join(" ")}
             />
-            <div className="mt-2 text-right text-xs text-muted-foreground">{proposalText.length}자</div>
+            <div className="mt-1 text-right text-xs text-muted-foreground">{proposalText.length}자</div>
           </div>
           <div>
             <label htmlFor="proposal-reason" className="text-sm font-semibold">
@@ -438,13 +438,13 @@ const Pdr = () => {
               }}
               readOnly={proposalReadOnly}
               placeholder="왜 그렇게 번역하고 싶었는지 적어주세요."
-              rows={3}
+              rows={2}
               className={[
-                "mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40",
+                "mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-2.5 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40",
                 proposalReadOnly ? "bg-muted/30 text-foreground/80" : "",
               ].join(" ")}
             />
-            <div className="mt-2 text-right text-xs text-muted-foreground">{proposalReason.length}자</div>
+            <div className="mt-1 text-right text-xs text-muted-foreground">{proposalReason.length}자</div>
           </div>
           {proposalFrozen && (
             <p className="text-xs text-muted-foreground">
