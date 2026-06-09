@@ -11,6 +11,7 @@ import Pdr from "./pages/Pdr.tsx";
 import Translate from "./pages/Translate.tsx";
 import Finalize from "./pages/Finalize.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import AdminArchive from "./pages/AdminArchive.tsx";
 import AdminCorpus from "./pages/admin/AdminCorpus.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminGenerator from "./pages/admin/AdminGenerator.tsx";
