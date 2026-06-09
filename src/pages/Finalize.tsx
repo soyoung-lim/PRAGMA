@@ -180,7 +180,7 @@ const Finalize = () => {
         </section>
 
         {/* Always-visible source text pairing with author area — hero pair */}
-        <section className="mt-8 rounded-xl border-[0.5px] border-[#D3D1C7] border-l-[4px] border-l-[#15202B] bg-[#FFFFFF] p-7">
+        <section className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] border-l-[4px] border-l-[#15202B] bg-[#FFFFFF] p-5">
           <div className="mb-3 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
             번역해야 할 한국어 원문 (출발어)
           </div>
@@ -188,7 +188,7 @@ const Finalize = () => {
             {act ? SOURCE_TEXT[act] : "[Step 1에서 화행을 먼저 선택해주세요]"}
           </p>
 
-          <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="my-3 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
             <span className="h-px flex-1 bg-foreground/15" />
             <span>↓ 본인이 직접 작성하는 중국어 번역 (도착어)</span>
             <span className="h-px flex-1 bg-foreground/15" />
@@ -203,17 +203,17 @@ const Finalize = () => {
             onChange={(e) => !demo && setFinalTranslation(e.target.value)}
             readOnly={demo}
             placeholder="여기에 본인이 최종 확정한 중국어 번역안을 입력하세요. 번역안 1/2/3 중 하나를 그대로 붙여 넣지 말고, 본인의 판단으로 다듬어 확정해 주세요."
-            rows={6}
+            rows={4}
             maxLength={2000}
-            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-4 text-[17px] font-medium leading-relaxed text-[#15202B] focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
+            className="mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-[17px] font-medium leading-relaxed text-[#15202B] focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
           />
-          <div className="mt-2 flex justify-end">
+          <div className="mt-1 flex justify-end">
             <span className="text-xs text-muted-foreground">{finalTranslation.length}자</span>
           </div>
         </section>
 
         {/* Justification */}
-        <section className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+        <section className="mt-4 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
           <label htmlFor="final-justification" className="text-sm font-semibold">
             이 번역안을 최종으로 결정한 이유를 자유롭게 적어주세요 (최소 50자)
           </label>
@@ -223,11 +223,11 @@ const Finalize = () => {
             onChange={(e) => !demo && setJustification(e.target.value)}
             readOnly={demo}
             placeholder="예) 처음에는 B가 적절하다고 봤지만, 전문가 관점 피드백을 보고 상대 입장이 더 잘 드러나는 표현이 필요하다고 느껴 격식을 유지하면서도 협력 의사를 한 문장 더 넣었습니다."
-            rows={4}
+            rows={3}
             maxLength={2000}
-            className="mt-3 w-full resize-y rounded-md border border-foreground/20 bg-background p-3 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
+            className="mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-2.5 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
           />
-          <div className="mt-2 flex items-center justify-between">
+          <div className="mt-1 flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
               {!justOk && justification.length > 0 ? "조금 더 적어주세요" : ""}
             </span>
@@ -236,7 +236,7 @@ const Finalize = () => {
         </section>
 
         {/* Footer */}
-        <div className="mt-12 border-t border-border pt-6">
+        <div className="mt-8 border-t border-border pt-4">
           <div className="flex justify-end">
             <button
               type="button"
