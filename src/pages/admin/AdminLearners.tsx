@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +26,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useProfile } from "@/lib/auth/useProfile";
-import { APPROVAL_STATUS, APP_ROLE, type ApprovalStatus } from "@/lib/auth/constants";
+import { APPROVAL_STATUS, type ApprovalStatus } from "@/lib/auth/constants";
 
 type LearnerRow = {
   id: string;
@@ -111,7 +109,6 @@ const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
 );
 
 const Page = () => {
-  const { loading: authLoading, profile } = useProfile();
   const [rows, setRows] = useState<LearnerRow[] | null>(null);
   const [filter, setFilter] = useState<FilterValue>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -132,10 +129,8 @@ const Page = () => {
   };
 
   useEffect(() => {
-    if (profile?.role === APP_ROLE.ADMIN) {
-      void fetchRows();
-    }
-  }, [profile?.role]);
+    void fetchRows();
+  }, []);
 
   const filtered = useMemo(() => {
     if (!rows) return [];
@@ -147,18 +142,6 @@ const Page = () => {
     () => (selectedId ? rows?.find((r) => r.id === selectedId) ?? null : null),
     [selectedId, rows],
   );
-
-  if (authLoading) {
-    return (
-      <AdminShell title="학습자 관리">
-        <div className="text-sm text-muted-foreground">불러오는 중…</div>
-      </AdminShell>
-    );
-  }
-
-  if (!profile || profile.role !== APP_ROLE.ADMIN) {
-    return <Navigate to="/" replace />;
-  }
 
   const updateStatus = async (
     row: LearnerRow,
