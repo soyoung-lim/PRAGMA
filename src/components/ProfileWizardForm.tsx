@@ -254,26 +254,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               options={AFFILIATION_OPTIONS}
             />
           </Field>
-
-          <Field label="학년/과정">
-            <input
-              type="text"
-              value={academicYear}
-              onChange={(e) => setAcademicYear(e.target.value)}
-              maxLength={100}
-              className={inputCls}
-              placeholder="예: 학부 3학년, 통번역대학원 1학기"
-            />
-          </Field>
-
-          <Field label="언어 배경">
-            <RadioGroup
-              name="language_bg"
-              value={languageBg}
-              onChange={setLanguageBg}
-              options={LANGUAGE_BG_OPTIONS}
-            />
-          </Field>
         </div>
       )}
 
