@@ -19,30 +19,29 @@ const LANGUAGE_BG_OPTIONS = [
   "이중언어(한·중)",
   "기타",
 ];
-const CHINESE_PROFICIENCY_OPTIONS = [
-  "HSK 3급 이하 / 초급",
-  "HSK 4급 / 중급",
-  "HSK 5급 / 중상급",
-  "HSK 6급 / 고급",
-  "원어민 수준",
+
+// Coded options: UI shows `label`, DB stores `code`.
+type CodedOption = { code: string; label: string };
+
+const CHINESE_LEVEL_OPTIONS: CodedOption[] = [
+  { code: "hsk3_or_below", label: "HSK 3급 이하" },
+  { code: "hsk4", label: "HSK 4급" },
+  { code: "hsk5", label: "HSK 5급" },
+  { code: "hsk6", label: "HSK 6급" },
+  { code: "native", label: "원어민 수준" },
 ];
-const BUSINESS_CN_EXP_OPTIONS = ["없음", "1년 미만", "1~3년", "3년 이상"];
-const TI_LEVEL_OPTIONS = [
-  "경험 없음",
-  "학습 중(수업 위주)",
-  "보조/실습 수준",
-  "현업 경험 있음",
+const INTERPRETING_EXPERIENCE_OPTIONS: CodedOption[] = [
+  { code: "none", label: "없음" },
+  { code: "coursework", label: "수업 위주" },
+  { code: "assisted", label: "실습·보조 경험" },
+  { code: "professional", label: "현업 경험" },
 ];
-const TI_MODE_OPTIONS = ["번역(문서)", "순차통역", "동시통역", "영상/자막", "기타"];
-const GENAI_FREQ_OPTIONS = ["거의 사용 안 함", "월 1~2회", "주 1~2회", "거의 매일"];
-const PROMPT_STYLE_OPTIONS = [
-  "거의 프롬프트를 안 씀",
-  "단순 지시 위주",
-  "맥락·역할 지정 등 구조화",
-  "반복적 수정·평가까지 활용",
+const BUSINESS_CHINESE_EXPERIENCE_OPTIONS: CodedOption[] = [
+  { code: "none", label: "없음" },
+  { code: "under_1y", label: "1년 미만" },
+  { code: "1_to_3y", label: "1–3년" },
+  { code: "over_3y", label: "3년 이상" },
 ];
-const PERCEIVED_DIFFICULTY_OPTIONS = ["매우 쉬움", "쉬움", "보통", "어려움", "매우 어려움"];
-const PERCEIVED_RISK_OPTIONS = ["매우 낮음", "낮음", "보통", "높음", "매우 높음"];
 
 const inputCls =
   "mt-2 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -75,6 +74,39 @@ const RadioGroup = ({
           className="h-4 w-4"
         />
         <span>{opt}</span>
+      </label>
+    ))}
+  </div>
+);
+
+const CodedRadioGroup = ({
+  name,
+  value,
+  onChange,
+  options,
+}: {
+  name: string;
+  value: string;
+  onChange: (code: string) => void;
+  options: CodedOption[];
+}) => (
+  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+    {options.map((opt) => (
+      <label
+        key={opt.code}
+        className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+          value === opt.code ? "border-[#15202B] bg-muted/40" : "border-border"
+        }`}
+      >
+        <input
+          type="radio"
+          name={name}
+          value={opt.code}
+          checked={value === opt.code}
+          onChange={() => onChange(opt.code)}
+          className="h-4 w-4"
+        />
+        <span>{opt.label}</span>
       </label>
     ))}
   </div>
@@ -121,7 +153,7 @@ const StepIndicator = ({ step }: { step: Step }) => (
             {n}
           </div>
           <span className={active ? "font-medium" : "text-muted-foreground"}>
-            {n === 1 ? "기본 정보" : n === 2 ? "언어·통번역 배경" : "동의·연락"}
+            {n === 1 ? "기본 정보" : n === 2 ? "학습자 배경" : "동의"}
           </span>
           {n < 3 && <span className="text-muted-foreground">›</span>}
         </div>
@@ -145,14 +177,10 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
   const [academicYear, setAcademicYear] = useState("");
   const [languageBg, setLanguageBg] = useState("");
 
-  // Screen 2
-  const [chineseProf, setChineseProf] = useState("");
-  const [bizCnExp, setBizCnExp] = useState("");
-  const [tiLevel, setTiLevel] = useState("");
-  const [tiModes, setTiModes] = useState<string[]>([]);
-  const [genaiFreq, setGenaiFreq] = useState("");
-  const [promptStyle, setPromptStyle] = useState("");
-  const [perceivedDifficulty, setPerceivedDifficulty] = useState("");
+  // Screen 2 — coded values
+  const [chineseLevel, setChineseLevel] = useState("");
+  const [interpretingExperience, setInterpretingExperience] = useState("");
+  const [businessChineseExperience, setBusinessChineseExperience] = useState("");
 
   // Screen 3
   const [researchConsent, setResearchConsent] = useState(false);
@@ -163,23 +191,13 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
 
   const trimmedName = fullName.trim();
 
-  const step1Valid =
-    trimmedName.length > 0 && affiliation !== "" && languageBg !== "";
+  const step1Valid = trimmedName.length > 0 && affiliation !== "";
   const step2Valid =
-    chineseProf !== "" &&
-    bizCnExp !== "" &&
-    tiLevel !== "" &&
-    tiModes.length > 0 &&
-    genaiFreq !== "" &&
-    promptStyle !== "";
+    chineseLevel !== "" &&
+    interpretingExperience !== "" &&
+    businessChineseExperience !== "";
   const step3Valid = researchConsent && anonConfirmed;
   const canSubmit = step1Valid && step2Valid && step3Valid && !busy;
-
-  const toggleMode = (m: string) => {
-    setTiModes((prev) =>
-      prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]
-    );
-  };
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -189,20 +207,19 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
         devStubCompleteProfile(trimmedName);
       } else if (profile) {
         const payload = {
+          // New canonical columns
+          name: trimmedName,
+          affiliation: affiliation,
+          grade_or_program: academicYear || null,
+          chinese_level: chineseLevel,
+          interpreting_experience: interpretingExperience,
+          business_chinese_experience: businessChineseExperience,
+          consent_data_use: researchConsent,
+          consent_anonymous_analysis: anonConfirmed,
+          consent_email_report: reportConsent,
+          // Keep full_name in sync (used by other screens) + language_background (optional)
           full_name: trimmedName,
-          affiliation_or_status: affiliation,
-          academic_year_or_program: academicYear || null,
-          language_background: languageBg,
-          chinese_proficiency_self_report: chineseProf,
-          business_chinese_experience: bizCnExp,
-          ti_experience_level: tiLevel,
-          ti_experience_modes: tiModes,
-          genai_use_frequency: genaiFreq,
-          ai_prompting_style_for_ti: promptStyle,
-          perceived_ai_ti_difficulty: perceivedDifficulty || null,
-          research_use_consent: researchConsent,
-          anonymization_notice_confirmed: anonConfirmed,
-          report_email_consent: reportConsent,
+          language_background: languageBg || null,
           profile_completed: true,
         };
         const { error } = await supabase
@@ -256,7 +273,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
             />
           </Field>
 
-          <Field label="언어 배경" required>
+          <Field label="언어 배경">
             <RadioGroup
               name="language_bg"
               value={languageBg}
@@ -269,80 +286,30 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
 
       {step === 2 && (
         <div className="space-y-6">
-          <Field label="중국어 능력 자기보고" required>
-            <RadioGroup
-              name="chinese_prof"
-              value={chineseProf}
-              onChange={setChineseProf}
-              options={CHINESE_PROFICIENCY_OPTIONS}
-            />
-          </Field>
-
-          <Field label="비즈니스 중국어 경험" required>
-            <RadioGroup
-              name="biz_cn_exp"
-              value={bizCnExp}
-              onChange={setBizCnExp}
-              options={BUSINESS_CN_EXP_OPTIONS}
+          <Field label="중국어 언어 수준" required>
+            <CodedRadioGroup
+              name="chinese_level"
+              value={chineseLevel}
+              onChange={setChineseLevel}
+              options={CHINESE_LEVEL_OPTIONS}
             />
           </Field>
 
           <Field label="통번역 경험 수준" required>
-            <RadioGroup
-              name="ti_level"
-              value={tiLevel}
-              onChange={setTiLevel}
-              options={TI_LEVEL_OPTIONS}
+            <CodedRadioGroup
+              name="interpreting_experience"
+              value={interpretingExperience}
+              onChange={setInterpretingExperience}
+              options={INTERPRETING_EXPERIENCE_OPTIONS}
             />
           </Field>
 
-          <Field label="통번역 경험 형태 (복수 선택)" required>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              {TI_MODE_OPTIONS.map((m) => (
-                <label
-                  key={m}
-                  className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-                    tiModes.includes(m)
-                      ? "border-[#15202B] bg-muted/40"
-                      : "border-border"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={tiModes.includes(m)}
-                    onChange={() => toggleMode(m)}
-                    className="h-4 w-4"
-                  />
-                  <span>{m}</span>
-                </label>
-              ))}
-            </div>
-          </Field>
-
-          <Field label="생성형 AI 사용 빈도" required>
-            <RadioGroup
-              name="genai_freq"
-              value={genaiFreq}
-              onChange={setGenaiFreq}
-              options={GENAI_FREQ_OPTIONS}
-            />
-          </Field>
-
-          <Field label="통번역용 AI 프롬프트 사용 스타일" required>
-            <RadioGroup
-              name="prompt_style"
-              value={promptStyle}
-              onChange={setPromptStyle}
-              options={PROMPT_STYLE_OPTIONS}
-            />
-          </Field>
-
-          <Field label="AI 활용 통번역의 체감 난이도">
-            <RadioGroup
-              name="perceived_difficulty"
-              value={perceivedDifficulty}
-              onChange={setPerceivedDifficulty}
-              options={PERCEIVED_DIFFICULTY_OPTIONS}
+          <Field label="비즈니스 중국어 경험" required>
+            <CodedRadioGroup
+              name="business_chinese_experience"
+              value={businessChineseExperience}
+              onChange={setBusinessChineseExperience}
+              options={BUSINESS_CHINESE_EXPERIENCE_OPTIONS}
             />
           </Field>
         </div>
