@@ -10,15 +10,10 @@ const AFFILIATION_OPTIONS = [
   "대학원생(석사)",
   "대학원생(박사)",
   "교강사/연구자",
-  "현직 통번역사",
+  "직장인",
   "기타",
 ];
-const LANGUAGE_BG_OPTIONS = [
-  "한국어 모어",
-  "중국어 모어",
-  "이중언어(한·중)",
-  "기타",
-];
+
 
 // Coded options: UI shows `label`, DB stores `code`.
 type CodedOption = { code: string; label: string };
