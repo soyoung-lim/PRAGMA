@@ -203,16 +203,16 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
           // New canonical columns
           name: trimmedName,
           affiliation: affiliation,
-          grade_or_program: academicYear || null,
+          grade_or_program: null,
           chinese_level: chineseLevel,
           interpreting_experience: interpretingExperience,
           business_chinese_experience: businessChineseExperience,
           consent_data_use: researchConsent,
           consent_anonymous_analysis: anonConfirmed,
           consent_email_report: reportConsent,
-          // Keep full_name in sync (used by other screens) + language_background (optional)
+          // Keep full_name in sync (used by other screens)
           full_name: trimmedName,
-          language_background: languageBg || null,
+          language_background: null,
           profile_completed: true,
         };
         const { error } = await supabase
