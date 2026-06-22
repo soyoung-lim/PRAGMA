@@ -10,15 +10,10 @@ const AFFILIATION_OPTIONS = [
   "대학원생(석사)",
   "대학원생(박사)",
   "교강사/연구자",
-  "현직 통번역사",
+  "직장인",
   "기타",
 ];
-const LANGUAGE_BG_OPTIONS = [
-  "한국어 모어",
-  "중국어 모어",
-  "이중언어(한·중)",
-  "기타",
-];
+
 
 // Coded options: UI shows `label`, DB stores `code`.
 type CodedOption = { code: string; label: string };
@@ -174,8 +169,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
   // Screen 1
   const [fullName, setFullName] = useState("");
   const [affiliation, setAffiliation] = useState("");
-  const [academicYear, setAcademicYear] = useState("");
-  const [languageBg, setLanguageBg] = useState("");
 
   // Screen 2 — coded values
   const [chineseLevel, setChineseLevel] = useState("");
@@ -210,16 +203,16 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
           // New canonical columns
           name: trimmedName,
           affiliation: affiliation,
-          grade_or_program: academicYear || null,
+          grade_or_program: null,
           chinese_level: chineseLevel,
           interpreting_experience: interpretingExperience,
           business_chinese_experience: businessChineseExperience,
           consent_data_use: researchConsent,
           consent_anonymous_analysis: anonConfirmed,
           consent_email_report: reportConsent,
-          // Keep full_name in sync (used by other screens) + language_background (optional)
+          // Keep full_name in sync (used by other screens)
           full_name: trimmedName,
-          language_background: languageBg || null,
+          language_background: null,
           profile_completed: true,
         };
         const { error } = await supabase
@@ -259,26 +252,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               value={affiliation}
               onChange={setAffiliation}
               options={AFFILIATION_OPTIONS}
-            />
-          </Field>
-
-          <Field label="학년/과정">
-            <input
-              type="text"
-              value={academicYear}
-              onChange={(e) => setAcademicYear(e.target.value)}
-              maxLength={100}
-              className={inputCls}
-              placeholder="예: 학부 3학년, 통번역대학원 1학기"
-            />
-          </Field>
-
-          <Field label="언어 배경">
-            <RadioGroup
-              name="language_bg"
-              value={languageBg}
-              onChange={setLanguageBg}
-              options={LANGUAGE_BG_OPTIONS}
             />
           </Field>
         </div>
