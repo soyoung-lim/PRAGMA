@@ -169,8 +169,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
   // Screen 1
   const [fullName, setFullName] = useState("");
   const [affiliation, setAffiliation] = useState("");
-  const [academicYear, setAcademicYear] = useState("");
-  const [languageBg, setLanguageBg] = useState("");
 
   // Screen 2 — coded values
   const [chineseLevel, setChineseLevel] = useState("");
