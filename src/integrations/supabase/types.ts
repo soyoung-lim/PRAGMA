@@ -184,19 +184,27 @@ export type Database = {
       profiles: {
         Row: {
           academic_year_or_program: string | null
+          affiliation: string | null
           affiliation_or_status: string | null
           ai_prompting_style_for_ti: string | null
           anonymization_notice_confirmed: boolean
           anonymous_participant_id: string | null
           approval_status: Database["public"]["Enums"]["approval_status"]
           business_chinese_experience: string | null
+          chinese_level: string | null
           chinese_proficiency_self_report: string | null
+          consent_anonymous_analysis: boolean
+          consent_data_use: boolean
+          consent_email_report: boolean
           created_at: string
           email: string | null
           full_name: string | null
           genai_use_frequency: string | null
+          grade_or_program: string | null
           id: string
+          interpreting_experience: string | null
           language_background: string | null
+          name: string | null
           perceived_ai_ti_difficulty: string | null
           perceived_business_chinese_ti_risk: string | null
           profile_completed: boolean
@@ -210,19 +218,27 @@ export type Database = {
         }
         Insert: {
           academic_year_or_program?: string | null
+          affiliation?: string | null
           affiliation_or_status?: string | null
           ai_prompting_style_for_ti?: string | null
           anonymization_notice_confirmed?: boolean
           anonymous_participant_id?: string | null
           approval_status?: Database["public"]["Enums"]["approval_status"]
           business_chinese_experience?: string | null
+          chinese_level?: string | null
           chinese_proficiency_self_report?: string | null
+          consent_anonymous_analysis?: boolean
+          consent_data_use?: boolean
+          consent_email_report?: boolean
           created_at?: string
           email?: string | null
           full_name?: string | null
           genai_use_frequency?: string | null
+          grade_or_program?: string | null
           id?: string
+          interpreting_experience?: string | null
           language_background?: string | null
+          name?: string | null
           perceived_ai_ti_difficulty?: string | null
           perceived_business_chinese_ti_risk?: string | null
           profile_completed?: boolean
@@ -236,19 +252,27 @@ export type Database = {
         }
         Update: {
           academic_year_or_program?: string | null
+          affiliation?: string | null
           affiliation_or_status?: string | null
           ai_prompting_style_for_ti?: string | null
           anonymization_notice_confirmed?: boolean
           anonymous_participant_id?: string | null
           approval_status?: Database["public"]["Enums"]["approval_status"]
           business_chinese_experience?: string | null
+          chinese_level?: string | null
           chinese_proficiency_self_report?: string | null
+          consent_anonymous_analysis?: boolean
+          consent_data_use?: boolean
+          consent_email_report?: boolean
           created_at?: string
           email?: string | null
           full_name?: string | null
           genai_use_frequency?: string | null
+          grade_or_program?: string | null
           id?: string
+          interpreting_experience?: string | null
           language_background?: string | null
+          name?: string | null
           perceived_ai_ti_difficulty?: string | null
           perceived_business_chinese_ti_risk?: string | null
           profile_completed?: boolean
