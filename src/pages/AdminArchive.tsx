@@ -9,6 +9,62 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+type ScenarioStatus = "pending" | "approved" | "revision" | "rejected";
+
+const STATUS_LABEL: Record<ScenarioStatus, string> = {
+  pending: "검수 대기",
+  approved: "승인 완료",
+  revision: "보완 필요",
+  rejected: "폐기",
+};
+
+const STATUS_BADGE: Record<ScenarioStatus, string> = {
+  pending: "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]",
+  approved: "bg-[#D1FAE5] text-[#065F46] border-[#6EE7B7]",
+  revision: "bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]",
+  rejected: "bg-[#E5E7EB] text-[#374151] border-[#D1D5DB]",
+};
+
+const STATUS_ORDER: ScenarioStatus[] = ["pending", "approved", "revision", "rejected"];
+
+const STATUS_OVERRIDE_KEY = "admin_archive_status_overrides_v1";
+
+function loadStatusOverrides(): Record<string, ScenarioStatus> {
+  try {
+    const raw = localStorage.getItem(STATUS_OVERRIDE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch {
+    /* noop */
+  }
+  return {};
+}
+
+function saveStatusOverrides(map: Record<string, ScenarioStatus>) {
+  try {
+    localStorage.setItem(STATUS_OVERRIDE_KEY, JSON.stringify(map));
+  } catch {
+    /* noop */
+  }
+}
+
+function deriveStatusFromLegacy(legacy: string): ScenarioStatus {
+  if (legacy === "approved") return "approved";
+  if (legacy === "revise_required") return "revision";
+  // needs_review, generated, revised, anything else → pending
+  return "pending";
+}
+
 
 type ReviewStatus =
   | "generated"
@@ -416,6 +472,22 @@ const AdminArchive = () => {
     };
   }, [filtered]);
 
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, ScenarioStatus>>(
+    () => loadStatusOverrides(),
+  );
+
+  const getStatus = (s: Scenario): ScenarioStatus =>
+    statusOverrides[s.id] ?? deriveStatusFromLegacy(s.review_status);
+
+  const updateStatus = (id: string, next: ScenarioStatus) => {
+    setStatusOverrides((prev) => {
+      const merged = { ...prev, [id]: next };
+      saveStatusOverrides(merged);
+      return merged;
+    });
+  };
+
+
   return (
     <AdminShell
       title="시나리오 아카이브"
@@ -541,7 +613,9 @@ const AdminArchive = () => {
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filtered.map((s) => {
           const isExcluded = s.usage_assignment === "excluded";
+          const status = getStatus(s);
           return (
+
             <article
               key={s.id}
               className={`flex flex-col rounded-lg border border-border bg-card p-4 shadow-sm ${
@@ -591,12 +665,13 @@ const AdminArchive = () => {
 
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <span
-                  className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${REVIEW_BADGE[s.review_status]} ${
+                  className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${STATUS_BADGE[status]} ${
                     isExcluded ? "line-through" : ""
                   }`}
                 >
-                  검수: {s.review_status}
+                  상태: {STATUS_LABEL[status]}
                 </span>
+
                 <span
                   className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${USAGE_BADGE[s.usage_assignment]} ${
                     isExcluded ? "line-through" : ""
@@ -625,12 +700,34 @@ const AdminArchive = () => {
                 >
                   상세 보기
                 </Button>
-                <Button
-                  className="h-8 bg-[#1d2336] text-[12px] text-white hover:bg-[#1d2336]/90"
-                  onClick={() => {}}
-                >
-                  검수하기
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className="h-8 bg-[#1d2336] text-[12px] text-white hover:bg-[#1d2336]/90">
+                      검수하기 ▾
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuLabel className="text-[11px] text-muted-foreground">
+                      상태 변경
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {STATUS_ORDER.map((opt) => (
+                      <DropdownMenuItem
+                        key={opt}
+                        onSelect={() => updateStatus(s.id, opt)}
+                        className="text-[12px]"
+                      >
+                        <span className="flex w-full items-center justify-between">
+                          <span>{STATUS_LABEL[opt]}</span>
+                          {status === opt && (
+                            <span className="text-[10px] text-muted-foreground">현재</span>
+                          )}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
               </div>
             </article>
           );
