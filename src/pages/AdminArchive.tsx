@@ -109,6 +109,9 @@ type BusinessFunction =
 type ScenarioP = "higher" | "equal" | "lower";
 type ScenarioD = "close" | "neutral" | "distant";
 type ScenarioR = "high" | "mid" | "low";
+type PragmaticChallenge = "directness_control" | "formality_control" | "imposition_management";
+type ChallengeIntensity = "low" | "mid" | "high";
+
 
 interface Scenario {
   id: string;
@@ -128,6 +131,8 @@ interface Scenario {
   scenario_P?: ScenarioP | null;
   scenario_D?: ScenarioD | null;
   scenario_R?: ScenarioR | null;
+  pragmatic_challenge?: PragmaticChallenge[] | null;
+  challenge_intensity?: ChallengeIntensity | null;
 }
 
 const SPEECH_ACT_LABEL: Record<SpeechAct, string> = {
@@ -230,6 +235,18 @@ const USAGE_LABEL: Record<UsageAssignment, string> = {
   excluded: "제외",
 };
 
+const PRAGMATIC_CHALLENGE_LABEL: Record<PragmaticChallenge, string> = {
+  directness_control: "직접성 조절",
+  formality_control: "격식 조절",
+  imposition_management: "부담·체면 관리",
+};
+
+const INTENSITY_LABEL: Record<ChallengeIntensity, string> = {
+  low: "강도 낮음",
+  mid: "강도 보통",
+  high: "강도 높음",
+};
+
 const MOCK: Scenario[] = [
   {
     id: "s1",
@@ -250,6 +267,8 @@ const MOCK: Scenario[] = [
     scenario_P: "lower",
     scenario_D: "distant",
     scenario_R: "high",
+    pragmatic_challenge: ["directness_control", "imposition_management"],
+    challenge_intensity: "high",
   },
   {
     id: "s2",
@@ -270,6 +289,8 @@ const MOCK: Scenario[] = [
     scenario_P: "equal",
     scenario_D: "neutral",
     scenario_R: "mid",
+    pragmatic_challenge: ["formality_control"],
+    challenge_intensity: "mid",
   },
   {
     id: "s3",
@@ -290,6 +311,8 @@ const MOCK: Scenario[] = [
     scenario_P: "higher",
     scenario_D: "close",
     scenario_R: "high",
+    pragmatic_challenge: ["directness_control", "formality_control", "imposition_management"],
+    challenge_intensity: "high",
   },
   {
     id: "s4",
@@ -310,6 +333,8 @@ const MOCK: Scenario[] = [
     scenario_P: "higher",
     scenario_D: "distant",
     scenario_R: "low",
+    pragmatic_challenge: ["imposition_management"],
+    challenge_intensity: "low",
   },
   {
     id: "s5",
@@ -658,6 +683,16 @@ const AdminArchive = () => {
                 {s.scenario_R && (
                   <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
                     R:{s.scenario_R}
+                  </span>
+                )}
+                {s.pragmatic_challenge && s.pragmatic_challenge.length > 0 && (
+                  <span className="inline-flex items-center rounded-md border border-[#FDE68A] bg-[#FFFBEB] px-2 py-0.5 text-[11px] text-[#92400E]">
+                    화용: {s.pragmatic_challenge.map((c) => PRAGMATIC_CHALLENGE_LABEL[c]).join(" · ")}
+                  </span>
+                )}
+                {s.challenge_intensity && (
+                  <span className="inline-flex items-center rounded-md border border-[#BAE6FD] bg-[#F0F9FF] px-2 py-0.5 text-[11px] text-[#0369A1]">
+                    {INTENSITY_LABEL[s.challenge_intensity]}
                   </span>
                 )}
               </div>
