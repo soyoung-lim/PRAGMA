@@ -536,6 +536,8 @@ const AdminArchive = () => {
       mode: e.mode !== undefined ? e.mode : s.mode,
       hsk_level_min:
         e.hsk_level_min !== undefined ? e.hsk_level_min : s.hsk_level_min,
+      speech_act_text:
+        e.speech_act_text !== undefined ? e.speech_act_text : s.speech_act_text,
     };
   };
 
