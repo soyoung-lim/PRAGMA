@@ -329,6 +329,7 @@ export type Database = {
           business_function: string | null
           challenge_intensity: string | null
           created_at: string | null
+          domain: string | null
           genre: string | null
           hsk_level_min: number | null
           industry_sector: string | null
@@ -358,6 +359,7 @@ export type Database = {
           business_function?: string | null
           challenge_intensity?: string | null
           created_at?: string | null
+          domain?: string | null
           genre?: string | null
           hsk_level_min?: number | null
           industry_sector?: string | null
@@ -387,6 +389,7 @@ export type Database = {
           business_function?: string | null
           challenge_intensity?: string | null
           created_at?: string | null
+          domain?: string | null
           genre?: string | null
           hsk_level_min?: number | null
           industry_sector?: string | null
