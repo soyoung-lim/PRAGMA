@@ -760,7 +760,7 @@ const AdminArchive = () => {
         <div className="flex items-center gap-2">
           <Button
             className="h-9 bg-[#1d2336] text-white hover:bg-[#1d2336]/90"
-            onClick={() => {}}
+            onClick={openCreate}
           >
             + 시나리오 추가
           </Button>
