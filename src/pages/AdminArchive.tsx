@@ -665,12 +665,13 @@ const AdminArchive = () => {
 
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <span
-                  className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${REVIEW_BADGE[s.review_status]} ${
+                  className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${STATUS_BADGE[status]} ${
                     isExcluded ? "line-through" : ""
                   }`}
                 >
-                  검수: {s.review_status}
+                  상태: {STATUS_LABEL[status]}
                 </span>
+
                 <span
                   className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${USAGE_BADGE[s.usage_assignment]} ${
                     isExcluded ? "line-through" : ""
