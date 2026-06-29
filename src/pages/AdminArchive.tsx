@@ -685,6 +685,16 @@ const AdminArchive = () => {
                     R:{s.scenario_R}
                   </span>
                 )}
+                {s.pragmatic_challenge && s.pragmatic_challenge.length > 0 && (
+                  <span className="inline-flex items-center rounded-md border border-[#FDE68A] bg-[#FFFBEB] px-2 py-0.5 text-[11px] text-[#92400E]">
+                    화용: {s.pragmatic_challenge.map((c) => PRAGMATIC_CHALLENGE_LABEL[c]).join(" · ")}
+                  </span>
+                )}
+                {s.challenge_intensity && (
+                  <span className="inline-flex items-center rounded-md border border-[#BAE6FD] bg-[#F0F9FF] px-2 py-0.5 text-[11px] text-[#0369A1]">
+                    {INTENSITY_LABEL[s.challenge_intensity]}
+                  </span>
+                )}
               </div>
 
 
