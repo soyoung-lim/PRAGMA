@@ -955,6 +955,13 @@ const AdminArchive = () => {
                 >
                   상세 보기
                 </Button>
+                <Button
+                  variant="outline"
+                  className="h-8 border-[#D6D2C7] bg-transparent text-[12px] text-[#2c2c2a] hover:bg-muted"
+                  onClick={() => openEdit(s)}
+                >
+                  편집
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button className="h-8 bg-[#1d2336] text-[12px] text-white hover:bg-[#1d2336]/90">
