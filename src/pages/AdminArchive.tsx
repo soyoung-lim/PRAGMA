@@ -613,7 +613,9 @@ const AdminArchive = () => {
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filtered.map((s) => {
           const isExcluded = s.usage_assignment === "excluded";
+          const status = getStatus(s);
           return (
+
             <article
               key={s.id}
               className={`flex flex-col rounded-lg border border-border bg-card p-4 shadow-sm ${
