@@ -109,6 +109,9 @@ type BusinessFunction =
 type ScenarioP = "higher" | "equal" | "lower";
 type ScenarioD = "close" | "neutral" | "distant";
 type ScenarioR = "high" | "mid" | "low";
+type PragmaticChallenge = "directness_control" | "formality_control" | "imposition_management";
+type ChallengeIntensity = "low" | "mid" | "high";
+
 
 interface Scenario {
   id: string;
