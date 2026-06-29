@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useDraftScenarios } from "@/lib/scenarioDrafts";
 import {
   Select,
   SelectContent,
@@ -28,101 +27,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
+// ─── Types ───────────────────────────────────────────────────────────────────
 type LanguageDirection = "ko-zh" | "zh-ko";
 type ScenarioMode = "translation" | "stt_interpreting";
 type HskLevelMin = 3 | 4 | 5;
-
-const MODE_LABEL: Record<ScenarioMode, string> = {
-  translation: "번역",
-  stt_interpreting: "STT 순차통역",
-};
-
-const SCENARIO_EXTRAS_KEY = "admin_archive_scenario_extras_v1";
-const SCENARIO_CUSTOM_KEY = "admin_archive_scenarios_custom_v1";
-
-interface ScenarioEditable {
-  title: string;
-  week_no?: number | null;
-  language_direction?: LanguageDirection | null;
-  mode?: ScenarioMode | null;
-  speech_act_text?: string;
-  scenario_P?: ScenarioP | null;
-  scenario_D?: ScenarioD | null;
-  scenario_R?: ScenarioR | null;
-  pragmatic_challenge?: PragmaticChallenge[] | null;
-  challenge_intensity?: ChallengeIntensity | null;
-  hsk_level_min?: HskLevelMin | null;
-  source_text: string;
-}
-
-function loadJSON<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") return parsed as T;
-  } catch {
-    /* noop */
-  }
-  return fallback;
-}
-
-function saveJSON(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* noop */
-  }
-}
-
-type ScenarioStatus = "pending" | "approved" | "revision" | "rejected";
-
-const STATUS_LABEL: Record<ScenarioStatus, string> = {
-  pending: "검수 대기",
-  approved: "승인 완료",
-  revision: "보완 필요",
-  rejected: "폐기",
-};
-
-const STATUS_BADGE: Record<ScenarioStatus, string> = {
-  pending: "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]",
-  approved: "bg-[#D1FAE5] text-[#065F46] border-[#6EE7B7]",
-  revision: "bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]",
-  rejected: "bg-[#E5E7EB] text-[#374151] border-[#D1D5DB]",
-};
-
-const STATUS_ORDER: ScenarioStatus[] = ["pending", "approved", "revision", "rejected"];
-
-const STATUS_OVERRIDE_KEY = "admin_archive_status_overrides_v1";
-
-function loadStatusOverrides(): Record<string, ScenarioStatus> {
-  try {
-    const raw = localStorage.getItem(STATUS_OVERRIDE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") return parsed;
-  } catch {
-    /* noop */
-  }
-  return {};
-}
-
-function saveStatusOverrides(map: Record<string, ScenarioStatus>) {
-  try {
-    localStorage.setItem(STATUS_OVERRIDE_KEY, JSON.stringify(map));
-  } catch {
-    /* noop */
-  }
-}
-
-function deriveStatusFromLegacy(legacy: string): ScenarioStatus {
-  if (legacy === "approved") return "approved";
-  if (legacy === "revise_required") return "revision";
-  // needs_review, generated, revised, anything else → pending
-  return "pending";
-}
-
+type ScenarioP = "higher" | "equal" | "lower";
+type ScenarioD = "close" | "neutral" | "distant";
+type ScenarioR = "high" | "mid" | "low";
+type PragmaticChallenge =
+  | "directness_control"
+  | "formality_control"
+  | "imposition_management";
+type ChallengeIntensity = "low" | "mid" | "high";
+type Domain = "daily" | "school" | "work";
+type IndustrySector = "trade" | "IT" | "finance" | "tourism" | "medical";
 
 type ReviewStatus =
   | "generated"
@@ -130,309 +51,148 @@ type ReviewStatus =
   | "revise_required"
   | "revised"
   | "approved";
-
 type UsageAssignment =
   | "archived_only"
   | "coursework_published"
   | "experiment_locked"
   | "excluded";
+type SpeechActEnum = "request" | "refusal";
 
-type SpeechAct = "request" | "refusal";
-type Genre = "business_email" | "business_messenger" | "meeting_speech";
-type LearnerLevel = "beginner_intermediate" | "intermediate" | "advanced";
-type InteractionContext = "coordination" | "negotiation" | "follow_up";
-type AutoCheck = "pass" | "warning" | "fail";
+type FormStatus = "pending" | "approved" | "revision" | "rejected";
 
-type IndustrySector =
-  | "trade_distribution"
-  | "IT_platform"
-  | "manufacturing"
-  | "tourism_hospitality"
-  | "education_research"
-  | "public_international_affairs"
-  | "culture_content_media";
-
-type BusinessFunction =
-  | "overseas_sales"
-  | "marketing_pr"
-  | "customer_partner_support"
-  | "SCM_logistics"
-  | "contract_terms"
-  | "project_coordination"
-  | "research_admin"
-  | "localization_translation"
-  | "event_operations"
-  | "international_collaboration";
-
-type ScenarioP = "higher" | "equal" | "lower";
-type ScenarioD = "close" | "neutral" | "distant";
-type ScenarioR = "high" | "mid" | "low";
-type PragmaticChallenge = "directness_control" | "formality_control" | "imposition_management";
-type ChallengeIntensity = "low" | "mid" | "high";
-
-
-interface Scenario {
-  id: string;
-  title: string;
-  source_text: string;
-  speech_act: SpeechAct;
-  genre: Genre;
-  learner_level: LearnerLevel;
-  industry_sector: IndustrySector;
-  business_function: BusinessFunction;
-  interaction_context: InteractionContext;
-  review_status: ReviewStatus;
-  usage_assignment: UsageAssignment;
-  auto_check_result: AutoCheck;
-  updated_at: string;
-  week_no?: number | null;
-  scenario_P?: ScenarioP | null;
-  scenario_D?: ScenarioD | null;
-  scenario_R?: ScenarioR | null;
-  pragmatic_challenge?: PragmaticChallenge[] | null;
-  challenge_intensity?: ChallengeIntensity | null;
-  language_direction?: LanguageDirection | null;
-  mode?: ScenarioMode | null;
-  hsk_level_min?: HskLevelMin | null;
-  speech_act_text?: string | null;
-}
-
-const SPEECH_ACT_LABEL: Record<SpeechAct, string> = {
-  request: "요청",
-  refusal: "거절",
+const MODE_LABEL: Record<ScenarioMode, string> = {
+  translation: "번역",
+  stt_interpreting: "STT 순차통역",
 };
-
-const GENRE_LABEL: Record<Genre, string> = {
-  business_email: "업무 이메일",
-  business_messenger: "업무 메신저",
-  meeting_speech: "업무 회의",
+const DOMAIN_LABEL: Record<Domain, string> = {
+  daily: "일상",
+  school: "학교",
+  work: "직장",
 };
-
-const LEVEL_LABEL: Record<LearnerLevel, string> = {
-  beginner_intermediate: "중급 · HSK 4급",
-  intermediate: "상급 · HSK 5급",
-  advanced: "고급 · HSK 6급",
-};
-
-const CONTEXT_LABEL: Record<InteractionContext, string> = {
-  coordination: "일정 조정",
-  negotiation: "조건 협의",
-  follow_up: "후속 확인",
-};
-
 const INDUSTRY_LABEL: Record<IndustrySector, string> = {
-  trade_distribution: "무역·유통",
-  IT_platform: "IT·플랫폼",
-  manufacturing: "제조·소비재",
-  tourism_hospitality: "관광·서비스",
-  education_research: "교육·연구",
-  public_international_affairs: "공공·국제교류",
-  culture_content_media: "문화·콘텐츠",
+  trade: "무역",
+  IT: "IT",
+  finance: "금융",
+  tourism: "관광",
+  medical: "의료",
 };
-
-// 7 primary labels shown to users. Orphan enums map to a consolidated label.
-const FUNCTION_LABEL: Record<BusinessFunction, string> = {
-  overseas_sales: "해외영업·거래",
-  marketing_pr: "마케팅·홍보",
-  customer_partner_support: "고객·파트너 응대",
-  SCM_logistics: "구매·물류",
-  contract_terms: "해외영업·거래",
-  project_coordination: "프로젝트 운영",
-  research_admin: "대외협력·제휴",
-  localization_translation: "번역·로컬라이제이션",
-  event_operations: "프로젝트 운영",
-  international_collaboration: "대외협력·제휴",
-};
-
-// Only the 7 primary enum values are exposed in the business-function filter.
-const FUNCTION_FILTER_KEYS: BusinessFunction[] = [
-  "overseas_sales",
-  "marketing_pr",
-  "customer_partner_support",
-  "SCM_logistics",
-  "project_coordination",
-  "localization_translation",
-  "international_collaboration",
-];
-
-const REVIEW_BADGE: Record<ReviewStatus, string> = {
-  generated: "bg-[#E5E7EB] text-[#374151] border-[#D1D5DB]",
-  needs_review: "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]",
-  revise_required: "bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]",
-  revised: "bg-[#DBEAFE] text-[#1E40AF] border-[#93C5FD]",
-  approved: "bg-[#D1FAE5] text-[#065F46] border-[#6EE7B7]",
-};
-
-const USAGE_BADGE: Record<UsageAssignment, string> = {
-  archived_only: "bg-[#E5E7EB] text-[#374151] border-[#D1D5DB]",
-  coursework_published: "bg-[#CFFAFE] text-[#155E75] border-[#67E8F9]",
-  experiment_locked: "bg-[#FEF3C7] text-[#854D0E] border-[#FCD34D]",
-  excluded: "bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]",
-};
-
-const AUTO_CHECK_LABEL: Record<AutoCheck, string> = {
-  pass: "pass",
-  warning: "warning",
-  fail: "fail",
-};
-
-const AUTO_CHECK_COLOR: Record<AutoCheck, string> = {
-  pass: "text-[#15803D]",
-  warning: "text-[#B45309]",
-  fail: "text-[#B91C1C]",
-};
-
-const REVIEW_LABEL: Record<ReviewStatus, string> = {
-  generated: "생성됨",
-  needs_review: "검수 대기",
-  revise_required: "보완 필요",
-  revised: "재검수 대기",
-  approved: "승인 완료",
-};
-
-const USAGE_LABEL: Record<UsageAssignment, string> = {
-  archived_only: "아카이브 전용",
-  coursework_published: "수업용 공개",
-  experiment_locked: "본실험 locked",
-  excluded: "제외",
-};
-
 const PRAGMATIC_CHALLENGE_LABEL: Record<PragmaticChallenge, string> = {
   directness_control: "직접성 조절",
   formality_control: "격식 조절",
   imposition_management: "부담·체면 관리",
 };
-
 const INTENSITY_LABEL: Record<ChallengeIntensity, string> = {
   low: "강도 낮음",
   mid: "강도 보통",
   high: "강도 높음",
 };
+const STATUS_LABEL: Record<FormStatus, string> = {
+  pending: "검수 대기",
+  approved: "승인 완료",
+  revision: "보완 필요",
+  rejected: "폐기",
+};
+const STATUS_BADGE: Record<FormStatus, string> = {
+  pending: "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]",
+  approved: "bg-[#D1FAE5] text-[#065F46] border-[#6EE7B7]",
+  revision: "bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]",
+  rejected: "bg-[#E5E7EB] text-[#374151] border-[#D1D5DB]",
+};
+const STATUS_ORDER: FormStatus[] = ["pending", "approved", "revision", "rejected"];
 
-const MOCK: Scenario[] = [
-  {
-    id: "s1",
-    title: "납기 단축 요청 — 광저우 가구 공급사",
-    source_text:
-      "안녕하세요, 저희 측 매장 오픈 일정이 앞당겨져 다음 컨테이너 출고를 2주 앞당겨 주실 수 있을지 확인 부탁드립니다. 가능하시다면 추가 비용 산정 기준도 함께 공유해 주세요.",
-    speech_act: "request",
-    genre: "business_email",
-    learner_level: "intermediate",
-    industry_sector: "trade_distribution",
-    business_function: "overseas_sales",
-    interaction_context: "coordination",
-    review_status: "needs_review",
-    usage_assignment: "archived_only",
-    auto_check_result: "warning",
-    updated_at: "2026-05-22",
-    week_no: 4,
-    scenario_P: "lower",
-    scenario_D: "distant",
-    scenario_R: "high",
-    pragmatic_challenge: ["directness_control", "imposition_management"],
-    challenge_intensity: "high",
-  },
-  {
-    id: "s2",
-    title: "신규 SaaS 파트너십 제안 — 상하이 커머스 플랫폼",
-    source_text:
-      "귀사의 B2B 셀러 도구와 연동을 검토 중입니다. 다음 주 화상회의에서 API 연동 범위와 데이터 처리 정책을 함께 논의하고 싶습니다.",
-    speech_act: "request",
-    genre: "business_messenger",
-    learner_level: "advanced",
-    industry_sector: "IT_platform",
-    business_function: "project_coordination",
-    interaction_context: "negotiation",
-    review_status: "approved",
-    usage_assignment: "coursework_published",
-    auto_check_result: "pass",
-    updated_at: "2026-05-20",
-    week_no: 7,
-    scenario_P: "equal",
-    scenario_D: "neutral",
-    scenario_R: "mid",
-    pragmatic_challenge: ["formality_control"],
-    challenge_intensity: "mid",
-  },
-  {
-    id: "s3",
-    title: "본실험 — 광고 단가 인상 통보 거절",
-    source_text:
-      "이번 분기 캠페인 예산이 확정되어 제안 주신 단가 인상은 수용이 어렵습니다. 기존 단가 유지가 가능한 범위에서 노출 비중을 조정하는 방향을 검토 부탁드립니다.",
-    speech_act: "refusal",
-    genre: "meeting_speech",
-    learner_level: "advanced",
-    industry_sector: "culture_content_media",
-    business_function: "marketing_pr",
-    interaction_context: "negotiation",
-    review_status: "approved",
-    usage_assignment: "experiment_locked",
-    auto_check_result: "pass",
-    updated_at: "2026-05-18",
-    week_no: 10,
-    scenario_P: "higher",
-    scenario_D: "close",
-    scenario_R: "high",
-    pragmatic_challenge: ["directness_control", "formality_control", "imposition_management"],
-    challenge_intensity: "high",
-  },
-  {
-    id: "s4",
-    title: "호텔 단체 예약 변경 요청 — 칭다오 인센티브 투어",
-    source_text:
-      "3월 단체 투숙 일정이 조정되어 객실 타입과 체크인 날짜 변경을 요청드립니다. 변경에 따른 추가 비용이 있다면 사전에 안내 부탁드립니다.",
-    speech_act: "request",
-    genre: "business_email",
-    learner_level: "beginner_intermediate",
-    industry_sector: "tourism_hospitality",
-    business_function: "customer_partner_support",
-    interaction_context: "follow_up",
-    review_status: "revise_required",
-    usage_assignment: "archived_only",
-    auto_check_result: "fail",
-    updated_at: "2026-05-15",
-    week_no: 2,
-    scenario_P: "higher",
-    scenario_D: "distant",
-    scenario_R: "low",
-    pragmatic_challenge: ["imposition_management"],
-    challenge_intensity: "low",
-  },
-  {
-    id: "s5",
-    title: "공동 연구 일정 재조정 — 베이징 대학 연구실",
-    source_text:
-      "내부 검토 일정이 지연되어 다음 주 공동 워크숍 일정을 한 주 미루는 방안을 제안드립니다. 가능하신 시간대를 회신 부탁드립니다.",
-    speech_act: "request",
-    genre: "business_messenger",
-    learner_level: "intermediate",
-    industry_sector: "education_research",
-    business_function: "international_collaboration",
-    interaction_context: "coordination",
-    review_status: "revised",
-    usage_assignment: "archived_only",
-    auto_check_result: "warning",
-    updated_at: "2026-05-12",
-  },
-  {
-    id: "s6",
-    title: "MOU 체결 연기 요청 거절 — 공공 국제교류",
-    source_text:
-      "양측 일정 합의가 이미 공표되어 체결식 자체의 연기는 어렵습니다. 다만 부대 행사 일부는 별도 일정으로 분리 진행이 가능합니다.",
-    speech_act: "refusal",
-    genre: "meeting_speech",
-    learner_level: "advanced",
-    industry_sector: "public_international_affairs",
-    business_function: "international_collaboration",
-    interaction_context: "negotiation",
-    review_status: "approved",
-    usage_assignment: "excluded",
-    auto_check_result: "pass",
-    updated_at: "2026-05-10",
-  },
-];
+// ─── Status mapping between form ↔ DB ───────────────────────────────────────
+// review_status enum does NOT contain 'excluded'; we encode "rejected" by
+// setting usage_assignment='excluded' (and keeping review_status='revise_required').
+function statusToDb(
+  s: FormStatus,
+): { review_status: ReviewStatus; usage_assignment: UsageAssignment } {
+  switch (s) {
+    case "pending":
+      return { review_status: "needs_review", usage_assignment: "archived_only" };
+    case "approved":
+      return { review_status: "approved", usage_assignment: "archived_only" };
+    case "revision":
+      return { review_status: "revise_required", usage_assignment: "archived_only" };
+    case "rejected":
+      return { review_status: "revise_required", usage_assignment: "excluded" };
+  }
+}
+function statusFromDb(
+  review_status: ReviewStatus,
+  usage_assignment: UsageAssignment,
+): FormStatus {
+  if (usage_assignment === "excluded") return "rejected";
+  if (review_status === "approved") return "approved";
+  if (review_status === "revise_required") return "revision";
+  return "pending";
+}
 
-const ALL = "__all__";
+// ─── Row shape from DB (subset used here) ───────────────────────────────────
+interface ScenarioRow {
+  scenario_id: string;
+  title: string;
+  source_text: string | null;
+  speech_act: SpeechActEnum;
+  speech_act_text: string | null;
+  review_status: ReviewStatus;
+  usage_assignment: UsageAssignment;
+  updated_at: string | null;
+  week_no: number | null;
+  language_direction: string | null;
+  mode: string | null;
+  scenario_p: string | null;
+  scenario_d: string | null;
+  scenario_r: string | null;
+  pragmatic_challenge: string[] | null;
+  challenge_intensity: string | null;
+  hsk_level_min: number | null;
+  domain: string | null;
+  industry_sector: string | null;
+}
+
+interface FormState {
+  title: string;
+  week_no: number | null;
+  language_direction: LanguageDirection | null;
+  mode: ScenarioMode | null;
+  speech_act_text: string;
+  scenario_P: ScenarioP | null;
+  scenario_D: ScenarioD | null;
+  scenario_R: ScenarioR | null;
+  pragmatic_challenge: PragmaticChallenge[];
+  challenge_intensity: ChallengeIntensity | null;
+  hsk_level_min: HskLevelMin | null;
+  source_text: string;
+  status: FormStatus;
+  domain: Domain | null;
+  industry_sector: IndustrySector | null;
+}
+
+function emptyForm(): FormState {
+  return {
+    title: "",
+    week_no: null,
+    language_direction: null,
+    mode: null,
+    speech_act_text: "",
+    scenario_P: null,
+    scenario_D: null,
+    scenario_R: null,
+    pragmatic_challenge: [],
+    challenge_intensity: null,
+    hsk_level_min: null,
+    source_text: "",
+    status: "pending",
+    domain: null,
+    industry_sector: null,
+  };
+}
+
+const MetaTag = ({ children }: { children: React.ReactNode }) => (
+  <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+    {children}
+  </span>
+);
 
 const Chip = ({
   label,
@@ -460,176 +220,46 @@ const Chip = ({
   );
 };
 
-const MetaTag = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-    {children}
-  </span>
-);
-
-const FilterSelect = ({
-  value,
-  onChange,
-  category,
-  options,
-  width = "w-[140px]",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  category: string;
-  options: { value: string; label: string }[];
-  width?: string;
-}) => {
-  const selected = options.find((o) => o.value === value);
-  const display = `${category}: ${selected ? selected.label : "전체"}`;
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className={`${width} h-9 text-[12px]`}>
-        <span className="truncate">{display}</span>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={ALL}>전체</SelectItem>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
-
 const AdminArchive = () => {
-  const [fReview, setFReview] = useState(ALL);
-  const [fUsage, setFUsage] = useState(ALL);
-  const [fSpeech, setFSpeech] = useState(ALL);
-  const [fGenre, setFGenre] = useState(ALL);
-  const [fLevel, setFLevel] = useState(ALL);
-  const [fIndustry, setFIndustry] = useState(ALL);
-  const [fFunction, setFFunction] = useState(ALL);
+  const [rows, setRows] = useState<ScenarioRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const drafts = useDraftScenarios();
-
-  const [extras, setExtras] = useState<Record<string, Partial<ScenarioEditable>>>(
-    () => loadJSON<Record<string, Partial<ScenarioEditable>>>(SCENARIO_EXTRAS_KEY, {}),
-  );
-  const [customScenarios, setCustomScenarios] = useState<Scenario[]>(
-    () => loadJSON<Scenario[]>(SCENARIO_CUSTOM_KEY, []),
-  );
-
-  const applyExtras = (s: Scenario): Scenario => {
-    const e = extras[s.id];
-    if (!e) return s;
-    return {
-      ...s,
-      title: e.title ?? s.title,
-      source_text: e.source_text ?? s.source_text,
-      week_no: e.week_no !== undefined ? e.week_no : s.week_no,
-      scenario_P: e.scenario_P !== undefined ? e.scenario_P : s.scenario_P,
-      scenario_D: e.scenario_D !== undefined ? e.scenario_D : s.scenario_D,
-      scenario_R: e.scenario_R !== undefined ? e.scenario_R : s.scenario_R,
-      pragmatic_challenge:
-        e.pragmatic_challenge !== undefined ? e.pragmatic_challenge : s.pragmatic_challenge,
-      challenge_intensity:
-        e.challenge_intensity !== undefined ? e.challenge_intensity : s.challenge_intensity,
-      language_direction:
-        e.language_direction !== undefined ? e.language_direction : s.language_direction,
-      mode: e.mode !== undefined ? e.mode : s.mode,
-      hsk_level_min:
-        e.hsk_level_min !== undefined ? e.hsk_level_min : s.hsk_level_min,
-      speech_act_text:
-        e.speech_act_text !== undefined ? e.speech_act_text : s.speech_act_text,
-    };
+  const loadRows = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("scenarios")
+      .select(
+        "scenario_id,title,source_text,speech_act,speech_act_text,review_status,usage_assignment,updated_at,week_no,language_direction,mode,scenario_p,scenario_d,scenario_r,pragmatic_challenge,challenge_intensity,hsk_level_min,domain,industry_sector",
+      )
+      .order("updated_at", { ascending: false });
+    if (error) {
+      toast({ title: "시나리오 불러오기 실패", description: error.message, variant: "destructive" });
+    } else {
+      setRows((data ?? []) as unknown as ScenarioRow[]);
+    }
+    setLoading(false);
   };
 
-  const visible = useMemo(() => {
-    const draftsAsScenario: Scenario[] = drafts.map((d) => ({
-      id: d.id,
-      title: d.title,
-      source_text: d.source_text,
-      speech_act: d.speech_act,
-      genre: d.genre,
-      learner_level: d.learner_level,
-      industry_sector: d.industry_sector,
-      business_function: d.business_function,
-      interaction_context: d.interaction_context,
-      review_status: "needs_review",
-      usage_assignment: "archived_only",
-      auto_check_result: d.auto_check_result,
-      updated_at: d.updated_at,
-    }));
-    return [
-      ...customScenarios,
-      ...draftsAsScenario,
-      ...MOCK.filter((s) => s.review_status !== "generated"),
-    ].map(applyExtras);
-  }, [drafts, customScenarios, extras]);
-
-
-  const filtered = useMemo(() => {
-    return visible.filter((s) => {
-      if (fReview !== ALL && s.review_status !== fReview) return false;
-      if (fUsage !== ALL && s.usage_assignment !== fUsage) return false;
-      if (fSpeech !== ALL && s.speech_act !== fSpeech) return false;
-      if (fGenre !== ALL && s.genre !== fGenre) return false;
-      if (fLevel !== ALL && s.learner_level !== fLevel) return false;
-      if (fIndustry !== ALL && s.industry_sector !== fIndustry) return false;
-      if (fFunction !== ALL && s.business_function !== fFunction) return false;
-      return true;
-    });
-  }, [visible, fReview, fUsage, fSpeech, fGenre, fLevel, fIndustry, fFunction]);
+  useEffect(() => {
+    loadRows();
+  }, []);
 
   const counts = useMemo(() => {
-    const base = filtered;
+    const list = rows;
     return {
-      total: base.length,
-      needsReview: base.filter((s) => s.review_status === "needs_review").length,
-      approved: base.filter((s) => s.review_status === "approved").length,
-      reviseRequired: base.filter((s) => s.review_status === "revise_required")
-        .length,
-      experimentLocked: base.filter(
-        (s) =>
-          s.review_status === "approved" &&
-          s.usage_assignment === "experiment_locked",
-      ).length,
+      total: list.length,
+      pending: list.filter((r) => statusFromDb(r.review_status, r.usage_assignment) === "pending").length,
+      approved: list.filter((r) => statusFromDb(r.review_status, r.usage_assignment) === "approved").length,
+      revision: list.filter((r) => statusFromDb(r.review_status, r.usage_assignment) === "revision").length,
+      rejected: list.filter((r) => statusFromDb(r.review_status, r.usage_assignment) === "rejected").length,
     };
-  }, [filtered]);
+  }, [rows]);
 
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, ScenarioStatus>>(
-    () => loadStatusOverrides(),
-  );
-
-  const getStatus = (s: Scenario): ScenarioStatus =>
-    statusOverrides[s.id] ?? deriveStatusFromLegacy(s.review_status);
-
-  const updateStatus = (id: string, next: ScenarioStatus) => {
-    setStatusOverrides((prev) => {
-      const merged = { ...prev, [id]: next };
-      saveStatusOverrides(merged);
-      return merged;
-    });
-  };
-
+  // ── Form state
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<ScenarioEditable & { status: ScenarioStatus }>(() => emptyForm());
-
-  function emptyForm(): ScenarioEditable & { status: ScenarioStatus } {
-    return {
-      title: "",
-      week_no: null,
-      language_direction: null,
-      mode: null,
-      speech_act_text: "",
-      scenario_P: null,
-      scenario_D: null,
-      scenario_R: null,
-      pragmatic_challenge: [],
-      challenge_intensity: null,
-      hsk_level_min: null,
-      source_text: "",
-      status: "pending",
-    };
-  }
+  const [form, setForm] = useState<FormState>(() => emptyForm());
+  const [saving, setSaving] = useState(false);
 
   const openCreate = () => {
     setEditingId(null);
@@ -637,125 +267,126 @@ const AdminArchive = () => {
     setFormOpen(true);
   };
 
-  const openEdit = (s: Scenario) => {
-    setEditingId(s.id);
+  const openEdit = (r: ScenarioRow) => {
+    setEditingId(r.scenario_id);
     setForm({
-      title: s.title,
-      week_no: s.week_no ?? null,
-      language_direction: s.language_direction ?? null,
-      mode: s.mode ?? null,
-      speech_act_text: s.speech_act_text ?? SPEECH_ACT_LABEL[s.speech_act] ?? "",
-      scenario_P: s.scenario_P ?? null,
-      scenario_D: s.scenario_D ?? null,
-      scenario_R: s.scenario_R ?? null,
-      pragmatic_challenge: s.pragmatic_challenge ?? [],
-      challenge_intensity: s.challenge_intensity ?? null,
-      hsk_level_min: s.hsk_level_min ?? null,
-      source_text: s.source_text,
-      status: getStatus(s),
+      title: r.title ?? "",
+      week_no: r.week_no,
+      language_direction: (r.language_direction as LanguageDirection | null) ?? null,
+      mode: (r.mode as ScenarioMode | null) ?? null,
+      speech_act_text: r.speech_act_text ?? "",
+      scenario_P: (r.scenario_p as ScenarioP | null) ?? null,
+      scenario_D: (r.scenario_d as ScenarioD | null) ?? null,
+      scenario_R: (r.scenario_r as ScenarioR | null) ?? null,
+      pragmatic_challenge: (r.pragmatic_challenge as PragmaticChallenge[] | null) ?? [],
+      challenge_intensity: (r.challenge_intensity as ChallengeIntensity | null) ?? null,
+      hsk_level_min: (r.hsk_level_min as HskLevelMin | null) ?? null,
+      source_text: r.source_text ?? "",
+      status: statusFromDb(r.review_status, r.usage_assignment),
+      domain: (r.domain as Domain | null) ?? null,
+      industry_sector: (r.industry_sector as IndustrySector | null) ?? null,
     });
     setFormOpen(true);
   };
 
   const togglePragmatic = (v: PragmaticChallenge) => {
     setForm((f) => {
-      const cur = f.pragmatic_challenge ?? [];
-      const has = cur.includes(v);
+      const has = f.pragmatic_challenge.includes(v);
       return {
         ...f,
-        pragmatic_challenge: has ? cur.filter((x) => x !== v) : [...cur, v],
+        pragmatic_challenge: has
+          ? f.pragmatic_challenge.filter((x) => x !== v)
+          : [...f.pragmatic_challenge, v],
       };
     });
   };
 
-  const saveForm = () => {
-    const today = new Date().toISOString().slice(0, 10);
-    if (editingId) {
-      const next = {
-        ...extras,
-        [editingId]: {
-          title: form.title,
-          source_text: form.source_text,
-          week_no: form.week_no,
-          language_direction: form.language_direction,
-          mode: form.mode,
-          speech_act_text: form.speech_act_text,
-          scenario_P: form.scenario_P,
-          scenario_D: form.scenario_D,
-          scenario_R: form.scenario_R,
-          pragmatic_challenge: form.pragmatic_challenge,
-          challenge_intensity: form.challenge_intensity,
-          hsk_level_min: form.hsk_level_min,
-        } as Partial<ScenarioEditable>,
-      };
-      setExtras(next);
-      saveJSON(SCENARIO_EXTRAS_KEY, next);
-      updateStatus(editingId, form.status);
-    } else {
-      const id = `custom_${Date.now()}`;
-      const newScenario: Scenario = {
-        id,
-        title: form.title || "(제목 없음)",
-        source_text: form.source_text,
-        speech_act: "request",
-        speech_act_text: form.speech_act_text,
-        genre: "business_email",
-        learner_level: "intermediate",
-        industry_sector: "trade_distribution",
-        business_function: "overseas_sales",
-        interaction_context: "coordination",
-        review_status: "needs_review",
-        usage_assignment: "archived_only",
-        auto_check_result: "pass",
-        updated_at: today,
-        week_no: form.week_no,
-        scenario_P: form.scenario_P,
-        scenario_D: form.scenario_D,
-        scenario_R: form.scenario_R,
-        pragmatic_challenge: form.pragmatic_challenge,
-        challenge_intensity: form.challenge_intensity,
-        language_direction: form.language_direction,
-        mode: form.mode,
-        hsk_level_min: form.hsk_level_min,
-      };
-      const nextList = [newScenario, ...customScenarios];
-      setCustomScenarios(nextList);
-      saveJSON(SCENARIO_CUSTOM_KEY, nextList);
-      updateStatus(id, form.status);
+  const updateStatusInline = async (id: string, next: FormStatus) => {
+    const { review_status, usage_assignment } = statusToDb(next);
+    const { error } = await supabase
+      .from("scenarios")
+      .update({ review_status, usage_assignment })
+      .eq("scenario_id", id);
+    if (error) {
+      toast({ title: "상태 변경 실패", description: error.message, variant: "destructive" });
+      return;
     }
-    setFormOpen(false);
+    setRows((prev) =>
+      prev.map((r) => (r.scenario_id === id ? { ...r, review_status, usage_assignment } : r)),
+    );
   };
 
+  const saveForm = async () => {
+    if (!form.title.trim()) {
+      toast({ title: "제목을 입력해 주세요.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    const { review_status, usage_assignment } = statusToDb(form.status);
+    const payload = {
+      title: form.title.trim(),
+      source_text: form.source_text || null,
+      speech_act_text: form.speech_act_text || null,
+      week_no: form.week_no,
+      language_direction: form.language_direction,
+      mode: form.mode,
+      scenario_p: form.scenario_P,
+      scenario_d: form.scenario_D,
+      scenario_r: form.scenario_R,
+      pragmatic_challenge:
+        form.pragmatic_challenge.length > 0 ? form.pragmatic_challenge : null,
+      challenge_intensity: form.challenge_intensity,
+      hsk_level_min: form.hsk_level_min,
+      domain: form.domain,
+      industry_sector: form.domain === "work" ? form.industry_sector : null,
+      review_status,
+      usage_assignment,
+    };
 
+    if (editingId) {
+      const { error } = await supabase
+        .from("scenarios")
+        .update(payload)
+        .eq("scenario_id", editingId);
+      if (error) {
+        toast({ title: "저장 실패", description: error.message, variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+    } else {
+      const { error } = await supabase.from("scenarios").insert({
+        ...payload,
+        speech_act: "request" as SpeechActEnum,
+      });
+      if (error) {
+        toast({ title: "저장 실패", description: error.message, variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+    }
+    setSaving(false);
+    setFormOpen(false);
+    await loadRows();
+    toast({ title: editingId ? "시나리오가 수정되었습니다." : "시나리오가 추가되었습니다." });
+  };
 
   return (
-    <AdminShell
-      title="시나리오 아카이브"
-      description="AI 생성 한·중 통번역 학습 시나리오 관리"
-    >
-      {/* Helper note */}
+    <AdminShell title="시나리오 아카이브" description="한·중 통번역 학습 시나리오 관리">
       <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-3">
         <p className="text-[11px] leading-relaxed text-[#5B5446]">
-          AI 생성 시나리오는 검수 전 학생에게 공개되지 않습니다.
+          시나리오는 검수 전 학생에게 공개되지 않습니다.
           <br />
-          연구자 검수 후 승인된 자료만 수업용 공개 또는 본실험 locked로 지정할 수 있습니다.
-          <br />
-          자동 점검 결과는 참고용이며, 최종 공개 여부는 연구자 검수와 용도 지정에 따라 결정됩니다.
+          연구자 검수 후 승인된 자료만 수업/본실험에 활용할 수 있습니다.
         </p>
       </div>
 
-      {/* Count chips + actions */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Chip label="전체" count={counts.total} tone="neutral" />
-          <Chip label="검수 대기" count={counts.needsReview} tone="amber" />
+          <Chip label="검수 대기" count={counts.pending} tone="amber" />
           <Chip label="승인 완료" count={counts.approved} tone="green" />
-          <Chip label="보완 필요" count={counts.reviseRequired} tone="red" />
-          <Chip
-            label="본실험 locked"
-            count={counts.experimentLocked}
-            tone="mustard"
-          />
+          <Chip label="보완 필요" count={counts.revision} tone="red" />
+          <Chip label="폐기" count={counts.rejected} tone="mustard" />
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -764,239 +395,145 @@ const AdminArchive = () => {
           >
             + 시나리오 추가
           </Button>
-          <Button
-            variant="outline"
-            className="h-9 border-[#D6D2C7] bg-transparent text-[#2c2c2a] hover:bg-muted"
-            onClick={() => {}}
-          >
-            ↓ 데이터 내보내기
-          </Button>
         </div>
       </div>
 
-      {/* Filters — row 1: 운영 게이팅 */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <FilterSelect
-          value={fReview}
-          onChange={setFReview}
-          category="검수 상태"
-          options={(Object.keys(REVIEW_LABEL) as ReviewStatus[])
-            .filter((k) => k !== "generated")
-            .map((k) => ({ value: k, label: REVIEW_LABEL[k] }))}
-          width="w-[180px]"
-        />
-        <FilterSelect
-          value={fUsage}
-          onChange={setFUsage}
-          category="용도 배정"
-          options={(Object.keys(USAGE_LABEL) as UsageAssignment[]).map((k) => ({
-            value: k,
-            label: USAGE_LABEL[k],
-          }))}
-          width="w-[200px]"
-        />
-        <FilterSelect
-          value={fSpeech}
-          onChange={setFSpeech}
-          category="화행"
-          options={[
-            { value: "request", label: "요청" },
-            { value: "refusal", label: "거절" },
-          ]}
-          width="w-[140px]"
-        />
-        <FilterSelect
-          value={fGenre}
-          onChange={setFGenre}
-          category="장르"
-          options={(Object.keys(GENRE_LABEL) as Genre[]).map((k) => ({
-            value: k,
-            label: GENRE_LABEL[k],
-          }))}
-          width="w-[180px]"
-        />
-      </div>
-      {/* Filters — row 2: 큐레이션 검색 */}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <FilterSelect
-          value={fLevel}
-          onChange={setFLevel}
-          category="학습자 수준"
-          options={(Object.keys(LEVEL_LABEL) as LearnerLevel[]).map((k) => ({
-            value: k,
-            label: LEVEL_LABEL[k],
-          }))}
-          width="w-[180px]"
-        />
-        <FilterSelect
-          value={fIndustry}
-          onChange={setFIndustry}
-          category="산업 분야"
-          options={(Object.keys(INDUSTRY_LABEL) as IndustrySector[]).map(
-            (k) => ({ value: k, label: INDUSTRY_LABEL[k] }),
-          )}
-          width="w-[240px]"
-        />
-        <FilterSelect
-          value={fFunction}
-          onChange={setFFunction}
-          category="업무 기능"
-          options={FUNCTION_FILTER_KEYS.map((k) => ({
-            value: k,
-            label: FUNCTION_LABEL[k],
-          }))}
-          width="w-[240px]"
-        />
-      </div>
-
-      {/* Cards grid */}
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((s) => {
-          const isExcluded = s.usage_assignment === "excluded";
-          const status = getStatus(s);
-          return (
-
-            <article
-              key={s.id}
-              className={`flex flex-col rounded-lg border border-border bg-card p-4 shadow-sm ${
-                isExcluded ? "opacity-85" : ""
-              }`}
-            >
-              <h3
-                className={`text-[14px] font-medium leading-snug text-foreground ${
-                  isExcluded ? "line-through" : ""
+        {loading && (
+          <div className="col-span-full rounded-md border border-dashed border-border bg-card px-6 py-10 text-center text-sm text-muted-foreground">
+            불러오는 중…
+          </div>
+        )}
+        {!loading &&
+          rows.map((r) => {
+            const status = statusFromDb(r.review_status, r.usage_assignment);
+            const isRejected = status === "rejected";
+            return (
+              <article
+                key={r.scenario_id}
+                className={`flex flex-col rounded-lg border border-border bg-card p-4 shadow-sm ${
+                  isRejected ? "opacity-85" : ""
                 }`}
               >
-                {s.title}
-              </h3>
-              <p className="mt-2 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
-                {s.source_text}
-              </p>
-
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                <MetaTag>{s.speech_act_text || SPEECH_ACT_LABEL[s.speech_act]}</MetaTag>
-                <MetaTag>{GENRE_LABEL[s.genre]}</MetaTag>
-                <MetaTag>{LEVEL_LABEL[s.learner_level]}</MetaTag>
-                <MetaTag>{INDUSTRY_LABEL[s.industry_sector]}</MetaTag>
-                <MetaTag>{FUNCTION_LABEL[s.business_function]}</MetaTag>
-                <MetaTag>{CONTEXT_LABEL[s.interaction_context]}</MetaTag>
-                {s.language_direction && (
-                  <MetaTag>{s.language_direction === "ko-zh" ? "한→중" : "중→한"}</MetaTag>
-                )}
-                {s.mode && <MetaTag>{MODE_LABEL[s.mode]}</MetaTag>}
-                {s.hsk_level_min != null && <MetaTag>HSK {s.hsk_level_min}+</MetaTag>}
-                {s.week_no != null && (
-                  <span className="inline-flex items-center rounded-md border border-[#C7D2FE] bg-[#EEF2FF] px-2 py-0.5 text-[11px] text-[#3730A3]">
-                    {s.week_no}주차
-                  </span>
-                )}
-                {s.scenario_P && (
-                  <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
-                    P:{s.scenario_P}
-                  </span>
-                )}
-                {s.scenario_D && (
-                  <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
-                    D:{s.scenario_D}
-                  </span>
-                )}
-                {s.scenario_R && (
-                  <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
-                    R:{s.scenario_R}
-                  </span>
-                )}
-                {s.pragmatic_challenge && s.pragmatic_challenge.length > 0 && (
-                  <span className="inline-flex items-center rounded-md border border-[#FDE68A] bg-[#FFFBEB] px-2 py-0.5 text-[11px] text-[#92400E]">
-                    화용: {s.pragmatic_challenge.map((c) => PRAGMATIC_CHALLENGE_LABEL[c]).join(" · ")}
-                  </span>
-                )}
-                {s.challenge_intensity && (
-                  <span className="inline-flex items-center rounded-md border border-[#BAE6FD] bg-[#F0F9FF] px-2 py-0.5 text-[11px] text-[#0369A1]">
-                    {INTENSITY_LABEL[s.challenge_intensity]}
-                  </span>
-                )}
-              </div>
-
-
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                <span
-                  className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${STATUS_BADGE[status]} ${
-                    isExcluded ? "line-through" : ""
+                <h3
+                  className={`text-[14px] font-medium leading-snug text-foreground ${
+                    isRejected ? "line-through" : ""
                   }`}
                 >
-                  상태: {STATUS_LABEL[status]}
-                </span>
+                  {r.title}
+                </h3>
+                {r.source_text && (
+                  <p className="mt-2 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
+                    {r.source_text}
+                  </p>
+                )}
 
-                <span
-                  className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${USAGE_BADGE[s.usage_assignment]} ${
-                    isExcluded ? "line-through" : ""
-                  }`}
-                >
-                  용도: {s.usage_assignment}
-                </span>
-              </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {r.speech_act_text && <MetaTag>{r.speech_act_text}</MetaTag>}
+                  {r.domain && <MetaTag>{DOMAIN_LABEL[r.domain as Domain]}</MetaTag>}
+                  {r.industry_sector && INDUSTRY_LABEL[r.industry_sector as IndustrySector] && (
+                    <MetaTag>{INDUSTRY_LABEL[r.industry_sector as IndustrySector]}</MetaTag>
+                  )}
+                  {r.language_direction && (
+                    <MetaTag>{r.language_direction === "ko-zh" ? "한→중" : "중→한"}</MetaTag>
+                  )}
+                  {r.mode && MODE_LABEL[r.mode as ScenarioMode] && (
+                    <MetaTag>{MODE_LABEL[r.mode as ScenarioMode]}</MetaTag>
+                  )}
+                  {r.hsk_level_min != null && <MetaTag>HSK {r.hsk_level_min}+</MetaTag>}
+                  {r.week_no != null && (
+                    <span className="inline-flex items-center rounded-md border border-[#C7D2FE] bg-[#EEF2FF] px-2 py-0.5 text-[11px] text-[#3730A3]">
+                      {r.week_no}주차
+                    </span>
+                  )}
+                  {r.scenario_p && (
+                    <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
+                      P:{r.scenario_p}
+                    </span>
+                  )}
+                  {r.scenario_d && (
+                    <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
+                      D:{r.scenario_d}
+                    </span>
+                  )}
+                  {r.scenario_r && (
+                    <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
+                      R:{r.scenario_r}
+                    </span>
+                  )}
+                  {r.pragmatic_challenge && r.pragmatic_challenge.length > 0 && (
+                    <span className="inline-flex items-center rounded-md border border-[#FDE68A] bg-[#FFFBEB] px-2 py-0.5 text-[11px] text-[#92400E]">
+                      화용:{" "}
+                      {(r.pragmatic_challenge as PragmaticChallenge[])
+                        .map((c) => PRAGMATIC_CHALLENGE_LABEL[c] ?? c)
+                        .join(" · ")}
+                    </span>
+                  )}
+                  {r.challenge_intensity && INTENSITY_LABEL[r.challenge_intensity as ChallengeIntensity] && (
+                    <span className="inline-flex items-center rounded-md border border-[#BAE6FD] bg-[#F0F9FF] px-2 py-0.5 text-[11px] text-[#0369A1]">
+                      {INTENSITY_LABEL[r.challenge_intensity as ChallengeIntensity]}
+                    </span>
+                  )}
+                </div>
 
-              <hr className="my-3 border-border" />
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <span
+                    className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${STATUS_BADGE[status]}`}
+                  >
+                    상태: {STATUS_LABEL[status]}
+                  </span>
+                </div>
 
-              <div className="flex items-center justify-between text-[11px]">
-                <span className={AUTO_CHECK_COLOR[s.auto_check_result]}>
-                  자동 점검: {AUTO_CHECK_LABEL[s.auto_check_result]}
-                </span>
-                <span className="text-muted-foreground">
-                  {s.updated_at} 수정
-                </span>
-              </div>
+                <hr className="my-3 border-border" />
 
-              <div className="mt-3 flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  className="h-8 border-[#D6D2C7] bg-transparent text-[12px] text-[#2c2c2a] hover:bg-muted"
-                  onClick={() => {}}
-                >
-                  상세 보기
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-8 border-[#D6D2C7] bg-transparent text-[12px] text-[#2c2c2a] hover:bg-muted"
-                  onClick={() => openEdit(s)}
-                >
-                  편집
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button className="h-8 bg-[#1d2336] text-[12px] text-white hover:bg-[#1d2336]/90">
-                      검수하기 ▾
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-44">
-                    <DropdownMenuLabel className="text-[11px] text-muted-foreground">
-                      상태 변경
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {STATUS_ORDER.map((opt) => (
-                      <DropdownMenuItem
-                        key={opt}
-                        onSelect={() => updateStatus(s.id, opt)}
-                        className="text-[12px]"
-                      >
-                        <span className="flex w-full items-center justify-between">
-                          <span>{STATUS_LABEL[opt]}</span>
-                          {status === opt && (
-                            <span className="text-[10px] text-muted-foreground">현재</span>
-                          )}
-                        </span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">
+                    {r.updated_at ? r.updated_at.slice(0, 10) : ""} 수정
+                  </span>
+                </div>
 
-              </div>
-            </article>
-          );
-        })}
-        {filtered.length === 0 && (
+                <div className="mt-3 flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    className="h-8 border-[#D6D2C7] bg-transparent text-[12px] text-[#2c2c2a] hover:bg-muted"
+                    onClick={() => openEdit(r)}
+                  >
+                    편집
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button className="h-8 bg-[#1d2336] text-[12px] text-white hover:bg-[#1d2336]/90">
+                        검수하기 ▾
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuLabel className="text-[11px] text-muted-foreground">
+                        상태 변경
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {STATUS_ORDER.map((opt) => (
+                        <DropdownMenuItem
+                          key={opt}
+                          onSelect={() => updateStatusInline(r.scenario_id, opt)}
+                          className="text-[12px]"
+                        >
+                          <span className="flex w-full items-center justify-between">
+                            <span>{STATUS_LABEL[opt]}</span>
+                            {status === opt && (
+                              <span className="text-[10px] text-muted-foreground">현재</span>
+                            )}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </article>
+            );
+          })}
+        {!loading && rows.length === 0 && (
           <div className="col-span-full rounded-md border border-dashed border-border bg-card px-6 py-10 text-center text-sm text-muted-foreground">
-            조건에 해당하는 시나리오가 없습니다.
+            등록된 시나리오가 없습니다.
           </div>
         )}
       </div>
@@ -1009,11 +546,53 @@ const AdminArchive = () => {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>제목</Label>
+              <Label>제목 *</Label>
               <Input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>도메인</Label>
+                <Select
+                  value={form.domain ?? ""}
+                  onValueChange={(v) =>
+                    setForm({
+                      ...form,
+                      domain: v as Domain,
+                      industry_sector: v === "work" ? form.industry_sector : null,
+                    })
+                  }
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">일상</SelectItem>
+                    <SelectItem value="school">학교</SelectItem>
+                    <SelectItem value="work">직장</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>산업 분야 {form.domain !== "work" && <span className="text-[11px] text-muted-foreground">(도메인이 '직장'일 때만)</span>}</Label>
+                <Select
+                  value={form.industry_sector ?? ""}
+                  onValueChange={(v) =>
+                    setForm({ ...form, industry_sector: v as IndustrySector })
+                  }
+                  disabled={form.domain !== "work"}
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="trade">무역</SelectItem>
+                    <SelectItem value="IT">IT</SelectItem>
+                    <SelectItem value="finance">금융</SelectItem>
+                    <SelectItem value="tourism">관광</SelectItem>
+                    <SelectItem value="medical">의료</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -1034,7 +613,7 @@ const AdminArchive = () => {
                 <Label>화행</Label>
                 <Input
                   placeholder="예: 거절, 요청"
-                  value={form.speech_act_text ?? ""}
+                  value={form.speech_act_text}
                   onChange={(e) => setForm({ ...form, speech_act_text: e.target.value })}
                 />
               </div>
@@ -1122,7 +701,7 @@ const AdminArchive = () => {
                 {(["directness_control", "formality_control", "imposition_management"] as PragmaticChallenge[]).map((p) => (
                   <label key={p} className="flex items-center gap-2 text-sm">
                     <Checkbox
-                      checked={(form.pragmatic_challenge ?? []).includes(p)}
+                      checked={form.pragmatic_challenge.includes(p)}
                       onCheckedChange={() => togglePragmatic(p)}
                     />
                     {PRAGMATIC_CHALLENGE_LABEL[p]}
@@ -1179,7 +758,7 @@ const AdminArchive = () => {
               <Label>검수 상태</Label>
               <Select
                 value={form.status}
-                onValueChange={(v) => setForm({ ...form, status: v as ScenarioStatus })}
+                onValueChange={(v) => setForm({ ...form, status: v as FormStatus })}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -1192,9 +771,15 @@ const AdminArchive = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>취소</Button>
-            <Button onClick={saveForm} className="bg-[#1d2336] text-white hover:bg-[#1d2336]/90">
-              저장
+            <Button variant="outline" onClick={() => setFormOpen(false)} disabled={saving}>
+              취소
+            </Button>
+            <Button
+              onClick={saveForm}
+              disabled={saving}
+              className="bg-[#1d2336] text-white hover:bg-[#1d2336]/90"
+            >
+              {saving ? "저장 중…" : "저장"}
             </Button>
           </DialogFooter>
         </DialogContent>
