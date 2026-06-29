@@ -566,7 +566,28 @@ const AdminArchive = () => {
                 <MetaTag>{INDUSTRY_LABEL[s.industry_sector]}</MetaTag>
                 <MetaTag>{FUNCTION_LABEL[s.business_function]}</MetaTag>
                 <MetaTag>{CONTEXT_LABEL[s.interaction_context]}</MetaTag>
+                {s.week_no != null && (
+                  <span className="inline-flex items-center rounded-md border border-[#C7D2FE] bg-[#EEF2FF] px-2 py-0.5 text-[11px] text-[#3730A3]">
+                    {s.week_no}주차
+                  </span>
+                )}
+                {s.scenario_P && (
+                  <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
+                    P:{s.scenario_P}
+                  </span>
+                )}
+                {s.scenario_D && (
+                  <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
+                    D:{s.scenario_D}
+                  </span>
+                )}
+                {s.scenario_R && (
+                  <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
+                    R:{s.scenario_R}
+                  </span>
+                )}
               </div>
+
 
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <span
