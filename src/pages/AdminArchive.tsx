@@ -50,6 +50,10 @@ type BusinessFunction =
   | "event_operations"
   | "international_collaboration";
 
+type ScenarioP = "higher" | "equal" | "lower";
+type ScenarioD = "close" | "neutral" | "distant";
+type ScenarioR = "high" | "mid" | "low";
+
 interface Scenario {
   id: string;
   title: string;
@@ -64,6 +68,10 @@ interface Scenario {
   usage_assignment: UsageAssignment;
   auto_check_result: AutoCheck;
   updated_at: string;
+  week_no?: number | null;
+  scenario_P?: ScenarioP | null;
+  scenario_D?: ScenarioD | null;
+  scenario_R?: ScenarioR | null;
 }
 
 const SPEECH_ACT_LABEL: Record<SpeechAct, string> = {
@@ -182,6 +190,10 @@ const MOCK: Scenario[] = [
     usage_assignment: "archived_only",
     auto_check_result: "warning",
     updated_at: "2026-05-22",
+    week_no: 4,
+    scenario_P: "lower",
+    scenario_D: "distant",
+    scenario_R: "high",
   },
   {
     id: "s2",
@@ -198,6 +210,10 @@ const MOCK: Scenario[] = [
     usage_assignment: "coursework_published",
     auto_check_result: "pass",
     updated_at: "2026-05-20",
+    week_no: 7,
+    scenario_P: "equal",
+    scenario_D: "neutral",
+    scenario_R: "mid",
   },
   {
     id: "s3",
@@ -214,6 +230,10 @@ const MOCK: Scenario[] = [
     usage_assignment: "experiment_locked",
     auto_check_result: "pass",
     updated_at: "2026-05-18",
+    week_no: 10,
+    scenario_P: "higher",
+    scenario_D: "close",
+    scenario_R: "high",
   },
   {
     id: "s4",
@@ -230,6 +250,10 @@ const MOCK: Scenario[] = [
     usage_assignment: "archived_only",
     auto_check_result: "fail",
     updated_at: "2026-05-15",
+    week_no: 2,
+    scenario_P: "higher",
+    scenario_D: "distant",
+    scenario_R: "low",
   },
   {
     id: "s5",
@@ -542,7 +566,28 @@ const AdminArchive = () => {
                 <MetaTag>{INDUSTRY_LABEL[s.industry_sector]}</MetaTag>
                 <MetaTag>{FUNCTION_LABEL[s.business_function]}</MetaTag>
                 <MetaTag>{CONTEXT_LABEL[s.interaction_context]}</MetaTag>
+                {s.week_no != null && (
+                  <span className="inline-flex items-center rounded-md border border-[#C7D2FE] bg-[#EEF2FF] px-2 py-0.5 text-[11px] text-[#3730A3]">
+                    {s.week_no}주차
+                  </span>
+                )}
+                {s.scenario_P && (
+                  <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
+                    P:{s.scenario_P}
+                  </span>
+                )}
+                {s.scenario_D && (
+                  <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
+                    D:{s.scenario_D}
+                  </span>
+                )}
+                {s.scenario_R && (
+                  <span className="inline-flex items-center rounded-md border border-[#FBCFE8] bg-[#FDF2F8] px-2 py-0.5 text-[11px] text-[#9D174D]">
+                    R:{s.scenario_R}
+                  </span>
+                )}
               </div>
+
 
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <span
