@@ -1,6 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useDraftScenarios } from "@/lib/scenarioDrafts";
 import {
   Select,
@@ -17,6 +28,53 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+type LanguageDirection = "ko-zh" | "zh-ko";
+type ScenarioMode = "translation" | "stt_interpreting";
+type HskLevelMin = 3 | 4 | 5;
+
+const MODE_LABEL: Record<ScenarioMode, string> = {
+  translation: "번역",
+  stt_interpreting: "STT 순차통역",
+};
+
+const SCENARIO_EXTRAS_KEY = "admin_archive_scenario_extras_v1";
+const SCENARIO_CUSTOM_KEY = "admin_archive_scenarios_custom_v1";
+
+interface ScenarioEditable {
+  title: string;
+  week_no?: number | null;
+  language_direction?: LanguageDirection | null;
+  mode?: ScenarioMode | null;
+  speech_act_text?: string;
+  scenario_P?: ScenarioP | null;
+  scenario_D?: ScenarioD | null;
+  scenario_R?: ScenarioR | null;
+  pragmatic_challenge?: PragmaticChallenge[] | null;
+  challenge_intensity?: ChallengeIntensity | null;
+  hsk_level_min?: HskLevelMin | null;
+  source_text: string;
+}
+
+function loadJSON<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") return parsed as T;
+  } catch {
+    /* noop */
+  }
+  return fallback;
+}
+
+function saveJSON(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* noop */
+  }
+}
 
 type ScenarioStatus = "pending" | "approved" | "revision" | "rejected";
 
