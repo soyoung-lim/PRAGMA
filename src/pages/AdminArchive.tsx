@@ -1000,6 +1000,205 @@ const AdminArchive = () => {
           </div>
         )}
       </div>
+
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "시나리오 편집" : "시나리오 추가"}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>제목</Label>
+              <Input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>주차 (1~15)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={15}
+                  value={form.week_no ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setForm({ ...form, week_no: v === "" ? null : Number(v) });
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>화행</Label>
+                <Input
+                  placeholder="예: 거절, 요청"
+                  value={form.speech_act_text ?? ""}
+                  onChange={(e) => setForm({ ...form, speech_act_text: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>언어 방향</Label>
+                <Select
+                  value={form.language_direction ?? ""}
+                  onValueChange={(v) =>
+                    setForm({ ...form, language_direction: v as LanguageDirection })
+                  }
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ko-zh">ko-zh (한→중)</SelectItem>
+                    <SelectItem value="zh-ko">zh-ko (중→한)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>학습 유형</Label>
+                <Select
+                  value={form.mode ?? ""}
+                  onValueChange={(v) => setForm({ ...form, mode: v as ScenarioMode })}
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="translation">번역</SelectItem>
+                    <SelectItem value="stt_interpreting">STT 순차통역</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>P (권력)</Label>
+                <Select
+                  value={form.scenario_P ?? ""}
+                  onValueChange={(v) => setForm({ ...form, scenario_P: v as ScenarioP })}
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="higher">higher</SelectItem>
+                    <SelectItem value="equal">equal</SelectItem>
+                    <SelectItem value="lower">lower</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>D (거리)</Label>
+                <Select
+                  value={form.scenario_D ?? ""}
+                  onValueChange={(v) => setForm({ ...form, scenario_D: v as ScenarioD })}
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="close">close</SelectItem>
+                    <SelectItem value="neutral">neutral</SelectItem>
+                    <SelectItem value="distant">distant</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>R (부담)</Label>
+                <Select
+                  value={form.scenario_R ?? ""}
+                  onValueChange={(v) => setForm({ ...form, scenario_R: v as ScenarioR })}
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high">high</SelectItem>
+                    <SelectItem value="mid">mid</SelectItem>
+                    <SelectItem value="low">low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>화용 챌린지 (복수 선택)</Label>
+              <div className="flex flex-wrap gap-3">
+                {(["directness_control", "formality_control", "imposition_management"] as PragmaticChallenge[]).map((p) => (
+                  <label key={p} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={(form.pragmatic_challenge ?? []).includes(p)}
+                      onCheckedChange={() => togglePragmatic(p)}
+                    />
+                    {PRAGMATIC_CHALLENGE_LABEL[p]}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>챌린지 강도</Label>
+                <Select
+                  value={form.challenge_intensity ?? ""}
+                  onValueChange={(v) =>
+                    setForm({ ...form, challenge_intensity: v as ChallengeIntensity })
+                  }
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">low (강도 낮음)</SelectItem>
+                    <SelectItem value="mid">mid (강도 보통)</SelectItem>
+                    <SelectItem value="high">high (강도 높음)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>HSK 최소 레벨</Label>
+                <Select
+                  value={form.hsk_level_min != null ? String(form.hsk_level_min) : ""}
+                  onValueChange={(v) =>
+                    setForm({ ...form, hsk_level_min: Number(v) as HskLevelMin })
+                  }
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3</SelectItem>
+                    <SelectItem value="4">4</SelectItem>
+                    <SelectItem value="5">5</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>원문 (source_text)</Label>
+              <Textarea
+                rows={6}
+                value={form.source_text}
+                onChange={(e) => setForm({ ...form, source_text: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>검수 상태</Label>
+              <Select
+                value={form.status}
+                onValueChange={(v) => setForm({ ...form, status: v as ScenarioStatus })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUS_ORDER.map((s) => (
+                    <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFormOpen(false)}>취소</Button>
+            <Button onClick={saveForm} className="bg-[#1d2336] text-white hover:bg-[#1d2336]/90">
+              저장
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 };
