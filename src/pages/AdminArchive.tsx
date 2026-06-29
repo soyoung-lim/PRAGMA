@@ -1,6 +1,17 @@
 import { useMemo, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useDraftScenarios } from "@/lib/scenarioDrafts";
 import {
   Select,
@@ -17,6 +28,53 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+type LanguageDirection = "ko-zh" | "zh-ko";
+type ScenarioMode = "translation" | "stt_interpreting";
+type HskLevelMin = 3 | 4 | 5;
+
+const MODE_LABEL: Record<ScenarioMode, string> = {
+  translation: "번역",
+  stt_interpreting: "STT 순차통역",
+};
+
+const SCENARIO_EXTRAS_KEY = "admin_archive_scenario_extras_v1";
+const SCENARIO_CUSTOM_KEY = "admin_archive_scenarios_custom_v1";
+
+interface ScenarioEditable {
+  title: string;
+  week_no?: number | null;
+  language_direction?: LanguageDirection | null;
+  mode?: ScenarioMode | null;
+  speech_act_text?: string;
+  scenario_P?: ScenarioP | null;
+  scenario_D?: ScenarioD | null;
+  scenario_R?: ScenarioR | null;
+  pragmatic_challenge?: PragmaticChallenge[] | null;
+  challenge_intensity?: ChallengeIntensity | null;
+  hsk_level_min?: HskLevelMin | null;
+  source_text: string;
+}
+
+function loadJSON<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") return parsed as T;
+  } catch {
+    /* noop */
+  }
+  return fallback;
+}
+
+function saveJSON(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* noop */
+  }
+}
 
 type ScenarioStatus = "pending" | "approved" | "revision" | "rejected";
 
@@ -133,6 +191,10 @@ interface Scenario {
   scenario_R?: ScenarioR | null;
   pragmatic_challenge?: PragmaticChallenge[] | null;
   challenge_intensity?: ChallengeIntensity | null;
+  language_direction?: LanguageDirection | null;
+  mode?: ScenarioMode | null;
+  hsk_level_min?: HskLevelMin | null;
+  speech_act_text?: string | null;
 }
 
 const SPEECH_ACT_LABEL: Record<SpeechAct, string> = {
@@ -446,6 +508,39 @@ const AdminArchive = () => {
   const [fFunction, setFFunction] = useState(ALL);
 
   const drafts = useDraftScenarios();
+
+  const [extras, setExtras] = useState<Record<string, Partial<ScenarioEditable>>>(
+    () => loadJSON<Record<string, Partial<ScenarioEditable>>>(SCENARIO_EXTRAS_KEY, {}),
+  );
+  const [customScenarios, setCustomScenarios] = useState<Scenario[]>(
+    () => loadJSON<Scenario[]>(SCENARIO_CUSTOM_KEY, []),
+  );
+
+  const applyExtras = (s: Scenario): Scenario => {
+    const e = extras[s.id];
+    if (!e) return s;
+    return {
+      ...s,
+      title: e.title ?? s.title,
+      source_text: e.source_text ?? s.source_text,
+      week_no: e.week_no !== undefined ? e.week_no : s.week_no,
+      scenario_P: e.scenario_P !== undefined ? e.scenario_P : s.scenario_P,
+      scenario_D: e.scenario_D !== undefined ? e.scenario_D : s.scenario_D,
+      scenario_R: e.scenario_R !== undefined ? e.scenario_R : s.scenario_R,
+      pragmatic_challenge:
+        e.pragmatic_challenge !== undefined ? e.pragmatic_challenge : s.pragmatic_challenge,
+      challenge_intensity:
+        e.challenge_intensity !== undefined ? e.challenge_intensity : s.challenge_intensity,
+      language_direction:
+        e.language_direction !== undefined ? e.language_direction : s.language_direction,
+      mode: e.mode !== undefined ? e.mode : s.mode,
+      hsk_level_min:
+        e.hsk_level_min !== undefined ? e.hsk_level_min : s.hsk_level_min,
+      speech_act_text:
+        e.speech_act_text !== undefined ? e.speech_act_text : s.speech_act_text,
+    };
+  };
+
   const visible = useMemo(() => {
     const draftsAsScenario: Scenario[] = drafts.map((d) => ({
       id: d.id,
@@ -463,10 +558,12 @@ const AdminArchive = () => {
       updated_at: d.updated_at,
     }));
     return [
+      ...customScenarios,
       ...draftsAsScenario,
       ...MOCK.filter((s) => s.review_status !== "generated"),
-    ];
-  }, [drafts]);
+    ].map(applyExtras);
+  }, [drafts, customScenarios, extras]);
+
 
   const filtered = useMemo(() => {
     return visible.filter((s) => {
@@ -512,6 +609,124 @@ const AdminArchive = () => {
     });
   };
 
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ScenarioEditable & { status: ScenarioStatus }>(() => emptyForm());
+
+  function emptyForm(): ScenarioEditable & { status: ScenarioStatus } {
+    return {
+      title: "",
+      week_no: null,
+      language_direction: null,
+      mode: null,
+      speech_act_text: "",
+      scenario_P: null,
+      scenario_D: null,
+      scenario_R: null,
+      pragmatic_challenge: [],
+      challenge_intensity: null,
+      hsk_level_min: null,
+      source_text: "",
+      status: "pending",
+    };
+  }
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(emptyForm());
+    setFormOpen(true);
+  };
+
+  const openEdit = (s: Scenario) => {
+    setEditingId(s.id);
+    setForm({
+      title: s.title,
+      week_no: s.week_no ?? null,
+      language_direction: s.language_direction ?? null,
+      mode: s.mode ?? null,
+      speech_act_text: s.speech_act_text ?? SPEECH_ACT_LABEL[s.speech_act] ?? "",
+      scenario_P: s.scenario_P ?? null,
+      scenario_D: s.scenario_D ?? null,
+      scenario_R: s.scenario_R ?? null,
+      pragmatic_challenge: s.pragmatic_challenge ?? [],
+      challenge_intensity: s.challenge_intensity ?? null,
+      hsk_level_min: s.hsk_level_min ?? null,
+      source_text: s.source_text,
+      status: getStatus(s),
+    });
+    setFormOpen(true);
+  };
+
+  const togglePragmatic = (v: PragmaticChallenge) => {
+    setForm((f) => {
+      const cur = f.pragmatic_challenge ?? [];
+      const has = cur.includes(v);
+      return {
+        ...f,
+        pragmatic_challenge: has ? cur.filter((x) => x !== v) : [...cur, v],
+      };
+    });
+  };
+
+  const saveForm = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (editingId) {
+      const next = {
+        ...extras,
+        [editingId]: {
+          title: form.title,
+          source_text: form.source_text,
+          week_no: form.week_no,
+          language_direction: form.language_direction,
+          mode: form.mode,
+          speech_act_text: form.speech_act_text,
+          scenario_P: form.scenario_P,
+          scenario_D: form.scenario_D,
+          scenario_R: form.scenario_R,
+          pragmatic_challenge: form.pragmatic_challenge,
+          challenge_intensity: form.challenge_intensity,
+          hsk_level_min: form.hsk_level_min,
+        } as Partial<ScenarioEditable>,
+      };
+      setExtras(next);
+      saveJSON(SCENARIO_EXTRAS_KEY, next);
+      updateStatus(editingId, form.status);
+    } else {
+      const id = `custom_${Date.now()}`;
+      const newScenario: Scenario = {
+        id,
+        title: form.title || "(제목 없음)",
+        source_text: form.source_text,
+        speech_act: "request",
+        speech_act_text: form.speech_act_text,
+        genre: "business_email",
+        learner_level: "intermediate",
+        industry_sector: "trade_distribution",
+        business_function: "overseas_sales",
+        interaction_context: "coordination",
+        review_status: "needs_review",
+        usage_assignment: "archived_only",
+        auto_check_result: "pass",
+        updated_at: today,
+        week_no: form.week_no,
+        scenario_P: form.scenario_P,
+        scenario_D: form.scenario_D,
+        scenario_R: form.scenario_R,
+        pragmatic_challenge: form.pragmatic_challenge,
+        challenge_intensity: form.challenge_intensity,
+        language_direction: form.language_direction,
+        mode: form.mode,
+        hsk_level_min: form.hsk_level_min,
+      };
+      const nextList = [newScenario, ...customScenarios];
+      setCustomScenarios(nextList);
+      saveJSON(SCENARIO_CUSTOM_KEY, nextList);
+      updateStatus(id, form.status);
+    }
+    setFormOpen(false);
+  };
+
+
 
   return (
     <AdminShell
@@ -545,7 +760,7 @@ const AdminArchive = () => {
         <div className="flex items-center gap-2">
           <Button
             className="h-9 bg-[#1d2336] text-white hover:bg-[#1d2336]/90"
-            onClick={() => {}}
+            onClick={openCreate}
           >
             + 시나리오 추가
           </Button>
@@ -659,12 +874,17 @@ const AdminArchive = () => {
               </p>
 
               <div className="mt-3 flex flex-wrap gap-1.5">
-                <MetaTag>{SPEECH_ACT_LABEL[s.speech_act]}</MetaTag>
+                <MetaTag>{s.speech_act_text || SPEECH_ACT_LABEL[s.speech_act]}</MetaTag>
                 <MetaTag>{GENRE_LABEL[s.genre]}</MetaTag>
                 <MetaTag>{LEVEL_LABEL[s.learner_level]}</MetaTag>
                 <MetaTag>{INDUSTRY_LABEL[s.industry_sector]}</MetaTag>
                 <MetaTag>{FUNCTION_LABEL[s.business_function]}</MetaTag>
                 <MetaTag>{CONTEXT_LABEL[s.interaction_context]}</MetaTag>
+                {s.language_direction && (
+                  <MetaTag>{s.language_direction === "ko-zh" ? "한→중" : "중→한"}</MetaTag>
+                )}
+                {s.mode && <MetaTag>{MODE_LABEL[s.mode]}</MetaTag>}
+                {s.hsk_level_min != null && <MetaTag>HSK {s.hsk_level_min}+</MetaTag>}
                 {s.week_no != null && (
                   <span className="inline-flex items-center rounded-md border border-[#C7D2FE] bg-[#EEF2FF] px-2 py-0.5 text-[11px] text-[#3730A3]">
                     {s.week_no}주차
@@ -735,6 +955,13 @@ const AdminArchive = () => {
                 >
                   상세 보기
                 </Button>
+                <Button
+                  variant="outline"
+                  className="h-8 border-[#D6D2C7] bg-transparent text-[12px] text-[#2c2c2a] hover:bg-muted"
+                  onClick={() => openEdit(s)}
+                >
+                  편집
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button className="h-8 bg-[#1d2336] text-[12px] text-white hover:bg-[#1d2336]/90">
@@ -773,6 +1000,205 @@ const AdminArchive = () => {
           </div>
         )}
       </div>
+
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "시나리오 편집" : "시나리오 추가"}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>제목</Label>
+              <Input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>주차 (1~15)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={15}
+                  value={form.week_no ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setForm({ ...form, week_no: v === "" ? null : Number(v) });
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>화행</Label>
+                <Input
+                  placeholder="예: 거절, 요청"
+                  value={form.speech_act_text ?? ""}
+                  onChange={(e) => setForm({ ...form, speech_act_text: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>언어 방향</Label>
+                <Select
+                  value={form.language_direction ?? ""}
+                  onValueChange={(v) =>
+                    setForm({ ...form, language_direction: v as LanguageDirection })
+                  }
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ko-zh">ko-zh (한→중)</SelectItem>
+                    <SelectItem value="zh-ko">zh-ko (중→한)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>학습 유형</Label>
+                <Select
+                  value={form.mode ?? ""}
+                  onValueChange={(v) => setForm({ ...form, mode: v as ScenarioMode })}
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="translation">번역</SelectItem>
+                    <SelectItem value="stt_interpreting">STT 순차통역</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>P (권력)</Label>
+                <Select
+                  value={form.scenario_P ?? ""}
+                  onValueChange={(v) => setForm({ ...form, scenario_P: v as ScenarioP })}
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="higher">higher</SelectItem>
+                    <SelectItem value="equal">equal</SelectItem>
+                    <SelectItem value="lower">lower</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>D (거리)</Label>
+                <Select
+                  value={form.scenario_D ?? ""}
+                  onValueChange={(v) => setForm({ ...form, scenario_D: v as ScenarioD })}
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="close">close</SelectItem>
+                    <SelectItem value="neutral">neutral</SelectItem>
+                    <SelectItem value="distant">distant</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>R (부담)</Label>
+                <Select
+                  value={form.scenario_R ?? ""}
+                  onValueChange={(v) => setForm({ ...form, scenario_R: v as ScenarioR })}
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high">high</SelectItem>
+                    <SelectItem value="mid">mid</SelectItem>
+                    <SelectItem value="low">low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>화용 챌린지 (복수 선택)</Label>
+              <div className="flex flex-wrap gap-3">
+                {(["directness_control", "formality_control", "imposition_management"] as PragmaticChallenge[]).map((p) => (
+                  <label key={p} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={(form.pragmatic_challenge ?? []).includes(p)}
+                      onCheckedChange={() => togglePragmatic(p)}
+                    />
+                    {PRAGMATIC_CHALLENGE_LABEL[p]}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>챌린지 강도</Label>
+                <Select
+                  value={form.challenge_intensity ?? ""}
+                  onValueChange={(v) =>
+                    setForm({ ...form, challenge_intensity: v as ChallengeIntensity })
+                  }
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">low (강도 낮음)</SelectItem>
+                    <SelectItem value="mid">mid (강도 보통)</SelectItem>
+                    <SelectItem value="high">high (강도 높음)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>HSK 최소 레벨</Label>
+                <Select
+                  value={form.hsk_level_min != null ? String(form.hsk_level_min) : ""}
+                  onValueChange={(v) =>
+                    setForm({ ...form, hsk_level_min: Number(v) as HskLevelMin })
+                  }
+                >
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3</SelectItem>
+                    <SelectItem value="4">4</SelectItem>
+                    <SelectItem value="5">5</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>원문 (source_text)</Label>
+              <Textarea
+                rows={6}
+                value={form.source_text}
+                onChange={(e) => setForm({ ...form, source_text: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>검수 상태</Label>
+              <Select
+                value={form.status}
+                onValueChange={(v) => setForm({ ...form, status: v as ScenarioStatus })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUS_ORDER.map((s) => (
+                    <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFormOpen(false)}>취소</Button>
+            <Button onClick={saveForm} className="bg-[#1d2336] text-white hover:bg-[#1d2336]/90">
+              저장
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 };
