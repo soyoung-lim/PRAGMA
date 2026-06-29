@@ -131,6 +131,8 @@ interface Scenario {
   scenario_P?: ScenarioP | null;
   scenario_D?: ScenarioD | null;
   scenario_R?: ScenarioR | null;
+  pragmatic_challenge?: PragmaticChallenge[] | null;
+  challenge_intensity?: ChallengeIntensity | null;
 }
 
 const SPEECH_ACT_LABEL: Record<SpeechAct, string> = {
