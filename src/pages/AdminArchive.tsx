@@ -609,6 +609,124 @@ const AdminArchive = () => {
     });
   };
 
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ScenarioEditable & { status: ScenarioStatus }>(() => emptyForm());
+
+  function emptyForm(): ScenarioEditable & { status: ScenarioStatus } {
+    return {
+      title: "",
+      week_no: null,
+      language_direction: null,
+      mode: null,
+      speech_act_text: "",
+      scenario_P: null,
+      scenario_D: null,
+      scenario_R: null,
+      pragmatic_challenge: [],
+      challenge_intensity: null,
+      hsk_level_min: null,
+      source_text: "",
+      status: "pending",
+    };
+  }
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(emptyForm());
+    setFormOpen(true);
+  };
+
+  const openEdit = (s: Scenario) => {
+    setEditingId(s.id);
+    setForm({
+      title: s.title,
+      week_no: s.week_no ?? null,
+      language_direction: s.language_direction ?? null,
+      mode: s.mode ?? null,
+      speech_act_text: s.speech_act_text ?? SPEECH_ACT_LABEL[s.speech_act] ?? "",
+      scenario_P: s.scenario_P ?? null,
+      scenario_D: s.scenario_D ?? null,
+      scenario_R: s.scenario_R ?? null,
+      pragmatic_challenge: s.pragmatic_challenge ?? [],
+      challenge_intensity: s.challenge_intensity ?? null,
+      hsk_level_min: s.hsk_level_min ?? null,
+      source_text: s.source_text,
+      status: getStatus(s),
+    });
+    setFormOpen(true);
+  };
+
+  const togglePragmatic = (v: PragmaticChallenge) => {
+    setForm((f) => {
+      const cur = f.pragmatic_challenge ?? [];
+      const has = cur.includes(v);
+      return {
+        ...f,
+        pragmatic_challenge: has ? cur.filter((x) => x !== v) : [...cur, v],
+      };
+    });
+  };
+
+  const saveForm = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (editingId) {
+      const next = {
+        ...extras,
+        [editingId]: {
+          title: form.title,
+          source_text: form.source_text,
+          week_no: form.week_no,
+          language_direction: form.language_direction,
+          mode: form.mode,
+          speech_act_text: form.speech_act_text,
+          scenario_P: form.scenario_P,
+          scenario_D: form.scenario_D,
+          scenario_R: form.scenario_R,
+          pragmatic_challenge: form.pragmatic_challenge,
+          challenge_intensity: form.challenge_intensity,
+          hsk_level_min: form.hsk_level_min,
+        } as Partial<ScenarioEditable>,
+      };
+      setExtras(next);
+      saveJSON(SCENARIO_EXTRAS_KEY, next);
+      updateStatus(editingId, form.status);
+    } else {
+      const id = `custom_${Date.now()}`;
+      const newScenario: Scenario = {
+        id,
+        title: form.title || "(제목 없음)",
+        source_text: form.source_text,
+        speech_act: "request",
+        speech_act_text: form.speech_act_text,
+        genre: "business_email",
+        learner_level: "intermediate",
+        industry_sector: "trade_distribution",
+        business_function: "overseas_sales",
+        interaction_context: "coordination",
+        review_status: "needs_review",
+        usage_assignment: "archived_only",
+        auto_check_result: "pass",
+        updated_at: today,
+        week_no: form.week_no,
+        scenario_P: form.scenario_P,
+        scenario_D: form.scenario_D,
+        scenario_R: form.scenario_R,
+        pragmatic_challenge: form.pragmatic_challenge,
+        challenge_intensity: form.challenge_intensity,
+        language_direction: form.language_direction,
+        mode: form.mode,
+        hsk_level_min: form.hsk_level_min,
+      };
+      const nextList = [newScenario, ...customScenarios];
+      setCustomScenarios(nextList);
+      saveJSON(SCENARIO_CUSTOM_KEY, nextList);
+      updateStatus(id, form.status);
+    }
+    setFormOpen(false);
+  };
+
+
 
   return (
     <AdminShell
