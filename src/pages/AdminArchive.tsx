@@ -507,6 +507,37 @@ const AdminArchive = () => {
   const [fFunction, setFFunction] = useState(ALL);
 
   const drafts = useDraftScenarios();
+
+  const [extras, setExtras] = useState<Record<string, Partial<ScenarioEditable>>>(
+    () => loadJSON<Record<string, Partial<ScenarioEditable>>>(SCENARIO_EXTRAS_KEY, {}),
+  );
+  const [customScenarios, setCustomScenarios] = useState<Scenario[]>(
+    () => loadJSON<Scenario[]>(SCENARIO_CUSTOM_KEY, []),
+  );
+
+  const applyExtras = (s: Scenario): Scenario => {
+    const e = extras[s.id];
+    if (!e) return s;
+    return {
+      ...s,
+      title: e.title ?? s.title,
+      source_text: e.source_text ?? s.source_text,
+      week_no: e.week_no !== undefined ? e.week_no : s.week_no,
+      scenario_P: e.scenario_P !== undefined ? e.scenario_P : s.scenario_P,
+      scenario_D: e.scenario_D !== undefined ? e.scenario_D : s.scenario_D,
+      scenario_R: e.scenario_R !== undefined ? e.scenario_R : s.scenario_R,
+      pragmatic_challenge:
+        e.pragmatic_challenge !== undefined ? e.pragmatic_challenge : s.pragmatic_challenge,
+      challenge_intensity:
+        e.challenge_intensity !== undefined ? e.challenge_intensity : s.challenge_intensity,
+      language_direction:
+        e.language_direction !== undefined ? e.language_direction : s.language_direction,
+      mode: e.mode !== undefined ? e.mode : s.mode,
+      hsk_level_min:
+        e.hsk_level_min !== undefined ? e.hsk_level_min : s.hsk_level_min,
+    };
+  };
+
   const visible = useMemo(() => {
     const draftsAsScenario: Scenario[] = drafts.map((d) => ({
       id: d.id,
@@ -524,10 +555,12 @@ const AdminArchive = () => {
       updated_at: d.updated_at,
     }));
     return [
+      ...customScenarios,
       ...draftsAsScenario,
       ...MOCK.filter((s) => s.review_status !== "generated"),
-    ];
-  }, [drafts]);
+    ].map(applyExtras);
+  }, [drafts, customScenarios, extras]);
+
 
   const filtered = useMemo(() => {
     return visible.filter((s) => {
