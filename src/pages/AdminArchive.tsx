@@ -472,6 +472,22 @@ const AdminArchive = () => {
     };
   }, [filtered]);
 
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, ScenarioStatus>>(
+    () => loadStatusOverrides(),
+  );
+
+  const getStatus = (s: Scenario): ScenarioStatus =>
+    statusOverrides[s.id] ?? deriveStatusFromLegacy(s.review_status);
+
+  const updateStatus = (id: string, next: ScenarioStatus) => {
+    setStatusOverrides((prev) => {
+      const merged = { ...prev, [id]: next };
+      saveStatusOverrides(merged);
+      return merged;
+    });
+  };
+
+
   return (
     <AdminShell
       title="시나리오 아카이브"
