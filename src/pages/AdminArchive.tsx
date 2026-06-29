@@ -700,12 +700,34 @@ const AdminArchive = () => {
                 >
                   상세 보기
                 </Button>
-                <Button
-                  className="h-8 bg-[#1d2336] text-[12px] text-white hover:bg-[#1d2336]/90"
-                  onClick={() => {}}
-                >
-                  검수하기
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className="h-8 bg-[#1d2336] text-[12px] text-white hover:bg-[#1d2336]/90">
+                      검수하기 ▾
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuLabel className="text-[11px] text-muted-foreground">
+                      상태 변경
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {STATUS_ORDER.map((opt) => (
+                      <DropdownMenuItem
+                        key={opt}
+                        onSelect={() => updateStatus(s.id, opt)}
+                        className="text-[12px]"
+                      >
+                        <span className="flex w-full items-center justify-between">
+                          <span>{STATUS_LABEL[opt]}</span>
+                          {status === opt && (
+                            <span className="text-[10px] text-muted-foreground">현재</span>
+                          )}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
               </div>
             </article>
           );
