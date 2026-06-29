@@ -194,6 +194,7 @@ interface Scenario {
   language_direction?: LanguageDirection | null;
   mode?: ScenarioMode | null;
   hsk_level_min?: HskLevelMin | null;
+  speech_act_text?: string | null;
 }
 
 const SPEECH_ACT_LABEL: Record<SpeechAct, string> = {
