@@ -250,6 +250,10 @@ const MOCK: Scenario[] = [
     usage_assignment: "archived_only",
     auto_check_result: "fail",
     updated_at: "2026-05-15",
+    week_no: 2,
+    scenario_P: "higher",
+    scenario_D: "distant",
+    scenario_R: "low",
   },
   {
     id: "s5",
