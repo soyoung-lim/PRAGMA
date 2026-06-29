@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import { useDraftScenarios } from "@/lib/scenarioDrafts";
@@ -9,6 +9,62 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+type ScenarioStatus = "pending" | "approved" | "revision" | "rejected";
+
+const STATUS_LABEL: Record<ScenarioStatus, string> = {
+  pending: "검수 대기",
+  approved: "승인 완료",
+  revision: "보완 필요",
+  rejected: "폐기",
+};
+
+const STATUS_BADGE: Record<ScenarioStatus, string> = {
+  pending: "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]",
+  approved: "bg-[#D1FAE5] text-[#065F46] border-[#6EE7B7]",
+  revision: "bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]",
+  rejected: "bg-[#E5E7EB] text-[#374151] border-[#D1D5DB]",
+};
+
+const STATUS_ORDER: ScenarioStatus[] = ["pending", "approved", "revision", "rejected"];
+
+const STATUS_OVERRIDE_KEY = "admin_archive_status_overrides_v1";
+
+function loadStatusOverrides(): Record<string, ScenarioStatus> {
+  try {
+    const raw = localStorage.getItem(STATUS_OVERRIDE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch {
+    /* noop */
+  }
+  return {};
+}
+
+function saveStatusOverrides(map: Record<string, ScenarioStatus>) {
+  try {
+    localStorage.setItem(STATUS_OVERRIDE_KEY, JSON.stringify(map));
+  } catch {
+    /* noop */
+  }
+}
+
+function deriveStatusFromLegacy(legacy: string): ScenarioStatus {
+  if (legacy === "approved") return "approved";
+  if (legacy === "revise_required") return "revision";
+  // needs_review, generated, revised, anything else → pending
+  return "pending";
+}
+
 
 type ReviewStatus =
   | "generated"
