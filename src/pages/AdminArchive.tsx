@@ -267,6 +267,8 @@ const MOCK: Scenario[] = [
     scenario_P: "lower",
     scenario_D: "distant",
     scenario_R: "high",
+    pragmatic_challenge: ["directness_control", "imposition_management"],
+    challenge_intensity: "high",
   },
   {
     id: "s2",
@@ -287,6 +289,8 @@ const MOCK: Scenario[] = [
     scenario_P: "equal",
     scenario_D: "neutral",
     scenario_R: "mid",
+    pragmatic_challenge: ["formality_control"],
+    challenge_intensity: "mid",
   },
   {
     id: "s3",
@@ -307,6 +311,8 @@ const MOCK: Scenario[] = [
     scenario_P: "higher",
     scenario_D: "close",
     scenario_R: "high",
+    pragmatic_challenge: ["directness_control", "formality_control", "imposition_management"],
+    challenge_intensity: "high",
   },
   {
     id: "s4",
@@ -327,6 +333,8 @@ const MOCK: Scenario[] = [
     scenario_P: "higher",
     scenario_D: "distant",
     scenario_R: "low",
+    pragmatic_challenge: ["imposition_management"],
+    challenge_intensity: "low",
   },
   {
     id: "s5",
