@@ -235,6 +235,18 @@ const USAGE_LABEL: Record<UsageAssignment, string> = {
   excluded: "제외",
 };
 
+const PRAGMATIC_CHALLENGE_LABEL: Record<PragmaticChallenge, string> = {
+  directness_control: "직접성 조절",
+  formality_control: "격식 조절",
+  imposition_management: "부담·체면 관리",
+};
+
+const INTENSITY_LABEL: Record<ChallengeIntensity, string> = {
+  low: "강도 낮음",
+  mid: "강도 보통",
+  high: "강도 높음",
+};
+
 const MOCK: Scenario[] = [
   {
     id: "s1",
