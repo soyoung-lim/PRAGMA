@@ -191,6 +191,9 @@ interface Scenario {
   scenario_R?: ScenarioR | null;
   pragmatic_challenge?: PragmaticChallenge[] | null;
   challenge_intensity?: ChallengeIntensity | null;
+  language_direction?: LanguageDirection | null;
+  mode?: ScenarioMode | null;
+  hsk_level_min?: HskLevelMin | null;
 }
 
 const SPEECH_ACT_LABEL: Record<SpeechAct, string> = {
