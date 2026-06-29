@@ -327,57 +327,87 @@ export type Database = {
             | Database["public"]["Enums"]["auto_check_result"]
             | null
           business_function: string | null
+          challenge_intensity: string | null
           created_at: string | null
           genre: string | null
+          hsk_level_min: number | null
           industry_sector: string | null
           interaction_context: string | null
+          language_direction: string | null
           learner_level: string | null
+          mode: string | null
+          pragmatic_challenge: string[] | null
           review_status: Database["public"]["Enums"]["review_status"]
+          scenario_d: string | null
           scenario_id: string
+          scenario_p: string | null
+          scenario_r: string | null
           source_text: string | null
           speech_act: Database["public"]["Enums"]["speech_act"]
+          speech_act_text: string | null
           title: string
           topic: string | null
           updated_at: string | null
           usage_assignment: Database["public"]["Enums"]["usage_assignment"]
+          week_no: number | null
         }
         Insert: {
           auto_check_result?:
             | Database["public"]["Enums"]["auto_check_result"]
             | null
           business_function?: string | null
+          challenge_intensity?: string | null
           created_at?: string | null
           genre?: string | null
+          hsk_level_min?: number | null
           industry_sector?: string | null
           interaction_context?: string | null
+          language_direction?: string | null
           learner_level?: string | null
+          mode?: string | null
+          pragmatic_challenge?: string[] | null
           review_status?: Database["public"]["Enums"]["review_status"]
+          scenario_d?: string | null
           scenario_id?: string
+          scenario_p?: string | null
+          scenario_r?: string | null
           source_text?: string | null
           speech_act: Database["public"]["Enums"]["speech_act"]
+          speech_act_text?: string | null
           title: string
           topic?: string | null
           updated_at?: string | null
           usage_assignment?: Database["public"]["Enums"]["usage_assignment"]
+          week_no?: number | null
         }
         Update: {
           auto_check_result?:
             | Database["public"]["Enums"]["auto_check_result"]
             | null
           business_function?: string | null
+          challenge_intensity?: string | null
           created_at?: string | null
           genre?: string | null
+          hsk_level_min?: number | null
           industry_sector?: string | null
           interaction_context?: string | null
+          language_direction?: string | null
           learner_level?: string | null
+          mode?: string | null
+          pragmatic_challenge?: string[] | null
           review_status?: Database["public"]["Enums"]["review_status"]
+          scenario_d?: string | null
           scenario_id?: string
+          scenario_p?: string | null
+          scenario_r?: string | null
           source_text?: string | null
           speech_act?: Database["public"]["Enums"]["speech_act"]
+          speech_act_text?: string | null
           title?: string
           topic?: string | null
           updated_at?: string | null
           usage_assignment?: Database["public"]["Enums"]["usage_assignment"]
+          week_no?: number | null
         }
         Relationships: []
       }
