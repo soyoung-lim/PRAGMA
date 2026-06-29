@@ -50,6 +50,10 @@ type BusinessFunction =
   | "event_operations"
   | "international_collaboration";
 
+type ScenarioP = "higher" | "equal" | "lower";
+type ScenarioD = "close" | "neutral" | "distant";
+type ScenarioR = "high" | "mid" | "low";
+
 interface Scenario {
   id: string;
   title: string;
@@ -64,6 +68,10 @@ interface Scenario {
   usage_assignment: UsageAssignment;
   auto_check_result: AutoCheck;
   updated_at: string;
+  week_no?: number | null;
+  scenario_P?: ScenarioP | null;
+  scenario_D?: ScenarioD | null;
+  scenario_R?: ScenarioR | null;
 }
 
 const SPEECH_ACT_LABEL: Record<SpeechAct, string> = {
