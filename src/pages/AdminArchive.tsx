@@ -874,12 +874,17 @@ const AdminArchive = () => {
               </p>
 
               <div className="mt-3 flex flex-wrap gap-1.5">
-                <MetaTag>{SPEECH_ACT_LABEL[s.speech_act]}</MetaTag>
+                <MetaTag>{s.speech_act_text || SPEECH_ACT_LABEL[s.speech_act]}</MetaTag>
                 <MetaTag>{GENRE_LABEL[s.genre]}</MetaTag>
                 <MetaTag>{LEVEL_LABEL[s.learner_level]}</MetaTag>
                 <MetaTag>{INDUSTRY_LABEL[s.industry_sector]}</MetaTag>
                 <MetaTag>{FUNCTION_LABEL[s.business_function]}</MetaTag>
                 <MetaTag>{CONTEXT_LABEL[s.interaction_context]}</MetaTag>
+                {s.language_direction && (
+                  <MetaTag>{s.language_direction === "ko-zh" ? "한→중" : "중→한"}</MetaTag>
+                )}
+                {s.mode && <MetaTag>{MODE_LABEL[s.mode]}</MetaTag>}
+                {s.hsk_level_min != null && <MetaTag>HSK {s.hsk_level_min}+</MetaTag>}
                 {s.week_no != null && (
                   <span className="inline-flex items-center rounded-md border border-[#C7D2FE] bg-[#EEF2FF] px-2 py-0.5 text-[11px] text-[#3730A3]">
                     {s.week_no}주차
