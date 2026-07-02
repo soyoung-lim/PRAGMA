@@ -8,6 +8,16 @@ import { toast } from "sonner";
 import { PageTitle } from "@/components/PageTitle";
 import { Volume2, Loader2 } from "lucide-react";
 import { requestTtsAudio } from "@/lib/tts";
+import { supabase } from "@/integrations/supabase/client";
+
+type DbScenario = {
+  scenario_id: string;
+  title: string | null;
+  speech_act: string | null;
+  industry_sector: string | null;
+  source_text: string | null;
+  week_no: number | null;
+};
 
 type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
@@ -130,6 +140,21 @@ const ScenarioSelect = () => {
   const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null);
   const [ttsError, setTtsError] = useState<{ cardKey: string; msg: string } | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const [dbScenarios, setDbScenarios] = useState<DbScenario[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("scenarios")
+        .select("scenario_id,title,speech_act,industry_sector,source_text,week_no")
+        .eq("review_status", "approved")
+        .order("created_at", { ascending: false });
+      if (!cancelled && !error && data) setDbScenarios(data as DbScenario[]);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
 
   const cleanupAudio = () => {
     if (audioEl) {
@@ -389,6 +414,46 @@ const ScenarioSelect = () => {
                   ))}
                 </div>
             </div>
+
+            {/* Admin-registered scenarios (from DB) — proof of connection */}
+            {(() => {
+              const items = dbScenarios.filter((s) => s.speech_act === selected);
+              if (items.length === 0) return null;
+              return (
+                <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+                  <SectionLabel>관리자 등록 시나리오</SectionLabel>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    관리자 아카이브에서 등록·승인된 시나리오입니다. (읽기 전용 미리보기)
+                  </p>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {items.map((s) => (
+                      <div
+                        key={s.scenario_id}
+                        className="flex flex-col gap-2 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FAF8F2] p-4 text-left"
+                      >
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {s.industry_sector ?? "미지정"}
+                          {s.week_no != null ? ` · Week ${s.week_no}` : ""}
+                        </span>
+                        <span className="text-[15px] font-semibold leading-snug text-[#15202B]">
+                          {s.title ?? "(제목 없음)"}
+                        </span>
+                        {s.source_text && (
+                          <span className="text-xs leading-relaxed text-foreground/80 line-clamp-3">
+                            {s.source_text}
+                          </span>
+                        )}
+                        <span className="mt-1 inline-flex w-fit items-center rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-2 py-0.5 text-[11px] font-medium text-[#5C6A7A]">
+                          DB · approved
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+
 
             {(demo || bodyOpen) && (<>
             {/* Block 1: scenario detail */}
