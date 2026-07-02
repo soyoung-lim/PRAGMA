@@ -140,6 +140,21 @@ const ScenarioSelect = () => {
   const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null);
   const [ttsError, setTtsError] = useState<{ cardKey: string; msg: string } | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const [dbScenarios, setDbScenarios] = useState<DbScenario[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("scenarios")
+        .select("scenario_id,title,speech_act,industry_sector,source_text,week_no")
+        .eq("review_status", "approved")
+        .order("created_at", { ascending: false });
+      if (!cancelled && !error && data) setDbScenarios(data as DbScenario[]);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
 
   const cleanupAudio = () => {
     if (audioEl) {
