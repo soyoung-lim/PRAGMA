@@ -282,7 +282,7 @@ const ScenarioSelect = () => {
         activeScenario.scenario_d && { label: "D (사회적 거리)", value: activeScenario.scenario_d },
         activeScenario.scenario_r && { label: "R (부담도)", value: activeScenario.scenario_r },
         activeScenario.challenge_intensity && { label: "난이도", value: activeScenario.challenge_intensity },
-        activeScenario.hsk_level_min && { label: "권장 HSK", value: activeScenario.hsk_level_min },
+        activeScenario.hsk_level_min != null && { label: "권장 HSK", value: String(activeScenario.hsk_level_min) },
       ].filter(Boolean) as { label: string; value: string }[]
     : [];
 
