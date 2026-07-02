@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ensureSession, logAction } from "@/lib/tracking";
@@ -9,87 +9,36 @@ import { PageTitle } from "@/components/PageTitle";
 import { Volume2, Loader2 } from "lucide-react";
 import { requestTtsAudio } from "@/lib/tts";
 import { supabase } from "@/integrations/supabase/client";
+import { setSelectedScenarioId } from "@/lib/entryGate";
 
 type DbScenario = {
   scenario_id: string;
   title: string | null;
   speech_act: string | null;
+  speech_act_text: string | null;
   industry_sector: string | null;
+  domain: string | null;
   source_text: string | null;
   week_no: number | null;
+  language_direction: string | null;
+  scenario_p: string | null;
+  scenario_d: string | null;
+  scenario_r: string | null;
+  pragmatic_challenge: string[] | null;
+  challenge_intensity: string | null;
+  hsk_level_min: number | null;
 };
 
 type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP1_ANSWERS_KEY = "step1-answers";
 const BODY_OPEN_KEY = "step1-body-open";
-
-type LibItem = {
-  sector: string;
-  title: string;
-  desc: string;
-  descZh: string;
-  available: boolean;
-};
-
-const LIBRARY: Record<ActId, LibItem[]> = {
-  request: [
-    { sector: "엔터콘텐츠", title: "팬 이벤트 자료 전달 일정 연장", desc: "K-pop 팬 이벤트 자료 전달 일정을 늦춰 달라고 요청합니다.", descZh: "请求推迟K-pop粉丝活动资料的交付日程。", available: true },
-    { sector: "뷰티산업", title: "상세페이지 문구 재검토", desc: "중국어 제품 설명 문구를 한 번 더 검토해 달라고 요청합니다.", descZh: "请求再次审核中文产品说明文案。", available: false },
-    { sector: "게임산업", title: "이벤트 공지 일정 조정", desc: "중국 서버 이벤트 공지 공개 일정을 조정해 달라고 요청합니다.", descZh: "请求调整中国服务器活动公告的发布日程。", available: false },
-    { sector: "이커머스", title: "상품 이미지 추가 제공", desc: "중국 라이브커머스용 상품 이미지를 추가로 제공해 달라고 요청합니다.", descZh: "请求为中国直播电商额外提供商品图片。", available: false },
-    { sector: "기업실무", title: "회의 자료 수정", desc: "중국 협력사와의 회의 자료 일부 수정을 요청합니다.", descZh: "请求修改与中国合作方会议资料的部分内容。", available: false },
-    { sector: "테크산업", title: "앱 화면 문구 수정 요청", desc: "중국 사용자용 앱 화면에 들어갈 안내 문구 수정을 요청합니다.", descZh: "请求修改面向中国用户的应用界面提示文案。", available: false },
-  ],
-  refusal: [
-    { sector: "엔터콘텐츠", title: "공동 프로모션 비용 인하 거절", desc: "공동 프로모션 비용 인하가 어렵다고 답합니다.", descZh: "回复表示难以下调共同促销费用。", available: true },
-    { sector: "뷰티산업", title: "샘플 물량 추가 제공 거절", desc: "신제품 샘플 물량 추가 제공이 어렵다고 답합니다.", descZh: "回复表示难以追加提供新品样品数量。", available: false },
-    { sector: "게임산업", title: "이벤트 보상 확대 거절", desc: "이벤트 보상 확대 요청을 수용하기 어렵다고 답합니다.", descZh: "回复表示难以接受扩大活动奖励的请求。", available: false },
-    { sector: "이커머스", title: "배송 일정 앞당기기 거절", desc: "상품 배송 일정을 앞당기기 어렵다고 답합니다.", descZh: "回复表示难以提前商品配送日程。", available: false },
-    { sector: "기업실무", title: "회의 일정 앞당기기 거절", desc: "중국 협력사의 회의 일정 앞당기기 요청을 수용하기 어렵다고 답합니다.", descZh: "回复表示难以接受中国合作方提前会议日程的请求。", available: false },
-    { sector: "테크산업", title: "기능 추가 요청 거절", desc: "중국 파트너사의 앱 기능 추가 요청을 수용하기 어렵다고 답합니다.", descZh: "回复表示难以接受中国合作伙伴追加应用功能的请求。", available: false },
-  ],
-};
+const SELECTED_SCENARIO_KEY = "step1-scenario-id";
 
 const ACTS: { id: ActId; title: string; desc: string }[] = [
-  { id: "request", title: "요청 상황", desc: "K-pop 팬 이벤트 자료 전달 일정 연장 요청" },
-  { id: "refusal", title: "거절 상황", desc: "K-pop 팬 이벤트 공동 프로모션 비용 인하 요청 거절" },
+  { id: "request", title: "요청 상황", desc: "상대에게 무언가를 요청하는 상황" },
+  { id: "refusal", title: "거절 상황", desc: "상대의 요청을 거절해야 하는 상황" },
 ];
-
-const SCENARIO_DETAIL: Record<ActId, string[]> = {
-  request: [
-    "당신은 한국 엔터테인먼트 기획사의 해외사업팀 직원입니다.",
-    "중국 대형 콘텐츠 플랫폼에 K-pop 아티스트 온라인 팬 이벤트 페이지 자료를 이번 주 금요일까지 전달하기로 했지만, 아티스트 측 최종 확인이 늦어져 일정 연장이 필요합니다.",
-    "상대는 처음 공식 협업하는 중국 플랫폼 담당자이며, 일정 연장은 상대의 공개 일정에 부담이 될 수 있습니다.",
-  ],
-  refusal: [
-    "당신은 한국 엔터테인먼트 기획사의 해외사업팀 직원입니다.",
-    "중국 콘텐츠 플랫폼 담당자가 K-pop 아티스트 온라인 팬 이벤트 공동 프로모션 비용을 낮춰 달라고 요청했습니다.",
-    "상대와는 여러 번 연락해 온 실무 관계이지만, 내부 검토 결과 이번에는 비용 인하가 어렵다는 답변을 보내야 합니다.",
-  ],
-};
-
-const KEY_INFO: Record<ActId, { label: string; value: string }[]> = {
-  request: [
-    { label: "나의 역할", value: "한국 엔터테인먼트 기획사 해외사업팀 직원" },
-    { label: "상대", value: "중국 대형 콘텐츠 플랫폼 담당자" },
-    { label: "관계", value: "첫 공식 협업, 격식 있는 관계" },
-    { label: "해야 할 일", value: "K-pop 팬 이벤트 페이지 자료 전달 일정 연장 요청" },
-    { label: "부담도", value: "상대의 공개 일정에 부담 있음" },
-  ],
-  refusal: [
-    { label: "나의 역할", value: "한국 엔터테인먼트 기획사 해외사업팀 직원" },
-    { label: "상대", value: "중국 콘텐츠 플랫폼 실무 담당자" },
-    { label: "관계", value: "여러 번 연락해 온 실무 관계" },
-    { label: "해야 할 일", value: "공동 프로모션 비용 인하 요청 거절" },
-    { label: "부담도", value: "비용 문제라 민감함" },
-  ],
-};
-
-const SOURCE_TEXT: Record<ActId, string> = {
-  request: "이번 자료 전달 일정을 10일 정도 연장해 주실 수 있을지 검토 부탁드립니다.",
-  refusal: "검토해 봤는데 이번에는 프로모션 비용 인하가 어려울 것 같습니다.",
-};
 
 const QUESTIONS: { id: "q1" | "q2" | "q3"; label: string; options: string[] }[] = [
   {
@@ -130,10 +79,16 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
+const DIRECTION_LABEL: Record<string, string> = {
+  ko_to_zh: "한 → 중",
+  zh_to_ko: "중 → 한",
+};
+
 const ScenarioSelect = () => {
   const navigate = useNavigate();
   const demo = isDemoMode();
   const [selected, setSelected] = useState<ActId | null>(null);
+  const [selectedId, setSelectedIdState] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Answers>(EMPTY);
   const [bodyOpen, setBodyOpen] = useState<boolean>(false);
   const [playing, setPlaying] = useState<string | null>(null);
@@ -141,20 +96,28 @@ const ScenarioSelect = () => {
   const [ttsError, setTtsError] = useState<{ cardKey: string; msg: string } | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const [dbScenarios, setDbScenarios] = useState<DbScenario[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
       const { data, error } = await supabase
         .from("scenarios")
-        .select("scenario_id,title,speech_act,industry_sector,source_text,week_no")
+        .select(
+          "scenario_id,title,speech_act,speech_act_text,industry_sector,domain,source_text,week_no,language_direction,scenario_p,scenario_d,scenario_r,pragmatic_challenge,challenge_intensity,hsk_level_min",
+        )
         .eq("review_status", "approved")
         .order("created_at", { ascending: false });
-      if (!cancelled && !error && data) setDbScenarios(data as DbScenario[]);
+      if (!cancelled) {
+        if (!error && data) setDbScenarios(data as DbScenario[]);
+        setLoading(false);
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
 
   const cleanupAudio = () => {
     if (audioEl) {
@@ -169,25 +132,17 @@ const ScenarioSelect = () => {
   };
 
   const playTTS = async (cardKey: string, buttonKey: string, text: string, lang: "ko" | "zh") => {
-    console.log("[TTS Step1] sending:", { scenarioId: selected, cardKey, language: lang, text });
     setTtsError(null);
     cleanupAudio();
     setPlaying(buttonKey);
     try {
-      const result = await requestTtsAudio({
-        text,
-        lang,
-        logPrefix: "[TTS Step1]",
-      });
-
+      const result = await requestTtsAudio({ text, lang, logPrefix: "[TTS Step1]" });
       if (result.ok === false) {
         setTtsError({ cardKey, msg: result.message || "음성 생성에 실패했습니다. 다시 시도해 주세요." });
         return;
       }
-
       const url = URL.createObjectURL(result.blob);
       audioUrlRef.current = url;
-      console.log("[TTS Step1] audio URL:", url);
       const audio = new Audio(url);
       setAudioEl(audio);
       audio.onended = () => {
@@ -197,8 +152,7 @@ const ScenarioSelect = () => {
         }
         setAudioEl(null);
       };
-      audio.onerror = (err) => {
-        console.error("[TTS Step1] audio error:", err);
+      audio.onerror = () => {
         if (audioUrlRef.current === url) {
           URL.revokeObjectURL(url);
           audioUrlRef.current = null;
@@ -206,12 +160,10 @@ const ScenarioSelect = () => {
         setAudioEl(null);
         setTtsError({ cardKey, msg: "음성 재생에 실패했습니다. 다시 시도해 주세요." });
       };
-      await audio.play().catch((err) => {
-        console.error("[TTS Step1] play error:", err);
+      await audio.play().catch(() => {
         setTtsError({ cardKey, msg: "음성 재생에 실패했습니다. 다시 시도해 주세요." });
       });
     } catch (e) {
-      console.error("[TTS Step1] error:", e);
       setTtsError({ cardKey, msg: (e as Error).message || "음성 생성에 실패했습니다." });
     } finally {
       setPlaying(null);
@@ -224,6 +176,8 @@ const ScenarioSelect = () => {
     try {
       const saved = localStorage.getItem(ACT_STORAGE_KEY);
       if (saved === "request" || saved === "refusal") setSelected(saved);
+      const sid = localStorage.getItem(SELECTED_SCENARIO_KEY);
+      if (sid) setSelectedIdState(sid);
       const a = localStorage.getItem(STEP1_ANSWERS_KEY);
       if (a) {
         const parsed = JSON.parse(a) as Partial<Answers>;
@@ -235,23 +189,31 @@ const ScenarioSelect = () => {
       }
       const b = localStorage.getItem(BODY_OPEN_KEY);
       if (b === "1") setBodyOpen(true);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useStageTimer(1);
 
   useEffect(() => {
     return () => {
-      if (audioEl) {
-        audioEl.pause();
-      }
-      if (audioUrlRef.current) {
-        URL.revokeObjectURL(audioUrlRef.current);
-      }
+      if (audioEl) audioEl.pause();
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     };
   }, [audioEl]);
 
-  const handleSelect = (id: ActId) => {
+  const scenariosForAct = useMemo(
+    () => (selected ? dbScenarios.filter((s) => s.speech_act === selected) : []),
+    [dbScenarios, selected],
+  );
+
+  const activeScenario = useMemo(
+    () => scenariosForAct.find((s) => s.scenario_id === selectedId) ?? null,
+    [scenariosForAct, selectedId],
+  );
+
+  const handleSelectAct = (id: ActId) => {
     if (demo) return;
     if (selected === id) return;
     logAction(selected ? "revision" : "selection", {
@@ -259,43 +221,70 @@ const ScenarioSelect = () => {
       ...(selected ? { oldValue: selected, newValue: id } : { value: id }),
     });
     setSelected(id);
+    setSelectedIdState(null);
+    setSelectedScenarioId(null);
     setAnswers(EMPTY);
     setBodyOpen(false);
-    try { localStorage.setItem(ACT_STORAGE_KEY, id); } catch { /* ignore */ }
-    try { localStorage.setItem(STEP1_ANSWERS_KEY, JSON.stringify(EMPTY)); } catch { /* ignore */ }
-    try { localStorage.setItem(BODY_OPEN_KEY, "0"); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(ACT_STORAGE_KEY, id);
+      localStorage.removeItem(SELECTED_SCENARIO_KEY);
+      localStorage.setItem(STEP1_ANSWERS_KEY, JSON.stringify(EMPTY));
+      localStorage.setItem(BODY_OPEN_KEY, "0");
+    } catch {
+      /* ignore */
+    }
   };
 
-  const openBody = () => {
-    setBodyOpen(true);
-    try { localStorage.setItem(BODY_OPEN_KEY, "1"); } catch { /* ignore */ }
-    logAction("selection", { field: "libraryScenario", value: "available" });
-  };
-
-  const handleLibraryClick = (item: LibItem) => {
+  const handlePickScenario = (s: DbScenario) => {
     if (demo) {
-      toast("데모 모드에서는 미리보기만 가능합니다. 시나리오를 직접 체험하려면 학습 모드로 진입해 주세요.");
+      toast("데모 모드에서는 미리보기만 가능합니다.");
       return;
     }
-    if (item.available) {
-      openBody();
-    } else {
-      toast("이 시나리오는 수업용 확장 버전에서 제공될 예정입니다.");
+    setSelectedIdState(s.scenario_id);
+    setSelectedScenarioId(s.scenario_id);
+    setBodyOpen(true);
+    try {
+      localStorage.setItem(SELECTED_SCENARIO_KEY, s.scenario_id);
+      localStorage.setItem(BODY_OPEN_KEY, "1");
+    } catch {
+      /* ignore */
     }
+    logAction("selection", { field: "scenarioId", value: s.scenario_id });
   };
 
   const setAnswer = (q: "q1" | "q2" | "q3", idx: number) => {
     if (demo) return;
     setAnswers((prev) => {
       const next = { ...prev, [q]: idx };
-      try { localStorage.setItem(STEP1_ANSWERS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      try {
+        localStorage.setItem(STEP1_ANSWERS_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
       return next;
     });
     logAction("selection", { field: q, value: idx });
   };
 
   const allAnswered = answers.q1 !== null && answers.q2 !== null && answers.q3 !== null;
-  const canProceed = demo || (Boolean(selected) && bodyOpen && allAnswered);
+  const canProceed = demo || (Boolean(selected) && Boolean(activeScenario) && bodyOpen && allAnswered);
+
+  const keyInfoRows = activeScenario
+    ? [
+        activeScenario.industry_sector && { label: "업종", value: activeScenario.industry_sector },
+        activeScenario.domain && { label: "도메인", value: activeScenario.domain },
+        activeScenario.language_direction && {
+          label: "언어 방향",
+          value: DIRECTION_LABEL[activeScenario.language_direction] ?? activeScenario.language_direction,
+        },
+        activeScenario.speech_act_text && { label: "화행 설명", value: activeScenario.speech_act_text },
+        activeScenario.scenario_p && { label: "P (권력관계)", value: activeScenario.scenario_p },
+        activeScenario.scenario_d && { label: "D (사회적 거리)", value: activeScenario.scenario_d },
+        activeScenario.scenario_r && { label: "R (부담도)", value: activeScenario.scenario_r },
+        activeScenario.challenge_intensity && { label: "난이도", value: activeScenario.challenge_intensity },
+        activeScenario.hsk_level_min != null && { label: "권장 HSK", value: String(activeScenario.hsk_level_min) },
+      ].filter(Boolean) as { label: string; value: string }[]
+    : [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -314,7 +303,7 @@ const ScenarioSelect = () => {
               <button
                 key={act.id}
                 type="button"
-                onClick={() => handleSelect(act.id)}
+                onClick={() => handleSelectAct(act.id)}
                 aria-pressed={isSel}
                 aria-expanded={isSel}
                 disabled={demo}
@@ -337,99 +326,35 @@ const ScenarioSelect = () => {
         {selected && (
           <section key={selected} className="fade-in mt-6 space-y-6">
             <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
-                <SectionLabel>상황 설정 라이브러리</SectionLabel>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  현재 시연에서는 요청 1개와 거절 1개를 체험할 수 있습니다. 향후 수업용 버전에서는 다양한 산업과 업무 상황으로 확장할 수 있습니다.
-                </p>
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {LIBRARY[selected].map((item, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => handleLibraryClick(item)}
-                      className={[
-                        "flex flex-col gap-2 rounded-lg p-4 text-left transition-all duration-200",
-                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                        item.available
-                          ? "border-[1.5px] border-[#15202B] bg-[#FFFFFF] hover:-translate-y-0.5 hover:shadow-md"
-                          : "border-[0.5px] border-[#D3D1C7] bg-[#F5F3EC] hover:bg-[#EFEDE5]",
-                      ].join(" ")}
-                    >
-                      <span className="text-xs font-medium text-muted-foreground">{item.sector}</span>
-                      <span className="text-[15px] font-semibold leading-snug text-[#15202B]">{item.title}</span>
-                      <span className="text-xs leading-relaxed text-foreground/80">{item.desc}</span>
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <span
-                          className={[
-                            "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                            item.available
-                              ? "bg-[#FAD338] text-[#15202B]"
-                              : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] text-[#5C6A7A]",
-                          ].join(" ")}
-                        >
-                          {item.available ? "체험 가능" : "수업용 확장 예정"}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          {([
-                            { lang: "ko" as const, label: "한", text: item.desc },
-                            { lang: "zh" as const, label: "中", text: item.descZh },
-                          ]).map(({ lang, label, text }) => {
-                            const cardKey = `${selected}-${i}`;
-                            const key = `${cardKey}-${lang}`;
-                            const isPlaying = playing === key;
-                            return (
-                              <span
-                                key={lang}
-                                role="button"
-                                tabIndex={0}
-                                aria-label={`${label} 듣기`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!isPlaying) playTTS(cardKey, key, text, lang);
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (!isPlaying) playTTS(cardKey, key, text, lang);
-                                  }
-                                }}
-                                className="inline-flex cursor-pointer items-center gap-1 rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-2 py-0.5 text-[11px] font-medium text-[#15202B] hover:bg-[#FAF8F2]"
-                              >
-                                {isPlaying ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <Volume2 className="h-3 w-3" />
-                                )}
-                                {label}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      {ttsError?.cardKey === `${selected}-${i}` && (
-                        <p className="mt-2 text-[12px] text-[#B91C1C]">{ttsError.msg}</p>
-                      )}
-                    </button>
-                  ))}
-                </div>
-            </div>
+              <SectionLabel>상황 설정 라이브러리</SectionLabel>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                관리자 아카이브에서 등록·승인된 시나리오 중 하나를 선택하면 아래에 상세가 표시됩니다.
+              </p>
 
-            {/* Admin-registered scenarios (from DB) — proof of connection */}
-            {(() => {
-              const items = dbScenarios.filter((s) => s.speech_act === selected);
-              if (items.length === 0) return null;
-              return (
-                <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
-                  <SectionLabel>관리자 등록 시나리오</SectionLabel>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    관리자 아카이브에서 등록·승인된 시나리오입니다. (읽기 전용 미리보기)
-                  </p>
-                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {items.map((s) => (
-                      <div
+              {loading ? (
+                <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> 시나리오 불러오는 중…
+                </div>
+              ) : scenariosForAct.length === 0 ? (
+                <div className="mt-4 rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FAF8F2] p-4 text-sm text-muted-foreground">
+                  아직 등록된 승인 시나리오가 없습니다. 관리자 아카이브에서 시나리오를 추가하고 검수 상태를 <b>approved</b>로 바꿔주세요.
+                </div>
+              ) : (
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {scenariosForAct.map((s) => {
+                    const isPicked = selectedId === s.scenario_id;
+                    return (
+                      <button
                         key={s.scenario_id}
-                        className="flex flex-col gap-2 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FAF8F2] p-4 text-left"
+                        type="button"
+                        onClick={() => handlePickScenario(s)}
+                        className={[
+                          "flex flex-col gap-2 rounded-lg p-4 text-left transition-all duration-200",
+                          "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                          isPicked
+                            ? "border-[1.5px] border-[#15202B] bg-[#FFFFFF] shadow-sm"
+                            : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] hover:-translate-y-0.5 hover:shadow-md",
+                        ].join(" ")}
                       >
                         <span className="text-xs font-medium text-muted-foreground">
                           {s.industry_sector ?? "미지정"}
@@ -443,95 +368,131 @@ const ScenarioSelect = () => {
                             {s.source_text}
                           </span>
                         )}
-                        <span className="mt-1 inline-flex w-fit items-center rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-2 py-0.5 text-[11px] font-medium text-[#5C6A7A]">
-                          DB · approved
+                        <span
+                          className={[
+                            "mt-1 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                            isPicked
+                              ? "bg-[#FAD338] text-[#15202B]"
+                              : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] text-[#5C6A7A]",
+                          ].join(" ")}
+                        >
+                          {isPicked ? "선택됨" : "선택하기"}
                         </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {activeScenario && (demo || bodyOpen) && (
+              <>
+                {keyInfoRows.length > 0 && (
+                  <div className="rounded-lg border border-foreground/30 bg-background p-6">
+                    <SectionLabel>핵심 정보</SectionLabel>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      {keyInfoRows.map((item, i) => (
+                        <div key={i} className="flex flex-col gap-1">
+                          <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
+                          <span className="text-sm font-semibold text-foreground">{item.value}</span>
+                        </div>
+                      ))}
+                      {activeScenario.pragmatic_challenge && activeScenario.pragmatic_challenge.length > 0 && (
+                        <div className="flex flex-col gap-1 sm:col-span-2">
+                          <span className="text-xs font-medium text-muted-foreground">화용적 난점</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {activeScenario.pragmatic_challenge.map((c, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex items-center rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FAF8F2] px-2 py-0.5 text-[11px] font-medium text-[#15202B]"
+                              >
+                                {c}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeScenario.source_text && (
+                  <div className="rounded-xl border-[0.5px] border-[#D3D1C7] border-l-[4px] border-l-[#15202B] bg-[#FFFFFF] p-7 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
+                        번역해야 할 원문 (출발어)
                       </div>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        aria-label="원문 듣기"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const lang =
+                            activeScenario.language_direction === "zh_to_ko" ? "zh" : "ko";
+                          const key = `source-${activeScenario.scenario_id}`;
+                          if (playing !== key) playTTS(key, key, activeScenario.source_text!, lang);
+                        }}
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-2 py-0.5 text-[11px] font-medium text-[#15202B] hover:bg-[#FAF8F2]"
+                      >
+                        {playing === `source-${activeScenario.scenario_id}` ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Volume2 className="h-3 w-3" />
+                        )}
+                        듣기
+                      </span>
+                    </div>
+                    <p className="text-[19px] font-semibold leading-relaxed text-[#15202B]">
+                      {activeScenario.source_text}
+                    </p>
+                    {ttsError?.cardKey === `source-${activeScenario.scenario_id}` && (
+                      <p className="mt-2 text-[12px] text-[#B91C1C]">{ttsError.msg}</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+                  <SectionLabel>상황을 읽고, 본인이 느낀 그대로 골라주세요</SectionLabel>
+                  <div className="mt-2 space-y-6">
+                    {QUESTIONS.map((q) => (
+                      <fieldset key={q.id}>
+                        <legend className="text-sm font-semibold text-foreground">{q.label}</legend>
+                        <div className="mt-3 space-y-2">
+                          {q.options.map((opt, idx) => {
+                            const checked = answers[q.id] === idx;
+                            return (
+                              <label
+                                key={idx}
+                                className={[
+                                  "flex cursor-pointer items-start gap-3 rounded-md p-3 text-sm transition-colors text-[#15202B]",
+                                  checked
+                                    ? "border-[1.5px] border-[#15202B] bg-[#EEF2F7] font-medium"
+                                    : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] font-normal hover:bg-muted/30",
+                                ].join(" ")}
+                              >
+                                <input
+                                  type="radio"
+                                  name={q.id}
+                                  className="mt-0.5 h-[14px] w-[14px] shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-[#B4B2A9] bg-white checked:border-[#15202B] checked:bg-[radial-gradient(circle,_#FAD338_0_3.5px,_transparent_3.5px)]"
+                                  checked={checked}
+                                  disabled={demo}
+                                  onChange={() => setAnswer(q.id, idx)}
+                                />
+                                <span className="leading-snug">{opt}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </fieldset>
                     ))}
                   </div>
+                  <p className="mt-5 text-xs text-muted-foreground">
+                    정답이 있는 질문이 아닙니다. 본인이 상황을 어떻게 받아들였는지 그대로 골라주세요.
+                  </p>
                 </div>
-              );
-            })()}
-
-
-
-            {(demo || bodyOpen) && (<>
-            {/* Block 1: scenario detail */}
-            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
-              <SectionLabel>이 상황을 읽어주세요</SectionLabel>
-              <div className="space-y-3 text-[15px] leading-relaxed text-foreground">
-                {SCENARIO_DETAIL[selected].map((p, i) => (
-                  <p key={i}>{p}</p>
-                ))}
-              </div>
-            </div>
-
-            {/* Key info */}
-            <div className="rounded-lg border border-foreground/30 bg-background p-6">
-              <SectionLabel>핵심 정보</SectionLabel>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {KEY_INFO[selected].map((item, i) => (
-                  <div key={i} className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
-                    <span className="text-sm font-semibold text-foreground">{item.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Block 2: source text — hero pair (page protagonist) */}
-            <div className="rounded-xl border-[0.5px] border-[#D3D1C7] border-l-[4px] border-l-[#15202B] bg-[#FFFFFF] p-7 shadow-sm">
-              <div className="mb-3 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
-                번역해야 할 한국어 원문 (출발어)
-              </div>
-              <p className="text-[19px] font-semibold leading-relaxed text-[#15202B]">
-                {SOURCE_TEXT[selected]}
-              </p>
-            </div>
-
-            {/* Block 3: situation judgment */}
-            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
-              <SectionLabel>상황을 읽고, 본인이 느낀 그대로 골라주세요</SectionLabel>
-
-              <div className="mt-2 space-y-6">
-                {QUESTIONS.map((q) => (
-                  <fieldset key={q.id}>
-                    <legend className="text-sm font-semibold text-foreground">{q.label}</legend>
-                    <div className="mt-3 space-y-2">
-                      {q.options.map((opt, idx) => {
-                        const checked = answers[q.id] === idx;
-                        return (
-                          <label
-                            key={idx}
-                            className={[
-                              "flex cursor-pointer items-start gap-3 rounded-md p-3 text-sm transition-colors text-[#15202B]",
-                              checked
-                                ? "border-[1.5px] border-[#15202B] bg-[#EEF2F7] font-medium"
-                                : "border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] font-normal hover:bg-muted/30",
-                            ].join(" ")}
-                          >
-                            <input
-                              type="radio"
-                              name={q.id}
-                              className="mt-0.5 h-[14px] w-[14px] shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-[#B4B2A9] bg-white checked:border-[#15202B] checked:bg-[radial-gradient(circle,_#FAD338_0_3.5px,_transparent_3.5px)]"
-                              checked={checked}
-                              disabled={demo}
-                              onChange={() => setAnswer(q.id, idx)}
-                            />
-                            <span className="leading-snug">{opt}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </fieldset>
-                ))}
-              </div>
-
-              <p className="mt-5 text-xs text-muted-foreground">
-                정답이 있는 질문이 아닙니다. 본인이 상황을 어떻게 받아들였는지 그대로 골라주세요.
-              </p>
-            </div>
-            </>)}
+              </>
+            )}
           </section>
         )}
 
