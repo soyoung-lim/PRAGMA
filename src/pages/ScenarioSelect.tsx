@@ -415,6 +415,46 @@ const ScenarioSelect = () => {
                 </div>
             </div>
 
+            {/* Admin-registered scenarios (from DB) — proof of connection */}
+            {(() => {
+              const items = dbScenarios.filter((s) => s.speech_act === selected);
+              if (items.length === 0) return null;
+              return (
+                <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+                  <SectionLabel>관리자 등록 시나리오</SectionLabel>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    관리자 아카이브에서 등록·승인된 시나리오입니다. (읽기 전용 미리보기)
+                  </p>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {items.map((s) => (
+                      <div
+                        key={s.scenario_id}
+                        className="flex flex-col gap-2 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FAF8F2] p-4 text-left"
+                      >
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {s.industry_sector ?? "미지정"}
+                          {s.week_no != null ? ` · Week ${s.week_no}` : ""}
+                        </span>
+                        <span className="text-[15px] font-semibold leading-snug text-[#15202B]">
+                          {s.title ?? "(제목 없음)"}
+                        </span>
+                        {s.source_text && (
+                          <span className="text-xs leading-relaxed text-foreground/80 line-clamp-3">
+                            {s.source_text}
+                          </span>
+                        )}
+                        <span className="mt-1 inline-flex w-fit items-center rounded-full border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] px-2 py-0.5 text-[11px] font-medium text-[#5C6A7A]">
+                          DB · approved
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+
+
             {(demo || bodyOpen) && (<>
             {/* Block 1: scenario detail */}
             <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
