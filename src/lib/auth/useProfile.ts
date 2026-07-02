@@ -146,9 +146,11 @@ export function useProfile(): UseProfileResult {
     void refresh();
     const onStub = () => void refresh();
     window.addEventListener("dev-stub-changed", onStub);
+    window.addEventListener("profile-changed", onStub);
     return () => {
       sub.subscription.unsubscribe();
       window.removeEventListener("dev-stub-changed", onStub);
+      window.removeEventListener("profile-changed", onStub);
     };
   }, [loadProfile, refresh]);
 
