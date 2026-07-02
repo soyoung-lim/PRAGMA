@@ -198,8 +198,17 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
     try {
       if (isDevStub) {
         devStubCompleteProfile(trimmedName);
-      } else if (profile) {
+      } else {
+        // Resolve the user id even if the profile row hasn't loaded/been created yet.
+        let userId = profile?.user_id ?? null;
+        if (!userId) {
+          const { data } = await supabase.auth.getUser();
+          userId = data.user?.id ?? null;
+        }
+        if (!userId) throw new Error("no-auth-user");
+
         const payload = {
+          user_id: userId,
           // New canonical columns
           name: trimmedName,
           affiliation: affiliation,
@@ -217,8 +226,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
         };
         const { error } = await supabase
           .from("profiles")
-          .update(payload as never)
-          .eq("user_id", profile.user_id);
+          .upsert(payload as never, { onConflict: "user_id" });
         if (error) throw error;
       }
       await refresh();
