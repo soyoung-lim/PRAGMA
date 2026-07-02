@@ -26,7 +26,7 @@ type DbScenario = {
   scenario_r: string | null;
   pragmatic_challenge: string[] | null;
   challenge_intensity: string | null;
-  hsk_level_min: string | null;
+  hsk_level_min: number | null;
 };
 
 type ActId = "request" | "refusal";
