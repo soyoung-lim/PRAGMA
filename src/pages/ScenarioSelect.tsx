@@ -8,6 +8,16 @@ import { toast } from "sonner";
 import { PageTitle } from "@/components/PageTitle";
 import { Volume2, Loader2 } from "lucide-react";
 import { requestTtsAudio } from "@/lib/tts";
+import { supabase } from "@/integrations/supabase/client";
+
+type DbScenario = {
+  scenario_id: string;
+  title: string | null;
+  speech_act: string | null;
+  industry_sector: string | null;
+  source_text: string | null;
+  week_no: number | null;
+};
 
 type ActId = "request" | "refusal";
 const ACT_STORAGE_KEY = "step1-speech-act";
