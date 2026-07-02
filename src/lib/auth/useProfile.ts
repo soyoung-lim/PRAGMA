@@ -134,6 +134,9 @@ export function useProfile(): UseProfileResult {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s ?? null);
       if (s?.user) {
+        // Real sign-in supersedes any dev stub.
+        writeDevStub(null);
+        setDevStub(null);
         // Defer to avoid recursive supabase calls in callback
         setTimeout(() => loadProfile(s.user.id), 0);
       } else {
