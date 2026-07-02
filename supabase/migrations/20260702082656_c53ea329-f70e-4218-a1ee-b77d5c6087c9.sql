@@ -1,0 +1,1 @@
+UPDATE public.profiles SET profile_completed=false, name=NULL, full_name=NULL, affiliation=NULL, chinese_level=NULL, interpreting_experience=NULL, business_chinese_experience=NULL, consent_data_use=false, consent_anonymous_analysis=false, consent_email_report=false WHERE user_id='c34d9c5e-97a5-47be-8188-6044757f8fe3';
