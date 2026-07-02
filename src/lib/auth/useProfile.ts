@@ -25,7 +25,10 @@ type DevStub = {
 function readDevStub(): DevStub | null {
   if (!IS_DEV) return null;
   try {
-    const raw = localStorage.getItem(DEV_STUB_KEY);
+    // Clean up legacy stubs that persisted across sessions in localStorage —
+    // they made the app look "logged in" without a real account.
+    localStorage.removeItem(DEV_STUB_KEY);
+    const raw = sessionStorage.getItem(DEV_STUB_KEY);
     return raw ? (JSON.parse(raw) as DevStub) : null;
   } catch {
     return null;
@@ -34,8 +37,8 @@ function readDevStub(): DevStub | null {
 
 function writeDevStub(stub: DevStub | null) {
   if (!IS_DEV) return;
-  if (stub) localStorage.setItem(DEV_STUB_KEY, JSON.stringify(stub));
-  else localStorage.removeItem(DEV_STUB_KEY);
+  if (stub) sessionStorage.setItem(DEV_STUB_KEY, JSON.stringify(stub));
+  else sessionStorage.removeItem(DEV_STUB_KEY);
 }
 
 export function devStubSignIn(email = "dev.learner@example.com") {
@@ -95,6 +98,16 @@ export function useProfile(): UseProfileResult {
   }, []);
 
   const refresh = useCallback(async () => {
+    // A real authenticated session always wins over the dev stub.
+    const { data: s } = await supabase.auth.getSession();
+    if (s.session?.user) {
+      writeDevStub(null);
+      setDevStub(null);
+      setSession(s.session);
+      await loadProfile(s.session.user.id);
+      setLoading(false);
+      return;
+    }
     const stub = readDevStub();
     setDevStub(stub);
     if (stub) {
@@ -111,13 +124,8 @@ export function useProfile(): UseProfileResult {
       setLoading(false);
       return;
     }
-    const { data: s } = await supabase.auth.getSession();
-    setSession(s.session ?? null);
-    if (s.session?.user) {
-      await loadProfile(s.session.user.id);
-    } else {
-      setProfile(null);
-    }
+    setSession(null);
+    setProfile(null);
     setLoading(false);
   }, [loadProfile]);
 
@@ -126,6 +134,9 @@ export function useProfile(): UseProfileResult {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s ?? null);
       if (s?.user) {
+        // Real sign-in supersedes any dev stub.
+        writeDevStub(null);
+        setDevStub(null);
         // Defer to avoid recursive supabase calls in callback
         setTimeout(() => loadProfile(s.user.id), 0);
       } else {
