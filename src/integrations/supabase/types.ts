@@ -325,6 +325,50 @@ export type Database = {
         }
         Relationships: []
       }
+      scenario_candidates: {
+        Row: {
+          appropriateness_label: string | null
+          candidate_text: string | null
+          created_at: string
+          directness_level: number | null
+          display_order: number | null
+          failed_challenge: string[] | null
+          id: string
+          rationale: string | null
+          scenario_id: string
+        }
+        Insert: {
+          appropriateness_label?: string | null
+          candidate_text?: string | null
+          created_at?: string
+          directness_level?: number | null
+          display_order?: number | null
+          failed_challenge?: string[] | null
+          id?: string
+          rationale?: string | null
+          scenario_id: string
+        }
+        Update: {
+          appropriateness_label?: string | null
+          candidate_text?: string | null
+          created_at?: string
+          directness_level?: number | null
+          display_order?: number | null
+          failed_challenge?: string[] | null
+          id?: string
+          rationale?: string | null
+          scenario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_candidates_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["scenario_id"]
+          },
+        ]
+      }
       scenario_feedback: {
         Row: {
           created_at: string | null
