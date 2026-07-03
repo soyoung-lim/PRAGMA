@@ -369,6 +369,9 @@ const AdminGenerator = () => {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Generated | null>(null);
+  const [aiResult, setAiResult] = useState<AiScenario | null>(null);
+  const [aiMeta, setAiMeta] = useState<AiMeta | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [activeVariant, setActiveVariant] = useState(0);
   const [saved, setSaved] = useState(false);
   const [batchItems, setBatchItems] = useState<BatchItem[] | null>(null);
@@ -376,31 +379,60 @@ const AdminGenerator = () => {
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
 
-  const generate = () => {
+  // NOTE (1b-①): 이전 dummy 경로는 rollback 대비 buildScenario()로 남겨둠.
+  // 이번 단계는 실제 OpenAI 호출 결과를 aiResult에 담아 미리보기만 렌더한다.
+  const generate = async () => {
     setLoading(true);
     setResult(null);
+    setAiResult(null);
+    setAiMeta(null);
+    setAiError(null);
     setActiveVariant(0);
     setSaved(false);
     setBatchItems(null);
-    setTimeout(() => {
-      const detailed = buildScenario(form);
-      setResult(detailed);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-scenario", {
+        body: {
+          speech_act: form.speech_act,
+          genre: form.genre,
+          level: form.level,
+          context: form.context,
+          industry: form.industry,
+          func: form.func,
+          pdr_power: form.pdr_power,
+          pdr_distance: form.pdr_distance,
+          pdr_burden: form.pdr_burden,
+          multi: form.multi,
+          reasons: form.reasons,
+          coordination: form.coordination,
+        },
+      });
+      if (error) throw error;
+      if (!data?.scenario) throw new Error(data?.error ?? "빈 응답을 받았습니다.");
+      const scenario = data.scenario as AiScenario;
+      setAiResult(scenario);
+      setAiMeta(data.meta as AiMeta);
       if (form.mode === "batch") {
         const n = parseInt(form.batchSize, 10);
-        const checks: BatchItem["auto_check"][] = ["pass", "warning"];
-        const items: BatchItem[] = Array.from({ length: n }, (_, i) => {
-          if (i === 0) return { title: detailed.title, auto_check: detailed.auto_check };
-          return {
-            title: `${INDUSTRY[form.industry]} — ${FUNCTION[form.func]} 사례 #${i + 1} (${SPEECH_ACT[form.speech_act]} · ${GENRE[form.genre]})`,
-            auto_check: checks[i % checks.length],
-          };
-        });
+        const items: BatchItem[] = Array.from({ length: n }, (_, i) => ({
+          title:
+            i === 0
+              ? scenario.title
+              : `${scenario.title} — 사례 #${i + 1} (동일 설정)`,
+          auto_check: "pass",
+        }));
         setBatchItems(items);
       }
+    } catch (e) {
+      console.error("generate-scenario invoke failed", e);
+      setAiError((e as Error).message ?? "생성에 실패했습니다.");
+    } finally {
       setLoading(false);
-    }, 1400);
+    }
   };
 
+  // Dummy 저장 경로 유지(다음 단계에서 scenarios/scenario_candidates INSERT로 교체).
+  // 이번 단계에서는 AI 결과 저장은 하지 않는다.
   const saveToArchive = () => {
     if (!result || saved) return;
     const now = new Date();
@@ -410,13 +442,11 @@ const AdminGenerator = () => {
       form.mode === "batch" && batchItems
         ? batchItems
         : [{ title: result.title, auto_check: result.auto_check }];
-    // Save in reverse so the first item ends up at the very top of the archive.
     [...items].reverse().forEach((it, idx) => {
-      const isFirst = it.title === items[0].title && idx === items.length - 1;
       addDraftScenario({
         id: `draft-${now.getTime()}-${idx}`,
         title: it.title,
-        source_text: isFirst ? result.source_text : result.source_text,
+        source_text: result.source_text,
         task: result.task,
         variants: result.variants,
         feedback: result.feedback,
@@ -436,7 +466,7 @@ const AdminGenerator = () => {
     setSaved(true);
   };
 
-  const tags = result
+  const tags = aiResult
     ? [
         SPEECH_ACT[form.speech_act],
         GENRE[form.genre],
@@ -447,6 +477,7 @@ const AdminGenerator = () => {
         `${PDR_POWER_SHORT[form.pdr_power]} / ${PDR_DISTANCE_SHORT[form.pdr_distance]} / ${PDR_BURDEN_SHORT[form.pdr_burden]}`,
       ]
     : [];
+
 
   return (
     <AdminShell
