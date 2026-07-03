@@ -413,6 +413,9 @@ export type Database = {
           challenge_intensity: string | null
           created_at: string | null
           domain: string | null
+          generation_prompt_version: string | null
+          generation_provider: string | null
+          generator_model: string | null
           genre: string | null
           hsk_level_min: number | null
           industry_sector: string | null
@@ -443,6 +446,9 @@ export type Database = {
           challenge_intensity?: string | null
           created_at?: string | null
           domain?: string | null
+          generation_prompt_version?: string | null
+          generation_provider?: string | null
+          generator_model?: string | null
           genre?: string | null
           hsk_level_min?: number | null
           industry_sector?: string | null
@@ -473,6 +479,9 @@ export type Database = {
           challenge_intensity?: string | null
           created_at?: string | null
           domain?: string | null
+          generation_prompt_version?: string | null
+          generation_provider?: string | null
+          generator_model?: string | null
           genre?: string | null
           hsk_level_min?: number | null
           industry_sector?: string | null
@@ -504,6 +513,7 @@ export type Database = {
     Functions: {
       ensure_test_dev_profile: { Args: never; Returns: undefined }
       is_admin: { Args: never; Returns: boolean }
+      save_generated_scenario: { Args: { p_payload: Json }; Returns: string }
     }
     Enums: {
       app_role: "learner" | "admin"
