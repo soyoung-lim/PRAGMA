@@ -36,8 +36,9 @@ type RoadmapItem = {
   isExam: boolean;
 };
 
-/** 나중에 assignments 에서 읽어올 지점 */
-const CURRENT_WEEK = 4;
+/** 현재 주차는 getCurrentWeek()로 계산 (하드코딩 제거) */
+
+
 
 
 /** 나중에 scenarios/assignments 에서 읽어올 지점 */
