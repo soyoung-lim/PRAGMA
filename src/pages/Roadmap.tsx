@@ -71,7 +71,12 @@ const STAGE_STYLE: Record<Stage, string> = {
 
 const Roadmap = () => {
   const navigate = useNavigate();
+  const { profile } = useProfile();
+  const isProfileComplete = !!profile?.profile_completed;
+  // 프로필 미완료 시 활성 주차 없음 → 강조/체크/핀 없이 균일 렌더링
+  const activeWeek = isProfileComplete ? getCurrentWeek() : -1;
   const [roadmap, setRoadmap] = useState<RoadmapItem[] | null>(null);
+
 
   useEffect(() => {
     let cancelled = false;
