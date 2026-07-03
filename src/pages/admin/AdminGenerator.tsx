@@ -374,6 +374,9 @@ const AdminGenerator = () => {
   const [aiError, setAiError] = useState<string | null>(null);
   const [activeVariant, setActiveVariant] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [savedScenarioId, setSavedScenarioId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [batchItems, setBatchItems] = useState<BatchItem[] | null>(null);
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
