@@ -87,8 +87,10 @@ const Roadmap = () => {
               </p>
             </div>
           </div>
-          <div className="shrink-0 pt-1 text-[12px] text-primary-foreground/70">
-            15주차 학습 설계
+          <div className="shrink-0 pt-1">
+            <span className="inline-block rounded-lg border border-accent px-3 py-1.5 text-[12px] font-semibold text-accent">
+              강의계획 · 15주차 학습 설계
+            </span>
           </div>
         </div>
       </header>
