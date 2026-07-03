@@ -95,10 +95,10 @@ const Roadmap = () => {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl px-6 py-8">
+      <main className="mx-auto w-full max-w-3xl px-6 py-5">
         {/* 2. Today card (yellow) */}
         <section
-          className="rounded-2xl bg-accent p-6 text-accent-foreground"
+          className="rounded-2xl bg-accent p-4 text-accent-foreground"
           aria-label="오늘의 학습"
         >
           <div className="flex items-center gap-2 text-[15px] font-bold">
