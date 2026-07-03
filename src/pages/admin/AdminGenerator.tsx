@@ -374,6 +374,9 @@ const AdminGenerator = () => {
   const [aiError, setAiError] = useState<string | null>(null);
   const [activeVariant, setActiveVariant] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [savedScenarioId, setSavedScenarioId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [batchItems, setBatchItems] = useState<BatchItem[] | null>(null);
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
@@ -389,6 +392,8 @@ const AdminGenerator = () => {
     setAiError(null);
     setActiveVariant(0);
     setSaved(false);
+    setSavedScenarioId(null);
+    setSaveError(null);
     setBatchItems(null);
     try {
       const { data, error } = await supabase.functions.invoke("generate-scenario", {
@@ -431,39 +436,39 @@ const AdminGenerator = () => {
     }
   };
 
-  // Dummy 저장 경로 유지(다음 단계에서 scenarios/scenario_candidates INSERT로 교체).
-  // 이번 단계에서는 AI 결과 저장은 하지 않는다.
-  const saveToArchive = () => {
-    if (!result || saved) return;
-    const now = new Date();
-    const baseISO = now.toISOString();
-    const dateStr = baseISO.slice(0, 10);
-    const items: BatchItem[] =
-      form.mode === "batch" && batchItems
-        ? batchItems
-        : [{ title: result.title, auto_check: result.auto_check }];
-    [...items].reverse().forEach((it, idx) => {
-      addDraftScenario({
-        id: `draft-${now.getTime()}-${idx}`,
-        title: it.title,
-        source_text: result.source_text,
-        task: result.task,
-        variants: result.variants,
-        feedback: result.feedback,
-        speech_act: form.speech_act,
-        genre: form.genre,
-        learner_level: form.level,
-        industry_sector: form.industry,
-        business_function: form.func,
-        interaction_context: form.context,
-        auto_check_result: it.auto_check,
-        review_status: "needs_review",
-        usage_assignment: "archived_only",
-        created_at: baseISO,
-        updated_at: dateStr,
+  // 1b-②: 실제 저장. RPC save_generated_scenario가 scenarios/scenario_candidates/scenario_feedback를
+  // 하나의 트랜잭션으로 INSERT. 실패 시 전체 롤백.
+  const saveToArchive = async () => {
+    if (!aiResult || !aiMeta || saving || saved) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const { data, error } = await (supabase.rpc as any)("save_generated_scenario", {
+        p_payload: {
+          scenario: aiResult,
+          meta: aiMeta,
+          form: {
+            speech_act: form.speech_act,
+            genre: form.genre,
+            level: form.level,
+            context: form.context,
+            industry: form.industry,
+            func: form.func,
+            pdr_power: form.pdr_power,
+            pdr_distance: form.pdr_distance,
+            pdr_burden: form.pdr_burden,
+          },
+        },
       });
-    });
-    setSaved(true);
+      if (error) throw error;
+      setSavedScenarioId(data as string);
+      setSaved(true);
+    } catch (e) {
+      console.error("save_generated_scenario failed", e);
+      setSaveError((e as Error).message ?? "저장에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tags = aiResult
@@ -777,14 +782,14 @@ const AdminGenerator = () => {
         {/* RIGHT — preview */}
         <section className="lg:col-span-3 rounded-lg border border-border bg-card p-5">
           <h2 className="text-[14px] font-medium text-[#1d2336]">생성 결과 미리보기</h2>
-          {saved && (
+          {saved && savedScenarioId && (
             <div className="mt-3 rounded-lg border border-[#6EE7B7] bg-[#D1FAE5] p-3">
               <p className="text-[12.5px] font-medium text-[#065F46]">
-                ✓ 생성된 {batchItems ? `${batchItems.length}개의 ` : ""}시나리오
-                {batchItems ? "가" : "는"} 검수 대기 상태로 아카이브에 저장되었습니다.
+                ✓ 시나리오가 검수 대기 상태로 아카이브에 저장되었습니다.
               </p>
               <p className="mt-1 text-[11.5px] text-[#065F46]/85">
-                검수: needs_review &nbsp;/&nbsp; 용도: archived_only
+                scenario_id: <code className="font-mono">{savedScenarioId}</code>
+                &nbsp;/&nbsp; 검수: needs_review &nbsp;/&nbsp; 용도: archived_only
               </p>
               <Link
                 to="/admin/archive"
@@ -792,6 +797,14 @@ const AdminGenerator = () => {
               >
                 시나리오 아카이브에서 확인 →
               </Link>
+            </div>
+          )}
+          {saveError && (
+            <div className="mt-3 rounded-md border border-[#FCA5A5] bg-[#FEE2E2] p-3 text-[12.5px] text-[#991B1B]">
+              저장 실패: {saveError}
+              <div className="mt-1 text-[11px] text-[#991B1B]/80">
+                한 단계라도 실패하면 전체가 롤백되어 고아 데이터는 남지 않습니다.
+              </div>
             </div>
           )}
           <div className="mt-2.5">
@@ -952,7 +965,7 @@ const AdminGenerator = () => {
 
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
                   <span className="text-[11px] text-muted-foreground">
-                    ℹ 이번 단계(1b-①)는 미리보기까지만. DB 저장은 다음 단계에서 연결됩니다.
+                    ℹ 저장 시 scenarios / scenario_candidates / scenario_feedback 에 단일 트랜잭션으로 INSERT 됩니다. (검수 상태: needs_review)
                   </span>
                 </div>
 
@@ -960,16 +973,17 @@ const AdminGenerator = () => {
                   <Button
                     variant="outline"
                     onClick={generate}
+                    disabled={saving}
                     className="border-border bg-transparent text-[13px]"
                   >
                     ↻ 다시 생성
                   </Button>
                   <Button
-                    disabled
-                    className="bg-[#9ca3af] text-[13px] text-white disabled:opacity-100"
-                    title="다음 단계에서 활성화됩니다."
+                    onClick={saveToArchive}
+                    disabled={saving || saved}
+                    className="bg-[#1d2336] text-[13px] text-white hover:bg-[#1d2336]/90 disabled:opacity-60"
                   >
-                    💾 아카이브에 저장 (다음 단계)
+                    {saved ? "✓ 저장됨" : saving ? "저장 중..." : "💾 아카이브에 저장"}
                   </Button>
                 </div>
               </div>
