@@ -388,14 +388,17 @@ const AdminArchive = () => {
           <Chip label="보완 필요" count={counts.revision} tone="red" />
           <Chip label="폐기" count={counts.rejected} tone="mustard" />
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            className="h-9 bg-[#1d2336] text-white hover:bg-[#1d2336]/90"
-            onClick={openCreate}
-          >
-            + 시나리오 추가
-          </Button>
-        </div>
+        {/* [비활성화] 백지 수동 입력은 AI 생성 → 검수 워크플로우 우선. 필요 시 아래 Button을 되살리세요. */}
+        {false && (
+          <div className="flex items-center gap-2">
+            <Button
+              className="h-9 bg-[#1d2336] text-white hover:bg-[#1d2336]/90"
+              onClick={openCreate}
+            >
+              + 시나리오 추가
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
