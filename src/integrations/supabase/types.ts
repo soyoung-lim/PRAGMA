@@ -83,6 +83,45 @@ export type Database = {
         }
         Relationships: []
       }
+      course_weeks: {
+        Row: {
+          course_phase: string
+          created_at: string
+          detail_topic: string
+          display_order: number
+          id: string
+          is_exam_week: boolean
+          is_onboarding_week: boolean
+          lecture_topic: string | null
+          updated_at: string
+          week_no: number
+        }
+        Insert: {
+          course_phase: string
+          created_at?: string
+          detail_topic: string
+          display_order: number
+          id?: string
+          is_exam_week?: boolean
+          is_onboarding_week?: boolean
+          lecture_topic?: string | null
+          updated_at?: string
+          week_no: number
+        }
+        Update: {
+          course_phase?: string
+          created_at?: string
+          detail_topic?: string
+          display_order?: number
+          id?: string
+          is_exam_week?: boolean
+          is_onboarding_week?: boolean
+          lecture_topic?: string | null
+          updated_at?: string
+          week_no?: number
+        }
+        Relationships: []
+      }
       decision_traces: {
         Row: {
           auth_user_id: string
