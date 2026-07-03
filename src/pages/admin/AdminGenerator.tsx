@@ -965,7 +965,7 @@ const AdminGenerator = () => {
 
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
                   <span className="text-[11px] text-muted-foreground">
-                    ℹ 이번 단계(1b-①)는 미리보기까지만. DB 저장은 다음 단계에서 연결됩니다.
+                    ℹ 저장 시 scenarios / scenario_candidates / scenario_feedback 에 단일 트랜잭션으로 INSERT 됩니다. (검수 상태: needs_review)
                   </span>
                 </div>
 
@@ -973,16 +973,17 @@ const AdminGenerator = () => {
                   <Button
                     variant="outline"
                     onClick={generate}
+                    disabled={saving}
                     className="border-border bg-transparent text-[13px]"
                   >
                     ↻ 다시 생성
                   </Button>
                   <Button
-                    disabled
-                    className="bg-[#9ca3af] text-[13px] text-white disabled:opacity-100"
-                    title="다음 단계에서 활성화됩니다."
+                    onClick={saveToArchive}
+                    disabled={saving || saved}
+                    className="bg-[#1d2336] text-[13px] text-white hover:bg-[#1d2336]/90 disabled:opacity-60"
                   >
-                    💾 아카이브에 저장 (다음 단계)
+                    {saved ? "✓ 저장됨" : saving ? "저장 중..." : "💾 아카이브에 저장"}
                   </Button>
                 </div>
               </div>
