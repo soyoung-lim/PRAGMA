@@ -141,10 +141,20 @@ const Roadmap = () => {
           </div>
 
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {[
-              { items: ROADMAP.filter((i) => i.week <= 7), label: "0–7주차 · 중간점검까지" },
-              { items: ROADMAP.filter((i) => i.week >= 8), label: "8–15주차 · 기말 종합까지" },
+            {roadmap === null ? (
+              <div className="col-span-full rounded-2xl border border-border bg-card p-4 text-[14px] text-muted-foreground">
+                불러오는 중…
+              </div>
+            ) : roadmap.length === 0 ? (
+              <div className="col-span-full rounded-2xl border border-border bg-card p-4 text-[14px] text-muted-foreground">
+                표시할 주차 데이터가 없습니다.
+              </div>
+            ) : (
+            [
+              { items: roadmap.filter((i) => i.week <= 7), label: "0–7주차 · 중간점검까지" },
+              { items: roadmap.filter((i) => i.week >= 8), label: "8–15주차 · 기말 종합까지" },
             ].map((col) => (
+
               <div key={col.label} className="rounded-2xl border border-border bg-card p-2.5">
                 <div className="mb-2 inline-block rounded-full bg-muted px-3 py-1 text-[12px] font-semibold text-muted-foreground">
                   {col.label}
