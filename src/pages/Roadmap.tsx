@@ -5,6 +5,15 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { setTaskMode, setLanguageDirection } from "@/lib/entryGate";
 import { DEFAULT_LEARNING_CONTEXT } from "@/lib/learningContext";
+import { useProfile } from "@/lib/auth/useProfile";
+
+/**
+ * 학습자의 현재 주차.
+ * 임시 고정값(1주차). 진행 추적(decision_traces 기반 "완료한 마지막 주차+1")
+ * 도입 시 이 함수만 교체하면 됨.
+ */
+const getCurrentWeek = (): number => 1;
+
 
 /**
  * ROADMAP — 15주 학습 설계 (16 항목: 0~15주차)
@@ -27,8 +36,9 @@ type RoadmapItem = {
   isExam: boolean;
 };
 
-/** 나중에 assignments 에서 읽어올 지점 */
-const CURRENT_WEEK = 4;
+/** 현재 주차는 getCurrentWeek()로 계산 (하드코딩 제거) */
+
+
 
 
 /** 나중에 scenarios/assignments 에서 읽어올 지점 */
@@ -61,7 +71,12 @@ const STAGE_STYLE: Record<Stage, string> = {
 
 const Roadmap = () => {
   const navigate = useNavigate();
+  const { profile } = useProfile();
+  const isProfileComplete = !!profile?.profile_completed;
+  // 프로필 미완료 시 활성 주차 없음 → 강조/체크/핀 없이 균일 렌더링
+  const activeWeek = isProfileComplete ? getCurrentWeek() : -1;
   const [roadmap, setRoadmap] = useState<RoadmapItem[] | null>(null);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -98,9 +113,14 @@ const Roadmap = () => {
           <div className="flex items-start gap-3">
             <span className="mt-1 h-6 w-1.5 rounded-sm bg-accent" aria-hidden />
             <div>
-              <h1 className="text-[20px] font-bold sm:text-[22px]">
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="text-left text-[20px] font-bold hover:underline sm:text-[22px]"
+              >
                 AI 기반 한중 통번역 학습 워크플로우
-              </h1>
+              </button>
+
               <p className="mt-1 text-[13px] text-primary-foreground/70">
                 상황에 맞는 표현을 판단하고 수정하는 화용 의사결정 훈련
               </p>
@@ -115,25 +135,44 @@ const Roadmap = () => {
       </header>
 
       <main className="mx-auto w-full max-w-3xl px-6 py-5">
-        {/* 2. Today card (yellow) */}
-        <section
-          className="rounded-2xl bg-accent p-4 text-accent-foreground"
-          aria-label="오늘의 학습"
-        >
-          <div className="flex items-center gap-2 text-[15px] font-bold">
-            <MapPin className="h-4 w-4" aria-hidden />
-            {TODAY.weekLabel}
-          </div>
-          <h2 className="mt-2 text-[22px] font-bold leading-snug sm:text-[24px]">
-            {TODAY.title}
-          </h2>
-          <p className="mt-3 flex items-start gap-2 text-[14px] leading-relaxed">
-            <Target className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            <span>
-              <span className="font-semibold">오늘의 목표</span> — {TODAY.goal}
-            </span>
-          </p>
-        </section>
+        {/* 2. Top card — 프로필 완료 여부로 분기 */}
+        {isProfileComplete ? (
+          <section
+            className="rounded-2xl bg-accent p-4 text-accent-foreground"
+            aria-label="오늘의 학습"
+          >
+            <div className="flex items-center gap-2 text-[15px] font-bold">
+              <MapPin className="h-4 w-4" aria-hidden />
+              {`${activeWeek}주차 학습`}
+            </div>
+            <h2 className="mt-2 text-[22px] font-bold leading-snug sm:text-[24px]">
+              {TODAY.title}
+            </h2>
+            <p className="mt-3 flex items-start gap-2 text-[14px] leading-relaxed">
+              <Target className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>
+                <span className="font-semibold">오늘의 목표</span> — {TODAY.goal}
+              </span>
+            </p>
+          </section>
+        ) : (
+          <section
+            className="rounded-2xl bg-accent p-4 text-accent-foreground"
+            aria-label="공통 15주 학습 설계"
+          >
+            <div className="flex items-center gap-2 text-[15px] font-bold">
+              <MapPin className="h-4 w-4" aria-hidden />
+              강의계획
+            </div>
+            <h2 className="mt-2 text-[22px] font-bold leading-snug sm:text-[24px]">
+              공통 15주 학습 설계
+            </h2>
+            <p className="mt-3 text-[14px] leading-relaxed">
+              학습자 프로필을 설정하면 수준과 관심 분야에 맞는 과제가 배정됩니다.
+            </p>
+          </section>
+        )}
+
 
         {/* 3. Semester flow */}
         <section className="mt-5">
@@ -163,9 +202,10 @@ const Roadmap = () => {
                 </div>
                 <ol className="space-y-1">
                   {col.items.map((item) => {
-                    const isDone = item.week < CURRENT_WEEK;
-                    const isCurrent = item.week === CURRENT_WEEK;
-                    const isFuture = item.week > CURRENT_WEEK;
+                    const isDone = item.week < activeWeek;
+                    const isCurrent = item.week === activeWeek;
+                    const isFuture = item.week > activeWeek || activeWeek < 0;
+
 
                     return (
                       <li
@@ -263,21 +303,32 @@ const Roadmap = () => {
           </div>
         </section>
 
-        {/* 6. CTA */}
+        {/* 6. CTA — 프로필 완료 여부로 분기 */}
         <section className="mt-5">
-          <button
-            type="button"
-            onClick={() => {
-              // TEMP FALLBACK: 통역/번역·언어방향 선택 화면을 우회하고 바로 학습으로 진입.
-              // assignments 연결 전까지만 DEFAULT_LEARNING_CONTEXT를 주입한다.
-              setTaskMode(DEFAULT_LEARNING_CONTEXT.taskMode);
-              setLanguageDirection(DEFAULT_LEARNING_CONTEXT.languageDirection);
-              navigate("/scenario");
-            }}
-            className="w-full rounded-xl bg-accent px-6 py-4 text-[15px] font-bold text-accent-foreground shadow-sm transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            오늘의 학습 시작하기 →
-          </button>
+          {isProfileComplete ? (
+            <button
+              type="button"
+              onClick={() => {
+                // TEMP FALLBACK: 통역/번역·언어방향 선택 화면을 우회하고 바로 학습으로 진입.
+                // assignments 연결 전까지만 DEFAULT_LEARNING_CONTEXT를 주입한다.
+                setTaskMode(DEFAULT_LEARNING_CONTEXT.taskMode);
+                setLanguageDirection(DEFAULT_LEARNING_CONTEXT.languageDirection);
+                navigate("/scenario");
+              }}
+              className="w-full rounded-xl bg-accent px-6 py-4 text-[15px] font-bold text-accent-foreground shadow-sm transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              오늘의 학습 시작하기 →
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate("/profile-setup")}
+              className="w-full rounded-xl bg-accent px-6 py-4 text-[15px] font-bold text-accent-foreground shadow-sm transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              학습자 프로필 설정하기 →
+            </button>
+          )}
+
         </section>
       </main>
     </div>
