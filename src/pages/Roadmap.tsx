@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Check, MapPin, ListChecks, CircleDot, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { setTaskMode, setLanguageDirection } from "@/lib/entryGate";
+import { DEFAULT_LEARNING_CONTEXT } from "@/lib/learningContext";
 
 /**
  * ROADMAP — 15주 학습 설계 (16 항목: 0~15주차)
@@ -265,7 +267,13 @@ const Roadmap = () => {
         <section className="mt-5">
           <button
             type="button"
-            onClick={() => navigate("/entry/task-mode")}
+            onClick={() => {
+              // TEMP FALLBACK: 통역/번역·언어방향 선택 화면을 우회하고 바로 학습으로 진입.
+              // assignments 연결 전까지만 DEFAULT_LEARNING_CONTEXT를 주입한다.
+              setTaskMode(DEFAULT_LEARNING_CONTEXT.taskMode);
+              setLanguageDirection(DEFAULT_LEARNING_CONTEXT.languageDirection);
+              navigate("/scenario");
+            }}
             className="w-full rounded-xl bg-accent px-6 py-4 text-[15px] font-bold text-accent-foreground shadow-sm transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             오늘의 학습 시작하기 →
