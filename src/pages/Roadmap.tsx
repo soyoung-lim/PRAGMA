@@ -75,7 +75,7 @@ const Roadmap = () => {
     <div className="min-h-screen bg-background text-foreground">
       {/* 1. Header (dark) */}
       <header className="bg-primary text-primary-foreground">
-        <div className="mx-auto flex max-w-3xl items-start justify-between gap-4 px-6 py-6">
+        <div className="mx-auto flex max-w-3xl items-start justify-between gap-4 px-6 py-4">
           <div className="flex items-start gap-3">
             <span className="mt-1 h-6 w-1.5 rounded-sm bg-accent" aria-hidden />
             <div>
@@ -95,10 +95,10 @@ const Roadmap = () => {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl px-6 py-8">
+      <main className="mx-auto w-full max-w-3xl px-6 py-5">
         {/* 2. Today card (yellow) */}
         <section
-          className="rounded-2xl bg-accent p-6 text-accent-foreground"
+          className="rounded-2xl bg-accent p-4 text-accent-foreground"
           aria-label="오늘의 학습"
         >
           <div className="flex items-center gap-2 text-[15px] font-bold">
@@ -117,19 +117,19 @@ const Roadmap = () => {
         </section>
 
         {/* 3. Semester flow */}
-        <section className="mt-8">
+        <section className="mt-5">
           <div className="flex items-center gap-2">
             <CircleDot className="h-4 w-4 text-destructive" aria-hidden />
-            <h3 className="text-[17px] font-bold">주차별 학습 계획</h3>
+            <h3 className="text-[18px] font-bold">주차별 학습 계획</h3>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[
               { items: ROADMAP.filter((i) => i.week <= 7), label: "0–7주차 · 중간점검까지" },
               { items: ROADMAP.filter((i) => i.week >= 8), label: "8–15주차 · 기말 종합까지" },
             ].map((col) => (
-              <div key={col.label} className="rounded-2xl border border-border bg-card p-3">
-                <div className="mb-2 inline-block rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+              <div key={col.label} className="rounded-2xl border border-border bg-card p-2.5">
+                <div className="mb-2 inline-block rounded-full bg-muted px-3 py-1 text-[12px] font-semibold text-muted-foreground">
                   {col.label}
                 </div>
                 <ol className="space-y-1">
@@ -142,13 +142,13 @@ const Roadmap = () => {
                       <li
                         key={item.week}
                         className={cn(
-                          "flex items-center gap-2 rounded-xl px-2 py-2",
+                          "flex items-center gap-2 rounded-xl px-2 py-1.5",
                           isCurrent && "bg-accent/25",
                         )}
                       >
                         <div
                           className={cn(
-                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold",
+                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold",
                             isDone && "bg-primary text-primary-foreground",
                             isCurrent && "bg-primary text-primary-foreground",
                             isFuture &&
@@ -167,7 +167,7 @@ const Roadmap = () => {
 
                         <span
                           className={cn(
-                            "shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-medium",
+                            "shrink-0 rounded-full px-2 py-0.5 text-[12px] font-medium",
                             STAGE_STYLE[item.stage],
                             isFuture &&
                               item.stage !== "중간점검" &&
@@ -180,7 +180,7 @@ const Roadmap = () => {
 
                         <div
                           className={cn(
-                            "min-w-0 flex-1 text-[13px]",
+                            "min-w-0 flex-1 text-[14px]",
                             isCurrent && "font-bold text-foreground",
                             isDone && "font-semibold text-foreground",
                             isFuture && "text-muted-foreground",
@@ -199,33 +199,33 @@ const Roadmap = () => {
 
 
         {/* 4. Today's ordered steps */}
-        <section className="mt-8">
+        <section className="mt-5">
           <div className="flex items-center gap-2">
             <ListChecks className="h-4 w-4 text-destructive" aria-hidden />
-            <h3 className="text-[17px] font-bold">오늘 이 순서로 진행합니다</h3>
+            <h3 className="text-[18px] font-bold">오늘 이 순서로 진행합니다</h3>
           </div>
-          <p className="mt-2 text-[13px] text-muted-foreground">{TODAY.intro}</p>
+          <p className="mt-2 text-[14px] text-muted-foreground">{TODAY.intro}</p>
 
-          <ol className="mt-4 space-y-1 rounded-2xl border border-border bg-card p-5">
+          <ol className="mt-3 space-y-1 rounded-2xl border border-border bg-card p-4">
             {TODAY.steps.map((label, idx) => (
               <li
                 key={idx}
-                className="flex items-center gap-4 rounded-lg px-2 py-2.5"
+                className="flex items-center gap-4 rounded-lg px-2 py-1.5"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-[12px] font-semibold text-foreground">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-[13px] font-semibold text-foreground">
                   {idx + 1}
                 </div>
-                <div className="text-[14px] text-foreground">{label}</div>
+                <div className="text-[15px] text-foreground">{label}</div>
               </li>
             ))}
           </ol>
         </section>
 
         {/* 5. Completion note (green left border) */}
-        <section className="mt-8">
-          <div className="flex items-start gap-3 rounded-xl border border-border border-l-4 border-l-emerald-600 bg-card p-4">
+        <section className="mt-5">
+          <div className="flex items-start gap-3 rounded-xl border border-border border-l-4 border-l-emerald-600 bg-card p-3">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
-            <p className="text-[13.5px] leading-relaxed text-foreground">
+            <p className="text-[14px] leading-relaxed text-foreground">
               오늘 학습을 마치면 <b>나의 판단 · 수정 · 최종안</b>이 성장 리포트에
               기록되고, 다음 주차 학습에 반영됩니다.
             </p>
@@ -233,7 +233,7 @@ const Roadmap = () => {
         </section>
 
         {/* 6. CTA */}
-        <section className="mt-8">
+        <section className="mt-5">
           <button
             type="button"
             onClick={() => navigate("/entry/task-mode")}
