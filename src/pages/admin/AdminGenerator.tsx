@@ -782,14 +782,14 @@ const AdminGenerator = () => {
         {/* RIGHT — preview */}
         <section className="lg:col-span-3 rounded-lg border border-border bg-card p-5">
           <h2 className="text-[14px] font-medium text-[#1d2336]">생성 결과 미리보기</h2>
-          {saved && (
+          {saved && savedScenarioId && (
             <div className="mt-3 rounded-lg border border-[#6EE7B7] bg-[#D1FAE5] p-3">
               <p className="text-[12.5px] font-medium text-[#065F46]">
-                ✓ 생성된 {batchItems ? `${batchItems.length}개의 ` : ""}시나리오
-                {batchItems ? "가" : "는"} 검수 대기 상태로 아카이브에 저장되었습니다.
+                ✓ 시나리오가 검수 대기 상태로 아카이브에 저장되었습니다.
               </p>
               <p className="mt-1 text-[11.5px] text-[#065F46]/85">
-                검수: needs_review &nbsp;/&nbsp; 용도: archived_only
+                scenario_id: <code className="font-mono">{savedScenarioId}</code>
+                &nbsp;/&nbsp; 검수: needs_review &nbsp;/&nbsp; 용도: archived_only
               </p>
               <Link
                 to="/admin/archive"
@@ -797,6 +797,14 @@ const AdminGenerator = () => {
               >
                 시나리오 아카이브에서 확인 →
               </Link>
+            </div>
+          )}
+          {saveError && (
+            <div className="mt-3 rounded-md border border-[#FCA5A5] bg-[#FEE2E2] p-3 text-[12.5px] text-[#991B1B]">
+              저장 실패: {saveError}
+              <div className="mt-1 text-[11px] text-[#991B1B]/80">
+                한 단계라도 실패하면 전체가 롤백되어 고아 데이터는 남지 않습니다.
+              </div>
             </div>
           )}
           <div className="mt-2.5">
