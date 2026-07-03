@@ -436,39 +436,39 @@ const AdminGenerator = () => {
     }
   };
 
-  // Dummy 저장 경로 유지(다음 단계에서 scenarios/scenario_candidates INSERT로 교체).
-  // 이번 단계에서는 AI 결과 저장은 하지 않는다.
-  const saveToArchive = () => {
-    if (!result || saved) return;
-    const now = new Date();
-    const baseISO = now.toISOString();
-    const dateStr = baseISO.slice(0, 10);
-    const items: BatchItem[] =
-      form.mode === "batch" && batchItems
-        ? batchItems
-        : [{ title: result.title, auto_check: result.auto_check }];
-    [...items].reverse().forEach((it, idx) => {
-      addDraftScenario({
-        id: `draft-${now.getTime()}-${idx}`,
-        title: it.title,
-        source_text: result.source_text,
-        task: result.task,
-        variants: result.variants,
-        feedback: result.feedback,
-        speech_act: form.speech_act,
-        genre: form.genre,
-        learner_level: form.level,
-        industry_sector: form.industry,
-        business_function: form.func,
-        interaction_context: form.context,
-        auto_check_result: it.auto_check,
-        review_status: "needs_review",
-        usage_assignment: "archived_only",
-        created_at: baseISO,
-        updated_at: dateStr,
+  // 1b-②: 실제 저장. RPC save_generated_scenario가 scenarios/scenario_candidates/scenario_feedback를
+  // 하나의 트랜잭션으로 INSERT. 실패 시 전체 롤백.
+  const saveToArchive = async () => {
+    if (!aiResult || !aiMeta || saving || saved) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const { data, error } = await (supabase.rpc as any)("save_generated_scenario", {
+        p_payload: {
+          scenario: aiResult,
+          meta: aiMeta,
+          form: {
+            speech_act: form.speech_act,
+            genre: form.genre,
+            level: form.level,
+            context: form.context,
+            industry: form.industry,
+            func: form.func,
+            pdr_power: form.pdr_power,
+            pdr_distance: form.pdr_distance,
+            pdr_burden: form.pdr_burden,
+          },
+        },
       });
-    });
-    setSaved(true);
+      if (error) throw error;
+      setSavedScenarioId(data as string);
+      setSaved(true);
+    } catch (e) {
+      console.error("save_generated_scenario failed", e);
+      setSaveError((e as Error).message ?? "저장에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tags = aiResult
