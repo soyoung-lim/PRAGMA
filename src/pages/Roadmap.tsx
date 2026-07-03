@@ -303,21 +303,32 @@ const Roadmap = () => {
           </div>
         </section>
 
-        {/* 6. CTA */}
+        {/* 6. CTA — 프로필 완료 여부로 분기 */}
         <section className="mt-5">
-          <button
-            type="button"
-            onClick={() => {
-              // TEMP FALLBACK: 통역/번역·언어방향 선택 화면을 우회하고 바로 학습으로 진입.
-              // assignments 연결 전까지만 DEFAULT_LEARNING_CONTEXT를 주입한다.
-              setTaskMode(DEFAULT_LEARNING_CONTEXT.taskMode);
-              setLanguageDirection(DEFAULT_LEARNING_CONTEXT.languageDirection);
-              navigate("/scenario");
-            }}
-            className="w-full rounded-xl bg-accent px-6 py-4 text-[15px] font-bold text-accent-foreground shadow-sm transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            오늘의 학습 시작하기 →
-          </button>
+          {isProfileComplete ? (
+            <button
+              type="button"
+              onClick={() => {
+                // TEMP FALLBACK: 통역/번역·언어방향 선택 화면을 우회하고 바로 학습으로 진입.
+                // assignments 연결 전까지만 DEFAULT_LEARNING_CONTEXT를 주입한다.
+                setTaskMode(DEFAULT_LEARNING_CONTEXT.taskMode);
+                setLanguageDirection(DEFAULT_LEARNING_CONTEXT.languageDirection);
+                navigate("/scenario");
+              }}
+              className="w-full rounded-xl bg-accent px-6 py-4 text-[15px] font-bold text-accent-foreground shadow-sm transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              오늘의 학습 시작하기 →
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate("/profile-setup")}
+              className="w-full rounded-xl bg-accent px-6 py-4 text-[15px] font-bold text-accent-foreground shadow-sm transition-colors hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              학습자 프로필 설정하기 →
+            </button>
+          )}
+
         </section>
       </main>
     </div>
