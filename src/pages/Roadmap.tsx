@@ -1,10 +1,12 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, MapPin, ListChecks, CircleDot, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * ROADMAP — 15주 학습 설계 (16 항목: 0~15주차)
- * 나중에 DB(assignments/curriculum) 로 옮길 지점.
+ * 데이터 소스: public.course_weeks 테이블
  */
 type Stage =
   | "시작 준비"
@@ -16,29 +18,16 @@ type Stage =
   | "복합 과제"
   | "기말 종합";
 
-type RoadmapItem = { week: number; stage: Stage; topic: string };
-
-const ROADMAP: RoadmapItem[] = [
-  { week: 0, stage: "시작 준비", topic: "학습자 프로필 설정" },
-  { week: 1, stage: "정형 화행", topic: "감사 표현" },
-  { week: 2, stage: "정형 화행", topic: "칭찬 · 칭찬 응답" },
-  { week: 3, stage: "대인 화행", topic: "요청할 때 직접성 조절하기" },
-  { week: 4, stage: "대인 화행", topic: "제안할 때 직접성 조절하기" },
-  { week: 5, stage: "대인 화행", topic: "동의 · 반대 표현" },
-  { week: 6, stage: "음성 통역", topic: "정형 · 대인 화행 통역 맛보기" },
-  { week: 7, stage: "중간점검", topic: "번역 판단 · 수정 + 짧은 통역" },
-  { week: 8, stage: "고부담 화행", topic: "사과 표현" },
-  { week: 9, stage: "고부담 화행", topic: "거절 표현" },
-  { week: 10, stage: "고부담 화행", topic: "불만 · 불만 대응" },
-  { week: 11, stage: "복합 과제", topic: "설득 · 조율" },
-  { week: 12, stage: "복합 과제", topic: "협상" },
-  { week: 13, stage: "음성 통역", topic: "고부담 화행 통역" },
-  { week: 14, stage: "음성 통역", topic: "복합 과제 통역" },
-  { week: 15, stage: "기말 종합", topic: "최종 통번역 수행 · 성장 리포트" },
-];
+type RoadmapItem = {
+  week: number;
+  stage: Stage;
+  topic: string;
+  isExam: boolean;
+};
 
 /** 나중에 assignments 에서 읽어올 지점 */
 const CURRENT_WEEK = 4;
+
 
 /** 나중에 scenarios/assignments 에서 읽어올 지점 */
 const TODAY = {
