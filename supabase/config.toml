@@ -1,1 +1,4 @@
 project_id = "jerifdqjrwgpgkxoyayb"
+
+[functions.generate-scenario]
+verify_jwt = true

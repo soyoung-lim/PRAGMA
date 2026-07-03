@@ -3,6 +3,7 @@ import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { addDraftScenario } from "@/lib/scenarioDrafts";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
   SelectContent,
@@ -10,6 +11,52 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+interface AiCandidate {
+  candidate_text: string;
+  directness_level: number;
+  appropriateness_label:
+    | "appropriate"
+    | "too_direct"
+    | "too_indirect"
+    | "mismatched"
+    | "meaning_shift";
+  failed_challenge: string[];
+  rationale: string;
+}
+interface AiScenario {
+  title: string;
+  source_text: string;
+  situation: string;
+  candidates: AiCandidate[];
+  feedback: { teacher: string; native: string; field_expert: string };
+}
+interface AiMeta {
+  provider: string;
+  model: string;
+  prompt_version: string;
+  generated_at: string;
+}
+
+const APPROPRIATENESS_KO: Record<AiCandidate["appropriateness_label"], string> = {
+  appropriate: "적정",
+  too_direct: "지나치게 직접적",
+  too_indirect: "지나치게 완곡",
+  mismatched: "격식·기능 불일치",
+  meaning_shift: "의미 왜곡",
+};
+const APPROPRIATENESS_TONE: Record<AiCandidate["appropriateness_label"], string> = {
+  appropriate: "border-[#6EE7B7] bg-[#D1FAE5] text-[#065F46]",
+  too_direct: "border-[#FBBF24] bg-[#FEF3C7] text-[#7A5A0A]",
+  too_indirect: "border-[#FBBF24] bg-[#FEF3C7] text-[#7A5A0A]",
+  mismatched: "border-[#FCA5A5] bg-[#FEE2E2] text-[#991B1B]",
+  meaning_shift: "border-[#FCA5A5] bg-[#FEE2E2] text-[#991B1B]",
+};
+const CHALLENGE_KO: Record<string, string> = {
+  directness: "직접성",
+  formality: "격식",
+  imposition: "부담도",
+};
 
 type SpeechAct = "request" | "refusal";
 type Genre = "business_email" | "business_messenger" | "meeting_speech";
@@ -322,6 +369,9 @@ const AdminGenerator = () => {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Generated | null>(null);
+  const [aiResult, setAiResult] = useState<AiScenario | null>(null);
+  const [aiMeta, setAiMeta] = useState<AiMeta | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [activeVariant, setActiveVariant] = useState(0);
   const [saved, setSaved] = useState(false);
   const [batchItems, setBatchItems] = useState<BatchItem[] | null>(null);
@@ -329,31 +379,60 @@ const AdminGenerator = () => {
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
 
-  const generate = () => {
+  // NOTE (1b-①): 이전 dummy 경로는 rollback 대비 buildScenario()로 남겨둠.
+  // 이번 단계는 실제 OpenAI 호출 결과를 aiResult에 담아 미리보기만 렌더한다.
+  const generate = async () => {
     setLoading(true);
     setResult(null);
+    setAiResult(null);
+    setAiMeta(null);
+    setAiError(null);
     setActiveVariant(0);
     setSaved(false);
     setBatchItems(null);
-    setTimeout(() => {
-      const detailed = buildScenario(form);
-      setResult(detailed);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-scenario", {
+        body: {
+          speech_act: form.speech_act,
+          genre: form.genre,
+          level: form.level,
+          context: form.context,
+          industry: form.industry,
+          func: form.func,
+          pdr_power: form.pdr_power,
+          pdr_distance: form.pdr_distance,
+          pdr_burden: form.pdr_burden,
+          multi: form.multi,
+          reasons: form.reasons,
+          coordination: form.coordination,
+        },
+      });
+      if (error) throw error;
+      if (!data?.scenario) throw new Error(data?.error ?? "빈 응답을 받았습니다.");
+      const scenario = data.scenario as AiScenario;
+      setAiResult(scenario);
+      setAiMeta(data.meta as AiMeta);
       if (form.mode === "batch") {
         const n = parseInt(form.batchSize, 10);
-        const checks: BatchItem["auto_check"][] = ["pass", "warning"];
-        const items: BatchItem[] = Array.from({ length: n }, (_, i) => {
-          if (i === 0) return { title: detailed.title, auto_check: detailed.auto_check };
-          return {
-            title: `${INDUSTRY[form.industry]} — ${FUNCTION[form.func]} 사례 #${i + 1} (${SPEECH_ACT[form.speech_act]} · ${GENRE[form.genre]})`,
-            auto_check: checks[i % checks.length],
-          };
-        });
+        const items: BatchItem[] = Array.from({ length: n }, (_, i) => ({
+          title:
+            i === 0
+              ? scenario.title
+              : `${scenario.title} — 사례 #${i + 1} (동일 설정)`,
+          auto_check: "pass",
+        }));
         setBatchItems(items);
       }
+    } catch (e) {
+      console.error("generate-scenario invoke failed", e);
+      setAiError((e as Error).message ?? "생성에 실패했습니다.");
+    } finally {
       setLoading(false);
-    }, 1400);
+    }
   };
 
+  // Dummy 저장 경로 유지(다음 단계에서 scenarios/scenario_candidates INSERT로 교체).
+  // 이번 단계에서는 AI 결과 저장은 하지 않는다.
   const saveToArchive = () => {
     if (!result || saved) return;
     const now = new Date();
@@ -363,13 +442,11 @@ const AdminGenerator = () => {
       form.mode === "batch" && batchItems
         ? batchItems
         : [{ title: result.title, auto_check: result.auto_check }];
-    // Save in reverse so the first item ends up at the very top of the archive.
     [...items].reverse().forEach((it, idx) => {
-      const isFirst = it.title === items[0].title && idx === items.length - 1;
       addDraftScenario({
         id: `draft-${now.getTime()}-${idx}`,
         title: it.title,
-        source_text: isFirst ? result.source_text : result.source_text,
+        source_text: result.source_text,
         task: result.task,
         variants: result.variants,
         feedback: result.feedback,
@@ -389,7 +466,7 @@ const AdminGenerator = () => {
     setSaved(true);
   };
 
-  const tags = result
+  const tags = aiResult
     ? [
         SPEECH_ACT[form.speech_act],
         GENRE[form.genre],
@@ -400,6 +477,7 @@ const AdminGenerator = () => {
         `${PDR_POWER_SHORT[form.pdr_power]} / ${PDR_DISTANCE_SHORT[form.pdr_distance]} / ${PDR_BURDEN_SHORT[form.pdr_burden]}`,
       ]
     : [];
+
 
   return (
     <AdminShell
@@ -724,7 +802,7 @@ const AdminGenerator = () => {
               </div>
             )}
 
-            {!loading && !result && (
+            {!loading && !aiResult && !aiError && (
               <div className="flex items-center justify-center py-20 text-center">
                 <p className="text-[12px] text-muted-foreground">
                   좌측 설정을 선택하고 '🪄 AI 시나리오 생성' 버튼을 눌러주세요
@@ -732,71 +810,27 @@ const AdminGenerator = () => {
               </div>
             )}
 
-            {!loading && result && (
+            {!loading && aiError && (
+              <div className="rounded-md border border-[#FCA5A5] bg-[#FEE2E2] p-3 text-[12.5px] text-[#991B1B]">
+                생성 실패: {aiError}
+              </div>
+            )}
+
+            {!loading && aiResult && (
               <div className="space-y-5">
                 {form.mode === "batch" && batchItems && (
                   <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2">
                     <p className="text-[12.5px] font-medium text-[#5B5446]">
-                      총 {batchItems.length}개의 시나리오가 생성되었습니다.
+                      총 {batchItems.length}개의 시나리오가 생성 예정입니다.
                     </p>
                     <p className="mt-0.5 text-[11px] text-[#8a857c]">
-                      첫 번째 항목만 전체 상세를 미리보기로 표시합니다. 나머지는 동일한 설정으로 생성된 lightweight 카드입니다.
+                      이번 단계에서는 첫 번째 항목만 실제 GPT 결과로 미리보기됩니다. (DB 저장은 다음 단계)
                     </p>
-                  </div>
-                )}
-
-                {form.mode === "batch" && batchItems && (
-                  <div>
-                    <div className="mb-1.5 text-[11px] font-medium text-[#8a857c] uppercase tracking-wide">
-                      생성된 시나리오 목록
-                    </div>
-                    <ul className="divide-y divide-border rounded-md border border-border bg-background">
-                      {batchItems.map((it, i) => (
-                        <li key={i} className="flex flex-col gap-1 px-3 py-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="text-[12.5px] font-medium text-foreground">
-                              {i + 1}. {it.title}
-                              {i === 0 && (
-                                <span className="ml-2 inline-flex items-center rounded bg-[#FAD338]/30 px-1.5 py-0.5 text-[10px] text-[#7A5A0A]">
-                                  상세 미리보기
-                                </span>
-                              )}
-                            </span>
-                            <span
-                              className={`shrink-0 text-[11px] ${
-                                it.auto_check === "pass"
-                                  ? "text-[#15803D]"
-                                  : "text-[#B45309]"
-                              }`}
-                            >
-                              자동 점검: {it.auto_check}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {[
-                              SPEECH_ACT[form.speech_act],
-                              GENRE[form.genre],
-                              LEVEL[form.level],
-                              INDUSTRY[form.industry],
-                              FUNCTION[form.func],
-                              CONTEXT[form.context],
-                            ].map((t) => (
-                              <span
-                                key={t}
-                                className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[10.5px] text-muted-foreground"
-                              >
-                                {t}
-                              </span>
-                            ))}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                 )}
 
                 <h3 className="text-[15px] font-medium text-foreground leading-snug">
-                  {form.mode === "batch" ? `상세 미리보기 — ${result.title}` : result.title}
+                  {aiResult.title}
                 </h3>
 
                 <div className="flex flex-wrap gap-1.5">
@@ -812,47 +846,67 @@ const AdminGenerator = () => {
 
                 <div>
                   <div className="mb-1.5 text-[11px] font-medium text-[#8a857c] uppercase tracking-wide">
-                    한국어 원문
-                  </div>
-                  <div className="max-h-44 overflow-y-auto rounded-md border border-[#EAE4D2] bg-[#FAF7EE] p-3 text-[13px] leading-relaxed text-foreground">
-                    {result.source_text}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="mb-1.5 text-[11px] font-medium text-[#8a857c] uppercase tracking-wide">
-                    학습자 과업
+                    상황 카드
                   </div>
                   <div className="rounded-md border border-[#FAD338] bg-[#FAD338]/15 p-3 text-[13px] leading-relaxed text-foreground">
-                    {result.task}
+                    {aiResult.situation}
                   </div>
                 </div>
 
                 <div>
                   <div className="mb-1.5 text-[11px] font-medium text-[#8a857c] uppercase tracking-wide">
-                    AI 번역안 A / B / C
+                    한국어 원문 (source_text)
                   </div>
-                  <p className="mb-2 text-[11.5px] leading-relaxed text-muted-foreground">
-                    세 번역안은 같은 한국어 원문을 바탕으로 생성되며, A는 기본형, B는 P-D-R 상황 조건 반영형,
-                    C는 P-D-R에 관계 유지 목표를 더한 버전입니다.
-                  </p>
-                  <div className="flex gap-1 border-b border-border">
-                    {result.variants.map((v, i) => (
-                      <button
+                  <div className="max-h-44 overflow-y-auto rounded-md border border-[#EAE4D2] bg-[#FAF7EE] p-3 text-[13px] leading-relaxed text-foreground">
+                    {aiResult.source_text}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-1.5 flex items-baseline justify-between">
+                    <div className="text-[11px] font-medium text-[#8a857c] uppercase tracking-wide">
+                      중국어 후보 번역안 · 총 {aiResult.candidates.length}개
+                    </div>
+                    <div className="text-[10.5px] text-muted-foreground">
+                      directness 1(완곡) ~ 5(직접)
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {aiResult.candidates.map((c, i) => (
+                      <div
                         key={i}
-                        onClick={() => setActiveVariant(i)}
-                        className={`px-3 py-1.5 text-[12px] border-b-2 -mb-px transition-colors ${
-                          activeVariant === i
-                            ? "border-[#1d2336] text-[#1d2336] font-medium"
-                            : "border-transparent text-muted-foreground hover:text-foreground"
-                        }`}
+                        className="rounded-md border border-border bg-background p-3 space-y-1.5"
                       >
-                        {v.label} · {v.note}
-                      </button>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+                            #{i + 1}
+                          </span>
+                          <span
+                            className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[11px] ${APPROPRIATENESS_TONE[c.appropriateness_label]}`}
+                          >
+                            {APPROPRIATENESS_KO[c.appropriateness_label]}
+                          </span>
+                          <span className="inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                            directness {c.directness_level}
+                          </span>
+                          {c.failed_challenge.map((f) => (
+                            <span
+                              key={f}
+                              className="inline-flex items-center rounded bg-[#FEE2E2] px-1.5 py-0.5 text-[10.5px] text-[#991B1B]"
+                            >
+                              실패: {CHALLENGE_KO[f] ?? f}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="text-[13px] leading-relaxed text-foreground">
+                          {c.candidate_text}
+                        </div>
+                        <div className="text-[11.5px] leading-relaxed text-muted-foreground">
+                          <span className="text-[#8a857c]">근거 · </span>
+                          {c.rationale}
+                        </div>
+                      </div>
                     ))}
-                  </div>
-                  <div className="mt-2 rounded-md border border-border bg-background p-3 text-[13px] leading-relaxed text-foreground">
-                    {result.variants[activeVariant].text}
                   </div>
                 </div>
 
@@ -861,28 +915,44 @@ const AdminGenerator = () => {
                     3관점 피드백
                   </div>
                   <div className="space-y-2">
-                    {result.feedback.map((fb) => (
+                    {([
+                      ["teacher", "🎓 통번역 교수자", aiResult.feedback.teacher],
+                      ["native", "🀄 중국어 네이티브", aiResult.feedback.native],
+                      ["field", "💼 현장 실무자", aiResult.feedback.field_expert],
+                    ] as const).map(([k, label, text]) => (
                       <div
-                        key={fb.role}
+                        key={k}
                         className="rounded-md border border-border bg-background p-3"
                       >
-                        <div className="text-[12px] font-medium text-[#1d2336]">
-                          {fb.icon} {fb.role}
-                        </div>
+                        <div className="text-[12px] font-medium text-[#1d2336]">{label}</div>
                         <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
-                          {fb.text}
+                          {text}
                         </p>
                       </div>
                     ))}
                   </div>
                 </div>
 
+                {aiMeta && (
+                  <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3 text-[11px] text-muted-foreground">
+                    <span className="inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5">
+                      provider: {aiMeta.provider}
+                    </span>
+                    <span className="inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5">
+                      model: {aiMeta.model}
+                    </span>
+                    <span className="inline-flex items-center rounded border border-border bg-background px-1.5 py-0.5">
+                      prompt_version: {aiMeta.prompt_version}
+                    </span>
+                    <span className="ml-auto">
+                      생성 시각: {new Date(aiMeta.generated_at).toLocaleString("ko-KR")}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-                  <span className="inline-flex items-center rounded-md border border-[#6EE7B7] bg-[#D1FAE5] px-2 py-0.5 text-[11px] text-[#065F46]">
-                    자동 점검: {result.auto_check}
-                  </span>
                   <span className="text-[11px] text-muted-foreground">
-                    참고값 · 학생 공개는 연구자 검수로 결정
+                    ℹ 이번 단계(1b-①)는 미리보기까지만. DB 저장은 다음 단계에서 연결됩니다.
                   </span>
                 </div>
 
@@ -895,15 +965,11 @@ const AdminGenerator = () => {
                     ↻ 다시 생성
                   </Button>
                   <Button
-                    onClick={saveToArchive}
-                    disabled={saved}
-                    className="bg-[#1d2336] text-[13px] text-white hover:bg-[#1d2336]/90 disabled:cursor-not-allowed disabled:bg-[#9ca3af] disabled:text-white disabled:opacity-100"
+                    disabled
+                    className="bg-[#9ca3af] text-[13px] text-white disabled:opacity-100"
+                    title="다음 단계에서 활성화됩니다."
                   >
-                    {saved
-                      ? `✓ ${form.mode === "batch" && batchItems ? `${batchItems.length}개 ` : ""}저장됨`
-                      : form.mode === "batch" && batchItems
-                      ? `💾 전체 ${batchItems.length}개 아카이브에 저장`
-                      : "💾 아카이브에 저장"}
+                    💾 아카이브에 저장 (다음 단계)
                   </Button>
                 </div>
               </div>
