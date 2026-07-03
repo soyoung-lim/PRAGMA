@@ -59,8 +59,36 @@ const STAGE_STYLE: Record<Stage, string> = {
 
 const Roadmap = () => {
   const navigate = useNavigate();
+  const [roadmap, setRoadmap] = useState<RoadmapItem[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("course_weeks")
+        .select("week_no, course_phase, detail_topic, is_exam_week")
+        .order("week_no", { ascending: true });
+      if (cancelled) return;
+      if (error || !data) {
+        setRoadmap([]);
+        return;
+      }
+      setRoadmap(
+        data.map((r) => ({
+          week: r.week_no as number,
+          stage: r.course_phase as Stage,
+          topic: r.detail_topic as string,
+          isExam: r.is_exam_week as boolean,
+        })),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
+
     <div className="min-h-screen bg-background text-foreground">
       {/* 1. Header (dark) */}
       <header className="bg-primary text-primary-foreground">
