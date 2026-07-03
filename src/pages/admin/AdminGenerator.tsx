@@ -392,6 +392,8 @@ const AdminGenerator = () => {
     setAiError(null);
     setActiveVariant(0);
     setSaved(false);
+    setSavedScenarioId(null);
+    setSaveError(null);
     setBatchItems(null);
     try {
       const { data, error } = await supabase.functions.invoke("generate-scenario", {
