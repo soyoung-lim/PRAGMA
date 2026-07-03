@@ -220,7 +220,9 @@ const Roadmap = () => {
                   })}
                 </ol>
               </div>
-            ))}
+            ))
+            )}
+
           </div>
         </section>
 
