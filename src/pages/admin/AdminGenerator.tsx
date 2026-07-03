@@ -3,6 +3,7 @@ import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { addDraftScenario } from "@/lib/scenarioDrafts";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
   SelectContent,
@@ -10,6 +11,52 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+interface AiCandidate {
+  candidate_text: string;
+  directness_level: number;
+  appropriateness_label:
+    | "appropriate"
+    | "too_direct"
+    | "too_indirect"
+    | "mismatched"
+    | "meaning_shift";
+  failed_challenge: string[];
+  rationale: string;
+}
+interface AiScenario {
+  title: string;
+  source_text: string;
+  situation: string;
+  candidates: AiCandidate[];
+  feedback: { teacher: string; native: string; field_expert: string };
+}
+interface AiMeta {
+  provider: string;
+  model: string;
+  prompt_version: string;
+  generated_at: string;
+}
+
+const APPROPRIATENESS_KO: Record<AiCandidate["appropriateness_label"], string> = {
+  appropriate: "적정",
+  too_direct: "지나치게 직접적",
+  too_indirect: "지나치게 완곡",
+  mismatched: "격식·기능 불일치",
+  meaning_shift: "의미 왜곡",
+};
+const APPROPRIATENESS_TONE: Record<AiCandidate["appropriateness_label"], string> = {
+  appropriate: "border-[#6EE7B7] bg-[#D1FAE5] text-[#065F46]",
+  too_direct: "border-[#FBBF24] bg-[#FEF3C7] text-[#7A5A0A]",
+  too_indirect: "border-[#FBBF24] bg-[#FEF3C7] text-[#7A5A0A]",
+  mismatched: "border-[#FCA5A5] bg-[#FEE2E2] text-[#991B1B]",
+  meaning_shift: "border-[#FCA5A5] bg-[#FEE2E2] text-[#991B1B]",
+};
+const CHALLENGE_KO: Record<string, string> = {
+  directness: "직접성",
+  formality: "격식",
+  imposition: "부담도",
+};
 
 type SpeechAct = "request" | "refusal";
 type Genre = "business_email" | "business_messenger" | "meeting_speech";
