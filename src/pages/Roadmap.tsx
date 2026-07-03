@@ -87,8 +87,10 @@ const Roadmap = () => {
               </p>
             </div>
           </div>
-          <div className="shrink-0 pt-1 text-[12px] text-primary-foreground/70">
-            15주차 학습 설계
+          <div className="shrink-0 pt-1">
+            <span className="inline-block rounded-lg border border-accent px-3 py-1.5 text-[12px] font-semibold text-accent">
+              강의계획 · 15주차 학습 설계
+            </span>
           </div>
         </div>
       </header>
@@ -118,83 +120,83 @@ const Roadmap = () => {
         <section className="mt-8">
           <div className="flex items-center gap-2">
             <CircleDot className="h-4 w-4 text-destructive" aria-hidden />
-            <h3 className="text-[17px] font-bold">이번 학기 학습 흐름</h3>
+            <h3 className="text-[17px] font-bold">주차별 학습 계획</h3>
           </div>
 
-          <ol className="mt-4 space-y-1.5 rounded-2xl border border-border bg-card p-3">
-            {ROADMAP.map((item) => {
-              const isDone = item.week < CURRENT_WEEK;
-              const isCurrent = item.week === CURRENT_WEEK;
-              const isFuture = item.week > CURRENT_WEEK;
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {[
+              { items: ROADMAP.filter((i) => i.week <= 7), label: "0–7주차 · 중간점검까지" },
+              { items: ROADMAP.filter((i) => i.week >= 8), label: "8–15주차 · 기말 종합까지" },
+            ].map((col) => (
+              <div key={col.label} className="rounded-2xl border border-border bg-card p-3">
+                <div className="mb-2 inline-block rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+                  {col.label}
+                </div>
+                <ol className="space-y-1">
+                  {col.items.map((item) => {
+                    const isDone = item.week < CURRENT_WEEK;
+                    const isCurrent = item.week === CURRENT_WEEK;
+                    const isFuture = item.week > CURRENT_WEEK;
 
-              return (
-                <li
-                  key={item.week}
-                  className={cn(
-                    "flex items-center gap-4 rounded-xl px-3 py-2.5",
-                    isCurrent && "bg-accent/25",
-                  )}
-                >
-                  {/* circle */}
-                  <div
-                    className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold",
-                      isDone && "bg-primary text-primary-foreground",
-                      isCurrent && "bg-primary text-primary-foreground",
-                      isFuture &&
-                        "border border-border bg-background text-muted-foreground",
-                    )}
-                    aria-hidden
-                  >
-                    {isDone ? (
-                      <Check className="h-4 w-4" />
-                    ) : isCurrent ? (
-                      <MapPin className="h-4 w-4" />
-                    ) : (
-                      item.week
-                    )}
-                  </div>
+                    return (
+                      <li
+                        key={item.week}
+                        className={cn(
+                          "flex items-center gap-2 rounded-xl px-2 py-2",
+                          isCurrent && "bg-accent/25",
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold",
+                            isDone && "bg-primary text-primary-foreground",
+                            isCurrent && "bg-primary text-primary-foreground",
+                            isFuture &&
+                              "border border-border bg-background text-muted-foreground",
+                          )}
+                          aria-hidden
+                        >
+                          {isDone ? (
+                            <Check className="h-3.5 w-3.5" />
+                          ) : isCurrent ? (
+                            <MapPin className="h-3.5 w-3.5" />
+                          ) : (
+                            item.week
+                          )}
+                        </div>
 
-                  {/* week label */}
-                  <div
-                    className={cn(
-                      "w-14 shrink-0 text-[14px] font-bold",
-                      isFuture && "text-muted-foreground",
-                    )}
-                  >
-                    {item.week}주차
-                  </div>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-medium",
+                            STAGE_STYLE[item.stage],
+                            isFuture &&
+                              item.stage !== "중간점검" &&
+                              item.stage !== "기말 종합" &&
+                              "opacity-70",
+                          )}
+                        >
+                          {item.stage}
+                        </span>
 
-                  {/* stage badge */}
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium",
-                      STAGE_STYLE[item.stage],
-                      isFuture &&
-                        item.stage !== "중간점검" &&
-                        item.stage !== "기말 종합" &&
-                        "opacity-70",
-                    )}
-                  >
-                    {item.stage}
-                  </span>
-
-                  {/* topic */}
-                  <div
-                    className={cn(
-                      "text-[14px]",
-                      isCurrent && "font-bold text-foreground",
-                      isDone && "font-semibold text-foreground",
-                      isFuture && "text-muted-foreground",
-                    )}
-                  >
-                    {item.topic}
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
+                        <div
+                          className={cn(
+                            "min-w-0 flex-1 text-[13px]",
+                            isCurrent && "font-bold text-foreground",
+                            isDone && "font-semibold text-foreground",
+                            isFuture && "text-muted-foreground",
+                          )}
+                        >
+                          <span className="font-semibold">{item.week}·</span> {item.topic}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            ))}
+          </div>
         </section>
+
 
         {/* 4. Today's ordered steps */}
         <section className="mt-8">
