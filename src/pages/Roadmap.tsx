@@ -113,9 +113,14 @@ const Roadmap = () => {
           <div className="flex items-start gap-3">
             <span className="mt-1 h-6 w-1.5 rounded-sm bg-accent" aria-hidden />
             <div>
-              <h1 className="text-[20px] font-bold sm:text-[22px]">
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="text-left text-[20px] font-bold hover:underline sm:text-[22px]"
+              >
                 AI 기반 한중 통번역 학습 워크플로우
-              </h1>
+              </button>
+
               <p className="mt-1 text-[13px] text-primary-foreground/70">
                 상황에 맞는 표현을 판단하고 수정하는 화용 의사결정 훈련
               </p>
