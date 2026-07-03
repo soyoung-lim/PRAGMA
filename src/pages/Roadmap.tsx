@@ -178,9 +178,10 @@ const Roadmap = () => {
                 </div>
                 <ol className="space-y-1">
                   {col.items.map((item) => {
-                    const isDone = item.week < CURRENT_WEEK;
-                    const isCurrent = item.week === CURRENT_WEEK;
-                    const isFuture = item.week > CURRENT_WEEK;
+                    const isDone = item.week < activeWeek;
+                    const isCurrent = item.week === activeWeek;
+                    const isFuture = item.week > activeWeek || activeWeek < 0;
+
 
                     return (
                       <li
