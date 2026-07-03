@@ -117,19 +117,19 @@ const Roadmap = () => {
         </section>
 
         {/* 3. Semester flow */}
-        <section className="mt-8">
+        <section className="mt-5">
           <div className="flex items-center gap-2">
             <CircleDot className="h-4 w-4 text-destructive" aria-hidden />
-            <h3 className="text-[17px] font-bold">주차별 학습 계획</h3>
+            <h3 className="text-[18px] font-bold">주차별 학습 계획</h3>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[
               { items: ROADMAP.filter((i) => i.week <= 7), label: "0–7주차 · 중간점검까지" },
               { items: ROADMAP.filter((i) => i.week >= 8), label: "8–15주차 · 기말 종합까지" },
             ].map((col) => (
-              <div key={col.label} className="rounded-2xl border border-border bg-card p-3">
-                <div className="mb-2 inline-block rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+              <div key={col.label} className="rounded-2xl border border-border bg-card p-2.5">
+                <div className="mb-2 inline-block rounded-full bg-muted px-3 py-1 text-[12px] font-semibold text-muted-foreground">
                   {col.label}
                 </div>
                 <ol className="space-y-1">
@@ -142,13 +142,13 @@ const Roadmap = () => {
                       <li
                         key={item.week}
                         className={cn(
-                          "flex items-center gap-2 rounded-xl px-2 py-2",
+                          "flex items-center gap-2 rounded-xl px-2 py-1.5",
                           isCurrent && "bg-accent/25",
                         )}
                       >
                         <div
                           className={cn(
-                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold",
+                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold",
                             isDone && "bg-primary text-primary-foreground",
                             isCurrent && "bg-primary text-primary-foreground",
                             isFuture &&
@@ -167,7 +167,7 @@ const Roadmap = () => {
 
                         <span
                           className={cn(
-                            "shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-medium",
+                            "shrink-0 rounded-full px-2 py-0.5 text-[12px] font-medium",
                             STAGE_STYLE[item.stage],
                             isFuture &&
                               item.stage !== "중간점검" &&
@@ -180,7 +180,7 @@ const Roadmap = () => {
 
                         <div
                           className={cn(
-                            "min-w-0 flex-1 text-[13px]",
+                            "min-w-0 flex-1 text-[14px]",
                             isCurrent && "font-bold text-foreground",
                             isDone && "font-semibold text-foreground",
                             isFuture && "text-muted-foreground",
