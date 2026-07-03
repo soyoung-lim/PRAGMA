@@ -199,33 +199,33 @@ const Roadmap = () => {
 
 
         {/* 4. Today's ordered steps */}
-        <section className="mt-8">
+        <section className="mt-5">
           <div className="flex items-center gap-2">
             <ListChecks className="h-4 w-4 text-destructive" aria-hidden />
-            <h3 className="text-[17px] font-bold">오늘 이 순서로 진행합니다</h3>
+            <h3 className="text-[18px] font-bold">오늘 이 순서로 진행합니다</h3>
           </div>
-          <p className="mt-2 text-[13px] text-muted-foreground">{TODAY.intro}</p>
+          <p className="mt-2 text-[14px] text-muted-foreground">{TODAY.intro}</p>
 
-          <ol className="mt-4 space-y-1 rounded-2xl border border-border bg-card p-5">
+          <ol className="mt-3 space-y-1 rounded-2xl border border-border bg-card p-4">
             {TODAY.steps.map((label, idx) => (
               <li
                 key={idx}
-                className="flex items-center gap-4 rounded-lg px-2 py-2.5"
+                className="flex items-center gap-4 rounded-lg px-2 py-1.5"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-[12px] font-semibold text-foreground">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-[13px] font-semibold text-foreground">
                   {idx + 1}
                 </div>
-                <div className="text-[14px] text-foreground">{label}</div>
+                <div className="text-[15px] text-foreground">{label}</div>
               </li>
             ))}
           </ol>
         </section>
 
         {/* 5. Completion note (green left border) */}
-        <section className="mt-8">
-          <div className="flex items-start gap-3 rounded-xl border border-border border-l-4 border-l-emerald-600 bg-card p-4">
+        <section className="mt-5">
+          <div className="flex items-start gap-3 rounded-xl border border-border border-l-4 border-l-emerald-600 bg-card p-3">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
-            <p className="text-[13.5px] leading-relaxed text-foreground">
+            <p className="text-[14px] leading-relaxed text-foreground">
               오늘 학습을 마치면 <b>나의 판단 · 수정 · 최종안</b>이 성장 리포트에
               기록되고, 다음 주차 학습에 반영됩니다.
             </p>
@@ -233,7 +233,7 @@ const Roadmap = () => {
         </section>
 
         {/* 6. CTA */}
-        <section className="mt-8">
+        <section className="mt-5">
           <button
             type="button"
             onClick={() => navigate("/entry/task-mode")}
