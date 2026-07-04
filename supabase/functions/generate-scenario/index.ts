@@ -139,8 +139,50 @@ function buildUserPrompt(input: GenInput, candidateCount: number): string {
   if (input.coordination) parts.push(`- 조율·대안 표현 포함`)
   if (input.hsk_level_min) parts.push(`- 최소 HSK 수준: ${input.hsk_level_min}`)
   parts.push('', '위 조건에 정확히 부합하는 시나리오 1개를 스키마대로 JSON만 반환하세요.')
+  if (vocab && vocab.length > 0) {
+    parts.push(
+      '',
+      `[참고 어휘] 아래는 이 학습자 수준(HSK ${hskLevel}급 이하)에서 사용 가능한 어휘 예시입니다. 가능한 한 이 수준의 어휘로 자연스럽게 작성하되, 통번역상 꼭 필요한 전문용어·고유명사·관용표현은 이 목록에 없어도 사용할 수 있습니다(강제 아님):`,
+      vocab.join(', '),
+    )
+  }
   return parts.join('\n')
 }
+
+function mapLevelToHsk(input: GenInput): number {
+  if (input.hsk_level_min) {
+    const n = parseInt(String(input.hsk_level_min).replace(/[^0-9]/g, ''), 10)
+    if (!isNaN(n) && n >= 1 && n <= 6) return n
+  }
+  if (input.level === 'advanced') return 6
+  if (input.level === 'intermediate') return 5
+  return 4
+}
+
+async function fetchHskVocab(hskLevel: number): Promise<string[]> {
+  try {
+    const url = Deno.env.get('SUPABASE_URL')
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!url || !key) return []
+    const res = await fetch(
+      `${url}/rest/v1/hsk_vocab?select=word&hsk_level=lte.${hskLevel}&limit=500`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    )
+    if (!res.ok) return []
+    const rows = (await res.json()) as Array<{ word: string }>
+    if (!Array.isArray(rows) || rows.length === 0) return []
+    // shuffle & take 50
+    for (let i = rows.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[rows[i], rows[j]] = [rows[j], rows[i]]
+    }
+    return rows.slice(0, 50).map((r) => r.word).filter(Boolean)
+  } catch (e) {
+    console.warn('fetchHskVocab failed', (e as Error).message)
+    return []
+  }
+}
+
 
 async function callOpenAI(model: string, apiKey: string, system: string, user: string) {
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
