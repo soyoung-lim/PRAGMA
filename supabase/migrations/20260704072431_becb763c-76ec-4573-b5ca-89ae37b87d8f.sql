@@ -1,0 +1,1 @@
+TRUNCATE public.hsk_vocab;
