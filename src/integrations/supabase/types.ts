@@ -220,6 +220,36 @@ export type Database = {
           },
         ]
       }
+      hsk_vocab: {
+        Row: {
+          created_at: string
+          hsk_level: number
+          id: string
+          pinyin: string | null
+          pos: string | null
+          source: string | null
+          word: string
+        }
+        Insert: {
+          created_at?: string
+          hsk_level: number
+          id?: string
+          pinyin?: string | null
+          pos?: string | null
+          source?: string | null
+          word: string
+        }
+        Update: {
+          created_at?: string
+          hsk_level?: number
+          id?: string
+          pinyin?: string | null
+          pos?: string | null
+          source?: string | null
+          word?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           academic_year_or_program: string | null
