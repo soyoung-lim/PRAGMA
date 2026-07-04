@@ -254,7 +254,7 @@ const AdminCorpus = () => {
         {/* 6개 카드 */}
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {SOURCE_TYPES.map((st) => (
-            <Card key={st.key} className="border-[#EAE4D2] bg-[#FAF7EE]">
+            <Card key={st.key} className="h-full border-[#EAE4D2] bg-[#FAF7EE]">
               <CardHeader className="pb-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="text-base">{st.label}</CardTitle>
