@@ -121,7 +121,7 @@ function buildSystemPrompt(candidateCount: number): string {
 - 위 JSON 외 어떤 텍스트도 출력하지 마세요.`
 }
 
-function buildUserPrompt(input: GenInput, candidateCount: number): string {
+function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[] = [], hskLevel = 0): string {
   const parts = [
     `[생성 요청]`,
     `- 화행: ${SPEECH_ACT_KO[input.speech_act] ?? input.speech_act}`,
