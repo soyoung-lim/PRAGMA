@@ -92,9 +92,14 @@ const GENRE: Record<Genre, string> = {
   meeting_speech: "업무 회의",
 };
 const LEVEL: Record<LearnerLevel, string> = {
-  beginner_intermediate: "중급 · HSK 4급",
-  intermediate: "상급 · HSK 5급",
+  beginner_intermediate: "초급 · HSK 4급",
+  intermediate: "중급 · HSK 5급",
   advanced: "고급 · HSK 6급",
+};
+const LEVEL_CANDIDATES: Record<LearnerLevel, number> = {
+  beginner_intermediate: 3,
+  intermediate: 5,
+  advanced: 7,
 };
 const CONTEXT: Record<InteractionContext, string> = {
   coordination: "일정 조정",
@@ -102,35 +107,36 @@ const CONTEXT: Record<InteractionContext, string> = {
   follow_up: "후속 확인",
 };
 const PDR_POWER: Record<PdrPower, string> = {
-  higher: "High",
-  equal: "Medium",
-  lower: "Low",
+  higher: "내가 낮음",
+  equal: "동등",
+  lower: "내가 높음",
 };
 const PDR_DISTANCE: Record<PdrDistance, string> = {
-  formal: "High",
-  occasional: "Medium",
-  close: "Low",
+  formal: "멂",
+  occasional: "보통",
+  close: "가까움",
 };
 const PDR_BURDEN: Record<PdrBurden, string> = {
-  high: "High",
-  mid: "Medium",
-  low: "Low",
+  high: "높음",
+  mid: "중간",
+  low: "낮음",
 };
 const PDR_POWER_SHORT: Record<PdrPower, string> = {
-  higher: "P: High",
-  equal: "P: Medium",
-  lower: "P: Low",
+  higher: "P: 내가 낮음",
+  equal: "P: 동등",
+  lower: "P: 내가 높음",
 };
 const PDR_DISTANCE_SHORT: Record<PdrDistance, string> = {
-  formal: "D: High",
-  occasional: "D: Medium",
-  close: "D: Low",
+  formal: "D: 멂",
+  occasional: "D: 보통",
+  close: "D: 가까움",
 };
 const PDR_BURDEN_SHORT: Record<PdrBurden, string> = {
-  high: "R: High",
-  mid: "R: Medium",
-  low: "R: Low",
+  high: "R: 높음",
+  mid: "R: 중간",
+  low: "R: 낮음",
 };
+
 // Industry display labels. UI-only remap onto the existing 7 enum keys
 // (no DB/schema change). Labels follow the new domain=직장 taxonomy.
 const INDUSTRY: Record<IndustrySector, string> = {
@@ -149,6 +155,68 @@ const DOMAIN: Record<Domain, string> = {
   school: "학교",
   work: "직장",
 };
+
+// UI-only speech-act taxonomy (9). Maps onto the DB enum request|refusal so
+// scenarios still save. High-imposition acts (거절·불만·사과·반대) map to refusal.
+type SpeechActUI =
+  | "request" | "refusal" | "apology" | "thanks"
+  | "proposal" | "agreement" | "opposition" | "compliment" | "complaint";
+const SPEECH_ACT_UI: Record<SpeechActUI, string> = {
+  request: "요청",
+  refusal: "거절",
+  apology: "사과",
+  thanks: "감사",
+  proposal: "제안",
+  agreement: "동의",
+  opposition: "반대",
+  compliment: "칭찬",
+  complaint: "불만",
+};
+const SPEECH_ACT_UI_TO_INTERNAL: Record<SpeechActUI, SpeechAct> = {
+  request: "request",
+  refusal: "refusal",
+  apology: "refusal",
+  thanks: "request",
+  proposal: "request",
+  agreement: "request",
+  opposition: "refusal",
+  compliment: "request",
+  complaint: "refusal",
+};
+
+// UI-only channel taxonomy (4). Maps onto Genre enum.
+type ChannelUI = "email" | "messenger" | "facetoface" | "phone";
+const CHANNEL_UI: Record<ChannelUI, string> = {
+  email: "이메일",
+  messenger: "메신저",
+  facetoface: "대면",
+  phone: "전화",
+};
+const CHANNEL_TO_GENRE: Record<ChannelUI, Genre> = {
+  email: "business_email",
+  messenger: "business_messenger",
+  facetoface: "meeting_speech",
+  phone: "business_messenger",
+};
+
+// UI-only complex-task taxonomy (5). Maps onto InteractionContext enum.
+type ComplexTaskUI = "none" | "explain" | "persuade" | "coordinate" | "negotiate";
+const COMPLEX_TASK_UI: Record<ComplexTaskUI, string> = {
+  none: "없음",
+  explain: "설명·정당화",
+  persuade: "설득",
+  coordinate: "조율",
+  negotiate: "협상",
+};
+const COMPLEX_TASK_TO_CONTEXT: Record<ComplexTaskUI, InteractionContext> = {
+  none: "follow_up",
+  explain: "follow_up",
+  persuade: "negotiation",
+  coordinate: "coordination",
+  negotiate: "negotiation",
+};
+
+
 // UI display map for business functions. The DB enum keeps all 10 values,
 // but only 7 primary keys are surfaced in dropdowns. Orphan enums map to a
 // consolidated label so legacy data still displays a valid new label.
