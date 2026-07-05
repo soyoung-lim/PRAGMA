@@ -30,15 +30,10 @@ type DbScenario = {
 };
 
 type ActId = "request" | "refusal";
-const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP1_ANSWERS_KEY = "step1-answers";
 const BODY_OPEN_KEY = "step1-body-open";
 const SELECTED_SCENARIO_KEY = "step1-scenario-id";
 
-const ACTS: { id: ActId; title: string; desc: string }[] = [
-  { id: "request", title: "요청 상황", desc: "상대에게 무언가를 요청하는 상황" },
-  { id: "refusal", title: "거절 상황", desc: "상대의 요청을 거절해야 하는 상황" },
-];
 
 const QUESTIONS: { id: "q1" | "q2" | "q3"; label: string; options: string[] }[] = [
   {
