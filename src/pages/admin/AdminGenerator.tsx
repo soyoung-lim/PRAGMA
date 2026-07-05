@@ -810,27 +810,11 @@ const AdminGenerator = () => {
               ))}
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4">
               <Field label="산업 분야">
                 <Select
                   value={form.industry}
                   onValueChange={(v) => update("industry", v as IndustrySector)}
-                  disabled={form.domain !== "work"}
-                >
-                  <SelectTrigger className={formField}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(INDUSTRY).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="업무 기능">
-                <Select
-                  value={form.func}
-                  onValueChange={(v) => update("func", v as BusinessFunction)}
                   disabled={form.domain !== "work"}
                 >
                   <SelectTrigger className={formField}>
@@ -841,14 +825,15 @@ const AdminGenerator = () => {
                     side="bottom"
                     sideOffset={4}
                     avoidCollisions={false}
-                    className="max-h-60 overflow-y-auto z-50"
+                    className="max-h-72 overflow-y-auto z-50"
                   >
-                    {FUNCTION_PRIMARY.map((k) => (
-                      <SelectItem key={k} value={k}>{FUNCTION[k]}</SelectItem>
+                    {Object.entries(INDUSTRY).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
+              {/* 업무 기능 필드는 이번 메타데이터에서 제외. 내부 기본값(form.func)만 유지. */}
             </div>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
               직장 도메인에서 사용되는 산업 배경입니다.
