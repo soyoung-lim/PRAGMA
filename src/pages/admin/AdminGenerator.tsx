@@ -699,11 +699,34 @@ const AdminGenerator = () => {
             <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
               도메인
             </h3>
-            <div className="mt-2 grid grid-cols-2 gap-3">
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              시나리오의 관계·상황 배경을 정하는 상위 분류입니다.
+            </p>
+            <div className="mt-2 flex gap-4">
+              {(Object.keys(DOMAIN) as Domain[]).map((d) => (
+                <label
+                  key={d}
+                  className="flex items-center gap-2 text-[13px] cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="domain"
+                    value={d}
+                    checked={form.domain === d}
+                    onChange={() => update("domain", d)}
+                    className="accent-[#1d2336]"
+                  />
+                  {DOMAIN[d]}
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
               <Field label="산업 분야">
                 <Select
                   value={form.industry}
                   onValueChange={(v) => update("industry", v as IndustrySector)}
+                  disabled={form.domain !== "work"}
                 >
                   <SelectTrigger className={formField}>
                     <SelectValue />
@@ -719,6 +742,7 @@ const AdminGenerator = () => {
                 <Select
                   value={form.func}
                   onValueChange={(v) => update("func", v as BusinessFunction)}
+                  disabled={form.domain !== "work"}
                 >
                   <SelectTrigger className={formField}>
                     <SelectValue />
@@ -737,7 +761,11 @@ const AdminGenerator = () => {
                 </Select>
               </Field>
             </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              직장 도메인에서 사용되는 산업 배경입니다.
+            </p>
           </div>
+
 
           {/* 복잡도 */}
           <div>
