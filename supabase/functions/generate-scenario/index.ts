@@ -90,6 +90,27 @@ interface GenInput {
   hsk_level_min?: string | null
   language_direction?: string
   mode?: string
+  // UI-level values (preferred for prompt labeling when present)
+  speech_act_ui?: string | null
+  channel_ui?: string | null
+  complex_task_ui?: string | null
+}
+
+// UI-level labels — richer than the collapsed internal enums.
+const SPEECH_ACT_UI_KO: Record<string, string> = {
+  request: '요청', refusal: '거절', apology: '사과', thanks: '감사',
+  proposal: '제안', agreement: '동의', opposition: '반대',
+  compliment: '칭찬', complaint: '불만',
+}
+const CHANNEL_UI_KO: Record<string, string> = {
+  email: '이메일', messenger: '메신저', facetoface: '대면', phone: '전화',
+}
+const COMPLEX_TASK_UI_KO: Record<string, string> = {
+  none: '없음(단일 화행)',
+  explain: '설명·정당화',
+  persuade: '설득',
+  coordinate: '조율',
+  negotiate: '협상',
 }
 
 const LANG_DIR_KO: Record<string, string> = {
@@ -100,6 +121,7 @@ const MODE_KO: Record<string, string> = {
   translation: '번역 (텍스트)',
   stt_interpreting: '통역 (음성/발화)',
 }
+
 
 function buildSystemPrompt(candidateCount: number, domain?: string | null): string {
   const isWork = !domain || domain === 'work'
@@ -163,13 +185,23 @@ function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[
   const genreLabel = isWork
     ? (GENRE_KO[input.genre] ?? input.genre)
     : (GENRE_NEUTRAL_KO[input.genre] ?? input.genre)
+  // Prefer UI-level labels (richer taxonomy) over collapsed internal enums.
+  const speechActLabel = input.speech_act_ui
+    ? (SPEECH_ACT_UI_KO[input.speech_act_ui] ?? input.speech_act_ui)
+    : (SPEECH_ACT_KO[input.speech_act] ?? input.speech_act)
+  const channelLabel = input.channel_ui
+    ? (CHANNEL_UI_KO[input.channel_ui] ?? input.channel_ui)
+    : genreLabel
+  const complexTaskLabel = input.complex_task_ui
+    ? (COMPLEX_TASK_UI_KO[input.complex_task_ui] ?? input.complex_task_ui)
+    : (CONTEXT_KO[input.context] ?? input.context)
   const parts = [
     `[생성 요청]`,
     `- 도메인: ${DOMAIN_KO[input.domain ?? 'work'] ?? input.domain}`,
-    `- 화행: ${SPEECH_ACT_KO[input.speech_act] ?? input.speech_act}`,
-    `- 장르: ${genreLabel}`,
+    `- 화행: ${speechActLabel}`,
+    `- 채널/장르: ${channelLabel}`,
     `- 학습자 수준: ${LEVEL_KO[input.level]?.label ?? input.level} (후보 ${candidateCount}개)`,
-    `- 상호작용 맥락: ${CONTEXT_KO[input.context] ?? input.context}`,
+    `- 복합 과제(상호작용 맥락): ${complexTaskLabel}`,
     `- P (Power, 지위): ${PDR_POWER_KO[input.pdr_power] ?? input.pdr_power}`,
     `- D (Distance, 거리): ${PDR_DISTANCE_KO[input.pdr_distance] ?? input.pdr_distance}`,
     `- R (Imposition, 부담도): ${PDR_BURDEN_KO[input.pdr_burden] ?? input.pdr_burden}`,
@@ -186,7 +218,18 @@ function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[
   if (input.hsk_level_min) parts.push(`- 최소 HSK 수준: ${input.hsk_level_min}`)
   if (input.language_direction) parts.push(`- 언어 방향: ${LANG_DIR_KO[input.language_direction] ?? input.language_direction}`)
   if (input.mode) parts.push(`- 수행 모드: ${MODE_KO[input.mode] ?? input.mode}`)
-  parts.push('', '위 조건에 정확히 부합하는 시나리오 1개를 스키마대로 JSON만 반환하세요.')
+  parts.push(
+    '',
+    '반드시 지킬 것:',
+    `- 시나리오의 화행은 정확히 "${speechActLabel}" 유형이어야 합니다. 다른 화행(예: 요청↔거절, 사과↔감사)으로 대체하지 마세요.`,
+    `- 수행 채널은 "${channelLabel}"의 관습(문체·격식·매체 특성)을 반영하세요.`,
+    input.complex_task_ui && input.complex_task_ui !== 'none'
+      ? `- 위 화행에 "${complexTaskLabel}" 과제를 결합한 복합 상황으로 구성하세요.`
+      : `- 단일 화행 중심으로 구성하세요(불필요한 협상·조율 요소 추가 금지).`,
+    '',
+    '위 조건에 정확히 부합하는 시나리오 1개를 스키마대로 JSON만 반환하세요.',
+  )
+
   if (vocab && vocab.length > 0) {
     parts.push(
       '',
