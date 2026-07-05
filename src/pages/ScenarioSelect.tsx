@@ -81,7 +81,6 @@ const DIRECTION_LABEL: Record<string, string> = {
 const ScenarioSelect = () => {
   const navigate = useNavigate();
   const demo = isDemoMode();
-  const [selected, setSelected] = useState<ActId | null>(null);
   const [selectedId, setSelectedIdState] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Answers>(EMPTY);
   const [bodyOpen, setBodyOpen] = useState<boolean>(false);
@@ -168,8 +167,6 @@ const ScenarioSelect = () => {
     ensureSession();
     logAction("page_visit", { page: "/scenario" }, "/scenario");
     try {
-      const saved = localStorage.getItem(ACT_STORAGE_KEY);
-      if (saved === "request" || saved === "refusal") setSelected(saved);
       const sid = localStorage.getItem(SELECTED_SCENARIO_KEY);
       if (sid) setSelectedIdState(sid);
       const a = localStorage.getItem(STEP1_ANSWERS_KEY);
