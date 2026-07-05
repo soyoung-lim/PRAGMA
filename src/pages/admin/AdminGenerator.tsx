@@ -199,6 +199,26 @@ const CHANNEL_TO_GENRE: Record<ChannelUI, Genre> = {
   phone: "business_messenger",
 };
 
+// UI-only language direction (not persisted unless scenarios has column).
+type LanguageDirection = "ko_zh" | "zh_ko";
+const LANGUAGE_DIRECTION: Record<LanguageDirection, string> = {
+  ko_zh: "한→중",
+  zh_ko: "중→한",
+};
+
+// Derived mode from channel. email/messenger => translation, facetoface/phone => stt_interpreting.
+type GenMode = "translation" | "stt_interpreting";
+const CHANNEL_TO_MODE: Record<ChannelUI, GenMode> = {
+  email: "translation",
+  messenger: "translation",
+  facetoface: "stt_interpreting",
+  phone: "stt_interpreting",
+};
+const MODE_LABEL: Record<GenMode, string> = {
+  translation: "번역",
+  stt_interpreting: "통역",
+};
+
 // UI-only complex-task taxonomy (5). Maps onto InteractionContext enum.
 type ComplexTaskUI = "none" | "explain" | "persuade" | "coordinate" | "negotiate";
 const COMPLEX_TASK_UI: Record<ComplexTaskUI, string> = {
