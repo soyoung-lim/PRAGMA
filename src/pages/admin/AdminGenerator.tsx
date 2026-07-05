@@ -727,6 +727,27 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
+              <Field label="언어 방향">
+                <Select
+                  value={form.language_direction}
+                  onValueChange={(v) => update("language_direction", v as LanguageDirection)}
+                >
+                  <SelectTrigger className={formField}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(LANGUAGE_DIRECTION).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <div className="flex items-end">
+                <div className="text-[12px] text-muted-foreground">
+                  모드: <span className="font-medium text-foreground">{MODE_LABEL[CHANNEL_TO_MODE[form.channel]]}</span>
+                  <span className="ml-1 text-[11px]">(채널에서 자동 파생)</span>
+                </div>
+              </div>
             </div>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
               채널은 향후 번역/통역 모드와 격식 판단에 사용됩니다. · 학습자 수준 후보 수:
@@ -734,6 +755,7 @@ const AdminGenerator = () => {
               &nbsp;· “없음”은 단일 화행 과제일 때 사용합니다.
             </p>
           </div>
+
 
 
           {/* P-D-R 조건 */}
