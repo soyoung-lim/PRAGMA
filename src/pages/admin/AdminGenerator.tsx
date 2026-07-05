@@ -705,7 +705,7 @@ const AdminGenerator = () => {
             </div>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
               채널은 향후 번역/통역 모드와 격식 판단에 사용됩니다. · 학습자 수준 후보 수:
-              초급 3개 / 중급 5개 / 고급 7개 (현재: {LEVEL_CANDIDATES[form.level]}개)
+              입문 3개 / 중급 5개 / 고급 7개 (현재: {LEVEL_CANDIDATES[form.level]}개)
               &nbsp;· “없음”은 단일 화행 과제일 때 사용합니다.
             </p>
           </div>
@@ -716,8 +716,8 @@ const AdminGenerator = () => {
             <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
               P-D-R 조건
             </h3>
-            <div className="mt-2 space-y-3">
-              <Field label="Power (P) · 지위 관계">
+            <div className="mt-2 grid grid-cols-3 gap-3">
+              <Field label="Power (P)">
                 <Select
                   value={form.pdr_power}
                   onValueChange={(v) => update("pdr_power", v as PdrPower)}
@@ -738,7 +738,7 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Distance (D) · 관계 거리">
+              <Field label="Distance (D)">
                 <Select
                   value={form.pdr_distance}
                   onValueChange={(v) => update("pdr_distance", v as PdrDistance)}
@@ -759,7 +759,7 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Imposition (R) · 부담도">
+              <Field label="Imposition (R)">
                 <Select
                   value={form.pdr_burden}
                   onValueChange={(v) => update("pdr_burden", v as PdrBurden)}
@@ -841,47 +841,49 @@ const AdminGenerator = () => {
           </div>
 
 
-          {/* 복잡도 */}
-          <div>
-            <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
-              복잡도 조절
-            </h3>
-            <div className="mt-2 space-y-2.5">
-              <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.multi}
-                  onChange={(e) => update("multi", e.target.checked)}
-                  className="accent-[#1d2336]"
-                />
-                다중 이해관계자 포함
-              </label>
-              <Field label="근거 제시 수">
-                <Select
-                  value={form.reasons}
-                  onValueChange={(v) => update("reasons", v as FormState["reasons"])}
-                >
-                  <SelectTrigger className={`${formField} w-32`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["1", "2", "3"].map((n) => (
-                      <SelectItem key={n} value={n}>{n}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.coordination}
-                  onChange={(e) => update("coordination", e.target.checked)}
-                  className="accent-[#1d2336]"
-                />
-                조율·대안 표현 포함
-              </label>
+          {/* 복잡도 조절 — 향후 복합 과제 고급 옵션으로 재분리 예정. 내부 기본값은 DEFAULT_FORM에서 유지. */}
+          {false && (
+            <div>
+              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
+                복잡도 조절
+              </h3>
+              <div className="mt-2 space-y-2.5">
+                <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.multi}
+                    onChange={(e) => update("multi", e.target.checked)}
+                    className="accent-[#1d2336]"
+                  />
+                  다중 이해관계자 포함
+                </label>
+                <Field label="근거 제시 수">
+                  <Select
+                    value={form.reasons}
+                    onValueChange={(v) => update("reasons", v as FormState["reasons"])}
+                  >
+                    <SelectTrigger className={`${formField} w-32`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["1", "2", "3"].map((n) => (
+                        <SelectItem key={n} value={n}>{n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.coordination}
+                    onChange={(e) => update("coordination", e.target.checked)}
+                    className="accent-[#1d2336]"
+                  />
+                  조율·대안 표현 포함
+                </label>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[11.5px] leading-relaxed text-[#5B5446]">
             <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-600 align-middle" />
