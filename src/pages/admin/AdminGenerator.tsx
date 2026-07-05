@@ -510,7 +510,7 @@ const AdminGenerator = () => {
           genre: CHANNEL_TO_GENRE[form.channel],
           level: form.level,
           context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
-          industry: form.industry,
+          industry: form.domain === "work" ? form.industry : null,
           func: form.func,
           pdr_power: form.pdr_power,
           pdr_distance: form.pdr_distance,
