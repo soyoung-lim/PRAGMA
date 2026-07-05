@@ -38,7 +38,7 @@ const PDR_POWER_KO: Record<string, string> = {
 }
 const PDR_DISTANCE_KO: Record<string, string> = {
   formal: '격식·소원(멀다)',
-  occasional: '가끔 협업(중간)',
+  occasional: '중간(가끔 교류하는 사이)',
   close: '친밀(가깝다)',
 }
 const PDR_BURDEN_KO: Record<string, string> = {
@@ -47,13 +47,18 @@ const PDR_BURDEN_KO: Record<string, string> = {
   low: '낮음',
 }
 const INDUSTRY_KO: Record<string, string> = {
-  trade_distribution: '무역·유통',
-  IT_platform: 'IT·플랫폼',
-  manufacturing: '제조·소비재',
-  tourism_hospitality: '관광·서비스',
-  education_research: '교육·연구',
-  public_international_affairs: '공공·국제교류',
-  culture_content_media: '문화·콘텐츠',
+  trade_distribution: '제조·글로벌 무역',
+  IT_platform: 'IT·테크·플랫폼',
+  manufacturing: '뷰티·패션·커머스',
+  tourism_hospitality: '관광·MICE',
+  education_research: '공공·교육·연구',
+  public_international_affairs: '바이오·의료·헬스케어',
+  culture_content_media: '엔터테인먼트·미디어',
+}
+const DOMAIN_KO: Record<string, string> = {
+  daily: '일상 (친구·이웃·가족·상점·동호회 등 일상생활 관계)',
+  school: '학교 (교수·조교·동기·유학생·학사 업무 등 캠퍼스 관계)',
+  work: '직장 (회사·거래처·업무 관계)',
 }
 const FUNCTION_KO: Record<string, string> = {
   overseas_sales: '해외영업·거래',
@@ -73,8 +78,9 @@ interface GenInput {
   genre: string
   level: string
   context: string
-  industry: string
-  func: string
+  domain?: string | null
+  industry?: string | null
+  func?: string | null
   pdr_power: string
   pdr_distance: string
   pdr_burden: string
@@ -95,13 +101,27 @@ const MODE_KO: Record<string, string> = {
   stt_interpreting: '통역 (음성/발화)',
 }
 
-function buildSystemPrompt(candidateCount: number): string {
-  return `당신은 한→중 비즈니스 통번역 교육용 시나리오를 설계하는 전문가입니다.
+function buildSystemPrompt(candidateCount: number, domain?: string | null): string {
+  const isWork = !domain || domain === 'work'
+  const domainDesc =
+    domain === 'daily'
+      ? '일상생활(친구·이웃·가족·상점·동호회 등) 상황의 한→중 통번역 교육용 시나리오'
+      : domain === 'school'
+        ? '학교·캠퍼스(교수·조교·동기·유학생·학사 업무 등) 상황의 한→중 통번역 교육용 시나리오'
+        : '한→중 비즈니스 통번역 교육용 시나리오'
+  const sourceDesc = isWork ? '자연스러운 실무 한국어' : '자연스러운 생활 한국어'
+  const expertDesc = isWork
+    ? '실제 비즈니스 현장 실무자 관점의 코멘트 (한국어)'
+    : '실제 그 상황을 자주 겪는 생활 경험자 관점의 코멘트 (한국어)'
+  const domainRule = isWork
+    ? `- 시나리오의 배경·등장인물·관계는 반드시 도메인 '직장'을 따르고, [생성 요청]에 '산업 분야'가 있으면 그 산업의 구체적 업무 상황으로 작성하세요. 다른 산업(예: 마케팅 일반)으로 대체하지 마세요.`
+    : `- [중요] 이 시나리오는 업무·비즈니스 시나리오가 아닙니다. 회사·직장·동료·거래처·마케팅·협업·프로젝트 등 업무 소재를 절대 사용하지 마세요. 등장인물·관계·소재는 반드시 [생성 요청]의 '도메인' 설명을 따르세요.`
+  return `당신은 ${domainDesc}를 설계하는 전문가입니다.
 출력은 반드시 아래 JSON 스키마만, 마크다운·설명·주석 없이 그대로 반환합니다.
 
 {
   "title": "한국어 시나리오 제목",
-  "source_text": "학습자가 중국어로 번역할 한국어 원문 (자연스러운 실무 한국어, 3~6문장)",
+  "source_text": "학습자가 중국어로 번역할 한국어 원문 (${sourceDesc}, 3~6문장)",
   "situation": "상황 카드용 배경 설명 (한국어, 2~3문장, 발신자·수신자·목적·관계 명시)",
   "candidates": [
     {
@@ -115,7 +135,7 @@ function buildSystemPrompt(candidateCount: number): string {
   "feedback": {
     "teacher": "통번역 교수자 관점의 종합 코멘트 (한국어)",
     "native": "중국어 네이티브 관점의 코멘트 (한국어로 서술, 중국어 표현 인용 가능)",
-    "field_expert": "실제 비즈니스 현장 실무자 관점의 코멘트 (한국어)"
+    "field_expert": "${expertDesc}"
   }
 }
 
@@ -128,23 +148,38 @@ function buildSystemPrompt(candidateCount: number): string {
 - "meaning_shift" = 원문에 없는 사실·책임·사과·약속을 날조하거나 원문 의미를 왜곡한 경우. 절대 "meaning_shift"인 문장을 "appropriate"으로 만들지 마세요.
 - 반드시 정확히 하나 이상의 후보가 "appropriate"이어야 함. 나머지는 서로 다른 실패 유형으로 다양화.
 - 이번 MVP는 pragmalinguistic(형식-기능 매핑) 중심. 문화·관습 차이는 rationale 서술로만 언급.
+${domainRule}
 - 언어 방향: 한국어(source) → 중국어(target). source_text는 반드시 한국어, candidate_text는 반드시 중국어.
 - 위 JSON 외 어떤 텍스트도 출력하지 마세요.`
 }
 
 function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[] = [], hskLevel = 0): string {
+  const isWork = !input.domain || input.domain === 'work'
+  const GENRE_NEUTRAL_KO: Record<string, string> = {
+    business_email: '이메일',
+    business_messenger: '메신저 대화',
+    meeting_speech: '대면 대화',
+  }
+  const genreLabel = isWork
+    ? (GENRE_KO[input.genre] ?? input.genre)
+    : (GENRE_NEUTRAL_KO[input.genre] ?? input.genre)
   const parts = [
     `[생성 요청]`,
+    `- 도메인: ${DOMAIN_KO[input.domain ?? 'work'] ?? input.domain}`,
     `- 화행: ${SPEECH_ACT_KO[input.speech_act] ?? input.speech_act}`,
-    `- 장르: ${GENRE_KO[input.genre] ?? input.genre}`,
+    `- 장르: ${genreLabel}`,
     `- 학습자 수준: ${LEVEL_KO[input.level]?.label ?? input.level} (후보 ${candidateCount}개)`,
     `- 상호작용 맥락: ${CONTEXT_KO[input.context] ?? input.context}`,
-    `- 산업 분야: ${INDUSTRY_KO[input.industry] ?? input.industry}`,
-    `- 업무 기능: ${FUNCTION_KO[input.func] ?? input.func}`,
     `- P (Power, 지위): ${PDR_POWER_KO[input.pdr_power] ?? input.pdr_power}`,
     `- D (Distance, 거리): ${PDR_DISTANCE_KO[input.pdr_distance] ?? input.pdr_distance}`,
     `- R (Imposition, 부담도): ${PDR_BURDEN_KO[input.pdr_burden] ?? input.pdr_burden}`,
   ]
+  if (isWork && input.industry) {
+    parts.splice(5, 0, `- 산업 분야: ${INDUSTRY_KO[input.industry] ?? input.industry}`)
+  }
+  if (isWork && input.func) {
+    parts.splice(parts.findIndex((p) => p.startsWith('- P (Power')), 0, `- 업무 기능: ${FUNCTION_KO[input.func] ?? input.func}`)
+  }
   if (input.multi) parts.push(`- 복잡도: 다중 이해관계자 포함`)
   if (input.reasons) parts.push(`- 근거 제시 수: ${input.reasons}개`)
   if (input.coordination) parts.push(`- 조율·대안 표현 포함`)
@@ -244,7 +279,7 @@ Deno.serve(async (req) => {
     const candidateCount = LEVEL_KO[input.level]?.candidateCount ?? 3
     const hskLevel = mapLevelToHsk(input)
     const vocab = await fetchHskVocab(hskLevel)
-    const system = buildSystemPrompt(candidateCount)
+    const system = buildSystemPrompt(candidateCount, input.domain)
     const user = buildUserPrompt(input, candidateCount, vocab, hskLevel)
     console.log('hsk vocab injection', { hskLevel, vocabCount: vocab.length })
 
