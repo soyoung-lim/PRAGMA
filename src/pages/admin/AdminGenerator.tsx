@@ -199,6 +199,26 @@ const CHANNEL_TO_GENRE: Record<ChannelUI, Genre> = {
   phone: "business_messenger",
 };
 
+// UI-only language direction (not persisted unless scenarios has column).
+type LanguageDirection = "ko_zh" | "zh_ko";
+const LANGUAGE_DIRECTION: Record<LanguageDirection, string> = {
+  ko_zh: "한→중",
+  zh_ko: "중→한",
+};
+
+// Derived mode from channel. email/messenger => translation, facetoface/phone => stt_interpreting.
+type GenMode = "translation" | "stt_interpreting";
+const CHANNEL_TO_MODE: Record<ChannelUI, GenMode> = {
+  email: "translation",
+  messenger: "translation",
+  facetoface: "stt_interpreting",
+  phone: "stt_interpreting",
+};
+const MODE_LABEL: Record<GenMode, string> = {
+  translation: "번역",
+  stt_interpreting: "통역",
+};
+
 // UI-only complex-task taxonomy (5). Maps onto InteractionContext enum.
 type ComplexTaskUI = "none" | "explain" | "persuade" | "coordinate" | "negotiate";
 const COMPLEX_TASK_UI: Record<ComplexTaskUI, string> = {
@@ -262,6 +282,7 @@ interface FormState {
   pdr_distance: PdrDistance;
   pdr_burden: PdrBurden;
   domain: Domain;
+  language_direction: LanguageDirection;
 }
 
 const DEFAULT_FORM: FormState = {
@@ -280,6 +301,8 @@ const DEFAULT_FORM: FormState = {
   pdr_distance: "occasional",
   pdr_burden: "mid",
   domain: "work",
+  language_direction: "ko_zh",
+
 
 };
 
@@ -495,6 +518,8 @@ const AdminGenerator = () => {
           multi: form.multi,
           reasons: form.reasons,
           coordination: form.coordination,
+          language_direction: form.language_direction,
+          mode: CHANNEL_TO_MODE[form.channel],
         },
       });
       if (error) throw error;
@@ -702,6 +727,27 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
+              <Field label="언어 방향">
+                <Select
+                  value={form.language_direction}
+                  onValueChange={(v) => update("language_direction", v as LanguageDirection)}
+                >
+                  <SelectTrigger className={formField}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(LANGUAGE_DIRECTION).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <div className="flex items-end">
+                <div className="text-[12px] text-muted-foreground">
+                  모드: <span className="font-medium text-foreground">{MODE_LABEL[CHANNEL_TO_MODE[form.channel]]}</span>
+                  <span className="ml-1 text-[11px]">(채널에서 자동 파생)</span>
+                </div>
+              </div>
             </div>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
               채널은 향후 번역/통역 모드와 격식 판단에 사용됩니다. · 학습자 수준 후보 수:
@@ -709,6 +755,7 @@ const AdminGenerator = () => {
               &nbsp;· “없음”은 단일 화행 과제일 때 사용합니다.
             </p>
           </div>
+
 
 
           {/* P-D-R 조건 */}
