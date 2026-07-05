@@ -16,6 +16,7 @@ import AdminCorpus from "./pages/admin/AdminCorpus.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminGenerator from "./pages/admin/AdminGenerator.tsx";
 import AdminPromptHarness from "./pages/admin/AdminPromptHarness.tsx";
+import AdminQuestionDesigner from "./pages/admin/AdminQuestionDesigner.tsx";
 import AdminYoutubeSources from "./pages/admin/AdminYoutubeSources.tsx";
 import AdminReview from "./pages/admin/AdminReview.tsx";
 import AdminLearners from "./pages/admin/AdminLearners.tsx";
@@ -69,6 +70,7 @@ const App = () => (
           <Route path="/admin/archive" element={<AdminArchive />} />
           <Route path="/admin/generator" element={<AdminGenerator />} />
           <Route path="/admin/prompt-harness" element={<AdminPromptHarness />} />
+          <Route path="/admin/question-designer" element={<AdminQuestionDesigner />} />
           <Route path="/admin/review" element={<AdminReview />} />
           <Route path="/admin/learners" element={<AdminLearners />} />
           <Route path="/admin/decision-traces" element={<AdminDecisionTraces />} />
