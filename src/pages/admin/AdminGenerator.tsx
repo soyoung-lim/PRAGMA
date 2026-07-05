@@ -299,7 +299,10 @@ interface BatchItem {
 
 function buildScenario(f: FormState): Generated {
   // Demo-safe mode: pick best-fit pre-baked scenario based on speech_act + genre.
-  const key = `${f.speech_act}-${f.genre}`;
+  const internalSpeechAct = SPEECH_ACT_UI_TO_INTERNAL[f.speech_act_ui];
+  const internalGenre = CHANNEL_TO_GENRE[f.channel];
+  const key = `${internalSpeechAct}-${internalGenre}`;
+
 
   if (key === "refusal-business_email") {
     return {
