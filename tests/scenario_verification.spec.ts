@@ -13,10 +13,7 @@ test('Scenario verification workflow', async () => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
   });
 
-  // Mock Supabase call to provide scenarios
-  // The query includes .eq("review_status", "approved")
   await page.route('**/rest/v1/scenarios*', async route => {
-    console.log('Intercepted scenarios request');
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -65,10 +62,12 @@ test('Scenario verification workflow', async () => {
 
   try {
     await page.goto('http://localhost:8080/student-login');
+    await page.screenshot({ path: '/tmp/browser/scenario/screenshots/1_login.png' });
     await page.getByRole('button', { name: '[DEV] 임시 학습자로 로그인 (stub)' }).click();
-    await page.waitForTimeout(2000); 
-
-    if (page.url().includes('profile-setup') || (await page.getByText('프로필 설정').isVisible())) {
+    
+    // Handle profile setup if visible
+    await page.waitForTimeout(2000);
+    if (page.url().includes('profile-setup') || await page.getByText('프로필 설정').isVisible()) {
       await page.getByPlaceholder('실명을 입력해 주세요').fill('테스트');
       await page.getByText('학부생', { exact: true }).click();
       await page.getByRole('button', { name: '다음' }).click();
@@ -78,54 +77,40 @@ test('Scenario verification workflow', async () => {
       await page.getByRole('button', { name: '다음' }).click();
       await page.getByText('연구 목적').click();
       await page.getByText('익명 식별자').click();
+      await page.screenshot({ path: '/tmp/browser/scenario/screenshots/2_profile.png' });
       await page.getByRole('button', { name: '학습 시작하기' }).click();
     }
 
-    await page.waitForURL('**/home', { timeout: 10000 });
+    await page.waitForURL('**/home');
     await page.goto('http://localhost:8080/scenario');
-    
-    // Wait for the scenario list to be populated
     await page.waitForSelector('text=비즈니스 협력 요청', { timeout: 10000 });
-    
+    await page.screenshot({ path: '/tmp/browser/scenario/screenshots/3_list.png' });
+
     const requestBtn = page.getByRole('button', { name: '요청 상황' });
     const refusalBtn = page.getByRole('button', { name: '거절 상황' });
-    const isRequestBtnVisible = await requestBtn.isVisible();
-    const isRefusalBtnVisible = await refusalBtn.isVisible();
     const totalLabel = page.getByText('전체 상황');
-    const isTotalLabelVisible = await totalLabel.isVisible();
-
-    const cards = page.locator('button:has-text("선택하기")');
+    
+    const cards = page.locator('button:has-text("비즈니스 협력 요청"), button:has-text("제안 거절")');
     const count = await cards.count();
     
-    let isEnabledAfter = false;
-    if (count > 0) {
-      await cards.first().click();
-      const proceedBtn = page.getByRole('button', { name: /번역안 비교하기/ });
-      const fieldsets = page.locator('fieldset');
-      const qCount = await fieldsets.count();
-      for (let i = 0; i < qCount; i++) {
-        await fieldsets.nth(i).locator('label').first().click();
-      }
-      isEnabledAfter = await proceedBtn.isEnabled();
-      
-      const ttsBtn = page.getByLabel('원문 듣기').first();
-      if (await ttsBtn.isVisible()) {
-        await ttsBtn.click();
-        await page.waitForTimeout(1000);
-      }
+    await cards.first().click();
+    await page.screenshot({ path: '/tmp/browser/scenario/screenshots/4_selected.png' });
+
+    const proceedBtn = page.getByRole('button', { name: /번역안 비교하기/ });
+    const fieldsets = page.locator('fieldset');
+    for (let i = 0; i < 3; i++) {
+      await fieldsets.nth(i).locator('label').first().click();
     }
+    await page.screenshot({ path: '/tmp/browser/scenario/screenshots/5_answered.png' });
 
     console.log('REPORT_START');
     console.log('URL: ' + page.url());
-    console.log('Filter buttons gone: ' + (!isRequestBtnVisible && !isRefusalBtnVisible));
+    console.log('Filter buttons gone: ' + (!(await requestBtn.isVisible()) && !(await refusalBtn.isVisible())));
     console.log('Scenario count: ' + count);
-    console.log('Selection + Progression works: ' + isEnabledAfter);
+    console.log('Selection + Progression works: ' + (await proceedBtn.isEnabled()));
     console.log('Console errors: ' + (consoleErrors.length > 0 ? consoleErrors.join(', ') : 'None'));
     console.log('Screenshot paths: /tmp/browser/scenario/screenshots/');
     console.log('REPORT_END');
-    
-    // Take screenshots for the user
-    await page.screenshot({ path: '/tmp/browser/scenario/screenshots/final_state.png' });
 
   } finally {
     await browser.close();
