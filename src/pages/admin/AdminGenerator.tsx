@@ -518,6 +518,8 @@ const AdminGenerator = () => {
           multi: form.multi,
           reasons: form.reasons,
           coordination: form.coordination,
+          language_direction: form.language_direction,
+          mode: CHANNEL_TO_MODE[form.channel],
         },
       });
       if (error) throw error;
