@@ -247,10 +247,12 @@ const FUNCTION_PRIMARY: BusinessFunction[] = [
 interface FormState {
   mode: "single" | "batch";
   batchSize: "5" | "10" | "20";
-  speech_act: SpeechAct;
-  genre: Genre;
+  // UI-level fields (drive display; mapped to internal enums at submit time)
+  speech_act_ui: SpeechActUI;
+  channel: ChannelUI;
+  complex_task: ComplexTaskUI;
+  // Internal enum fields (kept for DB compatibility)
   level: LearnerLevel;
-  context: InteractionContext;
   industry: IndustrySector;
   func: BusinessFunction;
   multi: boolean;
@@ -265,10 +267,10 @@ interface FormState {
 const DEFAULT_FORM: FormState = {
   mode: "single",
   batchSize: "10",
-  speech_act: "refusal",
-  genre: "business_email",
+  speech_act_ui: "refusal",
+  channel: "email",
+  complex_task: "negotiate",
   level: "intermediate",
-  context: "negotiation",
   industry: "culture_content_media",
   func: "marketing_pr",
   multi: false,
@@ -278,6 +280,7 @@ const DEFAULT_FORM: FormState = {
   pdr_distance: "occasional",
   pdr_burden: "mid",
   domain: "work",
+
 };
 
 interface Generated {
