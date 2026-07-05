@@ -558,12 +558,12 @@ const AdminGenerator = () => {
 
   const tags = aiResult
     ? [
-        SPEECH_ACT[form.speech_act],
-        GENRE[form.genre],
+        SPEECH_ACT_UI[form.speech_act_ui],
+        CHANNEL_UI[form.channel],
         LEVEL[form.level],
-        INDUSTRY[form.industry],
-        FUNCTION[form.func],
-        CONTEXT[form.context],
+        DOMAIN[form.domain],
+        ...(form.domain === "work" ? [INDUSTRY[form.industry]] : []),
+        COMPLEX_TASK_UI[form.complex_task],
         `${PDR_POWER_SHORT[form.pdr_power]} / ${PDR_DISTANCE_SHORT[form.pdr_distance]} / ${PDR_BURDEN_SHORT[form.pdr_burden]}`,
       ]
     : [];
