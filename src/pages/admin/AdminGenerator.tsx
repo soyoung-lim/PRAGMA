@@ -92,7 +92,7 @@ const GENRE: Record<Genre, string> = {
   meeting_speech: "업무 회의",
 };
 const LEVEL: Record<LearnerLevel, string> = {
-  beginner_intermediate: "초급 · HSK 4급",
+  beginner_intermediate: "입문 · HSK 4급",
   intermediate: "중급 · HSK 5급",
   advanced: "고급 · HSK 6급",
 };
