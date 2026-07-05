@@ -282,6 +282,7 @@ interface FormState {
   pdr_distance: PdrDistance;
   pdr_burden: PdrBurden;
   domain: Domain;
+  language_direction: LanguageDirection;
 }
 
 const DEFAULT_FORM: FormState = {
