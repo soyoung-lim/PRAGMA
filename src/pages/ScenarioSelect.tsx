@@ -434,10 +434,9 @@ const ScenarioSelect = () => {
                     정답이 있는 질문이 아닙니다. 본인이 상황을 어떻게 받아들였는지 그대로 골라주세요.
                   </p>
                 </div>
-              </>
-            )}
-          </section>
-        )}
+            </>
+          )}
+        </section>
 
         <div className="mt-12 flex justify-end border-t border-border pt-6">
           <button
