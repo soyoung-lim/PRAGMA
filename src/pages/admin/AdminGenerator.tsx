@@ -533,10 +533,10 @@ const AdminGenerator = () => {
           scenario: aiResult,
           meta: aiMeta,
           form: {
-            speech_act: form.speech_act,
-            genre: form.genre,
+            speech_act: SPEECH_ACT_UI_TO_INTERNAL[form.speech_act_ui],
+            genre: CHANNEL_TO_GENRE[form.channel],
             level: form.level,
-            context: form.context,
+            context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
             industry: form.industry,
             func: form.func,
             pdr_power: form.pdr_power,
