@@ -209,6 +209,7 @@ const DEFAULT_FORM: FormState = {
   pdr_power: "higher",
   pdr_distance: "occasional",
   pdr_burden: "mid",
+  domain: "work",
 };
 
 interface Generated {
