@@ -38,7 +38,7 @@ const PDR_POWER_KO: Record<string, string> = {
 }
 const PDR_DISTANCE_KO: Record<string, string> = {
   formal: '격식·소원(멀다)',
-  occasional: '가끔 협업(중간)',
+  occasional: '중간(가끔 교류하는 사이)',
   close: '친밀(가깝다)',
 }
 const PDR_BURDEN_KO: Record<string, string> = {
