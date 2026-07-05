@@ -82,6 +82,17 @@ interface GenInput {
   reasons?: string
   coordination?: boolean
   hsk_level_min?: string | null
+  language_direction?: string
+  mode?: string
+}
+
+const LANG_DIR_KO: Record<string, string> = {
+  ko_zh: '한국어 → 중국어',
+  zh_ko: '중국어 → 한국어',
+}
+const MODE_KO: Record<string, string> = {
+  translation: '번역 (텍스트)',
+  stt_interpreting: '통역 (음성/발화)',
 }
 
 function buildSystemPrompt(candidateCount: number): string {
