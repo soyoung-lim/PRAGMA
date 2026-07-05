@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
     const candidateCount = LEVEL_KO[input.level]?.candidateCount ?? 3
     const hskLevel = mapLevelToHsk(input)
     const vocab = await fetchHskVocab(hskLevel)
-    const system = buildSystemPrompt(candidateCount)
+    const system = buildSystemPrompt(candidateCount, input.domain)
     const user = buildUserPrompt(input, candidateCount, vocab, hskLevel)
     console.log('hsk vocab injection', { hskLevel, vocabCount: vocab.length })
 
