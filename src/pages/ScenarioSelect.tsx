@@ -29,7 +29,6 @@ type DbScenario = {
   hsk_level_min: number | null;
 };
 
-type ActId = "request" | "refusal";
 const STEP1_ANSWERS_KEY = "step1-answers";
 const BODY_OPEN_KEY = "step1-body-open";
 const SELECTED_SCENARIO_KEY = "step1-scenario-id";
