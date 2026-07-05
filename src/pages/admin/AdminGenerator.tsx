@@ -717,7 +717,7 @@ const AdminGenerator = () => {
               P-D-R 조건
             </h3>
             <div className="mt-2 space-y-3">
-              <Field label="Power (P) · 지위">
+              <Field label="Power (P) · 지위 관계">
                 <Select
                   value={form.pdr_power}
                   onValueChange={(v) => update("pdr_power", v as PdrPower)}
