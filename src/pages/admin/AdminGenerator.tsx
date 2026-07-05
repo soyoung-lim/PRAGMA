@@ -393,7 +393,7 @@ function buildScenario(f: FormState): Generated {
   }
 
   // Generic fallback (covers messenger/meeting variants)
-  const isRefusal = f.speech_act === "refusal";
+  const isRefusal = SPEECH_ACT_UI_TO_INTERNAL[f.speech_act_ui] === "refusal";
   return {
     title: isRefusal
       ? `${INDUSTRY[f.industry]} — ${FUNCTION[f.func]} 협의에서의 정중한 거절`
