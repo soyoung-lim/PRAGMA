@@ -135,7 +135,7 @@ function buildSystemPrompt(candidateCount: number, domain?: string | null): stri
   "feedback": {
     "teacher": "통번역 교수자 관점의 종합 코멘트 (한국어)",
     "native": "중국어 네이티브 관점의 코멘트 (한국어로 서술, 중국어 표현 인용 가능)",
-    "field_expert": "실제 비즈니스 현장 실무자 관점의 코멘트 (한국어)"
+    "field_expert": "${expertDesc}"
   }
 }
 
@@ -148,7 +148,7 @@ function buildSystemPrompt(candidateCount: number, domain?: string | null): stri
 - "meaning_shift" = 원문에 없는 사실·책임·사과·약속을 날조하거나 원문 의미를 왜곡한 경우. 절대 "meaning_shift"인 문장을 "appropriate"으로 만들지 마세요.
 - 반드시 정확히 하나 이상의 후보가 "appropriate"이어야 함. 나머지는 서로 다른 실패 유형으로 다양화.
 - 이번 MVP는 pragmalinguistic(형식-기능 매핑) 중심. 문화·관습 차이는 rationale 서술로만 언급.
-- 시나리오의 배경·등장인물·관계는 반드시 [생성 요청]의 '도메인'을 따르세요. 도메인이 일상/학교이면 회사·마케팅·거래처 등 업무 맥락을 절대 사용하지 마세요. 도메인이 직장이면 반드시 지정된 '산업 분야'의 구체적 업무 상황으로 작성하세요.
+${domainRule}
 - 언어 방향: 한국어(source) → 중국어(target). source_text는 반드시 한국어, candidate_text는 반드시 중국어.
 - 위 JSON 외 어떤 텍스트도 출력하지 마세요.`
 }
