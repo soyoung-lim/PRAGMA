@@ -95,7 +95,7 @@ const Page = () => (
     title="수준별 문항 설계"
     description="같은 시나리오의 수행 부담을 수준별로 조절 — 수용(판단)에서 생산(산출)으로 무게 이동"
   >
-    <Alert className="mb-5 border-accent/50 bg-accent/10">
+    <Alert className="mb-6 border-accent/50 bg-accent/10">
       <Info className="h-4 w-4 text-accent-foreground" />
       <AlertTitle className="text-foreground">설계 안내</AlertTitle>
       <AlertDescription className="text-muted-foreground">
@@ -103,16 +103,16 @@ const Page = () => (
       </AlertDescription>
     </Alert>
 
-    <p className="mb-5 text-sm text-foreground">
+    <p className="mb-6 text-sm text-foreground">
       문항 설계는 시나리오를 만든 뒤의 단순 후처리가 아니라, 학습자 수준에 따라 후보 수·힌트·수정 범위·산출 부담을 조정하는 핵심 설계 단계입니다.
     </p>
 
-    <section className="space-y-3">
+    <section className="space-y-4">
       <h2 className="text-lg font-bold text-foreground">1. 문항 유형 4종 (MVP)</h2>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {ITEM_TYPES.map((item) => (
           <Card key={item.key} className="flex flex-col">
-            <CardHeader className="pb-2 pt-4">
+            <CardHeader className="pb-3 pt-5">
               <div className="flex items-center justify-between">
                 <Badge
                   variant="secondary"
@@ -128,7 +128,7 @@ const Page = () => (
                 {item.title}
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-4 pt-0 text-sm text-muted-foreground">
+            <CardContent className="pb-5 pt-0 text-sm text-muted-foreground">
               {item.desc}
             </CardContent>
           </Card>
@@ -136,7 +136,7 @@ const Page = () => (
       </div>
 
       <Card className="border-dashed border-border bg-card">
-        <CardContent className="flex flex-wrap items-center gap-3 py-3">
+        <CardContent className="flex flex-wrap items-center gap-3 py-4">
           <Badge variant="secondary" className="text-muted-foreground">
             v2
           </Badge>
@@ -148,22 +148,22 @@ const Page = () => (
       </Card>
     </section>
 
-    <section className="mt-7 space-y-3">
+    <section className="mt-8 space-y-4">
       <h2 className="text-lg font-bold text-foreground">
         2. 수준별 출제 비중 (권장)
       </h2>
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         {LEVEL_DISTRIBUTION.map((level) => (
           <Card key={level.level}>
-            <CardHeader className="pb-1 pt-4">
+            <CardHeader className="pb-2 pt-5">
               <CardTitle className="text-base font-semibold">
                 {level.level}
               </CardTitle>
               <CardDescription>{level.caption}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2 pb-4">
+            <CardContent className="space-y-3 pb-5">
               {level.bars.map((bar) => (
-                <div key={bar.label} className="space-y-1">
+                <div key={bar.label} className="space-y-1.5">
                   <div className="flex justify-between text-sm">
                     <span className="text-foreground">{bar.label}</span>
                     <span className="font-medium text-foreground">
@@ -186,18 +186,18 @@ const Page = () => (
       </p>
     </section>
 
-    <section className="mt-7 space-y-3">
+    <section className="mt-8 space-y-4">
       <h2 className="text-lg font-bold text-foreground">
         3. 후보 설계 (directness 단일축)
       </h2>
       <Card>
-        <CardContent className="space-y-3 py-4">
+        <CardContent className="space-y-4 py-5">
           <p className="text-sm text-foreground">
             후보 번역안은{" "}
             <span className="font-semibold">directness(직접성) 1~5 단일축</span>
             으로 생성합니다. 후보 개수는 수준 변수:
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             {[
               { label: "입문", count: 3 },
               { label: "중급", count: 5 },
@@ -205,7 +205,7 @@ const Page = () => (
             ].map((opt) => (
               <div
                 key={opt.label}
-                className="rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-center"
+                className="rounded-lg border border-border bg-muted/50 px-4 py-2 text-center"
               >
                 <div className="text-xs text-muted-foreground">{opt.label}</div>
                 <div className="text-base font-bold text-foreground">
@@ -214,12 +214,12 @@ const Page = () => (
               </div>
             ))}
           </div>
-          <div className="rounded-lg border border-border bg-card p-3">
+          <div className="rounded-lg border border-border bg-card p-4">
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">distractor 안내:</span>{" "}
               distractor는 문법 오류가 아니라 의도적으로 심은 화용 실패입니다.
             </p>
-            <ul className="mt-1.5 list-inside list-disc text-sm text-muted-foreground">
+            <ul className="mt-2 list-inside list-disc text-sm text-muted-foreground">
               <li>A = 특정 challenge 실패</li>
               <li>B = 다른 challenge 실패</li>
               <li>C = 적절안</li>
@@ -229,13 +229,13 @@ const Page = () => (
       </Card>
     </section>
 
-    <section className="mt-7 space-y-3">
+    <section className="mt-8 space-y-4">
       <h2 className="text-lg font-bold text-foreground">
         4. 진단·채점 축
       </h2>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2 pt-4">
+          <CardHeader className="pb-3 pt-5">
             <CardTitle className="text-base font-semibold">
               pragmatic_challenge (진단 3축)
             </CardTitle>
@@ -243,12 +243,12 @@ const Page = () => (
               학습자의 화용적 어려움을 진단하는 단위
             </CardDescription>
           </CardHeader>
-          <CardContent className="pb-4">
-            <ul className="space-y-1.5">
+          <CardContent className="pb-5">
+            <ul className="space-y-2">
               {CHALLENGE_AXIS.map((axis) => (
                 <li
                   key={axis.key}
-                  className="flex items-center justify-between rounded-md border border-border px-3 py-1.5 text-sm"
+                  className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
                 >
                   <span className="text-foreground">{axis.label}</span>
                   <code className="text-xs text-muted-foreground">
@@ -261,7 +261,7 @@ const Page = () => (
         </Card>
 
         <Card>
-          <CardHeader className="pb-2 pt-4">
+          <CardHeader className="pb-3 pt-5">
             <CardTitle className="text-base font-semibold">
               rubric (채점 3축)
             </CardTitle>
@@ -269,12 +269,12 @@ const Page = () => (
               산출물을 평가하는 채점 단위
             </CardDescription>
           </CardHeader>
-          <CardContent className="pb-4">
-            <ul className="space-y-1.5">
+          <CardContent className="pb-5">
+            <ul className="space-y-2">
               {RUBRIC_AXIS.map((axis) => (
                 <li
                   key={axis}
-                  className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground"
+                  className="rounded-md border border-border px-3 py-2 text-sm text-foreground"
                 >
                   {axis}
                 </li>
@@ -289,7 +289,7 @@ const Page = () => (
       </p>
     </section>
 
-    <section className="mt-8 flex items-center justify-between border-t border-border pt-4">
+    <section className="mt-10 flex items-center justify-between border-t border-border pt-5">
       <p className="text-sm text-muted-foreground">
         문항 생성·시나리오 연동은 다음 단계에서 구현됩니다.
       </p>
