@@ -90,6 +90,27 @@ interface GenInput {
   hsk_level_min?: string | null
   language_direction?: string
   mode?: string
+  // UI-level values (preferred for prompt labeling when present)
+  speech_act_ui?: string | null
+  channel_ui?: string | null
+  complex_task_ui?: string | null
+}
+
+// UI-level labels — richer than the collapsed internal enums.
+const SPEECH_ACT_UI_KO: Record<string, string> = {
+  request: '요청', refusal: '거절', apology: '사과', thanks: '감사',
+  proposal: '제안', agreement: '동의', opposition: '반대',
+  compliment: '칭찬', complaint: '불만',
+}
+const CHANNEL_UI_KO: Record<string, string> = {
+  email: '이메일', messenger: '메신저', facetoface: '대면', phone: '전화',
+}
+const COMPLEX_TASK_UI_KO: Record<string, string> = {
+  none: '없음(단일 화행)',
+  explain: '설명·정당화',
+  persuade: '설득',
+  coordinate: '조율',
+  negotiate: '협상',
 }
 
 const LANG_DIR_KO: Record<string, string> = {
@@ -100,6 +121,7 @@ const MODE_KO: Record<string, string> = {
   translation: '번역 (텍스트)',
   stt_interpreting: '통역 (음성/발화)',
 }
+
 
 function buildSystemPrompt(candidateCount: number, domain?: string | null): string {
   const isWork = !domain || domain === 'work'
