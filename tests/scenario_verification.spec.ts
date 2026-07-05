@@ -13,6 +13,52 @@ test('Scenario verification workflow', async () => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
   });
 
+  // Mock Supabase call to provide scenarios
+  await page.route('**/rest/v1/scenarios*', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          scenario_id: 'test-1',
+          title: '비즈니스 협력 요청',
+          speech_act: 'request',
+          speech_act_text: '협력 요청',
+          industry_sector: 'IT',
+          domain: '소프트웨어',
+          source_text: '저희와 새로운 프로젝트를 함께 진행해 주실 수 있을까요?',
+          week_no: 1,
+          language_direction: 'ko_to_zh',
+          scenario_p: '상대방이 높음',
+          scenario_d: '보통',
+          scenario_r: '높음',
+          pragmatic_challenge: ['체면 유지', '격식'],
+          challenge_intensity: '중',
+          hsk_level_min: 5,
+          review_status: 'approved'
+        },
+        {
+          scenario_id: 'test-2',
+          title: '제안 거절',
+          speech_act: 'refusal',
+          speech_act_text: '거절',
+          industry_sector: '유통',
+          domain: '물류',
+          source_text: '죄송하지만 현재로서는 해당 제안을 수락하기 어렵습니다.',
+          week_no: 2,
+          language_direction: 'ko_to_zh',
+          scenario_p: '동등',
+          scenario_d: '가까움',
+          scenario_r: '낮음',
+          pragmatic_challenge: ['완곡한 표현'],
+          challenge_intensity: '하',
+          hsk_level_min: 4,
+          review_status: 'approved'
+        }
+      ])
+    });
+  });
+
   try {
     // 1. Open /student-login
     await page.goto('http://localhost:8080/student-login');
@@ -105,7 +151,7 @@ test('Scenario verification workflow', async () => {
       console.log('REPORT_END');
     } else {
       console.log('REPORT_START');
-      console.log('ERROR: No scenarios found');
+      console.log('ERROR: No scenarios found even with mock');
       console.log('REPORT_END');
     }
   } finally {
