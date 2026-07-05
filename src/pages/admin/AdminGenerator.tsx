@@ -301,6 +301,8 @@ const DEFAULT_FORM: FormState = {
   pdr_distance: "occasional",
   pdr_burden: "mid",
   domain: "work",
+  language_direction: "ko_zh",
+
 
 };
 
