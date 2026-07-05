@@ -2,3 +2,7 @@ project_id = "jerifdqjrwgpgkxoyayb"
 
 [functions.generate-scenario]
 verify_jwt = true
+
+[functions.youtube-transcript]
+verify_jwt = false
+
