@@ -149,6 +149,8 @@ function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[
   if (input.reasons) parts.push(`- 근거 제시 수: ${input.reasons}개`)
   if (input.coordination) parts.push(`- 조율·대안 표현 포함`)
   if (input.hsk_level_min) parts.push(`- 최소 HSK 수준: ${input.hsk_level_min}`)
+  if (input.language_direction) parts.push(`- 언어 방향: ${LANG_DIR_KO[input.language_direction] ?? input.language_direction}`)
+  if (input.mode) parts.push(`- 수행 모드: ${MODE_KO[input.mode] ?? input.mode}`)
   parts.push('', '위 조건에 정확히 부합하는 시나리오 1개를 스키마대로 JSON만 반환하세요.')
   if (vocab && vocab.length > 0) {
     parts.push(
