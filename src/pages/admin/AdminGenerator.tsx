@@ -633,34 +633,43 @@ const AdminGenerator = () => {
             </div>
           </div>
 
-          {/* 화행·장르·맥락 */}
+          {/* 화행·채널·복합 과제 */}
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
-              화행·장르·맥락
+              화행·채널·복합 과제
             </h3>
             <div className="mt-2 grid grid-cols-2 gap-3">
               <Field label="화행">
                 <Select
-                  value={form.speech_act}
-                  onValueChange={(v) => update("speech_act", v as SpeechAct)}
+                  value={form.speech_act_ui}
+                  onValueChange={(v) => update("speech_act_ui", v as SpeechActUI)}
                 >
                   <SelectTrigger className={formField}>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(SPEECH_ACT).map(([k, v]) => (
+                  <SelectContent
+                    position="popper"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                    className="max-h-72 overflow-y-auto z-50"
+                  >
+                    {Object.entries(SPEECH_ACT_UI).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="장르">
-                <Select value={form.genre} onValueChange={(v) => update("genre", v as Genre)}>
+              <Field label="채널">
+                <Select
+                  value={form.channel}
+                  onValueChange={(v) => update("channel", v as ChannelUI)}
+                >
                   <SelectTrigger className={formField}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(GENRE).map(([k, v]) => (
+                    {Object.entries(CHANNEL_UI).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
@@ -678,23 +687,29 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="상황 유형">
+              <Field label="복합 과제">
                 <Select
-                  value={form.context}
-                  onValueChange={(v) => update("context", v as InteractionContext)}
+                  value={form.complex_task}
+                  onValueChange={(v) => update("complex_task", v as ComplexTaskUI)}
                 >
                   <SelectTrigger className={formField}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(CONTEXT).map(([k, v]) => (
+                    {Object.entries(COMPLEX_TASK_UI).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
             </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              채널은 향후 번역/통역 모드와 격식 판단에 사용됩니다. · 학습자 수준 후보 수:
+              초급 3개 / 중급 5개 / 고급 7개 (현재: {LEVEL_CANDIDATES[form.level]}개)
+              &nbsp;· “없음”은 단일 화행 과제일 때 사용합니다.
+            </p>
           </div>
+
 
           {/* P-D-R 조건 */}
           <div>
