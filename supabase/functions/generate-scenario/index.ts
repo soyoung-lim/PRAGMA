@@ -47,13 +47,18 @@ const PDR_BURDEN_KO: Record<string, string> = {
   low: '낮음',
 }
 const INDUSTRY_KO: Record<string, string> = {
-  trade_distribution: '무역·유통',
-  IT_platform: 'IT·플랫폼',
-  manufacturing: '제조·소비재',
-  tourism_hospitality: '관광·서비스',
-  education_research: '교육·연구',
-  public_international_affairs: '공공·국제교류',
-  culture_content_media: '문화·콘텐츠',
+  trade_distribution: '제조·글로벌 무역',
+  IT_platform: 'IT·테크·플랫폼',
+  manufacturing: '뷰티·패션·커머스',
+  tourism_hospitality: '관광·MICE',
+  education_research: '공공·교육·연구',
+  public_international_affairs: '바이오·의료·헬스케어',
+  culture_content_media: '엔터테인먼트·미디어',
+}
+const DOMAIN_KO: Record<string, string> = {
+  daily: '일상 (친구·이웃·가족·상점·동호회 등 일상생활 관계)',
+  school: '학교 (교수·조교·동기·유학생·학사 업무 등 캠퍼스 관계)',
+  work: '직장 (회사·거래처·업무 관계)',
 }
 const FUNCTION_KO: Record<string, string> = {
   overseas_sales: '해외영업·거래',
@@ -73,8 +78,9 @@ interface GenInput {
   genre: string
   level: string
   context: string
-  industry: string
-  func: string
+  domain?: string | null
+  industry?: string | null
+  func?: string | null
   pdr_power: string
   pdr_distance: string
   pdr_burden: string
