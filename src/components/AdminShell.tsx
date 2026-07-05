@@ -12,14 +12,20 @@ const STANDALONE: NavItem = { to: "/admin/dashboard", label: "대시보드" };
 
 const GROUPS: NavGroup[] = [
   {
-    header: "시나리오 생성·검수",
+    header: "Source Bank",
     items: [
-      { to: "/admin/corpus", label: "Source Bank" },
-      { to: "/admin/youtube-sources", label: "영상·음성 소스" },
+      { to: "/admin/corpus", label: "HSK 코퍼스" },
+      { to: "/admin/youtube-sources", label: "YouTube 영상·음성 소스" },
       { to: "/admin/prompt-harness", label: "프롬프트 관리" },
+    ],
+  },
+  {
+    header: "시나리오·문항 설계",
+    items: [
       { to: "/admin/generator", label: "AI 시나리오 생성" },
       { to: "/admin/review", label: "시나리오 검수" },
       { to: "/admin/archive", label: "시나리오 아카이브" },
+      { to: "/admin/question-designer", label: "수준별 문항 설계" },
     ],
   },
   {
@@ -31,10 +37,10 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    header: "연구 분석·내보내기",
+    header: "연구 분석·보내기",
     items: [
       { to: "/admin/analytics", label: "관리자 종합 분석" },
-      { to: "/admin/export", label: "데이터 내보내기" },
+      { to: "/admin/export", label: "데이터보내기" },
     ],
   },
 ];
