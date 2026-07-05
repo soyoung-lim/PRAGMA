@@ -194,37 +194,10 @@ const ScenarioSelect = () => {
     };
   }, [audioEl]);
 
-  const scenariosForAct = useMemo(
-    () => (selected ? dbScenarios.filter((s) => s.speech_act === selected) : []),
-    [dbScenarios, selected],
-  );
-
   const activeScenario = useMemo(
-    () => scenariosForAct.find((s) => s.scenario_id === selectedId) ?? null,
-    [scenariosForAct, selectedId],
+    () => dbScenarios.find((s) => s.scenario_id === selectedId) ?? null,
+    [dbScenarios, selectedId],
   );
-
-  const handleSelectAct = (id: ActId) => {
-    if (demo) return;
-    if (selected === id) return;
-    logAction(selected ? "revision" : "selection", {
-      field: "speechAct",
-      ...(selected ? { oldValue: selected, newValue: id } : { value: id }),
-    });
-    setSelected(id);
-    setSelectedIdState(null);
-    setSelectedScenarioId(null);
-    setAnswers(EMPTY);
-    setBodyOpen(false);
-    try {
-      localStorage.setItem(ACT_STORAGE_KEY, id);
-      localStorage.removeItem(SELECTED_SCENARIO_KEY);
-      localStorage.setItem(STEP1_ANSWERS_KEY, JSON.stringify(EMPTY));
-      localStorage.setItem(BODY_OPEN_KEY, "0");
-    } catch {
-      /* ignore */
-    }
-  };
 
   const handlePickScenario = (s: DbScenario) => {
     if (demo) {
