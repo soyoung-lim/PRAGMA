@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
   TableBody,
@@ -24,7 +28,60 @@ const FlowItem = ({ label, isLast = false }: { label: string; isLast?: boolean }
   </div>
 );
 
+type TranscriptResult = {
+  ok?: boolean;
+  status?: number;
+  lang?: string;
+  availableLangs?: string[];
+  segmentCount?: number | null;
+  textPreview?: string | null;
+  raw?: unknown;
+  error?: unknown;
+};
+
 const AdminYoutubeSources = () => {
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<TranscriptResult | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const extractTranscript = async () => {
+    if (!url.trim()) {
+      setErrorMsg("YouTube 링크를 입력하세요.");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg(null);
+    setResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("youtube-transcript", {
+        body: { url: url.trim(), mode: "auto", text: true },
+      });
+      if (error) {
+        setErrorMsg(`호출 실패: ${error.message}`);
+        setResult((data as TranscriptResult) ?? null);
+      } else {
+        setResult(data as TranscriptResult);
+        if (data && (data as TranscriptResult).ok === false) {
+          setErrorMsg(`Supadata 오류 (status ${(data as TranscriptResult).status ?? "?"})`);
+        }
+      }
+    } catch (e) {
+      setErrorMsg((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const raw = result?.raw as Record<string, unknown> | undefined;
+  const rawContent = raw?.content;
+  const fullText =
+    typeof rawContent === "string"
+      ? rawContent
+      : Array.isArray(rawContent)
+        ? rawContent.map((s: any) => s?.text ?? "").join(" ")
+        : result?.textPreview ?? "";
+
   return (
     <AdminShell
       title="영상·음성 소스"
@@ -47,6 +104,63 @@ const AdminYoutubeSources = () => {
 
         <Card className="border-[#EAE4D2] bg-[#FAF7EE]">
           <CardHeader className="pb-2">
+            <CardTitle className="text-lg">자막 추출 (Supadata)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                placeholder="https://youtu.be/..."
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={loading}
+              />
+              <Button onClick={extractTranscript} disabled={loading}>
+                {loading && <Loader2 className="animate-spin" />}
+                자막 추출
+              </Button>
+            </div>
+
+            {errorMsg && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-[13px] text-destructive">
+                {errorMsg}
+              </div>
+            )}
+
+            {result && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2 text-[12px]">
+                  {result.lang && <Badge variant="secondary">lang: {result.lang}</Badge>}
+                  {result.availableLangs && (
+                    <Badge variant="secondary">
+                      availableLangs: {result.availableLangs.join(", ")}
+                    </Badge>
+                  )}
+                  {typeof result.segmentCount === "number" && (
+                    <Badge variant="secondary">segments: {result.segmentCount}</Badge>
+                  )}
+                  {typeof result.status === "number" && (
+                    <Badge variant="secondary">status: {result.status}</Badge>
+                  )}
+                </div>
+
+                {fullText && (
+                  <div className="rounded-md border border-[#EAE4D2] bg-background p-3 max-h-96 overflow-auto whitespace-pre-wrap text-[13px] leading-relaxed">
+                    {fullText}
+                  </div>
+                )}
+
+                {result.error !== undefined && (
+                  <pre className="rounded-md border border-[#EAE4D2] bg-background p-3 max-h-64 overflow-auto text-[12px]">
+                    {JSON.stringify(result.error, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-[#EAE4D2] bg-[#FAF7EE]">
+          <CardHeader className="pb-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-lg">등록된 영상·음성 소스</CardTitle>
               <Badge variant="secondary">연동 예정</Badge>
@@ -56,10 +170,6 @@ const AdminYoutubeSources = () => {
             <div className="flex flex-wrap gap-2">
               <Button disabled>
                 YouTube 링크 추가
-                <Badge variant="secondary" className="ml-2">연동 예정</Badge>
-              </Button>
-              <Button disabled variant="outline">
-                자막 추출하기
                 <Badge variant="secondary" className="ml-2">연동 예정</Badge>
               </Button>
               <Button disabled variant="outline">
@@ -102,7 +212,7 @@ const AdminYoutubeSources = () => {
         </Card>
 
         <div className="rounded-md border border-dashed border-[#EAE4D2] bg-background p-3.5 text-center text-[13px] text-muted-foreground">
-          현재는 화면 구조만 준비된 skeleton 단계입니다. Supadata API 연동 및 저장은 후속 구현으로 분리합니다.
+          저장·구간편집·TTS·시나리오 변환은 이번 범위가 아닙니다. 자막 추출만 실제 동작합니다.
         </div>
       </div>
     </AdminShell>
