@@ -809,6 +809,14 @@ const AdminGenerator = () => {
             </div>
           </div>
 
+          <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[11.5px] leading-relaxed text-[#5B5446]">
+            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-600 align-middle" />
+            <span className="font-medium text-foreground">HSK 3.0 Source Bank 활용 중</span>
+            <span className="ml-1 text-muted-foreground">
+              · 학습자 수준에 맞춘 어휘가 generator prompt에 주입됩니다.
+            </span>
+          </div>
+
           <Button
             onClick={generate}
             disabled={loading}
@@ -816,6 +824,7 @@ const AdminGenerator = () => {
           >
             🪄 {loading ? "생성 중..." : "AI 시나리오 생성"}
           </Button>
+
         </section>
 
         {/* RIGHT — preview */}
