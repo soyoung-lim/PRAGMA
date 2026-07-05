@@ -56,7 +56,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
 
   const standaloneClasses = (active: boolean) =>
     [
-      "rounded-md px-3 py-2 text-[14px] whitespace-nowrap transition-colors mr-2",
+      "rounded-md px-3 py-[5px] text-[14px] whitespace-nowrap transition-colors mr-2",
       active
         ? "bg-[#FAD338] text-[#15202B] font-medium"
         : "text-foreground font-normal hover:bg-muted hover:text-foreground",
@@ -64,7 +64,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
 
   const itemClasses = (active: boolean) =>
     [
-      "rounded-md px-3 py-2 text-[14px] whitespace-nowrap transition-colors mr-2",
+      "rounded-md px-3 py-[5px] text-[14px] whitespace-nowrap transition-colors mr-2",
       active
         ? "bg-[#FAD338] text-[#15202B] font-medium"
         : "text-foreground font-normal hover:bg-muted hover:text-foreground",
@@ -84,7 +84,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
         </div>
       </header>
 
-      <div className="flex gap-6 pl-5 pr-8 py-8">
+      <div className="flex gap-6 pl-5 pr-8 py-5">
         <aside className="hidden w-[245px] shrink-0 md:block">
           <nav className="flex flex-col px-1">
             <Link
@@ -97,7 +97,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
             {GROUPS.map((group) => (
               <div key={group.header} className="flex flex-col">
                 <span
-                  className="mt-7 mb-[6px] px-3 text-[12px] font-medium uppercase tracking-[0.08em] text-[#8a857c] whitespace-nowrap cursor-default select-none"
+                  className="mt-4 mb-1 px-3 text-[12px] font-medium uppercase tracking-[0.08em] text-[#8a857c] whitespace-nowrap cursor-default select-none"
                 >
                   {group.header}
                 </span>
