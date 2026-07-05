@@ -510,8 +510,11 @@ const AdminGenerator = () => {
           genre: CHANNEL_TO_GENRE[form.channel],
           level: form.level,
           context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
+          domain: form.domain,
           industry: form.domain === "work" ? form.industry : null,
-          func: form.func,
+          // func는 UI에서 제거된 숨은 필드 — 프롬프트에 '마케팅·홍보' 편향이
+          // 주입되지 않도록 생성 요청에는 전달하지 않는다 (저장 payload는 유지).
+          func: null,
           pdr_power: form.pdr_power,
           pdr_distance: form.pdr_distance,
           pdr_burden: form.pdr_burden,
