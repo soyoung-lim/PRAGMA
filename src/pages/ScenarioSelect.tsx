@@ -29,16 +29,10 @@ type DbScenario = {
   hsk_level_min: number | null;
 };
 
-type ActId = "request" | "refusal";
-const ACT_STORAGE_KEY = "step1-speech-act";
 const STEP1_ANSWERS_KEY = "step1-answers";
 const BODY_OPEN_KEY = "step1-body-open";
 const SELECTED_SCENARIO_KEY = "step1-scenario-id";
 
-const ACTS: { id: ActId; title: string; desc: string }[] = [
-  { id: "request", title: "요청 상황", desc: "상대에게 무언가를 요청하는 상황" },
-  { id: "refusal", title: "거절 상황", desc: "상대의 요청을 거절해야 하는 상황" },
-];
 
 const QUESTIONS: { id: "q1" | "q2" | "q3"; label: string; options: string[] }[] = [
   {
@@ -87,7 +81,6 @@ const DIRECTION_LABEL: Record<string, string> = {
 const ScenarioSelect = () => {
   const navigate = useNavigate();
   const demo = isDemoMode();
-  const [selected, setSelected] = useState<ActId | null>(null);
   const [selectedId, setSelectedIdState] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Answers>(EMPTY);
   const [bodyOpen, setBodyOpen] = useState<boolean>(false);
@@ -174,8 +167,6 @@ const ScenarioSelect = () => {
     ensureSession();
     logAction("page_visit", { page: "/scenario" }, "/scenario");
     try {
-      const saved = localStorage.getItem(ACT_STORAGE_KEY);
-      if (saved === "request" || saved === "refusal") setSelected(saved);
       const sid = localStorage.getItem(SELECTED_SCENARIO_KEY);
       if (sid) setSelectedIdState(sid);
       const a = localStorage.getItem(STEP1_ANSWERS_KEY);
@@ -203,37 +194,10 @@ const ScenarioSelect = () => {
     };
   }, [audioEl]);
 
-  const scenariosForAct = useMemo(
-    () => (selected ? dbScenarios.filter((s) => s.speech_act === selected) : []),
-    [dbScenarios, selected],
-  );
-
   const activeScenario = useMemo(
-    () => scenariosForAct.find((s) => s.scenario_id === selectedId) ?? null,
-    [scenariosForAct, selectedId],
+    () => dbScenarios.find((s) => s.scenario_id === selectedId) ?? null,
+    [dbScenarios, selectedId],
   );
-
-  const handleSelectAct = (id: ActId) => {
-    if (demo) return;
-    if (selected === id) return;
-    logAction(selected ? "revision" : "selection", {
-      field: "speechAct",
-      ...(selected ? { oldValue: selected, newValue: id } : { value: id }),
-    });
-    setSelected(id);
-    setSelectedIdState(null);
-    setSelectedScenarioId(null);
-    setAnswers(EMPTY);
-    setBodyOpen(false);
-    try {
-      localStorage.setItem(ACT_STORAGE_KEY, id);
-      localStorage.removeItem(SELECTED_SCENARIO_KEY);
-      localStorage.setItem(STEP1_ANSWERS_KEY, JSON.stringify(EMPTY));
-      localStorage.setItem(BODY_OPEN_KEY, "0");
-    } catch {
-      /* ignore */
-    }
-  };
 
   const handlePickScenario = (s: DbScenario) => {
     if (demo) {
@@ -267,7 +231,7 @@ const ScenarioSelect = () => {
   };
 
   const allAnswered = answers.q1 !== null && answers.q2 !== null && answers.q3 !== null;
-  const canProceed = demo || (Boolean(selected) && Boolean(activeScenario) && bodyOpen && allAnswered);
+  const canProceed = demo || (Boolean(activeScenario) && bodyOpen && allAnswered);
 
   const keyInfoRows = activeScenario
     ? [
@@ -296,58 +260,37 @@ const ScenarioSelect = () => {
           오늘 연습할 상황을 고르고, 이 상황을 어떻게 느꼈는지 알려주세요.
         </p>
 
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {ACTS.map((act) => {
-            const isSel = selected === act.id;
-            return (
-              <button
-                key={act.id}
-                type="button"
-                onClick={() => handleSelectAct(act.id)}
-                aria-pressed={isSel}
-                aria-expanded={isSel}
-                disabled={demo}
-                className={[
-                  "rounded-lg p-6 text-left transition-all duration-200",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                  isSel
-                    ? "border-2 border-[#15202B] bg-[#FFFFFF] text-[#15202B] font-bold"
-                    : "border border-foreground bg-background hover:-translate-y-0.5 hover:shadow-md",
-                  demo ? "cursor-default" : "",
-                ].join(" ")}
-              >
-                <div className="text-xl font-bold">{act.title}</div>
-                <div className="mt-2 text-sm text-foreground">{act.desc}</div>
-              </button>
-            );
-          })}
+        <div className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FAF8F2] px-5 py-4">
+          <div className="text-sm font-semibold text-[#15202B]">전체 상황</div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            승인된 모든 시나리오를 화행 구분 없이 한 목록에서 보여줍니다.
+          </p>
         </div>
 
-        {selected && (
-          <section key={selected} className="fade-in mt-6 space-y-6">
-            <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
-              <SectionLabel>상황 설정 라이브러리</SectionLabel>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                관리자 아카이브에서 등록·승인된 시나리오 중 하나를 선택하면 아래에 상세가 표시됩니다.
-              </p>
+        <section className="fade-in mt-6 space-y-6">
+          <div className="rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-6">
+            <SectionLabel>상황 설정 라이브러리</SectionLabel>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              관리자 아카이브에서 등록·승인된 시나리오 중 하나를 선택하면 아래에 상세가 표시됩니다.
+            </p>
 
-              {loading ? (
-                <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> 시나리오 불러오는 중…
-                </div>
-              ) : scenariosForAct.length === 0 ? (
-                <div className="mt-4 rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FAF8F2] p-4 text-sm text-muted-foreground">
-                  아직 등록된 승인 시나리오가 없습니다. 관리자 아카이브에서 시나리오를 추가하고 검수 상태를 <b>approved</b>로 바꿔주세요.
-                </div>
-              ) : (
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {scenariosForAct.map((s) => {
-                    const isPicked = selectedId === s.scenario_id;
-                    return (
-                      <button
-                        key={s.scenario_id}
-                        type="button"
-                        onClick={() => handlePickScenario(s)}
+            {loading ? (
+              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> 시나리오 불러오는 중…
+              </div>
+            ) : dbScenarios.length === 0 ? (
+              <div className="mt-4 rounded-md border-[0.5px] border-[#D3D1C7] bg-[#FAF8F2] p-4 text-sm text-muted-foreground">
+                아직 등록된 승인 시나리오가 없습니다. 관리자 아카이브에서 시나리오를 추가하고 검수 상태를 <b>approved</b>로 바꿔주세요.
+              </div>
+            ) : (
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {dbScenarios.map((s) => {
+                  const isPicked = selectedId === s.scenario_id;
+                  return (
+                    <button
+                      key={s.scenario_id}
+                      type="button"
+                      onClick={() => handlePickScenario(s)}
                         className={[
                           "flex flex-col gap-2 rounded-lg p-4 text-left transition-all duration-200",
                           "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
@@ -491,10 +434,9 @@ const ScenarioSelect = () => {
                     정답이 있는 질문이 아닙니다. 본인이 상황을 어떻게 받아들였는지 그대로 골라주세요.
                   </p>
                 </div>
-              </>
-            )}
-          </section>
-        )}
+            </>
+          )}
+        </section>
 
         <div className="mt-12 flex justify-end border-t border-border pt-6">
           <button
