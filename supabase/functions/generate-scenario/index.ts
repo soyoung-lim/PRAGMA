@@ -102,18 +102,26 @@ const MODE_KO: Record<string, string> = {
 }
 
 function buildSystemPrompt(candidateCount: number, domain?: string | null): string {
+  const isWork = !domain || domain === 'work'
   const domainDesc =
     domain === 'daily'
       ? '일상생활(친구·이웃·가족·상점·동호회 등) 상황의 한→중 통번역 교육용 시나리오'
       : domain === 'school'
         ? '학교·캠퍼스(교수·조교·동기·유학생·학사 업무 등) 상황의 한→중 통번역 교육용 시나리오'
         : '한→중 비즈니스 통번역 교육용 시나리오'
+  const sourceDesc = isWork ? '자연스러운 실무 한국어' : '자연스러운 생활 한국어'
+  const expertDesc = isWork
+    ? '실제 비즈니스 현장 실무자 관점의 코멘트 (한국어)'
+    : '실제 그 상황을 자주 겪는 생활 경험자 관점의 코멘트 (한국어)'
+  const domainRule = isWork
+    ? `- 시나리오의 배경·등장인물·관계는 반드시 도메인 '직장'을 따르고, [생성 요청]에 '산업 분야'가 있으면 그 산업의 구체적 업무 상황으로 작성하세요. 다른 산업(예: 마케팅 일반)으로 대체하지 마세요.`
+    : `- [중요] 이 시나리오는 업무·비즈니스 시나리오가 아닙니다. 회사·직장·동료·거래처·마케팅·협업·프로젝트 등 업무 소재를 절대 사용하지 마세요. 등장인물·관계·소재는 반드시 [생성 요청]의 '도메인' 설명을 따르세요.`
   return `당신은 ${domainDesc}를 설계하는 전문가입니다.
 출력은 반드시 아래 JSON 스키마만, 마크다운·설명·주석 없이 그대로 반환합니다.
 
 {
   "title": "한국어 시나리오 제목",
-  "source_text": "학습자가 중국어로 번역할 한국어 원문 (자연스러운 실무 한국어, 3~6문장)",
+  "source_text": "학습자가 중국어로 번역할 한국어 원문 (${sourceDesc}, 3~6문장)",
   "situation": "상황 카드용 배경 설명 (한국어, 2~3문장, 발신자·수신자·목적·관계 명시)",
   "candidates": [
     {
