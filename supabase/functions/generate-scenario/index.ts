@@ -146,18 +146,32 @@ function buildSystemPrompt(candidateCount: number, domain?: string | null): stri
 }
 
 function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[] = [], hskLevel = 0): string {
+  const isWork = !input.domain || input.domain === 'work'
+  const GENRE_NEUTRAL_KO: Record<string, string> = {
+    business_email: '이메일',
+    business_messenger: '메신저 대화',
+    meeting_speech: '대면 대화',
+  }
+  const genreLabel = isWork
+    ? (GENRE_KO[input.genre] ?? input.genre)
+    : (GENRE_NEUTRAL_KO[input.genre] ?? input.genre)
   const parts = [
     `[생성 요청]`,
+    `- 도메인: ${DOMAIN_KO[input.domain ?? 'work'] ?? input.domain}`,
     `- 화행: ${SPEECH_ACT_KO[input.speech_act] ?? input.speech_act}`,
-    `- 장르: ${GENRE_KO[input.genre] ?? input.genre}`,
+    `- 장르: ${genreLabel}`,
     `- 학습자 수준: ${LEVEL_KO[input.level]?.label ?? input.level} (후보 ${candidateCount}개)`,
     `- 상호작용 맥락: ${CONTEXT_KO[input.context] ?? input.context}`,
-    `- 산업 분야: ${INDUSTRY_KO[input.industry] ?? input.industry}`,
-    `- 업무 기능: ${FUNCTION_KO[input.func] ?? input.func}`,
     `- P (Power, 지위): ${PDR_POWER_KO[input.pdr_power] ?? input.pdr_power}`,
     `- D (Distance, 거리): ${PDR_DISTANCE_KO[input.pdr_distance] ?? input.pdr_distance}`,
     `- R (Imposition, 부담도): ${PDR_BURDEN_KO[input.pdr_burden] ?? input.pdr_burden}`,
   ]
+  if (isWork && input.industry) {
+    parts.splice(5, 0, `- 산업 분야: ${INDUSTRY_KO[input.industry] ?? input.industry}`)
+  }
+  if (isWork && input.func) {
+    parts.splice(parts.findIndex((p) => p.startsWith('- P (Power')), 0, `- 업무 기능: ${FUNCTION_KO[input.func] ?? input.func}`)
+  }
   if (input.multi) parts.push(`- 복잡도: 다중 이해관계자 포함`)
   if (input.reasons) parts.push(`- 근거 제시 수: ${input.reasons}개`)
   if (input.coordination) parts.push(`- 조율·대안 표현 포함`)
