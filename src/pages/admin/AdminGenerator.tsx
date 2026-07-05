@@ -523,6 +523,10 @@ const AdminGenerator = () => {
           coordination: form.coordination,
           language_direction: form.language_direction,
           mode: CHANNEL_TO_MODE[form.channel],
+          speech_act_ui: form.speech_act_ui,
+          channel_ui: form.channel,
+          complex_task_ui: form.complex_task,
+
         },
       });
       if (error) throw error;
