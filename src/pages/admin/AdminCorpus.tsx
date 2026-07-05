@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +48,7 @@ const SOURCE_TYPES = [
     description:
       "YouTube/Supadata 기반 통역 시나리오 seed (드라마 등 영상은 연구·수업용 가공 seed로만 활용)",
     badge: { label: "연동 예정", variant: "secondary" as BadgeVariant },
+    href: "/admin/youtube-sources",
   },
   {
     key: "classroom_pilot_data",
@@ -253,23 +255,42 @@ const AdminCorpus = () => {
 
         {/* 6개 카드 */}
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          {SOURCE_TYPES.map((st) => (
-            <Card key={st.key} className="h-full border-[#EAE4D2] bg-[#FAF7EE]">
-              <CardHeader className="pb-1.5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle className="text-base">{st.label}</CardTitle>
-                  {st.badge && (
-                    <Badge variant={st.badge.variant} className={st.badge.className}>
-                      {st.badge.label}
-                    </Badge>
+          {SOURCE_TYPES.map((st) => {
+            const href = (st as any).href as string | undefined;
+            const inner = (
+              <Card
+                className={`h-full border-[#EAE4D2] bg-[#FAF7EE] ${
+                  href ? "transition-colors hover:bg-[#F5EFD9] cursor-pointer" : ""
+                }`}
+              >
+                <CardHeader className="pb-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <CardTitle className="text-base">{st.label}</CardTitle>
+                    {st.badge && (
+                      <Badge variant={st.badge.variant} className={st.badge.className}>
+                        {st.badge.label}
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-[13px] text-muted-foreground">{st.description}</p>
+                  {href && (
+                    <p className="mt-2 text-[12px] font-medium text-[#15202B]">
+                      영상·음성 소스 관리로 이동 →
+                    </p>
                   )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-[13px] text-muted-foreground">{st.description}</p>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+            return href ? (
+              <Link key={st.key} to={href} className="block">
+                {inner}
+              </Link>
+            ) : (
+              <div key={st.key}>{inner}</div>
+            );
+          })}
         </div>
 
         <div className="rounded-lg border border-[#EAE4D2] bg-[#FAF7EE] p-3.5">
