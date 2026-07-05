@@ -131,14 +131,23 @@ const PDR_BURDEN_SHORT: Record<PdrBurden, string> = {
   mid: "R: Medium",
   low: "R: Low",
 };
+// Industry display labels. UI-only remap onto the existing 7 enum keys
+// (no DB/schema change). Labels follow the new domain=직장 taxonomy.
 const INDUSTRY: Record<IndustrySector, string> = {
-  trade_distribution: "무역·유통",
-  IT_platform: "IT·플랫폼",
-  manufacturing: "제조·소비재",
-  tourism_hospitality: "관광·서비스",
-  education_research: "교육·연구",
-  public_international_affairs: "공공·국제교류",
-  culture_content_media: "문화·콘텐츠",
+  culture_content_media: "엔터테인먼트·미디어",
+  manufacturing: "뷰티·패션·커머스",
+  trade_distribution: "제조·글로벌 무역",
+  IT_platform: "IT·테크·플랫폼",
+  public_international_affairs: "바이오·의료·헬스케어",
+  tourism_hospitality: "관광·MICE",
+  education_research: "공공·교육·연구",
+};
+
+type Domain = "daily" | "school" | "work";
+const DOMAIN: Record<Domain, string> = {
+  daily: "일상",
+  school: "학교",
+  work: "직장",
 };
 // UI display map for business functions. The DB enum keeps all 10 values,
 // but only 7 primary keys are surfaced in dropdowns. Orphan enums map to a
