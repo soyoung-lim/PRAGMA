@@ -92,9 +92,14 @@ const GENRE: Record<Genre, string> = {
   meeting_speech: "업무 회의",
 };
 const LEVEL: Record<LearnerLevel, string> = {
-  beginner_intermediate: "중급 · HSK 4급",
-  intermediate: "상급 · HSK 5급",
+  beginner_intermediate: "초급 · HSK 4급",
+  intermediate: "중급 · HSK 5급",
   advanced: "고급 · HSK 6급",
+};
+const LEVEL_CANDIDATES: Record<LearnerLevel, number> = {
+  beginner_intermediate: 3,
+  intermediate: 5,
+  advanced: 7,
 };
 const CONTEXT: Record<InteractionContext, string> = {
   coordination: "일정 조정",
@@ -102,35 +107,36 @@ const CONTEXT: Record<InteractionContext, string> = {
   follow_up: "후속 확인",
 };
 const PDR_POWER: Record<PdrPower, string> = {
-  higher: "High",
-  equal: "Medium",
-  lower: "Low",
+  higher: "내가 낮음",
+  equal: "동등",
+  lower: "내가 높음",
 };
 const PDR_DISTANCE: Record<PdrDistance, string> = {
-  formal: "High",
-  occasional: "Medium",
-  close: "Low",
+  formal: "멂",
+  occasional: "보통",
+  close: "가까움",
 };
 const PDR_BURDEN: Record<PdrBurden, string> = {
-  high: "High",
-  mid: "Medium",
-  low: "Low",
+  high: "높음",
+  mid: "중간",
+  low: "낮음",
 };
 const PDR_POWER_SHORT: Record<PdrPower, string> = {
-  higher: "P: High",
-  equal: "P: Medium",
-  lower: "P: Low",
+  higher: "P: 내가 낮음",
+  equal: "P: 동등",
+  lower: "P: 내가 높음",
 };
 const PDR_DISTANCE_SHORT: Record<PdrDistance, string> = {
-  formal: "D: High",
-  occasional: "D: Medium",
-  close: "D: Low",
+  formal: "D: 멂",
+  occasional: "D: 보통",
+  close: "D: 가까움",
 };
 const PDR_BURDEN_SHORT: Record<PdrBurden, string> = {
-  high: "R: High",
-  mid: "R: Medium",
-  low: "R: Low",
+  high: "R: 높음",
+  mid: "R: 중간",
+  low: "R: 낮음",
 };
+
 // Industry display labels. UI-only remap onto the existing 7 enum keys
 // (no DB/schema change). Labels follow the new domain=직장 taxonomy.
 const INDUSTRY: Record<IndustrySector, string> = {
@@ -149,6 +155,68 @@ const DOMAIN: Record<Domain, string> = {
   school: "학교",
   work: "직장",
 };
+
+// UI-only speech-act taxonomy (9). Maps onto the DB enum request|refusal so
+// scenarios still save. High-imposition acts (거절·불만·사과·반대) map to refusal.
+type SpeechActUI =
+  | "request" | "refusal" | "apology" | "thanks"
+  | "proposal" | "agreement" | "opposition" | "compliment" | "complaint";
+const SPEECH_ACT_UI: Record<SpeechActUI, string> = {
+  request: "요청",
+  refusal: "거절",
+  apology: "사과",
+  thanks: "감사",
+  proposal: "제안",
+  agreement: "동의",
+  opposition: "반대",
+  compliment: "칭찬",
+  complaint: "불만",
+};
+const SPEECH_ACT_UI_TO_INTERNAL: Record<SpeechActUI, SpeechAct> = {
+  request: "request",
+  refusal: "refusal",
+  apology: "refusal",
+  thanks: "request",
+  proposal: "request",
+  agreement: "request",
+  opposition: "refusal",
+  compliment: "request",
+  complaint: "refusal",
+};
+
+// UI-only channel taxonomy (4). Maps onto Genre enum.
+type ChannelUI = "email" | "messenger" | "facetoface" | "phone";
+const CHANNEL_UI: Record<ChannelUI, string> = {
+  email: "이메일",
+  messenger: "메신저",
+  facetoface: "대면",
+  phone: "전화",
+};
+const CHANNEL_TO_GENRE: Record<ChannelUI, Genre> = {
+  email: "business_email",
+  messenger: "business_messenger",
+  facetoface: "meeting_speech",
+  phone: "business_messenger",
+};
+
+// UI-only complex-task taxonomy (5). Maps onto InteractionContext enum.
+type ComplexTaskUI = "none" | "explain" | "persuade" | "coordinate" | "negotiate";
+const COMPLEX_TASK_UI: Record<ComplexTaskUI, string> = {
+  none: "없음",
+  explain: "설명·정당화",
+  persuade: "설득",
+  coordinate: "조율",
+  negotiate: "협상",
+};
+const COMPLEX_TASK_TO_CONTEXT: Record<ComplexTaskUI, InteractionContext> = {
+  none: "follow_up",
+  explain: "follow_up",
+  persuade: "negotiation",
+  coordinate: "coordination",
+  negotiate: "negotiation",
+};
+
+
 // UI display map for business functions. The DB enum keeps all 10 values,
 // but only 7 primary keys are surfaced in dropdowns. Orphan enums map to a
 // consolidated label so legacy data still displays a valid new label.
@@ -179,10 +247,12 @@ const FUNCTION_PRIMARY: BusinessFunction[] = [
 interface FormState {
   mode: "single" | "batch";
   batchSize: "5" | "10" | "20";
-  speech_act: SpeechAct;
-  genre: Genre;
+  // UI-level fields (drive display; mapped to internal enums at submit time)
+  speech_act_ui: SpeechActUI;
+  channel: ChannelUI;
+  complex_task: ComplexTaskUI;
+  // Internal enum fields (kept for DB compatibility)
   level: LearnerLevel;
-  context: InteractionContext;
   industry: IndustrySector;
   func: BusinessFunction;
   multi: boolean;
@@ -197,10 +267,10 @@ interface FormState {
 const DEFAULT_FORM: FormState = {
   mode: "single",
   batchSize: "10",
-  speech_act: "refusal",
-  genre: "business_email",
+  speech_act_ui: "refusal",
+  channel: "email",
+  complex_task: "negotiate",
   level: "intermediate",
-  context: "negotiation",
   industry: "culture_content_media",
   func: "marketing_pr",
   multi: false,
@@ -210,6 +280,7 @@ const DEFAULT_FORM: FormState = {
   pdr_distance: "occasional",
   pdr_burden: "mid",
   domain: "work",
+
 };
 
 interface Generated {
@@ -228,7 +299,10 @@ interface BatchItem {
 
 function buildScenario(f: FormState): Generated {
   // Demo-safe mode: pick best-fit pre-baked scenario based on speech_act + genre.
-  const key = `${f.speech_act}-${f.genre}`;
+  const internalSpeechAct = SPEECH_ACT_UI_TO_INTERNAL[f.speech_act_ui];
+  const internalGenre = CHANNEL_TO_GENRE[f.channel];
+  const key = `${internalSpeechAct}-${internalGenre}`;
+
 
   if (key === "refusal-business_email") {
     return {
@@ -319,7 +393,7 @@ function buildScenario(f: FormState): Generated {
   }
 
   // Generic fallback (covers messenger/meeting variants)
-  const isRefusal = f.speech_act === "refusal";
+  const isRefusal = SPEECH_ACT_UI_TO_INTERNAL[f.speech_act_ui] === "refusal";
   return {
     title: isRefusal
       ? `${INDUSTRY[f.industry]} — ${FUNCTION[f.func]} 협의에서의 정중한 거절`
@@ -409,10 +483,10 @@ const AdminGenerator = () => {
     try {
       const { data, error } = await supabase.functions.invoke("generate-scenario", {
         body: {
-          speech_act: form.speech_act,
-          genre: form.genre,
+          speech_act: SPEECH_ACT_UI_TO_INTERNAL[form.speech_act_ui],
+          genre: CHANNEL_TO_GENRE[form.channel],
           level: form.level,
-          context: form.context,
+          context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
           industry: form.industry,
           func: form.func,
           pdr_power: form.pdr_power,
@@ -459,10 +533,10 @@ const AdminGenerator = () => {
           scenario: aiResult,
           meta: aiMeta,
           form: {
-            speech_act: form.speech_act,
-            genre: form.genre,
+            speech_act: SPEECH_ACT_UI_TO_INTERNAL[form.speech_act_ui],
+            genre: CHANNEL_TO_GENRE[form.channel],
             level: form.level,
-            context: form.context,
+            context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
             industry: form.industry,
             func: form.func,
             pdr_power: form.pdr_power,
@@ -484,12 +558,12 @@ const AdminGenerator = () => {
 
   const tags = aiResult
     ? [
-        SPEECH_ACT[form.speech_act],
-        GENRE[form.genre],
+        SPEECH_ACT_UI[form.speech_act_ui],
+        CHANNEL_UI[form.channel],
         LEVEL[form.level],
-        INDUSTRY[form.industry],
-        FUNCTION[form.func],
-        CONTEXT[form.context],
+        DOMAIN[form.domain],
+        ...(form.domain === "work" ? [INDUSTRY[form.industry]] : []),
+        COMPLEX_TASK_UI[form.complex_task],
         `${PDR_POWER_SHORT[form.pdr_power]} / ${PDR_DISTANCE_SHORT[form.pdr_distance]} / ${PDR_BURDEN_SHORT[form.pdr_burden]}`,
       ]
     : [];
@@ -559,34 +633,43 @@ const AdminGenerator = () => {
             </div>
           </div>
 
-          {/* 화행·장르·맥락 */}
+          {/* 화행·채널·복합 과제 */}
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
-              화행·장르·맥락
+              화행·채널·복합 과제
             </h3>
             <div className="mt-2 grid grid-cols-2 gap-3">
               <Field label="화행">
                 <Select
-                  value={form.speech_act}
-                  onValueChange={(v) => update("speech_act", v as SpeechAct)}
+                  value={form.speech_act_ui}
+                  onValueChange={(v) => update("speech_act_ui", v as SpeechActUI)}
                 >
                   <SelectTrigger className={formField}>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(SPEECH_ACT).map(([k, v]) => (
+                  <SelectContent
+                    position="popper"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                    className="max-h-72 overflow-y-auto z-50"
+                  >
+                    {Object.entries(SPEECH_ACT_UI).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="장르">
-                <Select value={form.genre} onValueChange={(v) => update("genre", v as Genre)}>
+              <Field label="채널">
+                <Select
+                  value={form.channel}
+                  onValueChange={(v) => update("channel", v as ChannelUI)}
+                >
                   <SelectTrigger className={formField}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(GENRE).map(([k, v]) => (
+                    {Object.entries(CHANNEL_UI).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
@@ -604,23 +687,29 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="상황 유형">
+              <Field label="복합 과제">
                 <Select
-                  value={form.context}
-                  onValueChange={(v) => update("context", v as InteractionContext)}
+                  value={form.complex_task}
+                  onValueChange={(v) => update("complex_task", v as ComplexTaskUI)}
                 >
                   <SelectTrigger className={formField}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(CONTEXT).map(([k, v]) => (
+                    {Object.entries(COMPLEX_TASK_UI).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
             </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              채널은 향후 번역/통역 모드와 격식 판단에 사용됩니다. · 학습자 수준 후보 수:
+              초급 3개 / 중급 5개 / 고급 7개 (현재: {LEVEL_CANDIDATES[form.level]}개)
+              &nbsp;· “없음”은 단일 화행 과제일 때 사용합니다.
+            </p>
           </div>
+
 
           {/* P-D-R 조건 */}
           <div>
@@ -628,7 +717,7 @@ const AdminGenerator = () => {
               P-D-R 조건
             </h3>
             <div className="mt-2 space-y-3">
-              <Field label="Power (P) · 지위">
+              <Field label="Power (P) · 지위 관계">
                 <Select
                   value={form.pdr_power}
                   onValueChange={(v) => update("pdr_power", v as PdrPower)}
@@ -649,7 +738,7 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Distance (D) · 거리">
+              <Field label="Distance (D) · 관계 거리">
                 <Select
                   value={form.pdr_distance}
                   onValueChange={(v) => update("pdr_distance", v as PdrDistance)}
@@ -721,27 +810,11 @@ const AdminGenerator = () => {
               ))}
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4">
               <Field label="산업 분야">
                 <Select
                   value={form.industry}
                   onValueChange={(v) => update("industry", v as IndustrySector)}
-                  disabled={form.domain !== "work"}
-                >
-                  <SelectTrigger className={formField}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(INDUSTRY).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="업무 기능">
-                <Select
-                  value={form.func}
-                  onValueChange={(v) => update("func", v as BusinessFunction)}
                   disabled={form.domain !== "work"}
                 >
                   <SelectTrigger className={formField}>
@@ -752,14 +825,15 @@ const AdminGenerator = () => {
                     side="bottom"
                     sideOffset={4}
                     avoidCollisions={false}
-                    className="max-h-60 overflow-y-auto z-50"
+                    className="max-h-72 overflow-y-auto z-50"
                   >
-                    {FUNCTION_PRIMARY.map((k) => (
-                      <SelectItem key={k} value={k}>{FUNCTION[k]}</SelectItem>
+                    {Object.entries(INDUSTRY).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
+              {/* 업무 기능 필드는 이번 메타데이터에서 제외. 내부 기본값(form.func)만 유지. */}
             </div>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
               직장 도메인에서 사용되는 산업 배경입니다.
