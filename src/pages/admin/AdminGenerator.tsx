@@ -191,6 +191,7 @@ interface FormState {
   pdr_power: PdrPower;
   pdr_distance: PdrDistance;
   pdr_burden: PdrBurden;
+  domain: Domain;
 }
 
 const DEFAULT_FORM: FormState = {
