@@ -849,7 +849,12 @@ const AdminGenerator = () => {
                     name="domain"
                     value={d}
                     checked={form.domain === d}
-                    onChange={() => update("domain", d)}
+                    onChange={() => {
+                      update("domain", d);
+                      if (d !== "work") {
+                        update("industry", "culture_content_media" as IndustrySector);
+                      }
+                    }}
                     className="accent-[#1d2336]"
                   />
                   {DOMAIN[d]}
