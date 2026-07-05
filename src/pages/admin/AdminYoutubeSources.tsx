@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,13 +39,41 @@ type TranscriptResult = {
   error?: unknown;
 };
 
+type YoutubeSourceRow = {
+  id: string;
+  url: string;
+  video_title: string | null;
+  lang: string | null;
+  available_langs: string[] | null;
+  transcript: string | null;
+  extract_status: string | null;
+  created_at: string;
+};
+
 const AdminYoutubeSources = () => {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TranscriptResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [sources, setSources] = useState<YoutubeSourceRow[]>([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const extractTranscript = async () => {
+  const loadSources = async () => {
+    setListLoading(true);
+    const { data, error } = await supabase
+      .from("youtube_sources" as any)
+      .select("id, url, video_title, lang, available_langs, transcript, extract_status, created_at")
+      .order("created_at", { ascending: false });
+    if (!error && data) setSources(data as unknown as YoutubeSourceRow[]);
+    setListLoading(false);
+  };
+
+  useEffect(() => {
+    loadSources();
+  }, []);
+
+  const extractAndSave = async () => {
     if (!url.trim()) {
       setErrorMsg("YouTube 링크를 입력하세요.");
       return;
@@ -60,11 +88,43 @@ const AdminYoutubeSources = () => {
       if (error) {
         setErrorMsg(`호출 실패: ${error.message}`);
         setResult((data as TranscriptResult) ?? null);
+        return;
+      }
+      const res = data as TranscriptResult;
+      setResult(res);
+      if (res && res.ok === false) {
+        setErrorMsg(`Supadata 오류 (status ${res.status ?? "?"})`);
+        return;
+      }
+
+      // Save to DB
+      const raw = res?.raw as Record<string, unknown> | undefined;
+      const rawContent = raw?.content;
+      const fullText =
+        typeof rawContent === "string"
+          ? rawContent
+          : Array.isArray(rawContent)
+            ? (rawContent as any[]).map((s) => s?.text ?? "").join(" ")
+            : res?.textPreview ?? "";
+      const videoTitle = (raw?.title as string | undefined) ?? null;
+
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData?.user?.id ?? null;
+
+      const { error: insertError } = await supabase.from("youtube_sources" as any).insert({
+        url: url.trim(),
+        video_title: videoTitle,
+        lang: res?.lang ?? null,
+        available_langs: res?.availableLangs ?? null,
+        transcript: fullText || null,
+        extract_status: "extracted",
+        created_by: uid,
+      } as any);
+
+      if (insertError) {
+        setErrorMsg(`저장 실패: ${insertError.message}`);
       } else {
-        setResult(data as TranscriptResult);
-        if (data && (data as TranscriptResult).ok === false) {
-          setErrorMsg(`Supadata 오류 (status ${(data as TranscriptResult).status ?? "?"})`);
-        }
+        await loadSources();
       }
     } catch (e) {
       setErrorMsg((e as Error).message);
@@ -79,7 +139,7 @@ const AdminYoutubeSources = () => {
     typeof rawContent === "string"
       ? rawContent
       : Array.isArray(rawContent)
-        ? rawContent.map((s: any) => s?.text ?? "").join(" ")
+        ? (rawContent as any[]).map((s) => s?.text ?? "").join(" ")
         : result?.textPreview ?? "";
 
   return (
@@ -114,9 +174,9 @@ const AdminYoutubeSources = () => {
                 onChange={(e) => setUrl(e.target.value)}
                 disabled={loading}
               />
-              <Button onClick={extractTranscript} disabled={loading}>
+              <Button onClick={extractAndSave} disabled={loading}>
                 {loading && <Loader2 className="animate-spin" />}
-                자막 추출
+                자막 추출 & 저장
               </Button>
             </div>
 
@@ -163,17 +223,17 @@ const AdminYoutubeSources = () => {
           <CardHeader className="pb-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-lg">등록된 영상·음성 소스</CardTitle>
-              <Badge variant="secondary">연동 예정</Badge>
+              <Badge variant="secondary">{sources.length}건</Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap gap-2">
-              <Button disabled>
-                YouTube 링크 추가
+              <Button disabled variant="outline">
+                통역 시나리오로 변환
                 <Badge variant="secondary" className="ml-2">연동 예정</Badge>
               </Button>
               <Button disabled variant="outline">
-                통역 시나리오로 변환
+                구간 편집 / TTS
                 <Badge variant="secondary" className="ml-2">연동 예정</Badge>
               </Button>
             </div>
@@ -185,26 +245,68 @@ const AdminYoutubeSources = () => {
                     <TableHead>URL</TableHead>
                     <TableHead>영상 제목</TableHead>
                     <TableHead>언어</TableHead>
-                    <TableHead>자막 추출 상태</TableHead>
-                    <TableHead>시나리오 변환 상태</TableHead>
-                    <TableHead>사용 주차</TableHead>
+                    <TableHead>상태</TableHead>
+                    <TableHead>자막</TableHead>
+                    <TableHead>저장 시각</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow>
-                    <TableCell className="text-[13px] text-muted-foreground">
-                      https://youtube.com/watch?v=example
-                    </TableCell>
-                    <TableCell className="text-[13px]">(예시) 비즈니스 회의 통역 클립</TableCell>
-                    <TableCell className="text-[13px]">中→韓</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">대기</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">대기</Badge>
-                    </TableCell>
-                    <TableCell className="text-[13px] text-muted-foreground">—</TableCell>
-                  </TableRow>
+                  {listLoading && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-[13px] text-muted-foreground">
+                        불러오는 중...
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!listLoading && sources.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-[13px] text-muted-foreground">
+                        아직 등록된 소스가 없습니다.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!listLoading &&
+                    sources.map((s) => {
+                      const t = s.transcript ?? "";
+                      const preview = t.slice(0, 150);
+                      const isOpen = expandedId === s.id;
+                      return (
+                        <TableRow key={s.id}>
+                          <TableCell className="text-[12px] text-muted-foreground max-w-[220px] truncate">
+                            <a href={s.url} target="_blank" rel="noreferrer" className="hover:underline">
+                              {s.url}
+                            </a>
+                          </TableCell>
+                          <TableCell className="text-[13px]">{s.video_title ?? "—"}</TableCell>
+                          <TableCell className="text-[13px]">{s.lang ?? "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{s.extract_status ?? "—"}</Badge>
+                          </TableCell>
+                          <TableCell className="text-[12px] max-w-[360px]">
+                            <div className="text-muted-foreground mb-1">{t.length.toLocaleString()}자</div>
+                            {isOpen ? (
+                              <div className="whitespace-pre-wrap max-h-64 overflow-auto rounded border border-[#EAE4D2] bg-[#FAF7EE] p-2">
+                                {t}
+                              </div>
+                            ) : (
+                              <div className="truncate">{preview}{t.length > 150 ? "…" : ""}</div>
+                            )}
+                            {t.length > 150 && (
+                              <button
+                                type="button"
+                                onClick={() => setExpandedId(isOpen ? null : s.id)}
+                                className="mt-1 text-[12px] text-primary hover:underline"
+                              >
+                                {isOpen ? "접기" : "펼치기"}
+                              </button>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-[12px] text-muted-foreground whitespace-nowrap">
+                            {new Date(s.created_at).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                 </TableBody>
               </Table>
             </div>
@@ -212,7 +314,7 @@ const AdminYoutubeSources = () => {
         </Card>
 
         <div className="rounded-md border border-dashed border-[#EAE4D2] bg-background p-3.5 text-center text-[13px] text-muted-foreground">
-          저장·구간편집·TTS·시나리오 변환은 이번 범위가 아닙니다. 자막 추출만 실제 동작합니다.
+          구간편집·TTS·시나리오 변환은 이번 범위가 아닙니다. 추출·저장·목록만 실제 동작합니다.
         </div>
       </div>
     </AdminShell>
