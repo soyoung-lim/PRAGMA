@@ -387,7 +387,7 @@ const AdminPromptHarness = () => {
                 })}
               </div>
             </div>
-          ))}
+          );})}
         </div>
       )}
 
