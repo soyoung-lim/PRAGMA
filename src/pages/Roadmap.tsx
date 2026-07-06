@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, MapPin, ListChecks, CircleDot, Target } from "lucide-react";
+import { Check, MapPin, ListChecks, CircleDot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { setTaskMode, setLanguageDirection } from "@/lib/entryGate";
