@@ -1,8 +1,380 @@
-import { AdminPlaceholder } from "@/components/AdminShell";
-const Page = () => (
-  <AdminPlaceholder
-    title="프롬프트 하니스"
-    description="시나리오 생성·피드백·평가용 프롬프트를 버전 관리하고 비교 실험하는 작업대입니다."
-  />
-);
-export default Page;
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AdminShell } from "@/components/AdminShell";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+
+type PromptTemplate = {
+  id: string;
+  prompt_key: string;
+  title: string | null;
+  content: string;
+  category: string | null;
+  version: number;
+  is_active: boolean;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type FormState = {
+  id?: string;
+  prompt_key: string;
+  title: string;
+  category: string;
+  content: string;
+  notes: string;
+  is_active: boolean;
+};
+
+const EMPTY_FORM: FormState = {
+  prompt_key: "",
+  title: "",
+  category: "",
+  content: "",
+  notes: "",
+  is_active: true,
+};
+
+const AdminPromptHarness = () => {
+  const [rows, setRows] = useState<PromptTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [editing, setEditing] = useState<PromptTemplate | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PromptTemplate | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("prompt_templates")
+      .select("*")
+      .order("category", { ascending: true, nullsFirst: false })
+      .order("prompt_key", { ascending: true })
+      .order("version", { ascending: false });
+    if (error) {
+      toast.error(`불러오기 실패: ${error.message}`);
+      setRows([]);
+    } else {
+      setRows((data ?? []) as PromptTemplate[]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const grouped = useMemo(() => {
+    const g: Record<string, PromptTemplate[]> = {};
+    for (const r of rows) {
+      const k = r.category?.trim() || "기타";
+      (g[k] ||= []).push(r);
+    }
+    return g;
+  }, [rows]);
+
+  const openCreate = () => {
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (row: PromptTemplate) => {
+    setEditing(row);
+    setForm({
+      id: row.id,
+      prompt_key: row.prompt_key,
+      title: row.title ?? "",
+      category: row.category ?? "",
+      content: row.content ?? "",
+      notes: row.notes ?? "",
+      is_active: row.is_active,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.prompt_key.trim()) {
+      toast.error("prompt_key는 필수입니다.");
+      return;
+    }
+    if (!form.content) {
+      toast.error("content는 필수입니다.");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editing) {
+        const { error } = await supabase
+          .from("prompt_templates")
+          .update({
+            prompt_key: form.prompt_key.trim(),
+            title: form.title || null,
+            category: form.category || null,
+            content: form.content,
+            notes: form.notes || null,
+            is_active: form.is_active,
+          })
+          .eq("id", editing.id);
+        if (error) throw error;
+        toast.success("수정되었습니다.");
+      } else {
+        const { data: userData } = await supabase.auth.getUser();
+        const { error } = await supabase.from("prompt_templates").insert({
+          prompt_key: form.prompt_key.trim(),
+          title: form.title || null,
+          category: form.category || null,
+          content: form.content,
+          notes: form.notes || null,
+          is_active: form.is_active,
+          version: 1,
+          created_by: userData.user?.id ?? null,
+        });
+        if (error) throw error;
+        toast.success("추가되었습니다.");
+      }
+      setDialogOpen(false);
+      await load();
+    } catch (e: any) {
+      toast.error(`저장 실패: ${e?.message ?? e}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const { error } = await supabase
+      .from("prompt_templates")
+      .delete()
+      .eq("id", deleteTarget.id);
+    if (error) {
+      toast.error(`삭제 실패: ${error.message}`);
+    } else {
+      toast.success("삭제되었습니다.");
+      await load();
+    }
+    setDeleteTarget(null);
+  };
+
+  return (
+    <AdminShell
+      title="프롬프트 관리"
+      description="시나리오 생성·검수·리포트에 쓰이는 프롬프트 블록을 버전 관리합니다. (Edge Function 연결은 다음 단계)"
+    >
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          총 {rows.length}개 · 카테고리 {Object.keys(grouped).length}종
+        </p>
+        <Button onClick={openCreate}>
+          <Plus className="mr-1 h-4 w-4" /> 새 프롬프트 추가
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="rounded-md border p-6 text-sm text-muted-foreground">
+          불러오는 중…
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-md border p-6 text-sm text-muted-foreground">
+          등록된 프롬프트가 없습니다.
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(grouped).map(([cat, items]) => (
+            <div key={cat}>
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                {cat}
+              </h2>
+              <div className="space-y-2">
+                {items.map((row) => {
+                  const isOpen = !!expanded[row.id];
+                  return (
+                    <Card key={row.id}>
+                      <CardHeader className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpanded((s) => ({ ...s, [row.id]: !isOpen }))
+                                }
+                                className="flex items-center gap-1 text-left"
+                              >
+                                {isOpen ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                                <CardTitle className="text-base">
+                                  {row.title || row.prompt_key}
+                                </CardTitle>
+                              </button>
+                              <Badge variant="outline" className="font-mono text-[11px]">
+                                {row.prompt_key}
+                              </Badge>
+                              <Badge variant="secondary">v{row.version}</Badge>
+                              <Badge variant={row.is_active ? "default" : "outline"}>
+                                {row.is_active ? "활성" : "비활성"}
+                              </Badge>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              업데이트: {new Date(row.updated_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openEdit(row)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDeleteTarget(row)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      {isOpen && (
+                        <CardContent className="p-4 pt-0">
+                          <pre className="whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-xs">
+                            {row.content || "(비어 있음)"}
+                          </pre>
+                          {row.notes && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              메모: {row.notes}
+                            </p>
+                          )}
+                        </CardContent>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? "프롬프트 수정" : "새 프롬프트 추가"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>prompt_key *</Label>
+              <Input
+                value={form.prompt_key}
+                onChange={(e) => setForm((f) => ({ ...f, prompt_key: e.target.value }))}
+                placeholder="예: metadata_lock_block"
+              />
+            </div>
+            <div>
+              <Label>title</Label>
+              <Input
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                placeholder="사람이 읽는 제목"
+              />
+            </div>
+            <div>
+              <Label>category</Label>
+              <Input
+                value={form.category}
+                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                placeholder="generation / review / report / fta / golden 등"
+              />
+            </div>
+            <div>
+              <Label>content *</Label>
+              <Textarea
+                value={form.content}
+                onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
+                rows={12}
+                className="font-mono text-xs"
+              />
+            </div>
+            <div>
+              <Label>notes</Label>
+              <Textarea
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={2}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={form.is_active}
+                onCheckedChange={(v) => setForm((f) => ({ ...f, is_active: v }))}
+              />
+              <Label>활성 (is_active)</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+              취소
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "저장 중…" : "저장"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 프롬프트를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.prompt_key} (v{deleteTarget?.version}) 를 영구 삭제합니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>삭제</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AdminShell>
+  );
+};
+
+export default AdminPromptHarness;
