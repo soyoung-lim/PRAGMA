@@ -678,7 +678,7 @@ const AdminGenerator = () => {
                     side="bottom"
                     sideOffset={4}
                     avoidCollisions={false}
-                    className="max-h-72 overflow-y-auto z-50"
+                    className="max-h-[420px] overflow-y-auto z-50"
                   >
                     {Object.entries(SPEECH_ACT_UI).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
@@ -950,7 +950,7 @@ const AdminGenerator = () => {
             <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-600 align-middle" />
             <span className="font-medium text-foreground">HSK 3.0 Source Bank 활용 중</span>
             <span className="ml-1 text-muted-foreground">
-              · 학습자 수준에 맞춘 어휘가 generator prompt에 주입됩니다.
+              · 학습자 수준 급수(입문4/중급5/고급6) 이하 어휘를 참고 어휘로 프롬프트에 주입합니다. (강제 삽입이 아닌 난이도 참고이며, 실제 급수 준수 검증 로그는 다음 단계.)
             </span>
           </div>
 
