@@ -659,7 +659,7 @@ const AdminGenerator = () => {
             </div>
           </div>
 
-          {/* 화행·채널·복합 과제 */}
+          {/* 화행·복합과제 / 학습자수준·언어방향 / 채널·통번역 */}
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
               화행·채널·복합 과제
@@ -686,16 +686,16 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="채널">
+              <Field label="복합 과제">
                 <Select
-                  value={form.channel}
-                  onValueChange={(v) => update("channel", v as ChannelUI)}
+                  value={form.complex_task}
+                  onValueChange={(v) => update("complex_task", v as ComplexTaskUI)}
                 >
                   <SelectTrigger className={formField}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(CHANNEL_UI).map(([k, v]) => (
+                    {Object.entries(COMPLEX_TASK_UI).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
@@ -708,21 +708,6 @@ const AdminGenerator = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(LEVEL).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="복합 과제">
-                <Select
-                  value={form.complex_task}
-                  onValueChange={(v) => update("complex_task", v as ComplexTaskUI)}
-                >
-                  <SelectTrigger className={formField}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(COMPLEX_TASK_UI).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
@@ -743,15 +728,36 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <div className="flex items-end">
-                <div className="text-[12px] text-muted-foreground">
-                  모드: <span className="font-medium text-foreground">{MODE_LABEL[CHANNEL_TO_MODE[form.channel]]}</span>
-                  <span className="ml-1 text-[11px]">(채널에서 자동 파생)</span>
-                </div>
-              </div>
+              <Field label="채널">
+                <Select
+                  value={form.channel}
+                  onValueChange={(v) => update("channel", v as ChannelUI)}
+                >
+                  <SelectTrigger className={formField}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(CHANNEL_UI).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="통번역">
+                <Select value={CHANNEL_TO_MODE[form.channel]} disabled>
+                  <SelectTrigger className={formField} aria-readonly="true">
+                    <SelectValue>{MODE_LABEL[CHANNEL_TO_MODE[form.channel]]}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(MODE_LABEL).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
             </div>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-              채널은 향후 번역/통역 모드와 격식 판단에 사용됩니다. · 학습자 수준 후보 수:
+              통번역은 채널에서 자동 파생됩니다(이메일·메신저 → 번역, 대면·전화 → 통역). · 학습자 수준 후보 수:
               입문 3개 / 중급 5개 / 고급 7개 (현재: {LEVEL_CANDIDATES[form.level]}개)
               &nbsp;· “없음”은 단일 화행 과제일 때 사용합니다.
             </p>
