@@ -216,17 +216,15 @@ const MODE_LABEL: Record<GenMode, string> = {
 };
 
 // UI-only complex-task taxonomy (5). Maps onto InteractionContext enum.
-type ComplexTaskUI = "none" | "explain" | "persuade" | "coordinate" | "negotiate";
+type ComplexTaskUI = "none" | "persuade" | "coordinate" | "negotiate";
 const COMPLEX_TASK_UI: Record<ComplexTaskUI, string> = {
   none: "없음",
-  explain: "설명·정당화",
   persuade: "설득",
   coordinate: "조율",
   negotiate: "협상",
 };
 const COMPLEX_TASK_TO_CONTEXT: Record<ComplexTaskUI, InteractionContext> = {
   none: "follow_up",
-  explain: "follow_up",
   persuade: "negotiation",
   coordinate: "coordination",
   negotiate: "negotiation",
