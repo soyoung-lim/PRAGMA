@@ -195,7 +195,7 @@ const AdminDashboard = () => {
 
     const load = async (
       set: (s: CountState) => void,
-      run: () => Promise<{ count: number | null; error: unknown }>,
+      run: () => PromiseLike<{ count: number | null; error: unknown }>,
       label: string,
     ) => {
       try {
