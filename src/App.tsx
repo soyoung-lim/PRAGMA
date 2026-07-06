@@ -30,6 +30,7 @@ import PendingApproval from "./pages/PendingApproval.tsx";
 import ProfileSetup from "./pages/ProfileSetup.tsx";
 import Home from "./pages/Home.tsx";
 import Roadmap from "./pages/Roadmap.tsx";
+import WorkflowPreview from "./pages/WorkflowPreview.tsx";
 import EntryTaskMode from "./pages/EntryTaskMode.tsx";
 import EntryLanguageDirection from "./pages/EntryLanguageDirection.tsx";
 import EntryUnavailable from "./pages/EntryUnavailable.tsx";
