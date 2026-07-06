@@ -61,6 +61,87 @@ const EMPTY_FORM: FormState = {
   is_active: true,
 };
 
+const GROUP_ORDER = ["generation", "review", "report", "golden_fta"] as const;
+
+const CATEGORY_TO_GROUP: Record<string, (typeof GROUP_ORDER)[number]> = {
+  generation: "generation",
+  review: "review",
+  report: "report",
+  golden: "golden_fta",
+  fta: "golden_fta",
+};
+
+const GROUP_LABEL: Record<(typeof GROUP_ORDER)[number], string> = {
+  generation: "① 시나리오 생성",
+  review: "② 품질 검수",
+  report: "③ 수행 리포트",
+  golden_fta: "④ 기준 자료",
+};
+
+const GROUP_DESCRIPTION: Record<(typeof GROUP_ORDER)[number], string> = {
+  generation: "AI가 상황 시나리오·번역 후보를 만들 때 지켜야 할 규칙",
+  review: "생성된 결과를 학습자에게보내기 전에 점검하는 기준",
+  report: "학습자의 수행 기록을 분석해 강약점·다음 학습을 정리하는 틀",
+  golden_fta: "생성·검수의 기준이 되는 모범 사례와 이론적 설계 근거",
+};
+
+const CARD_ORDER: Record<string, number> = {
+  metadata_lock_block: 1,
+  source_text_responsibility_block: 2,
+  candidate_contrast_block: 3,
+  reviewer_checklist_block: 4,
+  report_schema_block: 5,
+  golden_examples: 6,
+  fta_design_note: 7,
+};
+
+const CARD_DISPLAY: Record<
+  string,
+  { title: string; subtitle: string }
+> = {
+  metadata_lock_block: {
+    title: "입력 조건 고정",
+    subtitle:
+      "화행·상황·수준 등 관리자가 정한 조건이 생성 중 바뀌지 않도록 고정",
+  },
+  source_text_responsibility_block: {
+    title: "원문 충실성 규칙",
+    subtitle: "원문에 없는 사실·사과·약속을 지어내지 않도록 통제",
+  },
+  candidate_contrast_block: {
+    title: "번역 후보 대비 설계",
+    subtitle:
+      "직접성 차이로 여러 후보를 만들어 학습자가 화용 차이를 판단하게 함",
+  },
+  reviewer_checklist_block: {
+    title: "검수 점검표",
+    subtitle: "생성 결과가 기준을 지켰는지 항목별로 점검",
+  },
+  report_schema_block: {
+    title: "리포트 구조 틀",
+    subtitle: "수행 기록 기반 강약점·추천의 출력 형식",
+  },
+  golden_examples: {
+    title: "모범·오류 예시",
+    subtitle: "통과·실패·수정 사례 모음",
+  },
+  fta_design_note: {
+    title: "상황·공손성 설계 노트",
+    subtitle:
+      "상황 변수(P/D/R)와 번역 직접성을 잇는 이론적 설계 근거",
+  },
+};
+
+function sortByDisplayOrder(rows: PromptTemplate[]): PromptTemplate[] {
+  return [...rows].sort((a, b) => {
+    const ao = CARD_ORDER[a.prompt_key] ?? 99;
+    const bo = CARD_ORDER[b.prompt_key] ?? 99;
+    if (ao !== bo) return ao - bo;
+    return (a.prompt_key ?? "").localeCompare(b.prompt_key ?? "");
+  });
+}
+
+
 const AdminPromptHarness = () => {
   const [rows, setRows] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,10 +174,14 @@ const AdminPromptHarness = () => {
   }, [load]);
 
   const grouped = useMemo(() => {
-    const g: Record<string, PromptTemplate[]> = {};
+    const g: Partial<Record<(typeof GROUP_ORDER)[number], PromptTemplate[]>> = {};
     for (const r of rows) {
-      const k = r.category?.trim() || "기타";
-      (g[k] ||= []).push(r);
+      const cat = r.category?.trim() || "기타";
+      const groupKey = CATEGORY_TO_GROUP[cat] ?? "golden_fta";
+      (g[groupKey] ||= []).push(r);
+    }
+    for (const k of GROUP_ORDER) {
+      if (g[k]) g[k] = sortByDisplayOrder(g[k]!);
     }
     return g;
   }, [rows]);
@@ -188,11 +273,11 @@ const AdminPromptHarness = () => {
   return (
     <AdminShell
       title="프롬프트 관리"
-      description="시나리오 생성·검수·리포트에 쓰이는 프롬프트 블록을 버전 관리합니다. (Edge Function 연결은 다음 단계)"
+      description="AI가 학습 자료를 생성·검수·분석할 때 지키는 규칙과 기준을 단계별로 관리합니다. 각 규칙은 버전으로 관리되며, 지금은 규칙을 정리·보관하는 단계입니다."
     >
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          총 {rows.length}개 · 카테고리 {Object.keys(grouped).length}종
+          총 {rows.length}개 · 단계 {GROUP_ORDER.length}개
         </p>
         <Button onClick={openCreate}>
           <Plus className="mr-1 h-4 w-4" /> 새 프롬프트 추가
@@ -208,49 +293,65 @@ const AdminPromptHarness = () => {
           등록된 프롬프트가 없습니다.
         </div>
       ) : (
-        <div className="space-y-6">
-          {Object.entries(grouped).map(([cat, items]) => (
-            <div key={cat}>
-              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                {cat}
-              </h2>
-              <div className="space-y-2">
-                {items.map((row) => {
-                  const isOpen = !!expanded[row.id];
-                  return (
-                    <Card key={row.id}>
-                      <CardHeader className="p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setExpanded((s) => ({ ...s, [row.id]: !isOpen }))
-                                }
-                                className="flex items-center gap-1 text-left"
-                              >
-                                {isOpen ? (
-                                  <ChevronDown className="h-4 w-4" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4" />
-                                )}
-                                <CardTitle className="text-base">
-                                  {row.title || row.prompt_key}
-                                </CardTitle>
-                              </button>
-                              <Badge variant="outline" className="font-mono text-[11px]">
-                                {row.prompt_key}
-                              </Badge>
-                              <Badge variant="secondary">v{row.version}</Badge>
-                              <Badge variant={row.is_active ? "default" : "outline"}>
-                                {row.is_active ? "활성" : "비활성"}
-                              </Badge>
+        <div className="space-y-8">
+          {GROUP_ORDER.map((groupKey) => {
+            const items = grouped[groupKey];
+            if (!items || items.length === 0) return null;
+            return (
+              <div key={groupKey}>
+                <div className="mb-3">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
+                    {GROUP_LABEL[groupKey]}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {GROUP_DESCRIPTION[groupKey]}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {items.map((row) => {
+                    const isOpen = !!expanded[row.id];
+                    const display = CARD_DISPLAY[row.prompt_key];
+                    const displayTitle =
+                      display?.title || row.title || row.prompt_key;
+                    return (
+                      <Card key={row.id}>
+                        <CardHeader className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setExpanded((s) => ({ ...s, [row.id]: !isOpen }))
+                                  }
+                                  className="flex items-center gap-1 text-left"
+                                >
+                                  {isOpen ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                  <CardTitle className="text-base">
+                                    {displayTitle}
+                                  </CardTitle>
+                                </button>
+                                <Badge variant="outline" className="font-mono text-[11px]">
+                                  {row.prompt_key}
+                                </Badge>
+                                <Badge variant="secondary">v{row.version}</Badge>
+                                <Badge variant={row.is_active ? "default" : "outline"}>
+                                  {row.is_active ? "활성" : "비활성"}
+                                </Badge>
+                              </div>
+                              {display?.subtitle && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {display.subtitle}
+                                </p>
+                              )}
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                업데이트: {new Date(row.updated_at).toLocaleString()}
+                              </p>
                             </div>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              업데이트: {new Date(row.updated_at).toLocaleString()}
-                            </p>
-                          </div>
                           <div className="flex shrink-0 gap-1">
                             <Button
                               size="sm"
@@ -286,7 +387,7 @@ const AdminPromptHarness = () => {
                 })}
               </div>
             </div>
-          ))}
+          );})}
         </div>
       )}
 
