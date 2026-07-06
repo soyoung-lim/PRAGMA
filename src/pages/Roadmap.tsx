@@ -282,6 +282,18 @@ const Roadmap = () => {
           </div>
         </section>
 
+        {/* Workflow preview link — 정적 예시 페이지로 연결 */}
+        <section className="mt-5">
+          <button
+            type="button"
+            onClick={() => navigate("/workflow-preview")}
+            className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left text-[14px] font-semibold text-foreground hover:bg-muted/50"
+          >
+            <span>학습이 실제로 어떻게 진행되나요? — 예시 미리보기 보기</span>
+            <span aria-hidden>→</span>
+          </button>
+        </section>
+
         {/* 6. CTA — 프로필 완료 여부로 분기 */}
         <section className="mt-5">
           {isProfileComplete ? (
