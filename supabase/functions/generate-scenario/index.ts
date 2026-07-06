@@ -105,7 +105,6 @@ const CHANNEL_UI_KO: Record<string, string> = {
 }
 const COMPLEX_TASK_UI_KO: Record<string, string> = {
   none: '없음(단일 화행)',
-  explain: '설명·정당화',
   persuade: '설득',
   coordinate: '조율',
   negotiate: '협상',
