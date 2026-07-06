@@ -133,7 +133,13 @@ const Home = () => {
               수 있어요.
             </DialogPrimitive.Description>
             <div className="-mx-2 mt-2 max-h-[65vh] overflow-y-auto px-2">
-              <ProfileWizardForm onCompleted={() => setProfileOpen(false)} />
+              <ProfileWizardForm
+                onCompleted={() => {
+                  setProfileOpen(false);
+                  navigate("/roadmap", { replace: true });
+                }}
+              />
+
             </div>
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
