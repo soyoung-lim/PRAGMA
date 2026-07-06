@@ -63,8 +63,8 @@ type Genre = "business_email" | "business_messenger" | "meeting_speech";
 type LearnerLevel = "beginner_intermediate" | "intermediate" | "advanced";
 type InteractionContext = "coordination" | "negotiation" | "follow_up";
 type PdrPower = "higher" | "equal" | "lower";
-type PdrDistance = "formal" | "occasional" | "close";
-type PdrBurden = "high" | "mid" | "low";
+type PdrDistance = "formal" | "close";
+type PdrBurden = "high" | "low";
 type IndustrySector =
   | "trade_distribution"
   | "IT_platform"
