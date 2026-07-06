@@ -233,8 +233,10 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
       // Notify every useProfile instance (e.g. the Home page) to reload.
       window.dispatchEvent(new Event("profile-changed"));
       onCompleted?.();
-    } catch {
-      toast.error("프로필 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[ProfileWizardForm] save failed:", e);
+      toast.error(`프로필 저장에 실패했습니다: ${msg}`);
       setBusy(false);
     }
   };
