@@ -135,43 +135,22 @@ const Roadmap = () => {
       </header>
 
       <main className="mx-auto w-full max-w-3xl px-6 py-5">
-        {/* 2. Top card — 프로필 완료 여부로 분기 */}
-        {isProfileComplete ? (
-          <section
-            className="rounded-2xl bg-accent p-4 text-accent-foreground"
-            aria-label="오늘의 학습"
-          >
-            <div className="flex items-center gap-2 text-[15px] font-bold">
-              <MapPin className="h-4 w-4" aria-hidden />
-              {`${activeWeek}주차 학습`}
-            </div>
-            <h2 className="mt-2 text-[22px] font-bold leading-snug sm:text-[24px]">
-              {TODAY.title}
-            </h2>
-            <p className="mt-3 flex items-start gap-2 text-[14px] leading-relaxed">
-              <Target className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              <span>
-                <span className="font-semibold">오늘의 목표</span> — {TODAY.goal}
-              </span>
-            </p>
-          </section>
-        ) : (
-          <section
-            className="rounded-2xl bg-accent p-4 text-accent-foreground"
-            aria-label="공통 15주 학습 설계"
-          >
-            <div className="flex items-center gap-2 text-[15px] font-bold">
-              <MapPin className="h-4 w-4" aria-hidden />
-              강의계획
-            </div>
-            <h2 className="mt-2 text-[22px] font-bold leading-snug sm:text-[24px]">
-              공통 15주 학습 설계
-            </h2>
-            <p className="mt-3 text-[14px] leading-relaxed">
-              학습자 프로필을 설정하면 수준과 관심 분야에 맞는 과제가 배정됩니다.
-            </p>
-          </section>
-        )}
+        {/* 2. Top card — assignments 연결 전까지 공통 안내 (특정 주차 주제 하드코딩 금지) */}
+        <section
+          className="rounded-2xl bg-accent p-4 text-accent-foreground"
+          aria-label="공통 15주 학습 설계"
+        >
+          <div className="flex items-center gap-2 text-[15px] font-bold">
+            <MapPin className="h-4 w-4" aria-hidden />
+            강의계획
+          </div>
+          <h2 className="mt-2 text-[22px] font-bold leading-snug sm:text-[24px]">
+            공통 15주 학습 설계
+          </h2>
+          <p className="mt-3 text-[14px] leading-relaxed">
+            오늘의 학습은 담당 교수자의 주차별 배정에 따라 열립니다. 15주 동안 상황 판단 → 후보 번역안 비교 → 수정·산출 → 통역 수행으로 확장됩니다.
+          </p>
+        </section>
 
 
         {/* 3. Semester flow */}
