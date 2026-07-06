@@ -269,11 +269,11 @@ const AdminPromptHarness = () => {
   return (
     <AdminShell
       title="프롬프트 관리"
-      description="시나리오 생성·검수·리포트에 쓰이는 프롬프트 블록을 버전 관리합니다. (Edge Function 연결은 다음 단계)"
+      description="AI가 학습 자료를 생성·검수·분석할 때 지키는 규칙과 기준을 단계별로 관리합니다. 각 규칙은 버전으로 관리되며, 지금은 규칙을 정리·보관하는 단계입니다."
     >
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          총 {rows.length}개 · 카테고리 {Object.keys(grouped).length}종
+          총 {rows.length}개 · 단계 {GROUP_ORDER.length}개
         </p>
         <Button onClick={openCreate}>
           <Plus className="mr-1 h-4 w-4" /> 새 프롬프트 추가
@@ -289,49 +289,65 @@ const AdminPromptHarness = () => {
           등록된 프롬프트가 없습니다.
         </div>
       ) : (
-        <div className="space-y-6">
-          {Object.entries(grouped).map(([cat, items]) => (
-            <div key={cat}>
-              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                {cat}
-              </h2>
-              <div className="space-y-2">
-                {items.map((row) => {
-                  const isOpen = !!expanded[row.id];
-                  return (
-                    <Card key={row.id}>
-                      <CardHeader className="p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setExpanded((s) => ({ ...s, [row.id]: !isOpen }))
-                                }
-                                className="flex items-center gap-1 text-left"
-                              >
-                                {isOpen ? (
-                                  <ChevronDown className="h-4 w-4" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4" />
-                                )}
-                                <CardTitle className="text-base">
-                                  {row.title || row.prompt_key}
-                                </CardTitle>
-                              </button>
-                              <Badge variant="outline" className="font-mono text-[11px]">
-                                {row.prompt_key}
-                              </Badge>
-                              <Badge variant="secondary">v{row.version}</Badge>
-                              <Badge variant={row.is_active ? "default" : "outline"}>
-                                {row.is_active ? "활성" : "비활성"}
-                              </Badge>
+        <div className="space-y-8">
+          {GROUP_ORDER.map((groupKey) => {
+            const items = grouped[groupKey];
+            if (!items || items.length === 0) return null;
+            return (
+              <div key={groupKey}>
+                <div className="mb-3">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
+                    {GROUP_LABEL[groupKey]}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {GROUP_DESCRIPTION[groupKey]}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {items.map((row) => {
+                    const isOpen = !!expanded[row.id];
+                    const display = CARD_DISPLAY[row.prompt_key];
+                    const displayTitle =
+                      display?.title || row.title || row.prompt_key;
+                    return (
+                      <Card key={row.id}>
+                        <CardHeader className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setExpanded((s) => ({ ...s, [row.id]: !isOpen }))
+                                  }
+                                  className="flex items-center gap-1 text-left"
+                                >
+                                  {isOpen ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                  <CardTitle className="text-base">
+                                    {displayTitle}
+                                  </CardTitle>
+                                </button>
+                                <Badge variant="outline" className="font-mono text-[11px]">
+                                  {row.prompt_key}
+                                </Badge>
+                                <Badge variant="secondary">v{row.version}</Badge>
+                                <Badge variant={row.is_active ? "default" : "outline"}>
+                                  {row.is_active ? "활성" : "비활성"}
+                                </Badge>
+                              </div>
+                              {display?.subtitle && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {display.subtitle}
+                                </p>
+                              )}
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                업데이트: {new Date(row.updated_at).toLocaleString()}
+                              </p>
                             </div>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              업데이트: {new Date(row.updated_at).toLocaleString()}
-                            </p>
-                          </div>
                           <div className="flex shrink-0 gap-1">
                             <Button
                               size="sm"
