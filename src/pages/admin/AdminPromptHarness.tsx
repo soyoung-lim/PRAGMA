@@ -300,10 +300,10 @@ const AdminPromptHarness = () => {
             return (
               <div key={groupKey}>
                 <div className="mb-3">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
+                  <h2 className="text-lg font-bold uppercase tracking-wide text-foreground">
                     {GROUP_LABEL[groupKey]}
                   </h2>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {GROUP_DESCRIPTION[groupKey]}
                   </p>
                 </div>
