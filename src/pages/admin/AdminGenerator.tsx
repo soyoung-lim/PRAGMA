@@ -63,8 +63,8 @@ type Genre = "business_email" | "business_messenger" | "meeting_speech";
 type LearnerLevel = "beginner_intermediate" | "intermediate" | "advanced";
 type InteractionContext = "coordination" | "negotiation" | "follow_up";
 type PdrPower = "higher" | "equal" | "lower";
-type PdrDistance = "formal" | "occasional" | "close";
-type PdrBurden = "high" | "mid" | "low";
+type PdrDistance = "formal" | "close";
+type PdrBurden = "high" | "low";
 type IndustrySector =
   | "trade_distribution"
   | "IT_platform"
@@ -113,12 +113,10 @@ const PDR_POWER: Record<PdrPower, string> = {
 };
 const PDR_DISTANCE: Record<PdrDistance, string> = {
   formal: "멂",
-  occasional: "보통",
   close: "가까움",
 };
 const PDR_BURDEN: Record<PdrBurden, string> = {
   high: "높음",
-  mid: "중간",
   low: "낮음",
 };
 const PDR_POWER_SHORT: Record<PdrPower, string> = {
@@ -128,12 +126,10 @@ const PDR_POWER_SHORT: Record<PdrPower, string> = {
 };
 const PDR_DISTANCE_SHORT: Record<PdrDistance, string> = {
   formal: "D: 멂",
-  occasional: "D: 보통",
   close: "D: 가까움",
 };
 const PDR_BURDEN_SHORT: Record<PdrBurden, string> = {
   high: "R: 높음",
-  mid: "R: 중간",
   low: "R: 낮음",
 };
 
@@ -298,8 +294,8 @@ const DEFAULT_FORM: FormState = {
   reasons: "2",
   coordination: true,
   pdr_power: "higher",
-  pdr_distance: "occasional",
-  pdr_burden: "mid",
+  pdr_distance: "formal",
+  pdr_burden: "low",
   domain: "work",
   language_direction: "ko_zh",
 
