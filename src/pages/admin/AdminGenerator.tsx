@@ -113,12 +113,10 @@ const PDR_POWER: Record<PdrPower, string> = {
 };
 const PDR_DISTANCE: Record<PdrDistance, string> = {
   formal: "멂",
-  occasional: "보통",
   close: "가까움",
 };
 const PDR_BURDEN: Record<PdrBurden, string> = {
   high: "높음",
-  mid: "중간",
   low: "낮음",
 };
 const PDR_POWER_SHORT: Record<PdrPower, string> = {
@@ -128,12 +126,10 @@ const PDR_POWER_SHORT: Record<PdrPower, string> = {
 };
 const PDR_DISTANCE_SHORT: Record<PdrDistance, string> = {
   formal: "D: 멂",
-  occasional: "D: 보통",
   close: "D: 가까움",
 };
 const PDR_BURDEN_SHORT: Record<PdrBurden, string> = {
   high: "R: 높음",
-  mid: "R: 중간",
   low: "R: 낮음",
 };
 
