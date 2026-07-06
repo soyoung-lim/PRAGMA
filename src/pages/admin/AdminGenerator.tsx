@@ -294,8 +294,8 @@ const DEFAULT_FORM: FormState = {
   reasons: "2",
   coordination: true,
   pdr_power: "higher",
-  pdr_distance: "occasional",
-  pdr_burden: "mid",
+  pdr_distance: "formal",
+  pdr_burden: "low",
   domain: "work",
   language_direction: "ko_zh",
 
