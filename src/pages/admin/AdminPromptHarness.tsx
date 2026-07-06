@@ -61,6 +61,87 @@ const EMPTY_FORM: FormState = {
   is_active: true,
 };
 
+const GROUP_ORDER = ["generation", "review", "report", "golden_fta"] as const;
+
+const CATEGORY_TO_GROUP: Record<string, (typeof GROUP_ORDER)[number]> = {
+  generation: "generation",
+  review: "review",
+  report: "report",
+  golden: "golden_fta",
+  fta: "golden_fta",
+};
+
+const GROUP_LABEL: Record<(typeof GROUP_ORDER)[number], string> = {
+  generation: "① 시나리오 생성",
+  review: "② 품질 검수",
+  report: "③ 수행 리포트",
+  golden_fta: "④ 기준 자료",
+};
+
+const GROUP_DESCRIPTION: Record<(typeof GROUP_ORDER)[number], string> = {
+  generation: "AI가 상황 시나리오·번역 후보를 만들 때 지켜야 할 규칙",
+  review: "생성된 결과를 학습자에게보내기 전에 점검하는 기준",
+  report: "학습자의 수행 기록을 분석해 강약점·다음 학습을 정리하는 틀",
+  golden_fta: "생성·검수의 기준이 되는 모범 사례와 이론적 설계 근거",
+};
+
+const CARD_ORDER: Record<string, number> = {
+  metadata_lock_block: 1,
+  source_text_responsibility_block: 2,
+  candidate_contrast_block: 3,
+  reviewer_checklist_block: 4,
+  report_schema_block: 5,
+  golden_examples: 6,
+  fta_design_note: 7,
+};
+
+const CARD_DISPLAY: Record<
+  string,
+  { title: string; subtitle: string }
+> = {
+  metadata_lock_block: {
+    title: "입력 조건 고정",
+    subtitle:
+      "화행·상황·수준 등 관리자가 정한 조건이 생성 중 바뀌지 않도록 고정",
+  },
+  source_text_responsibility_block: {
+    title: "원문 충실성 규칙",
+    subtitle: "원문에 없는 사실·사과·약속을 지어내지 않도록 통제",
+  },
+  candidate_contrast_block: {
+    title: "번역 후보 대비 설계",
+    subtitle:
+      "직접성 차이로 여러 후보를 만들어 학습자가 화용 차이를 판단하게 함",
+  },
+  reviewer_checklist_block: {
+    title: "검수 점검표",
+    subtitle: "생성 결과가 기준을 지켰는지 항목별로 점검",
+  },
+  report_schema_block: {
+    title: "리포트 구조 틀",
+    subtitle: "수행 기록 기반 강약점·추천의 출력 형식",
+  },
+  golden_examples: {
+    title: "모범·오류 예시",
+    subtitle: "통과·실패·수정 사례 모음",
+  },
+  fta_design_note: {
+    title: "상황·공손성 설계 노트",
+    subtitle:
+      "상황 변수(P/D/R)와 번역 직접성을 잇는 이론적 설계 근거",
+  },
+};
+
+function sortByDisplayOrder(rows: PromptTemplate[]): PromptTemplate[] {
+  return [...rows].sort((a, b) => {
+    const ao = CARD_ORDER[a.prompt_key] ?? 99;
+    const bo = CARD_ORDER[b.prompt_key] ?? 99;
+    if (ao !== bo) return ao - bo;
+    return (a.prompt_key ?? "").localeCompare(b.prompt_key ?? "");
+  });
+}
+
+
 const AdminPromptHarness = () => {
   const [rows, setRows] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(true);
