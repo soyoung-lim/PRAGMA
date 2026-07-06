@@ -355,6 +355,48 @@ export type Database = {
         }
         Relationships: []
       }
+      prompt_templates: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          prompt_key: string
+          title: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          prompt_key: string
+          title?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          prompt_key?: string
+          title?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       scenario_candidates: {
         Row: {
           appropriateness_label: string | null
