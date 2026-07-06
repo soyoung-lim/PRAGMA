@@ -174,10 +174,14 @@ const AdminPromptHarness = () => {
   }, [load]);
 
   const grouped = useMemo(() => {
-    const g: Record<string, PromptTemplate[]> = {};
+    const g: Partial<Record<(typeof GROUP_ORDER)[number], PromptTemplate[]>> = {};
     for (const r of rows) {
-      const k = r.category?.trim() || "기타";
-      (g[k] ||= []).push(r);
+      const cat = r.category?.trim() || "기타";
+      const groupKey = CATEGORY_TO_GROUP[cat] ?? "golden_fta";
+      (g[groupKey] ||= []).push(r);
+    }
+    for (const k of GROUP_ORDER) {
+      if (g[k]) g[k] = sortByDisplayOrder(g[k]!);
     }
     return g;
   }, [rows]);
