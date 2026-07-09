@@ -8,7 +8,7 @@ import { useProfile } from "@/lib/auth/useProfile";
 
 /**
  * 학습자의 현재 주차.
- * 임시 고정값(1주차). 진행 추적(decision_traces 기반 "완료한 마� 주차+1")
+ * 임시 고정값(1주차). 진행 추적(decision_traces 기반 "완료한 마지막 주차+1")
  * 도입 시 이 함수만 교체하면 됨.
  */
 const getCurrentWeek = (): number => 1;
