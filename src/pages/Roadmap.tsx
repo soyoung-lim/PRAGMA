@@ -1,31 +1,29 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, MapPin, ListChecks, CircleDot } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
 import { setTaskMode, setLanguageDirection } from "@/lib/entryGate";
 import { DEFAULT_LEARNING_CONTEXT } from "@/lib/learningContext";
 import { useProfile } from "@/lib/auth/useProfile";
 
 /**
  * 학습자의 현재 주차.
- * 임시 고정값(1주차). 진행 추적(decision_traces 기반 "완료한 마지막 주차+1")
+ * 임시 고정값(1주차). 진행 추적(decision_traces 기반 "완료한 마� 주차+1")
  * 도입 시 이 함수만 교체하면 됨.
  */
 const getCurrentWeek = (): number => 1;
 
-
 /**
- * ROADMAP — 15주 학습 설계 (16 항목: 0~15주차)
- * 데이터 소스: public.course_weeks 테이블
+ * ROADMAP — 공통 15주 화행 기반 커리큘럼
+ * 정적 주차표. DB나 주차 배정 로직과 무관하게 표시용으로 사용합니다.
  */
 type Stage =
   | "시작 준비"
-  | "정형 화행"
-  | "대인 화행"
-  | "음성 통역"
+  | "표현 화행"
+  | "지시 화행"
+  | "응답 화행"
   | "중간점검"
-  | "고부담 화행"
+  | "평가 화행"
   | "복합 과제"
   | "기말 종합";
 
@@ -33,38 +31,48 @@ type RoadmapItem = {
   week: number;
   stage: Stage;
   topic: string;
-  isExam: boolean;
+  badge?: string;
 };
 
-/** 현재 주차는 getCurrentWeek()로 계산 (하드코딩 제거) */
+const ROADMAP: RoadmapItem[] = [
+  { week: 0, stage: "시작 준비", topic: "학습자 프로필 설정" },
+  { week: 1, stage: "시작 준비", topic: "오리엔테이션: 화행 판단과 P/D/R" },
+  { week: 2, stage: "표현 화행", topic: "감사 표현" },
+  { week: 3, stage: "표현 화행", topic: "칭찬·칭찬 응답" },
+  { week: 4, stage: "지시 화행", topic: "요청할 때 직접성 조절하기" },
+  { week: 5, stage: "지시 화행", topic: "제안할 때 직접성 조절하기" },
+  { week: 6, stage: "응답 화행", topic: "수락·동의 표현", badge: "음성 통역" },
+  { week: 7, stage: "응답 화행", topic: "거절 표현" },
+  { week: 8, stage: "중간점검", topic: "판단·수정 종합" },
+  { week: 9, stage: "표현 화행", topic: "사과 표현" },
+  { week: 10, stage: "평가 화행", topic: "불만·불만 대응" },
+  { week: 11, stage: "응답 화행", topic: "반대·의견 정당화", badge: "음성 통역" },
+  { week: 12, stage: "응답 화행", topic: "고부담 거절 표현" },
+  { week: 13, stage: "지시 화행", topic: "고부담 요청 표현" },
+  { week: 14, stage: "복합 과제", topic: "입장 조율·조건 협상", badge: "음성 통역" },
+  { week: 15, stage: "기말 종합", topic: "최종 수행·성장 리포트" },
+];
 
-
-
-
-/** 나중에 scenarios/assignments 에서 읽어올 지점 */
 const TODAY = {
-  weekLabel: "4주차 학습",
-  title: "오늘의 주제: 제안할 때 직접성 조절하기",
-  goal: "원문의 의미를 유지하며, 제안 표현의 강도를 조절하기",
-  intro: "상대에게 부담이 큰 요청을, 너무 직접적으로 말하지 않기",
+  intro: "상황과 원문을 읽고, 후보 표현을 비교·선택·수정한 뒤 최종안을 제출합니다.",
   steps: [
-    "오늘의 화용 포인트 보기",
+    "오늘의 화행 포인트 보기",
     "상황과 원문 읽기",
-    "후보 번역문 비교하기",
+    "후보 표현 비교하기",
     "가장 적절한 표현 고르기",
     "부적절한 표현 수정하기",
-    "나의 최종 번역안 제출하기",
+    "나의 최종안 제출하기",
     "피드백과 성장 리포트 확인하기",
   ],
 };
 
 const STAGE_STYLE: Record<Stage, string> = {
   "시작 준비": "bg-muted text-muted-foreground",
-  "정형 화행": "bg-muted text-foreground/80",
-  "대인 화행": "bg-muted text-foreground/80",
-  "음성 통역": "bg-muted text-foreground/80",
+  "표현 화행": "bg-muted text-foreground/80",
+  "지시 화행": "bg-muted text-foreground/80",
+  "응답 화행": "bg-muted text-foreground/80",
   "중간점검": "bg-destructive/10 text-destructive border border-destructive/30",
-  "고부담 화행": "bg-muted text-foreground/80",
+  "평가 화행": "bg-muted text-foreground/80",
   "복합 과제": "bg-muted text-foreground/80",
   "기말 종합": "bg-destructive/10 text-destructive border border-destructive/30",
 };
@@ -75,37 +83,9 @@ const Roadmap = () => {
   const isProfileComplete = !!profile?.profile_completed;
   // 프로필 미완료 시 활성 주차 없음 → 강조/체크/핀 없이 균일 렌더링
   const activeWeek = isProfileComplete ? getCurrentWeek() : -1;
-  const [roadmap, setRoadmap] = useState<RoadmapItem[] | null>(null);
-
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("course_weeks")
-        .select("week_no, course_phase, detail_topic, is_exam_week")
-        .order("week_no", { ascending: true });
-      if (cancelled) return;
-      if (error || !data) {
-        setRoadmap([]);
-        return;
-      }
-      setRoadmap(
-        data.map((r) => ({
-          week: r.week_no as number,
-          stage: r.course_phase as Stage,
-          topic: r.detail_topic as string,
-          isExam: r.is_exam_week as boolean,
-        })),
-      );
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const [roadmap] = useState<RoadmapItem[]>(ROADMAP);
 
   return (
-
     <div className="min-h-screen bg-background text-foreground">
       {/* 1. Header (dark) */}
       <header className="bg-primary text-primary-foreground">
@@ -135,23 +115,25 @@ const Roadmap = () => {
       </header>
 
       <main className="mx-auto w-full max-w-3xl px-6 py-5">
-        {/* 2. Top card — assignments 연결 전까지 공통 안내 (특정 주차 주제 하드코딩 금지) */}
+        {/* 2. Top card */}
         <section
           className="rounded-2xl bg-accent p-4 text-accent-foreground"
-          aria-label="공통 15주 학습 설계"
+          aria-label="공통 15주 화행 기반 커리큘럼"
         >
           <div className="flex items-center gap-2 text-[15px] font-bold">
             <MapPin className="h-4 w-4" aria-hidden />
-            강의계획
+            공통 15주 화행 기반 커리큘럼
           </div>
           <h2 className="mt-2 text-[22px] font-bold leading-snug sm:text-[24px]">
-            공통 15주 학습 설계
+            공통 15주 화행 기반 커리큘럼
           </h2>
           <p className="mt-3 text-[14px] leading-relaxed">
-            오늘의 학습은 담당 교수자의 주차별 배정에 따라 열립니다. 15주 동안 상황 판단 → 후보 번역안 비교 → 수정·산출 → 통역 수행으로 확장됩니다.
+            모든 수업은 같은 15주 화행 흐름을 공유합니다. 실제 수업에서는 학습자 수준, 언어방향, 산출 방식에 따라 과제가 다르게 구성됩니다.
+          </p>
+          <p className="mt-2 text-[14px] leading-relaxed opacity-90">
+            15주 동안 감사, 칭찬, 요청, 제안, 수락·동의, 거절, 사과, 불만, 반대로 이어지는 9개 화행을 다루고, 후반부에는 입장 조율·조건 협상으로 확장합니다.
           </p>
         </section>
-
 
         {/* 3. Semester flow */}
         <section className="mt-5">
@@ -161,20 +143,10 @@ const Roadmap = () => {
           </div>
 
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {roadmap === null ? (
-              <div className="col-span-full rounded-2xl border border-border bg-card p-4 text-[14px] text-muted-foreground">
-                불러오는 중…
-              </div>
-            ) : roadmap.length === 0 ? (
-              <div className="col-span-full rounded-2xl border border-border bg-card p-4 text-[14px] text-muted-foreground">
-                표시할 주차 데이터가 없습니다.
-              </div>
-            ) : (
-            [
-              { items: roadmap.filter((i) => i.week <= 7), label: "0–7주차 · 중간점검까지" },
-              { items: roadmap.filter((i) => i.week >= 8), label: "8–15주차 · 기말 종합까지" },
+            {[
+              { items: roadmap.filter((i) => i.week <= 8), label: "0–8주차 · 중간점검까지" },
+              { items: roadmap.filter((i) => i.week >= 9), label: "9–15주차 · 기말 종합까지" },
             ].map((col) => (
-
               <div key={col.label} className="rounded-2xl border border-border bg-card p-2.5">
                 <div className="mb-2 inline-block rounded-full bg-muted px-3 py-1 text-[12px] font-semibold text-muted-foreground">
                   {col.label}
@@ -185,13 +157,12 @@ const Roadmap = () => {
                     const isCurrent = item.week === activeWeek;
                     const isFuture = item.week > activeWeek || activeWeek < 0;
 
-
                     return (
                       <li
                         key={item.week}
                         className={cn(
                           "flex items-center gap-2 rounded-xl px-2 py-1.5",
-                          isCurrent && "bg-accent/25",
+                          isCurrent && "bg-accent/25"
                         )}
                       >
                         <div
@@ -200,7 +171,7 @@ const Roadmap = () => {
                             isDone && "bg-primary text-primary-foreground",
                             isCurrent && "bg-primary text-primary-foreground",
                             isFuture &&
-                              "border border-border bg-background text-muted-foreground",
+                              "border border-border bg-background text-muted-foreground"
                           )}
                           aria-hidden
                         >
@@ -220,7 +191,7 @@ const Roadmap = () => {
                             isFuture &&
                               item.stage !== "중간점검" &&
                               item.stage !== "기말 종합" &&
-                              "opacity-70",
+                              "opacity-70"
                           )}
                         >
                           {item.stage}
@@ -231,22 +202,25 @@ const Roadmap = () => {
                             "min-w-0 flex-1 text-[14px]",
                             isCurrent && "font-bold text-foreground",
                             isDone && "font-semibold text-foreground",
-                            isFuture && "text-muted-foreground",
+                            isFuture && "text-muted-foreground"
                           )}
                         >
                           <span className="font-semibold">{item.week}·</span> {item.topic}
                         </div>
+
+                        {item.badge && (
+                          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">
+                            {item.badge}
+                          </span>
+                        )}
                       </li>
                     );
                   })}
                 </ol>
               </div>
-            ))
-            )}
-
+            ))}
           </div>
         </section>
-
 
         {/* 4. Today's ordered steps */}
         <section className="mt-5">
@@ -319,7 +293,6 @@ const Roadmap = () => {
               학습자 프로필 설정하기 →
             </button>
           )}
-
         </section>
       </main>
     </div>
