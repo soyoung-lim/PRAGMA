@@ -14,42 +14,40 @@ import { useProfile } from "@/lib/auth/useProfile";
 const getCurrentWeek = (): number => 1;
 
 /**
- * ROADMAP — 공통 15주 화행 기반 커리큘럼
+ * ROADMAP — 15주 화행 기반 커리큘럼
  * 정적 주차표. DB나 주차 배정 로직과 무관하게 표시용으로 사용합니다.
  */
 type Stage =
-  | "시작 준비"
+  | "시작"
   | "표현 화행"
   | "지시 화행"
   | "응답 화행"
   | "중간점검"
   | "평가 화행"
-  | "복합 과제"
+  | "복합 담화 과업"
   | "기말 종합";
 
 type RoadmapItem = {
   week: number;
   stage: Stage;
   topic: string;
-  badge?: string;
 };
 
 const ROADMAP: RoadmapItem[] = [
-  { week: 0, stage: "시작 준비", topic: "학습자 프로필 설정" },
-  { week: 1, stage: "시작 준비", topic: "오리엔테이션: 화행 판단과 P/D/R" },
+  { week: 1, stage: "시작", topic: "오리엔테이션" },
   { week: 2, stage: "표현 화행", topic: "감사 표현" },
   { week: 3, stage: "표현 화행", topic: "칭찬·칭찬 응답" },
-  { week: 4, stage: "지시 화행", topic: "요청할 때 직접성 조절하기" },
-  { week: 5, stage: "지시 화행", topic: "제안할 때 직접성 조절하기" },
-  { week: 6, stage: "응답 화행", topic: "수락·동의 표현", badge: "음성 통역" },
+  { week: 4, stage: "지시 화행", topic: "요청 표현" },
+  { week: 5, stage: "지시 화행", topic: "제안 표현" },
+  { week: 6, stage: "응답 화행", topic: "수락·동의 표현" },
   { week: 7, stage: "응답 화행", topic: "거절 표현" },
   { week: 8, stage: "중간점검", topic: "판단·수정 종합" },
   { week: 9, stage: "표현 화행", topic: "사과 표현" },
   { week: 10, stage: "평가 화행", topic: "불만·불만 대응" },
-  { week: 11, stage: "응답 화행", topic: "반대·의견 정당화", badge: "음성 통역" },
-  { week: 12, stage: "응답 화행", topic: "고부담 거절 표현" },
-  { week: 13, stage: "지시 화행", topic: "고부담 요청 표현" },
-  { week: 14, stage: "복합 과제", topic: "입장 조율·조건 협상", badge: "음성 통역" },
+  { week: 11, stage: "응답 화행", topic: "반대·의견 정당화" },
+  { week: 12, stage: "응답 화행", topic: "고부담 거절" },
+  { week: 13, stage: "지시 화행", topic: "고부담 요청" },
+  { week: 14, stage: "복합 담화 과업", topic: "입장 조율·조건 협상" },
   { week: 15, stage: "기말 종합", topic: "최종 수행·성장 리포트" },
 ];
 
