@@ -65,13 +65,13 @@ const TODAY = {
 };
 
 const STAGE_STYLE: Record<Stage, string> = {
-  "시작 준비": "bg-muted text-muted-foreground",
+  "시작": "bg-muted text-muted-foreground",
   "표현 화행": "bg-muted text-foreground/80",
   "지시 화행": "bg-muted text-foreground/80",
   "응답 화행": "bg-muted text-foreground/80",
   "중간점검": "bg-destructive/10 text-destructive border border-destructive/30",
   "평가 화행": "bg-muted text-foreground/80",
-  "복합 과제": "bg-muted text-foreground/80",
+  "복합 담화 과업": "bg-muted text-foreground/80",
   "기말 종합": "bg-destructive/10 text-destructive border border-destructive/30",
 };
 
