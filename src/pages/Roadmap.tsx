@@ -205,12 +205,6 @@ const Roadmap = () => {
                         >
                           <span className="font-semibold">{item.week}·</span> {item.topic}
                         </div>
-
-                        {item.badge && (
-                          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">
-                            {item.badge}
-                          </span>
-                        )}
                       </li>
                     );
                   })}
