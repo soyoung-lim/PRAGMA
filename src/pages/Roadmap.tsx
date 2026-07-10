@@ -142,7 +142,7 @@ const Roadmap = () => {
 
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[
-              { items: roadmap.filter((i) => i.week <= 8), label: "0–8주차 · 중간점검까지" },
+              { items: roadmap.filter((i) => i.week <= 8), label: "1–8주차 · 중간점검까지" },
               { items: roadmap.filter((i) => i.week >= 9), label: "9–15주차 · 기말 종합까지" },
             ].map((col) => (
               <div key={col.label} className="rounded-2xl border border-border bg-card p-2.5">
