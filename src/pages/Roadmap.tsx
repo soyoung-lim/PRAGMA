@@ -116,20 +116,20 @@ const Roadmap = () => {
         {/* 2. Top card */}
         <section
           className="rounded-2xl bg-accent p-4 text-accent-foreground"
-          aria-label="공통 15주 화행 기반 커리큘럼"
+          aria-label="15주 화행 기반 커리큘럼"
         >
           <div className="flex items-center gap-2 text-[15px] font-bold">
             <MapPin className="h-4 w-4" aria-hidden />
-            공통 15주 화행 기반 커리큘럼
+            15주 수업 설계
           </div>
           <h2 className="mt-2 text-[22px] font-bold leading-snug sm:text-[24px]">
-            공통 15주 화행 기반 커리큘럼
+            화행 기반 커리큘럼
           </h2>
           <p className="mt-3 text-[14px] leading-relaxed">
-            모든 수업은 같은 15주 화행 흐름을 공유합니다. 실제 수업에서는 학습자 수준, 언어방향, 산출 방식에 따라 과제가 다르게 구성됩니다.
+            이 과정은 15주 동안 주요 화행을 단계적으로 학습하도록 설계되었습니다. 실제 과제의 수준, 언어방향, 산출 방식은 수업 운영 방식에 따라 달라질 수 있습니다.
           </p>
           <p className="mt-2 text-[14px] leading-relaxed opacity-90">
-            15주 동안 감사, 칭찬, 요청, 제안, 수락·동의, 거절, 사과, 불만, 반대로 이어지는 9개 화행을 다루고, 후반부에는 입장 조율·조건 협상으로 확장합니다.
+            감사, 칭찬, 요청, 제안, 수락·동의, 거절, 사과, 불만, 반대 표현을 다루고, 후반부에는 입장 조율과 조건 협상으로 확장합니다.
           </p>
         </section>
 
