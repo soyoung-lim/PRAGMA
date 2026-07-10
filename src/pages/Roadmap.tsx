@@ -14,42 +14,40 @@ import { useProfile } from "@/lib/auth/useProfile";
 const getCurrentWeek = (): number => 1;
 
 /**
- * ROADMAP — 공통 15주 화행 기반 커리큘럼
+ * ROADMAP — 15주 화행 기반 커리큘럼
  * 정적 주차표. DB나 주차 배정 로직과 무관하게 표시용으로 사용합니다.
  */
 type Stage =
-  | "시작 준비"
+  | "시작"
   | "표현 화행"
   | "지시 화행"
   | "응답 화행"
   | "중간점검"
   | "평가 화행"
-  | "복합 과제"
+  | "복합 담화 과업"
   | "기말 종합";
 
 type RoadmapItem = {
   week: number;
   stage: Stage;
   topic: string;
-  badge?: string;
 };
 
 const ROADMAP: RoadmapItem[] = [
-  { week: 0, stage: "시작 준비", topic: "학습자 프로필 설정" },
-  { week: 1, stage: "시작 준비", topic: "오리엔테이션: 화행 판단과 P/D/R" },
+  { week: 1, stage: "시작", topic: "오리엔테이션" },
   { week: 2, stage: "표현 화행", topic: "감사 표현" },
   { week: 3, stage: "표현 화행", topic: "칭찬·칭찬 응답" },
-  { week: 4, stage: "지시 화행", topic: "요청할 때 직접성 조절하기" },
-  { week: 5, stage: "지시 화행", topic: "제안할 때 직접성 조절하기" },
-  { week: 6, stage: "응답 화행", topic: "수락·동의 표현", badge: "음성 통역" },
+  { week: 4, stage: "지시 화행", topic: "요청 표현" },
+  { week: 5, stage: "지시 화행", topic: "제안 표현" },
+  { week: 6, stage: "응답 화행", topic: "수락·동의 표현" },
   { week: 7, stage: "응답 화행", topic: "거절 표현" },
   { week: 8, stage: "중간점검", topic: "판단·수정 종합" },
   { week: 9, stage: "표현 화행", topic: "사과 표현" },
   { week: 10, stage: "평가 화행", topic: "불만·불만 대응" },
-  { week: 11, stage: "응답 화행", topic: "반대·의견 정당화", badge: "음성 통역" },
-  { week: 12, stage: "응답 화행", topic: "고부담 거절 표현" },
-  { week: 13, stage: "지시 화행", topic: "고부담 요청 표현" },
-  { week: 14, stage: "복합 과제", topic: "입장 조율·조건 협상", badge: "음성 통역" },
+  { week: 11, stage: "응답 화행", topic: "반대·의견 정당화" },
+  { week: 12, stage: "응답 화행", topic: "고부담 거절" },
+  { week: 13, stage: "지시 화행", topic: "고부담 요청" },
+  { week: 14, stage: "복합 담화 과업", topic: "입장 조율·조건 협상" },
   { week: 15, stage: "기말 종합", topic: "최종 수행·성장 리포트" },
 ];
 
@@ -67,13 +65,13 @@ const TODAY = {
 };
 
 const STAGE_STYLE: Record<Stage, string> = {
-  "시작 준비": "bg-muted text-muted-foreground",
+  "시작": "bg-muted text-muted-foreground",
   "표현 화행": "bg-muted text-foreground/80",
   "지시 화행": "bg-muted text-foreground/80",
   "응답 화행": "bg-muted text-foreground/80",
   "중간점검": "bg-destructive/10 text-destructive border border-destructive/30",
   "평가 화행": "bg-muted text-foreground/80",
-  "복합 과제": "bg-muted text-foreground/80",
+  "복합 담화 과업": "bg-muted text-foreground/80",
   "기말 종합": "bg-destructive/10 text-destructive border border-destructive/30",
 };
 
@@ -118,20 +116,20 @@ const Roadmap = () => {
         {/* 2. Top card */}
         <section
           className="rounded-2xl bg-accent p-4 text-accent-foreground"
-          aria-label="공통 15주 화행 기반 커리큘럼"
+          aria-label="15주 화행 기반 커리큘럼"
         >
           <div className="flex items-center gap-2 text-[15px] font-bold">
             <MapPin className="h-4 w-4" aria-hidden />
-            공통 15주 화행 기반 커리큘럼
+            15주 수업 설계
           </div>
           <h2 className="mt-2 text-[22px] font-bold leading-snug sm:text-[24px]">
-            공통 15주 화행 기반 커리큘럼
+            화행 기반 커리큘럼
           </h2>
           <p className="mt-3 text-[14px] leading-relaxed">
-            모든 수업은 같은 15주 화행 흐름을 공유합니다. 실제 수업에서는 학습자 수준, 언어방향, 산출 방식에 따라 과제가 다르게 구성됩니다.
+            이 과정은 15주 동안 주요 화행을 단계적으로 학습하도록 설계되었습니다. 실제 과제의 수준, 언어방향, 산출 방식은 수업 운영 방식에 따라 달라질 수 있습니다.
           </p>
           <p className="mt-2 text-[14px] leading-relaxed opacity-90">
-            15주 동안 감사, 칭찬, 요청, 제안, 수락·동의, 거절, 사과, 불만, 반대로 이어지는 9개 화행을 다루고, 후반부에는 입장 조율·조건 협상으로 확장합니다.
+            감사, 칭찬, 요청, 제안, 수락·동의, 거절, 사과, 불만, 반대 표현을 다루고, 후반부에는 입장 조율과 조건 협상으로 확장합니다.
           </p>
         </section>
 
@@ -144,7 +142,7 @@ const Roadmap = () => {
 
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[
-              { items: roadmap.filter((i) => i.week <= 8), label: "0–8주차 · 중간점검까지" },
+              { items: roadmap.filter((i) => i.week <= 8), label: "1–8주차 · 중간점검까지" },
               { items: roadmap.filter((i) => i.week >= 9), label: "9–15주차 · 기말 종합까지" },
             ].map((col) => (
               <div key={col.label} className="rounded-2xl border border-border bg-card p-2.5">
@@ -207,12 +205,6 @@ const Roadmap = () => {
                         >
                           <span className="font-semibold">{item.week}·</span> {item.topic}
                         </div>
-
-                        {item.badge && (
-                          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">
-                            {item.badge}
-                          </span>
-                        )}
                       </li>
                     );
                   })}
@@ -250,8 +242,7 @@ const Roadmap = () => {
           <div className="flex items-start gap-3 rounded-xl border border-border border-l-4 border-l-emerald-600 bg-card p-3">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
             <p className="text-[14px] leading-relaxed text-foreground">
-              오늘 학습을 마치면 <b>나의 판단 · 수정 · 최종안</b>이 성장 리포트에
-              기록되고, 다음 주차 학습에 반영됩니다.
+              오늘 학습을 마치면 <b>나의 판단 · 수정 · 최종안</b>이 성장 리포트에 기록됩니다.
             </p>
           </div>
         </section>
