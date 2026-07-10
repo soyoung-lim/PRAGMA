@@ -242,8 +242,7 @@ const Roadmap = () => {
           <div className="flex items-start gap-3 rounded-xl border border-border border-l-4 border-l-emerald-600 bg-card p-3">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
             <p className="text-[14px] leading-relaxed text-foreground">
-              오늘 학습을 마치면 <b>나의 판단 · 수정 · 최종안</b>이 성장 리포트에
-              기록되고, 다음 주차 학습에 반영됩니다.
+              오늘 학습을 마치면 <b>나의 판단 · 수정 · 최종안</b>이 성장 리포트에 기록됩니다.
             </p>
           </div>
         </section>
