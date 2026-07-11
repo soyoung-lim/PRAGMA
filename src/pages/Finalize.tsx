@@ -336,7 +336,7 @@ const Finalize = () => {
 
         {/* Footer */}
         <div className="mt-8 border-t border-border pt-4">
-          <div className="flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
+          <div className="flex flex-col items-end gap-3">
             {!finalSubmitted && (
               <button
                 type="button"
