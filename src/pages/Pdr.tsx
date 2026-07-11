@@ -36,6 +36,7 @@ const Pdr = () => {
   const [proposalText, setProposalText] = useState("");
   const [proposalReason, setProposalReason] = useState("");
   const [proposalFrozen, setProposalFrozen] = useState(false);
+  const [proposalSubmitted, setProposalSubmitted] = useState(false);
   const [ttsLoading, setTtsLoading] = useState<Choice | null>(null);
   const [ttsError, setTtsError] = useState<{ c: Choice; msg: string } | null>(null);
   const [ttsUrl, setTtsUrl] = useState<Partial<Record<Choice, string>>>({});
@@ -100,6 +101,7 @@ const Pdr = () => {
       if (pr) setProposalReason(pr);
       if (localStorage.getItem(STEP2_PROPOSAL_FROZEN_KEY) === "1") {
         setProposalFrozen(true);
+        setProposalSubmitted(true);
       }
     } catch {
       /* ignore */
@@ -127,9 +129,21 @@ const Pdr = () => {
   const worstReasonOk = worstReason.trim().length >= 30;
   const canProceed =
     demo ||
-    (!!best && !!worst && best !== worst && bestReasonOk && worstReasonOk);
+    (proposalSubmitted && !!best && !!worst && best !== worst && bestReasonOk && worstReasonOk);
 
-  const proposalReadOnly = demo || proposalFrozen;
+  const proposalReadOnly = demo || proposalFrozen || proposalSubmitted;
+
+  const handleProposalSubmit = () => {
+    if (proposalSubmitted) return;
+    setProposalSubmitted(true);
+    setProposalFrozen(true);
+    try {
+      localStorage.setItem(STEP2_PROPOSAL_FROZEN_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    logAction("selection", { field: "proposal_submitted", value: "true" });
+  };
 
   const handleProceed = () => {
     if (!canProceed) return;
@@ -208,42 +222,7 @@ const Pdr = () => {
           description="세 가지 AI 번역안을 비교하고, 어느 쪽이 가장 적절하고 가장 부적절한지 골라보세요."
         />
 
-        {/* Comparison hint box */}
-        <div className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
-          <div className="flex items-start gap-2">
-            <span aria-hidden className="mt-0.5 text-base">ⓘ</span>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-foreground">
-                번역안을 고를 때 생각해 볼 점
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                뜻이 맞는지만 보지 말고, 상황에 맞게 느껴지는지도 함께 살펴보세요.
-              </p>
-              <ol className="mt-3 space-y-2 text-sm text-foreground">
-                <li>
-                  <span className="font-semibold">1. 의미와 말투</span>{" "}
-                  <span className="text-muted-foreground">
-                    원래 말하려던 뜻과 어조가 잘 전달되는가
-                  </span>
-                </li>
-                <li>
-                  <span className="font-semibold">2. 관계 적합성</span>{" "}
-                  <span className="text-muted-foreground">
-                    상대와의 관계와 상황의 격식에 어울리는가
-                  </span>
-                </li>
-                <li>
-                  <span className="font-semibold">3. 오해·부담 가능성</span>{" "}
-                  <span className="text-muted-foreground">
-                    너무 직접적이거나, 지나치게 장황하거나, 불편하게 받아들여질 가능성은 없는가
-                  </span>
-                </li>
-              </ol>
-            </div>
-          </div>
-        </div>
-
-        {/* Source ↔ translations pairing — hero pair (page protagonist) */}
+        {/* (1) Source text only */}
         <div className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] border-l-[4px] border-l-[#15202B] bg-[#FFFFFF] p-7">
           <div className="mb-3 text-[13px] font-bold uppercase tracking-wide text-[#15202B]">
             번역해야 할 한국어 원문 (출발어)
@@ -251,151 +230,9 @@ const Pdr = () => {
           <p className="text-[19px] font-semibold leading-relaxed text-[#15202B]">
             {sourceText}
           </p>
-
-          <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
-            <span className="h-px flex-1 bg-foreground/15" />
-            <span>↓ 중국어 번역안 3종 (도착어)</span>
-            <span className="h-px flex-1 bg-foreground/15" />
-          </div>
-
-          <div className="flex flex-col gap-3">
-            {(mapping ? getDisplayOrder(mapping) : (["A", "B", "C"] as Choice[])).map((c, idx) => (
-              <div
-                key={c}
-                className={[
-                  "flex w-full flex-col rounded-lg p-4",
-                  c === "A"
-                    ? "border-[0.5px] border-[#E8CFB5]"
-                    : c === "B"
-                    ? "border-[0.5px] border-[#C8CFC4]"
-                    : "border-[0.5px] border-[#C5CED9]",
-                ].join(" ")}
-                style={{ backgroundColor: TRANSLATION_CARD_BG[c] }}
-              >
-                <div className="text-base font-[700]">번역안 {idx + 1}</div>
-                {act && (
-                  <div className="mt-1 text-[12px] font-normal text-[#5C6A7A]">
-                    {TRANSLATION_LABELS[act][c]}
-                  </div>
-                )}
-                <p className="mt-3 whitespace-pre-wrap text-[17px] font-semibold leading-relaxed text-[#15202B]">
-                  {act
-                    ? TRANSLATIONS[act][c]
-                    : `[번역안 ${idx + 1} — Step 1을 먼저 선택해주세요]`}
-                </p>
-                {act && (
-                  <div className="mt-3 flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => playChinese(c, TRANSLATIONS[act][c])}
-                      disabled={ttsLoading === c}
-                      aria-label={`번역안 ${idx + 1} 중국어 발음 듣기`}
-                      className="inline-flex w-fit items-center gap-1.5 rounded-full border-[0.5px] border-[#15202B]/30 bg-[#FFFFFF]/70 px-3 py-1 text-[12px] font-medium text-[#15202B] transition-colors hover:bg-[#FFFFFF] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {ttsLoading === c ? (
-                        <>
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          생성 중...
-                        </>
-                      ) : (
-                        <>
-                          <Volume2 className="h-3 w-3" />
-                          중국어 듣기
-                        </>
-                      )}
-                    </button>
-                    {ttsUrl[c] && (
-                      <audio
-                        id={`tts-audio-${c}`}
-                        src={ttsUrl[c]}
-                        controls
-                        ref={(node) => {
-                          audioRefs.current[c] = node;
-                        }}
-                        className="h-8 w-full max-w-xs"
-                      />
-                    )}
-                    {ttsError?.c === c && (
-                      <p className="text-[12px] text-[#B91C1C]">
-                        {ttsError.msg}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* Best (most appropriate) — situation-matching frame */}
-        <div className="mt-4 space-y-3 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
-          <div>
-            <div className="text-sm font-semibold">이 상황에 가장 적절한 번역안은?</div>
-            <div className="mt-2">
-              <RadioRow name="best" value={best} onChange={setBestSafe} disabledValue={worst} />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="best-reason" className="text-sm font-semibold">
-              그렇게 판단한 이유를 적어주세요
-            </label>
-            <textarea
-              id="best-reason"
-              value={bestReason}
-              onChange={(e) => {
-                if (demo) return;
-                setBestReason(e.target.value);
-                try { localStorage.setItem(STEP2_BEST_REASON_KEY, e.target.value); } catch { /* ignore */ }
-              }}
-              readOnly={demo}
-              placeholder="이 상황에 왜 이 번역안이 가장 잘 어울린다고 보았는지 적어주세요."
-              rows={2}
-              className="mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-2.5 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
-            />
-            <div className="mt-1 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {!bestReasonOk && bestReason.length > 0 ? "조금 더 설명해 주세요" : ""}
-              </span>
-              <span className="text-xs text-muted-foreground">{bestReason.length}자</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Worst (most inappropriate/risky) — situation-matching frame */}
-        <div className="mt-4 space-y-3 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
-          <div>
-            <div className="text-sm font-semibold">이 상황에서 가장 부적절(위험)하다고 본 번역안은?</div>
-            <div className="mt-2">
-              <RadioRow name="worst" value={worst} onChange={setWorstSafe} disabledValue={best} />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="worst-reason" className="text-sm font-semibold">
-              그렇게 판단한 이유를 적어주세요
-            </label>
-            <textarea
-              id="worst-reason"
-              value={worstReason}
-              onChange={(e) => {
-                if (demo) return;
-                setWorstReason(e.target.value);
-                try { localStorage.setItem(STEP2_WORST_REASON_KEY, e.target.value); } catch { /* ignore */ }
-              }}
-              readOnly={demo}
-              placeholder="이 상황에서 왜 이 번역안이 어울리지 않거나 오해·부담을 줄 수 있다고 보았는지 적어주세요."
-              rows={2}
-              className="mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-2.5 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
-            />
-            <div className="mt-1 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {!worstReasonOk && worstReason.length > 0 ? "조금 더 설명해 주세요" : ""}
-              </span>
-              <span className="text-xs text-muted-foreground">{worstReason.length}자</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Pre-feedback direct proposal (optional, freezes when proceeding) */}
+        {/* (2) Pre-feedback direct proposal */}
         <div className="mt-4 space-y-3 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
           <div>
             <div className="text-sm font-semibold">
@@ -452,6 +289,217 @@ const Pdr = () => {
             </p>
           )}
         </div>
+
+        {/* (3) Submit own translation to reveal AI candidates */}
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            disabled={proposalSubmitted}
+            onClick={handleProposalSubmit}
+            className={[
+              "rounded-lg px-6 py-3 text-base font-medium transition-colors",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+              proposalSubmitted
+                ? "cursor-not-allowed bg-muted text-muted-foreground"
+                : "bg-[#15202B] text-white hover:bg-[#2A3A4A]",
+            ].join(" ")}
+          >
+            {proposalSubmitted ? "AI 번역안 비교 중" : "내 번역 제출하고 AI 번역안 비교하기"}
+          </button>
+        </div>
+
+        {proposalSubmitted ? (
+          <>
+            {/* Comparison hint box */}
+            <div className="mt-6 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-5">
+              <div className="flex items-start gap-2">
+                <span aria-hidden className="mt-0.5 text-base">ⓘ</span>
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-foreground">
+                    번역안을 고를 때 생각해 볼 점
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    뜻이 맞는지만 보지 말고, 상황에 맞게 느껴지는지도 함께 살펴보세요.
+                  </p>
+                  <ol className="mt-3 space-y-2 text-sm text-foreground">
+                    <li>
+                      <span className="font-semibold">1. 의미와 말투</span>{" "}
+                      <span className="text-muted-foreground">
+                        원래 말하려던 뜻과 어조가 잘 전달되는가
+                      </span>
+                    </li>
+                    <li>
+                      <span className="font-semibold">2. 관계 적합성</span>{" "}
+                      <span className="text-muted-foreground">
+                        상대와의 관계와 상황의 격식에 어울리는가
+                      </span>
+                    </li>
+                    <li>
+                      <span className="font-semibold">3. 오해·부담 가능성</span>{" "}
+                      <span className="text-muted-foreground">
+                        너무 직접적이거나, 지나치게 장황하거나, 불편하게 받아들여질 가능성은 없는가
+                      </span>
+                    </li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            {/* (4) AI candidates A/B/C */}
+            <div className="mt-6 rounded-xl border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-7">
+              <div className="mb-5 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+                <span className="h-px flex-1 bg-foreground/15" />
+                <span>↓ 중국어 번역안 3종 (도착어)</span>
+                <span className="h-px flex-1 bg-foreground/15" />
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {(mapping ? getDisplayOrder(mapping) : (["A", "B", "C"] as Choice[])).map((c, idx) => (
+                  <div
+                    key={c}
+                    className={[
+                      "flex w-full flex-col rounded-lg p-4",
+                      c === "A"
+                        ? "border-[0.5px] border-[#E8CFB5]"
+                        : c === "B"
+                        ? "border-[0.5px] border-[#C8CFC4]"
+                        : "border-[0.5px] border-[#C5CED9]",
+                    ].join(" ")}
+                    style={{ backgroundColor: TRANSLATION_CARD_BG[c] }}
+                  >
+                    <div className="text-base font-[700]">번역안 {idx + 1}</div>
+                    {act && (
+                      <div className="mt-1 text-[12px] font-normal text-[#5C6A7A]">
+                        {TRANSLATION_LABELS[act][c]}
+                      </div>
+                    )}
+                    <p className="mt-3 whitespace-pre-wrap text-[17px] font-semibold leading-relaxed text-[#15202B]">
+                      {act
+                        ? TRANSLATIONS[act][c]
+                        : `[번역안 ${idx + 1} — Step 1을 먼저 선택해주세요]`}
+                    </p>
+                    {act && (
+                      <div className="mt-3 flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => playChinese(c, TRANSLATIONS[act][c])}
+                          disabled={ttsLoading === c}
+                          aria-label={`번역안 ${idx + 1} 중국어 발음 듣기`}
+                          className="inline-flex w-fit items-center gap-1.5 rounded-full border-[0.5px] border-[#15202B]/30 bg-[#FFFFFF]/70 px-3 py-1 text-[12px] font-medium text-[#15202B] transition-colors hover:bg-[#FFFFFF] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {ttsLoading === c ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              생성 중...
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="h-3 w-3" />
+                              중국어 듣기
+                            </>
+                          )}
+                        </button>
+                        {ttsUrl[c] && (
+                          <audio
+                            id={`tts-audio-${c}`}
+                            src={ttsUrl[c]}
+                            controls
+                            ref={(node) => {
+                              audioRefs.current[c] = node;
+                            }}
+                            className="h-8 w-full max-w-xs"
+                          />
+                        )}
+                        {ttsError?.c === c && (
+                          <p className="text-[12px] text-[#B91C1C]">
+                            {ttsError.msg}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* (5) Best (most appropriate) — situation-matching frame */}
+            <div className="mt-4 space-y-3 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
+              <div>
+                <div className="text-sm font-semibold">이 상황에 가장 적절한 번역안은?</div>
+                <div className="mt-2">
+                  <RadioRow name="best" value={best} onChange={setBestSafe} disabledValue={worst} />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="best-reason" className="text-sm font-semibold">
+                  그렇게 판단한 이유를 적어주세요
+                </label>
+                <textarea
+                  id="best-reason"
+                  value={bestReason}
+                  onChange={(e) => {
+                    if (demo) return;
+                    setBestReason(e.target.value);
+                    try { localStorage.setItem(STEP2_BEST_REASON_KEY, e.target.value); } catch { /* ignore */ }
+                  }}
+                  readOnly={demo}
+                  placeholder="이 상황에 왜 이 번역안이 가장 잘 어울린다고 보았는지 적어주세요."
+                  rows={2}
+                  className="mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-2.5 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
+                />
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {!bestReasonOk && bestReason.length > 0 ? "조금 더 설명해 주세요" : ""}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{bestReason.length}자</span>
+                </div>
+              </div>
+            </div>
+
+            {/* (5) Worst (most inappropriate/risky) — situation-matching frame */}
+            <div className="mt-4 space-y-3 rounded-lg border-[0.5px] border-[#D3D1C7] bg-[#FFFFFF] p-4">
+              <div>
+                <div className="text-sm font-semibold">이 상황에서 가장 부적절(위험)하다고 본 번역안은?</div>
+                <div className="mt-2">
+                  <RadioRow name="worst" value={worst} onChange={setWorstSafe} disabledValue={best} />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="worst-reason" className="text-sm font-semibold">
+                  그렇게 판단한 이유를 적어주세요
+                </label>
+                <textarea
+                  id="worst-reason"
+                  value={worstReason}
+                  onChange={(e) => {
+                    if (demo) return;
+                    setWorstReason(e.target.value);
+                    try { localStorage.setItem(STEP2_WORST_REASON_KEY, e.target.value); } catch { /* ignore */ }
+                  }}
+                  readOnly={demo}
+                  placeholder="이 상황에서 왜 이 번역안이 어울리지 않거나 오해·부담을 줄 수 있다고 보았는지 적어주세요."
+                  rows={2}
+                  className="mt-2 w-full resize-y rounded-md border border-foreground/20 bg-background p-2.5 text-sm leading-relaxed focus:border-[#15202B] focus:outline-none focus:ring-2 focus:ring-[#15202B]/40"
+                />
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {!worstReasonOk && worstReason.length > 0 ? "조금 더 설명해 주세요" : ""}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{worstReason.length}자</span>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="mt-8 rounded-lg border-[0.5px] border-dashed border-[#D3D1C7] bg-[#FFFFFF] p-6 text-center">
+            <p className="text-sm font-medium text-[#15202B]">
+              먼저 직접 번역해 보세요
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              위에 직접 번역을 입력(또는 비워두기) 후 제출하면 AI 번역안과 비교할 수 있습니다.
+            </p>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="mt-12 border-t border-border pt-6">
