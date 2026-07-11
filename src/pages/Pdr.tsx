@@ -199,6 +199,41 @@ const Pdr = () => {
 
   const handleProceed = () => {
     if (!canProceed) return;
+
+    // /translate still reads the legacy step2-best/worst keys (canonical A/B/C).
+    // Derive them from Likert ratings: highest score -> best, lowest -> worst.
+    // Ties are broken by display_order (candidates array is already sorted by it).
+    if (candidates.length > 0) {
+      let bestIdx = 0;
+      let worstIdx = 0;
+      let bestScore = likert[candidates[0].id] ?? 0;
+      let worstScore = likert[candidates[0].id] ?? 0;
+
+      for (let i = 1; i < candidates.length; i++) {
+        const score = likert[candidates[i].id] ?? 0;
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = i;
+        }
+        if (score < worstScore) {
+          worstScore = score;
+          worstIdx = i;
+        }
+      }
+
+      const WORKFLOW_LABELS = ["A", "B", "C", "D", "E", "F"] as const;
+      const best = WORKFLOW_LABELS[bestIdx] ?? candidates[bestIdx].id;
+      const worst = WORKFLOW_LABELS[worstIdx] ?? candidates[worstIdx].id;
+
+      try {
+        localStorage.setItem("step2-best", best);
+        localStorage.setItem("step2-worst", worst);
+        localStorage.setItem("step2-best-reason", "");
+      } catch {
+        /* ignore */
+      }
+    }
+
     try {
       localStorage.setItem(STEP2_PROPOSAL_FROZEN_KEY, "1");
     } catch {
