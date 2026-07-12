@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>학습 워크플로우 전체 미리보기 — 한↔중 L2 화용 통번역</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1a2236; --ink-soft:#414b66; --ink-faint:#6b7590;
+  --paper:#f3f1ec; --card:#fbfaf7; --card-2:#f7f5ef;
+  --seal:#b0392c; --seal-soft:#c66355; --seal-bg:#f7ece9;
+  --ok:#3f6f4a; --ok-bg:#eaf1eb; --ok-soft:#5a8a64;
+  --amber:#9a7b2e; --amber-bg:#f6efdd;
+  --blue:#3a5a86; --blue-bg:#eaeff6;
+  --rule:#d8d4c8; --rule-2:#e6e3d9; --lock:#b7b2a4;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--paper);color:var(--ink);font-family:'Noto Sans KR',sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 0 60px;}
+.wrap{max-width:760px;margin:0 auto;padding:0 14px;}
+
+/* top banner */
+.banner{background:var(--ink);color:#eef0f5;padding:26px 30px 22px;}
+.banner .bwrap{max-width:760px;margin:0 auto;}
+.banner .btag{display:inline-block;font-size:11px;color:var(--amber-bg);border-left:3px solid var(--amber);padding-left:10px;font-weight:700;letter-spacing:.04em;margin-bottom:12px;}
+.banner h1{font-family:'Noto Serif KR',serif;font-size:24px;font-weight:900;letter-spacing:-.01em;}
+.banner .bsub{font-size:12.5px;color:#aab2ca;margin-top:8px;}
+.preview-flag{background:var(--amber-bg);border:1px solid #e3d3a4;border-radius:8px;padding:9px 14px;font-size:11.5px;color:#6b5518;margin:16px 0 4px;line-height:1.55;}
+.preview-flag b{color:var(--amber);}
+
+/* scenario tags */
+.tags{display:flex;gap:7px;flex-wrap:wrap;margin:18px 0 6px;}
+.tags .tg{font-size:11px;background:var(--card);border:1px solid var(--rule);border-radius:20px;padding:5px 13px;color:var(--ink-soft);}
+.tags .tg b{color:var(--seal);font-weight:700;}
+.demo-note{font-size:11px;color:var(--ink-faint);margin-bottom:16px;}
+
+/* step map */
+.stepmap{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:18px 16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;gap:4px;}
+.stepmap .sm{flex:1;text-align:center;position:relative;}
+.stepmap .sm::after{content:"›";position:absolute;right:-2px;top:12px;color:var(--rule);font-size:16px;}
+.stepmap .sm:last-child::after{content:none;}
+.stepmap .smn{width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Noto Serif KR',serif;font-weight:700;font-size:14px;margin:0 auto 7px;}
+.stepmap .smt{font-size:11px;color:var(--ink-soft);line-height:1.3;font-weight:500;}
+
+/* section (each step) */
+.step{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:0;margin-bottom:16px;overflow:hidden;}
+.step .shd{display:flex;align-items:center;gap:11px;padding:16px 22px;border-bottom:1px solid var(--rule-2);background:var(--card-2);}
+.step .snum{width:28px;height:28px;border-radius:50%;background:var(--seal);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Noto Serif KR',serif;font-weight:700;font-size:14px;flex-shrink:0;}
+.step .snum.ok{background:var(--ok);}
+.step .stt{font-family:'Noto Serif KR',serif;font-weight:700;font-size:16.5px;}
+.step .stt small{font-weight:400;font-size:12px;color:var(--ink-faint);margin-left:6px;font-family:'Noto Sans KR';}
+.step .theory{margin-left:auto;font-size:10px;color:var(--ink-faint);border:1px dashed var(--rule);border-radius:5px;padding:2px 8px;white-space:nowrap;}
+.step .sbody{padding:18px 22px 22px;}
+
+.sub{font-size:12px;color:var(--seal);font-weight:700;margin:2px 0 8px;letter-spacing:.02em;}
+.sub.first{margin-top:0;}
+
+/* utterance boxes */
+.ub{border-radius:8px;padding:12px 15px;margin-bottom:11px;}
+.ub.prior{background:var(--card-2);border-left:3px solid var(--amber);}
+.ub.src{background:#fff;border:1px solid var(--rule-2);}
+.ub .ul{font-size:10px;font-weight:700;margin-bottom:5px;letter-spacing:.02em;}
+.ub.prior .ul{color:var(--amber);}
+.ub.src .ul{color:var(--seal);}
+.ub .utxt{font-size:14px;line-height:1.7;color:var(--ink);}
+.ub .who{font-size:10.5px;color:var(--ink-faint);margin-top:6px;}
+
+/* mini-learning grid */
+.mini{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.mini .mc{background:var(--card-2);border:1px solid var(--rule-2);border-radius:8px;padding:11px 13px;}
+.mini .mc .mt{font-family:'Noto Serif KR',serif;font-weight:700;font-size:12px;color:var(--ink);margin-bottom:4px;display:flex;gap:6px;align-items:baseline;}
+.mini .mc .mt::before{content:"▪";color:var(--seal);font-size:9px;}
+.mini .mc .md{font-size:11.5px;color:var(--ink-soft);line-height:1.5;}
+.mini .mc .md b{color:var(--amber);font-weight:700;}
+.miniclue{font-size:11px;color:var(--ink-faint);background:var(--blue-bg);border-radius:7px;padding:8px 12px;margin-top:10px;line-height:1.5;}
+.miniclue b{color:var(--blue);}
+
+/* pdr */
+.pdr .lead{font-size:12px;color:var(--ink-faint);margin-bottom:12px;}
+.pdrq{margin-bottom:11px;}
+.pdrq .ql{font-size:12px;color:var(--ink-soft);margin-bottom:6px;font-weight:500;}
+.pdrq .opts{display:flex;gap:7px;}
+.pdrq .opt{flex:1;border:1px solid var(--rule);background:var(--card-2);border-radius:8px;padding:8px 6px;font-size:12px;color:var(--ink-soft);text-align:center;}
+.pdrq .opt.demo{background:var(--seal);color:#fff;border-color:var(--seal);font-weight:700;}
+.pdrreveal{margin-top:12px;background:var(--blue-bg);border:1px solid #c5d2e4;border-radius:8px;padding:12px 15px;font-size:12px;color:var(--ink-soft);line-height:1.65;}
+.pdrreveal .rt{font-weight:700;color:var(--blue);margin-bottom:6px;font-size:11.5px;}
+.pdrreveal .note{color:var(--ink-faint);font-size:11px;margin-top:7px;}
+
+/* candidates — 리커트, directness 라벨 자연어화 */
+.candnote{font-size:11.5px;color:var(--ink-faint);background:var(--card-2);border-radius:7px;padding:9px 13px;margin-bottom:12px;line-height:1.5;}
+.candnote b{color:var(--ink-soft);}
+.cand{border:1px solid var(--rule);border-radius:9px;padding:12px 15px;margin-bottom:10px;background:var(--card-2);}
+.cand .cbadge{display:flex;gap:7px;align-items:center;margin-bottom:7px;flex-wrap:wrap;}
+.cand .cb{font-size:10.5px;border-radius:5px;padding:2px 9px;font-weight:600;}
+.cand .cb.idx{background:var(--ink);color:#fff;}
+.cand .cb.style{background:#e8e4d8;color:var(--ink-soft);}
+.cand .ctxt{font-size:13.5px;line-height:1.7;color:var(--ink);}
+.cand .likert{margin-top:10px;padding-top:10px;border-top:1px solid var(--rule-2);}
+.cand .lq{font-size:10.5px;color:var(--ink-faint);margin-bottom:6px;}
+.cand .scale{display:flex;gap:6px;}
+.cand .lv{flex:1;border:1px solid var(--rule);background:#fff;border-radius:6px;padding:6px 3px;text-align:center;}
+.cand .lv .n{font-family:'Noto Serif KR',serif;font-weight:700;font-size:13px;color:var(--ink-soft);}
+.cand .lv .l{font-size:8.5px;color:var(--ink-faint);display:block;line-height:1.15;margin-top:1px;}
+.cand .lv.demo{background:var(--seal);border-color:var(--seal);}
+.cand .lv.demo .n,.cand .lv.demo .l{color:#fff;}
+
+/* 화용 설명 표 */
+.exptbl{width:100%;border-collapse:collapse;font-size:12px;}
+.exptbl td{padding:9px 12px;border-bottom:1px solid var(--rule-2);vertical-align:top;}
+.exptbl tr:last-child td{border-bottom:none;}
+.exptbl td.k{font-family:'Noto Serif KR',serif;font-weight:700;color:var(--ink);white-space:nowrap;width:32%;}
+.exptbl td.v{color:var(--ink-soft);line-height:1.55;}
+.elements{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;background:var(--amber-bg);border-radius:8px;padding:11px 13px;}
+.elements .et{font-size:12px;background:#fff;border:1px solid #e3d3a4;border-radius:5px;padding:4px 10px;color:var(--ink);font-weight:600;}
+.elements .elab{font-size:10.5px;color:var(--amber);font-weight:700;width:100%;margin-bottom:2px;}
+
+/* 4단계 직접산출 (다른 상황) */
+.diffbanner{background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:11px 15px;font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;line-height:1.6;}
+.diffbanner b{color:var(--amber);}
+.taskbox{background:var(--card-2);border:1px solid var(--rule-2);border-radius:8px;padding:12px 15px;margin-bottom:11px;}
+.taskbox .tl{font-size:10.5px;color:var(--ink-faint);font-weight:700;margin-bottom:5px;}
+.taskbox .tt{font-size:13.5px;line-height:1.65;color:var(--ink);}
+.inputdemo{border:1px dashed var(--rule);border-radius:8px;padding:12px 15px;background:#fff;font-size:13px;color:var(--ink-faint);line-height:1.6;}
+.inputdemo .idl{font-size:10.5px;color:var(--ink-faint);font-weight:700;margin-bottom:6px;}
+.compare{background:var(--ok-bg);border:1px solid #c3dcc8;border-radius:8px;padding:12px 15px;margin-top:11px;}
+.compare .cl{font-size:10.5px;color:var(--ok-soft);font-weight:700;margin-bottom:6px;}
+.compare .ct{font-size:13.5px;line-height:1.7;color:var(--ink);}
+.compare .cnote{font-size:11px;color:var(--ink-faint);margin-top:7px;}
+
+/* 5단계 리포트 */
+.bar{margin-bottom:12px;}
+.bar .bl{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;}
+.bar .bl .bk{color:var(--ink-soft);font-weight:500;}
+.bar .bl .bv{font-family:'Noto Serif KR',serif;font-weight:700;color:var(--ink);}
+.bar .track{height:9px;background:var(--rule-2);border-radius:5px;overflow:hidden;}
+.bar .fill{height:100%;background:var(--ink);border-radius:5px;}
+.weak{background:var(--seal-bg);border:1px solid #e2c4bf;border-radius:8px;padding:12px 15px;margin:14px 0;}
+.weak .wt{font-size:12px;font-weight:700;color:var(--seal);margin-bottom:5px;}
+.weak .wd{font-size:12px;color:var(--ink-soft);line-height:1.55;}
+.trend{background:var(--card-2);border:1px solid var(--rule-2);border-radius:8px;padding:12px 15px;font-size:12px;color:var(--ink-soft);line-height:1.55;}
+.trend .tl{font-weight:700;color:var(--ink);margin-bottom:4px;font-size:11.5px;}
+
+/* closing */
+.closing{background:var(--ink);color:#eef0f5;border-radius:12px;padding:20px 24px;margin-top:22px;}
+.closing .cl{font-family:'Noto Serif KR',serif;font-size:15px;line-height:1.7;font-weight:600;}
+.closing .cl em{color:var(--seal-soft);font-style:normal;font-weight:700;}
+.closing .cl2{font-size:12px;color:#aab2ca;margin-top:12px;line-height:1.6;}
+.metafoot{font-size:10.5px;color:var(--ink-faint);text-align:center;margin-top:18px;line-height:1.6;padding:0 20px;}
+/* ===== v3 additions: PRAGMA pipeline (재량·2층위·판단연결·학급분포) ===== */
+.newbadge{display:inline-block;font-size:8.5px;font-weight:700;background:var(--seal);color:#fff;border-radius:4px;padding:1px 6px;letter-spacing:.05em;vertical-align:middle;margin-left:7px;}
+.isnew{position:relative;}
+.isnew::before{content:"";position:absolute;left:-13px;top:6px;bottom:6px;width:3px;background:linear-gradient(var(--seal-soft),var(--amber));border-radius:2px;}
+
+/* 학급 판단 분포 (D) */
+.classdist{background:var(--blue-bg);border:1px solid #c5d2e4;border-radius:9px;padding:13px 15px;margin-top:14px;}
+.classdist .cdt{font-size:12px;font-weight:700;color:var(--blue);margin-bottom:3px;}
+.classdist .cdsub{font-size:11px;color:var(--ink-faint);margin-bottom:11px;}
+.distbar{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.distbar .dl{font-size:10.5px;color:var(--ink-soft);width:78px;flex-shrink:0;}
+.distbar .dtrack{flex:1;height:13px;background:#fff;border-radius:4px;overflow:hidden;border:1px solid #d6e0ee;}
+.distbar .dfill{height:100%;background:var(--blue);opacity:.7;}
+.distbar .dfill.you{background:var(--seal);opacity:1;}
+.distbar .dp{font-size:10px;color:var(--ink-faint);width:52px;text-align:right;flex-shrink:0;}
+.classdist .cdnote{font-size:11px;color:var(--ink-soft);margin-top:10px;line-height:1.55;background:#fff;border-radius:6px;padding:8px 11px;}
+.classdist .cdnote b{color:var(--blue);}
+.classdist .fallback{font-size:10.5px;color:var(--ink-faint);margin-top:7px;font-style:italic;line-height:1.5;}
+
+/* 재량 선언 0단계 (A) */
+.agencybox{background:var(--seal-bg);border:1px solid #e2c4bf;border-radius:9px;padding:14px 16px;margin-bottom:13px;}
+.agencybox .agq{font-size:12px;color:var(--ink-soft);margin-bottom:9px;font-weight:500;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.agencybox .agq .taps{display:inline-flex;gap:5px;}
+.agencybox .agq .tap{font-size:10.5px;border:1px solid var(--rule);border-radius:5px;padding:2px 9px;color:var(--ink-faint);background:#fff;}
+.agencybox .agq .tap.demo{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:700;}
+.agency-opts{display:flex;flex-direction:column;gap:7px;margin-bottom:10px;}
+.agency-opts .agopt{border:1px solid var(--rule);background:#fff;border-radius:7px;padding:9px 12px;font-size:12px;color:var(--ink-soft);}
+.agency-opts .agopt.demo{background:var(--seal);color:#fff;border-color:var(--seal);font-weight:600;}
+.agencybox .agnote{font-size:11px;color:var(--ink-soft);line-height:1.55;background:#fff;border-radius:6px;padding:8px 11px;}
+.agencybox .agnote b{color:var(--seal);}
+
+/* 5단계 진단 — 선언·산출 정합성 */
+.consist{background:var(--card-2);border:1px solid var(--rule);border-radius:9px;padding:13px 15px;margin-bottom:16px;}
+.consist .ct2{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+.consist .csrc{font-size:12.5px;color:var(--ink-soft);line-height:1.65;}
+.consist .csrc .evspan{background:var(--seal-bg);color:var(--seal);border-radius:4px;padding:1px 6px;font-weight:600;}
+.verdict{margin-top:10px;border-radius:6px;padding:8px 12px;font-size:11.5px;font-weight:600;}
+.verdict.miss{background:var(--seal-bg);color:var(--seal);border:1px solid #e2c4bf;}
+.verdict.hit{background:var(--ok-bg);color:var(--ok);border:1px solid #c3dcc8;}
+
+/* 2층위 진단 행 */
+.diagrow{display:flex;gap:11px;margin-bottom:11px;align-items:flex-start;}
+.diagrow .dgtag{flex-shrink:0;font-size:11px;font-weight:700;border-radius:6px;padding:5px 8px;white-space:nowrap;width:82px;text-align:center;line-height:1.3;}
+.diagrow .dgtag.pl{background:var(--amber-bg);color:var(--amber);border:1px solid #e3d3a4;}
+.diagrow .dgtag.sp{background:var(--blue-bg);color:var(--blue);border:1px solid #c5d2e4;}
+.diagrow .dgbody{font-size:12px;color:var(--ink-soft);line-height:1.6;}
+.diagrow .dgbody b{color:var(--ink);}
+.diagrow .dgbody .ev{font-size:10.5px;color:var(--ink-faint);margin-top:5px;}
+.diagrow .dgbody .ev .evspan{background:var(--seal-bg);color:var(--seal);border-radius:4px;padding:1px 5px;}
+
+/* 판단→전략→산출 체인 */
+.chainbox{background:var(--ink);color:#eef0f5;border-radius:9px;padding:14px 16px;margin:14px 0;}
+.chainbox .cbt{font-size:11px;font-weight:700;color:var(--seal-soft);margin-bottom:11px;letter-spacing:.03em;}
+.chain{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;}
+.chain .cnode{background:rgba(255,255,255,.09);border-radius:6px;padding:6px 10px;color:#dfe3ee;}
+.chain .cnode b{color:#fff;}
+.chain .carrow{color:var(--seal-soft);font-weight:700;}
+.chain .cout{background:var(--seal);color:#fff;border-radius:6px;padding:6px 10px;font-weight:600;}
+.chainbox .cbexplain{font-size:11px;color:#aab2ca;margin-top:11px;line-height:1.6;}
+.chainbox .cbexplain b{color:#c9cfe0;}
+
+/* 방향 태그 */
+.dirtag{display:inline-block;font-size:10px;font-weight:700;background:var(--card);border:1px solid var(--rule);border-radius:5px;padding:2px 8px;color:var(--ink-soft);margin-bottom:10px;}
+
+/* ===== v4: 슬림 학습자 리포트 + 표면/내부 분리 패널 ===== */
+.lreport{display:flex;flex-direction:column;gap:10px;}
+.litem{background:var(--card-2);border:1px solid var(--rule);border-radius:9px;padding:12px 15px;}
+.litem .lih{font-size:10px;font-weight:700;color:var(--seal);letter-spacing:.04em;margin-bottom:5px;text-transform:uppercase;}
+.litem .lib{font-size:12.5px;color:var(--ink-soft);line-height:1.6;}
+.litem .lib b{color:var(--ink);}
+.litem .evspan{background:var(--seal-bg);color:var(--seal);border-radius:4px;padding:1px 6px;font-weight:600;}
+.litem.good{border-color:#c3dcc8;background:var(--ok-bg);}
+.litem.good .lih{color:var(--ok);}
+.litem.good .evspan{background:#fff;color:var(--ok);}
+.litem.adjust{border-color:#e2c4bf;background:var(--seal-bg);}
+.rubric-simple{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px;}
+.rubric-simple .rs{font-size:11px;border-radius:6px;padding:5px 10px;border:1px solid var(--rule);background:#fff;color:var(--ink-soft);}
+.rubric-simple .rs .lvl{font-weight:700;}
+.rubric-simple .rs .lvl.ok2{color:var(--ok);}
+.rubric-simple .rs .lvl.mid{color:var(--amber);}
+.nextpr{font-size:12px;color:var(--ink-soft);margin-top:8px;background:#fff;border-radius:6px;padding:8px 11px;border:1px dashed var(--rule);}
+.nextpr b{color:var(--seal);}
+
+.internal{border:1.5px dashed #b3adc0;background:#f7f6fa;border-radius:10px;padding:15px 16px;margin-top:18px;}
+.internal .inh{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:700;color:#6b6478;margin-bottom:13px;flex-wrap:wrap;}
+.internal .inh .lock{font-size:13px;}
+.internal .inh .tag{font-size:8.5px;background:#6b6478;color:#fff;border-radius:4px;padding:2px 7px;letter-spacing:.04em;font-weight:700;}
+.internal .insub{font-size:10.5px;color:#8a8397;font-weight:400;}
+
+/* ===== v5: 모듈 중심 2겹 구조 맵 ===== */
+.archmap{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:18px 18px 20px;margin-bottom:22px;}
+.amtag{display:inline-block;font-size:10px;font-weight:700;border-radius:5px;padding:3px 10px;letter-spacing:.03em;margin-bottom:8px;}
+.amtag.daily{background:var(--ok-bg);color:var(--ok);border:1px solid #c3dcc8;}
+.amtag.mission{background:var(--seal-bg);color:var(--seal);border:1px solid #e2c4bf;}
+.amh{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:13px;}
+.modrow{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;}
+.modcard{background:var(--card-2);border:1px solid var(--rule-2);border-radius:9px;padding:11px 11px 10px;display:flex;flex-direction:column;gap:4px;}
+.modcard .mct{font-size:11px;font-weight:700;color:var(--ink);line-height:1.3;}
+.modcard .mcd{font-size:10px;color:var(--ink-soft);line-height:1.45;flex:1;}
+.modcard .mcm{font-size:9.5px;font-weight:700;color:var(--ok-soft);align-self:flex-start;background:#fff;border:1px solid var(--rule-2);border-radius:4px;padding:1px 6px;}
+.amflow{text-align:center;font-size:10.5px;font-weight:700;color:var(--ink-faint);margin:13px 0;letter-spacing:.02em;}
+.twinhub{background:linear-gradient(180deg,#eef2f8,#eaeff6);border:1px solid #c5d2e4;border-radius:11px;padding:14px 16px;}
+.twinhub .tht{font-size:12px;font-weight:700;color:var(--blue);margin-bottom:5px;}
+.twinhub .thd{font-size:11.5px;color:var(--ink-soft);line-height:1.6;}
+.twinhub .thd b{color:var(--blue);}
+.missionbanner{background:var(--seal-bg);border:1px solid #e2c4bf;border-radius:11px;padding:14px 16px;}
+.missionbanner .mbh{font-size:12.5px;font-weight:700;color:var(--seal);margin-bottom:5px;}
+.missionbanner .mbd{font-size:11.5px;color:#6b2a22;line-height:1.6;}
+
+@media (max-width:640px){.mini{grid-template-columns:1fr;}.stepmap{flex-wrap:wrap;}.stepmap .sm{flex-basis:30%;}.stepmap .sm::after{content:none;}.chain{flex-direction:column;align-items:stretch;}.chain .carrow{text-align:center;}.diagrow{flex-direction:column;gap:6px;}.diagrow .dgtag{width:auto;align-self:flex-start;}.modrow{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <div class="bwrap">
+    <span class="btag">학습 워크플로우 · 전체 미리보기</span>
+    <h1>한 주차 학습은 이렇게 진행됩니다</h1>
+    <div class="bsub">AI를 보기 전에 스스로 판단하고 산출하는, 화행 기반 통번역 훈련</div>
+    <div style="margin-top:14px;padding:11px 15px;background:rgba(176,57,44,.16);border-left:3px solid var(--seal-soft);border-radius:0 6px 6px 0;font-size:12px;color:#e8d5d1;line-height:1.6;">
+      <span style="color:var(--seal-soft);font-weight:700;">연구 질문</span> · AI 번역안에 노출되기 <b style="color:#fff;">전</b> 학습자의 화용 판단은, 노출 <b style="color:#fff;">후</b>와 어떻게 다른가? 이 설계는 그 차이를 데이터로 포착하기 위한 것입니다.
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="preview-flag">
+    📌 <b>예시 미리보기입니다.</b> 실제 과제는 배정된 시나리오·주차·수준에 따라 달라지며, 화면의 중국어·점수는 시연용 예시(원어민 검수 전)입니다. 아래 <b>①모듈 중심 구조 → ②주간 종합 미션 5단계</b> 순으로 보여드립니다.
+  </div>
+  <div class="preview-flag" style="background:var(--seal-bg);border-color:#e2c4bf;color:#6b2a22;">
+    🔴 <b style="color:var(--seal)">v5에서 바뀐 것</b> — 구조가 뒤집혔습니다. 이제 앱의 <b>기본 단위는 짧은 독립 모듈</b>(3~7분·완결)이고, 아래의 <b>5단계 전체 흐름은 "주간 종합 미션(Full Mission)"</b>으로 자리를 옮겼습니다. 평소엔 모듈 하나씩 → 결과는 Digital Twin에 누적 → 주 1회 종합 미션. (v4의 후보 정보통제·학습자 5항목·내부/교수자 분리는 그대로 유지 — 종합 미션 안에 있습니다.)
+  </div>
+
+  <!-- ===== v5 NEW: 모듈 중심 2겹 구조 ===== -->
+  <div class="archmap">
+    <span class="amtag daily">평소 · 기본 단위</span>
+    <div class="amh">짧은 독립 모듈 — 3~7분 안에 하나의 학습 행동만 끝내고, 즉시 피드백 후 완결</div>
+    <div class="modrow">
+      <div class="modcard"><div class="mct">Politeness Thermostat</div><div class="mcd">후보 사다리에서 적정 온도(과완곡↔명령조) 찾기 · 판단만</div><div class="mcm">~4분</div></div>
+      <div class="modcard"><div class="mct">Register Quick Check</div><div class="mcd">你/您·请·麻烦·종결어미 빠른 격식 선택</div><div class="mcm">~3분</div></div>
+      <div class="modcard"><div class="mct">Pragmatic Agency Mini</div><div class="mcd">상황 카드 → 보존/완화/재구성 선언 + 짧은 산출</div><div class="mcm">~5분</div></div>
+      <div class="modcard"><div class="mct">Over-Explicitation Check</div><div class="mcd">원문에 없던 정보 찾아 허용/과잉 판별</div><div class="mcm">~5분</div></div>
+      <div class="modcard"><div class="mct">Consequence Insight</div><div class="mcd">먼저 선택 → 그 뒤 조건부 결과("압박으로 들릴 수 있음")</div><div class="mcm">~3분</div></div>
+    </div>
+
+    <div class="amflow">↓ 모든 모듈 결과가 누적 ↓</div>
+
+    <div class="twinhub">
+      <div class="tht">🧭 Pragmatic Digital Twin — "내 화용 프로파일" (허브 · 과제 아님)</div>
+      <div class="thd">화행별·방향별 경향 · 반복 습관 · 재량 정합성을 누적하고, ① 다음 훈련을 추천하며 ② 이미 본 상황을 기억해 <b>모듈 간 복제를 차단</b>합니다(같은 상황이 두 번 나오지 않게). 흩어진 모듈을 하나의 성장 서사로 꿰맵니다.</div>
+    </div>
+
+    <div class="amflow">↓ 주 1회 · 교수자 지정 · 수행평가 ↓</div>
+
+    <div class="missionbanner">
+      <span class="amtag mission">주 1회 · 종합 평가 단위</span>
+      <div class="mbh">PRAGMA Full Mission = 아래 5단계 전체 워크플로우 (15~20분)</div>
+      <div class="mbd">평소 모듈로 익힌 것을 <b>새 상황에 종합 적용</b>. 완전한 [판단 → 산출 → 진단] 파이프라인은 여기서만 돌아갑니다. 정보량이 크므로 <b>교수자 검수 후 확정 태그</b>로 프로파일에 비중 높게 반영됩니다. ↓</div>
+    </div>
+  </div>
+
+  <div class="tags">
+    <span class="tg">10주차 · <b>불만·불만 대응</b></span>
+    <span class="tg">중급 · HSK5</span>
+    <span class="tg">한→중 · 번역</span>
+    <span class="tg">업무 이메일</span>
+    <span class="tg">P 대등 · D 거리있음 · R 중간</span>
+  </div>
+
+  <!-- step map -->
+  <div class="sub first" style="font-size:12px;color:var(--seal);margin-bottom:2px;">▼ 주간 종합 미션(PRAGMA Full Mission)의 전체 흐름 — 아래 5단계</div>
+  <div class="stepmap">
+    <div class="sm"><div class="smn">1</div><div class="smt">상황 +<br>미니학습</div></div>
+    <div class="sm"><div class="smn">2</div><div class="smt">부담 인식 +<br>적절성 판단</div></div>
+    <div class="sm"><div class="smn">3</div><div class="smt">화용<br>설명</div></div>
+    <div class="sm"><div class="smn">4</div><div class="smt">재량 선언 +<br>직접 산출</div></div>
+    <div class="sm"><div class="smn">5</div><div class="smt">수행<br>리포트</div></div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step">
+    <div class="shd"><span class="snum">1</span><span class="stt">상황 이해 + 미니학습</span><span class="theory">오리엔테이션 · 귀납 노출</span></div>
+    <div class="sbody">
+      <div class="sub first">상황</div>
+      <div class="ub src" style="background:var(--blue-bg);border-color:#c5d2e4;">
+        <div class="utxt">당신은 국내 제조사의 구매 담당자입니다. 거래처(중국 공급업체)와는 격식을 갖춘 사이로, 최근 <b>납품 청구서에 반복적으로 오류</b>가 생겨 정산이 지연되고 있습니다. 관계를 해치지 않으면서 개선을 요구하는 메일을 보내려 합니다.</div>
+      </div>
+
+      <div class="sub">상대가 먼저 보낸 메일 <small style="font-weight:400;color:var(--ink-faint)">— second-pair 선행 발화 (중국어)</small></div>
+      <div class="ub prior">
+        <div class="utxt">很抱歉，这批货物因海关问题延误了3天，我们会尽快安排发货。</div>
+        <div class="who">— 거래처 담당자 (배송 지연 통보)</div>
+      </div>
+
+      <div class="sub">번역할 원문 (한국어)</div>
+      <div class="ub src">
+        <div class="utxt">이번 지연 때문에 저희 생산 일정에 차질이 생겼습니다. 앞으로는 이런 일이 반복되지 않았으면 합니다.</div>
+      </div>
+
+      <div class="mini">
+        <div class="mc"><div class="mt">오늘의 화용 포인트</div><div class="md">불만은 관계를 해치지 않으면서 문제의 심각성을 분명히 전달해야 한다.</div></div>
+        <div class="mc"><div class="mt">왜 어려운가</div><div class="md">너무 직접적이면 공격적이고, 너무 완곡하면 문제가 축소된다. <b>균형</b>이 관건.</div></div>
+        <div class="mc"><div class="mt">한↔중 차이</div><div class="md">한국어 '~않았으면 합니다'류 완곡 요청이 중국어에서는 종종 <b>希望…尽量…</b> 구조로 이동.</div></div>
+        <div class="mc"><div class="mt">맛보기 표현</div><div class="md"><b>希望 / 尽量 / 难免会影响</b> — 완곡·양보·결과 시사를 결합해 무게 조절.</div></div>
+      </div>
+      <div class="miniclue">💡 <b>핵심 표현 전체는 3단계에서 공개됩니다.</b> 여기서 다 알려주면 판단·산출이 '답 보고 고르기'가 되므로, 지금은 방향만 익힙니다.</div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step">
+    <div class="shd"><span class="snum">2</span><span class="stt">부담 인식 + 적절성 판단</span><span class="theory">해석형 P/D/R · rating MPJ</span></div>
+    <div class="sbody">
+      <!-- 2a: 부담 인식 -->
+      <div class="sub first">먼저 — 이 상황, 얼마나 조심스러운가? <small style="font-weight:400;color:var(--ink-faint)">(정답 없음 · 해석형)</small></div>
+      <div class="pdr">
+        <div class="pdrq"><div class="ql">나와 상대의 관계는?</div><div class="opts"><span class="opt">내가 위</span><span class="opt demo">대등</span><span class="opt">상대가 위</span></div></div>
+        <div class="pdrq"><div class="ql">심리적 거리는?</div><div class="opts"><span class="opt">가까움</span><span class="opt demo">거리 있음</span></div></div>
+        <div class="pdrq"><div class="ql">이 불만, 얼마나 조심스러운가?</div><div class="opts"><span class="opt">부담 적음</span><span class="opt demo">부담 큼</span></div></div>
+        <div class="pdrreveal">
+          <div class="rt">당신의 감 · 그리고 이 과제의 설계 관점</div>
+          당신은 <b>대등 · 거리 있음 · 부담 큼</b>으로 보았습니다. 이 과제도 같은 관점을 기준으로 설계되었습니다.
+          <div class="note">둘이 달라도 괜찮습니다. 서로 다른 화용적 판단이 모두 타당할 수 있으며, 이 판단은 뒤에서 볼 표현들이 '왜 그렇게 쓰였는지' 이해하는 기준이 됩니다.</div>
+        </div>
+      </div>
+
+      <!-- 2b: 후보 리커트 -->
+      <div class="sub">다음 — AI 번역안을 5점으로 평가 <small style="font-weight:400;color:var(--ink-faint)">(직접 산출을 마친 뒤 공개됨)</small></div>
+      <div class="candnote">다섯 후보는 <b>모두 같은 정보(지연 발생 · 생산/배차에 영향 · 재발 방지 요청)를 담습니다.</b> 오직 <b>직접성(완곡↔직접)</b>만 다릅니다 — 정보를 더하거나 빼지 않습니다. 이 관계에 얼마나 어울리는지 평가하세요.</div>
+
+      <div class="cand">
+        <div class="cbadge"><span class="cb idx">후보 1</span></div>
+        <div class="ctxt">最近交货偶尔有点小状况，对我们排产多少有些影响，以后要是能多留意就好了。</div>
+        <div class="likert"><div class="lq">이 관계에 얼마나 적절한가?</div><div class="scale"><span class="lv"><span class="n">1</span></span><span class="lv demo"><span class="n">2</span><span class="l">과도한<br>완곡</span></span><span class="lv"><span class="n">3</span></span><span class="lv"><span class="n">4</span></span><span class="lv"><span class="n">5</span></span></div></div>
+      </div>
+      <div class="cand">
+        <div class="cbadge"><span class="cb idx">후보 2</span></div>
+        <div class="ctxt">希望贵司以后能多注意交货时间，尽量避免影响我们的排产。</div>
+        <div class="likert"><div class="lq">이 관계에 얼마나 적절한가?</div><div class="scale"><span class="lv"><span class="n">1</span></span><span class="lv"><span class="n">2</span></span><span class="lv"><span class="n">3</span></span><span class="lv demo"><span class="n">4</span></span><span class="lv"><span class="n">5</span></span></div></div>
+      </div>
+      <div class="cand">
+        <div class="cbadge"><span class="cb idx">후보 3</span></div>
+        <div class="ctxt">希望贵司尽量避免类似延误，否则难免会影响我们的排产。</div>
+        <div class="likert"><div class="lq">이 관계에 얼마나 적절한가?</div><div class="scale"><span class="lv"><span class="n">1</span></span><span class="lv"><span class="n">2</span></span><span class="lv"><span class="n">3</span></span><span class="lv"><span class="n">4</span></span><span class="lv demo"><span class="n">5</span><span class="l">매우<br>적절</span></span></div></div>
+      </div>
+      <div class="cand">
+        <div class="cbadge"><span class="cb idx">후보 4</span></div>
+        <div class="ctxt">请贵司务必避免再次延误，否则会影响我们的排产计划。</div>
+        <div class="likert"><div class="lq">이 관계에 얼마나 적절한가?</div><div class="scale"><span class="lv"><span class="n">1</span></span><span class="lv"><span class="n">2</span></span><span class="lv demo"><span class="n">3</span></span><span class="lv"><span class="n">4</span></span><span class="lv"><span class="n">5</span></span></div></div>
+      </div>
+      <div class="cand">
+        <div class="cbadge"><span class="cb idx">후보 5</span></div>
+        <div class="ctxt">你们必须避免再出现这种延误，否则会严重影响我们的排产。</div>
+        <div class="likert"><div class="lq">이 관계에 얼마나 적절한가?</div><div class="scale"><span class="lv demo"><span class="n">1</span><span class="l">매우<br>부적절</span></span><span class="lv"><span class="n">2</span></span><span class="lv"><span class="n">3</span></span><span class="lv"><span class="n">4</span></span><span class="lv"><span class="n">5</span></span></div></div>
+      </div>
+      <div class="candnote" style="margin-top:0;margin-bottom:12px;">중급 = <b>5개 후보 전체</b> (초급 3 · 중급 5 · 고급 7). 다섯 후보의 정보량은 동일하고 <b>직접성만 후보1(과도한 완곡) → 후보5(명령조)로 변주</b>됩니다. <b>어느 후보가 적절한지·directness 수치·평가 라벨은 판단 단계에서 노출하지 않습니다</b> — 적절성은 3단계에서 밝혀집니다.</div>
+
+      <!-- ▼ v3 NEW: 학급 판단 분포 (원리 D) -->
+      <div class="classdist isnew">
+        <div class="cdt">학급 판단 분포 <span class="newbadge">NEW</span></div>
+        <div class="cdsub">후보 3 «希望贵司尽量避免类似延误…» — 내 답 제출 뒤 공개 · 정답률이 아니라 <b>판단 경향</b>입니다</div>
+        <div class="distbar"><span class="dl">매우 적절(5)</span><div class="dtrack"><div class="dfill you" style="width:43%"></div></div><span class="dp">43% ← 나</span></div>
+        <div class="distbar"><span class="dl">적절(4)</span><div class="dtrack"><div class="dfill" style="width:34%"></div></div><span class="dp">34%</span></div>
+        <div class="distbar"><span class="dl">중간(3)</span><div class="dtrack"><div class="dfill" style="width:17%"></div></div><span class="dp">17%</span></div>
+        <div class="distbar"><span class="dl">부적절(1–2)</span><div class="dtrack"><div class="dfill" style="width:6%"></div></div><span class="dp">6%</span></div>
+        <div class="cdnote">내 평가 <b>5점</b> · 학급 중앙값 <b>4점</b> · 의견이 갈린 표현 <b>尽量</b></div>
+        <div class="fallback">※ 응답 수가 최소 기준(예: 8명) 미만이면 학급 분포 대신 교수자 기준 → 전문가 검수 기준 순으로 표시. (규범의 협상적 성격 설명은 최초 1회 안내로 대체 — 매 문항 반복하지 않음.)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step">
+    <div class="shd"><span class="snum">3</span><span class="stt">화용 설명 <small>— 왜 이 표현이 참고가 되는가</small></span><span class="theory">메타화용 설명 · 오판 교정</span></div>
+    <div class="sbody">
+      <div class="miniclue" style="background:var(--seal-bg);margin-bottom:14px;">↩ <b style="color:var(--seal)">당신의 판단 되돌아보기:</b> 2단계에서 <b>후보5</b>를 비교적 높게 평가했다면 — 이 관계에서 '你们必须'는 과도하게 직접적일 수 있습니다. 반대로 <b>후보1</b>을 높게 봤다면, 문제의 심각성이 사라졌을 수 있습니다. 아래 설명으로 그 이유를 확인하세요.</div>
+      <table class="exptbl">
+        <tr><td class="k">직접성</td><td class="v">요구는 분명히 하되 명령형은 피합니다. (你们必须 → 希望…尽量…)</td></tr>
+        <tr><td class="k">부담 관리</td><td class="v">'希望…尽量…' 구조로 상대에게 여지를 남겨 부담을 완화합니다.</td></tr>
+        <tr><td class="k">의미 보존</td><td class="v">지연이 생산에 미치는 영향을 '难免会影响'으로 분명히 시사합니다.</td></tr>
+        <tr><td class="k">한↔중 대조</td><td class="v">한국어 완곡 요청 → 중국어 希望+尽량+결과 시사 구조로 이동합니다.</td></tr>
+      </table>
+      <div class="elements">
+        <span class="elab">핵심 표현 요소</span>
+        <span class="et">希望</span><span class="et">尽量</span><span class="et">难免会影响</span><span class="et">必须 (과직접)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step">
+    <div class="shd"><span class="snum ok">4</span><span class="stt">재량 선언 + 직접 산출 <small>— 다른 상황에, 전략을 밝히고 번역</small></span><span class="theory">Pragmatic Agency · 산출 연습</span></div>
+    <div class="sbody">
+      <div class="diffbanner">여기서는 <b>선택이 아니라 직접 번역</b>합니다. 그리고 앞과 <b>다른 상황</b>이 주어집니다 — 앞 화면을 베껴 답할 수 없도록, 배운 화용 조절을 <b>새 상황에 옮겨 적용</b>하는 것이 핵심입니다.</div>
+      <div class="taskbox">
+        <div class="tl">산출 과제 (청구서 오류 불만)</div>
+        <div class="tt">지난달 청구서에 반복적으로 오류가 있어 정산이 늦어지고 있습니다. 다음 청구부터는 확인 절차를 강화해 주시기 바랍니다.</div>
+      </div>
+
+      <!-- ▼ v3 NEW: 0단계 재량 선언 (원리 A) — 산출 前에 -->
+      <div class="sub first" style="margin-top:4px;">0 · 산출 <b style="color:var(--seal)">전</b> — 이 원문의 힘을 어떻게 옮길까 <span class="newbadge">NEW</span></div>
+      <div class="agencybox isnew">
+        <div class="agq">이 상황의 부담(R)을 어떻게 읽었나요?
+          <span class="taps"><span class="tap">적음</span><span class="tap">보통</span><span class="tap demo">큼</span></span>
+        </div>
+        <div class="agq" style="margin-bottom:7px;">원문 화자의 태도를 번역에서 어떻게 옮기시겠습니까? <small style="color:var(--ink-faint);font-weight:400;">(정답 아님 · 번역가의 판단)</small></div>
+        <div class="agency-opts">
+          <div class="agopt">① 보존 — 원문의 불만 강도를 그대로 옮긴다</div>
+          <div class="agopt demo">② 완화 — 거래 관계를 고려해 강도를 누그러뜨린다</div>
+          <div class="agopt">③ 재구성 — 핵심 요구 중심으로 중립화한다</div>
+        </div>
+        <div class="agnote">이 선언은 채점되는 정답이 아닙니다. 다만 <b>번역 전에 밝히고 → 실제 산출이 이 선언과 일치</b>해야 합니다. 뒤(5단계)에서 선언과 산출을 대조합니다.</div>
+      </div>
+
+      <div class="sub">산출 — 선언한 전략대로 직접 번역</div>
+      <div class="inputdemo">
+        <div class="idl">✎ 내 번역 (학습자가 직접 입력)</div>
+        最近的账单反复出现错误，希望贵司下次开票时能加强核对流程，否则难免会影响双方合作。
+      </div>
+      <div class="compare">
+        <div class="cl">✓ 제출 후 · 참고 표현과 대조</div>
+        <div class="ct">最近的账单反复出现错误，导致我们结算延迟。希望贵司下次开票时能多加留意，尽量避免类似问题。</div>
+        <div class="cnote">참고 표현은 유일한 정답이 아닙니다. 내 번역이 관계·부담을 잘 다뤘다면 달라도 타당합니다. (참고 표현은 «완화» 선언에 맞게 위협을 더하지 않았습니다.)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step">
+    <div class="shd"><span class="snum ok">5</span><span class="stt">수행 리포트</span><span class="theory">학습자 5항목 · 내부는 2층위 유지</span></div>
+    <div class="sbody">
+      <span class="dirtag">방향: KO→ZH (한→중) · 이번 과제 주의점: 완화 의도가 경고로 뒤집히지 않게</span>
+
+      <!-- ========== 학습자 화면 (5항목) ========== -->
+      <div class="lreport">
+        <div class="litem">
+          <div class="lih">① 내가 선택한 전략</div>
+          <div class="lib"><b>완화</b> — 거래 관계를 고려해 강도를 누그러뜨리기로 선언했습니다.</div>
+        </div>
+        <div class="litem adjust">
+          <div class="lih">② 실제 산출과의 일치</div>
+          <div class="lib"><b>부분적으로 어긋났습니다.</b> 완화하려 했지만, 실제 번역은 원문보다 <b>강해졌습니다</b> — <span class="evspan">否则难免会影响双方合作</span>가 원문에 없던 압박을 더했습니다. <span style="color:var(--ink-faint);font-size:11.5px;">(상황은 적절히 판단했지만 표현 선택에서 어긋난 경우)</span></div>
+        </div>
+        <div class="litem good">
+          <div class="lih">③ 잘된 표현</div>
+          <div class="lib"><span class="evspan">希望贵司</span> — 공식적 관계를 적절히 표시했고, 상대에게 여지를 남겼습니다.</div>
+        </div>
+        <div class="litem adjust">
+          <div class="lih">④ 조정할 표현</div>
+          <div class="lib"><span class="evspan">否则难免会影响双方合作</span> — 원문에 없는 관계 위협이라, 상대에게 <b>명령·압박으로 들릴 수 있습니다.</b> 완화 전략이라면 이 부분을 덜어내는 편이 맞습니다.</div>
+        </div>
+        <div class="litem">
+          <div class="lih">⑤ 요약 · 다음 연습</div>
+          <div class="rubric-simple">
+            <span class="rs">의미 보존 <span class="lvl ok2">안정적</span></span>
+            <span class="rs">관계 적절성 <span class="lvl mid">일부 조정 필요</span></span>
+            <span class="rs">목표어 실현 <span class="lvl ok2">대체로 적절</span></span>
+          </div>
+          <div class="nextpr">다음 연습: <b>완화 전략을 선언한 요청·불만</b>에서 '경고 표현을 더하지 않고 강도를 낮추는' 훈련 1세트를 추천합니다.</div>
+        </div>
+      </div>
+
+      <div class="candnote" style="margin:14px 0 0;">학습자에게는 위 <b>5항목</b>만 보입니다. 전문용어(화용언어적/사회화용적)·판단 체인·장기 추이·검수 상태는 화면에서 감추고 자연어로 대체합니다. 아래는 <b>같은 판정의 내부·교수자용 뷰</b>로, 진단 구성개념이 그대로 유지됨을 보여줍니다(학생 비노출).</div>
+
+      <!-- ========== 내부·교수자 화면 (학생 비노출) ========== -->
+      <div class="internal">
+        <div class="inh"><span class="lock">🔒</span> 내부 · 교수자 뷰 <span class="tag">학생 비노출</span> <span class="insub">— UI에서는 감추되 진단 구성개념은 유지 (표면/내부 분리 원칙)</span></div>
+
+        <div class="consist" style="margin-bottom:14px;">
+          <div class="ct2">선언–산출 정합성 · agency_alignment = <b style="color:var(--seal)">partially_aligned</b></div>
+          <div class="csrc">«완화» 선언 vs 산출 <span class="evspan">否则难免会影响双方合作</span> → source_directness 대비 산출 강도 <b>상승</b>. target_directness_band 이탈.</div>
+        </div>
+
+        <div class="diagrow">
+          <div class="dgtag pl">화용언어적<br>(형식)</div>
+          <div class="dgbody">상황 읽기(부담 큼→여지 남기기)는 설계값과 <b>일치</b>. 형식 실현에서 강도 조절 실패로 완화 의도가 경고로 뒤집힘.
+            <div class="ev">evidence: <span class="evspan">否则难免会影响双方合作</span> · failed_challenge=imposition · relational_effect=압박</div>
+          </div>
+        </div>
+        <div class="diagrow" style="margin-bottom:4px;">
+          <div class="dgtag sp">사회화용적<br>(규범)</div>
+          <div class="dgbody">관계·격식 인식 적절(希望贵司 유지). <b>현재 evidence상 사회화용적 오판은 관찰되지 않음</b>(잠정).</div>
+        </div>
+
+        <div class="chainbox" style="margin:14px 0;">
+          <div class="cbt">판단 → 전략 → 산출 (층위 판정 로직)</div>
+          <div class="chain">
+            <span class="cnode">상황 읽기<br><b>R 부담 큼</b></span>
+            <span class="carrow">›</span>
+            <span class="cnode">재량 선언<br><b>완화</b></span>
+            <span class="carrow">›</span>
+            <span class="cnode">실현된 힘<br><b>경고 강화</b></span>
+            <span class="carrow">⟹</span>
+            <span class="cout">맞는 전제를<br>반대로 실현</span>
+          </div>
+          <div class="cbexplain">읽기(①)=설계값 일치, 산출(④)만 어긋남 → <b>화용언어적</b>. R을 '부담 적음'으로 잘못 읽었다면 같은 산출도 <b>사회화용적</b> — 어긋남의 <b>방향</b>이 층위를 결정.</div>
+        </div>
+
+        <div class="trend" style="margin-top:0;">
+          <div class="tl">📈 방향별 누적 (→ "내 화용 프로파일" 화면) · 검수 태그만 확정 반영</div>
+          <b style="color:var(--ink);">KO→ZH:</b> 완화 선언 후 경고 강화하는 불일치 3주 중 2회 반복. 경어 보상 안정.
+          &nbsp;·&nbsp; <b style="color:var(--ink);">ZH→KO:</b> 이번 주차 과제 없음.
+        </div>
+      </div>
+
+      <div class="candnote" style="margin-top:12px;margin-bottom:0;">모든 중국어·값은 시연용 예시입니다(원어민 검수 전). 학습자 5항목과 내부 뷰는 <b>같은 evidence 태그</b>에서 나오며, 방향(KO→ZH·ZH→KO)이 함께 기록됩니다.</div>
+    </div>
+  </div>
+
+  <!-- closing -->
+  <div class="closing">
+    <div class="cl">지금 학습 화면(고르고 다듬기)과 달리, 이 워크플로우는 <em>먼저 배우고 → 판단 → 이유 → 직접 산출 → 약점 진단</em>으로 흐릅니다.</div>
+    <div class="cl2">2·4단계는 선택이 아니라 직접 산출이며, 1·2·4단계는 서로 다른 상황을 써서 앞 화면 복제를 차단합니다. 학습자의 주체성은 과제 선택이 아니라 판단·교정·산출 결정에서 발휘됩니다.</div>
+    <div class="cl2" style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.12);">본 예시는 <b style="color:#c9cfe0">번역 과제</b>입니다. <b style="color:#c9cfe0">통역(음성 산출) 트랙</b>은 동일한 워크플로우 위에서 4단계 산출을 텍스트 입력 대신 음성 녹음으로 확장하며, 판단·산출·대조의 구조는 그대로 유지됩니다.</div>
+  </div>
+
+  <div class="metafoot">
+    전체 워크플로우 미리보기 · <b style="color:var(--seal)">v5</b> — 모듈 중심 구조 반영 (짧은 모듈 = 기본 단위 · 5단계 = 주간 종합 미션 · Digital Twin 허브가 누적+복제차단 담당)<br>
+    설계 근거: Roever(2022) 화용 수업 6단계를 5개 화면으로 조작화 · 2층위 진단(Thomas 1983, Kasper &amp; Blum-Kulka 1993) · Pragmatic Agency(Baker 번역가 개입) · 학급 판단 분포(difference≠error) · directness 단일 생성축(정보량 고정) · item_design(second-pair · 복제 차단)<br>
+    <b style="color:var(--seal)">최상위 원칙:</b> 복잡성은 내부 스키마·진단 엔진에 유지, 화면에는 결정에 필요한 결과만 선택 노출 · <b>UI 통합 ≠ 구성개념 폐기</b> — Register·Over-Explicitation은 화면 통합돼도 진단 구성개념으로 유지<br>
+    <b style="color:var(--seal)">신규 데이터:</b> agency_strategy · agency_alignment(aligned/partially/misaligned) · source_directness_level · target_directness_band · source_information_units · evidence_tags(+relational_effect) · failure_level(내부) · direction · review_status
+  </div>
+
+</div>
+</body>
+</html>
