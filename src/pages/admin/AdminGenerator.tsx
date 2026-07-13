@@ -599,8 +599,8 @@ const AdminGenerator = () => {
       const scenario = data.scenario as AiScenario;
       setAiResult(scenario);
       setAiMeta(data.meta as AiMeta);
-      if (form.mode === "batch") {
-        const n = parseInt(form.batchSize, 10);
+      if (outlineCount > 1) {
+        const n = outlineCount;
         const items: BatchItem[] = Array.from({ length: n }, (_, i) => ({
           title:
             i === 0
@@ -609,6 +609,7 @@ const AdminGenerator = () => {
           auto_check: "pass",
         }));
         setBatchItems(items);
+
       }
     } catch (e) {
       console.error("generate-scenario invoke failed", e);
