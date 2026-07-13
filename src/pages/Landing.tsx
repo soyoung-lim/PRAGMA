@@ -4,6 +4,7 @@ import { ensureSession } from "@/lib/tracking";
 import { HomeBrand } from "@/components/HomeBrand";
 import { IS_DEV_TEST_ENTRY_ENABLED } from "@/lib/auth/useProfile";
 import { devTestEntrySignIn } from "@/lib/auth/devTestEntry";
+import DevAdminLogin from "@/components/DevAdminLogin";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -93,6 +94,8 @@ const Landing = () => {
             </div>
           </section>
         )}
+
+        {import.meta.env.DEV && <DevAdminLogin />}
       </main>
     </div>
   );
