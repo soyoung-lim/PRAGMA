@@ -524,6 +524,14 @@ const AdminGenerator = () => {
   const [outlineCount, setOutlineCount] = useState<1 | 3 | 5>(1);
   const [seedsGenerated, setSeedsGenerated] = useState(false);
 
+  // v9 UI-only — source acquisition mode. "ai" keeps current flow.
+  // "manual" swaps the LLM-generated source_text with the user's own text
+  // after the Edge Function returns (payload/columns unchanged).
+  // "bank" is a shell only (다음 단계).
+  type SourceMode = "ai" | "bank" | "manual";
+  const [sourceMode, setSourceMode] = useState<SourceMode>("ai");
+  const [manualSourceText, setManualSourceText] = useState("");
+
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
 
@@ -553,6 +561,11 @@ const AdminGenerator = () => {
   const burden = computePragmaticBurden(
     form.speech_act_ui, form.pdr_power, form.pdr_distance, form.pdr_burden,
   );
+
+  const tagNote =
+    sourceMode === "ai"
+      ? "선택한 화행 · P·D·R 등은 새 원문의 생성 조건으로 사용됩니다."
+      : "선택한 화행 · P·D·R 등은 이미 존재하는 원문을 분류·검수하는 태그로 사용됩니다.";
 
 
   // NOTE (1b-①): 이전 dummy 경로는 rollback 대비 buildScenario()로 남겨둠.
