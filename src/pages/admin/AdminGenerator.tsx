@@ -168,6 +168,22 @@ const SPEECH_ACT_UI: Record<SpeechActUI, string> = {
   compliment: "칭찬",
   complaint: "불만",
 };
+const SPEECH_ACT_UI_EN: Record<SpeechActUI, string> = {
+  request: "Request",
+  refusal: "Refusal",
+  apology: "Apology",
+  thanks: "Thanks",
+  proposal: "Suggestion",
+  agreement: "Agreement",
+  opposition: "Disagreement",
+  compliment: "Compliment",
+  complaint: "Complaint",
+};
+// Speech-act pragmatic burden weight (0=low, 1=mid, 2=high). Reference only.
+const SPEECH_ACT_WEIGHT: Record<SpeechActUI, number> = {
+  request: 1, refusal: 2, apology: 1, thanks: 0,
+  proposal: 1, agreement: 0, opposition: 2, compliment: 0, complaint: 2,
+};
 const SPEECH_ACT_UI_TO_INTERNAL: Record<SpeechActUI, SpeechAct> = {
   request: "request",
   refusal: "refusal",
@@ -179,6 +195,25 @@ const SPEECH_ACT_UI_TO_INTERNAL: Record<SpeechActUI, SpeechAct> = {
   compliment: "request",
   complaint: "refusal",
 };
+
+// Derived pragmatic burden (참고용). Combines speech act weight + P/D/R.
+type BurdenLevel = "low" | "medium" | "high";
+function computePragmaticBurden(
+  sa: SpeechActUI, p: PdrPower, d: PdrDistance, r: PdrBurden
+): { level: BurdenLevel; label: string; reasons: string[] } {
+  const pw = p === "equal" ? 0 : 1;
+  const dw = d === "formal" ? 1 : 0;
+  const rw = r === "high" ? 1 : 0;
+  const score = SPEECH_ACT_WEIGHT[sa] + pw + dw + rw;
+  const level: BurdenLevel = score <= 1 ? "low" : score <= 3 ? "medium" : "high";
+  const label = level === "low" ? "낮음" : level === "medium" ? "보통" : "높음";
+  const reasons: string[] = [`${SPEECH_ACT_UI[sa]} 화행`];
+  if (pw) reasons.push("지위 차 있음");
+  if (dw) reasons.push("관계가 멂");
+  if (rw) reasons.push("부담 높음");
+  return { level, label, reasons };
+}
+
 
 // UI-only channel taxonomy (4). Maps onto Genre enum.
 type ChannelUI = "email" | "messenger" | "facetoface" | "phone";
