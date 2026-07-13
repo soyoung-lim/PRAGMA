@@ -92,6 +92,12 @@ interface GenInput {
   speech_act_ui?: string | null
   channel_ui?: string | null
   complex_task_ui?: string | null
+  // Two-step outline → final flow. Backward compatible:
+  // when `action` is absent the handler behaves exactly like the legacy
+  // single-shot full-scenario generation.
+  action?: 'outline' | 'final'
+  outline_count?: number
+  selected_outline?: { title?: string; situation?: string } | null
 }
 
 // UI-level labels — richer than the collapsed internal enums.
@@ -172,7 +178,33 @@ ${domainRule}
 - 위 JSON 외 어떤 텍스트도 출력하지 마세요.`
 }
 
-function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[] = [], hskLevel = 0): string {
+// Lightweight schema for the outline step: only title + situation, no
+// candidates / feedback. Shares the request-condition block (buildUserPrompt).
+function buildOutlineSystemPrompt(count: number, domain?: string | null): string {
+  const domainDesc =
+    domain === 'daily'
+      ? '일상생활(친구·이웃·가족·상점·동호회 등) 상황의 한→중 통번역 교육용 시나리오'
+      : domain === 'school'
+        ? '학교·캠퍼스(교수·조교·동기·유학생·학사 업무 등) 상황의 한→중 통번역 교육용 시나리오'
+        : '한→중 비즈니스 통번역 교육용 시나리오'
+  return `당신은 ${domainDesc}를 설계하는 전문가입니다.
+출력은 반드시 아래 JSON만, 마크다운·설명·주석 없이 그대로 반환합니다.
+
+{
+  "outlines": [
+    { "title": "한국어 시나리오 제목", "situation": "상황 배경 설명 (한국어, 2~3문장, 발신자·수신자·목적·관계 명시)" }
+  ]
+}
+
+규칙:
+- outlines 배열의 길이는 정확히 ${count}개.
+- 각 항목은 title과 situation만 포함하고, 후보 번역·피드백·원문은 생성하지 마세요.
+- 개요끼리 상황·소재·인물이 뚜렷이 달라야 합니다.
+- [생성 요청]의 화행·도메인·P·D·R 조건에 모두 부합해야 합니다.
+- 위 JSON 외 어떤 텍스트도 출력하지 마세요.`
+}
+
+function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[] = [], hskLevel = 0, variant: 'full' | 'outline' = 'full'): string {
   const isWork = !input.domain || input.domain === 'work'
   const GENRE_NEUTRAL_KO: Record<string, string> = {
     business_email: '이메일',
@@ -215,6 +247,18 @@ function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[
   if (input.hsk_level_min) parts.push(`- 최소 HSK 수준: ${input.hsk_level_min}`)
   if (input.language_direction) parts.push(`- 언어 방향: ${LANG_DIR_KO[input.language_direction] ?? input.language_direction}`)
   if (input.mode) parts.push(`- 수행 모드: ${MODE_KO[input.mode] ?? input.mode}`)
+
+  // Outline variant: shares all the conditions above, but asks for N lightweight
+  // outlines (title + situation only) instead of one full scenario.
+  if (variant === 'outline') {
+    parts.push(
+      '',
+      `위 조건에 정확히 부합하는 서로 다른 상황 개요를 정확히 ${candidateCount}개 생성하세요.`,
+      `각 개요는 title과 situation만 포함하며, 후보 번역·피드백·원문은 생성하지 마세요. 개요끼리 상황·소재가 뚜렷이 달라야 합니다.`,
+    )
+    return parts.join('\n')
+  }
+
   parts.push(
     '',
     '반드시 지킬 것:',
@@ -316,11 +360,74 @@ Deno.serve(async (req) => {
       })
     }
 
+    // ── Outline action: cheap N-outline generation in a single OpenAI call ──
+    if (input.action === 'outline') {
+      const raw = Number(input.outline_count ?? 3)
+      const count = raw >= 1 && raw <= 5 ? Math.floor(raw) : 3
+      const hsk = mapLevelToHsk(input)
+      const sys = buildOutlineSystemPrompt(count, input.domain)
+      const usr = buildUserPrompt(input, count, [], hsk, 'outline')
+      let outlineModel = PRIMARY_MODEL
+      let oa = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr)
+      if (!oa.ok && (oa.status === 404 || oa.status === 400)) {
+        outlineModel = FALLBACK_MODEL
+        oa = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr)
+      }
+      if (!oa.ok) {
+        return new Response(
+          JSON.stringify({ error: 'OpenAI API 호출에 실패했습니다.', detail: oa.raw.slice(0, 500), status: oa.status }),
+          { status: 502, headers: jsonHeaders },
+        )
+      }
+      let outlineParsed: unknown
+      try {
+        const outer = JSON.parse(oa.raw)
+        const content = outer?.choices?.[0]?.message?.content
+        if (typeof content !== 'string') throw new Error('missing content')
+        outlineParsed = JSON.parse(content)
+      } catch (e) {
+        return new Response(
+          JSON.stringify({ error: 'AI 개요 응답 파싱 실패', detail: (e as Error).message }),
+          { status: 502, headers: jsonHeaders },
+        )
+      }
+      const rawList = (outlineParsed as { outlines?: unknown })?.outlines
+      const outlines = (Array.isArray(rawList) ? rawList : [])
+        .slice(0, count)
+        .map((o) => ({
+          title: String((o as { title?: unknown })?.title ?? '').trim(),
+          situation: String((o as { situation?: unknown })?.situation ?? '').trim(),
+        }))
+        .filter((o) => o.title || o.situation)
+      if (outlines.length === 0) {
+        return new Response(
+          JSON.stringify({ error: '개요가 비어 있습니다. 다시 시도해 주세요.' }),
+          { status: 502, headers: jsonHeaders },
+        )
+      }
+      return new Response(
+        JSON.stringify({
+          outlines,
+          meta: { provider: PROVIDER, model: outlineModel, prompt_version: PROMPT_VERSION, generated_at: new Date().toISOString() },
+        }),
+        { status: 200, headers: jsonHeaders },
+      )
+    }
+
     const candidateCount = LEVEL_KO[input.level]?.candidateCount ?? 3
     const hskLevel = mapLevelToHsk(input)
     const vocab = await fetchHskVocab(hskLevel)
     const system = buildSystemPrompt(candidateCount, input.domain)
-    const user = buildUserPrompt(input, candidateCount, vocab, hskLevel)
+    let user = buildUserPrompt(input, candidateCount, vocab, hskLevel)
+    // Final action seeded by a chosen outline: keep the outline's situation and
+    // expand it into the full scenario schema.
+    if (input.selected_outline && (input.selected_outline.title || input.selected_outline.situation)) {
+      user +=
+        `\n\n[선택된 개요 — 이 개요를 기반으로 확장]\n` +
+        `- 제목: ${input.selected_outline.title ?? ''}\n` +
+        `- 상황: ${input.selected_outline.situation ?? ''}\n` +
+        `위 개요의 상황·인물·목적·관계를 유지하면서 위 스키마의 풀 시나리오로 구체화하세요.`
+    }
     console.log('hsk vocab injection', { hskLevel, vocabCount: vocab.length })
 
     console.log('generate-scenario request', {
