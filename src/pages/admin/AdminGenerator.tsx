@@ -610,6 +610,10 @@ const AdminGenerator = () => {
       if (error) throw error;
       if (!data?.scenario) throw new Error(data?.error ?? "빈 응답을 받았습니다.");
       const scenario = data.scenario as AiScenario;
+      // 직접 입력 모드: 사용자가 입력한 원문으로 source_text만 교체 (payload/컬럼 변경 없음).
+      if (sourceMode === "manual" && manualSourceText.trim()) {
+        scenario.source_text = manualSourceText.trim();
+      }
       setAiResult(scenario);
       setAiMeta(data.meta as AiMeta);
       if (outlineCount > 1) {
