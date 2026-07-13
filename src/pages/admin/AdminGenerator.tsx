@@ -524,6 +524,14 @@ const AdminGenerator = () => {
   const [outlineCount, setOutlineCount] = useState<1 | 3 | 5>(1);
   const [seedsGenerated, setSeedsGenerated] = useState(false);
 
+  // v9 UI-only — source acquisition mode. "ai" keeps current flow.
+  // "manual" swaps the LLM-generated source_text with the user's own text
+  // after the Edge Function returns (payload/columns unchanged).
+  // "bank" is a shell only (다음 단계).
+  type SourceMode = "ai" | "bank" | "manual";
+  const [sourceMode, setSourceMode] = useState<SourceMode>("ai");
+  const [manualSourceText, setManualSourceText] = useState("");
+
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
 
@@ -553,6 +561,11 @@ const AdminGenerator = () => {
   const burden = computePragmaticBurden(
     form.speech_act_ui, form.pdr_power, form.pdr_distance, form.pdr_burden,
   );
+
+  const tagNote =
+    sourceMode === "ai"
+      ? "선택한 화행 · P·D·R 등은 새 원문의 생성 조건으로 사용됩니다."
+      : "선택한 화행 · P·D·R 등은 이미 존재하는 원문을 분류·검수하는 태그로 사용됩니다.";
 
 
   // NOTE (1b-①): 이전 dummy 경로는 rollback 대비 buildScenario()로 남겨둠.
@@ -597,6 +610,10 @@ const AdminGenerator = () => {
       if (error) throw error;
       if (!data?.scenario) throw new Error(data?.error ?? "빈 응답을 받았습니다.");
       const scenario = data.scenario as AiScenario;
+      // 직접 입력 모드: 사용자가 입력한 원문으로 source_text만 교체 (payload/컬럼 변경 없음).
+      if (sourceMode === "manual" && manualSourceText.trim()) {
+        scenario.source_text = manualSourceText.trim();
+      }
       setAiResult(scenario);
       setAiMeta(data.meta as AiMeta);
       if (outlineCount > 1) {
@@ -715,9 +732,60 @@ const AdminGenerator = () => {
             )}
           </div>
 
-          {/* 2. 목표 화행 — 3x3 카드 */}
+          {/* 2. 원문 확보 방식 */}
           <div>
-            <SectionTitle n={2} label="목표 화행 · Speech Act" accent="핵심 변수" />
+            <SectionTitle n={2} label="원문 확보 방식" />
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {([
+                { id: "ai" as const, label: "AI 생성", sub: "기본" },
+                { id: "bank" as const, label: "Source Bank", sub: "준비 중", disabled: true },
+                { id: "manual" as const, label: "직접 입력", sub: "붙여넣기" },
+              ]).map((opt) => {
+                const on = sourceMode === opt.id;
+                const disabled = (opt as any).disabled;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => !disabled && setSourceMode(opt.id)}
+                    className={[
+                      "h-14 rounded-md text-center text-[12.5px] transition-colors leading-tight",
+                      disabled
+                        ? "border border-dashed border-[#EAE4D2] bg-transparent text-muted-foreground/70 cursor-not-allowed"
+                        : on
+                        ? "border-2 border-[#BA7517] bg-[#FBEFD9] text-[#7A4A0A]"
+                        : "border border-[#EAE4D2] bg-transparent text-muted-foreground hover:bg-muted",
+                    ].join(" ")}
+                  >
+                    <div className="font-medium">{opt.label}</div>
+                    <div className={["mt-0.5 text-[10px]", on && !disabled ? "text-[#7A4A0A]" : "text-muted-foreground"].join(" ")}>
+                      {opt.sub}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {sourceMode === "manual" && (
+              <textarea
+                value={manualSourceText}
+                onChange={(e) => setManualSourceText(e.target.value)}
+                placeholder="한국어 원문을 붙여넣거나 직접 입력하세요."
+                className="mt-2 w-full min-h-[104px] rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[13px] leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
+              />
+            )}
+            {sourceMode === "bank" && (
+              <div className="mt-2 rounded-md border border-dashed border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[11.5px] text-muted-foreground">
+                Source Bank 연동은 다음 단계에서 활성화됩니다.
+              </div>
+            )}
+            <p className="mt-1.5 text-[10.5px] text-muted-foreground">{tagNote}</p>
+          </div>
+
+          {/* 3. 목표 화행 — 3x3 카드 */}
+          <div>
+            <SectionTitle n={3} label="목표 화행 · Speech Act" accent="핵심 변수" />
             <div className="mt-2 grid grid-cols-3 gap-1.5">
               {(Object.keys(SPEECH_ACT_UI) as SpeechActUI[]).map((sa) => {
                 const on = form.speech_act_ui === sa;
@@ -755,9 +823,9 @@ const AdminGenerator = () => {
             </div>
           </div>
 
-          {/* 3. P-D-R 관계 조건 + 4. 예상 화용 부담도 */}
+          {/* 4. P-D-R 관계 조건 + 5. 예상 화용 부담도 */}
           <div className="rounded-md bg-[#FBEFD9]/40 border border-[#EAE4D2] p-3.5">
-            <SectionTitle n={3} label="P · D · R 관계 조건" accent="핵심 변수" tone="accent" />
+            <SectionTitle n={4} label="P · D · R 관계 조건" accent="핵심 변수" tone="accent" />
             <div className="mt-2 grid grid-cols-3 gap-3">
               <Field label="Power (P) · 지위" tone="accent">
                 <Select
@@ -800,11 +868,11 @@ const AdminGenerator = () => {
               </Field>
             </div>
 
-            {/* 예상 화용 부담도 (파생) */}
+            {/* 5. 예상 화용 부담도 (파생 배지) */}
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-[#EAE4D2] bg-background px-3 py-2">
               <span className="text-[11.5px] text-muted-foreground">↘ 참고</span>
               <span className="text-[11.5px] text-muted-foreground">
-                <span className="mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#FBEFD9] text-[10px] font-medium text-[#7A4A0A]">4</span>
+                <span className="mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#FBEFD9] text-[10px] font-medium text-[#7A4A0A]">5</span>
                 예상 화용 부담도
               </span>
               <span
@@ -826,9 +894,9 @@ const AdminGenerator = () => {
             </p>
           </div>
 
-          {/* 5. 언어 · 학습 · 상황 조건 */}
+          {/* 6. 언어 · 학습 · 상황 조건 */}
           <div>
-            <SectionTitle n={5} label="언어 · 학습 · 상황 조건" />
+            <SectionTitle n={6} label="언어 · 학습 · 상황 조건" />
             <div className="mt-2 grid grid-cols-3 gap-3">
               <Field label="언어 방향">
                 <Select
@@ -868,8 +936,20 @@ const AdminGenerator = () => {
               </Field>
             </div>
 
-            {/* 도메인 + 산업 */}
-            <div className="mt-3 grid grid-cols-[auto_1fr] gap-4 items-start">
+            {/* HSK 배지 — 언어/학습/상황 조건 하단 */}
+            <div className="mt-3 rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[11.5px] leading-relaxed text-[#5B5446]">
+              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-600 align-middle" />
+              <span className="font-medium text-foreground">HSK 3.0 Source Bank 활용 중</span>
+              <span className="ml-1 text-muted-foreground">
+                · 중국어 원문/산출물 난이도를 학습자 HSK 수준(입문4·중급5·고급6)에 맞춰 조정합니다.
+              </span>
+            </div>
+          </div>
+
+          {/* 7. 도메인 · 산업 */}
+          <div>
+            <SectionTitle n={7} label="도메인 · 산업" />
+            <div className="mt-2 grid grid-cols-[auto_1fr] gap-4 items-start">
               <div>
                 <label className="text-[12px] text-muted-foreground">도메인</label>
                 <div className="mt-1.5 flex h-9 items-center gap-3">
@@ -912,40 +992,11 @@ const AdminGenerator = () => {
                 </div>
               )}
             </div>
-
-            {/* 복합 과제 (기존 payload 유지) */}
-            <div className="mt-3">
-              <Field label="복합 과제">
-                <Select
-                  value={form.complex_task}
-                  onValueChange={(v) => update("complex_task", v as ComplexTaskUI)}
-                >
-                  <SelectTrigger className={formField}><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(COMPLEX_TASK_UI).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <p className="mt-1 text-[10.5px] text-muted-foreground">
-                “없음”은 단일 화행 과제일 때 사용합니다. · 학습자 수준별 후보 수: 입문 3 / 중급 5 / 고급 7 (현재 {LEVEL_CANDIDATES[form.level]}개)
-              </p>
-            </div>
           </div>
 
-          {/* HSK 배지 */}
-          <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[11.5px] leading-relaxed text-[#5B5446]">
-            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-600 align-middle" />
-            <span className="font-medium text-foreground">HSK 3.0 Source Bank 활용 중</span>
-            <span className="ml-1 text-muted-foreground">
-              · 중국어 원문/산출물 난이도를 학습자 HSK 수준(입문4·중급5·고급6)에 맞춰 조정합니다.
-            </span>
-          </div>
-
-          {/* 6. 개요 후보 수 */}
+          {/* 8. 개요 후보 수 */}
           <div>
-            <SectionTitle n={6} label="개요 후보 수" />
+            <SectionTitle n={8} label="개요 후보 수" />
             <div className="mt-2 flex gap-2">
               {([1, 3, 5] as const).map((n) => {
                 const on = outlineCount === n;
@@ -990,10 +1041,10 @@ const AdminGenerator = () => {
 
           <Button
             onClick={generate}
-            disabled={loading}
+            disabled={loading || (sourceMode === "manual" && !manualSourceText.trim())}
             className="w-full bg-[#1d2336] text-white hover:bg-[#1d2336]/90"
           >
-            🪄 {loading ? "생성 중..." : "AI 시나리오 생성"}
+            🪄 {loading ? "생성 중..." : sourceMode === "manual" ? "입력 원문으로 후보·피드백 생성" : "AI 시나리오 생성"}
           </Button>
 
         </section>
