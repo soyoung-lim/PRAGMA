@@ -1088,7 +1088,7 @@ const AdminGenerator = () => {
 
             {!loading && aiResult && (
               <div className="space-y-5">
-                {form.mode === "batch" && batchItems && (
+                {outlineCount > 1 && batchItems && (
                   <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2">
                     <p className="text-[12.5px] font-medium text-[#5B5446]">
                       총 {batchItems.length}개의 시나리오가 생성 예정입니다.
