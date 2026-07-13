@@ -516,8 +516,44 @@ const AdminGenerator = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [batchItems, setBatchItems] = useState<BatchItem[] | null>(null);
 
+  // v8 UI-only state — task mode drives channel options; outline count replaces
+  // the single/batch radio + size dropdown (payload unchanged).
+  const [taskMode, setTaskMode] = useState<GenMode>(
+    CHANNEL_TO_MODE[DEFAULT_FORM.channel],
+  );
+  const [outlineCount, setOutlineCount] = useState<1 | 3 | 5>(1);
+  const [seedsGenerated, setSeedsGenerated] = useState(false);
+
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
+
+  // Channels filtered by task mode.
+  const channelsForMode: ChannelUI[] =
+    taskMode === "translation" ? ["email", "messenger"] : ["facetoface", "phone"];
+
+  const setTaskModeSafe = (m: GenMode) => {
+    setTaskMode(m);
+    const allowed: ChannelUI[] =
+      m === "translation" ? ["email", "messenger"] : ["facetoface", "phone"];
+    if (!allowed.includes(form.channel)) update("channel", allowed[0]);
+    setSeedsGenerated(false);
+  };
+
+  const setOutlineCountSafe = (n: 1 | 3 | 5) => {
+    setOutlineCount(n);
+    // Keep legacy form.mode / batchSize in sync for payload compatibility.
+    setForm((p) => ({
+      ...p,
+      mode: n === 1 ? "single" : "batch",
+      batchSize: (n === 1 ? "10" : String(n)) as FormState["batchSize"],
+    }));
+    setSeedsGenerated(false);
+  };
+
+  const burden = computePragmaticBurden(
+    form.speech_act_ui, form.pdr_power, form.pdr_distance, form.pdr_burden,
+  );
+
 
   // NOTE (1b-①): 이전 dummy 경로는 rollback 대비 buildScenario()로 남겨둠.
   // 이번 단계는 실제 OpenAI 호출 결과를 aiResult에 담아 미리보기만 렌더한다.
