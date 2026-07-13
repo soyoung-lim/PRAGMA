@@ -168,6 +168,22 @@ const SPEECH_ACT_UI: Record<SpeechActUI, string> = {
   compliment: "칭찬",
   complaint: "불만",
 };
+const SPEECH_ACT_UI_EN: Record<SpeechActUI, string> = {
+  request: "Request",
+  refusal: "Refusal",
+  apology: "Apology",
+  thanks: "Thanks",
+  proposal: "Suggestion",
+  agreement: "Agreement",
+  opposition: "Disagreement",
+  compliment: "Compliment",
+  complaint: "Complaint",
+};
+// Speech-act pragmatic burden weight (0=low, 1=mid, 2=high). Reference only.
+const SPEECH_ACT_WEIGHT: Record<SpeechActUI, number> = {
+  request: 1, refusal: 2, apology: 1, thanks: 0,
+  proposal: 1, agreement: 0, opposition: 2, compliment: 0, complaint: 2,
+};
 const SPEECH_ACT_UI_TO_INTERNAL: Record<SpeechActUI, SpeechAct> = {
   request: "request",
   refusal: "refusal",
@@ -179,6 +195,25 @@ const SPEECH_ACT_UI_TO_INTERNAL: Record<SpeechActUI, SpeechAct> = {
   compliment: "request",
   complaint: "refusal",
 };
+
+// Derived pragmatic burden (참고용). Combines speech act weight + P/D/R.
+type BurdenLevel = "low" | "medium" | "high";
+function computePragmaticBurden(
+  sa: SpeechActUI, p: PdrPower, d: PdrDistance, r: PdrBurden
+): { level: BurdenLevel; label: string; reasons: string[] } {
+  const pw = p === "equal" ? 0 : 1;
+  const dw = d === "formal" ? 1 : 0;
+  const rw = r === "high" ? 1 : 0;
+  const score = SPEECH_ACT_WEIGHT[sa] + pw + dw + rw;
+  const level: BurdenLevel = score <= 1 ? "low" : score <= 3 ? "medium" : "high";
+  const label = level === "low" ? "낮음" : level === "medium" ? "보통" : "높음";
+  const reasons: string[] = [`${SPEECH_ACT_UI[sa]} 화행`];
+  if (pw) reasons.push("지위 차 있음");
+  if (dw) reasons.push("관계가 멂");
+  if (rw) reasons.push("부담 높음");
+  return { level, label, reasons };
+}
+
 
 // UI-only channel taxonomy (4). Maps onto Genre enum.
 type ChannelUI = "email" | "messenger" | "facetoface" | "phone";
@@ -481,8 +516,44 @@ const AdminGenerator = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [batchItems, setBatchItems] = useState<BatchItem[] | null>(null);
 
+  // v8 UI-only state — task mode drives channel options; outline count replaces
+  // the single/batch radio + size dropdown (payload unchanged).
+  const [taskMode, setTaskMode] = useState<GenMode>(
+    CHANNEL_TO_MODE[DEFAULT_FORM.channel],
+  );
+  const [outlineCount, setOutlineCount] = useState<1 | 3 | 5>(1);
+  const [seedsGenerated, setSeedsGenerated] = useState(false);
+
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
+
+  // Channels filtered by task mode.
+  const channelsForMode: ChannelUI[] =
+    taskMode === "translation" ? ["email", "messenger"] : ["facetoface", "phone"];
+
+  const setTaskModeSafe = (m: GenMode) => {
+    setTaskMode(m);
+    const allowed: ChannelUI[] =
+      m === "translation" ? ["email", "messenger"] : ["facetoface", "phone"];
+    if (!allowed.includes(form.channel)) update("channel", allowed[0]);
+    setSeedsGenerated(false);
+  };
+
+  const setOutlineCountSafe = (n: 1 | 3 | 5) => {
+    setOutlineCount(n);
+    // Keep legacy form.mode / batchSize in sync for payload compatibility.
+    setForm((p) => ({
+      ...p,
+      mode: n === 1 ? "single" : "batch",
+      batchSize: (n === 1 ? "10" : String(n)) as FormState["batchSize"],
+    }));
+    setSeedsGenerated(false);
+  };
+
+  const burden = computePragmaticBurden(
+    form.speech_act_ui, form.pdr_power, form.pdr_distance, form.pdr_burden,
+  );
+
 
   // NOTE (1b-①): 이전 dummy 경로는 rollback 대비 buildScenario()로 남겨둠.
   // 이번 단계는 실제 OpenAI 호출 결과를 aiResult에 담아 미리보기만 렌더한다.
@@ -528,8 +599,8 @@ const AdminGenerator = () => {
       const scenario = data.scenario as AiScenario;
       setAiResult(scenario);
       setAiMeta(data.meta as AiMeta);
-      if (form.mode === "batch") {
-        const n = parseInt(form.batchSize, 10);
+      if (outlineCount > 1) {
+        const n = outlineCount;
         const items: BatchItem[] = Array.from({ length: n }, (_, i) => ({
           title:
             i === 0
@@ -538,6 +609,7 @@ const AdminGenerator = () => {
           auto_check: "pass",
         }));
         setBatchItems(items);
+
       }
     } catch (e) {
       console.error("generate-scenario invoke failed", e);
@@ -613,221 +685,113 @@ const AdminGenerator = () => {
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-5">
         {/* LEFT — settings */}
         <section className="lg:col-span-2 space-y-5 rounded-lg border border-border bg-card p-5">
-          {/* 생성 옵션 */}
+          {/* 1. 과제 모드 */}
           <div>
-            <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
-              생성 옵션
-            </h3>
-            <div className="mt-2 space-y-3">
-              <div>
-                <label className="text-[12px] text-muted-foreground">생성 방식</label>
-                <div className="mt-1.5 flex gap-4">
-                  {(["single", "batch"] as const).map((m) => (
-                    <label key={m} className="flex items-center gap-2 text-[13px] cursor-pointer">
-                      <input
-                        type="radio"
-                        name="mode"
-                        value={m}
-                        checked={form.mode === m}
-                        onChange={() => update("mode", m)}
-                        className="accent-[#1d2336]"
-                      />
-                      {m === "single" ? "단일 생성" : "배치 생성"}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-[12px] text-muted-foreground">배치 생성 수</label>
-                <Select
-                  value={form.batchSize}
-                  onValueChange={(v) => update("batchSize", v as FormState["batchSize"])}
-                  disabled={form.mode === "single"}
-                >
-                  <SelectTrigger className={`mt-1.5 ${formField}`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["5", "10", "20"].map((n) => (
-                      <SelectItem key={n} value={n}>
-                        {n}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          {/* 화행·복합과제 / 학습자수준·언어방향 / 채널·통번역 */}
-          <div>
-            <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
-              화행·채널·복합 과제
-            </h3>
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              <Field label="화행">
-                <Select
-                  value={form.speech_act_ui}
-                  onValueChange={(v) => update("speech_act_ui", v as SpeechActUI)}
-                >
-                  <SelectTrigger className={formField}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent
-                    position="popper"
-                    side="bottom"
-                    sideOffset={4}
-                    avoidCollisions={false}
-                    className="max-h-[420px] overflow-y-auto z-50"
+            <SectionTitle n={1} label="과제 모드" accent="정본" />
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {(["translation", "stt_interpreting"] as const).map((m) => {
+                const on = taskMode === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setTaskModeSafe(m)}
+                    className={[
+                      "h-10 rounded-md text-[13px] font-medium transition-colors",
+                      on
+                        ? "border-2 border-[#BA7517] bg-[#FBEFD9] text-[#7A4A0A]"
+                        : "border border-[#EAE4D2] bg-transparent text-muted-foreground hover:bg-muted",
+                    ].join(" ")}
                   >
-                    {Object.entries(SPEECH_ACT_UI).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="복합 과제">
-                <Select
-                  value={form.complex_task}
-                  onValueChange={(v) => update("complex_task", v as ComplexTaskUI)}
-                >
-                  <SelectTrigger className={formField}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(COMPLEX_TASK_UI).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="학습자 수준">
-                <Select value={form.level} onValueChange={(v) => update("level", v as LearnerLevel)}>
-                  <SelectTrigger className={formField}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(LEVEL).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="언어 방향">
-                <Select
-                  value={form.language_direction}
-                  onValueChange={(v) => update("language_direction", v as LanguageDirection)}
-                >
-                  <SelectTrigger className={formField}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(LANGUAGE_DIRECTION).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="채널">
-                <Select
-                  value={form.channel}
-                  onValueChange={(v) => update("channel", v as ChannelUI)}
-                >
-                  <SelectTrigger className={formField}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(CHANNEL_UI).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="통번역">
-                <Select value={CHANNEL_TO_MODE[form.channel]} disabled>
-                  <SelectTrigger className={formField} aria-readonly="true">
-                    <SelectValue>{MODE_LABEL[CHANNEL_TO_MODE[form.channel]]}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(MODE_LABEL).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+                    {m === "translation" ? "번역 · Translation" : "통역 · Interpreting"}
+                  </button>
+                );
+              })}
             </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-              통번역은 채널에서 자동 파생됩니다(이메일·메신저 → 번역, 대면·전화 → 통역). · 학습자 수준 후보 수:
-              입문 3개 / 중급 5개 / 고급 7개 (현재: {LEVEL_CANDIDATES[form.level]}개)
-              &nbsp;· “없음”은 단일 화행 과제일 때 사용합니다.
-            </p>
+            {taskMode === "stt_interpreting" && (
+              <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+                순차통역 · 2인 상호작용 과제로 생성됩니다.
+              </p>
+            )}
           </div>
 
-
-
-          {/* P-D-R 조건 */}
+          {/* 2. 목표 화행 — 3x3 카드 */}
           <div>
-            <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
-              P-D-R 조건
-            </h3>
+            <SectionTitle n={2} label="목표 화행 · Speech Act" accent="핵심 변수" />
+            <div className="mt-2 grid grid-cols-3 gap-1.5">
+              {(Object.keys(SPEECH_ACT_UI) as SpeechActUI[]).map((sa) => {
+                const on = form.speech_act_ui === sa;
+                return (
+                  <button
+                    key={sa}
+                    type="button"
+                    onClick={() => update("speech_act_ui", sa)}
+                    className={[
+                      "rounded-md py-2 px-1.5 text-center transition-colors leading-tight",
+                      on
+                        ? "border-2 border-[#BA7517] bg-[#FBEFD9]"
+                        : "border border-[#EAE4D2] bg-transparent hover:bg-muted",
+                    ].join(" ")}
+                  >
+                    <div
+                      className={[
+                        "text-[13.5px] font-medium",
+                        on ? "text-[#7A4A0A]" : "text-foreground",
+                      ].join(" ")}
+                    >
+                      {SPEECH_ACT_UI[sa]}
+                    </div>
+                    <div
+                      className={[
+                        "text-[10px] mt-0.5",
+                        on ? "text-[#7A4A0A]" : "text-muted-foreground",
+                      ].join(" ")}
+                    >
+                      {SPEECH_ACT_UI_EN[sa]}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. P-D-R 관계 조건 + 4. 예상 화용 부담도 */}
+          <div className="rounded-md bg-[#FBEFD9]/40 border border-[#EAE4D2] p-3.5">
+            <SectionTitle n={3} label="P · D · R 관계 조건" accent="핵심 변수" tone="accent" />
             <div className="mt-2 grid grid-cols-3 gap-3">
-              <Field label="Power (P)">
+              <Field label="Power (P) · 지위" tone="accent">
                 <Select
                   value={form.pdr_power}
                   onValueChange={(v) => update("pdr_power", v as PdrPower)}
                 >
-                  <SelectTrigger className={formField}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent
-                    position="popper"
-                    side="bottom"
-                    sideOffset={4}
-                    avoidCollisions={false}
-                    className="max-h-60 overflow-y-auto z-50"
-                  >
+                  <SelectTrigger className={formField}><SelectValue /></SelectTrigger>
+                  <SelectContent>
                     {Object.entries(PDR_POWER).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Distance (D)">
+              <Field label="Distance (D) · 거리" tone="accent">
                 <Select
                   value={form.pdr_distance}
                   onValueChange={(v) => update("pdr_distance", v as PdrDistance)}
                 >
-                  <SelectTrigger className={formField}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent
-                    position="popper"
-                    side="bottom"
-                    sideOffset={4}
-                    avoidCollisions={false}
-                    className="max-h-60 overflow-y-auto z-50"
-                  >
+                  <SelectTrigger className={formField}><SelectValue /></SelectTrigger>
+                  <SelectContent>
                     {Object.entries(PDR_DISTANCE).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Imposition (R)">
+              <Field label="Imposition (R) · 부담" tone="accent">
                 <Select
                   value={form.pdr_burden}
                   onValueChange={(v) => update("pdr_burden", v as PdrBurden)}
                 >
-                  <SelectTrigger className={formField}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent
-                    position="popper"
-                    side="bottom"
-                    sideOffset={4}
-                    avoidCollisions={false}
-                    className="max-h-60 overflow-y-auto z-50"
-                  >
+                  <SelectTrigger className={formField}><SelectValue /></SelectTrigger>
+                  <SelectContent>
                     {Object.entries(PDR_BURDEN).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v}</SelectItem>
                     ))}
@@ -835,123 +799,193 @@ const AdminGenerator = () => {
                 </Select>
               </Field>
             </div>
+
+            {/* 예상 화용 부담도 (파생) */}
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-[#EAE4D2] bg-background px-3 py-2">
+              <span className="text-[11.5px] text-muted-foreground">↘ 참고</span>
+              <span className="text-[11.5px] text-muted-foreground">
+                <span className="mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#FBEFD9] text-[10px] font-medium text-[#7A4A0A]">4</span>
+                예상 화용 부담도
+              </span>
+              <span
+                className={[
+                  "rounded-full px-3 py-0.5 text-[11.5px] font-medium",
+                  burden.level === "low" && "bg-[#EAF3DE] text-[#3B6D11]",
+                  burden.level === "medium" && "bg-[#FAEEDA] text-[#854F0B]",
+                  burden.level === "high" && "bg-[#FCEBEB] text-[#A32D2D]",
+                ].filter(Boolean).join(" ")}
+              >
+                {burden.label}
+              </span>
+              <span className="ml-auto text-right text-[10.5px] leading-tight text-muted-foreground">
+                근거: {burden.reasons.join(" · ")}
+              </span>
+            </div>
+            <p className="mt-1.5 text-[10.5px] text-[#7A4A0A]/80">
+              참고용 파생 지표 · 검수 보조 · 이론적 정답 아님 (입력값·저장값 아님)
+            </p>
           </div>
 
-          {/* 도메인 */}
+          {/* 5. 언어 · 학습 · 상황 조건 */}
           <div>
-            <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
-              도메인
-            </h3>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              시나리오의 관계·상황 배경을 정하는 상위 분류입니다.
-            </p>
-            <div className="mt-2 flex gap-4">
-              {(Object.keys(DOMAIN) as Domain[]).map((d) => (
-                <label
-                  key={d}
-                  className="flex items-center gap-2 text-[13px] cursor-pointer"
+            <SectionTitle n={5} label="언어 · 학습 · 상황 조건" />
+            <div className="mt-2 grid grid-cols-3 gap-3">
+              <Field label="언어 방향">
+                <Select
+                  value={form.language_direction}
+                  onValueChange={(v) => update("language_direction", v as LanguageDirection)}
                 >
-                  <input
-                    type="radio"
-                    name="domain"
-                    value={d}
-                    checked={form.domain === d}
-                    onChange={() => {
-                      update("domain", d);
-                      if (d !== "work") {
-                        update("industry", "culture_content_media" as IndustrySector);
-                      }
-                    }}
-                    className="accent-[#1d2336]"
-                  />
-                  {DOMAIN[d]}
-                </label>
-              ))}
+                  <SelectTrigger className={formField}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(LANGUAGE_DIRECTION).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="학습자 수준">
+                <Select value={form.level} onValueChange={(v) => update("level", v as LearnerLevel)}>
+                  <SelectTrigger className={formField}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(LEVEL).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="채널 · 파생">
+                <Select
+                  value={form.channel}
+                  onValueChange={(v) => update("channel", v as ChannelUI)}
+                >
+                  <SelectTrigger className={formField}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {channelsForMode.map((c) => (
+                      <SelectItem key={c} value={c}>{CHANNEL_UI[c]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
             </div>
 
-            {form.domain === "work" && (
-              <div className="mt-4">
-                <Field label="산업 분야">
+            {/* 도메인 + 산업 */}
+            <div className="mt-3 grid grid-cols-[auto_1fr] gap-4 items-start">
+              <div>
+                <label className="text-[12px] text-muted-foreground">도메인</label>
+                <div className="mt-1.5 flex h-9 items-center gap-3">
+                  {(Object.keys(DOMAIN) as Domain[]).map((d) => (
+                    <label key={d} className="flex items-center gap-1.5 text-[13px] cursor-pointer">
+                      <input
+                        type="radio"
+                        name="domain"
+                        value={d}
+                        checked={form.domain === d}
+                        onChange={() => {
+                          update("domain", d);
+                          if (d !== "work") {
+                            update("industry", "culture_content_media" as IndustrySector);
+                          }
+                        }}
+                        className="accent-[#BA7517]"
+                      />
+                      {DOMAIN[d]}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              {form.domain === "work" && (
+                <div>
+                  <label className="text-[12px] text-muted-foreground">
+                    산업 분야 <span className="text-muted-foreground/70">· 직장만</span>
+                  </label>
                   <Select
                     value={form.industry}
                     onValueChange={(v) => update("industry", v as IndustrySector)}
                   >
-                    <SelectTrigger className={formField}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      side="bottom"
-                      sideOffset={4}
-                      avoidCollisions={false}
-                      className="max-h-72 overflow-y-auto z-50"
-                    >
+                    <SelectTrigger className={`mt-1.5 ${formField}`}><SelectValue /></SelectTrigger>
+                    <SelectContent className="max-h-72 overflow-y-auto z-50">
                       {Object.entries(INDUSTRY).map(([k, v]) => (
                         <SelectItem key={k} value={k}>{v}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </Field>
-                {/* 업무 기능 필드는 이번 메타데이터에서 제외. 내부 기본값(form.func)만 유지. */}
-              </div>
-            )}
-            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-              직장 도메인에서 사용되는 산업 배경입니다.
-            </p>
+                </div>
+              )}
+            </div>
+
+            {/* 복합 과제 (기존 payload 유지) */}
+            <div className="mt-3">
+              <Field label="복합 과제">
+                <Select
+                  value={form.complex_task}
+                  onValueChange={(v) => update("complex_task", v as ComplexTaskUI)}
+                >
+                  <SelectTrigger className={formField}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(COMPLEX_TASK_UI).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <p className="mt-1 text-[10.5px] text-muted-foreground">
+                “없음”은 단일 화행 과제일 때 사용합니다. · 학습자 수준별 후보 수: 입문 3 / 중급 5 / 고급 7 (현재 {LEVEL_CANDIDATES[form.level]}개)
+              </p>
+            </div>
           </div>
 
-
-
-          {/* 복잡도 조절 — 향후 복합 과제 고급 옵션으로 재분리 예정. 내부 기본값은 DEFAULT_FORM에서 유지. */}
-          {false && (
-            <div>
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8a857c]">
-                복잡도 조절
-              </h3>
-              <div className="mt-2 space-y-2.5">
-                <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.multi}
-                    onChange={(e) => update("multi", e.target.checked)}
-                    className="accent-[#1d2336]"
-                  />
-                  다중 이해관계자 포함
-                </label>
-                <Field label="근거 제시 수">
-                  <Select
-                    value={form.reasons}
-                    onValueChange={(v) => update("reasons", v as FormState["reasons"])}
-                  >
-                    <SelectTrigger className={`${formField} w-32`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["1", "2", "3"].map((n) => (
-                        <SelectItem key={n} value={n}>{n}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.coordination}
-                    onChange={(e) => update("coordination", e.target.checked)}
-                    className="accent-[#1d2336]"
-                  />
-                  조율·대안 표현 포함
-                </label>
-              </div>
-            </div>
-          )}
-
+          {/* HSK 배지 */}
           <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[11.5px] leading-relaxed text-[#5B5446]">
             <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-600 align-middle" />
             <span className="font-medium text-foreground">HSK 3.0 Source Bank 활용 중</span>
             <span className="ml-1 text-muted-foreground">
-              · 학습자 수준 급수(입문4/중급5/고급6) 이하 어휘를 참고 어휘로 프롬프트에 주입합니다. (강제 삽입이 아닌 난이도 참고이며, 실제 급수 준수 검증 로그는 다음 단계.)
+              · 중국어 원문/산출물 난이도를 학습자 HSK 수준(입문4·중급5·고급6)에 맞춰 조정합니다.
             </span>
+          </div>
+
+          {/* 6. 개요 후보 수 */}
+          <div>
+            <SectionTitle n={6} label="개요 후보 수" />
+            <div className="mt-2 flex gap-2">
+              {([1, 3, 5] as const).map((n) => {
+                const on = outlineCount === n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setOutlineCountSafe(n)}
+                    className={[
+                      "flex-1 h-9 rounded-md text-[13px] font-medium transition-colors",
+                      on
+                        ? "border-2 border-[#BA7517] bg-[#FBEFD9] text-[#7A4A0A]"
+                        : "border border-[#EAE4D2] bg-transparent text-muted-foreground hover:bg-muted",
+                    ].join(" ")}
+                  >
+                    {n}개
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 개요 생성 셸 (다음 단계에서 실제 API 연결) */}
+            <button
+              type="button"
+              onClick={() => setSeedsGenerated(true)}
+              disabled
+              title="다음 단계에서 활성화됩니다"
+              className="mt-2.5 w-full h-10 rounded-md border border-[#EAE4D2] bg-transparent text-[13px] text-muted-foreground cursor-not-allowed opacity-70"
+            >
+              🔎 상황 개요 {outlineCount}개 생성 <span className="text-[10.5px]">(다음 단계)</span>
+            </button>
+            <p className="mt-1.5 text-center text-[10.5px] text-muted-foreground">
+              개요를 먼저 확인하고, 선택한 것만 전체 시나리오로 생성됩니다
+            </p>
+
+            {seedsGenerated && (
+              <div className="mt-2 rounded-md border border-dashed border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[11px] text-muted-foreground">
+                개요 후보 UI는 아직 준비 중입니다.
+              </div>
+            )}
           </div>
 
           <Button
@@ -963,6 +997,7 @@ const AdminGenerator = () => {
           </Button>
 
         </section>
+
 
         {/* RIGHT — preview */}
         <section className="lg:col-span-3 rounded-lg border border-border bg-card p-5">
@@ -1016,7 +1051,7 @@ const AdminGenerator = () => {
 
             {!loading && aiResult && (
               <div className="space-y-5">
-                {form.mode === "batch" && batchItems && (
+                {outlineCount > 1 && batchItems && (
                   <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2">
                     <p className="text-[12.5px] font-medium text-[#5B5446]">
                       총 {batchItems.length}개의 시나리오가 생성 예정입니다.
@@ -1180,11 +1215,59 @@ const AdminGenerator = () => {
   );
 };
 
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+const Field = ({
+  label,
+  tone,
+  children,
+}: {
+  label: string;
+  tone?: "accent";
+  children: React.ReactNode;
+}) => (
   <div>
-    <label className="text-[12px] text-muted-foreground">{label}</label>
+    <label
+      className={[
+        "text-[12px] font-medium",
+        tone === "accent" ? "text-[#7A4A0A]" : "text-muted-foreground",
+      ].join(" ")}
+    >
+      {label}
+    </label>
     <div className="mt-1.5">{children}</div>
   </div>
 );
+
+const SectionTitle = ({
+  n,
+  label,
+  accent,
+  tone,
+}: {
+  n: number;
+  label: string;
+  accent?: string;
+  tone?: "accent";
+}) => (
+  <h3
+    className={[
+      "flex items-center gap-1.5 text-[12px] font-medium",
+      tone === "accent" ? "text-[#7A4A0A]" : "text-muted-foreground",
+    ].join(" ")}
+  >
+    <span
+      className={[
+        "inline-flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10.5px] font-semibold",
+        tone === "accent"
+          ? "bg-background text-[#7A4A0A]"
+          : "bg-[#FBEFD9] text-[#7A4A0A]",
+      ].join(" ")}
+    >
+      {n}
+    </span>
+    <span>{label}</span>
+    {accent && <span className="text-[#7A4A0A] font-normal">· {accent}</span>}
+  </h3>
+);
+
 
 export default AdminGenerator;
