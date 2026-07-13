@@ -524,6 +524,19 @@ const AdminGenerator = () => {
   const [outlineCount, setOutlineCount] = useState<1 | 3 | 5>(1);
   const [seedsGenerated, setSeedsGenerated] = useState(false);
 
+  // v8 two-step outline → select → final flow.
+  const [outlines, setOutlines] = useState<{ title: string; situation: string }[] | null>(null);
+  const [selectedOutlines, setSelectedOutlines] = useState<Set<number>>(new Set());
+  const [outlineLoading, setOutlineLoading] = useState(false);
+  const [outlineError, setOutlineError] = useState<string | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
+  const [finalResults, setFinalResults] = useState<
+    { title: string; ok: boolean; scenarioId?: string; error?: string; metaUpdate?: "ok" | "failed" }[]
+  | null>(null);
+  // Single-shot save: surfaces a non-fatal partial failure (row saved but the
+  // follow-up mode/language_direction update failed).
+  const [metaWarning, setMetaWarning] = useState<string | null>(null);
+
   // v9 UI-only — source acquisition mode. "ai" keeps current flow.
   // "manual" swaps the LLM-generated source_text with the user's own text
   // after the Edge Function returns (payload/columns unchanged).
@@ -539,12 +552,21 @@ const AdminGenerator = () => {
   const channelsForMode: ChannelUI[] =
     taskMode === "translation" ? ["email", "messenger"] : ["facetoface", "phone"];
 
+  // Clear any stale outline candidates when generation conditions change.
+  const resetOutlines = () => {
+    setOutlines(null);
+    setSelectedOutlines(new Set());
+    setOutlineError(null);
+    setFinalResults(null);
+    setSeedsGenerated(false);
+  };
+
   const setTaskModeSafe = (m: GenMode) => {
     setTaskMode(m);
     const allowed: ChannelUI[] =
       m === "translation" ? ["email", "messenger"] : ["facetoface", "phone"];
     if (!allowed.includes(form.channel)) update("channel", allowed[0]);
-    setSeedsGenerated(false);
+    resetOutlines();
   };
 
   const setOutlineCountSafe = (n: 1 | 3 | 5) => {
@@ -555,7 +577,115 @@ const AdminGenerator = () => {
       mode: n === 1 ? "single" : "batch",
       batchSize: (n === 1 ? "10" : String(n)) as FormState["batchSize"],
     }));
-    setSeedsGenerated(false);
+    resetOutlines();
+  };
+
+  // Shared request body for single-shot / outline / final calls.
+  const baseGenBody = () => ({
+    speech_act: SPEECH_ACT_UI_TO_INTERNAL[form.speech_act_ui],
+    genre: CHANNEL_TO_GENRE[form.channel],
+    level: form.level,
+    context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
+    domain: form.domain,
+    industry: form.domain === "work" ? form.industry : null,
+    func: null,
+    pdr_power: form.pdr_power,
+    pdr_distance: form.pdr_distance,
+    pdr_burden: form.pdr_burden,
+    multi: form.multi,
+    reasons: form.reasons,
+    coordination: form.coordination,
+    language_direction: form.language_direction,
+    mode: CHANNEL_TO_MODE[form.channel],
+    speech_act_ui: form.speech_act_ui,
+    channel_ui: form.channel,
+    complex_task_ui: form.complex_task,
+  });
+
+  // Follow-up (non-atomic) write of columns the save RPC does not populate.
+  const persistExtraColumns = async (scenarioId: string): Promise<"ok" | "failed"> => {
+    const { error } = await supabase
+      .from("scenarios")
+      .update({ mode: CHANNEL_TO_MODE[form.channel], language_direction: form.language_direction })
+      .eq("scenario_id", scenarioId);
+    if (error) console.error("persistExtraColumns (mode/language_direction) failed", error);
+    return error ? "failed" : "ok";
+  };
+
+  // Step 1: generate N lightweight outlines in a single call.
+  const generateOutlines = async () => {
+    setOutlineLoading(true);
+    resetOutlines();
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-scenario", {
+        body: { ...baseGenBody(), action: "outline", outline_count: outlineCount },
+      });
+      if (error) throw error;
+      const list = (data?.outlines ?? []) as { title: string; situation: string }[];
+      if (!Array.isArray(list) || list.length === 0) throw new Error(data?.error ?? "개요가 비어 있습니다.");
+      setOutlines(list);
+      setSelectedOutlines(new Set(list.map((_, i) => i))); // default: all selected (v8)
+      setSeedsGenerated(true);
+    } catch (e) {
+      setOutlineError((e as Error).message ?? "개요 생성에 실패했습니다.");
+    } finally {
+      setOutlineLoading(false);
+    }
+  };
+
+  const toggleOutline = (i: number) => {
+    setSelectedOutlines((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  };
+
+  // Step 2: for each SELECTED outline only, generate the full scenario and save.
+  const finalizeSelected = async () => {
+    if (!outlines || selectedOutlines.size === 0 || finalizing) return;
+    setFinalizing(true);
+    setFinalResults(null);
+    const indices = [...selectedOutlines].sort((a, b) => a - b);
+    const results: { title: string; ok: boolean; scenarioId?: string; error?: string; metaUpdate?: "ok" | "failed" }[] = [];
+    for (const i of indices) {
+      const outline = outlines[i];
+      const label = outline.title || `개요 #${i + 1}`;
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-scenario", {
+          body: { ...baseGenBody(), action: "final", selected_outline: outline },
+        });
+        if (error) throw error;
+        if (!data?.scenario) throw new Error(data?.error ?? "빈 응답을 받았습니다.");
+        const scenario = data.scenario as AiScenario;
+        const meta = data.meta as AiMeta;
+        const { data: savedId, error: saveErr } = await (supabase.rpc as any)("save_generated_scenario", {
+          p_payload: {
+            scenario,
+            meta,
+            form: {
+              speech_act: SPEECH_ACT_UI_TO_INTERNAL[form.speech_act_ui],
+              genre: CHANNEL_TO_GENRE[form.channel],
+              level: form.level,
+              context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
+              industry: form.domain === "work" ? form.industry : null,
+              func: form.func,
+              pdr_power: form.pdr_power,
+              pdr_distance: form.pdr_distance,
+              pdr_burden: form.pdr_burden,
+            },
+          },
+        });
+        if (saveErr) throw saveErr;
+        const metaUpdate = await persistExtraColumns(savedId as string);
+        results.push({ title: label, ok: true, scenarioId: savedId as string, metaUpdate });
+      } catch (e) {
+        results.push({ title: label, ok: false, error: (e as Error).message ?? "실패" });
+      }
+      setFinalResults([...results]);
+    }
+    setFinalizing(false);
   };
 
   const burden = computePragmaticBurden(
@@ -580,6 +710,7 @@ const AdminGenerator = () => {
     setSaved(false);
     setSavedScenarioId(null);
     setSaveError(null);
+    setMetaWarning(null);
     setBatchItems(null);
     try {
       const { data, error } = await supabase.functions.invoke("generate-scenario", {
@@ -642,6 +773,7 @@ const AdminGenerator = () => {
     if (!aiResult || !aiMeta || saving || saved) return;
     setSaving(true);
     setSaveError(null);
+    setMetaWarning(null);
     try {
       const { data, error } = await (supabase.rpc as any)("save_generated_scenario", {
         p_payload: {
@@ -662,6 +794,12 @@ const AdminGenerator = () => {
       });
       if (error) throw error;
       setSavedScenarioId(data as string);
+      const metaUpdate = await persistExtraColumns(data as string);
+      setMetaWarning(
+        metaUpdate === "failed"
+          ? "시나리오는 저장됐으나 mode·language_direction 후속 업데이트에 실패했습니다 (부분 실패). 아카이브에서 수동 보정이 필요합니다."
+          : null,
+      );
       setSaved(true);
     } catch (e) {
       console.error("save_generated_scenario failed", e);
@@ -793,7 +931,10 @@ const AdminGenerator = () => {
                   <button
                     key={sa}
                     type="button"
-                    onClick={() => update("speech_act_ui", sa)}
+                    onClick={() => {
+                      update("speech_act_ui", sa);
+                      resetOutlines();
+                    }}
                     className={[
                       "rounded-md py-2 px-1.5 text-center transition-colors leading-tight",
                       on
@@ -1018,23 +1159,98 @@ const AdminGenerator = () => {
               })}
             </div>
 
-            {/* 개요 생성 셸 (다음 단계에서 실제 API 연결) */}
+            {/* 개요 생성 (action:"outline" — 1회 호출로 N개 개요) */}
             <button
               type="button"
-              onClick={() => setSeedsGenerated(true)}
-              disabled
-              title="다음 단계에서 활성화됩니다"
-              className="mt-2.5 w-full h-10 rounded-md border border-[#EAE4D2] bg-transparent text-[13px] text-muted-foreground cursor-not-allowed opacity-70"
+              onClick={generateOutlines}
+              disabled={outlineLoading || finalizing || sourceMode === "manual"}
+              title={sourceMode === "manual" ? "직접 입력 모드에서는 개요 2단계를 사용하지 않습니다" : undefined}
+              className="mt-2.5 w-full h-10 rounded-md border border-[#EAE4D2] bg-transparent text-[13px] text-[#1d2336] hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
             >
-              🔎 상황 개요 {outlineCount}개 생성 <span className="text-[10.5px]">(다음 단계)</span>
+              🔎 {outlineLoading ? "개요 생성 중..." : `상황 개요 ${outlineCount}개 생성`}
             </button>
             <p className="mt-1.5 text-center text-[10.5px] text-muted-foreground">
               개요를 먼저 확인하고, 선택한 것만 전체 시나리오로 생성됩니다
             </p>
 
-            {seedsGenerated && (
-              <div className="mt-2 rounded-md border border-dashed border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[11px] text-muted-foreground">
-                개요 후보 UI는 아직 준비 중입니다.
+            {outlineError && (
+              <div className="mt-2 rounded-md border border-[#FCA5A5] bg-[#FEE2E2] px-3 py-2 text-[11.5px] text-[#991B1B]">
+                개요 생성 실패: {outlineError}
+              </div>
+            )}
+
+            {outlines && outlines.length > 0 && (
+              <div className="mt-2.5 space-y-1.5">
+                <div className="text-[11px] text-muted-foreground">
+                  목표 화행 <b className="text-[#7A4A0A]">{SPEECH_ACT_UI[form.speech_act_ui]}</b> · 개요 {outlines.length}개 · 체크한 것만 생성
+                </div>
+                {outlines.map((o, i) => {
+                  const on = selectedOutlines.has(i);
+                  return (
+                    <label
+                      key={i}
+                      className={[
+                        "flex items-start gap-2 rounded-md border px-3 py-2 text-[12.5px] cursor-pointer",
+                        on ? "border-[#BA7517] bg-[#FBEFD9]" : "border-[#EAE4D2] bg-transparent",
+                      ].join(" ")}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() => toggleOutline(i)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        <span className="font-medium text-[#1d2336]">{o.title || "(제목 없음)"}</span>
+                        {o.situation && (
+                          <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">
+                            {o.situation}
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })}
+                <Button
+                  onClick={finalizeSelected}
+                  disabled={finalizing || selectedOutlines.size === 0}
+                  className="w-full bg-[#1d2336] text-white hover:bg-[#1d2336]/90 disabled:opacity-60"
+                >
+                  ✨ {finalizing ? "생성·저장 중..." : `선택한 ${selectedOutlines.size}개 개요로 시나리오 생성`}
+                </Button>
+              </div>
+            )}
+
+            {finalResults && (
+              <div className="mt-2.5 space-y-1">
+                {finalResults.map((r, i) => (
+                  <div
+                    key={i}
+                    className={[
+                      "rounded-md border px-3 py-2 text-[11.5px]",
+                      r.ok
+                        ? "border-[#6EE7B7] bg-[#D1FAE5] text-[#065F46]"
+                        : "border-[#FCA5A5] bg-[#FEE2E2] text-[#991B1B]",
+                    ].join(" ")}
+                  >
+                    <span className="font-medium">{r.ok ? "✓" : "✗"} {r.title}</span>
+                    {r.ok && r.metaUpdate === "failed" && (
+                      <span className="mt-0.5 block text-[10.5px] text-[#92400E]">
+                        ⚠ 저장됨 — 단, mode·language_direction 후속 업데이트 실패 (부분 실패)
+                      </span>
+                    )}
+                    {!r.ok && r.error && <span className="mt-0.5 block text-[10.5px]">{r.error}</span>}
+                    {r.ok && r.scenarioId && (
+                      <span className="mt-0.5 block font-mono text-[10px] opacity-80">{r.scenarioId}</span>
+                    )}
+                  </div>
+                ))}
+                <Link
+                  to="/admin/archive"
+                  className="mt-1 inline-flex items-center gap-1 rounded-md border border-[#6EE7B7] bg-white px-2.5 py-1 text-[11.5px] font-medium text-[#065F46] hover:bg-[#ECFDF5]"
+                >
+                  시나리오 아카이브에서 확인 →
+                </Link>
               </div>
             )}
           </div>
@@ -1076,6 +1292,11 @@ const AdminGenerator = () => {
               <div className="mt-1 text-[11px] text-[#991B1B]/80">
                 한 단계라도 실패하면 전체가 롤백되어 고아 데이터는 남지 않습니다.
               </div>
+            </div>
+          )}
+          {metaWarning && (
+            <div className="mt-2 rounded-md border border-[#FCD34D] bg-[#FEF3C7] p-2.5 text-[11.5px] text-[#92400E]">
+              ⚠ {metaWarning}
             </div>
           )}
           <div className="mt-2.5">
