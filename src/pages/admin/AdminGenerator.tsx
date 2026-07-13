@@ -1215,11 +1215,59 @@ const AdminGenerator = () => {
   );
 };
 
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+const Field = ({
+  label,
+  tone,
+  children,
+}: {
+  label: string;
+  tone?: "accent";
+  children: React.ReactNode;
+}) => (
   <div>
-    <label className="text-[12px] text-muted-foreground">{label}</label>
+    <label
+      className={[
+        "text-[12px] font-medium",
+        tone === "accent" ? "text-[#7A4A0A]" : "text-muted-foreground",
+      ].join(" ")}
+    >
+      {label}
+    </label>
     <div className="mt-1.5">{children}</div>
   </div>
 );
+
+const SectionTitle = ({
+  n,
+  label,
+  accent,
+  tone,
+}: {
+  n: number;
+  label: string;
+  accent?: string;
+  tone?: "accent";
+}) => (
+  <h3
+    className={[
+      "flex items-center gap-1.5 text-[12px] font-medium",
+      tone === "accent" ? "text-[#7A4A0A]" : "text-muted-foreground",
+    ].join(" ")}
+  >
+    <span
+      className={[
+        "inline-flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10.5px] font-semibold",
+        tone === "accent"
+          ? "bg-background text-[#7A4A0A]"
+          : "bg-[#FBEFD9] text-[#7A4A0A]",
+      ].join(" ")}
+    >
+      {n}
+    </span>
+    <span>{label}</span>
+    {accent && <span className="text-[#7A4A0A] font-normal">· {accent}</span>}
+  </h3>
+);
+
 
 export default AdminGenerator;
