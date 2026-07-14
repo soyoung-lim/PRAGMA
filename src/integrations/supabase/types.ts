@@ -122,6 +122,131 @@ export type Database = {
         }
         Relationships: []
       }
+      curriculum_outlines: {
+        Row: {
+          created_at: string
+          domain: string
+          final_week: number | null
+          id: string
+          industry: string | null
+          language_direction: string
+          level: string
+          midterm_week: number | null
+          scenarios_per_week: number
+          semester_goal: string | null
+          status: string
+          target_speech_acts: string[]
+          title: string
+          updated_at: string
+          week_count: number
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          final_week?: number | null
+          id?: string
+          industry?: string | null
+          language_direction: string
+          level: string
+          midterm_week?: number | null
+          scenarios_per_week?: number
+          semester_goal?: string | null
+          status?: string
+          target_speech_acts?: string[]
+          title: string
+          updated_at?: string
+          week_count?: number
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          final_week?: number | null
+          id?: string
+          industry?: string | null
+          language_direction?: string
+          level?: string
+          midterm_week?: number | null
+          scenarios_per_week?: number
+          semester_goal?: string | null
+          status?: string
+          target_speech_acts?: string[]
+          title?: string
+          updated_at?: string
+          week_count?: number
+        }
+        Relationships: []
+      }
+      curriculum_weeks: {
+        Row: {
+          can_do: string[] | null
+          channel: string | null
+          competency_focus: string | null
+          created_at: string
+          curriculum_load_band: number | null
+          domain: string | null
+          id: string
+          industry: string | null
+          outline_id: string
+          pdr_distance: string | null
+          pdr_imposition: string | null
+          pdr_power: string | null
+          scenario_slots: number | null
+          speech_act: string | null
+          title: string | null
+          type: string
+          updated_at: string
+          week_no: number
+        }
+        Insert: {
+          can_do?: string[] | null
+          channel?: string | null
+          competency_focus?: string | null
+          created_at?: string
+          curriculum_load_band?: number | null
+          domain?: string | null
+          id?: string
+          industry?: string | null
+          outline_id: string
+          pdr_distance?: string | null
+          pdr_imposition?: string | null
+          pdr_power?: string | null
+          scenario_slots?: number | null
+          speech_act?: string | null
+          title?: string | null
+          type?: string
+          updated_at?: string
+          week_no: number
+        }
+        Update: {
+          can_do?: string[] | null
+          channel?: string | null
+          competency_focus?: string | null
+          created_at?: string
+          curriculum_load_band?: number | null
+          domain?: string | null
+          id?: string
+          industry?: string | null
+          outline_id?: string
+          pdr_distance?: string | null
+          pdr_imposition?: string | null
+          pdr_power?: string | null
+          scenario_slots?: number | null
+          speech_act?: string | null
+          title?: string | null
+          type?: string
+          updated_at?: string
+          week_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_weeks_outline_id_fkey"
+            columns: ["outline_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_outlines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_traces: {
         Row: {
           auth_user_id: string
