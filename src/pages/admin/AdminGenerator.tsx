@@ -11,6 +11,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  SPEECH_ACT_UI,
+  SPEECH_ACT_UI_EN,
+  LEVEL,
+  CHANNEL_TO_MODE,
+  PDR_POWER,
+  PDR_DISTANCE,
+  PDR_BURDEN,
+  PDR_POWER_SHORT,
+  PDR_DISTANCE_SHORT,
+  PDR_BURDEN_SHORT,
+  DOMAIN,
+  INDUSTRY,
+} from "@/lib/pragma/enums";
+import type {
+  SpeechActUI,
+  LearnerLevel,
+  LanguageDirection,
+  ChannelUI,
+  GenMode,
+  PdrPower,
+  PdrDistance,
+  PdrBurden,
+  Domain,
+  IndustrySector,
+} from "@/lib/pragma/enums";
 
 interface AiCandidate {
   candidate_text: string;
@@ -60,19 +86,7 @@ const CHALLENGE_KO: Record<string, string> = {
 
 type SpeechAct = "request" | "refusal";
 type Genre = "business_email" | "business_messenger" | "meeting_speech";
-type LearnerLevel = "beginner_intermediate" | "intermediate" | "advanced";
 type InteractionContext = "coordination" | "negotiation" | "follow_up";
-type PdrPower = "higher" | "equal" | "lower";
-type PdrDistance = "formal" | "close";
-type PdrBurden = "high" | "low";
-type IndustrySector =
-  | "trade_distribution"
-  | "IT_platform"
-  | "manufacturing"
-  | "tourism_hospitality"
-  | "education_research"
-  | "public_international_affairs"
-  | "culture_content_media";
 type BusinessFunction =
   | "overseas_sales"
   | "marketing_pr"
@@ -91,11 +105,6 @@ const GENRE: Record<Genre, string> = {
   business_messenger: "업무 메신저",
   meeting_speech: "업무 회의",
 };
-const LEVEL: Record<LearnerLevel, string> = {
-  beginner_intermediate: "입문 · HSK 4급",
-  intermediate: "중급 · HSK 5급",
-  advanced: "고급 · HSK 6급",
-};
 const LEVEL_CANDIDATES: Record<LearnerLevel, number> = {
   beginner_intermediate: 3,
   intermediate: 5,
@@ -105,79 +114,6 @@ const CONTEXT: Record<InteractionContext, string> = {
   coordination: "일정 조정",
   negotiation: "조건 협의",
   follow_up: "후속 확인",
-};
-const PDR_POWER: Record<PdrPower, string> = {
-  higher: "내가 낮음",
-  equal: "동등",
-  lower: "내가 높음",
-};
-const PDR_DISTANCE: Record<PdrDistance, string> = {
-  formal: "멂",
-  close: "가까움",
-};
-const PDR_BURDEN: Record<PdrBurden, string> = {
-  high: "높음",
-  low: "낮음",
-};
-const PDR_POWER_SHORT: Record<PdrPower, string> = {
-  higher: "P: 내가 낮음",
-  equal: "P: 동등",
-  lower: "P: 내가 높음",
-};
-const PDR_DISTANCE_SHORT: Record<PdrDistance, string> = {
-  formal: "D: 멂",
-  close: "D: 가까움",
-};
-const PDR_BURDEN_SHORT: Record<PdrBurden, string> = {
-  high: "R: 높음",
-  low: "R: 낮음",
-};
-
-// Industry display labels. UI-only remap onto the existing 7 enum keys
-// (no DB/schema change). Labels follow the new domain=직장 taxonomy.
-const INDUSTRY: Record<IndustrySector, string> = {
-  culture_content_media: "엔터테인먼트·미디어",
-  manufacturing: "뷰티·패션·커머스",
-  trade_distribution: "제조·글로벌 무역",
-  IT_platform: "IT·테크·플랫폼",
-  public_international_affairs: "바이오·의료·헬스케어",
-  tourism_hospitality: "관광·MICE",
-  education_research: "공공·교육·연구",
-};
-
-type Domain = "daily" | "school" | "work";
-const DOMAIN: Record<Domain, string> = {
-  daily: "일상",
-  school: "학교",
-  work: "직장",
-};
-
-// UI-only speech-act taxonomy (9). Maps onto the DB enum request|refusal so
-// scenarios still save. High-imposition acts (거절·불만·사과·반대) map to refusal.
-type SpeechActUI =
-  | "request" | "refusal" | "apology" | "thanks"
-  | "proposal" | "agreement" | "opposition" | "compliment" | "complaint";
-const SPEECH_ACT_UI: Record<SpeechActUI, string> = {
-  request: "요청",
-  refusal: "거절",
-  apology: "사과",
-  thanks: "감사",
-  proposal: "제안",
-  agreement: "동의",
-  opposition: "반대",
-  compliment: "칭찬",
-  complaint: "불만",
-};
-const SPEECH_ACT_UI_EN: Record<SpeechActUI, string> = {
-  request: "Request",
-  refusal: "Refusal",
-  apology: "Apology",
-  thanks: "Thanks",
-  proposal: "Suggestion",
-  agreement: "Agreement",
-  opposition: "Disagreement",
-  compliment: "Compliment",
-  complaint: "Complaint",
 };
 // Speech-act pragmatic burden weight (0=low, 1=mid, 2=high). Reference only.
 const SPEECH_ACT_WEIGHT: Record<SpeechActUI, number> = {
@@ -216,7 +152,6 @@ function computePragmaticBurden(
 
 
 // UI-only channel taxonomy (4). Maps onto Genre enum.
-type ChannelUI = "email" | "messenger" | "facetoface" | "phone";
 const CHANNEL_UI: Record<ChannelUI, string> = {
   email: "이메일",
   messenger: "메신저",
@@ -231,20 +166,11 @@ const CHANNEL_TO_GENRE: Record<ChannelUI, Genre> = {
 };
 
 // UI-only language direction (not persisted unless scenarios has column).
-type LanguageDirection = "ko_zh" | "zh_ko";
 const LANGUAGE_DIRECTION: Record<LanguageDirection, string> = {
   ko_zh: "한→중",
   zh_ko: "중→한",
 };
 
-// Derived mode from channel. email/messenger => translation, facetoface/phone => stt_interpreting.
-type GenMode = "translation" | "stt_interpreting";
-const CHANNEL_TO_MODE: Record<ChannelUI, GenMode> = {
-  email: "translation",
-  messenger: "translation",
-  facetoface: "stt_interpreting",
-  phone: "stt_interpreting",
-};
 const MODE_LABEL: Record<GenMode, string> = {
   translation: "번역",
   stt_interpreting: "통역",
