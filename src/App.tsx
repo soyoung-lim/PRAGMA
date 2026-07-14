@@ -19,6 +19,7 @@ import AdminPromptHarness from "./pages/admin/AdminPromptHarness.tsx";
 import AdminQuestionDesigner from "./pages/admin/AdminQuestionDesigner.tsx";
 import AdminYoutubeSources from "./pages/admin/AdminYoutubeSources.tsx";
 import AdminReview from "./pages/admin/AdminReview.tsx";
+import AdminCurriculum from "./pages/admin/AdminCurriculum.tsx";
 import AdminLearners from "./pages/admin/AdminLearners.tsx";
 import AdminReports from "./pages/admin/AdminReports.tsx";
 import AdminAnalytics from "./pages/admin/AdminAnalytics.tsx";
@@ -71,6 +72,7 @@ const App = () => (
           <Route path="/admin/youtube-sources" element={<AdminYoutubeSources />} />
           <Route path="/admin/archive" element={<AdminArchive />} />
           <Route path="/admin/generator" element={<AdminGenerator />} />
+          <Route path="/admin/curriculum" element={<AdminCurriculum />} />
           <Route path="/admin/prompt-harness" element={<AdminPromptHarness />} />
           <Route path="/admin/question-designer" element={<AdminQuestionDesigner />} />
           <Route path="/admin/review" element={<AdminReview />} />
