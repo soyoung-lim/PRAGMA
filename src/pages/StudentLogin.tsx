@@ -48,30 +48,48 @@ const StudentLogin = () => {
           로그인 후 바로 오늘의 학습을 시작할 수 있습니다.
         </p>
 
-        {/* 실제 로그인 경로 — 로컬·배포 모두 동작한다 */}
-        <button
-          type="button"
-          onClick={handleGoogle}
-          disabled={busy}
-          className="mt-8 w-full rounded-md border border-[#15202B] bg-white px-5 py-3 text-[15px] font-medium text-[#15202B] shadow-sm transition-colors hover:bg-[#15202B]/[0.04] disabled:opacity-60"
-        >
-          {busy ? "이동 중…" : "Google 계정으로 로그인"}
-        </button>
+        {IS_DEV ? (
+          <>
+            {/* 지금 실제로 동작하는 경로 — 가장 눈에 띄게 */}
+            <div className="mt-8 w-full rounded-xl border-2 border-[#FAD338] bg-[#FFFBEA] p-4">
+              <div className="text-[11.5px] font-bold text-[#B8860B]">시연·개발 환경</div>
+              <p className="mt-1 text-[13px] leading-relaxed text-foreground/80">
+                아래 버튼으로 로그인 없이 바로 학습 화면을 둘러볼 수 있습니다.
+              </p>
+              <button
+                type="button"
+                onClick={handleDevStub}
+                className="mt-3 w-full rounded-md bg-[#15202B] px-5 py-3 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#22303E]"
+              >
+                임시 학습자로 시작하기 →
+              </button>
+            </div>
 
-        {IS_DEV && (
-          <div className="mt-5 w-full rounded-xl border border-dashed border-[#EAE4D2] bg-[#FAF7EE] p-4">
-            <div className="text-[11.5px] font-bold text-[#B8860B]">개발·시연 전용</div>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
-              Google 계정 없이 학습 화면을 바로 둘러봅니다. 교수자 승인 절차를 건너뜁니다.
-            </p>
-            <button
-              type="button"
-              onClick={handleDevStub}
-              className="mt-3 w-full rounded-md bg-[#15202B] px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#22303E]"
-            >
-              임시 학습자로 시작하기 →
-            </button>
-          </div>
+            {/* Google — 인증까지는 되지만 아직 앱으로 복귀하지 못한다 */}
+            <div className="mt-4 w-full rounded-xl border border-[#EAE4D2] bg-white p-4">
+              <button
+                type="button"
+                onClick={handleGoogle}
+                disabled={busy}
+                className="w-full rounded-md border border-[#EAE4D2] bg-white px-5 py-2.5 text-[14px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 disabled:opacity-60"
+              >
+                {busy ? "이동 중…" : "Google 계정으로 로그인"}
+              </button>
+              <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+                Google 로그인은 <strong>준비 중</strong>입니다. 인증 서버 이전 작업이 끝나면
+                활성화됩니다. 지금은 위의 임시 학습자 버튼을 사용해 주세요.
+              </p>
+            </div>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={handleGoogle}
+            disabled={busy}
+            className="mt-8 w-full rounded-md border border-[#15202B] bg-white px-5 py-3 text-[15px] font-medium text-[#15202B] shadow-sm transition-colors hover:bg-[#15202B]/[0.04] disabled:opacity-60"
+          >
+            {busy ? "이동 중…" : "Google 계정으로 로그인"}
+          </button>
         )}
 
         <Link to="/" className="mt-6 text-sm text-muted-foreground hover:text-foreground">
