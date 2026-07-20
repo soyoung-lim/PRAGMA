@@ -1,0 +1,72 @@
+import { useNavigate } from "react-router-dom";
+import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
+import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
+import { COURSE_WEEKS } from "@/lib/mission/mockLearnerCourse";
+import { getWeekProgress, WEEK_REQUEST } from "@/lib/mission/mockWeek";
+
+// 15주 과정 — '어디까지 배웠는지'를 보여주는 거시 화면 (mock).
+// 요청 주차만 진입 가능. 셀·과제 유형 목록은 노출하지 않는다(그건 관리자 구조).
+
+const CourseOverview = () => {
+  const navigate = useNavigate();
+  const weekProg = getWeekProgress();
+
+  return (
+    <LearnerJourneyShell
+      headerRight={<span className="text-[12px] text-[#8899A6]">15주 과정</span>}
+    >
+      <div className="pb-20">
+        <h2 className="text-[18px] font-bold">15주 과정</h2>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          주요 화행을 단계적으로 배우고, 조건을 바꿔 적용하며, 가끔 실력을 확인합니다.
+        </p>
+        <ol className="mt-4 space-y-2">
+          {COURSE_WEEKS.map((row) => {
+            const isCurrent = row.status === "current";
+            return (
+              <li key={row.weekNo}>
+                <button
+                  type="button"
+                  disabled={!isCurrent}
+                  onClick={() => isCurrent && navigate(`/learner/course/week/${WEEK_REQUEST.weekNo}`)}
+                  className={[
+                    "flex w-full items-center gap-3 rounded-[10px] border px-4 py-3 text-left",
+                    isCurrent
+                      ? "border-[#FAD338] bg-[#FFF8DE] hover:bg-[#FDF2C8]"
+                      : "border-[#EAE4D2] bg-white",
+                    row.status === "locked" ? "opacity-60" : "",
+                  ].join(" ")}
+                >
+                  <span
+                    className={[
+                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12.5px] font-semibold",
+                      row.status === "done"
+                        ? "bg-[#15202B] text-white"
+                        : isCurrent
+                          ? "bg-[#FAD338] text-[#15202B]"
+                          : "border border-[#EAE4D2] text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    {row.status === "done" ? "✓" : row.weekNo}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14.5px] font-medium">{row.title}</span>
+                    <span className="block text-[11.5px] text-muted-foreground">{row.stageLabel}</span>
+                  </span>
+                  {isCurrent && (
+                    <span className="shrink-0 text-[12px] font-semibold text-[#B8860B]">
+                      진행 중 · {weekProg.done}/{weekProg.total} →
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+      <LearnerBottomNav />
+    </LearnerJourneyShell>
+  );
+};
+
+export default CourseOverview;
