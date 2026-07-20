@@ -19,12 +19,14 @@ const getCurrentWeek = (): number => 1;
  */
 type Stage =
   | "시작"
-  | "표현 화행"
-  | "지시 화행"
-  | "응답 화행"
+  | "1순환 저부담"
+  | "1순환 통합"
+  | "2순환 고부담"
   | "중간점검"
-  | "평가 화행"
-  | "복합 담화 과업"
+  | "3순환"
+  | "종합"
+  | "맥락화"
+  | "프로젝트"
   | "기말 종합";
 
 type RoadmapItem = {
@@ -33,22 +35,24 @@ type RoadmapItem = {
   topic: string;
 };
 
+// 시나리오 매트릭스 설계확정(2026-07-18)의 15주 배치와 동일 —
+// mockLearnerCourse.ts(COURSE_WEEKS)와 어긋나지 않게 유지할 것.
 const ROADMAP: RoadmapItem[] = [
-  { week: 1, stage: "시작", topic: "오리엔테이션" },
-  { week: 2, stage: "표현 화행", topic: "감사 표현" },
-  { week: 3, stage: "표현 화행", topic: "칭찬·칭찬 응답" },
-  { week: 4, stage: "지시 화행", topic: "요청 표현" },
-  { week: 5, stage: "지시 화행", topic: "제안 표현" },
-  { week: 6, stage: "응답 화행", topic: "수락·동의 표현" },
-  { week: 7, stage: "응답 화행", topic: "거절 표현" },
-  { week: 8, stage: "중간점검", topic: "판단·수정 종합" },
-  { week: 9, stage: "표현 화행", topic: "사과 표현" },
-  { week: 10, stage: "평가 화행", topic: "불만·불만 대응" },
-  { week: 11, stage: "응답 화행", topic: "반대·의견 정당화" },
-  { week: 12, stage: "응답 화행", topic: "고부담 거절" },
-  { week: 13, stage: "지시 화행", topic: "고부담 요청" },
-  { week: 14, stage: "복합 담화 과업", topic: "입장 조율·조건 협상" },
-  { week: 15, stage: "기말 종합", topic: "최종 수행·성장 리포트" },
+  { week: 1, stage: "시작", topic: "오리엔테이션·진단" },
+  { week: 2, stage: "1순환 저부담", topic: "요청" },
+  { week: 3, stage: "1순환 저부담", topic: "감사·칭찬과 대응" },
+  { week: 4, stage: "1순환 저부담", topic: "초대·공동행동 권유" },
+  { week: 5, stage: "1순환 통합", topic: "저부담 화행 도메인 전환" },
+  { week: 6, stage: "2순환 고부담", topic: "거절" },
+  { week: 7, stage: "2순환 고부담", topic: "사과" },
+  { week: 8, stage: "중간점검", topic: "화행 6종 수행평가" },
+  { week: 9, stage: "2순환 고부담", topic: "불만 제기" },
+  { week: 10, stage: "2순환 고부담", topic: "제안·조언" },
+  { week: 11, stage: "3순환", topic: "반대·이견 제시" },
+  { week: 12, stage: "종합", topic: "화행 연쇄 — 협상" },
+  { week: 13, stage: "맥락화", topic: "산업 맥락화" },
+  { week: 14, stage: "프로젝트", topic: "종합 프로젝트·화용 지문 리포트" },
+  { week: 15, stage: "기말 종합", topic: "통합 시뮬레이션 평가" },
 ];
 
 const TODAY = {
@@ -66,12 +70,14 @@ const TODAY = {
 
 const STAGE_STYLE: Record<Stage, string> = {
   "시작": "bg-muted text-muted-foreground",
-  "표현 화행": "bg-muted text-foreground/80",
-  "지시 화행": "bg-muted text-foreground/80",
-  "응답 화행": "bg-muted text-foreground/80",
+  "1순환 저부담": "bg-muted text-foreground/80",
+  "1순환 통합": "bg-muted text-foreground/80",
+  "2순환 고부담": "bg-muted text-foreground/80",
   "중간점검": "bg-destructive/10 text-destructive border border-destructive/30",
-  "평가 화행": "bg-muted text-foreground/80",
-  "복합 담화 과업": "bg-muted text-foreground/80",
+  "3순환": "bg-muted text-foreground/80",
+  "종합": "bg-muted text-foreground/80",
+  "맥락화": "bg-muted text-foreground/80",
+  "프로젝트": "bg-muted text-foreground/80",
   "기말 종합": "bg-destructive/10 text-destructive border border-destructive/30",
 };
 
