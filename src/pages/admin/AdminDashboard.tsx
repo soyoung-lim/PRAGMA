@@ -261,7 +261,7 @@ const AdminDashboard = () => {
 
   const approvedN = approved.value ?? 0;
 
-  const speechActs = ["감사", "칭찬", "사과", "요청", "제안", "동의", "반대", "거절", "불만"];
+  const speechActs = ["감사", "칭찬", "사과", "요청", "제안", "초대", "반대", "거절", "불만"];
   const errorTypes = [
     "직접성 조절 실패",
     "부담 완화 부족",
