@@ -41,14 +41,30 @@ function writeDevStub(stub: DevStub | null) {
   else sessionStorage.removeItem(DEV_STUB_KEY);
 }
 
-export function devStubSignIn(email = "dev.learner@example.com") {
+/**
+ * DEV 전용 임시 학습자 로그인.
+ * 기본은 승인 대기 상태(승인 플로우 테스트용). `ready: true`를 주면 승인·프로필
+ * 완료 상태로 만들어 학습 화면까지 한 번에 들어간다(시연용).
+ */
+export function devStubSignIn(
+  email = "dev.learner@example.com",
+  opts?: { ready?: boolean },
+) {
   if (!IS_DEV) return;
   const existing = readDevStub();
-  const stub: DevStub = existing ?? {
+  const base: DevStub = existing ?? {
     user_id: `dev-${crypto.randomUUID()}`,
     email,
     approval_status: APPROVAL_STATUS.PENDING,
   };
+  const stub: DevStub = opts?.ready
+    ? {
+        ...base,
+        approval_status: APPROVAL_STATUS.APPROVED,
+        profile_completed: true,
+        full_name: base.full_name ?? "임시 학습자",
+      }
+    : base;
   writeDevStub(stub);
   window.dispatchEvent(new Event("dev-stub-changed"));
 }
