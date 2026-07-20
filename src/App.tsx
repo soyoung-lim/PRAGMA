@@ -5,12 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import ScenarioSelect from "./pages/ScenarioSelect.tsx";
-import Placeholder from "./pages/Placeholder.tsx";
-import Pdr from "./pages/Pdr.tsx";
-import Translate from "./pages/Translate.tsx";
-import Finalize from "./pages/Finalize.tsx";
-import Dashboard from "./pages/Dashboard.tsx";
 import AdminArchive from "./pages/AdminArchive.tsx";
 import AdminCorpus from "./pages/admin/AdminCorpus.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
@@ -33,6 +27,11 @@ import Home from "./pages/Home.tsx";
 import Roadmap from "./pages/Roadmap.tsx";
 import WorkflowPreview from "./pages/WorkflowPreview.tsx";
 import MissionShell from "./pages/MissionShell.tsx";
+import LearnerHome from "./pages/learner/LearnerHome.tsx";
+import CourseOverview from "./pages/learner/CourseOverview.tsx";
+import WeekDetail from "./pages/learner/WeekDetail.tsx";
+import LearnerRecords from "./pages/learner/LearnerRecords.tsx";
+import PracticeMission from "./pages/learner/PracticeMission.tsx";
 import EntryTaskMode from "./pages/EntryTaskMode.tsx";
 import EntryLanguageDirection from "./pages/EntryLanguageDirection.tsx";
 import EntryUnavailable from "./pages/EntryUnavailable.tsx";
@@ -59,16 +58,19 @@ const App = () => (
           <Route path="/home" element={<Home />} />
           <Route path="/roadmap" element={<RequireApproved><Roadmap /></RequireApproved>} />
           <Route path="/workflow-preview" element={<WorkflowPreview />} />
-          {/* 5단계 학습 셸 목업 (RequireApproved 미적용 — 목업 확인 전용) */}
-          <Route path="/mission" element={<MissionShell />} />
+          <Route path="/learner/home" element={<RequireApproved><LearnerHome /></RequireApproved>} />
+          <Route path="/learner/course" element={<RequireApproved><CourseOverview /></RequireApproved>} />
+          <Route path="/learner/course/week/2" element={<RequireApproved><WeekDetail /></RequireApproved>} />
+          <Route path="/learner/records" element={<RequireApproved><LearnerRecords /></RequireApproved>} />
+          {/* legacy 판단형 셸 — 연구/앵커 후보로 보관. 개발 환경에서만 접근 가능. */}
+          <Route
+            path="/mission-legacy"
+            element={import.meta.env.DEV ? <MissionShell /> : <Navigate to="/scenario" replace />}
+          />
           <Route path="/entry/task-mode" element={<RequireApproved><EntryTaskMode /></RequireApproved>} />
           <Route path="/entry/language-direction" element={<RequireApproved><EntryLanguageDirection /></RequireApproved>} />
           <Route path="/entry/unavailable" element={<RequireApproved><EntryUnavailable /></RequireApproved>} />
-          <Route path="/scenario" element={<RequireApproved><ScenarioSelect /></RequireApproved>} />
-          <Route path="/pdr" element={<RequireApproved><Pdr /></RequireApproved>} />
-          <Route path="/translate" element={<RequireApproved><Translate /></RequireApproved>} />
-          <Route path="/finalize" element={<RequireApproved><Finalize /></RequireApproved>} />
-          <Route path="/dashboard" element={<RequireApproved><Dashboard /></RequireApproved>} />
+          <Route path="/scenario" element={<RequireApproved><PracticeMission /></RequireApproved>} />
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/corpus" element={<AdminCorpus />} />
