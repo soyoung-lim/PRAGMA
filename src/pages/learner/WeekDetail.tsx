@@ -64,13 +64,21 @@ const WeekDetail = () => {
           </p>
         </section>
 
-        {/* ① 처음 배우기 (도입 아크 — 화면 미구현, mock 완료) */}
+        {/* ① 처음 배우기 (도입 아크) — 이수 여부는 featureState로 판정 */}
         <StageCard
           no="①"
           label={w.stages.intro.label}
           desc={w.stages.intro.desc}
-          status={w.stages.intro.mockCompleted ? "완료" : "시작 전"}
-        />
+          status={feature.introExplanationCompleted ? "완료" : "시작 전"}
+        >
+          <button
+            type="button"
+            onClick={() => navigate(`/learner/course/week/${w.weekNo}/intro`)}
+            className="mt-3 w-full rounded-md bg-[#15202B] px-3 py-2.5 text-[13px] font-medium text-white"
+          >
+            {feature.introExplanationCompleted ? "다시 보기" : "시작"}
+          </button>
+        </StageCard>
 
         {/* ② 직접 연습 */}
         <StageCard
