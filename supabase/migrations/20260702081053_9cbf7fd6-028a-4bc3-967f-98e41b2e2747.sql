@@ -1,4 +1,7 @@
--- Recreate the missing signup trigger (lost during remix)
+-- Recreate the missing signup trigger (lost during remix).
+-- Idempotent: 20260607082321 already creates this trigger, so on a database
+-- that replays the full chain (e.g. a fresh project) it is still present here.
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

@@ -1,8 +1,37 @@
-project_id = "jerifdqjrwgpgkxoyayb"
+project_id = "tlnjxagqwvefeqdagtkq"
+
+[auth]
+# Site URL은 redirect_to가 허용목록에 없을 때의 폴백이다.
+site_url = "http://localhost:8080"
+# ⚠️ 이 허용목록을 편집할 수 없었던 것이 Lovable 관리형을 벗어난 이유다.
+# 로컬·Railway 양쪽을 명시해야 OAuth가 앱으로 되돌아온다.
+additional_redirect_urls = [
+  "http://localhost:8080/**",
+  "https://l2-pragmatics.up.railway.app/**",
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# 이메일 확인 유지 — 남의 주소로 가입하는 것을 막는다.
+enable_confirmations = true
+# config push는 명시하지 않은 값을 CLI 기본값으로 되돌린다.
+# 아래 둘을 비워두면 발송 제한이 1분 → 1초로 풀리고 OTP가 6자리로 줄어든다.
+max_frequency = "1m0s"
+otp_length = 8
+otp_expiry = 3600
+
+# 자격증명은 저장소에 넣지 않는다 — config push가 환경변수에서 읽는다.
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+skip_nonce_check = false
 
 [functions.generate-scenario]
 verify_jwt = true
 
 [functions.youtube-transcript]
 verify_jwt = false
-
