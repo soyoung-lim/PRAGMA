@@ -61,6 +61,11 @@ const LearnerHome = () => {
               {WEEK_REQUEST.weekNo}주차 · {WEEK_REQUEST.speechAct} · 약 {today.minutes}분
             </p>
           )}
+          {!today.allDone && (
+            <p className="mt-1.5 text-[12px] text-[#8899A6]">
+              현재 위치 · {today.mode === "transfer" ? "상황 바꿔보기" : "직접 연습"}
+            </p>
+          )}
           <p className="mt-2 text-[12.5px] text-[#8899A6]">└ {today.reason}</p>
           {!today.allDone && (
             <Button

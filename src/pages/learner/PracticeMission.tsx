@@ -358,10 +358,31 @@ const PracticeMission = () => {
             ? "마무리"
             : "다음";
 
+  // breadcrumb — 학습자가 15주 중 어디에서 무엇을 수행 중인지 항상 보이게 (4층 UI LOCK)
+  const practiceItem = WEEK_REQUEST.stages.practice.items.find((i) => i.missionId === missionId);
+  const crumbActivity = mode === "transfer" ? "상황 바꿔보기" : "직접 연습";
+  const crumbDetail =
+    mode === "transfer" ? TRANSFER_CS.changedDimension + " 변경" : practiceItem?.label ?? "";
+
   return (
     <LearnerJourneyShell
       headerRight={<span className="text-[12px] text-[#8899A6]">{PRACTICE_SCENARIO.speechAct} · {PRACTICE_SCENARIO.channel}</span>}
     >
+      {/* breadcrumb */}
+      <nav aria-label="학습 위치" className="mb-3 text-[12px] text-muted-foreground">
+        <span className="font-medium text-foreground">
+          {WEEK_REQUEST.weekNo}주차 {WEEK_REQUEST.speechAct}
+        </span>
+        <span aria-hidden className="mx-1.5">›</span>
+        {crumbActivity}
+        {crumbDetail && (
+          <>
+            <span aria-hidden className="mx-1.5">›</span>
+            {crumbDetail}
+          </>
+        )}
+      </nav>
+
       {/* 학습자 진행바 — quick 5단계 / transfer 6단계 */}
       <ol className="flex gap-1.5">
         {steps.map((s, i) => {
