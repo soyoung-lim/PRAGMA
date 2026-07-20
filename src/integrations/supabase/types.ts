@@ -758,7 +758,16 @@ export type Database = {
         | "revise_required"
         | "revised"
         | "approved"
-      speech_act: "request" | "refusal"
+      speech_act:
+        | "request"
+        | "refusal"
+        | "apology"
+        | "thanks"
+        | "proposal"
+        | "agreement"
+        | "opposition"
+        | "compliment"
+        | "complaint"
       usage_assignment:
         | "archived_only"
         | "coursework_published"
@@ -901,7 +910,17 @@ export const Constants = {
         "revised",
         "approved",
       ],
-      speech_act: ["request", "refusal"],
+      speech_act: [
+        "request",
+        "refusal",
+        "apology",
+        "thanks",
+        "proposal",
+        "agreement",
+        "opposition",
+        "compliment",
+        "complaint",
+      ],
       usage_assignment: [
         "archived_only",
         "coursework_published",

@@ -14,7 +14,13 @@ const jsonHeaders = {
   'Content-Type': 'application/json',
 }
 
-const SPEECH_ACT_KO: Record<string, string> = { request: '요청', refusal: '거절' }
+// Full 9-act labels (2026-07-19): input.speech_act now carries the true act
+// (DB enum extended), no longer collapsed to request/refusal.
+const SPEECH_ACT_KO: Record<string, string> = {
+  request: '요청', refusal: '거절', apology: '사과', thanks: '감사',
+  proposal: '제안', agreement: '초대', opposition: '반대',
+  compliment: '칭찬', complaint: '불만',
+}
 const GENRE_KO: Record<string, string> = {
   business_email: '업무 이메일',
   business_messenger: '업무 메신저',
@@ -37,12 +43,14 @@ const PDR_POWER_KO: Record<string, string> = {
   lower: '내가 상대보다 우위',
 }
 const PDR_DISTANCE_KO: Record<string, string> = {
-  formal: '격식·소원(멀다)',
-  close: '친밀(가깝다)',
+  close: '친밀(사적 관계, 가깝다)',
+  acquaintance: '지인(서로 알지만 개인적 관계는 없음, 다소 어색)',
+  formal: '초면(상호작용 이력 없음, 멀다)',
 }
 const PDR_BURDEN_KO: Record<string, string> = {
-  high: '높음',
   low: '낮음',
+  mid: '중간',
+  high: '높음',
 }
 const INDUSTRY_KO: Record<string, string> = {
   trade_distribution: '제조·글로벌 무역',
@@ -103,7 +111,7 @@ interface GenInput {
 // UI-level labels — richer than the collapsed internal enums.
 const SPEECH_ACT_UI_KO: Record<string, string> = {
   request: '요청', refusal: '거절', apology: '사과', thanks: '감사',
-  proposal: '제안', agreement: '동의', opposition: '반대',
+  proposal: '제안', agreement: '초대', opposition: '반대',
   compliment: '칭찬', complaint: '불만',
 }
 const CHANNEL_UI_KO: Record<string, string> = {

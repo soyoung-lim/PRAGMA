@@ -118,7 +118,7 @@ const CONTEXT: Record<InteractionContext, string> = {
 // Speech-act pragmatic burden weight (0=low, 1=mid, 2=high). Reference only.
 const SPEECH_ACT_WEIGHT: Record<SpeechActUI, number> = {
   request: 1, refusal: 2, apology: 1, thanks: 0,
-  proposal: 1, agreement: 0, opposition: 2, compliment: 0, complaint: 2,
+  proposal: 1, agreement: 1, opposition: 2, compliment: 0, complaint: 2,
 };
 const SPEECH_ACT_UI_TO_INTERNAL: Record<SpeechActUI, SpeechAct> = {
   request: "request",
@@ -138,15 +138,17 @@ function computePragmaticBurden(
   sa: SpeechActUI, p: PdrPower, d: PdrDistance, r: PdrBurden
 ): { level: BurdenLevel; label: string; reasons: string[] } {
   const pw = p === "equal" ? 0 : 1;
-  const dw = d === "formal" ? 1 : 0;
-  const rw = r === "high" ? 1 : 0;
+  const dw = d === "formal" ? 1 : d === "acquaintance" ? 0.5 : 0;
+  const rw = r === "high" ? 1 : r === "mid" ? 0.5 : 0;
   const score = SPEECH_ACT_WEIGHT[sa] + pw + dw + rw;
   const level: BurdenLevel = score <= 1 ? "low" : score <= 3 ? "medium" : "high";
   const label = level === "low" ? "낮음" : level === "medium" ? "보통" : "높음";
   const reasons: string[] = [`${SPEECH_ACT_UI[sa]} 화행`];
   if (pw) reasons.push("지위 차 있음");
-  if (dw) reasons.push("관계가 멂");
-  if (rw) reasons.push("부담 높음");
+  if (d === "formal") reasons.push("초면 관계");
+  else if (d === "acquaintance") reasons.push("지인 수준 관계");
+  if (r === "high") reasons.push("부담 높음");
+  else if (r === "mid") reasons.push("부담 중간");
   return { level, label, reasons };
 }
 
@@ -475,8 +477,9 @@ const AdminGenerator = () => {
     setForm((p) => ({ ...p, [k]: v }));
 
   // Channels filtered by task mode.
+  // phone hidden per media-3 LOCK (대면구어·위챗·이메일). Enum key kept for stored data.
   const channelsForMode: ChannelUI[] =
-    taskMode === "translation" ? ["email", "messenger"] : ["facetoface", "phone"];
+    taskMode === "translation" ? ["email", "messenger"] : ["facetoface"];
 
   // Clear any stale outline candidates when generation conditions change.
   const resetOutlines = () => {
@@ -490,7 +493,7 @@ const AdminGenerator = () => {
   const setTaskModeSafe = (m: GenMode) => {
     setTaskMode(m);
     const allowed: ChannelUI[] =
-      m === "translation" ? ["email", "messenger"] : ["facetoface", "phone"];
+      m === "translation" ? ["email", "messenger"] : ["facetoface"];
     if (!allowed.includes(form.channel)) update("channel", allowed[0]);
     resetOutlines();
   };
@@ -508,7 +511,9 @@ const AdminGenerator = () => {
 
   // Shared request body for single-shot / outline / final calls.
   const baseGenBody = () => ({
-    speech_act: SPEECH_ACT_UI_TO_INTERNAL[form.speech_act_ui],
+    // True 9-value act (2026-07-19 fix): DB enum extended to 9; the old 9→2
+    // collapse (SPEECH_ACT_UI_TO_INTERNAL) is no longer applied at write time.
+    speech_act: form.speech_act_ui,
     genre: CHANNEL_TO_GENRE[form.channel],
     level: form.level,
     context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
@@ -591,7 +596,7 @@ const AdminGenerator = () => {
             scenario,
             meta,
             form: {
-              speech_act: SPEECH_ACT_UI_TO_INTERNAL[form.speech_act_ui],
+              speech_act: form.speech_act_ui,
               genre: CHANNEL_TO_GENRE[form.channel],
               level: form.level,
               context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
@@ -641,7 +646,7 @@ const AdminGenerator = () => {
     try {
       const { data, error } = await supabase.functions.invoke("generate-scenario", {
         body: {
-          speech_act: SPEECH_ACT_UI_TO_INTERNAL[form.speech_act_ui],
+          speech_act: form.speech_act_ui,
           genre: CHANNEL_TO_GENRE[form.channel],
           level: form.level,
           context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
@@ -706,7 +711,7 @@ const AdminGenerator = () => {
           scenario: aiResult,
           meta: aiMeta,
           form: {
-            speech_act: SPEECH_ACT_UI_TO_INTERNAL[form.speech_act_ui],
+            speech_act: form.speech_act_ui,
             genre: CHANNEL_TO_GENRE[form.channel],
             level: form.level,
             context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],

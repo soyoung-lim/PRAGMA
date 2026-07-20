@@ -7,12 +7,14 @@ positive_definition · exclusion_rule · examples 세 열은 코딩 매뉴얼 �
 ## 1. speech_act — core
 | column | internal_key | ko_label | en_label | positive_definition | exclusion_rule | examples | used_in | status | derived_rule | role |
 |---|---|---|---|---|---|---|---|---|---|---|
+> ⚠ 9→2 붕괴 수리 (2026-07-19): 종전에는 저장 시 `SPEECH_ACT_UI_TO_INTERNAL`로 9화행을 request/refusal 2치로 접어 `scenarios.speech_act`에 기록했다(진짜 화행은 speech_act_ui에만). 현재는 **DB enum을 9치로 확장**(`20260719153000` 마이그레이션)하고 저장 시 진짜 화행을 기록한다. 붕괴 맵은 legacy 데모(buildScenario)에서만 잔존. **마이그레이션 이전에 저장된 행의 speech_act는 근사값**임을 데이터 분석 시 유의.
+
 | speech_act | request | 요청 | request | TODO | TODO | TODO | AdminGenerator.tsx, generate-scenario/index.ts, scenarios.speech_act, decision_traces.speech_act | frozen | — | core |
 | speech_act | refusal | 거절 | refusal | TODO | TODO | TODO | 동상 | frozen | — | core |
 | speech_act | apology | 사과 | apology | TODO | TODO | TODO | 동상 | frozen | — | core |
 | speech_act | thanks | 감사 | thanks | TODO | TODO | TODO | AdminGenerator.tsx, generate-scenario/index.ts | frozen | — | core |
 | speech_act | proposal | 제안 | proposal | TODO | TODO | TODO | 동상 | frozen | — | core |
-| speech_act | agreement | 동의 | agreement | TODO | TODO | TODO | 동상 | frozen | — | core |
+| speech_act | agreement | 초대 | invitation | TODO | TODO | TODO | 동상 | frozen(key) / label 변경 | 표시 라벨 "초대"(개념=초대·공동행동 권유); 옛 라벨 동의는 폐기(→opposition 대응전략으로 흡수) | core |
 | speech_act | opposition | 반대 | opposition | TODO | TODO | TODO | 동상 | frozen | — | core |
 | speech_act | compliment | 칭찬 | compliment | TODO | TODO | TODO | 동상 | frozen | — | core |
 | speech_act | complaint | 불만 | complaint | TODO | TODO | TODO | 동상 | frozen | — | core |
@@ -27,16 +29,21 @@ positive_definition · exclusion_rule · examples 세 열은 코딩 매뉴얼 �
 ## 3. distance — core
 | column | internal_key | ko_label | en_label | positive_definition | exclusion_rule | examples | used_in | status | derived_rule | role |
 |---|---|---|---|---|---|---|---|---|---|---|
-| distance | formal¹ | 격식·소원(멀다) | distant | TODO | TODO | TODO | AdminGenerator.tsx (pdr_distance), generate-scenario/index.ts (PDR_DISTANCE_KO), scenarios.scenario_d | frozen | — | core |
-| distance | close | 친밀(가깝다) | close | TODO | TODO | TODO | 동상 | frozen | — | core |
+| distance | close | 친밀 (사적 관계) | close | 사적 관계 있음 | TODO | TODO | AdminGenerator.tsx (pdr_distance), generate-scenario/index.ts (PDR_DISTANCE_KO), scenarios.scenario_d | frozen | — | core |
+| distance | acquaintance² | 지인 (알지만 개인적 관계 없음) | acquaintance | 상호 인지하나 개인적 관계 없음 | TODO | TODO | 동상 | added 2026-07-19 | — | core |
+| distance | formal¹ | 초면 (멂) | distant | 상호작용 이력 0 | TODO | TODO | 동상 | frozen | — | core |
 
 > ¹ 내부키 `formal`은 역사적 명명이며, 본 연구에서 D는 격식(formality)이 아니라 사회적 거리(social distance)로 조작 정의한다. 격식 차원은 channel이 담지한다. → 마이그레이션 후 `distant`로 교체 예정.
+> ² D 2치→3치 확장 (2026-07-19, 시나리오 매트릭스 LOCK: 친밀·지인·초면). 조작 정의 = 상호작용 이력 기준.
 
 ## 4. imposition — core
 | column | internal_key | ko_label | en_label | positive_definition | exclusion_rule | examples | used_in | status | derived_rule | role |
 |---|---|---|---|---|---|---|---|---|---|---|
-| imposition | high | 높음 | high | TODO | TODO | TODO | AdminGenerator.tsx (pdr_burden), generate-scenario/index.ts (PDR_BURDEN_KO), scenarios.scenario_r | frozen | — | core |
-| imposition | low | 낮음 | low | TODO | TODO | TODO | 동상 | frozen | — | core |
+| imposition | low | 낮음 | low | TODO | TODO | TODO | AdminGenerator.tsx (pdr_burden), generate-scenario/index.ts (PDR_BURDEN_KO), scenarios.scenario_r | frozen | — | core |
+| imposition | mid³ | 중간 | mid | TODO | TODO | TODO | 동상 | added 2026-07-19 | — | core |
+| imposition | high | 높음 | high | TODO | TODO | TODO | 동상 | frozen | — | core |
+
+> ³ R 2치→3치 확장 (2026-07-19, 매트릭스 LOCK: 저·중·고).
 
 ## 5. channel — covariate
 | column | internal_key | ko_label | en_label | positive_definition | exclusion_rule | examples | used_in | status | derived_rule | role |
@@ -44,7 +51,7 @@ positive_definition · exclusion_rule · examples 세 열은 코딩 매뉴얼 �
 | channel | email | 이메일 | email | TODO | TODO | TODO | AdminGenerator.tsx (ChannelUI), generate-scenario/index.ts (CHANNEL_UI_KO), scenarios.genre | frozen | — | covariate |
 | channel | messenger | 메신저 | messenger | TODO | TODO | TODO | 동상 | frozen | — | covariate |
 | channel | facetoface | 대면 | face-to-face | TODO | TODO | TODO | 동상 | frozen | — | covariate |
-| channel | phone | 전화 | phone | TODO | TODO | TODO | 동상 | frozen | — | covariate |
+| channel | phone | 전화 | phone | TODO | TODO | TODO | 동상 | frozen(key) / **UI 비노출 (2026-07-19)** | 매체3 LOCK(대면·위챗·이메일)에 따라 생성 UI에서 숨김. 키·기존 데이터는 보존 | covariate |
 
 ## 6. domain — covariate
 | column | internal_key | ko_label | en_label | positive_definition | exclusion_rule | examples | used_in | status | derived_rule | role |
@@ -96,8 +103,8 @@ positive_definition · exclusion_rule · examples 세 열은 코딩 매뉴얼 �
 ## 12. act_position — derived (DB 컬럼 아님)
 | column | internal_key | ko_label | en_label | positive_definition | exclusion_rule | examples | used_in | status | derived_rule | role |
 |---|---|---|---|---|---|---|---|---|---|---|
-| act_position | initiating | 개시 화행 | initiating | TODO | TODO | TODO | (문서상 파생 규칙, DB 컬럼 아님) | frozen | speech_act ∈ {request, apology, thanks, proposal, compliment, complaint} → initiating | derived |
-| act_position | responding | 응답 화행 | responding | TODO | TODO | TODO | (문서상 파생 규칙, DB 컬럼 아님) | frozen | speech_act ∈ {refusal, agreement, opposition} → responding | derived |
+| act_position | initiating | 개시 화행 | initiating | TODO | TODO | TODO | (문서상 파생 규칙, DB 컬럼 아님) | frozen | speech_act ∈ {request, apology, thanks, proposal, compliment, complaint, agreement} → initiating (agreement=초대=개시 화행) | derived |
+| act_position | responding | 응답 화행 | responding | TODO | TODO | TODO | (문서상 파생 규칙, DB 컬럼 아님) | frozen | speech_act ∈ {refusal, opposition} → responding | derived |
 
 ## 13. candidate_count — derived
 | column | internal_key | ko_label | en_label | positive_definition | exclusion_rule | examples | used_in | status | derived_rule | role |
