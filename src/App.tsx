@@ -32,6 +32,7 @@ import ProfileSetup from "./pages/ProfileSetup.tsx";
 import Home from "./pages/Home.tsx";
 import Roadmap from "./pages/Roadmap.tsx";
 import WorkflowPreview from "./pages/WorkflowPreview.tsx";
+import MissionShell from "./pages/MissionShell.tsx";
 import EntryTaskMode from "./pages/EntryTaskMode.tsx";
 import EntryLanguageDirection from "./pages/EntryLanguageDirection.tsx";
 import EntryUnavailable from "./pages/EntryUnavailable.tsx";
@@ -58,6 +59,8 @@ const App = () => (
           <Route path="/home" element={<Home />} />
           <Route path="/roadmap" element={<RequireApproved><Roadmap /></RequireApproved>} />
           <Route path="/workflow-preview" element={<WorkflowPreview />} />
+          {/* 5단계 학습 셸 목업 (RequireApproved 미적용 — 목업 확인 전용) */}
+          <Route path="/mission" element={<MissionShell />} />
           <Route path="/entry/task-mode" element={<RequireApproved><EntryTaskMode /></RequireApproved>} />
           <Route path="/entry/language-direction" element={<RequireApproved><EntryLanguageDirection /></RequireApproved>} />
           <Route path="/entry/unavailable" element={<RequireApproved><EntryUnavailable /></RequireApproved>} />
