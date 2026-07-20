@@ -23,6 +23,7 @@ const CourseOverview = () => {
         <ol className="mt-4 space-y-2">
           {COURSE_WEEKS.map((row) => {
             const isCurrent = row.status === "current";
+            const isAssessment = row.weekType === "assessment";
             return (
               <li key={row.weekNo}>
                 <button
@@ -33,8 +34,10 @@ const CourseOverview = () => {
                     "flex w-full items-center gap-3 rounded-[10px] border px-4 py-3 text-left",
                     isCurrent
                       ? "border-[#FAD338] bg-[#FFF8DE] hover:bg-[#FDF2C8]"
-                      : "border-[#EAE4D2] bg-white",
-                    row.status === "locked" ? "opacity-60" : "",
+                      : isAssessment
+                        ? "border-destructive/30 bg-destructive/5"
+                        : "border-[#EAE4D2] bg-white",
+                    row.status === "locked" && !isAssessment ? "opacity-60" : "",
                   ].join(" ")}
                 >
                   <span
@@ -44,14 +47,23 @@ const CourseOverview = () => {
                         ? "bg-[#15202B] text-white"
                         : isCurrent
                           ? "bg-[#FAD338] text-[#15202B]"
-                          : "border border-[#EAE4D2] text-muted-foreground",
+                          : isAssessment
+                            ? "border border-destructive/40 text-destructive"
+                            : "border border-[#EAE4D2] text-muted-foreground",
                     ].join(" ")}
                   >
                     {row.status === "done" ? "✓" : row.weekNo}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[14.5px] font-medium">{row.title}</span>
-                    <span className="block text-[11.5px] text-muted-foreground">{row.stageLabel}</span>
+                    <span
+                      className={[
+                        "block text-[11.5px]",
+                        isAssessment ? "font-medium text-destructive" : "text-muted-foreground",
+                      ].join(" ")}
+                    >
+                      {row.stageLabel}
+                    </span>
                   </span>
                   {isCurrent && (
                     <span className="shrink-0 text-[12px] font-semibold text-[#B8860B]">
