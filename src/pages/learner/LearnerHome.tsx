@@ -62,9 +62,15 @@ const LearnerHome = () => {
             </p>
           )}
           {!today.allDone && (
-            <p className="mt-1.5 text-[12px] text-[#8899A6]">
-              현재 위치 · {today.mode === "transfer" ? "상황 바꿔보기" : "직접 연습"}
-            </p>
+            <div className="mt-3 inline-flex items-baseline gap-2 rounded-lg bg-white/[0.08] px-3 py-2">
+              <span className="text-[11px] font-medium text-[#8899A6]">현재 위치</span>
+              <span className="text-[13.5px] font-semibold text-white">
+                {today.mode === "transfer" ? "상황 바꿔보기" : "직접 연습"}
+              </span>
+              <span className="text-[12px] text-[#B9C4CE]">
+                {week.done} / {week.total}
+              </span>
+            </div>
           )}
           <p className="mt-2 text-[12.5px] text-[#8899A6]">└ {today.reason}</p>
           {!today.allDone && (
