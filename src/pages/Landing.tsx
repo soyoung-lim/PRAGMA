@@ -22,7 +22,8 @@ const Landing = () => {
           <h1 className="text-[32px] font-bold leading-[1.15] tracking-tight sm:text-[38px] lg:text-[44px]">
             AI 기반 한·중 통번역 학습 워크플로우
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-[16px] leading-relaxed text-muted-foreground sm:text-[17px]">
+          {/* 데스크톱에서 한 줄로 놓이도록 이 문단만 넓힌다(제목·카드 폭은 그대로). */}
+          <p className="mx-auto mt-4 w-[min(1120px,92vw)] max-w-none text-[16px] leading-relaxed text-muted-foreground sm:text-[17px]">
             원문의 의미와 발화자의 의도를 도착어로 옮긴 뒤, 의사소통 맥락에 맞게 표현을 비교하고 수정하며 학습합니다.
           </p>
         </section>
@@ -64,8 +65,11 @@ const Landing = () => {
               <span aria-hidden>👤</span> 학습자 영역
             </span>
             <span className="mt-3 text-[14px] leading-relaxed text-[#15202B]/80">
-              매주 하나의 핵심 화용 요소를 학습합니다. 원문의 의미와 발화자의 의도를 도착어로 먼저 옮긴 뒤,
-              의사소통 맥락에 맞게 표현을 비교하고 수정하여 새로운 상황에 적용합니다.
+              매주 하나의 핵심 화용 요소를 학습합니다.
+              <br />
+              원문의 의미와 발화자의 의도를 도착어로 먼저 옮긴 뒤,
+              <br />
+              의사소통 맥락에 맞게 표현을 비교하고 수정합니다.
             </span>
             <span className="mt-5 inline-flex items-center gap-1 rounded-md border border-[#15202B] bg-transparent px-4 py-2 text-[14px] font-medium text-[#15202B]">
               학습 시작하기 →
