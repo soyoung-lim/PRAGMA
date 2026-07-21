@@ -37,6 +37,7 @@ import EntryTaskMode from "./pages/EntryTaskMode.tsx";
 import EntryLanguageDirection from "./pages/EntryLanguageDirection.tsx";
 import EntryUnavailable from "./pages/EntryUnavailable.tsx";
 import { RequireApproved } from "./components/RequireApproved";
+import { RequireAdmin } from "./components/RequireAdmin";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { seedIfEmpty } from "./lib/learningSessions";
 
@@ -73,21 +74,21 @@ const App = () => (
           <Route path="/entry/language-direction" element={<RequireApproved><EntryLanguageDirection /></RequireApproved>} />
           <Route path="/entry/unavailable" element={<RequireApproved><EntryUnavailable /></RequireApproved>} />
           <Route path="/scenario" element={<RequireApproved><PracticeMission /></RequireApproved>} />
-          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/corpus" element={<AdminCorpus />} />
-          <Route path="/admin/youtube-sources" element={<AdminYoutubeSources />} />
-          <Route path="/admin/archive" element={<AdminArchive />} />
-          <Route path="/admin/generator" element={<AdminGenerator />} />
-          <Route path="/admin/curriculum" element={<AdminCurriculum />} />
-          <Route path="/admin/prompt-harness" element={<AdminPromptHarness />} />
-          <Route path="/admin/question-designer" element={<AdminQuestionDesigner />} />
-          <Route path="/admin/review" element={<AdminReview />} />
-          <Route path="/admin/learners" element={<AdminLearners />} />
-          <Route path="/admin/decision-traces" element={<AdminDecisionTraces />} />
-          <Route path="/admin/reports" element={<AdminReports />} />
-          <Route path="/admin/analytics" element={<AdminAnalytics />} />
-          <Route path="/admin/export" element={<AdminExport />} />
+          <Route path="/admin" element={<RequireAdmin><Navigate to="/admin/dashboard" replace /></RequireAdmin>} />
+          <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+          <Route path="/admin/corpus" element={<RequireAdmin><AdminCorpus /></RequireAdmin>} />
+          <Route path="/admin/youtube-sources" element={<RequireAdmin><AdminYoutubeSources /></RequireAdmin>} />
+          <Route path="/admin/archive" element={<RequireAdmin><AdminArchive /></RequireAdmin>} />
+          <Route path="/admin/generator" element={<RequireAdmin><AdminGenerator /></RequireAdmin>} />
+          <Route path="/admin/curriculum" element={<RequireAdmin><AdminCurriculum /></RequireAdmin>} />
+          <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
+          <Route path="/admin/question-designer" element={<RequireAdmin><AdminQuestionDesigner /></RequireAdmin>} />
+          <Route path="/admin/review" element={<RequireAdmin><AdminReview /></RequireAdmin>} />
+          <Route path="/admin/learners" element={<RequireAdmin><AdminLearners /></RequireAdmin>} />
+          <Route path="/admin/decision-traces" element={<RequireAdmin><AdminDecisionTraces /></RequireAdmin>} />
+          <Route path="/admin/reports" element={<RequireAdmin><AdminReports /></RequireAdmin>} />
+          <Route path="/admin/analytics" element={<RequireAdmin><AdminAnalytics /></RequireAdmin>} />
+          <Route path="/admin/export" element={<RequireAdmin><AdminExport /></RequireAdmin>} />
           <Route path="/admin-login" element={<AdminLogin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
