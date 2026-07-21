@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { HomeBrand } from "@/components/HomeBrand";
-import { devStubSignIn, IS_DEV } from "@/lib/auth/useProfile";
+import { devStubSignIn, IS_DEMO } from "@/lib/auth/useProfile";
 import { toast } from "sonner";
 
 const StudentLogin = () => {
@@ -48,11 +48,11 @@ const StudentLogin = () => {
           로그인 후 바로 오늘의 학습을 시작할 수 있습니다.
         </p>
 
-        {IS_DEV ? (
+        {IS_DEMO ? (
           <>
             {/* 지금 실제로 동작하는 경로 — 가장 눈에 띄게 */}
             <div className="mt-8 w-full rounded-xl border-2 border-[#FAD338] bg-[#FFFBEA] p-4">
-              <div className="text-[11.5px] font-bold text-[#B8860B]">시연·개발 환경</div>
+              <div className="text-[11.5px] font-bold text-[#B8860B]">시연용 둘러보기</div>
               <p className="mt-1 text-[13px] leading-relaxed text-foreground/80">
                 아래 버튼으로 로그인 없이 바로 학습 화면을 둘러볼 수 있습니다.
               </p>
