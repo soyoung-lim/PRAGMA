@@ -33,6 +33,7 @@ import CourseOverview from "./pages/learner/CourseOverview.tsx";
 import WeekDetail from "./pages/learner/WeekDetail.tsx";
 import IntroArc from "./pages/learner/IntroArc.tsx";
 import LearnerRecords from "./pages/learner/LearnerRecords.tsx";
+import StrategyMap from "./pages/learner/StrategyMap.tsx";
 import PracticeMission from "./pages/learner/PracticeMission.tsx";
 import EntryTaskMode from "./pages/EntryTaskMode.tsx";
 import EntryLanguageDirection from "./pages/EntryLanguageDirection.tsx";
@@ -68,6 +69,7 @@ const App = () => (
           <Route path="/learner/course/week/2" element={<RequireApproved><WeekDetail /></RequireApproved>} />
           <Route path="/learner/course/week/2/intro" element={<RequireApproved><IntroArc /></RequireApproved>} />
           <Route path="/learner/records" element={<RequireApproved><LearnerRecords /></RequireApproved>} />
+          <Route path="/learner/strategy" element={<RequireApproved><StrategyMap /></RequireApproved>} />
           {/* legacy 판단형 셸 — 연구/앵커 후보로 보관. 개발 환경에서만 접근 가능. */}
           <Route
             path="/mission-legacy"
