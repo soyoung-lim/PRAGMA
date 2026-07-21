@@ -32,6 +32,7 @@ import {
   type PracticeSessionData,
 } from "@/lib/mission/practiceSession";
 import { markMissionCompleted, updateFeatureState } from "@/lib/mission/learnerState";
+import { IS_DEMO } from "@/lib/auth/useProfile";
 import { MISSION_ID_BY_MODE, WEEK_REQUEST, getTodayAssignment } from "@/lib/mission/mockWeek";
 
 // 일반 미션(산출 먼저) 런타임 — UI 목업 전용, DB 미연결.
@@ -193,8 +194,8 @@ const PracticeMission = () => {
     setFocusedDifference(key);
   };
 
-  // DEV 전용 — 프로토타입 mDemo() 대응. 현재 화면에 필요한 값만 채워
-  // 단계 이동 테스트를 빠르게 한다. 학습자 UI 어디에도 노출되지 않는다.
+  // 시연용 — 현재 화면에 필요한 값만 채워 단계를 빠르게 넘긴다.
+  // 이미 입력한 값은 덮어쓰지 않는다. IS_DEMO가 꺼지면 버튼과 함께 사라진다.
   const fillDemo = () => {
     if (step === "상황 읽기") setRelationGuess((v) => v ?? DEMO_VALUES.relationGuess);
     if (step === "직접 해보기") setDraft((v) => (v.trim() ? v : DEMO_VALUES.draft));
@@ -383,23 +384,49 @@ const PracticeMission = () => {
         )}
       </nav>
 
-      {/* 학습자 진행바 — quick 5단계 / transfer 6단계 */}
-      <ol className="flex gap-1.5">
+      {/* 학습자 진행바 — quick 5단계 / transfer 6단계.
+          한 걸음씩 건너가는 흐름이라는 게 보이도록 번호 원을 선으로 잇는다. */}
+      <ol className="flex items-start">
         {steps.map((s, i) => {
           const active = i === stepIdx;
           const done = i < stepIdx;
+          const reached = active || done;
           return (
-            <li key={s} className="flex-1 text-center">
+            <li key={s} className="flex flex-1 flex-col items-center">
+              <div className="flex w-full items-center">
+                <span
+                  className={[
+                    "h-[3px] flex-1 rounded-full",
+                    i === 0 ? "opacity-0" : done || active ? "bg-[#FAD338]" : "bg-[#E3E1D8]",
+                  ].join(" ")}
+                />
+                <span
+                  className={[
+                    "grid h-7 w-7 flex-none place-items-center rounded-full text-[12px] font-bold transition-colors",
+                    done
+                      ? "bg-[#FAD338] text-[#15202B]"
+                      : active
+                        ? "bg-[#15202B] text-white ring-4 ring-[#FAD338]/35"
+                        : "bg-white text-[#A9B0BA] ring-1 ring-[#E3E1D8]",
+                  ].join(" ")}
+                >
+                  {done ? "✓" : i + 1}
+                </span>
+                <span
+                  className={[
+                    "h-[3px] flex-1 rounded-full",
+                    i === steps.length - 1 ? "opacity-0" : done ? "bg-[#FAD338]" : "bg-[#E3E1D8]",
+                  ].join(" ")}
+                />
+              </div>
               <div
                 className={[
-                  "h-[5px] rounded-full",
-                  active || done ? "bg-[#FAD338]" : "bg-[#D3D1C7]",
-                ].join(" ")}
-              />
-              <div
-                className={[
-                  "mt-1.5 text-[10.5px]",
-                  active ? "font-bold text-foreground" : "font-medium text-muted-foreground",
+                  "mt-2 px-1 text-center text-[12.5px] leading-tight",
+                  active
+                    ? "font-bold text-foreground"
+                    : reached
+                      ? "font-semibold text-foreground/70"
+                      : "font-medium text-muted-foreground",
                 ].join(" ")}
               >
                 {s}
@@ -415,6 +442,17 @@ const PracticeMission = () => {
         <Button variant="outline" disabled={stepIdx === 0} onClick={() => setStepIdx((i) => Math.max(0, i - 1))}>
           ← 이전
         </Button>
+        {/* 시연용 — 입력을 일일이 하지 않고 단계를 넘겨볼 수 있게 한다.
+            IS_DEMO가 꺼지면(실증 시작) 번들에서 사라진다. */}
+        {IS_DEMO && step !== "마무리" && (
+          <button
+            type="button"
+            onClick={fillDemo}
+            className="rounded-md border border-dashed border-[#C9B98A] bg-[#FFFBEA] px-3 py-1.5 text-[12px] font-semibold text-[#8A6D00] hover:bg-[#FDF3CE]"
+          >
+            데모 채우기
+          </button>
+        )}
         {step !== "마무리" ? (
           <Button onClick={advance} disabled={!canAdvance()}>
             {nextLabel} →

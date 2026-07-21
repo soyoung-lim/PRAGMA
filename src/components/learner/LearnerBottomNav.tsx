@@ -16,7 +16,7 @@ export const LearnerBottomNav = () => (
           to={t.to}
           className={({ isActive }) =>
             [
-              "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium",
+              "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[13px] font-bold",
               isActive ? "text-[#15202B]" : "text-muted-foreground",
             ].join(" ")
           }
@@ -25,7 +25,7 @@ export const LearnerBottomNav = () => (
             <>
               <span
                 className={[
-                  "flex h-6 w-10 items-center justify-center rounded-full text-[14px]",
+                  "flex h-7 w-11 items-center justify-center rounded-full text-[16px]",
                   isActive ? "bg-[#FAD338]" : "",
                 ].join(" ")}
               >
