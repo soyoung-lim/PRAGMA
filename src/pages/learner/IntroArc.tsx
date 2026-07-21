@@ -22,6 +22,7 @@ import {
 } from "@/lib/mission/mockIntroArc";
 import { WEEK_REQUEST } from "@/lib/mission/mockWeek";
 import { updateFeatureState } from "@/lib/mission/learnerState";
+import { IS_DEMO } from "@/lib/auth/useProfile";
 
 // 도입 아크 — 새 목표 특징 최초 도입 시 1회. 입력 먼저(장면→관찰→명시→수용) 후
 // 미션 1개로 합류한다. 미션 사이클(산출 먼저)과 순서가 반대인 상위 루프.
@@ -42,6 +43,26 @@ const IntroArc = () => {
 
   const canAdvance =
     step === "차이 찾기" ? cluesEnough : step === "감각 확인" ? classifyDone : true;
+
+  // 시연용 — 현재 단계의 게이트를 채운다. 이미 고른 값은 덮어쓰지 않는다.
+  const fillDemo = () => {
+    if (step === "차이 찾기") {
+      setFoundClues((prev) =>
+        prev.length >= CLUES_REQUIRED
+          ? prev
+          : CLUES.map((_, i) => i).slice(0, CLUES_REQUIRED),
+      );
+    }
+    if (step === "감각 확인") {
+      setPicks((prev) => {
+        const next = { ...prev };
+        CLASSIFY_ITEMS.forEach((g, i) => {
+          if (next[i] === undefined) next[i] = g.truth;
+        });
+        return next;
+      });
+    }
+  };
 
   const advance = () => {
     // ③ 원리 이해 도달 = 명시적 설명을 봄 → 전략 지도 개방 조건 충족
@@ -301,6 +322,16 @@ const IntroArc = () => {
         >
           ← 이전
         </Button>
+        {/* 시연용 — 실증 시작 시 IS_DEMO를 끄면 번들에서 사라진다. */}
+        {IS_DEMO && (step === "차이 찾기" || step === "감각 확인") && (
+          <button
+            type="button"
+            onClick={fillDemo}
+            className="rounded-md border border-dashed border-[#C9B98A] bg-[#FFFBEA] px-3 py-1.5 text-[12px] font-semibold text-[#8A6D00] hover:bg-[#FDF3CE]"
+          >
+            데모 채우기
+          </button>
+        )}
         {step !== "감각 확인" ? (
           <Button onClick={advance} disabled={!canAdvance}>
             {nextLabel} →

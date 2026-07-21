@@ -74,12 +74,28 @@ const LearnerHome = () => {
           )}
           <p className="mt-2 text-[12.5px] text-[#8899A6]">└ {today.reason}</p>
           {!today.allDone && (
-            <Button
-              className="mt-4 bg-[#FAD338] text-[#15202B] hover:bg-[#F6C200]"
-              onClick={startToday}
-            >
-              {resuming ? "이어하기 →" : "오늘의 학습 시작하기 →"}
-            </Button>
+            <>
+              {/* 미션이 어떻게 흘러가는지 눌러보기 전에 보이게 한다 —
+                  버튼을 누르지 않으면 핵심 워크플로우를 발견하지 못하는 문제. */}
+              <div className="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                {["상황 읽기", "직접 해보기", "차이 발견", "한 곳 고치기", "마무리"].map(
+                  (step, i) => (
+                    <span key={step} className="flex items-center gap-1.5">
+                      {i > 0 && <span className="text-[11px] text-[#5C6A7A]">→</span>}
+                      <span className="rounded-md bg-white/10 px-2 py-1 text-[11.5px] font-medium text-[#D7DEE5]">
+                        {step}
+                      </span>
+                    </span>
+                  ),
+                )}
+              </div>
+              <Button
+                className="mt-4 bg-[#FAD338] text-[#15202B] hover:bg-[#F6C200]"
+                onClick={startToday}
+              >
+                {resuming ? "이어하기 →" : "오늘의 학습 시작하기 →"}
+              </Button>
+            </>
           )}
         </section>
 
