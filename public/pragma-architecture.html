@@ -20,7 +20,7 @@
   h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.02em}
 
   .top{background:var(--ink)}
-  .top .in{max-width:1280px;margin:0 auto;padding:11px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+  .top .in{max-width:1120px;margin:0 auto;padding:11px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
   .brand{display:flex;align-items:center;gap:10px}
   .brand .rail{width:5px;height:31px;background:var(--accent);border-radius:2px;flex:none}
   .brand h1{color:#fff;font-size:15px;line-height:1.25}
@@ -30,7 +30,7 @@
   .tabs a[aria-current]{background:var(--accent);color:var(--ink);border-color:var(--accent)}
   .tabs a:hover:not([aria-current]){color:#fff;border-color:#4A5967}
 
-  .page{max-width:1280px;margin:0 auto;padding:12px 26px 14px}
+  .page{max-width:1120px;margin:0 auto;padding:12px 26px 14px}
 
   .strap{display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:10px}
   .strap .def{font-size:14px;font-weight:600}
@@ -39,7 +39,7 @@
   .tally i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:-1px}
   .i-done{background:var(--ink)} .i-dev{background:var(--muted);opacity:.55} .i-next{background:transparent;border:1px dashed var(--faint)}
 
-  .lanes{display:grid;grid-template-columns:1fr 58px 1.45fr 58px 1fr;gap:0;align-items:stretch}
+  .lanes{display:grid;grid-template-columns:.86fr 52px 1.85fr 52px .86fr;gap:0;align-items:stretch}
   .lane{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 12px 12px}
   .lane.mid{border-color:var(--line2);box-shadow:0 8px 20px -18px rgba(21,32,43,.55)}
   .gap{display:grid;place-items:center;gap:5px;align-content:center}
@@ -117,7 +117,7 @@
 
   <div class="page">
     <div class="strap">
-      <div class="def">콘텐츠를 <b>생성·검수</b>하고, 학습자가 <b>수행·수정</b>하며, 그 기록이 <b>평가와 설계 개선</b>으로 환류합니다.</div>
+      <div class="def">콘텐츠를 <b>생성·검수</b>하고, 학습자가 <b>수행·수정</b>하며, 그 기록이 <b>평가와 설계 개선</b>으로 돌아옵니다.</div>
       <div class="tally">
         <span><i class="i-done"></i>구현 6</span>
         <span><i class="i-dev"></i>개발 중 5</span>
@@ -146,7 +146,7 @@
 
       <!-- ② 학습자 수행·수정 -->
       <section class="lane mid">
-        <div class="lhead"><span class="lnum">2</span><h3>학습자 수행·수정 워크플로우</h3></div>
+        <div class="lhead"><span class="lnum">2</span><h3>학습자 워크플로우</h3></div>
         <p class="lsub">한 단원에 목표 화용 요소 하나 · 승인된 콘텐츠만</p>
 
         <div class="n"><span class="st done"></span><div class="t">15주 과정 내 화행·화용 요소 배치</div><div class="d">9개 화행을 순환 배치</div></div>
@@ -166,20 +166,17 @@
         </div>
 
         <div class="down">↓</div>
-        <div class="n"><span class="st next"></span><div class="t">형성적 숙달 점검</div><div class="d">학습용 문항 · 제출 후 피드백 제공</div></div>
-
-        <div class="par">
-          <div class="pl">선택 적용</div>
-          <div class="pt">음성 · 비동시 통역 적용 — 같은 화용 요소를 다른 수행 조건에서</div>
-        </div>
+        <div class="n"><span class="st next"></span><div class="t">형성 평가</div><div class="d">학습용 문항 · 제출 후 피드백 제공</div></div>
+        <div class="down">↓</div>
+        <div class="n"><span class="st dev"></span><div class="t">음성 · 비동시 순차통역 적용</div><div class="d">같은 화용 요소를 통역 수행 조건으로 재적용</div></div>
       </section>
 
       <div class="gap" aria-hidden="true"><span class="ar">→</span><span class="lb">수행 로그</span></div>
 
-      <!-- ③ 연구·평가·설계 환류 -->
+      <!-- ③ 연구·평가·설계 개선 -->
       <section class="lane r">
-        <div class="lhead"><span class="lnum">3</span><h3>연구·평가·설계 환류</h3></div>
-        <p class="lsub">가르치는 일과 재는 일을 분리</p>
+        <div class="lhead"><span class="lnum">3</span><h3>연구·평가·설계</h3></div>
+        <p class="lsub">학습과 연구를 분리</p>
 
         <div class="n"><span class="st dev"></span><div class="t">학습 수행 로그</div><div class="d">콘텐츠·정책 버전과 함께 저장</div></div>
         <div class="down">↓</div>
@@ -187,7 +184,7 @@
         <div class="down">↓</div>
         <div class="n"><span class="st next"></span><div class="t">평가자 채점</div><div class="d">승인 루브릭 · 이중 평정</div></div>
         <div class="down">↓</div>
-        <div class="n"><span class="st done"></span><div class="t">가명화된 연구 데이터 내보내기</div><div class="d">대응표 분리 보관</div></div>
+        <div class="n"><span class="st done"></span><div class="t">연구 데이터 내보내기</div><div class="d">가명 처리 · 대응표 분리 보관</div></div>
         <div class="down">↓</div>
         <div class="n"><span class="st next"></span><div class="t">교수·학습 설계 개선</div><div class="d">사람이 결정</div></div>
       </section>
@@ -198,7 +195,7 @@
     </p>
 
     <div class="cycles">
-      <svg viewBox="0 0 1200 98" role="img" aria-label="두 개의 환류: 수행 로그가 다음 학습 배정으로, 연구 결과가 콘텐츠·정책 개정으로 되돌아온다">
+      <svg viewBox="0 0 1200 98" role="img" aria-label="두 개의 사이클: 수행 로그가 다음 학습 배정으로, 연구 결과가 콘텐츠·정책 개정으로 되돌아온다">
         <defs>
           <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" fill="#C9A93A"/>
@@ -207,15 +204,15 @@
             <path d="M0,0 L10,5 L0,10 z" fill="#8A6A55"/>
           </marker>
         </defs>
-        <path d="M1000,4 C1000,38 850,44 720,44 C650,44 600,38 600,6"
+        <path d="M1030,4 C1030,38 870,44 730,44 C655,44 600,38 600,6"
               fill="none" stroke="#C9A93A" stroke-width="2.2" marker-end="url(#ah)"/>
-        <text x="806" y="38" text-anchor="middle" font-size="12" font-weight="700" fill="#8A6D00" font-family="Pretendard, sans-serif">빠른 환류</text>
-        <text x="806" y="55" text-anchor="middle" font-size="11" fill="#5C6A7A" font-family="Pretendard, sans-serif">수행 로그 → 다음 학습 배정</text>
+        <text x="820" y="38" text-anchor="middle" font-size="12" font-weight="700" fill="#8A6D00" font-family="Pretendard, sans-serif">빠른 사이클</text>
+        <text x="820" y="55" text-anchor="middle" font-size="11" fill="#5C6A7A" font-family="Pretendard, sans-serif">수행 로그 → 다음 학습 배정</text>
 
-        <path d="M1086,4 C1086,80 900,84 620,84 C340,84 157,82 157,8"
+        <path d="M1110,4 C1110,80 900,84 600,84 C320,84 130,82 130,8"
               fill="none" stroke="#8A6A55" stroke-width="2.2" stroke-dasharray="5 4" marker-end="url(#ah2)"/>
-        <text x="392" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="#7A5A46" font-family="Pretendard, sans-serif">느린 환류</text>
-        <text x="392" y="93" text-anchor="middle" font-size="11" fill="#5C6A7A" font-family="Pretendard, sans-serif">연구 결과 → 콘텐츠·정책 개정</text>
+        <text x="372" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="#7A5A46" font-family="Pretendard, sans-serif">느린 사이클</text>
+        <text x="372" y="93" text-anchor="middle" font-size="11" fill="#5C6A7A" font-family="Pretendard, sans-serif">연구 결과 → 콘텐츠·정책 개정</text>
       </svg>
     </div>
 
