@@ -6,11 +6,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { APP_ROLE } from "@/lib/auth/constants";
 
 // D1 (2026-07-21): 스켈레톤(아무 비번→대시보드) 제거.
-// 실제 Supabase 이메일/비번 인증 + profiles.role='admin' 확인만 통과시킨다.
-// admin 계정은 Supabase 대시보드에서 생성/승격한다(자가 가입 없음).
+// 실제 Supabase 인증 + profiles.role='admin' 확인만 통과시킨다.
+// 계정은 Supabase 대시보드에서 생성/승격한다(자가 가입 없음).
+
+// Supabase Auth는 이메일로만 로그인한다. 공유용 계정을 "admin / 비밀번호"처럼
+// 쓸 수 있도록, @ 없는 입력은 아이디로 보고 이 도메인을 붙인다.
+// (메일은 발송되지 않는다 — 계정은 대시보드에서 Auto Confirm으로 만든다.)
+const ID_DOMAIN = "l2-pragmatics.app";
+
+function toEmail(input: string) {
+  const v = input.trim();
+  return v.includes("@") ? v : `${v}@${ID_DOMAIN}`;
+}
+
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [account, setAccount] = useState("");
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +32,7 @@ const AdminLogin = () => {
     setError(null);
 
     const { data: signIn, error: signInError } =
-      await supabase.auth.signInWithPassword({ email: email.trim(), password: pw });
+      await supabase.auth.signInWithPassword({ email: toEmail(account), password: pw });
     if (signInError || !signIn.user) {
       setError(signInError?.message ?? "로그인에 실패했습니다.");
       setBusy(false);
@@ -58,7 +69,7 @@ const AdminLogin = () => {
           <div>
             <h1 className="text-2xl font-bold leading-tight">관리자 로그인</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              관리자 계정으로 로그인하세요. 관리자 권한이 있는 계정만 입장할 수 있습니다.
+              발급받은 아이디로 로그인하세요. 관리자 권한이 있는 계정만 입장할 수 있습니다.
             </p>
           </div>
         </div>
@@ -66,14 +77,14 @@ const AdminLogin = () => {
           className="mt-8 flex flex-col gap-3 rounded-xl border border-border bg-card p-6"
           onSubmit={handleSubmit}
         >
-          <label className="text-sm font-medium">이메일</label>
+          <label className="text-sm font-medium">아이디</label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            value={account}
+            onChange={(e) => setAccount(e.target.value)}
             autoComplete="off"
             className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-            placeholder="admin@example.com"
+            placeholder="admin"
           />
           <label className="mt-1 text-sm font-medium">비밀번호</label>
           <input
@@ -86,7 +97,7 @@ const AdminLogin = () => {
           />
           <button
             type="submit"
-            disabled={busy || !email.trim() || !pw}
+            disabled={busy || !account.trim() || !pw}
             className="mt-2 rounded-md bg-[#FAD338] px-4 py-2 text-sm font-medium text-[#15202B] hover:brightness-95 disabled:opacity-60"
           >
             {busy ? "로그인 중…" : "입장"}
