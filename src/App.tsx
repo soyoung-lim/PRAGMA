@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
+import Architecture from "./pages/Architecture.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import AdminArchive from "./pages/AdminArchive.tsx";
 import AdminCorpus from "./pages/admin/AdminCorpus.tsx";
@@ -54,6 +55,8 @@ const App = () => (
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<Index />} />
+          {/* 심사 설명용 read-only 구조 화면 — 실데이터가 없어 로그인을 요구하지 않는다. */}
+          <Route path="/architecture" element={<Architecture />} />
           <Route path="/student-login" element={<StudentLogin />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/profile-setup" element={<ProfileSetup />} />
