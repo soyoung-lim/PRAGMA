@@ -43,6 +43,12 @@ const Home = () => {
     return <Navigate to="/student-login" replace />;
   }
 
+  // /home은 이제 프로필 입력 관문으로만 쓴다. 프로필이 끝난 학습자는 새 학습 여정으로
+  // 보낸다 — 아래 5단계 안내는 구 번역 워크플로우 설명이라 새 여정과 맞지 않는다.
+  if (profile?.profile_completed) {
+    return <Navigate to="/learner/home" replace />;
+  }
+
   const stepEntries = Object.entries(WORKFLOW_STEPS)
     .map(([k, v]) => ({ n: Number(k), ...v }))
     .sort((a, b) => a.n - b.n);
@@ -136,7 +142,7 @@ const Home = () => {
               <ProfileWizardForm
                 onCompleted={() => {
                   setProfileOpen(false);
-                  navigate("/roadmap", { replace: true });
+                  navigate("/learner/home", { replace: true });
                 }}
               />
 
