@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
 import { WEEK_REQUEST, getWeekProgress } from "@/lib/mission/mockWeek";
@@ -60,7 +60,15 @@ const WeekDetail = () => {
           <h2 className="mt-1 text-[18px] font-bold leading-snug">이번 주 핵심: {w.keyIdea}</h2>
           <p className="mt-1.5 text-[12.5px]">
             진행률 {weekProg.done} / {weekProg.total}
-            {feature.strategyMapUnlocked && " · 전략 지도 열림 🔓"}
+            {feature.strategyMapUnlocked && (
+              <>
+                {" · "}
+                {/* 열렸다고 알리기만 하고 갈 곳이 없으면 안 된다 — 실제로 연결한다. */}
+                <Link to="/learner/strategy" className="font-bold underline underline-offset-2">
+                  전략 지도 열림 🔓
+                </Link>
+              </>
+            )}
           </p>
         </section>
 

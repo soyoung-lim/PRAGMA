@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
@@ -121,6 +121,20 @@ const LearnerHome = () => {
           <div className="text-[11.5px] font-semibold text-muted-foreground">{PROFILE_SUMMARY.label}</div>
           <div className="mt-1 text-[14.5px]">{PROFILE_SUMMARY.body}</div>
         </section>
+
+        {/* 전략 지도 — 개방 후에는 홈에서도 바로 갈 수 있게 한다. */}
+        <Link
+          to="/learner/strategy"
+          className="mt-2.5 flex items-center justify-between rounded-[10px] border border-[#EAE4D2] bg-white px-4 py-3.5 hover:bg-[#FFFDF4]"
+        >
+          <div>
+            <div className="text-[11.5px] font-semibold text-muted-foreground">전략 지도</div>
+            <div className="mt-1 text-[14.5px]">요청에 쓸 수 있는 전략들 보기</div>
+          </div>
+          <span aria-hidden className="shrink-0 text-[#8899A6]">
+            →
+          </span>
+        </Link>
 
         {/* 자유 연습 — MVP에서는 준비 중 타일로만 */}
         <section className="mt-2.5 flex items-center justify-between rounded-[10px] border border-[#EAE4D2] bg-white px-4 py-3.5">
