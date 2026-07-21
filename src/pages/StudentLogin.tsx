@@ -50,35 +50,31 @@ const StudentLogin = () => {
 
         {IS_DEMO ? (
           <>
-            {/* 지금 실제로 동작하는 경로 — 가장 눈에 띄게 */}
-            <div className="mt-8 w-full rounded-xl border-2 border-[#FAD338] bg-[#FFFBEA] p-4">
-              <div className="text-[11.5px] font-bold text-[#B8860B]">시연용 둘러보기</div>
-              <p className="mt-1 text-[13px] leading-relaxed text-foreground/80">
-                아래 버튼으로 로그인 없이 바로 학습 화면을 둘러볼 수 있습니다.
+            {/* Google이 정식 경로 — 자체 Supabase 이전 후 정상 동작한다 */}
+            <button
+              type="button"
+              onClick={handleGoogle}
+              disabled={busy}
+              className="mt-8 w-full rounded-md border border-[#15202B] bg-white px-5 py-3 text-[15px] font-medium text-[#15202B] shadow-sm transition-colors hover:bg-[#15202B]/[0.04] disabled:opacity-60"
+            >
+              {busy ? "이동 중…" : "Google 계정으로 로그인"}
+            </button>
+
+            {/* 대비책 — Google이 막힐 때를 대비해 남겨 둔다(과거 실패 이력 있음) */}
+            <div className="mt-6 w-full rounded-xl border border-[#EAE4D2] bg-white p-4">
+              <div className="text-[11.5px] font-bold text-muted-foreground">
+                로그인 없이 둘러보기
+              </div>
+              <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+                Google 로그인이 되지 않을 때 이 버튼으로 바로 학습 화면을 볼 수 있습니다.
               </p>
               <button
                 type="button"
                 onClick={handleDevStub}
-                className="mt-3 w-full rounded-md bg-[#15202B] px-5 py-3 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#22303E]"
+                className="mt-3 w-full rounded-md border border-[#15202B] bg-transparent px-5 py-2.5 text-[14px] font-medium text-[#15202B] transition-colors hover:bg-[#15202B]/[0.04]"
               >
                 임시 학습자로 시작하기 →
               </button>
-            </div>
-
-            {/* Google — 인증까지는 되지만 아직 앱으로 복귀하지 못한다 */}
-            <div className="mt-4 w-full rounded-xl border border-[#EAE4D2] bg-white p-4">
-              <button
-                type="button"
-                onClick={handleGoogle}
-                disabled={busy}
-                className="w-full rounded-md border border-[#EAE4D2] bg-white px-5 py-2.5 text-[14px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 disabled:opacity-60"
-              >
-                {busy ? "이동 중…" : "Google 계정으로 로그인"}
-              </button>
-              <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
-                Google 로그인은 <strong>준비 중</strong>입니다. 인증 서버 이전 작업이 끝나면
-                활성화됩니다. 지금은 위의 임시 학습자 버튼을 사용해 주세요.
-              </p>
             </div>
           </>
         ) : (
