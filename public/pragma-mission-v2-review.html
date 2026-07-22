@@ -129,7 +129,7 @@
   <div class="howto">
     <b>학생이 되었다 생각하고 문항을 하나씩 판단해 보세요.</b>
     선택 후 <b>[확인하기]</b>를 누르면 기준 판정과 근거가 나옵니다.
-    판단 6문항 뒤에 번역 과제·피드백·수정이 이어지며, 전체 5분 내외입니다.
+    판단 5문항 뒤에 번역 과제·피드백·수정이 이어집니다. 전체 소요 시간은 파일럿 사용 데이터로 확정합니다.
     <span>※ 화면의 <b>기준 판정</b>은 설계 조건(화행·P·D·R·매체·수준)에 따라 AI가 제안한 것이며,
     모어 화자 검토를 거쳐 확정할 예정입니다. 중국어 예문도 검수 전 초안입니다.</span>
   </div>
@@ -140,40 +140,82 @@
 </div>
 
 <script>
-// ── 라벨: 직접성 단일 축 (mpj_labels LOCK) ──────────────────
-// "너무 직접적 / 알맞음 / 지나치게 우회적" — 한 축의 양 끝이라 대칭이다.
-// 이전 초안의 "과잉 공손"은 공손성 축의 이름이라 축이 섞여 있었다.
-// 그래서 오답 후보도 과잉 격식체(恳请您/尊敬的)가 아니라 우회형으로 만든다 —
-// 격식은 과해도 요청 자체가 직접적이면 이 축에 실리지 않는다.
+// ── 라벨: 축별 라벨셋 (mpj_labels LOCK · 2026-07-22 저녁 확정판) ──────
+// 문항마다 판단 축(axis)이 하나이고, 라벨은 그 축의 것만 쓴다.
+// 직접성 축: 양 끝이 한 축의 대칭. 오답 후보도 과잉 격식체(恳请您/尊敬的)가 아니라
+// 우회형으로 — 격식은 과해도 요청 자체가 직접적이면 이 축에 실리지 않는다.
 const J = {under:"너무 직접적", ok:"알맞음", over:"지나치게 우회적"};
-const SCALE5=["완전히 적절","대체로 적절","다소 적절","대체로 부적절","완전히 부적절"];
+
+// 공손성 축은 직접성 축과 다른 자다. `喂` 같은 호칭 문제는 요청의 직접성이 아니라
+// 대인적 무례함이므로 이 축에 실어야 한다(2026-07-22 축 혼동 수정).
+// 코드값은 impolite/appropriate/overpolite로 두고 화면 라벨만 한국어로 쓴다.
+const P = {impolite:"무례함", ok:"알맞음", overpolite:"지나치게 공손함"};
+
+const DIR3=[J.under,J.ok,J.over];
+const POL3=[P.impolite,P.ok,P.overpolite];
+// 적절성 척도는 4점 대칭 (2026-07-22 밤 개정) — 이전 5점은 "다소 적절"이 중간값이라
+// 긍정 3 : 부정 2로 비대칭이었다. 중간 도피처("판단 어려움")를 두지 않는 강제 선택형.
+const SCALE4=["매우 적절","다소 적절","다소 부적절","매우 부적절"];
 const POL5=["너무 과함","조금 과함","딱 맞음","조금 무례","너무 무례"];
 const CONF=["매우 확신","꽤 확신","확신 없음"];
+const opts3 = it => it.axis==='공손성' ? POL3 : DIR3;
 
 // 문항 설계 제약: 모든 번역안은 원문과 **사실 정보·발화 의도가 동일**하고
 // 문법적으로 성립하며, 차이는 목표 화용 요소(직접성·완화)에서만 난다.
 // 정보가 빠지면 학습자가 화용이 아니라 "내용이 빠졌네"로 판정해 문항이 무효가 된다.
 //
 // 제시 순서는 인지 부담 순 — 고르기(선택지)가 쓰기(자유 입력)보다 쉽다.
+//
+// ★ 정답 분포 (2026-07-22 확정) — 세트당 "알맞음"이 정답인 판단이 반드시 1개 이상.
+//   이전 판은 단일 판정 5문항 중 4개가 "너무 직접적"이고 알맞음이 0개였다.
+//   그러면 전부 부적절로 찍어도 다 맞을 뿐 아니라, 무엇보다 **"직접적이면 나쁘다 ·
+//   완화가 많을수록 좋다"는 거짓 규칙**을 가르치게 된다. 이 수업이 깨려는 바로 그
+//   오해다. 현재 세트: 알맞음 정답 = 2번(직접형인데 알맞음) + 5번의 ok 후보 2개.
+//
+// ★ 미니멀 페어(같은 문장 × 두 상황)는 미션 템플릿에서 **제외** (2026-07-22 밤 확정).
+//   ①도입 아크 ②'차이' 단계와 기능 중복(아크에서 가르친 걸 미션이 반복 — 재설계가
+//   고치려던 원죄) ②생성 실패율 1순위(같은 문장이 두 맥락 모두 자연스러워야 하고
+//   판정 2개가 묶여 있어 하나만 틀려도 문항 전체가 틀린 주장을 함) ③분포·난이도 평행
+//   임무는 2번·4번이 대체. → 맥락 대조는 아크의 차이 단계가 담당(개념 폐기 아님·원위치).
+//
+// ★ 문항 수 = 유형 수 = 5, 중복 없음. 배열은 인지 부담 사다리:
+//   ① 척도 찍기 → ② 3분류 판정 → ③ 판정+교정 고르기 → ④ 판정+이유+확신 → ⑤ 다중 일괄(경계)
+//   ④(초면×중부담)가 산출 과제(초면×중~고부담)와 같은 조건대 = DCT 직전의 난이도 브리지.
+//   과잉공손 5점 척도(pol5) 유형은 삭제가 아니라 **생성기의 변주 풀**로 이동 — 모든
+//   미션이 같은 5유형일 필요는 없다.
+//
+// ★ 산출 정합 규칙: DCT가 요구하는 전략(호칭·포석·완화·선택권 맺음)은 MPJ 세트가
+//   **최소 1회 사전 노출**한 것이어야 한다. 판단해 본 적 없는 자원으로 산출시키지 않는다.
+//
+// axis·band: 문항 유형마다 묻는 자가 다르므로 채점 라벨도 그 자에 맞춘다.
+//   이전 판은 공손성 척도로 물어 놓고 직접성 라벨("지나치게 우회적")로 채점했다.
+//   bandIdx = 수용 대역에 해당하는 선택지 인덱스. 5점 척도는 한 점이 아니라 범위다.
 const ITEMS=[
- {id:1,v:"1 · 적절성 5점 척도",type:"scale5",
+ {id:1,v:"1 · 적절성 4점 척도",type:"scale4",axis:"적절성",
+  band:"다소 부적절 ~ 매우 부적절",bandIdx:[2,3],
   sit:{h:"지도교수님께 대학원 추천서를 부탁하는 이메일을 씁니다.",r:"지도교수 · 평소 수업에서만 뵙는 사이",c:"이메일",p:"P: 내가 낮음 / D: 지인 / R: 높음"},
   src:"교수님, 혹시 대학원 지원에 필요한 추천서를 써주실 수 있을까요? 마감은 다음 달 15일입니다.",
-  zh:"老师，请给我写一封研究生申请的推荐信，截止日期是下个月15号。", truth:"under",
+  zh:"老师，请给我写一封研究生申请的推荐信，截止日期是下个月15号。",
   hl:["请给我写"],
   fb:"내용은 원문 그대로 담겼습니다. 다만 <b>请给我写</b>는 부탁이 아니라 지시에 가깝습니다. 부담이 큰 요청인데 완화가 한 겹도 없어 갑작스럽게 읽힙니다."},
 
- {id:2,v:"2 · 과잉공손 전용 척도",type:"pol5",
-  sit:{h:"카페에서 직원에게 콘센트를 써도 되는지 묻습니다.",r:"카페 직원 · 초면",c:"대면",p:"P: 동등 / D: 초면 / R: 낮음"},
-  src:"여기 콘센트 사용해도 될까요?",
-  zh:"您好，非常抱歉打扰您，冒昧请问一下，不知道这里的插座是否可以使用？给您添麻烦了，实在不好意思。", truth:"over",
-  hl:["非常抱歉打扰您","实在不好意思"],
-  fb:"표준적인 서비스 상황이라 부담이 낮습니다. 표시된 두 곳처럼 <b>사과를 두 번</b> 얹으면 정중해지는 게 아니라 오히려 거리를 두는 느낌이 됩니다."},
+ // ⚠️ 모어 화자 검토 1순위 — 친밀·저부담에서 把 명령형이 어디까지 자연스러운지는
+ //    한국어 공손 규범을 투사하기 쉬운 지점이다. 吧를 붙여 제안형으로 두었다.
+ {id:2,v:"2 · 3분류 판정",type:"plain",axis:"직접성",
+  band:"알맞음",bandIdx:[1],
+  sit:{h:"같이 사는 룸메이트에게 에어컨 온도를 낮춰달라고 합니다.",r:"룸메이트 · 편한 사이",c:"대면",p:"P: 동등 / D: 친밀 / R: 낮음"},
+  src:"에어컨 좀 약하게 틀어도 될까? 좀 추워서.",
+  zh:"有点冷，把空调关小一点吧。",
+  hl:["有点冷","吧"],
+  fb:"<b>有点冷</b>으로 이유를 먼저 대고 <b>吧</b>로 제안형을 만들었습니다. 把 명령형이라도 이 조건에서는 통보가 아니라 일상적인 부탁으로 들립니다. <b>직접적인 형식 자체가 문제인 것은 아니라는</b> 사례입니다."},
 
- {id:3,v:"3 · 판정 + 교정 선택지",type:"choice",
+ // 축 이동(2026-07-22): `喂`의 문제는 요청의 직접성이 아니라 호칭·대인적 무례함이다.
+ // 이전 판은 공손성 문제를 직접성 라벨로 채점하고 있었다.
+ {id:3,v:"3 · 판정 + 교정 선택지",type:"choice",axis:"공손성",
+  band:"무례함",bandIdx:[0],
   sit:{h:"조교에게 과제 마감일을 확인합니다.",r:"조교 · 몇 번 이야기해 본 사이",c:"위챗",p:"P: 상대가 조금 위 / D: 지인 / R: 낮음"},
   src:"조교님, 과제 마감이 이번 주 금요일 맞나요?",
-  zh:"喂，作业这周五交吗？", truth:"under",
+  zh:"喂，作业这周五交吗？",
   hl:["喂"],
   fb:"확인하려는 내용은 같습니다. 문제는 <b>喂</b>인데, 전화를 받거나 사람을 부를 때 쓰는 말이라 메시지 첫머리에 오면 무례하게 들립니다. 호칭도 완화도 없습니다.",
   fix:[{zh:"助教您好，请问作业是这周五交吗？",ok:true,n:"호칭 + 请问으로 부드럽게 열었습니다."},
@@ -181,33 +223,34 @@ const ITEMS=[
        {zh:"作业这周五交吗？",ok:false,n:"喂는 빠졌지만 호칭도 완화도 여전히 없습니다."},
        {zh:"不知道作业是不是这周五截止呢？如果方便的话麻烦您确认一下。",ok:false,n:"간단한 확인에 이만큼 돌려 말하면 이번엔 지나치게 우회적입니다."}]},
 
- {id:4,v:"4 · 판정 + 자유 교정",type:"free",
-  sit:{h:"같이 사는 룸메이트에게 에어컨 온도를 조절해달라고 합니다.",r:"룸메이트 · 편한 사이",c:"대면",p:"P: 동등 / D: 친밀 / R: 낮음"},
-  src:"에어컨 좀 약하게 틀어도 될까? 좀 추워서.",
-  zh:"有点冷，把空调关小一点。", truth:"under",
-  hl:["把空调关小一点"],
-  demoFix:"有点冷，空调可以关小一点吗？",
-  fb:"이유(有点冷)는 잘 들어갔습니다. 다만 표시된 부분이 <b>把자 명령형</b>이라, 친한 사이라도 부탁이 아니라 통보로 들립니다. 원문의 '~해도 될까?'라는 <b>묻는 형식</b>이 사라졌습니다."},
-
- {id:5,v:"5 · 판정 + 이유 + 확신도",type:"reason",
-  sit:{h:"동아리 선배에게 지난주 회의록을 공유해달라고 합니다.",r:"동아리 선배 · 알지만 아직 어색한 사이",c:"위챗",p:"P: 내가 낮음 / D: 지인 / R: 중간"},
-  src:"선배, 지난주 회의록 좀 공유해주실 수 있을까요?",
-  zh:"学长，把上周的会议记录发给我。", truth:"under",
-  hl:["把上周的会议记录发给我"],
-  fb:"호칭(学长)은 있지만 그 뒤가 <b>把자 명령형</b>입니다. 윗사람에게 중간 정도 부담을 부탁하는 자리라 '能…吗' 정도의 완화 한 겹은 있어야 합니다.",
-  reasons:[{t:"윗사람인데 완화 없이 바로 지시했다",ok:true},
+ // 초면 × 중부담 — 산출 과제(초면 × 중~고부담)와 같은 조건대. DCT 직전의 난이도 브리지이며,
+ // 피드백의 能不能麻烦您이 곧 산출에서 필요한 완화 자원의 사전 노출이 된다(산출 정합 규칙).
+ // 이유 선택지에 P·D·R 판단을 녹인다 — 관계 3지선다 화면을 삭제하고도 맥락 인식이 남는다.
+ {id:4,v:"4 · 판정 + 이유 + 확신도",type:"reason",axis:"직접성",
+  band:"너무 직접적",bandIdx:[0],
+  sit:{h:"학술대회 준비위원회에 이번에 처음 들어갔습니다. 지난주 첫 회의에 가지 못해, 준비위원장께 회의록을 보내달라고 합니다.",r:"준비위원장 · 대학원생 선배 · 이번에 처음 뵙는 사이",c:"위챗",p:"P: 내가 낮음 / D: 초면 / R: 중간"},
+  src:"안녕하세요. 지난주 회의록을 좀 보내주실 수 있을까요?",
+  zh:"把上周的会议记录发我一下。",
+  hl:["把上周的会议记录发我一下"],
+  fb:"처음 뵙는 윗사람에게 중간 정도 부담을 부탁하는 자리입니다. 완화가 한 겹도 없어 지시로 읽히고, 원문의 '~해주실 수 있을까요?'라는 <b>묻는 형식</b>도 사라졌습니다. <b>能不能麻烦您…</b> 정도의 완충이 필요합니다.",
+  reasons:[{t:"처음 뵙는 윗사람인데 완화가 한 겹도 없다",ok:true},
            {t:"부담에 비해 지나치게 돌려 말했다",ok:false},
            {t:"원문에 없는 내용이 들어갔다",ok:false},
            {t:"원문의 내용이 빠졌다",ok:false}]},
 
- {id:6,v:"6 · 한 상황 다중 발화",type:"multi",border:true,
+ // 길이 통제(2026-07-22 밤): 이전 판은 짧음=under, 중간=ok, 최장=over로 글자 수가
+ // 단조 대응해 중국어를 안 읽고 길이순으로 찍어도 맞았다. 원칙 4는 단일 문항뿐 아니라
+ // **multi 후보 사이에도** 적용된다. 지금은 under에 긴 것(이유+부연)을, ok에 짧은 것을 섞어
+ // 길이 구간이 겹친다. 경계는 문항 배지가 아니라 **후보 속성**(b:true) — LOCK "경계는 문항 속성"의 multi 버전.
+ // `发表`는 한국어 '발표'의 간섭이 의심돼(중국어에서는 논문 게재 어감이 강함) `报告`로 교체.
+ {id:5,v:"5 · 한 상황 다중 발화",type:"multi",
   sit:{h:"팀 프로젝트 조원에게 자료 정리를 맡아달라고 합니다.",r:"같은 조 조원 · 이번 학기에 처음 같은 조",c:"위챗",p:"P: 동등 / D: 지인 / R: 중간"},
   src:"이번 자료 정리는 네가 맡아줄 수 있어? 내가 발표 준비를 해야 해서.",
-  cands:[{zh:"我要准备发表，资料整理你来做。",t:"under",n:"이유는 있지만 뒤가 통보입니다."},
-         {zh:"我要准备发表，我需要你整理资料。",t:"under",n:"'내가 필요하다'는 요청이 아니라 요구로 들립니다."},
-         {zh:"我要准备发表，这次资料整理你能帮忙吗？",t:"ok",n:"'帮忙' + 이유. 동등한 사이의 기본형입니다."},
-         {zh:"如果方便的话，这次的资料整理能不能麻烦你？我这边要准备发表。",t:"ok",n:"선택권 + 부담 인정. 조금 더 정중하지만 과하지 않습니다."},
-         {zh:"不知道这次的资料整理是不是可以麻烦你帮忙处理一下？如果实在不方便的话也完全没关系。我这边要准备发表。",t:"over",n:"조원 사이에 이만큼 돌려 말하면 오히려 부담스럽습니다."}]}
+  cands:[{zh:"资料整理你来做，我要准备报告。",t:"under",n:"'네가 해라'라는 통보입니다. 이유는 있지만 부탁의 형식이 없습니다."},
+         {zh:"资料整理你能帮忙吗？我要准备报告。",t:"ok",n:"바로 앞 후보와 길이가 거의 같지만 '帮忙'으로 부탁의 형식을 갖췄습니다. 길이가 아니라 형식이 가릅니다."},
+         {zh:"我需要你整理这次的资料，因为我还要准备报告，时间上确实来不及。",t:"under",n:"'내가 필요하다'는 요청이 아니라 요구로 들립니다. 이유가 길어도 마찬가지입니다."},
+         {zh:"如果方便的话，这次资料整理能不能麻烦你？我要准备报告。",t:"ok",b:true,n:"선택권 + 부담 인정. 조금 더 정중한 쪽이지만 과하지는 않습니다. 사람에 따라 '조금 과하다'고 볼 수도 있는 경계 사례입니다."},
+         {zh:"不知道资料整理是不是可以麻烦你帮忙处理一下？如果实在不方便的话也完全没关系。",t:"over",n:"조원 사이에 이만큼 돌려 말하면 오히려 부담스럽습니다."}]}
 ];
 
 const TASK={
@@ -217,17 +260,28 @@ const TASK={
 // 검토용 예시 답안 — 완화가 한 겹만 들어가 있어 뒤따르는 피드백(선택권을 하나 더)과 맞물린다.
 const DEMO_DRAFT="您好，下周二的面试我可能无法参加，非常抱歉。请问能不能改到同一周的其他日期？";
 
+// 수정 범위는 세 판정(semantic_fidelity · grammatical_accuracy · pragmatic_appropriateness)에서
+// 나온다. 우선순위가 핵심이다 — 사소한 문법 오류가 화용을 밀어내면 안 된다.
+// 학부생 답안에는 사소한 오류가 거의 항상 있으므로, 그것까지 수정 범위를 정하게 두면
+// 매주 화용이 뒷전으로 밀리고 앱이 문법 첨삭기가 된다.
+//
+//   ① 의미 왜곡·누락
+//   ② 의미 전달을 방해하는 문법 오류
+//   ③ 이번 주 핵심(화용 초점)      ← 여기가 중심
+//   ④ 사소한 문법                  ← 짚어만 주고 수정 범위는 정하지 않음
 const SCOPE={
-  fail:{l:"전체 다시 쓰기",g:"원문의 의미가 바뀌었습니다. 처음부터 다시 옮겨 보세요."},
-  warning:{l:"빠진 구간 수정",g:"원문에 있던 내용이 일부 빠졌습니다. 그 부분을 채워 보세요."},
-  featureGap:{l:"목표 표현 중심 수정",g:"의미는 잘 전달됐습니다. 이번 주 목표인 완화 표현만 손봐 보세요."},
-  clear:{l:"선택적 미세 조정",g:"의미도 화용도 무리가 없습니다. 손대고 싶은 곳이 없으면 그대로 마쳐도 됩니다."}};
+  meaning:{l:"의미 구간 재작성",g:"원문의 의미가 바뀌거나 빠졌습니다. 그 부분을 다시 옮겨 보세요."},
+  grammar:{l:"문법 오류 우선 수정",g:"의미 전달을 방해하는 문법 오류가 있습니다. 그 문장을 먼저 고쳐 보세요."},
+  feature:{l:"이번 주 핵심 중심 수정",g:"의미도 문법도 무리가 없습니다. 이번 주 핵심인 완화 표현만 손봐 보세요."},
+  clear:{l:"선택적 미세 조정",g:"세 영역 모두 허용 범위입니다. 손대고 싶은 곳이 없으면 그대로 마쳐도 됩니다."}};
 
-const CLOSING="부담이 있는 요청에서는 핵심 요청 앞에 짧은 포석을, 뒤에 선택할 여지를 함께 두면 상대가 편하게 받습니다.";
+// 이번 미션이 남겨야 할 규칙은 "완화를 많이 얹어라"가 아니라
+// "조건에 맞는 정도를 골라라"다. 3·6번의 같은 문장이 그 근거가 된다.
+const CLOSING="완화는 많을수록 좋은 것이 아니라 <b>조건에 맞아야</b> 합니다. 친한 사이의 가벼운 부탁에는 짧고 직접적인 편이 자연스럽고, 처음 뵙는 상대나 부담이 큰 요청에는 앞에 짧은 포석을, 뒤에 선택할 여지를 두어야 상대가 편하게 받습니다.";
 
 // ── 상태 ────────────────────────────────────────────────────
-const S={step:0,i:0,answered:false,pick:null,reason:null,conf:null,fixes:new Set(),
-  free:"",multi:{},draft:"",revised:"",scope:"featureGap",
+const S={step:0,i:0,answered:false,pick:null,reason:null,conf:null,
+  fixes:new Set(),multi:{},draft:"",revised:"",scope:"feature",
   marks:[],t0:Date.now(),ts:Date.now()};
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -236,7 +290,9 @@ const el=document.getElementById('stage');
 function mark(l){const s=Math.round((Date.now()-S.ts)/1000);S.marks.push([l,s]);S.ts=Date.now();}
 
 /** 진행바 — 앱과 동일한 구조(선-원-선). 지난 단계는 노랑 ✓, 현재는 검정 원 + 노란 링. */
-const STEP_LABELS=["감각 쌓기","적용","피드백","수정"];
+// 화면 라벨 ≠ 설계 용어 (2026-07-22 밤): 설계 문서는 감각 쌓기/적용/피드백/수정을 유지하고
+// 학습자 화면만 아래 라벨을 쓴다. 통역 미션이면 2단계가 '통역하기'가 된다.
+const STEP_LABELS=["판단하기","번역하기","피드백","다듬기"];
 function drawSteps(){
   document.getElementById('steps').innerHTML = STEP_LABELS.map((s,i)=>{
     const done=i<S.step, on=i===S.step;
@@ -287,16 +343,19 @@ function renderMpj(){
         <div style="font-size:14.5px;line-height:1.6">${esc(c.zh)}</div><div style="margin-top:7px">`+
         ['under','ok','over'].map(k=>`<button class="pill ${S.multi[i]===k?'sel':''} ${a&&c.t===k?'right':''}"
           ${a?'disabled':''} onclick="S.multi[${i}]='${k}';render()">${J[k]}</button>`).join('')+
-        `</div>${a?`<div style="font-size:12.5px;color:var(--muted);margin-top:8px">${esc(c.n)}</div>`:''}</div>`).join('')+`</div>`;
+        `</div>${a?`<div style="font-size:12.5px;color:var(--muted);margin-top:8px">${c.b?'<b style="color:#8A6D1F">[경계 사례] </b>':''}${esc(c.n)}</div>`:''}</div>`).join('')+`</div>`;
   } else {
-    const opts = it.type==='scale5'?SCALE5 : it.type==='pol5'?POL5 : [J.under,J.ok,J.over];
-    const qt = it.type==='pol5'?'이 상황에 이 표현은 어떤가요?'
-      : it.type==='scale5'?'이 번역안은 이 상황에 얼마나 적절한가요?' : '이 번역안은 이 상황에 맞나요?';
+    const opts = it.type==='scale4'?SCALE4 : it.type==='pol5'?POL5 : opts3(it);
+    const qt = (it.type==='pol5'||it.axis==='공손성')?'이 상황에 이 표현은 어떤가요?'
+      : it.type==='scale4'?'이 번역안은 이 상황에 얼마나 적절한가요?' : '이 번역안은 이 상황에 맞나요?';
+    // 답을 확인하면 수용 대역에 해당하는 선택지를 초록으로 표시한다.
+    // 5점 척도는 정답이 한 점이 아니라 범위이므로 여러 개가 함께 켜진다.
     body=`<div class="card"><div class="q" style="margin-top:0">${qt}</div>`+
-      opts.map(o=>`<button class="opt ${S.pick===o?'sel':''}" ${a?'disabled':''} onclick="S.pick='${o}';render()">${o}</button>`).join('');
+      opts.map((o,oi)=>`<button class="opt ${S.pick===o?'sel':''} ${a&&it.bandIdx&&it.bandIdx.includes(oi)?'right':''}"
+        ${a?'disabled':''} onclick="S.pick='${o}';render()">${o}</button>`).join('');
 
     // 부적절하다고 판단했을 때만 이유를 묻는다 (맞게 본 학습자에게 이유를 캐묻지 않는다)
-    const negative = S.pick && S.pick!==J.ok && S.pick!=='딱 맞음' && !S.pick.startsWith('완전히 적절') && !S.pick.startsWith('대체로 적절');
+    const negative = S.pick && S.pick!==J.ok && S.pick!=='딱 맞음' && S.pick!=='매우 적절' && S.pick!=='다소 적절';
     if(it.type==='reason'&&negative){
       body+=`<div class="q">어디가 걸리셨나요?</div>`+
         it.reasons.map((r,i)=>`<button class="opt ${S.reason===i?'sel':''} ${a&&r.ok?'right':''}" ${a?'disabled':''}
@@ -304,27 +363,26 @@ function renderMpj(){
         `<div class="q">얼마나 확신하시나요?</div><div>`+
         CONF.map(c=>`<button class="pill ${S.conf===c?'sel':''}" ${a?'disabled':''} onclick="S.conf='${c}';render()">${c}</button>`).join('')+`</div>`;
     }
-    if(it.type==='free'&&negative){
-      body+=`<div class="q">어떻게 고치면 좋을까요?</div>
-        <textarea id="ft" rows="3" placeholder="중국어로 고쳐 보세요…" ${a?'disabled':''}
-          oninput="S.free=this.value;var b=document.getElementById('ok');if(b)b.disabled=!this.value.trim()">${esc(S.free)}</textarea>`
-        + (a?'':`<button class="demo" onclick="fillFix()">✎ 예시 답안으로 채우기 <span>검토용 — 직접 입력하지 않으셔도 됩니다</span></button>`);
-    }
     if(it.type==='choice'&&negative){
       body+=`<div class="q">어떻게 고치면 좋을까요? <span style="font-weight:400">맞는 것을 모두 고르세요</span></div>`+
         it.fix.map((f,i)=>`<button class="opt ${S.fixes.has(i)?'sel':''} ${a&&f.ok?'right':''}" ${a?'disabled':''}
           onclick="S.fixes.has(${i})?S.fixes.delete(${i}):S.fixes.add(${i});render()">${esc(f.zh)}
           ${a?`<div class="note">${esc(f.n)}</div>`:''}</button>`).join('');
     }
-    if(a) body+=`<div class="fb"><div class="h">기준 판정 · ${J[it.truth]}</div><p>${it.fb}</p></div>`;
+    // 기준 판정 라벨은 그 문항이 실제로 물은 축을 따른다.
+    // (이전 판은 공손성 척도로 물어 놓고 직접성 라벨로 채점했다.)
+    // 단일 판정은 "이 상황에서는"을 붙여 절대 평가처럼 읽히지 않게 한다.
+    // 표현 자체가 무례하거나 공손한 것이 아니라는 것이 이 미션의 핵심이기 때문.
+    if(a) body+=`<div class="fb"><div class="h">기준 판정 · ${it.axis} — ${it.bandIdx.length>1?it.band:'이 상황에서는 '+it.band}</div>`
+      + (it.bandIdx.length>1?`<p style="font-size:12px;color:var(--muted)">유일한 정답이 아니라 <b>수용 대역</b>입니다. 초록으로 표시된 구간 안이면 같게 본 것으로 봅니다.</p>`:'')
+      + `<p>${it.fb}</p></div>`;
     body+=`</div>`;
   }
 
-  const neg = S.pick && S.pick!==J.ok && S.pick!=='딱 맞음' && !S.pick.startsWith('완전히 적절') && !S.pick.startsWith('대체로 적절');
+  const neg = S.pick && S.pick!==J.ok && S.pick!=='딱 맞음' && S.pick!=='매우 적절' && S.pick!=='다소 적절';
   const can = it.type==='multi' ? Object.keys(S.multi).length===it.cands.length
     : it.type==='reason' ? !!(S.pick && (!neg || (S.reason!==null && S.conf)))
     : it.type==='choice' ? !!(S.pick && (!neg || S.fixes.size))
-    : it.type==='free'   ? !!(S.pick && (!neg || S.free.trim()))
     : !!S.pick;
 
   el.innerHTML = `<div><span class="vtag">${it.v}</span><span class="count">${S.i+1} / ${ITEMS.length}${it.border?' · 경계 사례':''}</span></div>`
@@ -336,13 +394,21 @@ function renderMpj(){
 }
 
 function nextMpj(){
-  if(S.i<ITEMS.length-1){S.i++;S.answered=false;S.pick=null;S.reason=null;S.conf=null;S.fixes=new Set();S.free="";S.multi={};}
-  else {mark('감각 쌓기');S.step=1;}
+  if(S.i<ITEMS.length-1){S.i++;S.answered=false;S.pick=null;
+    S.reason=null;S.conf=null;S.fixes=new Set();S.multi={};}
+  else {mark('판단하기');S.step=1;}
   window.scrollTo({top:0,behavior:'smooth'});render();
 }
 
+// 감각 쌓기 → 산출의 다리. 원리 요약이 아니라 **도구 상자 인계** —
+// 방금 판단하며 본 전략 범주를 산출 직전에 상기시킨다(재인→산출 간극 완화).
+// 단 문장 모델은 주지 않는다: 모델 문장은 제출 후에 공개(인출 시도 보호).
+// 산출 정합 규칙: 여기 나열되는 전략은 반드시 MPJ 세트에서 이미 본 것이어야 한다.
+const BRIDGE="방금 판단하며 본 도구들 — <b>호칭과 여는 말, 완화 한 겹, 상대에게 선택을 남기는 맺음.</b> 이제 새 상황입니다. 많이 얹을수록 좋은 것이 아니라, <b>이 상대와 이 부담에 맞는 만큼만</b> 골라 쓰는 것이 핵심입니다.";
+
 function renderProduce(){
-  el.innerHTML = sitHtml(TASK.sit) + `<div class="card">
+  el.innerHTML = `<div class="dark"><div class="k">판단하기 정리</div><p>${BRIDGE}</p></div>`
+    + sitHtml(TASK.sit) + `<div class="card">
     <div class="q" style="margin-top:0">이 말을 중국어로 옮겨 보세요</div>
     <p class="sub">방금 판단해 본 감각을 <b>새로운 상황</b>에 적용하는 단계입니다. 참고 표현은 제출한 뒤에 함께 봅니다.</p>
     ${pairHtml(TASK.src,null,null,false)}
@@ -350,15 +416,7 @@ function renderProduce(){
       oninput="S.draft=this.value;document.getElementById('go').disabled=!this.value.trim()">${esc(S.draft)}</textarea>
     <button class="demo" onclick="fillDemo()">✎ 예시 답안으로 채우기 <span>검토용 — 직접 입력하지 않으셔도 됩니다</span></button>
     </div><button class="cta y" id="go" ${S.draft.trim()?'':'disabled'}
-      onclick="mark('적용');S.step=2;window.scrollTo(0,0);render()">적용하기 →</button>`;
-}
-
-/** 자유 교정 문항의 예시 답안 채우기 — 판단 단계에서도 타이핑을 요구하지 않는다. */
-function fillFix(){
-  const v = ITEMS[S.i].demoFix || '';
-  S.free = v;
-  const t=document.getElementById('ft'); if(t) t.value = v;
-  const b=document.getElementById('ok'); if(b) b.disabled = !v;
+      onclick="mark('번역하기');S.step=2;window.scrollTo(0,0);render()">번역 제출 →</button>`;
 }
 
 /** 검토자가 중국어를 직접 타이핑하지 않아도 흐름을 끝까지 볼 수 있게 한다. */
@@ -374,13 +432,19 @@ function renderFeedback(){
    +`<div class="card"><div class="q" style="margin-top:0"><span style="color:var(--muted)">1</span> 의미와 의도
      <span style="background:#E7F5EE;color:var(--ok);border-radius:4px;padding:2px 6px;font-size:11px;margin-left:6px">유지됨</span></div>
      <p style="font-size:13.5px;margin:6px 0 0">일정 조정 요청과 사과가 모두 전달되었습니다. 원문의 '같은 주 다른 날'이라는 조건도 유지됐습니다.</p></div>
-   <div class="card"><div class="q" style="margin-top:0"><span style="color:var(--muted)">2</span> 이번 화용 요소 — 직접성과 완화</div>
+   <div class="card"><div class="q" style="margin-top:0"><span style="color:var(--muted)">2</span> 문법·표현 정확성
+     <span style="background:#E7F5EE;color:var(--ok);border-radius:4px;padding:2px 6px;font-size:11px;margin-left:6px">명백한 오류 없음</span></div>
+     <p style="font-size:13.5px;margin:6px 0 0">어순과 성분에 문제가 없습니다.</p>
+     <p style="font-size:11.5px;color:var(--muted);margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line)">[설계 확인용] 이 층은 <b>명백한 비문과 의미 전달을 방해하는 오류</b>만 지적합니다. 판단이 불확실한 사항은 <b>화면에 띄우지 않고 내부에만 기록</b>합니다 — 맞는 문장을 비문이라고 단정하면 학습자가 피드백 전체를 신뢰하지 않게 되기 때문입니다.</p></div>
+   <div class="card"><div class="q" style="margin-top:0"><span style="color:var(--muted)">3</span> 이번 주 핵심 — 완화와 선택권</div>
      <p style="font-size:13.5px;margin:6px 0 0">완화 장치가 한 겹 들어갔습니다. 초면이고 상대가 결정권을 가진 상황이라, 조정을 요청하는 부분에 선택권을 여는 표현을 하나 더 얹으면 더 부드러워집니다.</p></div>
-   <div class="card"><div class="q" style="margin-top:0"><span style="color:var(--muted)">3</span> 다른 표현 가능성</div>
+   <div class="card"><div class="q" style="margin-top:0"><span style="color:var(--muted)">4</span> 다른 표현 가능성</div>
      <p class="sub">정답이 아니라 비교용입니다. 상황에 따라 어울리는 범위가 달라집니다.</p>
      <div style="background:#FAF8F2;border-radius:8px;padding:10px 12px;margin-top:8px"><div style="font-size:14.5px">不知道能否将面试改到同一周的其他时间？</div><div style="font-size:12px;color:var(--muted);margin-top:3px">'不知道能否'로 판단을 상대에게 넘깁니다.</div></div>
      <div style="background:#FAF8F2;border-radius:8px;padding:10px 12px;margin-top:8px"><div style="font-size:14.5px">如果方便的话，可以调整到同一周的其他日期吗？</div><div style="font-size:12px;color:var(--muted);margin-top:3px">조건절로 거절할 여지를 남깁니다.</div></div></div>
-   <div class="ask"><div class="h">[설계 확인용] 수정 범위 — 실제로는 피드백 결과가 자동으로 고릅니다</div><div style="margin-top:6px">${sc}</div></div>
+   <div class="ask"><div class="h">[설계 확인용] 수정 범위 — 실제로는 세 판정이 자동으로 고릅니다</div>
+     <p style="font-size:11.5px;color:var(--muted);margin:4px 0 0">의미 &gt; 의미를 방해하는 문법 &gt; 이번 주 핵심 순으로 정해집니다. 사소한 문법은 짚어만 주고 수정 범위를 바꾸지 않습니다.</p>
+     <div style="margin-top:8px">${sc}</div></div>
    <button class="cta" onclick="mark('피드백');S.step=3;window.scrollTo(0,0);render()">고치러 가기 →</button>`;
 }
 
@@ -397,13 +461,33 @@ function renderRevise(){
       <div class="row"><span class="flag zh">ZH</span><div style="flex:1;width:100%"><p class="cap">내 번역 — 고쳐 보세요</p>
         <textarea rows="5" style="margin-top:2px" oninput="S.revised=this.value">${esc(S.revised||S.draft)}</textarea></div></div>
     </div>
-    <button class="cta" onclick="mark('수정');S.step=4;window.scrollTo(0,0);render()">마치기</button>`;
+    <button class="cta" onclick="mark('다듬기');S.step=4;window.scrollTo(0,0);render()">완료하기 →</button>`;
 }
+
+// 완료 화면의 표현 정리 — 오늘 판단한 5개 상황의 적절안 예시.
+// "덜 끝난 느낌"의 해법: 수정 후 뚝 끊지 않고 오늘 본 것을 한 번 굳히고 마친다.
+// ⚠️ 적절안은 유일 정답이 아니라 예시(수용 대역의 한 점). 1·4번 예시는 검수 전 초안.
+const SUMMARY=[
+ {s:"교수님께 추천서 부탁 (이메일)", m:"老师您好，打扰您了。我在准备研究生申请，想请您帮我写一封推荐信，不知道您是否方便？截止日期是下个月15号。"},
+ {s:"룸메이트에게 에어컨 부탁 (대면)", m:"有点冷，把空调关小一点吧。"},
+ {s:"조교에게 마감일 확인 (위챗)", m:"助教您好，请问作业是这周五交吗？"},
+ {s:"처음 뵙는 위원장께 회의록 부탁 (위챗)", m:"学长您好，我是这次新加入筹备组的学生。上周的会议没能参加，能不能麻烦您把会议记录发我一下？"},
+ {s:"조원에게 자료 정리 부탁 (위챗)", m:"资料整理你能帮忙吗？我要准备报告。"}];
 
 function renderDone(){
   const tot=Math.round((Date.now()-S.t0)/1000), fmt=s=>`${Math.floor(s/60)}분 ${s%60}초`;
   el.innerHTML = `<div class="dark"><div class="k">이번 미션의 핵심</div><p>${CLOSING}</p></div>
-   <div class="card"><div class="q" style="margin-top:0">소요 시간</div>
+   <div class="card"><div class="q" style="margin-top:0">오늘 다룬 표현 정리</div>
+    <p class="sub">적절안의 한 예시입니다 — 유일한 정답이 아니라 수용 대역 안의 한 표현입니다.</p>
+    ${SUMMARY.map(x=>`<div style="border-top:1px solid var(--line);padding:10px 0 2px;margin-top:10px">
+      <div style="font-size:12px;color:var(--muted)">${esc(x.s)}</div>
+      <div style="font-size:14.5px;line-height:1.6;margin-top:3px">${esc(x.m)}</div></div>`).join('')}</div>
+   <div class="card"><div class="q" style="margin-top:0">내 번역 — 오늘의 산출</div>
+    <div class="pair" style="margin:10px 0 4px">
+      <div class="row ko"><span class="flag ko">KO</span><div><p class="cap">내가 전하려는 말</p><p class="t">${esc(TASK.src)}</p></div></div>
+      <div class="row"><span class="flag zh">ZH</span><div><p class="cap">내 최종 번역 (다듬기 반영)</p><p class="t">${esc(S.revised||S.draft)}</p></div></div>
+    </div></div>
+   <div class="ask"><div class="h">[검토용] 소요 시간 — 학습자 화면에는 표시하지 않습니다</div>
     <table>${S.marks.map(m=>`<tr><td style="color:var(--muted)">${m[0]}</td><td>${fmt(m[1])}</td></tr>`).join('')}
     <tr><td style="font-weight:700">합계</td><td>${fmt(tot)}</td></tr></table></div>`;
 }
