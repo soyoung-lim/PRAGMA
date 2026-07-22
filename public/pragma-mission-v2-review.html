@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRAGMA · 미션 흐름 v2 검토용 프로토타입</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  /* 디자인 토큰 — 앱(src/index.css)에서 그대로 가져옴.
+     원칙: 흑백 + 노랑 한 점. 노랑은 강조에만 아껴 쓴다. */
+  :root{
+    --line:#D2D0C6; --accent:#FAD338; --ink:#15202B; --muted:#5C6A7A;
+    --paper:#FAF7F0; --soft:#F5F5F2; --ok:#2E7D5B; --okbg:#F2FAF6;
+    --rail:#E3E1D8; --dim:#A9B0BA;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,
+      system-ui,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+    line-height:1.6; -webkit-text-size-adjust:100%; -webkit-font-smoothing:antialiased;
+  }
+  /* 앱 헤더 — 어두운 바 + 노란 세로 막대 브랜드 마크 */
+  .topbar{background:var(--ink)}
+  .topbar .in{max-width:768px;margin:0 auto;padding:16px 24px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .brand{display:inline-flex;align-items:center;gap:6px;color:#F1EFE8;font-size:17px;font-weight:500}
+  .brand i{display:inline-block;width:5px;height:20px;border-radius:9999px;background:var(--accent)}
+  .topbar .right{font-size:12px;color:#8899A6;text-align:right;line-height:1.45}
+  .wrap{max-width:768px;margin:0 auto;padding:24px 24px 64px}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-size:13px;color:var(--muted);margin:0}
+  .card{border:1px solid var(--line);background:#fff;border-radius:12px;padding:16px;margin:12px 0}
+  button{font-family:inherit}
+
+  /* ── 상황: 한눈에 "여긴 배경 설명" 임을 알리는 블록 ── */
+  .situation{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px 17px;margin:14px 0}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
+  .situation .h{font-size:15.5px;font-weight:700;margin-top:5px;line-height:1.5}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .chip{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12px;color:var(--muted)}
+  .meta{font-size:11px;color:var(--dim);margin-top:10px}
+
+  /* ── 원문 ↔ 번역안: 같은 내용, 언어만 다른 한 쌍 ── */
+  .pair{border:1px solid var(--line);background:#fff;border-radius:12px;overflow:hidden;margin:14px 0}
+  .pair .row{display:flex;gap:12px;padding:14px 16px;align-items:flex-start}
+  .pair .row + .row{border-top:1px dashed var(--line)}
+  .pair .row.ko{background:#FFFDF6}
+  .flag{flex:none;width:34px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;font-weight:800;letter-spacing:.03em}
+  .flag.ko{background:var(--accent);color:var(--ink)}
+  .flag.zh{background:var(--ink);color:#fff}
+  .pair .t{font-size:15px;line-height:1.65;margin:0}
+  .pair .cap{font-size:11px;color:var(--muted);margin:0 0 3px}
+  mark{background:#FFE9A8;border-bottom:2px solid #D9A400;border-radius:2px;padding:0 1px}
+
+  .q{font-size:14px;font-weight:700;margin:16px 0 4px}
+  .opt{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fff;
+    border-radius:10px;padding:11px 14px;font-size:14.5px;margin:6px 0;cursor:pointer;color:var(--ink)}
+  .opt:hover{background:#FAFAF7}
+  .opt.sel{border:1.5px solid var(--ink);background:#FAFAF7;font-weight:700}
+  .opt.right{border-color:var(--ok);background:var(--okbg)}
+  .opt .note{font-size:12px;color:var(--muted);margin-top:4px;font-weight:400}
+  .pill{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;
+    font-size:12.5px;margin:4px 4px 0 0;cursor:pointer;color:var(--ink)}
+  .pill.sel{border:1.5px solid var(--ink);background:#FAFAF7;font-weight:700}
+  .pill.right{border-color:var(--ok);background:var(--okbg)}
+  .cta{width:100%;border:none;background:var(--ink);color:#fff;border-radius:10px;
+    padding:13px;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px}
+  .cta:disabled{background:#C9CFD4;cursor:not-allowed}
+  .cta.y{background:var(--accent);color:var(--ink)}
+  textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;
+    font-family:inherit;font-size:14px;resize:vertical;margin-top:8px}
+  .fb{background:var(--okbg);border-radius:10px;padding:13px 15px;margin-top:14px}
+  .fb .h{font-size:12px;font-weight:800;color:var(--ok)}
+  .fb p{margin:5px 0 0;font-size:13.5px}
+  /* ── 진행바 — 앱과 동일: 번호 원을 선으로 잇고, 지난 단계는 노랑 ── */
+  .steps{display:flex;align-items:flex-start;margin:18px 0 22px;padding:0;list-style:none}
+  .steps li{flex:1;display:flex;flex-direction:column;align-items:center}
+  .steps .rail{display:flex;width:100%;align-items:center}
+  .steps .bar{height:3px;flex:1;border-radius:9999px;background:var(--rail)}
+  .steps .n{width:28px;height:28px;flex:none;border-radius:9999px;display:grid;place-items:center;
+    font-size:12px;font-weight:800;background:#fff;color:var(--dim);box-shadow:0 0 0 1px var(--rail) inset}
+  .steps .lab{margin-top:8px;padding:0 4px;text-align:center;font-size:12.5px;line-height:1.25;
+    font-weight:500;color:var(--muted)}
+  .steps li.on .n{background:var(--ink);color:#fff;box-shadow:0 0 0 4px rgba(250,211,56,.35)}
+  .steps li.on .lab{font-weight:700;color:var(--ink)}
+  .steps li.done .n{background:var(--accent);color:var(--ink);box-shadow:none}
+  .steps li.done .lab{font-weight:600;color:rgba(21,32,43,.7)}
+  .steps li.done .bar,.steps li.on .bar.l{background:var(--accent)}
+  .steps .bar.hide{opacity:0}
+  .vtag{display:inline-block;background:#F0EDE4;border-radius:6px;padding:3px 9px;font-size:12px;color:#5B5446}
+  .count{font-size:12px;color:var(--muted);float:right}
+  .ask{border:1px dashed var(--line);background:var(--soft);border-radius:10px;padding:11px 14px;margin-top:12px}
+  .ask .h{font-size:12px;font-weight:800;color:var(--muted)}
+  .demo{display:block;width:100%;margin-top:8px;border:1px dashed var(--line);background:var(--soft);
+    border-radius:8px;padding:9px;font-size:13px;color:var(--muted);cursor:pointer;text-align:center}
+  .demo:hover{background:#EFEEE9}
+  .demo span{display:block;font-size:11px;color:var(--dim);margin-top:2px}
+  .howto{border:1px solid var(--line);border-left:3px solid var(--accent);background:#fff;
+    border-radius:12px;padding:14px 17px;margin-top:16px;font-size:13px;color:var(--ink);line-height:1.7}
+  .howto span{display:block;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--muted)}
+  .pair .row > div{flex:1;min-width:0}
+  .dark{background:var(--ink);color:#fff;border-radius:12px;padding:18px}
+  .dark .k{font-size:11.5px;font-weight:800;color:var(--accent)}
+  .dark p{margin:6px 0 0;font-size:14.5px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  td{padding:4px 0;border-bottom:1px solid var(--line)}
+  td:last-child{text-align:right;font-weight:700}
+  @media(max-width:520px){.steps li span:not(.n){display:none}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="in">
+    <span class="brand"><i></i>AI 기반 한·중 통번역 학습 워크플로우</span>
+    <span class="right">미션 흐름 v2 · 검토용<br>요청 · 중급 HSK5</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <p class="sub" style="margin-bottom:2px">중어중문학과 학부생 대상 · 한→중 서면 번역</p>
+  <h1>2주차 요청 — 반복 미션 한 회차</h1>
+
+  <div class="howto">
+    <b>학생이 되었다 생각하고 문항을 하나씩 판단해 보세요.</b>
+    선택 후 <b>[확인하기]</b>를 누르면 기준 판정과 근거가 나옵니다.
+    판단 6문항 뒤에 번역 과제·피드백·수정이 이어지며, 전체 5분 내외입니다.
+    <span>※ 화면의 <b>기준 판정</b>은 설계 조건(화행·P·D·R·매체·수준)에 따라 AI가 제안한 것이며,
+    모어 화자 검토를 거쳐 확정할 예정입니다. 중국어 예문도 검수 전 초안입니다.</span>
+  </div>
+
+  <ol class="steps" id="steps"></ol>
+
+  <div id="stage"></div>
+</div>
+
+<script>
+// ── 라벨: 직접성 단일 축 (mpj_labels LOCK) ──────────────────
+// "너무 직접적 / 알맞음 / 지나치게 우회적" — 한 축의 양 끝이라 대칭이다.
+// 이전 초안의 "과잉 공손"은 공손성 축의 이름이라 축이 섞여 있었다.
+// 그래서 오답 후보도 과잉 격식체(恳请您/尊敬的)가 아니라 우회형으로 만든다 —
+// 격식은 과해도 요청 자체가 직접적이면 이 축에 실리지 않는다.
+const J = {under:"너무 직접적", ok:"알맞음", over:"지나치게 우회적"};
+const SCALE5=["완전히 적절","대체로 적절","다소 적절","대체로 부적절","완전히 부적절"];
+const POL5=["너무 과함","조금 과함","딱 맞음","조금 무례","너무 무례"];
+const CONF=["매우 확신","꽤 확신","확신 없음"];
+
+// 문항 설계 제약: 모든 번역안은 원문과 **사실 정보·발화 의도가 동일**하고
+// 문법적으로 성립하며, 차이는 목표 화용 요소(직접성·완화)에서만 난다.
+// 정보가 빠지면 학습자가 화용이 아니라 "내용이 빠졌네"로 판정해 문항이 무효가 된다.
+//
+// 제시 순서는 인지 부담 순 — 고르기(선택지)가 쓰기(자유 입력)보다 쉽다.
+const ITEMS=[
+ {id:1,v:"1 · 적절성 5점 척도",type:"scale5",
+  sit:{h:"지도교수님께 대학원 추천서를 부탁하는 이메일을 씁니다.",r:"지도교수 · 평소 수업에서만 뵙는 사이",c:"이메일",p:"P: 내가 낮음 / D: 지인 / R: 높음"},
+  src:"교수님, 혹시 대학원 지원에 필요한 추천서를 써주실 수 있을까요? 마감은 다음 달 15일입니다.",
+  zh:"老师，请给我写一封研究生申请的推荐信，截止日期是下个月15号。", truth:"under",
+  hl:["请给我写"],
+  fb:"내용은 원문 그대로 담겼습니다. 다만 <b>请给我写</b>는 부탁이 아니라 지시에 가깝습니다. 부담이 큰 요청인데 완화가 한 겹도 없어 갑작스럽게 읽힙니다."},
+
+ {id:2,v:"2 · 과잉공손 전용 척도",type:"pol5",
+  sit:{h:"카페에서 직원에게 콘센트를 써도 되는지 묻습니다.",r:"카페 직원 · 초면",c:"대면",p:"P: 동등 / D: 초면 / R: 낮음"},
+  src:"여기 콘센트 사용해도 될까요?",
+  zh:"您好，非常抱歉打扰您，冒昧请问一下，不知道这里的插座是否可以使用？给您添麻烦了，实在不好意思。", truth:"over",
+  hl:["非常抱歉打扰您","实在不好意思"],
+  fb:"표준적인 서비스 상황이라 부담이 낮습니다. 표시된 두 곳처럼 <b>사과를 두 번</b> 얹으면 정중해지는 게 아니라 오히려 거리를 두는 느낌이 됩니다."},
+
+ {id:3,v:"3 · 판정 + 교정 선택지",type:"choice",
+  sit:{h:"조교에게 과제 마감일을 확인합니다.",r:"조교 · 몇 번 이야기해 본 사이",c:"위챗",p:"P: 상대가 조금 위 / D: 지인 / R: 낮음"},
+  src:"조교님, 과제 마감이 이번 주 금요일 맞나요?",
+  zh:"喂，作业这周五交吗？", truth:"under",
+  hl:["喂"],
+  fb:"확인하려는 내용은 같습니다. 문제는 <b>喂</b>인데, 전화를 받거나 사람을 부를 때 쓰는 말이라 메시지 첫머리에 오면 무례하게 들립니다. 호칭도 완화도 없습니다.",
+  fix:[{zh:"助教您好，请问作业是这周五交吗？",ok:true,n:"호칭 + 请问으로 부드럽게 열었습니다."},
+       {zh:"助教，想确认一下，作业是这周五交吗？",ok:true,n:"'확인하고 싶다'는 완충이 들어가 자연스럽습니다."},
+       {zh:"作业这周五交吗？",ok:false,n:"喂는 빠졌지만 호칭도 완화도 여전히 없습니다."},
+       {zh:"不知道作业是不是这周五截止呢？如果方便的话麻烦您确认一下。",ok:false,n:"간단한 확인에 이만큼 돌려 말하면 이번엔 지나치게 우회적입니다."}]},
+
+ {id:4,v:"4 · 판정 + 자유 교정",type:"free",
+  sit:{h:"같이 사는 룸메이트에게 에어컨 온도를 조절해달라고 합니다.",r:"룸메이트 · 편한 사이",c:"대면",p:"P: 동등 / D: 친밀 / R: 낮음"},
+  src:"에어컨 좀 약하게 틀어도 될까? 좀 추워서.",
+  zh:"有点冷，把空调关小一点。", truth:"under",
+  hl:["把空调关小一点"],
+  demoFix:"有点冷，空调可以关小一点吗？",
+  fb:"이유(有点冷)는 잘 들어갔습니다. 다만 표시된 부분이 <b>把자 명령형</b>이라, 친한 사이라도 부탁이 아니라 통보로 들립니다. 원문의 '~해도 될까?'라는 <b>묻는 형식</b>이 사라졌습니다."},
+
+ {id:5,v:"5 · 판정 + 이유 + 확신도",type:"reason",
+  sit:{h:"동아리 선배에게 지난주 회의록을 공유해달라고 합니다.",r:"동아리 선배 · 알지만 아직 어색한 사이",c:"위챗",p:"P: 내가 낮음 / D: 지인 / R: 중간"},
+  src:"선배, 지난주 회의록 좀 공유해주실 수 있을까요?",
+  zh:"学长，把上周的会议记录发给我。", truth:"under",
+  hl:["把上周的会议记录发给我"],
+  fb:"호칭(学长)은 있지만 그 뒤가 <b>把자 명령형</b>입니다. 윗사람에게 중간 정도 부담을 부탁하는 자리라 '能…吗' 정도의 완화 한 겹은 있어야 합니다.",
+  reasons:[{t:"윗사람인데 완화 없이 바로 지시했다",ok:true},
+           {t:"부담에 비해 지나치게 돌려 말했다",ok:false},
+           {t:"원문에 없는 내용이 들어갔다",ok:false},
+           {t:"원문의 내용이 빠졌다",ok:false}]},
+
+ {id:6,v:"6 · 한 상황 다중 발화",type:"multi",border:true,
+  sit:{h:"팀 프로젝트 조원에게 자료 정리를 맡아달라고 합니다.",r:"같은 조 조원 · 이번 학기에 처음 같은 조",c:"위챗",p:"P: 동등 / D: 지인 / R: 중간"},
+  src:"이번 자료 정리는 네가 맡아줄 수 있어? 내가 발표 준비를 해야 해서.",
+  cands:[{zh:"我要准备发表，资料整理你来做。",t:"under",n:"이유는 있지만 뒤가 통보입니다."},
+         {zh:"我要准备发表，我需要你整理资料。",t:"under",n:"'내가 필요하다'는 요청이 아니라 요구로 들립니다."},
+         {zh:"我要准备发表，这次资料整理你能帮忙吗？",t:"ok",n:"'帮忙' + 이유. 동등한 사이의 기본형입니다."},
+         {zh:"如果方便的话，这次的资料整理能不能麻烦你？我这边要准备发表。",t:"ok",n:"선택권 + 부담 인정. 조금 더 정중하지만 과하지 않습니다."},
+         {zh:"不知道这次的资料整理是不是可以麻烦你帮忙处理一下？如果实在不方便的话也完全没关系。我这边要准备发表。",t:"over",n:"조원 사이에 이만큼 돌려 말하면 오히려 부담스럽습니다."}]}
+];
+
+const TASK={
+  sit:{h:"인턴십 담당자에게 면접 일정 조정을 요청하는 이메일을 씁니다.",r:"인턴십 담당자 · 아직 만난 적 없음",c:"이메일",p:"P: 내가 낮음 / D: 초면 / R: 중간~높음"},
+  src:"안녕하세요. 다음 주 화요일 면접에 참석하기 어려울 것 같습니다. 같은 주 다른 날로 조정이 가능할지 여쭙고 싶습니다. 불편을 드려 죄송합니다."};
+
+// 검토용 예시 답안 — 완화가 한 겹만 들어가 있어 뒤따르는 피드백(선택권을 하나 더)과 맞물린다.
+const DEMO_DRAFT="您好，下周二的面试我可能无法参加，非常抱歉。请问能不能改到同一周的其他日期？";
+
+const SCOPE={
+  fail:{l:"전체 다시 쓰기",g:"원문의 의미가 바뀌었습니다. 처음부터 다시 옮겨 보세요."},
+  warning:{l:"빠진 구간 수정",g:"원문에 있던 내용이 일부 빠졌습니다. 그 부분을 채워 보세요."},
+  featureGap:{l:"목표 표현 중심 수정",g:"의미는 잘 전달됐습니다. 이번 주 목표인 완화 표현만 손봐 보세요."},
+  clear:{l:"선택적 미세 조정",g:"의미도 화용도 무리가 없습니다. 손대고 싶은 곳이 없으면 그대로 마쳐도 됩니다."}};
+
+const CLOSING="부담이 있는 요청에서는 핵심 요청 앞에 짧은 포석을, 뒤에 선택할 여지를 함께 두면 상대가 편하게 받습니다.";
+
+// ── 상태 ────────────────────────────────────────────────────
+const S={step:0,i:0,answered:false,pick:null,reason:null,conf:null,fixes:new Set(),
+  free:"",multi:{},draft:"",revised:"",scope:"featureGap",
+  marks:[],t0:Date.now(),ts:Date.now()};
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const el=document.getElementById('stage');
+
+function mark(l){const s=Math.round((Date.now()-S.ts)/1000);S.marks.push([l,s]);S.ts=Date.now();}
+
+/** 진행바 — 앱과 동일한 구조(선-원-선). 지난 단계는 노랑 ✓, 현재는 검정 원 + 노란 링. */
+const STEP_LABELS=["감각 쌓기","적용","피드백","수정"];
+function drawSteps(){
+  document.getElementById('steps').innerHTML = STEP_LABELS.map((s,i)=>{
+    const done=i<S.step, on=i===S.step;
+    const cls = on?'on':(done?'done':'');
+    const lFill = (done||on) ? 'style="background:var(--accent)"' : '';
+    const rFill = done ? 'style="background:var(--accent)"' : '';
+    return `<li class="${cls}">
+      <div class="rail">
+        <span class="bar ${i===0?'hide':''}" ${lFill}></span>
+        <span class="n">${done?'✓':i+1}</span>
+        <span class="bar ${i===STEP_LABELS.length-1?'hide':''}" ${rFill}></span>
+      </div>
+      <div class="lab">${s}</div></li>`;
+  }).join('');
+}
+
+function sitHtml(s){return `<div class="situation"><div class="eyebrow">상황</div>
+  <div class="h">${esc(s.h)}</div>
+  <div class="chips"><span class="chip">${esc(s.r)}</span><span class="chip">${esc(s.c)}</span></div>
+  <div class="meta">[설계 확인용] ${esc(s.p)}</div></div>`;}
+
+/** 한국어 원문과 중국어 번역안을 한 카드에 위아래로 — 같은 내용, 언어만 다르다는 것이 보이게 */
+function pairHtml(ko,zh,hl,show){
+  let z=esc(zh);
+  if(show&&hl) hl.forEach(h=>{const e=esc(h);z=z.split(e).join(`<mark>${e}</mark>`);});
+  return `<div class="pair">
+    <div class="row ko"><span class="flag ko">KO</span><div><p class="cap">내가 전하려는 말</p><p class="t">${esc(ko)}</p></div></div>
+    ${zh!==null?`<div class="row"><span class="flag zh">ZH</span><div><p class="cap">중국어 번역안</p><p class="t">${z}</p></div></div>`:''}
+  </div>`;}
+
+// ── 렌더 ────────────────────────────────────────────────────
+function render(){
+  drawSteps();
+  if(S.step===0) return renderMpj();
+  if(S.step===1) return renderProduce();
+  if(S.step===2) return renderFeedback();
+  if(S.step===3) return renderRevise();
+  return renderDone();
+}
+
+function renderMpj(){
+  const it=ITEMS[S.i], a=S.answered;
+  let body='';
+
+  if(it.type==='multi'){
+    body=`<div class="card"><div class="q" style="margin-top:0">같은 말을 옮긴 번역안 5개입니다. 각각 어떤가요?</div>`+
+      it.cands.map((c,i)=>`<div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:10px">
+        <div style="font-size:14.5px;line-height:1.6">${esc(c.zh)}</div><div style="margin-top:7px">`+
+        ['under','ok','over'].map(k=>`<button class="pill ${S.multi[i]===k?'sel':''} ${a&&c.t===k?'right':''}"
+          ${a?'disabled':''} onclick="S.multi[${i}]='${k}';render()">${J[k]}</button>`).join('')+
+        `</div>${a?`<div style="font-size:12.5px;color:var(--muted);margin-top:8px">${esc(c.n)}</div>`:''}</div>`).join('')+`</div>`;
+  } else {
+    const opts = it.type==='scale5'?SCALE5 : it.type==='pol5'?POL5 : [J.under,J.ok,J.over];
+    const qt = it.type==='pol5'?'이 상황에 이 표현은 어떤가요?'
+      : it.type==='scale5'?'이 번역안은 이 상황에 얼마나 적절한가요?' : '이 번역안은 이 상황에 맞나요?';
+    body=`<div class="card"><div class="q" style="margin-top:0">${qt}</div>`+
+      opts.map(o=>`<button class="opt ${S.pick===o?'sel':''}" ${a?'disabled':''} onclick="S.pick='${o}';render()">${o}</button>`).join('');
+
+    // 부적절하다고 판단했을 때만 이유를 묻는다 (맞게 본 학습자에게 이유를 캐묻지 않는다)
+    const negative = S.pick && S.pick!==J.ok && S.pick!=='딱 맞음' && !S.pick.startsWith('완전히 적절') && !S.pick.startsWith('대체로 적절');
+    if(it.type==='reason'&&negative){
+      body+=`<div class="q">어디가 걸리셨나요?</div>`+
+        it.reasons.map((r,i)=>`<button class="opt ${S.reason===i?'sel':''} ${a&&r.ok?'right':''}" ${a?'disabled':''}
+          onclick="S.reason=${i};render()">${esc(r.t)}</button>`).join('')+
+        `<div class="q">얼마나 확신하시나요?</div><div>`+
+        CONF.map(c=>`<button class="pill ${S.conf===c?'sel':''}" ${a?'disabled':''} onclick="S.conf='${c}';render()">${c}</button>`).join('')+`</div>`;
+    }
+    if(it.type==='free'&&negative){
+      body+=`<div class="q">어떻게 고치면 좋을까요?</div>
+        <textarea id="ft" rows="3" placeholder="중국어로 고쳐 보세요…" ${a?'disabled':''}
+          oninput="S.free=this.value;var b=document.getElementById('ok');if(b)b.disabled=!this.value.trim()">${esc(S.free)}</textarea>`
+        + (a?'':`<button class="demo" onclick="fillFix()">✎ 예시 답안으로 채우기 <span>검토용 — 직접 입력하지 않으셔도 됩니다</span></button>`);
+    }
+    if(it.type==='choice'&&negative){
+      body+=`<div class="q">어떻게 고치면 좋을까요? <span style="font-weight:400">맞는 것을 모두 고르세요</span></div>`+
+        it.fix.map((f,i)=>`<button class="opt ${S.fixes.has(i)?'sel':''} ${a&&f.ok?'right':''}" ${a?'disabled':''}
+          onclick="S.fixes.has(${i})?S.fixes.delete(${i}):S.fixes.add(${i});render()">${esc(f.zh)}
+          ${a?`<div class="note">${esc(f.n)}</div>`:''}</button>`).join('');
+    }
+    if(a) body+=`<div class="fb"><div class="h">기준 판정 · ${J[it.truth]}</div><p>${it.fb}</p></div>`;
+    body+=`</div>`;
+  }
+
+  const neg = S.pick && S.pick!==J.ok && S.pick!=='딱 맞음' && !S.pick.startsWith('완전히 적절') && !S.pick.startsWith('대체로 적절');
+  const can = it.type==='multi' ? Object.keys(S.multi).length===it.cands.length
+    : it.type==='reason' ? !!(S.pick && (!neg || (S.reason!==null && S.conf)))
+    : it.type==='choice' ? !!(S.pick && (!neg || S.fixes.size))
+    : it.type==='free'   ? !!(S.pick && (!neg || S.free.trim()))
+    : !!S.pick;
+
+  el.innerHTML = `<div><span class="vtag">${it.v}</span><span class="count">${S.i+1} / ${ITEMS.length}${it.border?' · 경계 사례':''}</span></div>`
+    + sitHtml(it.sit)
+    + (it.type==='multi' ? pairHtml(it.src,null,null,false) : pairHtml(it.src,it.zh,it.hl,a))
+    + body
+    + (a?`<button class="cta" onclick="nextMpj()">다음 →</button>`
+        :`<button class="cta" id="ok" ${can?'':'disabled'} onclick="S.answered=true;render()">확인하기</button>`);
+}
+
+function nextMpj(){
+  if(S.i<ITEMS.length-1){S.i++;S.answered=false;S.pick=null;S.reason=null;S.conf=null;S.fixes=new Set();S.free="";S.multi={};}
+  else {mark('감각 쌓기');S.step=1;}
+  window.scrollTo({top:0,behavior:'smooth'});render();
+}
+
+function renderProduce(){
+  el.innerHTML = sitHtml(TASK.sit) + `<div class="card">
+    <div class="q" style="margin-top:0">이 말을 중국어로 옮겨 보세요</div>
+    <p class="sub">방금 판단해 본 감각을 <b>새로운 상황</b>에 적용하는 단계입니다. 참고 표현은 제출한 뒤에 함께 봅니다.</p>
+    ${pairHtml(TASK.src,null,null,false)}
+    <textarea id="dt" rows="5" placeholder="여기에 중국어로 입력…"
+      oninput="S.draft=this.value;document.getElementById('go').disabled=!this.value.trim()">${esc(S.draft)}</textarea>
+    <button class="demo" onclick="fillDemo()">✎ 예시 답안으로 채우기 <span>검토용 — 직접 입력하지 않으셔도 됩니다</span></button>
+    </div><button class="cta y" id="go" ${S.draft.trim()?'':'disabled'}
+      onclick="mark('적용');S.step=2;window.scrollTo(0,0);render()">적용하기 →</button>`;
+}
+
+/** 자유 교정 문항의 예시 답안 채우기 — 판단 단계에서도 타이핑을 요구하지 않는다. */
+function fillFix(){
+  const v = ITEMS[S.i].demoFix || '';
+  S.free = v;
+  const t=document.getElementById('ft'); if(t) t.value = v;
+  const b=document.getElementById('ok'); if(b) b.disabled = !v;
+}
+
+/** 검토자가 중국어를 직접 타이핑하지 않아도 흐름을 끝까지 볼 수 있게 한다. */
+function fillDemo(){
+  S.draft = DEMO_DRAFT;
+  const t=document.getElementById('dt'); if(t) t.value = DEMO_DRAFT;
+  const g=document.getElementById('go'); if(g) g.disabled=false;
+}
+
+function renderFeedback(){
+  const sc=Object.keys(SCOPE).map(k=>`<button class="pill ${S.scope===k?'sel':''}" onclick="S.scope='${k}';render()">${SCOPE[k].l}</button>`).join('');
+  el.innerHTML = pairHtml(TASK.src,S.draft,null,false)
+   +`<div class="card"><div class="q" style="margin-top:0"><span style="color:var(--muted)">1</span> 의미와 의도
+     <span style="background:#E7F5EE;color:var(--ok);border-radius:4px;padding:2px 6px;font-size:11px;margin-left:6px">유지됨</span></div>
+     <p style="font-size:13.5px;margin:6px 0 0">일정 조정 요청과 사과가 모두 전달되었습니다. 원문의 '같은 주 다른 날'이라는 조건도 유지됐습니다.</p></div>
+   <div class="card"><div class="q" style="margin-top:0"><span style="color:var(--muted)">2</span> 이번 화용 요소 — 직접성과 완화</div>
+     <p style="font-size:13.5px;margin:6px 0 0">완화 장치가 한 겹 들어갔습니다. 초면이고 상대가 결정권을 가진 상황이라, 조정을 요청하는 부분에 선택권을 여는 표현을 하나 더 얹으면 더 부드러워집니다.</p></div>
+   <div class="card"><div class="q" style="margin-top:0"><span style="color:var(--muted)">3</span> 다른 표현 가능성</div>
+     <p class="sub">정답이 아니라 비교용입니다. 상황에 따라 어울리는 범위가 달라집니다.</p>
+     <div style="background:#FAF8F2;border-radius:8px;padding:10px 12px;margin-top:8px"><div style="font-size:14.5px">不知道能否将面试改到同一周的其他时间？</div><div style="font-size:12px;color:var(--muted);margin-top:3px">'不知道能否'로 판단을 상대에게 넘깁니다.</div></div>
+     <div style="background:#FAF8F2;border-radius:8px;padding:10px 12px;margin-top:8px"><div style="font-size:14.5px">如果方便的话，可以调整到同一周的其他日期吗？</div><div style="font-size:12px;color:var(--muted);margin-top:3px">조건절로 거절할 여지를 남깁니다.</div></div></div>
+   <div class="ask"><div class="h">[설계 확인용] 수정 범위 — 실제로는 피드백 결과가 자동으로 고릅니다</div><div style="margin-top:6px">${sc}</div></div>
+   <button class="cta" onclick="mark('피드백');S.step=3;window.scrollTo(0,0);render()">고치러 가기 →</button>`;
+}
+
+function renderRevise(){
+  const s=SCOPE[S.scope];
+  // 원문과 짚어준 곳을 곁에 두지 않으면 학습자가 앞 화면을 외워서 고쳐야 한다.
+  el.innerHTML = `<div style="border:1px solid var(--accent);background:#FFF8DE;border-radius:12px;padding:14px 16px">
+      <div style="font-size:12px;font-weight:800;color:#6B5518">${s.l}</div>
+      <p style="margin:4px 0 0;font-size:14px">${s.g}</p></div>
+    <div class="ask" style="border-style:solid;border-color:#D6E0E7"><div class="h">짚어드린 곳</div>
+      <p style="margin:5px 0 0;font-size:13px;color:#42505A">조정을 요청하는 부분에 <b>선택권을 여는 표현</b>을 하나 더 얹으면 더 부드러워집니다.</p></div>
+    <div class="pair">
+      <div class="row ko"><span class="flag ko">KO</span><div><p class="cap">내가 전하려는 말</p><p class="t">${esc(TASK.src)}</p></div></div>
+      <div class="row"><span class="flag zh">ZH</span><div style="flex:1;width:100%"><p class="cap">내 번역 — 고쳐 보세요</p>
+        <textarea rows="5" style="margin-top:2px" oninput="S.revised=this.value">${esc(S.revised||S.draft)}</textarea></div></div>
+    </div>
+    <button class="cta" onclick="mark('수정');S.step=4;window.scrollTo(0,0);render()">마치기</button>`;
+}
+
+function renderDone(){
+  const tot=Math.round((Date.now()-S.t0)/1000), fmt=s=>`${Math.floor(s/60)}분 ${s%60}초`;
+  el.innerHTML = `<div class="dark"><div class="k">이번 미션의 핵심</div><p>${CLOSING}</p></div>
+   <div class="card"><div class="q" style="margin-top:0">소요 시간</div>
+    <table>${S.marks.map(m=>`<tr><td style="color:var(--muted)">${m[0]}</td><td>${fmt(m[1])}</td></tr>`).join('')}
+    <tr><td style="font-weight:700">합계</td><td>${fmt(tot)}</td></tr></table></div>`;
+}
+
+render();
+</script>
+</body>
+</html>
