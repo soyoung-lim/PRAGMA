@@ -1,9 +1,13 @@
-// Shared PRAGMA enums/labels used by AdminGenerator and (future) curriculum UI.
+// Shared PRAGMA enums/labels used by AdminGenerator, 배치 러너, and curriculum UI.
 // Extracted verbatim from AdminGenerator.tsx — values/keys/labels unchanged.
 //
 // Generator-only helpers intentionally REMAIN in AdminGenerator.tsx and are NOT
-// moved here: SPEECH_ACT_UI_TO_INTERNAL, SPEECH_ACT_WEIGHT, CHANNEL_TO_GENRE,
+// moved here: SPEECH_ACT_UI_TO_INTERNAL, SPEECH_ACT_WEIGHT,
 // computePragmaticBurden, and the scenario prompt/save mappings.
+//
+// 2026-07-22: CHANNEL_TO_GENRE·COMPLEX_TASK_TO_CONTEXT는 여기로 올렸다.
+// "생성기 전용"이라는 원래 판단은 소비자가 하나였을 때의 것이고, 배치 러너가
+// 같은 매핑으로 저장 payload를 만들어야 하므로 복제하면 조용히 갈라진다.
 
 // ── Speech act — UI-only taxonomy (9) ──
 // NOTE: internal_key `agreement` is FROZEN (persisted in scenarios.speech_act /
@@ -51,7 +55,17 @@ export type LanguageDirection = "ko_zh" | "zh_ko";
 
 // ── Channel (4) + derived mode ──
 export type ChannelUI = "email" | "messenger" | "facetoface" | "phone";
+export const CHANNEL_UI: Record<ChannelUI, string> = {
+  email: "이메일",
+  messenger: "메신저",
+  facetoface: "대면",
+  phone: "전화",
+};
 export type GenMode = "translation" | "stt_interpreting";
+export const MODE_LABEL: Record<GenMode, string> = {
+  translation: "번역",
+  stt_interpreting: "통역",
+};
 export const CHANNEL_TO_MODE: Record<ChannelUI, GenMode> = {
   email: "translation",
   messenger: "translation",
@@ -95,6 +109,26 @@ export const PDR_BURDEN_SHORT: Record<PdrBurden, string> = {
   low: "R: 낮음",
   mid: "R: 중간",
   high: "R: 높음",
+};
+
+// ── DB enum 매핑 (UI 분류 → 저장 값) ──
+// 시나리오 생성·저장 payload가 쓰는 내부 enum. UI 축(채널 4·복합과업 4)을
+// DB가 가진 좁은 값 집합으로 접는다.
+export type Genre = "business_email" | "business_messenger" | "meeting_speech";
+export const CHANNEL_TO_GENRE: Record<ChannelUI, Genre> = {
+  email: "business_email",
+  messenger: "business_messenger",
+  facetoface: "meeting_speech",
+  phone: "business_messenger",
+};
+
+export type InteractionContext = "coordination" | "negotiation" | "follow_up";
+export type ComplexTaskUI = "none" | "persuade" | "coordinate" | "negotiate";
+export const COMPLEX_TASK_TO_CONTEXT: Record<ComplexTaskUI, InteractionContext> = {
+  none: "follow_up",
+  persuade: "negotiation",
+  coordinate: "coordination",
+  negotiate: "negotiation",
 };
 
 // ── Domain (3) ──

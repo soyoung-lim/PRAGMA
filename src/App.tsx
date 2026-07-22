@@ -10,6 +10,7 @@ import AdminArchive from "./pages/AdminArchive.tsx";
 import AdminCorpus from "./pages/admin/AdminCorpus.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminGenerator from "./pages/admin/AdminGenerator.tsx";
+import AdminBatch from "./pages/admin/AdminBatch.tsx";
 import AdminPromptHarness from "./pages/admin/AdminPromptHarness.tsx";
 import AdminQuestionDesigner from "./pages/admin/AdminQuestionDesigner.tsx";
 import AdminYoutubeSources from "./pages/admin/AdminYoutubeSources.tsx";
@@ -35,6 +36,7 @@ import IntroArc from "./pages/learner/IntroArc.tsx";
 import LearnerRecords from "./pages/learner/LearnerRecords.tsx";
 import StrategyMap from "./pages/learner/StrategyMap.tsx";
 import PracticeMission from "./pages/learner/PracticeMission.tsx";
+import PrototypeMissionV2 from "./pages/learner/PrototypeMissionV2.tsx";
 import EntryTaskMode from "./pages/EntryTaskMode.tsx";
 import EntryLanguageDirection from "./pages/EntryLanguageDirection.tsx";
 import EntryUnavailable from "./pages/EntryUnavailable.tsx";
@@ -79,12 +81,15 @@ const App = () => (
           <Route path="/entry/language-direction" element={<RequireApproved><EntryLanguageDirection /></RequireApproved>} />
           <Route path="/entry/unavailable" element={<RequireApproved><EntryUnavailable /></RequireApproved>} />
           <Route path="/scenario" element={<RequireApproved><PracticeMission /></RequireApproved>} />
+          {/* 흐름 검증용 프로토타입 — 확정되면 /scenario를 교체하고 이 경로는 지운다 */}
+          <Route path="/prototype/mission-v2" element={<RequireApproved><PrototypeMissionV2 /></RequireApproved>} />
           <Route path="/admin" element={<RequireAdmin><Navigate to="/admin/dashboard" replace /></RequireAdmin>} />
           <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
           <Route path="/admin/corpus" element={<RequireAdmin><AdminCorpus /></RequireAdmin>} />
           <Route path="/admin/youtube-sources" element={<RequireAdmin><AdminYoutubeSources /></RequireAdmin>} />
           <Route path="/admin/archive" element={<RequireAdmin><AdminArchive /></RequireAdmin>} />
           <Route path="/admin/generator" element={<RequireAdmin><AdminGenerator /></RequireAdmin>} />
+          <Route path="/admin/batch" element={<RequireAdmin><AdminBatch /></RequireAdmin>} />
           <Route path="/admin/curriculum" element={<RequireAdmin><AdminCurriculum /></RequireAdmin>} />
           <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
           <Route path="/admin/question-designer" element={<RequireAdmin><AdminQuestionDesigner /></RequireAdmin>} />
