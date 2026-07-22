@@ -17,20 +17,14 @@ const LearnerHome = () => {
   // 완료/세션 상태는 localStorage 기반이라 렌더 시점 계산으로 충분 (mock)
   const today = useMemo(() => getTodayAssignment(), []);
   const week = useMemo(() => getWeekProgress(), []);
-  // ⚠️ 시연용 임시 동작 (2026-07-21) — 원래는 CTA가 바로 미션으로 들어간다.
-  // 처음 보는 사람이 설명(도입 아크) 없이 연습부터 만나면 워크플로우의 절반만 보게 되어,
-  // 시연 동안은 도입 아크로 보낸다.
-  //
-  // 원복 방법 — 아래 startToday를 되돌리고, 버튼 라벨을
-  // {resuming ? "이어하기 →" : "오늘의 학습 시작하기 →"} 로 복원한다:
-  //   const resuming = useMemo(
-  //     () => !today.allDone && hasPracticeSession(today.missionId, today.mode),
-  //     [today],
-  //   );
-  //   const q = today.mode === "transfer" ? "?mode=transfer" : "";
-  //   navigate(`/scenario${q}`);
+  // 중단한 연습이 있으면 CTA가 '이어하기'가 된다.
+  const resuming = useMemo(
+    () => !today.allDone && hasPracticeSession(today.missionId, today.mode),
+    [today],
+  );
   const startToday = () => {
-    navigate(`/learner/course/week/${WEEK_REQUEST.weekNo}/intro`);
+    const q = today.mode === "transfer" ? "?mode=transfer" : "";
+    navigate(`/scenario${q}`);
   };
 
   return (
@@ -99,7 +93,7 @@ const LearnerHome = () => {
                 className="mt-4 bg-[#FAD338] text-[#15202B] hover:bg-[#F6C200]"
                 onClick={startToday}
               >
-                학습 시작하기 →
+                {resuming ? "이어하기 →" : "오늘의 학습 시작하기 →"}
               </Button>
             </>
           )}
