@@ -24,6 +24,10 @@ import {
   PDR_BURDEN_SHORT,
   DOMAIN,
   INDUSTRY,
+  CHANNEL_UI,
+  CHANNEL_TO_GENRE,
+  MODE_LABEL,
+  COMPLEX_TASK_TO_CONTEXT,
 } from "@/lib/pragma/enums";
 import type {
   SpeechActUI,
@@ -36,6 +40,7 @@ import type {
   PdrBurden,
   Domain,
   IndustrySector,
+  ComplexTaskUI,
 } from "@/lib/pragma/enums";
 
 interface AiCandidate {
@@ -153,19 +158,8 @@ function computePragmaticBurden(
 }
 
 
-// UI-only channel taxonomy (4). Maps onto Genre enum.
-const CHANNEL_UI: Record<ChannelUI, string> = {
-  email: "이메일",
-  messenger: "메신저",
-  facetoface: "대면",
-  phone: "전화",
-};
-const CHANNEL_TO_GENRE: Record<ChannelUI, Genre> = {
-  email: "business_email",
-  messenger: "business_messenger",
-  facetoface: "meeting_speech",
-  phone: "business_messenger",
-};
+// CHANNEL_UI · CHANNEL_TO_GENRE · MODE_LABEL · COMPLEX_TASK_TO_CONTEXT는
+// enums.ts로 이동했다 (배치 러너와 공유 — 복제하면 조용히 갈라진다).
 
 // UI-only language direction (not persisted unless scenarios has column).
 const LANGUAGE_DIRECTION: Record<LanguageDirection, string> = {
@@ -173,24 +167,12 @@ const LANGUAGE_DIRECTION: Record<LanguageDirection, string> = {
   zh_ko: "중→한",
 };
 
-const MODE_LABEL: Record<GenMode, string> = {
-  translation: "번역",
-  stt_interpreting: "통역",
-};
-
-// UI-only complex-task taxonomy (5). Maps onto InteractionContext enum.
-type ComplexTaskUI = "none" | "persuade" | "coordinate" | "negotiate";
+// UI-only complex-task taxonomy. 표시 라벨은 이 화면의 드롭다운 전용.
 const COMPLEX_TASK_UI: Record<ComplexTaskUI, string> = {
   none: "없음",
   persuade: "설득",
   coordinate: "조율",
   negotiate: "협상",
-};
-const COMPLEX_TASK_TO_CONTEXT: Record<ComplexTaskUI, InteractionContext> = {
-  none: "follow_up",
-  persuade: "negotiation",
-  coordinate: "coordination",
-  negotiate: "negotiation",
 };
 
 
@@ -534,12 +516,19 @@ const AdminGenerator = () => {
   });
 
   // Follow-up (non-atomic) write of columns the save RPC does not populate.
+  // ⚠️ domain 추가 (2026-07-22): RPC가 domain을 INSERT하지 않아 지금까지 생성된
+  // 시나리오는 전부 domain이 NULL이었다. 교강사 편성의 '주제별' 필터가 이 컬럼을
+  // 쓰므로 여기서 반드시 함께 기록한다.
   const persistExtraColumns = async (scenarioId: string): Promise<"ok" | "failed"> => {
     const { error } = await supabase
       .from("scenarios")
-      .update({ mode: CHANNEL_TO_MODE[form.channel], language_direction: form.language_direction })
+      .update({
+        domain: form.domain,
+        mode: CHANNEL_TO_MODE[form.channel],
+        language_direction: form.language_direction,
+      })
       .eq("scenario_id", scenarioId);
-    if (error) console.error("persistExtraColumns (mode/language_direction) failed", error);
+    if (error) console.error("persistExtraColumns (domain/mode/language_direction) failed", error);
     return error ? "failed" : "ok";
   };
 
