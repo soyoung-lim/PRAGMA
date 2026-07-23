@@ -20,6 +20,11 @@ import {
   type BatchQuota,
 } from "@/lib/pragma/batchPlan";
 import { runBatch, type BatchCellResult } from "@/lib/pragma/batchRun";
+import { runCoreBatch, type CoreCellResult } from "@/lib/pragma/coreBatchRun";
+import { THEME_LABEL } from "@/lib/pragma/scenarioTopics";
+
+type AnyResult = BatchCellResult | CoreCellResult;
+type GenMode = "core" | "legacy";
 
 // 배치 생성 — 셀 목록을 순회하며 기존 생성기를 반복 호출한다.
 //
@@ -35,8 +40,9 @@ const LEVEL_ORDER: LearnerLevel[] = ["beginner_intermediate", "intermediate", "a
 
 const AdminBatch = () => {
   const [quota, setQuota] = useState<BatchQuota>(DEFAULT_QUOTA);
+  const [genMode, setGenMode] = useState<GenMode>("core");
   const [running, setRunning] = useState(false);
-  const [results, setResults] = useState<BatchCellResult[]>([]);
+  const [results, setResults] = useState<AnyResult[]>([]);
   const [done, setDone] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -52,14 +58,19 @@ const AdminBatch = () => {
     setDone(0);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-    const out = await runBatch(plan, {
-      concurrency: 3,
-      signal: ctrl.signal,
-      onProgress: (d, _total, last) => {
-        setDone(d);
-        setResults((prev) => [...prev, last]);
-      },
-    });
+    const onProgress = (d: number, _total: number, last: AnyResult) => {
+      setDone(d);
+      setResults((prev) => [...prev, last]);
+    };
+    const out =
+      genMode === "core"
+        ? await runCoreBatch(plan, {
+            runId: `core_${Date.now()}`,
+            concurrency: 3,
+            signal: ctrl.signal,
+            onProgress,
+          })
+        : await runBatch(plan, { concurrency: 3, signal: ctrl.signal, onProgress });
     setResults(out);
     setRunning(false);
     abortRef.current = null;
@@ -69,6 +80,9 @@ const AdminBatch = () => {
 
   const okCount = results.filter((r) => r.ok).length;
   const failCount = results.filter((r) => !r.ok).length;
+  const warnCount = results.filter(
+    (r) => r.ok && "ruleResult" in r && r.ruleResult === "warning",
+  ).length;
   const failures = results.filter((r) => !r.ok);
 
   return (
@@ -76,8 +90,34 @@ const AdminBatch = () => {
       title="배치 생성"
       description="셀 목록을 순회해 시나리오를 일괄 생성합니다. 생성물은 검수 대기 상태로 저장됩니다."
     >
-      {/* ── 할당량 ── */}
+      {/* ── 생성 모드 ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-5">
+        <h3 className="text-[15px] font-bold">생성 모드</h3>
+        <div className="mt-3 flex gap-2">
+          <Button
+            variant={genMode === "core" ? "default" : "outline"}
+            onClick={() => !running && setGenMode("core")}
+            disabled={running}
+          >
+            시나리오 코어 (v1.4)
+          </Button>
+          <Button
+            variant={genMode === "legacy" ? "default" : "outline"}
+            onClick={() => !running && setGenMode("legacy")}
+            disabled={running}
+          >
+            레거시 (candidates)
+          </Button>
+        </div>
+        <p className="mt-2 text-[12.5px] text-muted-foreground">
+          {genMode === "core"
+            ? "상황·원문·태그만 생성해 500개 뱅크를 채웁니다(scenario_core_v1). 미션(MPJ+DCT)은 편성 선별분만 승격 생성."
+            : "⚠️ 구버전 — candidates+feedback(판단형 셸용). 신규 뱅크에는 코어 모드를 쓰세요."}
+        </p>
+      </section>
+
+      {/* ── 할당량 ── */}
+      <section className="mt-4 rounded-xl border border-[#EAE4D2] bg-white p-5">
         <h3 className="text-[15px] font-bold">할당량</h3>
         <p className="mt-1 text-[13px] text-muted-foreground">
           수준별로 <b>(화행 9 × 도메인 3) 조합당</b> 몇 개를 만들지 정합니다. 중급이 실증 코호트라
@@ -151,6 +191,17 @@ const AdminBatch = () => {
         </div>
 
         <div className="mt-4 rounded-lg bg-[#FAF8F2] px-4 py-3">
+          <div className="text-[12.5px] font-semibold">강좌 테마별 (theme) — 프리셋 선반이 비지 않게</div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {Object.entries(THEME_LABEL).map(([k, label]) => (
+              <Badge key={k} variant="secondary" className="font-normal">
+                {label} {summary.byTheme[k] ?? 0}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-lg bg-[#FAF8F2] px-4 py-3">
           <div className="text-[12.5px] font-semibold">화행별</div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {Object.entries(SPEECH_ACT_UI).map(([k, label]) => (
@@ -186,7 +237,8 @@ const AdminBatch = () => {
           )}
           {results.length > 0 && (
             <span className="text-[13px] text-muted-foreground">
-              성공 {okCount} · 실패 {failCount}
+              성공 {okCount}
+              {genMode === "core" && warnCount > 0 ? ` (경고 ${warnCount})` : ""} · 실패 {failCount}
             </span>
           )}
         </div>

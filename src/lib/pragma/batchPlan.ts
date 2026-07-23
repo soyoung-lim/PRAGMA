@@ -20,6 +20,11 @@ import {
   type PdrPower,
   type SpeechActUI,
 } from "@/lib/pragma/enums";
+import {
+  SCENARIO_TOPICS,
+  type ScenarioTopic,
+  type ThemeCode,
+} from "@/lib/pragma/scenarioTopics";
 
 /** 생성 1건의 조건. AdminGenerator의 폼 한 벌과 같은 축을 갖는다. */
 export interface BatchCell {
@@ -32,8 +37,25 @@ export interface BatchCell {
   pdr_power: PdrPower;
   pdr_distance: PdrDistance;
   pdr_burden: PdrBurden;
+  /** 편성층 메타 (계약 v1.3 §2b) — 코어 생성 시 행 태그로 저장 */
+  theme_code: ThemeCode;
+  topic_code: string;
+  /** 생성 프롬프트에 넣을 장면 시드 (topic 카탈로그에서) */
+  situation_seed_ko: string;
   /** 한 셀에서 뽑을 개수 — 개요 N개 → 전부 상세화 */
   count: number;
+}
+
+/**
+ * (화행·도메인)에 맞는 topic을 고른다. 계약 §2b: 생성 입력이 곧 태그(태깅 비용 0).
+ * 우선 = 화행·도메인 둘 다 맞는 topic / 폴백 = 도메인만 맞는 topic(장면 시드는 act와 무관하게 재사용 가능).
+ */
+function selectTopic(act: SpeechActUI, domain: Domain, seq: number): ScenarioTopic {
+  const actMatch = SCENARIO_TOPICS.filter(
+    (t) => t.allowedDomains.includes(domain) && (!t.allowedSpeechActs || t.allowedSpeechActs.includes(act)),
+  );
+  const pool = actMatch.length ? actMatch : SCENARIO_TOPICS.filter((t) => t.allowedDomains.includes(domain));
+  return (pool.length ? pool : SCENARIO_TOPICS)[seq % Math.max(1, pool.length || SCENARIO_TOPICS.length)];
 }
 
 export interface BatchQuota {
@@ -107,6 +129,7 @@ export function buildBatchPlan(quota: BatchQuota = DEFAULT_QUOTA): BatchCell[] {
           const channel = pool[seq % pool.length];
 
           const pdr = PDR_ROTATION[seq % PDR_ROTATION.length];
+          const topic = selectTopic(speech_act_ui, domain, seq);
 
           cells.push({
             speech_act_ui,
@@ -117,6 +140,9 @@ export function buildBatchPlan(quota: BatchQuota = DEFAULT_QUOTA): BatchCell[] {
             pdr_power: pdr.p,
             pdr_distance: pdr.d,
             pdr_burden: pdr.r,
+            theme_code: topic.themeCode,
+            topic_code: topic.code,
+            situation_seed_ko: topic.situationSeedKo,
             count: 1,
           });
           seq += 1;
@@ -135,6 +161,7 @@ export interface PlanSummary {
   byDomain: Record<string, number>;
   byIndustry: Record<string, number>;
   bySpeechAct: Record<string, number>;
+  byTheme: Record<string, number>;
   translation: number;
   interpreting: number;
   /** 화행 × 수준 27칸 중 비어 있는 칸 — 0이어야 코퍼스 브라우저가 채워진다 */
@@ -149,6 +176,7 @@ export function summarizePlan(cells: BatchCell[]): PlanSummary {
   const byDomain: Record<string, number> = {};
   const byIndustry: Record<string, number> = {};
   const bySpeechAct: Record<string, number> = {};
+  const byTheme: Record<string, number> = {};
   const actLevel = new Set<string>();
   let translation = 0;
   let interpreting = 0;
@@ -157,6 +185,7 @@ export function summarizePlan(cells: BatchCell[]): PlanSummary {
     bump(byLevel, c.level, c.count);
     bump(byDomain, c.domain, c.count);
     bump(bySpeechAct, c.speech_act_ui, c.count);
+    bump(byTheme, c.theme_code, c.count);
     if (c.industry) bump(byIndustry, c.industry, c.count);
     if (INTERPRETING_CHANNELS.includes(c.channel)) interpreting += c.count;
     else translation += c.count;
@@ -172,7 +201,7 @@ export function summarizePlan(cells: BatchCell[]): PlanSummary {
 
   return {
     total: cells.reduce((n, c) => n + c.count, 0),
-    byLevel, byDomain, byIndustry, bySpeechAct,
+    byLevel, byDomain, byIndustry, bySpeechAct, byTheme,
     translation, interpreting, emptyActLevelCells,
   };
 }
