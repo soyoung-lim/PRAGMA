@@ -1,12 +1,16 @@
 # L2 Pragmatic Translator
 
+> ℹ️ PRAGMA 세션은 대개 OneDrive에서 열리며, 그때는 이 파일이 자동 로드되지 않는다.
+> 그 경우의 작업 규칙 정본은 `C:\Users\cnkr\OneDrive\CLAUDE.md`(효율·흐름·모델 분업 포함).
+> 이 파일은 레포에서 직접 작업할 때의 정본이며 아래 안전·git 규칙은 두 경우 모두 유효하다.
+
 ## 프로젝트 작업 원칙
 
 ### 작업 원칙
 
 * 프론트와 Edge Function은 하나의 기능 단위로 보고 함께 수정할 수 있다.
 * UI, 프론트 로직, Edge Function 코드, 타입, 테스트, 일반 버그 수정은 사전 승인 없이 진행한다.
-* 수정 후 `typecheck`, `test`, `build`를 실행하고 `git diff` 요약을 보고한다.
+* 수정 후 `npm run typecheck`는 항상 실행한다. 표적 `test`는 관련 있을 때, 전체 `build`는 **단계 완료 시에만** 실행한다(매 수정마다 build 금지 — 반복 비용). `git diff` 요약을 보고한다.
 * DB schema, migration, RLS, Auth, production 배포, 데이터 삭제 또는 대량 수정은 반드시 사전 승인을 받는다.
 * Edge Function 코드 편집은 사전 승인 없이 가능하지만, `supabase functions deploy` 등 실제 배포는 production 배포에 해당하므로 반드시 사전 승인을 받는다.
 * 요청과 무관한 리팩터링은 하지 않는다.
