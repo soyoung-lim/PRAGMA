@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
@@ -16,19 +17,27 @@ import {
   LEVEL,
   MODE_LABEL,
   SPEECH_ACT_UI,
+  type LearnerLevel,
   type SpeechActUI,
 } from "@/lib/pragma/enums";
 import {
   COURSE_PRESETS,
+  THEME_CODES,
   THEME_LABEL,
   type CoursePreset,
+  type ThemeCode,
 } from "@/lib/pragma/scenarioTopics";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 
 // 15주 편성기 (태스크 D) — 관리자구조md §6-2 + 계약 0-g·47.
-// 흐름: outline 선택 → 프리셋으로 주차별 시나리오 자동 채우기 → 수동 교체 → 저장.
-// 편성표에 화용 초점(target_feature)·미션 검토상태 열 필수(RQ2 증명 장치).
+// 흐름: 커리큘럼 선택 → 수준·테마(독립 선택, 프리셋으로 빠른 채우기) → 자동 채우기
+//       → 주차별 수동 교체 → 저장. 편성표에 화용 초점·미션 검토상태 열 필수(RQ2).
 // 읽기 전용 데이터는 scenario_core_v1 코어. 저장은 curriculum_week_scenarios.
+//
+// 수준·테마를 프리셋에서 분리한 이유(지도교수 요구): "수준별·주제별로 15주 강의 구성".
+// 프리셋은 이 두 축 + 반복 원칙을 한 번에 세팅하는 편의일 뿐, 교강사가 개별 조정한다.
+
+const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
 
 type AssignedItem = { scenario_id: string; slot_role: string };
 type AssignMap = Record<number, AssignedItem[]>;
@@ -38,6 +47,9 @@ const slotRoleFor = (c: ComposerCore) =>
 
 const missionStatusLabel = (s: string | null) =>
   s === "reviewed" ? "미션 검토완료" : s === "generated" ? "미션 생성됨" : "코어(미승격)";
+
+const weekTypeLabel = (t: string) =>
+  t === "orientation" ? "오리엔테이션" : t === "midterm" ? "중간평가" : t === "final" ? "기말평가" : "특수 주차";
 
 /** 후보 중 통역 비율을 최대한 맞춰 slots개를 고른다(부족하면 남는 것으로 채움). */
 function pickByRatio(cands: ComposerCore[], slots: number, interpRatio: number): ComposerCore[] {
@@ -62,15 +74,26 @@ const AdminComposer = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [outlineId, setOutlineId] = useState<string>("");
+  // 선택된 커리큘럼은 URL(?outline=)에 보관 → 새로고침해도 유지되고 저장분이 다시 뜬다.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const outlineId = searchParams.get("outline") ?? "";
+  const setOutlineId = (id: string) =>
+    setSearchParams(id ? { outline: id } : {}, { replace: true });
+
   const [outline, setOutline] = useState<CurriculumOutlineRow | null>(null);
   const [weeks, setWeeks] = useState<CurriculumWeekRow[]>([]);
   const [loadingOutline, setLoadingOutline] = useState(false);
 
+  // 수준·테마·통역비율 = 프리셋과 독립. 프리셋 선택 시 여기에 복사(빠른 채우기).
+  const [level, setLevel] = useState<LearnerLevel>("intermediate");
+  const [themes, setThemes] = useState<ThemeCode[]>([]);
+  const [interpRatio, setInterpRatio] = useState<number>(0.3);
   const [presetCode, setPresetCode] = useState<string>(COURSE_PRESETS[0].preset_code);
+
   const [assign, setAssign] = useState<AssignMap>({});
   const [addingWeek, setAddingWeek] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savedInfo, setSavedInfo] = useState<string | null>(null);
 
   const preset: CoursePreset | undefined = useMemo(
     () => COURSE_PRESETS.find((p) => p.preset_code === presetCode),
@@ -83,7 +106,7 @@ const AdminComposer = () => {
     return m;
   }, [cores]);
 
-  // ── 초기 로드: outline 목록 + 코어 전건 ──
+  // ── 초기 로드: 커리큘럼 목록 + 코어 전건 ──
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -105,12 +128,13 @@ const AdminComposer = () => {
     };
   }, []);
 
-  // ── outline 선택 시: 주차 골격 + 기존 배정 로드 ──
+  // ── 커리큘럼 선택 시: 주차 골격 + 기존 배정 로드(새로고침 복원 경로) ──
   useEffect(() => {
     if (!outlineId) {
       setOutline(null);
       setWeeks([]);
       setAssign({});
+      setSavedInfo(null);
       return;
     }
     let cancelled = false;
@@ -125,11 +149,11 @@ const AdminComposer = () => {
         if (cancelled) return;
         setOutline(o);
         setWeeks(w);
-        const m: AssignMap = {};
-        for (const a of existing) {
-          (m[a.week_no] ??= []).push({ scenario_id: a.scenario_id, slot_role: a.slot_role });
-        }
-        setAssign(m);
+        setLevel((o.level as LearnerLevel) ?? "intermediate"); // 기본 수준 = 커리큘럼 수준
+        setAssign(assignmentsToMap(existing));
+        setSavedInfo(
+          existing.length > 0 ? `DB에 저장된 편성 ${existing.length}개를 불러왔습니다.` : null,
+        );
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "커리큘럼을 불러오지 못했습니다.");
       } finally {
@@ -141,7 +165,20 @@ const AdminComposer = () => {
     };
   }, [outlineId]);
 
-  // ── 자동 채우기 ──
+  // ── 프리셋 적용 = 수준·테마·통역비율 한 번에 세팅(편의) ──
+  const applyPreset = (code: string) => {
+    setPresetCode(code);
+    const p = COURSE_PRESETS.find((x) => x.preset_code === code);
+    if (!p) return;
+    setLevel(p.target_level);
+    setThemes(p.included_themes);
+    setInterpRatio(p.translation_interpreting_ratio);
+  };
+
+  const toggleTheme = (t: ThemeCode) =>
+    setThemes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+
+  // ── 자동 채우기 (수준·테마·통역비율 = 현재 선택값) ──
   const autoFill = () => {
     if (!outline) return;
     const next: AssignMap = {};
@@ -150,18 +187,18 @@ const AdminComposer = () => {
       if (w.type !== "regular" || !w.speech_act) continue;
       const act = w.speech_act as SpeechActUI;
       const slots = w.scenario_slots ?? outline.scenarios_per_week ?? 3;
-      // 1차: 화행 + 수준 + 프리셋 테마
+      // 1차: 화행 + 수준 + 선택 테마
       let cands = cores.filter(
         (c) =>
           c.speech_act === act &&
-          c.learner_level === outline.level &&
-          (!preset || (c.theme_code != null && preset.included_themes.includes(c.theme_code))),
+          c.learner_level === level &&
+          (themes.length === 0 || (c.theme_code != null && themes.includes(c.theme_code))),
       );
       // 부족하면 테마 조건 완화(화행 + 수준만)
       if (cands.length < slots) {
-        cands = cores.filter((c) => c.speech_act === act && c.learner_level === outline.level);
+        cands = cores.filter((c) => c.speech_act === act && c.learner_level === level);
       }
-      const picked = pickByRatio(cands, slots, preset?.translation_interpreting_ratio ?? 0);
+      const picked = pickByRatio(cands, slots, interpRatio);
       if (picked.length > 0) {
         next[w.week_no] = picked.map((c) => ({ scenario_id: c.scenario_id, slot_role: slotRoleFor(c) }));
         filledWeeks += 1;
@@ -170,7 +207,7 @@ const AdminComposer = () => {
     setAssign(next);
     setAddingWeek(null);
     const total = Object.values(next).reduce((s, arr) => s + arr.length, 0);
-    toast.success(`자동 채우기 완료 — ${filledWeeks}개 주차에 시나리오 ${total}개 배정`);
+    toast.success(`자동 채우기 완료 — ${filledWeeks}개 주차에 시나리오 ${total}개 (저장 전)`);
   };
 
   const removeItem = (weekNo: number, scenarioId: string) =>
@@ -198,7 +235,11 @@ const AdminComposer = () => {
     setSaving(true);
     try {
       await saveWeekAssignments(outlineId, flat);
-      toast.success(`편성 저장 완료 — 시나리오 ${flat.length}개`);
+      // 저장 직후 DB에서 다시 읽어와 실제 반영을 확인(라운드트립 증명).
+      const reloaded = await listWeekAssignments(outlineId);
+      setAssign(assignmentsToMap(reloaded));
+      setSavedInfo(`저장됨 · DB 재조회 확인 ${reloaded.length}개 (${new Date().toLocaleTimeString("ko-KR")})`);
+      toast.success(`편성 저장 완료 — DB에서 ${reloaded.length}개 확인`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "저장 중 오류가 발생했습니다.");
     } finally {
@@ -214,7 +255,7 @@ const AdminComposer = () => {
   return (
     <AdminShell
       title="15주 편성기"
-      description="커리큘럼 골격의 각 주차에 실제 시나리오를 배정합니다. 프리셋으로 자동 채운 뒤 교체하고, 화용 초점·검토상태를 확인해 저장합니다."
+      description="커리큘럼 골격의 각 주차에 실제 시나리오를 배정합니다. 수준·주제를 고르고 자동 채운 뒤 교체하여, 화용 초점·검토상태를 확인해 저장합니다."
     >
       {/* ── 상단 컨트롤 ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-5">
@@ -223,6 +264,7 @@ const AdminComposer = () => {
             {error} (관리자 로그인이 필요합니다)
           </p>
         )}
+
         <div className="flex flex-wrap items-end gap-4 text-[13px]">
           <label className="flex flex-col gap-1">
             <span className="text-muted-foreground">커리큘럼</span>
@@ -235,17 +277,17 @@ const AdminComposer = () => {
               <option value="">— 커리큘럼 선택 —</option>
               {outlines.map((o) => (
                 <option key={o.id} value={o.id}>
-                  {o.title} · {LEVEL[o.level as keyof typeof LEVEL] ?? o.level}
+                  {o.title} · {LEVEL[o.level as LearnerLevel] ?? o.level}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-muted-foreground">프리셋 (자동 채우기 기준)</span>
+            <span className="text-muted-foreground">프리셋 (수준·테마 빠른 채우기)</span>
             <select
               value={presetCode}
-              onChange={(e) => setPresetCode(e.target.value)}
+              onChange={(e) => applyPreset(e.target.value)}
               className="min-w-[240px] rounded-md border border-[#EAE4D2] bg-white px-2 py-1.5"
             >
               {COURSE_PRESETS.map((p) => (
@@ -264,14 +306,75 @@ const AdminComposer = () => {
           </Button>
         </div>
 
+        {/* ── 수준·테마 독립 선택 (지도교수 요구: 수준별·주제별 구성) ── */}
+        <div className="mt-4 flex flex-col gap-3 border-t border-[#F0EBDD] pt-4 text-[13px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="w-14 shrink-0 text-muted-foreground">수준</span>
+            {LEVELS.map((lv) => (
+              <button
+                key={lv}
+                type="button"
+                onClick={() => setLevel(lv)}
+                className={`rounded-md border px-3 py-1 transition ${
+                  level === lv
+                    ? "border-[#15202B] bg-[#15202B] text-white"
+                    : "border-[#EAE4D2] bg-white hover:bg-[#FAF8F2]"
+                }`}
+              >
+                {LEVEL[lv]}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="w-14 shrink-0 text-muted-foreground">주제</span>
+            <button
+              type="button"
+              onClick={() => setThemes([])}
+              className={`rounded-md border px-3 py-1 transition ${
+                themes.length === 0
+                  ? "border-[#15202B] bg-[#15202B] text-white"
+                  : "border-[#EAE4D2] bg-white hover:bg-[#FAF8F2]"
+              }`}
+            >
+              전체
+            </button>
+            {THEME_CODES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => toggleTheme(t)}
+                className={`rounded-md border px-3 py-1 transition ${
+                  themes.includes(t)
+                    ? "border-[#FAD338] bg-[#FFF3C4] text-[#15202B]"
+                    : "border-[#EAE4D2] bg-white hover:bg-[#FAF8F2]"
+                }`}
+              >
+                {THEME_LABEL[t]}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="w-14 shrink-0">통역 비율</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={Math.round(interpRatio * 100)}
+              onChange={(e) => setInterpRatio(Number(e.target.value) / 100)}
+              className="w-40"
+            />
+            <span className="tabular-nums text-foreground">{Math.round(interpRatio * 100)}%</span>
+            <span className="text-[12px]">(나머지 번역)</span>
+          </div>
+        </div>
+
         {/* 프리셋 반복 원칙 1문장 — RQ2 증명 장치 */}
         {preset && (
           <div className="mt-4 rounded-lg border border-[#EAE4D2] bg-[#FAF7EE] p-3 text-[13px] leading-relaxed">
             <span className="font-medium">반복 원칙 · {preset.label}</span>
-            <span className="ml-1 text-muted-foreground">
-              (통역 {Math.round(preset.translation_interpreting_ratio * 100)}% · 테마{" "}
-              {preset.included_themes.map((t) => THEME_LABEL[t]).join("·")})
-            </span>
             <p className="mt-1">{preset.repetition_principle}</p>
           </div>
         )}
@@ -286,9 +389,12 @@ const AdminComposer = () => {
         <p className="mt-4 text-[13px] text-muted-foreground">주차 골격을 불러오는 중…</p>
       ) : (
         <>
-          <div className="mt-4 text-[13px] text-muted-foreground">
-            배정된 시나리오 <span className="font-semibold text-foreground">{totalAssigned}</span>개 ·
-            코어 뱅크 {cores.length}개
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
+            <span>
+              배정된 시나리오 <span className="font-semibold text-foreground">{totalAssigned}</span>개 ·
+              코어 뱅크 {cores.length}개
+            </span>
+            {savedInfo && <span className="text-emerald-700">✓ {savedInfo}</span>}
           </div>
 
           <div className="mt-3 space-y-3">
@@ -299,7 +405,8 @@ const AdminComposer = () => {
                 items={assign[w.week_no] ?? []}
                 coreById={coreById}
                 candidates={cores}
-                outlineLevel={outline?.level ?? null}
+                level={level}
+                themes={themes}
                 adding={addingWeek === w.week_no}
                 onToggleAdd={() =>
                   setAddingWeek((cur) => (cur === w.week_no ? null : w.week_no))
@@ -315,13 +422,22 @@ const AdminComposer = () => {
   );
 };
 
+function assignmentsToMap(rows: WeekAssignment[]): AssignMap {
+  const m: AssignMap = {};
+  for (const a of rows) {
+    (m[a.week_no] ??= []).push({ scenario_id: a.scenario_id, slot_role: a.slot_role });
+  }
+  return m;
+}
+
 // ── 주차 한 행 ──────────────────────────────────────────────────────────
 function WeekRow({
   week,
   items,
   coreById,
   candidates,
-  outlineLevel,
+  level,
+  themes,
   adding,
   onToggleAdd,
   onAdd,
@@ -331,7 +447,8 @@ function WeekRow({
   items: AssignedItem[];
   coreById: Record<string, ComposerCore>;
   candidates: ComposerCore[];
-  outlineLevel: string | null;
+  level: LearnerLevel;
+  themes: ThemeCode[];
   adding: boolean;
   onToggleAdd: () => void;
   onAdd: (c: ComposerCore) => void;
@@ -340,13 +457,14 @@ function WeekRow({
   const act = week.speech_act as SpeechActUI | null;
   const isAssignable = week.type === "regular";
 
-  // 후보: 화행(있으면) + 수준 일치, 이미 배정된 것 제외
+  // 후보: 화행(있으면) + 수준 + 선택 테마 일치, 이미 배정된 것 제외
   const assignedIds = new Set(items.map((it) => it.scenario_id));
   const cands = candidates.filter(
     (c) =>
       !assignedIds.has(c.scenario_id) &&
       (act ? c.speech_act === act : true) &&
-      (outlineLevel ? c.learner_level === outlineLevel : true),
+      c.learner_level === level &&
+      (themes.length === 0 || (c.theme_code != null && themes.includes(c.theme_code))),
   );
 
   return (
@@ -359,23 +477,28 @@ function WeekRow({
         {act && <Badge variant="secondary" className="font-normal">{SPEECH_ACT_UI[act]}</Badge>}
         {!isAssignable && (
           <Badge variant="secondary" className="bg-[#EAE4D2] font-normal text-[#5B5446]">
-            {week.type === "orientation"
-              ? "오리엔테이션"
-              : week.type === "midterm"
-                ? "중간평가"
-                : week.type === "final"
-                  ? "기말평가"
-                  : "특수 주차"}
+            {weekTypeLabel(week.type)} · 편성 대상 아님
           </Badge>
         )}
         <span className="ml-auto text-[12px] text-muted-foreground">
           배정 {items.length}
           {week.scenario_slots ? ` / 슬롯 ${week.scenario_slots}` : ""}
         </span>
-        <Button variant="outline" size="sm" onClick={onToggleAdd}>
-          {adding ? "닫기" : "＋ 추가"}
-        </Button>
+        {isAssignable ? (
+          <Button variant="outline" size="sm" onClick={onToggleAdd}>
+            {adding ? "닫기" : "＋ 추가"}
+          </Button>
+        ) : (
+          <span className="text-[12px] text-muted-foreground">평가 슬롯</span>
+        )}
       </div>
+
+      {/* 평가 슬롯 안내(중간·기말은 시나리오를 배정하지 않는다 — 계약: 시험 생성·채점 범위 밖) */}
+      {!isAssignable && (
+        <p className="mt-2 text-[12.5px] text-muted-foreground">
+          평가 주차입니다. 시험 문항 생성·채점은 이 도구의 범위가 아니므로 시나리오를 배정하지 않습니다.
+        </p>
+      )}
 
       {/* 배정 편성표 — 화용 초점·검토상태 열 필수(0-g·47) */}
       {items.length > 0 && (
@@ -431,11 +554,12 @@ function WeekRow({
       )}
 
       {/* 후보 추가 패널 */}
-      {adding && (
+      {adding && isAssignable && (
         <div className="mt-3 rounded-lg border border-dashed border-[#D8D0BC] bg-[#FAF8F2] p-3">
           {cands.length === 0 ? (
             <p className="text-[12.5px] text-muted-foreground">
-              조건에 맞는 후보 코어가 없습니다{act ? ` (${SPEECH_ACT_UI[act]} · ${LEVEL[outlineLevel as keyof typeof LEVEL] ?? outlineLevel})` : ""}.
+              조건에 맞는 후보 코어가 없습니다
+              {act ? ` (${SPEECH_ACT_UI[act]} · ${LEVEL[level]}${themes.length ? " · 선택 주제" : ""})` : ""}.
             </p>
           ) : (
             <ul className="max-h-60 space-y-1.5 overflow-y-auto">
