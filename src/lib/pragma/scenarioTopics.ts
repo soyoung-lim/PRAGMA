@@ -1,0 +1,378 @@
+// 편성층 메타데이터 — theme_code(강좌 기획 단위) + topic 카탈로그(장면 시드).
+// 생성계약 v1.3 §2b · 0-c·24~26. 코드 정본, AI 임의 생성 금지.
+//
+// 왜 domain과 별개인가:
+// - domain(일상/학교/직장) = 연구·생성 통제축(난이도 정합·소재 방어·주차 골격 참조).
+// - theme_code(8종) = 교강사·학생이 보는 "강좌 이름표"(초급 여행 중국어 등). domain을
+//   대체하지 않는 교차 축이다. theme↔domain 허용 매핑을 코드로 못박아 모순 생성을 막는다.
+// - topic_code = Dai 2023 기반 장면 시드의 형식화. 배치 생성이 시드에서 상황을 뽑으므로
+//   "생성 입력이 곧 태그"(태깅 비용 0).
+//
+// ⚠️ 논문 서술 경계(0-c·24): theme·topic은 화용 판정 변인이 아니라 콘텐츠 검색·편성 및
+//    상황 다양성 확보용 운영 메타데이터다. 새 화용 변인으로 설명하지 않는다.
+
+import type { Domain, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
+
+// ── theme_code (8종 통제값) ───────────────────────────────────────────
+export const THEME_CODES = [
+  "campus_study",
+  "daily_living",
+  "travel_mobility",
+  "relationship_social",
+  "career_workplace",
+  "commerce_customer",
+  "digital_content",
+  "international_exchange",
+] as const;
+export type ThemeCode = (typeof THEME_CODES)[number];
+
+export const THEME_LABEL: Record<ThemeCode, string> = {
+  campus_study: "대학생활·학업",
+  daily_living: "일상생활",
+  travel_mobility: "여행·이동",
+  relationship_social: "친구·대인관계",
+  career_workplace: "취업·직장",
+  commerce_customer: "상거래·고객응대",
+  digital_content: "콘텐츠·SNS·플랫폼",
+  international_exchange: "유학·국제교류",
+};
+
+/** theme → 허용 domain. 코어 검사(R1c)가 참조 — 모순 생성 차단. */
+export const THEME_ALLOWED_DOMAINS: Record<ThemeCode, Domain[]> = {
+  campus_study: ["school"],
+  daily_living: ["daily"],
+  travel_mobility: ["daily"],
+  relationship_social: ["daily"],
+  career_workplace: ["work"],
+  commerce_customer: ["daily", "work"], // 고객 입장=일상 / 응대 직원=직장
+  digital_content: ["daily", "work"], // SNS 이용자=일상 / 크리에이터·마케터=직장
+  international_exchange: ["school", "daily"],
+};
+
+// ── topic 카탈로그 (장면 시드) ────────────────────────────────────────
+export interface ScenarioTopic {
+  code: string;
+  labelKo: string;
+  themeCode: ThemeCode;
+  /** 이 topic이 놓일 수 있는 domain (theme 허용 domain의 부분집합) */
+  allowedDomains: Domain[];
+  /** 이 topic에 어울리는 화행. 비우면 전 화행 허용 */
+  allowedSpeechActs?: SpeechActUI[];
+  /** 생성 프롬프트 주입용 장면 시드 (Dai 2023 기반 + 재설계) */
+  situationSeedKo: string;
+  sourceNote?: string;
+}
+
+// 정치·시사·정부 기관 소재는 배제(§7-1). 학부 수업 콘텐츠 적합성 우선.
+export const SCENARIO_TOPICS: ScenarioTopic[] = [
+  // ── campus_study (school) ──
+  {
+    code: "deadline_extension",
+    labelKo: "과제 마감 연장 요청",
+    themeCode: "campus_study",
+    allowedDomains: ["school"],
+    allowedSpeechActs: ["request", "apology"],
+    situationSeedKo: "교수/조교에게 과제 제출 기한을 미뤄 달라고 부탁하는 상황",
+    sourceNote: "Dai 2023 학업 상호작용",
+  },
+  {
+    code: "office_hour_request",
+    labelKo: "면담·질문 시간 요청",
+    themeCode: "campus_study",
+    allowedDomains: ["school"],
+    allowedSpeechActs: ["request"],
+    situationSeedKo: "교수에게 면담 시간을 잡아 달라고 요청하거나 수업 내용을 다시 묻는 상황",
+  },
+  {
+    code: "group_work_coordination",
+    labelKo: "조별 과제 역할 조율",
+    themeCode: "campus_study",
+    allowedDomains: ["school"],
+    situationSeedKo: "동기·조원과 조별 과제의 역할·일정을 정하거나 이견을 조율하는 상황",
+  },
+  {
+    code: "recommendation_letter_request",
+    labelKo: "추천서 부탁",
+    themeCode: "campus_study",
+    allowedDomains: ["school"],
+    allowedSpeechActs: ["request", "thanks"],
+    situationSeedKo: "교수에게 유학·장학 추천서를 부탁하고 이후 감사를 전하는 상황",
+  },
+
+  // ── daily_living (daily) ──
+  {
+    code: "neighbor_noise",
+    labelKo: "이웃 소음 문제",
+    themeCode: "daily_living",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["request", "complaint", "apology"],
+    situationSeedKo: "이웃에게 소음을 줄여 달라고 부탁하거나 내 소음을 사과하는 상황",
+  },
+  {
+    code: "borrow_favor",
+    labelKo: "물건·도움 빌리기",
+    themeCode: "daily_living",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["request", "thanks"],
+    situationSeedKo: "친구·이웃에게 물건을 빌리거나 작은 도움을 청하고 감사를 전하는 상황",
+  },
+  {
+    code: "club_meetup_invite",
+    labelKo: "동호회·모임 초대",
+    themeCode: "daily_living",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["agreement", "refusal"],
+    situationSeedKo: "동호회 모임에 초대하거나 초대를 정중히 거절하는 상황",
+  },
+
+  // ── travel_mobility (daily) ──
+  {
+    code: "hotel_request",
+    labelKo: "숙소 요청·문제 해결",
+    themeCode: "travel_mobility",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["request", "complaint"],
+    situationSeedKo: "호텔·숙소에 방 변경이나 문제 해결을 요청하는 상황",
+  },
+  {
+    code: "direction_help",
+    labelKo: "길·교통 도움 요청",
+    themeCode: "travel_mobility",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["request", "thanks"],
+    situationSeedKo: "낯선 사람에게 길·교통편을 묻고 도움에 감사하는 상황",
+  },
+  {
+    code: "booking_change",
+    labelKo: "예약 변경·취소",
+    themeCode: "travel_mobility",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["request", "apology"],
+    situationSeedKo: "식당·투어 예약을 변경하거나 취소를 알리며 양해를 구하는 상황",
+  },
+
+  // ── relationship_social (daily) ──
+  {
+    code: "invitation_refusal",
+    labelKo: "초대 거절",
+    themeCode: "relationship_social",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["refusal", "apology"],
+    situationSeedKo: "친구의 식사·행사 초대를 사정상 거절하는 상황",
+  },
+  {
+    code: "congratulation_gift",
+    labelKo: "축하·선물 감사",
+    themeCode: "relationship_social",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["thanks", "compliment"],
+    situationSeedKo: "친구의 선물·축하에 감사를 전하거나 상대를 칭찬하는 상황",
+  },
+  {
+    code: "apology_lateness",
+    labelKo: "약속 늦음 사과",
+    themeCode: "relationship_social",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["apology"],
+    situationSeedKo: "약속에 늦거나 약속을 못 지켜 친구에게 사과하는 상황",
+  },
+  {
+    code: "favor_thanks",
+    labelKo: "도움에 대한 감사",
+    themeCode: "relationship_social",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["thanks"],
+    situationSeedKo: "친구가 베푼 도움의 크기에 맞게 감사를 전하는 상황",
+  },
+
+  // ── career_workplace (work) ──
+  {
+    code: "schedule_change",
+    labelKo: "회의·일정 변경",
+    themeCode: "career_workplace",
+    allowedDomains: ["work"],
+    allowedSpeechActs: ["request", "apology", "proposal"],
+    situationSeedKo: "상사·동료·거래처에 회의나 마감 일정 변경을 요청·통보하는 상황",
+  },
+  {
+    code: "task_delegation_refusal",
+    labelKo: "업무 요청 거절",
+    themeCode: "career_workplace",
+    allowedDomains: ["work"],
+    allowedSpeechActs: ["refusal"],
+    situationSeedKo: "동료·상사의 추가 업무 요청을 사정상 거절하는 상황",
+  },
+  {
+    code: "delay_apology",
+    labelKo: "납기·업무 지연 사과",
+    themeCode: "career_workplace",
+    allowedDomains: ["work"],
+    allowedSpeechActs: ["apology"],
+    situationSeedKo: "거래처·상사에게 납기·업무 지연을 사과하고 후속을 알리는 상황",
+  },
+  {
+    code: "collaboration_proposal",
+    labelKo: "협업·개선 제안",
+    themeCode: "career_workplace",
+    allowedDomains: ["work"],
+    allowedSpeechActs: ["proposal", "opposition"],
+    situationSeedKo: "동료·상사에게 협업 방식이나 업무 개선을 제안하는 상황",
+  },
+
+  // ── commerce_customer (daily | work) ──
+  {
+    code: "refund_request",
+    labelKo: "환불·교환 요청",
+    themeCode: "commerce_customer",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["request", "complaint"],
+    situationSeedKo: "구매한 상품의 환불·교환을 판매자에게 요청하는 상황(고객 입장)",
+  },
+  {
+    code: "complaint_response",
+    labelKo: "고객 불만 응대",
+    themeCode: "commerce_customer",
+    allowedDomains: ["work"],
+    allowedSpeechActs: ["apology", "proposal"],
+    situationSeedKo: "고객의 불만에 사과하고 해결책을 제시하는 상황(응대 직원 입장)",
+  },
+  {
+    code: "price_negotiation",
+    labelKo: "가격·조건 문의",
+    themeCode: "commerce_customer",
+    allowedDomains: ["daily", "work"],
+    allowedSpeechActs: ["request", "proposal"],
+    situationSeedKo: "판매자·거래처에 가격이나 조건을 문의·조정하는 상황",
+  },
+
+  // ── digital_content (daily | work) ──
+  {
+    code: "collab_dm_request",
+    labelKo: "협업 DM 제안",
+    themeCode: "digital_content",
+    allowedDomains: ["work"],
+    allowedSpeechActs: ["proposal", "request"],
+    situationSeedKo: "크리에이터·브랜드 담당자에게 협업을 제안하는 메시지 상황",
+  },
+  {
+    code: "comment_feedback_disagreement",
+    labelKo: "피드백·이견 표현",
+    themeCode: "digital_content",
+    allowedDomains: ["daily", "work"],
+    allowedSpeechActs: ["opposition", "compliment"],
+    situationSeedKo: "온라인에서 상대의 콘텐츠·의견에 정중히 이견을 밝히거나 칭찬하는 상황",
+  },
+  {
+    code: "group_chat_coordination",
+    labelKo: "단체방 일정 조율",
+    themeCode: "digital_content",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["request", "proposal"],
+    situationSeedKo: "단체 채팅방에서 여러 사람과 일정·역할을 조율하는 상황",
+  },
+
+  // ── international_exchange (school | daily) ──
+  {
+    code: "exchange_program_inquiry",
+    labelKo: "교환·유학 문의",
+    themeCode: "international_exchange",
+    allowedDomains: ["school"],
+    allowedSpeechActs: ["request"],
+    situationSeedKo: "교환학생·유학 담당자에게 절차·서류를 문의하는 상황",
+  },
+  {
+    code: "host_family_thanks",
+    labelKo: "호스트·도움 감사",
+    themeCode: "international_exchange",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["thanks"],
+    situationSeedKo: "유학 중 호스트·현지 친구의 도움에 감사를 전하는 상황",
+  },
+  {
+    code: "cultural_misunderstanding_apology",
+    labelKo: "문화 차이 오해 사과",
+    themeCode: "international_exchange",
+    allowedDomains: ["daily", "school"],
+    allowedSpeechActs: ["apology"],
+    situationSeedKo: "문화 차이로 생긴 오해나 실수를 현지 상대에게 사과하는 상황",
+  },
+];
+
+// ── 조회 헬퍼 ─────────────────────────────────────────────────────────
+const TOPIC_BY_CODE: Record<string, ScenarioTopic> = Object.fromEntries(
+  SCENARIO_TOPICS.map((t) => [t.code, t]),
+);
+
+export function getScenarioTopic(code: string): ScenarioTopic | undefined {
+  return TOPIC_BY_CODE[code];
+}
+
+export function topicsForTheme(theme: ThemeCode): ScenarioTopic[] {
+  return SCENARIO_TOPICS.filter((t) => t.themeCode === theme);
+}
+
+/** theme↔domain 허용 매핑 검사(R1c). */
+export function isThemeDomainValid(theme: ThemeCode, domain: Domain): boolean {
+  return THEME_ALLOWED_DOMAINS[theme]?.includes(domain) ?? false;
+}
+
+/** 배치 전 최소 요건(0-c·25): theme당 topic ≥3. */
+export function assertTopicCoverage(): { ok: boolean; short: ThemeCode[] } {
+  const short = THEME_CODES.filter((th) => topicsForTheme(th).length < 3);
+  return { ok: short.length === 0, short };
+}
+
+// ── 15주 프리셋 (편성기 config — 스키마 아님, 0-c·26) ──────────────────
+export interface CoursePreset {
+  preset_code: string;
+  label: string;
+  target_level: LearnerLevel;
+  included_themes: ThemeCode[];
+  /** 화행 배분 가중치(합 임의 — 비율로 정규화). 비우면 균등 */
+  speech_act_distribution?: Partial<Record<SpeechActUI, number>>;
+  /** 통역 비율 0~1 (나머지 번역) */
+  translation_interpreting_ratio: number;
+}
+
+export const COURSE_PRESETS: CoursePreset[] = [
+  {
+    preset_code: "campus_exchange",
+    label: "캠퍼스·유학 중국어",
+    target_level: "intermediate",
+    included_themes: ["campus_study", "international_exchange"],
+    speech_act_distribution: { request: 3, apology: 2, thanks: 2, refusal: 1 },
+    translation_interpreting_ratio: 0.3,
+  },
+  {
+    preset_code: "career_workplace",
+    label: "취업·직장 협업 중국어",
+    target_level: "intermediate",
+    included_themes: ["career_workplace"],
+    speech_act_distribution: { request: 2, refusal: 2, apology: 2, proposal: 2, opposition: 1 },
+    translation_interpreting_ratio: 0.35,
+  },
+  {
+    preset_code: "travel_living",
+    label: "여행·생활 문제해결 중국어",
+    target_level: "beginner_intermediate",
+    included_themes: ["travel_mobility", "daily_living"],
+    speech_act_distribution: { request: 3, thanks: 2, complaint: 1, apology: 1 },
+    translation_interpreting_ratio: 0.4,
+  },
+  {
+    preset_code: "digital_commerce",
+    label: "디지털 콘텐츠·커머스 중국어",
+    target_level: "intermediate",
+    included_themes: ["digital_content", "commerce_customer"],
+    speech_act_distribution: { proposal: 2, request: 2, opposition: 1, compliment: 1, complaint: 1 },
+    translation_interpreting_ratio: 0.3,
+  },
+  {
+    preset_code: "customer_service",
+    label: "고객응대·갈등 조정 중국어",
+    target_level: "advanced",
+    included_themes: ["commerce_customer", "relationship_social"],
+    speech_act_distribution: { apology: 3, proposal: 2, refusal: 1, complaint: 1 },
+    translation_interpreting_ratio: 0.35,
+  },
+];

@@ -103,9 +103,12 @@ interface GenInput {
   // Two-step outline → final flow. Backward compatible:
   // when `action` is absent the handler behaves exactly like the legacy
   // single-shot full-scenario generation.
-  action?: 'outline' | 'final'
+  action?: 'outline' | 'final' | 'core' | 'mission'
   outline_count?: number
   selected_outline?: { title?: string; situation?: string } | null
+  // v1.4 (2026-07-23): scenario_core_v1 / mission_v1 생성. 카탈로그는 클라가 전달.
+  core?: CoreGenBody
+  mission?: MissionGenBody
 }
 
 // UI-level labels — richer than the collapsed internal enums.
@@ -324,7 +327,7 @@ async function fetchHskVocab(hskLevel: number): Promise<string[]> {
 }
 
 
-async function callOpenAI(model: string, apiKey: string, system: string, user: string) {
+async function callOpenAI(model: string, apiKey: string, system: string, user: string, temperature = 0.8) {
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -334,7 +337,7 @@ async function callOpenAI(model: string, apiKey: string, system: string, user: s
     body: JSON.stringify({
       model,
       response_format: { type: 'json_object' },
-      temperature: 0.8,
+      temperature,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
@@ -346,6 +349,266 @@ async function callOpenAI(model: string, apiKey: string, system: string, user: s
     return { ok: false as const, status: res.status, raw }
   }
   return { ok: true as const, raw }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// scenario_core_v1 / mission_v1 생성 (생성계약 v1.4 §7·§7-0)
+// 카탈로그는 Deno에서 import 불가 → 클라이언트가 body로 전달, 여기선 프롬프트만.
+// ══════════════════════════════════════════════════════════════════════
+type PdrJson = { p: string; d: string; r: string }
+const PDR_P_KO: Record<string, string> = {
+  speaker_lower: '화자(나)가 상대보다 낮음', equal: '동등', speaker_higher: '화자(나)가 상대보다 높음',
+}
+const PDR_D_KO: Record<string, string> = {
+  close: '친밀(가까운 사이)', acquaintance: '지인(알지만 어색)', distant: '초면(멂)',
+}
+const PDR_R_KO: Record<string, string> = { low: '낮음', mid: '중간', high: '높음' }
+
+interface CoreGenBody {
+  speech_act_ko: string
+  level_ko: string
+  domain_ko: string
+  channel: string
+  channel_ko: string
+  pdr: PdrJson
+  source_modality: 'written' | 'spoken'
+  situation_seed_ko: string
+  is_response_act: boolean
+  length_hint_ko: string
+}
+
+function buildCoreSystemPrompt(): string {
+  return `당신은 한→중 통번역 교육용 시나리오의 '상황·원문'을 설계하는 전문가입니다.
+학습자가 판단·번역·통역할 재료(상황과 한국어 원문)만 만듭니다. 문항·후보·피드백은 만들지 않습니다.
+출력은 아래 JSON만, 마크다운·설명 없이 그대로 반환합니다.
+
+{
+  "situation_ko": "상황 카드 배경 (한국어 2~3문장: 발신자·수신자·목적·관계 명시)",
+  "relation_ko": "발신자와 수신자의 관계 한 줄 (한국어)",
+  "source_text_ko": "학습자가 중국어로 옮길 한국어 원발화",
+  "preceding_turn_zh": null,
+  "brief_note_ko": "편성 화면용 한 줄 요약 (한국어)"
+}
+
+규칙:
+- source_text_ko는 반드시 한국어. 지정된 화행·관계·부담에 맞는 자연스러운 발화.
+- "중국인은/중국에서는" 같은 국가 단위 일반화 표현 금지.
+- 정치·시사·정부 기관 소재 금지.`
+}
+
+function buildCoreUserPrompt(b: CoreGenBody): string {
+  const parts = [
+    '[생성 요청]',
+    `- 화행: ${b.speech_act_ko}`,
+    `- 학습자 수준: ${b.level_ko}`,
+    `- 도메인: ${b.domain_ko}`,
+    `- 채널: ${b.channel_ko}`,
+    `- 관계 P(지위): ${PDR_P_KO[b.pdr.p] ?? b.pdr.p}`,
+    `- 관계 D(거리): ${PDR_D_KO[b.pdr.d] ?? b.pdr.d}`,
+    `- 관계 R(부담): ${PDR_R_KO[b.pdr.r] ?? b.pdr.r}`,
+    `- 장면 시드: ${b.situation_seed_ko}`,
+    `- 원문 분량: ${b.length_hint_ko}`,
+  ]
+  if (b.source_modality === 'spoken') {
+    parts.push(
+      `- 수행 모드: 통역 — source_text_ko는 실제 '말로' 전달할 법한 자연스러운 구두 담화체로 작성(이메일 문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지.`,
+    )
+  } else {
+    parts.push(`- 수행 모드: 번역 — source_text_ko는 해당 채널의 문어체.`)
+  }
+  if (b.is_response_act) {
+    parts.push(
+      `- 이 화행은 인접쌍의 둘째 짝입니다. preceding_turn_zh에 상대의 선행 발화를 '중국어'로 반드시 채우세요(null 금지).`,
+    )
+  }
+  parts.push('', '위 조건에 맞는 상황·원문을 JSON으로만 반환하세요.')
+  return parts.join('\n')
+}
+
+interface BandDef { code: string; label_ko: string }
+interface FeatureForGen {
+  code: string
+  version: string
+  learner_label: string
+  operational_definition: string
+  band_schema: BandDef[]
+  within_band_code: string
+  relevant_resources: string[]
+  excluded_confounds: string[]
+  closing_principle_ko: string
+  counter_rule_note: string
+}
+interface MissionGenBody {
+  speech_act_ko: string
+  level_ko: string
+  level_policy_ko: string
+  feature: FeatureForGen
+  core: {
+    situation_ko: string
+    relation_ko: string
+    source_text_ko: string
+    preceding_turn_zh: string | null
+    pdr: PdrJson
+    channel: string
+    source_modality: 'written' | 'spoken'
+  }
+  error_pattern_hints_ko: string[]
+  is_response_act: boolean
+  failure_notes?: string
+}
+
+function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false): string {
+  const precedingRule = isResponse
+    ? `\n- 🔴 이 화행은 인접쌍의 둘째 짝(응답류)입니다. **5문항 전부와 multi_judge의 각 후보 상황**에
+    "preceding_turn_zh"(상대의 중국어 선행 발화)를 문항별 상황에 맞게 반드시 채우세요(각 item 객체에 "preceding_turn_zh":"…" 필드 추가).`
+    : ''
+  const bands = f.band_schema.map((b) => `"${b.code}"(${b.label_ko})`).join(' / ')
+  return `당신은 한→중 통번역 교육용 '메타화용 판단 미션'을 설계하는 전문가입니다.
+이번 단원의 화용 초점은 「${f.learner_label}」입니다.
+초점 정의: ${f.operational_definition}
+판정 대역(band): ${bands}  (적정 대역 = "${f.within_band_code}")
+이 초점을 실현하는 장치: ${f.relevant_resources.join(', ')}
+이 초점이 아닌 것(혼입 금지): ${f.excluded_confounds.join(', ')}
+깨야 할 소박한 규칙: ${f.counter_rule_note}
+
+MPJ 5문항을 만듭니다. 각 문항은 학습자가 '중국어 번역안'을 이 초점 대역으로 판단하게 합니다.
+모든 문항의 판정 축은 위 band뿐입니다(다른 축 혼입 금지).
+출력은 아래 JSON만, 마크다운·설명 없이 반환합니다.
+
+공통 코드값(모든 문항 — 한국어 라벨 금지, 반드시 아래 코드로):
+  channel: "email" | "messenger" | "facetoface" | "phone"
+  pdr.p: "speaker_lower" | "equal" | "speaker_higher"
+  pdr.d: "close" | "acquaintance" | "distant"
+  pdr.r: "low" | "mid" | "high"
+  band: 위 판정 대역 코드 (예: 적정 = "${f.within_band_code}")
+
+아래 5문항을 모두, 축약 없이, 모든 필드를 채워 출력합니다:
+{
+  "mpj_items": [
+    {
+      "type": "scale4",
+      "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "source_ko": "판단 대상의 한국어 원문",
+      "target_zh": "판단 대상 중국어 번역안",
+      "highlights_zh": ["target_zh의 실제 부분문자열"],
+      "accepted_scale_codes": ["very_appropriate|somewhat_appropriate|somewhat_inappropriate|very_inappropriate 중 연속 1~2개"],
+      "explanation_ko": "기준 판정 해설(상황 결부형)",
+      "recommended_example_zh": "이 상황의 적절안 1개"
+    },
+    {
+      "type": "judge3",
+      "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "source_ko": "…", "target_zh": "…", "highlights_zh": ["…"],
+      "accepted_band_codes": ["band 1개 — 세트 전체에 '${f.within_band_code}' 정답이 최소 1문항 존재하도록"],
+      "explanation_ko": "…", "recommended_example_zh": "…"
+    },
+    {
+      "type": "fix_choice",
+      "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "source_ko": "…", "target_zh": "부적절한 번역안", "highlights_zh": ["…"],
+      "accepted_band_codes": ["부적절 band"],
+      "corrections": [
+        {"zh":"교정안1","is_valid":true,"note_ko":"…"},
+        {"zh":"교정안2","is_valid":true,"note_ko":"…"},
+        {"zh":"교정안3","is_valid":false,"note_ko":"…"},
+        {"zh":"교정안4","is_valid":false,"note_ko":"…"}
+      ],
+      "explanation_ko": "…", "recommended_example_zh": "…"
+    },
+    {
+      "type": "reason_conf",
+      "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "source_ko": "…", "target_zh": "부적절한 번역안", "highlights_zh": ["…"],
+      "accepted_band_codes": ["부적절 band"],
+      "reasons": [
+        {"id":"1","text_ko":"…"}, {"id":"2","text_ko":"…"},
+        {"id":"3","text_ko":"…"}, {"id":"4","text_ko":"…"}
+      ],
+      "accepted_reason_ids": ["1~2개"],
+      "explanation_ko": "…", "recommended_example_zh": "…"
+    },
+    {
+      "type": "multi_judge",
+      "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "source_ko": "…",
+      "candidates": [
+        {"zh":"…","accepted_band_codes":["band 배열, 경계는 길이>1"],"note_ko":"…"},
+        {"zh":"…","accepted_band_codes":["…"],"note_ko":"…"},
+        {"zh":"…","accepted_band_codes":["…"],"note_ko":"…"},
+        {"zh":"…","accepted_band_codes":["…"],"note_ko":"…"},
+        {"zh":"…","accepted_band_codes":["…"],"note_ko":"…"}
+      ],
+      "explanation_ko": "…", "recommended_example_zh": "…"
+    }
+  ],
+  "reference_alternatives": [ {"zh":"…","note_ko":"…"} ]
+}
+(reference_alternatives는 1~2개, 서로 다른 전략. multi_judge만 target_zh·highlights_zh가 없고 나머지 공통 필드는 모두 있음.)
+
+핵심 규칙:
+- mpj_items는 **정확히 5개**.
+- **모든 문항은 예외 없이 공통 필드 전부 포함**: situation_ko, relation_ko, channel, pdr{p,d,r}, source_ko, explanation_ko, recommended_example_zh. 위 스키마의 "..."는 이 공통 필드 전부를 뜻합니다(multi_judge 포함 — target_zh만 없음).
+- 유형 순서 고정: scale4 → judge3 → fix_choice → reason_conf → multi_judge.
+- 판정형 문항(fix_choice·reason_conf)의 target_zh는 반드시 '부적절' 번역안.
+- judge3 문항 중, 소박한 규칙을 깨는 '적절한 반례'(${f.within_band_code})를 반드시 포함.
+- 모든 후보는 원문과 핵심 명제·발화 의도·화행 목적이 동일. 새 사실·이유·약속 추가 금지(정형 표현 您好·不好意思 등은 예외).
+- 차이는 오직 이 화용 초점에서만. 문법·의미·길이가 정답 단서가 되면 안 됨.
+- **channel·pdr 값은 반드시 위 '공통 코드값'만 사용**(한국어 라벨 "동등"·"메시지" 등 절대 금지).
+- multi_judge 후보 5개 구성: **부적절 계열 2개 + 적정(${f.within_band_code}) 2개 + 과잉 1개**.
+  · 🔴 **부적절·과잉은 '강도/방향'의 문제이지 '길이'의 문제가 아닙니다.** 짧아도 과할 수 있고(예: "太感谢了！"),
+    길어도 부족할 수 있습니다(예: 형식적 감사에 군말을 붙였지만 정작 성의가 약한 긴 문장).
+  · 길이 배치를 의도적으로 섞으세요: 부적절 2개 중 하나는 짧게·하나는 적정안보다 길게,
+    과잉안은 최장이 되지 않게 중간 길이로. **길이순 정렬로 정답을 알 수 없어야** 합니다(가장 긴 것이나 가장 짧은 것이 정답 대역이 되지 않게).
+  · 최장 후보와 최단 후보의 글자 수 차이가 3배를 넘지 않게 하세요.
+- 🔴 highlights_zh의 각 항목은 **target_zh 안에 글자 그대로 존재하는 부분문자열**이어야 합니다(target_zh에서 잘라낸 조각). 바꿔 쓰거나 요약하지 마세요.
+- source_ko=한국어, 모든 zh=중국어. "중국인은/중국에서는" 표현 금지.${precedingRule}
+- 완료 화면 원리는 시스템이 넣으므로 생성 금지.`
+}
+
+function buildMissionUserPrompt(b: MissionGenBody): string {
+  const parts = [
+    '[생성 요청]',
+    `- 화행: ${b.speech_act_ko}`,
+    `- 학습자 수준: ${b.level_ko}`,
+    `- 수준 정책: ${b.level_policy_ko}`,
+    '',
+    '[산출 과제(DCT)가 놓일 상황 — MPJ 문항은 이와 다른 새 상황이되 화행·초점·난이도는 평행하게]',
+    `- 상황: ${b.core.situation_ko}`,
+    `- 관계: ${b.core.relation_ko}`,
+    `- 원문: ${b.core.source_text_ko}`,
+    `- 관계 P/D/R: ${PDR_P_KO[b.core.pdr.p]} / ${PDR_D_KO[b.core.pdr.d]} / ${PDR_R_KO[b.core.pdr.r]}`,
+  ]
+  if (b.is_response_act) {
+    parts.push(`- 이 화행은 인접쌍 둘째 짝 — 모든 MPJ 문항과 후보에 preceding_turn_zh(중국어 선행 발화)를 채우세요.`)
+  }
+  parts.push(
+    '',
+    '[산출 정합] reference_alternatives(적절 산출안)가 쓰는 완화·전략은, MPJ 세트가 최소 1회 사전 노출해야 합니다.',
+    '[난이도 브리지] reason_conf(4번) 문항의 pdr은 위 산출 상황과 같은 조건대로 맞추세요.',
+  )
+  if (b.error_pattern_hints_ko.length) {
+    parts.push(
+      '',
+      '[오답 후보 참고 시드 — 의무 아님, 조건에 맞게 재설계]:',
+      ...b.error_pattern_hints_ko.map((h) => `- ${h}`),
+    )
+  }
+  if (b.failure_notes) {
+    parts.push(
+      '',
+      `[직전 시도 실패 — 아래를 반드시 고쳐 재생성]:`,
+      b.failure_notes,
+    )
+  }
+  parts.push('', 'JSON만 반환하세요.')
+  return parts.join('\n')
+}
+
+function parseOpenAIContent(raw: string): unknown {
+  const outer = JSON.parse(raw)
+  const content = outer?.choices?.[0]?.message?.content
+  if (typeof content !== 'string') throw new Error('missing content')
+  return JSON.parse(content)
 }
 
 Deno.serve(async (req) => {
@@ -361,6 +624,111 @@ Deno.serve(async (req) => {
     }
 
     const input = (await req.json()) as GenInput
+
+    // ── core action: scenario_core_v1 상황·원문 생성 (v1.4 §7-0, temp 0.7) ──
+    if (input.action === 'core') {
+      const b = input.core
+      if (!b?.situation_seed_ko) {
+        return new Response(JSON.stringify({ error: 'core body required' }), { status: 400, headers: jsonHeaders })
+      }
+      const sys = buildCoreSystemPrompt()
+      const usr = buildCoreUserPrompt(b)
+      let model = PRIMARY_MODEL
+      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.7)
+      if (!att.ok && (att.status === 404 || att.status === 400)) {
+        model = FALLBACK_MODEL
+        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, 0.7)
+      }
+      if (!att.ok) {
+        return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
+      }
+      let gen: Record<string, unknown>
+      try {
+        gen = parseOpenAIContent(att.raw) as Record<string, unknown>
+      } catch (e) {
+        return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
+      }
+      // 구조 필드는 서버가 조립(셀과 어긋나지 않게). 자유 텍스트만 모델 값 사용.
+      const core_content = {
+        schema_version: 'scenario_core_v1',
+        situation_ko: String(gen.situation_ko ?? ''),
+        relation_ko: String(gen.relation_ko ?? ''),
+        source_modality: b.source_modality,
+        source_text_ko: String(gen.source_text_ko ?? ''),
+        preceding_turn_zh: b.is_response_act ? (gen.preceding_turn_zh ?? null) : null,
+        pdr: b.pdr,
+        channel: b.channel,
+        ...(gen.brief_note_ko ? { brief_note_ko: String(gen.brief_note_ko) } : {}),
+      }
+      return new Response(
+        JSON.stringify({ core_content, meta: { provider: PROVIDER, model, prompt_version: 'core_v1', generated_at: new Date().toISOString() } }),
+        { status: 200, headers: jsonHeaders },
+      )
+    }
+
+    // ── mission action: mission_v1 승격 생성 (v1.4 §7, structured 1회, temp 0.3) ──
+    if (input.action === 'mission') {
+      const b = input.mission
+      if (!b?.feature || !b?.core) {
+        return new Response(JSON.stringify({ error: 'mission body required' }), { status: 400, headers: jsonHeaders })
+      }
+      const temp = b.failure_notes ? 0.5 : 0.3 // 재시도는 온도 상향(0-d·31)
+      // 미션은 복잡한 5유형 union이라 필드 누락이 잦다 → 저volume(승격분만)이므로
+      // 강한 모델을 쓴다. 코어(고volume·단순)는 mini 유지.
+      const MISSION_PRIMARY = 'gpt-4o'
+      const sys = buildMissionSystemPrompt(b.feature, b.is_response_act)
+      const usr = buildMissionUserPrompt(b)
+      let model = MISSION_PRIMARY
+      let att = await callOpenAI(MISSION_PRIMARY, apiKey, sys, usr, temp)
+      if (!att.ok && (att.status === 404 || att.status === 400)) {
+        model = PRIMARY_MODEL
+        att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, temp)
+      }
+      if (!att.ok) {
+        return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
+      }
+      let gen: Record<string, unknown>
+      try {
+        gen = parseOpenAIContent(att.raw) as Record<string, unknown>
+      } catch (e) {
+        return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
+      }
+      const rawItems = Array.isArray(gen.mpj_items) ? gen.mpj_items : []
+      // 위치·복사 필드는 서버가 강제: id=순번(R1), axis_feature=target_feature(R1)
+      const mpj_items = rawItems.map((it: Record<string, unknown>, i: number) => ({
+        ...it,
+        id: i + 1,
+        axis_feature: b.feature.code,
+      }))
+      const productionMode = b.core.source_modality === 'spoken' ? 'interpreting' : 'translation'
+      const mission_content = {
+        schema_version: 'mission_v1',
+        unit: {
+          target_feature: b.feature.code,
+          target_feature_version: b.feature.version,
+          learner_label: b.feature.learner_label,       // 카탈로그 복사(R14)
+          closing_ko: b.feature.closing_principle_ko,   // 카탈로그 복사(R14)
+        },
+        mpj_items,
+        production_task: {
+          mode: productionMode,
+          source_modality: b.core.source_modality,
+          situation_ko: b.core.situation_ko,
+          relation_ko: b.core.relation_ko,
+          channel: b.core.channel,
+          pdr: b.core.pdr,
+          source_text_ko: b.core.source_text_ko,       // 코어 계승(R23)
+          preceding_turn_zh: b.core.preceding_turn_zh ?? null,
+          ...(productionMode === 'interpreting' ? { replay_limit: 2 } : {}),
+          reference_alternatives: Array.isArray(gen.reference_alternatives) ? gen.reference_alternatives : [],
+        },
+      }
+      return new Response(
+        JSON.stringify({ mission_content, meta: { provider: PROVIDER, model, prompt_version: 'mission_v1', generated_at: new Date().toISOString() } }),
+        { status: 200, headers: jsonHeaders },
+      )
+    }
+
     if (!input?.speech_act || !input?.genre || !input?.level) {
       return new Response(JSON.stringify({ error: 'missing required fields' }), {
         status: 400,
