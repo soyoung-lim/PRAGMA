@@ -20,6 +20,17 @@ const CourseOverview = () => {
         <p className="mt-1 text-[13px] text-muted-foreground">
           주요 화행을 단계적으로 배우고, 조건을 바꿔 적용하며, 가끔 실력을 확인합니다.
         </p>
+        <button
+          type="button"
+          onClick={() => navigate("/learner/course-live")}
+          className="mt-4 flex w-full items-center justify-between rounded-[10px] border border-[#15202B] bg-[#15202B] px-4 py-3 text-left text-white transition-colors hover:bg-[#22303C]"
+        >
+          <span>
+            <span className="block text-[14px] font-semibold">편성된 실제 강좌 열기</span>
+            <span className="block text-[11.5px] text-[#B9C4CE]">교강사가 배정한 주차별 과제를 실행합니다</span>
+          </span>
+          <span className="shrink-0 text-[13px] font-semibold text-[#FAD338]">→</span>
+        </button>
         <ol className="mt-4 space-y-2">
           {COURSE_WEEKS.map((row) => {
             const isCurrent = row.status === "current";

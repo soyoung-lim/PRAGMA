@@ -40,6 +40,7 @@ import StrategyMap from "./pages/learner/StrategyMap.tsx";
 import PracticeMission from "./pages/learner/PracticeMission.tsx";
 import PrototypeMissionV2 from "./pages/learner/PrototypeMissionV2.tsx";
 import MissionRunV1 from "./pages/learner/MissionRunV1.tsx";
+import LearnerCourseLive from "./pages/learner/LearnerCourseLive.tsx";
 import EntryTaskMode from "./pages/EntryTaskMode.tsx";
 import EntryLanguageDirection from "./pages/EntryLanguageDirection.tsx";
 import EntryUnavailable from "./pages/EntryUnavailable.tsx";
@@ -71,6 +72,7 @@ const App = () => (
           <Route path="/workflow-preview" element={<WorkflowPreview />} />
           <Route path="/learner/home" element={<RequireApproved><LearnerHome /></RequireApproved>} />
           <Route path="/learner/course" element={<RequireApproved><CourseOverview /></RequireApproved>} />
+          <Route path="/learner/course-live" element={<RequireApproved><LearnerCourseLive /></RequireApproved>} />
           <Route path="/learner/course/week/2" element={<RequireApproved><WeekDetail /></RequireApproved>} />
           <Route path="/learner/course/week/2/intro" element={<RequireApproved><IntroArc /></RequireApproved>} />
           <Route path="/learner/records" element={<RequireApproved><LearnerRecords /></RequireApproved>} />
