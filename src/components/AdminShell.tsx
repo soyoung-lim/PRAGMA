@@ -25,6 +25,7 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/curriculum", label: "15주 커리큘럼" },
       { to: "/admin/generator", label: "AI 시나리오 생성" },
       { to: "/admin/batch", label: "배치 생성" },
+      { to: "/admin/browser", label: "시나리오 브라우저" },
       { to: "/admin/review", label: "시나리오 검수" },
       { to: "/admin/archive", label: "시나리오 아카이브" },
       { to: "/admin/question-designer", label: "수준별 문항 설계" },

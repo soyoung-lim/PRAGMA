@@ -11,6 +11,7 @@ import AdminCorpus from "./pages/admin/AdminCorpus.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminGenerator from "./pages/admin/AdminGenerator.tsx";
 import AdminBatch from "./pages/admin/AdminBatch.tsx";
+import AdminBrowser from "./pages/admin/AdminBrowser.tsx";
 import AdminPromptHarness from "./pages/admin/AdminPromptHarness.tsx";
 import AdminQuestionDesigner from "./pages/admin/AdminQuestionDesigner.tsx";
 import AdminYoutubeSources from "./pages/admin/AdminYoutubeSources.tsx";
@@ -90,6 +91,7 @@ const App = () => (
           <Route path="/admin/archive" element={<RequireAdmin><AdminArchive /></RequireAdmin>} />
           <Route path="/admin/generator" element={<RequireAdmin><AdminGenerator /></RequireAdmin>} />
           <Route path="/admin/batch" element={<RequireAdmin><AdminBatch /></RequireAdmin>} />
+          <Route path="/admin/browser" element={<RequireAdmin><AdminBrowser /></RequireAdmin>} />
           <Route path="/admin/curriculum" element={<RequireAdmin><AdminCurriculum /></RequireAdmin>} />
           <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
           <Route path="/admin/question-designer" element={<RequireAdmin><AdminQuestionDesigner /></RequireAdmin>} />
