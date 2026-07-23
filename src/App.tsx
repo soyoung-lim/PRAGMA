@@ -17,6 +17,7 @@ import AdminQuestionDesigner from "./pages/admin/AdminQuestionDesigner.tsx";
 import AdminYoutubeSources from "./pages/admin/AdminYoutubeSources.tsx";
 import AdminReview from "./pages/admin/AdminReview.tsx";
 import AdminCurriculum from "./pages/admin/AdminCurriculum.tsx";
+import AdminComposer from "./pages/admin/AdminComposer.tsx";
 import AdminLearners from "./pages/admin/AdminLearners.tsx";
 import AdminReports from "./pages/admin/AdminReports.tsx";
 import AdminAnalytics from "./pages/admin/AdminAnalytics.tsx";
@@ -93,6 +94,7 @@ const App = () => (
           <Route path="/admin/batch" element={<RequireAdmin><AdminBatch /></RequireAdmin>} />
           <Route path="/admin/browser" element={<RequireAdmin><AdminBrowser /></RequireAdmin>} />
           <Route path="/admin/curriculum" element={<RequireAdmin><AdminCurriculum /></RequireAdmin>} />
+          <Route path="/admin/composer" element={<RequireAdmin><AdminComposer /></RequireAdmin>} />
           <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
           <Route path="/admin/question-designer" element={<RequireAdmin><AdminQuestionDesigner /></RequireAdmin>} />
           <Route path="/admin/review" element={<RequireAdmin><AdminReview /></RequireAdmin>} />

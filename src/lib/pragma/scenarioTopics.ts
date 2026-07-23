@@ -332,6 +332,11 @@ export interface CoursePreset {
   speech_act_distribution?: Partial<Record<SpeechActUI, number>>;
   /** 통역 비율 0~1 (나머지 번역) */
   translation_interpreting_ratio: number;
+  /**
+   * 반복 원칙 1문장 — 편성표에 노출(0-g·47, RQ2 증명 장치).
+   * 이 강좌가 어떤 화용 초점을 어떤 순서·비중으로 반복 노출하는지 한 문장으로 밝힌다.
+   */
+  repetition_principle: string;
 }
 
 export const COURSE_PRESETS: CoursePreset[] = [
@@ -342,6 +347,8 @@ export const COURSE_PRESETS: CoursePreset[] = [
     included_themes: ["campus_study", "international_exchange"],
     speech_act_distribution: { request: 3, apology: 2, thanks: 2, refusal: 1 },
     translation_interpreting_ratio: 0.3,
+    repetition_principle:
+      "캠퍼스·유학 장면에서 요청을 축으로 감사·사과·거절을 3:2:2:1 비중으로 반복 노출하여 저부담→고부담 순으로 익힌다.",
   },
   {
     preset_code: "career_workplace",
@@ -350,6 +357,8 @@ export const COURSE_PRESETS: CoursePreset[] = [
     included_themes: ["career_workplace"],
     speech_act_distribution: { request: 2, refusal: 2, apology: 2, proposal: 2, opposition: 1 },
     translation_interpreting_ratio: 0.35,
+    repetition_principle:
+      "직장 협업 장면에서 요청·거절·사과·제안을 고르게 반복하고 반대·이견 표현을 학기 정점에 배치한다.",
   },
   {
     preset_code: "travel_living",
@@ -358,6 +367,8 @@ export const COURSE_PRESETS: CoursePreset[] = [
     included_themes: ["travel_mobility", "daily_living"],
     speech_act_distribution: { request: 3, thanks: 2, complaint: 1, apology: 1 },
     translation_interpreting_ratio: 0.4,
+    repetition_principle:
+      "여행·생활 문제해결 장면에서 요청을 중심으로 감사·불만·사과를 반복하며 통역 비중을 40%로 높인다.",
   },
   {
     preset_code: "digital_commerce",
@@ -366,6 +377,8 @@ export const COURSE_PRESETS: CoursePreset[] = [
     included_themes: ["digital_content", "commerce_customer"],
     speech_act_distribution: { proposal: 2, request: 2, opposition: 1, compliment: 1, complaint: 1 },
     translation_interpreting_ratio: 0.3,
+    repetition_principle:
+      "디지털 콘텐츠·커머스 장면에서 제안·요청을 축으로 이견·칭찬·불만을 반복 노출한다.",
   },
   {
     preset_code: "customer_service",
@@ -374,5 +387,7 @@ export const COURSE_PRESETS: CoursePreset[] = [
     included_themes: ["commerce_customer", "relationship_social"],
     speech_act_distribution: { apology: 3, proposal: 2, refusal: 1, complaint: 1 },
     translation_interpreting_ratio: 0.35,
+    repetition_principle:
+      "고객응대·갈등 조정 장면에서 사과·제안을 집중 반복하고 거절·불만으로 난도를 단계적으로 올린다.",
   },
 ];

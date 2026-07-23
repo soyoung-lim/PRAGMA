@@ -23,6 +23,7 @@ const GROUPS: NavGroup[] = [
     header: "시나리오·문항 설계",
     items: [
       { to: "/admin/curriculum", label: "15주 커리큘럼" },
+      { to: "/admin/composer", label: "15주 편성기" },
       { to: "/admin/generator", label: "AI 시나리오 생성" },
       { to: "/admin/batch", label: "배치 생성" },
       { to: "/admin/browser", label: "시나리오 브라우저" },
