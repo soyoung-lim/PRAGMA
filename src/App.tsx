@@ -39,6 +39,7 @@ import LearnerRecords from "./pages/learner/LearnerRecords.tsx";
 import StrategyMap from "./pages/learner/StrategyMap.tsx";
 import PracticeMission from "./pages/learner/PracticeMission.tsx";
 import PrototypeMissionV2 from "./pages/learner/PrototypeMissionV2.tsx";
+import MissionRunV1 from "./pages/learner/MissionRunV1.tsx";
 import EntryTaskMode from "./pages/EntryTaskMode.tsx";
 import EntryLanguageDirection from "./pages/EntryLanguageDirection.tsx";
 import EntryUnavailable from "./pages/EntryUnavailable.tsx";
@@ -85,6 +86,9 @@ const App = () => (
           <Route path="/scenario" element={<RequireApproved><PracticeMission /></RequireApproved>} />
           {/* 흐름 검증용 프로토타입 — 확정되면 /scenario를 교체하고 이 경로는 지운다 */}
           <Route path="/prototype/mission-v2" element={<RequireApproved><PrototypeMissionV2 /></RequireApproved>} />
+          {/* mission_v1(계약 스키마) 직접 구동 — 인자 없으면 샘플, :scenarioId면 DB 미션 */}
+          <Route path="/learner/mission-run" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
+          <Route path="/learner/mission-run/:scenarioId" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
           <Route path="/admin" element={<RequireAdmin><Navigate to="/admin/dashboard" replace /></RequireAdmin>} />
           <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
           <Route path="/admin/corpus" element={<RequireAdmin><AdminCorpus /></RequireAdmin>} />
