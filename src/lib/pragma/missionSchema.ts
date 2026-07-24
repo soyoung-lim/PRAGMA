@@ -129,12 +129,26 @@ const ProductionTaskSchema = z.object({
 });
 export type ProductionTask = z.infer<typeof ProductionTaskSchema>;
 
+// ── provenance (v1.5 0-h·56 — 서버 주입, 미션 provenance는 mission_content 내장) ──
+// 스키마는 관대(선택)하게 두고, 존재·필수값 검사는 R20이 담당한다.
+// 이유: 모델 응답이 아니라 승격 edge function이 채우므로 zod hard-fail이 부적절.
+export const MissionProvenanceSchema = z.object({
+  model: z.string().min(1),
+  prompt_version: z.string().min(1),
+  prompt_snapshot_hash: z.string().optional(),
+  mission_content_hash: z.string().min(1),
+  generated_at: z.string().min(1),
+  generation_attempt: z.number().int().positive(),
+});
+export type MissionProvenance = z.infer<typeof MissionProvenanceSchema>;
+
 // ── mission_v1 ────────────────────────────────────────────────────────
 export const MissionV1Schema = z.object({
   schema_version: z.literal("mission_v1"),
   unit: UnitSchema,
   mpj_items: z.array(MpjItemSchema).length(5),
   production_task: ProductionTaskSchema,
+  provenance: MissionProvenanceSchema.optional(), // 존재·필수값 = R20(missionRules)
   // summary 없음 — 코드가 recommended_example_zh 5개를 모아 렌더(B13)
 });
 export type MissionV1 = z.infer<typeof MissionV1Schema>;

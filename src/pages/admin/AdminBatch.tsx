@@ -16,6 +16,7 @@ import {
 import {
   DEFAULT_QUOTA,
   buildBatchPlan,
+  interpretingCount,
   summarizePlan,
   type BatchQuota,
 } from "@/lib/pragma/batchPlan";
@@ -120,8 +121,8 @@ const AdminBatch = () => {
       <section className="mt-4 rounded-xl border border-[#EAE4D2] bg-white p-5">
         <h3 className="text-[15px] font-bold">할당량</h3>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          수준별로 <b>(화행 9 × 도메인 3) 조합당</b> 몇 개를 만들지 정합니다. 중급이 실증 코호트라
-          기본값이 가장 두껍습니다.
+          수준별로 <b>화행당 번역 개수</b>를 정합니다(통역은 아래 비율로 자동, 셀당 최소 1 보장). 중급이
+          실증 코호트라 기본값이 가장 두껍습니다. 화행9 × 수준3 × <b>모드2 = 54셀</b>이 감사 단위입니다.
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -138,7 +139,9 @@ const AdminBatch = () => {
                 className="mt-1"
               />
               <p className="mt-1 text-[11.5px] text-muted-foreground">
-                27조합 × {quota.perLevel[lv]} = {27 * quota.perLevel[lv]}개
+                화행9 × (번역 {quota.perLevel[lv]} + 통역{" "}
+                {interpretingCount(quota.perLevel[lv], quota.interpretingRatio)}) ={" "}
+                {9 * (quota.perLevel[lv] + interpretingCount(quota.perLevel[lv], quota.interpretingRatio))}개
               </p>
             </div>
           ))}
@@ -212,14 +215,19 @@ const AdminBatch = () => {
           </div>
         </div>
 
-        {summary.emptyActLevelCells.length > 0 ? (
+        {summary.emptyActLevelModeCells.length > 0 ? (
           <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-[12.5px] text-amber-900">
-            ⚠️ 화행 × 수준 27칸 중 <b>{summary.emptyActLevelCells.length}칸이 빕니다</b> —
-            코퍼스 브라우저에 빈 칸으로 보입니다: {summary.emptyActLevelCells.join(", ")}
+            ⚠️ 화행 × 수준 × 모드 54셀(생성 수준 한정) 중 <b>{summary.emptyActLevelModeCells.length}셀이 빕니다</b>:{" "}
+            {summary.emptyActLevelModeCells.join(", ")}
           </p>
         ) : (
           <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-[12.5px] text-emerald-900">
-            ✅ 화행 × 수준 27칸이 모두 채워집니다.
+            ✅ 54셀(생성 수준 한정)이 모두 채워집니다 · 셀당 최소 {summary.minActLevelModeCount}개
+            {summary.minActLevelModeCount < 3 && (
+              <span className="text-amber-800">
+                {" "}— 500 본 배치는 셀당 ≥3 권장(현재 {summary.underMinCells.length}셀이 3 미만)
+              </span>
+            )}
           </p>
         )}
       </section>

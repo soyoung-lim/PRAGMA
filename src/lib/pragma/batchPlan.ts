@@ -59,25 +59,37 @@ function selectTopic(act: SpeechActUI, domain: Domain, seq: number): ScenarioTop
 }
 
 export interface BatchQuota {
-  /** 수준별 · (화행 × 도메인) 조합당 생성 개수 */
+  /** 수준별 · 화행당 **번역** 생성 개수 */
   perLevel: Record<LearnerLevel, number>;
-  /** 통역(대면·전화) 비율 0~1. 나머지는 번역(이메일·메신저) */
+  /**
+   * 통역 비율 0~1. 통역 개수 = `max(1, round(번역개수 × 비율))`.
+   * ⚠️ 계약 v1.5 0-h·57: 모드는 주변 분포가 아니라 **명시적 쿼터 축**이다.
+   * max(1,…) 바닥이 모든 (화행×수준) 셀에 통역 1개 이상을 보장 → 화행9×수준3×모드2=54셀
+   * 커버리지(perLevel≥1인 수준). 500 본 배치는 셀당 ≥3을 목표로 값을 올린다(summarizePlan이 검산).
+   */
   interpretingRatio: number;
 }
 
 /**
- * 기본 할당량 — 합계 약 135개.
+ * 기본 할당량 — 데모 스케일.
  * 중급(HSK5)이 9월 실증 코호트이자 시연 주력이라 두텁게 잡는다.
  * 입문·고급은 "필터가 작동한다"를 보이는 최소치.
+ * 500 본 배치는 이 값을 올려 54셀 셀당 ≥3을 채운다.
  */
 export const DEFAULT_QUOTA: BatchQuota = {
   perLevel: {
-    intermediate: 3, // 9화행 × 3도메인 × 3 = 81
-    beginner_intermediate: 1, // 27
-    advanced: 1, // 27
+    intermediate: 3, // 화행9 × (번역3 + 통역1) = 36
+    beginner_intermediate: 1, // 화행9 × (번역1 + 통역1) = 18
+    advanced: 1, // 18
   },
-  interpretingRatio: 0.3, // 교수님 지시에 "통역"이 명시됨 — 바닥을 보장한다
+  interpretingRatio: 0.3, // 교수님 지시에 "통역"이 명시됨 — 바닥(≥1)을 보장한다
 };
+
+/** 통역 개수 = 번역개수 기준 비율, 단 셀 공백 방지를 위해 최소 1(0-h·57). */
+export function interpretingCount(translationCount: number, ratio: number): number {
+  if (translationCount <= 0) return 0;
+  return Math.max(1, Math.round(translationCount * ratio));
+}
 
 const SPEECH_ACTS: SpeechActUI[] = [
   "request", "refusal", "apology", "thanks", "proposal",
@@ -113,21 +125,24 @@ const PDR_ROTATION: { p: PdrPower; d: PdrDistance; r: PdrBurden }[] = [
  */
 export function buildBatchPlan(quota: BatchQuota = DEFAULT_QUOTA): BatchCell[] {
   const cells: BatchCell[] = [];
-  let seq = 0; // 전역 순번 — 채널·산업·P·D·R을 결정론적으로 회전시키는 커서
+  let seq = 0; // 전역 순번 — 도메인·산업·P·D·R을 결정론적으로 회전시키는 커서
 
   for (const level of LEVELS) {
-    const perCell = quota.perLevel[level];
-    if (perCell <= 0) continue;
+    const nTrans = quota.perLevel[level];
+    if (nTrans <= 0) continue;
+    const nInterp = interpretingCount(nTrans, quota.interpretingRatio);
 
-    for (const domain of DOMAINS) {
-      for (const speech_act_ui of SPEECH_ACTS) {
-        for (let i = 0; i < perCell; i += 1) {
-          // 통역 비율을 전역 순번으로 배분한다. 셀 단위로 나누면
-          // perCell=1인 수준에서 통역이 통째로 빠지거나 몰린다.
-          const wantInterpreting = seq % 10 < Math.round(quota.interpretingRatio * 10);
-          const pool = wantInterpreting ? INTERPRETING_CHANNELS : TRANSLATION_CHANNELS;
-          const channel = pool[seq % pool.length];
-
+    for (const speech_act_ui of SPEECH_ACTS) {
+      // 모드 = 1차 쿼터 축(0-h·57). 각 (화행×수준)에서 번역·통역을 각각 보장 생성한다.
+      // 도메인·theme·산업·P/D/R·채널서브타입 = 2차 회전(seq 커서).
+      const modeSlots: { channels: ChannelUI[]; count: number }[] = [
+        { channels: TRANSLATION_CHANNELS, count: nTrans },
+        { channels: INTERPRETING_CHANNELS, count: nInterp },
+      ];
+      for (const slot of modeSlots) {
+        for (let i = 0; i < slot.count; i += 1) {
+          const domain = DOMAINS[seq % DOMAINS.length];
+          const channel = slot.channels[seq % slot.channels.length];
           const pdr = PDR_ROTATION[seq % PDR_ROTATION.length];
           const topic = selectTopic(speech_act_ui, domain, seq);
 
@@ -166,6 +181,15 @@ export interface PlanSummary {
   interpreting: number;
   /** 화행 × 수준 27칸 중 비어 있는 칸 — 0이어야 코퍼스 브라우저가 채워진다 */
   emptyActLevelCells: string[];
+  /**
+   * 화행9 × 수준3 × 모드2 = 54셀 감사(계약 0-h·57). perLevel>0인 수준만 대상으로 센다
+   * (perLevel=0 수준은 의도된 제외 — 빈 셀로 세지 않는다).
+   */
+  emptyActLevelModeCells: string[];
+  /** 대상 54셀 중 개수가 가장 적은 셀의 값 — 500 배치 목표는 이 값 ≥3 */
+  minActLevelModeCount: number;
+  /** 셀당 3개 미만인 셀 목록(대상 수준 한정) — 500 배치 전 검산용 */
+  underMinCells: string[];
 }
 
 export function summarizePlan(cells: BatchCell[]): PlanSummary {
@@ -178,8 +202,13 @@ export function summarizePlan(cells: BatchCell[]): PlanSummary {
   const bySpeechAct: Record<string, number> = {};
   const byTheme: Record<string, number> = {};
   const actLevel = new Set<string>();
+  const actLevelModeCount: Record<string, number> = {};
+  const levelsPresent = new Set<string>();
   let translation = 0;
   let interpreting = 0;
+
+  const modeOf = (c: BatchCell) =>
+    INTERPRETING_CHANNELS.includes(c.channel) ? "stt_interpreting" : "translation";
 
   for (const c of cells) {
     bump(byLevel, c.level, c.count);
@@ -187,9 +216,11 @@ export function summarizePlan(cells: BatchCell[]): PlanSummary {
     bump(bySpeechAct, c.speech_act_ui, c.count);
     bump(byTheme, c.theme_code, c.count);
     if (c.industry) bump(byIndustry, c.industry, c.count);
-    if (INTERPRETING_CHANNELS.includes(c.channel)) interpreting += c.count;
+    if (modeOf(c) === "stt_interpreting") interpreting += c.count;
     else translation += c.count;
     actLevel.add(`${c.speech_act_ui}|${c.level}`);
+    levelsPresent.add(c.level);
+    bump(actLevelModeCount, `${c.speech_act_ui}|${c.level}|${modeOf(c)}`, c.count);
   }
 
   const emptyActLevelCells: string[] = [];
@@ -199,9 +230,29 @@ export function summarizePlan(cells: BatchCell[]): PlanSummary {
     }
   }
 
+  // 54셀 감사 — 계획에 등장한 수준만 대상(perLevel=0 수준은 의도된 제외).
+  const MODES = ["translation", "stt_interpreting"] as const;
+  const emptyActLevelModeCells: string[] = [];
+  const underMinCells: string[] = [];
+  let minActLevelModeCount = Infinity;
+  for (const level of LEVELS) {
+    if (!levelsPresent.has(level)) continue;
+    for (const act of SPEECH_ACTS) {
+      for (const mode of MODES) {
+        const n = actLevelModeCount[`${act}|${level}|${mode}`] ?? 0;
+        const label = `${act}·${level}·${mode === "translation" ? "번역" : "통역"}`;
+        if (n === 0) emptyActLevelModeCells.push(label);
+        if (n < 3) underMinCells.push(label);
+        if (n < minActLevelModeCount) minActLevelModeCount = n;
+      }
+    }
+  }
+  if (!Number.isFinite(minActLevelModeCount)) minActLevelModeCount = 0;
+
   return {
     total: cells.reduce((n, c) => n + c.count, 0),
     byLevel, byDomain, byIndustry, bySpeechAct, byTheme,
     translation, interpreting, emptyActLevelCells,
+    emptyActLevelModeCells, minActLevelModeCount, underMinCells,
   };
 }
