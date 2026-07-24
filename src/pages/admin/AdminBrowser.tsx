@@ -193,7 +193,7 @@ const AdminBrowser = () => {
             opts={[["all", "전체"], ["translation", MODE_LABEL.translation], ["stt_interpreting", MODE_LABEL.stt_interpreting]]} />
           <Filter label="도메인" value={fDomain} onChange={(v) => setFDomain(v as typeof fDomain)}
             opts={[["all", "전체"], ...Object.entries(DOMAIN)]} />
-          <Filter label="강좌 테마" value={fTheme} onChange={(v) => setFTheme(v as typeof fTheme)}
+          <Filter label="시나리오 테마" value={fTheme} onChange={(v) => setFTheme(v as typeof fTheme)}
             opts={[["all", "전체"], ...Object.entries(THEME_LABEL)]} />
         </div>
       </section>

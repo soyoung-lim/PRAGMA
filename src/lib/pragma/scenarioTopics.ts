@@ -100,6 +100,9 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
   },
 
   // ── daily_living (daily) ──
+  // 경계 규칙(계약 0-k·81⑤): 친구 "관계 유지"가 초점이면 relationship_social,
+  // 이웃·상인 등 비인격적 관계의 생활 문제면 daily_living. (예: borrow_favor=이웃 계열 /
+  // favor_thanks=친구 관계 계열)
   {
     code: "neighbor_noise",
     labelKo: "이웃 소음 문제",
@@ -246,6 +249,8 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
   },
 
   // ── digital_content (daily | work) ──
+  // ⚠️ 정의 축소(계약 0-k·81③): 콘텐츠 제작·게시·커뮤니티 운영·크리에이터 협업만.
+  //    "메신저·단체방을 썼다"는 매체 사실만으로 digital에 분류하지 않는다(매체 = channel 축).
   {
     code: "collab_dm_request",
     labelKo: "협업 DM 제안",
@@ -263,12 +268,30 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     situationSeedKo: "온라인에서 상대의 콘텐츠·의견에 정중히 이견을 밝히거나 칭찬하는 상황",
   },
   {
-    code: "group_chat_coordination",
-    labelKo: "단체방 일정 조율",
+    code: "content_reuse_permission",
+    labelKo: "콘텐츠 사용 허락",
     themeCode: "digital_content",
-    allowedDomains: ["daily"],
+    allowedDomains: ["daily", "work"],
+    allowedSpeechActs: ["request", "refusal"],
+    situationSeedKo: "다른 크리에이터에게 콘텐츠 2차 사용 허락을 요청하거나, 온 요청을 정중히 거절하는 상황",
+  },
+  // 구 group_chat_coordination(단체방 일정 조율)은 매체 기준 분류라 삭제 —
+  // 목적 기준으로 2분할(계약 0-k·81③). campus 팀플 조율은 기존 group_work_coordination이 담당.
+  {
+    code: "work_team_chat_coordination",
+    labelKo: "업무 단체방 조율",
+    themeCode: "career_workplace",
+    allowedDomains: ["work"],
     allowedSpeechActs: ["request", "proposal"],
-    situationSeedKo: "단체 채팅방에서 여러 사람과 일정·역할을 조율하는 상황",
+    situationSeedKo: "업무 단체방에서 동료들과 일정·업무 분담·보고 순서를 조율하는 상황",
+  },
+  {
+    code: "friend_group_plan_coordination",
+    labelKo: "모임 약속 조율",
+    themeCode: "relationship_social",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["proposal", "refusal", "agreement"],
+    situationSeedKo: "친구들 모임 날짜·장소를 조율하거나 변경을 제안·거절하는 상황",
   },
 
   // ── international_exchange (school | daily) ──
@@ -295,6 +318,41 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     allowedDomains: ["daily", "school"],
     allowedSpeechActs: ["apology"],
     situationSeedKo: "문화 차이로 생긴 오해나 실수를 현지 상대에게 사과하는 상황",
+  },
+  // 보강 3종(계약 0-k·81④) — 국제교류 "프로그램 고유" 장면만. 비자·정부기관은 §7-1
+  // 소재 배제와 충돌로 기각, 은행·통신은 daily 소속 원칙.
+  {
+    code: "buddy_program_arrangement",
+    labelKo: "버디 프로그램 조율",
+    themeCode: "international_exchange",
+    allowedDomains: ["school", "daily"],
+    allowedSpeechActs: ["request", "proposal", "thanks"],
+    situationSeedKo: "배정된 버디(도우미 학생)와 첫 연락·만남 약속·활동 일정을 조율하는 상황",
+  },
+  {
+    code: "exchange_housing_assignment",
+    labelKo: "교환 기숙사 조정",
+    themeCode: "international_exchange",
+    allowedDomains: ["school"],
+    allowedSpeechActs: ["request", "complaint"],
+    situationSeedKo: "국제교류처가 배정한 기숙사 방·입실 일정의 문제를 알리고 조정을 요청하는 상황",
+  },
+  {
+    code: "exchange_orientation_schedule",
+    labelKo: "오리엔테이션 일정",
+    themeCode: "international_exchange",
+    allowedDomains: ["school"],
+    allowedSpeechActs: ["request", "apology"],
+    situationSeedKo: "교환학생 오리엔테이션 일정을 문의하거나 불참·지각에 대해 양해를 구하는 상황",
+  },
+  // 의료·생활서비스(계약 0-k·81⑤) — 여행·유학 실전 최빈 장면. primary theme = daily.
+  {
+    code: "hospital_pharmacy_visit",
+    labelKo: "병원·약국 이용",
+    themeCode: "daily_living",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["request", "thanks"],
+    situationSeedKo: "병원·약국에서 증상을 설명하고 예약 변경이나 복용 안내를 요청하는 상황",
   },
 ];
 

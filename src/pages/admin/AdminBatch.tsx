@@ -194,7 +194,7 @@ const AdminBatch = () => {
         </div>
 
         <div className="mt-4 rounded-lg bg-[#FAF8F2] px-4 py-3">
-          <div className="text-[12.5px] font-semibold">강좌 테마별 (theme) — 프리셋 선반이 비지 않게</div>
+          <div className="text-[12.5px] font-semibold">시나리오 테마별 (theme) — 프리셋 선반이 비지 않게</div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {Object.entries(THEME_LABEL).map(([k, label]) => (
               <Badge key={k} variant="secondary" className="font-normal">
