@@ -154,7 +154,7 @@ export function checkCore(coreInput: unknown, ctx: CheckContext): RuleResult {
 // 코어·미션 production_task 공통 서브셋(R8·R9·R10·R16·R17)
 function checkCoreCommon(
   v: RuleViolation[],
-  core: Pick<ScenarioCoreV2, "direction" | "source_text" | "preceding_turn" | "channel"> & {
+  core: Pick<ScenarioCoreV2, "direction" | "source_text" | "preceding_turn"> & {
     situation_ko?: string;
     relation_ko?: string;
   },
@@ -579,9 +579,7 @@ function checkInheritance(v: RuleViolation[], m: MissionV2, core: ScenarioCoreV2
   if (pt.source_text !== core.source_text) {
     add(v, "R23", "fail", "production_task.source_text가 코어를 계승하지 않음");
   }
-  if (pt.channel !== core.channel) {
-    add(v, "R23", "fail", `production_task.channel(${pt.channel}) ≠ 코어(${core.channel})`);
-  }
+  // channel 폐기(2026-07-25): production_task.channel ↔ core.channel 계승 검사 제거.
   if (!samePdrBand(pt.pdr, core.pdr)) {
     add(v, "R23", "fail", "production_task.pdr가 코어를 계승하지 않음");
   }

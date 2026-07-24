@@ -14,12 +14,16 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import {
-  CHANNEL_TO_GENRE,
-  CHANNEL_TO_MODE,
   COMPLEX_TASK_TO_CONTEXT,
+  type GenMode,
   type LanguageDirection,
 } from "@/lib/pragma/enums";
 import type { BatchCell } from "@/lib/pragma/batchPlan";
+
+// channel 폐기(2026-07-25) — 이 legacy 배치 러너도 task_mode에서 파생한다.
+// genre·channel_ui는 legacy_v1 RPC(save_generated_scenario) 호환용 태그일 뿐 축이 아니다.
+const legacyGenreOf = (mode: GenMode) => (mode === "stt_interpreting" ? "meeting_speech" : "business_messenger");
+const legacyChannelOf = (mode: GenMode) => (mode === "stt_interpreting" ? "facetoface" : "messenger");
 
 export interface BatchCellResult {
   index: number;
@@ -44,7 +48,7 @@ export interface RunOptions {
 function cellToBody(cell: BatchCell, languageDirection: LanguageDirection) {
   return {
     speech_act: cell.speech_act_ui,
-    genre: CHANNEL_TO_GENRE[cell.channel],
+    genre: legacyGenreOf(cell.mode),
     level: cell.level,
     context: COMPLEX_TASK_TO_CONTEXT.none,
     domain: cell.domain,
@@ -59,9 +63,9 @@ function cellToBody(cell: BatchCell, languageDirection: LanguageDirection) {
     reasons: "1",
     coordination: false,
     language_direction: languageDirection,
-    mode: CHANNEL_TO_MODE[cell.channel],
+    mode: cell.mode,
     speech_act_ui: cell.speech_act_ui,
-    channel_ui: cell.channel,
+    channel_ui: legacyChannelOf(cell.mode),
     complex_task_ui: "none",
   };
 }
@@ -91,7 +95,7 @@ export async function runBatchCell(
           meta,
           form: {
             speech_act: cell.speech_act_ui,
-            genre: CHANNEL_TO_GENRE[cell.channel],
+            genre: legacyGenreOf(cell.mode),
             level: cell.level,
             context: COMPLEX_TASK_TO_CONTEXT.none,
             industry: cell.industry,
@@ -112,7 +116,7 @@ export async function runBatchCell(
       .from("scenarios")
       .update({
         domain: cell.domain,
-        mode: CHANNEL_TO_MODE[cell.channel],
+        mode: cell.mode,
         language_direction: languageDirection,
       })
       .eq("scenario_id", scenarioId);

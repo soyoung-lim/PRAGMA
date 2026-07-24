@@ -19,7 +19,8 @@ const MpjCommon = {
   axis_feature: z.string().min(1),
   situation_ko: z.string().min(1),
   relation_ko: z.string().min(1),
-  channel: ChannelSchema,
+  /** @deprecated channel 폐기(2026-07-25) — legacy 읽기 호환용 */
+  channel: ChannelSchema.optional(),
   pdr: PdrSchema,
   source_ko: z.string().min(1),
   /** 거절·응답류 필수(R8) */
@@ -118,7 +119,8 @@ const ProductionTaskSchema = z.object({
   source_modality: SourceModalitySchema,
   situation_ko: z.string().min(1),
   relation_ko: z.string().min(1),
-  channel: ChannelSchema,
+  /** @deprecated channel 폐기(2026-07-25) — legacy 읽기 호환용 */
+  channel: ChannelSchema.optional(),
   pdr: PdrSchema,
   source_text_ko: z.string().min(1), // 코어 계승(R23)
   preceding_turn_zh: z.string().nullable(),
@@ -190,7 +192,8 @@ const MpjCommonV2 = {
   axis_feature: z.string().min(1),
   situation_ko: z.string().min(1),
   relation_ko: z.string().min(1),
-  channel: ChannelSchema,
+  /** @deprecated channel 폐기(2026-07-25) — legacy 읽기 호환용 */
+  channel: ChannelSchema.optional(),
   pdr: PdrSchema,
   /** 판단 대상 원문 — direction의 source 언어 */
   source: z.string().min(1),
@@ -258,7 +261,8 @@ const ProductionTaskV2Schema = z.object({
   source_modality: SourceModalitySchema,
   situation_ko: z.string().min(1),
   relation_ko: z.string().min(1),
-  channel: ChannelSchema,
+  /** @deprecated channel 폐기(2026-07-25) — legacy 읽기 호환용 */
+  channel: ChannelSchema.optional(),
   pdr: PdrSchema,
   source_text: z.string().min(1),
   preceding_turn: z.string().nullable(),
@@ -287,7 +291,7 @@ function v1ItemToV2(it: MpjItem): MpjItemV2 {
     axis_feature: it.axis_feature,
     situation_ko: it.situation_ko,
     relation_ko: it.relation_ko,
-    channel: it.channel,
+    ...(it.channel ? { channel: it.channel } : {}), // legacy only
     pdr: it.pdr,
     source: it.source_ko,
     ...(it.preceding_turn_zh ? { preceding_turn: it.preceding_turn_zh } : {}),
@@ -358,7 +362,7 @@ export function normalizeMission(input: unknown): {
         source_modality: pt.source_modality,
         situation_ko: pt.situation_ko,
         relation_ko: pt.relation_ko,
-        channel: pt.channel,
+        ...(pt.channel ? { channel: pt.channel } : {}), // legacy only
         pdr: pt.pdr,
         source_text: pt.source_text_ko,
         preceding_turn: pt.preceding_turn_zh,

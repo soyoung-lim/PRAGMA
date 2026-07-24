@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
-import { SPEECH_ACT_UI, LEVEL, DIRECTION_LANGS, type ChannelUI, type LanguageDirection } from "@/lib/pragma/enums";
+import { SPEECH_ACT_UI, LEVEL, DIRECTION_LANGS, type LanguageDirection } from "@/lib/pragma/enums";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import { SCALE4_CODES, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targetFeatures";
 import { normalizeMission, type MissionV2, type MpjItemV2 } from "@/lib/pragma/missionSchema";
@@ -32,12 +32,6 @@ const CONFIDENCE = ["매우 확신", "꽤 확신", "확신 없음"] as const;
 // 지위를 정직하게 — 유일 정답이 아니라 현재 수업 기준·AI 제안임을 판정 노출 지점에 캡션.
 const JUDGMENT_STATUS_CAPTION = "현재 수업 기준 · AI 제안(검증 예정)이며 다른 적절한 표현도 있을 수 있어요";
 
-const CHANNEL_LABEL: Record<ChannelUI, string> = {
-  email: "이메일",
-  messenger: "메신저",
-  facetoface: "대면",
-  phone: "전화",
-};
 // PDR 학습자 라벨(근거 서랍용 — 내부 코드 노출 금지)
 const PDR_R_LABEL: Record<string, string> = { low: "가벼운 부탁", mid: "보통", high: "부담이 큼" };
 const PDR_D_LABEL: Record<string, string> = { close: "가까운 사이", acquaintance: "아는 사이", distant: "처음/먼 사이" };
@@ -232,7 +226,6 @@ function MissionRunner({
             <SituationCard
               situation={mission.production_task.situation_ko}
               relation={mission.production_task.relation_ko}
-              channel={mission.production_task.channel as ChannelUI}
             />
             <div className={card}>
               <div className="text-[13px] font-semibold">
@@ -421,13 +414,13 @@ function RevisionMap({ first, final, featureLabel }: { first: string; final: str
 }
 
 // ── 상황 카드 ───────────────────────────────────────────────────────────
-function SituationCard({ situation, relation, channel }: { situation: string; relation: string; channel: ChannelUI }) {
+// channel 폐기(2026-07-25): 매체 배지 제거. 관계(P/D/R)만 노출한다 — 매체는 상황 자연어에 녹아 있을 뿐 축이 아니다.
+function SituationCard({ situation, relation }: { situation: string; relation: string }) {
   return (
     <div className="rounded-xl border-l-[3px] border-[#EAE4D2] border-l-[#15202B] bg-white p-4">
       <p className="text-[14.5px] font-semibold">{situation}</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         <Badge variant="secondary" className="font-normal">{relation}</Badge>
-        <Badge variant="secondary" className="font-normal">{CHANNEL_LABEL[channel] ?? channel}</Badge>
       </div>
     </div>
   );
@@ -476,7 +469,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
 
   return (
     <div className="space-y-3">
-      <SituationCard situation={item.situation_ko} relation={item.relation_ko} channel={item.channel as ChannelUI} />
+      <SituationCard situation={item.situation_ko} relation={item.relation_ko} />
 
       <div className={srcBox}>
         <div className="text-[11.5px] font-semibold text-muted-foreground">원문</div>
