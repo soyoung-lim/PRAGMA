@@ -16,6 +16,9 @@ import {
 import { THEME_LABEL, type ThemeCode } from "@/lib/pragma/scenarioTopics";
 import { DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
 import { promoteCore, reviewMission, type PromotableCore } from "@/lib/pragma/promoteMission";
+import { fetchMissionForReview } from "@/lib/mission/missionDb";
+import { MissionPreview } from "@/components/admin/MissionPreview";
+import type { MissionV1 } from "@/lib/pragma/missionSchema";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -52,6 +55,25 @@ const AdminBrowser = () => {
   const [sel, setSel] = useState<{ act: SpeechActUI; level: LearnerLevel } | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // 승격 중인 scenario_id
   const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
+  // 눈검사 미리보기 — scenario_id → {mission, warnings}. openId = 펼친 행.
+  const [preview, setPreview] = useState<Record<string, { mission: MissionV1; warnings: string[] }>>({});
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const togglePreview = async (r: CoreRow) => {
+    if (openId === r.scenario_id) {
+      setOpenId(null);
+      return;
+    }
+    setOpenId(r.scenario_id);
+    if (!preview[r.scenario_id]) {
+      try {
+        const res = await fetchMissionForReview(r.scenario_id);
+        if (res) setPreview((m) => ({ ...m, [r.scenario_id]: { mission: res.mission, warnings: [] } }));
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "미션 조회 실패");
+      }
+    }
+  };
 
   const setStatus = (id: string, status: string) =>
     setRows((prev) => prev.map((r) => (r.scenario_id === id ? { ...r, mission_status: status } : r)));
@@ -64,6 +86,11 @@ const AdminBrowser = () => {
       if (res.ok) {
         setStatus(r.scenario_id, "generated");
         setRowMsg((m) => ({ ...m, [r.scenario_id]: `생성됨(${res.ruleResult}, 시도 ${res.attempts}회) — 눈검사 후 검토 완료 처리` }));
+        if (res.mission) {
+          const warnings = (res.violations ?? []).filter((v) => v.level === "warning").map((v) => `${v.id}: ${v.message}`);
+          setPreview((m) => ({ ...m, [r.scenario_id]: { mission: res.mission!, warnings } }));
+          setOpenId(r.scenario_id); // 생성 직후 바로 눈검사 뷰 펼침
+        }
         toast.success("미션 생성됨 — 검토 대기");
       } else {
         setRowMsg((m) => ({ ...m, [r.scenario_id]: `실패: ${res.error}${res.violations?.length ? " · " + res.violations.filter((v) => v.level === "fail").map((v) => v.id).join(",") : ""}` }));
@@ -273,10 +300,22 @@ const AdminBrowser = () => {
                           {busy === r.scenario_id ? "처리 중…" : "검토 완료(reviewed)"}
                         </Button>
                       )}
+                      {(r.mission_status === "generated" || r.mission_status === "reviewed") && (
+                        <Button size="sm" variant="ghost" onClick={() => togglePreview(r)}>
+                          {openId === r.scenario_id ? "미션 접기 ▴" : "미션 보기 ▾"}
+                        </Button>
+                      )}
                       {rowMsg[r.scenario_id] && (
                         <span className="text-[11.5px] text-muted-foreground">{rowMsg[r.scenario_id]}</span>
                       )}
                     </div>
+
+                    {openId === r.scenario_id && preview[r.scenario_id] && (
+                      <MissionPreview
+                        mission={preview[r.scenario_id].mission}
+                        warnings={preview[r.scenario_id].warnings}
+                      />
+                    )}
                   </li>
                 ))}
               </ul>
