@@ -1,20 +1,31 @@
-// 규칙검사 R1~R24 — 결정론·API 0회. 생성계약 v1.5 §8.
+// 규칙검사 R1~R24 — 결정론·API 0회. 생성계약 v1.5 §8 + 양방향(0-l·85).
 //
 // 순수 함수. 코드가 검사할 수 있는 것은 필드·선택지 수·중복·길이 편차·형식·
 // 코드값 정합뿐이다(관리자구조md §3-①). 의미 보존·자연성·화행 구현은 검사 불가 →
 // AI 점검·인간 검수의 몫.
 //
 // 코어 서브셋(§8) = R1c·R8·R9·R10·R15·R16·R17·R19(+R22 warning).
+//
+// 양방향(0-l·84): 입력은 v1 또는 v2 JSON 모두 허용 — normalizeCore/normalizeMission이
+// v2 형태(중립 필드명 + direction)로 통일한 뒤 검사한다. R10은 데이터의 direction으로
+// source/target 언어를 스왑한다. R9는 중국·한국 국가 일반화를 양방향 공통으로 잡는다.
 
 import { getTargetFeature, TARGET_FEATURES } from "@/lib/pragma/targetFeatures";
-import { parseMission, type MissionV1, MPJ_TYPE_ORDER } from "@/lib/pragma/missionSchema";
-import { parseCore, type ScenarioCoreV1 } from "@/lib/pragma/coreSchema";
+import { normalizeMission, type MissionV2, MPJ_TYPE_ORDER } from "@/lib/pragma/missionSchema";
+import { normalizeCore, type ScenarioCoreV2 } from "@/lib/pragma/coreSchema";
 import {
   isThemeDomainValid,
   getScenarioTopic,
   type ThemeCode,
 } from "@/lib/pragma/scenarioTopics";
-import type { Domain, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
+import {
+  DIRECTION_LANGS,
+  DEFAULT_DIRECTION,
+  type Domain,
+  type LanguageDirection,
+  type LearnerLevel,
+  type SpeechActUI,
+} from "@/lib/pragma/enums";
 
 export type RuleLevel = "fail" | "warning";
 export interface RuleViolation {
@@ -40,6 +51,8 @@ export interface CheckContext {
   source_modality: "written" | "spoken";
   /** 승격 입력의 계획 화용 초점(주차/코어 화행의 카탈로그 기본 초점 — v1.5 0-h·55). R24 검사용. */
   planned_target_feature?: string;
+  /** 요청 방향(0-l·85). 생략 시 데이터의 direction을 그대로 신뢰. 지정 시 데이터와 일치 검사. */
+  direction?: LanguageDirection;
 }
 
 // ── 문자 범위 ─────────────────────────────────────────────────────────
@@ -51,23 +64,71 @@ const hasCjk = (s: string) => CJK.test(s);
 const looksChinese = (s: string) => hasCjk(s) && !HANGUL.test(s);
 const looksKorean = (s: string) => hasHangul(s);
 
-// 국가 단위 일반화 패턴(R9) — 해설·note 필드 한정.
-const NATIONALIZE = /(중국인(들)?은|중국에서는|중국\s*문화에서는|중국어\s*화자는|일반적으로\s*중국)/;
+// 국가 단위 일반화 패턴(R9) — 해설·note 필드 한정. 중국·한국 양방향 공통(0-l·85).
+const NATIONALIZE =
+  /(중국인(들)?은|중국에서는|중국\s*문화에서는|중국어\s*화자는|일반적으로\s*중국|한국인(들)?은|한국에서는|한국\s*문화에서는|한국어\s*화자는|일반적으로\s*한국)/;
 
 const add = (v: RuleViolation[], id: string, level: RuleLevel, message: string) =>
   v.push({ id, level, message });
+
+// ── 방향 인식 언어 검사 헬퍼(0-l·85) ───────────────────────────────────
+const LANG_KO: Record<"ko" | "zh", string> = { ko: "한국어", zh: "중국어" };
+
+/** source(원문)가 방향의 source 언어인가 — hard fail. */
+function checkSourceLang(v: RuleViolation[], dir: LanguageDirection, text: string, label: string) {
+  const lang = DIRECTION_LANGS[dir].source;
+  const ok = lang === "ko" ? looksKorean(text) : looksChinese(text);
+  if (!ok) add(v, "R10", "fail", `${label}: ${LANG_KO[lang]} 원문이 아님`);
+}
+
+/** 주 판정문(target)이 방향의 target 언어인가 — hard fail. */
+function checkTargetLangHard(v: RuleViolation[], dir: LanguageDirection, text: string, label: string) {
+  const lang = DIRECTION_LANGS[dir].target;
+  const ok = lang === "zh" ? hasCjk(text) : hasHangul(text);
+  if (!ok) add(v, "R10", "fail", `${label}: ${LANG_KO[lang]}가 아님`);
+}
+
+/** 후보·교정 목록이 방향의 target 언어인가 — warning(한국어 산출의 한자 혼입 포함, 0-l·85). */
+function checkTargetLangSoft(v: RuleViolation[], dir: LanguageDirection, id: number, texts: string[]) {
+  const lang = DIRECTION_LANGS[dir].target;
+  for (const t of texts) {
+    if (!t) continue;
+    if (lang === "zh") {
+      if (!looksChinese(t)) add(v, "R10", "warning", `문항 ${id}: 후보 "${t.slice(0, 20)}"에 한글 혼입 또는 중국어 아님`);
+    } else {
+      if (!hasHangul(t)) add(v, "R10", "warning", `문항 ${id}: 후보 "${t.slice(0, 20)}"에 한국어 없음`);
+      else if (hasCjk(t)) add(v, "R10", "warning", `문항 ${id}: 후보 "${t.slice(0, 20)}"에 한자 혼입(한국어 산출)`);
+    }
+  }
+}
+
+/** 선행 발화(대화 상대)가 방향의 target 언어인가 — hard fail. */
+function checkPrecedingLang(v: RuleViolation[], dir: LanguageDirection, text: string | null | undefined, label: string) {
+  if (!text) return;
+  const lang = DIRECTION_LANGS[dir].target;
+  const ok = lang === "zh" ? hasCjk(text) : hasHangul(text);
+  if (!ok) add(v, "R10", "fail", `${label}: 선행 발화가 ${LANG_KO[lang]}가 아님`);
+}
+
+/** 데이터 direction과 요청 방향(ctx) 일치(지정 시). */
+function checkDirectionMatch(v: RuleViolation[], dataDir: LanguageDirection, ctx: CheckContext) {
+  if (ctx.direction && ctx.direction !== dataDir) {
+    add(v, "R10", "fail", `데이터 방향(${dataDir}) ≠ 요청 방향(${ctx.direction})`);
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════════
 // 코어 검사 (R1c 포함 서브셋)
 // ══════════════════════════════════════════════════════════════════════
 export function checkCore(coreInput: unknown, ctx: CheckContext): RuleResult {
   const v: RuleViolation[] = [];
-  const parsed = parseCore(coreInput);
+  const parsed = normalizeCore(coreInput);
   if (!parsed.ok) {
     add(v, "R1c", "fail", `코어 스키마 위반: ${parsed.error.issues[0]?.message ?? "형식 오류"}`);
     return finalize(v);
   }
   const core = parsed.data;
+  checkDirectionMatch(v, core.direction, ctx);
 
   // theme↔domain 허용 매핑(R1c 확장)
   if (!isThemeDomainValid(ctx.theme_code, ctx.domain)) {
@@ -93,23 +154,20 @@ export function checkCore(coreInput: unknown, ctx: CheckContext): RuleResult {
 // 코어·미션 production_task 공통 서브셋(R8·R9·R10·R16·R17)
 function checkCoreCommon(
   v: RuleViolation[],
-  core: Pick<ScenarioCoreV1, "source_text_ko" | "preceding_turn_zh" | "channel"> & {
+  core: Pick<ScenarioCoreV2, "direction" | "source_text" | "preceding_turn" | "channel"> & {
     situation_ko?: string;
     relation_ko?: string;
   },
   ctx: CheckContext,
 ) {
+  const dir = core.direction ?? DEFAULT_DIRECTION;
   // R8 거절·응답류인데 preceding_turn 없음
-  if (isResponseAct(ctx.speech_act) && !core.preceding_turn_zh) {
-    add(v, "R8", "fail", `${ctx.speech_act}는 인접쌍 둘째 짝 — preceding_turn_zh 필수`);
+  if (isResponseAct(ctx.speech_act) && !core.preceding_turn) {
+    add(v, "R8", "fail", `${ctx.speech_act}는 인접쌍 둘째 짝 — preceding_turn 필수`);
   }
-  // R10 source=한국어
-  if (!looksKorean(core.source_text_ko)) {
-    add(v, "R10", "fail", "source_text_ko에 한국어가 없음");
-  }
-  if (core.preceding_turn_zh && !hasCjk(core.preceding_turn_zh)) {
-    add(v, "R10", "fail", "preceding_turn_zh가 중국어가 아님");
-  }
+  // R10 source·선행발화 방향 언어
+  checkSourceLang(v, dir, core.source_text, "source_text");
+  checkPrecedingLang(v, dir, core.preceding_turn, "코어");
   // R16 mode↔source_modality
   if (ctx.mode === "stt_interpreting" && ctx.source_modality !== "spoken") {
     add(v, "R16", "fail", "통역(stt_interpreting)은 source_modality='spoken'이어야 함");
@@ -135,15 +193,17 @@ function checkCoreCommon(
 export function checkMission(
   missionInput: unknown,
   ctx: CheckContext,
-  core?: ScenarioCoreV1,
+  coreInput?: unknown,
 ): RuleResult {
   const v: RuleViolation[] = [];
-  const parsed = parseMission(missionInput);
+  const parsed = normalizeMission(missionInput);
   if (!parsed.ok) {
     add(v, "R1", "fail", `스키마 위반: ${parsed.error.issues[0]?.path?.join(".")} ${parsed.error.issues[0]?.message ?? ""}`);
     return finalize(v);
   }
   const m = parsed.data;
+  const dir = m.direction;
+  checkDirectionMatch(v, dir, ctx);
   const feature = getTargetFeature(m.unit.target_feature);
 
   // ── R1 유형 순서·axis_feature·band code 존재 ──
@@ -181,7 +241,7 @@ export function checkMission(
         if (!isContiguousScale(it.accepted_scale_codes)) {
           add(v, "R7", "fail", `문항 ${it.id}: scale4 accepted가 연속 구간이 아님 (${it.accepted_scale_codes.join(",")})`);
         }
-        checkTargetHighlights(v, it.id, it.target_zh, it.highlights_zh);
+        checkTargetHighlights(v, it.id, it.target, it.highlights);
         break;
       }
       case "judge3": {
@@ -189,7 +249,7 @@ export function checkMission(
         if (!it.accepted_band_codes.includes(withinCode)) {
           add(v, "R2", "fail", `문항 ${it.id}: judge3 accepted에 within_band(${withinCode}) 없음 — 반례 문항 규칙`);
         }
-        checkTargetHighlights(v, it.id, it.target_zh, it.highlights_zh);
+        checkTargetHighlights(v, it.id, it.target, it.highlights);
         break;
       }
       case "fix_choice": {
@@ -202,8 +262,8 @@ export function checkMission(
         if (it.accepted_band_codes.some((c) => !inappropriate(c))) {
           add(v, "R18", "fail", `문항 ${it.id}: fix_choice accepted에 적정 대역 포함 — 부적절 계열이어야 함`);
         }
-        checkChinese(v, it.id, it.corrections.map((c) => c.zh));
-        checkTargetHighlights(v, it.id, it.target_zh, it.highlights_zh);
+        checkTargetLangSoft(v, dir, it.id, it.corrections.map((c) => c.text));
+        checkTargetHighlights(v, it.id, it.target, it.highlights);
         break;
       }
       case "reason_conf": {
@@ -220,13 +280,13 @@ export function checkMission(
         if (it.accepted_band_codes.some((c) => !inappropriate(c))) {
           add(v, "R18", "fail", `문항 ${it.id}: reason_conf accepted에 적정 대역 포함 — 부적절 계열이어야 함`);
         }
-        checkTargetHighlights(v, it.id, it.target_zh, it.highlights_zh);
+        checkTargetHighlights(v, it.id, it.target, it.highlights);
         break;
       }
       case "multi_judge": {
         // R5 길이 통제 강화판
         checkMultiJudgeLength(v, it.id, it.candidates, withinCode);
-        checkChinese(v, it.id, it.candidates.map((c) => c.zh));
+        checkTargetLangSoft(v, dir, it.id, it.candidates.map((c) => c.text));
         break;
       }
     }
@@ -238,8 +298,8 @@ export function checkMission(
     add(v, "R11", "fail", `reference_alternatives는 1~2개 (현재 ${altCount})`);
   }
   for (const it of m.mpj_items) {
-    if (!it.recommended_example_zh?.trim()) {
-      add(v, "R11", "fail", `문항 ${it.id}: recommended_example_zh 없음`);
+    if (!it.recommended_example?.trim()) {
+      add(v, "R11", "fail", `문항 ${it.id}: recommended_example 없음`);
     }
   }
 
@@ -266,31 +326,25 @@ export function checkMission(
   // ── R9 국가 일반화 (해설·note 필드 전수) ──
   checkNationalization(v, m);
 
-  // ── R10 source=한국어·target/candidate=중국어 ──
+  // ── R10 source=방향 source 언어·target/candidate=방향 target 언어 ──
   for (const it of m.mpj_items) {
-    if (!looksKorean(it.source_ko)) {
-      add(v, "R10", "fail", `문항 ${it.id}: source_ko에 한국어 없음`);
+    checkSourceLang(v, dir, it.source, `문항 ${it.id} source`);
+    if ("target" in it && it.target) {
+      checkTargetLangHard(v, dir, it.target, `문항 ${it.id} target`);
     }
-    if ("target_zh" in it && it.target_zh && !hasCjk(it.target_zh)) {
-      add(v, "R10", "fail", `문항 ${it.id}: target_zh가 중국어가 아님`);
-    }
-    if (it.preceding_turn_zh && !hasCjk(it.preceding_turn_zh)) {
-      add(v, "R10", "fail", `문항 ${it.id}: preceding_turn_zh가 중국어가 아님`);
-    }
+    checkPrecedingLang(v, dir, it.preceding_turn, `문항 ${it.id}`);
   }
-  if (!looksKorean(m.production_task.source_text_ko)) {
-    add(v, "R10", "fail", "production_task.source_text_ko에 한국어 없음");
-  }
+  checkSourceLang(v, dir, m.production_task.source_text, "production_task.source_text");
 
   // ── R8 거절·응답류 preceding_turn ──
   if (isResponseAct(ctx.speech_act)) {
     for (const it of m.mpj_items) {
-      if (!it.preceding_turn_zh) {
-        add(v, "R8", "fail", `문항 ${it.id}: ${ctx.speech_act}는 preceding_turn_zh 필수`);
+      if (!it.preceding_turn) {
+        add(v, "R8", "fail", `문항 ${it.id}: ${ctx.speech_act}는 preceding_turn 필수`);
       }
     }
-    if (!m.production_task.preceding_turn_zh) {
-      add(v, "R8", "fail", "production_task: 거절·응답류는 preceding_turn_zh 필수");
+    if (!m.production_task.preceding_turn) {
+      add(v, "R8", "fail", "production_task: 거절·응답류는 preceding_turn 필수");
     }
   }
 
@@ -312,8 +366,9 @@ export function checkMission(
   checkProvenance(v, m);
 
   // ── R23 미션 production_task가 코어 계승 ──
-  if (core) {
-    checkInheritance(v, m, core);
+  if (coreInput != null) {
+    const nc = normalizeCore(coreInput);
+    if (nc.ok) checkInheritance(v, m, nc.data);
   }
 
   // ── R24 승격 입력 계획 초점 = unit.target_feature(v1.5 0-h·55) ──
@@ -330,7 +385,7 @@ export function checkMission(
 }
 
 // R20 — 미션 provenance 객체 존재 + 필수값(prompt_snapshot_hash는 선택).
-function checkProvenance(v: RuleViolation[], m: MissionV1) {
+function checkProvenance(v: RuleViolation[], m: MissionV2) {
   const p = m.provenance;
   if (!p) {
     add(v, "R20", "fail", "mission_content.provenance 객체가 없음");
@@ -355,7 +410,7 @@ function isResponseAct(act: SpeechActUI): boolean {
   return act === "refusal" || act === "opposition";
 }
 
-function collectBandCodes(it: MissionV1["mpj_items"][number]): string[] {
+function collectBandCodes(it: MissionV2["mpj_items"][number]): string[] {
   switch (it.type) {
     case "judge3":
     case "fix_choice":
@@ -382,18 +437,10 @@ function isContiguousScale(codes: string[]): boolean {
 }
 
 function checkTargetHighlights(v: RuleViolation[], id: number, target: string, highlights: string[]) {
-  // R6 highlights_zh ⊂ target_zh
+  // R6 highlights ⊂ target
   for (const h of highlights) {
     if (h && !target.includes(h)) {
-      add(v, "R6", "fail", `문항 ${id}: highlight "${h}"가 target_zh에 없음`);
-    }
-  }
-}
-
-function checkChinese(v: RuleViolation[], id: number, texts: string[]) {
-  for (const t of texts) {
-    if (t && !looksChinese(t)) {
-      add(v, "R10", "warning", `문항 ${id}: 후보 "${t.slice(0, 20)}"에 한글 혼입 또는 중국어 아님`);
+      add(v, "R6", "fail", `문항 ${id}: highlight "${h}"가 target에 없음`);
     }
   }
 }
@@ -402,10 +449,10 @@ function checkChinese(v: RuleViolation[], id: number, texts: string[]) {
 function checkMultiJudgeLength(
   v: RuleViolation[],
   id: number,
-  candidates: { zh?: string; accepted_band_codes?: string[] }[],
+  candidates: { text?: string; accepted_band_codes?: string[] }[],
   withinCode: string,
 ) {
-  const lens = candidates.map((c) => [...(c.zh ?? "")].length);
+  const lens = candidates.map((c) => [...(c.text ?? "")].length);
   const codesOf = (c: { accepted_band_codes?: string[] }) => c.accepted_band_codes ?? [];
   const isUnder = (c: { accepted_band_codes?: string[] }) =>
     codesOf(c).every((b) => b !== withinCode) && isUnderBand(codesOf(c));
@@ -470,7 +517,7 @@ function samePdrBand(
   return a.p === b.p && a.d === b.d && a.r === b.r;
 }
 
-function checkSetDistribution(v: RuleViolation[], m: MissionV1, withinCode: string) {
+function checkSetDistribution(v: RuleViolation[], m: MissionV2, withinCode: string) {
   // 판정형 문항(judge3/fix_choice/reason_conf/multi)의 accepted가 전부 같은 방향이면 warning
   const dirs = new Set<string>();
   for (const it of m.mpj_items) {
@@ -491,7 +538,7 @@ function checkSetDistribution(v: RuleViolation[], m: MissionV1, withinCode: stri
   }
 }
 
-function checkNationalization(v: RuleViolation[], m: MissionV1) {
+function checkNationalization(v: RuleViolation[], m: MissionV2) {
   const fields: string[] = [];
   for (const it of m.mpj_items) {
     fields.push(it.explanation_ko);
@@ -505,32 +552,32 @@ function checkNationalization(v: RuleViolation[], m: MissionV1) {
   }
 }
 
-function checkInternalDuplicates(v: RuleViolation[], m: MissionV1) {
+function checkInternalDuplicates(v: RuleViolation[], m: MissionV2) {
   const targets = m.mpj_items
-    .map((it) => ("target_zh" in it ? it.target_zh : ""))
+    .map((it) => ("target" in it ? it.target : ""))
     .filter(Boolean);
   const seen = new Set<string>();
   for (const t of targets) {
-    if (seen.has(t)) add(v, "R19", "warning", `target_zh 완전 중복: "${t.slice(0, 20)}…"`);
+    if (seen.has(t)) add(v, "R19", "warning", `target 완전 중복: "${t.slice(0, 20)}…"`);
     seen.add(t);
   }
 }
 
-function checkRecommendedConsistency(v: RuleViolation[], m: MissionV1, withinCode: string) {
+function checkRecommendedConsistency(v: RuleViolation[], m: MissionV2, withinCode: string) {
   for (const it of m.mpj_items) {
     if (it.type === "fix_choice") {
       // 권장안이 valid 교정 중 하나와 동일하면 이상적(모순 아님). 부적절 target과 동일하면 warning
-      if (it.recommended_example_zh === it.target_zh) {
+      if (it.recommended_example === it.target) {
         add(v, "R21", "warning", `문항 ${it.id}: recommended_example가 부적절 target과 동일`);
       }
     }
   }
 }
 
-function checkInheritance(v: RuleViolation[], m: MissionV1, core: ScenarioCoreV1) {
+function checkInheritance(v: RuleViolation[], m: MissionV2, core: ScenarioCoreV2) {
   const pt = m.production_task;
-  if (pt.source_text_ko !== core.source_text_ko) {
-    add(v, "R23", "fail", "production_task.source_text_ko가 코어를 계승하지 않음");
+  if (pt.source_text !== core.source_text) {
+    add(v, "R23", "fail", "production_task.source_text가 코어를 계승하지 않음");
   }
   if (pt.channel !== core.channel) {
     add(v, "R23", "fail", `production_task.channel(${pt.channel}) ≠ 코어(${core.channel})`);
@@ -540,6 +587,9 @@ function checkInheritance(v: RuleViolation[], m: MissionV1, core: ScenarioCoreV1
   }
   if (pt.source_modality !== core.source_modality) {
     add(v, "R23", "fail", `production_task.source_modality(${pt.source_modality}) ≠ 코어(${core.source_modality})`);
+  }
+  if (m.direction !== core.direction) {
+    add(v, "R23", "fail", `미션 방향(${m.direction}) ≠ 코어 방향(${core.direction})`);
   }
 }
 

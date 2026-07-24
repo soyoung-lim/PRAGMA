@@ -14,7 +14,9 @@ import type {
   PdrPower,
   PdrDistance,
   PdrBurden,
+  LanguageDirection,
 } from "@/lib/pragma/enums";
+import { DEFAULT_DIRECTION } from "@/lib/pragma/enums";
 
 // ── PDR: 계약 JSON 이름 ↔ 행 enum 값 매핑 ─────────────────────────────
 export const PdrPowerJson = z.enum(["speaker_lower", "equal", "speaker_higher"]);
@@ -90,4 +92,68 @@ export function parseCore(input: unknown): {
   const r = ScenarioCoreV1Schema.safeParse(input);
   if (r.success) return { ok: true, data: r.data };
   return { ok: false, error: r.error };
+}
+
+// ── scenario_core_v2 — 양방향 중립 스키마 (계약 0-l·83) ────────────────────
+// 언어가 뒤집히는 필드만 중립 이름: source_text_ko→source_text ·
+// preceding_turn_zh→preceding_turn. 메타언어 필드(situation_ko·relation_ko·
+// brief_note_ko)는 학습자 UI 언어(항상 한국어)라 개명하지 않는다.
+// direction 최상위 필드 신설(부재 데이터 = ko_zh로 정규화, 0-l·82·84).
+export const ScenarioCoreV2Schema = z.object({
+  schema_version: z.literal("scenario_core_v2"),
+  direction: z.enum(["ko_zh", "zh_ko"]),
+  situation_ko: z.string().min(1),
+  relation_ko: z.string().min(1),
+  source_modality: SourceModalitySchema,
+  /** 학습자가 옮길 원발화 — direction의 source 언어 */
+  source_text: z.string().min(1),
+  /** 대화 상대(target 언어 화자)의 선행 발화. 응답류 필수(R8). 그 외 null */
+  preceding_turn: z.string().nullable(),
+  pdr: PdrSchema,
+  channel: ChannelSchema,
+  brief_note_ko: z.string().optional(),
+});
+export type ScenarioCoreV2 = z.infer<typeof ScenarioCoreV2Schema>;
+
+/**
+ * 코어 정규화 — v1(방향 없음) 또는 v2 JSON을 읽어 v2 런타임 형태로 통일한다(0-l·84).
+ * v1은 자동으로 direction='ko_zh', 필드명 매핑(source_text_ko→source_text 등).
+ * 모든 소비자(규칙검사·러너·편성)는 이 정규화 형태만 본다.
+ */
+export function normalizeCore(input: unknown): {
+  ok: boolean;
+  data?: ScenarioCoreV2;
+  error?: z.ZodError;
+} {
+  const sv = (input as { schema_version?: string } | null)?.schema_version;
+  if (sv === "scenario_core_v2") {
+    const r = ScenarioCoreV2Schema.safeParse(input);
+    if (r.success) return { ok: true, data: r.data };
+    return { ok: false, error: r.error };
+  }
+  // v1 또는 미상 → v1으로 파싱 후 v2 형태로 변환(direction=ko_zh).
+  const v1 = ScenarioCoreV1Schema.safeParse(input);
+  if (!v1.success) return { ok: false, error: v1.error };
+  const c = v1.data;
+  return {
+    ok: true,
+    data: {
+      schema_version: "scenario_core_v2",
+      direction: DEFAULT_DIRECTION,
+      situation_ko: c.situation_ko,
+      relation_ko: c.relation_ko,
+      source_modality: c.source_modality,
+      source_text: c.source_text_ko,
+      preceding_turn: c.preceding_turn_zh,
+      pdr: c.pdr,
+      channel: c.channel,
+      ...(c.brief_note_ko ? { brief_note_ko: c.brief_note_ko } : {}),
+    },
+  };
+}
+
+/** direction만 안전하게 뽑는다(정규화 실패해도 편성 필터가 동작하게). */
+export function coreDirection(input: unknown): LanguageDirection {
+  const d = (input as { direction?: string } | null)?.direction;
+  return d === "zh_ko" ? "zh_ko" : DEFAULT_DIRECTION;
 }
