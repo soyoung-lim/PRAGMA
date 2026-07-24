@@ -1,16 +1,13 @@
 // Mock data for the learner home / hub — UI mockup only, no DB.
 // Mirrors the prototype's vHome: today's mission hero + profile summary + nav tiles.
-
-export type LearnerMode = "self" | "class";
+//
+// 범위 확정(2026-07-25, 계약 0-m): PRAGMA = 수업연계형 단일 경로. 자율학습 모드
+// (LearnerMode "self"·약점 기반 추천 카피)는 공식 범위 제외로 삭제 — 후속 연구로만.
 
 export const TODAY_MISSION = {
   speechAct: "요청",
   channel: "위챗",
   audience: "친구에게",
-  selfCopy: {
-    kicker: "오늘의 미션 · 약점 기반 추천",
-    body: "당신의 격식 편향을 풀기 좋은 편한 상황부터.",
-  },
   classCopy: {
     kicker: "이번 주 과제 · 요청 화행",
     body: "교수님이 배포한 이번 주 과제예요. 완료 후 기록이 대시보드로 갑니다.",
