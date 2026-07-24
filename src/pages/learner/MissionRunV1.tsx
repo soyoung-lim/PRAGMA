@@ -25,6 +25,9 @@ const CHANNEL_LABEL: Record<ChannelUI, string> = {
   facetoface: "대면",
   phone: "전화",
 };
+// PDR 학습자 라벨(근거 서랍용 — 내부 코드 노출 금지)
+const PDR_R_LABEL: Record<string, string> = { low: "가벼운 부탁", mid: "보통", high: "부담이 큼" };
+const PDR_D_LABEL: Record<string, string> = { close: "가까운 사이", acquaintance: "아는 사이", distant: "처음/먼 사이" };
 
 const card = "rounded-xl border border-[#EAE4D2] bg-white p-4";
 const srcBox = "rounded-lg border-l-[3px] border-[#EAE4D2] border-l-[#FAD338] bg-[#F5F5F2] p-3";
@@ -158,6 +161,7 @@ function MissionRunner({
         {/* ── ① 감각 쌓기 ── */}
         {step === "감각 쌓기" && (
           <div className="space-y-3">
+            {mpjIdx === 0 && <MissionContractBar mission={mission} />}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Badge variant="secondary" className="font-normal">이번 핵심 · {mission.unit.learner_label}</Badge>
               <span className="text-[12px] text-muted-foreground">{mpjIdx + 1} / {items.length}</span>
@@ -202,6 +206,7 @@ function MissionRunner({
             <div className={card}>
               <div className="text-[13px] font-semibold"><span className="mr-1.5 text-[#8899A6]">1</span>이번 화용 초점 — {mission.unit.learner_label}</div>
               <p className="mt-1.5 text-[13.5px] leading-relaxed">{mission.unit.closing_ko}</p>
+              <FeedbackReasonDrawer mission={mission} />
             </div>
 
             <div className={card}>
@@ -254,14 +259,85 @@ function MissionRunner({
                 ))}
               </ul>
             </div>
-            <div className={card}>
-              <div className="text-[11.5px] font-semibold text-muted-foreground">내 최종 번역</div>
-              <p className="mt-1 whitespace-pre-wrap text-[14.5px]">{revised || draft}</p>
-            </div>
+            <RevisionMap
+              first={draft}
+              final={revised || draft}
+              featureLabel={mission.unit.learner_label}
+            />
           </div>
         )}
       </div>
     </LearnerJourneyShell>
+  );
+}
+
+// ── 평가 계약 바(0-i·65) — 제출 전엔 무엇으로 판단받는지만, 정답·참고안은 제출 후 ──
+function MissionContractBar({ mission }: { mission: MissionV1 }) {
+  const feat = getTargetFeature(mission.unit.target_feature);
+  const estMin = mission.production_task.mode === "interpreting" ? 15 : 12;
+  return (
+    <div className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] p-4">
+      <div className="flex flex-wrap items-center gap-2 text-[13px]">
+        <Badge className="bg-[#15202B] text-white hover:bg-[#15202B]">이번 핵심 · {mission.unit.learner_label}</Badge>
+        <span className="text-muted-foreground">약 {estMin}분</span>
+      </div>
+      <p className="mt-2 text-[12.5px] text-muted-foreground">
+        완료 조건: 판단 5문항 → 중국어로 옮기기 1회 → 피드백 확인 → 다듬기 1회.
+        <b className="text-foreground"> 정답·참고 표현은 제출한 뒤에 공개됩니다.</b>
+      </p>
+      <details className="mt-2 text-[12.5px]">
+        <summary className="cursor-pointer text-[#6B5518]">무엇을 확인하나요?</summary>
+        <div className="mt-2 space-y-1.5 text-muted-foreground">
+          <p>확인하는 것 — ① 원문의 의미·의도가 유지됐는가 ② 의미를 방해하는 문법 오류가 있는가 ③ 이 관계·상황에서 「{mission.unit.learner_label}」이 적절한가</p>
+          {feat && feat.excluded_confounds.length > 0 && (
+            <p>확인하지 않는 것 — {feat.excluded_confounds.join(" · ")}</p>
+          )}
+        </div>
+      </details>
+    </div>
+  );
+}
+
+// ── 피드백 근거 서랍(의견4 ③) — 판정↔상황 조건 연결. 카탈로그·상황 데이터만(AI 0회) ──
+function FeedbackReasonDrawer({ mission }: { mission: MissionV1 }) {
+  const feat = getTargetFeature(mission.unit.target_feature);
+  const pt = mission.production_task;
+  return (
+    <details className="mt-2.5 text-[12.5px]">
+      <summary className="cursor-pointer text-[#6B5518]">왜 이 초점인가요?</summary>
+      <div className="mt-2 space-y-1.5">
+        <div className="rounded-lg bg-[#FAF8F2] px-3 py-2 text-muted-foreground">
+          <div>상황 · {pt.relation_ko}</div>
+          <div className="mt-0.5">부담 · {PDR_R_LABEL[pt.pdr.r] ?? pt.pdr.r} / 관계 거리 · {PDR_D_LABEL[pt.pdr.d] ?? pt.pdr.d}</div>
+        </div>
+        {feat && <p className="text-foreground">{feat.operational_definition.split(".")[0]}.</p>}
+      </div>
+    </details>
+  );
+}
+
+// ── 수정 지도(0-i) — 최초↔최종 + 수정 성격. 클라이언트만(AI·DB 0회) ──
+function RevisionMap({ first, final, featureLabel }: { first: string; final: string; featureLabel: string }) {
+  const changed = first.trim() !== final.trim();
+  return (
+    <div className={card}>
+      <div className="text-[13px] font-semibold">내가 무엇을 바꿨나요?</div>
+      <div className="mt-2.5 space-y-2">
+        <div className="rounded-lg bg-[#F5F5F2] px-3.5 py-2.5">
+          <div className="text-[11.5px] font-semibold text-muted-foreground">최초</div>
+          <p className="mt-0.5 whitespace-pre-wrap text-[14px]">{first}</p>
+        </div>
+        <div className="rounded-lg border border-[#FAD338] bg-[#FFF8DE] px-3.5 py-2.5">
+          <div className="text-[11.5px] font-semibold text-[#6B5518]">최종</div>
+          <p className="mt-0.5 whitespace-pre-wrap text-[14px]">{final}</p>
+        </div>
+      </div>
+      <p className="mt-2 text-[12px] text-muted-foreground">
+        {changed
+          ? `이번에 조절한 초점 · ${featureLabel}. 더 길게 고친 것이 아니라, 이 상황에 맞게 무엇을 조절했는지 확인하세요.`
+          : "이번에는 최초 번역을 그대로 두었습니다."}
+      </p>
+    </div>
   );
 }
 
@@ -328,10 +404,13 @@ function MpjStage({ item, onDone }: { item: MpjItem; onDone: () => void }) {
         <p className="mt-1 text-[14.5px]">{item.source_ko}</p>
       </div>
 
-      {/* 단일 발화 문항(scale4/judge3/fix_choice/reason_conf) */}
+      {/* 단일 발화 문항(scale4/judge3/fix_choice/reason_conf) — AI 초안 검수 프레임(0-i·59) */}
       {item.type !== "multi_judge" && (
         <div className={card}>
-          <div className="text-[11.5px] font-semibold text-muted-foreground">중국어 번역안</div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11.5px] font-semibold text-muted-foreground">AI가 제안한 번역 초안</span>
+            <span className="rounded bg-[#EEF2F6] px-1.5 py-0.5 text-[10.5px] font-medium text-[#5B6B76]">발송 전 검수</span>
+          </div>
           <p className="mt-1 text-[15px] leading-relaxed">{item.target_zh}</p>
           {item.highlights_zh.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -449,7 +528,7 @@ function MpjStage({ item, onDone }: { item: MpjItem; onDone: () => void }) {
       {/* multi_judge: 한 상황 다중 발화 */}
       {item.type === "multi_judge" && (
         <div className={card}>
-          <div className="text-[13px] font-semibold">같은 원문을 옮긴 번역안들입니다. 각각 어떤가요?</div>
+          <div className="text-[13px] font-semibold">AI가 만든 여러 번역 초안입니다. 각각 어떤가요?</div>
           <ul className="mt-3 space-y-2.5">
             {item.candidates.map((c, i) => (
               <li key={c.zh} className="rounded-lg border border-[#EAE4D2] px-3.5 py-3">
