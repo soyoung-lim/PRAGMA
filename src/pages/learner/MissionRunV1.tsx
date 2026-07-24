@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { SCALE4_CODES, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targe
 import { normalizeMission, type MissionV2, type MpjItemV2 } from "@/lib/pragma/missionSchema";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
+import { saveMissionAttempt } from "@/lib/mission/missionLog";
 
 // 샘플은 v1 → 정규화해 v2로 구동(러너는 정규화 형태만 본다, 0-l·84).
 const SAMPLE_MISSION_V2 = normalizeMission(SAMPLE_MISSION_V1).data as MissionV2;
@@ -100,7 +101,17 @@ const MissionRunV1 = () => {
     ? `${loaded.speech_act ? SPEECH_ACT_UI[loaded.speech_act] : ""} · ${loaded.learner_level ? LEVEL[loaded.learner_level] : ""}`
     : "샘플 미션";
 
-  return <MissionRunner mission={mission} isSample={isSample} headerRight={headerRight} status={loaded?.mission_status ?? null} />;
+  return (
+    <MissionRunner
+      mission={mission}
+      isSample={isSample}
+      headerRight={headerRight}
+      status={loaded?.mission_status ?? null}
+      scenarioId={loaded?.scenario_id ?? null}
+      speechAct={loaded?.speech_act ?? null}
+      level={loaded?.learner_level ?? null}
+    />
+  );
 };
 
 // ── 러너 본체 ───────────────────────────────────────────────────────────
@@ -109,17 +120,25 @@ function MissionRunner({
   isSample,
   headerRight,
   status,
+  scenarioId,
+  speechAct,
+  level,
 }: {
   mission: MissionV2;
   isSample: boolean;
   headerRight: string;
   status: string | null;
+  scenarioId: string | null;
+  speechAct: string | null;
+  level: string | null;
 }) {
   const [stepIdx, setStepIdx] = useState(0);
   const [mpjIdx, setMpjIdx] = useState(0);
   const [draft, setDraft] = useState("");
   const [revised, setRevised] = useState("");
   const [done, setDone] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "demo" | "error">("idle");
+  const startedAtRef = useRef<string>(new Date().toISOString());
 
   const step = STEPS[stepIdx];
   const items = mission.mpj_items;
@@ -127,6 +146,24 @@ function MissionRunner({
   const dir = mission.direction;
   const tgtName = tgtLangName(dir);
   const srcName = srcLangName(dir);
+
+  // 미션 완료 = 수행 로그 저장(루프 마지막 노드). 데모 스텁은 저장 불가 → 안내만.
+  const finish = async () => {
+    setDone(true);
+    if (saveState === "saving" || saveState === "saved") return;
+    setSaveState("saving");
+    const res = await saveMissionAttempt({
+      mission,
+      scenarioId,
+      speechAct,
+      level,
+      firstResponse: draft,
+      revisedResponse: revised || draft,
+      startedAtIso: startedAtRef.current,
+    });
+    if (res.ok) setSaveState("saved");
+    else setSaveState((res as { reason?: string }).reason === "no_auth" ? "demo" : "error");
+  };
 
   const nextMpj = () => {
     if (mpjIdx < items.length - 1) setMpjIdx((i) => i + 1);
@@ -249,7 +286,7 @@ function MissionRunner({
               <p className="mt-1 text-[14px]">{mission.unit.closing_ko}</p>
             </div>
             <Textarea rows={5} value={revised || draft} onChange={(e) => setRevised(e.target.value)} />
-            <Button className="w-full" onClick={() => setDone(true)}>마치기</Button>
+            <Button className="w-full" onClick={finish}>마치기</Button>
           </div>
         )}
 
@@ -259,6 +296,20 @@ function MissionRunner({
             <div className="rounded-xl bg-[#15202B] p-5 text-white">
               <div className="text-[11.5px] font-bold text-[#FAD338]">이번 미션의 핵심</div>
               <p className="mt-1.5 text-[14.5px] leading-relaxed">{mission.unit.closing_ko}</p>
+            </div>
+
+            {/* 수행 로그 저장 상태 — 루프 마지막 노드(실행 → 저장) */}
+            <div
+              className={[
+                "rounded-lg px-3.5 py-2.5 text-[12.5px]",
+                saveState === "saved" ? "bg-[#F2FAF6] text-[#2E7D5B]" : "bg-[#F7F9FA] text-[#5B6B76]",
+              ].join(" ")}
+            >
+              {saveState === "saving" && "수행 기록 저장 중…"}
+              {saveState === "saved" && "✓ 수행 기록이 저장되었습니다 (기록 탭에서 확인)"}
+              {saveState === "demo" && "데모 모드입니다 — 실제 로그인 시 수행 기록이 저장됩니다."}
+              {saveState === "error" && "수행 기록 저장에 실패했습니다. 네트워크를 확인해 주세요."}
+              {saveState === "idle" && "수행 기록을 준비 중입니다."}
             </div>
             <div className={card}>
               <div className="text-[13px] font-semibold">이번에 본 알맞은 표현들</div>
