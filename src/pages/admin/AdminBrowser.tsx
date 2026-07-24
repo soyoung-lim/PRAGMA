@@ -149,10 +149,16 @@ const AdminBrowser = () => {
     [rows, fMode, fDomain, fTheme],
   );
 
-  // (act|level) → count
+  // (act|level) → { total, translation, interpreting } (54셀 감사 대응 — 계약 0-j·73)
   const counts = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const r of filtered) m[`${r.speech_act}|${r.learner_level}`] = (m[`${r.speech_act}|${r.learner_level}`] ?? 0) + 1;
+    const m: Record<string, { total: number; t: number; i: number }> = {};
+    for (const r of filtered) {
+      const k = `${r.speech_act}|${r.learner_level}`;
+      const c = (m[k] ??= { total: 0, t: 0, i: 0 });
+      c.total += 1;
+      if (r.mode === "stt_interpreting") c.i += 1;
+      else c.t += 1;
+    }
     return m;
   }, [filtered]);
 
@@ -216,7 +222,8 @@ const AdminBrowser = () => {
                   <tr key={act}>
                     <td className="py-1 font-medium">{SPEECH_ACT_UI[act]}</td>
                     {LEVELS.map((lv) => {
-                      const n = counts[`${act}|${lv}`] ?? 0;
+                      const c = counts[`${act}|${lv}`] ?? { total: 0, t: 0, i: 0 };
+                      const n = c.total;
                       const active = sel?.act === act && sel?.level === lv;
                       return (
                         <td key={lv} className="text-center">
@@ -224,15 +231,21 @@ const AdminBrowser = () => {
                             type="button"
                             disabled={n === 0}
                             onClick={() => setSel({ act, level: lv })}
-                            className={`h-9 w-full rounded-md text-[13px] font-semibold transition ${
+                            className={`flex h-11 w-full flex-col items-center justify-center rounded-md leading-none transition ${
                               active
                                 ? "bg-[#1a1a1a] text-white"
                                 : n === 0
                                   ? "bg-[#FAF8F2] text-amber-600"
                                   : "bg-[#FFF7CC] hover:bg-[#FFEE99]"
                             }`}
+                            title="번역 / 통역"
                           >
-                            {n}
+                            <span className="text-[14px] font-semibold">{n}</span>
+                            {n > 0 && (
+                              <span className={`text-[10.5px] ${active ? "text-white/70" : "text-[#8A7A2A]"}`}>
+                                번{c.t} · 통{c.i}
+                              </span>
+                            )}
                           </button>
                         </td>
                       );
