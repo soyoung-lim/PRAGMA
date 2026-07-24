@@ -59,11 +59,14 @@ const AdminBatch = () => {
     setQuota(d === "zh_ko" ? ZH_KO_SMOKE_QUOTA : DEFAULT_QUOTA);
   };
 
+  const targetActs = direction === "zh_ko" ? ZH_KO_SMOKE_ACTS : undefined;
   const plan = useMemo(
-    () => buildBatchPlan(quota, direction, direction === "zh_ko" ? ZH_KO_SMOKE_ACTS : undefined),
-    [quota, direction],
+    () => buildBatchPlan(quota, direction, targetActs),
+    [quota, direction, targetActs],
   );
-  const summary = useMemo(() => summarizePlan(plan), [plan]);
+  // 54셀 감사는 zh_ko 스모크일 때 대상 화행(요청·거절·감사)만으로 좁힌다 —
+  // 안 그러면 애초에 카탈로그가 없어 대상도 아닌 6화행이 "빈 셀"로 오경고된다.
+  const summary = useMemo(() => summarizePlan(plan, targetActs), [plan, targetActs]);
 
   const setLevelQuota = (level: LearnerLevel, value: number) =>
     setQuota((q) => ({ ...q, perLevel: { ...q.perLevel, [level]: Math.max(0, value) } }));
@@ -253,21 +256,24 @@ const AdminBatch = () => {
           </div>
         </div>
 
-        {summary.emptyActLevelModeCells.length > 0 ? (
-          <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-[12.5px] text-amber-900">
-            ⚠️ 화행 × 수준 × 모드 54셀(생성 수준 한정) 중 <b>{summary.emptyActLevelModeCells.length}셀이 빕니다</b>:{" "}
-            {summary.emptyActLevelModeCells.join(", ")}
-          </p>
-        ) : (
-          <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-[12.5px] text-emerald-900">
-            ✅ 54셀(생성 수준 한정)이 모두 채워집니다 · 셀당 최소 {summary.minActLevelModeCount}개
-            {summary.minActLevelModeCount < 3 && (
-              <span className="text-amber-800">
-                {" "}— 500 본 배치는 셀당 ≥3 권장(현재 {summary.underMinCells.length}셀이 3 미만)
-              </span>
-            )}
-          </p>
-        )}
+        {(() => {
+          const cellUnitLabel = targetActs ? `${targetActs.length * 3 * 2}셀(${targetActs.length}화행 스모크)` : "54셀";
+          return summary.emptyActLevelModeCells.length > 0 ? (
+            <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-[12.5px] text-amber-900">
+              ⚠️ 화행 × 수준 × 모드 {cellUnitLabel}(생성 수준 한정) 중 <b>{summary.emptyActLevelModeCells.length}셀이 빕니다</b>:{" "}
+              {summary.emptyActLevelModeCells.join(", ")}
+            </p>
+          ) : (
+            <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-[12.5px] text-emerald-900">
+              ✅ {cellUnitLabel}(생성 수준 한정)이 모두 채워집니다 · 셀당 최소 {summary.minActLevelModeCount}개
+              {summary.minActLevelModeCount < 3 && (
+                <span className="text-amber-800">
+                  {" "}— 500 본 배치는 셀당 ≥3 권장(현재 {summary.underMinCells.length}셀이 3 미만)
+                </span>
+              )}
+            </p>
+          );
+        })()}
       </section>
 
       {/* ── 실행 ── */}

@@ -245,7 +245,14 @@ export interface PlanSummary {
   underMinCells: string[];
 }
 
-export function summarizePlan(cells: BatchCell[]): PlanSummary {
+/**
+ * 계획을 실행 전에 눈으로 검산하기 위한 분포 요약.
+ *
+ * @param targetActs 감사 대상 화행(기본 = 9화행 전부). zh_ko 스모크처럼 화행이
+ *   의도적으로 좁혀진 계획(ZH_KO_SMOKE_ACTS)을 요약할 때 넘긴다 — 안 넘기면
+ *   대상 밖 화행이 "빈 셀"로 오경고된다(0-l·89 스모크 vs 0-h·57 54셀 감사 범위 분리).
+ */
+export function summarizePlan(cells: BatchCell[], targetActs: SpeechActUI[] = SPEECH_ACTS): PlanSummary {
   const bump = (rec: Record<string, number>, key: string, by = 1) => {
     rec[key] = (rec[key] ?? 0) + by;
   };
@@ -279,20 +286,20 @@ export function summarizePlan(cells: BatchCell[]): PlanSummary {
   }
 
   const emptyActLevelCells: string[] = [];
-  for (const act of SPEECH_ACTS) {
+  for (const act of targetActs) {
     for (const level of LEVELS) {
       if (!actLevel.has(`${act}|${level}`)) emptyActLevelCells.push(`${act}·${level}`);
     }
   }
 
-  // 54셀 감사 — 계획에 등장한 수준만 대상(perLevel=0 수준은 의도된 제외).
+  // 54셀(또는 targetActs 축소분) 감사 — 계획에 등장한 수준만 대상(perLevel=0 수준은 의도된 제외).
   const MODES = ["translation", "stt_interpreting"] as const;
   const emptyActLevelModeCells: string[] = [];
   const underMinCells: string[] = [];
   let minActLevelModeCount = Infinity;
   for (const level of LEVELS) {
     if (!levelsPresent.has(level)) continue;
-    for (const act of SPEECH_ACTS) {
+    for (const act of targetActs) {
       for (const mode of MODES) {
         const n = actLevelModeCount[`${act}|${level}|${mode}`] ?? 0;
         const label = `${act}·${level}·${mode === "translation" ? "번역" : "통역"}`;
