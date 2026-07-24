@@ -10,6 +10,7 @@ import {
   ChannelSchema,
   SourceModalitySchema,
 } from "@/lib/pragma/coreSchema";
+import { DEFAULT_DIRECTION, type LanguageDirection } from "@/lib/pragma/enums";
 
 // ── 공통 필드 ─────────────────────────────────────────────────────────
 const MpjCommon = {
@@ -173,3 +174,204 @@ export const MPJ_TYPE_ORDER = [
   "reason_conf",
   "multi_judge",
 ] as const;
+
+// ══════════════════════════════════════════════════════════════════════
+// mission_v2 — 양방향 중립 스키마 (계약 0-l·83)
+// ══════════════════════════════════════════════════════════════════════
+// 언어가 뒤집히는 필드만 중립 이름: source_ko→source · target_zh→target ·
+// highlights_zh→highlights · preceding_turn_zh→preceding_turn ·
+// recommended_example_zh→recommended_example · corrections/candidates/
+// reference_alternatives[].zh→text. 메타언어 필드(situation_ko·relation_ko·
+// explanation_ko·note_ko·reasons[].text_ko·closing_ko·learner_label)는 불변.
+// direction 최상위 신설. 부재 데이터(v1) = ko_zh로 정규화(0-l·82·84).
+
+const MpjCommonV2 = {
+  id: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+  axis_feature: z.string().min(1),
+  situation_ko: z.string().min(1),
+  relation_ko: z.string().min(1),
+  channel: ChannelSchema,
+  pdr: PdrSchema,
+  /** 판단 대상 원문 — direction의 source 언어 */
+  source: z.string().min(1),
+  /** 대화 상대(target 언어)의 선행 발화(R8) */
+  preceding_turn: z.string().optional(),
+  explanation_ko: z.string().min(1),
+  /** 이 상황의 적절안 예시 1개 — direction의 target 언어(R21) */
+  recommended_example: z.string().min(1),
+};
+
+const Scale4ItemV2 = z.object({
+  ...MpjCommonV2,
+  type: z.literal("scale4"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  accepted_scale_codes: z.array(z.string()).min(1).max(2),
+});
+const Judge3ItemV2 = z.object({
+  ...MpjCommonV2,
+  type: z.literal("judge3"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  accepted_band_codes: z.array(z.string()).min(1),
+});
+const FixChoiceItemV2 = z.object({
+  ...MpjCommonV2,
+  type: z.literal("fix_choice"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  accepted_band_codes: z.array(z.string()).min(1),
+  corrections: z
+    .array(z.object({ text: z.string().min(1), is_valid: z.boolean(), note_ko: z.string().min(1) }))
+    .length(4),
+});
+const ReasonConfItemV2 = z.object({
+  ...MpjCommonV2,
+  type: z.literal("reason_conf"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  accepted_band_codes: z.array(z.string()).min(1),
+  reasons: z
+    .array(z.object({ id: z.string().min(1), text_ko: z.string().min(1) }))
+    .length(4),
+  accepted_reason_ids: z.array(z.string()).min(1).max(2),
+});
+const MultiJudgeItemV2 = z.object({
+  ...MpjCommonV2,
+  type: z.literal("multi_judge"),
+  candidates: z
+    .array(z.object({ text: z.string().min(1), accepted_band_codes: z.array(z.string()).min(1), note_ko: z.string().min(1) }))
+    .length(5),
+});
+
+export const MpjItemV2Schema = z.discriminatedUnion("type", [
+  Scale4ItemV2,
+  Judge3ItemV2,
+  FixChoiceItemV2,
+  ReasonConfItemV2,
+  MultiJudgeItemV2,
+]);
+export type MpjItemV2 = z.infer<typeof MpjItemV2Schema>;
+
+const ProductionTaskV2Schema = z.object({
+  mode: z.enum(["translation", "interpreting"]),
+  source_modality: SourceModalitySchema,
+  situation_ko: z.string().min(1),
+  relation_ko: z.string().min(1),
+  channel: ChannelSchema,
+  pdr: PdrSchema,
+  source_text: z.string().min(1),
+  preceding_turn: z.string().nullable(),
+  replay_limit: z.number().int().positive().optional(),
+  reference_alternatives: z
+    .array(z.object({ text: z.string().min(1), note_ko: z.string().min(1) }))
+    .min(1)
+    .max(2),
+});
+export type ProductionTaskV2 = z.infer<typeof ProductionTaskV2Schema>;
+
+export const MissionV2Schema = z.object({
+  schema_version: z.literal("mission_v2"),
+  direction: z.enum(["ko_zh", "zh_ko"]),
+  unit: UnitSchema,
+  mpj_items: z.array(MpjItemV2Schema).length(5),
+  production_task: ProductionTaskV2Schema,
+  provenance: MissionProvenanceSchema.optional(),
+});
+export type MissionV2 = z.infer<typeof MissionV2Schema>;
+
+// ── v1 → v2 항목 매핑(정규화용) ───────────────────────────────────────
+function v1ItemToV2(it: MpjItem): MpjItemV2 {
+  const common = {
+    id: it.id,
+    axis_feature: it.axis_feature,
+    situation_ko: it.situation_ko,
+    relation_ko: it.relation_ko,
+    channel: it.channel,
+    pdr: it.pdr,
+    source: it.source_ko,
+    ...(it.preceding_turn_zh ? { preceding_turn: it.preceding_turn_zh } : {}),
+    explanation_ko: it.explanation_ko,
+    recommended_example: it.recommended_example_zh,
+  };
+  switch (it.type) {
+    case "scale4":
+      return { ...common, type: "scale4", target: it.target_zh, highlights: it.highlights_zh, accepted_scale_codes: it.accepted_scale_codes };
+    case "judge3":
+      return { ...common, type: "judge3", target: it.target_zh, highlights: it.highlights_zh, accepted_band_codes: it.accepted_band_codes };
+    case "fix_choice":
+      return {
+        ...common,
+        type: "fix_choice",
+        target: it.target_zh,
+        highlights: it.highlights_zh,
+        accepted_band_codes: it.accepted_band_codes,
+        corrections: it.corrections.map((c) => ({ text: c.zh, is_valid: c.is_valid, note_ko: c.note_ko })),
+      };
+    case "reason_conf":
+      return {
+        ...common,
+        type: "reason_conf",
+        target: it.target_zh,
+        highlights: it.highlights_zh,
+        accepted_band_codes: it.accepted_band_codes,
+        reasons: it.reasons,
+        accepted_reason_ids: it.accepted_reason_ids,
+      };
+    case "multi_judge":
+      return {
+        ...common,
+        type: "multi_judge",
+        candidates: it.candidates.map((c) => ({ text: c.zh, accepted_band_codes: c.accepted_band_codes, note_ko: c.note_ko })),
+      };
+  }
+}
+
+/**
+ * 미션 정규화 — v1(방향 없음) 또는 v2 JSON을 읽어 v2 런타임 형태로 통일한다(0-l·84).
+ * v1은 direction='ko_zh', 필드명 매핑. 규칙검사·러너·미리보기가 이 형태만 본다.
+ */
+export function normalizeMission(input: unknown): {
+  ok: boolean;
+  data?: MissionV2;
+  error?: z.ZodError;
+} {
+  const sv = (input as { schema_version?: string } | null)?.schema_version;
+  if (sv === "mission_v2") {
+    const r = MissionV2Schema.safeParse(input);
+    if (r.success) return { ok: true, data: r.data };
+    return { ok: false, error: r.error };
+  }
+  const v1 = MissionV1Schema.safeParse(input);
+  if (!v1.success) return { ok: false, error: v1.error };
+  const m = v1.data;
+  const pt = m.production_task;
+  return {
+    ok: true,
+    data: {
+      schema_version: "mission_v2",
+      direction: DEFAULT_DIRECTION,
+      unit: m.unit,
+      mpj_items: m.mpj_items.map(v1ItemToV2),
+      production_task: {
+        mode: pt.mode,
+        source_modality: pt.source_modality,
+        situation_ko: pt.situation_ko,
+        relation_ko: pt.relation_ko,
+        channel: pt.channel,
+        pdr: pt.pdr,
+        source_text: pt.source_text_ko,
+        preceding_turn: pt.preceding_turn_zh,
+        ...(pt.replay_limit ? { replay_limit: pt.replay_limit } : {}),
+        reference_alternatives: pt.reference_alternatives.map((a) => ({ text: a.zh, note_ko: a.note_ko })),
+      },
+      ...(m.provenance ? { provenance: m.provenance } : {}),
+    },
+  };
+}
+
+/** direction만 안전하게 뽑는다(정규화 실패해도 편성 필터가 동작하게). */
+export function missionDirection(input: unknown): LanguageDirection {
+  const d = (input as { direction?: string } | null)?.direction;
+  return d === "zh_ko" ? "zh_ko" : DEFAULT_DIRECTION;
+}

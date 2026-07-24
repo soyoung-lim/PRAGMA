@@ -51,7 +51,23 @@ export const LEVEL: Record<LearnerLevel, string> = {
 };
 
 // ── Language direction ──
+// 양방향 일반화(계약 0-l·82). 코딩 정본 = ko_zh/zh_ko(승격 파이프라인 계열).
+// entryGate의 ko_to_zh·legacy ko-zh(하이픈)는 각자 영역에 동결 — 신규 저장 금지.
 export type LanguageDirection = "ko_zh" | "zh_ko";
+export const DIRECTION_LABEL: Record<LanguageDirection, string> = {
+  ko_zh: "한→중",
+  zh_ko: "중→한",
+};
+/** 방향별 언어 배정(계약 0-l·82·90). source/target = 문자 검사(R10)·라벨용, tts/stt = 통역용. */
+export const DIRECTION_LANGS: Record<
+  LanguageDirection,
+  { source: "ko" | "zh"; target: "ko" | "zh"; tts: string; stt: string }
+> = {
+  ko_zh: { source: "ko", target: "zh", tts: "ko-KR", stt: "zh-CN" },
+  zh_ko: { source: "zh", target: "ko", tts: "zh-CN", stt: "ko-KR" },
+};
+/** 부재 시 기본 방향(기존 데이터 호환 — 계약 0-l·82). */
+export const DEFAULT_DIRECTION: LanguageDirection = "ko_zh";
 
 // ── Channel (4) + derived mode ──
 export type ChannelUI = "email" | "messenger" | "facetoface" | "phone";
