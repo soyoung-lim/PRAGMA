@@ -57,14 +57,9 @@ export function validateCurriculum(
     });
   }
 
-  // (2)(3) target_speech_acts
-  if (outline.target_speech_acts.length === 0) {
-    errors.push({
-      code: "TARGET_SPEECH_ACTS_REQUIRED",
-      message: "이번 학기에 다룰 화행을 1개 이상 선택하세요.",
-      field: "target_speech_acts",
-    });
-  } else {
+  // (2)(3) target_speech_acts — 공통 표준 골격은 9화행 전부를 자동 배치하므로
+  // "1개 이상 선택" 필수 오류는 제거(2026-07-25). 중복만 오류로 유지.
+  {
     const seen = new Set<string>();
     for (const act of outline.target_speech_acts) {
       if (seen.has(act)) {
@@ -247,39 +242,10 @@ export function validateCurriculum(
 
   for (const w of weeks) {
     if (w.type === "regular") {
-      // (20)–(27) required fields for regular weeks (industry stays optional:
-      // nullable in DB, outline-level industry is optional too, and per-week
-      // diversification/unspecified operation is allowed).
-      const required: Array<[string, unknown, string]> = [
-        ["speech_act", w.speech_act, "REGULAR_SPEECH_ACT_REQUIRED"],
-        ["channel", w.channel, "REGULAR_CHANNEL_REQUIRED"],
-        ["pdr_power", w.pdr_power, "REGULAR_PDR_POWER_REQUIRED"],
-        ["pdr_distance", w.pdr_distance, "REGULAR_PDR_DISTANCE_REQUIRED"],
-        ["pdr_imposition", w.pdr_imposition, "REGULAR_PDR_IMPOSITION_REQUIRED"],
-        ["curriculum_load_band", w.curriculum_load_band, "REGULAR_LOAD_BAND_REQUIRED"],
-        ["domain", w.domain, "REGULAR_DOMAIN_REQUIRED"],
-        ["scenario_slots", w.scenario_slots, "REGULAR_SCENARIO_SLOTS_REQUIRED"],
-      ];
-      const fieldLabels: Record<string, string> = {
-        speech_act: "화행",
-        channel: "채널",
-        pdr_power: "P(지위)",
-        pdr_distance: "D(거리)",
-        pdr_imposition: "R(부담)",
-        curriculum_load_band: "부담 밴드",
-        domain: "도메인",
-        scenario_slots: "시나리오 수",
-      };
-      for (const [field, value, code] of required) {
-        if (value === null) {
-          errors.push({
-            code,
-            message: `${w.week_no}주차 정규 수업의 ${fieldLabels[field]}을(를) 설정하세요.`,
-            week_no: w.week_no,
-            field,
-          });
-        }
-      }
+      // (20)–(27) 정규 주차 필수 필드 요구 제거(2026-07-25 공통 골격 정비).
+      // 화행 = 표준 골격 자동값 / P·D·R·채널·도메인·부담밴드·슬롯 = 배정 코어에서
+      // 파생(week 행 미복사). 12·13·14주(통합·맥락화·프로젝트)는 화행 null이 정상.
+      // 남은 검사 = 값이 들어온 경우의 범위·부호뿐(자동값·override 무결성).
 
       // (28) scenario_slots < 0 (0 is allowed: DB CHECK is >= 0 and a
       // no-scenario regular week is a legitimate operation)

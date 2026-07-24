@@ -19,14 +19,10 @@ const getCurrentWeek = (): number => 1;
  */
 type Stage =
   | "시작"
-  | "1순환 저부담"
-  | "1순환 통합"
-  | "2순환 고부담"
+  | "기초 적용"
+  | "관계 조정"
   | "중간점검"
-  | "3순환"
-  | "종합"
-  | "맥락화"
-  | "프로젝트"
+  | "통합 수행"
   | "기말 종합";
 
 type RoadmapItem = {
@@ -35,24 +31,24 @@ type RoadmapItem = {
   topic: string;
 };
 
-// 시나리오 매트릭스 설계확정(2026-07-18)의 15주 배치와 동일 —
-// mockLearnerCourse.ts(COURSE_WEEKS)와 어긋나지 않게 유지할 것.
+// 공통 표준 15주 골격(2026-07-25) — mockLearnerCourse.ts(COURSE_WEEKS) ·
+// curriculum/template.ts(STANDARD_15WEEK)와 동기화. 단계 = 기초 적용→관계 조정→통합 수행.
 const ROADMAP: RoadmapItem[] = [
-  { week: 1, stage: "시작", topic: "오리엔테이션·진단" },
-  { week: 2, stage: "1순환 저부담", topic: "요청" },
-  { week: 3, stage: "1순환 저부담", topic: "감사·칭찬과 대응" },
-  { week: 4, stage: "1순환 저부담", topic: "초대·공동행동 권유" },
-  { week: 5, stage: "1순환 통합", topic: "저부담 화행 도메인 전환" },
-  { week: 6, stage: "2순환 고부담", topic: "거절" },
-  { week: 7, stage: "2순환 고부담", topic: "사과" },
-  { week: 8, stage: "중간점검", topic: "화행 6종 수행평가" },
-  { week: 9, stage: "2순환 고부담", topic: "불만 제기" },
-  { week: 10, stage: "2순환 고부담", topic: "제안·조언" },
-  { week: 11, stage: "3순환", topic: "반대·이견 제시" },
-  { week: 12, stage: "종합", topic: "화행 연쇄 — 협상" },
-  { week: 13, stage: "맥락화", topic: "산업 맥락화" },
-  { week: 14, stage: "프로젝트", topic: "종합 프로젝트·화용 지문 리포트" },
-  { week: 15, stage: "기말 종합", topic: "통합 시뮬레이션 평가" },
+  { week: 1, stage: "시작", topic: "오리엔테이션 · 출발점 확인" },
+  { week: 2, stage: "기초 적용", topic: "요청" },
+  { week: 3, stage: "기초 적용", topic: "감사" },
+  { week: 4, stage: "기초 적용", topic: "초대 · 공동행동 권유" },
+  { week: 5, stage: "기초 적용", topic: "칭찬 및 칭찬 대응" },
+  { week: 6, stage: "관계 조정", topic: "거절" },
+  { week: 7, stage: "관계 조정", topic: "사과 · 수리" },
+  { week: 8, stage: "중간점검", topic: "중간 통합 점검" },
+  { week: 9, stage: "관계 조정", topic: "불만 · 문제 제기" },
+  { week: 10, stage: "관계 조정", topic: "제안 · 조언" },
+  { week: 11, stage: "관계 조정", topic: "반대 · 이견 제시" },
+  { week: 12, stage: "통합 수행", topic: "상호 조정 통합 · 화행 연쇄" },
+  { week: 13, stage: "통합 수행", topic: "프리셋 맥락화" },
+  { week: 14, stage: "통합 수행", topic: "종합 프로젝트 · 통번역 의사결정 리포트" },
+  { week: 15, stage: "기말 종합", topic: "기말 통합 시뮬레이션" },
 ];
 
 const TODAY = {
@@ -70,14 +66,10 @@ const TODAY = {
 
 const STAGE_STYLE: Record<Stage, string> = {
   "시작": "bg-muted text-muted-foreground",
-  "1순환 저부담": "bg-muted text-foreground/80",
-  "1순환 통합": "bg-muted text-foreground/80",
-  "2순환 고부담": "bg-muted text-foreground/80",
+  "기초 적용": "bg-muted text-foreground/80",
+  "관계 조정": "bg-muted text-foreground/80",
   "중간점검": "bg-destructive/10 text-destructive border border-destructive/30",
-  "3순환": "bg-muted text-foreground/80",
-  "종합": "bg-muted text-foreground/80",
-  "맥락화": "bg-muted text-foreground/80",
-  "프로젝트": "bg-muted text-foreground/80",
+  "통합 수행": "bg-muted text-foreground/80",
   "기말 종합": "bg-destructive/10 text-destructive border border-destructive/30",
 };
 

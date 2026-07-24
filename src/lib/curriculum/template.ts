@@ -12,11 +12,112 @@
 
 import type { CurriculumWeekDraft } from "./types";
 import { createEmptyWeekDraft } from "./mappers";
+import type { SpeechActUI } from "@/lib/pragma/enums";
 
 const WEEK_COUNT = 15;
 const ORIENTATION_WEEK = 1;
 const DEFAULT_MIDTERM_WEEK = 8;
 const DEFAULT_FINAL_WEEK = 15;
+
+// ══════════════════════════════════════════════════════════════════════
+// 공통 표준 15주 골격 (2026-07-25, 사용자 승인 — fable 판정)
+// ══════════════════════════════════════════════════════════════════════
+// 모든 수준·언어 방향·프리셋이 공유하는 매개변수형 템플릿. 공통인 것 = 주차의
+// 교육적 역할·9화행 배치·통합/프로젝트 위치. 달라지는 것(원문 난도·테마·방향)은
+// 편성 단계에서 배정되는 코어가 정본이다(week 행에 복사하지 않음).
+//
+// DB week_type은 orientation·regular·midterm·final 4종 고정(CHECK). 그래서
+// 12·13·14주(통합·맥락화·프로젝트)는 DB 상 regular + speech_act=null로 저장하고,
+// "역할"은 아래 앱 층 상수(week_no→role)로 파생 표시한다(새 enum·컬럼 없음).
+
+/** 주차의 교육적 역할(표시·검증 분기용 — DB 컬럼 아님). */
+export type CurriculumWeekRole =
+  | "orientation"
+  | "foundation" // 기초 적용: 저부담 화행
+  | "relationship" // 관계 조정: 고부담 화행
+  | "integration" // 상호 조정 통합·화행 연쇄
+  | "contextualization" // 프리셋 맥락화
+  | "project" // 종합 프로젝트·통번역 의사결정 리포트
+  | "assessment"; // 중간·기말 수행 슬롯
+
+/** 단계형 표기(구 '1/2/3순환' 대체 — 실제 반복 구조가 아니므로). */
+export const STAGE_LABEL: Record<CurriculumWeekRole, string> = {
+  orientation: "시작",
+  foundation: "기초 적용",
+  relationship: "관계 조정",
+  integration: "통합 수행",
+  contextualization: "통합 수행",
+  project: "통합 수행",
+  assessment: "수행 점검",
+};
+
+export const ROLE_LABEL: Record<CurriculumWeekRole, string> = {
+  orientation: "오리엔테이션",
+  foundation: "기초 적용",
+  relationship: "관계 조정",
+  integration: "통합·연쇄",
+  contextualization: "맥락화",
+  project: "프로젝트",
+  assessment: "평가",
+};
+
+interface StandardWeekSpec {
+  week_no: number;
+  db_type: CurriculumWeekDraft["type"];
+  role: CurriculumWeekRole;
+  /** regular 중심 화행. 통합·맥락화·프로젝트·평가·OT 주차는 null(단일 초점 미강제). */
+  speech_act: SpeechActUI | null;
+  title: string;
+}
+
+/**
+ * 공통 15주 골격 정본. 2~7·9~11주에 9화행을 각각 1회 주요 초점으로 배치한다
+ * (12~15주는 이전 화행 재결합 가능 — 초점 미강제). 중간=8주, 기말=15주.
+ */
+export const STANDARD_15WEEK: readonly StandardWeekSpec[] = [
+  { week_no: 1, db_type: "orientation", role: "orientation", speech_act: null, title: "오리엔테이션 · 출발점 확인" },
+  { week_no: 2, db_type: "regular", role: "foundation", speech_act: "request", title: "요청" },
+  { week_no: 3, db_type: "regular", role: "foundation", speech_act: "thanks", title: "감사" },
+  { week_no: 4, db_type: "regular", role: "foundation", speech_act: "agreement", title: "초대 · 공동행동 권유" },
+  { week_no: 5, db_type: "regular", role: "foundation", speech_act: "compliment", title: "칭찬 및 칭찬 대응" },
+  { week_no: 6, db_type: "regular", role: "relationship", speech_act: "refusal", title: "거절" },
+  { week_no: 7, db_type: "regular", role: "relationship", speech_act: "apology", title: "사과 · 수리" },
+  { week_no: 8, db_type: "midterm", role: "assessment", speech_act: null, title: "중간 통합 점검" },
+  { week_no: 9, db_type: "regular", role: "relationship", speech_act: "complaint", title: "불만 · 문제 제기" },
+  { week_no: 10, db_type: "regular", role: "relationship", speech_act: "proposal", title: "제안 · 조언" },
+  { week_no: 11, db_type: "regular", role: "relationship", speech_act: "opposition", title: "반대 · 이견 제시" },
+  { week_no: 12, db_type: "regular", role: "integration", speech_act: null, title: "상호 조정 통합 · 화행 연쇄" },
+  { week_no: 13, db_type: "regular", role: "contextualization", speech_act: null, title: "프리셋 맥락화" },
+  { week_no: 14, db_type: "regular", role: "project", speech_act: null, title: "종합 프로젝트 · 통번역 의사결정 리포트" },
+  { week_no: 15, db_type: "final", role: "assessment", speech_act: null, title: "기말 통합 시뮬레이션" },
+] as const;
+
+export const STANDARD_MIDTERM_WEEK = 8;
+export const STANDARD_FINAL_WEEK = 15;
+/** 표준 골격이 2~7·9~11주에 배치하는 9화행(자동 목표 화행 세팅용). */
+export const STANDARD_TARGET_ACTS: readonly SpeechActUI[] = STANDARD_15WEEK
+  .map((w) => w.speech_act)
+  .filter((a): a is SpeechActUI => a !== null);
+
+/** week_no → 역할(파생 표시용). 범위 밖이면 regular 기본. */
+export function weekRole(weekNo: number): CurriculumWeekRole {
+  return STANDARD_15WEEK.find((w) => w.week_no === weekNo)?.role ?? "foundation";
+}
+
+/**
+ * 공통 표준 15주 draft 배열을 만든다. 각 주차의 type·speech_act·title을 채우되
+ * P·D·R·채널·도메인·부담밴드·슬롯은 비운다(배정 코어에서 파생 — week 행 미복사).
+ * 매 호출 새 객체(공유 참조 없음).
+ */
+export function createStandard15WeekTemplate(): CurriculumWeekDraft[] {
+  return STANDARD_15WEEK.map((spec) => {
+    const draft = createEmptyWeekDraft(spec.week_no);
+    draft.type = spec.db_type;
+    draft.speech_act = spec.speech_act;
+    draft.title = spec.title;
+    return draft;
+  });
+}
 
 export interface CurriculumWeekTemplateOptions {
   /** Midterm exam week (2–14, ≠ finalWeek). Default: 8. */
