@@ -28,6 +28,10 @@ const tgtLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].t
 const STEPS = ["감각 쌓기", "적용", "피드백", "수정"] as const;
 const CONFIDENCE = ["매우 확신", "꽤 확신", "확신 없음"] as const;
 
+// B1(계약 0-g·44·0-e·⑨): 판정 대역은 proposed(확정 정답 아님). 학습자에게
+// 지위를 정직하게 — 유일 정답이 아니라 현재 수업 기준·AI 제안임을 판정 노출 지점에 캡션.
+const JUDGMENT_STATUS_CAPTION = "현재 수업 기준 · AI 제안(검증 예정)이며 다른 적절한 표현도 있을 수 있어요";
+
 const CHANNEL_LABEL: Record<ChannelUI, string> = {
   email: "이메일",
   messenger: "메신저",
@@ -146,6 +150,10 @@ function MissionRunner({
   const dir = mission.direction;
   const tgtName = tgtLangName(dir);
   const srcName = srcLangName(dir);
+  // B2(계약 0-k): counter_rule 반례를 완료 화면에 노출 — "직접형=무조건 나쁨" 오학습 방지.
+  const feat = getTargetFeature(mission.unit.target_feature);
+  const counterRule =
+    dir === "zh_ko" && feat?.counter_rule_note_zh_ko ? feat.counter_rule_note_zh_ko : feat?.counter_rule_note;
 
   // 미션 완료 = 수행 로그 저장(루프 마지막 노드). 데모 스텁은 저장 불가 → 안내만.
   const finish = async () => {
@@ -297,6 +305,14 @@ function MissionRunner({
               <div className="text-[11.5px] font-bold text-[#FAD338]">이번 미션의 핵심</div>
               <p className="mt-1.5 text-[14.5px] leading-relaxed">{mission.unit.closing_ko}</p>
             </div>
+
+            {/* B2: 예외 반례 — "직접형=무조건 나쁨"이 아님을 완료 시 상기(counter_rule) */}
+            {counterRule && (
+              <div className="rounded-xl border border-dashed border-[#D8D0BC] bg-[#FFFDF4] px-4 py-3">
+                <div className="text-[11.5px] font-bold text-[#6B5518]">예외 — 늘 그런 것은 아니에요</div>
+                <p className="mt-1 text-[13px] leading-relaxed text-[#5B4A1E]">{counterRule}</p>
+              </div>
+            )}
 
             {/* 수행 로그 저장 상태 — 루프 마지막 노드(실행 → 저장) */}
             <div
@@ -583,6 +599,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
                 기준 판정 · {(item.type === "scale4" ? item.accepted_scale_codes.map((c) => SCALE4_LABELS[c as Scale4Code] ?? c) : item.accepted_band_codes.map((c) => bandLabel(feature, c))).join(" / ")}
               </div>
               <p className="mt-1 text-[13px] leading-relaxed">{item.explanation_ko}</p>
+              <p className="mt-1.5 text-[11px] text-[#5B6B76]">{JUDGMENT_STATUS_CAPTION}</p>
             </div>
           )}
         </div>
@@ -617,7 +634,12 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
               </li>
             ))}
           </ul>
-          {answered && <p className="mt-3 rounded-lg bg-[#F2FAF6] px-3.5 py-3 text-[13px] leading-relaxed">{item.explanation_ko}</p>}
+          {answered && (
+            <div className="mt-3 rounded-lg bg-[#F2FAF6] px-3.5 py-3">
+              <p className="text-[13px] leading-relaxed">{item.explanation_ko}</p>
+              <p className="mt-1.5 text-[11px] text-[#5B6B76]">{JUDGMENT_STATUS_CAPTION}</p>
+            </div>
+          )}
         </div>
       )}
 
