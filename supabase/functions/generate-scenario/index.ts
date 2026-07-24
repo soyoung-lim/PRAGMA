@@ -137,6 +137,15 @@ const LANG_DIR_KO: Record<string, string> = {
   ko_zh: '한국어 → 중국어',
   zh_ko: '중국어 → 한국어',
 }
+
+// ── 양방향(계약 0-l·90) — 방향별 원문/산출 언어. 부재 = ko_zh(기존 호환) ──
+type Direction = 'ko_zh' | 'zh_ko'
+const DIR_LANGS: Record<Direction, { src: 'ko' | 'zh'; tgt: 'ko' | 'zh' }> = {
+  ko_zh: { src: 'ko', tgt: 'zh' },
+  zh_ko: { src: 'zh', tgt: 'ko' },
+}
+const LANG_KO: Record<'ko' | 'zh', string> = { ko: '한국어', zh: '중국어' }
+const normDir = (d?: string): Direction => (d === 'zh_ko' ? 'zh_ko' : 'ko_zh')
 const MODE_KO: Record<string, string> = {
   translation: '번역 (텍스트)',
   stt_interpreting: '통역 (음성/발화)',
@@ -371,6 +380,7 @@ const PDR_D_KO: Record<string, string> = {
 const PDR_R_KO: Record<string, string> = { low: '낮음', mid: '중간', high: '높음' }
 
 interface CoreGenBody {
+  direction?: string // 0-l·90 — 부재 시 ko_zh
   speech_act_ko: string
   level_ko: string
   domain_ko: string
@@ -383,28 +393,37 @@ interface CoreGenBody {
   length_hint_ko: string
 }
 
-function buildCoreSystemPrompt(): string {
-  return `당신은 한→중 통번역 교육용 시나리오의 '상황·원문'을 설계하는 전문가입니다.
-학습자가 판단·번역·통역할 재료(상황과 한국어 원문)만 만듭니다. 문항·후보·피드백은 만들지 않습니다.
+function buildCoreSystemPrompt(direction: Direction): string {
+  const { src, tgt } = DIR_LANGS[direction]
+  const srcL = LANG_KO[src] // 원문 언어
+  const tgtL = LANG_KO[tgt] // 산출(옮길) 언어
+  return `당신은 ${LANG_DIR_KO[direction]} 통번역 교육용 시나리오의 '상황·원문'을 설계하는 전문가입니다.
+학습자가 판단·번역·통역할 재료(상황과 ${srcL} 원문)만 만듭니다. 문항·후보·피드백은 만들지 않습니다.
 출력은 아래 JSON만, 마크다운·설명 없이 그대로 반환합니다.
 
 {
   "situation_ko": "상황 카드 배경 (한국어 2~3문장: 발신자·수신자·목적·관계 명시)",
   "relation_ko": "발신자와 수신자의 관계 한 줄 (한국어)",
-  "source_text_ko": "학습자가 중국어로 옮길 한국어 원발화",
-  "preceding_turn_zh": null,
+  "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원발화",
+  "preceding_turn": null,
   "brief_note_ko": "편성 화면용 한 줄 요약 (한국어)"
 }
 
 규칙:
-- source_text_ko는 반드시 한국어. 지정된 화행·관계·부담에 맞는 자연스러운 발화.
-- "중국인은/중국에서는" 같은 국가 단위 일반화 표현 금지.
+- source_text는 반드시 ${srcL}. 지정된 화행·관계·부담에 맞는 자연스러운 발화.
+- situation_ko·relation_ko·brief_note_ko는 방향과 무관하게 항상 한국어(학습자 UI 언어).
+- "중국인은/중국에서는/한국인은/한국에서는" 같은 국가 단위 일반화 표현 금지.
 - 정치·시사·정부 기관 소재 금지.`
 }
 
 function buildCoreUserPrompt(b: CoreGenBody): string {
+  const dir = normDir(b.direction)
+  const { src, tgt } = DIR_LANGS[dir]
+  const srcL = LANG_KO[src]
+  const tgtL = LANG_KO[tgt]
   const parts = [
     '[생성 요청]',
+    `- 언어 방향: ${LANG_DIR_KO[dir]}`,
     `- 화행: ${b.speech_act_ko}`,
     `- 학습자 수준: ${b.level_ko}`,
     `- 도메인: ${b.domain_ko}`,
@@ -417,14 +436,14 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   ]
   if (b.source_modality === 'spoken') {
     parts.push(
-      `- 수행 모드: 통역 — source_text_ko는 실제 '말로' 전달할 법한 자연스러운 구두 담화체로 작성(이메일 문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지.`,
+      `- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 ${srcL} 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지.`,
     )
   } else {
-    parts.push(`- 수행 모드: 번역 — source_text_ko는 해당 채널의 문어체.`)
+    parts.push(`- 수행 모드: 번역 — source_text는 해당 채널의 ${srcL} 문어체.`)
   }
   if (b.is_response_act) {
     parts.push(
-      `- 이 화행은 인접쌍의 둘째 짝입니다. preceding_turn_zh에 상대의 선행 발화를 '중국어'로 반드시 채우세요(null 금지).`,
+      `- 이 화행은 인접쌍의 둘째 짝입니다. preceding_turn에 상대(${tgtL} 화자)의 선행 발화를 '${tgtL}'로 반드시 채우세요(null 금지).`,
     )
   }
   parts.push('', '위 조건에 맞는 상황·원문을 JSON으로만 반환하세요.')
@@ -445,6 +464,7 @@ interface FeatureForGen {
   counter_rule_note: string
 }
 interface MissionGenBody {
+  direction?: string // 0-l·90 — 부재 시 ko_zh
   speech_act_ko: string
   level_ko: string
   level_policy_ko: string
@@ -452,6 +472,8 @@ interface MissionGenBody {
   core: {
     situation_ko: string
     relation_ko: string
+    // 입력 body는 v1 이름 유지(promoteMission이 정규화 후 이 이름으로 전달).
+    // 값은 방향에 맞는 언어다 — zh_ko면 source_text_ko에 중국어 원문이 담긴다.
     source_text_ko: string
     preceding_turn_zh: string | null
     pdr: PdrJson
@@ -463,19 +485,25 @@ interface MissionGenBody {
   failure_notes?: string
 }
 
-function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken = false): string {
+function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken = false, direction: Direction = 'ko_zh'): string {
+  const { src, tgt } = DIR_LANGS[direction]
+  const srcL = LANG_KO[src] // 원문(판단 대상 source) 언어
+  const tgtL = LANG_KO[tgt] // 산출(판단 대상 target·후보) 언어
+  // 방향별 정형 표현 예외(게이트1 예외 목록) + 길이 관계 예시.
+  const formulaic = tgt === 'zh' ? '您好·不好意思 등' : '안녕하세요·죄송하지만 등'
+  const shortOverEx = tgt === 'zh' ? '"太感谢了！"' : '"완전 감사요!"'
   const precedingRule = isResponse
     ? `\n- 🔴 이 화행은 인접쌍의 둘째 짝(응답류)입니다. **5문항 전부와 multi_judge의 각 후보 상황**에
-    "preceding_turn_zh"(상대의 중국어 선행 발화)를 문항별 상황에 맞게 반드시 채우세요(각 item 객체에 "preceding_turn_zh":"…" 필드 추가).`
+    "preceding_turn"(상대(${tgtL} 화자)의 ${tgtL} 선행 발화)를 문항별 상황에 맞게 반드시 채우세요(각 item 객체에 "preceding_turn":"…" 필드 추가).`
     : ''
   const bands = f.band_schema.map((b) => `"${b.code}"(${b.label_ko})`).join(' / ')
   // 게이트1(불변항) — 계약 v1.5 §7-1(0-h·54). 의미·의도 소실 예문은 화용 판단 후보가 될 수 없다.
-  const gate1 = `🔴 게이트1(불변항 — 절대 규칙): target_zh·모든 corrections.zh·모든 candidates.zh·recommended_example_zh·reference_alternatives.zh는 **먼저 원문의 명제·의도·화행 목적을 유지**해야 합니다. 의미나 의도가 달라진 문장(예: 요청의 의향 묻기가 사라진 문장, 사실이 빠진 문장)은 판단 후보로 만들지 마세요. 부적절성은 오직 「${f.learner_label}」 초점의 **과소·적정·과잉 차이**로만 실현합니다. 의도 소실·의미 이탈은 화용이 아니라 의미 오류이므로 이 미션의 판단 대상이 아닙니다(그건 피드백의 의미 충실성 층 소관).`
+  const gate1 = `🔴 게이트1(불변항 — 절대 규칙): target·모든 corrections.text·모든 candidates.text·recommended_example·reference_alternatives.text는 **먼저 원문의 명제·의도·화행 목적을 유지**해야 합니다. 의미나 의도가 달라진 문장(예: 요청의 의향 묻기가 사라진 문장, 사실이 빠진 문장)은 판단 후보로 만들지 마세요. 부적절성은 오직 「${f.learner_label}」 초점의 **과소·적정·과잉 차이**로만 실현합니다. 의도 소실·의미 이탈은 화용이 아니라 의미 오류이므로 이 미션의 판단 대상이 아닙니다(그건 피드백의 의미 충실성 층 소관).`
   // 통역 승격 = MPJ 후보도 구두체 강제(계약 0-g·52).
   const spokenRule = isSpoken
-    ? `\n🔴 이 미션은 통역(구두 담화)입니다. source_ko·target_zh·모든 후보는 **실제 말로 주고받을 법한 구두체**로 작성하세요(이메일 문어체·서면 격식 표현 금지).`
+    ? `\n🔴 이 미션은 통역(구두 담화)입니다. source·target·모든 후보는 **실제 말로 주고받을 법한 구두체**로 작성하세요(이메일 문어체·서면 격식 표현 금지).`
     : ''
-  return `당신은 한→중 통번역 교육용 '메타화용 판단 미션'을 설계하는 전문가입니다.
+  return `당신은 ${LANG_DIR_KO[direction]} 통번역 교육용 '메타화용 판단 미션'을 설계하는 전문가입니다.
 이번 단원의 화용 초점은 「${f.learner_label}」입니다.
 초점 정의: ${f.operational_definition}
 판정 대역(band): ${bands}  (적정 대역 = "${f.within_band_code}")
@@ -485,7 +513,7 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken
 
 ${gate1}${spokenRule}
 
-MPJ 5문항을 만듭니다. 각 문항은 학습자가 '중국어 번역안'을 이 초점 대역으로 판단하게 합니다.
+MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(source=${srcL} 원문 → target=${tgtL})'을 이 초점 대역으로 판단하게 합니다.
 모든 문항의 판정 축은 위 band뿐입니다(다른 축 혼입 금지).
 출력은 아래 JSON만, 마크다운·설명 없이 반환합니다.
 
@@ -496,92 +524,94 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '중국어 번역안'을
   pdr.r: "low" | "mid" | "high"
   band: 위 판정 대역 코드 (예: 적정 = "${f.within_band_code}")
 
+언어 규칙(방향 ${LANG_DIR_KO[direction]}): source·source_ko 위치의 원문 = **${srcL}** / target·corrections.text·candidates.text·recommended_example·reference_alternatives.text = **${tgtL}**. situation_ko·relation_ko·explanation_ko·note_ko·reasons.text_ko = 방향과 무관하게 **항상 한국어**(학습자 UI 언어).
+
 아래 5문항을 모두, 축약 없이, 모든 필드를 채워 출력합니다:
 {
   "mpj_items": [
     {
       "type": "scale4",
       "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
-      "source_ko": "판단 대상의 한국어 원문",
-      "target_zh": "판단 대상 중국어 번역안",
-      "highlights_zh": ["target_zh의 실제 부분문자열"],
+      "source": "판단 대상의 ${srcL} 원문",
+      "target": "판단 대상 ${tgtL} 산출안",
+      "highlights": ["target의 실제 부분문자열"],
       "accepted_scale_codes": ["very_appropriate|somewhat_appropriate|somewhat_inappropriate|very_inappropriate 중 연속 1~2개"],
-      "explanation_ko": "기준 판정 해설(상황 결부형)",
-      "recommended_example_zh": "이 상황의 적절안 1개"
+      "explanation_ko": "기준 판정 해설(상황 결부형, 한국어)",
+      "recommended_example": "이 상황의 적절안 1개 (${tgtL})"
     },
     {
       "type": "judge3",
       "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
-      "source_ko": "…", "target_zh": "…", "highlights_zh": ["…"],
+      "source": "…", "target": "…", "highlights": ["…"],
       "accepted_band_codes": ["band 1개 — 세트 전체에 '${f.within_band_code}' 정답이 최소 1문항 존재하도록"],
-      "explanation_ko": "…", "recommended_example_zh": "…"
+      "explanation_ko": "…", "recommended_example": "…"
     },
     {
       "type": "fix_choice",
       "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
-      "source_ko": "…", "target_zh": "부적절한 번역안", "highlights_zh": ["…"],
+      "source": "…", "target": "부적절한 ${tgtL} 산출안", "highlights": ["…"],
       "accepted_band_codes": ["부적절 band"],
       "corrections": [
-        {"zh":"교정안1","is_valid":true,"note_ko":"…"},
-        {"zh":"교정안2","is_valid":true,"note_ko":"…"},
-        {"zh":"교정안3","is_valid":false,"note_ko":"…"},
-        {"zh":"교정안4","is_valid":false,"note_ko":"…"}
+        {"text":"교정안1(${tgtL})","is_valid":true,"note_ko":"…"},
+        {"text":"교정안2(${tgtL})","is_valid":true,"note_ko":"…"},
+        {"text":"교정안3(${tgtL})","is_valid":false,"note_ko":"…"},
+        {"text":"교정안4(${tgtL})","is_valid":false,"note_ko":"…"}
       ],
-      "explanation_ko": "…", "recommended_example_zh": "…"
+      "explanation_ko": "…", "recommended_example": "…"
     },
     {
       "type": "reason_conf",
       "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
-      "source_ko": "…", "target_zh": "부적절한 번역안", "highlights_zh": ["…"],
+      "source": "…", "target": "부적절한 ${tgtL} 산출안", "highlights": ["…"],
       "accepted_band_codes": ["부적절 band"],
       "reasons": [
         {"id":"1","text_ko":"…"}, {"id":"2","text_ko":"…"},
         {"id":"3","text_ko":"…"}, {"id":"4","text_ko":"…"}
       ],
       "accepted_reason_ids": ["1~2개"],
-      "explanation_ko": "…", "recommended_example_zh": "…"
+      "explanation_ko": "…", "recommended_example": "…"
     },
     {
       "type": "multi_judge",
       "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
-      "source_ko": "…",
+      "source": "…",
       "candidates": [
-        {"zh":"…","accepted_band_codes":["band 배열, 경계는 길이>1"],"note_ko":"…"},
-        {"zh":"…","accepted_band_codes":["…"],"note_ko":"…"},
-        {"zh":"…","accepted_band_codes":["…"],"note_ko":"…"},
-        {"zh":"…","accepted_band_codes":["…"],"note_ko":"…"},
-        {"zh":"…","accepted_band_codes":["…"],"note_ko":"…"}
+        {"text":"…(${tgtL})","accepted_band_codes":["band 배열, 경계는 길이>1"],"note_ko":"…"},
+        {"text":"…","accepted_band_codes":["…"],"note_ko":"…"},
+        {"text":"…","accepted_band_codes":["…"],"note_ko":"…"},
+        {"text":"…","accepted_band_codes":["…"],"note_ko":"…"},
+        {"text":"…","accepted_band_codes":["…"],"note_ko":"…"}
       ],
-      "explanation_ko": "…", "recommended_example_zh": "…"
+      "explanation_ko": "…", "recommended_example": "…"
     }
   ],
-  "reference_alternatives": [ {"zh":"…","note_ko":"…"} ]
+  "reference_alternatives": [ {"text":"…(${tgtL})","note_ko":"…"} ]
 }
-(reference_alternatives는 1~2개, 서로 다른 전략. multi_judge만 target_zh·highlights_zh가 없고 나머지 공통 필드는 모두 있음.)
+(reference_alternatives는 1~2개, 서로 다른 전략. multi_judge만 target·highlights가 없고 나머지 공통 필드는 모두 있음.)
 
 핵심 규칙:
 - mpj_items는 **정확히 5개**.
-- **모든 문항은 예외 없이 공통 필드 전부 포함**: situation_ko, relation_ko, channel, pdr{p,d,r}, source_ko, explanation_ko, recommended_example_zh. 위 스키마의 "..."는 이 공통 필드 전부를 뜻합니다(multi_judge 포함 — target_zh만 없음).
+- **모든 문항은 예외 없이 공통 필드 전부 포함**: situation_ko, relation_ko, channel, pdr{p,d,r}, source, explanation_ko, recommended_example. 위 스키마의 "..."는 이 공통 필드 전부를 뜻합니다(multi_judge 포함 — target만 없음).
 - 유형 순서 고정: scale4 → judge3 → fix_choice → reason_conf → multi_judge.
 - 🔴 **판정 대역은 표현 형식이 아니라 관계·부담(P·D·R)에 상대적입니다.** 친밀·동등·저부담 상황에서는
   직접형·간결형도 적절할 수 있으며, **완화 표현이 없다는 이유만으로 과소 대역으로 판정하지 마세요.**
   같은 문장이 초면·고부담이면 과소, 친밀·저부담이면 적정일 수 있습니다.
   감사의 경우 호의가 클수록 강한 감사가 적정입니다 — 강한 표현을 기계적으로 과잉으로 판정하지 마세요.
-- 판정형 문항(fix_choice·reason_conf)의 target_zh는 반드시 '부적절' 번역안 — 단, 그 부적절 판정은
+- 판정형 문항(fix_choice·reason_conf)의 target은 반드시 '부적절' 산출안 — 단, 그 부적절 판정은
   해당 문항의 P·D·R 조건에서 실제로 부적절해야 합니다(위 상대성 원칙 적용).
 - 세트 5문항 중 최소 1문항은 위 '깨야 할 소박한 규칙'을 깨는 반례여야 합니다:
   직접형·간결형·가벼운 표현이 그 상황(친밀·저부담 등)에서 적정(${f.within_band_code})으로 판정되는 문항.
-- reason_conf의 이유 선택지 4개는 target_zh를 **사실대로** 기술해야 합니다: target에 실제로 있는 요소
+- reason_conf의 이유 선택지 4개는 target을 **사실대로** 기술해야 합니다: target에 실제로 있는 요소
   (이유·대안·사과 등)를 "없다"고 쓰지 마세요. 정답 이유(accepted_reason_ids)는 사실이면서 판정의 핵심 근거인 것만.
-- 모든 문항의 source_ko는 **실제 한국어 발화**(학습자가 번역할 원문 문장)여야 합니다 —
+- 모든 문항의 source는 **실제 ${srcL} 발화**(학습자가 옮길 원문 문장)여야 합니다 —
   "~에 대한 감사 인사" 같은 설명문 금지.
 - pdr.p는 **화자(나) 기준**입니다: 화자가 상대(상사·교수 등)보다 지위가 낮으면 "speaker_lower".
   relation_ko의 관계 서술과 pdr 값이 반드시 일치해야 합니다.
-- 모든 후보는 원문과 핵심 명제·발화 의도·화행 목적이 동일. 새 사실·이유·약속 추가 금지(정형 표현 您好·不好意思 등은 예외).
+- 모든 후보는 원문과 핵심 명제·발화 의도·화행 목적이 동일. 새 사실·이유·약속 추가 금지(정형 표현 ${formulaic}는 예외).
 - 차이는 오직 이 화용 초점에서만. 문법·의미·길이가 정답 단서가 되면 안 됨.
 - **channel·pdr 값은 반드시 위 '공통 코드값'만 사용**(한국어 라벨 "동등"·"메시지" 등 절대 금지).
 - multi_judge 후보 5개 구성: **부적절 계열 2개 + 적정(${f.within_band_code}) 2개 + 과잉 1개**.
-  · 🔴 **부적절·과잉은 '강도/방향'의 문제이지 '길이'의 문제가 아닙니다.** 짧아도 과할 수 있고(예: "太感谢了！"),
+  · 🔴 **부적절·과잉은 '강도/방향'의 문제이지 '길이'의 문제가 아닙니다.** 짧아도 과할 수 있고(예: ${shortOverEx}),
     길어도 부족할 수 있습니다(예: 형식적 감사에 군말을 붙였지만 정작 성의가 약한 긴 문장).
   · 길이 배치를 의도적으로 섞으세요: 부적절 2개 중 하나는 짧게·하나는 적정안보다 길게,
     과잉안은 최장이 되지 않게 중간 길이로. **길이순 정렬로 정답을 알 수 없어야** 합니다(가장 긴 것이나 가장 짧은 것이 정답 대역이 되지 않게).
@@ -591,14 +621,19 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '중국어 번역안'을
     (예: 사과+이유+대안의 거절)을 과잉으로 판정하지 마세요.
   · 각 후보의 note_ko는 accepted_band_codes와 **같은 방향**이어야 합니다
     (코드는 '부족'인데 note에 '과장'이라고 쓰는 모순 금지).
-- 🔴 highlights_zh의 각 항목은 **target_zh 안에 글자 그대로 존재하는 부분문자열**이어야 합니다(target_zh에서 잘라낸 조각). 바꿔 쓰거나 요약하지 마세요.
-- source_ko=한국어, 모든 zh=중국어. "중국인은/중국에서는" 표현 금지.${precedingRule}
+- 🔴 highlights의 각 항목은 **target 안에 글자 그대로 존재하는 부분문자열**이어야 합니다(target에서 잘라낸 조각). 바꿔 쓰거나 요약하지 마세요.
+- source=${srcL}, 모든 target·후보=${tgtL}. "중국인은/중국에서는/한국인은/한국에서는" 표현 금지.${precedingRule}
 - 완료 화면 원리는 시스템이 넣으므로 생성 금지.`
 }
 
 function buildMissionUserPrompt(b: MissionGenBody): string {
+  const dir = normDir(b.direction)
+  const { src, tgt } = DIR_LANGS[dir]
+  const srcL = LANG_KO[src]
+  const tgtL = LANG_KO[tgt]
   const parts = [
     '[생성 요청]',
+    `- 언어 방향: ${LANG_DIR_KO[dir]}`,
     `- 화행: ${b.speech_act_ko}`,
     `- 학습자 수준: ${b.level_ko}`,
     `- 수준 정책: ${b.level_policy_ko}`,
@@ -606,16 +641,16 @@ function buildMissionUserPrompt(b: MissionGenBody): string {
     '[산출 과제(DCT)가 놓일 상황 — MPJ 문항은 이와 다른 새 상황이되 화행·초점·난이도는 평행하게]',
     `- 상황: ${b.core.situation_ko}`,
     `- 관계: ${b.core.relation_ko}`,
-    `- 원문: ${b.core.source_text_ko}`,
+    `- 원문(${srcL}): ${b.core.source_text_ko}`,
     `- 관계 P/D/R: ${PDR_P_KO[b.core.pdr.p]} / ${PDR_D_KO[b.core.pdr.d]} / ${PDR_R_KO[b.core.pdr.r]}`,
   ]
   if (b.is_response_act) {
-    parts.push(`- 이 화행은 인접쌍 둘째 짝 — 모든 MPJ 문항과 후보에 preceding_turn_zh(중국어 선행 발화)를 채우세요.`)
+    parts.push(`- 이 화행은 인접쌍 둘째 짝 — 모든 MPJ 문항과 후보에 preceding_turn(${tgtL} 선행 발화)를 채우세요.`)
   }
   parts.push(
     '',
     '[산출 정합] reference_alternatives(적절 산출안)가 쓰는 완화·전략은, MPJ 세트가 최소 1회 사전 노출해야 합니다.',
-    '🔴 [참고안] reference_alternatives는 반드시 위 [산출 과제]의 "원문"(source_text_ko)을 중국어로 번역한 것이어야 합니다 — MPJ 문항의 예문을 복사하거나 다른 상황의 문장을 넣지 마세요.',
+    `🔴 [참고안] reference_alternatives는 반드시 위 [산출 과제]의 "원문"(${srcL})을 ${tgtL}로 옮긴 것이어야 합니다 — MPJ 문항의 예문을 복사하거나 다른 상황의 문장을 넣지 마세요.`,
     '[난이도 브리지] reason_conf(4번) 문항의 pdr은 위 산출 상황과 같은 조건대로 맞추세요.',
   )
   if (b.error_pattern_hints_ko.length) {
@@ -663,7 +698,8 @@ Deno.serve(async (req) => {
       if (!b?.situation_seed_ko) {
         return new Response(JSON.stringify({ error: 'core body required' }), { status: 400, headers: jsonHeaders })
       }
-      const sys = buildCoreSystemPrompt()
+      const coreDir = normDir(b.direction)
+      const sys = buildCoreSystemPrompt(coreDir)
       const usr = buildCoreUserPrompt(b)
       let model = PRIMARY_MODEL
       let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.7)
@@ -681,19 +717,22 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
       }
       // 구조 필드는 서버가 조립(셀과 어긋나지 않게). 자유 텍스트만 모델 값 사용.
+      // v2 중립 스키마(계약 0-l·83) — source_text/preceding_turn + direction.
+      // 모델이 구 키(source_text_ko 등)로 답해도 관대하게 받는다(폴백).
       const core_content = {
-        schema_version: 'scenario_core_v1',
+        schema_version: 'scenario_core_v2',
+        direction: coreDir,
         situation_ko: String(gen.situation_ko ?? ''),
         relation_ko: String(gen.relation_ko ?? ''),
         source_modality: b.source_modality,
-        source_text_ko: String(gen.source_text_ko ?? ''),
-        preceding_turn_zh: b.is_response_act ? (gen.preceding_turn_zh ?? null) : null,
+        source_text: String(gen.source_text ?? gen.source_text_ko ?? ''),
+        preceding_turn: b.is_response_act ? (gen.preceding_turn ?? gen.preceding_turn_zh ?? null) : null,
         pdr: b.pdr,
         channel: b.channel,
         ...(gen.brief_note_ko ? { brief_note_ko: String(gen.brief_note_ko) } : {}),
       }
       return new Response(
-        JSON.stringify({ core_content, meta: { provider: PROVIDER, model, prompt_version: 'core_v1', generated_at: new Date().toISOString() } }),
+        JSON.stringify({ core_content, meta: { provider: PROVIDER, model, prompt_version: 'core_v2', generated_at: new Date().toISOString() } }),
         { status: 200, headers: jsonHeaders },
       )
     }
@@ -709,7 +748,8 @@ Deno.serve(async (req) => {
       // 강한 모델을 쓴다. 코어(고volume·단순)는 mini 유지.
       const MISSION_PRIMARY = 'gpt-4o'
       const isSpoken = b.core.source_modality === 'spoken'
-      const sys = buildMissionSystemPrompt(b.feature, b.is_response_act, isSpoken)
+      const missionDir = normDir(b.direction)
+      const sys = buildMissionSystemPrompt(b.feature, b.is_response_act, isSpoken, missionDir)
       const usr = buildMissionUserPrompt(b)
       let model = MISSION_PRIMARY
       let att = await callOpenAI(MISSION_PRIMARY, apiKey, sys, usr, temp)
@@ -734,8 +774,12 @@ Deno.serve(async (req) => {
         axis_feature: b.feature.code,
       }))
       const productionMode = b.core.source_modality === 'spoken' ? 'interpreting' : 'translation'
+      // v2 중립 스키마(계약 0-l·83) — mpj_items는 모델이 중립 키(source/target/
+      // corrections.text/candidates.text/recommended_example/preceding_turn)로 답한다.
+      // production_task는 코어를 계승하되 중립 키(source_text/preceding_turn)로 조립.
       const mission_content = {
-        schema_version: 'mission_v1',
+        schema_version: 'mission_v2',
+        direction: missionDir,
         unit: {
           target_feature: b.feature.code,
           target_feature_version: b.feature.version,
@@ -750,8 +794,8 @@ Deno.serve(async (req) => {
           relation_ko: b.core.relation_ko,
           channel: b.core.channel,
           pdr: b.core.pdr,
-          source_text_ko: b.core.source_text_ko,       // 코어 계승(R23)
-          preceding_turn_zh: b.core.preceding_turn_zh ?? null,
+          source_text: b.core.source_text_ko,          // 코어 계승(R23) — 입력 body는 v1 이름
+          preceding_turn: b.core.preceding_turn_zh ?? null,
           ...(productionMode === 'interpreting' ? { replay_limit: 2 } : {}),
           reference_alternatives: Array.isArray(gen.reference_alternatives) ? gen.reference_alternatives : [],
         },
@@ -764,14 +808,14 @@ Deno.serve(async (req) => {
         ...mission_content,
         provenance: {
           model,
-          prompt_version: 'mission_v1',
+          prompt_version: 'mission_v2',
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
         },
       }
       return new Response(
-        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v1', generated_at: genAt } }),
+        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v2', generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }
