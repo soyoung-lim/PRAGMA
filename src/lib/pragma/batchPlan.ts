@@ -49,13 +49,36 @@ export interface BatchCell {
 /**
  * (화행·도메인)에 맞는 topic을 고른다. 계약 §2b: 생성 입력이 곧 태그(태깅 비용 0).
  * 우선 = 화행·도메인 둘 다 맞는 topic / 폴백 = 도메인만 맞는 topic(장면 시드는 act와 무관하게 재사용 가능).
+ *
+ * ★ 테마 균형(계약 §7-0 "theme 배분 — 프리셋 선반이 비지 않게 보장"의 코드 이행):
+ * 후보 풀에서 **지금까지 가장 적게 뽑힌 테마**의 topic을 우선 고른다. 이게 없으면 school
+ * 도메인 topic 다수가 campus_study라 학교 셀이 campus로 쏠리고(관측: campus 23 vs 유학 1),
+ * daily의 travel_mobility·international이 굶는다. 동률·같은 테마 내 topic 변주는 seq로 회전(결정론).
  */
-function selectTopic(act: SpeechActUI, domain: Domain, seq: number): ScenarioTopic {
+function selectTopic(
+  act: SpeechActUI,
+  domain: Domain,
+  seq: number,
+  themeCount: Record<string, number>,
+): ScenarioTopic {
   const actMatch = SCENARIO_TOPICS.filter(
     (t) => t.allowedDomains.includes(domain) && (!t.allowedSpeechActs || t.allowedSpeechActs.includes(act)),
   );
   const pool = actMatch.length ? actMatch : SCENARIO_TOPICS.filter((t) => t.allowedDomains.includes(domain));
-  return (pool.length ? pool : SCENARIO_TOPICS)[seq % Math.max(1, pool.length || SCENARIO_TOPICS.length)];
+  const finalPool = pool.length ? pool : SCENARIO_TOPICS;
+
+  // 과소 테마 우선. seq 오프셋으로 순회 시작점을 돌려 동률·같은 테마 내 topic 변주를 준다.
+  let best = finalPool[seq % finalPool.length];
+  let bestCount = Infinity;
+  for (let k = 0; k < finalPool.length; k += 1) {
+    const t = finalPool[(seq + k) % finalPool.length];
+    const c = themeCount[t.themeCode] ?? 0;
+    if (c < bestCount) {
+      bestCount = c;
+      best = t;
+    }
+  }
+  return best;
 }
 
 export interface BatchQuota {
@@ -126,6 +149,7 @@ const PDR_ROTATION: { p: PdrPower; d: PdrDistance; r: PdrBurden }[] = [
 export function buildBatchPlan(quota: BatchQuota = DEFAULT_QUOTA): BatchCell[] {
   const cells: BatchCell[] = [];
   let seq = 0; // 전역 순번 — 도메인·산업·P·D·R을 결정론적으로 회전시키는 커서
+  const themeCount: Record<string, number> = {}; // 테마 균형 커서(계약 §7-0)
 
   for (const level of LEVELS) {
     const nTrans = quota.perLevel[level];
@@ -144,7 +168,8 @@ export function buildBatchPlan(quota: BatchQuota = DEFAULT_QUOTA): BatchCell[] {
           const domain = DOMAINS[seq % DOMAINS.length];
           const channel = slot.channels[seq % slot.channels.length];
           const pdr = PDR_ROTATION[seq % PDR_ROTATION.length];
-          const topic = selectTopic(speech_act_ui, domain, seq);
+          const topic = selectTopic(speech_act_ui, domain, seq, themeCount);
+          themeCount[topic.themeCode] = (themeCount[topic.themeCode] ?? 0) + 1;
 
           cells.push({
             speech_act_ui,
