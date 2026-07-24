@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { addDraftScenario } from "@/lib/scenarioDrafts";
 import { supabase } from "@/integrations/supabase/client";
+import AuthenticImportPanel from "./AuthenticImportPanel";
+import type { AuthenticApply } from "./AuthenticImportPanel";
 import {
   Select,
   SelectContent,
@@ -491,6 +493,39 @@ const AdminGenerator = () => {
     resetOutlines();
   };
 
+  // 「실제 자료에서 생성」 후보를 생성기 폼에 채운다. 이후는 기존 생성 경로 그대로.
+  // channel/taskMode 정합을 맞추고(전화 등 미노출 채널은 가시 채널로 보정),
+  // 원자료 유래 원문은 '직접 입력' 모드로 주입해 기존 manual 경로를 재사용한다.
+  const applyAuthentic = (a: AuthenticApply) => {
+    const mode = CHANNEL_TO_MODE[a.channel];
+    const allowed: ChannelUI[] =
+      mode === "translation" ? ["email", "messenger"] : ["facetoface"];
+    const channel = allowed.includes(a.channel) ? a.channel : allowed[0];
+    setForm((p) => ({
+      ...p,
+      speech_act_ui: a.speech_act_ui,
+      language_direction: a.language_direction,
+      domain: a.domain,
+      industry: a.industry ?? p.industry,
+      channel,
+      complex_task: a.complex_task,
+      level: a.level,
+      pdr_power: a.pdr_power,
+      pdr_distance: a.pdr_distance,
+      pdr_burden: a.pdr_burden,
+    }));
+    setTaskMode(mode);
+    setSourceMode("manual");
+    setManualSourceText(a.source_text);
+    resetOutlines();
+    // 이전 미리보기/저장 상태 초기화.
+    setAiResult(null);
+    setResult(null);
+    setSaved(false);
+    setSavedScenarioId(null);
+    setSaveError(null);
+  };
+
   // Shared request body for single-shot / outline / final calls.
   const baseGenBody = () => ({
     // True 9-value act (2026-07-19 fix): DB enum extended to 9; the old 9→2
@@ -760,6 +795,9 @@ const AdminGenerator = () => {
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-5">
         {/* LEFT — settings */}
         <section className="lg:col-span-2 space-y-5 rounded-lg border border-border bg-card p-5">
+          {/* 0. 실제 자료에서 생성 (Authentic Source Import) */}
+          <AuthenticImportPanel onApply={applyAuthentic} />
+
           {/* 1. 과제 모드 */}
           <div>
             <SectionTitle n={1} label="과제 모드" accent="정본" />
