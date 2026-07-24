@@ -14,6 +14,7 @@ import {
   type ChannelUI,
   type Domain,
   type IndustrySector,
+  type LanguageDirection,
   type LearnerLevel,
   type PdrBurden,
   type PdrDistance,
@@ -42,6 +43,8 @@ export interface BatchCell {
   topic_code: string;
   /** 생성 프롬프트에 넣을 장면 시드 (topic 카탈로그에서) */
   situation_seed_ko: string;
+  /** 언어 방향 (계약 0-l·82·89) — 코어 생성·행 태그·JSON direction */
+  direction: LanguageDirection;
   /** 한 셀에서 뽑을 개수 — 개요 N개 → 전부 상세화 */
   count: number;
 }
@@ -145,13 +148,28 @@ const PDR_ROTATION: { p: PdrPower; d: PdrDistance; r: PdrBurden }[] = [
   { p: "higher", d: "formal", r: "mid" },
 ];
 
+// zh_ko 스모크(계약 0-l·89) — 승격 가능 3화행 × 수준3 × 모드2 = 18셀, 셀당 ≥1.
+// 500 본 배치는 ko_zh 중심 유지. zh_ko 확장 쿼터는 스모크 눈검사 후 별도 결정.
+export const ZH_KO_SMOKE_ACTS: SpeechActUI[] = ["request", "refusal", "thanks"];
+export const ZH_KO_SMOKE_QUOTA: BatchQuota = {
+  perLevel: { beginner_intermediate: 1, intermediate: 1, advanced: 1 },
+  interpretingRatio: 0.5, // max(1,round(1×0.5))=1 → 셀당 번역1·통역1
+};
+
 /**
  * 할당량으로부터 셀 목록을 만든다. 순수 함수 — 같은 입력이면 같은 계획.
  *
  * 도메인은 계획에 못박지만 산업은 work 도메인 안에서만 회전시킨다
  * (스키마 CHECK: industry는 domain='work'가 아니면 null).
+ *
+ * direction(0-l·89) = 셀에 찍는 방향 태그(기본 ko_zh). acts = 화행 부분집합
+ * (zh_ko 스모크는 ZH_KO_SMOKE_ACTS 3종으로 좁힌다).
  */
-export function buildBatchPlan(quota: BatchQuota = DEFAULT_QUOTA): BatchCell[] {
+export function buildBatchPlan(
+  quota: BatchQuota = DEFAULT_QUOTA,
+  direction: LanguageDirection = "ko_zh",
+  acts: SpeechActUI[] = SPEECH_ACTS,
+): BatchCell[] {
   const cells: BatchCell[] = [];
   let seq = 0; // 전역 순번 — 도메인·산업·P·D·R을 결정론적으로 회전시키는 커서
   const themeCount: Record<string, number> = {}; // 테마 균형 커서(계약 §7-0)
@@ -162,7 +180,7 @@ export function buildBatchPlan(quota: BatchQuota = DEFAULT_QUOTA): BatchCell[] {
     if (nTrans <= 0) continue;
     const nInterp = interpretingCount(nTrans, quota.interpretingRatio);
 
-    for (const speech_act_ui of SPEECH_ACTS) {
+    for (const speech_act_ui of acts) {
       // 모드 = 1차 쿼터 축(0-h·57). 각 (화행×수준)에서 번역·통역을 각각 보장 생성한다.
       // 도메인·theme·산업·P/D/R·채널서브타입 = 2차 회전(seq 커서).
       const modeSlots: { channels: ChannelUI[]; count: number }[] = [
@@ -190,6 +208,7 @@ export function buildBatchPlan(quota: BatchQuota = DEFAULT_QUOTA): BatchCell[] {
             theme_code: topic.themeCode,
             topic_code: topic.code,
             situation_seed_ko: topic.situationSeedKo,
+            direction,
             count: 1,
           });
           seq += 1;
@@ -209,6 +228,8 @@ export interface PlanSummary {
   byIndustry: Record<string, number>;
   bySpeechAct: Record<string, number>;
   byTheme: Record<string, number>;
+  /** 방향별 건수(계약 0-l·89 — 감사표 방향 칸 분리) */
+  byDirection: Record<string, number>;
   translation: number;
   interpreting: number;
   /** 화행 × 수준 27칸 중 비어 있는 칸 — 0이어야 코퍼스 브라우저가 채워진다 */
@@ -233,6 +254,7 @@ export function summarizePlan(cells: BatchCell[]): PlanSummary {
   const byIndustry: Record<string, number> = {};
   const bySpeechAct: Record<string, number> = {};
   const byTheme: Record<string, number> = {};
+  const byDirection: Record<string, number> = {};
   const actLevel = new Set<string>();
   const actLevelModeCount: Record<string, number> = {};
   const levelsPresent = new Set<string>();
@@ -247,6 +269,7 @@ export function summarizePlan(cells: BatchCell[]): PlanSummary {
     bump(byDomain, c.domain, c.count);
     bump(bySpeechAct, c.speech_act_ui, c.count);
     bump(byTheme, c.theme_code, c.count);
+    bump(byDirection, c.direction, c.count);
     if (c.industry) bump(byIndustry, c.industry, c.count);
     if (modeOf(c) === "stt_interpreting") interpreting += c.count;
     else translation += c.count;
@@ -283,7 +306,7 @@ export function summarizePlan(cells: BatchCell[]): PlanSummary {
 
   return {
     total: cells.reduce((n, c) => n + c.count, 0),
-    byLevel, byDomain, byIndustry, bySpeechAct, byTheme,
+    byLevel, byDomain, byIndustry, bySpeechAct, byTheme, byDirection,
     translation, interpreting, emptyActLevelCells,
     emptyActLevelModeCells, minActLevelModeCount, underMinCells,
   };

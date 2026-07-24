@@ -59,6 +59,7 @@ function ctxOf(cell: BatchCell): CheckContext {
     industry: cell.industry,
     mode,
     source_modality: mode === "stt_interpreting" ? "spoken" : "written",
+    direction: cell.direction, // 0-l·89 — 데이터 방향과 요청 방향 일치 검사
   };
 }
 
@@ -86,6 +87,7 @@ export async function runCoreCell(
       body: {
         action: "core",
         core: {
+          direction: cell.direction, // 0-l·89 — 엣지가 방향별 원문·산출 언어 결정(라운드2 배포 후 활성)
           speech_act_ko: SPEECH_ACT_UI[cell.speech_act_ui],
           level_ko: LEVEL[cell.level],
           domain_ko: DOMAIN[cell.domain],
@@ -134,6 +136,7 @@ export async function runCoreCell(
       source_modality: sourceModality,
       theme_code: cell.theme_code,
       topic_code: cell.topic_code,
+      language_direction: cell.direction, // 0-l·89 — 행 태그(RPC가 라운드2에서 INSERT)
       core_content: core,
       auto_check_result: ruleResult.result === "warning" ? "warning" : "pass",
       meta,
