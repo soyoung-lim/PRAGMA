@@ -109,12 +109,26 @@ interface GenInput {
   // Two-step outline → final flow. Backward compatible:
   // when `action` is absent the handler behaves exactly like the legacy
   // single-shot full-scenario generation.
-  action?: 'outline' | 'final' | 'core' | 'mission'
+  action?: 'outline' | 'final' | 'core' | 'mission' | 'authentic_analyze'
   outline_count?: number
   selected_outline?: { title?: string; situation?: string } | null
   // v1.4 (2026-07-23): scenario_core_v1 / mission_v1 생성. 카탈로그는 클라가 전달.
   core?: CoreGenBody
   mission?: MissionGenBody
+  // 「실제 자료에서 생성」(Authentic Source Import) — 이미지/텍스트 원자료 분석.
+  authentic?: AuthenticBody
+}
+
+// ── 실제 자료 분석 (Authentic Source Import) ────────────────────────────
+// 관리자가 입력한 실제 중국어/한국어 자료(이미지 또는 텍스트)를 분석해,
+// 기존 PRAGMA 생성기 입력값으로 매핑 가능한 '활용 후보'를 제안한다.
+// 무조건 화행 문항으로 억지 변환하지 않고, 6개 활용 유형 중 적절한 것을 고른다.
+interface AuthenticBody {
+  text?: string | null          // 관리자가 직접 붙여넣은 문구 (이미지 없을 때 필수)
+  image_data_url?: string | null // data:image/...;base64,... (vision 입력)
+  source_ref?: string | null    // 출처 URL·책 정보·영상 시점 (선택)
+  note?: string | null          // 관리자 메모 (선택)
+  language_direction?: string   // ko_zh | zh_ko — 부재 시 zh_ko(중국 실자료 기본)
 }
 
 // UI-level labels — richer than the collapsed internal enums.
@@ -342,7 +356,10 @@ async function fetchHskVocab(hskLevel: number): Promise<string[]> {
 }
 
 
-async function callOpenAI(model: string, apiKey: string, system: string, user: string, temperature = 0.8) {
+// user content is either a plain string or an OpenAI multimodal content array
+// (text + image_url parts). gpt-4.1-mini / gpt-4o-mini both accept image_url.
+type UserContent = string | Array<Record<string, unknown>>
+async function callOpenAI(model: string, apiKey: string, system: string, user: UserContent, temperature = 0.8) {
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -670,6 +687,114 @@ function buildMissionUserPrompt(b: MissionGenBody): string {
   return parts.join('\n')
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// authentic_analyze — 실제 자료 → 활용 후보 (Authentic Source Import)
+// 출력 후보 필드는 AdminGenerator FormState와 1:1 매핑되도록 기존 enum 키만 사용.
+// ══════════════════════════════════════════════════════════════════════
+function buildAuthenticSystemPrompt(): string {
+  return `당신은 한·중 통번역 화용 교육앱 PRAGMA의 자료 큐레이터입니다.
+관리자가 실제 중국어(또는 한국어) 자료(이미지 또는 문구)를 입력하면, 그 자료를 분석해 기존 PRAGMA 미션 생성기의 '입력 재료'로 어떻게 활용할지 제안합니다.
+
+⚠️ 절대 원칙:
+- 입력을 무조건 화행 문항으로 억지 변환하지 마세요. 자료의 성격에 가장 맞는 활용 유형을 고르세요.
+- 살아 있는 원문 표현을 보존하세요. 교과서식 문장으로 평준화하거나 뜻풀이를 덧붙이지 마세요.
+- 원자료(실제 문구)와 AI가 새로 구성한 내용을 명확히 구분해 필드로 나눠 담으세요.
+- 새 화행을 만들지 마세요. 기존 9개 화행 코드만 사용하고, 맞는 화행이 없으면 expression_resource 또는 unsuitable로 두세요.
+
+활용 유형(usage_type) 6종:
+- scenario_seed: 원문의 사건·장면을 화행 상황으로 확장 (독립 미션의 씨앗)
+- preceding_turn: 상대가 먼저 한 말로 사용 (학습자는 이에 응답)
+- translation_source: 학습자가 그대로 옮길 번역 출발문
+- response_task: 이 발화를 듣고 적절히 응답하게 하는 후속 반응 과제
+- expression_resource: 바로 문항화하지 않고 살아 있는 표현으로만 저장 (인물·장면 질감용)
+- unsuitable: 미션 전환에 부적합
+
+코드값(반드시 아래 값만):
+  speech_act: "request"(요청) | "refusal"(거절) | "apology"(사과) | "thanks"(감사) | "proposal"(제안) | "agreement"(초대·공동행동 권유) | "opposition"(반대) | "compliment"(칭찬) | "complaint"(불만) | null
+  pdr_power: "higher"(화자가 상대보다 낮음) | "equal"(동등) | "lower"(화자가 상대보다 높음)
+  pdr_distance: "close"(친밀) | "acquaintance"(지인·어색) | "formal"(초면·멂)
+  pdr_burden: "low" | "mid" | "high"
+  domain: "daily"(일상) | "school"(학교) | "work"(직장)
+  industry: "trade_distribution" | "IT_platform" | "manufacturing" | "tourism_hospitality" | "education_research" | "public_international_affairs" | "culture_content_media" | null  (domain=work일 때만, 아니면 null)
+  channel: "email" | "messenger" | "facetoface" | "phone"
+  complex_task: "none" | "persuade" | "coordinate" | "negotiate"
+  level: "beginner_intermediate" | "intermediate" | "advanced"
+  language_direction: "ko_zh"(한→중) | "zh_ko"(중→한)
+
+출력은 아래 JSON만, 마크다운·설명 없이 그대로 반환합니다:
+{
+  "source_original": "이미지에서 읽었거나 입력된 실제 원문 그대로 (중국어면 중국어 그대로)",
+  "extraction_confidence": "high | medium | low | text_input",
+  "scene_ko": "장면·주제 한 줄 (한국어)",
+  "linguistic_features_ko": "언어적 특징 또는 담화 기능 (한국어). stance·affect·구어·관용·인터넷 표현 등 명시",
+  "recommended_uses": ["1~3순위 usage_type 배열, 가장 적합한 순"],
+  "recommendation_reason_ko": "왜 이 활용이 적합한지 (한국어)",
+  "connectable_speech_acts": ["연결 가능한 기존 화행 코드 배열 (없으면 [])"],
+  "unsuitable_reason_ko": "독립 미션화가 부적절하면 그 이유 (해당 없으면 null)",
+  "candidates": [
+    {
+      "usage_type": "위 6종 중 하나",
+      "label_ko": "후보 카드 제목 (한국어, 예: '요청 미션 — 상사에게 문서 검토 요청')",
+      "speech_act": "위 코드 또는 null",
+      "language_direction": "ko_zh | zh_ko",
+      "domain": "daily | school | work",
+      "industry": "위 코드 또는 null",
+      "channel": "email | messenger | facetoface | phone",
+      "complex_task": "none | persuade | coordinate | negotiate",
+      "level": "beginner_intermediate | intermediate | advanced",
+      "pdr_power": "코드", "pdr_distance": "코드", "pdr_burden": "코드",
+      "situation_seed_ko": "AI가 새로 구성한 상황 배경 (한국어, 2~3문장)",
+      "source_text": "학습자가 옮길/응답할 원발화 — language_direction의 source 언어(ko_zh면 한국어, zh_ko면 중국어). 원자료 표현을 최대한 살릴 것",
+      "preceding_turn": "상대의 선행 발화 (preceding_turn/response_task일 때, target 언어). 아니면 null",
+      "source_usage_note_ko": "원자료(source_original)를 어떤 방식으로 활용했는지 (한국어)",
+      "ai_adaptation_note_ko": "AI가 원자료를 어떻게 확장·재구성했는지 (한국어). 원문을 변형했다면 반드시 명시",
+      "expression": { "text": "표현 원문", "meaning_ko": "간단한 한국어 의미", "usage_note_ko": "어감·사용 맥락 (한국어)", "example_zh": "짧고 자연스러운 예문 (중국어)", "tags": ["감정","직장" 등] }
+    }
+  ]
+}
+
+규칙:
+- candidates는 1~3개. 억지로 3개를 채우지 말 것.
+- 🔴 먼저 원자료의 '가장 자연스러운 활용 역할'을 판정하세요. 모든 입력을 preceding_turn이나 화행 문항으로 강제하지 마세요. preceding_turn 활용은 적극 권장하지만 강제는 금지.
+- usage_type이 "expression_resource"이거나 "unsuitable"이면 speech_act·situation_seed_ko·source_text·preceding_turn은 null로 두고, expression 필드(표현 자원)만 채우세요. expression_resource는 오류가 아니라 정상 결과입니다.
+- usage_type이 scenario_seed/preceding_turn/translation_source/response_task이면 speech_act(기존 9개 중 하나)·domain·pdr·source_text를 반드시 채우세요.
+- 🔴 원자료(source_original)와 AI 재구성(situation_seed_ko·source_text·preceding_turn)을 절대 혼동하지 마세요. AI가 확장·수정한 문장을 원문인 것처럼 쓰면 안 됩니다. 예) 원자료 "每天都有忙不完的事。" → AI 재구성 선행 발화 "最近每天都有忙不完的事，真的有点累。"는 별개입니다.
+- 핵심 목적: "我最近很忙" 같은 건조한 발화 대신 원자료의 생생한 실제 발화를 상황·선행 발화로 살려 몰입감을 높이는 것.
+- pdr_power는 화자(학습자) 기준입니다.
+- "중국인은/중국에서는/한국인은/한국에서는" 같은 국가 단위 일반화, 정치·시사 소재 금지.
+- 이미지가 없고 텍스트만 입력된 경우 extraction_confidence는 "text_input".
+
+판정 감각(참고 — 정답 암기가 아니라 이런 결의 판단):
+- "每天都有忙不完的事" 류(업무 부담 토로·감정 서술) → preceding_turn 또는 scenario_seed. 공감·제안·지원·초대 화행으로 연결 가능.
+- "填完表格，找老板指导一下" 류(업무 절차·행동 의도) → scenario_seed. 상사에게 검토를 요청하는 request(하위자→상위자, 중간 부담).
+- "雷打不动泡茶喝" 류(습관·관용·자조 표현) → expression_resource 또는 인물·상황 배경. 요청·거절로 억지 변환 금지.`
+}
+
+function buildAuthenticUserPrompt(b: AuthenticBody): UserContent {
+  const dir = normDir(b.language_direction ?? 'zh_ko')
+  const lines = [
+    '[분석 요청]',
+    `- 기본 언어 방향(참고): ${LANG_DIR_KO[dir]} (자료 성격에 따라 후보별로 조정 가능)`,
+  ]
+  if (b.text && b.text.trim()) {
+    lines.push(`- 입력 문구(원자료): ${b.text.trim()}`)
+  } else if (b.image_data_url) {
+    lines.push('- 원자료: 첨부 이미지에서 실제 중국어(또는 한국어) 문구와 장면을 읽어내세요.')
+  }
+  if (b.source_ref && b.source_ref.trim()) lines.push(`- 출처: ${b.source_ref.trim()}`)
+  if (b.note && b.note.trim()) lines.push(`- 관리자 메모: ${b.note.trim()}`)
+  lines.push('', '위 자료를 분석해 활용 후보를 JSON으로만 반환하세요.')
+  const textPart = lines.join('\n')
+
+  if (b.image_data_url) {
+    return [
+      { type: 'text', text: textPart },
+      { type: 'image_url', image_url: { url: b.image_data_url } },
+    ]
+  }
+  return textPart
+}
+
 function parseOpenAIContent(raw: string): unknown {
   const outer = JSON.parse(raw)
   const content = outer?.choices?.[0]?.message?.content
@@ -815,6 +940,38 @@ Deno.serve(async (req) => {
       }
       return new Response(
         JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v2', generated_at: genAt } }),
+        { status: 200, headers: jsonHeaders },
+      )
+    }
+
+    // ── authentic_analyze: 실제 자료 → 활용 후보 (vision, temp 0.6) ──
+    if (input.action === 'authentic_analyze') {
+      const b = input.authentic
+      const hasText = !!(b?.text && b.text.trim())
+      const hasImage = !!(b?.image_data_url && b.image_data_url.startsWith('data:image'))
+      if (!b || (!hasText && !hasImage)) {
+        return new Response(JSON.stringify({ error: '텍스트 또는 이미지 중 하나는 있어야 합니다.' }), { status: 400, headers: jsonHeaders })
+      }
+      const sys = buildAuthenticSystemPrompt()
+      const usr = buildAuthenticUserPrompt(b)
+      // 이미지 입력도 gpt-4.1-mini/gpt-4o-mini 모두 vision 지원 → 동일 폴백 체인.
+      let model = PRIMARY_MODEL
+      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.6)
+      if (!att.ok && (att.status === 404 || att.status === 400)) {
+        model = FALLBACK_MODEL
+        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, 0.6)
+      }
+      if (!att.ok) {
+        return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
+      }
+      let analysis: unknown
+      try {
+        analysis = parseOpenAIContent(att.raw)
+      } catch (e) {
+        return new Response(JSON.stringify({ error: '분석 응답 파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
+      }
+      return new Response(
+        JSON.stringify({ analysis, meta: { provider: PROVIDER, model, prompt_version: 'authentic_analyze_v1', generated_at: new Date().toISOString() } }),
         { status: 200, headers: jsonHeaders },
       )
     }
