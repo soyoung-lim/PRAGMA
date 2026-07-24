@@ -7,8 +7,8 @@
 // ⚠️ 타입 우회: types.ts가 mission_content 컬럼을 아직 모른다 → AdminBrowser식 캐스트.
 
 import { supabase } from "@/integrations/supabase/client";
-import { parseMission, type MissionV1 } from "@/lib/pragma/missionSchema";
-import type { LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
+import { normalizeMission, type MissionV2 } from "@/lib/pragma/missionSchema";
+import type { LanguageDirection, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
 
 const db = supabase as unknown as { from: (t: string) => any };
 
@@ -19,7 +19,8 @@ export interface RunnableMission {
   speech_act: SpeechActUI | null;
   learner_level: LearnerLevel | null;
   mission_status: string | null;
-  mission: MissionV1;
+  direction: LanguageDirection;
+  mission: MissionV2;
 }
 
 export interface MissionListItem {
@@ -51,9 +52,9 @@ export async function fetchMissionByScenario(scenarioId: string): Promise<Runnab
     );
   }
 
-  const parsed = parseMission(data.mission_content);
+  const parsed = normalizeMission(data.mission_content);
   if (!parsed.ok || !parsed.data) {
-    throw new Error("미션 데이터 형식이 유효하지 않습니다(mission_v1 스키마 불일치).");
+    throw new Error("미션 데이터 형식이 유효하지 않습니다(mission 스키마 불일치).");
   }
 
   return {
@@ -61,6 +62,7 @@ export async function fetchMissionByScenario(scenarioId: string): Promise<Runnab
     speech_act: (data.speech_act as SpeechActUI) ?? null,
     learner_level: (data.learner_level as LearnerLevel) ?? null,
     mission_status: status,
+    direction: parsed.data.direction,
     mission: parsed.data,
   };
 }
@@ -71,7 +73,7 @@ export async function fetchMissionByScenario(scenarioId: string): Promise<Runnab
  */
 export async function fetchMissionForReview(
   scenarioId: string,
-): Promise<{ mission: MissionV1; mission_status: string | null } | null> {
+): Promise<{ mission: MissionV2; mission_status: string | null } | null> {
   const { data, error } = await db
     .from("scenarios")
     .select("mission_status, mission_content")
@@ -79,9 +81,9 @@ export async function fetchMissionForReview(
     .maybeSingle();
   if (error) throw new Error(`미션 조회 실패: ${error.message}`);
   if (!data?.mission_content) return null;
-  const parsed = parseMission(data.mission_content);
+  const parsed = normalizeMission(data.mission_content);
   if (!parsed.ok || !parsed.data) {
-    throw new Error("미션 데이터 형식이 유효하지 않습니다(mission_v1 스키마 불일치).");
+    throw new Error("미션 데이터 형식이 유효하지 않습니다(mission 스키마 불일치).");
   }
   return { mission: parsed.data, mission_status: data.mission_status ?? null };
 }

@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { checkMission, type CheckContext } from "@/lib/pragma/missionRules";
 import { getTargetFeature, DEFAULT_FEATURE_BY_ACT, type TargetFeature } from "@/lib/pragma/targetFeatures";
 import { errorPatternsForAct } from "@/lib/pragma/errorPatterns";
-import { parseMission, type MissionV1 } from "@/lib/pragma/missionSchema";
+import { normalizeMission, type MissionV2 } from "@/lib/pragma/missionSchema";
 import { normalizeCore, coreDirection } from "@/lib/pragma/coreSchema";
 import {
   SPEECH_ACT_UI,
@@ -69,8 +69,8 @@ export interface PromotableCore {
 
 export interface PromoteResult {
   ok: boolean;
-  /** 생성된 미션(검사 통과 여부와 무관 — 눈검사용으로 항상 반환 시도) */
-  mission?: MissionV1;
+  /** 생성된 미션(검사 통과 여부와 무관 — 눈검사용으로 항상 반환 시도). 정규화 v2 형태. */
+  mission?: MissionV2;
   ruleResult?: "pass" | "warning" | "fail";
   violations?: { id: string; level: string; message: string }[];
   attempts?: number;
@@ -130,7 +130,8 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     direction, // 0-l·85 — 생성 미션의 방향이 요청과 일치하는지 검사
   };
 
-  let mission: MissionV1 | undefined;
+  let mission: MissionV2 | undefined; // 정규화(v1/v2 엣지 응답 모두) — 검사·표시·반환용
+  let rawContent: unknown; // 엣지 원본(저장용 — 현 DB CHECK는 mission_v1, 라운드2에서 v2 허용)
   let check: ReturnType<typeof checkMission> | undefined;
   let failureNotes: string | undefined;
   let attempts = 0;
@@ -155,14 +156,15 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
       },
     });
     if (error) return { ok: false, error: `미션 생성 호출 실패: ${error.message ?? error}`, attempts };
-    const parsed = parseMission((data as { mission_content?: unknown })?.mission_content);
+    rawContent = (data as { mission_content?: unknown })?.mission_content;
+    const parsed = normalizeMission(rawContent); // v1(현 엣지)·v2(라운드2 엣지) 모두 허용
     if (!parsed.ok || !parsed.data) {
       failureNotes = "스키마 파싱 실패";
       continue;
     }
     mission = parsed.data;
     // R23 계승 검사는 원본 core_content(v1/v2)를 넘긴다 — checkMission이 내부 정규화.
-    check = checkMission(mission, ctx, core.core_content ?? undefined);
+    check = checkMission(rawContent, ctx, core.core_content ?? undefined);
     if (check.result !== "fail") break;
     failureNotes = check.violations
       .filter((x) => x.level === "fail")
@@ -178,10 +180,11 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     return { ok: false, mission, ruleResult: "fail", violations, attempts, error: "규칙검사 실패 — 저장하지 않았습니다." };
   }
 
-  // 검사 통과 → 저장(generated)
+  // 검사 통과 → 저장(generated). 엣지 원본을 저장한다(현 DB CHECK는 mission_v1 —
+  // 라운드2 마이그레이션이 v2 허용 + 엣지가 v2 산출로 전환).
   const { data: savedId, error: saveErr } = await rpc("save_generated_mission", {
     p_scenario_id: core.scenario_id,
-    p_payload: { mission_content: mission },
+    p_payload: { mission_content: rawContent },
   });
   if (saveErr) {
     return { ok: false, mission, ruleResult: check.result as "pass" | "warning", violations, attempts, error: `저장 실패: ${(saveErr as { message?: string }).message ?? saveErr}` };

@@ -13,7 +13,8 @@
 //    상태가 남을 수 있고, 모든 실패는 throw되며 성공으로 위장하지 않는다.
 
 import { supabase } from "@/integrations/supabase/client";
-import type { Domain, GenMode, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
+import type { Domain, GenMode, LanguageDirection, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
+import { coreDirection } from "@/lib/pragma/coreSchema";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 
 const db = supabase as unknown as { from: (t: string) => any };
@@ -33,6 +34,8 @@ export interface ComposerCore {
   target_feature: string | null;
   situation_ko: string;
   source_text_ko: string;
+  /** 언어 방향(0-l·82) — core_content.direction 우선, 없으면 ko_zh(v1 호환). 편성 필터용 */
+  direction: LanguageDirection;
 }
 
 export interface WeekAssignment {
@@ -63,7 +66,8 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
     mission_status: r.mission_status ?? null,
     target_feature: r.target_feature ?? null,
     situation_ko: r.core_content?.situation_ko ?? "",
-    source_text_ko: r.core_content?.source_text_ko ?? "",
+    source_text_ko: r.core_content?.source_text_ko ?? r.core_content?.source_text ?? "",
+    direction: coreDirection(r.core_content),
   }));
 }
 

@@ -4,12 +4,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
-import { SPEECH_ACT_UI, LEVEL, type ChannelUI } from "@/lib/pragma/enums";
+import { SPEECH_ACT_UI, LEVEL, DIRECTION_LANGS, type ChannelUI, type LanguageDirection } from "@/lib/pragma/enums";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import { SCALE4_CODES, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targetFeatures";
-import type { MissionV1, MpjItem } from "@/lib/pragma/missionSchema";
+import { normalizeMission, type MissionV2, type MpjItemV2 } from "@/lib/pragma/missionSchema";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
+
+// 샘플은 v1 → 정규화해 v2로 구동(러너는 정규화 형태만 본다, 0-l·84).
+const SAMPLE_MISSION_V2 = normalizeMission(SAMPLE_MISSION_V1).data as MissionV2;
+
+// 방향별 언어 이름 라벨(0-l·85).
+const LANG_NAME: Record<"ko" | "zh", string> = { ko: "한국어", zh: "중국어" };
+const srcLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].source];
+const tgtLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].target];
 
 // 학습자 미션 실행 — 계약 스키마 mission_v1을 직접 구동한다(프로토타입 대체).
 //   ① 감각 쌓기(MPJ 5) → ② 적용(DCT 산출 1회) → ③ 피드백 → ④ 수정
@@ -86,7 +94,7 @@ const MissionRunV1 = () => {
     );
   }
 
-  const mission = loaded?.mission ?? SAMPLE_MISSION_V1;
+  const mission = loaded?.mission ?? SAMPLE_MISSION_V2;
   const isSample = !loaded;
   const headerRight = loaded
     ? `${loaded.speech_act ? SPEECH_ACT_UI[loaded.speech_act] : ""} · ${loaded.learner_level ? LEVEL[loaded.learner_level] : ""}`
@@ -102,7 +110,7 @@ function MissionRunner({
   headerRight,
   status,
 }: {
-  mission: MissionV1;
+  mission: MissionV2;
   isSample: boolean;
   headerRight: string;
   status: string | null;
@@ -116,6 +124,9 @@ function MissionRunner({
   const step = STEPS[stepIdx];
   const items = mission.mpj_items;
   const item = items[mpjIdx];
+  const dir = mission.direction;
+  const tgtName = tgtLangName(dir);
+  const srcName = srcLangName(dir);
 
   const nextMpj = () => {
     if (mpjIdx < items.length - 1) setMpjIdx((i) => i + 1);
@@ -180,16 +191,16 @@ function MissionRunner({
             />
             <div className={card}>
               <div className="text-[13px] font-semibold">
-                {mission.production_task.mode === "interpreting" ? "중국어로 통역해 보세요" : "중국어로 옮겨 보세요"}
+                {mission.production_task.mode === "interpreting" ? `${tgtName}로 통역해 보세요` : `${tgtName}로 옮겨 보세요`}
               </div>
               <p className="mt-1 text-[12.5px] text-muted-foreground">
                 방금 판단해 본 감각을 <b>새로운 상황</b>에 적용하는 단계입니다. 참고 표현은 제출한 뒤에 함께 봅니다.
               </p>
               <div className={`mt-3 ${srcBox}`}>
-                <div className="text-[11.5px] font-semibold text-muted-foreground">한국어 원문</div>
-                <p className="mt-1 text-[14.5px]">{mission.production_task.source_text_ko}</p>
+                <div className="text-[11.5px] font-semibold text-muted-foreground">{srcName} 원문</div>
+                <p className="mt-1 text-[14.5px]">{mission.production_task.source_text}</p>
               </div>
-              <Textarea className="mt-3" rows={5} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="여기에 중국어로 입력…" />
+              <Textarea className="mt-3" rows={5} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`여기에 ${tgtName}로 입력…`} />
             </div>
             <Button className="w-full" disabled={!draft.trim()} onClick={() => setStepIdx(2)}>적용하기 →</Button>
           </div>
@@ -214,8 +225,8 @@ function MissionRunner({
               <p className="mt-1 text-[12px] text-muted-foreground">정답이 아니라 비교용입니다. 상황에 따라 어울리는 범위가 달라집니다.</p>
               <ul className="mt-2.5 space-y-2">
                 {mission.production_task.reference_alternatives.map((a) => (
-                  <li key={a.zh} className="rounded-lg bg-[#FAF8F2] px-3.5 py-2.5">
-                    <div className="text-[14px]">{a.zh}</div>
+                  <li key={a.text} className="rounded-lg bg-[#FAF8F2] px-3.5 py-2.5">
+                    <div className="text-[14px]">{a.text}</div>
                     <div className="mt-0.5 text-[12px] text-muted-foreground">{a.note_ko}</div>
                   </li>
                 ))}
@@ -254,7 +265,7 @@ function MissionRunner({
               <ul className="mt-2 space-y-1.5">
                 {items.map((it) => (
                   <li key={it.id} className="rounded-lg bg-[#FAF8F2] px-3.5 py-2 text-[13.5px]">
-                    {it.recommended_example_zh}
+                    {it.recommended_example}
                   </li>
                 ))}
               </ul>
@@ -272,9 +283,10 @@ function MissionRunner({
 }
 
 // ── 평가 계약 바(0-i·65) — 제출 전엔 무엇으로 판단받는지만, 정답·참고안은 제출 후 ──
-function MissionContractBar({ mission }: { mission: MissionV1 }) {
+function MissionContractBar({ mission }: { mission: MissionV2 }) {
   const feat = getTargetFeature(mission.unit.target_feature);
   const estMin = mission.production_task.mode === "interpreting" ? 15 : 12;
+  const tgtName = tgtLangName(mission.direction);
   return (
     <div className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] p-4">
       <div className="flex flex-wrap items-center gap-2 text-[13px]">
@@ -282,7 +294,7 @@ function MissionContractBar({ mission }: { mission: MissionV1 }) {
         <span className="text-muted-foreground">약 {estMin}분</span>
       </div>
       <p className="mt-2 text-[12.5px] text-muted-foreground">
-        완료 조건: 판단 5문항 → 중국어로 옮기기 1회 → 피드백 확인 → 다듬기 1회.
+        완료 조건: 판단 5문항 → {tgtName}로 옮기기 1회 → 피드백 확인 → 다듬기 1회.
         <b className="text-foreground"> 정답·참고 표현은 제출한 뒤에 공개됩니다.</b>
       </p>
       <details className="mt-2 text-[12.5px]">
@@ -299,7 +311,7 @@ function MissionContractBar({ mission }: { mission: MissionV1 }) {
 }
 
 // ── 피드백 근거 서랍(의견4 ③) — 판정↔상황 조건 연결. 카탈로그·상황 데이터만(AI 0회) ──
-function FeedbackReasonDrawer({ mission }: { mission: MissionV1 }) {
+function FeedbackReasonDrawer({ mission }: { mission: MissionV2 }) {
   const feat = getTargetFeature(mission.unit.target_feature);
   const pt = mission.production_task;
   return (
@@ -355,7 +367,7 @@ function SituationCard({ situation, relation, channel }: { situation: string; re
 }
 
 // ── MPJ 한 문항 ─────────────────────────────────────────────────────────
-function MpjStage({ item, onDone }: { item: MpjItem; onDone: () => void }) {
+function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
   const [answered, setAnswered] = useState(false);
   const [scalePick, setScalePick] = useState<string | null>(null);
   const [bandPick, setBandPick] = useState<string | null>(null);
@@ -400,8 +412,8 @@ function MpjStage({ item, onDone }: { item: MpjItem; onDone: () => void }) {
       <SituationCard situation={item.situation_ko} relation={item.relation_ko} channel={item.channel as ChannelUI} />
 
       <div className={srcBox}>
-        <div className="text-[11.5px] font-semibold text-muted-foreground">한국어 원문</div>
-        <p className="mt-1 text-[14.5px]">{item.source_ko}</p>
+        <div className="text-[11.5px] font-semibold text-muted-foreground">원문</div>
+        <p className="mt-1 text-[14.5px]">{item.source}</p>
       </div>
 
       {/* 단일 발화 문항(scale4/judge3/fix_choice/reason_conf) — AI 초안 검수 프레임(0-i·59) */}
@@ -411,10 +423,10 @@ function MpjStage({ item, onDone }: { item: MpjItem; onDone: () => void }) {
             <span className="text-[11.5px] font-semibold text-muted-foreground">AI가 제안한 번역 초안</span>
             <span className="rounded bg-[#EEF2F6] px-1.5 py-0.5 text-[10.5px] font-medium text-[#5B6B76]">발송 전 검수</span>
           </div>
-          <p className="mt-1 text-[15px] leading-relaxed">{item.target_zh}</p>
-          {item.highlights_zh.length > 0 && (
+          <p className="mt-1 text-[15px] leading-relaxed">{item.target}</p>
+          {item.highlights.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {item.highlights_zh.map((h) => (
+              {item.highlights.map((h) => (
                 <span key={h} className="rounded bg-[#FFF3C4] px-1.5 py-0.5 text-[12px]">{h}</span>
               ))}
             </div>
@@ -451,7 +463,7 @@ function MpjStage({ item, onDone }: { item: MpjItem; onDone: () => void }) {
               <div className="mt-2 flex flex-col gap-1.5">
                 {item.corrections.map((o, i) => (
                   <button
-                    key={o.zh}
+                    key={o.text}
                     type="button"
                     disabled={answered}
                     onClick={() =>
@@ -468,7 +480,7 @@ function MpjStage({ item, onDone }: { item: MpjItem; onDone: () => void }) {
                       answered && o.is_valid ? "border-[#2E7D5B] bg-[#F2FAF6]" : "",
                     ].join(" ")}
                   >
-                    <div>{o.zh}</div>
+                    <div>{o.text}</div>
                     {answered && <div className="mt-1 text-[12px] text-muted-foreground">{o.note_ko}</div>}
                   </button>
                 ))}
@@ -531,8 +543,8 @@ function MpjStage({ item, onDone }: { item: MpjItem; onDone: () => void }) {
           <div className="text-[13px] font-semibold">AI가 만든 여러 번역 초안입니다. 각각 어떤가요?</div>
           <ul className="mt-3 space-y-2.5">
             {item.candidates.map((c, i) => (
-              <li key={c.zh} className="rounded-lg border border-[#EAE4D2] px-3.5 py-3">
-                <div className="text-[14.5px]">{c.zh}</div>
+              <li key={c.text} className="rounded-lg border border-[#EAE4D2] px-3.5 py-3">
+                <div className="text-[14.5px]">{c.text}</div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {bands.map((b) => (
                     <button
