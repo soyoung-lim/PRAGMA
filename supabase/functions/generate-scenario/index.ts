@@ -9,6 +9,12 @@ const PROVIDER = 'openai'
 const PRIMARY_MODEL = 'gpt-4.1-mini'
 const FALLBACK_MODEL = 'gpt-4o-mini'
 
+/** SHA-256 16진 — 미션 provenance의 mission_content_hash용(v1.5 0-h·56). */
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 const jsonHeaders = {
   ...corsHeaders,
   'Content-Type': 'application/json',
@@ -457,12 +463,18 @@ interface MissionGenBody {
   failure_notes?: string
 }
 
-function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false): string {
+function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken = false): string {
   const precedingRule = isResponse
     ? `\n- 🔴 이 화행은 인접쌍의 둘째 짝(응답류)입니다. **5문항 전부와 multi_judge의 각 후보 상황**에
     "preceding_turn_zh"(상대의 중국어 선행 발화)를 문항별 상황에 맞게 반드시 채우세요(각 item 객체에 "preceding_turn_zh":"…" 필드 추가).`
     : ''
   const bands = f.band_schema.map((b) => `"${b.code}"(${b.label_ko})`).join(' / ')
+  // 게이트1(불변항) — 계약 v1.5 §7-1(0-h·54). 의미·의도 소실 예문은 화용 판단 후보가 될 수 없다.
+  const gate1 = `🔴 게이트1(불변항 — 절대 규칙): target_zh·모든 corrections.zh·모든 candidates.zh·recommended_example_zh·reference_alternatives.zh는 **먼저 원문의 명제·의도·화행 목적을 유지**해야 합니다. 의미나 의도가 달라진 문장(예: 요청의 의향 묻기가 사라진 문장, 사실이 빠진 문장)은 판단 후보로 만들지 마세요. 부적절성은 오직 「${f.learner_label}」 초점의 **과소·적정·과잉 차이**로만 실현합니다. 의도 소실·의미 이탈은 화용이 아니라 의미 오류이므로 이 미션의 판단 대상이 아닙니다(그건 피드백의 의미 충실성 층 소관).`
+  // 통역 승격 = MPJ 후보도 구두체 강제(계약 0-g·52).
+  const spokenRule = isSpoken
+    ? `\n🔴 이 미션은 통역(구두 담화)입니다. source_ko·target_zh·모든 후보는 **실제 말로 주고받을 법한 구두체**로 작성하세요(이메일 문어체·서면 격식 표현 금지).`
+    : ''
   return `당신은 한→중 통번역 교육용 '메타화용 판단 미션'을 설계하는 전문가입니다.
 이번 단원의 화용 초점은 「${f.learner_label}」입니다.
 초점 정의: ${f.operational_definition}
@@ -470,6 +482,8 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false): string 
 이 초점을 실현하는 장치: ${f.relevant_resources.join(', ')}
 이 초점이 아닌 것(혼입 금지): ${f.excluded_confounds.join(', ')}
 깨야 할 소박한 규칙: ${f.counter_rule_note}
+
+${gate1}${spokenRule}
 
 MPJ 5문항을 만듭니다. 각 문항은 학습자가 '중국어 번역안'을 이 초점 대역으로 판단하게 합니다.
 모든 문항의 판정 축은 위 band뿐입니다(다른 축 혼입 금지).
@@ -694,7 +708,8 @@ Deno.serve(async (req) => {
       // 미션은 복잡한 5유형 union이라 필드 누락이 잦다 → 저volume(승격분만)이므로
       // 강한 모델을 쓴다. 코어(고volume·단순)는 mini 유지.
       const MISSION_PRIMARY = 'gpt-4o'
-      const sys = buildMissionSystemPrompt(b.feature, b.is_response_act)
+      const isSpoken = b.core.source_modality === 'spoken'
+      const sys = buildMissionSystemPrompt(b.feature, b.is_response_act, isSpoken)
       const usr = buildMissionUserPrompt(b)
       let model = MISSION_PRIMARY
       let att = await callOpenAI(MISSION_PRIMARY, apiKey, sys, usr, temp)
@@ -741,8 +756,22 @@ Deno.serve(async (req) => {
           reference_alternatives: Array.isArray(gen.reference_alternatives) ? gen.reference_alternatives : [],
         },
       }
+      // provenance 서버 주입(계약 v1.5 0-h·56) — 모델 응답이 아니라 서버가 채운다.
+      // mission_content_hash = provenance 제외 본문의 SHA-256(멱등·재현 추적).
+      const genAt = new Date().toISOString()
+      const contentHash = await sha256Hex(JSON.stringify(mission_content))
+      const missionWithProvenance = {
+        ...mission_content,
+        provenance: {
+          model,
+          prompt_version: 'mission_v1',
+          mission_content_hash: contentHash,
+          generated_at: genAt,
+          generation_attempt: b.failure_notes ? 2 : 1,
+        },
+      }
       return new Response(
-        JSON.stringify({ mission_content, meta: { provider: PROVIDER, model, prompt_version: 'mission_v1', generated_at: new Date().toISOString() } }),
+        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v1', generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }
