@@ -65,6 +65,27 @@ export async function fetchMissionByScenario(scenarioId: string): Promise<Runnab
   };
 }
 
+/**
+ * 관리자 검수용 — 상태와 무관하게 미션을 읽어 검증된 mission_v1으로 돌려준다.
+ * (실행 게이트가 아니라 눈검사용. admin RLS 전제.) 없으면 null.
+ */
+export async function fetchMissionForReview(
+  scenarioId: string,
+): Promise<{ mission: MissionV1; mission_status: string | null } | null> {
+  const { data, error } = await db
+    .from("scenarios")
+    .select("mission_status, mission_content")
+    .eq("scenario_id", scenarioId)
+    .maybeSingle();
+  if (error) throw new Error(`미션 조회 실패: ${error.message}`);
+  if (!data?.mission_content) return null;
+  const parsed = parseMission(data.mission_content);
+  if (!parsed.ok || !parsed.data) {
+    throw new Error("미션 데이터 형식이 유효하지 않습니다(mission_v1 스키마 불일치).");
+  }
+  return { mission: parsed.data, mission_status: data.mission_status ?? null };
+}
+
 /** 실행 가능한 미션 목록(간단한 선택용). reviewed(+DEV의 generated). */
 export async function listRunnableMissions(): Promise<MissionListItem[]> {
   const statuses = IS_DEV ? ["reviewed", "generated"] : ["reviewed"];
