@@ -1,5 +1,6 @@
 import { getTargetFeature, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targetFeatures";
-import type { MissionV1, MpjItem } from "@/lib/pragma/missionSchema";
+import type { MissionV2, MpjItemV2 } from "@/lib/pragma/missionSchema";
+import { DIRECTION_LABEL } from "@/lib/pragma/enums";
 
 // 관리자 눈검사 뷰 — 생성된 mission_v1을 읽기 전용으로 전개한다.
 // 학습자 러너와 달리 정답 대역·해설·교정 valid를 모두 펼쳐 보여준다(검토가 목적).
@@ -23,7 +24,7 @@ export function MissionPreview({
   mission,
   warnings,
 }: {
-  mission: MissionV1;
+  mission: MissionV2;
   warnings?: string[];
 }) {
   const feat = mission.unit.target_feature;
@@ -33,6 +34,7 @@ export function MissionPreview({
       {/* unit + provenance */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="font-semibold">이번 초점 · {mission.unit.learner_label}</span>
+        <span className="rounded bg-[#E7EFF5] px-1.5 py-0.5 text-[11px] font-semibold text-[#2B5B7A]">{DIRECTION_LABEL[mission.direction]}</span>
         <span className="text-muted-foreground">({feat} v{mission.unit.target_feature_version})</span>
         {p && (
           <span className="text-[11.5px] text-muted-foreground">
@@ -59,11 +61,11 @@ export function MissionPreview({
           산출 과제 (DCT · {mission.production_task.mode === "interpreting" ? "통역" : "번역"})
         </div>
         <p className="mt-1">{mission.production_task.situation_ko}</p>
-        <p className="mt-1 text-muted-foreground">원문: {mission.production_task.source_text_ko}</p>
+        <p className="mt-1 text-muted-foreground">원문: {mission.production_task.source_text}</p>
         <div className="mt-1.5">
           {mission.production_task.reference_alternatives.map((r, i) => (
             <p key={i} className="text-[12.5px]">
-              <span className="text-[#2E7D5B]">참고안{i + 1}</span> {r.zh}{" "}
+              <span className="text-[#2E7D5B]">참고안{i + 1}</span> {r.text}{" "}
               <span className="text-muted-foreground">— {r.note_ko}</span>
             </p>
           ))}
@@ -73,7 +75,7 @@ export function MissionPreview({
   );
 }
 
-function MpjReview({ item, featureCode }: { item: MpjItem; featureCode: string }) {
+function MpjReview({ item, featureCode }: { item: MpjItemV2; featureCode: string }) {
   const accepted =
     item.type === "scale4"
       ? item.accepted_scale_codes.map((c) => SCALE4_LABELS[c as Scale4Code] ?? c)
@@ -91,17 +93,17 @@ function MpjReview({ item, featureCode }: { item: MpjItem; featureCode: string }
         )}
       </div>
       <p className="mt-1 text-[12.5px] text-muted-foreground">{item.situation_ko}</p>
-      <p className="mt-0.5 text-[12.5px]">원문: {item.source_ko}</p>
+      <p className="mt-0.5 text-[12.5px]">원문: {item.source}</p>
 
       {item.type !== "multi_judge" && (
-        <p className="mt-1 font-medium">초안: {item.target_zh}</p>
+        <p className="mt-1 font-medium">초안: {item.target}</p>
       )}
 
       {item.type === "fix_choice" && (
         <ul className="mt-1 space-y-0.5">
           {item.corrections.map((c, i) => (
             <li key={i} className={c.is_valid ? "text-[#2E7D5B]" : "text-muted-foreground"}>
-              {c.is_valid ? "✓" : "✗"} {c.zh} <span className="text-[11.5px]">— {c.note_ko}</span>
+              {c.is_valid ? "✓" : "✗"} {c.text} <span className="text-[11.5px]">— {c.note_ko}</span>
             </li>
           ))}
         </ul>
@@ -120,14 +122,14 @@ function MpjReview({ item, featureCode }: { item: MpjItem; featureCode: string }
           {item.candidates.map((c, i) => (
             <li key={i}>
               <span className="text-[#2E7D5B]">[{c.accepted_band_codes.map((b) => bandLabel(featureCode, b)).join("/")}]</span>{" "}
-              {c.zh} <span className="text-[11.5px] text-muted-foreground">— {c.note_ko}</span>
+              {c.text} <span className="text-[11.5px] text-muted-foreground">— {c.note_ko}</span>
             </li>
           ))}
         </ul>
       )}
 
       <p className="mt-1 text-[12px] text-muted-foreground">해설: {item.explanation_ko}</p>
-      <p className="mt-0.5 text-[12px] text-[#2E7D5B]">적절안: {item.recommended_example_zh}</p>
+      <p className="mt-0.5 text-[12px] text-[#2E7D5B]">적절안: {item.recommended_example}</p>
     </div>
   );
 }

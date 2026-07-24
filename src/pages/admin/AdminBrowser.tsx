@@ -4,21 +4,24 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import {
   DOMAIN,
+  DIRECTION_LABEL,
   INDUSTRY,
   LEVEL,
   MODE_LABEL,
   SPEECH_ACT_UI,
   type Domain,
   type GenMode,
+  type LanguageDirection,
   type LearnerLevel,
   type SpeechActUI,
 } from "@/lib/pragma/enums";
+import { coreDirection } from "@/lib/pragma/coreSchema";
 import { THEME_LABEL, type ThemeCode } from "@/lib/pragma/scenarioTopics";
 import { DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
 import { promoteCore, reviewMission, type PromotableCore } from "@/lib/pragma/promoteMission";
 import { fetchMissionForReview } from "@/lib/mission/missionDb";
 import { MissionPreview } from "@/components/admin/MissionPreview";
-import type { MissionV1 } from "@/lib/pragma/missionSchema";
+import type { MissionV2 } from "@/lib/pragma/missionSchema";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -38,7 +41,7 @@ interface CoreRow {
   topic_code: string | null;
   review_status: string | null;
   mission_status: string | null;
-  core_content: { situation_ko?: string; source_text_ko?: string } | null;
+  core_content: { situation_ko?: string; source_text_ko?: string; direction?: string } | null;
 }
 
 const ACTS = Object.keys(SPEECH_ACT_UI) as SpeechActUI[];
@@ -52,11 +55,12 @@ const AdminBrowser = () => {
   const [fMode, setFMode] = useState<"all" | GenMode>("all");
   const [fDomain, setFDomain] = useState<"all" | Domain>("all");
   const [fTheme, setFTheme] = useState<"all" | ThemeCode>("all");
+  const [fDirection, setFDirection] = useState<"all" | LanguageDirection>("all");
   const [sel, setSel] = useState<{ act: SpeechActUI; level: LearnerLevel } | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // 승격 중인 scenario_id
   const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
   // 눈검사 미리보기 — scenario_id → {mission, warnings}. openId = 펼친 행.
-  const [preview, setPreview] = useState<Record<string, { mission: MissionV1; warnings: string[] }>>({});
+  const [preview, setPreview] = useState<Record<string, { mission: MissionV2; warnings: string[] }>>({});
   const [openId, setOpenId] = useState<string | null>(null);
 
   const togglePreview = async (r: CoreRow) => {
@@ -144,9 +148,10 @@ const AdminBrowser = () => {
         (r) =>
           (fMode === "all" || r.mode === fMode) &&
           (fDomain === "all" || r.domain === fDomain) &&
-          (fTheme === "all" || r.theme_code === fTheme),
+          (fTheme === "all" || r.theme_code === fTheme) &&
+          (fDirection === "all" || coreDirection(r.core_content) === fDirection),
       ),
-    [rows, fMode, fDomain, fTheme],
+    [rows, fMode, fDomain, fTheme, fDirection],
   );
 
   // (act|level) → { total, translation, interpreting } (54셀 감사 대응 — 계약 0-j·73)
@@ -195,6 +200,8 @@ const AdminBrowser = () => {
             opts={[["all", "전체"], ...Object.entries(DOMAIN)]} />
           <Filter label="시나리오 테마" value={fTheme} onChange={(v) => setFTheme(v as typeof fTheme)}
             opts={[["all", "전체"], ...Object.entries(THEME_LABEL)]} />
+          <Filter label="언어 방향" value={fDirection} onChange={(v) => setFDirection(v as typeof fDirection)}
+            opts={[["all", "전체"], ...Object.entries(DIRECTION_LABEL)]} />
         </div>
       </section>
 
@@ -280,6 +287,7 @@ const AdminBrowser = () => {
                       {r.theme_code && (
                         <Badge variant="secondary" className="font-normal">{THEME_LABEL[r.theme_code]}</Badge>
                       )}
+                      <Badge variant="secondary" className="font-normal">{DIRECTION_LABEL[coreDirection(r.core_content)]}</Badge>
                       <Badge
                         variant="secondary"
                         className={`font-normal ${r.mission_status === "reviewed" ? "bg-emerald-100 text-emerald-900" : ""}`}

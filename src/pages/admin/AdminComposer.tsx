@@ -17,6 +17,7 @@ import {
   LEVEL,
   MODE_LABEL,
   SPEECH_ACT_UI,
+  type LanguageDirection,
   type LearnerLevel,
   type SpeechActUI,
 } from "@/lib/pragma/enums";
@@ -187,16 +188,19 @@ const AdminComposer = () => {
       if (w.type !== "regular" || !w.speech_act) continue;
       const act = w.speech_act as SpeechActUI;
       const slots = w.scenario_slots ?? outline.scenarios_per_week ?? 3;
-      // 1차: 화행 + 수준 + 선택 테마
+      // 1차: 화행 + 수준 + 방향(outline) + 선택 테마
       let cands = cores.filter(
         (c) =>
           c.speech_act === act &&
           c.learner_level === level &&
+          c.direction === outline.language_direction &&
           (themes.length === 0 || (c.theme_code != null && themes.includes(c.theme_code))),
       );
-      // 부족하면 테마 조건 완화(화행 + 수준만)
+      // 부족하면 테마 조건 완화(화행 + 수준 + 방향만) — 방향은 절대 완화하지 않는다(0-l·91).
       if (cands.length < slots) {
-        cands = cores.filter((c) => c.speech_act === act && c.learner_level === level);
+        cands = cores.filter(
+          (c) => c.speech_act === act && c.learner_level === level && c.direction === outline.language_direction,
+        );
       }
       const picked = pickByRatio(cands, slots, interpRatio);
       if (picked.length > 0) {
@@ -411,6 +415,7 @@ const AdminComposer = () => {
                 candidates={cores}
                 level={level}
                 themes={themes}
+                direction={(outline?.language_direction as LanguageDirection) ?? "ko_zh"}
                 adding={addingWeek === w.week_no}
                 onToggleAdd={() =>
                   setAddingWeek((cur) => (cur === w.week_no ? null : w.week_no))
@@ -442,6 +447,7 @@ function WeekRow({
   candidates,
   level,
   themes,
+  direction,
   adding,
   onToggleAdd,
   onAdd,
@@ -453,6 +459,8 @@ function WeekRow({
   candidates: ComposerCore[];
   level: LearnerLevel;
   themes: ThemeCode[];
+  /** outline의 언어 방향 — 후보 필터 절대 조건(0-l·91, 오배정 창 방지) */
+  direction: LanguageDirection;
   adding: boolean;
   onToggleAdd: () => void;
   onAdd: (c: ComposerCore) => void;
@@ -474,6 +482,7 @@ function WeekRow({
       !assignedIds.has(c.scenario_id) &&
       (act ? c.speech_act === act : true) &&
       c.learner_level === level &&
+      c.direction === direction &&
       (themes.length === 0 || (c.theme_code != null && themes.includes(c.theme_code))),
   );
 

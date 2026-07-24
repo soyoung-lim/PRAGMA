@@ -6,15 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
+  DIRECTION_LABEL,
   DOMAIN,
   INDUSTRY,
   LEVEL,
   MODE_LABEL,
   SPEECH_ACT_UI,
+  type LanguageDirection,
   type LearnerLevel,
 } from "@/lib/pragma/enums";
 import {
   DEFAULT_QUOTA,
+  ZH_KO_SMOKE_ACTS,
+  ZH_KO_SMOKE_QUOTA,
   buildBatchPlan,
   interpretingCount,
   summarizePlan,
@@ -42,12 +46,23 @@ const LEVEL_ORDER: LearnerLevel[] = ["beginner_intermediate", "intermediate", "a
 const AdminBatch = () => {
   const [quota, setQuota] = useState<BatchQuota>(DEFAULT_QUOTA);
   const [genMode, setGenMode] = useState<GenMode>("core");
+  // 언어 방향(0-l·89) — zh_ko는 스모크 쿼터(18셀·승격 가능 3화행)로 자동 전환.
+  const [direction, setDirection] = useState<LanguageDirection>("ko_zh");
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState<AnyResult[]>([]);
   const [done, setDone] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
-  const plan = useMemo(() => buildBatchPlan(quota), [quota]);
+  const switchDirection = (d: LanguageDirection) => {
+    if (running) return;
+    setDirection(d);
+    setQuota(d === "zh_ko" ? ZH_KO_SMOKE_QUOTA : DEFAULT_QUOTA);
+  };
+
+  const plan = useMemo(
+    () => buildBatchPlan(quota, direction, direction === "zh_ko" ? ZH_KO_SMOKE_ACTS : undefined),
+    [quota, direction],
+  );
   const summary = useMemo(() => summarizePlan(plan), [plan]);
 
   const setLevelQuota = (level: LearnerLevel, value: number) =>
@@ -114,6 +129,29 @@ const AdminBatch = () => {
           {genMode === "core"
             ? "상황·원문·태그만 생성해 500개 뱅크를 채웁니다(scenario_core_v1). 미션(MPJ+DCT)은 편성 선별분만 승격 생성."
             : "⚠️ 구버전 — candidates+feedback(판단형 셸용). 신규 뱅크에는 코어 모드를 쓰세요."}
+        </p>
+
+        <h3 className="mt-4 text-[15px] font-bold">언어 방향</h3>
+        <div className="mt-3 flex gap-2">
+          <Button
+            variant={direction === "ko_zh" ? "default" : "outline"}
+            onClick={() => switchDirection("ko_zh")}
+            disabled={running}
+          >
+            {DIRECTION_LABEL.ko_zh}
+          </Button>
+          <Button
+            variant={direction === "zh_ko" ? "default" : "outline"}
+            onClick={() => switchDirection("zh_ko")}
+            disabled={running}
+          >
+            {DIRECTION_LABEL.zh_ko} (스모크)
+          </Button>
+        </div>
+        <p className="mt-2 text-[12.5px] text-muted-foreground">
+          {direction === "zh_ko"
+            ? "중→한 스모크 쿼터(계약 0-l·89) — 승격 가능 3화행(요청·거절·감사) × 수준3 × 모드2 = 18셀, 셀당 ≥1. 500 본 배치는 한→중 중심 유지."
+            : "500 본 배치 대상(계약 0-h·57) — 화행9 × 수준3 × 모드2 = 54셀, 셀당 ≥3 목표."}
         </p>
       </section>
 
