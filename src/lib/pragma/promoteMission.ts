@@ -11,11 +11,14 @@ import { checkMission, type CheckContext } from "@/lib/pragma/missionRules";
 import { getTargetFeature, DEFAULT_FEATURE_BY_ACT, type TargetFeature } from "@/lib/pragma/targetFeatures";
 import { errorPatternsForAct } from "@/lib/pragma/errorPatterns";
 import { parseMission, type MissionV1 } from "@/lib/pragma/missionSchema";
+import { normalizeCore, coreDirection } from "@/lib/pragma/coreSchema";
 import {
   SPEECH_ACT_UI,
   LEVEL,
+  DIRECTION_LABEL,
   type Domain,
   type GenMode,
+  type LanguageDirection,
   type LearnerLevel,
   type SpeechActUI,
 } from "@/lib/pragma/enums";
@@ -29,18 +32,22 @@ const LEVEL_POLICY: Record<LearnerLevel, string> = {
 
 const isResponseAct = (act: SpeechActUI) => act === "refusal" || act === "opposition";
 
-function featureForGen(f: TargetFeature) {
+// 방향에 맞는 카탈로그 변형을 골라 엣지에 보낸다(0-l·86). zh_ko는 _zh_ko 필드,
+// 없으면 ko_zh 기본값(하지만 승격 전 가드가 zh_ko 변형 부재를 막는다).
+function featureForGen(f: TargetFeature, dir: LanguageDirection) {
+  const zhko = dir === "zh_ko";
   return {
     code: f.code,
     version: f.version,
     learner_label: f.learner_label,
-    operational_definition: f.operational_definition,
+    operational_definition:
+      zhko && f.operational_definition_zh_ko ? f.operational_definition_zh_ko : f.operational_definition,
     band_schema: f.band_schema,
     within_band_code: f.within_band_code,
-    relevant_resources: f.relevant_resources,
-    excluded_confounds: f.excluded_confounds,
+    relevant_resources: zhko && f.relevant_resources_zh_ko ? f.relevant_resources_zh_ko : f.relevant_resources,
+    excluded_confounds: zhko && f.excluded_confounds_zh_ko ? f.excluded_confounds_zh_ko : f.excluded_confounds,
     closing_principle_ko: f.closing_principle_ko,
-    counter_rule_note: f.counter_rule_note,
+    counter_rule_note: zhko && f.counter_rule_note_zh_ko ? f.counter_rule_note_zh_ko : f.counter_rule_note,
   };
 }
 
@@ -55,6 +62,8 @@ export interface PromotableCore {
   source_modality: string | null;
   theme_code: ThemeCode | null;
   topic_code: string | null;
+  /** 행 태그(0-l·82) — core_content.direction이 정본, 이건 조회 필터용. 없으면 ko_zh */
+  language_direction?: LanguageDirection | null;
   core_content: Record<string, unknown> | null;
 }
 
@@ -85,14 +94,27 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
   if (!feature) {
     return { ok: false, error: `'${SPEECH_ACT_UI[core.speech_act]}'는 아직 화용 초점 카탈로그가 없어 승격할 수 없습니다.` };
   }
-  const cc = core.core_content ?? {};
+  // 방향 = core_content.direction(정본, 0-l·82) 우선, 없으면 행 태그, 없으면 ko_zh.
+  const direction: LanguageDirection =
+    coreDirection(core.core_content) === "zh_ko" || core.language_direction === "zh_ko" ? "zh_ko" : "ko_zh";
+  // zh_ko 승격은 카탈로그 방향 변형이 있는 초점만(0-l·86·91).
+  if (direction === "zh_ko" && !feature.operational_definition_zh_ko) {
+    return {
+      ok: false,
+      error: `'${SPEECH_ACT_UI[core.speech_act]}'는 아직 ${DIRECTION_LABEL.zh_ko} 카탈로그 변형이 없어 승격할 수 없습니다.`,
+    };
+  }
+  // core_content를 정규화(v1/v2 모두) 후 현 배포 엣지가 기대하는 v1 이름으로 전달.
+  // (라운드2 엣지가 방향·중립 이름을 읽도록 갱신되면 함께 재조정한다.)
+  const nc = normalizeCore(core.core_content ?? {});
+  const normCore = nc.ok ? nc.data : undefined;
   const missionCore = {
-    situation_ko: cc.situation_ko,
-    relation_ko: cc.relation_ko,
-    source_text_ko: cc.source_text_ko,
-    preceding_turn_zh: cc.preceding_turn_zh ?? null,
-    pdr: cc.pdr,
-    channel: cc.channel,
+    situation_ko: normCore?.situation_ko,
+    relation_ko: normCore?.relation_ko,
+    source_text_ko: normCore?.source_text,
+    preceding_turn_zh: normCore?.preceding_turn ?? null,
+    pdr: normCore?.pdr,
+    channel: normCore?.channel,
     source_modality: core.source_modality,
   };
   const ctx: CheckContext = {
@@ -105,6 +127,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     mode: core.mode ?? "translation",
     source_modality: (core.source_modality ?? "written") as "written" | "spoken",
     planned_target_feature: feature.code, // R24
+    direction, // 0-l·85 — 생성 미션의 방향이 요청과 일치하는지 검사
   };
 
   let mission: MissionV1 | undefined;
@@ -117,10 +140,11 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
       body: {
         action: "mission",
         mission: {
+          direction, // 0-l·89 — 엣지가 방향별 원문·산출 언어 결정(라운드2 배포 후 활성)
           speech_act_ko: SPEECH_ACT_UI[core.speech_act],
           level_ko: LEVEL[core.learner_level],
           level_policy_ko: LEVEL_POLICY[core.learner_level],
-          feature: featureForGen(feature),
+          feature: featureForGen(feature, direction),
           core: missionCore,
           error_pattern_hints_ko: errorPatternsForAct(core.speech_act).map(
             (p) => `${p.description} (예: ${p.approvedExample})`,
@@ -137,7 +161,8 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
       continue;
     }
     mission = parsed.data;
-    check = checkMission(mission, ctx, cc as never);
+    // R23 계승 검사는 원본 core_content(v1/v2)를 넘긴다 — checkMission이 내부 정규화.
+    check = checkMission(mission, ctx, core.core_content ?? undefined);
     if (check.result !== "fail") break;
     failureNotes = check.violations
       .filter((x) => x.level === "fail")
