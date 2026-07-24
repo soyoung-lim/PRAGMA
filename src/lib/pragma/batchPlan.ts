@@ -11,8 +11,8 @@
 // 입문·고급은 구조가 도는 것만 보이는 배분이다.
 
 import {
-  type ChannelUI,
   type Domain,
+  type GenMode,
   type IndustrySector,
   type LanguageDirection,
   type LearnerLevel,
@@ -32,7 +32,8 @@ export interface BatchCell {
   speech_act_ui: SpeechActUI;
   level: LearnerLevel;
   domain: Domain;
-  channel: ChannelUI;
+  /** 수행 방식 = 1차 축(channel 폐기 2026-07-25). translation(텍스트 번역) | stt_interpreting(음성 통역). */
+  mode: GenMode;
   /** domain === "work" 일 때만 채운다 (스키마 제약과 동일) */
   industry: IndustrySector | null;
   pdr_power: PdrPower;
@@ -129,9 +130,6 @@ const SPEECH_ACTS: SpeechActUI[] = [
 const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
 const DOMAINS: Domain[] = ["daily", "school", "work"];
 
-const TRANSLATION_CHANNELS: ChannelUI[] = ["messenger", "email"];
-const INTERPRETING_CHANNELS: ChannelUI[] = ["facetoface", "phone"];
-
 const INDUSTRIES: IndustrySector[] = [
   "trade_distribution", "IT_platform", "manufacturing", "tourism_hospitality",
   "education_research", "public_international_affairs", "culture_content_media",
@@ -181,16 +179,15 @@ export function buildBatchPlan(
     const nInterp = interpretingCount(nTrans, quota.interpretingRatio);
 
     for (const speech_act_ui of acts) {
-      // 모드 = 1차 쿼터 축(0-h·57). 각 (화행×수준)에서 번역·통역을 각각 보장 생성한다.
-      // 도메인·theme·산업·P/D/R·채널서브타입 = 2차 회전(seq 커서).
-      const modeSlots: { channels: ChannelUI[]; count: number }[] = [
-        { channels: TRANSLATION_CHANNELS, count: nTrans },
-        { channels: INTERPRETING_CHANNELS, count: nInterp },
+      // task_mode = 1차 쿼터 축(0-h·57, channel 폐기 2026-07-25). 각 (화행×수준)에서
+      // 번역·통역을 각각 보장 생성한다. 도메인·theme·산업·P/D/R = 2차 회전(seq 커서).
+      const modeSlots: { mode: GenMode; count: number }[] = [
+        { mode: "translation", count: nTrans },
+        { mode: "stt_interpreting", count: nInterp },
       ];
       for (const slot of modeSlots) {
         for (let i = 0; i < slot.count; i += 1) {
           const domain = DOMAINS[seq % DOMAINS.length];
-          const channel = slot.channels[seq % slot.channels.length];
           const pdr = PDR_ROTATION[seq % PDR_ROTATION.length];
           const topic = selectTopic(speech_act_ui, domain, seq, themeCount, topicCount);
           themeCount[topic.themeCode] = (themeCount[topic.themeCode] ?? 0) + 1;
@@ -200,7 +197,7 @@ export function buildBatchPlan(
             speech_act_ui,
             level,
             domain,
-            channel,
+            mode: slot.mode,
             industry: domain === "work" ? INDUSTRIES[seq % INDUSTRIES.length] : null,
             pdr_power: pdr.p,
             pdr_distance: pdr.d,
@@ -268,8 +265,7 @@ export function summarizePlan(cells: BatchCell[], targetActs: SpeechActUI[] = SP
   let translation = 0;
   let interpreting = 0;
 
-  const modeOf = (c: BatchCell) =>
-    INTERPRETING_CHANNELS.includes(c.channel) ? "stt_interpreting" : "translation";
+  const modeOf = (c: BatchCell) => c.mode;
 
   for (const c of cells) {
     bump(byLevel, c.level, c.count);

@@ -61,6 +61,9 @@ export const PdrSchema = z.object({
 });
 export type Pdr = z.infer<typeof PdrSchema>;
 
+// ⚠️ channel 폐기(2026-07-25 결정): channel은 더 이상 조합축·생성조건·판정축·학습분기가 아니다.
+// 말투·화용 적절성은 P/D/R + target_feature + task_mode가 담당한다(매체=격식 자동결정은 오모델링).
+// 스키마에는 legacy로만 남겨 기존 저장 데이터를 읽을 수 있게 하고, 신규 생성에서 필수로 요구하지 않는다.
 export const ChannelSchema = z.enum(["email", "messenger", "facetoface", "phone"]);
 export const SourceModalitySchema = z.enum(["written", "spoken"]);
 
@@ -75,7 +78,8 @@ export const ScenarioCoreV1Schema = z.object({
   /** 거절·응답류 필수(R8). 그 외에는 null 허용 */
   preceding_turn_zh: z.string().nullable(),
   pdr: PdrSchema,
-  channel: ChannelSchema,
+  /** @deprecated channel 폐기(2026-07-25) — legacy 읽기 호환용, 신규 생성 미요구 */
+  channel: ChannelSchema.optional(),
   /** 편성 화면용 한 줄 (선택) */
   brief_note_ko: z.string().optional(),
 });
@@ -110,7 +114,8 @@ export const ScenarioCoreV2Schema = z.object({
   /** 대화 상대(target 언어 화자)의 선행 발화. 응답류 필수(R8). 그 외 null */
   preceding_turn: z.string().nullable(),
   pdr: PdrSchema,
-  channel: ChannelSchema,
+  /** @deprecated channel 폐기(2026-07-25) — legacy 읽기 호환용, 신규 생성 미요구 */
+  channel: ChannelSchema.optional(),
   brief_note_ko: z.string().optional(),
 });
 export type ScenarioCoreV2 = z.infer<typeof ScenarioCoreV2Schema>;
@@ -146,7 +151,7 @@ export function normalizeCore(input: unknown): {
       source_text: c.source_text_ko,
       preceding_turn: c.preceding_turn_zh,
       pdr: c.pdr,
-      channel: c.channel,
+      ...(c.channel ? { channel: c.channel } : {}), // legacy only
       ...(c.brief_note_ko ? { brief_note_ko: c.brief_note_ko } : {}),
     },
   };

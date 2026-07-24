@@ -384,8 +384,9 @@ interface CoreGenBody {
   speech_act_ko: string
   level_ko: string
   domain_ko: string
-  channel: string
-  channel_ko: string
+  mode?: string // 수행 방식(channel 폐기 2026-07-25) — translation | stt_interpreting
+  channel?: string // @deprecated legacy(무시)
+  channel_ko?: string // @deprecated legacy(무시)
   pdr: PdrJson
   source_modality: 'written' | 'spoken'
   situation_seed_ko: string
@@ -427,7 +428,6 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
     `- 화행: ${b.speech_act_ko}`,
     `- 학습자 수준: ${b.level_ko}`,
     `- 도메인: ${b.domain_ko}`,
-    `- 채널: ${b.channel_ko}`,
     `- 관계 P(지위): ${PDR_P_KO[b.pdr.p] ?? b.pdr.p}`,
     `- 관계 D(거리): ${PDR_D_KO[b.pdr.d] ?? b.pdr.d}`,
     `- 관계 R(부담): ${PDR_R_KO[b.pdr.r] ?? b.pdr.r}`,
@@ -439,7 +439,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
       `- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 ${srcL} 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지.`,
     )
   } else {
-    parts.push(`- 수행 모드: 번역 — source_text는 해당 채널의 ${srcL} 문어체.`)
+    parts.push(`- 수행 모드: 번역 — source_text는 자연스러운 ${srcL} 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정.`)
   }
   if (b.is_response_act) {
     parts.push(
@@ -477,7 +477,7 @@ interface MissionGenBody {
     source_text_ko: string
     preceding_turn_zh: string | null
     pdr: PdrJson
-    channel: string
+    channel?: string // @deprecated channel 폐기(2026-07-25) — legacy(무시)
     source_modality: 'written' | 'spoken'
   }
   error_pattern_hints_ko: string[]
@@ -518,7 +518,6 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(sourc
 출력은 아래 JSON만, 마크다운·설명 없이 반환합니다.
 
 공통 코드값(모든 문항 — 한국어 라벨 금지, 반드시 아래 코드로):
-  channel: "email" | "messenger" | "facetoface" | "phone"
   pdr.p: "speaker_lower" | "equal" | "speaker_higher"
   pdr.d: "close" | "acquaintance" | "distant"
   pdr.r: "low" | "mid" | "high"
@@ -531,7 +530,7 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(sourc
   "mpj_items": [
     {
       "type": "scale4",
-      "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "situation_ko": "…", "relation_ko": "…", "pdr": {"p":"코드","d":"코드","r":"코드"},
       "source": "판단 대상의 ${srcL} 원문",
       "target": "판단 대상 ${tgtL} 산출안",
       "highlights": ["target의 실제 부분문자열"],
@@ -541,14 +540,14 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(sourc
     },
     {
       "type": "judge3",
-      "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "situation_ko": "…", "relation_ko": "…", "pdr": {"p":"코드","d":"코드","r":"코드"},
       "source": "…", "target": "…", "highlights": ["…"],
       "accepted_band_codes": ["band 1개 — 세트 전체에 '${f.within_band_code}' 정답이 최소 1문항 존재하도록"],
       "explanation_ko": "…", "recommended_example": "…"
     },
     {
       "type": "fix_choice",
-      "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "situation_ko": "…", "relation_ko": "…", "pdr": {"p":"코드","d":"코드","r":"코드"},
       "source": "…", "target": "부적절한 ${tgtL} 산출안", "highlights": ["…"],
       "accepted_band_codes": ["부적절 band"],
       "corrections": [
@@ -561,7 +560,7 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(sourc
     },
     {
       "type": "reason_conf",
-      "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "situation_ko": "…", "relation_ko": "…", "pdr": {"p":"코드","d":"코드","r":"코드"},
       "source": "…", "target": "부적절한 ${tgtL} 산출안", "highlights": ["…"],
       "accepted_band_codes": ["부적절 band"],
       "reasons": [
@@ -573,7 +572,7 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(sourc
     },
     {
       "type": "multi_judge",
-      "situation_ko": "…", "relation_ko": "…", "channel": "코드", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "situation_ko": "…", "relation_ko": "…", "pdr": {"p":"코드","d":"코드","r":"코드"},
       "source": "…",
       "candidates": [
         {"text":"…(${tgtL})","accepted_band_codes":["band 배열, 경계는 길이>1"],"note_ko":"…"},
@@ -591,7 +590,7 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(sourc
 
 핵심 규칙:
 - mpj_items는 **정확히 5개**.
-- **모든 문항은 예외 없이 공통 필드 전부 포함**: situation_ko, relation_ko, channel, pdr{p,d,r}, source, explanation_ko, recommended_example. 위 스키마의 "..."는 이 공통 필드 전부를 뜻합니다(multi_judge 포함 — target만 없음).
+- **모든 문항은 예외 없이 공통 필드 전부 포함**: situation_ko, relation_ko, pdr{p,d,r}, source, explanation_ko, recommended_example. 위 스키마의 "..."는 이 공통 필드 전부를 뜻합니다(multi_judge 포함 — target만 없음).
 - 유형 순서 고정: scale4 → judge3 → fix_choice → reason_conf → multi_judge.
 - 🔴 **판정 대역은 표현 형식이 아니라 관계·부담(P·D·R)에 상대적입니다.** 친밀·동등·저부담 상황에서는
   직접형·간결형도 적절할 수 있으며, **완화 표현이 없다는 이유만으로 과소 대역으로 판정하지 마세요.**
@@ -609,7 +608,7 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(sourc
   relation_ko의 관계 서술과 pdr 값이 반드시 일치해야 합니다.
 - 모든 후보는 원문과 핵심 명제·발화 의도·화행 목적이 동일. 새 사실·이유·약속 추가 금지(정형 표현 ${formulaic}는 예외).
 - 차이는 오직 이 화용 초점에서만. 문법·의미·길이가 정답 단서가 되면 안 됨.
-- **channel·pdr 값은 반드시 위 '공통 코드값'만 사용**(한국어 라벨 "동등"·"메시지" 등 절대 금지).
+- **pdr 값은 반드시 위 '공통 코드값'만 사용**(한국어 라벨 "동등" 등 절대 금지).
 - multi_judge 후보 5개 구성: **부적절 계열 2개 + 적정(${f.within_band_code}) 2개 + 과잉 1개**.
   · 🔴 **부적절·과잉은 '강도/방향'의 문제이지 '길이'의 문제가 아닙니다.** 짧아도 과할 수 있고(예: ${shortOverEx}),
     길어도 부족할 수 있습니다(예: 형식적 감사에 군말을 붙였지만 정작 성의가 약한 긴 문장).
@@ -792,7 +791,7 @@ Deno.serve(async (req) => {
           source_modality: b.core.source_modality,
           situation_ko: b.core.situation_ko,
           relation_ko: b.core.relation_ko,
-          channel: b.core.channel,
+          // channel 폐기(2026-07-25) — production_task에 매체 축을 넣지 않는다.
           pdr: b.core.pdr,
           source_text: b.core.source_text_ko,          // 코어 계승(R23) — 입력 body는 v1 이름
           preceding_turn: b.core.preceding_turn_zh ?? null,

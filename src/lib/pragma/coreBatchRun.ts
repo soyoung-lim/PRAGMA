@@ -6,11 +6,10 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import {
-  CHANNEL_TO_MODE,
-  CHANNEL_UI,
   DOMAIN,
   LEVEL,
   SPEECH_ACT_UI,
+  type GenMode,
   type LanguageDirection,
 } from "@/lib/pragma/enums";
 import {
@@ -48,8 +47,15 @@ export interface CoreRunOptions {
   signal?: AbortSignal;
 }
 
+// task_mode → source_modality (channel 폐기 2026-07-25 — 매체가 아니라 수행 방식이 결정).
+const modalityOf = (mode: GenMode) => (mode === "stt_interpreting" ? "spoken" : "written");
+// genre 행 태그(legacy)를 task_mode에서 파생하기 위한 legacy channel 토큰.
+// channel은 더 이상 축이 아니지만, save_generated_core RPC가 core_content.channel로
+// genre를 파생하므로(DB 무변경 유지) 저장 직전 mode에서 이 값을 주입한다.
+const legacyChannelOf = (mode: GenMode) => (mode === "stt_interpreting" ? "facetoface" : "messenger");
+
 function ctxOf(cell: BatchCell): CheckContext {
-  const mode = CHANNEL_TO_MODE[cell.channel];
+  const mode = cell.mode;
   return {
     speech_act: cell.speech_act_ui,
     level: cell.level,
@@ -58,7 +64,7 @@ function ctxOf(cell: BatchCell): CheckContext {
     topic_code: cell.topic_code,
     industry: cell.industry,
     mode,
-    source_modality: mode === "stt_interpreting" ? "spoken" : "written",
+    source_modality: modalityOf(mode),
     direction: cell.direction, // 0-l·89 — 데이터 방향과 요청 방향 일치 검사
   };
 }
@@ -78,8 +84,8 @@ export async function runCoreCell(
   opts: CoreRunOptions,
 ): Promise<CoreCellResult> {
   try {
-    const mode = CHANNEL_TO_MODE[cell.channel];
-    const sourceModality = mode === "stt_interpreting" ? "spoken" : "written";
+    const mode = cell.mode;
+    const sourceModality = modalityOf(mode);
     const isResponse = RESPONSE_ACTS.has(cell.speech_act_ui);
 
     // 1. 코어 생성 (엣지함수 action:'core')
@@ -91,8 +97,10 @@ export async function runCoreCell(
           speech_act_ko: SPEECH_ACT_UI[cell.speech_act_ui],
           level_ko: LEVEL[cell.level],
           domain_ko: DOMAIN[cell.domain],
-          channel: cell.channel,
-          channel_ko: CHANNEL_UI[cell.channel],
+          mode, // channel 폐기(2026-07-25) — 수행 방식이 1차 축(매체 관습 강제 제거)
+          // 재배포 전 live 엣지 호환용 legacy channel(mode 파생). 재배포 후 엣지는 mode를 본다.
+          channel: legacyChannelOf(mode),
+          channel_ko: mode === "stt_interpreting" ? "구두(통역)" : "서면(번역)",
           pdr: {
             p: PDR_POWER_ENUM_TO_JSON[cell.pdr_power],
             d: PDR_DISTANCE_ENUM_TO_JSON[cell.pdr_distance],
@@ -125,6 +133,9 @@ export async function runCoreCell(
     }
 
     // 3. save_generated_core RPC (검증 통과분만)
+    // genre 행 태그(legacy)를 task_mode에서 파생 — RPC가 core_content.channel로 genre를
+    // 만들므로(DB 무변경) 저장 직전 mode에서 legacy channel을 주입한다. channel은 축이 아님.
+    core.channel = legacyChannelOf(mode);
     const itemKey = `${cell.speech_act_ui}|${cell.level}|${cell.domain}|${cell.topic_code}|${index}`;
     const payload = {
       title: core.brief_note_ko || core.situation_ko?.slice(0, 40),
