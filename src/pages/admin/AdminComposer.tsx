@@ -27,7 +27,7 @@ import {
   type CoursePreset,
   type ThemeCode,
 } from "@/lib/pragma/scenarioTopics";
-import { getTargetFeature } from "@/lib/pragma/targetFeatures";
+import { getTargetFeature, DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
 
 // 15주 편성기 (태스크 D) — 관리자구조md §6-2 + 계약 0-g·47.
 // 흐름: 커리큘럼 선택 → 수준·테마(독립 선택, 프리셋으로 빠른 채우기) → 자동 채우기
@@ -396,6 +396,10 @@ const AdminComposer = () => {
             </span>
             {savedInfo && <span className="text-emerald-700">✓ {savedInfo}</span>}
           </div>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            화용 초점 열: <span className="text-muted-foreground">계획</span> = 주차 화행의 기본 초점 ·{" "}
+            <span className="text-emerald-800">확정</span> = 미션 승격분. RQ2 구현으로 계산되는 것은 확정분입니다.
+          </p>
 
           <div className="mt-3 space-y-3">
             {weeks.map((w) => (
@@ -456,6 +460,12 @@ function WeekRow({
 }) {
   const act = week.speech_act as SpeechActUI | null;
   const isAssignable = week.type === "regular";
+  // 계획 초점 = 주차 화행의 카탈로그 기본 초점(v1.5 0-h·55). 미션 승격 전에도 편성표가
+  // "이 주차가 어떤 화용 초점을 겨냥하는가"를 보이게 한다(RQ2 증명 — 확정은 승격분만).
+  const plannedFeatureCode = act ? DEFAULT_FEATURE_BY_ACT[act] : undefined;
+  const plannedLabel = plannedFeatureCode
+    ? getTargetFeature(plannedFeatureCode)?.learner_label ?? plannedFeatureCode
+    : null;
 
   // 후보: 화행(있으면) + 수준 + 선택 테마 일치, 이미 배정된 것 제외
   const assignedIds = new Set(items.map((it) => it.scenario_id));
@@ -526,7 +536,9 @@ function WeekRow({
                     </td>
                     <td className="py-1.5 pr-3">
                       {c?.target_feature ? (
-                        feat?.learner_label ?? c.target_feature
+                        <span className="text-emerald-800">확정 · {feat?.learner_label ?? c.target_feature}</span>
+                      ) : plannedLabel ? (
+                        <span className="text-muted-foreground">계획 · {plannedLabel}</span>
                       ) : (
                         <span className="text-amber-600">미지정</span>
                       )}

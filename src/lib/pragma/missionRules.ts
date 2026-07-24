@@ -1,4 +1,4 @@
-// 규칙검사 R1~R23 — 결정론·API 0회. 생성계약 v1.3 §8.
+// 규칙검사 R1~R24 — 결정론·API 0회. 생성계약 v1.5 §8.
 //
 // 순수 함수. 코드가 검사할 수 있는 것은 필드·선택지 수·중복·길이 편차·형식·
 // 코드값 정합뿐이다(관리자구조md §3-①). 의미 보존·자연성·화행 구현은 검사 불가 →
@@ -38,6 +38,8 @@ export interface CheckContext {
   industry?: string | null;
   mode: "translation" | "stt_interpreting";
   source_modality: "written" | "spoken";
+  /** 승격 입력의 계획 화용 초점(주차/코어 화행의 카탈로그 기본 초점 — v1.5 0-h·55). R24 검사용. */
+  planned_target_feature?: string;
 }
 
 // ── 문자 범위 ─────────────────────────────────────────────────────────
@@ -128,7 +130,7 @@ function checkCoreCommon(
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// 미션 검사 (R1~R23 전체)
+// 미션 검사 (R1~R24 전체)
 // ══════════════════════════════════════════════════════════════════════
 export function checkMission(
   missionInput: unknown,
@@ -306,12 +308,46 @@ export function checkMission(
   // ── R21 recommended_example가 해당 문항 판정과 모순되지 않음(warning) ──
   checkRecommendedConsistency(v, m, withinCode);
 
+  // ── R20 mission_content.provenance 존재·필수값(v1.5 0-h·56) ──
+  checkProvenance(v, m);
+
   // ── R23 미션 production_task가 코어 계승 ──
   if (core) {
     checkInheritance(v, m, core);
   }
 
+  // ── R24 승격 입력 계획 초점 = unit.target_feature(v1.5 0-h·55) ──
+  if (ctx.planned_target_feature && m.unit.target_feature !== ctx.planned_target_feature) {
+    add(
+      v,
+      "R24",
+      "fail",
+      `unit.target_feature(${m.unit.target_feature}) ≠ 계획 초점(${ctx.planned_target_feature})`,
+    );
+  }
+
   return finalize(v);
+}
+
+// R20 — 미션 provenance 객체 존재 + 필수값(prompt_snapshot_hash는 선택).
+function checkProvenance(v: RuleViolation[], m: MissionV1) {
+  const p = m.provenance;
+  if (!p) {
+    add(v, "R20", "fail", "mission_content.provenance 객체가 없음");
+    return;
+  }
+  const required: [keyof typeof p, string][] = [
+    ["model", "model"],
+    ["prompt_version", "prompt_version"],
+    ["mission_content_hash", "mission_content_hash"],
+    ["generated_at", "generated_at"],
+  ];
+  for (const [key, label] of required) {
+    if (!p[key]) add(v, "R20", "fail", `provenance.${label} 누락`);
+  }
+  if (!(typeof p.generation_attempt === "number" && p.generation_attempt >= 1)) {
+    add(v, "R20", "fail", "provenance.generation_attempt는 1 이상 정수");
+  }
 }
 
 // ── 헬퍼 ──────────────────────────────────────────────────────────────
