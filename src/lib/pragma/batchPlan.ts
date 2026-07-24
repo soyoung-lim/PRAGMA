@@ -60,6 +60,7 @@ function selectTopic(
   domain: Domain,
   seq: number,
   themeCount: Record<string, number>,
+  topicCount: Record<string, number>,
 ): ScenarioTopic {
   const actMatch = SCENARIO_TOPICS.filter(
     (t) => t.allowedDomains.includes(domain) && (!t.allowedSpeechActs || t.allowedSpeechActs.includes(act)),
@@ -67,14 +68,18 @@ function selectTopic(
   const pool = actMatch.length ? actMatch : SCENARIO_TOPICS.filter((t) => t.allowedDomains.includes(domain));
   const finalPool = pool.length ? pool : SCENARIO_TOPICS;
 
-  // 과소 테마 우선. seq 오프셋으로 순회 시작점을 돌려 동률·같은 테마 내 topic 변주를 준다.
+  // 1차 = 과소 테마 우선, 2차(0-k·81⑥) = 그 테마 안에서 최소 사용 topic(동일 topic 반복 방지).
+  // seq 오프셋으로 순회 시작점을 돌려 완전 동률의 tie-break도 결정론으로 유지한다.
   let best = finalPool[seq % finalPool.length];
-  let bestCount = Infinity;
+  let bestTheme = Infinity;
+  let bestTopic = Infinity;
   for (let k = 0; k < finalPool.length; k += 1) {
     const t = finalPool[(seq + k) % finalPool.length];
-    const c = themeCount[t.themeCode] ?? 0;
-    if (c < bestCount) {
-      bestCount = c;
+    const ct = themeCount[t.themeCode] ?? 0;
+    const cp = topicCount[t.code] ?? 0;
+    if (ct < bestTheme || (ct === bestTheme && cp < bestTopic)) {
+      bestTheme = ct;
+      bestTopic = cp;
       best = t;
     }
   }
@@ -150,6 +155,7 @@ export function buildBatchPlan(quota: BatchQuota = DEFAULT_QUOTA): BatchCell[] {
   const cells: BatchCell[] = [];
   let seq = 0; // 전역 순번 — 도메인·산업·P·D·R을 결정론적으로 회전시키는 커서
   const themeCount: Record<string, number> = {}; // 테마 균형 커서(계약 §7-0)
+  const topicCount: Record<string, number> = {}; // topic 반복 방지 커서(0-k·81⑥)
 
   for (const level of LEVELS) {
     const nTrans = quota.perLevel[level];
@@ -168,8 +174,9 @@ export function buildBatchPlan(quota: BatchQuota = DEFAULT_QUOTA): BatchCell[] {
           const domain = DOMAINS[seq % DOMAINS.length];
           const channel = slot.channels[seq % slot.channels.length];
           const pdr = PDR_ROTATION[seq % PDR_ROTATION.length];
-          const topic = selectTopic(speech_act_ui, domain, seq, themeCount);
+          const topic = selectTopic(speech_act_ui, domain, seq, themeCount, topicCount);
           themeCount[topic.themeCode] = (themeCount[topic.themeCode] ?? 0) + 1;
+          topicCount[topic.code] = (topicCount[topic.code] ?? 0) + 1;
 
           cells.push({
             speech_act_ui,
