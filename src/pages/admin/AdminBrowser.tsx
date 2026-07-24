@@ -14,6 +14,10 @@ import {
   type SpeechActUI,
 } from "@/lib/pragma/enums";
 import { THEME_LABEL, type ThemeCode } from "@/lib/pragma/scenarioTopics";
+import { DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
+import { promoteCore, reviewMission, type PromotableCore } from "@/lib/pragma/promoteMission";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 // 시나리오 브라우저 — 뱅크의 "풍부함"을 화행 9 × 수준 3 그리드로 가시화한다.
 // 교강사가 수준·주제·모드로 걸러 어떤 셀에 무엇이 있는지 보고, 칸을 눌러 미리본다.
@@ -46,6 +50,47 @@ const AdminBrowser = () => {
   const [fDomain, setFDomain] = useState<"all" | Domain>("all");
   const [fTheme, setFTheme] = useState<"all" | ThemeCode>("all");
   const [sel, setSel] = useState<{ act: SpeechActUI; level: LearnerLevel } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null); // 승격 중인 scenario_id
+  const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
+
+  const setStatus = (id: string, status: string) =>
+    setRows((prev) => prev.map((r) => (r.scenario_id === id ? { ...r, mission_status: status } : r)));
+
+  const onGenerate = async (r: CoreRow) => {
+    setBusy(r.scenario_id);
+    setRowMsg((m) => ({ ...m, [r.scenario_id]: "미션 생성 중… (게이트1 프롬프트, 최대 3회)" }));
+    try {
+      const res = await promoteCore(r as unknown as PromotableCore);
+      if (res.ok) {
+        setStatus(r.scenario_id, "generated");
+        setRowMsg((m) => ({ ...m, [r.scenario_id]: `생성됨(${res.ruleResult}, 시도 ${res.attempts}회) — 눈검사 후 검토 완료 처리` }));
+        toast.success("미션 생성됨 — 검토 대기");
+      } else {
+        setRowMsg((m) => ({ ...m, [r.scenario_id]: `실패: ${res.error}${res.violations?.length ? " · " + res.violations.filter((v) => v.level === "fail").map((v) => v.id).join(",") : ""}` }));
+        toast.error(res.error ?? "미션 생성 실패");
+      }
+    } catch (e) {
+      setRowMsg((m) => ({ ...m, [r.scenario_id]: `오류: ${e instanceof Error ? e.message : e}` }));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onReview = async (r: CoreRow) => {
+    setBusy(r.scenario_id);
+    try {
+      const res = await reviewMission(r.scenario_id);
+      if (res.ok) {
+        setStatus(r.scenario_id, "reviewed");
+        setRowMsg((m) => ({ ...m, [r.scenario_id]: "검토 완료 — 학습자 실행 가능" }));
+        toast.success("검토 완료(reviewed) — 학습자 실행 가능");
+      } else {
+        toast.error(res.error ?? "검토 처리 실패");
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -210,6 +255,28 @@ const AdminBrowser = () => {
                     <p className="mt-1 text-[12.5px] text-muted-foreground line-clamp-2">
                       {r.core_content?.source_text_ko ?? ""}
                     </p>
+
+                    {/* ── 승격 액션 ── */}
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {!r.mission_status && (
+                        DEFAULT_FEATURE_BY_ACT[r.speech_act] ? (
+                          <Button size="sm" variant="outline" disabled={busy === r.scenario_id}
+                            onClick={() => onGenerate(r)}>
+                            {busy === r.scenario_id ? "생성 중…" : "미션 생성"}
+                          </Button>
+                        ) : (
+                          <span className="text-[11.5px] text-muted-foreground">화용 초점 카탈로그 없음 — 승격 불가</span>
+                        )
+                      )}
+                      {r.mission_status === "generated" && (
+                        <Button size="sm" disabled={busy === r.scenario_id} onClick={() => onReview(r)}>
+                          {busy === r.scenario_id ? "처리 중…" : "검토 완료(reviewed)"}
+                        </Button>
+                      )}
+                      {rowMsg[r.scenario_id] && (
+                        <span className="text-[11.5px] text-muted-foreground">{rowMsg[r.scenario_id]}</span>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
