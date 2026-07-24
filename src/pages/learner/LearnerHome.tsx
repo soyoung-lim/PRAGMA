@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
-import { PROFILE_SUMMARY, type LearnerMode, TODAY_MISSION } from "@/lib/mission/mockLearnerHome";
+import { PROFILE_SUMMARY, TODAY_MISSION } from "@/lib/mission/mockLearnerHome";
 import { getTodayAssignment, getWeekProgress, WEEK_REQUEST } from "@/lib/mission/mockWeek";
 import { hasPracticeSession } from "@/lib/mission/practiceSession";
 
@@ -12,7 +12,8 @@ import { hasPracticeSession } from "@/lib/mission/practiceSession";
 
 const LearnerHome = () => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<LearnerMode>("self");
+  // 범위 확정(2026-07-25): PRAGMA = 수업연계형 단일 경로. 자율학습 토글은 공식 범위
+  // 제외로 제거(후속 연구로만 남김 — 계약 0-m).
 
   // 완료/세션 상태는 localStorage 기반이라 렌더 시점 계산으로 충분 (mock)
   const today = useMemo(() => getTodayAssignment(), []);
@@ -29,31 +30,13 @@ const LearnerHome = () => {
 
   return (
     <LearnerJourneyShell
-      headerRight={
-        <div className="flex gap-0.5 rounded-[9px] bg-white/[0.08] p-[3px]">
-          {(["self", "class"] as LearnerMode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMode(m)}
-              className={[
-                "rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors",
-                mode === m
-                  ? "bg-[#FAD338] font-semibold text-[#15202B]"
-                  : "text-[#8899A6] hover:text-[#F1EFE8]",
-              ].join(" ")}
-            >
-              {m === "self" ? "자율" : "수업연계"}
-            </button>
-          ))}
-        </div>
-      }
+      headerRight={<span className="text-[12px] text-[#8899A6]">수업연계</span>}
     >
       <div className="pb-20">
         {/* 오늘의 학습 — 홈의 유일한 주 행동 */}
         <section className="rounded-xl bg-[#15202B] px-5 py-5 text-white">
           <div className="text-[11.5px] font-bold text-[#FAD338]">
-            {mode === "class" ? TODAY_MISSION.classCopy.kicker : "오늘의 학습"}
+            {TODAY_MISSION.classCopy.kicker}
           </div>
           <h2 className="mt-1.5 text-[19px] font-bold leading-snug">{today.title}</h2>
           {!today.allDone && (
