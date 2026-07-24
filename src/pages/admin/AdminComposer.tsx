@@ -185,13 +185,15 @@ const AdminComposer = () => {
     if (!outline) return;
     const next: AssignMap = {};
     let filledWeeks = 0;
+    const usedIds = new Set<string>(); // 동일 과정 내 core 중복 금지(2026-07-25 스펙)
     for (const w of weeks) {
       if (w.type !== "regular" || !w.speech_act) continue;
       const act = w.speech_act as SpeechActUI;
       const slots = w.scenario_slots ?? outline.scenarios_per_week ?? 3;
-      // 1차: 화행 + 수준 + 방향(outline) + 선택 테마
+      // 1차: 화행 + 수준 + 방향(outline) + 선택 테마 + 미사용 코어
       let cands = cores.filter(
         (c) =>
+          !usedIds.has(c.scenario_id) &&
           c.speech_act === act &&
           c.learner_level === level &&
           c.direction === outline.language_direction &&
@@ -200,11 +202,16 @@ const AdminComposer = () => {
       // 부족하면 테마 조건 완화(화행 + 수준 + 방향만) — 방향은 절대 완화하지 않는다(0-l·91).
       if (cands.length < slots) {
         cands = cores.filter(
-          (c) => c.speech_act === act && c.learner_level === level && c.direction === outline.language_direction,
+          (c) =>
+            !usedIds.has(c.scenario_id) &&
+            c.speech_act === act &&
+            c.learner_level === level &&
+            c.direction === outline.language_direction,
         );
       }
       const picked = pickByRatio(cands, slots, interpRatio);
       if (picked.length > 0) {
+        picked.forEach((c) => usedIds.add(c.scenario_id));
         next[w.week_no] = picked.map((c) => ({ scenario_id: c.scenario_id, slot_role: slotRoleFor(c) }));
         filledWeeks += 1;
       }
