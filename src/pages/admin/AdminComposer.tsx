@@ -14,6 +14,7 @@ import {
   type WeekAssignment,
 } from "@/lib/curriculum/composer";
 import {
+  DIRECTION_LABEL,
   LEVEL,
   MODE_LABEL,
   SPEECH_ACT_UI,
@@ -286,6 +287,15 @@ const AdminComposer = () => {
               ))}
             </select>
           </label>
+
+          {/* 선택된 커리큘럼의 언어 방향 — 자동채우기·후보가 이 방향 코어만 쓴다(0-l·91) */}
+          {outline && (
+            <div className="flex flex-col justify-end pb-1.5">
+              <Badge variant="secondary" className="font-normal">
+                방향 · {DIRECTION_LABEL[(outline.language_direction as LanguageDirection) ?? "ko_zh"]}
+              </Badge>
+            </div>
+          )}
 
           <label className="flex flex-col gap-1">
             <span className="text-muted-foreground">프리셋 (수준·테마 빠른 채우기)</span>
@@ -577,6 +587,9 @@ function WeekRow({
       {/* 후보 추가 패널 */}
       {adding && isAssignable && (
         <div className="mt-3 rounded-lg border border-dashed border-[#D8D0BC] bg-[#FAF8F2] p-3">
+          <p className="mb-2 text-[11.5px] text-muted-foreground">
+            이 커리큘럼 방향(<b>{DIRECTION_LABEL[direction]}</b>)의 코어만 표시됩니다.
+          </p>
           {cands.length === 0 ? (
             <p className="text-[12.5px] text-muted-foreground">
               조건에 맞는 후보 코어가 없습니다
