@@ -12,10 +12,9 @@ const STANDALONE: NavItem = { to: "/admin/dashboard", label: "대시보드" };
 
 const GROUPS: NavGroup[] = [
   {
-    header: "Source Bank",
+    header: "생성 자원·설정",
     items: [
-      { to: "/admin/corpus", label: "HSK 코퍼스" },
-      { to: "/admin/youtube-sources", label: "YouTube 영상·음성 소스" },
+      { to: "/admin/corpus", label: "HSK 어휘 코퍼스" },
       { to: "/admin/prompt-harness", label: "프롬프트 관리" },
     ],
   },

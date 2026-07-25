@@ -933,56 +933,8 @@ const AdminGenerator = () => {
             )}
           </div>
 
-          {/* 2. 원문 확보 방식 */}
-          <div>
-            <SectionTitle n={2} label="원문 확보 방식" />
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {([
-                { id: "ai" as const, label: "AI 생성", sub: "기본" },
-                { id: "bank" as const, label: "Source Bank", sub: "준비 중", disabled: true },
-                { id: "manual" as const, label: "직접 입력", sub: "붙여넣기" },
-              ]).map((opt) => {
-                const on = sourceMode === opt.id;
-                const disabled = (opt as any).disabled;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => !disabled && setSourceMode(opt.id)}
-                    className={[
-                      "h-14 rounded-md text-center text-[12.5px] transition-colors leading-tight",
-                      disabled
-                        ? "border border-dashed border-[#EAE4D2] bg-transparent text-muted-foreground/70 cursor-not-allowed"
-                        : on
-                        ? "border-2 border-[#BA7517] bg-[#FBEFD9] text-[#7A4A0A]"
-                        : "border border-[#EAE4D2] bg-transparent text-muted-foreground hover:bg-muted",
-                    ].join(" ")}
-                  >
-                    <div className="font-medium">{opt.label}</div>
-                    <div className={["mt-0.5 text-[10px]", on && !disabled ? "text-[#7A4A0A]" : "text-muted-foreground"].join(" ")}>
-                      {opt.sub}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {sourceMode === "manual" && (
-              <textarea
-                value={manualSourceText}
-                onChange={(e) => setManualSourceText(e.target.value)}
-                placeholder="한국어 원문을 붙여넣거나 직접 입력하세요."
-                className="mt-2 w-full min-h-[104px] rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[13px] leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
-              />
-            )}
-            {sourceMode === "bank" && (
-              <div className="mt-2 rounded-md border border-dashed border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[11.5px] text-muted-foreground">
-                Source Bank 연동은 다음 단계에서 활성화됩니다.
-              </div>
-            )}
-            <p className="mt-1.5 text-[10.5px] text-muted-foreground">{tagNote}</p>
-          </div>
+          {/* 원문 확보 방식(AI/Bank/직접입력) 제거(2026-07-25) — 실제 자료는 위 「실제 자료에서 생성」 패널이,
+              AI 생성은 이 폼(개요→코어)이 담당. Bank는 미구현, 직접입력은 Authentic 패널 텍스트 입력으로 흡수. */}
 
           {/* 3. 목표 화행 — 3x3 카드 */}
           <div>
@@ -1244,8 +1196,7 @@ const AdminGenerator = () => {
             <button
               type="button"
               onClick={generateOutlines}
-              disabled={outlineLoading || finalizing || sourceMode === "manual"}
-              title={sourceMode === "manual" ? "직접 입력 모드에서는 개요 2단계를 사용하지 않습니다" : undefined}
+              disabled={outlineLoading || finalizing}
               className="mt-2.5 w-full h-10 rounded-md border border-[#EAE4D2] bg-transparent text-[13px] text-[#1d2336] hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
             >
               🔎 {outlineLoading ? "개요 생성 중..." : `상황 개요 ${outlineCount}개 생성`}
