@@ -16,9 +16,11 @@ import {
   slotsForAct,
   hintForSlot,
   supportTier,
+  toneLeaning,
   SLOT_NUMERALS,
   type DiscourseSlot,
   type SupportTier,
+  type ToneLeaning,
 } from "@/lib/pragma/discourseSlots";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import {
@@ -94,9 +96,9 @@ function deriveCtx(pdr: { d?: string; r?: string }) {
     "아직 친하지 않으니 상대가 선택할 여지를 남기는 완화가 필요하다",
     "겹겹의 격식과 존대를 최대한 갖춰야 한다",
   ];
-  let right = 1;
-  if (pdr.d === "close" && pdr.r !== "high") right = 0;
-  else if (pdr.d === "distant" && pdr.r === "high") right = 2;
+  // 판정 규칙은 산출 안내(ProductionGuide)와 공유한다 — 두 화면이 어긋나면
+  // 그 자체가 완화 편향을 만든다(0-r·106 3면 정렬).
+  const right = { direct: 0, mitigated: 1, formal: 2 }[toneLeaning(pdr)];
   const okRight = [
     "친하고 부담이 낮아 간결·직접적인 표현이 자연스럽습니다. 완화를 겹겹이 쌓으면 오히려 어색합니다.",
     "아직 친하지 않고 상대가 결정할 여지가 있는 상황이라, 부담을 낮추는 완화와 선택권이 적절합니다. 과한 격식은 오히려 거리감을 줍니다.",
@@ -190,10 +192,12 @@ function ProductionGuide({
   slots,
   resources,
   tier,
+  leaning,
 }: {
   slots: DiscourseSlot[];
   resources: string[];
   tier: SupportTier;
+  leaning: ToneLeaning;
 }) {
   const [expanded, setExpanded] = useState(tier === "guided");
   // 고급(open)은 접혀 있을 때 슬롯도 감춘다 — 기본은 지금까지와 같은 자유 산출.
@@ -214,6 +218,14 @@ function ProductionGuide({
           {expanded ? "도움말 닫기 ▴" : "도움말 열기 ▾"}
         </button>
       </div>
+
+      {/* 완화 편향 시정(0-r·106①) — 슬롯·힌트가 늘 완화 자원이라 "넣으면 된다"로
+          오학습될 수 있다. 직접형이 자연스러운 상황에서는 먼저 그 사실을 말한다. */}
+      {leaning === "direct" && (
+        <p className="mt-1.5 rounded bg-[#F3F6EE] px-2 py-1 text-[12px] leading-[1.45] text-[#4A5A3E]">
+          이 상황은 짧고 직접적인 쪽이 자연스러울 수 있어요 — <strong className="font-semibold">빼는 것도 조절입니다.</strong>
+        </p>
+      )}
 
       {showSlotRow && (
         <ol className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12.5px] text-[#3B4A57]">
@@ -414,6 +426,8 @@ function MissionRunner({
   const guideSlots = slotsForAct(feat?.speech_act);
   const guideResources = feat?.relevant_resources ?? [];
   const guideTier = supportTier(level);
+  // 이 미션의 조절 방향 — 「상황 확인」과 같은 규칙(0-r·106).
+  const guideLeaning = toneLeaning(pt.pdr);
 
   // 피드백 단계 진입 시 1회 호출. 실패해도 미션을 막지 않는다(정직 표기로 폴백).
   // ⚠️ cleanup으로 취소하지 않는다 — 이 이펙트가 setFbState를 부르므로 의존성이 바뀌어
@@ -699,7 +713,12 @@ function MissionRunner({
                   {pt.preceding_turn && <ChatBubble side="them">{pt.preceding_turn}</ChatBubble>}
                   <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
                   {dir === "ko_zh" && (
-                    <ProductionGuide slots={guideSlots} resources={guideResources} tier={guideTier} />
+                    <ProductionGuide
+                      slots={guideSlots}
+                      resources={guideResources}
+                      tier={guideTier}
+                      leaning={guideLeaning}
+                    />
                   )}
                   <div className="mb-3 flex items-end justify-end gap-2">
                     <Textarea

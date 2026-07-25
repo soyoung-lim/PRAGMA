@@ -49,6 +49,21 @@ export const DISCOURSE_SLOTS: Partial<Record<SpeechActUI, DiscourseSlot[]>> = {
   ],
 };
 
+/**
+ * P·D·R에서 파생한 조절 방향(결정론, 데이터·AI 0회) — 계약 0-r·106 완화 편향 시정.
+ *
+ * ⚠️ 슬롯 안내가 늘 완화 자원만 보여주면 학습자는 "완화 표현을 넣으면 된다"를 학습한다.
+ * 가르치려는 것은 그 반대 — **상황에 맞게 조절하는 판단**이며, 빼는 것도 조절이다.
+ * 산출 안내·상황 확인이 같은 규칙을 쓰도록 판정을 여기 한 곳에 둔다(3면 정렬).
+ */
+export type ToneLeaning = "direct" | "mitigated" | "formal";
+
+export function toneLeaning(pdr: { d?: string; r?: string }): ToneLeaning {
+  if (pdr.d === "close" && pdr.r !== "high") return "direct";
+  if (pdr.d === "distant" && pdr.r === "high") return "formal";
+  return "mitigated";
+}
+
 export function slotsForAct(act?: string | null): DiscourseSlot[] {
   if (!act) return GENERIC_SLOTS;
   return DISCOURSE_SLOTS[act as SpeechActUI] ?? GENERIC_SLOTS;
