@@ -89,13 +89,23 @@ const AdminBrowser = () => {
       const res = await promoteCore(r as unknown as PromotableCore);
       if (res.ok) {
         setStatus(r.scenario_id, "generated");
-        setRowMsg((m) => ({ ...m, [r.scenario_id]: `생성됨(${res.ruleResult}, 시도 ${res.attempts}회) — 눈검사 후 검토 완료 처리` }));
+        // 검증②(0-n·94) 결과가 있으면 함께 알린다 — 없으면(호출 실패) 침묵하지 않고 표기.
+        const qLabel = res.quality
+          ? { pass: "AI점검 통과", warning: "AI점검 주의", fail: "AI점검 결함" }[res.quality.verdict]
+          : "AI점검 미실행";
+        setRowMsg((m) => ({ ...m, [r.scenario_id]: `생성됨(${res.ruleResult}, 시도 ${res.attempts}회) · ${qLabel} — 눈검사 후 검토 완료 처리` }));
         if (res.mission) {
           const warnings = (res.violations ?? []).filter((v) => v.level === "warning").map((v) => `${v.id}: ${v.message}`);
-          setPreview((m) => ({ ...m, [r.scenario_id]: { mission: res.mission!, warnings } }));
+          // 품질점검은 저장 직전에 붙으므로 엣지 응답 미션에는 없다 — 미리보기용으로 합친다.
+          const withQuality = res.quality ? { ...res.mission, quality_check: res.quality } : res.mission;
+          setPreview((m) => ({ ...m, [r.scenario_id]: { mission: withQuality, warnings } }));
           setOpenId(r.scenario_id); // 생성 직후 바로 눈검사 뷰 펼침
         }
-        toast.success("미션 생성됨 — 검토 대기");
+        if (res.quality?.verdict === "fail") {
+          toast.warning("미션 생성됨 — AI 품질점검에서 결함이 보고되었습니다. 눈검사 필요");
+        } else {
+          toast.success("미션 생성됨 — 검토 대기");
+        }
       } else {
         setRowMsg((m) => ({ ...m, [r.scenario_id]: `실패: ${res.error}${res.violations?.length ? " · " + res.violations.filter((v) => v.level === "fail").map((v) => v.id).join(",") : ""}` }));
         toast.error(res.error ?? "미션 생성 실패");
