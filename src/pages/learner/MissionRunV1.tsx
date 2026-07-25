@@ -12,6 +12,14 @@ import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
 import { saveMissionAttempt } from "@/lib/mission/missionLog";
 import { ChatScene, ChatBubble, ChatCaption, ChatAvatar, highlightZh } from "@/components/mission/ChatScene";
+import {
+  slotsForAct,
+  hintForSlot,
+  supportTier,
+  SLOT_NUMERALS,
+  type DiscourseSlot,
+  type SupportTier,
+} from "@/lib/pragma/discourseSlots";
 import { IS_DEMO } from "@/lib/auth/useProfile";
 
 // 샘플은 v1 → 정규화해 v2로 구동(러너는 정규화 형태만 본다, 0-l·84).
@@ -165,6 +173,75 @@ const MissionRunV1 = () => {
 };
 
 // ── 러너 본체 ───────────────────────────────────────────────────────────
+/**
+ * 담화 슬롯 골격 — ko_zh(L2 산출) 전용 지원 (계약 0-q·97).
+ * 빈 입력창 앞에서 학습자가 어휘·문법이 아니라 **담화 조직**에 주의를 쓰도록 돕는다.
+ * 읽기 전용 안내이며 입력은 그대로 자유 텍스트 하나다 — 저장 형태·제출 조건 무변경.
+ * ⚠️ 예문(완성 문장)을 넣지 않는다. 참고 표현은 제출 후 공개가 원칙.
+ */
+function ProductionGuide({
+  slots,
+  resources,
+  tier,
+}: {
+  slots: DiscourseSlot[];
+  resources: string[];
+  tier: SupportTier;
+}) {
+  const [expanded, setExpanded] = useState(tier === "guided");
+  // 고급(open)은 접혀 있을 때 슬롯도 감춘다 — 기본은 지금까지와 같은 자유 산출.
+  const showSlotRow = tier !== "open" && !expanded;
+
+  return (
+    <div className="mb-3 rounded-lg border border-[#EAE4D2] bg-[#FBFAF6] px-3 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11.5px] font-semibold text-[#5A6B7A]">
+          {tier === "open" ? "막히면 열어 보세요" : "이 순서로 생각해 보세요"}
+        </span>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="rounded px-1.5 py-0.5 text-[11.5px] font-medium text-[#2B5B7A] hover:bg-[#EEF3F7]"
+          aria-expanded={expanded}
+        >
+          {expanded ? "도움말 닫기 ▴" : "도움말 열기 ▾"}
+        </button>
+      </div>
+
+      {showSlotRow && (
+        <ol className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12.5px] text-[#3B4A57]">
+          {slots.map((s, i) => (
+            <li key={s.label}>
+              {SLOT_NUMERALS[i]} {s.label}
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {expanded && (
+        <>
+          <ul className="mt-1.5 space-y-1 text-[12.5px] text-[#3B4A57]">
+            {slots.map((s, i) => {
+              const hint = hintForSlot(s, resources);
+              return (
+                <li key={s.label}>
+                  <span className="font-medium">
+                    {SLOT_NUMERALS[i]} {s.label}
+                  </span>
+                  {hint && <span className="text-muted-foreground"> — {hint}</span>}
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+            ※ 범주만 참고하세요. 다 쓸 필요는 없습니다 — 이 상대·이 부담에 맞는 만큼만.
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 function MissionRunner({
   mission,
   isSample,
@@ -210,6 +287,12 @@ function MissionRunner({
   const feat = getTargetFeature(mission.unit.target_feature);
   const counterRule =
     dir === "zh_ko" && feat?.counter_rule_note_zh_ko ? feat.counter_rule_note_zh_ko : feat?.counter_rule_note;
+
+  // 담화 슬롯 골격(0-q·97) — **ko_zh 번역 산출에만**. 중→한은 모국어 산출이라
+  // 어휘·문법 부하가 없어 지원 대상이 아니다(지원량 차등의 근거 = L2 산출 부하).
+  const guideSlots = slotsForAct(feat?.speech_act);
+  const guideResources = feat?.relevant_resources ?? [];
+  const guideTier = supportTier(level);
 
   // 중단 후 재개(프로토타입 v2 ②) — 2부 진행분만 미션별 localStorage에 보존. 실패해도 흐름 무해.
   const storageKey = `pragma:mrun:${scenarioId ?? "sample"}`;
@@ -470,6 +553,9 @@ function MissionRunner({
                 <ChatScene situation={pt.situation_ko} relation={pt.relation_ko} eyebrow="직접 옮길 요청">
                   {pt.preceding_turn && <ChatBubble side="them">{pt.preceding_turn}</ChatBubble>}
                   <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
+                  {dir === "ko_zh" && (
+                    <ProductionGuide slots={guideSlots} resources={guideResources} tier={guideTier} />
+                  )}
                   <div className="mb-3 flex items-end justify-end gap-2">
                     <Textarea
                       className="w-[78%] resize-y rounded-[19px] rounded-br-[6px] border border-[#7ED158] bg-gradient-to-b from-[#9EED7C] to-[#8CE768] px-3 py-2 text-[14.5px] leading-[1.46] text-[#0c3300] placeholder:text-[#4a7a4a]"
