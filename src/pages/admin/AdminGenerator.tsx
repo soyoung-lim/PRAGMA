@@ -31,6 +31,14 @@ import {
   MODE_LABEL,
   COMPLEX_TASK_TO_CONTEXT,
 } from "@/lib/pragma/enums";
+import { checkCore, type CheckContext } from "@/lib/pragma/missionRules";
+import { PDR_POWER_ENUM_TO_JSON, PDR_DISTANCE_ENUM_TO_JSON } from "@/lib/pragma/coreSchema";
+import {
+  THEME_CODES,
+  THEME_LABEL,
+  topicsForTheme,
+  type ThemeCode,
+} from "@/lib/pragma/scenarioTopics";
 import type {
   SpeechActUI,
   LearnerLevel,
@@ -449,6 +457,19 @@ const AdminGenerator = () => {
   // follow-up mode/language_direction update failed).
   const [metaWarning, setMetaWarning] = useState<string | null>(null);
 
+  // ── scenario_core_v1 단건 생성 (레거시 candidates/feedback 폐기, 2026-07-25) ──
+  // 개요(situation)를 seed로 action:'core' → checkCore → save_generated_core(draft).
+  const [themeCode, setThemeCode] = useState<ThemeCode>(THEME_CODES[0]);
+  type CoreResult = {
+    title: string;
+    ok: boolean;
+    core?: Record<string, unknown>;
+    rule?: "pass" | "warning" | "fail";
+    scenarioId?: string;
+    error?: string;
+  };
+  const [coreResults, setCoreResults] = useState<CoreResult[] | null>(null);
+
   // v9 UI-only — source acquisition mode. "ai" keeps current flow.
   // "manual" swaps the LLM-generated source_text with the user's own text
   // after the Edge Function returns (payload/columns unchanged).
@@ -597,48 +618,130 @@ const AdminGenerator = () => {
     });
   };
 
-  // Step 2: for each SELECTED outline only, generate the full scenario and save.
-  const finalizeSelected = async () => {
+  // theme → topic 파생 (편성 메타 · 코어 CHECK 필수). topic은 theme의 첫 항목.
+  const topicCode =
+    topicsForTheme(themeCode)[0]?.code ?? topicsForTheme(THEME_CODES[0])[0]?.code ?? "";
+
+  const modalityOf = (m: GenMode) => (m === "stt_interpreting" ? "spoken" : "written");
+  const legacyChannelOf = (m: GenMode) => (m === "stt_interpreting" ? "facetoface" : "messenger");
+  const RESPONSE_ACTS = new Set(["refusal", "opposition"]);
+  const LENGTH_HINT: Record<string, string> = {
+    beginner_intermediate: "1~2문장",
+    intermediate: "2~4문장",
+    advanced: "번역 3~5문장 / 통역 짧은 구두 담화 (기억 과부하 없이)",
+  };
+  const coreHash = (s: string) => {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36);
+  };
+
+  // Step 2 (2026-07-25 전환): 선택 개요를 scenario_core_v1로 생성·저장.
+  //   개요 situation = situation_seed → action:'core' → checkCore → save_generated_core(draft).
+  // 구 candidates/directness/3관점 + save_generated_scenario 경로 폐기(현행 코어 모델 정합).
+  const generateCores = async () => {
     if (!outlines || selectedOutlines.size === 0 || finalizing) return;
     setFinalizing(true);
-    setFinalResults(null);
+    setCoreResults(null);
     const indices = [...selectedOutlines].sort((a, b) => a - b);
-    const results: { title: string; ok: boolean; scenarioId?: string; error?: string; metaUpdate?: "ok" | "failed" }[] = [];
+    const results: CoreResult[] = [];
+    const runId = `gen-${coreHash(String(indices.length) + topicCode + form.speech_act_ui)}`;
+    const mode = taskMode;
+    const isResponse = RESPONSE_ACTS.has(form.speech_act_ui);
     for (const i of indices) {
       const outline = outlines[i];
       const label = outline.title || `개요 #${i + 1}`;
       try {
+        const seed =
+          sourceMode === "manual" && manualSourceText.trim()
+            ? `${outline.situation}\n(실제 자료 원문 활용: ${manualSourceText.trim()})`
+            : outline.situation;
         const { data, error } = await supabase.functions.invoke("generate-scenario", {
-          body: { ...baseGenBody(), action: "final", selected_outline: outline },
-        });
-        if (error) throw error;
-        if (!data?.scenario) throw new Error(data?.error ?? "빈 응답을 받았습니다.");
-        const scenario = data.scenario as AiScenario;
-        const meta = data.meta as AiMeta;
-        const { data: savedId, error: saveErr } = await (supabase.rpc as any)("save_generated_scenario", {
-          p_payload: {
-            scenario,
-            meta,
-            form: {
-              speech_act: form.speech_act_ui,
-              genre: CHANNEL_TO_GENRE[form.channel],
-              level: form.level,
-              context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
-              industry: form.domain === "work" ? form.industry : null,
-              func: form.func,
-              pdr_power: form.pdr_power,
-              pdr_distance: form.pdr_distance,
-              pdr_burden: form.pdr_burden,
+          body: {
+            action: "core",
+            core: {
+              direction: form.language_direction,
+              speech_act_ko: SPEECH_ACT_UI[form.speech_act_ui],
+              level_ko: LEVEL[form.level],
+              domain_ko: DOMAIN[form.domain],
+              mode,
+              channel: legacyChannelOf(mode),
+              channel_ko: mode === "stt_interpreting" ? "구두(통역)" : "서면(번역)",
+              pdr: {
+                p: PDR_POWER_ENUM_TO_JSON[form.pdr_power],
+                d: PDR_DISTANCE_ENUM_TO_JSON[form.pdr_distance],
+                r: form.pdr_burden,
+              },
+              source_modality: modalityOf(mode),
+              situation_seed_ko: seed,
+              is_response_act: isResponse,
+              length_hint_ko: LENGTH_HINT[form.level] ?? "2~4문장",
             },
           },
         });
+        if (error) throw error;
+        if (!data?.core_content) throw new Error(data?.error ?? "빈 응답");
+        const core = data.core_content as Record<string, unknown> & { channel?: string; situation_ko?: string; brief_note_ko?: string };
+        const meta = data.meta;
+
+        const ctx: CheckContext = {
+          speech_act: form.speech_act_ui,
+          level: form.level,
+          domain: form.domain,
+          theme_code: themeCode,
+          topic_code: topicCode,
+          industry: form.domain === "work" ? form.industry : null,
+          mode,
+          source_modality: modalityOf(mode),
+          direction: form.language_direction,
+        };
+        const ruleResult = checkCore(core, ctx);
+        if (ruleResult.result === "fail") {
+          results.push({
+            title: label,
+            ok: false,
+            core,
+            rule: "fail",
+            error: ruleResult.violations.find((v) => v.level === "fail")?.message ?? "규칙검사 실패(저장 안 함)",
+          });
+          setCoreResults([...results]);
+          continue;
+        }
+
+        core.channel = legacyChannelOf(mode);
+        const payload = {
+          title: core.brief_note_ko || core.situation_ko?.slice(0, 40) || label,
+          speech_act: form.speech_act_ui,
+          learner_level: form.level,
+          domain: form.domain,
+          industry_sector: form.domain === "work" ? form.industry : null,
+          mode,
+          source_modality: modalityOf(mode),
+          theme_code: themeCode,
+          topic_code: topicCode,
+          language_direction: form.language_direction,
+          core_content: core,
+          auto_check_result: ruleResult.result === "warning" ? "warning" : "pass",
+          meta,
+          generation_run_id: runId,
+          generation_item_key: `${form.speech_act_ui}|${form.level}|${form.domain}|${topicCode}|${i}`,
+          content_hash: coreHash(JSON.stringify(core)),
+        };
+        const { data: savedId, error: saveErr } = await (supabase.rpc as any)("save_generated_core", {
+          p_payload: payload,
+        });
         if (saveErr) throw saveErr;
-        const metaUpdate = await persistExtraColumns(savedId as string);
-        results.push({ title: label, ok: true, scenarioId: savedId as string, metaUpdate });
+        results.push({
+          title: label,
+          ok: true,
+          core,
+          rule: ruleResult.result === "warning" ? "warning" : "pass",
+          scenarioId: savedId as string,
+        });
       } catch (e) {
         results.push({ title: label, ok: false, error: (e as Error).message ?? "실패" });
       }
-      setFinalResults([...results]);
+      setCoreResults([...results]);
     }
     setFinalizing(false);
   };
@@ -791,13 +894,15 @@ const AdminGenerator = () => {
         </p>
       </div>
 
+      {/* 0. 실제 자료에서 생성 (Authentic Source Import) — 전체 폭(좁은 칼럼에서 빼냄) */}
+      <div className="mt-5">
+        <AuthenticImportPanel onApply={applyAuthentic} />
+      </div>
+
       {/* 2-col layout */}
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-5">
         {/* LEFT — settings */}
         <section className="lg:col-span-2 space-y-5 rounded-lg border border-border bg-card p-5">
-          {/* 0. 실제 자료에서 생성 (Authentic Source Import) */}
-          <AuthenticImportPanel onApply={applyAuthentic} />
-
           {/* 1. 과제 모드 */}
           <div>
             <SectionTitle n={1} label="과제 모드" accent="정본" />
@@ -1093,6 +1198,24 @@ const AdminGenerator = () => {
             </div>
           </div>
 
+          {/* 7b. 주제(theme) — 편성 메타(코어 CHECK 필수) */}
+          <div>
+            <div className="text-[12px] font-medium text-muted-foreground">주제 · theme (편성 필터 축)</div>
+            <Select value={themeCode} onValueChange={(v) => setThemeCode(v as ThemeCode)}>
+              <SelectTrigger className="mt-1.5 h-9 text-[13px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {THEME_CODES.map((t) => (
+                  <SelectItem key={t} value={t}>{THEME_LABEL[t]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[10.5px] text-muted-foreground">
+              코어 메타(theme·topic)로 저장돼 교강사 '주제별 편성' 필터에 쓰입니다. (topic은 자동 배정)
+            </p>
+          </div>
+
           {/* 8. 개요 후보 수 */}
           <div>
             <SectionTitle n={8} label="개요 후보 수" />
@@ -1170,18 +1293,18 @@ const AdminGenerator = () => {
                   );
                 })}
                 <Button
-                  onClick={finalizeSelected}
+                  onClick={generateCores}
                   disabled={finalizing || selectedOutlines.size === 0}
                   className="w-full bg-[#1d2336] text-white hover:bg-[#1d2336]/90 disabled:opacity-60"
                 >
-                  ✨ {finalizing ? "생성·저장 중..." : `선택한 ${selectedOutlines.size}개 개요로 시나리오 생성`}
+                  ✨ {finalizing ? "코어 생성·저장 중..." : `선택한 ${selectedOutlines.size}개 개요로 코어 생성`}
                 </Button>
               </div>
             )}
 
-            {finalResults && (
+            {coreResults && (
               <div className="mt-2.5 space-y-1">
-                {finalResults.map((r, i) => (
+                {coreResults.map((r, i) => (
                   <div
                     key={i}
                     className={[
@@ -1191,12 +1314,10 @@ const AdminGenerator = () => {
                         : "border-[#FCA5A5] bg-[#FEE2E2] text-[#991B1B]",
                     ].join(" ")}
                   >
-                    <span className="font-medium">{r.ok ? "✓" : "✗"} {r.title}</span>
-                    {r.ok && r.metaUpdate === "failed" && (
-                      <span className="mt-0.5 block text-[10.5px] text-[#92400E]">
-                        ⚠ 저장됨 — 단, mode·language_direction 후속 업데이트 실패 (부분 실패)
-                      </span>
-                    )}
+                    <span className="font-medium">
+                      {r.ok ? "✓" : "✗"} {r.title}
+                      {r.ok && r.rule === "warning" && <span className="ml-1 text-[10px] text-[#92400E]">(경고)</span>}
+                    </span>
                     {!r.ok && r.error && <span className="mt-0.5 block text-[10.5px]">{r.error}</span>}
                     {r.ok && r.scenarioId && (
                       <span className="mt-0.5 block font-mono text-[10px] opacity-80">{r.scenarioId}</span>
@@ -1213,13 +1334,10 @@ const AdminGenerator = () => {
             )}
           </div>
 
-          <Button
-            onClick={generate}
-            disabled={loading || (sourceMode === "manual" && !manualSourceText.trim())}
-            className="w-full bg-[#1d2336] text-white hover:bg-[#1d2336]/90"
-          >
-            🪄 {loading ? "생성 중..." : sourceMode === "manual" ? "입력 원문으로 후보·피드백 생성" : "AI 시나리오 생성"}
-          </Button>
+          <p className="rounded-md border border-dashed border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2.5 text-[11px] leading-relaxed text-[#5B5446]">
+            생성 흐름: 위에서 <b>상황 개요 생성 → 개요 선택 → 코어 생성</b>. 코어(scenario_core_v1)는
+            검수 대기(draft)로 저장돼 batch·편성과 같은 뱅크에 들어갑니다.
+          </p>
 
         </section>
 
@@ -1265,11 +1383,74 @@ const AdminGenerator = () => {
               </div>
             )}
 
-            {!loading && !aiResult && !aiError && (
+            {finalizing && (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#EAE4D2] border-t-[#1d2336]" />
+                <p className="mt-3 text-[12px] text-muted-foreground">코어 생성 중...</p>
+              </div>
+            )}
+
+            {!finalizing && !coreResults && !aiResult && !aiError && (
               <div className="flex items-center justify-center py-20 text-center">
-                <p className="text-[12px] text-muted-foreground">
-                  좌측 설정을 선택하고 '🪄 AI 시나리오 생성' 버튼을 눌러주세요
+                <p className="text-[12px] leading-relaxed text-muted-foreground">
+                  좌측에서 조건·주제를 정하고 <b>상황 개요 생성 → 개요 선택 → 코어 생성</b>을 누르면<br />
+                  생성된 scenario_core_v1이 여기에 표시됩니다.
                 </p>
+              </div>
+            )}
+
+            {!finalizing && coreResults && (
+              <div className="space-y-4">
+                {coreResults.map((r, i) => (
+                  <div key={i} className="space-y-2.5 rounded-lg border border-border bg-background p-3.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span
+                        className={[
+                          "inline-flex items-center rounded border px-1.5 py-0.5 text-[11px] font-medium",
+                          r.ok ? "border-[#6EE7B7] bg-[#D1FAE5] text-[#065F46]" : "border-[#FCA5A5] bg-[#FEE2E2] text-[#991B1B]",
+                        ].join(" ")}
+                      >
+                        {r.ok ? "✓ 저장됨(draft)" : "✗ 실패"}
+                      </span>
+                      {r.rule && (
+                        <span className="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10.5px] text-muted-foreground">
+                          규칙검사 {r.rule}
+                        </span>
+                      )}
+                      <span className="text-[12.5px] font-medium text-foreground">{r.title}</span>
+                    </div>
+                    {r.error && (
+                      <div className="rounded-md border border-[#FCA5A5] bg-[#FEE2E2] px-2.5 py-1.5 text-[11.5px] text-[#991B1B]">{r.error}</div>
+                    )}
+                    {r.core && typeof r.core.situation_ko === "string" && (
+                      <div>
+                        <div className="mb-1 text-[10.5px] font-medium uppercase tracking-wide text-[#8a857c]">상황</div>
+                        <div className="rounded-md border border-[#FAD338] bg-[#FAD338]/15 p-2.5 text-[12.5px] leading-relaxed">{r.core.situation_ko as string}</div>
+                      </div>
+                    )}
+                    {r.core && typeof r.core.source_text === "string" && (
+                      <div>
+                        <div className="mb-1 text-[10.5px] font-medium uppercase tracking-wide text-[#8a857c]">원문 · source_text</div>
+                        <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] p-2.5 text-[12.5px] leading-relaxed">{r.core.source_text as string}</div>
+                      </div>
+                    )}
+                    {r.core && typeof r.core.preceding_turn === "string" && r.core.preceding_turn && (
+                      <div>
+                        <div className="mb-1 text-[10.5px] font-medium uppercase tracking-wide text-[#8a857c]">선행 발화</div>
+                        <div className="rounded-md border border-[#DBEAFE] bg-[#EFF6FF] p-2.5 text-[12px] leading-relaxed text-[#1E40AF]">{r.core.preceding_turn as string}</div>
+                      </div>
+                    )}
+                    {r.ok && r.scenarioId && (
+                      <div className="font-mono text-[10px] text-muted-foreground">scenario_id: {r.scenarioId}</div>
+                    )}
+                  </div>
+                ))}
+                <Link
+                  to="/admin/archive"
+                  className="inline-flex items-center gap-1 rounded-md border border-[#6EE7B7] bg-white px-2.5 py-1 text-[11.5px] font-medium text-[#065F46] hover:bg-[#ECFDF5]"
+                >
+                  시나리오 아카이브에서 검수 →
+                </Link>
               </div>
             )}
 
