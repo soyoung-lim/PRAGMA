@@ -19,6 +19,11 @@ import { toast } from "sonner";
 type CountState = { value: number | null; error: string | null; loading: boolean };
 const initial: CountState = { value: null, error: null, loading: true };
 
+// content_format·mission_status 컬럼과 curriculum_week_scenarios는 아직 생성 타입(types.ts)에
+// 없다 — AdminBrowser·composer.ts와 동일한 우회. types 재생성 시 함께 정리한다.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as unknown as { from: (t: string) => any };
+
 const LiveBadge = () => (
   <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200">
     ● DB 실시간
@@ -29,18 +34,28 @@ const ExampleBadge = () => (
     예시 레이아웃 · 로그 축적 후 활성화
   </Badge>
 );
+// 아직 가동하지 않는 단계의 계수 — 0을 "구현됨"으로 오해하지 않도록 배지로 구분한다.
+const PendingBadge = () => (
+  <Badge className="border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100">
+    미가동
+  </Badge>
+);
 
 const StatCard = ({
   label,
   state,
+  badge,
+  note,
 }: {
   label: string;
   state: CountState;
+  badge?: React.ReactNode;
+  note?: string;
 }) => (
   <div className="rounded-xl border border-border bg-card p-5">
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-2">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <LiveBadge />
+      {badge ?? <LiveBadge />}
     </div>
     <p className="mt-3 text-3xl font-semibold">
       {state.loading ? "…" : state.error ? (
@@ -49,6 +64,7 @@ const StatCard = ({
         state.value ?? 0
       )}
     </p>
+    {note && <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>}
     {state.error && (
       <p className="mt-1 text-[11px] text-destructive">{state.error}</p>
     )}
@@ -187,6 +203,13 @@ const AdminDashboard = () => {
   const [approved, setApproved] = useState<CountState>(initial);
   const [traces, setTraces] = useState<CountState>(initial);
 
+  // 분리 계수 (생성계약 0-g·46 → 0-q·101) — 코어·미션·검수·검토·실행가능을 한 숫자로 합치지 않는다.
+  const [coreN, setCoreN] = useState<CountState>(initial);
+  const [legacyN, setLegacyN] = useState<CountState>(initial);
+  const [missionGenN, setMissionGenN] = useState<CountState>(initial);
+  const [reviewedN, setReviewedN] = useState<CountState>(initial);
+  const [runnableN, setRunnableN] = useState<CountState>(initial);
+
   useEffect(() => {
     (async () => {
       const { data } = await supabase.rpc("is_admin");
@@ -231,6 +254,63 @@ const AdminDashboard = () => {
       supabase.from("decision_traces").select("*", { count: "exact", head: true }),
       "decision_traces.total",
     );
+
+    // head:true 카운트는 권한 거부(401)를 삼키고 0을 돌려준다 — 보고용 수치가 "0건"으로
+    // 조용히 거짓말하지 않도록 분리 계수는 본문 응답을 받아 실패가 드러나게 한다.
+    load(setCoreN, () =>
+      db
+        .from("scenarios")
+        .select("scenario_id", { count: "exact" })
+        .eq("content_format", "scenario_core_v1"),
+      "scenarios.core_v1",
+    );
+    load(setLegacyN, () =>
+      db
+        .from("scenarios")
+        .select("scenario_id", { count: "exact" })
+        .eq("content_format", "legacy_v1"),
+      "scenarios.legacy_v1",
+    );
+    load(setMissionGenN, () =>
+      db
+        .from("scenarios")
+        .select("scenario_id", { count: "exact" })
+        .not("mission_status", "is", null),
+      "scenarios.mission_any",
+    );
+    load(setReviewedN, () =>
+      db
+        .from("scenarios")
+        .select("scenario_id", { count: "exact" })
+        .eq("mission_status", "reviewed"),
+      "scenarios.mission_reviewed",
+    );
+
+    // 실행 가능 = reviewed 미션 ∩ 주차 배정 (0-m·93 — 배정되고 reviewed인 것만 학습자가 실행).
+    (async () => {
+      try {
+        const [rev, asg] = await Promise.all([
+          db.from("scenarios").select("scenario_id").eq("mission_status", "reviewed"),
+          db.from("curriculum_week_scenarios").select("scenario_id"),
+        ]);
+        if (rev.error) throw rev.error;
+        if (asg.error) throw asg.error;
+        const assigned = new Set(
+          ((asg.data ?? []) as { scenario_id: string }[]).map((r) => r.scenario_id),
+        );
+        const n = ((rev.data ?? []) as { scenario_id: string }[]).filter((r) =>
+          assigned.has(r.scenario_id),
+        ).length;
+        setRunnableN({ value: n, error: null, loading: false });
+      } catch (e) {
+        console.error("[dashboard] runnable count failed:", e);
+        setRunnableN({
+          value: null,
+          error: (e as { message?: string })?.message ?? "조회 실패",
+          loading: false,
+        });
+      }
+    })();
   }, []);
 
   const handleReset = async () => {
@@ -260,6 +340,8 @@ const AdminDashboard = () => {
   };
 
   const approvedN = approved.value ?? 0;
+  // 검증②(AI 품질점검)는 아직 파이프라인에 없다 — 0을 정직하게 표기한다(0-q·99·101).
+  const aiCheckN: CountState = { value: 0, error: null, loading: false };
 
   const speechActs = ["감사", "칭찬", "사과", "요청", "제안", "초대", "반대", "거절", "불만"];
   const errorTypes = [
@@ -277,16 +359,44 @@ const AdminDashboard = () => {
       title="대시보드"
       description="학습자 집단 현황 종합 분석 허브 — 운영 현황(실시간)과 집단 분석(로그 축적 후 활성화)."
     >
+      {/* Row 0: 분리 계수 — 단계별 수량을 한 숫자로 합치지 않는다 (0-g·46 → 0-q·101) */}
+      <SectionHeader title="콘텐츠 분리 계수" badge={<LiveBadge />} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatCard label="① 시나리오 코어" state={coreN} note="검색·편성 단위" />
+        <StatCard label="② 미션 생성" state={missionGenN} note="검토 전 포함" />
+        <StatCard
+          label="③ AI 품질점검"
+          state={aiCheckN}
+          badge={<PendingBadge />}
+          note="검증② 미구현"
+        />
+        <StatCard label="④ 교수자 검토 완료" state={reviewedN} note="reviewed" />
+        <StatCard label="⑤ 실행 가능" state={runnableN} note="reviewed ∩ 주차 배정" />
+      </div>
+      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+        <p>
+          <span className="font-medium text-foreground">
+            &ldquo;500&rdquo;의 단위 = ① 시나리오 코어
+          </span>{" "}
+          — 교강사가 15주를 편성할 때 고르는 검색 단위이며, 완성된 학습 미션 수(②·④)와 다릅니다.
+        </p>
+        <p>
+          legacy 시나리오 {legacyN.loading ? "…" : (legacyN.value ?? 0)}건은 위 계수에서 제외 ·
+          교수 단원·완결 학습 패키지 = 0 (미구현).
+        </p>
+      </div>
+
       {/* Row 1: 운영 현황 */}
       <SectionHeader title="운영 현황" badge={<LiveBadge />} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="전체 시나리오" state={total} />
+        <StatCard label="전체 시나리오" state={total} note="legacy 포함 총계" />
         <StatCard label="검수 대기" state={pending} />
         <StatCard label="승인 완료" state={approved} />
         <StatCard label="학습자 수행 기록" state={traces} />
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        현재 승인 {approvedN}건 · 구조는 500개 수용 가능.
+        현재 승인 {approvedN}건 · 구조는 500개 수용 가능. 이 행은 코어·미션을 구분하지 않는 전체
+        집계입니다 — 보고용 수치는 위 분리 계수를 사용하세요.
       </p>
 
       {/* Row 2: 학습자 집단 종합 분석 */}
