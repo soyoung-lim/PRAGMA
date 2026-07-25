@@ -338,13 +338,13 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
       >
-        <span className="flex items-center gap-2 text-[13.5px] font-medium text-[#7A4A0A]">
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[13.5px] font-medium text-[#7A4A0A]">
           🎬 실제 자료에서 생성 · Authentic Source Import
-          <span className="rounded-full bg-[#BA7517]/15 px-2 py-0.5 text-[10.5px] font-normal text-[#7A4A0A]">
+          <span className="whitespace-nowrap rounded-full bg-[#BA7517]/15 px-2 py-0.5 text-[10.5px] font-normal text-[#7A4A0A]">
             이미지·문구 → 활용 후보
           </span>
         </span>
-        <span className="text-[#8a857c] text-[13px]">{open ? "▲ 접기" : "▼ 펼치기"}</span>
+        <span className="shrink-0 whitespace-nowrap text-[13px] text-[#8a857c]">{open ? "▲ 접기" : "▼ 펼치기"}</span>
       </button>
 
       {open && (
