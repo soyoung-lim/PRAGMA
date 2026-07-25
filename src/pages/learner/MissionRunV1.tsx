@@ -822,6 +822,10 @@ function MissionRunner({
               </div>
             )}
 
+            {/* 감량(0-r·103): 완료 화면에서 펼쳐 두는 것은 핵심 1줄과 최초→최종뿐이다.
+                참고 표현 목록은 접는다 — 정답 카드처럼 읽히는 것을 막는 효과도 있다. */}
+            <RevisionMap first={draft} final={revised || draft} featureLabel={mission.unit.learner_label} interp={isInterp} />
+
             {/* 수행 로그 저장 상태 — 루프 마지막 노드(실행 → 저장) */}
             <div
               className={[
@@ -835,8 +839,8 @@ function MissionRunner({
               {saveState === "error" && "수행 기록 저장에 실패했습니다. 네트워크를 확인해 주세요."}
               {saveState === "idle" && "수행 기록을 준비 중입니다."}
             </div>
-            <div className={card}>
-              <div className="text-[13px] font-semibold">이번에 본 알맞은 표현들</div>
+            <details className={card}>
+              <summary className="cursor-pointer text-[13px] font-semibold">이번에 본 알맞은 표현들 다시 보기</summary>
               <ul className="mt-2 space-y-1.5">
                 {items.map((it) => (
                   <li key={it.id} className="rounded-lg bg-[#FAF8F2] px-3.5 py-2 text-[13.5px]">
@@ -844,8 +848,7 @@ function MissionRunner({
                   </li>
                 ))}
               </ul>
-            </div>
-            <RevisionMap first={draft} final={revised || draft} featureLabel={mission.unit.learner_label} interp={isInterp} />
+            </details>
 
             {/* 보상·환기 구역 — 학습 코어와 물리적 분리. 생생 중국어(쇼츠 발췌)는 완료 후 보상 슬롯에만(UX 분리 원칙) */}
             <div className="rounded-xl border border-[#EAE4D2] border-t-[3px] border-t-[#FAD338] bg-[#FFFDF4] p-4">
@@ -1234,17 +1237,24 @@ function MissionContractBar({ mission }: { mission: MissionV2 }) {
   const isInterp = mission.production_task.mode === "interpreting";
   return (
     <div className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] p-4">
-      <div className="flex flex-wrap items-center gap-2 text-[13px]">
+      {/* 감량(0-r·103): 시작 화면에 남는 것은 상황 1줄 · 목표 1줄 · 예상 시간뿐이다.
+          평가 계약(완료 조건·확인/미확인 항목)은 삭제가 아니라 접는다 — 필요할 때 펼친다. */}
+      {/* 1부 문항마다 상황이 따로 있으므로, 여기 상황은 "2부에서 직접 할 일"임을 밝힌다. */}
+      <p className="text-[13px] leading-relaxed">
+        <span className="text-muted-foreground">마지막에 직접 {isInterp ? "통역할" : "옮길"} 상황 · </span>
+        {mission.production_task.situation_ko}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
         <Badge className="bg-[#15202B] text-white hover:bg-[#15202B]">이번 핵심 · {mission.unit.learner_label}</Badge>
         <span className="text-muted-foreground">약 {estMin}분</span>
       </div>
-      <p className="mt-2 text-[12.5px] text-muted-foreground">
-        완료 조건: 판단 {mission.mpj_items.length}문항 → {isInterp ? `${tgtName}로 통역` : `${tgtName}로 옮기기`} 1회 → 피드백 확인 → 다듬기 1회.
-        <b className="text-foreground"> 정답·참고 표현은 제출한 뒤에 공개됩니다.</b>
-      </p>
       <details className="mt-2 text-[12.5px]">
-        <summary className="cursor-pointer text-[#6B5518]">무엇을 확인하나요?</summary>
+        <summary className="cursor-pointer text-[#6B5518]">완료 조건과 평가 기준 보기</summary>
         <div className="mt-2 space-y-1.5 text-muted-foreground">
+          <p>
+            완료 조건 — 판단 {mission.mpj_items.length}문항 → {isInterp ? `${tgtName}로 통역` : `${tgtName}로 옮기기`} 1회 → 피드백 확인 → 다듬기 1회.
+            <b className="text-foreground"> 정답·참고 표현은 제출한 뒤에 공개됩니다.</b>
+          </p>
           <p>확인하는 것 — ① 원문의 의미·의도가 유지됐는가 ② 의미를 방해하는 문법 오류가 있는가 ③ 이 관계·상황에서 「{mission.unit.learner_label}」이 적절한가</p>
           {feat && feat.excluded_confounds.length > 0 && (
             <p>확인하지 않는 것 — {feat.excluded_confounds.join(" · ")}</p>
