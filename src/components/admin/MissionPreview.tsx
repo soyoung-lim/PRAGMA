@@ -33,6 +33,7 @@ const QUALITY_CODE_KO: Record<string, string> = {
   focus_contamination: "초점 오염(다차원 동시 변화)",
   unnatural_language: "부자연스러운 문장",
   internal_inconsistency: "내부 불일치",
+  scene_underspecified: "장면 미명세(상상이 갈림)",
 };
 
 export function MissionPreview({

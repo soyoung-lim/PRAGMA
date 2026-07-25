@@ -466,12 +466,25 @@ function buildCoreSystemPrompt(direction: Direction): string {
 출력은 아래 JSON만, 마크다운·설명 없이 그대로 반환합니다.
 
 {
-  "situation_ko": "상황 카드 배경 (한국어 2~3문장: 발신자·수신자·목적·관계 명시)",
+  "situation_ko": "상황 카드 배경 (한국어 2~3문장: 발신자·수신자·목적·관계 + 아래 [장면 완결성] 5요소)",
   "relation_ko": "발신자와 수신자의 관계 한 줄 (한국어)",
   "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원발화",
   "preceding_turn": null,
   "brief_note_ko": "편성 화면용 한 줄 요약 (한국어)"
 }
+
+[장면 완결성 — situation_ko가 반드시 분명히 할 5요소] (계약 0-r·107)
+학습자마다 다른 장면을 상상하면 판단 차이가 언어 감각이 아니라 상상의 차이에서 생긴다.
+매체 이름을 라벨로 붙이지 말고(예: "이메일로", "메신저에서" 같은 분류 표기 금지),
+**자연스러운 서술 안에서** 다음이 드러나게 쓴다.
+  ① 직접 말하는 자리인가, 글로 적어 보내는 것인가
+  ② 상대의 즉시 반응을 기대하는 상황인가
+  ③ 기록으로 남는 요청인가
+  ④ 이미 앞선 대화가 진행 중인가(그렇다면 preceding_turn을 채운다)
+  ⑤ 상대가 혼자 처리할 수 있는 일인가, 내부 보고·승인이 필요한 일인가
+※ 다섯 가지를 항목처럼 나열하지 말고 2~3문장 서술에 자연스럽게 녹인다.
+  예) "평소 연락하던 거래처 담당자와 일정 확인 통화를 하던 중, 다음 결제일을
+      일주일 늦출 수 있는지 직접 묻는다." (①말함 ②즉시반응 ③기록아님 ④진행중 ⑤내부승인필요)
 
 규칙:
 - source_text는 반드시 ${srcL}. 지정된 화행·관계·부담에 맞는 자연스러운 발화.
@@ -865,7 +878,10 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
    유지해야 하고, 부적절함은 오직 해당 초점의 **과소·적정·과잉 정도 차이**로만 실현되어야
    한다. 의도가 사라졌거나 사실이 추가/삭제된 문장을 "부적절 대역"으로 붙였으면 위반이다.
 ② implausible_distractor — 오답 후보가 실제로 쓸 법하지 않고 우스울 만큼 빗나갔는가.
-   후보는 **경계 사례**여야 하며, 화용 지식 없이도 소거되면 문항이 무의미하다.
+   **판별 기준(0-r·105): 중국어 초급자가 화용 지식 없이도 "이건 너무 세다/이상하다"고
+   소거할 수 있으면 결함이다.** 후보는 실제로 헷갈릴 만한 **경계 사례**여야 하며,
+   극단 문장(명령형 강요·노골적 무례)을 부적절 후보로 쓰는 것은 화용 훈련이 아니라
+   "나쁜 표현 찾기"로 문항을 격하시킨다.
 ③ answer_cue — 길이·형식·정중 표지 개수 등 내용과 무관한 단서로 정답이 드러나는가.
 ④ band_mismatch — 부여된 대역 코드가 문장의 실제 화용 강도와 어긋나는가.
    해설이 대역 코드와 모순되는 경우도 포함.
@@ -875,6 +891,11 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
    서술어를 갖춘 완전문이거나, 해당 관계·매체에서 실제로 쓰지 않을 문어체면 지적하라.
    ※ 유행어를 넣으라는 뜻이 아니다. **그 관계에서 실제로 그렇게 말하는가**만 본다.
 ⑦ internal_inconsistency — 상황 설명·관계·선행 발화·해설·정답 키가 서로 어긋나는가.
+⑧ scene_underspecified — 상황 서술만 읽고 **장면이 하나로 그려지는가**(0-r·107).
+   ①말하는 자리인지 적어 보내는 것인지 ②즉시 반응을 기대하는지 ③기록으로 남는지
+   ④앞선 대화가 있는지 ⑤상대 혼자 처리할 일인지 — 이 중 판단에 영향을 주는 요소가
+   빠져 학습자마다 다른 장면(전화/이메일/대면)을 상상하게 되면 지적하라.
+   ※ 매체 이름 라벨을 요구하는 것이 아니다. 서술만으로 장면이 정해지면 충분하다.
 
 [판정]
 - fail: 학습자가 **틀린 것을 배우게 되는** 결함이 하나라도 있다(①④⑦ 또는 심한 ②).
@@ -887,7 +908,7 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
   "summary_ko": "한 문장 요약(검토자가 먼저 읽는다)",
   "findings": [
     {
-      "code": "gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency",
+      "code": "gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified",
       "severity": "warning" | "fail",
       "where": "위치 경로 (예: mpj_items[2].candidates[1])",
       "note_ko": "무엇이 왜 문제인지 1~2문장. 대안 문장을 쓰지 말 것."
@@ -1227,6 +1248,7 @@ Deno.serve(async (req) => {
       const CODES = [
         'gate1_violation', 'implausible_distractor', 'answer_cue', 'band_mismatch',
         'focus_contamination', 'unnatural_language', 'internal_inconsistency',
+        'scene_underspecified',
       ]
       const rawFindings = Array.isArray(parsed.findings) ? parsed.findings : []
       const findings = rawFindings.slice(0, 20).map((raw) => {
