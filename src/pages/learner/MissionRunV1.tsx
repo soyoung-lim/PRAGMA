@@ -20,6 +20,13 @@ import {
   type DiscourseSlot,
   type SupportTier,
 } from "@/lib/pragma/discourseSlots";
+import { requestFeedback } from "@/lib/mission/missionFeedback";
+import {
+  SCOPE_LABEL,
+  SEMANTIC_LABEL,
+  GRAMMAR_LABEL,
+  type RuntimeFeedback,
+} from "@/lib/pragma/feedbackSchema";
 import { IS_DEMO } from "@/lib/auth/useProfile";
 
 // 샘플은 v1 → 정규화해 v2로 구동(러너는 정규화 형태만 본다, 0-l·84).
@@ -242,6 +249,116 @@ function ProductionGuide({
   );
 }
 
+/**
+ * feedback-lite 3층 진단 화면 (계약 §4 / 0-r·103 주 카드 1개 원칙 / 0-r·108 4분기).
+ * revision_scope가 가리키는 층만 펼치고 나머지 두 층은 칩으로 접는다.
+ * ⚠️ 점수·등급을 표시하지 않는다(0-q·95). 화용층 문구는 모델이 비단정으로 쓴다(§4 백신4).
+ */
+function FeedbackPanel({
+  fb,
+  featureCode,
+}: {
+  fb: RuntimeFeedback;
+  featureCode: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const scope = fb.revision_scope;
+  const v = fb.verdicts;
+  const g = fb.blocks.grammar?.[0];
+  const alt = fb.blocks.alternatives?.[0];
+  const alt2 = fb.blocks.alternatives?.[1];
+
+  const mainBody =
+    scope === "meaning"
+      ? fb.blocks.meaning_ko
+      : scope === "grammar"
+        ? g?.explanation_ko ?? fb.blocks.meaning_ko
+        : scope === "feature"
+          ? fb.blocks.feature_ko
+          : fb.blocks.feature_ko || "이 상황에 충분히 적절합니다.";
+
+  const layers = [
+    { key: "meaning", label: "뜻 전달", short: SEMANTIC_LABEL[v.semantic_fidelity], body: fb.blocks.meaning_ko },
+    { key: "grammar", label: "이해를 막는 표현", short: GRAMMAR_LABEL[v.grammatical_accuracy], body: g?.explanation_ko ?? "" },
+    {
+      key: "feature",
+      label: "상대에게 주는 인상",
+      short: bandLabel(featureCode, v.pragmatic_appropriateness.band_code),
+      body: fb.blocks.feature_ko,
+    },
+  ];
+  const others = layers.filter((l) => l.key !== scope);
+
+  return (
+    <div className="space-y-3">
+      {/* 주 카드 — 이번에 볼 것 하나만 */}
+      <div className="rounded-xl border border-[#FAD338] bg-[#FFFBEA] p-4">
+        <div className="text-[11.5px] font-bold text-[#6B5518]">
+          {scope === "clear" ? "고칠 곳 없음" : `이번에 볼 것 · ${SCOPE_LABEL[scope]}`}
+        </div>
+        <p className="mt-1.5 text-[14px] leading-relaxed">{mainBody}</p>
+
+        {scope === "grammar" && g?.suggested_correction && (
+          <p className="mt-2 rounded-lg bg-white/70 px-3 py-2 text-[13.5px]">
+            고친 형태 · {g.suggested_correction}
+          </p>
+        )}
+
+        {alt && (
+          <div className="mt-2.5 rounded-lg bg-white/70 px-3 py-2">
+            <div className="text-[11.5px] font-semibold text-[#6B5518]">한 가지만 바꾼 표현</div>
+            <div className="mt-0.5 text-[14px]">{alt.text}</div>
+            {alt.note_ko && <div className="mt-0.5 text-[12px] text-muted-foreground">{alt.note_ko}</div>}
+          </div>
+        )}
+      </div>
+
+      {/* 나머지 층 — 칩 */}
+      <div className={card}>
+        <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-[12.5px]">
+          {others.map((l) => (
+            <li key={l.key}>
+              <span className="text-muted-foreground">{l.label} · </span>
+              <span className="font-medium">{l.short}</span>
+            </li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="mt-2 rounded px-1.5 py-0.5 text-[11.5px] font-medium text-[#2B5B7A] hover:bg-[#EEF3F7]"
+          aria-expanded={open}
+        >
+          {open ? "접기 ▴" : "자세히 ▾"}
+        </button>
+        {open && (
+          <div className="mt-2 space-y-2 border-t border-[#EAE4D2] pt-2">
+            {others
+              .filter((l) => l.body)
+              .map((l) => (
+                <div key={l.key}>
+                  <div className="text-[11.5px] font-semibold text-muted-foreground">{l.label}</div>
+                  <p className="mt-0.5 text-[13px] leading-relaxed">{l.body}</p>
+                </div>
+              ))}
+            {alt2 && (
+              <div>
+                <div className="text-[11.5px] font-semibold text-muted-foreground">다른 전략</div>
+                <div className="mt-0.5 text-[13.5px]">{alt2.text}</div>
+                {alt2.note_ko && <div className="text-[12px] text-muted-foreground">{alt2.note_ko}</div>}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <p className="px-0.5 text-[11.5px] text-muted-foreground">
+        AI 진단입니다 — 유일한 정답이 아니라, 이 상황에서 살펴볼 지점을 짚어 준 것입니다.
+      </p>
+    </div>
+  );
+}
+
 function MissionRunner({
   mission,
   isSample,
@@ -268,6 +385,10 @@ function MissionRunner({
   const [savedLater, setSavedLater] = useState(false);
   const [resume, setResume] = useState<{ phase: Phase; draft: string; revised: string; ctxPick: number | null; ctxDone: boolean } | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "demo" | "error">("idle");
+  // feedback-lite(계약 §4) — 제출 후 3층 진단. 실패하면 기존 정직 표기로 되돌아간다.
+  const [fb, setFb] = useState<RuntimeFeedback | null>(null);
+  const [fbState, setFbState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const fbReqRef = useRef<string | null>(null); // 진행 중인 피드백 요청의 답안 키
   const startedAtRef = useRef<string>(new Date().toISOString());
 
   const items = mission.mpj_items;
@@ -293,6 +414,30 @@ function MissionRunner({
   const guideSlots = slotsForAct(feat?.speech_act);
   const guideResources = feat?.relevant_resources ?? [];
   const guideTier = supportTier(level);
+
+  // 피드백 단계 진입 시 1회 호출. 실패해도 미션을 막지 않는다(정직 표기로 폴백).
+  // ⚠️ cleanup으로 취소하지 않는다 — 이 이펙트가 setFbState를 부르므로 의존성이 바뀌어
+  //    첫 요청이 곧바로 cleanup되고 결과가 버려진다(로딩에서 멈춤). 대신 ref에 요청 키
+  //    (= 제출한 답안)를 두고, 응답이 최신 요청의 것일 때만 반영한다.
+  useEffect(() => {
+    if (phase !== "feedback" || !draft.trim()) return;
+    const key = draft;
+    if (fbReqRef.current === key) return; // 같은 답안은 다시 묻지 않는다
+    fbReqRef.current = key;
+    setFb(null);
+    setFbState("loading");
+    requestFeedback(mission, draft).then((r) => {
+      if (fbReqRef.current !== key) return; // 더 최신 제출이 있으면 폐기
+      if (r.ok && r.feedback) {
+        setFb(r.feedback);
+        setFbState("ready");
+        if (r.issues?.length) console.warn("[feedback] 정리된 모순:", r.issues);
+      } else {
+        console.warn("[feedback] 실패:", r.error);
+        setFbState("error");
+      }
+    });
+  }, [phase, draft, mission]);
 
   // 중단 후 재개(프로토타입 v2 ②) — 2부 진행분만 미션별 localStorage에 보존. 실패해도 흐름 무해.
   const storageKey = `pragma:mrun:${scenarioId ?? "sample"}`;
@@ -587,14 +732,31 @@ function MissionRunner({
               <p className="mt-1 whitespace-pre-wrap text-[14.5px]">{draft}</p>
             </div>
 
+            {fbState === "loading" && (
+              <div className={card}>
+                <p className="text-[13.5px] text-muted-foreground">답을 살펴보는 중…</p>
+              </div>
+            )}
+
+            {fbState === "ready" && fb && (
+              <FeedbackPanel fb={fb} featureCode={mission.unit.target_feature} />
+            )}
+
+            {/* 진단 실패 시 폴백 — 기존 정직 표기로 되돌아간다(미션은 계속 진행). */}
+            {fbState === "error" && (
+              <div className="rounded-lg border border-dashed border-[#B9C4CE] bg-[#F7F9FA] p-3 text-[11.5px] text-[#5B6B76]">
+                지금은 답변별 자동 진단을 불러오지 못했습니다. 아래 핵심 원칙과 참고 표현을 보고 다듬어 보세요.
+              </div>
+            )}
+
             <div className={card}>
-              <div className="text-[13px] font-semibold"><span className="mr-1.5 text-[#8899A6]">1</span>이번 화용 초점 — {mission.unit.learner_label}</div>
+              <div className="text-[13px] font-semibold">이번 화용 초점 — {mission.unit.learner_label}</div>
               <p className="mt-1.5 text-[13.5px] leading-relaxed">{mission.unit.closing_ko}</p>
               <FeedbackReasonDrawer mission={mission} />
             </div>
 
-            <div className={card}>
-              <div className="text-[13px] font-semibold"><span className="mr-1.5 text-[#8899A6]">2</span>참고 표현</div>
+            <details className={card}>
+              <summary className="cursor-pointer text-[13px] font-semibold">참고 표현 보기</summary>
               <p className="mt-1 text-[12px] text-muted-foreground">정답이 아니라 비교용입니다. 상황에 따라 어울리는 범위가 달라집니다.</p>
               <ul className="mt-2.5 space-y-2">
                 {mission.production_task.reference_alternatives.map((a) => (
@@ -604,13 +766,9 @@ function MissionRunner({
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
 
-            <div className="rounded-lg border border-dashed border-[#B9C4CE] bg-[#F7F9FA] p-3 text-[11.5px] text-[#5B6B76]">
-              답변별 자동 피드백(의미·문법 진단)은 다음 단계(feedback-lite 모듈)에서 붙습니다. 지금은 핵심 원칙과 참고 표현만 제공합니다.
-            </div>
-
-            <Button className="w-full" onClick={() => goto("revise")}>고치러 가기 →</Button>
+            <Button className="w-full" disabled={fbState === "loading"} onClick={() => goto("revise")}>고치러 가기 →</Button>
           </div>
         )}
 
