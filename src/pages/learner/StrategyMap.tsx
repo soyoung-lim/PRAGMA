@@ -66,7 +66,7 @@ const StrategyMap = () => {
             </p>
 
             <Link
-              to="/scenario"
+              to="/learner/practice"
               className="mt-4 inline-flex items-center rounded-md bg-[#FAD338] px-4 py-2 text-[13.5px] font-semibold text-[#15202B]"
             >
               미션에서 써보기 →

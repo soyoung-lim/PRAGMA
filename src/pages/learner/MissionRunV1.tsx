@@ -11,6 +11,7 @@ import { normalizeMission, type MissionV2, type MpjItemV2 } from "@/lib/pragma/m
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
 import { saveMissionAttempt } from "@/lib/mission/missionLog";
+import { ChatScene, ChatBubble, ChatCaption, ChatAvatar, highlightZh } from "@/components/mission/ChatScene";
 
 // 샘플은 v1 → 정규화해 v2로 구동(러너는 정규화 형태만 본다, 0-l·84).
 const SAMPLE_MISSION_V2 = normalizeMission(SAMPLE_MISSION_V1).data as MissionV2;
@@ -441,19 +442,24 @@ function MissionRunner({
               />
             ) : (
               <>
-                <SituationCard situation={pt.situation_ko} relation={pt.relation_ko} />
-                <div className={card}>
-                  <div className="text-[13px] font-semibold">{tgtName}로 옮겨 보세요</div>
-                  <p className="mt-1 text-[12.5px] text-muted-foreground">
-                    방금 판단해 본 감각을 <b>새로운 상황</b>에 적용하는 단계입니다. 참고 표현은 제출한 뒤에 함께 봅니다.
-                  </p>
-                  <div className={`mt-3 ${srcBox}`}>
-                    <div className="text-[11.5px] font-semibold text-muted-foreground">{srcName} 원문</div>
-                    <p className="mt-1 text-[14.5px]">{pt.source_text}</p>
+                <ChatScene situation={pt.situation_ko} relation={pt.relation_ko} eyebrow="직접 옮길 요청">
+                  {pt.preceding_turn && <ChatBubble side="them">{pt.preceding_turn}</ChatBubble>}
+                  <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
+                  <div className="mb-3 flex items-end justify-end gap-2">
+                    <Textarea
+                      className="w-[78%] resize-y rounded-[19px] rounded-br-[6px] border border-[#7ED158] bg-gradient-to-b from-[#9EED7C] to-[#8CE768] px-3 py-2 text-[14.5px] leading-[1.46] text-[#0c3300] placeholder:text-[#4a7a4a]"
+                      rows={3}
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      placeholder={`여기에 ${tgtName}로 답장 입력…`}
+                    />
+                    <ChatAvatar side="me" />
                   </div>
-                  <Textarea className="mt-3" rows={5} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`여기에 ${tgtName}로 입력…`} />
-                </div>
-                <Button className="w-full" disabled={!draft.trim()} onClick={() => goto("feedback")}>번역 제출 →</Button>
+                </ChatScene>
+                <p className="px-0.5 text-[12px] text-muted-foreground">
+                  먼저 스스로 옮겨 보세요 — 상대에게 답장하듯이. 참고 표현은 제출한 뒤에 함께 봅니다.
+                </p>
+                <Button className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" disabled={!draft.trim()} onClick={() => goto("feedback")}>번역 제출 →</Button>
               </>
             )}
           </div>
@@ -546,6 +552,19 @@ function MissionRunner({
               </ul>
             </div>
             <RevisionMap first={draft} final={revised || draft} featureLabel={mission.unit.learner_label} interp={isInterp} />
+
+            {/* 보상·환기 구역 — 학습 코어와 물리적 분리. 생생 중국어(쇼츠 발췌)는 완료 후 보상 슬롯에만(UX 분리 원칙) */}
+            <div className="rounded-xl border border-[#EAE4D2] border-t-[3px] border-t-[#FAD338] bg-[#FFFDF4] p-4">
+              <div className="text-[12px] font-extrabold tracking-wide text-[#6B5518]">🎬 오늘의 생생 표현 · 쉬어가기</div>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                실제 원어민이 이 상황에서 자주 쓰는 <b>생생한 표현</b>을 여기서 가볍게 만나요. 학습 과제가 아니라 <b>보상·환기용</b>입니다.{" "}
+                <span className="text-[#A9B0BA]">(유튜브 쇼츠 발췌 — 후속 구현. 이 자리는 레이아웃 예약 구역)</span>
+              </p>
+              <div className="mt-3 rounded-[10px] border border-dashed border-[#A9B0BA] bg-white px-3 py-5 text-center text-[12.5px] text-[#A9B0BA]">
+                생생 중국어 콘텐츠 배치 예정
+              </div>
+            </div>
+
             <Button variant="outline" className="w-full" onClick={resetAll}>처음부터 다시 보기 ↺</Button>
           </div>
         )}
@@ -1010,29 +1029,23 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
 
   return (
     <div className="space-y-3">
-      <SituationCard situation={item.situation_ko} relation={item.relation_ko} />
+      {/* 대화 스킨 — 상황·선행발화 + AI 초안(내 미발송 초안 말풍선). 프로토타입 v2 */}
+      <ChatScene situation={item.situation_ko} relation={item.relation_ko}>
+        {item.preceding_turn && <ChatBubble side="them">{item.preceding_turn}</ChatBubble>}
+        {item.type !== "multi_judge" && (
+          <>
+            <ChatCaption>전하려는 뜻 · {item.source}</ChatCaption>
+            <ChatCaption tone="draft">↓ AI가 만든 초안 · 아직 안 보냄</ChatCaption>
+            <ChatBubble side="me" variant="draft">
+              {answered ? highlightZh(item.target, item.highlights) : item.target}
+            </ChatBubble>
+          </>
+        )}
+      </ChatScene>
 
-      <div className={srcBox}>
-        <div className="text-[11.5px] font-semibold text-muted-foreground">원문</div>
-        <p className="mt-1 text-[14.5px]">{item.source}</p>
-      </div>
-
-      {/* 단일 발화 문항(scale4/judge3/fix_choice/reason_conf) — AI 초안 검수 프레임(0-i·59) */}
+      {/* 단일 발화 문항(scale4/judge3/fix_choice/reason_conf) — 위 대화창 AI 초안에 대한 판정(0-i·59) */}
       {item.type !== "multi_judge" && (
         <div className={card}>
-          <div className="flex items-center gap-2">
-            <span className="text-[11.5px] font-semibold text-muted-foreground">AI가 제안한 번역 초안</span>
-            <span className="rounded bg-[#EEF2F6] px-1.5 py-0.5 text-[10.5px] font-medium text-[#5B6B76]">발송 전 검수</span>
-          </div>
-          <p className="mt-1 text-[15px] leading-relaxed">{item.target}</p>
-          {item.highlights.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {item.highlights.map((h) => (
-                <span key={h} className="rounded bg-[#FFF3C4] px-1.5 py-0.5 text-[12px]">{h}</span>
-              ))}
-            </div>
-          )}
-
           {/* scale4 */}
           {item.type === "scale4" && (
             <>

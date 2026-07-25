@@ -88,7 +88,13 @@ function zhKoMirror(): MissionV2 {
     schema_version: "mission_v2",
     direction: "zh_ko",
     mpj_items: base.mpj_items.map((it) => {
-      const common = { ...it, source: zhSource, recommended_example: "회의를 조금 앞당겨 주실 수 있을까요?" };
+      // zh_ko는 target=한국어 → 선행발화도 한국어여야 R10 통과(0-l·85, checkPrecedingLang)
+      const common = {
+        ...it,
+        source: zhSource,
+        recommended_example: "회의를 조금 앞당겨 주실 수 있을까요?",
+        ...(it.preceding_turn ? { preceding_turn: "다음 주 회의는 원래대로 진행하죠?" } : {}),
+      };
       if (it.type === "multi_judge") {
         return { ...common, candidates: it.candidates.map((c) => ({ ...c, text: "회의를 앞당겨 주세요." })) };
       }
@@ -97,7 +103,11 @@ function zhKoMirror(): MissionV2 {
       }
       return { ...common, target: koTarget, highlights: [] } as typeof it;
     }),
-    production_task: { ...base.production_task, source_text: "请把下周的会议地点改到我们附近，好吗？" },
+    production_task: {
+      ...base.production_task,
+      source_text: "请把下周的会议地点改到我们附近，好吗？",
+      preceding_turn: "다음 주 회의 장소는 그대로 괜찮으세요?",
+    },
     provenance: PROV,
   } as MissionV2;
 }

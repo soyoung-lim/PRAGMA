@@ -37,7 +37,6 @@ import WeekDetail from "./pages/learner/WeekDetail.tsx";
 import IntroArc from "./pages/learner/IntroArc.tsx";
 import LearnerRecords from "./pages/learner/LearnerRecords.tsx";
 import StrategyMap from "./pages/learner/StrategyMap.tsx";
-import PracticeMission from "./pages/learner/PracticeMission.tsx";
 import PrototypeMissionV2 from "./pages/learner/PrototypeMissionV2.tsx";
 import MissionRunV1 from "./pages/learner/MissionRunV1.tsx";
 import LearnerCourseLive from "./pages/learner/LearnerCourseLive.tsx";
@@ -80,17 +79,20 @@ const App = () => (
           {/* legacy 판단형 셸 — 연구/앵커 후보로 보관. 개발 환경에서만 접근 가능. */}
           <Route
             path="/mission-legacy"
-            element={import.meta.env.DEV ? <MissionShell /> : <Navigate to="/scenario" replace />}
+            element={import.meta.env.DEV ? <MissionShell /> : <Navigate to="/learner/practice" replace />}
           />
           <Route path="/entry/task-mode" element={<RequireApproved><EntryTaskMode /></RequireApproved>} />
           <Route path="/entry/language-direction" element={<RequireApproved><EntryLanguageDirection /></RequireApproved>} />
           <Route path="/entry/unavailable" element={<RequireApproved><EntryUnavailable /></RequireApproved>} />
-          <Route path="/scenario" element={<RequireApproved><PracticeMission /></RequireApproved>} />
-          {/* 흐름 검증용 프로토타입 — 확정되면 /scenario를 교체하고 이 경로는 지운다 */}
-          <Route path="/prototype/mission-v2" element={<RequireApproved><PrototypeMissionV2 /></RequireApproved>} />
-          {/* mission_v1(계약 스키마) 직접 구동 — 인자 없으면 샘플, :scenarioId면 DB 미션 */}
-          <Route path="/learner/mission-run" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
+          {/* 학습 미션 정본 = /learner/practice (MissionRunV1, 프로토타입 v2 이식). 구 /scenario·mission-run은 리다이렉트/별칭 */}
+          <Route path="/learner/practice" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
+          <Route path="/learner/practice/:scenarioId" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
+          {/* 구 학습 미션 경로 — 새 정본으로 리다이렉트(구 PracticeMission 목업 은퇴) */}
+          <Route path="/scenario" element={<Navigate to="/learner/practice" replace />} />
+          {/* legacy 별칭(옛 북마크 호환) — UI 네비게이션은 전부 /learner/practice 사용 */}
+          <Route path="/learner/mission-run" element={<Navigate to="/learner/practice" replace />} />
           <Route path="/learner/mission-run/:scenarioId" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
+          <Route path="/prototype/mission-v2" element={<RequireApproved><PrototypeMissionV2 /></RequireApproved>} />
           <Route path="/admin" element={<RequireAdmin><Navigate to="/admin/dashboard" replace /></RequireAdmin>} />
           <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
           <Route path="/admin/corpus" element={<RequireAdmin><AdminCorpus /></RequireAdmin>} />

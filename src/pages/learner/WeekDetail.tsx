@@ -110,7 +110,7 @@ const WeekDetail = () => {
                   {item.available ? (
                     <button
                       type="button"
-                      onClick={() => navigate("/scenario")}
+                      onClick={() => navigate("/learner/practice")}
                       className="shrink-0 rounded-md bg-[#15202B] px-3 py-1.5 text-[12px] font-medium text-white"
                     >
                       {done ? "다시 하기" : resuming ? "이어하기" : "시작"}
@@ -141,7 +141,7 @@ const WeekDetail = () => {
             {quickDoneCount > 0 ? (
               <button
                 type="button"
-                onClick={() => navigate("/scenario?mode=transfer")}
+                onClick={() => navigate("/learner/practice")}
                 className="shrink-0 rounded-md bg-[#15202B] px-3 py-1.5 text-[12px] font-medium text-white"
               >
                 {transferDone ? "다시 하기" : "시작"}
