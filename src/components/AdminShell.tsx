@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { HomeBrand } from "@/components/HomeBrand";
 
-type NavItem = { to: string; label: string };
+type NavItem = { to?: string; label: string; disabled?: boolean };
 type NavGroup = {
   header: string;
   items: NavItem[];
@@ -10,40 +10,50 @@ type NavGroup = {
 
 const STANDALONE: NavItem = { to: "/admin/dashboard", label: "대시보드" };
 
+// 워크플로 정합 사이드바 (2026-07-25) — "자원 준비 → 코어 → 미션 조립 → 수업 패키지 →
+// 검수 → 배포 → 분석" 한 줄 논리. 미구현 화면은 disabled(준비중)로 골격만 노출.
 const GROUPS: NavGroup[] = [
   {
-    header: "생성 자원·설정",
+    header: "0 · 자원 관리",
     items: [
-      { to: "/admin/corpus", label: "HSK 어휘 코퍼스" },
-      { to: "/admin/prompt-harness", label: "프롬프트 관리" },
-    ],
-  },
-  {
-    header: "시나리오·문항 설계",
-    items: [
-      { to: "/admin/curriculum", label: "15주 커리큘럼" },
-      { to: "/admin/composer", label: "15주 편성기" },
-      { to: "/admin/generator", label: "AI 시나리오 생성" },
-      { to: "/admin/batch", label: "배치 생성" },
-      { to: "/admin/browser", label: "시나리오 브라우저" },
-      { to: "/admin/review", label: "시나리오 검수" },
-      { to: "/admin/archive", label: "시나리오 아카이브" },
+      { to: "/admin/corpus", label: "소스 뱅크 (HSK 어휘)" },
+      { to: "/admin/prompt-harness", label: "생성 규칙·프롬프트" },
       { to: "/admin/question-designer", label: "수준별 문항 설계" },
     ],
   },
   {
-    header: "학습자 수행 관리",
+    header: "1 · 콘텐츠 파이프라인",
     items: [
-      { to: "/admin/learners", label: "학습자 관리" },
-      { to: "/admin/decision-traces", label: "의사결정 기록" },
-      { to: "/admin/reports", label: "개인화 리포트" },
+      { to: "/admin/generator", label: "1단계 · 코어 생성 (단건)" },
+      { to: "/admin/batch", label: "1단계 · 코어 배치 (대량)" },
+      { to: "/admin/browser", label: "2단계 · 학습 미션 조립" },
+      { label: "3단계 · 수업 패키지 생성", disabled: true },
+      { to: "/admin/review", label: "4단계 · 통합 검수·승인" },
     ],
   },
   {
-    header: "연구 분석·보내기",
+    header: "2 · 커리큘럼·배포",
     items: [
-      { to: "/admin/analytics", label: "관리자 종합 분석" },
-      { to: "/admin/export", label: "데이터보내기" },
+      { to: "/admin/curriculum", label: "15주 커리큘럼" },
+      { to: "/admin/composer", label: "15주 편성기" },
+      { to: "/admin/archive", label: "콘텐츠 보관함" },
+    ],
+  },
+  {
+    header: "3 · 수업 운영·연구",
+    items: [
+      { label: "교과목 운영", disabled: true },
+      { to: "/admin/analytics", label: "통합 학습 대시보드" },
+      { to: "/admin/learners", label: "학습자 관리" },
+      { to: "/admin/reports", label: "학습자 개별 리포트" },
+      { to: "/admin/decision-traces", label: "의사결정 기록" },
+      { to: "/admin/export", label: "연구 데이터 추출" },
+    ],
+  },
+  {
+    header: "설정",
+    items: [
+      { label: "사용자·권한", disabled: true },
     ],
   },
 ];
@@ -105,15 +115,28 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
                   {group.header}
                 </span>
                 <div className="flex flex-col gap-[2px] border-l border-[#e5e1d8] pl-4">
-                  {group.items.map((item) => (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      className={itemClasses(pathname === item.to)}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
+                  {group.items.map((item) =>
+                    item.disabled || !item.to ? (
+                      <span
+                        key={item.label}
+                        title="준비 중 — 후속 단계에서 구현됩니다."
+                        className="flex items-center justify-between gap-2 rounded-md px-3 py-1.5 text-[13px] text-[#bcb6a9] cursor-default select-none"
+                      >
+                        {item.label}
+                        <span className="shrink-0 rounded bg-[#EDE9DD] px-1.5 py-0.5 text-[9.5px] font-medium text-[#8a857c]">
+                          준비중
+                        </span>
+                      </span>
+                    ) : (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className={itemClasses(pathname === item.to)}
+                      >
+                        {item.label}
+                      </Link>
+                    ),
+                  )}
                 </div>
               </div>
             ))}
