@@ -145,6 +145,27 @@ export const MissionProvenanceSchema = z.object({
 });
 export type MissionProvenance = z.infer<typeof MissionProvenanceSchema>;
 
+// ── 검증②(계약 0-n·94 / 0-q·99) — 생성과 분리된 모델의 품질 비평 결과 ──
+// provenance와 같은 취급: 모델 응답이 아니라 승격 파이프라인이 붙이므로 스키마는
+// 관대(선택)하게 둔다. 학습자에게 노출되지 않는 관리자 품질관리 필드이며,
+// 이 판정은 교수자 눈검사·승인을 대체하지 않는다(AI = QA 보조).
+export const QualityFindingSchema = z.object({
+  code: z.string().min(1),
+  severity: z.enum(["warning", "fail"]),
+  where: z.string().default(""),
+  note_ko: z.string().default(""),
+});
+export const QualityCheckSchema = z.object({
+  verdict: z.enum(["pass", "warning", "fail"]),
+  summary_ko: z.string().default(""),
+  findings: z.array(QualityFindingSchema).default([]),
+  model: z.string().default(""),
+  prompt_version: z.string().default(""),
+  checked_at: z.string().default(""),
+});
+export type QualityFinding = z.infer<typeof QualityFindingSchema>;
+export type QualityCheck = z.infer<typeof QualityCheckSchema>;
+
 // ── mission_v1 ────────────────────────────────────────────────────────
 export const MissionV1Schema = z.object({
   schema_version: z.literal("mission_v1"),
@@ -152,6 +173,7 @@ export const MissionV1Schema = z.object({
   mpj_items: z.array(MpjItemSchema).length(5),
   production_task: ProductionTaskSchema,
   provenance: MissionProvenanceSchema.optional(), // 존재·필수값 = R20(missionRules)
+  quality_check: QualityCheckSchema.optional(),   // 검증②(0-q·99) — 승격 후 주입
   // summary 없음 — 코드가 recommended_example_zh 5개를 모아 렌더(B13)
 });
 export type MissionV1 = z.infer<typeof MissionV1Schema>;
@@ -281,6 +303,7 @@ export const MissionV2Schema = z.object({
   mpj_items: z.array(MpjItemV2Schema).length(5),
   production_task: ProductionTaskV2Schema,
   provenance: MissionProvenanceSchema.optional(),
+  quality_check: QualityCheckSchema.optional(),
 });
 export type MissionV2 = z.infer<typeof MissionV2Schema>;
 
@@ -370,6 +393,7 @@ export function normalizeMission(input: unknown): {
         reference_alternatives: pt.reference_alternatives.map((a) => ({ text: a.zh, note_ko: a.note_ko })),
       },
       ...(m.provenance ? { provenance: m.provenance } : {}),
+      ...(m.quality_check ? { quality_check: m.quality_check } : {}),
     },
   };
 }
