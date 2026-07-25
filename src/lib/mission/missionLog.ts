@@ -6,7 +6,8 @@
 //
 // 이번 단계 = 루프를 닫는 최소 로그(신원·방향·원문·산출·수정·완료). 계약 §6b의
 // full mission_attempt_v1(문항별 답·확신도·피드백 스냅샷)은 문항 상태 상향이 필요해
-// 후속(feedback-lite)에서 확장한다 — target_feature_observed·context_judgment는 지금 비움.
+// 후속(feedback-lite)에서 확장한다 — target_feature_observed는 지금 비움.
+// context_judgment = 이견 채널 기록(0-r·104). 남기지 않으면 null.
 
 import { supabase } from "@/integrations/supabase/client";
 import { DIRECTION_LANGS, type LanguageDirection } from "@/lib/pragma/enums";
@@ -26,6 +27,23 @@ export interface SaveAttemptInput {
   revisedResponse: string;
   /** 컴포넌트 마운트 시각(ISO) */
   startedAtIso: string;
+  /**
+   * 학습자 이견 기록(0-r·104). 판정을 바꾸지 않는다 — 결함 문항 발견과
+   * 채점키 캘리브레이션 보조 자료로만 쓴다. 남기지 않으면 undefined.
+   */
+  contextJudgment?: LearnerDissent;
+}
+
+/** 이견 채널 저장 형태 — context_judgment jsonb에 그대로 들어간다. */
+export interface LearnerDissent {
+  kind: "learner_dissent";
+  /** 어느 화면에서 남겼는가 */
+  at: "feedback";
+  /** 다르게 본 조건(복수 선택, 코드) */
+  conditions: string[];
+  /** 한 줄 이유(선택) */
+  reason_ko: string;
+  created_at: string;
 }
 
 export type SaveAttemptResult =
@@ -76,6 +94,7 @@ export async function saveMissionAttempt(input: SaveAttemptInput): Promise<SaveA
     example_shown: true,
     mission_completed: true,
     content_ver: input.mission.unit.target_feature_version ?? null,
+    context_judgment: input.contextJudgment ?? null,
     started_at: input.startedAtIso,
     completed_at: new Date().toISOString(),
   };

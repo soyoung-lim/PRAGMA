@@ -10,7 +10,7 @@ import { SCALE4_CODES, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targe
 import { normalizeMission, type MissionV2, type MpjItemV2 } from "@/lib/pragma/missionSchema";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
-import { saveMissionAttempt } from "@/lib/mission/missionLog";
+import { saveMissionAttempt, type LearnerDissent } from "@/lib/mission/missionLog";
 import { ChatScene, ChatBubble, ChatCaption, ChatAvatar, highlightZh } from "@/components/mission/ChatScene";
 import {
   slotsForAct,
@@ -401,6 +401,8 @@ function MissionRunner({
   const [fb, setFb] = useState<RuntimeFeedback | null>(null);
   const [fbState, setFbState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const fbReqRef = useRef<string | null>(null); // 진행 중인 피드백 요청의 답안 키
+  // 이견 채널(0-r·104) — 완료 시 수행 로그의 context_judgment로 함께 저장한다.
+  const [dissent, setDissent] = useState<LearnerDissent | null>(null);
   const startedAtRef = useRef<string>(new Date().toISOString());
 
   const items = mission.mpj_items;
@@ -506,6 +508,7 @@ function MissionRunner({
       firstResponse: draft,
       revisedResponse: revised || draft,
       startedAtIso: startedAtRef.current,
+      ...(dissent ? { contextJudgment: dissent } : {}),
     });
     if (res.ok) {
       setSaveState("saved");
@@ -786,6 +789,19 @@ function MissionRunner({
                 ))}
               </ul>
             </details>
+
+            {/* 이견 채널 — 판정을 바꾸지 않는 별도 통로(0-r·104) */}
+            <DissentPanel
+              onSubmit={(d) =>
+                setDissent({
+                  kind: "learner_dissent",
+                  at: "feedback",
+                  conditions: d.conditions,
+                  reason_ko: d.reason,
+                  created_at: new Date().toISOString(),
+                })
+              }
+            />
 
             <Button className="w-full" disabled={fbState === "loading"} onClick={() => goto("revise")}>고치러 가기 →</Button>
           </div>
@@ -1261,6 +1277,95 @@ function MissionContractBar({ mission }: { mission: MissionV2 }) {
           )}
         </div>
       </details>
+    </div>
+  );
+}
+
+// ── 이견 채널(0-r·104 / 0-i·66) — "내 판단을 남길게요" 원탭 ────────────────
+// 판정을 바꾸지 않는다. 목적 = ①공정성 통로 ②결함 문항 발견 ③채점키 캘리브레이션
+// 보조 자료. 정규 MPJ 문항으로 만들지 않는다(구인 변경 금지) — 선택 입력이고,
+// 이유 한 줄도 필수가 아니다(피로 원칙).
+const DISSENT_CONDITIONS: { code: string; label: string }[] = [
+  { code: "relationship", label: "관계·친밀도를 다르게 봤어요" },
+  { code: "burden", label: "부탁의 부담 크기를 다르게 봤어요" },
+  { code: "preceding", label: "앞선 대화 흐름을 고려했어요" },
+  { code: "experience", label: "실제로 이렇게 말하는 걸 봤/들었어요" },
+];
+
+function DissentPanel({ onSubmit }: { onSubmit: (d: { conditions: string[]; reason: string }) => void }) {
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [reason, setReason] = useState("");
+  const [sent, setSent] = useState(false);
+
+  if (sent) {
+    return (
+      <div className="rounded-lg bg-[#F2FAF6] px-3.5 py-2.5 text-[12.5px] text-[#2E7D5B]">
+        ✓ 남겼습니다. 판정은 그대로지만, 이 기록은 문항을 다듬는 데 쓰입니다.
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full rounded-lg border border-dashed border-[#B9C4CE] bg-white px-3.5 py-2.5 text-left text-[12.5px] text-[#3B4A57] hover:bg-[#F7F9FA]"
+      >
+        생각이 다른가요? <b>내 판단을 남길게요 →</b>
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-[#B9C4CE] bg-white px-3.5 py-3">
+      <div className="text-[12.5px] font-semibold">어떤 점을 다르게 보셨나요?</div>
+      <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+        해당하는 것만 고르세요. 판정은 바뀌지 않고, 담당 교수자가 문항을 다듬는 데 참고합니다.
+      </p>
+      <ul className="mt-2 space-y-1">
+        {DISSENT_CONDITIONS.map((c) => {
+          const on = picked.includes(c.code);
+          return (
+            <li key={c.code}>
+              <button
+                type="button"
+                onClick={() => setPicked((p) => (on ? p.filter((x) => x !== c.code) : [...p, c.code]))}
+                aria-pressed={on}
+                className={[
+                  "w-full rounded-md border px-3 py-1.5 text-left text-[12.5px]",
+                  on ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#EAE4D2] bg-white text-[#3B4A57]",
+                ].join(" ")}
+              >
+                {c.label}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <Textarea
+        className="mt-2 text-[12.5px]"
+        rows={2}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="한 줄 이유 (선택)"
+      />
+      <div className="mt-2 flex gap-2">
+        <Button
+          className="flex-1"
+          disabled={picked.length === 0 && !reason.trim()}
+          onClick={() => {
+            onSubmit({ conditions: picked, reason: reason.trim() });
+            setSent(true);
+          }}
+        >
+          남기기
+        </Button>
+        <Button variant="outline" className="flex-1" onClick={() => setOpen(false)}>
+          닫기
+        </Button>
+      </div>
     </div>
   );
 }
