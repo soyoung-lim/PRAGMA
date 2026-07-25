@@ -20,6 +20,22 @@ const TYPE_LABEL: Record<string, string> = {
   multi_judge: "⑤ 다중 발화",
 };
 
+const QUALITY_LABEL: Record<string, string> = {
+  pass: "통과",
+  warning: "주의",
+  fail: "결함",
+};
+const QUALITY_CODE_KO: Record<string, string> = {
+  gate1_violation: "불변항 위반(의미·의도 변질)",
+  implausible_distractor: "비현실적 오답",
+  answer_cue: "정답 단서 노출",
+  band_mismatch: "대역 불일치",
+  focus_contamination: "초점 오염(다차원 동시 변화)",
+  unnatural_language: "부자연스러운 문장",
+  internal_inconsistency: "내부 불일치",
+  scene_underspecified: "장면 미명세(상상이 갈림)",
+};
+
 export function MissionPreview({
   mission,
   warnings,
@@ -29,6 +45,7 @@ export function MissionPreview({
 }) {
   const feat = mission.unit.target_feature;
   const p = mission.provenance;
+  const q = mission.quality_check;
   return (
     <div className="mt-3 space-y-3 rounded-xl border border-[#D8D0BC] bg-[#FAF8F2] p-3.5 text-[13px]">
       {/* unit + provenance */}
@@ -47,6 +64,42 @@ export function MissionPreview({
       {warnings && warnings.length > 0 && (
         <div className="rounded-md bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
           경고 {warnings.length}: {warnings.join(" · ")}
+        </div>
+      )}
+
+      {/* 검증②(0-n·94) — 분리 모델의 품질 비평. 눈검사를 대신하지 않는 참고 자료다. */}
+      {q && (
+        <div
+          className={[
+            "rounded-md px-3 py-2 text-[12px]",
+            q.verdict === "fail"
+              ? "bg-red-50 text-red-900"
+              : q.verdict === "warning"
+                ? "bg-amber-50 text-amber-900"
+                : "bg-emerald-50 text-emerald-900",
+          ].join(" ")}
+        >
+          <div className="font-semibold">
+            AI 품질점검: {QUALITY_LABEL[q.verdict]}
+            {q.model && <span className="ml-1.5 font-normal opacity-70">({q.model})</span>}
+          </div>
+          {q.summary_ko && <p className="mt-0.5">{q.summary_ko}</p>}
+          {q.findings.length > 0 && (
+            <ul className="mt-1.5 space-y-1">
+              {q.findings.map((f, i) => (
+                <li key={i}>
+                  <span className="font-medium">
+                    [{f.severity === "fail" ? "결함" : "주의"}] {QUALITY_CODE_KO[f.code] ?? f.code}
+                  </span>
+                  {f.where && <span className="opacity-70"> · {f.where}</span>}
+                  {f.note_ko && <span> — {f.note_ko}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-1.5 text-[11px] opacity-70">
+            AI 보조 판정입니다 — 승인 여부는 아래 문항을 직접 확인하고 결정하세요.
+          </p>
         </div>
       )}
 
