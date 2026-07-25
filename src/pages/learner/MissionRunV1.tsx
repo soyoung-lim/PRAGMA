@@ -12,6 +12,7 @@ import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
 import { saveMissionAttempt } from "@/lib/mission/missionLog";
 import { ChatScene, ChatBubble, ChatCaption, ChatAvatar, highlightZh } from "@/components/mission/ChatScene";
+import { IS_DEMO } from "@/lib/auth/useProfile";
 
 // 샘플은 v1 → 정규화해 v2로 구동(러너는 정규화 형태만 본다, 0-l·84).
 const SAMPLE_MISSION_V2 = normalizeMission(SAMPLE_MISSION_V1).data as MissionV2;
@@ -48,6 +49,10 @@ const MPJ_LABEL: Record<string, string> = {
 
 const card = "rounded-xl border border-[#EAE4D2] bg-white p-4";
 const srcBox = "rounded-lg border-l-[3px] border-[#EAE4D2] border-l-[#FAD338] bg-[#F5F5F2] p-3";
+// 데모/검증 전용 버튼(프로토타입 v2 "데모 채우기") — IS_DEMO(개발·데모 배포)에서만 노출.
+// 실제 학습 세션(VITE_ENABLE_DEMO 미설정)에는 나오지 않아 수행 데이터 오염 없음.
+const demoBtn =
+  "block w-full rounded-lg border border-dashed border-[#D8D0BC] bg-[#F5F5F2] px-3 py-2 text-[12.5px] text-muted-foreground transition-colors hover:bg-[#EFEEE9]";
 
 // ── 2부 진행 단계 ────────────────────────────────────────────────────────
 type Phase = "mpj" | "handoff" | "ctx" | "produce" | "feedback" | "revise" | "done";
@@ -197,6 +202,9 @@ function MissionRunner({
   const pt = mission.production_task;
   const isInterp = pt.mode === "interpreting";
   const part = phase === "mpj" || phase === "handoff" ? 1 : 2;
+  // 데모 채우기 예시 답안(참고 표현 재사용 — 산출/다듬기가 다르게 보이도록 서로 다른 안)
+  const demoDraft = pt.reference_alternatives[0]?.text ?? "";
+  const demoRevised = pt.reference_alternatives[1]?.text ?? pt.reference_alternatives[0]?.text ?? "";
 
   // B2(계약 0-k): counter_rule 반례를 완료 화면에 노출 — "직접형=무조건 나쁨" 오학습 방지.
   const feat = getTargetFeature(mission.unit.target_feature);
@@ -325,27 +333,43 @@ function MissionRunner({
           </div>
         )}
 
-        {/* ── 2계층 진행바 ── */}
+        {/* ── 2계층 진행바 (IS_DEMO면 클릭해 1부/2부 바로 이동 — 프로토타입 v2 devGo) ── */}
         <div className="mb-1.5 flex gap-2">
           {[
-            { n: "1부", label: "판단 연습", active: part === 1, done: part > 1 },
-            { n: "2부", label: "실전 적용", active: part === 2, done: false },
-          ].map((t) => (
-            <div
-              key={t.n}
-              className={[
-                "flex-1 rounded-[10px] border px-3 py-2 text-[12.5px]",
-                t.done
-                  ? "border-[#FAD338] bg-[#FAD338] font-bold text-[#15202B]"
-                  : t.active
-                  ? "border-[#15202B] bg-[#15202B] font-bold text-white"
-                  : "border-[#EAE4D2] bg-white text-muted-foreground",
-              ].join(" ")}
-            >
-              <div className="text-[11px] opacity-80">{t.n}</div>
-              {t.label} {t.done ? "✓" : ""}
-            </div>
-          ))}
+            { n: "1부", label: "판단 연습", active: part === 1, done: part > 1, target: "mpj" as Phase },
+            { n: "2부", label: "실전 적용", active: part === 2, done: false, target: "ctx" as Phase },
+          ].map((t) => {
+            const cls = [
+              "flex-1 rounded-[10px] border px-3 py-2 text-left text-[12.5px]",
+              t.done
+                ? "border-[#FAD338] bg-[#FAD338] font-bold text-[#15202B]"
+                : t.active
+                ? "border-[#15202B] bg-[#15202B] font-bold text-white"
+                : "border-[#EAE4D2] bg-white text-muted-foreground",
+              IS_DEMO ? "cursor-pointer hover:opacity-90" : "",
+            ].join(" ");
+            const inner = (
+              <>
+                <div className="text-[11px] opacity-80">{t.n}</div>
+                {t.label} {t.done ? "✓" : ""}
+              </>
+            );
+            return IS_DEMO ? (
+              <button
+                key={t.n}
+                type="button"
+                onClick={() => {
+                  if (t.target === "mpj") setMpjIdx(0);
+                  goto(t.target);
+                }}
+                className={cls}
+              >
+                {inner}
+              </button>
+            ) : (
+              <div key={t.n} className={cls}>{inner}</div>
+            );
+          })}
         </div>
         <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#A9B0BA]">
           {part === 1 ? (
@@ -435,6 +459,7 @@ function MissionRunner({
                 sttLang={langs.stt}
                 situation={pt.situation_ko}
                 relation={pt.relation_ko}
+                demoText={demoDraft}
                 onSubmit={(t) => {
                   setDraft(t);
                   goto("feedback");
@@ -460,6 +485,9 @@ function MissionRunner({
                   먼저 스스로 옮겨 보세요 — 상대에게 답장하듯이. 참고 표현은 제출한 뒤에 함께 봅니다.
                 </p>
                 <Button className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" disabled={!draft.trim()} onClick={() => goto("feedback")}>번역 제출 →</Button>
+                {IS_DEMO && (
+                  <button type="button" className={demoBtn} onClick={() => setDraft(demoDraft)}>데모 채우기 — 예시 답안 입력</button>
+                )}
               </>
             )}
           </div>
@@ -509,6 +537,9 @@ function MissionRunner({
             </div>
             <Textarea rows={5} value={revised || draft} onChange={(e) => setRevised(e.target.value)} />
             <Button className="w-full" onClick={finish}>마치기</Button>
+            {IS_DEMO && (
+              <button type="button" className={demoBtn} onClick={() => setRevised(demoRevised)}>데모 채우기 — 다듬은 안 적용</button>
+            )}
           </div>
         )}
 
@@ -584,6 +615,7 @@ function AudioFrame({
   sttLang,
   situation,
   relation,
+  demoText,
   onSubmit,
 }: {
   sourceText: string;
@@ -593,6 +625,7 @@ function AudioFrame({
   sttLang: string;
   situation: string;
   relation: string;
+  demoText: string;
   onSubmit: (transcript: string) => void;
 }) {
   const MAX_PLAYS = 2;
@@ -796,6 +829,21 @@ function AudioFrame({
       <Button className="w-full" disabled={!canSubmit} onClick={() => onSubmit(transcript.trim())}>
         확인한 전사로 제출 →
       </Button>
+      {IS_DEMO && (
+        <button
+          type="button"
+          className={demoBtn}
+          onClick={() => {
+            setPlays(MAX_PLAYS);
+            setRecorded(true);
+            setRecording(false);
+            setTranscript(demoText);
+            setConfirmed(true);
+          }}
+        >
+          데모 채우기 — 듣기·녹음·전사 자동
+        </button>
+      )}
     </div>
   );
 }
@@ -895,7 +943,21 @@ function CtxStage({
       {done ? (
         <Button className="w-full" onClick={onNext}>{isInterp ? "통역하러" : "번역하러"} 가기 →</Button>
       ) : (
-        <Button className="w-full" disabled={pick === null} onClick={onConfirm}>확인하기</Button>
+        <>
+          <Button className="w-full" disabled={pick === null} onClick={onConfirm}>확인하기</Button>
+          {IS_DEMO && (
+            <button
+              type="button"
+              className={demoBtn}
+              onClick={() => {
+                onPick(ctx.right);
+                onConfirm();
+              }}
+            >
+              데모 채우기
+            </button>
+          )}
+        </>
       )}
     </div>
   );
@@ -1026,6 +1088,31 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
       else n.add(id);
       return n;
     });
+
+  // 데모 채우기(프로토타입 v2) — 이 문항의 기준 정답으로 자동 응답 후 판정 공개.
+  const demoFill = () => {
+    switch (item.type) {
+      case "scale4":
+        setScalePick(item.accepted_scale_codes[0]);
+        break;
+      case "judge3":
+        setBandPick(item.accepted_band_codes[0]);
+        break;
+      case "fix_choice":
+        setBandPick(item.accepted_band_codes[0]);
+        setFixPicks(new Set(item.corrections.map((c, i) => (c.is_valid ? i : -1)).filter((i) => i >= 0)));
+        break;
+      case "reason_conf":
+        setBandPick(item.accepted_band_codes[0]);
+        setReasonPicks(new Set(item.accepted_reason_ids));
+        setConfidence("꽤 확신");
+        break;
+      case "multi_judge":
+        setMultiPicks(Object.fromEntries(item.candidates.map((c, i) => [i, c.accepted_band_codes[0]])));
+        break;
+    }
+    setAnswered(true);
+  };
 
   return (
     <div className="space-y-3">
@@ -1189,7 +1276,12 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
       )}
 
       {!answered ? (
-        <Button className="w-full" disabled={!canReveal} onClick={() => setAnswered(true)}>확인하기</Button>
+        <>
+          <Button className="w-full" disabled={!canReveal} onClick={() => setAnswered(true)}>확인하기</Button>
+          {IS_DEMO && (
+            <button type="button" className={demoBtn} onClick={demoFill}>데모 채우기 — 이 문항 자동 응답</button>
+          )}
+        </>
       ) : (
         <Button className="w-full" onClick={onDone}>다음 →</Button>
       )}
