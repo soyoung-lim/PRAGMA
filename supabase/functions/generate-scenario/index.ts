@@ -109,7 +109,7 @@ interface GenInput {
   // Two-step outline → final flow. Backward compatible:
   // when `action` is absent the handler behaves exactly like the legacy
   // single-shot full-scenario generation.
-  action?: 'outline' | 'final' | 'core' | 'mission' | 'authentic_analyze'
+  action?: 'outline' | 'final' | 'core' | 'mission' | 'authentic_analyze' | 'quality_check' | 'feedback'
   outline_count?: number
   selected_outline?: { title?: string; situation?: string } | null
   // v1.4 (2026-07-23): scenario_core_v1 / mission_v1 생성. 카탈로그는 클라가 전달.
@@ -117,6 +117,52 @@ interface GenInput {
   mission?: MissionGenBody
   // 「실제 자료에서 생성」(Authentic Source Import) — 이미지/텍스트 원자료 분석.
   authentic?: AuthenticBody
+  // 검증②(계약 0-n·94, 0-q·99) — 생성 모델과 분리된 모델의 미션 품질 비평.
+  quality?: QualityCheckBody
+  // feedback_v1(계약 §4) — 학습자 산출 3층 진단. 학습자 런타임에서 호출된다.
+  feedback?: FeedbackBody
+}
+
+// ── feedback_v1 (계약 §4) ──────────────────────────────────────────────
+// 학습자가 제출한 산출 1건을 의미·문법·화용 3층으로 진단한다. 점수 없음.
+// ⚠️ 통역은 반드시 **학습자가 확인한 전사**를 넣는다(§4 제약 7) — raw STT를 넣으면
+//    인식 오류를 학습자 오류로 판정하게 되어 구인 타당성이 무너진다.
+interface FeedbackBody {
+  answer: string
+  direction?: string
+  mode?: string                  // translation | interpreting
+  situation_ko?: string
+  relation_ko?: string
+  pdr?: { p?: string; d?: string; r?: string }
+  source_text?: string
+  preceding_turn?: string | null
+  /** 원문에서 유지되어야 할 핵심 사실 목록(§4 제약 3). 없으면 모델이 원문에서 도출. */
+  invariants?: string[]
+  feature?: {
+    code?: string
+    learner_label?: string
+    operational_definition?: string
+    band_schema?: { code: string; label_ko: string }[]
+    excluded_confounds?: string[]
+  } | null
+  /** 카탈로그 version + 프롬프트 버전(D22) — 응답에 기록만 한다. */
+  rubric_version?: string
+}
+
+// ── 검증②: AI 품질·일관성 점검 (계약 0-n·94 정의, 0-q·99 세칙) ─────────────
+// 규칙검사(R1~R24)가 못 잡는 의미·자연성·후보 자격을 생성 모델과 **다른 모델**로
+// 2차 선별한다. 학습자에게 노출되지 않는 관리자 품질관리 장치이며, 인간 눈검사·
+// 교수자 승인을 대체하지 않는다(AI = QA 보조).
+interface QualityCheckBody {
+  mission_content: unknown        // 승격 직후의 mission_content(provenance 포함 가능)
+  feature?: {
+    code?: string
+    learner_label?: string
+    band_codes?: string[]         // 카탈로그 band_schema 코드 목록(대역 정합 판단용)
+    operational_definition?: string
+  } | null
+  direction?: string              // ko_zh | zh_ko
+  speech_act?: string | null
 }
 
 // ── 실제 자료 분석 (Authentic Source Import) ────────────────────────────
@@ -420,12 +466,25 @@ function buildCoreSystemPrompt(direction: Direction): string {
 출력은 아래 JSON만, 마크다운·설명 없이 그대로 반환합니다.
 
 {
-  "situation_ko": "상황 카드 배경 (한국어 2~3문장: 발신자·수신자·목적·관계 명시)",
+  "situation_ko": "상황 카드 배경 (한국어 2~3문장: 발신자·수신자·목적·관계 + 아래 [장면 완결성] 5요소)",
   "relation_ko": "발신자와 수신자의 관계 한 줄 (한국어)",
   "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원발화",
   "preceding_turn": null,
   "brief_note_ko": "편성 화면용 한 줄 요약 (한국어)"
 }
+
+[장면 완결성 — situation_ko가 반드시 분명히 할 5요소] (계약 0-r·107)
+학습자마다 다른 장면을 상상하면 판단 차이가 언어 감각이 아니라 상상의 차이에서 생긴다.
+매체 이름을 라벨로 붙이지 말고(예: "이메일로", "메신저에서" 같은 분류 표기 금지),
+**자연스러운 서술 안에서** 다음이 드러나게 쓴다.
+  ① 직접 말하는 자리인가, 글로 적어 보내는 것인가
+  ② 상대의 즉시 반응을 기대하는 상황인가
+  ③ 기록으로 남는 요청인가
+  ④ 이미 앞선 대화가 진행 중인가(그렇다면 preceding_turn을 채운다)
+  ⑤ 상대가 혼자 처리할 수 있는 일인가, 내부 보고·승인이 필요한 일인가
+※ 다섯 가지를 항목처럼 나열하지 말고 2~3문장 서술에 자연스럽게 녹인다.
+  예) "평소 연락하던 거래처 담당자와 일정 확인 통화를 하던 중, 다음 결제일을
+      일주일 늦출 수 있는지 직접 묻는다." (①말함 ②즉시반응 ③기록아님 ④진행중 ⑤내부승인필요)
 
 규칙:
 - source_text는 반드시 ${srcL}. 지정된 화행·관계·부담에 맞는 자연스러운 발화.
@@ -795,6 +854,196 @@ function buildAuthenticUserPrompt(b: AuthenticBody): UserContent {
   return textPart
 }
 
+// ── 검증② 프롬프트 (0-n·94 / 0-q·99) ──────────────────────────────────────
+function buildQualitySystemPrompt(direction: Direction, speechActKo: string): string {
+  const { src, tgt } = DIR_LANGS[direction]
+  return `너는 L2 화용 교육 자료의 **품질 심사자**다. 다른 모델이 생성한 학습 미션 1건을 받아
+결함을 찾아낸다. 너는 자료를 고쳐 쓰지 않고 **판정과 근거만** 낸다.
+
+[전제]
+- 이 미션은 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 과제이며 화행은 「${speechActKo}」다.
+- 학습자는 먼저 AI 초안을 **판정**(MPJ 5문항)하고, 그다음 스스로 **산출**한다.
+- 형식·필드·개수·코드값·중복·길이 편차는 **이미 결정론적 규칙검사(R1~R24)가 통과시켰다.**
+  너는 그것을 다시 세지 마라. 너의 몫은 **의미·자연성·후보 자격**이다.
+
+[반드시 지킬 판정 원칙]
+1. **복수 정답 전제** — 같은 상황에 적절한 표현은 여럿이다. "내가 더 좋다고 생각하는 표현과
+   다르다"는 결함이 아니다. 지역·세대·업종에 따른 변이도 결함이 아니다.
+2. **결함으로 셀 것은 '학습자가 잘못 배우게 되는 것'뿐이다.** 취향·문체 선호를 적지 마라.
+3. 확신이 없으면 fail로 올리지 말고 warning으로 두고 근거에 불확실함을 적어라.
+
+[검사 항목]
+① gate1_violation — 판정 후보(target·corrections·candidates·recommended·reference)가
+   원문의 **명제·의도·화행 목적**을 바꿔버렸는가. 화용 대역 판정 후보는 반드시 불변항을
+   유지해야 하고, 부적절함은 오직 해당 초점의 **과소·적정·과잉 정도 차이**로만 실현되어야
+   한다. 의도가 사라졌거나 사실이 추가/삭제된 문장을 "부적절 대역"으로 붙였으면 위반이다.
+② implausible_distractor — 오답 후보가 실제로 쓸 법하지 않고 우스울 만큼 빗나갔는가.
+   **판별 기준(0-r·105): 중국어 초급자가 화용 지식 없이도 "이건 너무 세다/이상하다"고
+   소거할 수 있으면 결함이다.** 후보는 실제로 헷갈릴 만한 **경계 사례**여야 하며,
+   극단 문장(명령형 강요·노골적 무례)을 부적절 후보로 쓰는 것은 화용 훈련이 아니라
+   "나쁜 표현 찾기"로 문항을 격하시킨다.
+③ answer_cue — 길이·형식·정중 표지 개수 등 내용과 무관한 단서로 정답이 드러나는가.
+④ band_mismatch — 부여된 대역 코드가 문장의 실제 화용 강도와 어긋나는가.
+   해설이 대역 코드와 모순되는 경우도 포함.
+⑤ focus_contamination — 후보들이 목표 초점 외의 차원(정보량·격식·어휘 난이도 등)까지
+   동시에 바꿔서, 무엇 때문에 판정이 갈리는지 설명할 수 없게 되었는가.
+⑥ unnatural_language — ${LANG_KO[tgt]} 문장이 교과서투·번역기투인가. 모든 문장이 주어·
+   서술어를 갖춘 완전문이거나, 해당 관계·매체에서 실제로 쓰지 않을 문어체면 지적하라.
+   ※ 유행어를 넣으라는 뜻이 아니다. **그 관계에서 실제로 그렇게 말하는가**만 본다.
+⑦ internal_inconsistency — 상황 설명·관계·선행 발화·해설·정답 키가 서로 어긋나는가.
+⑧ scene_underspecified — 상황 서술만 읽고 **장면이 하나로 그려지는가**(0-r·107).
+   ①말하는 자리인지 적어 보내는 것인지 ②즉시 반응을 기대하는지 ③기록으로 남는지
+   ④앞선 대화가 있는지 ⑤상대 혼자 처리할 일인지 — 이 중 판단에 영향을 주는 요소가
+   빠져 학습자마다 다른 장면(전화/이메일/대면)을 상상하게 되면 지적하라.
+   ※ 매체 이름 라벨을 요구하는 것이 아니다. 서술만으로 장면이 정해지면 충분하다.
+
+[필수 확인 절차 — 건너뛰지 마라]
+①~⑧을 **하나씩 명시적으로 점검한 뒤** 판정하라. "전반적으로 괜찮아 보인다"로
+넘어가지 마라. 특히 다음 두 가지는 **구체적 임계값**이 있다.
+- ②의 임계: 판정 후보에 **명령형·강요형(必须·给我·赶紧 등)이나 노골적 무례 표현**이
+  쓰였다면, 그것은 거의 언제나 implausible_distractor 결함이다. 중국어를 배우지
+  않은 사람도 "이건 너무 세다"고 알 수 있기 때문이다. "이 정도는 실제로 쓸 수도
+  있다"는 이유로 넘기지 마라 — 기준은 *실제 사용 가능성*이 아니라 *화용 지식
+  없이 소거 가능한가*이다.
+- ⑧의 임계: situation_ko가 한두 문장뿐이고 ①~⑤ 중 **셋 이상이 불명확**하면
+  scene_underspecified를 반드시 보고하라.
+
+[판정]
+- fail: 학습자가 **틀린 것을 배우게 되는** 결함이 하나라도 있다(①④⑦ 또는 심한 ②).
+- warning: 문항 가치가 떨어지지만 학습을 오도하지는 않는다.
+- pass: 위 항목에서 지적할 것이 없다.
+
+[출력 — 오직 JSON, 설명·마크다운 금지]
+{
+  "verdict": "pass" | "warning" | "fail",
+  "summary_ko": "한 문장 요약(검토자가 먼저 읽는다)",
+  "findings": [
+    {
+      "code": "gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified",
+      "severity": "warning" | "fail",
+      "where": "위치 경로 (예: mpj_items[2].candidates[1])",
+      "note_ko": "무엇이 왜 문제인지 1~2문장. 대안 문장을 쓰지 말 것."
+    }
+  ]
+}
+결함이 없으면 findings는 빈 배열이다.`
+}
+
+// ── feedback_v1 프롬프트 (계약 §4 + 0-q·95) ────────────────────────────
+// 학습자 산출에 대한 3층 진단. **점수를 매기지 않는다** — 학습 지원용 질적 피드백.
+// revision_scope는 여기서 받지 않는다(코드가 verdicts에서 도출 — §4).
+function buildFeedbackSystemPrompt(direction: Direction, isSpoken: boolean): string {
+  const { src, tgt } = DIR_LANGS[direction]
+  return `너는 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 수업의 화용 피드백 담당이다.
+학습자가 방금 제출한 ${isSpoken ? '통역(확인된 전사)' : '번역'} 한 편에 대해 진단을 쓴다.
+
+[가장 중요한 전제]
+- **적절한 표현은 하나가 아니다.** 네가 떠올린 표현과 다르다는 이유로 낮게 판정하지 마라.
+  지역·세대·업종에 따른 변이도 오류가 아니다.
+- **특정 표현이 들어 있는지로 판정하지 마라.** 정형 표현이 없어도 간접적·암묵적으로
+  실현했다면 그것은 완전한 실현이다.
+- 점수·등급을 매기지 마라. 너의 목표는 학습자가 **무엇을 다시 볼지** 알게 하는 것이다.
+
+[판정 순서 — 이 순서를 지켜라]
+① 의미: 원문의 핵심 명제·의도·화행 목적이 살아 있는가.
+   불변항 체크리스트를 하나씩 대조하라. 빠지거나 뒤바뀐 사실이 있는지만 본다.
+   원문에 없는 사실·이유·조건·약속을 **추가**한 것도 의미 이탈이다.
+   ※ 관습화된 정형 표현(인사·완충어)의 추가는 명제 추가가 아니다.
+   ⚠️ **판정 기준**: 원문의 어떤 **사실·조건·요구 내용**이 빠지거나 달라졌는지
+      구체적으로 한 가지라도 댈 수 없으면 반드시 "preserved"로 판정하라.
+   ⚠️ **완화·공손 표현이 사라진 것은 의미 손실이 아니다.** "말투가 세졌다",
+      "선택권을 남기지 않았다", "완곡함이 사라졌다", "부탁이 명령처럼 들린다"는
+      전부 ③ 화용 층의 소관이다. **같은 현상을 ①과 ③에 이중으로 세지 마라.**
+      여전히 같은 것을 요청하고 있다면 아무리 직설적이어도 "preserved"다.
+   ⚠️ 문법 오류 때문에 읽기 어렵다는 이유로 의미를 깎지 마라 — 그것은 ② 소관이다.
+② 이해 가능성(문법): **이해를 방해하는 오류만** 본다. 사소한 부자연스러움·문체 취향은
+   적지 마라. 지적은 **최대 1건**, 반드시 학습자 문장에 실제로 있는 부분만 인용한다.
+③ 화용 인상: 이 상대·이 부담에서 목표 초점이 어느 대역으로 실현되었는가.
+   대역 코드는 **주어진 카탈로그 코드 중에서만** 고른다.
+
+[층별 어조 — 다르게 쓴다]
+- 의미·문법은 **명시적으로** 판정한다("~가 빠졌습니다").
+- 화용은 **단정하지 않는다**. "이 상황에서는 ~하게 들릴 수 있습니다" 형태로,
+  위험의 방향만 알려준다. 확신이 없으면 uncertainty_flags에 적고 단정을 피하라.
+
+[금지]
+- 격식을 무조건 올리라고 하지 마라(과잉 방향 오교정 금지). 친밀·저부담이면 직접형이 알맞다.
+- 문법 오류를 화용 문제처럼 쓰지 마라. 반대도 마찬가지다 — 두 층은 별개다.
+- 목표 초점 밖의 축(호칭·격식체 어휘·문장 길이 자체)을 지적하지 마라.
+- 학습자 문장을 통째로 바꾼 "모범답"을 제시하지 마라.
+
+[대안 제시 규칙]
+- alternatives[0] = **최소대조안**: 학습자 문장을 최대한 그대로 두고, 목표 화용 지점
+  **하나만** 바꾼 판본. 불변항은 유지한다. 진짜 최소 편집이 아니면 넣지 마라.
+- alternatives[1](선택) = 다른 전략을 쓴 판본. 없으면 생략한다.
+- 두 안 모두 "이것이 정답"이 아니라 "이런 선택도 있다"로 쓴다.
+
+[출력 — 오직 JSON, 마크다운·설명 금지]
+{
+  "verdicts": {
+    "semantic_fidelity": "preserved | minor_loss | distorted",
+    "grammatical_accuracy": "clean | impeding_errors",
+    "pragmatic_appropriateness": { "feature_code": "<주어진 코드>", "band_code": "<카탈로그 코드>" }
+  },
+  "blocks": {
+    "meaning_ko": "의미 층 1~2문장",
+    "grammar": [ { "anchor_text": "학습자 문장에서 인용", "suggested_correction": "고친 형태",
+                   "explanation_ko": "왜 이해를 막는지 1문장" } ],
+    "feature_ko": "화용 층 1~2문장(비단정)",
+    "alternatives": [ { "text": "최소대조안", "note_ko": "무엇을 하나 바꿨는지" } ]
+  },
+  "uncertainty_flags": [ { "dimension": "grammar | pragmatic", "reason": "왜 확신이 없는지" } ]
+}
+- 이해를 막는 오류가 없으면 grammar는 빈 배열이고 grammatical_accuracy는 "clean"이다.
+- 세 층 모두 문제가 없으면 blocks는 짧게 쓰고 alternatives는 1개까지만 둔다.`
+}
+
+function buildFeedbackUserPrompt(b: FeedbackBody): string {
+  const f = b.feature ?? {}
+  const bands = Array.isArray(f.band_schema)
+    ? f.band_schema.map((x) => `${x.code}(${x.label_ko})`).join(' | ')
+    : '(없음)'
+  const inv = Array.isArray(b.invariants) && b.invariants.length
+    ? b.invariants.map((s, i) => `  ${i + 1}. ${s}`).join('\n')
+    : '  (별도 목록 없음 — 원문에서 직접 도출하라)'
+  return `[상황]
+${b.situation_ko ?? ''}
+[상대]
+${b.relation_ko ?? ''}
+[관계 조건] P=${b.pdr?.p ?? '?'} · D=${b.pdr?.d ?? '?'} · R(부담)=${b.pdr?.r ?? '?'}
+${b.preceding_turn ? `[상대의 직전 발화]\n${b.preceding_turn}\n` : ''}
+[원문]
+${b.source_text ?? ''}
+
+[불변항 체크리스트 — 유지되어야 할 것]
+${inv}
+
+[이번 화용 초점]
+- code: ${f.code ?? ''}
+- 학습자 라벨: ${f.learner_label ?? ''}
+- 조작적 정의: ${f.operational_definition ?? ''}
+- 대역 코드(이 중에서만 고를 것): ${bands}
+- 이 초점에서 **다루지 않는 축**(지적 금지): ${(f.excluded_confounds ?? []).join(' / ') || '(없음)'}
+
+[학습자가 제출한 ${b.mode === 'interpreting' ? '통역(확인된 전사)' : '번역'}]
+${b.answer ?? ''}`
+}
+
+function buildQualityUserPrompt(b: QualityCheckBody): string {
+  const f = b.feature ?? {}
+  const bands = Array.isArray(f.band_codes) && f.band_codes.length
+    ? f.band_codes.join(' | ')
+    : '(전달되지 않음)'
+  return `[화용 초점]
+- code: ${f.code ?? '(없음)'}
+- 학습자 라벨: ${f.learner_label ?? '(없음)'}
+- 조작적 정의: ${f.operational_definition ?? '(없음)'}
+- 이 초점의 대역 코드: ${bands}
+
+[심사 대상 mission_content]
+${JSON.stringify(b.mission_content, null, 2)}`
+}
+
 function parseOpenAIContent(raw: string): unknown {
   const outer = JSON.parse(raw)
   const content = outer?.choices?.[0]?.message?.content
@@ -940,6 +1189,119 @@ Deno.serve(async (req) => {
       }
       return new Response(
         JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v2', generated_at: genAt } }),
+        { status: 200, headers: jsonHeaders },
+      )
+    }
+
+    // ── feedback: feedback_v1(계약 §4) — 학습자 산출 3층 진단. 런타임·저지연 ──
+    if (input.action === 'feedback') {
+      const b = input.feedback
+      if (!b?.answer || !b.answer.trim()) {
+        return new Response(JSON.stringify({ error: 'feedback body required (answer)' }), { status: 400, headers: jsonHeaders })
+      }
+      // 학습자가 기다리는 호출이라 저지연 모델을 쓴다. 판정 흔들림을 줄이려 temp 낮춤.
+      const dir = normDir(b.direction)
+      const isSpoken = b.mode === 'interpreting'
+      const sys = buildFeedbackSystemPrompt(dir, isSpoken)
+      const usr = buildFeedbackUserPrompt(b)
+      let model = PRIMARY_MODEL
+      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.2)
+      if (!att.ok && (att.status === 404 || att.status === 400)) {
+        model = FALLBACK_MODEL
+        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, 0.2)
+      }
+      if (!att.ok) {
+        return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
+      }
+      let parsed: Record<string, unknown>
+      try {
+        parsed = parseOpenAIContent(att.raw) as Record<string, unknown>
+      } catch (e) {
+        return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
+      }
+      // revision_scope는 서버·클라가 verdicts에서 도출한다(§4) — 모델 값이 와도 버린다.
+      delete (parsed as { revision_scope?: unknown }).revision_scope
+      return new Response(
+        JSON.stringify({
+          feedback: {
+            ...parsed,
+            rubric_version: b.rubric_version ?? '',
+            provenance: { model, prompt_version: 'feedback_v1', generated_at: new Date().toISOString() },
+          },
+          meta: { provider: PROVIDER, model, prompt_version: 'feedback_v1' },
+        }),
+        { status: 200, headers: jsonHeaders },
+      )
+    }
+
+    // ── quality_check: 검증②(0-n·94 / 0-q·99) — 생성과 분리된 모델의 품질 비평 ──
+    if (input.action === 'quality_check') {
+      const b = input.quality
+      if (!b?.mission_content) {
+        return new Response(JSON.stringify({ error: 'quality body required' }), { status: 400, headers: jsonHeaders })
+      }
+      // 생성(mission=gpt-4o)과 **다른 계열**을 쓴다 — 같은 모델의 자기 채점을 피한다.
+      const CRITIC_PRIMARY = 'gpt-4.1'
+      const CRITIC_FALLBACK = PRIMARY_MODEL // gpt-4.1-mini
+      const dir = normDir(b.direction)
+      const actKo = SPEECH_ACT_KO[b.speech_act ?? ''] ?? '해당 화행'
+      const sys = buildQualitySystemPrompt(dir, actKo)
+      const usr = buildQualityUserPrompt(b)
+      let model = CRITIC_PRIMARY
+      let att = await callOpenAI(CRITIC_PRIMARY, apiKey, sys, usr, 0.2)
+      if (!att.ok && (att.status === 404 || att.status === 400)) {
+        model = CRITIC_FALLBACK
+        att = await callOpenAI(CRITIC_FALLBACK, apiKey, sys, usr, 0.2)
+      }
+      if (!att.ok) {
+        return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
+      }
+      let parsed: Record<string, unknown>
+      try {
+        parsed = parseOpenAIContent(att.raw) as Record<string, unknown>
+      } catch (e) {
+        return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
+      }
+
+      const CODES = [
+        'gate1_violation', 'implausible_distractor', 'answer_cue', 'band_mismatch',
+        'focus_contamination', 'unnatural_language', 'internal_inconsistency',
+        'scene_underspecified',
+      ]
+      const rawFindings = Array.isArray(parsed.findings) ? parsed.findings : []
+      const findings = rawFindings.slice(0, 20).map((raw) => {
+        const f = (raw ?? {}) as Record<string, unknown>
+        const code = typeof f.code === 'string' && CODES.includes(f.code) ? f.code : 'internal_inconsistency'
+        return {
+          code,
+          severity: f.severity === 'fail' ? 'fail' : 'warning',
+          where: typeof f.where === 'string' ? f.where.slice(0, 120) : '',
+          note_ko: typeof f.note_ko === 'string' ? f.note_ko.slice(0, 400) : '',
+        }
+      })
+      // 판정은 findings에서 서버가 재도출한다(모델의 자기신고를 그대로 믿지 않는다).
+      // 단 모델이 스스로 더 나쁘게 신고했으면 그쪽을 택한다 — 보수적으로 합친다.
+      const RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2 }
+      const derived = findings.some((f) => f.severity === 'fail')
+        ? 'fail'
+        : findings.length > 0 ? 'warning' : 'pass'
+      const claimed = typeof parsed.verdict === 'string' && parsed.verdict in RANK
+        ? (parsed.verdict as string)
+        : 'pass'
+      const verdict = RANK[claimed] > RANK[derived] ? claimed : derived
+      const checkedAt = new Date().toISOString()
+      return new Response(
+        JSON.stringify({
+          quality_check: {
+            verdict,
+            summary_ko: typeof parsed.summary_ko === 'string' ? parsed.summary_ko.slice(0, 400) : '',
+            findings,
+            model,
+            prompt_version: 'quality_v1',
+            checked_at: checkedAt,
+          },
+          meta: { provider: PROVIDER, model, prompt_version: 'quality_v1', generated_at: checkedAt },
+        }),
         { status: 200, headers: jsonHeaders },
       )
     }

@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { checkMission, type CheckContext } from "@/lib/pragma/missionRules";
 import { getTargetFeature, DEFAULT_FEATURE_BY_ACT, type TargetFeature } from "@/lib/pragma/targetFeatures";
 import { errorPatternsForAct } from "@/lib/pragma/errorPatterns";
-import { normalizeMission, type MissionV2 } from "@/lib/pragma/missionSchema";
+import { normalizeMission, QualityCheckSchema, type MissionV2, type QualityCheck } from "@/lib/pragma/missionSchema";
 import { normalizeCore, coreDirection } from "@/lib/pragma/coreSchema";
 import {
   SPEECH_ACT_UI,
@@ -75,7 +75,57 @@ export interface PromoteResult {
   violations?: { id: string; level: string; message: string }[];
   attempts?: number;
   savedId?: string;
+  /** 검증②(0-n·94) 결과. 호출 실패 시 undefined — 승격 자체는 막지 않는다. */
+  quality?: QualityCheck;
   error?: string;
+}
+
+/**
+ * 검증② — 규칙검사 통과분을 **생성과 분리된 모델**로 비평(계약 0-n·94, 세칙 0-q·99).
+ * 관리자 품질관리 장치이며 학습자에게 노출되지 않는다. 호출이 실패해도 undefined를
+ * 돌려 승격을 계속한다 — AI는 QA 보조이고, 실행 게이트는 교수자 눈검사(reviewed)다.
+ */
+async function runQualityCheck(args: {
+  missionContent: unknown;
+  feature: TargetFeature;
+  direction: LanguageDirection;
+  speechAct: SpeechActUI;
+}): Promise<QualityCheck | undefined> {
+  const { missionContent, feature, direction, speechAct } = args;
+  try {
+    const { data, error } = await supabase.functions.invoke("generate-scenario", {
+      body: {
+        action: "quality_check",
+        quality: {
+          mission_content: missionContent,
+          feature: {
+            code: feature.code,
+            learner_label: feature.learner_label,
+            band_codes: feature.band_schema.map((b) => b.code),
+            operational_definition:
+              direction === "zh_ko" && feature.operational_definition_zh_ko
+                ? feature.operational_definition_zh_ko
+                : feature.operational_definition,
+          },
+          direction,
+          speech_act: speechAct,
+        },
+      },
+    });
+    if (error) {
+      console.warn("[quality_check] 호출 실패 — 승격은 계속합니다:", error);
+      return undefined;
+    }
+    const parsed = QualityCheckSchema.safeParse((data as { quality_check?: unknown })?.quality_check);
+    if (!parsed.success) {
+      console.warn("[quality_check] 응답 형식 불일치 — 기록하지 않습니다:", parsed.error.message);
+      return undefined;
+    }
+    return parsed.data;
+  } catch (e) {
+    console.warn("[quality_check] 예외 — 승격은 계속합니다:", e);
+    return undefined;
+  }
 }
 
 const rpc = (fn: string, args: Record<string, unknown>) =>
@@ -182,14 +232,29 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
 
   // 검사 통과 → 저장(generated). 엣지 원본을 저장한다(현 DB CHECK는 mission_v1 —
   // 라운드2 마이그레이션이 v2 허용 + 엣지가 v2 산출로 전환).
+  // 검증②(0-n·94) — 규칙검사를 통과한 것만 비평한다(fail을 비평해봐야 재생성 대상).
+  // 결과는 mission_content에 얹어 함께 저장 — provenance와 동일 취급이라 새 컬럼·
+  // 마이그레이션이 필요 없다(마감 앞 스키마 변경 회피, 0-h·55 취지).
+  // ⚠️ content_hash는 이 필드를 포함하지 않는다(provenance와 마찬가지로 사후 주입).
+  const quality = await runQualityCheck({
+    missionContent: rawContent,
+    feature,
+    direction,
+    speechAct: core.speech_act,
+  });
+  const contentToSave =
+    quality && rawContent && typeof rawContent === "object"
+      ? { ...(rawContent as Record<string, unknown>), quality_check: quality }
+      : rawContent;
+
   const { data: savedId, error: saveErr } = await rpc("save_generated_mission", {
     p_scenario_id: core.scenario_id,
-    p_payload: { mission_content: rawContent },
+    p_payload: { mission_content: contentToSave },
   });
   if (saveErr) {
-    return { ok: false, mission, ruleResult: check.result as "pass" | "warning", violations, attempts, error: `저장 실패: ${(saveErr as { message?: string }).message ?? saveErr}` };
+    return { ok: false, mission, ruleResult: check.result as "pass" | "warning", violations, attempts, quality, error: `저장 실패: ${(saveErr as { message?: string }).message ?? saveErr}` };
   }
-  return { ok: true, mission, ruleResult: check.result as "pass" | "warning", violations, attempts, savedId: savedId as string };
+  return { ok: true, mission, ruleResult: check.result as "pass" | "warning", violations, attempts, quality, savedId: savedId as string };
 }
 
 /** generated → reviewed 승격(학습자 실행 게이트). 눈검사 통과 후 호출. */
