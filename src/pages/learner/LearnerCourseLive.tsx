@@ -109,7 +109,7 @@ const LearnerCourseLive = () => {
                               {s.runnable ? (
                                 <Button
                                   size="sm"
-                                  onClick={() => navigate(`/learner/mission-run/${s.scenario_id}`)}
+                                  onClick={() => navigate(`/learner/practice/${s.scenario_id}`)}
                                 >
                                   미션 시작 →
                                 </Button>

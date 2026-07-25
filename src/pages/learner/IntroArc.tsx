@@ -74,7 +74,7 @@ const IntroArc = () => {
 
   const finish = () => {
     updateFeatureState(INTRO_FEATURE_ID, { introExplanationCompleted: true });
-    navigate("/scenario");
+    navigate("/learner/practice");
   };
 
   // ── 화면들 ──
