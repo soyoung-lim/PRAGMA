@@ -207,6 +207,8 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
   const [direction, setDirection] = useState<LanguageDirection>("zh_ko");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [ytLoading, setYtLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -273,6 +275,54 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
       setError((e as Error).message ?? "분석에 실패했습니다.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // C. YouTube 중국어 자막 자동 입력 — 기존 youtube-transcript(supadata) edge 함수 재호출.
+  // 신규 연동/함수 수정 없음(§7 준수) — 가져온 자막을 텍스트 칸에 채워 관리자가 다듬은 뒤 분석.
+  const fetchCaption = async () => {
+    const u = youtubeUrl.trim();
+    if (!u) {
+      setError("YouTube URL을 입력하세요.");
+      return;
+    }
+    setYtLoading(true);
+    setError(null);
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke("youtube-transcript", {
+        body: { url: u, lang: "zh", text: false },
+      });
+      if (fnErr) throw fnErr;
+      if (data?.error) {
+        const em = typeof data.error === "string" ? data.error : JSON.stringify(data.error);
+        throw new Error(em);
+      }
+      if (data?.async) {
+        setError("자막이 비동기 처리 중입니다 — 잠시 후 다시 시도하거나 문구를 직접 붙여넣어 주세요.");
+        return;
+      }
+      const content = (data?.raw as { content?: unknown } | undefined)?.content;
+      const caption =
+        typeof content === "string"
+          ? content
+          : Array.isArray(content)
+          ? content.map((s: { text?: string }) => s?.text ?? "").join(" ")
+          : (data?.textPreview as string | undefined) ?? "";
+      if (!caption.trim()) {
+        setError("이 영상에서 중국어 자막(CC)을 찾지 못했습니다. 다른 영상이나 직접 입력을 사용하세요.");
+        return;
+      }
+      setText(caption.trim());
+      setDirection("zh_ko");
+    } catch (e) {
+      const msg = (e as Error).message ?? "";
+      setError(
+        msg.includes("SUPADATA_API_KEY")
+          ? "서버에 SUPADATA_API_KEY가 설정되지 않았습니다 — 배포 환경변수 설정 필요(이미지·문구 입력은 정상 동작)."
+          : msg || "자막을 가져오지 못했습니다.",
+      );
+    } finally {
+      setYtLoading(false);
     }
   };
 
@@ -354,6 +404,33 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
                 className="mt-1.5 h-24 w-full resize-none rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[13px] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
               />
             </div>
+          </div>
+
+          {/* C. YouTube 중국어 자막 자동 입력 (기존 youtube-transcript 재사용) */}
+          <div>
+            <label className="text-[12px] font-medium text-muted-foreground">
+              C. YouTube 중국어 자막 자동 입력 (선택 · CC 지원 영상만)
+            </label>
+            <div className="mt-1.5 flex gap-2">
+              <input
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=…"
+                className="h-9 flex-1 rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
+              />
+              <Button
+                type="button"
+                onClick={fetchCaption}
+                disabled={ytLoading || !youtubeUrl.trim()}
+                className="shrink-0 bg-[#BA7517] text-white hover:bg-[#BA7517]/90 disabled:opacity-60"
+              >
+                {ytLoading ? "가져오는 중…" : "중국어 자막 가져오기"}
+              </Button>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              중국어 자막(CC)이 있는 영상만. 가져온 자막은 위 <b>B. 문구</b> 칸에 채워지니, 필요한 부분만
+              남기고 「활용 가능성 분석」을 실행하세요.
+            </p>
           </div>
 
           {/* 선택 입력 */}
