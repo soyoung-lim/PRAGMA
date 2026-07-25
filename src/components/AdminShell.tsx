@@ -24,10 +24,10 @@ const GROUPS: NavGroup[] = [
   {
     header: "1 · 콘텐츠 파이프라인",
     items: [
-      { to: "/admin/generator", label: "1단계 · 코어 생성 (단건)" },
-      { to: "/admin/batch", label: "1단계 · 코어 배치 (대량)" },
+      { to: "/admin/generator", label: "1단계 · 개별 생성" },
+      { to: "/admin/batch", label: "1단계 · 대량 생성" },
       { to: "/admin/browser", label: "2단계 · 학습 미션 조립" },
-      { label: "3단계 · 수업 패키지 생성", disabled: true },
+      { to: "/admin/package", label: "3단계 · 수업 패키지 생성" },
       { to: "/admin/review", label: "4단계 · 통합 검수·승인" },
     ],
   },
@@ -42,18 +42,16 @@ const GROUPS: NavGroup[] = [
   {
     header: "3 · 수업 운영·연구",
     items: [
-      { label: "교과목 운영", disabled: true },
+      { to: "/admin/course-ops", label: "교과목 운영" },
       { to: "/admin/analytics", label: "통합 학습 대시보드" },
-      { to: "/admin/learners", label: "학습자 관리" },
       { to: "/admin/reports", label: "학습자 개별 리포트" },
-      { to: "/admin/decision-traces", label: "의사결정 기록" },
       { to: "/admin/export", label: "연구 데이터 추출" },
     ],
   },
   {
     header: "설정",
     items: [
-      { label: "사용자·권한", disabled: true },
+      { to: "/admin/users", label: "사용자·권한" },
     ],
   },
 ];
@@ -115,28 +113,15 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
                   {group.header}
                 </span>
                 <div className="flex flex-col gap-[2px] border-l border-[#e5e1d8] pl-4">
-                  {group.items.map((item) =>
-                    item.disabled || !item.to ? (
-                      <span
-                        key={item.label}
-                        title="준비 중 — 후속 단계에서 구현됩니다."
-                        className="flex items-center justify-between gap-2 rounded-md px-3 py-1.5 text-[13px] text-[#bcb6a9] cursor-default select-none"
-                      >
-                        {item.label}
-                        <span className="shrink-0 rounded bg-[#EDE9DD] px-1.5 py-0.5 text-[9.5px] font-medium text-[#8a857c]">
-                          준비중
-                        </span>
-                      </span>
-                    ) : (
-                      <Link
-                        key={item.to}
-                        to={item.to}
-                        className={itemClasses(pathname === item.to)}
-                      >
-                        {item.label}
-                      </Link>
-                    ),
-                  )}
+                  {group.items.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to ?? "#"}
+                      className={itemClasses(pathname === item.to)}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
                 </div>
               </div>
             ))}
