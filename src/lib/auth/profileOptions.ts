@@ -25,17 +25,39 @@ export const CHINESE_LEVEL_OPTIONS: CodedOption[] = [
   { code: "not_taken", label: "응시 경험 없음" },
 ];
 
+/** 이 앱은 양방향(한→중·중→한)이라 학습 대상 언어가 학습자마다 다르다.
+ *  중국어 모어 화자에게 "중국어를 접해 온 상황"을 묻는 것은 무의미하다 —
+ *  그들의 학습 대상은 한국어다. 주 사용 언어에서 대상 언어를 도출한다.
+ *  '모두'·'그 외'는 중국어 기준 — 이 수업의 주 목표어이고 코어도 ko_zh가 기본이다. */
+export type TargetLanguage = "zh" | "ko";
+export const targetLanguageOf = (primaryLanguage: string | null | undefined): TargetLanguage =>
+  primaryLanguage === "zh" ? "ko" : "zh";
+
+export const TARGET_LANGUAGE_LABEL: Record<TargetLanguage, string> = {
+  zh: "중국어",
+  ko: "한국어",
+};
+
 /** 접촉·사용 상황(복수). 수용(드라마·읽을거리)도 학습 경로이므로 함께 담는다 —
  *  앱이 수용(MPJ)과 산출(DCT)로 나뉘는데 배경만 산출을 물으면 앞뒤가 안 맞는다.
- *  정본(pragma-level-layer-lock)의 "습관 语域에서 얼마나 먼가"를 잡는 입력. */
-export const EXPOSURE_CONTEXT_OPTIONS: CodedOption[] = [
+ *  정본(pragma-level-layer-lock)의 "습관 语域에서 얼마나 먼가"를 잡는 입력.
+ *
+ *  ⚠️ **code는 대상 언어와 무관하게 동일하다** — 그래야 한국어 학습자군과
+ *  중국어 학습자군을 같은 축에서 비교할 수 있다. 바뀌는 것은 라벨뿐. */
+export const exposureContextOptions = (target: TargetLanguage): CodedOption[] => [
   { code: "media", label: "드라마·영화·영상·음악" },
   { code: "reading", label: "뉴스·기사·읽을거리" },
   { code: "class", label: "수업·시험" },
   { code: "messaging", label: "메신저·SNS 일상 대화" },
   { code: "work_docs", label: "업무 문서·이메일" },
-  { code: "native_friends", label: "중국인 친구·동료와 대화" },
-  { code: "residence", label: "중국어권 체류·근무" },
+  {
+    code: "native_friends",
+    label: target === "zh" ? "중국인 친구·동료와 대화" : "한국인 친구·동료와 대화",
+  },
+  {
+    code: "residence",
+    label: target === "zh" ? "중국어권 체류·근무" : "한국 체류·근무",
+  },
   { code: "almost_none", label: "거의 없음" },
 ];
 /** 다른 항목과 함께 고를 수 없는 배타 선택지. */

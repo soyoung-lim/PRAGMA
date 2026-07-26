@@ -4,7 +4,9 @@ import { useProfile, devStubCompleteProfile } from "@/lib/auth/useProfile";
 import {
   PRIMARY_LANGUAGE_OPTIONS,
   CHINESE_LEVEL_OPTIONS,
-  EXPOSURE_CONTEXT_OPTIONS,
+  exposureContextOptions,
+  targetLanguageOf,
+  TARGET_LANGUAGE_LABEL,
   EXPOSURE_EXCLUSIVE,
   TI_EXPERIENCE_OPTIONS,
   type CodedOption,
@@ -207,7 +209,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
   const [chineseLevel, setChineseLevel] = useState("");
   const [exposureContexts, setExposureContexts] = useState<string[]>([]);
   const [tiExperience, setTiExperience] = useState("");
-  const [tiExperienceNote, setTiExperienceNote] = useState("");
 
   // Screen 3
   const [researchConsent, setResearchConsent] = useState(false);
@@ -220,8 +221,10 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
 
   // 중국어·이중언어 사용자에게 HSK 급수를 묻는 것은 어색하다 → 건너뛴다.
   const needsChineseLevel = primaryLanguage === "ko" || primaryLanguage === "other";
-  // 통번역 경험이 "없음"이면 서술란을 보여주지 않는다.
-  const showTiNote = tiExperience !== "" && tiExperience !== "none";
+  // 양방향 앱이라 학습 대상 언어가 학습자마다 다르다 — 중국어 모어 화자에게는
+  // 한국어 노출을 묻는다(코드는 동일, 라벨만 바뀐다).
+  const targetLang = targetLanguageOf(primaryLanguage);
+  const targetLangLabel = TARGET_LANGUAGE_LABEL[targetLang];
 
   const step1Valid = trimmedName.length > 0 && affiliation !== "";
   const step2Valid =
@@ -259,7 +262,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
           chinese_level: needsChineseLevel ? chineseLevel : null,
           chinese_exposure_contexts: exposureContexts,
           ti_experience_level: tiExperience,
-          ti_experience_note: showTiNote ? tiExperienceNote.trim() || null : null,
           consent_data_use: researchConsent,
           consent_anonymous_analysis: anonConfirmed,
           consent_email_report: reportConsent,
@@ -338,11 +340,14 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
             </Field>
           )}
 
-          <Field label="중국어를 접하거나 사용해 온 상황 (복수 선택 가능)" required>
+          <Field
+            label={`${targetLangLabel}를 접하거나 사용해 온 상황 (복수 선택 가능)`}
+            required
+          >
             <CheckboxGroup
               value={exposureContexts}
               onChange={setExposureContexts}
-              options={EXPOSURE_CONTEXT_OPTIONS}
+              options={exposureContextOptions(targetLang)}
               exclusive={EXPOSURE_EXCLUSIVE}
             />
           </Field>
@@ -351,26 +356,10 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
             <CodedRadioGroup
               name="ti_experience"
               value={tiExperience}
-              onChange={(v) => {
-                setTiExperience(v);
-                if (v === "none") setTiExperienceNote("");
-              }}
+              onChange={setTiExperience}
               options={TI_EXPERIENCE_OPTIONS}
             />
           </Field>
-
-          {showTiNote && (
-            <Field label="어떤 경험이었는지 한 줄로 적어주세요 (선택)">
-              <input
-                type="text"
-                value={tiExperienceNote}
-                onChange={(e) => setTiExperienceNote(e.target.value)}
-                maxLength={200}
-                className={inputCls}
-                placeholder="예) 만화 페스티벌 부스에서 우연히 통역을 하게 되었다"
-              />
-            </Field>
-          )}
         </div>
       )}
 
