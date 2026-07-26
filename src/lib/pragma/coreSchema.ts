@@ -67,6 +67,34 @@ export type Pdr = z.infer<typeof PdrSchema>;
 export const ChannelSchema = z.enum(["email", "messenger", "facetoface", "phone"]);
 export const SourceModalitySchema = z.enum(["written", "spoken"]);
 
+// ── provenance-lite (계약 0-q·98 / 0-t) ────────────────────────────────
+// 「실제 자료에서 생성」(Authentic Import)으로 만든 코어의 출처를 보존한다.
+// 지금까지는 패널이 수집한 출처·원자료를 applyAuthentic이 **버리고 있었다**.
+//
+// 설계: 신규 컬럼·migration 없이 core_content 안에 optional로 넣는다
+// (미션 provenance와 동일 취급 — missionSchema.ts:135 주석 참조).
+// ⚠️ content_hash에는 포함하지 않는다. 내용이 같은 코어는 출처가 달라도 같은 해시여야
+//    중복 탐지가 작동한다(promoteMission.ts:238의 provenance 취급과 같은 이유).
+export const CoreSourceTypeSchema = z.enum([
+  "authentic_text", // 관리자가 붙여넣은 실제 문구
+  "authentic_image", // 이미지 업로드 → vision 판독
+  "authentic_youtube", // YouTube 중국어 자막(supadata)
+]);
+export type CoreSourceType = z.infer<typeof CoreSourceTypeSchema>;
+
+export const CoreProvenanceSchema = z.object({
+  source_type: CoreSourceTypeSchema,
+  /** 관리자가 입력한 출처 표기(URL·프로그램명·수집 맥락). 미입력 허용 */
+  source_ref: z.string().nullable().optional(),
+  /** 관리자가 확정한 **원자료 원문** — AI 재구성 이전 상태 */
+  source_original: z.string().nullable().optional(),
+  /** AI가 원자료를 재구성했는가(사용 원문 ≠ 원자료 원문) */
+  ai_adapted: z.boolean(),
+  /** 개인정보 익명화 처리 여부. 지금은 수집 UI가 없어 미설정으로 남는다(후속) */
+  anonymized: z.boolean().optional(),
+});
+export type CoreProvenance = z.infer<typeof CoreProvenanceSchema>;
+
 // ── scenario_core_v1 ──────────────────────────────────────────────────
 export const ScenarioCoreV1Schema = z.object({
   schema_version: z.literal("scenario_core_v1"),
@@ -82,6 +110,8 @@ export const ScenarioCoreV1Schema = z.object({
   channel: ChannelSchema.optional(),
   /** 편성 화면용 한 줄 (선택) */
   brief_note_ko: z.string().optional(),
+  /** 실제 자료 유래분만. 모델 응답이 아니라 저장 직전 주입(0-q·98) */
+  provenance: CoreProvenanceSchema.optional(),
 });
 export type ScenarioCoreV1 = z.infer<typeof ScenarioCoreV1Schema>;
 
@@ -117,6 +147,8 @@ export const ScenarioCoreV2Schema = z.object({
   /** @deprecated channel 폐기(2026-07-25) — legacy 읽기 호환용, 신규 생성 미요구 */
   channel: ChannelSchema.optional(),
   brief_note_ko: z.string().optional(),
+  /** 실제 자료 유래분만. 모델 응답이 아니라 저장 직전 주입(0-q·98) */
+  provenance: CoreProvenanceSchema.optional(),
 });
 export type ScenarioCoreV2 = z.infer<typeof ScenarioCoreV2Schema>;
 
@@ -153,6 +185,7 @@ export function normalizeCore(input: unknown): {
       pdr: c.pdr,
       ...(c.channel ? { channel: c.channel } : {}), // legacy only
       ...(c.brief_note_ko ? { brief_note_ko: c.brief_note_ko } : {}),
+      ...(c.provenance ? { provenance: c.provenance } : {}),
     },
   };
 }

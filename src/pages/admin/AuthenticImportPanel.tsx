@@ -32,6 +32,7 @@ import type {
   IndustrySector,
   ComplexTaskUI,
 } from "@/lib/pragma/enums";
+import type { CoreProvenance, CoreSourceType } from "@/lib/pragma/coreSchema";
 
 // ── 활용 유형 라벨 ──────────────────────────────────────────────────────
 type UsageType =
@@ -119,6 +120,8 @@ export interface AuthenticApply {
   pdr_distance: PdrDistance;
   pdr_burden: PdrBurden;
   source_text: string;
+  /** provenance-lite(0-q·98) — 지금까지 버려지던 출처를 상위로 넘긴다 */
+  provenance: CoreProvenance;
 }
 
 // ── enum 방어 정규화 ────────────────────────────────────────────────────
@@ -171,7 +174,8 @@ function asUsageType(v?: string | null): UsageType {
     : "unsuitable";
 }
 
-function normalizeApply(c: RawCandidate): AuthenticApply {
+// provenance는 후보(candidate)가 아니라 패널 입력 상태에서 나오므로 여기서 제외한다.
+function normalizeApply(c: RawCandidate): Omit<AuthenticApply, "provenance"> {
   return {
     usage_type: asUsageType(c.usage_type),
     speech_act_ui: asSpeechAct(c.speech_act),
@@ -209,6 +213,9 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
   const [direction, setDirection] = useState<LanguageDirection>("zh_ko");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [ytLoading, setYtLoading] = useState(false);
+  // 원자료 취득 경로 = provenance.source_type(0-q·98). 명시적 입력 행위에서만 바뀐다.
+  // 이미지에서 뽑은 텍스트를 관리자가 고쳐 재분석해도 출처는 여전히 이미지다.
+  const [inputOrigin, setInputOrigin] = useState<CoreSourceType>("authentic_text");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -232,6 +239,7 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
     reader.onload = () => {
       setImageDataUrl(reader.result as string);
       setImageName(file.name);
+      setInputOrigin("authentic_image");
     };
     reader.readAsDataURL(file);
   };
@@ -239,6 +247,7 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
   const clearImage = () => {
     setImageDataUrl(null);
     setImageName(null);
+    setInputOrigin("authentic_text");
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -313,6 +322,9 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
         return;
       }
       setText(caption.trim());
+      setInputOrigin("authentic_youtube");
+      // 출처가 비어 있으면 영상 URL을 기본 출처로 채운다(provenance 0-q·98).
+      if (!sourceRef.trim()) setSourceRef(u);
       setDirection("zh_ko");
     } catch (e) {
       const msg = (e as Error).message ?? "";
@@ -327,7 +339,20 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
   };
 
   const apply = (c: RawCandidate, i: number) => {
-    onApply(normalizeApply(c));
+    const base = normalizeApply(c);
+    // 관리자가 확정한 원문을 우선한다(없으면 모델이 판독한 원문).
+    const original = (editedOriginal || analysis?.source_original || "").trim();
+    onApply({
+      ...base,
+      provenance: {
+        source_type: inputOrigin,
+        source_ref: sourceRef.trim() || null,
+        source_original: original || null,
+        // 사용 원문이 원자료와 다르면 AI가 재구성한 것이다.
+        ai_adapted: original.length > 0 && base.source_text.trim() !== original,
+        // anonymized는 수집 UI가 아직 없어 미설정으로 둔다(스키마 optional).
+      },
+    });
     setAppliedIdx(i);
   };
 
