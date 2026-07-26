@@ -33,6 +33,7 @@ import {
 } from "@/lib/pragma/enums";
 import { checkCore, type CheckContext } from "@/lib/pragma/missionRules";
 import { PDR_POWER_ENUM_TO_JSON, PDR_DISTANCE_ENUM_TO_JSON } from "@/lib/pragma/coreSchema";
+import type { CoreProvenance } from "@/lib/pragma/coreSchema";
 import {
   THEME_CODES,
   THEME_LABEL,
@@ -476,6 +477,9 @@ const AdminGenerator = () => {
   // "bank" is a shell only (다음 단계).
   type SourceMode = "ai" | "bank" | "manual";
   const [sourceMode, setSourceMode] = useState<SourceMode>("ai");
+  // 실제 자료 유래 코어의 출처(0-q·98). applyAuthentic에서만 채워지고,
+  // 저장 시 manualSourceText가 실제로 쓰였을 때만 core_content에 붙는다.
+  const [authenticProv, setAuthenticProv] = useState<CoreProvenance | null>(null);
   const [manualSourceText, setManualSourceText] = useState("");
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
@@ -538,6 +542,7 @@ const AdminGenerator = () => {
     setTaskMode(mode);
     setSourceMode("manual");
     setManualSourceText(a.source_text);
+    setAuthenticProv(a.provenance); // 0-q·98 — 이전에는 여기서 출처가 버려졌다.
     resetOutlines();
     // 이전 미리보기/저장 상태 초기화.
     setAiResult(null);
@@ -709,6 +714,13 @@ const AdminGenerator = () => {
         }
 
         core.channel = legacyChannelOf(mode);
+        // content_hash는 provenance를 **포함하지 않는다** — 내용이 같은 코어는 출처가
+        // 달라도 같은 해시여야 중복 탐지가 작동한다(미션 provenance와 같은 취급).
+        const contentHash = coreHash(JSON.stringify(core));
+        // 실제 자료 원문이 이 생성에 실제로 쓰였을 때만 출처를 남긴다(seed 조건과 동일).
+        if (authenticProv && sourceMode === "manual" && manualSourceText.trim()) {
+          core.provenance = authenticProv;
+        }
         const payload = {
           title: core.brief_note_ko || core.situation_ko?.slice(0, 40) || label,
           speech_act: form.speech_act_ui,
@@ -725,7 +737,7 @@ const AdminGenerator = () => {
           meta,
           generation_run_id: runId,
           generation_item_key: `${form.speech_act_ui}|${form.level}|${form.domain}|${topicCode}|${i}`,
-          content_hash: coreHash(JSON.stringify(core)),
+          content_hash: contentHash,
         };
         const { data: savedId, error: saveErr } = await (supabase.rpc as any)("save_generated_core", {
           p_payload: payload,
