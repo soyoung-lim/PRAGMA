@@ -186,9 +186,12 @@ const AdminBrowser = () => {
   const interp = filtered.filter((r) => r.mode === "stt_interpreting").length;
 
   return (
+    // 메뉴명과 헤드라인을 통일한다(2026-07-26). 이 화면은 조회만 하는 브라우저가
+    // 아니라 **코어를 골라 미션으로 승격하는 곳**이다 — promoteCore·reviewMission이
+    // 여기서 실행된다. 「시나리오 브라우저」라는 이름은 그 사실을 가렸다.
     <AdminShell
-      title="시나리오 브라우저"
-      description="뱅크를 화행 × 수준 격자로 봅니다. 수준·주제·모드로 걸러 어떤 칸에 무엇이 있는지 확인하고, 칸을 눌러 미리봅니다."
+      title="미션 조립"
+      description="코어 뱅크를 화행 × 수준 격자로 보고, 칸을 눌러 미리본 뒤 학습 미션으로 승격합니다."
     >
       {/* ── 요약 ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-5">
