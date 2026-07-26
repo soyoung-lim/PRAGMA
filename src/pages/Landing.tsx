@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ensureSession } from "@/lib/tracking";
-import { HomeBrand } from "@/components/HomeBrand";
 import { IS_DEMO } from "@/lib/auth/useProfile";
 
 const Landing = () => {
@@ -11,12 +10,10 @@ const Landing = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-40 bg-[#15202B]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <HomeBrand />
-        </div>
-      </header>
-
+      {/* 랜딩에는 남색 헤더를 두지 않는다 — 브랜드 문구가 아래 hero와 글자 그대로
+          중복되고, 좌상단 텍스트가 중앙 정렬 hero와 시선을 경쟁한다. 부수 효과로
+          「학습 시작하기」를 눌러 앱에 들어갈 때 남색 띠가 나타나는 것이 전환 신호가
+          된다. (앱 내부 화면의 고정 헤더는 그대로 유지) */}
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-16 sm:py-24">
         <section className="text-center">
           <h1 className="text-[32px] font-bold leading-[1.15] tracking-tight sm:text-[38px] lg:text-[44px]">
