@@ -90,7 +90,10 @@ const AdminComposer = () => {
   const [level, setLevel] = useState<LearnerLevel>("intermediate");
   const [themes, setThemes] = useState<ThemeCode[]>([]);
   const [interpRatio, setInterpRatio] = useState<number>(0.3);
-  const [presetCode, setPresetCode] = useState<string>(COURSE_PRESETS[0].preset_code);
+  // 미선택("")으로 시작한다. 첫 프리셋을 기본값으로 두면 셀렉트에는 "입문"이 뜨는데
+  // 실제 수준은 "중급"이라(아래 level 초기값) 표시와 실제가 어긋난다 — 프리셋은
+  // 고르는 순간에만 수준·테마·통역비율을 덮어쓰기 때문이다.
+  const [presetCode, setPresetCode] = useState<string>("");
 
   const [assign, setAssign] = useState<AssignMap>({});
   const [addingWeek, setAddingWeek] = useState<number | null>(null);
@@ -329,6 +332,7 @@ const AdminComposer = () => {
               onChange={(e) => applyPreset(e.target.value)}
               className="min-w-[240px] rounded-md border border-[#EAE4D2] bg-white px-2 py-1.5"
             >
+              <option value="">— 선택 안 함 (아래 수준·주제를 직접 고름) —</option>
               {COURSE_PRESETS.map((p) => (
                 <option key={p.preset_code} value={p.preset_code}>
                   {p.label} · {LEVEL[p.target_level]}
