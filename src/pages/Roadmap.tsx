@@ -84,7 +84,7 @@ const Roadmap = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* 1. Header (dark) */}
-      <header className="bg-primary text-primary-foreground">
+      <header className="sticky top-0 z-40 bg-primary text-primary-foreground">
         <div className="mx-auto flex max-w-3xl items-start justify-between gap-4 px-6 py-4">
           <div className="flex items-start gap-3">
             <span className="mt-1 h-6 w-1.5 rounded-sm bg-accent" aria-hidden />
