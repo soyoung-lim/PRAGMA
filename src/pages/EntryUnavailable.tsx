@@ -15,7 +15,7 @@ const EntryUnavailable = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="bg-[#15202B]">
+      <header className="sticky top-0 z-40 bg-[#15202B]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <HomeBrand />
         </div>

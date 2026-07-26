@@ -14,7 +14,7 @@ interface LearnerJourneyShellProps {
  */
 export const LearnerJourneyShell = ({ children, headerRight }: LearnerJourneyShellProps) => (
   <div className="min-h-screen bg-background text-foreground">
-    <header className="bg-[#15202B]">
+    <header className="sticky top-0 z-40 bg-[#15202B]">
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-4">
         <HomeBrand />
         {headerRight}

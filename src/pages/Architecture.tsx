@@ -47,7 +47,7 @@ const Handoff = ({ label }: { label: string }) => (
 
 const Architecture = () => (
   <div className="min-h-screen bg-background text-foreground">
-    <header className="bg-[#15202B]">
+    <header className="sticky top-0 z-40 bg-[#15202B]">
       <div className="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-4 px-6 py-[11px]">
         <div className="flex items-center gap-2.5">
           <span aria-hidden className="h-[34px] w-[5px] rounded-sm bg-[#FAD338]" />

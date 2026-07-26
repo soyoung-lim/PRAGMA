@@ -98,7 +98,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="bg-[#15202B]">
+      <header className="sticky top-0 z-40 bg-[#15202B]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <HomeBrand />
           <Link
