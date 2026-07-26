@@ -28,3 +28,9 @@ dist-ssr
 *.sln
 *.sw?
 supabase/.temp/
+
+# 에이전트 도구 — 머신별 설정은 공유하지 않고, 공용 실행 설정(launch.json)만 추적한다
+.claude/settings.local.json
+
+# 수동 백업본 (예: CLAUDE.md.bak-20260723) — 정본은 항상 원본 파일
+*.bak-*
