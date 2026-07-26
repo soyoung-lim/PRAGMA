@@ -526,6 +526,70 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   return parts.join('\n')
 }
 
+// ── 코어 생성 프롬프트 스냅샷 해시 (재현성 provenance, 2026-07-26) ──────────
+// 목적: "이 배치의 행들이 같은 프롬프트·같은 호출 설정으로 만들어졌다"를 기계로 증명한다.
+// generation_prompt_version('core_v2')은 고정 리터럴이라 개정을 구분하지 못하므로,
+// 모델에 실제로 보내는 문자열에서 지문을 뽑는다.
+//
+// ⚠️ 셀별 입력값(화행·수준·도메인·P/D/R·장면시드·분량)은 해시에 넣지 않는다.
+//    넣으면 500행이 전부 다른 해시가 되어 "같은 템플릿으로 만들었다"는 판정 자체가
+//    불가능해진다(그룹핑 불가). 그 입력값은 이미 scenarios 행 컬럼
+//    (speech_act·learner_level·domain·scenario_p/d/r·topic_code·mode·language_direction)
+//    에 저장되므로, 템플릿이 확정되면 최종 user 프롬프트는 100% 복원된다.
+//    대신 user 프롬프트 안의 '규칙 문구'까지 지문에 담기도록, 값 자리를 고정 센티넬로
+//    두고 분기(방향2 × 모드2 × 인접쌍2)를 전부 렌더해 넣는다.
+// 비밀값(API key·인증정보)은 어떤 경로로도 해시 입력에 포함하지 않는다.
+const CORE_TEMPERATURE = 0.7
+const CORE_RESPONSE_FORMAT = 'json_object'
+
+/** 키 순서에 무관한 canonical JSON — 같은 내용이면 항상 같은 문자열이 된다. */
+function canonicalJson(v: unknown): string {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v) as string
+  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(',')}]`
+  const o = v as Record<string, unknown>
+  return `{${Object.keys(o).sort().map((k) => `${JSON.stringify(k)}:${canonicalJson(o[k])}`).join(',')}}`
+}
+
+/** 센티넬 입력 — 값 자리는 전부 고정 토큰(셀 무관). 분기는 아래에서 전부 순회한다. */
+const CORE_PROBE_BASE: Omit<CoreGenBody, 'direction' | 'source_modality' | 'is_response_act'> = {
+  speech_act_ko: 'PROBE_ACT',
+  level_ko: 'PROBE_LV',
+  domain_ko: 'PROBE_DOM',
+  pdr: { p: 'PROBE_P', d: 'PROBE_D', r: 'PROBE_R' },
+  situation_seed_ko: 'PROBE_SEED',
+  length_hint_ko: 'PROBE_LEN',
+}
+
+/** 코어 프롬프트 표면 전체의 지문. 셀과 무관하므로 런 내내 동일 — 1회 계산 후 캐시. */
+let coreSnapshotHashCache: string | null = null
+async function corePromptSnapshotHash(): Promise<string> {
+  if (coreSnapshotHashCache) return coreSnapshotHashCache
+  const directions: Direction[] = ['ko_zh', 'zh_ko']
+  const system_prompts = directions.map((d) => buildCoreSystemPrompt(d))
+  const user_prompt_templates: string[] = []
+  for (const direction of directions) {
+    for (const source_modality of ['written', 'spoken'] as const) {
+      for (const is_response_act of [false, true]) {
+        user_prompt_templates.push(
+          buildCoreUserPrompt({ ...CORE_PROBE_BASE, direction, source_modality, is_response_act }),
+        )
+      }
+    }
+  }
+  coreSnapshotHashCache = await sha256Hex(canonicalJson({
+    v: 1,
+    scope: 'core_generation',
+    action: 'core',
+    model: PRIMARY_MODEL,
+    model_fallback: FALLBACK_MODEL,
+    temperature: CORE_TEMPERATURE,
+    response_format: CORE_RESPONSE_FORMAT,
+    system_prompts,
+    user_prompt_templates,
+  }))
+  return coreSnapshotHashCache
+}
+
 interface BandDef { code: string; label_ko: string }
 interface FeatureForGen {
   code: string
@@ -1075,10 +1139,10 @@ Deno.serve(async (req) => {
       const sys = buildCoreSystemPrompt(coreDir)
       const usr = buildCoreUserPrompt(b)
       let model = PRIMARY_MODEL
-      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.7)
+      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, CORE_TEMPERATURE)
       if (!att.ok && (att.status === 404 || att.status === 400)) {
         model = FALLBACK_MODEL
-        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, 0.7)
+        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, CORE_TEMPERATURE)
       }
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
@@ -1105,7 +1169,17 @@ Deno.serve(async (req) => {
         ...(gen.brief_note_ko ? { brief_note_ko: String(gen.brief_note_ko) } : {}),
       }
       return new Response(
-        JSON.stringify({ core_content, meta: { provider: PROVIDER, model, prompt_version: 'core_v2', generated_at: new Date().toISOString() } }),
+        JSON.stringify({
+          core_content,
+          meta: {
+            provider: PROVIDER,
+            model,
+            prompt_version: 'core_v2',
+            // 재현성 provenance — 클라이언트는 이 값을 재계산하지 말고 그대로 저장한다.
+            prompt_snapshot_hash: await corePromptSnapshotHash(),
+            generated_at: new Date().toISOString(),
+          },
+        }),
         { status: 200, headers: jsonHeaders },
       )
     }
