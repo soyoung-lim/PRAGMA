@@ -75,7 +75,7 @@ const AdminCurriculum = () => {
     return (
       <AdminShell
         title="커리큘럼 구조"
-        description="15주 시간표를 만듭니다 — 주차마다 어떤 화행·P·D·R을 다룰지 정합니다. 시나리오 배정은 다음 단계(② 주차별 시나리오 편성)입니다."
+        description="15주 시간표를 만듭니다 — 주차마다 어떤 화행·P·D·R을 다룰지 정합니다. 시나리오 배정은 다음 단계(주차별 시나리오 편성)입니다."
       >
         <CurriculumEditor
           outlineId={editing === "new" ? null : editing}

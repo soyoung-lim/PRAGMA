@@ -86,13 +86,13 @@ const AdminComposer = () => {
   const [weeks, setWeeks] = useState<CurriculumWeekRow[]>([]);
   const [loadingOutline, setLoadingOutline] = useState(false);
 
-  // 수준·테마·통역비율 = 프리셋과 독립. 프리셋 선택 시 여기에 복사(빠른 채우기).
-  const [level, setLevel] = useState<LearnerLevel>("intermediate");
+  // 수준 = 커리큘럼 구조에서 이미 정한 값(2026-07-26 잠금 — 방향과 동일하게 편성기에서
+  // 재결정하지 않는다. 전에는 별도 버튼으로 자유롭게 바꿀 수 있어 "중급 커리큘럼"에
+  // "고급" 후보를 채우는 어긋남이 가능했다).
+  const level: LearnerLevel = (outline?.level as LearnerLevel) ?? "intermediate";
+  // 테마·통역비율 = 프리셋과 독립. 프리셋 선택 시 여기에 복사(빠른 채우기).
   const [themes, setThemes] = useState<ThemeCode[]>([]);
   const [interpRatio, setInterpRatio] = useState<number>(0.3);
-  // 미선택("")으로 시작한다. 첫 프리셋을 기본값으로 두면 셀렉트에는 "입문"이 뜨는데
-  // 실제 수준은 "중급"이라(아래 level 초기값) 표시와 실제가 어긋난다 — 프리셋은
-  // 고르는 순간에만 수준·테마·통역비율을 덮어쓰기 때문이다.
   const [presetCode, setPresetCode] = useState<string>("");
 
   const [assign, setAssign] = useState<AssignMap>({});
@@ -172,7 +172,6 @@ const AdminComposer = () => {
         if (cancelled) return;
         setOutline(o);
         setWeeks(w);
-        setLevel((o.level as LearnerLevel) ?? "intermediate"); // 기본 수준 = 커리큘럼 수준
         setAssign(assignmentsToMap(existing));
         setSavedInfo(
           existing.length > 0 ? `DB에 저장된 편성 ${existing.length}개를 불러왔습니다.` : null,
@@ -188,12 +187,11 @@ const AdminComposer = () => {
     };
   }, [outlineId]);
 
-  // ── 프리셋 적용 = 수준·테마·통역비율 한 번에 세팅(편의) ──
+  // ── 프리셋 적용 = 테마·통역비율 세팅(편의). 수준은 커리큘럼에 잠겨 있어 건드리지 않는다 ──
   const applyPreset = (code: string) => {
     setPresetCode(code);
     const p = COURSE_PRESETS.find((x) => x.preset_code === code);
     if (!p) return;
-    setLevel(p.target_level);
     setThemes(p.included_themes);
     setInterpRatio(p.translation_interpreting_ratio);
   };
@@ -288,7 +286,7 @@ const AdminComposer = () => {
   return (
     <AdminShell
       title="주차별 시나리오 편성"
-      description="① 커리큘럼 구조에서 만든 주차 칸에 실제 시나리오를 배정합니다. 수준·주제를 고르고 자동 채운 뒤 교체하여, 화용 초점·검토상태를 확인해 저장합니다."
+      description="커리큘럼 구조에서 만든 주차 칸에 실제 시나리오를 배정합니다. 주제를 고르고 자동 채운 뒤 교체하여, 화용 초점·검토상태를 확인해 저장합니다."
     >
       {/* ── 상단 컨트롤 ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-5">
@@ -316,9 +314,13 @@ const AdminComposer = () => {
             </select>
           </label>
 
-          {/* 선택된 커리큘럼의 언어 방향 — 자동채우기·후보가 이 방향 코어만 쓴다(0-l·91) */}
+          {/* 커리큘럼에서 이미 정해진 수준·언어방향 — 편성기는 재결정하지 않고 읽기전용으로만
+              보여준다(2026-07-26). 자동채우기·후보가 이 값만 쓴다(0-l·91). */}
           {outline && (
-            <div className="flex flex-col justify-end pb-1.5">
+            <div className="flex flex-col justify-end gap-1.5 pb-1.5">
+              <Badge variant="secondary" className="font-normal">
+                수준 · {LEVEL[level]}
+              </Badge>
               <Badge variant="secondary" className="font-normal">
                 방향 · {DIRECTION_LABEL[(outline.language_direction as LanguageDirection) ?? "ko_zh"]}
               </Badge>
@@ -326,16 +328,16 @@ const AdminComposer = () => {
           )}
 
           <label className="flex flex-col gap-1">
-            <span className="text-muted-foreground">프리셋 (수준·테마 빠른 채우기)</span>
+            <span className="text-muted-foreground">프리셋 (테마·통역비율 빠른 채우기)</span>
             <select
               value={presetCode}
               onChange={(e) => applyPreset(e.target.value)}
               className="min-w-[240px] rounded-md border border-[#EAE4D2] bg-white px-2 py-1.5"
             >
-              <option value="">— 선택 안 함 (아래 수준·주제를 직접 고름) —</option>
+              <option value="">— 선택 안 함 (아래 주제를 직접 고름) —</option>
               {COURSE_PRESETS.map((p) => (
                 <option key={p.preset_code} value={p.preset_code}>
-                  {p.label} · {LEVEL[p.target_level]}
+                  {p.label}
                 </option>
               ))}
             </select>
@@ -381,25 +383,8 @@ const AdminComposer = () => {
           </div>
         </div>
 
-        {/* ── 수준·테마 독립 선택 (지도교수 요구: 수준별·주제별 구성) ── */}
+        {/* ── 테마 선택 (지도교수 요구: 수준별·주제별 구성 — 수준은 커리큘럼에 잠김) ── */}
         <div className="mt-4 flex flex-col gap-3 border-t border-[#F0EBDD] pt-4 text-[13px]">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="w-14 shrink-0 text-muted-foreground">수준</span>
-            {LEVELS.map((lv) => (
-              <button
-                key={lv}
-                type="button"
-                onClick={() => setLevel(lv)}
-                className={`rounded-md border px-3 py-1 transition ${
-                  level === lv
-                    ? "border-[#15202B] bg-[#15202B] text-white"
-                    : "border-[#EAE4D2] bg-white hover:bg-[#FAF8F2]"
-                }`}
-              >
-                {LEVEL[lv]}
-              </button>
-            ))}
-          </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <span className="w-14 shrink-0 text-muted-foreground">주제</span>

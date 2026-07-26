@@ -52,8 +52,8 @@ const GROUPS: NavGroup[] = [
     // 둘 다 "15주"로 시작해 관계가 안 보였다(2026-07-26). ①은 빈 시간표를 만들고
     // ②는 그 칸을 채운다 — 번호로 순서를, 이름으로 무엇이 다른지 드러낸다.
     items: [
-      { to: "/admin/curriculum", label: "① 커리큘럼 구조" },
-      { to: "/admin/composer", label: "② 주차별 시나리오 편성" },
+      { to: "/admin/curriculum", label: "커리큘럼 구조" },
+      { to: "/admin/composer", label: "주차별 시나리오 편성" },
     ],
   },
   {

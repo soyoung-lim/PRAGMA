@@ -109,102 +109,105 @@ const AdminBatch = () => {
       title="배치 생성"
       description="셀 목록을 순회해 시나리오를 일괄 생성합니다. 생성물은 검수 대기 상태로 저장됩니다."
     >
-      {/* ── 생성 모드 ── */}
-      <section className="rounded-xl border border-[#EAE4D2] bg-white p-5">
-        <h3 className="text-[15px] font-bold">생성 모드</h3>
-        <div className="mt-3 flex gap-2">
-          <Button
-            variant={genMode === "core" ? "default" : "outline"}
-            onClick={() => !running && setGenMode("core")}
-            disabled={running}
-          >
-            시나리오 코어 (v1.4)
-          </Button>
-          <Button
-            variant={genMode === "legacy" ? "default" : "outline"}
-            onClick={() => !running && setGenMode("legacy")}
-            disabled={running}
-          >
-            레거시 (candidates)
-          </Button>
-        </div>
-        <p className="mt-2 text-[12.5px] text-muted-foreground">
-          {genMode === "core"
-            ? "상황·원문·태그만 생성해 500개 뱅크를 채웁니다(scenario_core_v1). 미션(MPJ+DCT)은 편성 선별분만 승격 생성."
-            : "⚠️ 구버전 — candidates+feedback(판단형 셸용). 신규 뱅크에는 코어 모드를 쓰세요."}
-        </p>
+      {/* ── 생성 설정 (모드·방향·할당량 압축) ── */}
+      <section className="rounded-xl border border-[#EAE4D2] bg-white p-4">
+        <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
+          <div>
+            <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+              생성 모드
+            </div>
+            <div className="mt-1.5 flex gap-1.5">
+              <Button
+                size="sm"
+                variant={genMode === "core" ? "default" : "outline"}
+                onClick={() => !running && setGenMode("core")}
+                disabled={running}
+              >
+                시나리오 코어 (v1.4)
+              </Button>
+              <Button
+                size="sm"
+                variant={genMode === "legacy" ? "default" : "outline"}
+                onClick={() => !running && setGenMode("legacy")}
+                disabled={running}
+              >
+                레거시 (candidates)
+              </Button>
+            </div>
+          </div>
 
-        <h3 className="mt-4 text-[15px] font-bold">언어 방향</h3>
-        <div className="mt-3 flex gap-2">
-          <Button
-            variant={direction === "ko_zh" ? "default" : "outline"}
-            onClick={() => switchDirection("ko_zh")}
-            disabled={running}
-          >
-            {DIRECTION_LABEL.ko_zh}
-          </Button>
-          <Button
-            variant={direction === "zh_ko" ? "default" : "outline"}
-            onClick={() => switchDirection("zh_ko")}
-            disabled={running}
-          >
-            {DIRECTION_LABEL.zh_ko} (스모크)
-          </Button>
+          <div>
+            <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+              언어 방향
+            </div>
+            <div className="mt-1.5 flex gap-1.5">
+              <Button
+                size="sm"
+                variant={direction === "ko_zh" ? "default" : "outline"}
+                onClick={() => switchDirection("ko_zh")}
+                disabled={running}
+              >
+                {DIRECTION_LABEL.ko_zh}
+              </Button>
+              <Button
+                size="sm"
+                variant={direction === "zh_ko" ? "default" : "outline"}
+                onClick={() => switchDirection("zh_ko")}
+                disabled={running}
+              >
+                {DIRECTION_LABEL.zh_ko} (스모크)
+              </Button>
+            </div>
+          </div>
         </div>
-        <p className="mt-2 text-[12.5px] text-muted-foreground">
+
+        <p className="mt-2.5 text-[12px] text-muted-foreground">
+          {genMode === "core"
+            ? "상황·원문·태그만 생성해 500개 뱅크를 채웁니다(scenario_core_v1)."
+            : "⚠️ 구버전 — candidates+feedback(판단형 셸용)."}{" "}
           {direction === "zh_ko"
-            ? "중→한 스모크 쿼터(계약 0-l·89) — 승격 가능 3화행(요청·거절·감사) × 수준3 × 모드2 = 18셀, 셀당 ≥1. 500 본 배치는 한→중 중심 유지."
+            ? "중→한 스모크 쿼터(계약 0-l·89) — 승격 가능 3화행 × 수준3 × 모드2 = 18셀."
             : "500 본 배치 대상(계약 0-h·57) — 화행9 × 수준3 × 모드2 = 54셀, 셀당 ≥3 목표."}
         </p>
-      </section>
 
-      {/* ── 할당량 ── */}
-      <section className="mt-4 rounded-xl border border-[#EAE4D2] bg-white p-5">
-        <h3 className="text-[15px] font-bold">할당량</h3>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          수준별로 <b>화행당 번역 개수</b>를 정합니다(통역은 아래 비율로 자동, 셀당 최소 1 보장). 중급이
-          실증 코호트라 기본값이 가장 두껍습니다. 화행9 × 수준3 × <b>모드2 = 54셀</b>이 감사 단위입니다.
-        </p>
-
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          {LEVEL_ORDER.map((lv) => (
-            <div key={lv}>
-              <Label className="text-[13px]">{LEVEL[lv]}</Label>
+        <div className="mt-3 border-t border-[#EAE4D2] pt-3">
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+            {LEVEL_ORDER.map((lv) => (
+              <div key={lv} className="w-[104px]">
+                <Label className="text-[11.5px] text-muted-foreground">{LEVEL[lv]}</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={quota.perLevel[lv]}
+                  disabled={running}
+                  onChange={(e) => setLevelQuota(lv, Number(e.target.value))}
+                  className="mt-1 h-8 text-[13px]"
+                />
+                <p className="mt-1 text-[10.5px] text-muted-foreground">
+                  →{" "}
+                  {9 * (quota.perLevel[lv] + interpretingCount(quota.perLevel[lv], quota.interpretingRatio))}
+                  개
+                </p>
+              </div>
+            ))}
+            <div className="w-[104px]">
+              <Label className="text-[11.5px] text-muted-foreground">통역 비율</Label>
               <Input
                 type="number"
                 min={0}
-                max={10}
-                value={quota.perLevel[lv]}
+                max={1}
+                step={0.1}
+                value={quota.interpretingRatio}
                 disabled={running}
-                onChange={(e) => setLevelQuota(lv, Number(e.target.value))}
-                className="mt-1"
+                onChange={(e) =>
+                  setQuota((q) => ({ ...q, interpretingRatio: Number(e.target.value) }))
+                }
+                className="mt-1 h-8 text-[13px]"
               />
-              <p className="mt-1 text-[11.5px] text-muted-foreground">
-                화행9 × (번역 {quota.perLevel[lv]} + 통역{" "}
-                {interpretingCount(quota.perLevel[lv], quota.interpretingRatio)}) ={" "}
-                {9 * (quota.perLevel[lv] + interpretingCount(quota.perLevel[lv], quota.interpretingRatio))}개
-              </p>
+              <p className="mt-1 text-[10.5px] text-muted-foreground">대면·전화=통역</p>
             </div>
-          ))}
-        </div>
-
-        <div className="mt-4 max-w-[240px]">
-          <Label className="text-[13px]">통역 비율</Label>
-          <Input
-            type="number"
-            min={0}
-            max={1}
-            step={0.1}
-            value={quota.interpretingRatio}
-            disabled={running}
-            onChange={(e) =>
-              setQuota((q) => ({ ...q, interpretingRatio: Number(e.target.value) }))
-            }
-            className="mt-1"
-          />
-          <p className="mt-1 text-[11.5px] text-muted-foreground">
-            대면·전화 = 통역, 이메일·메신저 = 번역
-          </p>
+          </div>
         </div>
       </section>
 
