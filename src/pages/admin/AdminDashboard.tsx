@@ -25,22 +25,35 @@ const initial: CountState = { value: null, error: null, loading: true };
 const db = supabase as unknown as { from: (t: string) => any };
 
 const LiveBadge = () => (
-  <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200">
-    ● DB 실시간
+  <Badge
+    variant="outline"
+    className="gap-1.5 whitespace-nowrap border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-50"
+  >
+    <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+    DB 실시간
   </Badge>
 );
 const ExampleBadge = () => (
-  <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200">
+  <Badge
+    variant="outline"
+    className="whitespace-nowrap border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:bg-amber-50"
+  >
     예시 레이아웃 · 로그 축적 후 활성화
   </Badge>
 );
 // 아직 가동하지 않는 단계의 계수 — 0을 "구현됨"으로 오해하지 않도록 배지로 구분한다.
 const PendingBadge = () => (
-  <Badge className="border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100">
+  <Badge
+    variant="outline"
+    className="whitespace-nowrap border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+  >
     미가동
   </Badge>
 );
 
+// 카드마다 「DB 실시간」을 반복하면 라벨과 배지가 서로 밀어내 두 줄로 접힌다
+// (좁은 5열에서 "시나리오 코/어", "DB 실시/간"). 실시간 여부는 섹션 헤더가 이미
+// 말하므로, 카드 배지는 **그 섹션의 기본과 다를 때만** 단다(미가동 등).
 const StatCard = ({
   label,
   state,
@@ -52,22 +65,24 @@ const StatCard = ({
   badge?: React.ReactNode;
   note?: string;
 }) => (
-  <div className="rounded-xl border border-border bg-card p-5">
-    <div className="flex items-center justify-between gap-2">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      {badge ?? <LiveBadge />}
-    </div>
-    <p className="mt-3 text-3xl font-semibold">
-      {state.loading ? "…" : state.error ? (
+  <div className="flex flex-col rounded-xl border border-border bg-card p-5">
+    {/* 라벨은 항상 한 줄 전체를 쓴다 — 배지를 옆에 두면 좁은 열에서 라벨이 잘린다 */}
+    <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+    <p className="mt-3 text-[30px] font-semibold leading-none tabular-nums">
+      {state.loading ? (
+        <span className="text-muted-foreground">…</span>
+      ) : state.error ? (
         <span className="text-base font-normal text-destructive">확인 필요</span>
       ) : (
         state.value ?? 0
       )}
     </p>
-    {note && <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>}
-    {state.error && (
-      <p className="mt-1 text-[11px] text-destructive">{state.error}</p>
-    )}
+    {/* note와 배지를 같은 줄에 둔다. note가 없는 카드도 높이를 유지해 행이 어긋나지 않게. */}
+    <div className="mt-2 flex min-h-[22px] items-center justify-between gap-2">
+      <span className="truncate text-[11px] text-muted-foreground">{note ?? ""}</span>
+      {badge && <span className="shrink-0">{badge}</span>}
+    </div>
+    {state.error && <p className="mt-1 text-[11px] text-destructive">{state.error}</p>}
   </div>
 );
 
@@ -361,7 +376,8 @@ const AdminDashboard = () => {
     >
       {/* Row 0: 분리 계수 — 단계별 수량을 한 숫자로 합치지 않는다 (0-g·46 → 0-q·101) */}
       <SectionHeader title="콘텐츠 분리 계수" badge={<LiveBadge />} />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {/* 1024~1280에서 5열이면 카드가 140px까지 좁아져 라벨이 잘린다 — 그 구간은 3열로. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard label="① 시나리오 코어" state={coreN} note="검색·편성 단위" />
         <StatCard label="② 미션 생성" state={missionGenN} note="검토 전 포함" />
         <StatCard
