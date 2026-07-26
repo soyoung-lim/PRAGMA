@@ -122,6 +122,11 @@ const MissionRunV1 = () => {
   const [searchParams] = useSearchParams();
   // 데모/검증 토글 — 샘플 경로에서만 통역 흐름을 켠다(실제 DB 미션에는 영향 없음).
   const forceInterp = !scenarioId && searchParams.get("mode") === "interpreting";
+  // 수행 방식 전환(번역 ↔ 통역)으로 넘어온 경우 1부를 건너뛰고 2부부터 시작한다.
+  // 같은 미션의 1부(판단 연습)를 방금 마쳤는데 또 시키면 중복이다.
+  // ⚠️ 샘플 + 데모에서만 허용 — 실제 학습 세션에서 1부를 건너뛰면 "판단 → 적용"이라는
+  //    미션 구인 자체가 깨진다(완료 조건 = 판단 N문항 → 산출 → 피드백 → 다듬기).
+  const startAtPart2 = IS_DEMO && !scenarioId && searchParams.get("part") === "2";
   const [loaded, setLoaded] = useState<RunnableMission | null>(null);
   const [loading, setLoading] = useState<boolean>(!!scenarioId);
   const [error, setError] = useState<string | null>(null);
@@ -176,6 +181,7 @@ const MissionRunV1 = () => {
       key={`${loaded?.scenario_id ?? "sample"}:${mission.production_task.mode}`}
       mission={mission}
       isSample={isSample}
+      startAtPart2={startAtPart2}
       headerRight={headerRight}
       status={loaded?.mission_status ?? null}
       scenarioId={loaded?.scenario_id ?? null}
@@ -378,6 +384,7 @@ function FeedbackPanel({
 function MissionRunner({
   mission,
   isSample,
+  startAtPart2 = false,
   headerRight,
   status,
   scenarioId,
@@ -386,13 +393,15 @@ function MissionRunner({
 }: {
   mission: MissionV2;
   isSample: boolean;
+  /** 수행 방식 전환으로 넘어온 경우 1부(판단 연습)를 건너뛴다 — 샘플·데모 전용 */
+  startAtPart2?: boolean;
   headerRight: string;
   status: string | null;
   scenarioId: string | null;
   speechAct: string | null;
   level: string | null;
 }) {
-  const [phase, setPhase] = useState<Phase>("mpj");
+  const [phase, setPhase] = useState<Phase>(startAtPart2 ? "ctx" : "mpj");
   const [mpjIdx, setMpjIdx] = useState(0);
   const [ctxPick, setCtxPick] = useState<number | null>(null);
   const [ctxDone, setCtxDone] = useState(false);
@@ -462,6 +471,19 @@ function MissionRunner({
   // 중단 후 재개(프로토타입 v2 ②) — 2부 진행분만 미션별 localStorage에 보존. 실패해도 흐름 무해.
   const storageKey = `pragma:mrun:${scenarioId ?? "sample"}`;
   useEffect(() => {
+    // 수행 방식 전환으로 들어온 경우엔 재개 대상이 아니다 — 방금 끝낸 다른 방식의
+    // 진행분(같은 sample 키를 쓴다)이 새어 들어와 착지 지점이 달라지면 안 된다.
+    if (startAtPart2) {
+      try {
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({ phase: "ctx", draft: "", revised: "", ctxPick: null, ctxDone: false }),
+        );
+      } catch {
+        /* 무시 */
+      }
+      return;
+    }
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
@@ -472,7 +494,7 @@ function MissionRunner({
       /* localStorage 미지원 — 재개 없이 정상 진행 */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey]);
+  }, [storageKey, startAtPart2]);
   useEffect(() => {
     if (part !== 2) return;
     try {
@@ -898,10 +920,19 @@ function MissionRunner({
               <button
                 type="button"
                 onClick={() => {
-                  try { localStorage.removeItem(storageKey); } catch { /* ignore */ }
+                  // 방금 끝낸 방식의 진행분을 2부 시작 상태로 덮어쓴다. 단순 삭제만 하면
+                  // 이동 직전 저장 이펙트가 현재 상태를 되써서 다음 화면이 산출 단계로
+                  // 튈 수 있다(같은 sample 키를 공유).
+                  try {
+                    localStorage.setItem(
+                      storageKey,
+                      JSON.stringify({ phase: "ctx", draft: "", revised: "", ctxPick: null, ctxDone: false }),
+                    );
+                  } catch { /* ignore */ }
+                  // part=2 — 1부(판단 연습)는 방금 마쳤으므로 건너뛰고 바로 2부로.
                   window.location.href = isInterp
-                    ? "/learner/practice"
-                    : "/learner/practice?mode=interpreting";
+                    ? "/learner/practice?part=2"
+                    : "/learner/practice?mode=interpreting&part=2";
                 }}
                 className="w-full rounded-xl bg-[#FAD338] px-5 py-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#F5C81F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
               >
@@ -914,8 +945,8 @@ function MissionRunner({
                 </div>
                 <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#5B4A1E]">
                   {isInterp
-                    ? "같은 상황을 글로 옮기는 방식으로 이어서 수행합니다."
-                    : "같은 상황을 듣고 말하는 방식으로 이어서 수행합니다 — 원문 듣기 → 녹음 → 전사 확인."}
+                    ? "1부 판단 연습은 건너뛰고 곧바로 번역 산출부터 이어집니다."
+                    : "1부 판단 연습은 건너뛰고 곧바로 통역 산출부터 이어집니다 — 원문 듣기 → 녹음 → 전사 확인."}
                 </p>
               </button>
             ) : (
