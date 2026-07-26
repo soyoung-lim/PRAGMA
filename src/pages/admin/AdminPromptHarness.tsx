@@ -26,7 +26,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { PROMPT_SNAPSHOT, type PromptSnapshotEntry } from "@/lib/pragma/promptSnapshot.generated";
 
 type PromptTemplate = {
   id: string;
@@ -132,6 +133,157 @@ const CARD_DISPLAY: Record<
   },
 };
 
+// ── 저장소 정본(읽기 전용) ─────────────────────────────────────────────
+// 이 섹션의 원문은 promptSnapshot.generated.ts에서 온다. 그 파일은 build마다
+// 실제 edge 소스에서 자동 재생성되므로(prebuild) 화면이 코드보다 낡을 수 없다.
+// 편집 경로는 만들지 않는다 — 프롬프트를 고치려면 코드를 고쳐야 한다.
+const SNAPSHOT_GROUP_LABEL: Record<string, string> = {
+  core: "코어 생성 (500개 뱅크)",
+  mission: "미션 승격 (MPJ + 산출 과제)",
+  review: "검증② 품질점검",
+  runtime: "학습자 실행 중 피드백",
+  authoring: "실제 자료 활용",
+};
+const SNAPSHOT_GROUP_ORDER = ["core", "mission", "review", "runtime", "authoring"];
+
+/** 배치가 실제로 사용한 지문 — scenarios 행에서 집계(계약 provenance). */
+type UsedHashRow = { hash: string | null; count: number; first: string; last: string };
+
+function ProvenanceBanner({
+  used,
+  loading,
+  error,
+}: {
+  used: UsedHashRow[];
+  loading: boolean;
+  error: string | null;
+}) {
+  const snap = PROMPT_SNAPSHOT;
+  const matched = used.find((u) => u.hash === snap.core_surface_hash);
+  const legacyNull = used.find((u) => u.hash === null);
+  return (
+    <section className="rounded-xl border border-[#EAE4D2] bg-[#FBFAF7] p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Lock className="h-4 w-4 text-[#8a857c]" />
+        <h2 className="text-[15px] font-bold">저장소 정본 · 읽기 전용</h2>
+        <Badge variant="outline" className="font-normal">
+          커밋 {snap.git_commit}
+        </Badge>
+        {snap.git_dirty && (
+          <Badge variant="outline" className="border-amber-400 bg-amber-50 font-normal text-amber-900">
+            edge 소스에 미커밋 변경 있음
+          </Badge>
+        )}
+      </div>
+      <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">
+        아래 프롬프트는 <b>모델에 실제로 전송되는 문장</b>입니다. 빌드할 때마다 배포되는 edge
+        소스에서 자동으로 다시 떠오므로 화면이 코드보다 낡을 수 없고, 이 화면에는 편집 경로가
+        없습니다(고치려면 코드를 수정해야 합니다). <code>PROBE_*</code>는 호출마다 달라지는
+        입력값 자리입니다 — 그 값은 시나리오 행에 따로 저장됩니다.
+      </p>
+
+      <div className="mt-3 grid gap-2 text-[12.5px] sm:grid-cols-2">
+        <div className="rounded-lg border border-[#EAE4D2] bg-white px-3 py-2">
+          <div className="text-[11.5px] text-muted-foreground">코어 생성 표면 지문 (SHA-256)</div>
+          <div className="mt-0.5 break-all font-mono text-[11px]">{snap.core_surface_hash}</div>
+          <div className="mt-1 text-[11px] text-muted-foreground">
+            모델 {snap.generation_config.model} · temperature {snap.generation_config.temperature} ·{" "}
+            {snap.generation_config.response_format}
+          </div>
+        </div>
+        <div className="rounded-lg border border-[#EAE4D2] bg-white px-3 py-2">
+          <div className="text-[11.5px] text-muted-foreground">이 지문으로 생성된 시나리오</div>
+          {loading ? (
+            <div className="mt-1 text-[12px] text-muted-foreground">확인 중…</div>
+          ) : error ? (
+            <>
+              <div className="mt-0.5 text-[15px] font-bold text-amber-800">확인 필요</div>
+              <div className="text-[11px] text-muted-foreground">
+                시나리오 조회 실패 — 관리자 로그인이 필요합니다(0건이라는 뜻이 아닙니다)
+              </div>
+            </>
+          ) : matched ? (
+            <>
+              <div className="mt-0.5 text-[20px] font-bold text-emerald-800">{matched.count}건</div>
+              <div className="text-[11px] text-muted-foreground">
+                {matched.first.slice(0, 10)} ~ {matched.last.slice(0, 10)} · 저장소 정본과 일치 ✓
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mt-0.5 text-[20px] font-bold text-[#8a857c]">0건</div>
+              <div className="text-[11px] text-muted-foreground">
+                아직 이 프롬프트로 생성된 시나리오가 없습니다
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 지문이 없는 과거 생성분 — 숨기지 않고 정직하게 표기(소급 기록 금지) */}
+      {!loading && !error && legacyNull && (
+        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+          지문 기록 이전에 생성된 시나리오 <b>{legacyNull.count}건</b>은 프롬프트 지문이
+          비어 있습니다({legacyNull.first.slice(0, 10)} ~ {legacyNull.last.slice(0, 10)}). 어떤
+          프롬프트로 만들었는지 소급 확인이 불가능하므로 거짓으로 채우지 않았습니다.
+        </p>
+      )}
+
+      {/* 정본과 다른 지문이 섞여 있으면 = 동결이 깨졌다는 신호 */}
+      {!loading && !error &&
+        used.filter((u) => u.hash && u.hash !== snap.core_surface_hash).map((u) => (
+          <p key={u.hash} className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-900">
+            ⚠️ 다른 프롬프트 지문으로 생성된 시나리오 <b>{u.count}건</b> (
+            <span className="font-mono">{u.hash?.slice(0, 12)}…</span>,{" "}
+            {u.first.slice(0, 10)} ~ {u.last.slice(0, 10)}). 저장소 정본과 다릅니다 — 프롬프트가
+            중간에 바뀌었는지 확인하세요.
+          </p>
+        ))}
+
+      <p className="mt-2 text-[11.5px] text-muted-foreground">
+        스냅샷 캡처: {new Date(snap.generated_at).toLocaleString()} · 출처 {snap.edge_source}
+      </p>
+    </section>
+  );
+}
+
+function SnapshotCard({ entry }: { entry: PromptSnapshotEntry }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card>
+      <CardHeader className="p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="flex items-center gap-1 text-left"
+          >
+            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <CardTitle className="text-base">{entry.label}</CardTitle>
+          </button>
+          <Badge variant="outline" className="font-mono text-[11px]">
+            {entry.sha256.slice(0, 10)}
+          </Badge>
+          <Badge variant="secondary" className="font-normal">
+            {entry.text.length.toLocaleString()}자
+          </Badge>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">{entry.note}</p>
+      </CardHeader>
+      {open && (
+        <CardContent className="p-4 pt-0">
+          <pre className="max-h-[520px] overflow-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-xs leading-relaxed">
+            {entry.text}
+          </pre>
+          <p className="mt-2 break-all font-mono text-[10.5px] text-muted-foreground">
+            {entry.key} · sha256 {entry.sha256}
+          </p>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
 function sortByDisplayOrder(rows: PromptTemplate[]): PromptTemplate[] {
   return [...rows].sort((a, b) => {
     const ao = CARD_ORDER[a.prompt_key] ?? 99;
@@ -151,6 +303,47 @@ const AdminPromptHarness = () => {
   const [editing, setEditing] = useState<PromptTemplate | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PromptTemplate | null>(null);
+  // 실제 생성에 쓰인 지문 — 저장소 정본과 대조해 "이 데이터가 이 프롬프트에서 나왔다"를 보인다.
+  const [usedHashes, setUsedHashes] = useState<UsedHashRow[]>([]);
+  const [usedLoading, setUsedLoading] = useState(true);
+  const [usedError, setUsedError] = useState<string | null>(null);
+
+  const loadUsed = useCallback(async () => {
+    setUsedLoading(true);
+    const { data, error } = await supabase
+      .from("scenarios")
+      .select("prompt_snapshot_hash, created_at")
+      .eq("content_format", "scenario_core_v1")
+      .limit(2000);
+    // 조회 실패(RLS·비로그인)를 0건으로 표시하면 화면이 조용히 거짓말한다 —
+    // "확인 필요"로 구분해서 내보낸다.
+    if (error || !data) {
+      setUsedError(error?.message ?? "조회 실패");
+      setUsedHashes([]);
+      setUsedLoading(false);
+      return;
+    }
+    setUsedError(null);
+    const acc = new Map<string, UsedHashRow>();
+    for (const r of data as { prompt_snapshot_hash: string | null; created_at: string }[]) {
+      const key = r.prompt_snapshot_hash ?? " null";
+      const cur = acc.get(key);
+      if (!cur) {
+        acc.set(key, {
+          hash: r.prompt_snapshot_hash,
+          count: 1,
+          first: r.created_at,
+          last: r.created_at,
+        });
+      } else {
+        cur.count += 1;
+        if (r.created_at < cur.first) cur.first = r.created_at;
+        if (r.created_at > cur.last) cur.last = r.created_at;
+      }
+    }
+    setUsedHashes([...acc.values()].sort((a, b) => b.count - a.count));
+    setUsedLoading(false);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -171,7 +364,8 @@ const AdminPromptHarness = () => {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadUsed();
+  }, [load, loadUsed]);
 
   const grouped = useMemo(() => {
     const g: Partial<Record<(typeof GROUP_ORDER)[number], PromptTemplate[]>> = {};
@@ -272,15 +466,47 @@ const AdminPromptHarness = () => {
 
   return (
     <AdminShell
-      title="프롬프트 관리"
-      description="AI가 학습 자료를 생성·검수·분석할 때 지키는 규칙과 기준을 단계별로 관리합니다. 각 규칙은 버전으로 관리되며, 지금은 규칙을 정리·보관하는 단계입니다."
+      title="생성 규칙·프롬프트"
+      description="AI가 학습 자료를 생성·검수·분석할 때 실제로 받는 지시문입니다. 정본은 코드이며 이 화면은 읽기 전용으로 보여줍니다."
     >
-      <div className="mb-4 flex items-center justify-between">
+      <ProvenanceBanner used={usedHashes} loading={usedLoading} error={usedError} />
+
+      <div className="mt-6 space-y-6">
+        {SNAPSHOT_GROUP_ORDER.map((g) => {
+          const items = PROMPT_SNAPSHOT.prompts.filter((p) => p.group === g);
+          if (items.length === 0) return null;
+          return (
+            <div key={g}>
+              <h3 className="mb-2 text-[15px] font-bold">{SNAPSHOT_GROUP_LABEL[g] ?? g}</h3>
+              <div className="space-y-2">
+                {items.map((p) => (
+                  <SnapshotCard key={p.key} entry={p} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── 아래는 별개 저장소(prompt_templates 테이블) ──
+          2026-07-06에 만들었으나 생성 파이프라인이 조회하지 않는다. 위 정본과
+          혼동되지 않게 시각적으로 분리하고, 쓰이지 않는다는 사실을 명시한다.
+          마감 후 삭제 후보 — 지금 지우지 않는다(마감 직전 DB 삭제 금지). */}
+      <div className="mt-10 border-t-2 border-dashed border-[#EAE4D2] pt-6">
+        <h3 className="text-[15px] font-bold text-[#8a857c]">문서 보관함 (생성에 사용되지 않음)</h3>
+        <p className="mt-1 text-[12.5px] text-muted-foreground">
+          별도 DB 테이블(<code>prompt_templates</code>)입니다. <b>생성·검수 파이프라인은 이 테이블을
+          조회하지 않습니다</b> — 위 「저장소 정본」이 실제로 쓰이는 지시문입니다. 아래 항목은
+          2026-07-06에 틀만 만들어 둔 것으로 내용이 비어 있으며, 마감 후 정리 예정입니다.
+        </p>
+      </div>
+
+      <div className="mb-4 mt-4 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           총 {rows.length}개 · 단계 {GROUP_ORDER.length}개
         </p>
-        <Button onClick={openCreate}>
-          <Plus className="mr-1 h-4 w-4" /> 새 프롬프트 추가
+        <Button variant="outline" onClick={openCreate}>
+          <Plus className="mr-1 h-4 w-4" /> 새 문서 추가
         </Button>
       </div>
 
