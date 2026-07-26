@@ -834,38 +834,6 @@ function MissionRunner({
               <p className="mt-1.5 text-[14.5px] leading-relaxed">{mission.unit.closing_ko}</p>
             </div>
 
-            {/* 데모 전용 — 번역만 보고 끝나지 않도록 반대 수행 방식으로 이어 준다.
-                읽을거리 뒤가 아니라 **핵심 바로 다음**에 둔다: 완료 화면의 목적은
-                닫는 것이 아니라 다음으로 넘기는 것이고, 아래에 두면 통역이 부차적으로
-                읽힌다(번역과 대등해야 한다).
-                실제 미션의 mode는 승격 시 정해지므로(계약 0-o) 여기서 바뀌는 것은
-                **샘플 미리보기**뿐이고, 실 학습 세션(IS_DEMO 꺼짐)엔 노출되지 않는다.
-                재개 상태가 남아 있으면 곧바로 완료 화면이 복원되므로 먼저 지운다. */}
-            {IS_DEMO && isSample && (
-              <button
-                type="button"
-                onClick={() => {
-                  try { localStorage.removeItem(storageKey); } catch { /* ignore */ }
-                  window.location.href = isInterp
-                    ? "/learner/practice"
-                    : "/learner/practice?mode=interpreting";
-                }}
-                className="w-full rounded-xl bg-[#FAD338] px-5 py-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#F5C81F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
-              >
-                <div className="text-[11.5px] font-bold text-[#6B5518]">
-                  수행 방식 2가지 중 1가지 완료 · 다음
-                </div>
-                <div className="mt-1 flex items-center gap-2 text-[16px] font-bold text-[#15202B]">
-                  <span>{isInterp ? "✍️" : "🎙️"}</span>
-                  <span>이어서 {isInterp ? "번역" : "통역"}으로 해보기 →</span>
-                </div>
-                <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#5B4A1E]">
-                  {isInterp
-                    ? "같은 상황을 글로 옮기는 방식으로 이어서 수행합니다."
-                    : "같은 상황을 듣고 말하는 방식으로 이어서 수행합니다 — 원문 듣기 → 녹음 → 전사 확인."}
-                </p>
-              </button>
-            )}
 
             {/* B2: 예외 반례 — "직접형=무조건 나쁨"이 아님을 완료 시 상기(counter_rule) */}
             {counterRule && (
@@ -920,7 +888,39 @@ function MissionRunner({
             </div>
             )}
 
-            <Button variant="outline" className="w-full" onClick={resetAll}>처음부터 다시 보기 ↺</Button>
+            {/* 완료 화면의 마지막 행동 — 데모/샘플에서는 「처음부터 다시 보기」 자리를
+                수행 방식 전환이 대신한다. "이어서"라는 말대로 번역을 끝까지 훑어본
+                다음이 통역 차례이고, 위쪽에 두면 노란 카드가 뭉쳐 부담스럽다.
+                실제 미션의 mode는 승격 시 정해지므로(계약 0-o) 여기서 바뀌는 것은
+                **샘플 미리보기**뿐이고, 실 학습 세션(IS_DEMO 꺼짐)엔 노출되지 않는다.
+                재개 상태가 남아 있으면 곧바로 완료 화면이 복원되므로 먼저 지운다. */}
+            {IS_DEMO && isSample ? (
+              <button
+                type="button"
+                onClick={() => {
+                  try { localStorage.removeItem(storageKey); } catch { /* ignore */ }
+                  window.location.href = isInterp
+                    ? "/learner/practice"
+                    : "/learner/practice?mode=interpreting";
+                }}
+                className="w-full rounded-xl bg-[#FAD338] px-5 py-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#F5C81F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
+              >
+                <div className="text-[11.5px] font-bold text-[#6B5518]">
+                  수행 방식 2가지 중 1가지 완료 · 다음
+                </div>
+                <div className="mt-1 flex items-center gap-2 text-[16px] font-bold text-[#15202B]">
+                  <span>{isInterp ? "✍️" : "🎙️"}</span>
+                  <span>이어서 {isInterp ? "번역" : "통역"}으로 해보기 →</span>
+                </div>
+                <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#5B4A1E]">
+                  {isInterp
+                    ? "같은 상황을 글로 옮기는 방식으로 이어서 수행합니다."
+                    : "같은 상황을 듣고 말하는 방식으로 이어서 수행합니다 — 원문 듣기 → 녹음 → 전사 확인."}
+                </p>
+              </button>
+            ) : (
+              <Button variant="outline" className="w-full" onClick={resetAll}>처음부터 다시 보기 ↺</Button>
+            )}
           </div>
         )}
       </div>
