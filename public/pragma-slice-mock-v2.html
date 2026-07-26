@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRAGMA · 슬라이스 목업 v2 — 요청·위챗·번역·빠른 미션</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<!--
+  v2 = v1 골격 유지 + 지정된 4건만 수정 (목업에도 최소 수정 원칙 — v1↔v2 diff 가능).
+  수정 1 — 대조 표현을 진짜 최소대조로: '완화 한 겹' 후보를 不好意思 하나만 추가한 버전으로 교체(자질 태그 1개). (MD §2-B "한 번에 한 자질만")
+  수정 2 — '차이 발견'에 의미보존 확인 1줄 추가(조건부): 자유입력=중립 체크 / 데모답안 사용 시=⚠누락+기록만. 수정 과제로 연결 안 함. (MD §2-E 이중 요구)
+  수정 3 — fixnote 최소수정 힌트를 수준별 분기(입문 예시 유지 / 중급 범주 힌트 / 고급 위치·이유만) + 헤더 수준 토글 추가(화면 추가 금지의 유일 예외). 로그 example_shown 플래그 주석. (MD §3-B, 매트릭스 v2 §6 example_exposure)
+  수정 4 — 경계 사례를 극단 공문투→한국인 전형 오류(격식 직역투)로 교체 + 라벨을 '문법은 맞는데 사이가 어색' 취지로. (설계된 distractor 원칙)
+  그 외 v1 전부 유지: 구조·톤·상태 기반 렌더·슬림 진행바·판독 직후 프라이밍 문구.
+-->
+<style>
+:root{
+  --paper:#FAF8F2; --ink:#15202B; --ink-soft:#5C6A7A; --line:#D3D1C7;
+  --surface:#F5F5F2; --surface-2:#FAFAF7;
+  --accent:#FAD338; --accent-soft:#FFF8DE;
+  --ok:#2E7D5B; --warn:#B8860B; --danger:#C42B2B; --danger-soft:#FBEEEE;
+  --wx:#95EC69; --wx-bg:#EDEDED;
+  --r:12px;
+  --sans:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --zh:'Pretendard Variable',Pretendard,'PingFang SC','Microsoft YaHei','Malgun Gothic',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+h1,h2,h3{font-weight:700;letter-spacing:-0.01em}
+
+header{position:sticky;top:0;z-index:100;background:#15202B;padding:12px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px}
+.brand .seal{width:5px;height:26px;border-radius:99px;background:var(--accent)}
+.brand b{font-size:15px;font-weight:600;color:#F1EFE8}
+.brand small{display:block;color:#8899A6;font-size:11px}
+/* [수정3] 헤더 수준 토글 (v3.5.1 .seg 패턴) */
+.seg{display:flex;background:rgba(255,255,255,.08);border-radius:9px;padding:3px;gap:2px;margin-left:auto}
+.seg button{border:none;background:transparent;padding:6px 12px;border-radius:6px;font-size:12.5px;font-weight:500;color:#8899A6}
+.seg button:hover{color:#F1EFE8}
+.seg button.on{background:var(--accent);color:#15202B;font-weight:600}
+.mission-chip{font-size:12px;color:#C7D0D8;background:rgba(255,255,255,.08);border-radius:99px;padding:5px 12px}
+
+.wrap{max-width:720px;margin:0 auto;padding:26px 20px 90px}
+
+.prog{display:flex;gap:6px;margin-bottom:24px}
+.prog .st{flex:1;text-align:center}
+.prog .dot{height:5px;border-radius:99px;background:var(--line)}
+.prog .st.done .dot,.prog .st.on .dot{background:var(--accent)}
+.prog .lb{font-size:11px;color:var(--ink-soft);margin-top:6px;font-weight:500}
+.prog .st.on .lb{color:var(--ink);font-weight:700}
+
+.card{background:#fff;border:0.5px solid var(--line);border-radius:var(--r);padding:22px;margin-bottom:16px}
+.eyebrow{font-size:12px;font-weight:700;color:var(--warn);letter-spacing:.02em;margin-bottom:6px}
+.card h2{font-size:19px;margin-bottom:6px}
+.lead{font-size:14px;color:var(--ink-soft);margin-bottom:16px}
+
+.wx{background:var(--wx-bg);border-radius:12px;padding:14px;border:0.5px solid var(--line)}
+.wx-top{text-align:center;font-size:12px;color:#7a7a7a;margin-bottom:12px;font-weight:600}
+.bubble{max-width:80%;padding:9px 12px;border-radius:9px;font-size:14.5px;margin-bottom:9px;line-height:1.5}
+.bubble.them{background:#fff;border-top-left-radius:2px}
+.bubble.me{background:var(--wx);margin-left:auto;border-top-right-radius:2px}
+.bubble .who{display:block;font-size:11px;color:var(--ink-soft);margin-bottom:2px}
+
+.srcbox{background:var(--surface);border:0.5px solid var(--line);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:12px 15px;margin:14px 0;font-size:15px}
+.srcbox b{font-size:11.5px;color:var(--ink-soft);display:block;margin-bottom:3px;font-weight:600}
+
+.ask{margin-top:16px}
+.ask .q{font-size:14.5px;font-weight:600;margin-bottom:10px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opts button{text-align:left;border:0.5px solid var(--line);background:#fff;border-radius:10px;padding:11px 14px;font-size:14px;color:var(--ink)}
+.opts button:hover{background:var(--surface-2)}
+.opts button.sel{border:1.5px solid var(--ink);background:var(--surface-2);font-weight:600}
+.microfb{font-size:12.5px;color:var(--ok);margin-top:10px;font-weight:600}
+
+textarea{width:100%;border:0.5px solid var(--line);border-radius:10px;padding:12px;font-size:15.5px;font-family:var(--zh);min-height:88px;resize:vertical;background:#fff;line-height:1.6}
+textarea:focus{outline:2px solid var(--accent);border-color:transparent}
+.thint{font-size:12px;color:var(--ink-soft);margin-top:8px}
+
+.recv{border:0.5px solid var(--line);border-left:3px solid var(--info,#2563EB);background:#F3F7FD;border-radius:0 10px 10px 0;padding:12px 15px;margin-bottom:16px;font-size:14px;line-height:1.65}
+.recv b{font-size:11.5px;color:#2563EB;display:block;margin-bottom:5px;font-weight:700}
+.recv .two>span{display:block;margin:3px 0}
+.recv .more{font-size:12px;color:var(--ink-soft);margin-top:8px;cursor:pointer;text-decoration:underline}
+/* [수정2] 의미 보존 확인 1줄 */
+.fidcheck{font-size:13px;color:var(--ink-soft);background:var(--surface);border:0.5px solid var(--line);border-radius:8px;padding:9px 13px;margin-bottom:16px}
+.fidcheck.warn{background:var(--accent-soft);border-color:var(--accent);color:#6B5518;font-weight:500}
+
+.cand{border:0.5px solid var(--line);border-radius:10px;padding:13px 15px;margin-bottom:10px}
+.cand.mine{background:var(--surface-2)}
+.cand.good{border-color:var(--ok)}
+.cand.edge{border-color:var(--danger);background:var(--danger-soft)}
+.cand .tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;margin-bottom:8px}
+.cand.mine .tag{background:var(--surface);color:var(--ink-soft)}
+.cand.good .tag{background:#E8F3EE;color:var(--ok)}
+.cand.edge .tag{background:#F7DCDC;color:var(--danger)}
+.cand .zh{font-family:var(--zh);font-size:15.5px;line-height:1.6}
+.feat{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.feat span{font-size:11.5px;background:var(--accent-soft);border:0.5px solid var(--accent);border-radius:99px;padding:2px 9px;color:#6B5518}
+.feat.bad span{background:var(--danger-soft);border-color:#E7B7B7;color:var(--danger)}
+
+.fixnote{background:var(--accent-soft);border:0.5px solid var(--accent);border-radius:10px;padding:12px 15px;margin-bottom:14px;font-size:14px}
+.fixnote b{display:block;font-size:12px;color:#6B5518;margin-bottom:4px;font-weight:700}
+
+.principle{border:0.5px solid var(--line);border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 12px 12px 0;padding:16px 18px;margin-bottom:16px}
+.principle .k{display:inline-block;font-size:11px;font-weight:700;background:var(--accent);color:#15202B;border-radius:99px;padding:2px 10px;margin-bottom:10px}
+.principle .row{margin:7px 0}
+.principle .row b{font-size:11.5px;color:var(--ink-soft);display:block;font-weight:600}
+.principle .row .v{font-size:14.5px}
+.principle .row .v .zh{font-family:var(--zh)}
+
+.verdict{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;border-radius:99px;padding:6px 14px;margin-bottom:14px}
+.verdict.part{background:var(--accent-soft);color:var(--warn);border:0.5px solid var(--accent)}
+
+.btn{border:none;background:var(--ink);color:#fff;border-radius:10px;padding:11px 20px;font-size:14.5px;font-weight:600}
+.btn:hover{background:#22303E}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:#fff;border:0.5px solid var(--line);color:var(--ink-soft);font-weight:500}
+.btn.ghost:hover{background:var(--surface);color:var(--ink)}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:10px}
+.nav .sp{flex:1}
+.demo{font-size:12px;color:var(--ink-soft);background:none;border:0.5px dashed var(--line);border-radius:8px;padding:6px 10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="seal"></span><div><b>PRAGMA</b><small>학습자 워크플로우 · 슬라이스 목업 v2</small></div></div>
+  <!-- [수정3] 수준 토글 — fixnote 힌트 차등의 유일한 화면 추가 -->
+  <div class="seg" id="lvSeg">
+    <button data-lv="beginner">입문</button>
+    <button data-lv="intermediate">중급</button>
+    <button data-lv="advanced">고급</button>
+  </div>
+  <span class="mission-chip">요청 · 위챗 · 한→중 번역 · 빠른 미션</span>
+</header>
+
+<div class="wrap">
+  <div class="prog" id="prog"></div>
+  <div id="app"></div>
+  <div class="nav">
+    <button class="btn ghost" id="back">← 이전</button>
+    <button class="demo" id="demo">데모 자동 채우기</button>
+    <div class="sp"></div>
+    <button class="btn" id="next">다음 →</button>
+  </div>
+</div>
+
+<script>
+/* ===== mock 데이터 (요청·위챗·한→중, 중급) ===== */
+const M = {
+  steps:['상황 읽기','해보기','차이 발견','한 곳 고치기','마무리'],
+  ctx:{ partner:'샤오린(小林)', rel:'이번 학기 처음 같은 조가 된 중국인 동급생 (아직 조금 어색)' },
+  srcKo:'샤오린, 혹시 발표 자료 마감을 하루만 미뤄도 괜찮을까? 내 파트 정리가 좀 늦어져서… 안 되면 편하게 말해줘!',
+  ask:{
+    q:'번역하기 전에 하나만. 지금 샤오린과 나는 어떤 사이일까?',
+    opts:['아주 친한 사이','알지만 아직 조금 어색한 사이','오늘 처음 연락하는 사이'],
+    range:1
+  },
+  demoDraft:'小林，发表资料的截止日期能推迟一天吗？我这部分整理得有点慢。',
+};
+
+let S = { step:0, sel:null, draft:'', revised:'', moreOpen:false, level:'intermediate', usedDemoDraft:false };
+
+const $=s=>document.querySelector(s);
+const app=()=>$('#app');
+
+function renderProg(){
+  $('#prog').innerHTML = M.steps.map((s,i)=>
+    `<div class="st ${i<S.step?'done':''} ${i===S.step?'on':''}"><div class="dot"></div><div class="lb">${s}</div></div>`
+  ).join('');
+}
+
+function render(){
+  renderProg();
+  document.querySelectorAll('#lvSeg button').forEach(b=>b.classList.toggle('on',b.dataset.lv===S.level));
+  [v1,v2,v3,v4,v5][S.step]();
+  $('#back').style.visibility = S.step===0?'hidden':'visible';
+  const n=$('#next');
+  if(S.step===0){ n.disabled = S.sel===null; n.textContent='번역하러 가기 →'; }
+  else if(S.step===1){ n.disabled = S.draft.trim().length<2; n.textContent='제출하고 비교하기 →'; }
+  else if(S.step===2){ n.disabled=false; n.textContent='한 곳 고치러 가기 →'; }
+  else if(S.step===3){ n.disabled = S.revised.trim().length<2; n.textContent='마무리 →'; }
+  else { n.disabled=true; n.textContent='다음 상황 (곧) →'; }
+}
+
+/* ① 상황 읽기 — 위챗 실물 + 원문 + 결정 변수 1개만 (경량 판독) */
+function v1(){
+  app().innerHTML = `
+  <div class="card">
+    <div class="eyebrow">상황 읽기</div>
+    <h2>위챗으로 부탁을 하나 보내야 해요</h2>
+    <p class="lead">${M.ctx.rel}</p>
+    <div class="wx">
+      <div class="wx-top">微信 · ${M.ctx.partner}</div>
+      <div class="bubble them"><span class="who">${M.ctx.partner}</span>发表资料我做好一半了，你那边呢？</div>
+      <div class="bubble me">…(내가 지금 이 부탁을 보내야 함)</div>
+    </div>
+    <div class="srcbox"><b>내가 전하려는 말 (한국어)</b>${M.srcKo}</div>
+    <div class="ask">
+      <div class="q">${M.ask.q}</div>
+      <div class="opts">
+        ${M.ask.opts.map((o,i)=>`<button class="${S.sel===i?'sel':''}" onclick="pick(${i})">${o}</button>`).join('')}
+      </div>
+      ${S.sel!==null?`<div class="microfb">✓ 좋아요 — 이 사이라면 '너무 딱딱하지도, 너무 막 던지지도 않게'가 관건이에요. 기억하고 번역해볼까요?</div>`:''}
+    </div>
+  </div>`;
+}
+window.pick=i=>{S.sel=i;render()};
+
+/* ② 해보기 — 번역 입력. (정답·대조·전략은 여기서 절대 안 보임: §3-B 노출 규칙) */
+function v2(){
+  app().innerHTML = `
+  <div class="card">
+    <div class="eyebrow">직접 해보기</div>
+    <h2>중국어로 바꿔보세요</h2>
+    <p class="lead">먼저 스스로 해보는 게 핵심이에요. 모범 표현은 제출한 뒤에 함께 봅니다.</p>
+    <div class="srcbox"><b>한국어 원문</b>${M.srcKo}</div>
+    <textarea id="ta" placeholder="여기에 중국어로 입력…">${S.draft}</textarea>
+    <div class="thint">위챗에 보내는 메시지예요. 뜻과 함께 '부탁하는 태도'가 상대에게 어떻게 읽힐지도 생각해보세요.</div>
+  </div>`;
+  $('#ta').addEventListener('input',e=>{S.draft=e.target.value; S.usedDemoDraft=false; $('#next').disabled=S.draft.trim().length<2;});
+}
+
+/* ③ 차이 발견 — 수신자 카드 + [수정2]의미보존 1줄 + 통제 대조 3개 */
+function v3(){
+  /* [수정2] 데모 답안(demoDraft)에는 원문의 '안 되면 말해줘'(선택권)가 실제로 빠져 있으므로,
+     데모 사용 시에만 ⚠누락 표시(거짓 피드백 아님). 자유입력은 중립 체크만. 수정 과제로 연결하지 않음. */
+  const fid = S.usedDemoDraft
+    ? `<div class="fidcheck warn">⚠ 원문의 '안 되면 편하게 말해줘'(선택권)가 이번 번역에는 빠졌어요 — 이번 미션에서는 기록만 해둘게요.</div>`
+    : `<div class="fidcheck">원문의 '안 되면 편하게 말해줘'(선택권)가 내 번역에 담겼는지 확인해 보세요.</div>`;
+  app().innerHTML = `
+  <div class="card">
+    <div class="eyebrow">차이 발견</div>
+    <h2>내 표현이 어떻게 읽힐까요?</h2>
+
+    <div class="recv">
+      <b>받는 사람 입장에서는…</b>
+      <div class="two">
+        <span>· 이유(정리가 늦음)는 잘 전해져요. 다만 부탁을 여는 <b>완충 한 마디</b>가 없어 조금 갑작스럽게 느껴질 수 있어요.</span>
+        <span>· 아주 편한 사이라면 이대로도 무리 없이 통할 수 있어요.</span>
+      </div>
+      <div class="more" onclick="S.moreOpen=!S.moreOpen;render()">${S.moreOpen?'접기':'다른 해석 가능성 펼쳐보기'}</div>
+      ${S.moreOpen?`<div class="two" style="margin-top:8px;color:var(--ink-soft);font-size:13px"><span>· 어떤 조원은 "바쁜가 보다" 하고 대수롭지 않게 볼 수도 있어요. — 정답이 하나인 건 아니에요.</span></div>`:''}
+    </div>
+
+    ${fid}
+
+    <p class="lead" style="margin-bottom:10px">같은 부탁을 <b>한 가지만 바꿔서</b> 나란히 놓아봤어요. 무엇이 달라졌는지 보세요.</p>
+
+    <div class="cand mine">
+      <span class="tag">내 표현</span>
+      <div class="zh">${S.draft||M.demoDraft}</div>
+    </div>
+
+    <div class="cand good">
+      <span class="tag">완충 한 가지만 더한 표현</span>
+      <div class="zh">小林，<b>不好意思</b>，发表资料的截止日期能推迟一天吗？我这部分整理得有点慢。</div>
+      <div class="feat"><span>완충 opener 不好意思</span></div>
+    </div>
+
+    <div class="cand edge">
+      <span class="tag">경계 · 문법은 맞는데 사이가 어색해져요</span>
+      <div class="zh">小林您好，非常抱歉打扰您。请问发表资料的截止日期是否可以延期一天？给您带来不便，敬请谅解。</div>
+      <div class="feat bad"><span>한국식 격식 직역투</span><span>동급생에게 您·敬请谅解 = 거리 두기</span><span>문법 완벽·관계 어색</span></div>
+    </div>
+  </div>`;
+}
+
+/* ④ 한 곳 고치기 — AI는 위치·이유만, 수정문은 학습자가 (한 곳만) */
+function v4(){
+  if(!S.revised) S.revised = S.draft || M.demoDraft;
+  /* [수정3] 최소수정 힌트 수준별 분기. LOG: example_shown = (S.level==='beginner')
+     — 구체 예문을 보여준 경우만 true. uptake 분석 시 예시 의존 여부 구분(매트릭스 v2 §6 example_exposure). */
+  const exTail = {
+    beginner:`(예: <span class="zh">不好意思</span> / <span class="zh">…可以吗</span> 같은 신호 하나) — 전체를 다시 쓰지 말고 그 한 곳만.`,
+    intermediate:`(미안함을 표하거나, 가능한지 묻는 방식 중 하나면 돼요) — 전체를 다시 쓰지 말고 그 한 곳만.`,
+    advanced:`완충 표현 하나. — 전체를 다시 쓰지 말고 그 한 곳만.`
+  }[S.level];
+  app().innerHTML = `
+  <div class="card">
+    <div class="eyebrow">한 곳 고치기</div>
+    <h2>딱 한 군데만 손봐요</h2>
+    <div class="fixnote">
+      <b>고칠 위치와 이유</b>
+      부탁을 <b>여는 첫 부분</b>에 완충 표현이 하나 있으면 훨씬 편하게 읽혀요.
+      ${exTail}
+    </div>
+    <textarea id="rv">${S.revised}</textarea>
+    <div class="thint">모범답안을 베끼지 않아도 돼요. 당신 문장에 완충 한 마디만 더해보세요.</div>
+  </div>`;
+  $('#rv').addEventListener('input',e=>{S.revised=e.target.value; $('#next').disabled=S.revised.trim().length<2;});
+}
+
+/* ⑤ 마무리 — 오늘의 원리(조건부 서술) + 4치 판정 */
+function v5(){
+  app().innerHTML = `
+  <div class="card">
+    <div class="eyebrow">마무리</div>
+    <div class="verdict part">◐ 부분 조정 필요 <span style="font-weight:500;color:var(--ink-soft)">— 뜻은 정확, 완화만 보강</span></div>
+    <div class="principle">
+      <span class="k">오늘의 원리</span>
+      <div class="row"><b>핵심 원리</b><div class="v">부담이 있는 부탁은, 친한 사이라도 <b>완화 표현</b>(<span class="zh">不好意思 / 可以吗</span> / 语气词)이 하나 있으면 상대가 더 편하게 받아들이는 데 도움이 될 수 있어요.</div></div>
+      <div class="row"><b>적용 조건</b><div class="v">위챗처럼 편한 매체에서도, 부탁의 부담이 '중간' 이상일 때.</div></div>
+      <div class="row"><b>예외·다른 가능성</b><div class="v">아주 급하거나 매우 친한 사이라면 생략해도 자연스러울 수 있어요. — 규칙이 아니라 스펙트럼이에요.</div></div>
+    </div>
+    <p class="lead" style="margin:0">이 감각을 <b>다른 상황</b>(같은 요청을 이메일로 / 상대가 교수님으로)에서 다시 시험해볼 거예요.</p>
+  </div>`;
+}
+
+/* nav */
+$('#next').onclick=()=>{ if(S.step<4){S.step++; render();} };
+$('#back').onclick=()=>{ if(S.step>0){S.step--; render();} };
+$('#demo').onclick=()=>{
+  if(S.step===0 && S.sel===null){ S.sel=1; }
+  else if(S.step===1){ S.draft=M.demoDraft; S.usedDemoDraft=true; }   /* [수정2] 데모답안 사용 플래그 */
+  else if(S.step===3){ S.revised='小林，不好意思，发表资料的截止日期能推迟一天吗？我这部分整理得有点慢~'; }
+  render();
+};
+document.querySelectorAll('#lvSeg button').forEach(b=>b.onclick=()=>{S.level=b.dataset.lv;render()});  /* [수정3] */
+render();
+</script>
+</body>
+</html>
