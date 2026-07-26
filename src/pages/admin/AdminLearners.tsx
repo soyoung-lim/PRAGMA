@@ -27,13 +27,31 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { APPROVAL_STATUS, type ApprovalStatus } from "@/lib/auth/constants";
+import {
+  PRIMARY_LANGUAGE_OPTIONS,
+  CHINESE_LEVEL_OPTIONS,
+  EXPOSURE_CONTEXT_OPTIONS,
+  TI_EXPERIENCE_OPTIONS,
+  labelOf,
+  labelsOf,
+} from "@/lib/auth/profileOptions";
 
 type LearnerRow = {
   id: string;
   user_id: string;
   full_name: string | null;
   email: string | null;
+  /** 마법사가 쓰는 컬럼. affiliation_or_status는 구 컬럼(둘 다 존재) */
+  affiliation: string | null;
   affiliation_or_status: string | null;
+  chinese_level: string | null;
+  chinese_exposure_contexts: string[] | null;
+  ti_experience_note: string | null;
+  interpreting_experience: string | null;
+  /** 동의도 마법사는 consent_* 에 쓴다. research_use_consent 등은 구 컬럼 */
+  consent_data_use: boolean | null;
+  consent_anonymous_analysis: boolean | null;
+  consent_email_report: boolean | null;
   academic_year_or_program: string | null;
   profile_completed: boolean;
   approval_status: ApprovalStatus;
@@ -94,6 +112,10 @@ const Section = ({
     <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">{children}</dl>
   </div>
 );
+
+/** 소속/신분·동의는 신·구 컬럼이 공존한다 — 마법사가 쓰는 쪽을 우선하고 없으면 구 값. */
+const firstOf = <T,>(...vals: (T | null | undefined)[]) =>
+  vals.find((v) => v !== null && v !== undefined) ?? null;
 
 const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex flex-col gap-0.5">
@@ -224,7 +246,7 @@ const Page = () => {
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.full_name ?? "—"}</TableCell>
                   <TableCell>{r.email ?? "—"}</TableCell>
-                  <TableCell>{r.affiliation_or_status ?? "—"}</TableCell>
+                  <TableCell>{firstOf(r.affiliation, r.affiliation_or_status) ?? "—"}</TableCell>
                   <TableCell className="text-center">
                     {r.profile_completed ? "✓" : "✗"}
                   </TableCell>
@@ -266,7 +288,10 @@ const Page = () => {
                 <Section title="운영 정보">
                   <Field label="이름" value={selected.full_name} />
                   <Field label="이메일" value={selected.email} />
-                  <Field label="소속/신분" value={selected.affiliation_or_status} />
+                  <Field
+                    label="소속/신분"
+                    value={firstOf(selected.affiliation, selected.affiliation_or_status)}
+                  />
                   <Field label="학년/과정" value={selected.academic_year_or_program} />
                   <Field label="역할" value={selected.role} />
                   <Field
@@ -284,35 +309,93 @@ const Page = () => {
                 </Section>
 
                 <Section title="연구 배경">
-                  <Field label="언어 배경" value={selected.language_background} />
-                  <Field label="중국어 자가평가" value={selected.chinese_proficiency_self_report} />
-                  <Field label="비즈니스 중국어 경험" value={selected.business_chinese_experience} />
-                  <Field label="통번역 경험 수준" value={selected.ti_experience_level} />
                   <Field
-                    label="통번역 경험 모드"
-                    value={selected.ti_experience_modes?.join(", ")}
+                    label="주 사용 언어"
+                    value={labelOf(PRIMARY_LANGUAGE_OPTIONS, selected.language_background)}
                   />
-                  <Field label="GenAI 사용 빈도" value={selected.genai_use_frequency} />
-                  <Field label="AI 프롬프팅 스타일" value={selected.ai_prompting_style_for_ti} />
-                  <Field label="AI 통번역 체감 난이도" value={selected.perceived_ai_ti_difficulty} />
                   <Field
-                    label="비즈니스 중국어 통번역 체감 리스크"
-                    value={selected.perceived_business_chinese_ti_risk}
+                    label="중국어 학습 수준"
+                    value={labelOf(CHINESE_LEVEL_OPTIONS, selected.chinese_level)}
                   />
+                  <Field
+                    label="접하거나 사용해 온 상황"
+                    value={labelsOf(EXPOSURE_CONTEXT_OPTIONS, selected.chinese_exposure_contexts)}
+                  />
+                  <Field
+                    label="한중 통번역 경험"
+                    value={labelOf(TI_EXPERIENCE_OPTIONS, selected.ti_experience_level)}
+                  />
+                  <Field label="통번역 경험 서술" value={selected.ti_experience_note} />
                 </Section>
+
+                {/* 2026-07-26 문항 개편 이전에 수집된 값. 값이 있을 때만 보여준다 —
+                    항상 "—"인 칸이 늘어나면 관리자가 화면을 신뢰하지 않게 된다. */}
+                {(selected.business_chinese_experience ||
+                  selected.interpreting_experience ||
+                  selected.chinese_proficiency_self_report ||
+                  selected.ti_experience_modes?.length ||
+                  selected.genai_use_frequency ||
+                  selected.ai_prompting_style_for_ti ||
+                  selected.perceived_ai_ti_difficulty ||
+                  selected.perceived_business_chinese_ti_risk) && (
+                  <Section title="이전 프로필 (2026-07-26 개편 전 수집분)">
+                    {selected.business_chinese_experience && (
+                      <Field label="비즈니스 중국어 경험" value={selected.business_chinese_experience} />
+                    )}
+                    {selected.interpreting_experience && (
+                      <Field label="통번역 경험(구)" value={selected.interpreting_experience} />
+                    )}
+                    {selected.chinese_proficiency_self_report && (
+                      <Field label="중국어 자가평가" value={selected.chinese_proficiency_self_report} />
+                    )}
+                    {selected.ti_experience_modes?.length ? (
+                      <Field label="통번역 경험 모드" value={selected.ti_experience_modes.join(", ")} />
+                    ) : null}
+                    {selected.genai_use_frequency && (
+                      <Field label="GenAI 사용 빈도" value={selected.genai_use_frequency} />
+                    )}
+                    {selected.ai_prompting_style_for_ti && (
+                      <Field label="AI 프롬프팅 스타일" value={selected.ai_prompting_style_for_ti} />
+                    )}
+                    {selected.perceived_ai_ti_difficulty && (
+                      <Field label="AI 통번역 체감 난이도" value={selected.perceived_ai_ti_difficulty} />
+                    )}
+                    {selected.perceived_business_chinese_ti_risk && (
+                      <Field
+                        label="비즈니스 중국어 통번역 체감 리스크"
+                        value={selected.perceived_business_chinese_ti_risk}
+                      />
+                    )}
+                  </Section>
+                )}
 
                 <Section title="동의">
                   <Field
                     label="연구 활용 동의"
-                    value={selected.research_use_consent ? "예" : "아니오"}
+                    value={
+                      firstOf(selected.consent_data_use, selected.research_use_consent)
+                        ? "예"
+                        : "아니오"
+                    }
                   />
                   <Field
                     label="익명화 안내 확인"
-                    value={selected.anonymization_notice_confirmed ? "예" : "아니오"}
+                    value={
+                      firstOf(
+                        selected.consent_anonymous_analysis,
+                        selected.anonymization_notice_confirmed,
+                      )
+                        ? "예"
+                        : "아니오"
+                    }
                   />
                   <Field
                     label="리포트 이메일 동의"
-                    value={selected.report_email_consent ? "예" : "아니오"}
+                    value={
+                      firstOf(selected.consent_email_report, selected.report_email_consent)
+                        ? "예"
+                        : "아니오"
+                    }
                   />
                 </Section>
 
