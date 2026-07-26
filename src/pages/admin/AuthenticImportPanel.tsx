@@ -360,13 +360,12 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
     // 이 패널은 접었다 펼치는 보조 기능이 아니라 이 화면의 핵심 경로다(지도교수 확인,
     // 2026-07-26) — 그런데 기본 접힘 + 옅은 배경이라 무심코 지나치기 쉬웠다.
     // 접기/펼치기는 유지하되, 접혀 있어도 "이게 있다"가 한눈에 보이도록 굵은 강조 테두리 +
-    // 좌측 브랜드 색 바 + 접힌 상태에서도 보이는 한 줄 설명을 추가한다.
-    <div className="relative overflow-hidden rounded-xl border-2 border-[#BA7517] bg-gradient-to-br from-[#FFF6E2] to-[#FBEFD9] shadow-[0_1px_4px_rgba(122,74,10,0.18)]">
-      <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-[#FAD338]" />
+    // 접힌 상태에서도 보이는 한 줄 설명을 추가한다. (좌측 색 바는 과해서 뺌 — 사용자 판단)
+    <div className="overflow-hidden rounded-xl border-2 border-[#BA7517] bg-gradient-to-br from-[#FFF6E2] to-[#FBEFD9] shadow-[0_1px_4px_rgba(122,74,10,0.18)]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-start justify-between gap-3 py-4 pl-6 pr-4 text-left"
+        className="flex w-full items-start justify-between gap-3 px-5 py-4 text-left"
       >
         <div className="flex min-w-0 flex-col gap-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
