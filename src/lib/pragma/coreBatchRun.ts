@@ -154,6 +154,9 @@ export async function runCoreCell(
       generation_run_id: opts.runId,
       generation_item_key: itemKey,
       content_hash: hashString(JSON.stringify(core)),
+      // 프롬프트 지문 — 엣지가 '보내기 직전 문자열'로 계산한 값을 그대로 넘긴다.
+      // 여기서 재계산하면 로컬 코드 기준이 되어 배포본과 어긋날 수 있다(=거짓 기록).
+      prompt_snapshot_hash: meta?.prompt_snapshot_hash ?? null,
     };
     const { data: savedId, error: saveErr } = await (
       supabase.rpc as unknown as (

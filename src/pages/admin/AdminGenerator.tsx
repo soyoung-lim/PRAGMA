@@ -738,6 +738,8 @@ const AdminGenerator = () => {
           generation_run_id: runId,
           generation_item_key: `${form.speech_act_ui}|${form.level}|${form.domain}|${topicCode}|${i}`,
           content_hash: contentHash,
+          // 배치와 같은 규칙 — 엣지가 계산한 프롬프트 지문을 그대로 저장(재계산 금지).
+          prompt_snapshot_hash: (meta as { prompt_snapshot_hash?: string } | null)?.prompt_snapshot_hash ?? null,
         };
         const { data: savedId, error: saveErr } = await (supabase.rpc as any)("save_generated_core", {
           p_payload: payload,
