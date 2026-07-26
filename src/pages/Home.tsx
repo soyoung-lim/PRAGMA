@@ -3,18 +3,14 @@ import { Navigate, useNavigate } from "react-router-dom";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useProfile } from "@/lib/auth/useProfile";
 import { HomeBrand } from "@/components/HomeBrand";
-import { WORKFLOW_STEPS } from "@/lib/workflowSteps";
 import { ProfileWizardForm } from "@/components/ProfileWizardForm";
 import { cn } from "@/lib/utils";
 
-const STEP_DESCRIPTIONS: Record<number, string> = {
-  1: "주어진 발화 상황과 맥락을 파악합니다.",
-  2: "복수의 AI 번역안을 비교·검토합니다.",
-  3: "AI 피드백을 확인하고 근거를 짚어봅니다.",
-  4: "근거에 따라 최종 번역안을 확정합니다.",
-  5: "의사결정 과정을 리포트로 정리합니다.",
-};
-
+// /home = 프로필 관문 전용 화면. 프로필을 마친 학습자는 아래에서 /learner/home으로
+// 리디렉트되므로, 이 페이지 본문은 **미완료 학습자에게만** 보인다.
+// ⚠️ 여기에 학습 여정을 설명하지 않는다 — 구 5단계 번역 워크플로우 안내가 그렇게
+//    남아 있다가 실제 여정과 어긋난 채 모달 뒤에 비쳤다(2026-07-26 교체). 여정 설명은
+//    /learner/home 한 곳에서만 관리한다.
 const Home = () => {
   const navigate = useNavigate();
   const { loading, session, profile, isDevStub } = useProfile();
@@ -43,15 +39,9 @@ const Home = () => {
     return <Navigate to="/student-login" replace />;
   }
 
-  // /home은 이제 프로필 입력 관문으로만 쓴다. 프로필이 끝난 학습자는 새 학습 여정으로
-  // 보낸다 — 아래 5단계 안내는 구 번역 워크플로우 설명이라 새 여정과 맞지 않는다.
   if (profile?.profile_completed) {
     return <Navigate to="/learner/home" replace />;
   }
-
-  const stepEntries = Object.entries(WORKFLOW_STEPS)
-    .map(([k, v]) => ({ n: Number(k), ...v }))
-    .sort((a, b) => a.n - b.n);
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -61,51 +51,28 @@ const Home = () => {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-12">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-12">
         <section>
           <h1 className="text-[28px] font-bold tracking-tight sm:text-[32px]">
-            학습 워크플로우 안내
+            학습자 프로필
           </h1>
-          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
-            아래 5단계로 진행됩니다. 각 단계에서 AI 번역안과 피드백을 검토하며
-            나만의 최종안을 만들고, 마지막에 의사결정 과정을 리포트로 정리합니다.
+          <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+            학습을 시작하기 전에 간단한 배경 정보를 입력합니다. 2~3분이면 됩니다.
           </p>
         </section>
 
-        <section className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {stepEntries.map((s) => (
-            <div
-              key={s.n}
-              className="flex flex-col rounded-xl border border-border bg-card p-5 shadow-sm"
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#15202B] text-sm font-semibold text-white">
-                {s.n}
-              </div>
-              <div className="mt-3 text-[15px] font-semibold">{s.full}</div>
-              <div className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-                {STEP_DESCRIPTIONS[s.n]}
-              </div>
-            </div>
-          ))}
-        </section>
-
-        <section className="mt-10">
+        <section className="mt-8">
           <button
             type="button"
-            onClick={() => navigate("/entry/task-mode")}
-            disabled={needsProfile}
+            onClick={() => setProfileOpen(true)}
             className={cn(
               "inline-flex items-center gap-1 rounded-md bg-[#15202B] px-6 py-3 text-[15px] font-medium text-white shadow-sm",
-              "disabled:cursor-not-allowed disabled:opacity-50",
+              "transition-colors hover:bg-[#22303E]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2",
             )}
           >
-            학습 시작하기 →
+            프로필 작성하기 →
           </button>
-          {needsProfile && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              학습을 시작하기 전에 프로필 작성이 필요합니다.
-            </p>
-          )}
         </section>
       </main>
 
