@@ -30,7 +30,9 @@ import { APPROVAL_STATUS, type ApprovalStatus } from "@/lib/auth/constants";
 import {
   PRIMARY_LANGUAGE_OPTIONS,
   CHINESE_LEVEL_OPTIONS,
-  EXPOSURE_CONTEXT_OPTIONS,
+  exposureContextOptions,
+  targetLanguageOf,
+  TARGET_LANGUAGE_LABEL,
   TI_EXPERIENCE_OPTIONS,
   labelOf,
   labelsOf,
@@ -317,15 +319,21 @@ const Page = () => {
                     label="중국어 학습 수준"
                     value={labelOf(CHINESE_LEVEL_OPTIONS, selected.chinese_level)}
                   />
+                  {/* 학습 대상 언어는 주 사용 언어에서 도출된다 — 중국어 모어
+                      화자에게는 한국어 노출을 물었으므로 라벨도 그렇게 읽어야 한다. */}
                   <Field
-                    label="접하거나 사용해 온 상황"
-                    value={labelsOf(EXPOSURE_CONTEXT_OPTIONS, selected.chinese_exposure_contexts)}
+                    label={`${
+                      TARGET_LANGUAGE_LABEL[targetLanguageOf(selected.language_background)]
+                    } 접촉·사용 상황`}
+                    value={labelsOf(
+                      exposureContextOptions(targetLanguageOf(selected.language_background)),
+                      selected.chinese_exposure_contexts,
+                    )}
                   />
                   <Field
                     label="한중 통번역 경험"
                     value={labelOf(TI_EXPERIENCE_OPTIONS, selected.ti_experience_level)}
                   />
-                  <Field label="통번역 경험 서술" value={selected.ti_experience_note} />
                 </Section>
 
                 {/* 2026-07-26 문항 개편 이전에 수집된 값. 값이 있을 때만 보여준다 —
