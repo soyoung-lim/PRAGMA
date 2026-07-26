@@ -10,12 +10,21 @@
 
 | 항목 | 값 |
 |---|---|
-| 브랜치 | `main` |
-| HEAD | `c2c0b5173189390719a74ac34dea3f4d8fb8917f` (`c2c0b51`) |
-| origin/main 대비 | **로컬 5커밋 앞섬 (미푸시)** — 아래 §9 참조 |
+| **작업 브랜치** | **`codex-0727`** ← Codex는 여기서 작업한다 |
+| 분기 지점 | `c968bf7` (로컬 `main`과 동일 커밋) |
+| HEAD | `c968bf75deb1b3d96995f16e2bf9f90e6ae74bd3` (`c968bf7`) |
+| origin/main 대비 | 로컬 `main`이 **6커밋 앞섬 (미푸시)** — 아래 §9 참조 |
 | working tree | **clean** (미커밋 0건) |
 | 배포 URL | `https://l2-pragmatics.up.railway.app` |
 | Supabase 프로젝트 | `tlnjxagqwvefeqdagtkq` |
+
+### 🔴 브랜치 규칙 (Codex 필독)
+
+- **모든 작업은 `codex-0727`에서 한다.** `main`으로 switch 하지 마라.
+- **`main`에 직접 커밋 금지**, **push 금지**(어떤 브랜치든).
+- 이유: 수요일 Claude 복귀 시 Codex 커밋만 골라서 검토하고, 필요한 것만 `main`에 반영하거나
+  문제가 있으면 브랜치째 폐기할 수 있어야 한다.
+- 브랜치를 새로 파야 할 만큼 성격이 다른 작업이면 `codex-0727-<주제>`로 파생시켜라.
 
 ⚠️ **배포 주소 주의**: 과거 메모/문서에 나오는 `pragma.up.railway.app`은 **404이며 존재하지 않는다.**
 살아 있는 주소는 `l2-pragmatics.up.railway.app` 하나뿐이다.
@@ -28,7 +37,9 @@
 
 | 커밋 | 의미 |
 |---|---|
-| `c2c0b51` | (미푸시) 프로토타입 목업 3종 체크포인트 — `public/` 아래라 배포 시 외부 접근 가능 |
+| `c968bf7` | (미푸시) **프로토타입 목업 4종을 `public/` → `docs/prototypes/` 이동** — 외부 노출 차단 |
+| `aa556be` | (미푸시) 이 인수인계 문서 |
+| `c2c0b51` | (미푸시) 프로토타입 목업 3종 체크포인트 (위 `c968bf7`이 위치를 교정함) |
 | `9830d67` | (미푸시) dev-log 문서 추적 |
 | `207a906` | (미푸시) `.claude/launch.json` 공용 dev 실행 설정 |
 | `ea4f4c6` | (미푸시) `.gitignore` — 머신 로컬 설정·백업본 무시 |
@@ -117,6 +128,9 @@ supabase/functions/generate-scenario/index.ts   ⚠️ 모든 AI 프롬프트의
 supabase/migrations/     최신 = 20260726154500_profile_background_v2.sql
 scripts/snapshot-prompts.mjs   프롬프트 스냅샷 생성기 (prebuild가 자동 실행)
 docs/handoff/            이 문서
+docs/prototypes/         학습자 UX 프로토타입 목업(설계 근거).
+                         ⚠️ public/ 아래 두지 마라 — 빌드 산출물에 복사돼 외부 URL로 열린다.
+                         public/에 있어야 하는 것은 앱이 iframe으로 쓰는 preview/workflow.html 뿐이다.
 ```
 
 ---
@@ -162,19 +176,26 @@ npx supabase functions deploy generate-scenario --use-api    # Docker 불필요
 
 ## 9. 현재 미배포 변경
 
-로컬 `main`이 `origin/main`보다 **4커밋 앞서 있다**(모두 이번 인수인계용 체크포인트):
+로컬 `main`이 `origin/main`보다 **6커밋 앞서 있다**(모두 이번 인수인계용 체크포인트·정리):
 
 | 커밋 | 내용 | 배포 영향 |
 |---|---|---|
 | `ea4f4c6` | `.gitignore` 갱신 | 없음 |
 | `207a906` | `.claude/launch.json` | 없음 |
 | `9830d67` | dev-log 문서 | 없음 |
-| `c2c0b51` | 프로토타입 목업 3종 | ⚠️ **푸시 시 `public/` 아래 파일이 외부 URL로 접근 가능해진다** |
+| `c2c0b51` | 프로토타입 목업 3종 추적 시작 | 없음(아래에서 위치 교정됨) |
+| `aa556be` | 이 인수인계 문서 | 없음 |
+| `c968bf7` | 프로토타입 4종 `public/` → `docs/prototypes/` | ⚠️ 아래 참조 |
 
-**푸시 여부는 사용자 승인 사항.** `c2c0b51`의 외부 노출을 원치 않으면 푸시 전에
-`public/` 밖으로 옮기는 판단이 필요하다(기존 `pragma-mission-v2-review.html`도 이미 동일 상태).
+**푸시 여부는 사용자 승인 사항이며, 수요일 Claude 복귀 후 판단한다.**
 
-애플리케이션 코드 변경은 **전부 배포 완료**된 상태다.
+`c968bf7` 주의: `pragma-mission-v2-review.html`은 **이전부터 추적·배포돼 있던 파일**이라,
+다음 push 이후 `https://l2-pragmatics.up.railway.app/pragma-mission-v2-review.html`은 **404가 된다.**
+이 주소를 외부에 공유한 적이 있다면 push 전에 되돌려야 한다.
+(나머지 3종은 한 번도 공개된 적이 없다.)
+
+애플리케이션 코드 변경은 **전부 배포 완료**된 상태이며, 위 6커밋은 문서·자산 정리라
+푸시하지 않아도 서비스에 영향이 없다.
 
 ---
 
@@ -318,5 +339,6 @@ Codex는 작업 종료 시 아래 형식으로 `docs/handoff/CODEX_WORKLOG_2026-
 ## 16. 한 줄 요약
 
 > 코드는 전부 배포됐고 working tree는 clean하다.
+> **작업은 `codex-0727` 브랜치에서. main 커밋·push 금지.**
 > **Codex는 7/27 스모크(고P 셀 편향 검사)와 `save_generated_core` 권한 오류만 다뤄라.**
 > 미션 단위(MPJ5+DCT1)·채널 폐기·화용 초점 사람 작성 원칙은 건드리지 마라.
