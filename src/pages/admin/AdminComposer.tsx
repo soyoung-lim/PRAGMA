@@ -102,6 +102,24 @@ const AdminComposer = () => {
     [presetCode],
   );
 
+  // ── 편성 전 준비 현황 ─────────────────────────────────────────────────
+  // "수준별로 쓸 수 있는 미션이 몇 개인가"를 편성하려는 자리에서 바로 본다.
+  // 이 판단 없이 자동 채우기를 누르면 왜 빈 주차가 생기는지 알 수 없다.
+  // 방향은 선택한 커리큘럼 기준(0-l·91 — 방향은 절대 완화하지 않는다).
+  const readiness = useMemo(() => {
+    const dir = outline?.language_direction ?? null;
+    const pool = dir ? cores.filter((c) => c.direction === dir) : cores;
+    return LEVELS.map((lv) => {
+      const inLevel = pool.filter((c) => c.learner_level === lv);
+      return {
+        level: lv,
+        reviewed: inLevel.filter((c) => c.mission_status === "reviewed").length,
+        generated: inLevel.filter((c) => c.mission_status === "generated").length,
+        coreOnly: inLevel.filter((c) => !c.mission_status).length,
+      };
+    });
+  }, [cores, outline]);
+
   const coreById = useMemo(() => {
     const m: Record<string, ComposerCore> = {};
     for (const c of cores) m[c.scenario_id] = c;
@@ -325,6 +343,38 @@ const AdminComposer = () => {
           <Button variant="outline" onClick={handleSave} disabled={!outlineId || saving}>
             {saving ? "저장 중…" : "편성 저장"}
           </Button>
+        </div>
+
+        {/* ── 편성 전 준비 현황 — 수준별로 쓸 수 있는 미션이 몇 개인가 ──
+            자동 채우기가 왜 빈 주차를 남기는지는 여기서만 알 수 있다.
+            편성에 실제로 쓰이는 것은 **검토 완료(reviewed)** 뿐이다. */}
+        <div className="mt-4 rounded-lg border border-[#EAE4D2] bg-[#FBFAF7] px-4 py-3">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="text-[12px] font-semibold text-[#6B5518]">편성에 쓸 수 있는 미션</span>
+            <span className="text-[11.5px] text-muted-foreground">
+              {outline
+                ? `${DIRECTION_LABEL[(outline.language_direction as LanguageDirection) ?? "ko_zh"]} 기준 · 검토 완료만 편성됩니다`
+                : "커리큘럼을 선택하면 그 방향 기준으로 집계합니다"}
+            </span>
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            {readiness.map((r) => (
+              <div key={r.level} className="rounded-md border border-[#EAE4D2] bg-white px-3 py-2">
+                <div className="text-[12px] text-muted-foreground">{LEVEL[r.level]}</div>
+                <div className="mt-0.5 flex items-baseline gap-1.5">
+                  <span
+                    className={`text-[20px] font-bold ${r.reviewed === 0 ? "text-[#B4402F]" : "text-[#15202B]"}`}
+                  >
+                    {r.reviewed}
+                  </span>
+                  <span className="text-[11.5px] text-muted-foreground">검토 완료</span>
+                </div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  승격 대기 {r.generated} · 코어만 {r.coreOnly}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* ── 수준·테마 독립 선택 (지도교수 요구: 수준별·주제별 구성) ── */}
