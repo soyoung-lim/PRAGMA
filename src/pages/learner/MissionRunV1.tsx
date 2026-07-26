@@ -878,6 +878,32 @@ function MissionRunner({
               </div>
             </div>
 
+            {/* 데모 전용 — 번역만 보고 끝나지 않도록 반대 수행 방식으로 이어 준다.
+                실제 미션의 mode는 승격 시 정해지므로(계약 0-o) 여기서 바꾸는 것은
+                **샘플 미리보기**뿐이다. 실 학습 세션(IS_DEMO 꺼짐)에는 노출되지 않는다.
+                재개 상태가 남아 있으면 곧바로 완료 화면이 복원되므로 먼저 지운다. */}
+            {IS_DEMO && isSample && (
+              <button
+                type="button"
+                onClick={() => {
+                  try { localStorage.removeItem(storageKey); } catch { /* ignore */ }
+                  window.location.href = isInterp
+                    ? "/learner/practice"
+                    : "/learner/practice?mode=interpreting";
+                }}
+                className="w-full rounded-xl border-[1.5px] border-[#15202B] bg-white px-4 py-3.5 text-left transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4]"
+              >
+                <div className="text-[14px] font-semibold text-[#15202B]">
+                  {isInterp ? "번역" : "통역"}으로도 해보기 →
+                </div>
+                <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+                  {isInterp
+                    ? "같은 미션 구조를 글로 옮기는 방식으로 한 번 더 봅니다."
+                    : "같은 미션 구조를 듣고 말하는 방식으로 한 번 더 봅니다 — 원문 듣기 → 녹음 → 전사 확인."}
+                </p>
+              </button>
+            )}
+
             <Button variant="outline" className="w-full" onClick={resetAll}>처음부터 다시 보기 ↺</Button>
           </div>
         )}
