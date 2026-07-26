@@ -37,6 +37,7 @@ import type { CoreProvenance } from "@/lib/pragma/coreSchema";
 import {
   THEME_CODES,
   THEME_LABEL,
+  THEME_ALLOWED_DOMAINS,
   topicsForTheme,
   type ThemeCode,
 } from "@/lib/pragma/scenarioTopics";
@@ -460,7 +461,13 @@ const AdminGenerator = () => {
 
   // ── scenario_core_v1 단건 생성 (레거시 candidates/feedback 폐기, 2026-07-25) ──
   // 개요(situation)를 seed로 action:'core' → checkCore → save_generated_core(draft).
-  const [themeCode, setThemeCode] = useState<ThemeCode>(THEME_CODES[0]);
+  // ⚠️ 무조건 THEME_CODES[0](campus_study=school 전용)으로 시작하면 안 된다 — 폼 기본
+  // domain이 "work"라(위 DEFAULT_FORM), 화면을 열자마자 theme/domain이 어긋난 채로
+  // 시작해 첫 생성이 곧바로 R1c 실패로 떨어졌다(지도교수 리포트 재현). 기본 domain을
+  // 허용하는 첫 theme으로 시작한다.
+  const [themeCode, setThemeCode] = useState<ThemeCode>(
+    () => THEME_CODES.find((t) => THEME_ALLOWED_DOMAINS[t].includes(DEFAULT_FORM.domain)) ?? THEME_CODES[0],
+  );
   type CoreResult = {
     title: string;
     ok: boolean;
@@ -623,9 +630,15 @@ const AdminGenerator = () => {
     });
   };
 
-  // theme → topic 파생 (편성 메타 · 코어 CHECK 필수). topic은 theme의 첫 항목.
+  // theme → topic 파생 (편성 메타 · 코어 CHECK 필수). theme이 domain 2개를 허용해도
+  // (예: digital_content = daily+work) 개별 topic은 그중 하나만 허용할 수 있으므로
+  // (예: collab_dm_request = work만), theme의 무조건 첫 항목이 아니라 **현재 도메인을
+  // 허용하는 첫 topic**을 고른다 — 안 그러면 theme은 유효한데 topic 불일치로 실패한다.
   const topicCode =
-    topicsForTheme(themeCode)[0]?.code ?? topicsForTheme(THEME_CODES[0])[0]?.code ?? "";
+    topicsForTheme(themeCode).find((t) => t.allowedDomains.includes(form.domain))?.code ??
+    topicsForTheme(themeCode)[0]?.code ??
+    topicsForTheme(THEME_CODES[0])[0]?.code ??
+    "";
 
   const modalityOf = (m: GenMode) => (m === "stt_interpreting" ? "spoken" : "written");
   const legacyChannelOf = (m: GenMode) => (m === "stt_interpreting" ? "facetoface" : "messenger");
@@ -1135,6 +1148,13 @@ const AdminGenerator = () => {
                           if (d !== "work") {
                             update("industry", "culture_content_media" as IndustrySector);
                           }
+                          // theme↔domain 허용 매핑(R1c) — 도메인을 바꿔 지금 고른 주제가
+                          // 더 이상 허용되지 않으면(예: 학교주제 유지한 채 직장으로 전환)
+                          // 조용히 실패하는 대신 유효한 첫 주제로 즉시 맞춘다.
+                          if (!THEME_ALLOWED_DOMAINS[themeCode].includes(d)) {
+                            const next = THEME_CODES.find((t) => THEME_ALLOWED_DOMAINS[t].includes(d));
+                            if (next) setThemeCode(next);
+                          }
                         }}
                         className="accent-[#BA7517]"
                       />
@@ -1167,18 +1187,21 @@ const AdminGenerator = () => {
           {/* 7b. 주제(theme) — 편성 메타(코어 CHECK 필수) */}
           <div>
             <div className="text-[12px] font-medium text-muted-foreground">주제 · theme (편성 필터 축)</div>
+            {/* 도메인이 허용하지 않는 주제는 아예 목록에서 뺀다 — 고른 뒤 생성이 실패하는
+                (theme/domain 불일치, R1c) 조합을 화면에서부터 막는다. */}
             <Select value={themeCode} onValueChange={(v) => setThemeCode(v as ThemeCode)}>
               <SelectTrigger className="mt-1.5 h-9 text-[13px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {THEME_CODES.map((t) => (
+                {THEME_CODES.filter((t) => THEME_ALLOWED_DOMAINS[t].includes(form.domain)).map((t) => (
                   <SelectItem key={t} value={t}>{THEME_LABEL[t]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="mt-1 text-[10.5px] text-muted-foreground">
-              코어 메타(theme·topic)로 저장돼 교강사 '주제별 편성' 필터에 쓰입니다. (topic은 자동 배정)
+              코어 메타(theme·topic)로 저장돼 교강사 '주제별 편성' 필터에 쓰입니다. (topic은 자동 배정) ·
+              현재 도메인({DOMAIN[form.domain]})에서 고를 수 있는 주제만 표시됩니다.
             </p>
           </div>
 
