@@ -287,8 +287,8 @@ const AdminComposer = () => {
 
   return (
     <AdminShell
-      title="15주 편성기"
-      description="커리큘럼 골격의 각 주차에 실제 시나리오를 배정합니다. 수준·주제를 고르고 자동 채운 뒤 교체하여, 화용 초점·검토상태를 확인해 저장합니다."
+      title="주차별 시나리오 편성"
+      description="① 커리큘럼 구조에서 만든 주차 칸에 실제 시나리오를 배정합니다. 수준·주제를 고르고 자동 채운 뒤 교체하여, 화용 초점·검토상태를 확인해 저장합니다."
     >
       {/* ── 상단 컨트롤 ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-5">

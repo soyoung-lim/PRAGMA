@@ -74,8 +74,8 @@ const AdminCurriculum = () => {
   if (editing !== null) {
     return (
       <AdminShell
-        title="15주 커리큘럼"
-        description="학기 단위 화행·P·D·R 주차 배치 골격을 관리합니다"
+        title="커리큘럼 구조"
+        description="15주 시간표를 만듭니다 — 주차마다 어떤 화행·P·D·R을 다룰지 정합니다. 시나리오 배정은 다음 단계(② 주차별 시나리오 편성)입니다."
       >
         <CurriculumEditor
           outlineId={editing === "new" ? null : editing}
@@ -91,8 +91,8 @@ const AdminCurriculum = () => {
 
   return (
     <AdminShell
-      title="15주 커리큘럼"
-      description="학기 단위 화행·P·D·R 주차 배치 골격을 관리합니다"
+      title="커리큘럼 구조"
+      description="15주 시간표를 만듭니다 — 주차마다 어떤 화행·P·D·R을 다룰지 정합니다. 시나리오 배정은 다음 단계(② 주차별 시나리오 편성)입니다."
     >
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
