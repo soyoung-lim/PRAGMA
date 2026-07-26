@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       archive_items: {
@@ -82,6 +107,104 @@ export type Database = {
           youtube_url?: string | null
         }
         Relationships: []
+      }
+      assessment_form_items: {
+        Row: {
+          created_at: string
+          form_id: string
+          id: string
+          position: number
+          scenario_id: string
+        }
+        Insert: {
+          created_at?: string
+          form_id: string
+          id?: string
+          position?: number
+          scenario_id: string
+        }
+        Update: {
+          created_at?: string
+          form_id?: string
+          id?: string
+          position?: number
+          scenario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_form_items_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_form_items_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["scenario_id"]
+          },
+        ]
+      }
+      assessment_forms: {
+        Row: {
+          cohort_id: string | null
+          created_at: string
+          form_id: string
+          form_ver: string
+          id: string
+          measurement_point: string
+        }
+        Insert: {
+          cohort_id?: string | null
+          created_at?: string
+          form_id: string
+          form_ver?: string
+          id?: string
+          measurement_point: string
+        }
+        Update: {
+          cohort_id?: string | null
+          created_at?: string
+          form_id?: string
+          form_ver?: string
+          id?: string
+          measurement_point?: string
+        }
+        Relationships: []
+      }
+      course_week_package_assignments: {
+        Row: {
+          course_week: number
+          created_at: string
+          id: string
+          package_id: string
+          sequence: number
+        }
+        Insert: {
+          course_week: number
+          created_at?: string
+          id?: string
+          package_id: string
+          sequence?: number
+        }
+        Update: {
+          course_week?: number
+          created_at?: string
+          id?: string
+          package_id?: string
+          sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_week_package_assignments_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "feature_packages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       course_weeks: {
         Row: {
@@ -175,6 +298,54 @@ export type Database = {
           week_count?: number
         }
         Relationships: []
+      }
+      curriculum_week_scenarios: {
+        Row: {
+          created_at: string
+          id: string
+          outline_id: string
+          position: number
+          scenario_id: string
+          slot_role: string
+          updated_at: string
+          week_no: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          outline_id: string
+          position?: number
+          scenario_id: string
+          slot_role?: string
+          updated_at?: string
+          week_no: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          outline_id?: string
+          position?: number
+          scenario_id?: string
+          slot_role?: string
+          updated_at?: string
+          week_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_week_scenarios_outline_fkey"
+            columns: ["outline_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_outlines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curriculum_week_scenarios_scenario_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["scenario_id"]
+          },
+        ]
       }
       curriculum_weeks: {
         Row: {
@@ -345,6 +516,72 @@ export type Database = {
           },
         ]
       }
+      feature_packages: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          generation_model: string | null
+          generation_prompt_ver: string | null
+          id: string
+          intro_hook: Json | null
+          mpj_items: Json | null
+          mpj_labels: Json | null
+          package_ver: string
+          ref_cases: Json | null
+          review_warnings: Json | null
+          reviewer_model: string | null
+          reviewer_prompt_ver: string | null
+          rule_check_result: Json | null
+          speech_act: Database["public"]["Enums"]["speech_act"]
+          status: Database["public"]["Enums"]["review_status"]
+          target_feature: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          generation_model?: string | null
+          generation_prompt_ver?: string | null
+          id?: string
+          intro_hook?: Json | null
+          mpj_items?: Json | null
+          mpj_labels?: Json | null
+          package_ver?: string
+          ref_cases?: Json | null
+          review_warnings?: Json | null
+          reviewer_model?: string | null
+          reviewer_prompt_ver?: string | null
+          rule_check_result?: Json | null
+          speech_act: Database["public"]["Enums"]["speech_act"]
+          status?: Database["public"]["Enums"]["review_status"]
+          target_feature: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          generation_model?: string | null
+          generation_prompt_ver?: string | null
+          id?: string
+          intro_hook?: Json | null
+          mpj_items?: Json | null
+          mpj_labels?: Json | null
+          package_ver?: string
+          ref_cases?: Json | null
+          review_warnings?: Json | null
+          reviewer_model?: string | null
+          reviewer_prompt_ver?: string | null
+          rule_check_result?: Json | null
+          speech_act?: Database["public"]["Enums"]["speech_act"]
+          status?: Database["public"]["Enums"]["review_status"]
+          target_feature?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hsk_vocab: {
         Row: {
           created_at: string
@@ -375,6 +612,238 @@ export type Database = {
         }
         Relationships: []
       }
+      learner_mission_logs: {
+        Row: {
+          auth_user_id: string
+          cell_id: string | null
+          cohort_id: string | null
+          completed_at: string | null
+          consent_version: string | null
+          content_ver: string | null
+          context_judgment: Json | null
+          created_at: string
+          example_shown: boolean | null
+          feature_id: string | null
+          first_response: string | null
+          form_id: string | null
+          form_order: string | null
+          hint_used: boolean | null
+          id: string
+          level: string | null
+          measurement_point: string | null
+          mission_completed: boolean | null
+          mission_id: string
+          mode: string
+          package_id: string | null
+          policy_ver: string | null
+          profile_id: string
+          revised_response: string | null
+          revision_target_selected: string | null
+          revision_target_source: string | null
+          self_confidence_rating: number | null
+          semantic_fidelity_status: string | null
+          source_lang: string | null
+          source_text: string | null
+          speech_act: string | null
+          started_at: string | null
+          study_id: string | null
+          target_feature_observed: Json | null
+          target_lang: string | null
+          task_type: string | null
+          transfer_response: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id: string
+          cell_id?: string | null
+          cohort_id?: string | null
+          completed_at?: string | null
+          consent_version?: string | null
+          content_ver?: string | null
+          context_judgment?: Json | null
+          created_at?: string
+          example_shown?: boolean | null
+          feature_id?: string | null
+          first_response?: string | null
+          form_id?: string | null
+          form_order?: string | null
+          hint_used?: boolean | null
+          id?: string
+          level?: string | null
+          measurement_point?: string | null
+          mission_completed?: boolean | null
+          mission_id: string
+          mode: string
+          package_id?: string | null
+          policy_ver?: string | null
+          profile_id: string
+          revised_response?: string | null
+          revision_target_selected?: string | null
+          revision_target_source?: string | null
+          self_confidence_rating?: number | null
+          semantic_fidelity_status?: string | null
+          source_lang?: string | null
+          source_text?: string | null
+          speech_act?: string | null
+          started_at?: string | null
+          study_id?: string | null
+          target_feature_observed?: Json | null
+          target_lang?: string | null
+          task_type?: string | null
+          transfer_response?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string
+          cell_id?: string | null
+          cohort_id?: string | null
+          completed_at?: string | null
+          consent_version?: string | null
+          content_ver?: string | null
+          context_judgment?: Json | null
+          created_at?: string
+          example_shown?: boolean | null
+          feature_id?: string | null
+          first_response?: string | null
+          form_id?: string | null
+          form_order?: string | null
+          hint_used?: boolean | null
+          id?: string
+          level?: string | null
+          measurement_point?: string | null
+          mission_completed?: boolean | null
+          mission_id?: string
+          mode?: string
+          package_id?: string | null
+          policy_ver?: string | null
+          profile_id?: string
+          revised_response?: string | null
+          revision_target_selected?: string | null
+          revision_target_source?: string | null
+          self_confidence_rating?: number | null
+          semantic_fidelity_status?: string | null
+          source_lang?: string | null
+          source_text?: string | null
+          speech_act?: string | null
+          started_at?: string | null
+          study_id?: string | null
+          target_feature_observed?: Json | null
+          target_lang?: string | null
+          task_type?: string | null
+          transfer_response?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learner_mission_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      package_items: {
+        Row: {
+          activity_type: string | null
+          changed_axis: string | null
+          created_at: string
+          id: string
+          package_id: string
+          pair_id: string | null
+          pair_role: string | null
+          position: number
+          scenario_id: string
+          slot: string
+          task_type: string | null
+        }
+        Insert: {
+          activity_type?: string | null
+          changed_axis?: string | null
+          created_at?: string
+          id?: string
+          package_id: string
+          pair_id?: string | null
+          pair_role?: string | null
+          position?: number
+          scenario_id: string
+          slot: string
+          task_type?: string | null
+        }
+        Update: {
+          activity_type?: string | null
+          changed_axis?: string | null
+          created_at?: string
+          id?: string
+          package_id?: string
+          pair_id?: string | null
+          pair_role?: string | null
+          position?: number
+          scenario_id?: string
+          slot?: string
+          task_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_items_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "feature_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_items_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["scenario_id"]
+          },
+        ]
+      }
+      package_level_variants: {
+        Row: {
+          created_at: string
+          id: string
+          level: string
+          level_text_variant: Json | null
+          package_id: string
+          policy_override: Json | null
+          updated_at: string
+          validation_status: Database["public"]["Enums"]["auto_check_result"]
+          variant_status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level: string
+          level_text_variant?: Json | null
+          package_id: string
+          policy_override?: Json | null
+          updated_at?: string
+          validation_status?: Database["public"]["Enums"]["auto_check_result"]
+          variant_status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: string
+          level_text_variant?: Json | null
+          package_id?: string
+          policy_override?: Json | null
+          updated_at?: string
+          validation_status?: Database["public"]["Enums"]["auto_check_result"]
+          variant_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_level_variants_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "feature_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           academic_year_or_program: string | null
@@ -385,6 +854,7 @@ export type Database = {
           anonymous_participant_id: string | null
           approval_status: Database["public"]["Enums"]["approval_status"]
           business_chinese_experience: string | null
+          chinese_exposure_contexts: string[] | null
           chinese_level: string | null
           chinese_proficiency_self_report: string | null
           consent_anonymous_analysis: boolean
@@ -407,6 +877,7 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           ti_experience_level: string | null
           ti_experience_modes: string[] | null
+          ti_experience_note: string | null
           updated_at: string
           user_id: string
         }
@@ -419,6 +890,7 @@ export type Database = {
           anonymous_participant_id?: string | null
           approval_status?: Database["public"]["Enums"]["approval_status"]
           business_chinese_experience?: string | null
+          chinese_exposure_contexts?: string[] | null
           chinese_level?: string | null
           chinese_proficiency_self_report?: string | null
           consent_anonymous_analysis?: boolean
@@ -441,6 +913,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           ti_experience_level?: string | null
           ti_experience_modes?: string[] | null
+          ti_experience_note?: string | null
           updated_at?: string
           user_id: string
         }
@@ -453,6 +926,7 @@ export type Database = {
           anonymous_participant_id?: string | null
           approval_status?: Database["public"]["Enums"]["approval_status"]
           business_chinese_experience?: string | null
+          chinese_exposure_contexts?: string[] | null
           chinese_level?: string | null
           chinese_proficiency_self_report?: string | null
           consent_anonymous_analysis?: boolean
@@ -475,6 +949,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           ti_experience_level?: string | null
           ti_experience_modes?: string[] | null
+          ti_experience_note?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -603,15 +1078,21 @@ export type Database = {
       }
       scenarios: {
         Row: {
+          approval_basis: string | null
           auto_check_result:
             | Database["public"]["Enums"]["auto_check_result"]
             | null
           business_function: string | null
           challenge_intensity: string | null
+          content_format: string
+          content_hash: string | null
+          core_content: Json | null
           created_at: string | null
           domain: string | null
+          generation_item_key: string | null
           generation_prompt_version: string | null
           generation_provider: string | null
+          generation_run_id: string | null
           generator_model: string | null
           genre: string | null
           hsk_level_min: number | null
@@ -619,32 +1100,49 @@ export type Database = {
           interaction_context: string | null
           language_direction: string | null
           learner_level: string | null
+          mission_content: Json | null
+          mission_reviewed_at: string | null
+          mission_reviewed_by: string | null
+          mission_status: string | null
           mode: string | null
           pragmatic_challenge: string[] | null
+          prompt_snapshot_hash: string | null
           review_status: Database["public"]["Enums"]["review_status"]
           scenario_d: string | null
           scenario_id: string
           scenario_p: string | null
           scenario_r: string | null
+          source_modality: string | null
           source_text: string | null
           speech_act: Database["public"]["Enums"]["speech_act"]
           speech_act_text: string | null
+          supersedes_scenario_id: string | null
+          target_feature: string | null
+          target_feature_version: string | null
+          theme_code: string | null
           title: string
           topic: string | null
+          topic_code: string | null
           updated_at: string | null
           usage_assignment: Database["public"]["Enums"]["usage_assignment"]
           week_no: number | null
         }
         Insert: {
+          approval_basis?: string | null
           auto_check_result?:
             | Database["public"]["Enums"]["auto_check_result"]
             | null
           business_function?: string | null
           challenge_intensity?: string | null
+          content_format?: string
+          content_hash?: string | null
+          core_content?: Json | null
           created_at?: string | null
           domain?: string | null
+          generation_item_key?: string | null
           generation_prompt_version?: string | null
           generation_provider?: string | null
+          generation_run_id?: string | null
           generator_model?: string | null
           genre?: string | null
           hsk_level_min?: number | null
@@ -652,32 +1150,49 @@ export type Database = {
           interaction_context?: string | null
           language_direction?: string | null
           learner_level?: string | null
+          mission_content?: Json | null
+          mission_reviewed_at?: string | null
+          mission_reviewed_by?: string | null
+          mission_status?: string | null
           mode?: string | null
           pragmatic_challenge?: string[] | null
+          prompt_snapshot_hash?: string | null
           review_status?: Database["public"]["Enums"]["review_status"]
           scenario_d?: string | null
           scenario_id?: string
           scenario_p?: string | null
           scenario_r?: string | null
+          source_modality?: string | null
           source_text?: string | null
           speech_act: Database["public"]["Enums"]["speech_act"]
           speech_act_text?: string | null
+          supersedes_scenario_id?: string | null
+          target_feature?: string | null
+          target_feature_version?: string | null
+          theme_code?: string | null
           title: string
           topic?: string | null
+          topic_code?: string | null
           updated_at?: string | null
           usage_assignment?: Database["public"]["Enums"]["usage_assignment"]
           week_no?: number | null
         }
         Update: {
+          approval_basis?: string | null
           auto_check_result?:
             | Database["public"]["Enums"]["auto_check_result"]
             | null
           business_function?: string | null
           challenge_intensity?: string | null
+          content_format?: string
+          content_hash?: string | null
+          core_content?: Json | null
           created_at?: string | null
           domain?: string | null
+          generation_item_key?: string | null
           generation_prompt_version?: string | null
           generation_provider?: string | null
+          generation_run_id?: string | null
           generator_model?: string | null
           genre?: string | null
           hsk_level_min?: number | null
@@ -685,23 +1200,42 @@ export type Database = {
           interaction_context?: string | null
           language_direction?: string | null
           learner_level?: string | null
+          mission_content?: Json | null
+          mission_reviewed_at?: string | null
+          mission_reviewed_by?: string | null
+          mission_status?: string | null
           mode?: string | null
           pragmatic_challenge?: string[] | null
+          prompt_snapshot_hash?: string | null
           review_status?: Database["public"]["Enums"]["review_status"]
           scenario_d?: string | null
           scenario_id?: string
           scenario_p?: string | null
           scenario_r?: string | null
+          source_modality?: string | null
           source_text?: string | null
           speech_act?: Database["public"]["Enums"]["speech_act"]
           speech_act_text?: string | null
+          supersedes_scenario_id?: string | null
+          target_feature?: string | null
+          target_feature_version?: string | null
+          theme_code?: string | null
           title?: string
           topic?: string | null
+          topic_code?: string | null
           updated_at?: string | null
           usage_assignment?: Database["public"]["Enums"]["usage_assignment"]
           week_no?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "scenarios_supersedes_scenario_id_fkey"
+            columns: ["supersedes_scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["scenario_id"]
+          },
+        ]
       }
       youtube_sources: {
         Row: {
@@ -746,6 +1280,12 @@ export type Database = {
     Functions: {
       ensure_test_dev_profile: { Args: never; Returns: undefined }
       is_admin: { Args: never; Returns: boolean }
+      review_mission: { Args: { p_scenario_id: string }; Returns: string }
+      save_generated_core: { Args: { p_payload: Json }; Returns: string }
+      save_generated_mission: {
+        Args: { p_payload: Json; p_scenario_id: string }
+        Returns: string
+      }
       save_generated_scenario: { Args: { p_payload: Json }; Returns: string }
     }
     Enums: {
@@ -898,6 +1438,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["learner", "admin"],

@@ -1,0 +1,58 @@
+// 학습자 프로필 배경 문항의 선택지 정본 (2026-07-26 개편).
+//
+// 마법사(ProfileWizardForm)와 관리자 조회(AdminLearners)가 같은 목록을 봐야
+// 한다 — 화면마다 라벨을 따로 두면 한쪽이 조용히 낡는다.
+// DB에는 code를 저장하고 화면에는 label을 보여준다.
+
+export type CodedOption = { code: string; label: string };
+
+/** 주 사용 언어 — 양방향(한→중·중→한) 지원상 HSK보다 먼저 필요하다.
+ *  중국어 주 사용자·이중언어 사용자를 HSK 서열 안에 끼워 넣지 않기 위한 문항이기도 하다. */
+export const PRIMARY_LANGUAGE_OPTIONS: CodedOption[] = [
+  { code: "ko", label: "한국어" },
+  { code: "zh", label: "중국어" },
+  { code: "ko_zh", label: "한국어·중국어 모두" },
+  { code: "other", label: "그 외" },
+];
+
+/** 중국어 학습 수준. '원어민 수준'은 급수와 다른 축이라 주 사용 언어 문항으로 옮겼고,
+ *  미응시자가 'HSK 3급 이하'로 답해 데이터가 오염되던 문제는 '응시 경험 없음'으로 푼다. */
+export const CHINESE_LEVEL_OPTIONS: CodedOption[] = [
+  { code: "hsk3_or_below", label: "HSK 3급 이하" },
+  { code: "hsk4", label: "HSK 4급" },
+  { code: "hsk5", label: "HSK 5급" },
+  { code: "hsk6", label: "HSK 6급" },
+  { code: "not_taken", label: "응시 경험 없음" },
+];
+
+/** 접촉·사용 상황(복수). 수용(드라마·읽을거리)도 학습 경로이므로 함께 담는다 —
+ *  앱이 수용(MPJ)과 산출(DCT)로 나뉘는데 배경만 산출을 물으면 앞뒤가 안 맞는다.
+ *  정본(pragma-level-layer-lock)의 "습관 语域에서 얼마나 먼가"를 잡는 입력. */
+export const EXPOSURE_CONTEXT_OPTIONS: CodedOption[] = [
+  { code: "media", label: "드라마·영화·영상·음악" },
+  { code: "reading", label: "뉴스·기사·읽을거리" },
+  { code: "class", label: "수업·시험" },
+  { code: "messaging", label: "메신저·SNS 일상 대화" },
+  { code: "work_docs", label: "업무 문서·이메일" },
+  { code: "native_friends", label: "중국인 친구·동료와 대화" },
+  { code: "residence", label: "중국어권 체류·근무" },
+  { code: "almost_none", label: "거의 없음" },
+];
+/** 다른 항목과 함께 고를 수 없는 배타 선택지. */
+export const EXPOSURE_EXCLUSIVE = "almost_none";
+
+export const TI_EXPERIENCE_OPTIONS: CodedOption[] = [
+  { code: "none", label: "없음" },
+  { code: "one_term_or_less", label: "한 학기 이하 수업" },
+  { code: "two_terms_or_more", label: "두 학기 이상 수업" },
+  { code: "assisted", label: "실습·현장 보조" },
+  { code: "professional", label: "전문 수행" },
+];
+
+/** 저장된 code를 화면 라벨로. 모르는 code(구 데이터)는 그대로 보여준다 — 숨기면
+ *  관리자가 "값이 없다"고 오해한다. */
+export const labelOf = (options: CodedOption[], code: string | null | undefined) =>
+  code ? options.find((o) => o.code === code)?.label ?? code : null;
+
+export const labelsOf = (options: CodedOption[], codes: string[] | null | undefined) =>
+  codes && codes.length > 0 ? codes.map((c) => labelOf(options, c)).join(", ") : null;
