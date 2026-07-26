@@ -63,10 +63,11 @@ export const exposureContextOptions = (target: TargetLanguage): CodedOption[] =>
 /** 다른 항목과 함께 고를 수 없는 배타 선택지. */
 export const EXPOSURE_EXCLUSIVE = "almost_none";
 
+// 학부 대상이라 두 학기 이상 수강자가 거의 없어 학기 수 구분은 변별력이 없다.
+// 수업 경험은 한 칸으로 합친다(선지 4개 = 2×2 격자로 떨어진다).
 export const TI_EXPERIENCE_OPTIONS: CodedOption[] = [
   { code: "none", label: "없음" },
-  { code: "one_term_or_less", label: "한 학기 이하 수업" },
-  { code: "two_terms_or_more", label: "두 학기 이상 수업" },
+  { code: "coursework", label: "1학기 이상 수업" },
   { code: "assisted", label: "실습·현장 보조" },
   { code: "professional", label: "전문 수행" },
 ];

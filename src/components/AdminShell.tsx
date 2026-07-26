@@ -2,7 +2,8 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { HomeBrand } from "@/components/HomeBrand";
 
-type NavItem = { to?: string; label: string; disabled?: boolean };
+/** pending = 라우트는 있으나 내용이 후속 단계. 메뉴에 「준비 중」 배지를 단다. */
+type NavItem = { to?: string; label: string; pending?: boolean };
 type NavGroup = {
   header: string;
   items: NavItem[];
@@ -10,48 +11,62 @@ type NavGroup = {
 
 const STANDALONE: NavItem = { to: "/admin/dashboard", label: "대시보드" };
 
-// 워크플로 정합 사이드바 (2026-07-25) — "자원 준비 → 코어 → 미션 조립 → 수업 패키지 →
-// 검수 → 배포 → 분석" 한 줄 논리. 미구현 화면은 disabled(준비중)로 골격만 노출.
+// 워크플로 정합 사이드바 (2026-07-26 재편) — "자원 준비 → 생성 → 조립 → 검수 →
+// 편성 → 학습자·연구" 한 줄 논리.
+//
+// 2026-07-26에 고친 것:
+// - 실제로 구현된 화면 2개(학습자 관리 458줄·의사결정 기록 229줄)가 메뉴에 없어
+//   주소를 직접 쳐야 들어갈 수 있었다 → 노출
+// - 「수업 운영·연구」 4개가 전부 빈 껍데기였다 → 실체 있는 것 위로, 나머지는
+//   pending 배지. 교과목 운영은 9월 실증 사안이라 메뉴에서 제외(백로그),
+//   학습자 개별 리포트는 학습자 관리 상세와 중복이라 흡수
+// - 「콘텐츠 보관함」은 이름·헤드라인("시나리오 아카이브")·소속이 모두 어긋나 있었다
+//   → 이름 통일 + 생성물이 쌓이는 곳이므로 파이프라인으로 이동
+// - 파이프라인의 "1단계·1단계·2단계…" 번호는 1단계가 두 번 나와 헷갈려서 제거
+//
+// pending = 화면은 있으나 내용이 후속. 배지를 미리 보여 준다 — 눌러 봐야 비어 있는
+// 것을 아는 것보다 정직하고, 시연 중 사고도 막는다.
 const GROUPS: NavGroup[] = [
   {
     header: "0 · 자원 관리",
     items: [
       { to: "/admin/corpus", label: "소스 뱅크 (HSK 어휘)" },
-      { to: "/admin/prompt-harness", label: "생성 규칙·프롬프트" },
       { to: "/admin/question-designer", label: "수준별 문항 설계" },
+      // 생성 규칙은 화면이 무거워 맨 뒤로(자주 열지 않는다).
+      { to: "/admin/prompt-harness", label: "생성 규칙·프롬프트" },
     ],
   },
   {
     header: "1 · 콘텐츠 파이프라인",
     items: [
-      { to: "/admin/generator", label: "1단계 · 개별 생성" },
-      { to: "/admin/batch", label: "1단계 · 대량 생성" },
-      { to: "/admin/browser", label: "2단계 · 학습 미션 조립" },
-      { to: "/admin/package", label: "3단계 · 수업 패키지 생성" },
-      { to: "/admin/review", label: "4단계 · 통합 검수·승인" },
+      { to: "/admin/generator", label: "개별 생성" },
+      { to: "/admin/batch", label: "배치 생성" },
+      { to: "/admin/browser", label: "학습 미션 조립" },
+      { to: "/admin/package", label: "수업 패키지 생성", pending: true },
+      { to: "/admin/review", label: "통합 검수·승인" },
+      { to: "/admin/archive", label: "시나리오 아카이브" },
     ],
   },
   {
-    header: "2 · 커리큘럼·배포",
+    header: "2 · 커리큘럼·편성",
     items: [
       { to: "/admin/curriculum", label: "15주 커리큘럼" },
       { to: "/admin/composer", label: "15주 편성기" },
-      { to: "/admin/archive", label: "콘텐츠 보관함" },
     ],
   },
   {
-    header: "3 · 수업 운영·연구",
+    header: "3 · 학습자·연구",
     items: [
-      { to: "/admin/course-ops", label: "교과목 운영" },
-      { to: "/admin/analytics", label: "통합 학습 대시보드" },
-      { to: "/admin/reports", label: "학습자 개별 리포트" },
-      { to: "/admin/export", label: "연구 데이터 추출" },
+      { to: "/admin/learners", label: "학습자 관리" },
+      { to: "/admin/decision-traces", label: "의사결정 기록" },
+      { to: "/admin/analytics", label: "학습 대시보드", pending: true },
+      { to: "/admin/export", label: "연구 데이터 추출", pending: true },
     ],
   },
   {
     header: "설정",
     items: [
-      { to: "/admin/users", label: "사용자·권한" },
+      { to: "/admin/users", label: "사용자·권한", pending: true },
     ],
   },
 ];
@@ -120,6 +135,11 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
                       className={itemClasses(pathname === item.to)}
                     >
                       {item.label}
+                      {item.pending && (
+                        <span className="ml-1.5 rounded-full bg-[#EDE9DD] px-1.5 py-[1px] align-middle text-[10px] font-normal text-[#8a857c]">
+                          준비 중
+                        </span>
+                      )}
                     </Link>
                   ))}
                 </div>
