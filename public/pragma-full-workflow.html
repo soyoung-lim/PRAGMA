@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRAGMA · 전체 학습자 워크플로우 프로토타입</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<!--
+  전체 워크플로우 정적 프로토타입 — 여정 맵으로 전 화면(온보딩→진단→홈→미션(+전이)→주간리포트, 전략지도) 둘러보기.
+  기준: 확정 MD(0719-1050) > 전체설계 조립도(0719) > v2 슬라이스 목업(미션 흐름 이식) > v3.5.1(디자인).
+  승인된 결정: 최소 허브+바로시작 / 진단 3개(요청·거절) / 리포트 5회·7일 / CS 2~3개당 1회 주기 삽입.
+-->
+<style>
+:root{
+  --paper:#FAF8F2; --ink:#15202B; --ink-soft:#5C6A7A; --line:#D3D1C7;
+  --surface:#F5F5F2; --surface-2:#FAFAF7;
+  --accent:#FAD338; --accent-soft:#FFF8DE;
+  --info:#2563EB; --info-bg:#EFF4FB;
+  --ok:#2E7D5B; --warn:#B8860B; --danger:#C42B2B; --danger-soft:#FBEEEE;
+  --wx:#95EC69; --wx-bg:#EDEDED;
+  --r:12px;
+  --sans:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --zh:'Pretendard Variable',Pretendard,'PingFang SC','Microsoft YaHei','Malgun Gothic',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+h1,h2,h3{font-weight:700;letter-spacing:-0.01em}
+
+header{position:sticky;top:0;z-index:100;background:#15202B;padding:11px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px}
+.brand .seal{width:5px;height:26px;border-radius:99px;background:var(--accent)}
+.brand b{font-size:15px;font-weight:600;color:#F1EFE8}
+.brand small{display:block;color:#8899A6;font-size:11px}
+.seg{display:flex;background:rgba(255,255,255,.08);border-radius:9px;padding:3px;gap:2px;margin-left:auto}
+.seg button{border:none;background:transparent;padding:6px 12px;border-radius:6px;font-size:12.5px;font-weight:500;color:#8899A6}
+.seg button:hover{color:#F1EFE8}
+.seg button.on{background:var(--accent);color:#15202B;font-weight:600}
+
+/* 여정 맵 — 전체 워크플로우 시각화 + 화면 라우터 */
+.jmap{background:#1B2836;border-bottom:0.5px solid #2A3B4C;padding:12px 22px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;position:sticky;top:52px;z-index:99}
+.jmap .node{display:flex;align-items:center;gap:6px}
+.jmap button{border:0.5px solid #35485C;background:#22303E;color:#AEBCC8;border-radius:99px;padding:6px 13px;font-size:12.5px;font-weight:500}
+.jmap button:hover{background:#2A3B4C;color:#F1EFE8}
+.jmap button.on{background:var(--accent);border-color:var(--accent);color:#15202B;font-weight:700}
+.jmap .arr{color:#4A5D70;font-size:13px}
+.jmap .sub{font-size:11px;color:#6E8095;margin-left:4px}
+
+.wrap{max-width:720px;margin:0 auto;padding:24px 20px 90px}
+.scr-tag{font-size:11.5px;color:var(--ink-soft);margin-bottom:12px;font-weight:600}
+.scr-tag b{color:var(--warn)}
+
+.card{background:#fff;border:0.5px solid var(--line);border-radius:var(--r);padding:22px;margin-bottom:16px}
+.eyebrow{font-size:12px;font-weight:700;color:var(--warn);letter-spacing:.02em;margin-bottom:6px}
+.card h2{font-size:19px;margin-bottom:6px}
+.card h3{font-size:15px;margin-bottom:8px}
+.lead{font-size:14px;color:var(--ink-soft);margin-bottom:16px}
+
+.prog{display:flex;gap:6px;margin-bottom:22px}
+.prog .st{flex:1;text-align:center}
+.prog .dot{height:5px;border-radius:99px;background:var(--line)}
+.prog .st.done .dot,.prog .st.on .dot{background:var(--accent)}
+.prog .lb{font-size:10.5px;color:var(--ink-soft);margin-top:6px;font-weight:500}
+.prog .st.on .lb{color:var(--ink);font-weight:700}
+
+.wx{background:var(--wx-bg);border-radius:12px;padding:14px;border:0.5px solid var(--line)}
+.wx-top{text-align:center;font-size:12px;color:#7a7a7a;margin-bottom:12px;font-weight:600}
+.bubble{max-width:80%;padding:9px 12px;border-radius:9px;font-size:14.5px;margin-bottom:9px;line-height:1.5}
+.bubble.them{background:#fff;border-top-left-radius:2px}
+.bubble.me{background:var(--wx);margin-left:auto;border-top-right-radius:2px}
+.bubble .who{display:block;font-size:11px;color:var(--ink-soft);margin-bottom:2px}
+
+.srcbox{background:var(--surface);border:0.5px solid var(--line);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:12px 15px;margin:14px 0;font-size:15px}
+.srcbox b{font-size:11.5px;color:var(--ink-soft);display:block;margin-bottom:3px;font-weight:600}
+
+.opts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.opts button{text-align:left;border:0.5px solid var(--line);background:#fff;border-radius:10px;padding:11px 14px;font-size:14px;color:var(--ink)}
+.opts button:hover{background:var(--surface-2)}
+.opts button.sel{border:1.5px solid var(--ink);background:var(--surface-2);font-weight:600}
+.q{font-size:14.5px;font-weight:600;margin-top:16px}
+.microfb{font-size:12.5px;color:var(--ok);margin-top:10px;font-weight:600}
+
+textarea{width:100%;border:0.5px solid var(--line);border-radius:10px;padding:12px;font-size:15.5px;font-family:var(--zh);min-height:82px;resize:vertical;background:#fff;line-height:1.6}
+textarea:focus{outline:2px solid var(--accent);border-color:transparent}
+.thint{font-size:12px;color:var(--ink-soft);margin-top:8px}
+
+.recv{border:0.5px solid var(--line);border-left:3px solid var(--info);background:var(--info-bg);border-radius:0 10px 10px 0;padding:12px 15px;margin-bottom:14px;font-size:13.5px;line-height:1.6}
+.recv b{font-size:11.5px;color:var(--info);display:block;margin-bottom:5px;font-weight:700}
+.recv span{display:block;margin:3px 0}
+.fidcheck{font-size:13px;color:var(--ink-soft);background:var(--surface);border:0.5px solid var(--line);border-radius:8px;padding:9px 13px;margin-bottom:16px}
+
+.cand{border:0.5px solid var(--line);border-radius:10px;padding:12px 15px;margin-bottom:10px}
+.cand.mine{background:var(--surface-2)}
+.cand.good{border-color:var(--ok)}
+.cand.edge{border-color:var(--danger);background:var(--danger-soft)}
+.cand .tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;margin-bottom:8px}
+.cand.mine .tag{background:var(--surface);color:var(--ink-soft)}
+.cand.good .tag{background:#E8F3EE;color:var(--ok)}
+.cand.edge .tag{background:#F7DCDC;color:var(--danger)}
+.cand .zh{font-family:var(--zh);font-size:15px;line-height:1.6}
+.feat{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.feat span{font-size:11px;background:var(--accent-soft);border:0.5px solid var(--accent);border-radius:99px;padding:2px 9px;color:#6B5518}
+.feat.bad span{background:var(--danger-soft);border-color:#E7B7B7;color:var(--danger)}
+
+.fixnote{background:var(--accent-soft);border:0.5px solid var(--accent);border-radius:10px;padding:12px 15px;margin-bottom:14px;font-size:14px}
+.fixnote b{display:block;font-size:12px;color:#6B5518;margin-bottom:4px;font-weight:700}
+.csbox{border:0.5px solid var(--accent);background:var(--accent-soft);border-radius:10px;padding:12px 15px;margin-bottom:14px;font-size:14px}
+.csbox b{color:#6B5518}
+
+.principle{border:0.5px solid var(--line);border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 12px 12px 0;padding:15px 18px;margin-bottom:16px}
+.principle .k{display:inline-block;font-size:11px;font-weight:700;background:var(--accent);color:#15202B;border-radius:99px;padding:2px 10px;margin-bottom:10px}
+.principle .row{margin:7px 0}
+.principle .row b{font-size:11.5px;color:var(--ink-soft);display:block;font-weight:600}
+.principle .row .v{font-size:14px}
+.principle .row .v .zh{font-family:var(--zh)}
+.verdict{display:inline-flex;gap:7px;font-size:13px;font-weight:700;border-radius:99px;padding:6px 14px;margin-bottom:14px;background:var(--accent-soft);color:var(--warn);border:0.5px solid var(--accent)}
+
+/* 홈/허브 */
+.hero{background:var(--ink);color:#fff;border-radius:var(--r);padding:20px 22px;margin-bottom:14px}
+.hero .k{font-size:11.5px;color:var(--accent);font-weight:700;margin-bottom:6px}
+.hero h2{color:#fff;font-size:20px;margin-bottom:4px}
+.hero p{font-size:13.5px;color:#B9C4CE}
+.hero .go{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+.tile{border:0.5px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:#fff}
+.tile .tk{font-size:11.5px;color:var(--ink-soft);font-weight:600;margin-bottom:4px}
+.tile .tv{font-size:14.5px}
+.tile.link{cursor:pointer}.tile.link:hover{background:var(--surface-2)}
+
+/* 전략 지도 */
+.strat{border:0.5px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:8px}
+.strat b{font-size:13.5px}
+.strat .zh{font-family:var(--zh);color:var(--ink-soft)}
+.strat .cond{font-size:12px;color:var(--ink-soft);margin-top:2px}
+.gate-note{font-size:12px;color:#6B5518;background:var(--accent-soft);border:0.5px solid var(--accent);border-radius:8px;padding:8px 12px;margin-bottom:14px}
+
+/* 리포트 */
+.gauge{height:12px;background:var(--surface);border-radius:99px;overflow:hidden;margin:6px 0}
+.gauge i{display:block;height:100%;background:var(--accent)}
+.metric{display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px}
+.actbar{font-size:14px}.actbar .dots{letter-spacing:2px;font-size:15px}
+.chip{display:inline-block;font-size:12px;background:var(--surface);border:0.5px solid var(--line);border-radius:99px;padding:3px 11px;margin:3px 4px 0 0;font-family:var(--zh)}
+.evgrade{font-size:11.5px;color:var(--ink-soft);background:var(--surface);border-radius:99px;padding:2px 10px;display:inline-block}
+.challenge{border:0.5px solid var(--danger);background:var(--danger-soft);border-radius:10px;padding:12px 15px;margin-top:12px;font-size:13.5px}
+.challenge b{color:var(--danger)}
+
+/* 레슨 아크 (L1~L4) */
+.arc-prog{display:flex;gap:6px;margin-bottom:18px}
+.arc-prog span{flex:1;text-align:center;font-size:11px;color:var(--ink-soft);padding-top:8px;border-top:3px solid var(--line)}
+.arc-prog span.on{color:var(--ink);font-weight:700;border-top-color:var(--accent)}
+.arc-prog span.done{border-top-color:var(--accent)}
+.scene{background:#1B2836;border-radius:12px;padding:16px 18px;color:#DDE4EA;font-size:14.5px;line-height:1.8}
+.scene .dir{color:#8899A6;font-size:12.5px;font-style:italic}
+.scene .zh{font-family:var(--zh);color:#fff}
+.scene .frz{color:#FF9C9C;font-weight:700}
+.clue{border-bottom:2px dotted var(--warn);cursor:pointer;font-family:var(--zh)}
+.clue:hover{background:var(--accent-soft)}
+.clue.found{background:var(--accent);border-bottom:none;border-radius:3px;padding:0 2px}
+.clue-count{display:inline-block;font-size:12px;font-weight:700;background:var(--ink);color:#fff;border-radius:99px;padding:3px 12px;margin-top:12px}
+.pdr-table{width:100%;border-collapse:collapse;font-size:13.5px;margin:12px 0}
+.pdr-table th,.pdr-table td{border:0.5px solid var(--line);padding:8px 12px;text-align:left}
+.pdr-table th{background:var(--surface);font-size:12px;width:110px}
+.pdr-table .hi{background:var(--accent-soft);font-weight:600}
+.unlock{display:flex;align-items:center;gap:10px;background:var(--accent-soft);border:0.5px solid var(--accent);border-radius:10px;padding:11px 15px;margin-top:14px;font-size:13.5px;font-weight:600}
+.game-opt{border:0.5px solid var(--line);border-radius:10px;padding:12px 15px;margin-bottom:9px;cursor:pointer;font-family:var(--zh);font-size:15px;background:#fff}
+.game-opt:hover{background:var(--surface-2)}
+.game-opt.pick-right{border:1.5px solid var(--ok);background:#F0F8F4}
+.game-opt.pick-wrong{border:1.5px solid var(--danger);background:var(--danger-soft)}
+.game-fb{font-size:13px;margin-top:4px;font-weight:600}
+/* 슬라이드(온보딩) */
+.slide{min-height:150px}
+.dots{display:flex;gap:6px;justify-content:center;margin-top:16px}
+.dots i{width:7px;height:7px;border-radius:99px;background:var(--line)}
+.dots i.on{background:var(--accent);width:18px}
+
+.btn{border:none;background:var(--ink);color:#fff;border-radius:10px;padding:11px 20px;font-size:14.5px;font-weight:600}
+.btn:hover{background:#22303E}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.acc{background:var(--accent);color:#15202B}
+.btn.acc:hover{background:#F6C200}
+.btn.ghost{background:#fff;border:0.5px solid var(--line);color:var(--ink-soft);font-weight:500}
+.btn.ghost:hover{background:var(--surface);color:var(--ink)}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:10px}
+.nav .sp{flex:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="seal"></span><div><b>PRAGMA</b><small>전체 학습자 워크플로우 · 정적 프로토타입</small></div></div>
+  <div class="seg" id="modeSeg">
+    <button data-m="self">자율</button>
+    <button data-m="class">수업연계</button>
+  </div>
+</header>
+
+<!-- 여정 맵 = 전체 워크플로우 시각화 + 라우터 -->
+<nav class="jmap" id="jmap">
+  <div class="node"><button data-v="onboarding">온보딩</button></div><span class="arr">→</span>
+  <div class="node"><button data-v="diagnostic">진단</button></div><span class="arr">→</span>
+  <div class="node"><button data-v="home">홈 / 허브</button></div><span class="arr">⇄</span>
+  <div class="node"><button data-v="lesson">특징 도입 <span class="sub">(아크)</span></button></div><span class="arr">→</span>
+  <div class="node"><button data-v="mission">미션 <span class="sub">(+전이)</span></button></div><span class="arr">→</span>
+  <div class="node"><button data-v="report">주간 리포트</button></div>
+  <span class="arr" style="margin-left:8px">·</span>
+  <div class="node"><button data-v="strategy">전략 지도</button></div>
+</nav>
+
+<div class="wrap" id="app"></div>
+
+<script>
+const M = {
+  ctx:{ partner:'샤오린(小林)', rel:'이번 학기 처음 같은 조가 된 중국인 동급생 (아직 조금 어색)' },
+  srcKo:'샤오린, 혹시 발표 자료 마감을 하루만 미뤄도 괜찮을까? 내 파트 정리가 좀 늦어져서… 안 되면 편하게 말해줘!',
+  demoDraft:'小林，发表资料的截止日期能推迟一天吗？我这部分整理得有点慢。',
+  mSteps:['상황 읽기','해보기','차이 발견','한 곳 고치기','전이','마무리'],
+};
+let S = { view:'onboarding', mode:'self', onb:0, m:0, sel:null, draft:'', revised:'', cs:'', level:'intermediate',
+  arc:0, clues:[], cls:{} };
+
+const $=s=>document.querySelector(s);
+const app=()=>$('#app');
+function go(v){ S.view=v; if(v==='mission')S.m=0; render(); }
+window.go=go;
+
+function render(){
+  document.querySelectorAll('#jmap button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));
+  document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===S.mode));
+  ({onboarding:vOnb, diagnostic:vDiag, home:vHome, lesson:vLesson, mission:vMission, strategy:vStrat, report:vReport}[S.view])();
+}
+
+/* ── S0 온보딩 ── */
+function vOnb(){
+  const slides=[
+    {e:'온보딩 · 1/3', h:'화용적 적절성이란?', b:`문법이 맞아도 <b>상황에 안 맞으면</b> 관계가 어색해져요. 이 앱은 "무엇이 문법적으로 맞는가"가 아니라 <b>"이 상황에 무엇이 어울리는가"</b>를 연습합니다. 정답은 하나가 아니라 <b>상황의 함수</b>예요.`},
+    {e:'온보딩 · 2/3', h:'표현을 바꾸는 세 가지', b:`같은 부탁도 이 세 가지에 따라 달라져요 — <b>상대가 나보다 윗사람인가</b>(권력) · <b>얼마나 가까운가</b>(거리) · <b>부탁이 얼마나 부담스러운가</b>(부담). 앱은 이 감각을 매 미션에서 길러줍니다.`},
+    {e:'온보딩 · 3/3', h:'매체마다 말투가 달라요', b:`같은 뜻도 <b>위챗 ↔ 이메일 ↔ 공문서</b>에서 말투가 달라집니다. 한국 학습자는 위챗에도 딱딱한 서면투(인민일보투)를 쓰기 쉬워요. 이 습관을 미션과 리포트로 잡아갑니다.`},
+  ];
+  const s=slides[S.onb];
+  app().innerHTML = `
+  <div class="scr-tag">화면 <b>S0 · 온보딩</b> — 최초 1회 (수업연계 모드에선 W1 OT가 대체) &nbsp;|&nbsp; 엔진: <b>§3-B 명시 교수 층</b></div>
+  <div class="card"><div class="eyebrow">${s.e}</div><h2>${s.h}</h2><div class="slide"><p style="font-size:15px;line-height:1.75">${s.b}</p></div>
+    <div class="dots">${[0,1,2].map(i=>`<i class="${i===S.onb?'on':''}"></i>`).join('')}</div>
+  </div>
+  <div class="nav">
+    <button class="btn ghost" ${S.onb===0?'disabled':''} onclick="S.onb--;render()">← 이전</button><div class="sp"></div>
+    ${S.onb<2?`<button class="btn" onclick="S.onb++;render()">다음 →</button>`:`<button class="btn acc" onclick="go('diagnostic')">진단 시작 →</button>`}
+  </div>`;
+}
+
+/* ── S1 진단 ── */
+function vDiag(){
+  app().innerHTML = `
+  <div class="scr-tag">화면 <b>S1 · 진단</b> — 축약 미션 3개(요청·거절) → 초기 프로파일 · 수준 확인 &nbsp;|&nbsp; 엔진: <b>모듈 A 역방향(听声辨位)</b> + 초기 D 프로파일</div>
+  <div class="card">
+    <div class="eyebrow">진단 · 3개 중 1</div>
+    <h2>이 메시지, 누가 누구에게 보낸 걸까요?</h2>
+    <p class="lead">정답을 맞히는 게 아니라, 당신이 <b>단서를 어떻게 읽는지</b>를 보려는 거예요.</p>
+    <div class="srcbox" style="font-family:var(--zh)">劳驾，能麻烦您把报告再确认一下吗？</div>
+    <div class="q">이 사람과 상대는 어떤 사이로 보이나요?</div>
+    <div class="opts">
+      <button onclick="this.classList.add('sel')">친한 사이 · 편한 부탁</button>
+      <button onclick="this.classList.add('sel')">거리가 있는 윗사람 · 정중한 부탁</button>
+      <button onclick="this.classList.add('sel')">처음 보는 사이 · 사무적</button>
+    </div>
+    <div class="thint">단서: <span style="font-family:var(--zh)">劳驾 · 您 · 麻烦</span> 같은 표현이 거리를 드러냅니다 (제출 후 해설).</div>
+  </div>
+  <div class="card" style="border-color:var(--accent)">
+    <div class="eyebrow">진단 완료 → 초기 프로파일</div>
+    <p style="font-size:14.5px">당신은 표현이 <b>격식 쪽으로 살짝 기울어</b> 있어요 — 편한 위챗 상황에서도 서면투가 나오는 경향. <br><b>편한 매체·가까운 관계 셀부터</b> 추천할게요. · 수준: <b>중급</b>으로 시작.</p>
+    <span class="evgrade">증거량: 이번 진단에서 관찰 (잠정)</span>
+  </div>
+  <div class="nav"><button class="btn ghost" onclick="go('onboarding')">← 온보딩</button><div class="sp"></div><button class="btn acc" onclick="go('home')">홈으로 →</button></div>`;
+}
+
+/* ── S2 홈/허브 ── */
+function vHome(){
+  const cls = S.mode==='class';
+  app().innerHTML = `
+  <div class="scr-tag">화면 <b>S2 · 홈 / 허브</b> — 반복 사이클의 심장 · ${cls?'수업연계(교수 배포 과제)':'자율(적응형 추천)'} &nbsp;|&nbsp; 엔진: 라우팅 + <b>모듈 D 요약</b></div>
+  <div class="hero">
+    <div class="k">${cls?'이번 주 과제 · 요청 화행':'오늘의 미션 · 약점 기반 추천'}</div>
+    <h2>요청 · 위챗 · 친구에게</h2>
+    <p>${cls?'교수님이 배포한 이번 주 과제예요. 완료 후 기록이 대시보드로 갑니다.':'당신의 격식 편향을 풀기 좋은 편한 상황부터.'}</p>
+    <div class="go">
+      <button class="btn acc" onclick="S.arc=0;S.clues=[];S.cls={};go('lesson')">시작 — 특징 도입부터 →</button>
+      <button class="btn ghost" style="background:transparent;color:#C7D0D8;border-color:#35485C" onclick="go('mission')">미션 바로 가기 (도입 완료자)</button>
+    </div>
+  </div>
+  <div class="tile"><div class="tk">내 프로파일 (이번 주)</div><div class="tv">완화 표현 사용이 <b>늘어나는 중</b> ↑ · 아직 위챗에서 서면투가 가끔 나와요.</div></div>
+  <div class="tile link" onclick="go('strategy')"><div class="tk">전략 지도</div><div class="tv">요청·거절에 쓸 수 있는 전략들 보기 →</div></div>
+  <div class="tile link" onclick="go('report')"><div class="tk">주간 리포트</div><div class="tv">나의 언어 지문(语言指纹) 성장 보기 →</div></div>
+  ${cls?`<div class="tile"><div class="tk">교수자</div><div class="tv" style="color:var(--ink-soft)">학급 대시보드는 교수자 화면(3단계 개발)</div></div>`:''}`;
+}
+
+/* ── L1~L4 특징 도입 아크 (전략군 최초 도입 시 1회 · Roever Fig 5.2 · v2 수정 반영) ──
+   [수정1] 트리거 = 화행이 아니라 목표 특징(전략군: 요청·직접성·완화) 최초 도입.
+   [수정2] 아크 샘플 셀 = 미션과 유사(위챗·어색한 동급생·중R) — 다른 문항·자극만 강제
+           (intro_example_item ≠ production_item · 같은 인물·사건·원문 금지 · 전략 재사용은 목적).
+   [수정4] '원어민 샘플' ❌ → 검수된 참조 사례 A·B + 경계 (복수 적절안).
+   [수정5] 아크 종료 = 미션 1개로 합류(스케줄 관계, 화면 중첩 아님).
+   LOG: feature_introduced(이수·스킵) 저장 → 배정 엔진이 이후 일반 미션만 배정. */
+const ARC_STEPS=['① 장면','② 관찰','③ 원리','④ 분류 게임'];
+const ARC_TAGS=[
+  '<b>L1 Hook·Orientation</b> — 화용 실패 장면(갑분싸) · 규칙 없음',
+  '<b>L2 귀납 관찰</b> — 검수된 참조 사례(A·B+경계) + 탭 noticing · 규칙 비밀 · 모듈 A 엔진',
+  '<b>L3 명시적 메타화용 설명</b> — P·D·R 표 + 전략지도 개방(§3-B)',
+  '<b>L4 수용 연습</b> — 과소/적정/과잉 분류(단일정답 MC 금지, Roever) · 모듈 A 역방향'];
+const CLUES=[
+  {zh:'李伟，在忙吗？',why:'상황 묻기 — 본론 전에 상대 사정 확인'},
+  {zh:'不好意思，',why:'완충 표현 — 부탁의 문을 부드럽게 엶'},
+  {zh:'我上次的课堂笔记没记全，',why:'이유 제시 — 왜 부탁하는지 먼저'},
+  {zh:'不方便的话也没关系~',why:'선택권 부여 — 거절할 여지를 열어둠'}];
+function vLesson(){
+  const prog=`<div class="arc-prog">${ARC_STEPS.map((s,i)=>`<span class="${i===S.arc?'on':''} ${i<S.arc?'done':''}">${s}</span>`).join('')}</div>`;
+  const body=[arcHook,arcNotice,arcExplain,arcGame][S.arc]();
+  const clsDone = Object.keys(S.cls).length>=3;
+  const canNext = S.arc===1 ? S.clues.length>=3 : (S.arc===3 ? clsDone : true);
+  const next = S.arc<3
+    ? `<button class="btn" ${canNext?'':'disabled'} onclick="S.arc++;render()">${['다음: 이 상황을 잘 넘긴 사람들 →','다음: 왜 그럴까? →','다음: 눈으로 확인 →'][S.arc]}</button>`
+    : `<button class="btn acc" ${canNext?'':'disabled'} onclick="go('mission')">이제 직접 해볼 차례 — 미션 1개 →</button>`;
+  app().innerHTML=`
+  <div class="scr-tag">화면 <b>L1~L4 · 특징 도입 아크</b> — 요청 · 전략군 <b>직접성·완화</b> · 최초 도입 시 1회(아크+미션1개 ≈ 8~10분), 이후엔 미션만 배정 &nbsp;|&nbsp; ${ARC_TAGS[S.arc]}</div>
+  ${prog}${body}
+  <div class="nav">
+    <button class="btn ghost" ${S.arc===0?'disabled':''} onclick="S.arc--;render()">← 이전</button>
+    <button class="btn ghost" onclick="go('home')" style="font-size:12px;padding:8px 12px">건너뛰기 (feature_introduced=skip 기록)</button>
+    <div class="sp"></div>${next}
+  </div>`;
+}
+function arcHook(){ return `
+  <div class="card"><div class="eyebrow">요청 · 직접성과 완화 — 첫 만남</div><h2>어느 유학생의 3분 침묵</h2>
+  <p class="lead">민준 씨, 이번 학기 처음 같은 조가 된 리웨이에게 위챗으로 부탁을 보냈는데…</p>
+  <div class="scene">
+    <div class="dir">— 밤 9시, 위챗. 아직 서로 존댓말도 어색한 사이.</div>
+    <div style="margin:8px 0"><b>민준:</b> <span class="zh">把上次的课件发我一下。</span></div>
+    <div class="dir">— 읽음 표시. <span class="frz">답장 없는 3분.</span></div>
+    <div style="margin:8px 0"><b>리웨이:</b> <span class="zh">哦，好。</span> <span class="dir">(파일만 툭. 그 뒤로 대화 끊김)</span></div>
+  </div>
+  <p class="lead" style="margin:14px 0 0">문법은 <b>완벽</b>했습니다. 그런데 왜 차가워졌을까요? — 규칙 설명은 잠시 미뤄두고, 같은 상황을 잘 넘긴 사람들을 먼저 봅시다.</p></div>`; }
+function arcNotice(){ return `
+  <div class="card"><div class="eyebrow">검수된 참조 사례 — 정답이 아니라 범위</div><h2>특이한 부분을 눌러보세요</h2>
+  <p class="lead">비슷한 상황(아직 어색한 동급생에게 위챗 부탁)의 사례예요. <b>민준의 말에는 없던 것</b>이 4군데 숨어 있어요.</p>
+  <div class="situ" style="line-height:2">
+    ${CLUES.map((c,i)=>`<span class="clue ${S.clues.includes(i)?'found':''}" onclick="arcClue(${i})">${c.zh}</span>`).join(' ')}
+    <span class="zh">你的笔记能发我看看吗？</span>
+  </div>
+  <div class="clue-count">단서 ${S.clues.length} / 4 발견 ${S.clues.length>=3?'— 충분해요!':''}</div>
+  ${S.clues.map(i=>`<div class="game-fb" style="color:var(--ok)">✓ ${CLUES[i].why}</div>`).join('')}
+  ${S.clues.length>=3?`
+  <p class="lead" style="margin:14px 0 8px">적절한 방식은 <b>하나가 아니에요</b> — 같은 부탁의 다른 사례와 경계도 보세요.</p>
+  <div class="cand good"><span class="tag">사례 B · 더 간결해도 적절</span><div class="zh">李伟，不好意思，笔记能发我一下吗？谢啦~</div></div>
+  <div class="cand edge"><span class="tag">경계 · 문법은 맞는데 과해요</span><div class="zh">尊敬的李伟同学，恳请您将笔记发送于我，不胜感激。</div></div>`:''}
+  <p class="thint" style="margin-top:10px">왜 이런 말들이 붙었을까요? 규칙은 다음 화면에서. (3개 이상 찾으면 진행)</p></div>`; }
+function arcExplain(){ return `
+  <div class="card"><div class="eyebrow">이제 원리를 봅시다</div><h2>방금 그 사례, 이렇게 읽습니다</h2>
+  <table class="pdr-table">
+    <tr><th>상대와의 지위</th><td>같은 학년 동급생 = 동등 → 존칭은 오히려 거리감</td></tr>
+    <tr><th>가까움</th><td class="hi">아직 어색한 사이 → 반말 명령형은 위험</td></tr>
+    <tr><th>부탁의 부담</th><td class="hi">노트 전체 공유 = 중간 부담 → <b>완충 한 겹 + 출구</b></td></tr>
+  </table>
+  <p class="lead">어색한 사이의 중간 부담이라면 <b>완충 한 마디와 선택권</b>이면 충분한 경우가 많아요. 겹겹이 쌓으면(경계 사례) 오히려 거리를 둡니다 — <b>많을수록 좋은 게 아니라 상황에 맞는 만큼</b>.</p>
+  <div class="unlock">🔓 <span>요청 <b>전략 지도</b>가 열렸어요 — 방금 찾은 4개 단서가 지도의 전략들이에요.</span>
+    <button class="btn ghost" style="margin-left:auto;font-size:12px;padding:6px 10px" onclick="go('strategy')">지도 보기</button></div></div>`; }
+/* [수정3] 단일정답 고르기 ❌ → 과소/적정/과잉 3분류 (화행엔 MC 부적합, Roever) */
+const GAME=[
+  {zh:'笔借我。',truth:'under',fb:'처음 보는 사이엔 갑작스럽게 들려요 (과소완화).'},
+  {zh:'同学，不好意思，笔能借我用一下吗？',truth:'ok',fb:'완충 한 마디 + 의문형 — 이 상황의 적정 범위예요.'},
+  {zh:'尊敬的同学，恳请您将笔借予我一用，不胜感激。',truth:'over',fb:'펜 하나에 이 격식 — "나라 잃은 사람"처럼 과잉이에요.'}];
+const CLS_LABELS=[['under','너무 직접'],['ok','알맞음'],['over','과잉 공손']];
+function arcGame(){
+  const done=Object.keys(S.cls).length>=3;
+  const allRight=done && GAME.every((g,i)=>S.cls[i]===g.truth);
+  return `
+  <div class="card"><div class="eyebrow">분류 게임 — 온도 맞추기</div><h2>세 사람의 부탁, 각각 어떤가요?</h2>
+  <p class="lead">상황: <b>처음 보는 옆자리 학생</b>에게 펜을 빌립니다. 각 발화를 <b>너무 직접 / 알맞음 / 과잉 공손</b>으로 분류해보세요. — 정답 문장 하나를 고르는 게 아니에요.</p>
+  ${GAME.map((g,i)=>{
+    const sel=S.cls[i];
+    return `<div class="game-opt" style="cursor:default">${g.zh}
+      <div style="display:flex;gap:6px;margin-top:9px">${CLS_LABELS.map(([k,lab])=>{
+        const on=sel===k; const right=on&&k===g.truth;
+        return `<button class="btn ghost" style="font-size:12px;padding:5px 12px;font-family:var(--sans);${on?(right?'border-color:var(--ok);color:var(--ok);font-weight:700':'border-color:var(--danger);color:var(--danger);font-weight:700'):''}" onclick="S.cls[${i}]='${k}';render()">${lab}</button>`;
+      }).join('')}</div>
+      ${sel?`<div class="game-fb" style="color:${sel===g.truth?'var(--ok)':'var(--danger)'};font-family:var(--sans)">${sel===g.truth?'✓ ':'✗ '}${g.fb}</div>`:''}</div>`;
+  }).join('')}
+  ${done?`<p class="lead" style="margin-top:10px">${allRight?'감 잡으셨어요 — 완화는 <b>상황에 맞는 만큼만</b>.':'분류를 다시 살펴보세요 — 피드백을 참고해서.'} 이제 직접 해볼 차례예요.</p>`:''}</div>`;
+}
+window.arcClue=i=>{ if(!S.clues.includes(i)) S.clues.push(i); render(); };
+
+/* ── S3~S8 미션 (v2 흐름 + 전이) ── */
+function vMission(){
+  const prog = `<div class="prog">${M.mSteps.map((s,i)=>`<div class="st ${i<S.m?'done':''} ${i===S.m?'on':''}"><div class="dot"></div><div class="lb">${s}</div></div>`).join('')}</div>`;
+  const body = [mSitu,mDo,mDiff,mFix,mCS,mEnd][S.m]();
+  const modTag = ['<b>모듈 A 정방향(레이더)</b> — 산출 전 선판단',
+    '<b>모듈 E</b> — 한→중 번역 수행(=최초 산출)',
+    '수신자카드(공통 §3) + <b>모듈 B</b> 대조 + <b>E</b> 의미충실 게이트',
+    '<b>모듈 B</b> — 최소 수정',
+    '⑥ 최소대조 엔진(전이) — B·E 공통',
+    '§3-B 오늘의 원리 + <b>E</b> 화용적절 채점(4치)'][S.m];
+  let next='';
+  if(S.m===0) next=`<button class="btn" id="mnext" ${S.sel===null?'disabled':''} onclick="S.m=1;render()">번역하러 가기 →</button>`;
+  else if(S.m===1) next=`<button class="btn" id="mnext" ${S.draft.trim().length<2?'disabled':''} onclick="S.m=2;render()">제출하고 비교하기 →</button>`;
+  else if(S.m===2) next=`<button class="btn" id="mnext" onclick="S.m=3;render()">한 곳 고치러 →</button>`;
+  else if(S.m===3) next=`<button class="btn" id="mnext" ${S.revised.trim().length<2?'disabled':''} onclick="S.m=4;render()">전이 →</button>`;
+  else if(S.m===4) next=`<button class="btn" id="mnext" ${S.cs.trim().length<2?'disabled':''} onclick="S.m=5;render()">마무리 →</button>`;
+  else next=`<button class="btn acc" onclick="go('home')">홈으로 (기록 저장) →</button>`;
+  app().innerHTML = `
+  <div class="scr-tag">화면 <b>S3~S8 · 미션</b> — 전이 미션(6화면) · 내부 7단계는 숨김 &nbsp;|&nbsp; 이 단계 엔진: ${modTag}</div>
+  ${prog}<div id="mbody">${body}</div>
+  <div class="nav">
+    <button class="btn ghost" ${S.m===0?'disabled':''} onclick="S.m--;render()">← 이전</button>
+    <button class="btn ghost" onclick="mDemo()" style="font-size:12px;padding:8px 12px">데모 채우기</button>
+    <div class="sp"></div>${next}
+  </div>`;
+  /* innerHTML 주입 스크립트는 실행 안 되므로, 렌더 후 리스너를 여기서 붙인다 (전체 재렌더 없이 next만 토글) */
+  const ta=$('#ta'); if(ta) ta.addEventListener('input',e=>{S.draft=e.target.value; $('#mnext').disabled=S.draft.trim().length<2;});
+  const rv=$('#rv'); if(rv) rv.addEventListener('input',e=>{S.revised=e.target.value; $('#mnext').disabled=S.revised.trim().length<2;});
+  const cs=$('#cs'); if(cs) cs.addEventListener('input',e=>{S.cs=e.target.value; $('#mnext').disabled=S.cs.trim().length<2;});
+}
+function mSitu(){ return `
+  <div class="card"><div class="eyebrow">상황 읽기</div><h2>위챗으로 부탁을 하나 보내야 해요</h2>
+  <p class="lead">${M.ctx.rel}</p>
+  <div class="wx"><div class="wx-top">微信 · ${M.ctx.partner}</div>
+    <div class="bubble them"><span class="who">${M.ctx.partner}</span>发表资料我做好一半了，你那边呢？</div>
+    <div class="bubble me">…(내가 지금 이 부탁을 보내야 함)</div></div>
+  <div class="srcbox"><b>내가 전하려는 말 (한국어)</b>${M.srcKo}</div>
+  <div class="q">번역하기 전에 하나만. 지금 샤오린과 나는 어떤 사이일까?</div>
+  <div class="opts">${['아주 친한 사이','알지만 아직 조금 어색한 사이','오늘 처음 연락하는 사이'].map((o,i)=>`<button class="${S.sel===i?'sel':''}" onclick="S.sel=${i};render()">${o}</button>`).join('')}</div>
+  ${S.sel!==null?`<div class="microfb">✓ 좋아요 — 이 사이라면 '너무 딱딱하지도, 너무 막 던지지도 않게'가 관건이에요.</div>`:''}</div>`; }
+function mDo(){ return `
+  <div class="card"><div class="eyebrow">직접 해보기</div><h2>중국어로 바꿔보세요</h2>
+  <p class="lead">먼저 스스로 해보는 게 핵심이에요. 모범 표현은 제출한 뒤에 함께 봅니다.</p>
+  <div class="srcbox"><b>한국어 원문</b>${M.srcKo}</div>
+  <textarea id="ta" placeholder="여기에 중국어로 입력…">${S.draft}</textarea></div>`; }
+function mDiff(){ return `
+  <div class="card"><div class="eyebrow">차이 발견</div><h2>내 표현이 어떻게 읽힐까요?</h2>
+  <div class="recv"><b>받는 사람 입장에서는…</b>
+    <span>· 이유(정리가 늦음)는 잘 전해져요. 다만 부탁을 여는 <b>완충 한 마디</b>가 없어 조금 갑작스럽게 느껴질 수 있어요.</span>
+    <span>· 아주 편한 사이라면 이대로도 무리 없이 통할 수 있어요.</span></div>
+  <div class="fidcheck">원문의 '안 되면 편하게 말해줘'(선택권)가 내 번역에 담겼는지 확인해 보세요.</div>
+  <p class="lead" style="margin-bottom:10px">같은 부탁을 <b>한 가지만 바꿔서</b> 나란히 놓아봤어요.</p>
+  <div class="cand mine"><span class="tag">내 표현</span><div class="zh">${S.draft||M.demoDraft}</div></div>
+  <div class="cand good"><span class="tag">완충 한 가지만 더한 표현</span><div class="zh">小林，<b>不好意思</b>，发表资料的截止日期能推迟一天吗？我这部分整理得有点慢。</div><div class="feat"><span>완충 opener 不好意思</span></div></div>
+  <div class="cand edge"><span class="tag">경계 · 문법은 맞는데 사이가 어색해져요</span><div class="zh">小林您好，非常抱歉打扰您。请问发表资料的截止日期是否可以延期一天？给您带来不便，敬请谅解。</div><div class="feat bad"><span>한국식 격식 직역투</span><span>동급생에게 您·敬请谅解 = 거리 두기</span><span>문법 완벽·관계 어색</span></div></div></div>`; }
+function mFix(){ if(!S.revised)S.revised=S.draft||M.demoDraft;
+  const tail={beginner:`(예: <span class="zh">不好意思</span> / <span class="zh">…可以吗</span> 같은 신호 하나) — 한 곳만.`,intermediate:`(미안함을 표하거나, 가능한지 묻는 방식 중 하나면 돼요) — 한 곳만.`,advanced:`완충 표현 하나. — 한 곳만.`}[S.level];
+  return `<div class="card"><div class="eyebrow">한 곳 고치기</div><h2>딱 한 군데만 손봐요</h2>
+  <div class="fixnote"><b>고칠 위치와 이유</b>부탁을 <b>여는 첫 부분</b>에 완충 표현이 하나 있으면 훨씬 편하게 읽혀요. ${tail}</div>
+  <textarea id="rv">${S.revised}</textarea>
+  <div class="thint">모범답안을 베끼지 않아도 돼요. 당신 문장에 완충 한 마디만.</div></div>`; }
+function mCS(){ return `
+  <div class="card"><div class="eyebrow">전이 — 한 가지만 바뀐 상황</div><h2>이번엔 상대가 바뀌었어요</h2>
+  <div class="csbox"><b>바뀐 것 하나:</b> 상대가 <b>처음 뵙는 교수님</b>, 매체는 <b>이메일</b>. (관계·매체만 변경, 부탁은 동일)</div>
+  <div class="srcbox"><b>같은 뜻을, 이번엔 이 상대에게</b>${M.srcKo}</div>
+  <textarea id="cs" placeholder="교수님께 이메일로…">${S.cs}</textarea>
+  <div class="thint">방금 배운 완화를, 관계·매체가 바뀌면 <b>얼마나 더</b> 얹어야 할지 감을 시험해보세요.</div></div>`; }
+function mEnd(){ return `
+  <div class="card"><div class="eyebrow">마무리</div>
+  <div class="verdict">◐ 부분 조정 필요 <span style="font-weight:500;color:var(--ink-soft)">— 뜻은 정확, 완화만 보강</span></div>
+  <div class="principle"><span class="k">오늘의 원리</span>
+    <div class="row"><b>핵심 원리</b><div class="v">부담이 있는 부탁은, 친한 사이라도 <b>완화 표현</b>(<span class="zh">不好意思 / 可以吗</span>)이 하나 있으면 상대가 더 편하게 받아들이는 데 도움이 될 수 있어요.</div></div>
+    <div class="row"><b>적용 조건</b><div class="v">편한 매체에서도 부탁의 부담이 '중간' 이상일 때.</div></div>
+    <div class="row"><b>예외</b><div class="v">아주 급하거나 매우 친하면 생략도 자연스러울 수 있어요 — 규칙이 아니라 스펙트럼.</div></div></div>
+  <p class="lead" style="margin:0">이 기록은 <b>언어 지문</b>에 쌓여요(백그라운드). 홈에서 다음 미션을 이어가세요.</p></div>`; }
+function mDemo(){ if(S.m===0&&S.sel===null)S.sel=1; else if(S.m===1)S.draft=M.demoDraft; else if(S.m===3)S.revised='小林，不好意思，发表资料的截止日期能推迟一天吗？我这部分整理得有点慢~'; else if(S.m===4)S.cs='尊敬的X教授：您好！冒昧打扰，我想请问…'; render(); }
+window.mDemo=mDemo;
+
+/* ── S9 전략 지도 (요청) ── */
+function vStrat(){
+  const rows=[
+    ['직접 요청','把笔记借我一下。','아주 편하고 부담 낮을 때'],
+    ['관습적 간접','能不能… / 可以…吗？','기본값 — 선택권을 여는 표현'],
+    ['힌트','我这边资料还没整理好…','아주 가까운 사이에서 은근히'],
+    ['이유 제시','因为…所以想请你…','부담이 있을수록 이유를 곁들여'],
+    ['부담 인정','不好意思 / 麻烦你了','상대의 수고를 먼저 인정'],
+    ['선택권 부여','不行的话直接说','거절할 여지를 열어두기'],
+    ['거절 여지 제공','如果方便的话…','고부담·윗사람일수록 필수'],
+  ];
+  app().innerHTML = `
+  <div class="scr-tag">화면 <b>S9 · 전략 지도</b> — 화행별 1장(요청) &nbsp;|&nbsp; 엔진: <b>§3-B 전략 지도</b> (D 전략 태그셋과 동일 어휘)</div>
+  <div class="gate-note">🔒 이 지도는 <b>한 번 직접 해본 뒤</b>에 열려요 (중급 규칙). 정답을 먼저 보여주지 않아요.</div>
+  <div class="card"><div class="eyebrow">요청 — 이럴 때 쓸 수 있는 전략들</div>
+  ${rows.map(r=>`<div class="strat"><b>${r[0]}</b> · <span class="zh">${r[1]}</span><div class="cond">${r[2]}</div></div>`).join('')}
+  <p class="lead" style="margin:14px 0 0">정답은 하나가 아니에요. 상황(P·D·R·매체)에 따라 <b>어울리는 전략의 범위</b>가 달라집니다.</p></div>
+  <div class="nav"><button class="btn ghost" onclick="go('home')">← 홈</button><div class="sp"></div><button class="btn acc" onclick="go('mission')">미션에서 써보기 →</button></div>`;
+}
+
+/* ── S10 주간 리포트 (语言指纹) ── */
+function vReport(){
+  app().innerHTML = `
+  <div class="scr-tag">화면 <b>S10 · 주간 리포트</b> — 미션 5회 또는 7일 도달 시 노출 &nbsp;|&nbsp; 엔진: <b>모듈 D 语言指纹</b>(종단)</div>
+  <div class="card"><div class="eyebrow">이번 주 · 나의 언어 지문</div><h2>당신의 표현 습관</h2>
+    <div class="metric"><span>격식 편향 지수</span><span><b>다소 높음</b></span></div><div class="gauge"><i style="width:68%"></i></div>
+    <p class="thint" style="margin-bottom:16px">위챗처럼 편한 상황에서도 서면투가 나오는 편 — 조금씩 낮아지는 중 ↓</p>
+    <h3>화행별 감각</h3>
+    <div class="actbar"><span>요청</span> <span class="dots">●●●○</span> &nbsp; <span>거절</span> <span class="dots" style="color:var(--danger)">●●○○</span> <span style="font-size:12px;color:var(--danger)">← 약점</span></div>
+  </div>
+  <div class="card"><h3>자주 기대는 '안전 표현'</h3>
+    <span class="chip">请…一下 · 요청의 87%</span><span class="chip">所以 · 연결어 편중</span><span class="chip">书면투 종결</span>
+    <div class="challenge"><b>이번 주 습관 깨기 챌린지</b><br>요청 미션에서 <span class="zh">请…一下</span> 없이 — 간접 전략 2종으로 바꿔보기.</div>
+  </div>
+  <div class="card"><h3>성장</h3>
+    <p style="font-size:14px">완화 전략의 <b>다양성이 늘고</b> 있어요. 판단은 잘하는데 직접 산출에서 완화가 빠지는 경우가 아직 있어요.</p>
+    <span class="evgrade">증거량: 잠정 경향 (3회 관찰) — 아직 '반복 패턴'으로 단정하지 않아요</span>
+  </div>
+  <div class="nav"><button class="btn ghost" onclick="go('home')">← 홈</button><div class="sp"></div><button class="btn acc" onclick="go('mission')">챌린지 미션 시작 →</button></div>`;
+}
+
+document.querySelectorAll('#jmap button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>{S.mode=b.dataset.m; if(S.view!=='home')S.view='home'; render();});
+render();
+</script>
+</body>
+</html>
