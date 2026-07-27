@@ -74,4 +74,30 @@ describe("core batch resume", () => {
     ]);
     expect(progress).toEqual([1, 2]);
   });
+
+  it("부분 재생성에서도 원래 계획 index로 item key와 결과 번호를 유지한다", async () => {
+    const cells = [
+      cell({ speech_act_ui: "opposition", topic_code: "daily_opposition" }),
+      cell({ speech_act_ui: "complaint", topic_code: "work_complaint" }),
+    ];
+    const itemIndexes = [12, 16];
+    const existingItems = new Map(
+      cells.map((item, index) => [
+        coreGenerationItemKey(item, itemIndexes[index]),
+        { scenarioId: `scenario-${itemIndexes[index]}` },
+      ]),
+    );
+
+    const result = await runCoreBatch(cells, {
+      runId: "core_selected_test",
+      itemIndexes,
+      existingItems,
+    });
+
+    expect(result.map((item) => item.index)).toEqual(itemIndexes);
+    expect(result.map((item) => item.scenarioId)).toEqual([
+      "scenario-12",
+      "scenario-16",
+    ]);
+  });
 });

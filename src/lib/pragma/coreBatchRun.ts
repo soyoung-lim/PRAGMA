@@ -46,6 +46,12 @@ export interface CoreCellResult {
 export interface CoreRunOptions {
   languageDirection?: LanguageDirection;
   runId: string;
+  /**
+   * cells가 전체 계획의 부분집합일 때 각 항목의 원래 0-based 계획 index.
+   * 검수에서 특정 셀만 새 run ID로 재생성해도 generation_item_key와 화면 번호를
+   * 원래 계획 기준으로 유지한다. 생략하면 기존처럼 배열 index를 쓴다.
+   */
+  itemIndexes?: readonly number[];
   /** 같은 run ID로 재개할 때 DB에 이미 존재하는 item key → 저장 행. */
   existingItems?: ReadonlyMap<string, ExistingCoreRunItem | string>;
   concurrency?: number;
@@ -257,6 +263,9 @@ export async function runCoreBatch(
   cells: BatchCell[],
   opts: CoreRunOptions,
 ): Promise<CoreCellResult[]> {
+  if (opts.itemIndexes && opts.itemIndexes.length !== cells.length) {
+    throw new Error("선택 셀 index 수가 실행 셀 수와 일치하지 않습니다.");
+  }
   const concurrency = Math.max(1, Math.min(opts.concurrency ?? 3, 8));
   const results: CoreCellResult[] = [];
   let cursor = 0;
@@ -269,12 +278,13 @@ export async function runCoreBatch(
       cursor += 1;
       if (i >= cells.length) return;
       const cell = cells[i];
-      const existing = opts.existingItems?.get(coreGenerationItemKey(cell, i));
+      const itemIndex = opts.itemIndexes?.[i] ?? i;
+      const existing = opts.existingItems?.get(coreGenerationItemKey(cell, itemIndex));
       const existingScenarioId =
         typeof existing === "string" ? existing : existing?.scenarioId;
       const res: CoreCellResult = existingScenarioId
         ? {
-            index: i,
+            index: itemIndex,
             cell,
             ok: true,
             scenarioId: existingScenarioId,
@@ -282,7 +292,7 @@ export async function runCoreBatch(
             coreContent:
               typeof existing === "string" ? undefined : existing?.coreContent,
           }
-        : await runCoreCell(cell, i, opts);
+        : await runCoreCell(cell, itemIndex, opts);
       results.push(res);
       done += 1;
       opts.onProgress?.(done, cells.length, res);
