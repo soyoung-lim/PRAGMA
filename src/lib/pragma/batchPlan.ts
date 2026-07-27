@@ -23,16 +23,26 @@ import {
 } from "@/lib/pragma/enums";
 import {
   SCENARIO_TOPICS,
+  topicSupportsContext,
   type ScenarioTopic,
   type ThemeCode,
 } from "@/lib/pragma/scenarioTopics";
 
-/** 생성 1건의 조건. AdminGenerator의 폼 한 벌과 같은 축을 갖는다. */
+/**
+ * 생성 1건의 조건.
+ *
+ * 구인축: speech_act_ui + P·D·R
+ * 과업 조건: mode
+ * 편성층: level + domain
+ * 사건 메타: theme/topic/industry
+ *
+ * 이 필드들은 모두 필요하지만 동등한 연구축은 아니다.
+ */
 export interface BatchCell {
   speech_act_ui: SpeechActUI;
   level: LearnerLevel;
   domain: Domain;
-  /** 수행 방식 = 1차 축(channel 폐기 2026-07-25). translation(텍스트 번역) | stt_interpreting(음성 통역). */
+  /** 수행 방식 = 별도 과업 트랙. translation(텍스트 번역) | stt_interpreting(음성 통역). */
   mode: GenMode;
   /** domain === "work" 일 때만 채운다 (스키마 제약과 동일) */
   industry: IndustrySector | null;
@@ -64,6 +74,8 @@ export interface BatchCell {
 function selectTopic(
   act: SpeechActUI,
   domain: Domain,
+  pdr: { p: PdrPower; d: PdrDistance; r: PdrBurden },
+  mode: GenMode,
   seq: number,
   themeCount: Record<string, number>,
   topicCount: Record<string, number>,
@@ -71,9 +83,20 @@ function selectTopic(
   const inDomain = SCENARIO_TOPICS.filter((topic) => topic.allowedDomains.includes(domain));
   const explicitMatch = inDomain.filter((topic) => topic.allowedSpeechActs?.includes(act));
   const wildcardMatch = inDomain.filter((topic) => !topic.allowedSpeechActs);
-  const finalPool = explicitMatch.length > 0 ? explicitMatch : wildcardMatch;
+  const context = {
+    speechAct: act,
+    domain,
+    power: pdr.p,
+    distance: pdr.d,
+    mode,
+  };
+  const explicitCompatible = explicitMatch.filter((topic) => topicSupportsContext(topic, context));
+  const wildcardCompatible = wildcardMatch.filter((topic) => topicSupportsContext(topic, context));
+  const finalPool = explicitCompatible.length > 0 ? explicitCompatible : wildcardCompatible;
   if (!finalPool.length) {
-    throw new Error(`화행·도메인 일치 topic 없음: ${act}×${domain}`);
+    throw new Error(
+      `화행·P·D·mode·domain 호환 topic 없음: ${act}×${pdr.p}×${pdr.d}×${mode}×${domain}`,
+    );
   }
 
   // 1차 = 과소 테마 우선, 2차(0-k·81⑥) = 그 테마 안에서 최소 사용 topic(동일 topic 반복 방지).
@@ -121,6 +144,22 @@ export const DEFAULT_QUOTA: BatchQuota = {
   interpretingRatio: 0.3, // 교수님 지시에 "통역"이 명시됨 — 바닥(≥1)을 보장한다
 };
 
+/**
+ * 500 본배치 승인안 = 정확히 495건.
+ *
+ * 화행당 번역 42건(13+15+14) + 통역 13건(4+5+4) = 55건,
+ * 9화행 × 55 = 495건. 각 화행의 P3×D3×R3 27셀을 두 차례 가까이
+ * 순회하므로 243 구인셀을 전부 채우고, 54 전달셀도 셀당 ≥3을 충족한다.
+ */
+export const FULL_BATCH_QUOTA_495: BatchQuota = {
+  perLevel: {
+    beginner_intermediate: 13,
+    intermediate: 15,
+    advanced: 14,
+  },
+  interpretingRatio: 0.3,
+};
+
 /** 통역 개수 = 번역개수 기준 비율, 단 셀 공백 방지를 위해 최소 1(0-h·57). */
 export function interpretingCount(translationCount: number, ratio: number): number {
   if (translationCount <= 0) return 0;
@@ -144,6 +183,49 @@ export interface TopicCoverageAudit {
   missing: TopicCoverageCell[];
   /** allowedSpeechActs 미지정 topic에만 의존하는 조합 — 의미 적합성 검토 대상. */
   wildcardOnly: TopicCoverageCell[];
+}
+
+export interface TopicCompatibilityGap extends TopicCoverageCell {
+  power: PdrPower;
+  distance: PdrDistance;
+  mode: GenMode;
+}
+
+/** 전체 화행·P·D·mode·domain에서 선택 가능한 사건 시드가 있는지 확인한다. */
+export function auditTopicCompatibility(
+  acts: SpeechActUI[] = SPEECH_ACTS,
+  domains: Domain[] = DOMAINS,
+  topics: ScenarioTopic[] = SCENARIO_TOPICS,
+): TopicCompatibilityGap[] {
+  const gaps: TopicCompatibilityGap[] = [];
+  const powers: PdrPower[] = ["equal", "higher", "lower"];
+  const distances: PdrDistance[] = ["close", "acquaintance", "formal"];
+  const modes: GenMode[] = ["translation", "stt_interpreting"];
+
+  for (const speechAct of acts) {
+    for (const domain of domains) {
+      for (const power of powers) {
+        for (const distance of distances) {
+          for (const mode of modes) {
+            const context = { speechAct, domain, power, distance, mode };
+            const explicit = topics.some(
+              (topic) =>
+                topic.allowedSpeechActs?.includes(speechAct) &&
+                topicSupportsContext(topic, context),
+            );
+            const wildcard = topics.some(
+              (topic) => !topic.allowedSpeechActs && topicSupportsContext(topic, context),
+            );
+            if (!explicit && !wildcard) {
+              gaps.push({ speechAct, domain, power, distance, mode });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return gaps;
 }
 
 /**
@@ -177,16 +259,27 @@ const INDUSTRIES: IndustrySector[] = [
   "education_research", "public_international_affairs", "culture_content_media",
 ];
 
-// P·D·R 회전 — 같은 셀에서 여러 개를 뽑을 때 조건이 겹치지 않게 한다.
-// 부담(R)은 저·중·고를 고루 돌려 15주 배치의 부담도 곡선에 재료를 준다.
-const PDR_ROTATION: { p: PdrPower; d: PdrDistance; r: PdrBurden }[] = [
-  { p: "equal", d: "acquaintance", r: "mid" },
-  { p: "higher", d: "formal", r: "high" },
-  { p: "equal", d: "close", r: "low" },
-  { p: "higher", d: "acquaintance", r: "mid" },
-  { p: "lower", d: "acquaintance", r: "low" },
-  { p: "higher", d: "formal", r: "mid" },
-];
+// 연구 구인 행렬 = 화행9 × P3 × D3 × R3 = 243.
+// 앞 9개부터 P·D가 모두 나타나고 R도 균형을 이루도록 순서를 섞되,
+// 27개 전체에서는 각 P·D·R 조합이 정확히 한 번씩 나타난다.
+const P_VALUES: PdrPower[] = ["equal", "higher", "lower"];
+const D_VALUES: PdrDistance[] = ["acquaintance", "formal", "close"];
+const R_VALUES: PdrBurden[] = ["mid", "high", "low"];
+export const PDR_CONSTRUCT_CELLS: {
+  p: PdrPower;
+  d: PdrDistance;
+  r: PdrBurden;
+}[] = Array.from({ length: 27 }, (_, index) => {
+  const pIndex = index % 3;
+  const dIndex = Math.floor(index / 3) % 3;
+  const cycle = Math.floor(index / 9);
+  const rIndex = (cycle + dIndex + index) % 3;
+  return {
+    p: P_VALUES[pIndex],
+    d: D_VALUES[dIndex],
+    r: R_VALUES[rIndex],
+  };
+});
 
 // zh_ko 검증 범위(계약 0-l·89) — 승격 가능 3화행 × 수준3 × 모드2 = 18셀, 셀당 ≥1.
 // 500 본 배치는 ko_zh 중심 유지. zh_ko 확장 쿼터는 18셀 눈검사 후 별도 결정.
@@ -211,7 +304,8 @@ export function buildBatchPlan(
   acts: SpeechActUI[] = SPEECH_ACTS,
 ): BatchCell[] {
   const cells: BatchCell[] = [];
-  let seq = 0; // 전역 순번 — 도메인·산업·P·D·R을 결정론적으로 회전시키는 커서
+  let seq = 0; // 전역 순번 — topic·산업 tie-break용
+  const actOrdinal: Record<string, number> = {};
   const themeCount: Record<string, number> = {}; // 테마 균형 커서(계약 §7-0)
   const topicCount: Record<string, number> = {}; // topic 반복 방지 커서(0-k·81⑥)
 
@@ -229,9 +323,24 @@ export function buildBatchPlan(
       ];
       for (const slot of modeSlots) {
         for (let i = 0; i < slot.count; i += 1) {
-          const domain = DOMAINS[seq % DOMAINS.length];
-          const pdr = PDR_ROTATION[seq % PDR_ROTATION.length];
-          const topic = selectTopic(speech_act_ui, domain, seq, themeCount, topicCount);
+          const ordinal = actOrdinal[speech_act_ui] ?? 0;
+          const actIndex = SPEECH_ACTS.indexOf(speech_act_ui);
+          const pdr = PDR_CONSTRUCT_CELLS[ordinal % PDR_CONSTRUCT_CELLS.length];
+          // P·D·R과 domain이 같은 modulo 커서를 공유하던 기존 결합을 끊는다.
+          // 같은 PDR 조합이 두 번째로 나타나면 domain도 한 칸 이동한다.
+          const domainIndex =
+            (Math.floor(ordinal / 3) + Math.floor(ordinal / 27) + Math.max(actIndex, 0)) %
+            DOMAINS.length;
+          const domain = DOMAINS[domainIndex];
+          const topic = selectTopic(
+            speech_act_ui,
+            domain,
+            pdr,
+            slot.mode,
+            seq,
+            themeCount,
+            topicCount,
+          );
           themeCount[topic.themeCode] = (themeCount[topic.themeCode] ?? 0) + 1;
           topicCount[topic.code] = (topicCount[topic.code] ?? 0) + 1;
 
@@ -250,6 +359,7 @@ export function buildBatchPlan(
             direction,
             count: 1,
           });
+          actOrdinal[speech_act_ui] = ordinal + 1;
           seq += 1;
         }
       }
@@ -282,6 +392,10 @@ export interface PlanSummary {
   minActLevelModeCount: number;
   /** 셀당 3개 미만인 셀 목록(대상 수준 한정) — 500 배치 전 검산용 */
   underMinCells: string[];
+  /** 연구 구인 행렬(화행×P×D×R)에서 비어 있는 셀. 500 본 배치는 0이어야 한다. */
+  emptyActPdrCells: string[];
+  /** 연구 구인 행렬 셀당 최소 개수. delivery 54셀 최소값과 별개다. */
+  minActPdrCount: number;
 }
 
 /**
@@ -303,6 +417,7 @@ export function summarizePlan(cells: BatchCell[], targetActs: SpeechActUI[] = SP
   const byDirection: Record<string, number> = {};
   const actLevel = new Set<string>();
   const actLevelModeCount: Record<string, number> = {};
+  const actPdrCount: Record<string, number> = {};
   const levelsPresent = new Set<string>();
   let translation = 0;
   let interpreting = 0;
@@ -321,6 +436,11 @@ export function summarizePlan(cells: BatchCell[], targetActs: SpeechActUI[] = SP
     actLevel.add(`${c.speech_act_ui}|${c.level}`);
     levelsPresent.add(c.level);
     bump(actLevelModeCount, `${c.speech_act_ui}|${c.level}|${modeOf(c)}`, c.count);
+    bump(
+      actPdrCount,
+      `${c.speech_act_ui}|${c.pdr_power}|${c.pdr_distance}|${c.pdr_burden}`,
+      c.count,
+    );
   }
 
   const emptyActLevelCells: string[] = [];
@@ -349,10 +469,23 @@ export function summarizePlan(cells: BatchCell[], targetActs: SpeechActUI[] = SP
   }
   if (!Number.isFinite(minActLevelModeCount)) minActLevelModeCount = 0;
 
+  const emptyActPdrCells: string[] = [];
+  let minActPdrCount = Infinity;
+  for (const act of targetActs) {
+    for (const pdr of PDR_CONSTRUCT_CELLS) {
+      const key = `${act}|${pdr.p}|${pdr.d}|${pdr.r}`;
+      const n = actPdrCount[key] ?? 0;
+      if (n === 0) emptyActPdrCells.push(`${act}·${pdr.p}·${pdr.d}·${pdr.r}`);
+      if (n < minActPdrCount) minActPdrCount = n;
+    }
+  }
+  if (!Number.isFinite(minActPdrCount)) minActPdrCount = 0;
+
   return {
     total: cells.reduce((n, c) => n + c.count, 0),
     byLevel, byDomain, byIndustry, bySpeechAct, byTheme, byDirection,
     translation, interpreting, emptyActLevelCells,
     emptyActLevelModeCells, minActLevelModeCount, underMinCells,
+    emptyActPdrCells, minActPdrCount,
   };
 }

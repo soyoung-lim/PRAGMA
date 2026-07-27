@@ -29,6 +29,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import {
+  DOMAIN,
+  INDUSTRY,
+  type Domain,
+  type IndustrySector,
+} from "@/lib/pragma/enums";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LanguageDirection = "ko-zh" | "zh-ko";
@@ -42,9 +48,6 @@ type PragmaticChallenge =
   | "formality_control"
   | "imposition_management";
 type ChallengeIntensity = "low" | "mid" | "high";
-type Domain = "daily" | "school" | "work";
-type IndustrySector = "trade" | "IT" | "finance" | "tourism" | "medical";
-
 type ReviewStatus =
   | "generated"
   | "needs_review"
@@ -64,18 +67,10 @@ const MODE_LABEL: Record<ScenarioMode, string> = {
   translation: "번역",
   stt_interpreting: "STT 순차통역",
 };
-const DOMAIN_LABEL: Record<Domain, string> = {
-  daily: "일상",
-  school: "학교",
-  work: "직장",
-};
-const INDUSTRY_LABEL: Record<IndustrySector, string> = {
-  trade: "무역",
-  IT: "IT",
-  finance: "금융",
-  tourism: "관광",
-  medical: "의료",
-};
+const isIndustrySector = (value: string | null): value is IndustrySector =>
+  Boolean(value && value in INDUSTRY);
+const industryLabel = (value: string) =>
+  isIndustrySector(value) ? INDUSTRY[value] : `기존 분류 · ${value}`;
 const PRAGMATIC_CHALLENGE_LABEL: Record<PragmaticChallenge, string> = {
   directness_control: "직접성 조절",
   formality_control: "격식 조절",
@@ -260,6 +255,11 @@ const AdminArchive = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [saving, setSaving] = useState(false);
+  const editingLegacyIndustry = useMemo(() => {
+    if (!editingId) return null;
+    const value = rows.find((row) => row.scenario_id === editingId)?.industry_sector ?? null;
+    return value && !isIndustrySector(value) ? value : null;
+  }, [editingId, rows]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -284,7 +284,7 @@ const AdminArchive = () => {
       source_text: r.source_text ?? "",
       status: statusFromDb(r.review_status, r.usage_assignment),
       domain: (r.domain as Domain | null) ?? null,
-      industry_sector: (r.industry_sector as IndustrySector | null) ?? null,
+      industry_sector: isIndustrySector(r.industry_sector) ? r.industry_sector : null,
     });
     setFormOpen(true);
   };
@@ -338,7 +338,10 @@ const AdminArchive = () => {
       challenge_intensity: form.challenge_intensity,
       hsk_level_min: form.hsk_level_min,
       domain: form.domain,
-      industry_sector: form.domain === "work" ? form.industry_sector : null,
+      industry_sector:
+        form.domain === "work"
+          ? form.industry_sector ?? editingLegacyIndustry
+          : null,
       review_status,
       usage_assignment,
     };
@@ -433,9 +436,9 @@ const AdminArchive = () => {
 
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {r.speech_act_text && <MetaTag>{r.speech_act_text}</MetaTag>}
-                  {r.domain && <MetaTag>{DOMAIN_LABEL[r.domain as Domain]}</MetaTag>}
-                  {r.industry_sector && INDUSTRY_LABEL[r.industry_sector as IndustrySector] && (
-                    <MetaTag>{INDUSTRY_LABEL[r.industry_sector as IndustrySector]}</MetaTag>
+                  {r.domain && <MetaTag>{DOMAIN[r.domain as Domain]}</MetaTag>}
+                  {r.industry_sector && (
+                    <MetaTag>{industryLabel(r.industry_sector)}</MetaTag>
                   )}
                   {r.language_direction && (
                     <MetaTag>{r.language_direction === "ko-zh" ? "한→중" : "중→한"}</MetaTag>
@@ -571,14 +574,14 @@ const AdminArchive = () => {
                 >
                   <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="daily">일상</SelectItem>
-                    <SelectItem value="school">학교</SelectItem>
-                    <SelectItem value="work">직장</SelectItem>
+                    {Object.entries(DOMAIN).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>산업 분야 {form.domain !== "work" && <span className="text-[11px] text-muted-foreground">(도메인이 '직장'일 때만)</span>}</Label>
+                <Label>업무 분야 {form.domain !== "work" && <span className="text-[11px] text-muted-foreground">(도메인이 '직장'일 때만)</span>}</Label>
                 <Select
                   value={form.industry_sector ?? ""}
                   onValueChange={(v) =>
@@ -588,13 +591,17 @@ const AdminArchive = () => {
                 >
                   <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="trade">무역</SelectItem>
-                    <SelectItem value="IT">IT</SelectItem>
-                    <SelectItem value="finance">금융</SelectItem>
-                    <SelectItem value="tourism">관광</SelectItem>
-                    <SelectItem value="medical">의료</SelectItem>
+                    {Object.entries(INDUSTRY).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {editingLegacyIndustry && form.domain === "work" && (
+                  <p className="text-[11px] text-amber-700">
+                    기존 분류값 `{editingLegacyIndustry}`이 저장되어 있습니다. 다른 내용을 수정해도 이 값은 보존되며,
+                    업무 분야를 바꾸려면 위 7개 정본 분류 중 하나를 선택해 주세요.
+                  </p>
+                )}
               </div>
             </div>
 

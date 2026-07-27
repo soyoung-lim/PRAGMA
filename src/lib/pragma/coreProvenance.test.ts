@@ -29,6 +29,17 @@ const PROV = {
   ai_adapted: true,
 };
 
+const CONTEXT_SPEC = {
+  standard_situation_code: "work.schedule_change.request",
+  role_pair: {
+    speaker_ko: "업무를 수행하는 실무자",
+    addressee_ko: "알고 지내는 상사",
+  },
+  speaker_entitlement: "일정 조정을 요청할 합리적 사유가 있다.",
+  addressee_obligation: "수락 의무는 없지만 요청을 검토할 수 있다.",
+  decision_authority: "상대가 일정 변경을 승인할 권한을 가진다.",
+};
+
 describe("provenance-lite (0-q·98)", () => {
   it("① provenance가 없는 기존 코어는 그대로 파싱된다(하위호환)", () => {
     const r = normalizeCore(BASE_V1);
@@ -85,5 +96,12 @@ describe("provenance-lite (0-q·98)", () => {
     });
     expect(r.ok).toBe(true);
     expect(r.data?.provenance?.source_ref).toBeNull();
+  });
+
+  it("⑦ 서버 context_spec은 v1 → v2 정규화에서도 보존된다", () => {
+    const r = normalizeCore({ ...BASE_V1, context_spec: CONTEXT_SPEC });
+
+    expect(r.ok).toBe(true);
+    expect(r.data?.context_spec).toEqual(CONTEXT_SPEC);
   });
 });

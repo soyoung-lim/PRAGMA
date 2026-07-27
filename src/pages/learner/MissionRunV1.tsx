@@ -439,6 +439,7 @@ function MissionRunner({
   // feedback-lite(계약 §4) — 제출 후 3층 진단. 실패하면 기존 정직 표기로 되돌아간다.
   const [fb, setFb] = useState<RuntimeFeedback | null>(null);
   const [fbState, setFbState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [fbRetryNonce, setFbRetryNonce] = useState(0);
   const fbReqRef = useRef<string | null>(null); // 진행 중인 피드백 요청의 답안 키
   // 이견 채널(0-r·104) — 완료 시 수행 로그의 context_judgment로 함께 저장한다.
   const [dissent, setDissent] = useState<LearnerDissent | null>(null);
@@ -484,7 +485,7 @@ function MissionRunner({
   //    (= 제출한 답안)를 두고, 응답이 최신 요청의 것일 때만 반영한다.
   useEffect(() => {
     if (phase !== "feedback" || !draft.trim()) return;
-    const key = draft;
+    const key = `${mission.unit.target_feature}\u0000${draft}\u0000${fbRetryNonce}`;
     if (fbReqRef.current === key) return; // 같은 답안은 다시 묻지 않는다
     fbReqRef.current = key;
     setFb(null);
@@ -500,7 +501,7 @@ function MissionRunner({
         setFbState("error");
       }
     });
-  }, [phase, draft, mission]);
+  }, [phase, draft, mission, fbRetryNonce]);
 
   // 중단 후 재개(프로토타입 v2 ②) — 2부 진행분만 미션별 localStorage에 보존. 실패해도 흐름 무해.
   const storageKey = `pragma:mrun:${scenarioId ?? "sample"}`;
@@ -567,6 +568,7 @@ function MissionRunner({
       level,
       firstResponse: draft,
       revisedResponse: revised || draft,
+      ...(fb ? { feedback: fb } : {}),
       startedAtIso: startedAtRef.current,
       ...(dissent ? { contextJudgment: dissent } : {}),
     });
@@ -824,7 +826,14 @@ function MissionRunner({
             {/* 진단 실패 시 폴백 — 기존 정직 표기로 되돌아간다(미션은 계속 진행). */}
             {fbState === "error" && (
               <div className="rounded-lg border border-dashed border-[#B9C4CE] bg-[#F7F9FA] p-3 text-[11.5px] text-[#5B6B76]">
-                답변별 자동 진단을 불러오지 못했습니다. 참고 표현과 이번 초점을 바탕으로 다듬을 수 있습니다.
+                <p>답변별 자동 진단을 불러오지 못했습니다. 다시 시도하거나, 참고 표현과 이번 초점을 바탕으로 계속 다듬을 수 있습니다.</p>
+                <button
+                  type="button"
+                  className="mt-2 rounded-md border border-[#9EADB8] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#365B72] hover:bg-[#EEF3F7]"
+                  onClick={() => setFbRetryNonce((n) => n + 1)}
+                >
+                  진단 다시 불러오기
+                </button>
               </div>
             )}
 

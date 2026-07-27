@@ -95,6 +95,21 @@ export const CoreProvenanceSchema = z.object({
 });
 export type CoreProvenance = z.infer<typeof CoreProvenanceSchema>;
 
+// ── context_spec ──────────────────────────────────────────────────────
+// P·D·R과 topic을 자연어 장면으로 풀기 전에 서버가 고정하는 최소 권리·의무 구조.
+// 새 조합축이 아니며 학습자 화면에 항목식으로 노출하지 않는다.
+export const ContextSpecSchema = z.object({
+  standard_situation_code: z.string().min(1),
+  role_pair: z.object({
+    speaker_ko: z.string().min(1),
+    addressee_ko: z.string().min(1),
+  }),
+  speaker_entitlement: z.string().min(1),
+  addressee_obligation: z.string().min(1),
+  decision_authority: z.string().min(1),
+});
+export type ContextSpec = z.infer<typeof ContextSpecSchema>;
+
 // ── scenario_core_v1 ──────────────────────────────────────────────────
 export const ScenarioCoreV1Schema = z.object({
   schema_version: z.literal("scenario_core_v1"),
@@ -110,6 +125,8 @@ export const ScenarioCoreV1Schema = z.object({
   channel: ChannelSchema.optional(),
   /** 편성 화면용 한 줄 (선택) */
   brief_note_ko: z.string().optional(),
+  /** 서버가 주입한 역할·권리·의무 제약. legacy 코어는 부재 가능. */
+  context_spec: ContextSpecSchema.optional(),
   /** 실제 자료 유래분만. 모델 응답이 아니라 저장 직전 주입(0-q·98) */
   provenance: CoreProvenanceSchema.optional(),
 });
@@ -147,6 +164,8 @@ export const ScenarioCoreV2Schema = z.object({
   /** @deprecated channel 폐기(2026-07-25) — legacy 읽기 호환용, 신규 생성 미요구 */
   channel: ChannelSchema.optional(),
   brief_note_ko: z.string().optional(),
+  /** 서버가 주입한 역할·권리·의무 제약. legacy 코어는 부재 가능. */
+  context_spec: ContextSpecSchema.optional(),
   /** 실제 자료 유래분만. 모델 응답이 아니라 저장 직전 주입(0-q·98) */
   provenance: CoreProvenanceSchema.optional(),
 });
@@ -185,6 +204,7 @@ export function normalizeCore(input: unknown): {
       pdr: c.pdr,
       ...(c.channel ? { channel: c.channel } : {}), // legacy only
       ...(c.brief_note_ko ? { brief_note_ko: c.brief_note_ko } : {}),
+      ...(c.context_spec ? { context_spec: c.context_spec } : {}),
       ...(c.provenance ? { provenance: c.provenance } : {}),
     },
   };

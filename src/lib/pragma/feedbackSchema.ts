@@ -141,6 +141,37 @@ export function reconcileFeedback(draft: z.infer<typeof FeedbackDraftSchema>): {
   return { verdicts, blocks, issues };
 }
 
+/**
+ * 의미 층에 직접성·완화·선택권만 근거로 든 모델 응답을 결정론적으로 교정한다.
+ *
+ * 같은 내용을 더 직접적으로 말했다는 차이는 의미 손실이 아니다. 모델이 의미 판정을
+ * 낮췄더라도 구체적인 사실·참여자·시간·장소·조건·행위의 차이를 설명하지 못하면
+ * 근거 없는 판정이므로 preserved로 되돌리고 화용 판정은 그대로 유지한다.
+ */
+export function repairPragmaticLeakIntoMeaning(
+  verdicts: FeedbackVerdicts,
+  blocks: z.infer<typeof FeedbackDraftSchema>["blocks"],
+): string[] {
+  if (verdicts.semantic_fidelity === "preserved") return [];
+
+  const explanation = blocks.meaning_ko ?? "";
+  const pragmaticCue =
+    /완화|선택권|거절할 여지|명령(?:문|형)?|직접적|간접적|공손|정중|부드럽|말투|질문형|의문형/.test(
+      explanation,
+    );
+  const concreteMeaningEvidence =
+    /누락|빠졌|생략|추가|뒤바뀌|잘못 옮|원문에 없|전달되지|반대로|왜곡|다른 (?:사실|사람|상대|대상|장소|시간|날짜|조건|행동|행위|요청 내용)|(?:사실|참여자|대상|장소|시간|날짜|조건|행동|행위|요청 내용).{0,16}(?:달라|바뀌)/.test(
+      explanation,
+    );
+
+  if (!pragmaticCue || concreteMeaningEvidence) return [];
+
+  verdicts.semantic_fidelity = "preserved";
+  blocks.meaning_ko =
+    "구체적인 사실·조건의 차이가 확인되지 않아 뜻은 유지된 것으로 봅니다. 직접성·완화·선택권의 차이는 화용 층에서 살펴봅니다.";
+  return ["직접성·완화만 근거로 한 의미 손실 판정을 preserved로 교정함"];
+}
+
 /** anchor_text가 실제 학습자 답안에 있는지 — 없으면 앵커만 떼고 설명은 남긴다. */
 export function stripPhantomAnchors(blocks: { grammar?: GrammarNote[] }, answer: string): string[] {
   const issues: string[] = [];

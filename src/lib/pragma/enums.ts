@@ -151,7 +151,7 @@ export const COMPLEX_TASK_TO_CONTEXT: Record<ComplexTaskUI, InteractionContext> 
 export type Domain = "daily" | "school" | "work";
 export const DOMAIN: Record<Domain, string> = {
   daily: "일상",
-  school: "학교",
+  school: "학업",
   work: "직장",
 };
 

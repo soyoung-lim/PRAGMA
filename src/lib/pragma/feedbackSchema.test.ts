@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   deriveRevisionScope,
+  repairPragmaticLeakIntoMeaning,
   reconcileFeedback,
   stripPhantomAnchors,
   stripVacuousAlternatives,
@@ -117,5 +118,34 @@ describe("feedback consistency", () => {
       { text: "另一个说法", note_ko: "다른 선택" },
     ]);
     expect(issues).toHaveLength(2);
+  });
+
+  it("keeps directness and optionality out of the meaning verdict", () => {
+    const v = verdicts({ semantic_fidelity: "minor_loss" });
+    const blocks = {
+      meaning_ko:
+        "장소 변경 요청 사실은 전달하나, 부탁의 완화와 선택권을 포함하지 않아 의미가 달라졌습니다.",
+      grammar: [],
+      feature_ko: "이 상황에서는 너무 직접적으로 들릴 수 있습니다.",
+      alternatives: [],
+    };
+
+    expect(repairPragmaticLeakIntoMeaning(v, blocks)).toHaveLength(1);
+    expect(v.semantic_fidelity).toBe("preserved");
+    expect(blocks.meaning_ko).toContain("화용 층");
+  });
+
+  it("retains a meaning verdict backed by a concrete omission", () => {
+    const v = verdicts({ semantic_fidelity: "minor_loss" });
+    const blocks = {
+      meaning_ko:
+        "원문의 '다음 주'라는 시간 조건이 빠졌고, 표현도 직접적으로 바뀌었습니다.",
+      grammar: [],
+      feature_ko: "이 상황에서는 너무 직접적으로 들릴 수 있습니다.",
+      alternatives: [],
+    };
+
+    expect(repairPragmaticLeakIntoMeaning(v, blocks)).toHaveLength(0);
+    expect(v.semantic_fidelity).toBe("minor_loss");
   });
 });

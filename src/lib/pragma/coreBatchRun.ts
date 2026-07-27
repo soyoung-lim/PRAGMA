@@ -46,11 +46,17 @@ export interface CoreCellResult {
 export interface CoreRunOptions {
   languageDirection?: LanguageDirection;
   runId: string;
-  /** 같은 run ID로 재개할 때 DB에 이미 존재하는 item key → scenario ID. */
-  existingItems?: ReadonlyMap<string, string>;
+  /** 같은 run ID로 재개할 때 DB에 이미 존재하는 item key → 저장 행. */
+  existingItems?: ReadonlyMap<string, ExistingCoreRunItem | string>;
   concurrency?: number;
   onProgress?: (done: number, total: number, last: CoreCellResult) => void;
   signal?: AbortSignal;
+}
+
+export interface ExistingCoreRunItem {
+  scenarioId: string;
+  /** 재개 실행에서도 전체 run 비평을 할 수 있도록 함께 읽는다. */
+  coreContent?: Record<string, unknown>;
 }
 
 // task_mode → source_modality (channel 폐기 2026-07-25 — 매체가 아니라 수행 방식이 결정).
@@ -72,6 +78,7 @@ function ctxOf(cell: BatchCell): CheckContext {
     mode,
     source_modality: modalityOf(mode),
     direction: cell.direction, // 0-l·89 — 데이터 방향과 요청 방향 일치 검사
+    require_context_spec: true,
   };
 }
 
@@ -111,19 +118,25 @@ export function coreGenerationItemKey(cell: BatchCell, index: number): string {
 /** 중단된 코어 배치를 같은 run ID로 재개하기 위한 저장 완료 목록. */
 export async function loadExistingCoreRunItems(
   runId: string,
-): Promise<Map<string, string>> {
+): Promise<Map<string, ExistingCoreRunItem>> {
   const { data, error } = await supabase
     .from("scenarios")
-    .select("scenario_id, generation_item_key")
+    .select("scenario_id, generation_item_key, core_content")
     .eq("generation_run_id", runId)
     .not("generation_item_key", "is", null);
 
   if (error) throw error;
 
-  const items = new Map<string, string>();
+  const items = new Map<string, ExistingCoreRunItem>();
   for (const row of data ?? []) {
     if (row.generation_item_key) {
-      items.set(row.generation_item_key, row.scenario_id);
+      items.set(row.generation_item_key, {
+        scenarioId: row.scenario_id,
+        coreContent:
+          row.core_content && typeof row.core_content === "object"
+            ? (row.core_content as Record<string, unknown>)
+            : undefined,
+      });
     }
   }
   return items;
@@ -145,9 +158,13 @@ export async function runCoreCell(
         action: "core",
         core: {
           direction: cell.direction, // 0-l·89 — 엣지가 방향별 원문·산출 언어 결정(라운드2 배포 후 활성)
+          speech_act: cell.speech_act_ui,
           speech_act_ko: SPEECH_ACT_UI[cell.speech_act_ui],
           level_ko: LEVEL[cell.level],
+          domain: cell.domain,
           domain_ko: DOMAIN[cell.domain],
+          industry: cell.industry,
+          topic_code: cell.topic_code,
           mode, // channel 폐기(2026-07-25) — 수행 방식이 1차 축(매체 관습 강제 제거)
           // 재배포 전 live 엣지 호환용 legacy channel(mode 파생). 재배포 후 엣지는 mode를 본다.
           channel: legacyChannelOf(mode),
@@ -181,6 +198,7 @@ export async function runCoreCell(
         index,
         cell,
         ok: false,
+        coreContent: core,
         ruleResult: "fail",
         ruleFailFirst: ruleResult.violations.find((v) => v.level === "fail")?.message,
         error: "규칙검사 실패(저장 안 함)",
@@ -251,7 +269,9 @@ export async function runCoreBatch(
       cursor += 1;
       if (i >= cells.length) return;
       const cell = cells[i];
-      const existingScenarioId = opts.existingItems?.get(coreGenerationItemKey(cell, i));
+      const existing = opts.existingItems?.get(coreGenerationItemKey(cell, i));
+      const existingScenarioId =
+        typeof existing === "string" ? existing : existing?.scenarioId;
       const res: CoreCellResult = existingScenarioId
         ? {
             index: i,
@@ -259,6 +279,8 @@ export async function runCoreBatch(
             ok: true,
             scenarioId: existingScenarioId,
             reused: true,
+            coreContent:
+              typeof existing === "string" ? undefined : existing?.coreContent,
           }
         : await runCoreCell(cell, i, opts);
       results.push(res);

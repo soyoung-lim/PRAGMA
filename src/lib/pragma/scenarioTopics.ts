@@ -2,7 +2,7 @@
 // 생성계약 v1.3 §2b · 0-c·24~26. 코드 정본, AI 임의 생성 금지.
 //
 // 왜 domain과 별개인가:
-// - domain(일상/학교/직장) = 연구·생성 통제축(난이도 정합·소재 방어·주차 골격 참조).
+// - domain(일상/학업/직장) = 교육 편성·소재 층. P·D·R과 같은 화용 구인축이 아니다.
 // - theme_code(8종) = 교강사·학생이 보는 "강좌 이름표"(초급 여행 중국어 등). domain을
 //   대체하지 않는 교차 축이다. theme↔domain 허용 매핑을 코드로 못박아 모순 생성을 막는다.
 // - topic_code = Dai 2023 기반 장면 시드의 형식화. 배치 생성이 시드에서 상황을 뽑으므로
@@ -11,7 +11,14 @@
 // ⚠️ 논문 서술 경계(0-c·24): theme·topic은 화용 판정 변인이 아니라 콘텐츠 검색·편성 및
 //    상황 다양성 확보용 운영 메타데이터다. 새 화용 변인으로 설명하지 않는다.
 
-import type { Domain, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
+import type {
+  Domain,
+  GenMode,
+  LearnerLevel,
+  PdrDistance,
+  PdrPower,
+  SpeechActUI,
+} from "@/lib/pragma/enums";
 
 // ── theme_code (8종 통제값) ───────────────────────────────────────────
 export const THEME_CODES = [
@@ -58,9 +65,43 @@ export interface ScenarioTopic {
   allowedDomains: Domain[];
   /** 이 topic에 어울리는 화행. 비우면 전 화행 허용 */
   allowedSpeechActs?: SpeechActUI[];
-  /** 생성 프롬프트 주입용 장면 시드 (Dai 2023 기반 + 재설계) */
+  /**
+   * 사건 자체가 특정 역할 관계를 요구할 때만 제한한다.
+   * 일반 topic은 역할을 고정하지 않고 서버의 context_spec이 P·D에 맞는 역할을 정한다.
+   */
+  allowedPowers?: PdrPower[];
+  allowedDistances?: PdrDistance[];
+  /** 특정 수행 방식에서만 성립하는 사건일 때만 제한한다. 기본값은 번역·통역 모두 허용. */
+  allowedModes?: GenMode[];
+  /** 생성 프롬프트 주입용 사건 시드. P·D 관계와 전달 매체를 가능한 한 고정하지 않는다. */
   situationSeedKo: string;
   sourceNote?: string;
+}
+
+export interface TopicContext {
+  speechAct: SpeechActUI;
+  domain: Domain;
+  power: PdrPower;
+  distance: PdrDistance;
+  mode: GenMode;
+}
+
+/**
+ * topic은 연구축이 아니라 사건 후보이므로, 이미 정해진 화행·P·D·mode·domain에
+ * 맞는 것만 선택한다. R은 화행별 사건 무게를 context_spec에서 구체화하므로
+ * topic 카탈로그의 전역 허용값으로 고정하지 않는다.
+ */
+export function topicSupportsContext(
+  topic: ScenarioTopic,
+  context: TopicContext,
+): boolean {
+  return (
+    topic.allowedDomains.includes(context.domain) &&
+    (!topic.allowedSpeechActs || topic.allowedSpeechActs.includes(context.speechAct)) &&
+    (!topic.allowedPowers || topic.allowedPowers.includes(context.power)) &&
+    (!topic.allowedDistances || topic.allowedDistances.includes(context.distance)) &&
+    (!topic.allowedModes || topic.allowedModes.includes(context.mode))
+  );
 }
 
 // 정치·시사·정부 기관 소재는 배제(§7-1). 학부 수업 콘텐츠 적합성 우선.
@@ -72,6 +113,8 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "campus_study",
     allowedDomains: ["school"],
     allowedSpeechActs: ["request", "apology"],
+    allowedPowers: ["higher"],
+    allowedDistances: ["acquaintance"],
     situationSeedKo: "교수/조교에게 과제 제출 기한을 미뤄 달라고 부탁하는 상황",
     sourceNote: "Dai 2023 학업 상호작용",
   },
@@ -81,13 +124,16 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "campus_study",
     allowedDomains: ["school"],
     allowedSpeechActs: ["request"],
+    allowedPowers: ["higher"],
+    allowedDistances: ["acquaintance"],
     situationSeedKo: "교수에게 면담 시간을 잡아 달라고 요청하거나 수업 내용을 다시 묻는 상황",
   },
   {
     code: "group_work_coordination",
-    labelKo: "조별 과제 역할 조율",
+    labelKo: "조별 과제 상호작용",
     themeCode: "campus_study",
     allowedDomains: ["school"],
+    allowedSpeechActs: ["request", "thanks", "proposal", "complaint"],
     situationSeedKo: "조별 과제를 함께 수행하는 학생들 사이에서 생기는 상호작용 상황",
   },
   {
@@ -128,6 +174,8 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "campus_study",
     allowedDomains: ["school"],
     allowedSpeechActs: ["request", "thanks"],
+    allowedPowers: ["higher"],
+    allowedDistances: ["acquaintance"],
     situationSeedKo: "교수에게 유학·장학 추천서를 부탁하고 이후 감사를 전하는 상황",
   },
 
@@ -140,8 +188,16 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     labelKo: "이웃 소음 문제",
     themeCode: "daily_living",
     allowedDomains: ["daily"],
-    allowedSpeechActs: ["request", "complaint", "apology"],
-    situationSeedKo: "이웃에게 소음을 줄여 달라고 부탁하거나 내 소음을 사과하는 상황",
+    allowedSpeechActs: ["request", "complaint"],
+    situationSeedKo: "상대 이웃이 낸 생활 소음으로 불편을 겪은 화자가 그 이웃에게 소음을 줄여 달라고 말하는 상황",
+  },
+  {
+    code: "neighbor_noise_apology",
+    labelKo: "이웃 소음 사과",
+    themeCode: "daily_living",
+    allowedDomains: ["daily"],
+    allowedSpeechActs: ["apology"],
+    situationSeedKo: "화자 본인의 집에서 난 생활 소음으로 상대 이웃에게 불편을 준 책임을 인정하고 사과하는 상황",
   },
   {
     code: "borrow_favor",
@@ -175,6 +231,8 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "travel_mobility",
     allowedDomains: ["daily"],
     allowedSpeechActs: ["request", "thanks"],
+    allowedPowers: ["equal"],
+    allowedDistances: ["formal"],
     situationSeedKo: "낯선 사람에게 길·교통편을 묻고 도움에 감사하는 상황",
   },
   {
@@ -193,7 +251,7 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "relationship_social",
     allowedDomains: ["daily"],
     allowedSpeechActs: ["refusal", "apology"],
-    situationSeedKo: "친구의 식사·행사 초대를 사정상 거절하는 상황",
+    situationSeedKo: "일상 관계의 상대가 한 식사·행사 초대를 거절하는 상황",
   },
   {
     code: "congratulation_gift",
@@ -201,7 +259,7 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "relationship_social",
     allowedDomains: ["daily"],
     allowedSpeechActs: ["thanks", "compliment"],
-    situationSeedKo: "친구의 선물·축하에 감사를 전하거나 상대를 칭찬하는 상황",
+    situationSeedKo: "일상 관계의 상대가 건넨 선물·축하에 감사를 전하거나 상대를 칭찬하는 상황",
   },
   {
     code: "apology_lateness",
@@ -209,7 +267,7 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "relationship_social",
     allowedDomains: ["daily"],
     allowedSpeechActs: ["apology"],
-    situationSeedKo: "약속에 늦거나 약속을 못 지켜 친구에게 사과하는 상황",
+    situationSeedKo: "일상 관계의 상대와 한 약속에 늦거나 약속을 지키지 못해 사과하는 상황",
   },
   {
     code: "favor_thanks",
@@ -217,7 +275,7 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "relationship_social",
     allowedDomains: ["daily"],
     allowedSpeechActs: ["thanks"],
-    situationSeedKo: "친구가 베푼 도움의 크기에 맞게 감사를 전하는 상황",
+    situationSeedKo: "일상 관계의 상대가 베푼 도움의 크기에 맞게 감사를 전하는 상황",
   },
 
   // ── career_workplace (work) ──
@@ -235,7 +293,7 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "career_workplace",
     allowedDomains: ["work"],
     allowedSpeechActs: ["refusal"],
-    situationSeedKo: "동료·상사의 추가 업무 요청을 사정상 거절하는 상황",
+    situationSeedKo: "직장 관계의 상대가 요청한 추가 업무를 맡지 않겠다고 알리는 상황",
   },
   {
     code: "delay_apology",
@@ -243,7 +301,7 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "career_workplace",
     allowedDomains: ["work"],
     allowedSpeechActs: ["apology"],
-    situationSeedKo: "거래처·상사에게 납기·업무 지연을 사과하고 후속을 알리는 상황",
+    situationSeedKo: "직장 관계의 상대에게 납기·업무 지연을 사과하고 후속을 알리는 상황",
   },
   {
     code: "collaboration_proposal",
@@ -251,7 +309,7 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "career_workplace",
     allowedDomains: ["work"],
     allowedSpeechActs: ["proposal", "opposition"],
-    situationSeedKo: "동료·상사에게 협업 방식이나 업무 개선을 제안하는 상황",
+    situationSeedKo: "직장 관계의 상대에게 협업 방식이나 업무 개선을 제안하는 상황",
   },
   // 시드 작성 규칙: P·D 관계와 수행 매체를 고정하지 않는다. 셀 축이 시드보다 우선하며,
   // 번역·통역 어느 모드에서도 같은 소재를 관계·장면에 맞게 재구성할 수 있어야 한다.
@@ -311,19 +369,27 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
   //    "메신저·단체방을 썼다"는 매체 사실만으로 digital에 분류하지 않는다(매체 = channel 축).
   {
     code: "collab_dm_request",
-    labelKo: "협업 DM 제안",
+    labelKo: "콘텐츠 협업 제안",
     themeCode: "digital_content",
     allowedDomains: ["work"],
     allowedSpeechActs: ["proposal", "request"],
-    situationSeedKo: "크리에이터·브랜드 담당자에게 협업을 제안하는 메시지 상황",
+    situationSeedKo: "크리에이터·브랜드 담당자 사이에서 콘텐츠 협업의 범위나 조건을 제안·요청하는 상황",
   },
   {
     code: "comment_feedback_disagreement",
-    labelKo: "피드백·이견 표현",
+    labelKo: "콘텐츠 피드백·이견",
     themeCode: "digital_content",
     allowedDomains: ["daily", "work"],
-    allowedSpeechActs: ["opposition", "compliment"],
-    situationSeedKo: "온라인에서 상대의 콘텐츠·의견에 정중히 이견을 밝히거나 칭찬하는 상황",
+    allowedSpeechActs: ["opposition"],
+    situationSeedKo: "상대가 만든 콘텐츠에 관해 상대가 명시한 하나의 평가·제안과 같은 명제를 두고 이견을 밝히는 상황",
+  },
+  {
+    code: "content_strength_compliment",
+    labelKo: "콘텐츠 강점 칭찬",
+    themeCode: "digital_content",
+    allowedDomains: ["daily", "work"],
+    allowedSpeechActs: ["compliment"],
+    situationSeedKo: "상대가 만든 콘텐츠에서 직접 확인한 구체적인 강점을 상대에게 칭찬하는 상황",
   },
   {
     code: "content_reuse_permission",
@@ -337,11 +403,11 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
   // 목적 기준으로 2분할(계약 0-k·81③). campus 팀플 조율은 기존 group_work_coordination이 담당.
   {
     code: "work_team_chat_coordination",
-    labelKo: "업무 단체방 조율",
+    labelKo: "업무 협업 조율",
     themeCode: "career_workplace",
     allowedDomains: ["work"],
     allowedSpeechActs: ["request", "proposal"],
-    situationSeedKo: "업무 단체방에서 동료들과 일정·업무 분담·보고 순서를 조율하는 상황",
+    situationSeedKo: "직장 관계의 상대들과 일정·업무 분담·보고 순서를 조율하는 상황",
   },
   {
     code: "friend_group_plan_coordination",
@@ -349,7 +415,7 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "relationship_social",
     allowedDomains: ["daily"],
     allowedSpeechActs: ["proposal", "refusal", "agreement"],
-    situationSeedKo: "친구들 모임 날짜·장소를 조율하거나 변경을 제안·거절하는 상황",
+    situationSeedKo: "일상 모임의 날짜·장소를 조율하거나 변경을 제안·거절하는 상황",
   },
 
   // ── international_exchange (school | daily) ──
@@ -359,6 +425,8 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "international_exchange",
     allowedDomains: ["school"],
     allowedSpeechActs: ["request"],
+    allowedPowers: ["higher"],
+    allowedDistances: ["acquaintance", "formal"],
     situationSeedKo: "교환학생·유학 담당자에게 절차·서류를 문의하는 상황",
   },
   {
@@ -367,7 +435,7 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "international_exchange",
     allowedDomains: ["daily"],
     allowedSpeechActs: ["thanks"],
-    situationSeedKo: "유학 중 호스트·현지 친구의 도움에 감사를 전하는 상황",
+    situationSeedKo: "유학·교류 생활에서 함께 지낸 호스트 가족이나 생활 적응을 도운 현지 버디가 제공한 숙소·생활 도움에 감사를 전하는 상황",
   },
   {
     code: "cultural_misunderstanding_apology",
@@ -385,6 +453,8 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "international_exchange",
     allowedDomains: ["school", "daily"],
     allowedSpeechActs: ["request", "proposal", "thanks"],
+    allowedPowers: ["equal"],
+    allowedDistances: ["acquaintance"],
     situationSeedKo: "배정된 버디(도우미 학생)와 첫 연락·만남 약속·활동 일정을 조율하는 상황",
   },
   {
@@ -393,6 +463,8 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "international_exchange",
     allowedDomains: ["school"],
     allowedSpeechActs: ["request", "complaint"],
+    allowedPowers: ["higher"],
+    allowedDistances: ["acquaintance", "formal"],
     situationSeedKo: "국제교류처가 배정한 기숙사 방·입실 일정의 문제를 알리고 조정을 요청하는 상황",
   },
   {
@@ -401,6 +473,8 @@ export const SCENARIO_TOPICS: ScenarioTopic[] = [
     themeCode: "international_exchange",
     allowedDomains: ["school"],
     allowedSpeechActs: ["request", "apology"],
+    allowedPowers: ["higher"],
+    allowedDistances: ["acquaintance", "formal"],
     situationSeedKo: "교환학생 오리엔테이션 일정을 문의하거나 불참·지각에 대해 양해를 구하는 상황",
   },
   // 의료·생활서비스(계약 0-k·81⑤) — 여행·유학 실전 최빈 장면. primary theme = daily.

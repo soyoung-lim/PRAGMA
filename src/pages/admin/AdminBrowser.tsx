@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,12 +52,15 @@ interface CoreRow {
     relation_ko?: string;
     source_text?: string;
     source_text_ko?: string;
+    preceding_turn?: string | null;
+    preceding_turn_zh?: string | null;
     direction?: string;
   } | null;
 }
 
 const ACTS = Object.keys(SPEECH_ACT_UI) as SpeechActUI[];
 const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
+const CORE_QUERY_TIMEOUT_MS = 15_000;
 
 const AdminBrowser = () => {
   const [rows, setRows] = useState<CoreRow[]>([]);
@@ -145,11 +148,14 @@ const AdminBrowser = () => {
     }
   };
 
-  useEffect(() => {
-    (async () => {
+  const loadRows = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    try {
       // supabase 생성 타입(types.ts)이 v1.4 신규 컬럼을 아직 모른다 → 이 쿼리만 캐스트로 우회.
       // (백로그: `supabase gen types`로 types.ts 재생성하면 코드 전역에서 신규 컬럼 타입 확보)
-      const { data, error } = await (supabase as unknown as {
+      const request = (supabase as unknown as {
         from: (t: string) => any;
       })
         .from("scenarios")
@@ -157,12 +163,35 @@ const AdminBrowser = () => {
           "scenario_id, speech_act, learner_level, domain, industry_sector, mode, source_modality, theme_code, topic_code, scenario_p, scenario_d, scenario_r, review_status, mission_status, generation_run_id, generation_item_key, prompt_snapshot_hash, core_content",
         )
         .eq("content_format", "scenario_core_v1")
-        .order("created_at", { ascending: false });
-      if (error) setError(error.message);
-      else setRows((data ?? []) as CoreRow[]);
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      const timeout = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error("조회 시간이 15초를 초과했습니다.")),
+          CORE_QUERY_TIMEOUT_MS,
+        );
+      });
+      const { data, error: queryError } = await Promise.race([
+        request as PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>,
+        timeout,
+      ]);
+      if (queryError) throw new Error(queryError.message);
+      setRows((data ?? []) as CoreRow[]);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "시나리오 코어를 불러오지 못했습니다.",
+      );
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
       setLoading(false);
-    })();
+    }
   }, []);
+
+  useEffect(() => {
+    void loadRows();
+  }, [loadRows]);
 
   const filtered = useMemo(
     () =>
@@ -233,9 +262,12 @@ const AdminBrowser = () => {
       {loading ? (
         <p className="mt-4 text-[13px] text-muted-foreground">불러오는 중…</p>
       ) : error ? (
-        <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-[13px] text-red-900">
-          조회 실패: {error} (관리자 로그인이 필요합니다)
-        </p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-red-50 px-4 py-3 text-[13px] text-red-900">
+          <p>조회 실패: {error} 관리자 로그인 상태를 확인해 주세요.</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => void loadRows()}>
+            다시 불러오기
+          </Button>
+        </div>
       ) : (
         <>
           {/* ── 27칸 그리드 ── */}
@@ -336,6 +368,12 @@ const AdminBrowser = () => {
                     {r.core_content?.relation_ko && (
                       <p className="mt-1 text-[12px] text-muted-foreground">
                         관계 · {r.core_content.relation_ko}
+                      </p>
+                    )}
+                    {(r.core_content?.preceding_turn ?? r.core_content?.preceding_turn_zh) && (
+                      <p className="mt-1 whitespace-pre-wrap rounded-md border border-[#E5E0D5] bg-white px-2.5 py-2 text-[12.5px] text-foreground">
+                        <span className="mr-1 font-medium text-muted-foreground">상대의 직전 발화 ·</span>
+                        {r.core_content?.preceding_turn ?? r.core_content?.preceding_turn_zh}
                       </p>
                     )}
                     <p className="mt-1 text-[12.5px] text-muted-foreground line-clamp-2">

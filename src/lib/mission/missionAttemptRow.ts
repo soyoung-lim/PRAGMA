@@ -1,5 +1,6 @@
 import type { Json } from "@/integrations/supabase/types";
 import { DIRECTION_LANGS, type LanguageDirection } from "@/lib/pragma/enums";
+import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
 import type { MissionV2 } from "@/lib/pragma/missionSchema";
 import { POLICY_VERSION } from "@/lib/research/versions";
 
@@ -13,6 +14,8 @@ export interface SaveAttemptInput {
   firstResponse: string;
   /** 다듬은 최종 산출(없으면 최초와 동일) */
   revisedResponse: string;
+  /** 학습자에게 실제로 제시된 feedback_v1 스냅샷. 호출 실패 시 생략한다. */
+  feedback?: RuntimeFeedback;
   /** 컴포넌트 마운트 시각(ISO) */
   startedAtIso: string;
   /**
@@ -48,6 +51,14 @@ export function buildMissionAttemptRow(
   const langs = DIRECTION_LANGS[dir];
   const pt = input.mission.production_task;
   const taskType = pt.mode === "interpreting" ? "interpreting" : "translation";
+  const feedback = input.feedback;
+  const semanticStatus = feedback
+    ? {
+        preserved: "pass",
+        minor_loss: "warning",
+        distorted: "fail",
+      }[feedback.verdicts.semantic_fidelity]
+    : null;
 
   return {
     profile_id: profileId,
@@ -64,7 +75,20 @@ export function buildMissionAttemptRow(
     source_text: pt.source_text,
     first_response: input.firstResponse,
     revised_response: input.revisedResponse,
-    revision_target_source: "learner_free",
+    revision_target_selected: feedback?.revision_scope ?? null,
+    revision_target_source: feedback ? "system_assigned" : "learner_free",
+    target_feature_observed: feedback
+      ? ({
+          schema_version: feedback.schema_version,
+          rubric_version: feedback.rubric_version,
+          verdicts: feedback.verdicts,
+          revision_scope: feedback.revision_scope,
+          blocks: feedback.blocks,
+          uncertainty_flags: feedback.uncertainty_flags,
+          provenance: feedback.provenance,
+        } as unknown as Json)
+      : null,
+    semantic_fidelity_status: semanticStatus,
     example_shown: true,
     mission_completed: true,
     content_ver: input.mission.unit.target_feature_version ?? null,

@@ -74,7 +74,7 @@ const INDUSTRY_KO: Record<string, string> = {
 }
 const DOMAIN_KO: Record<string, string> = {
   daily: '일상 (친구·이웃·가족·상점·동호회 등 일상생활 관계)',
-  school: '학교 (교수·조교·동기·유학생·학사 업무 등 캠퍼스 관계)',
+  school: '학업 (교수·조교·동기·유학생·학사 업무 등 대학·학업 관계)',
   work: '직장 (회사·거래처·업무 관계)',
 }
 const FUNCTION_KO: Record<string, string> = {
@@ -183,10 +183,13 @@ interface CoreQualityCheckBody {
   level?: string
   domain: string
   domain_ko?: string
+  industry?: string | null
   mode: string
   pdr: { p?: string; d?: string; r?: string }
+  topic_code?: string
   situation_seed_ko: string
   is_response_act?: boolean
+  expected_context_spec?: CoreContextSpec | null
 }
 
 // ── 실제 자료 분석 (Authentic Source Import) ────────────────────────────
@@ -242,7 +245,7 @@ function buildSystemPrompt(candidateCount: number, domain?: string | null): stri
     domain === 'daily'
       ? '일상생활(친구·이웃·가족·상점·동호회 등) 상황의 한→중 통번역 교육용 시나리오'
       : domain === 'school'
-        ? '학교·캠퍼스(교수·조교·동기·유학생·학사 업무 등) 상황의 한→중 통번역 교육용 시나리오'
+        ? '대학·학업(교수·조교·동기·유학생·학사 업무 등) 상황의 한→중 통번역 교육용 시나리오'
         : '한→중 비즈니스 통번역 교육용 시나리오'
   const sourceDesc = isWork ? '자연스러운 실무 한국어' : '자연스러운 생활 한국어'
   const expertDesc = isWork
@@ -295,7 +298,7 @@ function buildOutlineSystemPrompt(count: number, domain?: string | null): string
     domain === 'daily'
       ? '일상생활(친구·이웃·가족·상점·동호회 등) 상황의 한→중 통번역 교육용 시나리오'
       : domain === 'school'
-        ? '학교·캠퍼스(교수·조교·동기·유학생·학사 업무 등) 상황의 한→중 통번역 교육용 시나리오'
+        ? '대학·학업(교수·조교·동기·유학생·학사 업무 등) 상황의 한→중 통번역 교육용 시나리오'
         : '한→중 비즈니스 통번역 교육용 시나리오'
   return `당신은 ${domainDesc}를 설계하는 전문가입니다.
 출력은 반드시 아래 JSON만, 마크다운·설명·주석 없이 그대로 반환합니다.
@@ -466,6 +469,16 @@ async function callOpenAI(
 // 카탈로그는 Deno에서 import 불가 → 클라이언트가 body로 전달, 여기선 프롬프트만.
 // ══════════════════════════════════════════════════════════════════════
 type PdrJson = { p: string; d: string; r: string }
+interface CoreContextSpec {
+  standard_situation_code: string
+  role_pair: {
+    speaker_ko: string
+    addressee_ko: string
+  }
+  speaker_entitlement: string
+  addressee_obligation: string
+  decision_authority: string
+}
 const PDR_P_KO: Record<string, string> = {
   speaker_lower: '화자(나)가 상대보다 낮음', equal: '동등', speaker_higher: '화자(나)가 상대보다 높음',
 }
@@ -476,9 +489,13 @@ const PDR_R_KO: Record<string, string> = { low: '낮음', mid: '중간', high: '
 
 interface CoreGenBody {
   direction?: string // 0-l·90 — 부재 시 ko_zh
+  speech_act?: string
   speech_act_ko: string
   level_ko: string
+  domain?: string
   domain_ko: string
+  industry?: string | null
+  topic_code?: string
   mode?: string // 수행 방식(channel 폐기 2026-07-25) — translation | stt_interpreting
   channel?: string // @deprecated legacy(무시)
   channel_ko?: string // @deprecated legacy(무시)
@@ -487,6 +504,245 @@ interface CoreGenBody {
   situation_seed_ko: string
   is_response_act: boolean
   length_hint_ko: string
+  /** 서버가 구성해 buildCoreUserPrompt에 전달한다. 클라이언트 값은 신뢰하지 않는다. */
+  context_spec?: CoreContextSpec
+}
+
+type RolePair = CoreContextSpec['role_pair']
+
+const ROLE_PAIRS: Record<string, Record<string, RolePair>> = {
+  daily: {
+    'equal|close': {
+      speaker_ko: '가까운 일상 관계의 화자',
+      addressee_ko: '가까운 친구·동거인·가족 등 동등한 상대',
+    },
+    'equal|acquaintance': {
+      speaker_ko: '일상 공간이나 모임의 구성원',
+      addressee_ko: '몇 차례 마주쳐 서로 아는 이웃·모임 구성원',
+    },
+    'equal|distant': {
+      speaker_ko: '일반 이용자 또는 처음 온 참여자',
+      addressee_ko: '그 자리에서 처음 만난 동등한 상대',
+    },
+    'speaker_lower|close': {
+      speaker_ko: '친밀한 관계에서 결정권이 상대적으로 적은 후배·돌봄 대상',
+      addressee_ko: '가깝지만 해당 일의 결정권이 더 큰 선배·보호자',
+    },
+    'speaker_lower|acquaintance': {
+      speaker_ko: '알고 지내는 모임 참여자·후배',
+      addressee_ko: '그 모임의 운영자·선배 등 결정권이 더 큰 상대',
+    },
+    'speaker_lower|distant': {
+      speaker_ko: '일반 이용자 또는 처음 온 참여자',
+      addressee_ko: '처음 상대하는 시설·행사·서비스의 결정권자',
+    },
+    'speaker_higher|close': {
+      speaker_ko: '친밀한 관계에서 결정권이 더 큰 선배·보호자',
+      addressee_ko: '가까운 후배·돌봄 대상',
+    },
+    'speaker_higher|acquaintance': {
+      speaker_ko: '알고 지내는 모임 운영자·선배',
+      addressee_ko: '그 모임의 참여자·후배',
+    },
+    'speaker_higher|distant': {
+      speaker_ko: '행사·시설의 책임자 또는 결정권자',
+      addressee_ko: '처음 상대하는 참여자·이용자',
+    },
+  },
+  school: {
+    'equal|close': {
+      speaker_ko: '가까운 동기·친구인 학생',
+      addressee_ko: '가까운 동기·친구인 학생',
+    },
+    'equal|acquaintance': {
+      speaker_ko: '수업·조별과제에서 알고 지내는 학생',
+      addressee_ko: '같은 수업·조의 동등한 학생',
+    },
+    'equal|distant': {
+      speaker_ko: '학교 구성원인 학생',
+      addressee_ko: '처음 만난 다른 수업·학과의 동등한 학생',
+    },
+    'speaker_lower|close': {
+      speaker_ko: '가까운 후배·멘티인 학생',
+      addressee_ko: '친밀하게 지도하는 선배·멘토',
+    },
+    'speaker_lower|acquaintance': {
+      speaker_ko: '수업을 듣거나 지도를 받는 학생',
+      addressee_ko: '알고 지내는 교수·조교·조장·공식 멘토 등 해당 일의 권한이 더 큰 상대',
+    },
+    'speaker_lower|distant': {
+      speaker_ko: '처음 문의하는 학생',
+      addressee_ko: '처음 상대하는 교수·조교·학사 담당자',
+    },
+    'speaker_higher|close': {
+      speaker_ko: '친밀하게 지도하는 선배·멘토',
+      addressee_ko: '가까운 후배·멘티인 학생',
+    },
+    'speaker_higher|acquaintance': {
+      speaker_ko: '조장·튜터·조교 등 해당 일의 권한을 가진 학교 구성원',
+      addressee_ko: '알고 지내는 조원·학생·후배',
+    },
+    'speaker_higher|distant': {
+      speaker_ko: '수업·프로그램의 책임자 또는 담당자',
+      addressee_ko: '처음 상대하는 학생·참여자',
+    },
+  },
+  work: {
+    'equal|close': {
+      speaker_ko: '가깝게 협업해 온 동료',
+      addressee_ko: '가깝게 협업해 온 동등한 동료',
+    },
+    'equal|acquaintance': {
+      speaker_ko: '업무상 알고 지내는 담당자',
+      addressee_ko: '동등한 직급의 동료·파트너 담당자',
+    },
+    'equal|distant': {
+      speaker_ko: '업무 담당자',
+      addressee_ko: '처음 협업하는 동등한 직급의 상대 담당자',
+    },
+    'speaker_lower|close': {
+      speaker_ko: '오랫동안 함께 일한 후배 직원·실무자',
+      addressee_ko: '가깝지만 결정권이 더 큰 팀장·선배',
+    },
+    'speaker_lower|acquaintance': {
+      speaker_ko: '업무를 수행하는 실무자·후배 직원',
+      addressee_ko: '알고 지내는 상사·고객 책임자·선배 담당자',
+    },
+    'speaker_lower|distant': {
+      speaker_ko: '업무 실무자',
+      addressee_ko: '처음 상대하는 고객·거래처의 결정권자',
+    },
+    'speaker_higher|close': {
+      speaker_ko: '가깝게 일해 온 팀장·선배·책임자',
+      addressee_ko: '가까운 팀원·후배 직원',
+    },
+    'speaker_higher|acquaintance': {
+      speaker_ko: '팀장·프로젝트 책임자·고객측 결정권자',
+      addressee_ko: '알고 지내는 팀원·실무 담당자',
+    },
+    'speaker_higher|distant': {
+      speaker_ko: '해당 업무의 책임자·발주측 결정권자',
+      addressee_ko: '처음 상대하는 신규 직원·외부 실무 담당자',
+    },
+  },
+}
+
+// 범용 P×D 역할 예시가 구체 topic의 인물을 덮어쓰지 않도록, 관계·장소 명사가
+// 곧 topic 정체성인 셀은 서버가 topic×P×D 역할 쌍을 우선 주입한다.
+const TOPIC_ROLE_PAIRS: Record<string, Record<string, RolePair>> = {
+  neighbor_noise: {
+    'equal|acquaintance': {
+      speaker_ko: '몇 차례 마주쳐 알고 지내는 아파트·주거 공간의 이웃',
+      addressee_ko: '생활 소음을 내고 있어 이를 줄여 달라는 요청·불만을 받는 동등한 이웃',
+    },
+  },
+  neighbor_noise_apology: {
+    'equal|acquaintance': {
+      speaker_ko: '자신의 집에서 생활 소음을 낸 아파트·주거 공간의 이웃',
+      addressee_ko: '그 소음으로 불편을 겪은 동등한 이웃',
+    },
+  },
+  hotel_request: {
+    'speaker_lower|acquaintance': {
+      speaker_ko: '숙박 시설을 이용하며 방 문제를 겪는 일반 투숙객',
+      addressee_ko: '방 변경·문제 해결 권한이 더 큰 호텔·숙소 관리자',
+    },
+    'equal|acquaintance': {
+      speaker_ko: '숙박 시설을 이용하며 방 문제를 겪는 투숙객',
+      addressee_ko: '방 변경 요청을 접수·처리하는 호텔·숙소 담당자',
+    },
+  },
+  host_family_thanks: {
+    'speaker_lower|acquaintance': {
+      speaker_ko: '유학·교류 생활 중 숙소와 생활 적응 도움을 받은 학생·참가자',
+      addressee_ko: '숙소·생활 도움을 제공한 연장자 호스트 가족 구성원 또는 공식 현지 버디',
+    },
+    'equal|acquaintance': {
+      speaker_ko: '유학·교류 생활 중 숙소와 생활 적응 도움을 받은 학생·참가자',
+      addressee_ko: '동등한 관계에서 생활 적응을 도운 호스트 가족 구성원 또는 공식 현지 버디',
+    },
+  },
+  buddy_program_arrangement: {
+    'equal|acquaintance': {
+      speaker_ko: '교환·유학 프로그램에서 버디를 배정받은 학생',
+      addressee_ko: '프로그램이 공식 배정한 동등한 지위의 버디(도우미 학생)',
+    },
+  },
+  comment_feedback_disagreement: {
+    'equal|acquaintance': {
+      speaker_ko: '콘텐츠를 함께 검토하는 온라인 커뮤니티 참여자·창작자',
+      addressee_ko: '해당 콘텐츠에 평가·제안을 제시한 동등한 참여자·창작자',
+    },
+    'speaker_lower|acquaintance': {
+      speaker_ko: '콘텐츠 모임·커뮤니티의 후배 참여자·창작자',
+      addressee_ko: '해당 콘텐츠에 평가·제안을 제시한 운영자·선배 창작자',
+    },
+  },
+}
+
+const SPEAKER_ENTITLEMENT: Record<string, string> = {
+  request: '화자에게 해당 행동을 요청할 합리적 사유는 있으나, 상대의 선택권을 자동으로 박탈하지 않는다.',
+  refusal: '화자는 앞선 요청·제안·초대의 수용 여부를 결정할 재량이 있다.',
+  apology: '화자는 자신과 관련된 위반·피해를 인정하고 가능한 수리를 제안할 책임이 있다.',
+  thanks: '화자는 자신이 받은 도움·호의와 상대의 기여를 구체적으로 인정할 위치에 있다.',
+  proposal: '화자는 미래 행동 방안을 제안할 참여 권한은 있지만 단독 결정권을 전제하지 않는다.',
+  agreement: '화자는 상대를 공동 활동에 초대할 수 있지만 참여를 강제할 권리는 없다.',
+  opposition: '화자는 자신이 관련된 의견·평가·방안에 이견을 밝힐 정당한 참여 자격이 있다.',
+  compliment: '화자는 직접 관찰했거나 근거가 있는 구체적 강점에 긍정적 평가를 표현할 수 있다.',
+  complaint: '화자는 자신이 겪은 문제·피해 또는 대표할 권한이 있는 문제를 제기할 자격이 있다.',
+}
+
+const ADDRESSEE_OBLIGATION: Record<string, string> = {
+  request: '상대는 요청을 이해하고 검토할 수 있으나, 수락 의무는 역할·규정·상황에 따라 달라진다.',
+  refusal: '상대는 거절 대상 행동을 먼저 요청·제안·초대한 사람이며, 거절을 수용할 여지가 있어야 한다.',
+  apology: '상대는 피해·불편의 당사자이며 사과를 즉시 수락하거나 용서할 의무는 없다.',
+  thanks: '상대는 도움·호의의 제공자이며 감사에 응답하거나 추가 행동을 할 의무는 없다.',
+  proposal: '상대는 제안을 검토할 수 있지만 수락할 의무는 없다.',
+  agreement: '상대는 초대받은 활동의 참여 여부를 선택할 권리가 있다.',
+  opposition: '상대는 이견 대상 의견·평가·방안을 제시한 사람이며 반대 의견을 검토할 수 있다.',
+  compliment: '상대는 칭찬의 대상이며 특정한 방식으로 반응할 의무는 없다.',
+  complaint: '상대는 문제에 일정한 책임이 있거나 설명·수리·전달을 할 실질적 권한이 있어야 한다.',
+}
+
+const DECISION_AUTHORITY: Record<string, string> = {
+  request: '상대가 요청받은 행동을 직접 수행하거나 승인·연결할 실질적 권한을 가진다.',
+  refusal: '화자가 자신의 참여·수락 여부를 결정하며, 거절 대상과 범위가 분명해야 한다.',
+  apology: '화자는 가능한 수리를 실행·제안할 수 있고, 상대는 피해 인정과 수용 여부를 판단한다.',
+  thanks: '별도의 의사결정은 요구하지 않으며, 감사 대상인 기여가 실제로 존재해야 한다.',
+  proposal: '제안된 행동은 상대 또는 공동의 결정 대상이며 화자가 이미 확정한 지시가 아니다.',
+  agreement: '최종 참여 여부는 초대받은 상대가 결정한다.',
+  opposition: '이견 대상 사안은 상대 또는 공동 논의의 결정 범위 안에 있다.',
+  compliment: '운영상 결정권은 요구하지 않으며, 평가 근거와 주제의 민감도가 상황에 맞아야 한다.',
+  complaint: '상대가 직접 수리하거나 적절한 책임자에게 전달할 권한을 가진다.',
+}
+
+function coreDomainCode(b: CoreGenBody): string {
+  if (b.domain === 'daily' || b.domain === 'school' || b.domain === 'work') return b.domain
+  if (b.domain_ko?.includes('학교') || b.domain_ko?.includes('학업') || b.domain_ko?.includes('대학')) return 'school'
+  if (b.domain_ko?.includes('직장')) return 'work'
+  return 'daily'
+}
+
+function coreSpeechActCode(b: CoreGenBody): string {
+  if (b.speech_act && SPEECH_ACT_KO[b.speech_act]) return b.speech_act
+  return Object.keys(SPEECH_ACT_KO).find((code) => SPEECH_ACT_KO[code] === b.speech_act_ko) ?? 'request'
+}
+
+function buildCoreContextSpec(b: CoreGenBody): CoreContextSpec {
+  const domain = coreDomainCode(b)
+  const act = coreSpeechActCode(b)
+  const key = `${b.pdr.p}|${b.pdr.d}`
+  const rolePair = TOPIC_ROLE_PAIRS[b.topic_code ?? '']?.[key] ?? ROLE_PAIRS[domain]?.[key] ?? {
+    speaker_ko: '지정된 P·D 조건을 따르는 화자',
+    addressee_ko: '지정된 P·D 조건을 따르는 상대',
+  }
+  return {
+    standard_situation_code: `${domain}.${b.topic_code ?? 'general'}.${act}`,
+    role_pair: rolePair,
+    speaker_entitlement: SPEAKER_ENTITLEMENT[act] ?? SPEAKER_ENTITLEMENT.request,
+    addressee_obligation: ADDRESSEE_OBLIGATION[act] ?? ADDRESSEE_OBLIGATION.request,
+    decision_authority: DECISION_AUTHORITY[act] ?? DECISION_AUTHORITY.request,
+  }
 }
 
 function buildCoreSystemPrompt(direction: Direction): string {
@@ -522,13 +778,37 @@ function buildCoreSystemPrompt(direction: Direction): string {
 - source_text는 반드시 ${srcL}. 지정된 화행·관계·부담에 맞는 자연스러운 발화.
 - situation_ko·relation_ko·brief_note_ko는 방향과 무관하게 항상 한국어(학습자 UI 언어).
 - [생성 요청]의 화행·도메인·P/D/R·수행 모드는 변경할 수 없는 필수 조건이다.
-- 장면 시드에 여러 화행·도메인 대안이 있으면 지정된 조건에 맞는 한 갈래만 선택한다.
+- [context_spec]의 역할 쌍·권리·의무·결정 권한은 서버가 정한 필수 조건이다.
+  이를 바꾸거나, 권한 없는 상대가 결정을 내리게 하거나, 선택 가능한 요청을 지시로 바꾸지 않는다.
+  역할 쌍에 든 "친구·선배·담당자" 같은 말은 P/D를 설명하는 범주 예시이지 topic의 인물을
+  교체할 허가가 아니다. 실제 인물 명칭은 topic_code·장면 시드에 맞게 구체화한다.
+- 화자 A(학습자)와 상대 B를 먼저 고정하고 situation_ko·relation_ko·preceding_turn·source_text
+  전체에서 같은 인물로 유지한다. 문제를 일으킨 사람, 행위 대상, 소유자, 요청받은 수행자를
+  대명사·소유 표현까지 포함해 뒤집지 않는다. 요청은 B가 수행하거나 결정할 수 있는 행위여야 한다.
+- 산업 배경이 주어지면 직장 장면의 실제 업무·대상·어휘에 드러나야 한다. 산업명을 보지 않고도
+  어느 분야인지 추론할 수 있도록 서로 다른 종류의 구체적 단서(업무/대상/전문 어휘) 두 가지 이상을
+  넣는다. "회사·프로젝트·제품·고객·행사" 같은 범용어만으로 산업을 구현했다고 보지 않는다.
+  단 산업은 화행·P/D/R·장면 사건을 덮어쓰는 새 화용축이 아니다.
+- 장면 시드와 topic_code는 사건·행위자·상호작용 목적을 정하는 필수 소재다. 여러 대안이 있으면
+  지정 조건에 맞는 한 갈래만 선택하되, 핵심 관계나 사건을 다른 소재로 교체하지 않는다.
+  topic_code에 host_family, hotel, neighbor처럼 구체적 관계·장소 명사가 있으면 그것도 필수다.
 - relation_ko와 상황 속 실제 역할은 지정된 P와 D를 정확히 구현해야 한다.
 - 장면 시드의 인물 관계가 지정된 P·D와 충돌하면, 시드의 소재(상황·사건)는 유지하되
   인물 관계를 P·D에 맞게 재설정한다. 연구 축이 시드보다 우선한다.
 - 응답 화행은 preceding_turn과 source_text가 자연스러운 인접쌍을 이루어야 하며,
   선행발화가 이미 source_text와 같은 거절·제안을 수행해서는 안 된다.
-- 출력 전에 화행·도메인·P·D·R·수행 모드 준수를 내부적으로 하나씩 대조한다.
+- 반대(opposition)는 B의 preceding_turn에 명시된 하나의 명제 P에 대해 A의 source_text가
+  같은 P를 부정·수정·제한해야 한다. B의 말을 A의 말처럼 인용하거나 "당신/저/우리"의 지시 대상을
+  뒤집지 않으며, 단순 동의·반복·별개 주장으로 만들지 않는다.
+  특히 B가 "시설을 늘리면 좋다"고만 말했는데 A가 이에 동의한 뒤 B가 말하지 않은 "모든 시설을
+  즉시 늘리기"만 어렵다고 하는 식으로 더 강한 새 명제를 만들어 반대해서는 안 된다.
+- 화행별 결정 권한을 지킨다. 거절은 A가 자신의 수락 여부를 결정하므로 B의 승인이나 허락을
+  거절 성립 조건으로 만들지 않는다. 요청은 B가 직접 수행·승인·전달할 권한이 있는 일이어야 한다.
+  제안·초대는 B에게 실질적 선택권이 있어야 하며, 불만은 문제 책임자나 조정 가능한 상대를 향한다.
+- 수행 모드와 situation_ko의 장면 서술은 반드시 일치해야 한다. 번역 셀을 "직접 말하는
+  상황", 통역 셀을 "글로 작성해 보내는 상황"으로 서술하는 식의 명시적 모순은 금지한다.
+- 출력 전에 화행·도메인·P·D·R·수행 모드뿐 아니라 행위자 지시·산업 단서·topic·인접쌍 명제·
+  결정 권한을 내부적으로 하나씩 대조한다.
 - "중국인은/중국에서는/한국인은/한국에서는" 같은 국가 단위 일반화 표현 금지.
 - 정치·시사·정부 기관 소재 금지.`
 }
@@ -550,17 +830,46 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
     `- 장면 시드: ${b.situation_seed_ko}`,
     `- 원문 분량: ${b.length_hint_ko}`,
   ]
+  if (b.industry) {
+    parts.splice(
+      5,
+      0,
+      `- 산업 배경: ${INDUSTRY_KO[b.industry] ?? b.industry} (${b.industry})`,
+    )
+  }
+  const contextSpec = b.context_spec ?? buildCoreContextSpec(b)
+  parts.push(
+    '',
+    '[context_spec — 서버 고정 조건]',
+    `- 표준상황 코드: ${contextSpec.standard_situation_code}`,
+    `- 역할 쌍: 화자=${contextSpec.role_pair.speaker_ko} / 상대=${contextSpec.role_pair.addressee_ko}`,
+    `- 화자의 정당한 권리·책임: ${contextSpec.speaker_entitlement}`,
+    `- 상대의 의무·선택권: ${contextSpec.addressee_obligation}`,
+    `- 결정 권한: ${contextSpec.decision_authority}`,
+    `- 행위자 고정: A=화자(${contextSpec.role_pair.speaker_ko}), B=상대(${contextSpec.role_pair.addressee_ko}). 모든 필드에서 A/B, 문제 책임자, 요청받은 행위자를 바꾸지 마세요.`,
+  )
+  if (b.industry) {
+    parts.push(
+      `- 산업 실현: 산업 라벨을 보지 않고도 분야를 알아볼 수 있는 구체적 업무·대상·전문 어휘 중 서로 다른 종류의 단서 두 가지 이상을 situation_ko/source_text에 넣으세요. 범용어만 쓰면 실패입니다.`,
+    )
+  }
   if (b.source_modality === 'spoken') {
     parts.push(
-      `- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 ${srcL} 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지.`,
+      `- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 ${srcL} 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지. situation_ko도 직접 말하고 듣는 장면으로 서술하며, 이메일·메신저·글을 작성해 보내는 장면으로 만들지 마세요.`,
     )
   } else {
-    parts.push(`- 수행 모드: 번역 — source_text는 자연스러운 ${srcL} 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정.`)
+    parts.push(`- 수행 모드: 번역 — source_text는 자연스러운 ${srcL} 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정. situation_ko도 글을 작성해 전달하는 장면으로 서술하며, "글로 남기지 않고 직접 말한다"거나 대면·통화로만 수행하는 장면으로 만들지 마세요.`)
   }
   if (b.is_response_act) {
     parts.push(
       `- 이 화행은 인접쌍의 둘째 짝입니다. preceding_turn에 상대(${tgtL} 화자)의 선행 발화를 '${tgtL}'로 반드시 채우세요(null 금지).`,
+      `- preceding_turn의 화자는 B, source_text의 화자는 A입니다. 두 턴에서 사람·소유·행위 대상과 핵심 명제를 일관되게 유지하세요.`,
     )
+    if (b.speech_act === 'opposition') {
+      parts.push(
+        `- 반대 전용: B의 preceding_turn에 반대 가능한 명제 P를 하나 명시하고, A의 source_text가 바로 그 P를 부정·수정·제한하게 하세요. 단순 동의·반복·별개 논점은 금지합니다.`,
+      )
+    }
   }
   parts.push('', '위 조건에 맞는 상황·원문을 JSON으로만 반환하세요.')
   return parts.join('\n')
@@ -568,7 +877,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
 
 // ── 코어 생성 프롬프트 스냅샷 해시 (재현성 provenance, 2026-07-26) ──────────
 // 목적: "이 배치의 행들이 같은 프롬프트·같은 호출 설정으로 만들어졌다"를 기계로 증명한다.
-// generation_prompt_version('core_v2')은 고정 리터럴이라 개정을 구분하지 못하므로,
+// generation_prompt_version('core_v3')만으로는 세부 개정을 구분하지 못하므로,
 // 모델에 실제로 보내는 문자열에서 지문을 뽑는다.
 //
 // ⚠️ 셀별 입력값(화행·수준·도메인·P/D/R·장면시드·분량)은 해시에 넣지 않는다.
@@ -577,7 +886,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
 //    (speech_act·learner_level·domain·scenario_p/d/r·topic_code·mode·language_direction)
 //    에 저장되므로, 템플릿이 확정되면 최종 user 프롬프트는 100% 복원된다.
 //    대신 user 프롬프트 안의 '규칙 문구'까지 지문에 담기도록, 값 자리를 고정 센티넬로
-//    두고 분기(방향2 × 모드2 × 인접쌍2)를 전부 렌더해 넣는다.
+//    두고 분기(방향2 × 모드2 × 인접쌍2 × 산업 유무2)를 전부 렌더해 넣는다.
 // 비밀값(API key·인증정보)은 어떤 경로로도 해시 입력에 포함하지 않는다.
 const CORE_TEMPERATURE = 0.7
 const CORE_RESPONSE_FORMAT = 'json_object'
@@ -592,12 +901,26 @@ function canonicalJson(v: unknown): string {
 
 /** 센티넬 입력 — 값 자리는 전부 고정 토큰(셀 무관). 분기는 아래에서 전부 순회한다. */
 const CORE_PROBE_BASE: Omit<CoreGenBody, 'direction' | 'source_modality' | 'is_response_act'> = {
+  speech_act: 'request',
   speech_act_ko: 'PROBE_ACT',
   level_ko: 'PROBE_LV',
+  domain: 'work',
   domain_ko: 'PROBE_DOM',
+  topic_code: 'PROBE_TOPIC',
+  industry: null,
   pdr: { p: 'PROBE_P', d: 'PROBE_D', r: 'PROBE_R' },
   situation_seed_ko: 'PROBE_SEED',
   length_hint_ko: 'PROBE_LEN',
+  context_spec: {
+    standard_situation_code: 'PROBE_STANDARD_SITUATION',
+    role_pair: {
+      speaker_ko: 'PROBE_SPEAKER_ROLE',
+      addressee_ko: 'PROBE_ADDRESSEE_ROLE',
+    },
+    speaker_entitlement: 'PROBE_SPEAKER_ENTITLEMENT',
+    addressee_obligation: 'PROBE_ADDRESSEE_OBLIGATION',
+    decision_authority: 'PROBE_DECISION_AUTHORITY',
+  },
 }
 
 /** 코어 프롬프트 표면 전체의 지문. 셀과 무관하므로 런 내내 동일 — 1회 계산 후 캐시. */
@@ -610,14 +933,47 @@ async function corePromptSnapshotHash(): Promise<string> {
   for (const direction of directions) {
     for (const source_modality of ['written', 'spoken'] as const) {
       for (const is_response_act of [false, true]) {
-        user_prompt_templates.push(
-          buildCoreUserPrompt({ ...CORE_PROBE_BASE, direction, source_modality, is_response_act }),
-        )
+        for (const industry of [null, 'PROBE_INDUSTRY']) {
+          user_prompt_templates.push(
+            buildCoreUserPrompt({
+              ...CORE_PROBE_BASE,
+              direction,
+              source_modality,
+              is_response_act,
+              industry,
+            }),
+          )
+        }
       }
     }
   }
+  // 실제 프롬프트에 주입되는 서버 카탈로그도 지문에 포함한다.
+  // 센티넬 템플릿만 해시하면 역할 쌍·권리·의무 문구가 바뀌어도
+  // 동일한 해시가 남아 서로 다른 생성 조건을 구분하지 못한다.
+  const context_spec_catalog = ['daily', 'school', 'work'].flatMap((domain) =>
+    ['equal', 'speaker_lower', 'speaker_higher'].flatMap((p) =>
+      ['close', 'acquaintance', 'distant'].flatMap((d) =>
+        Object.keys(SPEECH_ACT_KO).map((speech_act) => ({
+          domain,
+          p,
+          d,
+          speech_act,
+          context_spec: buildCoreContextSpec({
+            ...CORE_PROBE_BASE,
+            direction: 'ko_zh',
+            source_modality: 'written',
+            is_response_act: false,
+            domain,
+            speech_act,
+            pdr: { p, d, r: 'PROBE_R' },
+            context_spec: undefined,
+          }),
+        })),
+      ),
+    ),
+  )
   coreSnapshotHashCache = await sha256Hex(canonicalJson({
-    v: 1,
+    v: 3,
     scope: 'core_generation',
     action: 'core',
     model: PRIMARY_MODEL,
@@ -626,6 +982,18 @@ async function corePromptSnapshotHash(): Promise<string> {
     response_format: CORE_RESPONSE_FORMAT,
     system_prompts,
     user_prompt_templates,
+    prompt_catalogs: {
+      pdr_p_ko: PDR_P_KO,
+      pdr_d_ko: PDR_D_KO,
+      pdr_r_ko: PDR_R_KO,
+      industry_ko: INDUSTRY_KO,
+      role_pairs: ROLE_PAIRS,
+      topic_role_pairs: TOPIC_ROLE_PAIRS,
+      speaker_entitlement: SPEAKER_ENTITLEMENT,
+      addressee_obligation: ADDRESSEE_OBLIGATION,
+      decision_authority: DECISION_AUTHORITY,
+      context_spec_catalog,
+    },
   }))
   return coreSnapshotHashCache
 }
@@ -1048,20 +1416,49 @@ function buildCoreQualitySystemPrompt(direction: Direction): string {
 - P와 D는 공손 표지의 많고 적음으로 추정하지 말고 situation_ko·relation_ko의 실제
   역할과 관계로 판정한다. 특정 직접성 수준을 상위자/하위자 관계의 정답으로 가정하지 않는다.
 - R은 발화 길이가 아니라 요청·행위가 상대에게 주는 실제 부담으로 판정한다.
-- 장면 시드는 소재 재료다. P·D와 충돌하는 인물 관계를 바꾼 것은 결함이 아니지만,
-  핵심 사건·상호작용이 전혀 다른 소재로 바뀌면 topic_seed 위반이다.
+- 장면 시드와 topic_code는 핵심 사건·행위자·상호작용 목적을 묶는 필수 소재다. P/D에 맞춘
+  최소 역할 조정은 허용하지만, host family를 선배로 바꾸는 식의 관계·사건 교체는
+  topic_seed fail이다. 시드의 명사 한 개만 장식처럼 남긴 경우도 pass가 아니다.
+  topic_code에 host_family, hotel, neighbor처럼 사람이 읽을 수 있는 관계·장소 단서가 있으면
+  그 의미도 기대 조건으로 사용한다.
+- context_spec은 역할·권리·의무의 기대 조건이다. 단어를 그대로 복사했는지가 아니라 실제
+  상황과 relation_ko가 그 구조를 구현하는지 판정한다. 결정 권한은 별도 축에서 더 엄격히 본다.
+- referents는 화자 A와 상대 B, 문제 책임자, 소유자, 행위 대상, 요청받은 수행자가
+  situation_ko·relation_ko·preceding_turn·source_text 전체에서 같은지를 본다. 대명사·소유
+  표현이 뒤집혀 A가 만든 문제를 B에게 해결하라고 하는 식이면 fail이다.
+- industry는 직장 셀에서만 판정한다. 산업 라벨 없이도 해당 분야를 추론할 수 있는 구체적
+  업무·대상·전문 어휘가 서로 다른 종류로 두 가지 이상 드러나야 pass다. "회사·프로젝트·
+  제품·고객·행사" 같은 범용어뿐이거나 산업명을 장식적으로 한 번 언급하면 fail이다.
+  비직장 또는 산업 미지정이면 pass로 둔다.
+- decision_authority는 지정 화행의 행위를 누가 결정·수행·승인할 수 있는지 별도로 판정한다.
+  거절은 A가 자신의 수락 여부를 결정하므로 B의 승인·허락이 필요하다고 하면 fail이다.
+  요청은 B가 직접 수행·승인·적절한 담당자에게 전달할 권한이 없으면 fail이다. 제안·초대는
+  B에게 실질적 선택권이 있어야 하고, 불만은 문제 책임자 또는 조정 가능한 상대를 향해야 한다.
 - 응답 화행이 아니면 adjacency는 pass로 둔다. 응답 화행이면 preceding_turn이 있어야 하고
   source_text와 자연스러운 인접쌍을 이루어야 하며, 선행발화가 응답을 대신 수행하면 안 된다.
+- 반대(opposition)의 preceding_turn은 B가 말한 반대 가능한 **하나의 명제 P**여야 하고,
+  A의 source_text는 바로 그 P를 부정·수정·제한해야 한다. 두 턴의 명제 대상과 화자 지시
+  ("나/당신/우리", 소유자)가 같아야 한다. source_text가 P를 반복·동의하거나 별개 논점을
+  말하면 fail이다. 선행발화 자체가 이미 유보·반대를 끝냈고 source_text가 같은 입장을 반복해도
+  fail이다. 화면에 없는 더 이전 담화는 추측하지 않고 국소적 두 턴만 본다.
+  예를 들어 B가 "시설을 늘리면 활기차진다"고 했고 A가 그 명제에는 동의하면서, B가 말하지 않은
+  "모든 시설을 즉시 확장하기"만 어렵다고 하면 원래 명제에 대한 반대가 아니므로 adjacency fail이다.
+- adjacency fail은 선행발화가 동일한 앞선 행위에 대한 거절·반대 응답을 이미 수행하여
+  source_text가 병렬 응답이나 반복이 되는 경우처럼, 국소 인접쌍이 명백히 어긋날 때만 준다.
 
-[축 — 8개 모두 빠짐없이 판정]
+[축 — 12개 모두 빠짐없이 판정]
 1. speech_act: source_text가 지정 화행의 의도와 목적을 수행하는가
 2. power: 상황 속 화자와 상대의 실제 지위가 지정 P와 맞는가
 3. distance: 두 사람의 친밀도·낯섦이 지정 D와 맞는가
 4. burden: 상황의 실제 부담이 지정 R과 맞는가
-5. domain: 상황이 지정 일상/학교/직장 영역 안에 있는가
-6. mode: 통역이면 실제 말할 법한 구두 장면·담화이고, 번역이면 글로 옮길 서면 장면·문체인가
-7. topic_seed: 지정 시드의 핵심 소재·사건을 유지했는가
-8. adjacency: 응답 화행의 preceding_turn과 source_text가 일관된 인접쌍인가
+5. domain: 상황이 지정 일상/학업/직장 영역 안에 있는가
+6. industry: 직장 셀의 실제 업무 배경이 지정 산업과 맞는가
+7. mode: 통역이면 실제 말할 법한 구두 장면·담화이고, 번역이면 글로 옮길 서면 장면·문체인가
+8. context_spec: 역할·권리·의무가 서버 고정 조건과 맞는가
+9. referents: A/B와 문제 책임자·소유자·행위 대상의 지시가 모든 필드에서 일관되는가
+10. decision_authority: 화행별 결정·수행·승인 권한이 있는 사람을 향하는가
+11. topic_seed: 지정 시드의 핵심 관계·사건·목적을 유지했는가
+12. adjacency: 응답 화행의 명제와 화자 지시가 일관된 인접쌍인가
 
 [출력 — 오직 JSON, 설명·마크다운 금지]
 {
@@ -1073,7 +1470,11 @@ function buildCoreQualitySystemPrompt(direction: Direction): string {
     "distance": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
     "burden": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
     "domain": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "industry": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
     "mode": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "context_spec": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "referents": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "decision_authority": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
     "topic_seed": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
     "adjacency": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" }
   }
@@ -1086,12 +1487,15 @@ function buildCoreQualityUserPrompt(b: CoreQualityCheckBody): string {
 - 화행: ${b.speech_act_ko ?? SPEECH_ACT_KO[b.speech_act] ?? b.speech_act}
 - 학습자 수준: ${b.level ?? '(미지정)'}
 - 도메인: ${b.domain_ko ?? DOMAIN_KO[b.domain] ?? b.domain}
+- 산업 배경: ${b.industry ? (INDUSTRY_KO[b.industry] ?? b.industry) : '(해당 없음)'}
 - 수행 모드: ${b.mode === 'stt_interpreting' ? '통역(구두)' : '번역(서면)'}
 - P(지위): ${b.pdr?.p ?? '(미지정)'}
 - D(거리): ${b.pdr?.d ?? '(미지정)'}
 - R(부담): ${b.pdr?.r ?? '(미지정)'}
 - 응답 화행 여부: ${b.is_response_act ? '예' : '아니오'}
+- topic_code: ${b.topic_code ?? '(미지정)'}
 - 장면 시드: ${b.situation_seed_ko}
+- context_spec: ${JSON.stringify(b.expected_context_spec ?? null)}
 
 [심사 대상 core_content]
 ${JSON.stringify(b.core_content, null, 2)}`
@@ -1100,10 +1504,23 @@ ${JSON.stringify(b.core_content, null, 2)}`
 // ── feedback_v1 프롬프트 (계약 §4 + 0-q·95) ────────────────────────────
 // 학습자 산출에 대한 3층 진단. **점수를 매기지 않는다** — 학습 지원용 질적 피드백.
 // revision_scope는 여기서 받지 않는다(코드가 verdicts에서 도출 — §4).
-function buildFeedbackSystemPrompt(direction: Direction, _isSpoken: boolean): string {
+function buildFeedbackSystemPrompt(direction: Direction, isSpoken: boolean): string {
   const { src, tgt } = DIR_LANGS[direction]
+  const targetLanguage = LANG_KO[tgt]
+  const submittedOutput = isSpoken
+    ? `학습자가 확인·수정한 ${targetLanguage} 통역 전사`
+    : `학습자가 제출한 ${targetLanguage} 번역문`
+  const modeBoundary = isSpoken
+    ? `
+[통역 전사 경계]
+- 입력은 STT 원전사가 아니라 학습자가 직접 확인·수정한 전사다. 이 텍스트만 언어 산출로 본다.
+- 음성이 제공되지 않으므로 발음·성조·속도·휴지·유창성·음질을 추측하거나 평가하지 마라.
+- 전사 문구를 근거로 의미·문법·화용만 진단한다.
+`
+    : ''
   return `너는 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 수업의 화용 피드백 담당이다.
-학습자가 방금 제출한 중국어 산출 한 편에 대해 진단을 쓴다.
+${submittedOutput} 한 편에 대해 진단을 쓴다.
+${modeBoundary}
 
 [가장 중요한 전제]
 - **적절한 표현은 하나가 아니다.** 네가 떠올린 표현과 다르다는 이유로 낮게 판정하지 마라.
@@ -1176,6 +1593,11 @@ function buildFeedbackSystemPrompt(direction: Direction, _isSpoken: boolean): st
 }
 
 function buildFeedbackUserPrompt(b: FeedbackBody): string {
+  const direction = normDir(b.direction)
+  const { tgt } = DIR_LANGS[direction]
+  const outputLabel = b.mode === 'interpreting'
+    ? `학습자가 확인한 ${LANG_KO[tgt]} 통역 전사`
+    : `학습자가 제출한 ${LANG_KO[tgt]} 번역문`
   const f = b.feature ?? {}
   const bands = Array.isArray(f.band_schema)
     ? f.band_schema.map((x) => `${x.code}(${x.label_ko})`).join(' | ')
@@ -1202,7 +1624,7 @@ ${inv}
 - 대역 코드(이 중에서만 고를 것): ${bands}
 - 이 초점에서 **다루지 않는 축**(지적 금지): ${(f.excluded_confounds ?? []).join(' / ') || '(없음)'}
 
-[학습자가 제출한 중국어 산출]
+[${outputLabel}]
 ${b.answer ?? ''}`
 }
 
@@ -1249,8 +1671,12 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'core body required' }), { status: 400, headers: jsonHeaders })
       }
       const coreDir = normDir(b.direction)
+      // 역할·권리·의무는 모델이 추측하지 않고 서버가 셀 조건에서 결정한다.
+      // 클라이언트가 context_spec을 보내더라도 사용하지 않는다.
+      const contextSpec = buildCoreContextSpec(b)
+      const requestBody: CoreGenBody = { ...b, context_spec: contextSpec }
       const sys = buildCoreSystemPrompt(coreDir)
-      const usr = buildCoreUserPrompt(b)
+      const usr = buildCoreUserPrompt(requestBody)
       let model = PRIMARY_MODEL
       let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, CORE_TEMPERATURE)
       if (!att.ok && (att.status === 404 || att.status === 400)) {
@@ -1279,6 +1705,7 @@ Deno.serve(async (req) => {
         preceding_turn: b.is_response_act ? (gen.preceding_turn ?? gen.preceding_turn_zh ?? null) : null,
         pdr: b.pdr,
         channel: b.channel,
+        context_spec: contextSpec,
         ...(gen.brief_note_ko ? { brief_note_ko: String(gen.brief_note_ko) } : {}),
       }
       return new Response(
@@ -1287,7 +1714,7 @@ Deno.serve(async (req) => {
           meta: {
             provider: PROVIDER,
             model,
-            prompt_version: 'core_v2',
+            prompt_version: 'core_v3',
             // 재현성 provenance — 클라이언트는 이 값을 재계산하지 말고 그대로 저장한다.
             prompt_snapshot_hash: await corePromptSnapshotHash(),
             generated_at: new Date().toISOString(),
@@ -1451,7 +1878,8 @@ Deno.serve(async (req) => {
 
       const AXIS_CODES = [
         'speech_act', 'power', 'distance', 'burden',
-        'domain', 'mode', 'topic_seed', 'adjacency',
+        'domain', 'industry', 'mode', 'context_spec', 'referents',
+        'decision_authority', 'topic_seed', 'adjacency',
       ] as const
       const rawAxes = parsed.axes && typeof parsed.axes === 'object'
         ? parsed.axes as Record<string, unknown>
@@ -1485,10 +1913,10 @@ Deno.serve(async (req) => {
             summary_ko: typeof parsed.summary_ko === 'string' ? parsed.summary_ko.slice(0, 400) : '',
             axes,
             model,
-            prompt_version: 'core_quality_v1',
+            prompt_version: 'core_quality_v4',
             checked_at: checkedAt,
           },
-          meta: { provider: PROVIDER, model, prompt_version: 'core_quality_v1', generated_at: checkedAt },
+          meta: { provider: PROVIDER, model, prompt_version: 'core_quality_v4', generated_at: checkedAt },
         }),
         { status: 200, headers: jsonHeaders },
       )
