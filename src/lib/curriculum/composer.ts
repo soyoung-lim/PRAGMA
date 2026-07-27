@@ -1,8 +1,9 @@
 // 15주 편성기 데이터 레이어 (태스크 D).
 //
 // 시나리오 코어를 curriculum_week_scenarios 조인 테이블로 주차에 배정한다.
-// RLS 전제: scenarios(is_admin RLS) + curriculum_week_scenarios(admin 전용).
-// 따라서 admin 세션이 필요하며, 일반 학습자 세션은 빈 조회/권한 오류를 받는다.
+// RLS 전제: admin은 전체를 읽고 쓴다. 프로필 작성을 마친 learner의 SELECT는
+// published 강좌 편성 + reviewed 미션으로 제한된다
+// (20260727190000_learner_published_curriculum_read). 쓰기는 admin-only다.
 //
 // ⚠️ 타입 우회: supabase 생성 타입(types.ts)이 v1.4 신규 컬럼(core_content 등)과
 //    curriculum_week_scenarios 조인 테이블을 아직 모른다. AdminBrowser와 동일하게
