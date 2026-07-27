@@ -23,6 +23,8 @@ import {
   type ToneLeaning,
 } from "@/lib/pragma/discourseSlots";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
+import { requestSttTranscript } from "@/lib/mission/missionStt";
+import { requestTtsAudio } from "@/lib/tts";
 import {
   SEMANTIC_LABEL,
   GRAMMAR_LABEL,
@@ -1022,8 +1024,32 @@ function MissionRunner({
 }
 
 // ── 통역 오디오 프레임 — 듣기(≤2회) → 녹음 → STT 초안 → 전사 확인 → 제출 ──
-// 실동작: speechSynthesis(원문 재생)·MediaRecorder(원본 녹음 보존)·SpeechRecognition(전사 초안).
-// 미지원/거부 시 폴백 — 학습자가 전사를 직접 입력해 확인·제출할 수 있다(구인 타당성 유지).
+// 실동작: 서버 TTS(고정 음원)·MediaRecorder(서버 STT 전송)·SpeechRecognition(실패 폴백).
+// 음성 파일은 저장하지 않고 전사 후 폐기한다. 학습자가 확인한 전사만 제출·저장한다.
+type BrowserSpeechRecognitionResultList = {
+  length: number;
+  [index: number]: {
+    [index: number]: { transcript: string };
+  };
+};
+
+type BrowserSpeechRecognition = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: { results: BrowserSpeechRecognitionResultList }) => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
+type SpeechRecognitionWindow = Window & {
+  webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+  SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+};
+
 function AudioFrame({
   sourceText,
   srcName,
@@ -1050,70 +1076,102 @@ function AudioFrame({
   const [playing, setPlaying] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recorded, setRecorded] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [ttsLoading, setTtsLoading] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const recRef = useRef<any>(null);
+  const recRef = useRef<BrowserSpeechRecognition | null>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
 
   const sttSupported = useMemo(
-    () => typeof window !== "undefined" && !!((window as any).webkitSpeechRecognition || (window as any).SpeechRecognition),
+    () => {
+      if (typeof window === "undefined") return false;
+      const speechWindow = window as SpeechRecognitionWindow;
+      return Boolean(speechWindow.webkitSpeechRecognition || speechWindow.SpeechRecognition);
+    },
     [],
   );
-  const ttsSupported = typeof window !== "undefined" && "speechSynthesis" in window;
-
   useEffect(() => {
     return () => {
-      try {
-        window.speechSynthesis?.cancel();
-      } catch {
-        /* 무시 */
-      }
       try {
         recRef.current?.stop();
       } catch {
         /* 무시 */
       }
       streamRef.current?.getTracks().forEach((t) => t.stop());
+      audioRef.current?.pause();
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     };
   }, []);
 
-  const play = () => {
-    if (plays >= MAX_PLAYS || playing) return;
-    if (!ttsSupported) {
-      setNotice("이 브라우저에서는 음성 재생(TTS)을 지원하지 않습니다 — 아래 원문 텍스트로 대체합니다.");
-      return;
-    }
+  const play = async () => {
+    if (plays >= MAX_PLAYS || playing || ttsLoading) return;
+    setNotice(null);
+
     try {
-      const u = new SpeechSynthesisUtterance(sourceText);
-      u.lang = ttsLang;
-      u.onend = () => setPlaying(false);
-      u.onerror = () => setPlaying(false);
-      window.speechSynthesis.cancel();
+      let audio = audioRef.current;
+      if (!audio) {
+        setTtsLoading(true);
+        const result = await requestTtsAudio({
+          text: sourceText,
+          lang: ttsLang.toLowerCase().startsWith("zh") ? "zh" : "ko",
+          logPrefix: "[mission-tts]",
+        });
+        setTtsLoading(false);
+
+        if (result.ok === false) {
+          setNotice(`고품질 음성을 준비하지 못했습니다 — ${result.message}`);
+          return;
+        }
+
+        const url = URL.createObjectURL(result.blob);
+        audioUrlRef.current = url;
+        audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onended = () => setPlaying(false);
+        audio.onerror = () => {
+          setPlaying(false);
+          setNotice("음성 재생에 실패했습니다. 다시 시도해 주세요.");
+        };
+      }
+
+      audio.currentTime = 0;
       setPlaying(true);
-      setPlays((n) => n + 1);
-      window.speechSynthesis.speak(u);
+      await audio.play();
+      setPlays((count) => count + 1);
     } catch {
       setPlaying(false);
+      setTtsLoading(false);
+      setNotice("고품질 음성 재생에 실패했습니다. 다시 시도해 주세요.");
     }
   };
 
   const startRec = async () => {
     setNotice(null);
     setRecorded(false);
+    setConfirmed(false);
+    setTranscript("");
+    setTranscribing(false);
     // ① STT 초안(가능하면)
     if (sttSupported) {
       try {
-        const SR = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+        const speechWindow = window as SpeechRecognitionWindow;
+        const SR = speechWindow.webkitSpeechRecognition || speechWindow.SpeechRecognition;
+        if (!SR) throw new Error("SpeechRecognition unavailable");
         const rec = new SR();
         rec.lang = sttLang;
         rec.interimResults = true;
         rec.continuous = true;
-        rec.onresult = (e: any) => {
+        rec.onresult = (event) => {
           let out = "";
-          for (let i = 0; i < e.results.length; i++) out += e.results[i][0].transcript;
+          for (let i = 0; i < event.results.length; i++) {
+            out += event.results[i][0].transcript;
+          }
           setTranscript(out.trim());
         };
         rec.onerror = () => {};
@@ -1123,7 +1181,7 @@ function AudioFrame({
         /* STT 실패 — 녹음/수동 입력으로 계속 */
       }
     }
-    // ② 원본 녹음 보존
+    // ② 서버 전사용 임시 녹음 — 전사 요청 후 Blob 참조를 폐기한다.
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -1132,10 +1190,40 @@ function AudioFrame({
       mr.ondataavailable = (ev) => {
         if (ev.data.size) chunksRef.current.push(ev.data);
       };
+      mr.onstop = async () => {
+        const audio = new Blob(chunksRef.current, {
+          type: mr.mimeType || "audio/webm",
+        });
+        chunksRef.current = [];
+        mediaRef.current = null;
+        setRecorded(true);
+
+        if (!audio.size) {
+          setNotice("녹음된 음성이 없습니다 — 통역 내용을 직접 입력해 주세요.");
+          return;
+        }
+
+        setTranscribing(true);
+        const result = await requestSttTranscript(
+          audio,
+          sttLang.toLowerCase().startsWith("ko") ? "ko" : "zh",
+        );
+        setTranscribing(false);
+
+        if (result.ok === true) {
+          setTranscript(result.text);
+          setConfirmed(false);
+          setNotice("고품질 자동 전사가 완료됐습니다. 실제로 말한 내용과 같은지 확인해 주세요.");
+        } else {
+          setNotice(`${result.message} 브라우저 전사 초안을 확인하거나 직접 입력해 주세요.`);
+        }
+      };
       mediaRef.current = mr;
       mr.start();
       setRecording(true);
-      if (!sttSupported) setNotice("이 브라우저에서는 자동 전사(STT)를 지원하지 않습니다 — 녹음을 마친 뒤 전사를 직접 입력할 수 있습니다.");
+      if (!sttSupported) {
+        setNotice("브라우저 실시간 전사는 지원되지 않지만, 녹음을 마치면 서버에서 자동 전사합니다.");
+      }
     } catch {
       // 마이크 거부/미지원 — 수동 전사 경로로 진행(구인 유지)
       setRecording(true);
@@ -1150,17 +1238,20 @@ function AudioFrame({
       /* 무시 */
     }
     try {
-      mediaRef.current?.stop();
+      if (mediaRef.current?.state === "recording") {
+        mediaRef.current.stop();
+      } else {
+        setRecorded(true);
+      }
     } catch {
       /* 무시 */
     }
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setRecording(false);
-    setRecorded(true);
   };
 
-  const canSubmit = confirmed && transcript.trim().length > 0;
+  const canSubmit = !transcribing && confirmed && transcript.trim().length > 0;
   const dark = "rounded-xl bg-[#0F1B24] p-4 text-[#EAF0F4]";
 
   return (
@@ -1181,13 +1272,15 @@ function AudioFrame({
           <button
             type="button"
             onClick={play}
-            disabled={plays >= MAX_PLAYS || playing}
+            disabled={plays >= MAX_PLAYS || playing || ttsLoading}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FAD338] text-[18px] font-bold text-[#15202B] disabled:opacity-40"
           >
-            {playing ? "❚❚" : "▶"}
+            {playing || ttsLoading ? "❚❚" : "▶"}
           </button>
           <div>
-            <div className="text-[14px]">{playing ? "재생 중…" : "원발화 재생"}</div>
+            <div className="text-[14px]">
+              {ttsLoading ? "고품질 음성 준비 중…" : playing ? "재생 중…" : "원발화 재생"}
+            </div>
             <div className="text-[12px] text-[#9FB0BC]">남은 재생 {Math.max(0, MAX_PLAYS - plays)}회 · 재생 {plays}회</div>
           </div>
         </div>
@@ -1198,24 +1291,37 @@ function AudioFrame({
           <button
             type="button"
             onClick={recording ? stopRec : startRec}
+            disabled={transcribing}
             className={[
-              "rounded-lg border px-4 py-2 text-[13px] font-bold",
+              "rounded-lg border px-4 py-2 text-[13px] font-bold disabled:cursor-wait disabled:opacity-60",
               recording ? "border-[#C4494A] bg-[#C4494A] text-white" : "border-[#C4494A] bg-transparent text-[#F0A3A4]",
             ].join(" ")}
           >
-            {recording ? "■ 녹음 정지" : recorded ? "● 다시 녹음" : "● 녹음 시작"}
+            {recording ? "■ 녹음 정지" : transcribing ? "전사 중…" : recorded ? "● 다시 녹음" : "● 녹음 시작"}
           </button>
           <span className="text-[12px] text-[#9FB0BC]">
-            {recording ? "녹음 중…" : recorded ? "녹음 완료 · 아래 전사 확인" : "버튼을 누른 뒤 통역 시작"}
+            {recording
+              ? "녹음 중…"
+              : transcribing
+                ? "고품질 자동 전사 중…"
+                : recorded
+                  ? "전사 완료 · 아래에서 확인"
+                  : "버튼을 누른 뒤 통역 시작"}
           </span>
         </div>
+        <p className="mt-2 text-[11px] leading-relaxed text-[#9FB0BC]">
+          마이크 음성은 자동 전사를 위해 OpenAI 음성 인식 API로 전송됩니다.
+          PRAGMA는 음성 파일을 저장하지 않으며, 확인한 전사만 제출·저장합니다.
+        </p>
 
         {notice && <div className="mt-3 rounded-lg bg-[#16252F] px-3 py-2 text-[12px] leading-relaxed text-[#C6D2DB]">{notice}</div>}
 
         {/* ③ 전사 확인 */}
-        {(recorded || notice) && (
+        {(recorded || notice || transcribing) && (
           <div className="mt-3 rounded-lg border border-[#2A3A45] bg-[#16252F] p-3">
-            <div className="text-[11px] font-bold text-[#9FB0BC]">③ 전사 확인 — 자동 전사를 확인·수정합니다 (원본 녹음은 보존)</div>
+            <div className="text-[11px] font-bold text-[#9FB0BC]">
+              ③ 전사 확인 — 자동 전사를 실제로 말한 내용과 대조·수정합니다
+            </div>
             <textarea
               rows={2}
               value={transcript}
@@ -1224,18 +1330,20 @@ function AudioFrame({
                 setConfirmed(false);
               }}
               placeholder={`통역한 ${tgtName} 문장`}
+              disabled={transcribing}
               className="mt-2 w-full rounded-md border border-[#2A3A45] bg-[#0F1B24] p-2.5 text-[14.5px] leading-relaxed text-[#EAF0F4] outline-none focus:border-[#FAD338]"
             />
             <div className="mt-2 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => transcript.trim() && setConfirmed(true)}
+                disabled={transcribing}
                 className={[
                   "rounded-md border px-3 py-1.5 text-[12px] font-semibold",
                   confirmed ? "border-[#2E7D5B] bg-[#12321F] text-[#8FE3B4]" : "border-[#2A3A45] bg-[#0F1B24] text-[#C6D2DB]",
                 ].join(" ")}
               >
-                {confirmed ? "✓ 확인됨" : "전사 확인"}
+                {transcribing ? "전사 중…" : confirmed ? "✓ 확인됨" : "전사 확인"}
               </button>
               <span className="text-[11px] text-[#9FB0BC]">전사 확인은 통역 구인 타당성 장치입니다.</span>
             </div>

@@ -33,5 +33,11 @@ skip_nonce_check = false
 [functions.generate-scenario]
 verify_jwt = true
 
+[functions.tts]
+verify_jwt = true
+
+[functions.stt]
+verify_jwt = true
+
 [functions.youtube-transcript]
 verify_jwt = false
