@@ -27,7 +27,11 @@ import {
 } from "@/lib/pragma/batchPlan";
 import { runBatch, type BatchCellResult } from "@/lib/pragma/batchRun";
 import { preflightAdminBatch } from "@/lib/pragma/adminBatchPreflight";
-import { runCoreBatch, type CoreCellResult } from "@/lib/pragma/coreBatchRun";
+import {
+  loadExistingCoreRunItems,
+  runCoreBatch,
+  type CoreCellResult,
+} from "@/lib/pragma/coreBatchRun";
 import {
   CORE_QUALITY_AXES,
   runCoreQualityPilot,
@@ -62,6 +66,28 @@ const CORE_AXIS_LABEL: Record<CoreQualityAxis, string> = {
   adjacency: "인접쌍",
 };
 
+const coreRunStorageKey = (direction: LanguageDirection) =>
+  `pragma:admin-core-batch-run:${direction}`;
+
+const createCoreRunId = (direction: LanguageDirection) =>
+  `core_${direction}_${Date.now()}`;
+
+const getOrCreateCoreRunId = (direction: LanguageDirection) => {
+  const fresh = createCoreRunId(direction);
+  if (typeof window === "undefined") return fresh;
+  const key = coreRunStorageKey(direction);
+  const stored = window.localStorage.getItem(key);
+  if (stored) return stored;
+  window.localStorage.setItem(key, fresh);
+  return fresh;
+};
+
+const persistCoreRunId = (direction: LanguageDirection, runId: string) => {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(coreRunStorageKey(direction), runId);
+  }
+};
+
 const AdminBatch = () => {
   const [quota, setQuota] = useState<BatchQuota>(DEFAULT_QUOTA);
   const [genMode, setGenMode] = useState<GenMode>("core");
@@ -73,12 +99,14 @@ const AdminBatch = () => {
   const [auditRunning, setAuditRunning] = useState(false);
   const [auditResults, setAuditResults] = useState<CoreQualityPilotResult[]>([]);
   const [auditDone, setAuditDone] = useState(0);
+  const [coreRunId, setCoreRunId] = useState(() => getOrCreateCoreRunId("ko_zh"));
   const abortRef = useRef<AbortController | null>(null);
 
   const switchDirection = (d: LanguageDirection) => {
     if (running) return;
     setDirection(d);
     setQuota(d === "zh_ko" ? ZH_KO_SMOKE_QUOTA : DEFAULT_QUOTA);
+    setCoreRunId(getOrCreateCoreRunId(d));
   };
 
   const targetActs = direction === "zh_ko" ? ZH_KO_SMOKE_ACTS : undefined;
@@ -101,6 +129,19 @@ const AdminBatch = () => {
       return;
     }
 
+    let existingItems = new Map<string, string>();
+    if (genMode === "core") {
+      try {
+        existingItems = await loadExistingCoreRunItems(coreRunId);
+      } catch {
+        toast.error("기존 배치 진행 상태를 읽지 못했습니다. 다시 로그인한 뒤 실행해 주세요.");
+        return;
+      }
+      if (existingItems.size > 0) {
+        toast.info(`같은 배치 ID로 저장된 ${existingItems.size}건은 AI 호출 없이 건너뜁니다.`);
+      }
+    }
+
     setRunning(true);
     setResults([]);
     setDone(0);
@@ -115,7 +156,8 @@ const AdminBatch = () => {
     const out =
       genMode === "core"
         ? await runCoreBatch(plan, {
-            runId: `core_${Date.now()}`,
+            runId: coreRunId,
+            existingItems,
             concurrency: 3,
             signal: ctrl.signal,
             onProgress,
@@ -128,8 +170,29 @@ const AdminBatch = () => {
 
   const stop = () => abortRef.current?.abort();
 
+  const startFreshCoreRun = () => {
+    if (running) return;
+    if (
+      results.length > 0
+      && !window.confirm("새 배치 ID를 만들면 다음 실행은 기존 저장분을 건너뛰지 않습니다. 계속할까요?")
+    ) {
+      return;
+    }
+    const next = createCoreRunId(direction);
+    persistCoreRunId(direction, next);
+    setCoreRunId(next);
+    setResults([]);
+    setDone(0);
+    setAuditResults([]);
+    setAuditDone(0);
+    toast.success("새 배치 ID를 만들었습니다.");
+  };
+
   const okCount = results.filter((r) => r.ok).length;
   const failCount = results.filter((r) => !r.ok).length;
+  const reusedCount = results.filter(
+    (result) => result.ok && "reused" in result && result.reused,
+  ).length;
   const warnCount = results.filter(
     (r) => r.ok && "ruleResult" in r && r.ruleResult === "warning",
   ).length;
@@ -233,7 +296,7 @@ const AdminBatch = () => {
                 <Input
                   type="number"
                   min={0}
-                  max={10}
+                  max={30}
                   value={quota.perLevel[lv]}
                   disabled={running}
                   onChange={(e) => setLevelQuota(lv, Number(e.target.value))}
@@ -353,6 +416,26 @@ const AdminBatch = () => {
 
       {/* ── 실행 ── */}
       <section className="mt-4 rounded-xl border border-[#EAE4D2] bg-white p-5">
+        {genMode === "core" && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#FAF8F2] px-3 py-2.5">
+            <div className="min-w-0 text-[12px] text-muted-foreground">
+              배치 ID{" "}
+              <code className="break-all font-mono text-[11.5px] text-foreground">
+                {coreRunId}
+              </code>
+              <span className="ml-2">중단 후 같은 ID로 다시 실행하면 저장 완료 항목을 건너뜁니다.</span>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={startFreshCoreRun}
+              disabled={running}
+            >
+              새 배치 ID
+            </Button>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <Button
             onClick={start}
@@ -368,6 +451,7 @@ const AdminBatch = () => {
           {results.length > 0 && (
             <span className="text-[13px] text-muted-foreground">
               성공 {okCount}
+              {genMode === "core" && reusedCount > 0 ? ` (기존 ${reusedCount}건 건너뜀)` : ""}
               {genMode === "core" && warnCount > 0 ? ` (경고 ${warnCount})` : ""} · 실패 {failCount}
             </span>
           )}

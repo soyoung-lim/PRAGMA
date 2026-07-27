@@ -34,6 +34,8 @@ export interface CoreCellResult {
   cell: BatchCell;
   ok: boolean;
   scenarioId?: string;
+  /** 같은 run ID에서 이미 저장된 항목이라 AI 호출 없이 건너뛴 경우. */
+  reused?: boolean;
   /** 같은 세션에서 코어 비평 파일럿을 돌리기 위한 생성 응답. DB 저장 게이트에는 사용하지 않는다. */
   coreContent?: Record<string, unknown>;
   ruleResult?: "pass" | "warning" | "fail";
@@ -44,6 +46,8 @@ export interface CoreCellResult {
 export interface CoreRunOptions {
   languageDirection?: LanguageDirection;
   runId: string;
+  /** 같은 run ID로 재개할 때 DB에 이미 존재하는 item key → scenario ID. */
+  existingItems?: ReadonlyMap<string, string>;
   concurrency?: number;
   onProgress?: (done: number, total: number, last: CoreCellResult) => void;
   signal?: AbortSignal;
@@ -78,6 +82,51 @@ function hashString(s: string): string {
     h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
   }
   return (h >>> 0).toString(36);
+}
+
+/**
+ * 한 논리 배치 안에서 셀을 식별하는 결정론 키.
+ *
+ * 방향·모드·P/D/R까지 포함해 쿼터나 방향을 바꾼 뒤 같은 run ID를 실수로
+ * 재사용해도 다른 셀을 완료 항목으로 오인하지 않는다. index는 같은 축의 반복분을
+ * 구분한다.
+ */
+export function coreGenerationItemKey(cell: BatchCell, index: number): string {
+  return [
+    cell.direction,
+    cell.speech_act_ui,
+    cell.level,
+    cell.domain,
+    cell.mode,
+    cell.pdr_power,
+    cell.pdr_distance,
+    cell.pdr_burden,
+    cell.theme_code,
+    cell.topic_code,
+    cell.industry ?? "-",
+    index,
+  ].join("|");
+}
+
+/** 중단된 코어 배치를 같은 run ID로 재개하기 위한 저장 완료 목록. */
+export async function loadExistingCoreRunItems(
+  runId: string,
+): Promise<Map<string, string>> {
+  const { data, error } = await supabase
+    .from("scenarios")
+    .select("scenario_id, generation_item_key")
+    .eq("generation_run_id", runId)
+    .not("generation_item_key", "is", null);
+
+  if (error) throw error;
+
+  const items = new Map<string, string>();
+  for (const row of data ?? []) {
+    if (row.generation_item_key) {
+      items.set(row.generation_item_key, row.scenario_id);
+    }
+  }
+  return items;
 }
 
 export async function runCoreCell(
@@ -142,7 +191,7 @@ export async function runCoreCell(
     // genre 행 태그(legacy)를 task_mode에서 파생 — RPC가 core_content.channel로 genre를
     // 만들므로(DB 무변경) 저장 직전 mode에서 legacy channel을 주입한다. channel은 축이 아님.
     core.channel = legacyChannelOf(mode);
-    const itemKey = `${cell.speech_act_ui}|${cell.level}|${cell.domain}|${cell.topic_code}|${index}`;
+    const itemKey = coreGenerationItemKey(cell, index);
     const payload = {
       title: core.brief_note_ko || core.situation_ko?.slice(0, 40),
       speech_act: cell.speech_act_ui,
@@ -201,7 +250,17 @@ export async function runCoreBatch(
       const i = cursor;
       cursor += 1;
       if (i >= cells.length) return;
-      const res = await runCoreCell(cells[i], i, opts);
+      const cell = cells[i];
+      const existingScenarioId = opts.existingItems?.get(coreGenerationItemKey(cell, i));
+      const res: CoreCellResult = existingScenarioId
+        ? {
+            index: i,
+            cell,
+            ok: true,
+            scenarioId: existingScenarioId,
+            reused: true,
+          }
+        : await runCoreCell(cell, i, opts);
       results.push(res);
       done += 1;
       opts.onProgress?.(done, cells.length, res);
