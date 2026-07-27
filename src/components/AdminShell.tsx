@@ -42,18 +42,18 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/generator", label: "개별 생성" },
       { to: "/admin/batch", label: "배치 생성" },
       { to: "/admin/browser", label: "학습 미션 조립" },
-      { to: "/admin/package", label: "수업 패키지 생성", pending: true },
       { to: "/admin/review", label: "통합 검수·승인" },
       { to: "/admin/archive", label: "시나리오 아카이브" },
     ],
   },
   {
-    header: "2 · 커리큘럼·편성",
+    header: "2 · 커리큘럼·수업 준비",
     // 둘 다 "15주"로 시작해 관계가 안 보였다(2026-07-26). ①은 빈 시간표를 만들고
     // ②는 그 칸을 채운다 — 번호로 순서를, 이름으로 무엇이 다른지 드러낸다.
     items: [
       { to: "/admin/curriculum", label: "커리큘럼 구조" },
       { to: "/admin/composer", label: "주차별 시나리오 편성" },
+      { to: "/admin/package", label: "수업 자료 생성", pending: true },
     ],
   },
   {
