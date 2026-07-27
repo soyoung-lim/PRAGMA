@@ -7,14 +7,22 @@ const DEFAULT_VOICE_BY_LANG: Record<'ko' | 'zh', string> = {
 
 const FREE_TIER_VOICE_IDS = ['EXAVITQu4vr4xnSDxMaL', '9BWtsMINqrJLrRacOk9x'] as const
 
-const audioHeaders = (requestedVoiceId: string, usedVoiceId: string, fallbackUsed: boolean) => ({
+const audioHeaders = (
+  requestedVoiceId: string,
+  usedVoiceId: string,
+  fallbackUsed: boolean,
+  provider = 'elevenlabs',
+  model = 'eleven_multilingual_v2',
+) => ({
   ...corsHeaders,
   'Content-Type': 'audio/mpeg',
   'Cache-Control': 'no-store',
-  'Access-Control-Expose-Headers': 'Content-Type, X-TTS-Voice-Id, X-TTS-Requested-Voice-Id, X-TTS-Fallback-Used',
+  'Access-Control-Expose-Headers': 'Content-Type, X-TTS-Voice-Id, X-TTS-Requested-Voice-Id, X-TTS-Fallback-Used, X-TTS-Provider, X-TTS-Model',
   'X-TTS-Voice-Id': usedVoiceId,
   'X-TTS-Requested-Voice-Id': requestedVoiceId,
   'X-TTS-Fallback-Used': fallbackUsed ? '1' : '0',
+  'X-TTS-Provider': provider,
+  'X-TTS-Model': model,
 })
 
 const jsonHeaders = {
@@ -117,6 +125,38 @@ const requestAudio = async (text: string, voiceId: string, apiKey: string) => {
   }
 }
 
+const requestOpenAiAudio = async (text: string, lang: 'ko' | 'zh', apiKey: string) => {
+  const model = 'tts-1-hd'
+  const voice = lang === 'zh' ? 'shimmer' : 'nova'
+  const response = await fetch('https://api.openai.com/v1/audio/speech', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      voice,
+      input: text,
+      response_format: 'mp3',
+      speed: 0.95,
+    }),
+  })
+
+  if (!response.ok) {
+    const rawError = await response.text()
+    console.error('OpenAI TTS API Error:', response.status, rawError)
+    return { ok: false as const, status: response.status, rawError }
+  }
+
+  return {
+    ok: true as const,
+    audio: await response.arrayBuffer(),
+    model,
+    voice,
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: jsonHeaders })
@@ -154,9 +194,45 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get('ELEVENLABS_API_KEY')
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'ELEVENLABS_API_KEY not configured' }), {
-        status: 500,
-        headers: jsonHeaders,
+      const openAiKey = Deno.env.get('OPENAI_API_KEY')
+      if (!openAiKey) {
+        return new Response(JSON.stringify({ error: 'TTS provider key not configured' }), {
+          status: 500,
+          headers: jsonHeaders,
+        })
+      }
+
+      const openAiAttempt = await requestOpenAiAudio(text, language, openAiKey)
+      if (!openAiAttempt.ok) {
+        const parsed = (() => {
+          try {
+            return JSON.parse(openAiAttempt.rawError) as {
+              error?: { code?: string; message?: string; type?: string }
+            }
+          } catch {
+            return null
+          }
+        })()
+        return new Response(JSON.stringify({
+          error: '고품질 음성 생성에 실패했습니다.',
+          providerStatus: openAiAttempt.status,
+          providerCode: parsed?.error?.code ?? parsed?.error?.type ?? 'unknown',
+          providerMessage: parsed?.error?.message ?? 'OpenAI audio request failed',
+        }), {
+          status: 502,
+          headers: jsonHeaders,
+        })
+      }
+
+      return new Response(openAiAttempt.audio, {
+        status: 200,
+        headers: audioHeaders(
+          requestedVoiceId,
+          openAiAttempt.voice,
+          false,
+          'openai',
+          openAiAttempt.model,
+        ),
       })
     }
 
