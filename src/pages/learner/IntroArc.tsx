@@ -7,28 +7,67 @@ import {
   INTRO_STEPS,
   INTRO_FEATURE_ID,
   HOOK_SCENE,
-  CLUES,
-  CLUE_TAIL,
+  CONTEXT_CLUES,
   CLUES_REQUIRED,
-  REFERENCE_CASES,
+  REPLAY_CASES,
   PRINCIPLE_TABLE,
   PRINCIPLE_LEAD,
   STRATEGY_MAP_UNLOCK,
   CLASS_LABELS,
   CLASSIFY_PROMPT,
+  CLASSIFY_CONTEXT,
   CLASSIFY_ITEMS,
   ARC_CLOSING,
   type ClassLabel,
+  type IntroContextFrame,
 } from "@/lib/mission/mockIntroArc";
 import { WEEK_REQUEST } from "@/lib/mission/mockWeek";
 import { updateFeatureState } from "@/lib/mission/learnerState";
 import { IS_DEMO } from "@/lib/auth/useProfile";
 
-// 도입 아크 — 새 목표 특징 최초 도입 시 1회. 입력 먼저(장면→관찰→명시→수용) 후
+// 도입 아크 — 새 목표 특징 최초 도입 시 1회. 입력 먼저(맥락→관찰→명시→수용) 후
 // 미션 1개로 합류한다. 미션 사이클(산출 먼저)과 순서가 반대인 상위 루프.
 //
 // 게이트: ②는 단서 3개 이상, ④는 3문항 분류 완료. ③에 도달하면 전략 지도가 열린다
 // (선산출 원칙의 예외 — 같은 산출 문항의 복사 가능한 답안만 최초 수행 전 금지).
+
+const CONTEXT_ROWS: {
+  key: keyof IntroContextFrame;
+  eyebrow: string;
+  title: string;
+}[] = [
+  {
+    key: "physical",
+    eyebrow: "언제 · 어디서 · 어떤 방식으로",
+    title: "장면 조건",
+  },
+  {
+    key: "social",
+    eyebrow: "누가 누구에게 · 어느 정도의 부담으로",
+    title: "관계와 부담",
+  },
+  {
+    key: "goal",
+    eyebrow: "무엇을 이루려는가",
+    title: "상호작용 목표",
+  },
+];
+
+const ContextFrame = ({ context }: { context: IntroContextFrame }) => (
+  <section aria-label="상황 맥락" className="grid gap-2.5 lg:grid-cols-3">
+    {CONTEXT_ROWS.map((row) => (
+      <div key={row.key} className="rounded-lg border border-[#E4DDCC] bg-[#FAF8F2] p-3">
+        <p className="text-[10.5px] font-medium tracking-wide text-[#8A7450]">
+          {row.eyebrow}
+        </p>
+        <h3 className="mt-0.5 text-[13px] font-bold text-foreground">{row.title}</h3>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#5B5446]">
+          {context[row.key]}
+        </p>
+      </div>
+    ))}
+  </section>
+);
 
 const IntroArc = () => {
   const navigate = useNavigate();
@@ -42,18 +81,18 @@ const IntroArc = () => {
   const allRight = classifyDone && CLASSIFY_ITEMS.every((g, i) => picks[i] === g.truth);
 
   const canAdvance =
-    step === "차이 찾기" ? cluesEnough : step === "감각 확인" ? classifyDone : true;
+    step === "단서 추리" ? cluesEnough : step === "적용 판단" ? classifyDone : true;
 
   // 시연용 — 현재 단계의 게이트를 채운다. 이미 고른 값은 덮어쓰지 않는다.
   const fillDemo = () => {
-    if (step === "차이 찾기") {
+    if (step === "단서 추리") {
       setFoundClues((prev) =>
         prev.length >= CLUES_REQUIRED
           ? prev
-          : CLUES.map((_, i) => i).slice(0, CLUES_REQUIRED),
+          : CONTEXT_CLUES.map((_, i) => i).slice(0, CLUES_REQUIRED),
       );
     }
-    if (step === "감각 확인") {
+    if (step === "적용 판단") {
       setPicks((prev) => {
         const next = { ...prev };
         CLASSIFY_ITEMS.forEach((g, i) => {
@@ -66,7 +105,7 @@ const IntroArc = () => {
 
   const advance = () => {
     // ③ 원리 이해 도달 = 명시적 설명을 봄 → 전략 지도 개방 조건 충족
-    if (INTRO_STEPS[stepIdx + 1] === "원리 이해") {
+    if (INTRO_STEPS[stepIdx + 1] === "원리 연결") {
       updateFeatureState(INTRO_FEATURE_ID, { introExplanationCompleted: true });
     }
     setStepIdx((i) => Math.min(INTRO_STEPS.length - 1, i + 1));
@@ -83,99 +122,185 @@ const IntroArc = () => {
     <div className="rounded-xl border border-[#EAE4D2] bg-white p-4">
       <div className="text-[12px] font-bold text-[#B8860B]">{HOOK_SCENE.eyebrow}</div>
       <h2 className="mt-1 text-[19px] font-bold">{HOOK_SCENE.title}</h2>
-      <p className="mt-1.5 text-[13.5px] text-muted-foreground">{HOOK_SCENE.lead}</p>
+      <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted-foreground">
+        {HOOK_SCENE.lead}
+      </p>
 
-      <div className="mt-4 rounded-xl bg-[#1B2836] p-4 text-[#DDE4EA]">
-        <div className="text-[12.5px] italic text-[#8899A6]">— {HOOK_SCENE.direction}</div>
-        {HOOK_SCENE.lines.map((l, i) => (
-          <div key={i} className="mt-2.5 text-[14.5px] leading-relaxed">
-            {l.who && <b className="mr-1.5">{l.who}:</b>}
-            {l.zh && <span className="text-white">{l.zh}</span>}
-            {l.note && (
-              <span className={l.who ? "ml-1.5 text-[12.5px] italic text-[#8899A6]" : "text-[12.5px] italic text-[#FF9C9C]"}>
-                {l.who ? `(${l.note})` : l.note}
-              </span>
-            )}
+      <div className="mx-auto mt-4 max-w-[470px] overflow-hidden rounded-[22px] border border-[#C9D0D4] bg-[#EDEFF0] shadow-sm">
+        <div className="flex items-center justify-between border-b border-[#D5DADD] bg-[#F8F9F9] px-4 py-3">
+          <div>
+            <p className="text-[13.5px] font-bold text-[#1F2933]">{HOOK_SCENE.threadTitle}</p>
+            <p className="mt-0.5 text-[10.5px] text-[#7B858B]">{HOOK_SCENE.threadMeta}</p>
           </div>
-        ))}
+          <span className="h-2 w-2 rounded-full bg-[#29A56C]" aria-label="온라인" />
+        </div>
+
+        <div className="space-y-3 px-4 py-4">
+          <div className="flex justify-end">
+            <div className="max-w-[84%] rounded-2xl rounded-tr-sm bg-[#95EC69] px-3.5 py-2.5 text-[14.5px] leading-relaxed text-[#162016] shadow-sm">
+              {HOOK_SCENE.lines[0].zh}
+            </div>
+          </div>
+          <p className="pr-1 text-right text-[10.5px] text-[#879096]">
+            {HOOK_SCENE.lines[1].note}
+          </p>
+
+          <div className="mx-auto w-fit rounded-full bg-white/80 px-3 py-1.5 text-[11px] text-[#68757C]">
+            <span className="mr-1.5 inline-flex gap-0.5" aria-hidden>
+              <span className="h-1 w-1 animate-pulse rounded-full bg-[#68757C]" />
+              <span className="h-1 w-1 animate-pulse rounded-full bg-[#68757C] [animation-delay:120ms]" />
+              <span className="h-1 w-1 animate-pulse rounded-full bg-[#68757C] [animation-delay:240ms]" />
+            </span>
+            {HOOK_SCENE.lines[2].note}
+          </div>
+          <p className="text-center text-[10.5px] text-[#9AA2A7]">
+            {HOOK_SCENE.lines[3].note}
+          </p>
+
+          <div className="flex items-end gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#556979] text-[11px] font-bold text-white">
+              李
+            </div>
+            <div>
+              <p className="mb-1 text-[10.5px] text-[#7B858B]">{HOOK_SCENE.lines[4].note}</p>
+              <div className="w-fit rounded-2xl rounded-tl-sm bg-white px-3.5 py-2.5 text-[14.5px] text-[#1F2933] shadow-sm">
+                {HOOK_SCENE.lines[4].zh}
+              </div>
+              <div className="mt-1.5 flex gap-1.5">
+                {[1, 2, 3].map((n) => (
+                  <div
+                    key={n}
+                    className="flex h-12 w-14 items-center justify-center rounded-md border border-[#D6DBDE] bg-[#F9FAFA] text-[9.5px] text-[#7B858B]"
+                  >
+                    笔记 {n}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <p className="mt-3.5 text-[13.5px] leading-relaxed text-muted-foreground">
-        {HOOK_SCENE.closing}
-      </p>
+      <div className="mt-4 rounded-xl bg-[#1B2836] px-4 py-3.5 text-white">
+        <p className="text-[12px] leading-relaxed text-[#B8C3CB]">{HOOK_SCENE.outcome}</p>
+        <p className="mt-2 text-[16px] font-bold leading-snug">{HOOK_SCENE.question}</p>
+      </div>
     </div>
   );
 
   const screenNotice = () => (
     <div className="rounded-xl border border-[#EAE4D2] bg-white p-4">
-      <div className="text-[12px] font-bold text-[#B8860B]">검수된 참조 사례 — 정답이 아니라 범위</div>
-      <h2 className="mt-1 text-[19px] font-bold">특이한 부분을 눌러보세요</h2>
+      <div className="text-[12px] font-bold text-[#B8860B]">대화 속에 숨은 네 단서</div>
+      <h2 className="mt-1 text-[19px] font-bold">무엇이 말의 인상을 바꾸었을까?</h2>
       <p className="mt-1.5 text-[13.5px] text-muted-foreground">
-        비슷한 상황(아직 어색한 동급생에게 위챗 부탁)의 사례예요. <strong>민준의 말에는 없던 것</strong>이 4군데 숨어 있어요.
+        첫 화면에서는 감춰 두었던 장면의 조건입니다. 단서를 열어, 각 조건이 어떤 표현
+        선택과 연결되는지 추리하십시오.
       </p>
 
-      <p className="mt-4 text-[15px] leading-loose">
-        {CLUES.map((c, i) => (
+      <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+        {CONTEXT_CLUES.map((clue, i) => {
+          const opened = foundClues.includes(i);
+          return (
           <button
             key={i}
             type="button"
             onClick={() => setFoundClues((prev) => (prev.includes(i) ? prev : [...prev, i]))}
+            aria-pressed={opened}
             className={[
-              "mr-1 rounded px-0.5 transition-colors",
-              foundClues.includes(i)
-                ? "bg-[#FAD338]"
-                : "border-b-2 border-dotted border-[#B8860B] hover:bg-[#FFFBEA]",
+              "min-h-[122px] rounded-lg border p-3 text-left transition-all",
+              opened
+                ? "border-[#D9B82F] bg-[#FFFBEA] shadow-sm"
+                : "border-dashed border-[#C9B98A] bg-[#FAF8F2] hover:border-[#B8860B] hover:bg-[#FFFDF4]",
             ].join(" ")}
           >
-            {c.zh}
+            <span className="inline-flex rounded-full bg-[#1B2836] px-2 py-0.5 text-[10.5px] font-bold text-white">
+              {clue.tag}
+            </span>
+            {opened ? (
+              <>
+                <strong className="mt-2 block text-[13px]">{clue.title}</strong>
+                <span className="mt-1 block text-[12px] leading-relaxed text-[#5B5446]">
+                  {clue.fact}
+                </span>
+                <span className="mt-2 block border-t border-[#EAD78A] pt-2 text-[11.5px] font-semibold leading-relaxed text-[#765D00]">
+                  표현에 미치는 영향 · {clue.effect}
+                </span>
+              </>
+            ) : (
+              <span className="mt-5 block text-center text-[12px] font-semibold text-[#8A7450]">
+                이 단서가 왜 중요할까?
+              </span>
+            )}
           </button>
-        ))}
-        <span>{CLUE_TAIL}</span>
-      </p>
+          );
+        })}
+      </div>
 
       <div className="mt-3 inline-block rounded-full bg-[#15202B] px-3 py-1 text-[12px] font-bold text-white">
-        단서 {foundClues.length} / {CLUES.length} 발견 {cluesEnough && "— 충분해요!"}
+        단서 {foundClues.length} / {CONTEXT_CLUES.length} 발견 {cluesEnough && "— 비교가 열렸습니다"}
       </div>
-      <ul className="mt-2 space-y-1">
-        {foundClues.map((i) => (
-          <li key={i} className="text-[13px] font-semibold text-[#2E7D5B]">
-            ✓ {CLUES[i].why}
-          </li>
-        ))}
-      </ul>
 
       {cluesEnough && (
-        <div className="mt-4 space-y-2">
-          <p className="text-[13.5px] text-muted-foreground">
-            적절한 방식은 <strong>하나가 아니에요</strong> — 같은 부탁의 다른 사례와 경계도 보세요.
+        <div className="mt-5">
+          <p className="text-[13.5px] font-bold text-foreground">
+            같은 장면, 두 가지 가능한 전개
           </p>
-          <div className="rounded-lg border border-emerald-500 p-3">
-            <Badge className="bg-emerald-100 text-[11px] text-emerald-900 hover:bg-emerald-100">
-              {REFERENCE_CASES.good.label}
-            </Badge>
-            <p className="mt-1.5 text-[15px]">{REFERENCE_CASES.good.zh}</p>
-          </div>
-          <div className="rounded-lg border border-destructive bg-destructive/5 p-3">
-            <Badge className="bg-red-100 text-[11px] text-red-900 hover:bg-red-100">
-              {REFERENCE_CASES.edge.label}
-            </Badge>
-            <p className="mt-1.5 text-[15px]">{REFERENCE_CASES.edge.zh}</p>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+            상대의 반응은 하나로 결정되지 않습니다. 아래는 표현이 대화의 다음 차례에
+            어떤 여지를 만들 수 있는지 보여주는 검수된 예시입니다.
+          </p>
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            {[REPLAY_CASES.first, REPLAY_CASES.alternative].map((c, i) => (
+              <div
+                key={c.label}
+                className={[
+                  "rounded-lg border p-3",
+                  i === 0 ? "border-[#D8D3C8] bg-[#F7F6F2]" : "border-[#9BD2B8] bg-[#F2FBF6]",
+                ].join(" ")}
+              >
+                <Badge
+                  className={
+                    i === 0
+                      ? "bg-[#E8E5DD] text-[11px] text-[#544F45] hover:bg-[#E8E5DD]"
+                      : "bg-[#D8F2E3] text-[11px] text-[#185C3E] hover:bg-[#D8F2E3]"
+                  }
+                >
+                  {c.label}
+                </Badge>
+                <div className="mt-2.5 rounded-md bg-white px-3 py-2 text-[13px] leading-relaxed">
+                  <span className="mr-1.5 text-[10.5px] text-muted-foreground">민준</span>
+                  {c.request}
+                </div>
+                <div className="mt-1.5 rounded-md bg-white px-3 py-2 text-[13px] leading-relaxed">
+                  <span className="mr-1.5 text-[10.5px] text-muted-foreground">리웨이</span>
+                  {c.response}
+                </div>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">{c.note}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       <p className="mt-3 text-[12px] text-muted-foreground">
-        왜 이런 말들이 붙었을까요? 규칙은 다음 화면에서. (3개 이상 찾으면 진행)
+        세 단서 이상을 열면 두 대화의 전개를 비교할 수 있습니다.
       </p>
     </div>
   );
 
   const screenPrinciple = () => (
     <div className="rounded-xl border border-[#EAE4D2] bg-white p-4">
-      <div className="text-[12px] font-bold text-[#B8860B]">이제 원리를 봅시다</div>
-      <h2 className="mt-1 text-[19px] font-bold">방금 그 사례, 이렇게 읽습니다</h2>
+      <div className="text-[12px] font-bold text-[#B8860B]">맥락과 표현의 연결</div>
+      <h2 className="mt-1 text-[19px] font-bold">방금 장면을 이렇게 읽습니다</h2>
 
-      <dl className="mt-3.5 overflow-hidden rounded-lg border border-[#EAE4D2]">
+      <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted-foreground">
+        앞에서 발견한 단서를 장면 조건·관계와 부담·상호작용 목표로 정리합니다.
+      </p>
+      <div className="mt-4">
+        <ContextFrame context={HOOK_SCENE.context} />
+      </div>
+
+      <dl className="mt-4 overflow-hidden rounded-lg border border-[#EAE4D2]">
         {PRINCIPLE_TABLE.map((r) => (
           <div key={r.k} className="flex border-b border-[#EAE4D2] last:border-b-0">
             <dt className="w-[110px] shrink-0 bg-[#F5F5F2] px-3 py-2.5 text-[12px] font-medium">
@@ -204,9 +329,15 @@ const IntroArc = () => {
 
   const screenClassify = () => (
     <div className="rounded-xl border border-[#EAE4D2] bg-white p-4">
-      <div className="text-[12px] font-bold text-[#B8860B]">분류 게임 — 온도 맞추기</div>
-      <h2 className="mt-1 text-[19px] font-bold">세 사람의 부탁, 각각 어떤가요?</h2>
-      <p className="mt-1.5 text-[13.5px] text-muted-foreground">{CLASSIFY_PROMPT}</p>
+      <div className="text-[12px] font-bold text-[#B8860B]">새 장면에 적용</div>
+      <h2 className="mt-1 text-[19px] font-bold">세 표현의 적절한 범위를 판단합니다</h2>
+      <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted-foreground">
+        {CLASSIFY_PROMPT}
+      </p>
+
+      <div className="mt-4">
+        <ContextFrame context={CLASSIFY_CONTEXT} />
+      </div>
 
       <div className="mt-3.5 space-y-2.5">
         {CLASSIFY_ITEMS.map((g, i) => {
@@ -255,23 +386,23 @@ const IntroArc = () => {
 
       {classifyDone && (
         <p className="mt-3 text-[13.5px] text-muted-foreground">
-          {allRight ? ARC_CLOSING.allRight : ARC_CLOSING.partial} 이제 직접 해볼 차례예요.
+          {allRight ? ARC_CLOSING.allRight : ARC_CLOSING.partial}
         </p>
       )}
     </div>
   );
 
   const SCREENS: Record<string, () => JSX.Element> = {
-    "장면 만나기": screenHook,
-    "차이 찾기": screenNotice,
-    "원리 이해": screenPrinciple,
-    "감각 확인": screenClassify,
+    "결과 보기": screenHook,
+    "단서 추리": screenNotice,
+    "원리 연결": screenPrinciple,
+    "적용 판단": screenClassify,
   };
 
   const nextLabel = [
-    "다음: 이 상황을 잘 넘긴 사람들",
-    "다음: 왜 그럴까?",
-    "다음: 눈으로 확인",
+    "단서 열기",
+    "다음: 원리 연결",
+    "다음: 새 장면에 적용",
   ][stepIdx];
 
   return (
@@ -323,7 +454,7 @@ const IntroArc = () => {
           ← 이전
         </Button>
         {/* 시연용 — 실증 시작 시 IS_DEMO를 끄면 번들에서 사라진다. */}
-        {IS_DEMO && (step === "차이 찾기" || step === "감각 확인") && (
+        {IS_DEMO && (step === "단서 추리" || step === "적용 판단") && (
           <button
             type="button"
             onClick={fillDemo}
@@ -332,7 +463,7 @@ const IntroArc = () => {
             데모 채우기
           </button>
         )}
-        {step !== "감각 확인" ? (
+        {step !== "적용 판단" ? (
           <Button onClick={advance} disabled={!canAdvance}>
             {nextLabel} →
           </Button>

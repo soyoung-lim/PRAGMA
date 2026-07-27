@@ -27,8 +27,8 @@ export const WEEK_REQUEST = {
   stages: {
     intro: {
       label: "처음 배우기",
-      desc: "장면 보기 → 차이 찾기 → 원리 이해 → 감각 확인",
-      // 도입 아크 화면은 미구현 — mock으로 완료 처리 (추후 지시 예정)
+      desc: "결과 보기 → 단서 추리 → 원리 연결 → 적용 판단",
+      // 요청 주차 샘플 도입 화면. 완료 상태 저장은 learnerState가 담당한다.
       mockCompleted: true,
     },
     practice: {

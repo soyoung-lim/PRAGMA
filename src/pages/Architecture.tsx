@@ -144,7 +144,7 @@ const Architecture = () => (
           <Node
             lane="learn"
             status="done"
-            title="교수 단원 도입"
+            title="주차 도입 활동"
             desc="장면 제시 → 차이 인식 → 원리 이해 → 적절성 판단"
           />
           <Down />
