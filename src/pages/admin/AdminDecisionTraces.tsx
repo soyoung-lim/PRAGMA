@@ -119,8 +119,8 @@ const Page = () => {
 
   return (
     <AdminShell
-      title="의사결정 기록"
-      description="학습자의 화행 판단, 번역, 피드백, 확정에 이르는 의사결정 흔적을 조회합니다."
+      title="수행·의사결정 기록"
+      description="학습자별 화행 판단, 번역·통역, 피드백, 수정에 이르는 개별 수행 기록을 조회합니다."
     >
       <div className="mb-4 flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
