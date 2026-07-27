@@ -2,7 +2,8 @@
 
 > 작업 브랜치: `codex-0727`  
 > 기준점: `abdad16` (`pre-codex-2026-07-26`)  
-> 범위: P0 조사 결과와 후속 위험 기록. 이 로그 작성 시 코드·DB·프롬프트 수정 및 배포 없음.
+> 범위: §1~6은 P0 조사 결과와 후속 위험 기록(당시 수정·배포 없음). §7부터는
+> `codex-0727`에서 수행한 로컬 구현 기록이며, 배포·DB 반영·push는 하지 않았다.
 
 ## 1. P0-A — `save_generated_core` 권한 오류
 
@@ -65,9 +66,83 @@
 - 인간 reviewed 미션만 학습자에게 공개한다는 상위 합의와 UI 문구에 맞지 않는 후속 위험이다.
 - 이번 범위에서는 수정하지 않았다. 기록만 남긴다.
 
+## 7. P0-B — topic 폴백 차단·코어 축 준수 보강
+
+### 7.1 전수 갭 감사와 카탈로그 보강
+
+- 화행 9 × domain 3 전 조합을 명시 topic / wildcard-only / missing으로 분리하는
+  `auditTopicCoverage`를 추가했다.
+- 감사 당시 blocking missing은 3개였다: `초대×직장`, `불만×직장`, `감사×직장`.
+- 사용자·Claude Code 교차검증을 거친 명시 topic 3개를 추가했다.
+  - `work_support_thanks`
+  - `work_activity_invitation`
+  - `work_process_complaint`
+- 시드 작성 규칙을 코드에 고정했다: P·D 관계와 수행 매체를 시드에 박지 않으며,
+  셀 축이 시드보다 우선한다.
+- `group_work_coordination` 코드는 legacy 정합을 위해 유지하고, 시드만 화행 중립 서술로 바꿨다.
+- 학교 wildcard-only였던 `거절·초대·반대·칭찬×학교` 명시 topic 4개도
+  사용자·Claude Code 교차검증 문구로 추가했다.
+- `selectTopic`은 명시 화행 일치 topic을 wildcard보다 먼저 고르도록 우선순위를 고정했다.
+- 결과: blocking missing 0개, wildcard-only 0개. 학교 셀의 wildcard 의존도 0이다.
+
+### 7.2 조용한 잘못 생성 차단
+
+- `selectTopic`의 “화행 불일치 시 domain만 맞는 topic 재사용” 폴백을 제거했다.
+- 화행·domain 일치 topic이 없으면 계획 생성 단계에서 명시적으로 실패한다.
+- `/admin/batch`에 blocking missing과 wildcard-only를 분리 표시하고, missing이 있으면
+  실행 버튼을 비활성화한다.
+
+### 7.3 코어 프롬프트 강화
+
+- 화행·domain·P/D/R·mode를 변경 불가 축으로 명시했다.
+- 시드와 P/D가 충돌하면 소재는 유지하되 인물 관계를 축에 맞게 재설정하도록 했다.
+- 응답 화행 인접쌍과 출력 전 축별 자기대조 규칙을 추가했다.
+- 새 로컬 `core_surface_hash`:
+  `acbce2042304e2bb19d37ded5b8ce6fe0cf6e7b2665ba6e941ec894edd208b9b`
+- 아직 Edge에 배포하지 않았으므로 운영 해시는 이전 배포본 값이다.
+
+### 7.4 코어 비평 파일럿
+
+- 새 Edge action `core_quality_check`를 추가했다.
+- 화행·P·D·R·domain·mode·topic_seed·adjacency 8축을 각각
+  `pass | warning | fail + reason_ko`로 반환한다.
+- 서버가 축 결과에서 전체 verdict를 재도출하며, 누락 축은 조용히 pass 처리하지 않고 warning 처리한다.
+- 생성 저장과 분리된 감사 표시 전용이다. 비평 실패가 코어 저장이나 배치 완주를 막지 않는다.
+- `/admin/batch`에서 같은 세션의 성공 코어를 대상으로 파일럿을 수동 실행하고 행별 결과를 볼 수 있다.
+- 확대 합격 기준: 기존 사람 눈검사 BLOCKER 11건 중 9건 이상 검출, 수용 4건 fail 오판 0.
+  미달이면 비평기 없이 무작위 50건 눈검사로 대체한다.
+
+### 7.5 검증
+
+- 새 표적 테스트: 3 pass
+- 전체 테스트: 20 pass / 3 skip
+- `npm run typecheck`: pass
+- Edge TypeScript 구문 변환: pass
+- `npm run build`: pass
+- `git diff --check`: pass
+- 빌드 경고: 기존 대형 chunk 경고와 오래된 Browserslist 데이터 경고만 존재.
+
+### 7.6 미완·승인 필요
+
+- Edge 배포, 재스모크 18, 비평 파일럿 실제 호출, 99 확대는 아직 수행하지 않았다.
+- 실 로그인 학습자 수행로그(`learner_mission_logs`·`context_judgment`) 왕복도 미완이다.
+- migration·DB 변경·push·배포: 0건.
+
+### 7.7 재스모크 비교 기준
+
+- 같은 18셀을 다시 생성하되 topic 교체 4셀을 신규 조건으로 명시한다.
+  - `초대×학교`: `school_activity_invitation`
+  - `반대×학교`: `school_viewpoint_opposition`
+  - `초대×직장`: `work_activity_invitation`
+  - `불만×직장`: `work_process_complaint`
+- 나머지 14셀은 기존과 동일 조건 비교군이다.
+- 결과 보고에서 14셀과 4셀을 분리한다. 교체 4셀의 개선을 기존 조건의 전후 개선으로
+  과장하지 않으며, 신규 조건 눈검사로 판정한다.
+
 ## 종료 상태
 
 - P0-A: 원인 확정, 재로그인으로 해결, 수정 0건.
 - Provenance: 저장 왕복 실증 완료, 계약 `0-u·112` 해소.
 - 고P 감사: 정적 감사 완료. 코어 프롬프트 수정 근거 없음. 산출물 감사는 Mission 동결 게이트로 이관.
-- 코드·DB·프롬프트·migration·배포 변경: 없음.
+- §1~6 조사 당시 변경 없음. §7 로컬 코드·프롬프트 변경은 완료했으나
+  migration·DB 변경·커밋·push·배포는 하지 않았다.

@@ -34,6 +34,8 @@ export interface CoreCellResult {
   cell: BatchCell;
   ok: boolean;
   scenarioId?: string;
+  /** 같은 세션에서 코어 비평 파일럿을 돌리기 위한 생성 응답. DB 저장 게이트에는 사용하지 않는다. */
+  coreContent?: Record<string, unknown>;
   ruleResult?: "pass" | "warning" | "fail";
   ruleFailFirst?: string;
   error?: string;
@@ -116,7 +118,11 @@ export async function runCoreCell(
     if (error) throw error;
     if (!data?.core_content) throw new Error(data?.error ?? "빈 응답");
 
-    const core = data.core_content;
+    const core = data.core_content as Record<string, unknown> & {
+      channel?: string;
+      brief_note_ko?: string;
+      situation_ko?: string;
+    };
     const meta = data.meta;
 
     // 2. 클라 검사 (checkCore) — fail이면 저장하지 않는다
@@ -171,6 +177,7 @@ export async function runCoreCell(
       cell,
       ok: true,
       scenarioId: savedId as string,
+      coreContent: core,
       ruleResult: ruleResult.result === "warning" ? "warning" : "pass",
     };
   } catch (e) {

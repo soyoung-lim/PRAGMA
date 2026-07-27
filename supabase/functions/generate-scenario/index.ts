@@ -109,7 +109,7 @@ interface GenInput {
   // Two-step outline → final flow. Backward compatible:
   // when `action` is absent the handler behaves exactly like the legacy
   // single-shot full-scenario generation.
-  action?: 'outline' | 'final' | 'core' | 'mission' | 'authentic_analyze' | 'quality_check' | 'feedback'
+  action?: 'outline' | 'final' | 'core' | 'mission' | 'authentic_analyze' | 'quality_check' | 'core_quality_check' | 'feedback'
   outline_count?: number
   selected_outline?: { title?: string; situation?: string } | null
   // v1.4 (2026-07-23): scenario_core_v1 / mission_v1 생성. 카탈로그는 클라가 전달.
@@ -119,6 +119,8 @@ interface GenInput {
   authentic?: AuthenticBody
   // 검증②(계약 0-n·94, 0-q·99) — 생성 모델과 분리된 모델의 미션 품질 비평.
   quality?: QualityCheckBody
+  // 코어 축 준수 비평 파일럿 — 저장·배치 진행을 막지 않는 감사 표시 전용.
+  core_quality?: CoreQualityCheckBody
   // feedback_v1(계약 §4) — 학습자 산출 3층 진단. 학습자 런타임에서 호출된다.
   feedback?: FeedbackBody
 }
@@ -163,6 +165,23 @@ interface QualityCheckBody {
   } | null
   direction?: string              // ko_zh | zh_ko
   speech_act?: string | null
+}
+
+// ── 코어 축 준수 비평 파일럿 ─────────────────────────────────────────────
+// 정적 checkCore가 검증하지 못하는 화행·P/D/R·domain·mode 의미 준수를 별도 모델로
+// 감사한다. 생성 저장 게이트가 아니며, 18건 파일럿 정확도 통과 전 500 전수 적용 금지.
+interface CoreQualityCheckBody {
+  core_content: unknown
+  direction?: string
+  speech_act: string
+  speech_act_ko?: string
+  level?: string
+  domain: string
+  domain_ko?: string
+  mode: string
+  pdr: { p?: string; d?: string; r?: string }
+  situation_seed_ko: string
+  is_response_act?: boolean
 }
 
 // ── 실제 자료 분석 (Authentic Source Import) ────────────────────────────
@@ -489,6 +508,14 @@ function buildCoreSystemPrompt(direction: Direction): string {
 규칙:
 - source_text는 반드시 ${srcL}. 지정된 화행·관계·부담에 맞는 자연스러운 발화.
 - situation_ko·relation_ko·brief_note_ko는 방향과 무관하게 항상 한국어(학습자 UI 언어).
+- [생성 요청]의 화행·도메인·P/D/R·수행 모드는 변경할 수 없는 필수 조건이다.
+- 장면 시드에 여러 화행·도메인 대안이 있으면 지정된 조건에 맞는 한 갈래만 선택한다.
+- relation_ko와 상황 속 실제 역할은 지정된 P와 D를 정확히 구현해야 한다.
+- 장면 시드의 인물 관계가 지정된 P·D와 충돌하면, 시드의 소재(상황·사건)는 유지하되
+  인물 관계를 P·D에 맞게 재설정한다. 연구 축이 시드보다 우선한다.
+- 응답 화행은 preceding_turn과 source_text가 자연스러운 인접쌍을 이루어야 하며,
+  선행발화가 이미 source_text와 같은 거절·제안을 수행해서는 안 된다.
+- 출력 전에 화행·도메인·P·D·R·수행 모드 준수를 내부적으로 하나씩 대조한다.
 - "중국인은/중국에서는/한국인은/한국에서는" 같은 국가 단위 일반화 표현 금지.
 - 정치·시사·정부 기관 소재 금지.`
 }
@@ -993,6 +1020,70 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
 결함이 없으면 findings는 빈 배열이다.`
 }
 
+// ── 코어 축 준수 비평 파일럿 프롬프트 ─────────────────────────────────────
+function buildCoreQualitySystemPrompt(direction: Direction): string {
+  const { src, tgt } = DIR_LANGS[direction]
+  return `너는 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 교육용 scenario_core_v1의 **축 준수 감사자**다.
+다른 모델이 만든 코어 1건을 기대 조건과 대조해 판정한다. 자료를 고쳐 쓰거나 더 좋은
+표현을 제안하지 말고, 각 축의 판정과 관찰 근거만 JSON으로 반환한다.
+
+[판정 원칙]
+- pass: 코어가 기대 조건을 분명히 구현한다.
+- warning: 정보가 부족하거나 두 해석이 가능해 준수 여부를 확정하기 어렵다.
+- fail: 코어가 기대 조건과 명백히 다른 화행·관계·도메인·수행 장면을 구현한다.
+- 취향·문체 선호·지역/세대 변이를 fail로 세지 않는다. 확신이 없으면 warning이다.
+- P와 D는 공손 표지의 많고 적음으로 추정하지 말고 situation_ko·relation_ko의 실제
+  역할과 관계로 판정한다. 특정 직접성 수준을 상위자/하위자 관계의 정답으로 가정하지 않는다.
+- R은 발화 길이가 아니라 요청·행위가 상대에게 주는 실제 부담으로 판정한다.
+- 장면 시드는 소재 재료다. P·D와 충돌하는 인물 관계를 바꾼 것은 결함이 아니지만,
+  핵심 사건·상호작용이 전혀 다른 소재로 바뀌면 topic_seed 위반이다.
+- 응답 화행이 아니면 adjacency는 pass로 둔다. 응답 화행이면 preceding_turn이 있어야 하고
+  source_text와 자연스러운 인접쌍을 이루어야 하며, 선행발화가 응답을 대신 수행하면 안 된다.
+
+[축 — 8개 모두 빠짐없이 판정]
+1. speech_act: source_text가 지정 화행의 의도와 목적을 수행하는가
+2. power: 상황 속 화자와 상대의 실제 지위가 지정 P와 맞는가
+3. distance: 두 사람의 친밀도·낯섦이 지정 D와 맞는가
+4. burden: 상황의 실제 부담이 지정 R과 맞는가
+5. domain: 상황이 지정 일상/학교/직장 영역 안에 있는가
+6. mode: 통역이면 실제 말할 법한 구두 장면·담화이고, 번역이면 글로 옮길 서면 장면·문체인가
+7. topic_seed: 지정 시드의 핵심 소재·사건을 유지했는가
+8. adjacency: 응답 화행의 preceding_turn과 source_text가 일관된 인접쌍인가
+
+[출력 — 오직 JSON, 설명·마크다운 금지]
+{
+  "verdict": "pass" | "warning" | "fail",
+  "summary_ko": "한 문장 요약",
+  "axes": {
+    "speech_act": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "power": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "distance": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "burden": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "domain": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "mode": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "topic_seed": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "adjacency": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" }
+  }
+}`
+}
+
+function buildCoreQualityUserPrompt(b: CoreQualityCheckBody): string {
+  return `[기대 조건]
+- 언어 방향: ${LANG_DIR_KO[normDir(b.direction)]}
+- 화행: ${b.speech_act_ko ?? SPEECH_ACT_KO[b.speech_act] ?? b.speech_act}
+- 학습자 수준: ${b.level ?? '(미지정)'}
+- 도메인: ${b.domain_ko ?? DOMAIN_KO[b.domain] ?? b.domain}
+- 수행 모드: ${b.mode === 'stt_interpreting' ? '통역(구두)' : '번역(서면)'}
+- P(지위): ${b.pdr?.p ?? '(미지정)'}
+- D(거리): ${b.pdr?.d ?? '(미지정)'}
+- R(부담): ${b.pdr?.r ?? '(미지정)'}
+- 응답 화행 여부: ${b.is_response_act ? '예' : '아니오'}
+- 장면 시드: ${b.situation_seed_ko}
+
+[심사 대상 core_content]
+${JSON.stringify(b.core_content, null, 2)}`
+}
+
 // ── feedback_v1 프롬프트 (계약 §4 + 0-q·95) ────────────────────────────
 // 학습자 산출에 대한 3층 진단. **점수를 매기지 않는다** — 학습 지원용 질적 피드백.
 // revision_scope는 여기서 받지 않는다(코드가 verdicts에서 도출 — §4).
@@ -1303,6 +1394,78 @@ Deno.serve(async (req) => {
             provenance: { model, prompt_version: 'feedback_v1', generated_at: new Date().toISOString() },
           },
           meta: { provider: PROVIDER, model, prompt_version: 'feedback_v1' },
+        }),
+        { status: 200, headers: jsonHeaders },
+      )
+    }
+
+    // ── core_quality_check: 코어 축 준수 비평 파일럿(감사 표시 전용) ──
+    if (input.action === 'core_quality_check') {
+      const b = input.core_quality
+      if (!b?.core_content || !b.speech_act || !b.domain || !b.mode || !b.situation_seed_ko) {
+        return new Response(JSON.stringify({ error: 'core_quality body required' }), { status: 400, headers: jsonHeaders })
+      }
+      const CRITIC_PRIMARY = 'gpt-4.1'
+      const CRITIC_FALLBACK = PRIMARY_MODEL
+      const dir = normDir(b.direction)
+      const sys = buildCoreQualitySystemPrompt(dir)
+      const usr = buildCoreQualityUserPrompt(b)
+      let model = CRITIC_PRIMARY
+      let att = await callOpenAI(CRITIC_PRIMARY, apiKey, sys, usr, 0.1)
+      if (!att.ok && (att.status === 404 || att.status === 400)) {
+        model = CRITIC_FALLBACK
+        att = await callOpenAI(CRITIC_FALLBACK, apiKey, sys, usr, 0.1)
+      }
+      if (!att.ok) {
+        return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
+      }
+      let parsed: Record<string, unknown>
+      try {
+        parsed = parseOpenAIContent(att.raw) as Record<string, unknown>
+      } catch (e) {
+        return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
+      }
+
+      const AXIS_CODES = [
+        'speech_act', 'power', 'distance', 'burden',
+        'domain', 'mode', 'topic_seed', 'adjacency',
+      ] as const
+      const rawAxes = parsed.axes && typeof parsed.axes === 'object'
+        ? parsed.axes as Record<string, unknown>
+        : {}
+      const axes = Object.fromEntries(AXIS_CODES.map((code) => {
+        const raw = rawAxes[code] && typeof rawAxes[code] === 'object'
+          ? rawAxes[code] as Record<string, unknown>
+          : {}
+        const verdict = raw.verdict === 'fail' || raw.verdict === 'warning' || raw.verdict === 'pass'
+          ? raw.verdict
+          : 'warning'
+        const reason = typeof raw.reason_ko === 'string' && raw.reason_ko.trim()
+          ? raw.reason_ko.slice(0, 500)
+          : '모델 응답에 이 축의 판정 근거가 누락되었습니다.'
+        return [code, { verdict, reason_ko: reason }]
+      }))
+      const axisValues = Object.values(axes) as { verdict: 'pass' | 'warning' | 'fail'; reason_ko: string }[]
+      const derived = axisValues.some((axis) => axis.verdict === 'fail')
+        ? 'fail'
+        : axisValues.some((axis) => axis.verdict === 'warning') ? 'warning' : 'pass'
+      const RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2 }
+      const claimed = typeof parsed.verdict === 'string' && parsed.verdict in RANK
+        ? parsed.verdict
+        : 'pass'
+      const verdict = RANK[claimed] > RANK[derived] ? claimed : derived
+      const checkedAt = new Date().toISOString()
+      return new Response(
+        JSON.stringify({
+          core_quality_check: {
+            verdict,
+            summary_ko: typeof parsed.summary_ko === 'string' ? parsed.summary_ko.slice(0, 400) : '',
+            axes,
+            model,
+            prompt_version: 'core_quality_v1',
+            checked_at: checkedAt,
+          },
+          meta: { provider: PROVIDER, model, prompt_version: 'core_quality_v1', generated_at: checkedAt },
         }),
         { status: 200, headers: jsonHeaders },
       )

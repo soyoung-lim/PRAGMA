@@ -52,7 +52,9 @@ export interface BatchCell {
 
 /**
  * (화행·도메인)에 맞는 topic을 고른다. 계약 §2b: 생성 입력이 곧 태그(태깅 비용 0).
- * 우선 = 화행·도메인 둘 다 맞는 topic / 폴백 = 도메인만 맞는 topic(장면 시드는 act와 무관하게 재사용 가능).
+ * 명시 화행·도메인 일치 topic을 최우선으로 고르고, 그것이 없을 때만 화행 중립
+ * wildcard topic을 허용한다. 둘 다 없으면 다른 화행의 시드를 조용히 재사용하지 않고
+ * 명시적으로 실패한다(연구 셀 오염 방지).
  *
  * ★ 테마 균형(계약 §7-0 "theme 배분 — 프리셋 선반이 비지 않게 보장"의 코드 이행):
  * 후보 풀에서 **지금까지 가장 적게 뽑힌 테마**의 topic을 우선 고른다. 이게 없으면 school
@@ -66,11 +68,13 @@ function selectTopic(
   themeCount: Record<string, number>,
   topicCount: Record<string, number>,
 ): ScenarioTopic {
-  const actMatch = SCENARIO_TOPICS.filter(
-    (t) => t.allowedDomains.includes(domain) && (!t.allowedSpeechActs || t.allowedSpeechActs.includes(act)),
-  );
-  const pool = actMatch.length ? actMatch : SCENARIO_TOPICS.filter((t) => t.allowedDomains.includes(domain));
-  const finalPool = pool.length ? pool : SCENARIO_TOPICS;
+  const inDomain = SCENARIO_TOPICS.filter((topic) => topic.allowedDomains.includes(domain));
+  const explicitMatch = inDomain.filter((topic) => topic.allowedSpeechActs?.includes(act));
+  const wildcardMatch = inDomain.filter((topic) => !topic.allowedSpeechActs);
+  const finalPool = explicitMatch.length > 0 ? explicitMatch : wildcardMatch;
+  if (!finalPool.length) {
+    throw new Error(`화행·도메인 일치 topic 없음: ${act}×${domain}`);
+  }
 
   // 1차 = 과소 테마 우선, 2차(0-k·81⑥) = 그 테마 안에서 최소 사용 topic(동일 topic 반복 방지).
   // seq 오프셋으로 순회 시작점을 돌려 완전 동률의 tie-break도 결정론으로 유지한다.
@@ -129,6 +133,44 @@ const SPEECH_ACTS: SpeechActUI[] = [
 ];
 const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
 const DOMAINS: Domain[] = ["daily", "school", "work"];
+
+export interface TopicCoverageCell {
+  speechAct: SpeechActUI;
+  domain: Domain;
+}
+
+export interface TopicCoverageAudit {
+  /** 명시 topic도 wildcard topic도 없는 조합 — 배치 실행 차단 대상. */
+  missing: TopicCoverageCell[];
+  /** allowedSpeechActs 미지정 topic에만 의존하는 조합 — 의미 적합성 검토 대상. */
+  wildcardOnly: TopicCoverageCell[];
+}
+
+/**
+ * 화행 × domain 전수 정적 감사.
+ * `allowedSpeechActs` 부재는 현재 카탈로그상 전 화행 허용이지만 명시 topic과 구분해
+ * 보고한다. 문법상 허용과 의미상 적합성을 같은 것으로 취급하지 않기 위해서다.
+ */
+export function auditTopicCoverage(
+  acts: SpeechActUI[] = SPEECH_ACTS,
+  domains: Domain[] = DOMAINS,
+  topics: ScenarioTopic[] = SCENARIO_TOPICS,
+): TopicCoverageAudit {
+  const missing: TopicCoverageCell[] = [];
+  const wildcardOnly: TopicCoverageCell[] = [];
+
+  for (const speechAct of acts) {
+    for (const domain of domains) {
+      const inDomain = topics.filter((topic) => topic.allowedDomains.includes(domain));
+      const explicit = inDomain.some((topic) => topic.allowedSpeechActs?.includes(speechAct));
+      const wildcard = inDomain.some((topic) => !topic.allowedSpeechActs);
+      if (!explicit && !wildcard) missing.push({ speechAct, domain });
+      else if (!explicit && wildcard) wildcardOnly.push({ speechAct, domain });
+    }
+  }
+
+  return { missing, wildcardOnly };
+}
 
 const INDUSTRIES: IndustrySector[] = [
   "trade_distribution", "IT_platform", "manufacturing", "tourism_hospitality",

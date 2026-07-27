@@ -19,6 +19,7 @@ import {
   DEFAULT_QUOTA,
   ZH_KO_SMOKE_ACTS,
   ZH_KO_SMOKE_QUOTA,
+  auditTopicCoverage,
   buildBatchPlan,
   interpretingCount,
   summarizePlan,
@@ -26,6 +27,12 @@ import {
 } from "@/lib/pragma/batchPlan";
 import { runBatch, type BatchCellResult } from "@/lib/pragma/batchRun";
 import { runCoreBatch, type CoreCellResult } from "@/lib/pragma/coreBatchRun";
+import {
+  CORE_QUALITY_AXES,
+  runCoreQualityPilot,
+  type CoreQualityAxis,
+  type CoreQualityPilotResult,
+} from "@/lib/pragma/coreQualityAudit";
 import { THEME_LABEL } from "@/lib/pragma/scenarioTopics";
 
 type AnyResult = BatchCellResult | CoreCellResult;
@@ -42,6 +49,16 @@ type GenMode = "core" | "legacy";
 // 저장 RPC가 관리자만 허용하므로 비관리자 세션은 전건 실패로 드러난다.
 
 const LEVEL_ORDER: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
+const CORE_AXIS_LABEL: Record<CoreQualityAxis, string> = {
+  speech_act: "화행",
+  power: "P",
+  distance: "D",
+  burden: "R",
+  domain: "도메인",
+  mode: "모드",
+  topic_seed: "시드",
+  adjacency: "인접쌍",
+};
 
 const AdminBatch = () => {
   const [quota, setQuota] = useState<BatchQuota>(DEFAULT_QUOTA);
@@ -51,6 +68,9 @@ const AdminBatch = () => {
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState<AnyResult[]>([]);
   const [done, setDone] = useState(0);
+  const [auditRunning, setAuditRunning] = useState(false);
+  const [auditResults, setAuditResults] = useState<CoreQualityPilotResult[]>([]);
+  const [auditDone, setAuditDone] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   const switchDirection = (d: LanguageDirection) => {
@@ -60,9 +80,10 @@ const AdminBatch = () => {
   };
 
   const targetActs = direction === "zh_ko" ? ZH_KO_SMOKE_ACTS : undefined;
+  const topicCoverage = useMemo(() => auditTopicCoverage(targetActs), [targetActs]);
   const plan = useMemo(
-    () => buildBatchPlan(quota, direction, targetActs),
-    [quota, direction, targetActs],
+    () => topicCoverage.missing.length === 0 ? buildBatchPlan(quota, direction, targetActs) : [],
+    [quota, direction, targetActs, topicCoverage.missing.length],
   );
   // 54셀 감사는 zh_ko 스모크일 때 대상 화행(요청·거절·감사)만으로 좁힌다 —
   // 안 그러면 애초에 카탈로그가 없어 대상도 아닌 6화행이 "빈 셀"로 오경고된다.
@@ -75,6 +96,8 @@ const AdminBatch = () => {
     setRunning(true);
     setResults([]);
     setDone(0);
+    setAuditResults([]);
+    setAuditDone(0);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     const onProgress = (d: number, _total: number, last: AnyResult) => {
@@ -103,6 +126,30 @@ const AdminBatch = () => {
     (r) => r.ok && "ruleResult" in r && r.ruleResult === "warning",
   ).length;
   const failures = results.filter((r) => !r.ok);
+  const auditableCoreResults = results.filter(
+    (result): result is CoreCellResult =>
+      result.ok && "coreContent" in result && Boolean(result.coreContent),
+  );
+  const auditPass = auditResults.filter((result) => result.check?.verdict === "pass").length;
+  const auditWarning = auditResults.filter((result) => result.check?.verdict === "warning").length;
+  const auditFail = auditResults.filter((result) => result.check?.verdict === "fail").length;
+  const auditErrors = auditResults.filter((result) => !result.ok).length;
+
+  const startCoreAudit = async () => {
+    if (auditRunning || auditableCoreResults.length === 0) return;
+    setAuditRunning(true);
+    setAuditResults([]);
+    setAuditDone(0);
+    const out = await runCoreQualityPilot(auditableCoreResults, {
+      concurrency: 2,
+      onProgress: (count, _total, last) => {
+        setAuditDone(count);
+        setAuditResults((previous) => [...previous, last]);
+      },
+    });
+    setAuditResults(out);
+    setAuditRunning(false);
+  };
 
   return (
     <AdminShell
@@ -218,6 +265,23 @@ const AdminBatch = () => {
           <span className="text-[20px] font-bold">{summary.total}개</span>
         </div>
 
+        {topicCoverage.missing.length > 0 && (
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[12.5px] text-red-900">
+            ⛔ 화행·도메인 일치 topic이 없어 실행을 차단했습니다:{" "}
+            {topicCoverage.missing
+              .map(({ speechAct, domain }) => `${SPEECH_ACT_UI[speechAct]}×${DOMAIN[domain]}`)
+              .join(", ")}
+          </p>
+        )}
+        {topicCoverage.wildcardOnly.length > 0 && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-[12.5px] text-amber-900">
+            ⚠️ 명시 topic 없이 화행 중립 시드에만 의존하는 비블로커 조합:{" "}
+            {topicCoverage.wildcardOnly
+              .map(({ speechAct, domain }) => `${SPEECH_ACT_UI[speechAct]}×${DOMAIN[domain]}`)
+              .join(", ")}
+          </p>
+        )}
+
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <Dist title="수준별" rows={LEVEL_ORDER.map((l) => [LEVEL[l], summary.byLevel[l] ?? 0])} />
           <Dist
@@ -282,7 +346,10 @@ const AdminBatch = () => {
       {/* ── 실행 ── */}
       <section className="mt-4 rounded-xl border border-[#EAE4D2] bg-white p-5">
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={start} disabled={running || summary.total === 0}>
+          <Button
+            onClick={start}
+            disabled={running || summary.total === 0 || topicCoverage.missing.length > 0}
+          >
             {running ? "생성 중…" : `${summary.total}개 생성 시작`}
           </Button>
           {running && (
@@ -329,6 +396,64 @@ const AdminBatch = () => {
               <p className="mt-2 text-[12px] text-red-900">
                 …외 {failures.length - 20}건 (같은 사유일 가능성이 높습니다)
               </p>
+            )}
+          </div>
+        )}
+
+        {genMode === "core" && auditableCoreResults.length > 0 && !running && (
+          <div className="mt-4 rounded-lg border border-[#EAE4D2] bg-[#FAF8F2] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-[13px] font-semibold">코어 축 준수 AI 비평 파일럿</div>
+                <p className="mt-1 text-[11.5px] text-muted-foreground">
+                  감사 표시 전용이며 저장·배치 게이트가 아닙니다. 18건 눈검사와 대조해
+                  BLOCKER 11건 중 9건 이상 검출하고 수용 4건을 fail로 오판하지 않을 때만 확대합니다.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={startCoreAudit}
+                disabled={auditRunning}
+              >
+                {auditRunning
+                  ? `비평 중 ${auditDone}/${auditableCoreResults.length}`
+                  : `${auditableCoreResults.length}건 비평 실행`}
+              </Button>
+            </div>
+
+            {auditResults.length > 0 && (
+              <div className="mt-3">
+                <p className="text-[12.5px] font-semibold">
+                  pass {auditPass} · warning {auditWarning} · fail {auditFail} · 호출 실패 {auditErrors}
+                </p>
+                <ul className="mt-2 max-h-80 space-y-2 overflow-auto text-[11.5px]">
+                  {auditResults.map((result) => {
+                    const cell = result.source.cell;
+                    const flaggedAxes = result.check
+                      ? CORE_QUALITY_AXES.filter(
+                          (axis) => result.check?.axes[axis].verdict !== "pass",
+                        )
+                      : [];
+                    return (
+                      <li key={result.index} className="rounded-md border bg-white px-3 py-2">
+                        <div className="font-semibold">
+                          #{result.index + 1} {SPEECH_ACT_UI[cell.speech_act_ui]} · {DOMAIN[cell.domain]} ·{" "}
+                          {MODE_LABEL[cell.mode]} — {result.check?.verdict ?? "error"}
+                        </div>
+                        <div className="mt-0.5 text-muted-foreground">
+                          {result.check?.summary_ko ?? result.error}
+                        </div>
+                        {flaggedAxes.map((axis) => (
+                          <div key={axis} className="mt-1 text-amber-900">
+                            {CORE_AXIS_LABEL[axis]} {result.check?.axes[axis].verdict}:{" "}
+                            {result.check?.axes[axis].reason_ko}
+                          </div>
+                        ))}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             )}
           </div>
         )}
