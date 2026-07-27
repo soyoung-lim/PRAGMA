@@ -39,9 +39,21 @@ interface CoreRow {
   source_modality: string | null;
   theme_code: ThemeCode | null;
   topic_code: string | null;
+  scenario_p: string | null;
+  scenario_d: string | null;
+  scenario_r: string | null;
   review_status: string | null;
   mission_status: string | null;
-  core_content: { situation_ko?: string; source_text_ko?: string; direction?: string } | null;
+  generation_run_id: string | null;
+  generation_item_key: string | null;
+  prompt_snapshot_hash: string | null;
+  core_content: {
+    situation_ko?: string;
+    relation_ko?: string;
+    source_text?: string;
+    source_text_ko?: string;
+    direction?: string;
+  } | null;
 }
 
 const ACTS = Object.keys(SPEECH_ACT_UI) as SpeechActUI[];
@@ -142,7 +154,7 @@ const AdminBrowser = () => {
       })
         .from("scenarios")
         .select(
-          "scenario_id, speech_act, learner_level, domain, industry_sector, mode, source_modality, theme_code, topic_code, review_status, mission_status, core_content",
+          "scenario_id, speech_act, learner_level, domain, industry_sector, mode, source_modality, theme_code, topic_code, scenario_p, scenario_d, scenario_r, review_status, mission_status, generation_run_id, generation_item_key, prompt_snapshot_hash, core_content",
         )
         .eq("content_format", "scenario_core_v1")
         .order("created_at", { ascending: false });
@@ -300,6 +312,14 @@ const AdminBrowser = () => {
                       {r.theme_code && (
                         <Badge variant="secondary" className="font-normal">{THEME_LABEL[r.theme_code]}</Badge>
                       )}
+                      {r.topic_code && (
+                        <Badge variant="outline" className="font-mono text-[10.5px] font-normal">
+                          {r.topic_code}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="font-normal">
+                        P {r.scenario_p ?? "—"} · D {r.scenario_d ?? "—"} · R {r.scenario_r ?? "—"}
+                      </Badge>
                       <Badge variant="secondary" className="font-normal">{DIRECTION_LABEL[coreDirection(r.core_content)]}</Badge>
                       <Badge
                         variant="secondary"
@@ -313,9 +333,20 @@ const AdminBrowser = () => {
                       </Badge>
                     </div>
                     <p className="mt-1.5 text-[13px] font-medium">{r.core_content?.situation_ko ?? "—"}</p>
+                    {r.core_content?.relation_ko && (
+                      <p className="mt-1 text-[12px] text-muted-foreground">
+                        관계 · {r.core_content.relation_ko}
+                      </p>
+                    )}
                     <p className="mt-1 text-[12.5px] text-muted-foreground line-clamp-2">
-                      {r.core_content?.source_text_ko ?? ""}
+                      원문 · {r.core_content?.source_text ?? r.core_content?.source_text_ko ?? ""}
                     </p>
+                    {(r.generation_run_id || r.prompt_snapshot_hash) && (
+                      <p className="mt-1 break-all font-mono text-[10.5px] text-muted-foreground">
+                        run {r.generation_run_id ?? "—"} · item {r.generation_item_key ?? "—"} · prompt{" "}
+                        {r.prompt_snapshot_hash ?? "—"}
+                      </p>
+                    )}
 
                     {/* ── 승격 액션 ── */}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
