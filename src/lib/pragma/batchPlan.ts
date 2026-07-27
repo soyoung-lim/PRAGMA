@@ -188,10 +188,10 @@ const PDR_ROTATION: { p: PdrPower; d: PdrDistance; r: PdrBurden }[] = [
   { p: "higher", d: "formal", r: "mid" },
 ];
 
-// zh_ko 스모크(계약 0-l·89) — 승격 가능 3화행 × 수준3 × 모드2 = 18셀, 셀당 ≥1.
-// 500 본 배치는 ko_zh 중심 유지. zh_ko 확장 쿼터는 스모크 눈검사 후 별도 결정.
-export const ZH_KO_SMOKE_ACTS: SpeechActUI[] = ["request", "refusal", "thanks"];
-export const ZH_KO_SMOKE_QUOTA: BatchQuota = {
+// zh_ko 검증 범위(계약 0-l·89) — 승격 가능 3화행 × 수준3 × 모드2 = 18셀, 셀당 ≥1.
+// 500 본 배치는 ko_zh 중심 유지. zh_ko 확장 쿼터는 18셀 눈검사 후 별도 결정.
+export const ZH_KO_VALIDATION_ACTS: SpeechActUI[] = ["request", "refusal", "thanks"];
+export const ZH_KO_VALIDATION_QUOTA: BatchQuota = {
   perLevel: { beginner_intermediate: 1, intermediate: 1, advanced: 1 },
   interpretingRatio: 0.5, // max(1,round(1×0.5))=1 → 셀당 번역1·통역1
 };
@@ -203,7 +203,7 @@ export const ZH_KO_SMOKE_QUOTA: BatchQuota = {
  * (스키마 CHECK: industry는 domain='work'가 아니면 null).
  *
  * direction(0-l·89) = 셀에 찍는 방향 태그(기본 ko_zh). acts = 화행 부분집합
- * (zh_ko 스모크는 ZH_KO_SMOKE_ACTS 3종으로 좁힌다).
+ * (zh_ko 검증 범위는 ZH_KO_VALIDATION_ACTS 3종으로 좁힌다).
  */
 export function buildBatchPlan(
   quota: BatchQuota = DEFAULT_QUOTA,
@@ -287,9 +287,9 @@ export interface PlanSummary {
 /**
  * 계획을 실행 전에 눈으로 검산하기 위한 분포 요약.
  *
- * @param targetActs 감사 대상 화행(기본 = 9화행 전부). zh_ko 스모크처럼 화행이
- *   의도적으로 좁혀진 계획(ZH_KO_SMOKE_ACTS)을 요약할 때 넘긴다 — 안 넘기면
- *   대상 밖 화행이 "빈 셀"로 오경고된다(0-l·89 스모크 vs 0-h·57 54셀 감사 범위 분리).
+ * @param targetActs 감사 대상 화행(기본 = 9화행 전부). zh_ko 검증처럼 화행이
+ *   의도적으로 좁혀진 계획(ZH_KO_VALIDATION_ACTS)을 요약할 때 넘긴다 — 안 넘기면
+ *   대상 밖 화행이 "빈 셀"로 오경고된다(0-l·89 검증 vs 0-h·57 54셀 감사 범위 분리).
  */
 export function summarizePlan(cells: BatchCell[], targetActs: SpeechActUI[] = SPEECH_ACTS): PlanSummary {
   const bump = (rec: Record<string, number>, key: string, by = 1) => {
