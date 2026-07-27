@@ -83,10 +83,25 @@ export default {
             height: "0",
           },
         },
+        // 랜딩 후크 전용 — 문장이 아래에서 올라오고, 핵심어에 형광펜이 그어진다.
+        "rise-in": {
+          from: { opacity: "0", transform: "translateY(10px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "marker-sweep": {
+          from: { transform: "scaleX(0)" },
+          to: { transform: "scaleX(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        // 후크는 서두르지 않고 안정감 있게 드러나야 한다 — 조급해 보이지 않도록
+        // 한 문장씩 여유를 두고 내려앉는 속도로 맞춘다.
+        "rise-in": "rise-in 1.8s cubic-bezier(0.22,1,0.36,1) both",
+        // 형광펜은 "이게 중요하다"고 강조하듯 확 긋는 느낌이라야 한다 — 문장이
+        // 자리 잡는 속도(1.8s)와 대비되는 빠르고 단호한 획.
+        "marker-sweep": "marker-sweep 0.75s cubic-bezier(0.45,0.05,0.25,1) both",
       },
     },
   },

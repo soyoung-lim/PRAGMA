@@ -52,15 +52,15 @@ const ROADMAP: RoadmapItem[] = [
 ];
 
 const TODAY = {
-  intro: "상황과 원문을 읽고, 후보 표현을 비교·선택·수정한 뒤 최종안을 제출합니다.",
+  intro: "다섯 가지 예시에서 표현의 차이를 판단한 뒤, 새로운 상황을 직접 번역·통역하고 AI 피드백을 바탕으로 다듬습니다.",
   steps: [
-    "오늘의 화행 포인트 보기",
-    "상황과 원문 읽기",
-    "후보 표현 비교하기",
-    "가장 적절한 표현 고르기",
-    "부적절한 표현 수정하기",
-    "나의 최종안 제출하기",
-    "피드백과 성장 리포트 확인하기",
+    "오늘의 화용 초점 확인",
+    "다섯 가지 예시로 표현 감각 익히기",
+    "새 상황의 상대와 부담 확인",
+    "직접 번역·통역하기",
+    "AI 피드백으로 의미·문법·화용 확인",
+    "최초안을 다시 다듬기",
+    "오늘의 원리와 최초·최종안 확인",
   ],
 };
 
@@ -92,9 +92,9 @@ const Roadmap = () => {
               <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="text-left text-[20px] font-bold hover:underline sm:text-[22px]"
+                className="text-left text-[19px] font-bold tracking-[0.18em] hover:underline sm:text-[20px]"
               >
-                AI 기반 한중 통번역 학습 워크플로우
+                PRAGMA
               </button>
 
               <p className="mt-1 text-[13px] text-primary-foreground/70">
@@ -118,13 +118,13 @@ const Roadmap = () => {
         >
           <div className="flex items-center gap-2 text-[15px] font-bold">
             <MapPin className="h-4 w-4" aria-hidden />
-            15주 수업 설계
+            15주 강의 설계
           </div>
           <h2 className="mt-2 text-[22px] font-bold leading-snug sm:text-[24px]">
             화행 기반 커리큘럼
           </h2>
           <p className="mt-3 text-[14px] leading-relaxed">
-            이 과정은 15주 동안 주요 화행을 단계적으로 학습하도록 설계되었습니다. 실제 과제의 수준, 언어방향, 산출 방식은 수업 운영 방식에 따라 달라질 수 있습니다.
+            이 과정은 15주 동안 주요 화행을 단계적으로 학습하도록 설계되었습니다. 실제 과제의 수준, 언어방향, 산출 방식은 강의 운영 방식에 따라 달라질 수 있습니다.
           </p>
           <p className="mt-2 text-[14px] leading-relaxed opacity-90">
             감사, 칭찬, 요청, 제안, 수락·동의, 거절, 사과, 불만, 반대 표현을 다루고, 후반부에는 입장 조율과 조건 협상으로 확장합니다.
@@ -216,7 +216,7 @@ const Roadmap = () => {
         <section className="mt-5">
           <div className="flex items-center gap-2">
             <ListChecks className="h-4 w-4 text-destructive" aria-hidden />
-            <h3 className="text-[18px] font-bold">오늘 이 순서로 진행합니다</h3>
+            <h3 className="text-[18px] font-bold">오늘의 학습 흐름</h3>
           </div>
           <p className="mt-2 text-[14px] text-muted-foreground">{TODAY.intro}</p>
 
@@ -240,7 +240,7 @@ const Roadmap = () => {
           <div className="flex items-start gap-3 rounded-xl border border-border border-l-4 border-l-emerald-600 bg-card p-3">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
             <p className="text-[14px] leading-relaxed text-foreground">
-              오늘 학습을 마치면 <b>나의 판단 · 수정 · 최종안</b>이 성장 리포트에 기록됩니다.
+              오늘 학습을 마치면 <b>최초안 · 최종안 · 수행 맥락</b>이 수행 기록으로 남습니다.
             </p>
           </div>
         </section>
@@ -252,7 +252,7 @@ const Roadmap = () => {
             onClick={() => navigate("/workflow-preview")}
             className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left text-[14px] font-semibold text-foreground hover:bg-muted/50"
           >
-            <span>학습이 실제로 어떻게 진행되나요? — 예시 미리보기 보기</span>
+            <span>학습 진행 예시 미리보기</span>
             <span aria-hidden>→</span>
           </button>
         </section>

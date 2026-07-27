@@ -41,15 +41,15 @@ const tgtLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].t
 // 학습자 미션 실행 — 계약 스키마 mission_v1을 직접 구동한다(프로토타입 v2 이식).
 //   감각 익히기(MPJ 5 → 인계) → 직접 표현하기(상황 살피기 → 산출/통역) → 돌아보고 다듬기(피드백 → 다듬기 → 완료)
 //   ※ 3단계는 **표시 서사**일 뿐 화면 순서·문항 수·판정 기준·저장 계약은 종전과 같다.
-// 판정은 초점별 band 카탈로그(targetFeatures) 기준. 답별 AI 피드백은 후속(feedback-lite)이라
-// 피드백 단계는 참고 표현·핵심 원칙만 보여준다(정직 표기).
+// 판정은 초점별 band 카탈로그(targetFeatures) 기준. 자유 산출 뒤에는 feedback-lite가
+// 의미·문법·화용을 진단하며, 실패 시 참고 표현·핵심 원칙으로 안전하게 폴백한다.
 
 const CONFIDENCE = ["매우 확신", "꽤 확신", "확신 없음"] as const;
 
 // B1(계약 0-g·44·0-e·⑨): 판정 대역은 proposed(확정 정답 아님). 프로토타입 v2 기준 —
 // 매 문항 반복 대신 1부 시작에 1회만 지위를 정직하게 고지한다.
 const JUDGMENT_STATUS_CAPTION =
-  "판정은 현재 수업 기준 · AI 제안(검증 예정)입니다 — 유일한 정답이 아니라, 상황에 따라 다른 적절한 표현도 있을 수 있어요.";
+  "판정은 현재 강의 기준 · AI 제안(검증 예정)입니다 — 유일한 정답이 아니며, 상황에 따라 다른 적절한 표현도 존재할 수 있습니다.";
 
 // PDR 학습자 라벨(근거 서랍용 — 내부 코드 노출 금지)
 const PDR_R_LABEL: Record<string, string> = { low: "가벼운 부탁", mid: "보통", high: "부담이 큼" };
@@ -125,7 +125,7 @@ function deriveCtx(pdr: { d?: string; r?: string }) {
     "이번 상대는 아직 친하지 않습니다. 간결한 직접형은 부담스럽고 과한 격식은 거리감을 줍니다 — 거절할 여지를 남기는 완화가 이 관계에 맞습니다.",
     "이번 상대는 부담이 크고 먼 관계입니다. 간결한 직접형보다 격식을 갖추는 편이 적절합니다.",
   ][right];
-  return { q: "이 상대·이 부담이라면, 요청을 어느 정도로 조절하는 게 자연스러울까요?", opts, right, okRight, okWrong };
+  return { q: "이 상대·이 부담에 알맞은 요청 조절 수준", opts, right, okRight, okWrong };
 }
 
 // ── 페이지: 라우트 파라미터로 DB 조회, 없으면 샘플 ──────────────────────
@@ -230,7 +230,7 @@ function ProductionGuide({
     <div className="mb-3 rounded-lg border border-[#EAE4D2] bg-[#FBFAF6] px-3 py-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11.5px] font-semibold text-[#5A6B7A]">
-          {tier === "open" ? "막히면 열어 보세요" : "이 순서로 생각해 보세요"}
+          {tier === "open" ? "필요할 때 참고" : "표현 구성 순서"}
         </span>
         <button
           type="button"
@@ -246,7 +246,7 @@ function ProductionGuide({
           오학습될 수 있다. 직접형이 자연스러운 상황에서는 먼저 그 사실을 말한다. */}
       {leaning === "direct" && (
         <p className="mt-1.5 rounded bg-[#F3F6EE] px-2 py-1 text-[12px] leading-[1.45] text-[#4A5A3E]">
-          이 상황은 짧고 직접적인 쪽이 자연스러울 수 있어요 — <strong className="font-semibold">빼는 것도 조절입니다.</strong>
+          이 상황에서는 짧고 직접적인 표현이 더 자연스러울 수 있습니다 — <strong className="font-semibold">덜어내는 것도 조절입니다.</strong>
         </p>
       )}
 
@@ -276,7 +276,7 @@ function ProductionGuide({
             })}
           </ul>
           <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-            ※ 범주만 참고하세요. 다 쓸 필요는 없습니다 — 이 상대·이 부담에 맞는 만큼만.
+            ※ 범주만 참고합니다. 모두 사용할 필요는 없습니다 — 이 상대·이 부담에 맞는 만큼만 선택합니다.
           </p>
         </>
       )}
@@ -339,7 +339,7 @@ function FeedbackPanel({
 
   return (
     <div className="space-y-3">
-      {/* 주 카드 — 이번에 볼 것 하나만 */}
+      {/* 주 카드 — 우선 살펴볼 층을 먼저 제시하되, 다른 층의 오류를 배제하지 않는다. */}
       <div className="rounded-xl border border-[#FAD338] bg-[#FFFBEA] p-4">
         <div className="text-[11.5px] font-bold text-[#6B5518]">{head.title}</div>
         <p className="mt-1.5 text-[14px] leading-relaxed">{head.body}</p>
@@ -352,7 +352,7 @@ function FeedbackPanel({
 
         {alt && (
           <div className="mt-2.5 rounded-lg bg-white/70 px-3 py-2">
-            <div className="text-[11.5px] font-semibold text-[#6B5518]">한 가지만 바꾼 표현</div>
+            <div className="text-[11.5px] font-semibold text-[#6B5518]">다듬은 표현 예시</div>
             <div className="mt-0.5 text-[14px]">{alt.text}</div>
             {alt.note_ko && <div className="mt-0.5 text-[12px] text-muted-foreground">{alt.note_ko}</div>}
           </div>
@@ -623,7 +623,7 @@ function MissionRunner({
         {/* 중단 후 재개 배너 — 2부 진행분이 남아 있을 때만 */}
         {resume && phase === "mpj" && mpjIdx === 0 && (
           <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-[#FAD338] bg-[#FFF8DE] px-3.5 py-2.5 text-[12.5px] text-[#6B5518]">
-            <span>이전에 진행하던 <b>미션</b>이 있어요.</span>
+            <span>이전에 진행하던 <b>미션</b>이 있습니다.</span>
             <button
               type="button"
               onClick={applyResume}
@@ -747,7 +747,7 @@ function MissionRunner({
             <div className="rounded-xl bg-[#15202B] p-4 text-white">
               <div className="text-[11px] font-bold text-[#FAD338]">감각 익히기에서 본 것</div>
               <p className="mt-1.5 text-[13.5px] leading-relaxed">
-                이 상대·이 부담에 맞는 만큼만 골라 쓰세요 — 많이 얹을수록 좋은 게 아닙니다.
+                이 상대·이 부담에 맞는 만큼만 선택합니다 — 표현을 많이 더한다고 더 나아지는 것은 아닙니다.
               </p>
             </div>
             {isInterp ? (
@@ -790,7 +790,7 @@ function MissionRunner({
                   </div>
                 </ChatScene>
                 <p className="px-0.5 text-[12px] text-muted-foreground">
-                  먼저 스스로 옮겨 보세요 — 상대에게 답장하듯이. 참고 표현은 제출한 뒤에 함께 봅니다.
+                  먼저 상대에게 답장하듯 직접 옮깁니다. 참고 표현은 제출한 뒤에 확인합니다.
                 </p>
                 <Button className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" disabled={!draft.trim()} onClick={() => goto("feedback")}>번역 제출 →</Button>
                 {IS_DEMO && (
@@ -822,7 +822,7 @@ function MissionRunner({
             {/* 진단 실패 시 폴백 — 기존 정직 표기로 되돌아간다(미션은 계속 진행). */}
             {fbState === "error" && (
               <div className="rounded-lg border border-dashed border-[#B9C4CE] bg-[#F7F9FA] p-3 text-[11.5px] text-[#5B6B76]">
-                지금은 답변별 자동 진단을 불러오지 못했습니다. 참고 표현과 이번 초점을 보고 다듬어 보세요.
+                답변별 자동 진단을 불러오지 못했습니다. 참고 표현과 이번 초점을 바탕으로 다듬을 수 있습니다.
               </div>
             )}
 
@@ -911,19 +911,22 @@ function MissionRunner({
             <RevisionMap first={draft} final={revised || draft} featureLabel={mission.unit.learner_label} interp={isInterp} />
 
             {/* 상대에게 줄 수 있는 인상 — **새로 만들지 않는다**. 피드백에서 이미 본
-                화용층 문구를 출처를 밝혀 이월할 뿐이다(정본 원칙 문장과 섞지 않는다). */}
+                화용층 문구를 접힌 형태로 이월한다. 전체 문단을 다시 펼쳐 두어 완료 화면이
+                피드백 화면처럼 보이던 반복은 줄이고, 필요할 때만 다시 확인할 수 있게 한다. */}
             {fb?.blocks.feature_ko && (
-              <div className="rounded-lg border border-[#EAE4D2] bg-white px-3.5 py-2.5">
-                <div className="text-[11.5px] font-semibold text-muted-foreground">피드백에서 본 예상 인상</div>
-                <p className="mt-0.5 text-[13.5px] leading-relaxed">{fb.blocks.feature_ko}</p>
-              </div>
+              <details className="rounded-lg border border-[#EAE4D2] bg-white px-3.5 py-2.5">
+                <summary className="cursor-pointer text-[12.5px] font-semibold text-muted-foreground">
+                  피드백에서 확인한 인상 다시 보기
+                </summary>
+                <p className="mt-2 text-[13.5px] leading-relaxed">{fb.blocks.feature_ko}</p>
+              </details>
             )}
 
             {/* B2: 예외 반례 — "직접형=무조건 나쁨"이 아님을 완료 시 상기(counter_rule).
                 오학습 방지 장치이므로 접지 않고 가볍게 펼쳐 둔다. */}
             {counterRule && (
               <div className="rounded-xl border border-dashed border-[#D8D0BC] bg-[#FFFDF4] px-4 py-3">
-                <div className="text-[11.5px] font-bold text-[#6B5518]">예외 — 늘 그런 것은 아니에요</div>
+                <div className="text-[11.5px] font-bold text-[#6B5518]">예외 — 항상 적용되는 것은 아닙니다</div>
                 <p className="mt-1 text-[13px] leading-relaxed text-[#5B4A1E]">{counterRule}</p>
               </div>
             )}
@@ -938,7 +941,7 @@ function MissionRunner({
               {saveState === "saving" && "수행 기록 저장 중…"}
               {saveState === "saved" && "✓ 수행 기록이 저장되었습니다 (기록 탭에서 확인)"}
               {saveState === "demo" && "데모 모드입니다 — 실제 로그인 시 수행 기록이 저장됩니다."}
-              {saveState === "error" && "수행 기록 저장에 실패했습니다. 네트워크를 확인해 주세요."}
+              {saveState === "error" && "수행 기록 저장에 실패했습니다. 네트워크 상태를 확인한 뒤 다시 시도하십시오."}
               {saveState === "idle" && "수행 기록을 준비 중입니다."}
             </div>
             <details className={card}>
@@ -960,7 +963,7 @@ function MissionRunner({
             <div className="rounded-xl border border-[#EAE4D2] border-t-[3px] border-t-[#FAD338] bg-[#FFFDF4] p-4">
               <div className="text-[12px] font-extrabold tracking-wide text-[#6B5518]">🎬 오늘의 생생 표현 · 쉬어가기</div>
               <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                실제 원어민이 이 상황에서 자주 쓰는 <b>생생한 표현</b>을 여기서 가볍게 만나요. 학습 과제가 아니라 <b>보상·환기용</b>입니다.{" "}
+                실제 원어민이 이 상황에서 자주 쓰는 <b>생생한 표현</b>을 가볍게 살펴보는 자리입니다. 학습 과제가 아니라 <b>보상·환기용</b>입니다.{" "}
                 <span className="text-[#A9B0BA]">(유튜브 쇼츠 발췌 — 후속 구현. 이 자리는 레이아웃 예약 구역)</span>
               </p>
               <div className="mt-3 rounded-[10px] border border-dashed border-[#A9B0BA] bg-white px-3 py-5 text-center text-[12.5px] text-[#A9B0BA]">
@@ -1080,7 +1083,7 @@ function AudioFrame({
   const play = () => {
     if (plays >= MAX_PLAYS || playing) return;
     if (!ttsSupported) {
-      setNotice("이 브라우저는 음성 재생(TTS)을 지원하지 않습니다 — 원문은 아래 텍스트로 확인하세요.");
+      setNotice("이 브라우저에서는 음성 재생(TTS)을 지원하지 않습니다 — 아래 원문 텍스트로 대체합니다.");
       return;
     }
     try {
@@ -1132,7 +1135,7 @@ function AudioFrame({
       mediaRef.current = mr;
       mr.start();
       setRecording(true);
-      if (!sttSupported) setNotice("자동 전사(STT)를 지원하지 않는 브라우저입니다 — 녹음을 멈춘 뒤 전사를 직접 입력해 주세요.");
+      if (!sttSupported) setNotice("이 브라우저에서는 자동 전사(STT)를 지원하지 않습니다 — 녹음을 마친 뒤 전사를 직접 입력할 수 있습니다.");
     } catch {
       // 마이크 거부/미지원 — 수동 전사 경로로 진행(구인 유지)
       setRecording(true);
@@ -1203,7 +1206,7 @@ function AudioFrame({
             {recording ? "■ 녹음 정지" : recorded ? "● 다시 녹음" : "● 녹음 시작"}
           </button>
           <span className="text-[12px] text-[#9FB0BC]">
-            {recording ? "녹음 중…" : recorded ? "녹음 완료 · 아래 전사를 확인하세요" : "버튼을 누르고 통역해 말하세요"}
+            {recording ? "녹음 중…" : recorded ? "녹음 완료 · 아래 전사 확인" : "버튼을 누른 뒤 통역 시작"}
           </span>
         </div>
 
@@ -1212,7 +1215,7 @@ function AudioFrame({
         {/* ③ 전사 확인 */}
         {(recorded || notice) && (
           <div className="mt-3 rounded-lg border border-[#2A3A45] bg-[#16252F] p-3">
-            <div className="text-[11px] font-bold text-[#9FB0BC]">③ 전사 확인 — 자동 전사가 맞는지 보고 고치세요 (원본 녹음은 보존)</div>
+            <div className="text-[11px] font-bold text-[#9FB0BC]">③ 전사 확인 — 자동 전사를 확인·수정합니다 (원본 녹음은 보존)</div>
             <textarea
               rows={2}
               value={transcript}
@@ -1232,7 +1235,7 @@ function AudioFrame({
                   confirmed ? "border-[#2E7D5B] bg-[#12321F] text-[#8FE3B4]" : "border-[#2A3A45] bg-[#0F1B24] text-[#C6D2DB]",
                 ].join(" ")}
               >
-                {confirmed ? "✓ 확인됨" : "이 전사가 맞아요"}
+                {confirmed ? "✓ 확인됨" : "전사 확인"}
               </button>
               <span className="text-[11px] text-[#9FB0BC]">전사 확인은 통역 구인 타당성 장치입니다.</span>
             </div>
@@ -1284,8 +1287,8 @@ function Handoff({
   return (
     <div className="rounded-xl border border-[#FAD338] bg-white p-5">
       <div className="text-[11px] font-bold text-[#2E7D5B]">감각 익히기 완료</div>
-      <h2 className="mt-0.5 text-[16px] font-bold">표현 감각을 잡았어요</h2>
-      <p className="mt-0.5 text-[12.5px] text-muted-foreground">방금 확인한 도구 — 문장을 외우지 말고 <b>범주</b>만 기억하세요.</p>
+      <h2 className="mt-0.5 text-[16px] font-bold">이제 직접 표현할 차례입니다</h2>
+      <p className="mt-0.5 text-[12.5px] text-muted-foreground">방금 확인한 도구 — 문장 전체보다 <b>범주</b>에 주목합니다.</p>
       {tools.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-1.5">
           {tools.map((t) => (
@@ -1340,7 +1343,7 @@ function CtxStage({
       <div className="rounded-xl border border-dashed border-[#D8D0BC] bg-[#FBFAF5] p-4">
         <div className="text-[11px] font-bold text-[#6B5518]">새 상황에서 먼저 볼 것</div>
         <p className="mt-1 text-[12.5px] text-muted-foreground">
-          직접 {isInterp ? "통역하기" : "옮기기"} 전에 상대와 부담을 한 번만 짚어 볼게요.
+          직접 {isInterp ? "통역하기" : "옮기기"} 전에 상대와 부담을 먼저 확인합니다.
         </p>
         <div className="mt-2.5 text-[13px] font-semibold">{ctx.q}</div>
         <div className="mt-2 flex flex-col gap-1.5">
@@ -1368,7 +1371,7 @@ function CtxStage({
 // ── 평가 계약(0-i·65) + 판정 지위 고지(B1 · 0-g·44) — 첫 문항 아래 접기 하나로 ──
 // 종전엔 이 둘이 첫 문항 **위**에서 약 200px을 차지해, 학생이 상황보다 완료 조건을
 // 먼저 읽는 화면이 됐다. 고지 자체는 계약 사항이라 삭제하지 않고 위치만 내린다.
-// ⚠️ 접힌 제목에 "다른 적절한 표현도 있을 수 있어요"를 남긴다 — 전부 감추면 B1
+// ⚠️ 접힌 제목에 "다른 적절한 표현도 존재할 수 있습니다"를 남긴다 — 전부 감추면 B1
 //    (판정=AI 제안이지 유일한 정답이 아님)의 고지 효과가 사라진다.
 function MissionBriefDrawer({ mission }: { mission: MissionV2 }) {
   const feat = getTargetFeature(mission.unit.target_feature);
@@ -1378,7 +1381,7 @@ function MissionBriefDrawer({ mission }: { mission: MissionV2 }) {
   return (
     <details className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-3 text-[12.5px]">
       <summary className="cursor-pointer text-[#6B5518]">
-        판정 기준 보기 · <b>다른 적절한 표현도 있을 수 있어요</b>
+        판정 기준 보기 · <b>다른 적절한 표현도 존재할 수 있습니다</b>
       </summary>
       <div className="mt-2.5 space-y-1.5 text-muted-foreground">
         {/* 1부 문항마다 상황이 따로 있으므로, 여기 상황은 "2부에서 직접 할 일"임을 밝힌다. */}
@@ -1401,15 +1404,15 @@ function MissionBriefDrawer({ mission }: { mission: MissionV2 }) {
   );
 }
 
-// ── 이견 채널(0-r·104 / 0-i·66) — "내 판단을 남길게요" 원탭 ────────────────
+// ── 이견 채널(0-r·104 / 0-i·66) — 선택형 이견 기록 ────────────────────────
 // 판정을 바꾸지 않는다. 목적 = ①공정성 통로 ②결함 문항 발견 ③채점키 캘리브레이션
 // 보조 자료. 정규 MPJ 문항으로 만들지 않는다(구인 변경 금지) — 선택 입력이고,
 // 이유 한 줄도 필수가 아니다(피로 원칙).
 const DISSENT_CONDITIONS: { code: string; label: string }[] = [
-  { code: "relationship", label: "관계·친밀도를 다르게 봤어요" },
-  { code: "burden", label: "부탁의 부담 크기를 다르게 봤어요" },
-  { code: "preceding", label: "앞선 대화 흐름을 고려했어요" },
-  { code: "experience", label: "실제로 이렇게 말하는 걸 봤/들었어요" },
+  { code: "relationship", label: "관계·친밀도에 대한 다른 판단" },
+  { code: "burden", label: "부탁의 부담 크기에 대한 다른 판단" },
+  { code: "preceding", label: "앞선 대화 흐름을 더 고려함" },
+  { code: "experience", label: "실제 사용 경험과 차이가 있음" },
 ];
 
 function DissentPanel({ onSubmit }: { onSubmit: (d: { conditions: string[]; reason: string }) => void }) {
@@ -1433,16 +1436,16 @@ function DissentPanel({ onSubmit }: { onSubmit: (d: { conditions: string[]; reas
         onClick={() => setOpen(true)}
         className="w-full rounded-lg border border-dashed border-[#B9C4CE] bg-white px-3.5 py-2.5 text-left text-[12.5px] text-[#3B4A57] hover:bg-[#F7F9FA]"
       >
-        생각이 다른가요? <b>내 판단을 남길게요 →</b>
+        판정과 다르게 본 부분이 있다면 <b>의견 남기기 →</b>
       </button>
     );
   }
 
   return (
     <div className="rounded-lg border border-[#B9C4CE] bg-white px-3.5 py-3">
-      <div className="text-[12.5px] font-semibold">어떤 점을 다르게 보셨나요?</div>
+      <div className="text-[12.5px] font-semibold">판정과 다르게 본 부분</div>
       <p className="mt-0.5 text-[11.5px] text-muted-foreground">
-        해당하는 것만 고르세요. 판정은 바뀌지 않고, 담당 교수자가 문항을 다듬는 데 참고합니다.
+        해당하는 항목만 선택합니다. 판정은 바뀌지 않으며, 담당 교수자가 문항을 다듬는 데 참고합니다.
       </p>
       <ul className="mt-2 space-y-1">
         {DISSENT_CONDITIONS.map((c) => {
@@ -1496,7 +1499,7 @@ function FeedbackReasonDrawer({ mission }: { mission: MissionV2 }) {
   const pt = mission.production_task;
   return (
     <details className="mt-2.5 text-[12.5px]">
-      <summary className="cursor-pointer text-[#6B5518]">왜 이 초점인가요?</summary>
+      <summary className="cursor-pointer text-[#6B5518]">이 초점을 판단한 근거</summary>
       <div className="mt-2 space-y-1.5">
         <div className="rounded-lg bg-[#FAF8F2] px-3 py-2 text-muted-foreground">
           <div>상황 · {pt.relation_ko}</div>
@@ -1513,7 +1516,7 @@ function RevisionMap({ first, final, featureLabel, interp }: { first: string; fi
   const changed = first.trim() !== final.trim();
   return (
     <div className={card}>
-      <div className="text-[13px] font-semibold">내가 무엇을 바꿨나요?</div>
+      <div className="text-[13px] font-semibold">내가 바꾼 부분</div>
       <div className="mt-2.5 space-y-2">
         <div className="rounded-lg bg-[#F5F5F2] px-3.5 py-2.5">
           <div className="text-[11.5px] font-semibold text-muted-foreground">최초</div>
@@ -1526,7 +1529,7 @@ function RevisionMap({ first, final, featureLabel, interp }: { first: string; fi
       </div>
       <p className="mt-2 text-[12px] text-muted-foreground">
         {changed
-          ? `이번에 조절한 초점 · ${featureLabel}. 더 길게 고친 것이 아니라, 이 상황에 맞게 무엇을 조절했는지 확인하세요.`
+          ? `이번에 조절한 초점 · ${featureLabel}. 문장의 길이보다 이 상황에 맞게 조절한 지점을 확인합니다.`
           : `이번에는 최초 ${interp ? "통역" : "번역"}을 그대로 두었습니다.`}
       </p>
     </div>
@@ -1636,9 +1639,9 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
       {/* 대화 스킨 — 상황·선행발화 + AI 초안(내 미발송 초안 말풍선). 프로토타입 v2 */}
       <ChatScene situation={item.situation_ko} relation={item.relation_ko}>
         {item.preceding_turn && <ChatBubble side="them">{item.preceding_turn}</ChatBubble>}
+        <ChatCaption>전하려는 뜻 · {item.source}</ChatCaption>
         {item.type !== "multi_judge" && (
           <>
-            <ChatCaption>전하려는 뜻 · {item.source}</ChatCaption>
             <ChatCaption tone="draft">↓ AI가 만든 초안 · 아직 안 보냄</ChatCaption>
             <ChatBubble side="me" variant="draft">
               {answered ? highlightZh(item.target, item.highlights) : item.target}
@@ -1652,8 +1655,9 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
           ⚠️ sticky가 아니라 **대화창이 화면에서 사라졌을 때만** 뜨는 fixed 바다.
              sticky면 대화창 바로 아래에서 같은 내용을 반복해 자리만 먹는다.
           ⚠️ 관계는 화용 판단의 축이라 좁은 화면에서도 숨기지 않고 2줄로 접는다.
-          ⚠️ multi_judge는 대화창에 원문이 없었다 — 여기서 맥락을 복구한다. 후보(판단
-             대상)가 아니라 무엇을 옮기는 요청인지이므로 정답 노출이 아니다. */}
+          ⚠️ multi_judge에도 대화창에서 원문을 먼저 보여 주며, 긴 후보 목록을 읽는 동안에는
+             이 바가 같은 맥락을 유지한다. 후보(판단 대상)가 아니라 무엇을 옮기는 요청인지이므로
+             정답 노출이 아니다. */}
       <div ref={sceneEndRef} aria-hidden className="h-px" />
       {showCtxBar && (
         <div className="fixed inset-x-0 top-[60px] z-30 border-b border-[#EAE4D2] bg-white/95 backdrop-blur">
@@ -1675,7 +1679,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
           {/* scale4 */}
           {item.type === "scale4" && (
             <>
-              <div className="mt-3.5 text-[13px] font-semibold">이 번역안은 이 상황에 얼마나 적절한가요?</div>
+              <div className="mt-3.5 text-[13px] font-semibold">이 상황에서의 번역안 적절성</div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {SCALE4_CODES.map((code) => (
                   <Choice key={code} label={SCALE4_LABELS[code as Scale4Code]} selected={scalePick === code} disabled={answered} onClick={() => setScalePick(code)} />
@@ -1687,7 +1691,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
           {/* judge3 / fix_choice / reason_conf 공통: band 판정 */}
           {item.type !== "scale4" && (
             <>
-              <div className="mt-3.5 text-[13px] font-semibold">이 번역안은 이 상황에 맞나요?</div>
+              <div className="mt-3.5 text-[13px] font-semibold">이 상황에서의 번역안 적절성</div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {bands.map((b) => (
                   <Choice key={b.code} label={b.label} selected={bandPick === b.code} disabled={answered} onClick={() => setBandPick(b.code)} />
@@ -1699,7 +1703,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
           {/* fix_choice: 교정 복수 선택 */}
           {item.type === "fix_choice" && (
             <>
-              <div className="mt-4 text-[13px] font-semibold">어떻게 고치면 좋을까요? <span className="font-normal">맞는 것을 모두 고르세요</span></div>
+              <div className="mt-4 text-[13px] font-semibold">알맞은 수정안 선택 <span className="font-normal">· 맞는 것을 모두 선택</span></div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {item.corrections.map((o, i) => (
                   <button
@@ -1731,7 +1735,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
           {/* reason_conf: 이유 + 확신도 */}
           {item.type === "reason_conf" && bandPick && (
             <>
-              <div className="mt-4 text-[13px] font-semibold">왜 그렇게 보셨나요? <span className="font-normal">맞는 것을 모두 고르세요</span></div>
+              <div className="mt-4 text-[13px] font-semibold">판단 근거 선택 <span className="font-normal">· 맞는 것을 모두 선택</span></div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {item.reasons.map((r) => (
                   <button
@@ -1749,7 +1753,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
                   </button>
                 ))}
               </div>
-              <div className="mt-4 text-[13px] font-semibold">얼마나 확신하시나요?</div>
+              <div className="mt-4 text-[13px] font-semibold">판단 확신도</div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {CONFIDENCE.map((c) => (
                   <button
@@ -1783,7 +1787,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
       {/* multi_judge: 한 상황 다중 발화 */}
       {item.type === "multi_judge" && (
         <div className={card}>
-          <div className="text-[13px] font-semibold">AI가 만든 여러 번역 초안입니다. 각각 어떤가요?</div>
+          <div className="text-[13px] font-semibold">AI가 만든 여러 번역 초안 · 각 초안의 적절성 판단</div>
           <ul className="mt-3 space-y-2.5">
             {item.candidates.map((c, i) => (
               <li key={c.text} className="rounded-lg border border-[#EAE4D2] px-3.5 py-3">

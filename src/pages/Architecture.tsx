@@ -55,7 +55,10 @@ const Architecture = () => (
             <h1 className="text-[16.5px] font-bold leading-tight tracking-tight text-white">
               PRAGMA · 전체 시스템 구조
             </h1>
-            <p className="mt-0.5 text-[13px] text-[#95A2B0]">AI 기반 한·중 통번역 학습 워크플로우</p>
+            {/* 관리자·심사 화면에서는 제품 설명어 대신 논문 가제를 그대로 쓴다. */}
+            <p className="mt-0.5 text-[13px] text-[#95A2B0]">
+              「AI 기반 한중 통번역 학습 워크플로우 개발 연구」
+            </p>
           </div>
         </div>
         <nav className="flex gap-1.5" aria-label="구조 화면">
