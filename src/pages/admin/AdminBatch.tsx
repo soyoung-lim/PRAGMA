@@ -90,6 +90,23 @@ const persistCoreRunId = (direction: LanguageDirection, runId: string) => {
   }
 };
 
+const parseSelectedPlanIndexes = (raw: string, total: number) => {
+  const tokens = raw.split(/[\s,]+/).filter(Boolean);
+  const invalid = tokens.some((token) => {
+    const value = Number(token);
+    return !Number.isInteger(value) || value < 1 || value > total;
+  });
+  const indexes = Array.from(
+    new Set(
+      tokens
+        .map(Number)
+        .filter((value) => Number.isInteger(value) && value >= 1 && value <= total)
+        .map((value) => value - 1),
+    ),
+  ).sort((a, b) => a - b);
+  return { indexes, invalid };
+};
+
 const AdminBatch = () => {
   const [quota, setQuota] = useState<BatchQuota>(DEFAULT_QUOTA);
   // 언어 방향(0-l·89) — zh_ko는 검증 쿼터(18셀·승격 가능 3화행)로 자동 전환.
@@ -101,6 +118,8 @@ const AdminBatch = () => {
   const [auditResults, setAuditResults] = useState<CoreQualityPilotResult[]>([]);
   const [auditDone, setAuditDone] = useState(0);
   const [coreRunId, setCoreRunId] = useState(() => getOrCreateCoreRunId("ko_zh"));
+  const [selectedCellNumbers, setSelectedCellNumbers] = useState("");
+  const [activeTotal, setActiveTotal] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   const switchDirection = (d: LanguageDirection) => {
@@ -133,6 +152,10 @@ const AdminBatch = () => {
   // 54셀 감사는 zh_ko 검증일 때 대상 화행(요청·거절·감사)만으로 좁힌다 —
   // 안 그러면 애초에 카탈로그가 없어 대상도 아닌 6화행이 "빈 셀"로 오경고된다.
   const summary = useMemo(() => summarizePlan(plan, targetActs), [plan, targetActs]);
+  const selectedPlan = useMemo(
+    () => parseSelectedPlanIndexes(selectedCellNumbers, plan.length),
+    [selectedCellNumbers, plan.length],
+  );
   const isLargeKoZhBatch = direction === "ko_zh" && summary.total >= 400;
   const isApprovedFullBatch =
     direction === "ko_zh" &&
@@ -180,6 +203,7 @@ const AdminBatch = () => {
     setRunning(true);
     setResults([]);
     setDone(0);
+    setActiveTotal(plan.length);
     setAuditResults([]);
     setAuditDone(0);
     const ctrl = new AbortController();
@@ -194,6 +218,44 @@ const AdminBatch = () => {
       concurrency: 3,
       signal: ctrl.signal,
       onProgress,
+    });
+    setResults(out);
+    setRunning(false);
+    abortRef.current = null;
+  };
+
+  const startSelected = async () => {
+    if (selectedPlan.invalid || selectedPlan.indexes.length === 0) {
+      toast.error("현재 계획 안의 셀 번호를 쉼표로 입력해 주세요.");
+      return;
+    }
+    const preflight = await preflightAdminBatch();
+    if ("message" in preflight) {
+      toast.error(preflight.message);
+      return;
+    }
+
+    const selectedCells = selectedPlan.indexes.map((index) => plan[index]);
+    const nextRunId = createCoreRunId(direction);
+    persistCoreRunId(direction, nextRunId);
+    setCoreRunId(nextRunId);
+    setRunning(true);
+    setResults([]);
+    setDone(0);
+    setActiveTotal(selectedCells.length);
+    setAuditResults([]);
+    setAuditDone(0);
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    const out = await runCoreBatch(selectedCells, {
+      runId: nextRunId,
+      itemIndexes: selectedPlan.indexes,
+      concurrency: 3,
+      signal: ctrl.signal,
+      onProgress: (count, _total, last) => {
+        setDone(count);
+        setResults((previous) => [...previous, last]);
+      },
     });
     setResults(out);
     setRunning(false);
@@ -517,11 +579,60 @@ const AdminBatch = () => {
           )}
         </div>
 
+        <div className="mt-4 border-t border-[#EAE4D2] pt-4">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[260px] flex-1">
+              <Label htmlFor="selected-core-cells" className="text-[11.5px] text-muted-foreground">
+                검수용 선택 재생성 · 현재 계획의 셀 번호
+              </Label>
+              <Input
+                id="selected-core-cells"
+                value={selectedCellNumbers}
+                onChange={(event) => setSelectedCellNumbers(event.target.value)}
+                placeholder="예: 13, 14, 17"
+                disabled={running}
+                className="mt-1 h-8 text-[13px]"
+              />
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={startSelected}
+              disabled={
+                running ||
+                selectedPlan.invalid ||
+                selectedPlan.indexes.length === 0 ||
+                plan.length === 0
+              }
+            >
+              선택 {selectedPlan.indexes.length}셀 · 새 ID로 생성
+            </Button>
+          </div>
+          <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+            전체 재실행 없이 사람 검수에서 탈락한 셀만 교체합니다. 실행할 때마다 새 배치 ID를
+            발급하며, 코어 생성 프롬프트와 해당 해시는 바뀌지 않습니다.
+          </p>
+          {selectedPlan.indexes.length > 0 && !selectedPlan.invalid && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {selectedPlan.indexes.map((index) => {
+                const cell = plan[index];
+                return (
+                  <Badge key={index} variant="secondary" className="font-normal">
+                    #{index + 1} {SPEECH_ACT_UI[cell.speech_act_ui]} · {LEVEL[cell.level]} ·{" "}
+                    {MODE_LABEL[cell.mode]}
+                  </Badge>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {(running || results.length > 0) && (
           <div className="mt-4">
-            <Progress value={(done / Math.max(1, plan.length)) * 100} />
+            <Progress value={(done / Math.max(1, activeTotal)) * 100} />
             <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-              {done} / {plan.length}
+              {done} / {activeTotal}
             </p>
           </div>
         )}
