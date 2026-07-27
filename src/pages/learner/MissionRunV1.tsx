@@ -1766,12 +1766,15 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
             </>
           )}
 
+          {/* 정보 위계: "상대에게 어떻게 들릴 수 있는가"(explanation_ko — 상황 결부형 어조 해설)를
+              먼저 보이고, "기준 판정" 라벨은 그 아래 보조 표기로 내린다. explanation_ko 재배치만
+              — 새 필드·판정 로직·저장 로그는 그대로다. */}
           {answered && (
             <div className="mt-4 rounded-lg bg-[#F2FAF6] px-3.5 py-3">
-              <div className="text-[12px] font-bold text-[#2E7D5B]">
+              <p className="text-[13px] leading-relaxed">{item.explanation_ko}</p>
+              <div className="mt-2 text-[11.5px] font-semibold text-[#2E7D5B]">
                 기준 판정 · {(item.type === "scale4" ? item.accepted_scale_codes.map((c) => SCALE4_LABELS[c as Scale4Code] ?? c) : item.accepted_band_codes.map((c) => bandLabel(feature, c))).join(" / ")}
               </div>
-              <p className="mt-1 text-[13px] leading-relaxed">{item.explanation_ko}</p>
             </div>
           )}
         </div>
