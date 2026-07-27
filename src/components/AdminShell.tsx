@@ -9,10 +9,10 @@ type NavGroup = {
   items: NavItem[];
 };
 
-const STANDALONE: NavItem = { to: "/admin/dashboard", label: "대시보드" };
+const STANDALONE: NavItem = { to: "/admin/dashboard", label: "운영 대시보드" };
 
 // 워크플로 정합 사이드바 (2026-07-26 재편) — "자원 준비 → 생성 → 조립 → 검수 →
-// 편성 → 학습자·연구" 한 줄 논리.
+// 편성 → 학습자·학습 분석 → 연구" 한 줄 논리.
 //
 // 2026-07-26에 고친 것:
 // - 실제로 구현된 화면 2개(학습자 관리 458줄·의사결정 기록 229줄)가 메뉴에 없어
@@ -57,12 +57,17 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    header: "3 · 학습자·연구",
+    header: "3 · 학습자·학습 분석",
     items: [
       { to: "/admin/learners", label: "학습자 관리" },
-      { to: "/admin/decision-traces", label: "의사결정 기록" },
-      { to: "/admin/analytics", label: "학습 대시보드", pending: true },
-      { to: "/admin/export", label: "연구 데이터 추출", pending: true },
+      { to: "/admin/decision-traces", label: "수행·의사결정 기록" },
+      { to: "/admin/analytics", label: "학습 분석", pending: true },
+    ],
+  },
+  {
+    header: "4 · 연구",
+    items: [
+      { to: "/admin/export", label: "연구 데이터 관리", pending: true },
     ],
   },
   {
