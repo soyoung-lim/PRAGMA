@@ -2,6 +2,7 @@
 //
 // 편성기(관리자)가 curriculum_week_scenarios에 저장한 것을 학습자 화면이 소비한다.
 // 기존 조회 함수(curriculum/api·composer)를 재사용하므로 새 쿼리는 없다.
+// 조회 결과에 legacy 편성이 섞여 있어도 학습자 조립층에서 reviewed 미션만 남긴다.
 //
 // ⚠️ 가시성 한계(7/26 데모 = admin/localhost 세션 전제):
 //   curriculum_outlines/weeks/week_scenarios·코어 scenarios는 현재 admin RLS(또는
@@ -24,7 +25,7 @@ export interface LearnerWeekScenario {
   mission_status: string | null;
   target_feature: string | null;
   mode: ComposerCore["mode"];
-  /** 학습자가 지금 실행 가능한가(검토완료). DEV에서는 generated도 허용. */
+  /** 이 배열에는 검토 완료 미션만 들어오므로 항상 true. */
   runnable: boolean;
 }
 
@@ -41,7 +42,59 @@ export interface LearnerCourse {
   weeks: LearnerCourseWeek[];
 }
 
-const IS_DEV = import.meta.env.DEV;
+export interface LearnerCourseSource {
+  outline: CurriculumOutlineRow;
+  weeks: CurriculumWeekRow[];
+  assignments: Awaited<ReturnType<typeof listWeekAssignments>>;
+  cores: ComposerCore[];
+}
+
+/**
+ * 편성 원천을 학습자 강좌로 투영한다.
+ * 기존 DB에 남은 core-only/generated 배정과 삭제된 코어는 상황 문구조차 노출하지 않는다.
+ */
+export function assembleLearnerCourse({
+  outline,
+  weeks,
+  assignments,
+  cores,
+}: LearnerCourseSource): LearnerCourse {
+  const coreById = new Map<string, ComposerCore>();
+  for (const core of cores) coreById.set(core.scenario_id, core);
+
+  // week_no → 배정(순서 유지)
+  const byWeek = new Map<number, typeof assignments>();
+  for (const assignment of assignments) {
+    const items = byWeek.get(assignment.week_no) ?? [];
+    items.push(assignment);
+    byWeek.set(assignment.week_no, items);
+  }
+
+  const learnerWeeks: LearnerCourseWeek[] = weeks.map(
+    (week: CurriculumWeekRow) => ({
+      week_no: week.week_no,
+      title: week.title ?? `${week.week_no}주차`,
+      type: week.type,
+      speech_act: week.speech_act ?? null,
+      scenarios: (byWeek.get(week.week_no) ?? []).flatMap((assignment) => {
+        const core = coreById.get(assignment.scenario_id);
+        if (!core || core.mission_status !== "reviewed") return [];
+        return [
+          {
+            scenario_id: assignment.scenario_id,
+            situation_ko: core.situation_ko,
+            mission_status: core.mission_status,
+            target_feature: core.target_feature,
+            mode: core.mode,
+            runnable: true,
+          },
+        ];
+      }),
+    }),
+  );
+
+  return { outline, weeks: learnerWeeks };
+}
 
 /** 게시된 커리큘럼 1개(가장 최근 수정)의 편성본을 학습자 시점으로 조립. 없으면 null. */
 export async function getPublishedCourse(): Promise<LearnerCourse | null> {
@@ -55,35 +108,5 @@ export async function getPublishedCourse(): Promise<LearnerCourse | null> {
     listCoreScenarios(),
   ]);
 
-  const coreById = new Map<string, ComposerCore>();
-  for (const c of cores) coreById.set(c.scenario_id, c);
-
-  // week_no → 배정(순서 유지)
-  const byWeek = new Map<number, typeof assignments>();
-  for (const a of assignments) {
-    const arr = byWeek.get(a.week_no) ?? [];
-    arr.push(a);
-    byWeek.set(a.week_no, arr);
-  }
-
-  const learnerWeeks: LearnerCourseWeek[] = weeks.map((w: CurriculumWeekRow) => ({
-    week_no: w.week_no,
-    title: w.title ?? `${w.week_no}주차`,
-    type: w.type,
-    speech_act: w.speech_act ?? null,
-    scenarios: (byWeek.get(w.week_no) ?? []).map((a) => {
-      const c = coreById.get(a.scenario_id);
-      const status = c?.mission_status ?? null;
-      return {
-        scenario_id: a.scenario_id,
-        situation_ko: c?.situation_ko ?? "(불러올 수 없는 시나리오)",
-        mission_status: status,
-        target_feature: c?.target_feature ?? null,
-        mode: c?.mode ?? null,
-        runnable: status === "reviewed" || (IS_DEV && status === "generated"),
-      };
-    }),
-  }));
-
-  return { outline, weeks: learnerWeeks };
+  return assembleLearnerCourse({ outline, weeks, assignments, cores });
 }

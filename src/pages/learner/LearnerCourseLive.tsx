@@ -63,7 +63,7 @@ const LearnerCourseLive = () => {
             <div className={`mt-4 ${card}`}>
               <div className="text-[14.5px] font-semibold">{course.outline.title}</div>
               <div className="mt-1 text-[12.5px] text-muted-foreground">
-                배정된 과제 {assignedTotal}개
+                검토 완료 과제 {assignedTotal}개
               </div>
             </div>
 
@@ -127,10 +127,6 @@ const LearnerCourseLive = () => {
                 );
               })}
             </ol>
-
-            <p className="mt-4 text-[11.5px] text-muted-foreground">
-              "준비 중"은 교강사 검토가 끝나면 시작할 수 있게 됩니다.
-            </p>
           </>
         )}
       </div>
