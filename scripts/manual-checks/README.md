@@ -5,6 +5,11 @@
 
 ```bash
 PYTHONIOENCODING=utf-8 python scripts/manual-checks/feedback_4type_check.py
+PYTHONIOENCODING=utf-8 python scripts/manual-checks/feedback_4type_check.py --mode interpreting
+# 두 모드를 한 번에 확인할 때만(Edge 8회 호출):
+PYTHONIOENCODING=utf-8 python scripts/manual-checks/feedback_4type_check.py --mode both
+# 특정 분기의 비결정성을 반복 확인할 때:
+PYTHONIOENCODING=utf-8 python scripts/manual-checks/feedback_4type_check.py --mode both --case feature --repeat 3
 PYTHONIOENCODING=utf-8 python scripts/manual-checks/quality_check_smoke.py
 ```
 
@@ -14,7 +19,8 @@ PYTHONIOENCODING=utf-8 python scripts/manual-checks/quality_check_smoke.py
 
 ## feedback_4type_check.py — 계약 0-r·108 수락 기준
 
-학습자 답 4유형이 **서로 다르게 진단되어야** 통과다.
+학습자 답 4유형이 **서로 다르게 진단되어야** 통과다. 기본값은 번역이며
+`--mode interpreting`은 학습자가 확인한 통역 전사문을 같은 계약으로 검증한다.
 
 | 답안 유형 | 기대 `revision_scope` |
 |---|---|
@@ -25,6 +31,7 @@ PYTHONIOENCODING=utf-8 python scripts/manual-checks/quality_check_smoke.py
 
 `revision_scope`는 모델이 아니라 **코드가 verdicts에서 도출**한다(계약 §4).
 이 스크립트는 같은 도출 로직을 복제해 채점한다.
+한 유형이라도 기대 분기와 다르면 종료코드 1을 반환하므로 배포 게이트에서 실패로 처리한다.
 
 ⚠️ 과거 실패 사례: 모델이 **완화 표현 소실을 의미 손실로 이중 계산**해
 `grammar`·`feature` 케이스가 전부 `meaning`으로 흘렀다(2/4). 계약의 이중제약
