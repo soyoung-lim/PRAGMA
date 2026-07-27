@@ -1,10 +1,9 @@
 // Thin Supabase data-access layer for curriculum outlines/weeks.
 //
-// RLS premise: both tables are admin-only (curriculum_outlines_admin_all /
-// curriculum_weeks_admin_all — SELECT/INSERT/UPDATE/DELETE all require
-// public.is_admin()). Callers therefore need an authenticated ADMIN session;
-// a regular learner session gets empty reads / permission errors. Do NOT
-// re-implement admin checks here — access control belongs to DB RLS.
+// RLS premise: admin은 전체 읽기·쓰기가 가능하다. 프로필 작성을 마친 learner는
+// published outline과 그 weeks만 SELECT할 수 있다
+// (20260727190000_learner_published_curriculum_read). 쓰기는 계속 admin-only다.
+// Do NOT re-implement access checks here — access control belongs to DB RLS.
 //
 // Atomicity limit (MVP, documented on updateCurriculumOutline): multi-step
 // writes are separate PostgREST requests, NOT one transaction. A failure

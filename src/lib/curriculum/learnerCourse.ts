@@ -4,12 +4,8 @@
 // 기존 조회 함수(curriculum/api·composer)를 재사용하므로 새 쿼리는 없다.
 // 조회 결과에 legacy 편성이 섞여 있어도 학습자 조립층에서 reviewed 미션만 남긴다.
 //
-// ⚠️ 가시성 한계(7/26 데모 = admin/localhost 세션 전제):
-//   curriculum_outlines/weeks/week_scenarios·코어 scenarios는 현재 admin RLS(또는
-//   approved+coursework_published)만 읽힌다. 실제 학습자(비-admin) 노출은 승격·검토
-//   파이프라인이 usage_assignment를 coursework_published로 올리고 커리큘럼 테이블에
-//   learner-read 정책을 추가해야 완성된다(후속, 일부 fable 영역). 지금은 admin 세션에서
-//   루프가 실작동하는 것까지 잇는다.
+// RLS 공개 경계(20260727190000): 프로필 작성을 마친 learner는 published 강좌와
+// 그 편성 중 reviewed 미션만 읽는다. admin은 검수·시연을 위해 전체를 읽는다.
 
 import {
   getCurriculumOutline,
