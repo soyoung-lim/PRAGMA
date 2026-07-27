@@ -55,6 +55,9 @@ const JUDGMENT_STATUS_CAPTION =
 const PDR_R_LABEL: Record<string, string> = { low: "가벼운 부탁", mid: "보통", high: "부담이 큼" };
 const PDR_D_LABEL: Record<string, string> = { close: "가까운 사이", acquaintance: "아는 사이", distant: "처음/먼 사이" };
 
+// 사이트 헤더(LearnerJourneyShell) 높이 — 문항 맥락 바가 붙는 기준선.
+const HEADER_H = 60;
+
 const card = "rounded-xl border border-[#EAE4D2] bg-white p-4";
 const srcBox = "rounded-lg border-l-[3px] border-[#EAE4D2] border-l-[#FAD338] bg-[#F5F5F2] p-3";
 // 데모/검증 전용 버튼(프로토타입 v2 "데모 채우기") — IS_DEMO(개발·데모 배포)에서만 노출.
@@ -183,7 +186,8 @@ const MissionRunV1 = () => {
   const isSample = !loaded;
   const headerRight = loaded
     ? `${loaded.speech_act ? SPEECH_ACT_UI[loaded.speech_act] : ""} · ${loaded.learner_level ? LEVEL[loaded.learner_level] : ""}`
-    : "샘플 미션";
+    // 큰 배너를 걷어내는 대신 헤더가 지위를 말한다 — "원어민 검토 전"은 헤더에 없던 정보다.
+    : "샘플 · 예문 검토 전";
 
   return (
     <MissionRunner
@@ -574,8 +578,12 @@ function MissionRunner({
   };
 
   const nextMpj = () => {
-    if (mpjIdx < items.length - 1) setMpjIdx((i) => i + 1);
-    else {
+    if (mpjIdx < items.length - 1) {
+      setMpjIdx((i) => i + 1);
+      // 문항 전환도 단계 전환과 같게 최상단으로 — 없으면 이전 문항의 스크롤 위치가
+      // 남아 새 문항이 상황 카드 중간부터 보인다.
+      window.scrollTo(0, 0);
+    } else {
       setPhase("handoff");
       window.scrollTo(0, 0);
     }
@@ -604,17 +612,11 @@ function MissionRunner({
   return (
     <LearnerJourneyShell headerRight={<span className="text-[12px] text-[#8899A6]">{headerRight}</span>}>
       <div className="pb-24">
-        {(isSample || status === "generated") && (
+        {/* 샘플 배너는 헤더 라벨(「샘플 · 예문 검토 전」)로 옮겼다 — 첫 화면 자리를
+            문항에 내준다. 미검수(generated) 경고는 성격이 달라 배너로 남긴다. */}
+        {status === "generated" && (
           <div className="mb-3 rounded-lg border border-dashed border-[#C9A227] bg-[#FFFBEA] px-3.5 py-2.5 text-[12px] text-[#6B5518]">
-            {isSample ? (
-              <>
-                <b>샘플 미션</b> · 렌더 검증용입니다. 중국어 예문은 <b>원어민 검토 전</b> 초안입니다.
-              </>
-            ) : (
-              <>
-                <b>검토 전(generated)</b> 미션입니다 · 개발 확인용. 학습자 배포는 검토 완료본만 됩니다.
-              </>
-            )}
+            <b>검토 전(generated)</b> 미션입니다 · 개발 확인용. 학습자 배포는 검토 완료본만 됩니다.
           </div>
         )}
 
@@ -699,14 +701,10 @@ function MissionRunner({
         {/* ── 1부: 판단 연습(MPJ) ── */}
         {phase === "mpj" && (
           <div className="space-y-3">
-            {mpjIdx === 0 && <MissionContractBar mission={mission} />}
-            {mpjIdx === 0 && (
-              <p className="rounded-lg border border-dashed border-[#D8D0BC] bg-[#FBFAF5] px-3.5 py-2 text-[11.5px] leading-relaxed text-[#6B5518]">
-                {JUDGMENT_STATUS_CAPTION}
-              </p>
-            )}
-            {/* 초점 라벨·문항 수는 위쪽 맥락 띠와 진행바가 이미 말한다(삼중 노출 제거). */}
+            {/* 문항이 첫 화면을 차지한다 — 학생이 처음 봐야 할 것은 상황이지 완료 조건이 아니다.
+                초점 라벨·문항 수는 위쪽 맥락 띠와 진행바가 이미 말한다(삼중 노출 제거). */}
             <MpjStage key={item.id} item={item} onDone={nextMpj} />
+            {mpjIdx === 0 && <MissionBriefDrawer mission={mission} />}
           </div>
         )}
 
@@ -1367,37 +1365,39 @@ function CtxStage({
   );
 }
 
-// ── 평가 계약 바(0-i·65) — 제출 전엔 무엇으로 판단받는지만, 정답·참고안은 제출 후 ──
-function MissionContractBar({ mission }: { mission: MissionV2 }) {
+// ── 평가 계약(0-i·65) + 판정 지위 고지(B1 · 0-g·44) — 첫 문항 아래 접기 하나로 ──
+// 종전엔 이 둘이 첫 문항 **위**에서 약 200px을 차지해, 학생이 상황보다 완료 조건을
+// 먼저 읽는 화면이 됐다. 고지 자체는 계약 사항이라 삭제하지 않고 위치만 내린다.
+// ⚠️ 접힌 제목에 "다른 적절한 표현도 있을 수 있어요"를 남긴다 — 전부 감추면 B1
+//    (판정=AI 제안이지 유일한 정답이 아님)의 고지 효과가 사라진다.
+function MissionBriefDrawer({ mission }: { mission: MissionV2 }) {
   const feat = getTargetFeature(mission.unit.target_feature);
   const estMin = mission.production_task.mode === "interpreting" ? 15 : 12;
   const tgtName = tgtLangName(mission.direction);
   const isInterp = mission.production_task.mode === "interpreting";
   return (
-    <div className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] p-4">
-      {/* 감량(0-r·103): 시작 화면에 남는 것은 상황 1줄 · 목표 1줄 · 예상 시간뿐이다.
-          평가 계약(완료 조건·확인/미확인 항목)은 삭제가 아니라 접는다 — 필요할 때 펼친다. */}
-      {/* 1부 문항마다 상황이 따로 있으므로, 여기 상황은 "2부에서 직접 할 일"임을 밝힌다. */}
-      <p className="text-[13px] leading-relaxed">
-        <span className="text-muted-foreground">마지막에 직접 {isInterp ? "통역할" : "옮길"} 상황 · </span>
-        {mission.production_task.situation_ko}
-      </p>
-      {/* 초점 라벨은 미션 내내 뜨는 맥락 띠가 대신한다 — 여기 배지는 중복이었다. */}
-      <div className="mt-2 text-[13px] text-muted-foreground">약 {estMin}분</div>
-      <details className="mt-2 text-[12.5px]">
-        <summary className="cursor-pointer text-[#6B5518]">완료 조건과 평가 기준 보기</summary>
-        <div className="mt-2 space-y-1.5 text-muted-foreground">
-          <p>
-            완료 조건 — 판단 {mission.mpj_items.length}문항 → {isInterp ? `${tgtName}로 통역` : `${tgtName}로 옮기기`} 1회 → 피드백 확인 → 다듬기 1회.
-            <b className="text-foreground"> 정답·참고 표현은 제출한 뒤에 공개됩니다.</b>
-          </p>
-          <p>확인하는 것 — ① 원문의 의미·의도가 유지됐는가 ② 의미를 방해하는 문법 오류가 있는가 ③ 이 관계·상황에서 「{mission.unit.learner_label}」이 적절한가</p>
-          {feat && feat.excluded_confounds.length > 0 && (
-            <p>확인하지 않는 것 — {feat.excluded_confounds.join(" · ")}</p>
-          )}
-        </div>
-      </details>
-    </div>
+    <details className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-3 text-[12.5px]">
+      <summary className="cursor-pointer text-[#6B5518]">
+        판정 기준 보기 · <b>다른 적절한 표현도 있을 수 있어요</b>
+      </summary>
+      <div className="mt-2.5 space-y-1.5 text-muted-foreground">
+        {/* 1부 문항마다 상황이 따로 있으므로, 여기 상황은 "2부에서 직접 할 일"임을 밝힌다. */}
+        <p className="text-foreground">
+          <span className="text-muted-foreground">마지막에 직접 {isInterp ? "통역할" : "옮길"} 상황 · </span>
+          {mission.production_task.situation_ko}
+          <span className="text-muted-foreground"> · 약 {estMin}분</span>
+        </p>
+        <p>{JUDGMENT_STATUS_CAPTION}</p>
+        <p>
+          완료 조건 — 판단 {mission.mpj_items.length}문항 → {isInterp ? `${tgtName}로 통역` : `${tgtName}로 옮기기`} 1회 → 피드백 확인 → 다듬기 1회.
+          <b className="text-foreground"> 정답·참고 표현은 제출한 뒤에 공개됩니다.</b>
+        </p>
+        <p>확인하는 것 — ① 원문의 의미·의도가 유지됐는가 ② 의미를 방해하는 문법 오류가 있는가 ③ 이 관계·상황에서 「{mission.unit.learner_label}」이 적절한가</p>
+        {feat && feat.excluded_confounds.length > 0 && (
+          <p>확인하지 않는 것 — {feat.excluded_confounds.join(" · ")}</p>
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -1556,6 +1556,25 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
   const [fixPicks, setFixPicks] = useState<Set<number>>(new Set());
   const [multiPicks, setMultiPicks] = useState<Record<number, string>>({});
 
+  // 대화창 끝 지점이 헤더 위로 올라갔는지 — 올라갔을 때만 맥락 바를 띄운다.
+  // IntersectionObserver 대신 스크롤 리스너를 쓴다: 같은 값이면 React가 리렌더를
+  // 건너뛰므로 비용이 사실상 없고, 렌더 루프에 의존하지 않아 동작 확인이 쉽다.
+  const sceneEndRef = useRef<HTMLDivElement>(null);
+  const [showCtxBar, setShowCtxBar] = useState(false);
+  useEffect(() => {
+    const update = () => {
+      const el = sceneEndRef.current;
+      if (el) setShowCtxBar(el.getBoundingClientRect().top < HEADER_H);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
   const feature = item.axis_feature;
   const bands =
     item.type === "multi_judge"
@@ -1627,6 +1646,28 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
           </>
         )}
       </ChatScene>
+
+      {/* 문항 맥락 고정 바 — 긴 문항(특히 multi_judge는 후보 5개 × 선택지 3개)에서
+          스크롤하면 상대·원문이 화면 밖으로 나가 "무엇을 옮기는 중이었지"를 잊는다.
+          ⚠️ sticky가 아니라 **대화창이 화면에서 사라졌을 때만** 뜨는 fixed 바다.
+             sticky면 대화창 바로 아래에서 같은 내용을 반복해 자리만 먹는다.
+          ⚠️ 관계는 화용 판단의 축이라 좁은 화면에서도 숨기지 않고 2줄로 접는다.
+          ⚠️ multi_judge는 대화창에 원문이 없었다 — 여기서 맥락을 복구한다. 후보(판단
+             대상)가 아니라 무엇을 옮기는 요청인지이므로 정답 노출이 아니다. */}
+      <div ref={sceneEndRef} aria-hidden className="h-px" />
+      {showCtxBar && (
+        <div className="fixed inset-x-0 top-[60px] z-30 border-b border-[#EAE4D2] bg-white/95 backdrop-blur">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-baseline gap-x-2.5 gap-y-0.5 px-6 py-1.5 text-[12px]">
+            <span className="text-muted-foreground">
+              상대 · <span className="text-foreground">{item.relation_ko}</span>
+            </span>
+            <span className="hidden text-[#E3E1D8] md:inline">|</span>
+            <span className="text-muted-foreground">
+              전하려는 뜻 · <span className="text-foreground">{item.source}</span>
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* 단일 발화 문항(scale4/judge3/fix_choice/reason_conf) — 위 대화창 AI 초안에 대한 판정(0-i·59) */}
       {item.type !== "multi_judge" && (
