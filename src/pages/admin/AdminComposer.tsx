@@ -13,6 +13,7 @@ import {
   type ComposerCore,
   type WeekAssignment,
 } from "@/lib/curriculum/composer";
+import { isReviewedMission } from "@/lib/curriculum/composerEligibility";
 import {
   DIRECTION_LABEL,
   LEVEL,
@@ -209,19 +210,21 @@ const AdminComposer = () => {
       if (w.type !== "regular" || !w.speech_act) continue;
       const act = w.speech_act as SpeechActUI;
       const slots = w.scenario_slots ?? outline.scenarios_per_week ?? 3;
-      // 1차: 화행 + 수준 + 방향(outline) + 선택 테마 + 미사용 코어
+      // 1차: 검토 완료 + 화행 + 수준 + 방향(outline) + 선택 테마 + 미사용 코어
       let cands = cores.filter(
         (c) =>
+          isReviewedMission(c) &&
           !usedIds.has(c.scenario_id) &&
           c.speech_act === act &&
           c.learner_level === level &&
           c.direction === outline.language_direction &&
           (themes.length === 0 || (c.theme_code != null && themes.includes(c.theme_code))),
       );
-      // 부족하면 테마 조건 완화(화행 + 수준 + 방향만) — 방향은 절대 완화하지 않는다(0-l·91).
+      // 부족하면 테마만 완화한다. reviewed·화행·수준·방향은 절대 완화하지 않는다.
       if (cands.length < slots) {
         cands = cores.filter(
           (c) =>
+            isReviewedMission(c) &&
             !usedIds.has(c.scenario_id) &&
             c.speech_act === act &&
             c.learner_level === level &&
@@ -249,6 +252,7 @@ const AdminComposer = () => {
 
   const addItem = (weekNo: number, c: ComposerCore) =>
     setAssign((prev) => {
+      if (!isReviewedMission(c)) return prev;
       const cur = prev[weekNo] ?? [];
       if (cur.some((it) => it.scenario_id === c.scenario_id)) return prev;
       return { ...prev, [weekNo]: [...cur, { scenario_id: c.scenario_id, slot_role: slotRoleFor(c) }] };
@@ -262,6 +266,11 @@ const AdminComposer = () => {
       items.forEach((it, i) =>
         flat.push({ week_no: weekNo, scenario_id: it.scenario_id, position: i, slot_role: it.slot_role }),
       );
+    }
+    const unreviewed = flat.filter((item) => !isReviewedMission(coreById[item.scenario_id]));
+    if (unreviewed.length > 0) {
+      toast.error(`검토 완료되지 않은 미션 ${unreviewed.length}개를 편성에서 제거한 뒤 저장하세요.`);
+      return;
     }
     setSaving(true);
     try {
@@ -531,10 +540,11 @@ function WeekRow({
     ? getTargetFeature(plannedFeatureCode)?.learner_label ?? plannedFeatureCode
     : null;
 
-  // 후보: 화행(있으면) + 수준 + 선택 테마 일치, 이미 배정된 것 제외
+  // 후보: 검토 완료 + 화행(있으면) + 수준 + 선택 테마 일치, 이미 배정된 것 제외
   const assignedIds = new Set(items.map((it) => it.scenario_id));
   const cands = candidates.filter(
     (c) =>
+      isReviewedMission(c) &&
       !assignedIds.has(c.scenario_id) &&
       (act ? c.speech_act === act : true) &&
       c.learner_level === level &&
