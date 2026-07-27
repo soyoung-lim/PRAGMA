@@ -13,7 +13,7 @@ import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { transformSync } from "esbuild";
+import { buildSync } from "esbuild";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const EDGE = "supabase/functions/generate-scenario/index.ts";
@@ -30,7 +30,22 @@ const EXPOSE = `
   buildAuthenticSystemPrompt,
   PRIMARY_MODEL, FALLBACK_MODEL, CORE_TEMPERATURE, CORE_RESPONSE_FORMAT,
 };`;
-(0, eval)(transformSync(src, { loader: "ts" }).code + EXPOSE);
+// Edge가 _shared 모듈을 import해도 실행 가능하도록 로컬 의존성까지 한 번에 묶는다.
+// EXPOSE를 진입 소스 안에 붙여야 번들 IIFE 내부 심볼을 안전하게 꺼낼 수 있다.
+const executable = buildSync({
+  stdin: {
+    contents: src + EXPOSE,
+    resolveDir: dirname(resolve(ROOT, EDGE)),
+    sourcefile: "index.ts",
+    loader: "ts",
+  },
+  bundle: true,
+  write: false,
+  platform: "neutral",
+  format: "iife",
+  target: "es2022",
+}).outputFiles[0].text;
+(0, eval)(executable);
 const S = globalThis.__S;
 
 const sha = (s) => createHash("sha256").update(s, "utf8").digest("hex");

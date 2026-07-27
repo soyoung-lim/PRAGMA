@@ -7,12 +7,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import {
-  FeedbackDraftSchema,
-  deriveRevisionScope,
-  reconcileFeedback,
-  stripPhantomAnchors,
-  type RuntimeFeedback,
-} from "@/lib/pragma/feedbackSchema";
+  FEEDBACK_TIMEOUT_MS,
+  feedbackInvokeErrorMessage,
+} from "@/lib/mission/feedbackTransport";
+import { normalizeFeedbackResponse } from "@/lib/mission/normalizeFeedback";
+import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
 import type { MissionV2 } from "@/lib/pragma/missionSchema";
 
 export interface FeedbackRequestResult {
@@ -67,39 +66,13 @@ export async function requestFeedback(
           rubric_version: `${feature.code}@${feature.version}`,
         },
       },
+      timeout: FEEDBACK_TIMEOUT_MS,
     });
-    if (error) return { ok: false, error: error.message ?? String(error) };
+    if (error) return { ok: false, error: feedbackInvokeErrorMessage(error) };
 
     const raw = (data as { feedback?: unknown })?.feedback;
-    const parsed = FeedbackDraftSchema.safeParse(raw);
-    if (!parsed.success) {
-      return { ok: false, error: `피드백 형식 불일치: ${parsed.error.issues[0]?.message ?? ""}` };
-    }
-
-    // 모순 정리 → 유령 앵커 제거 → revision_scope 도출(코드 소관).
-    const { verdicts, blocks, issues } = reconcileFeedback(parsed.data);
-    const anchorIssues = stripPhantomAnchors(blocks, answer);
-    const revision_scope = deriveRevisionScope(verdicts, feature.within_band_code);
-
-    const prov = (raw as { provenance?: { model?: string; prompt_version?: string; generated_at?: string } })
-      ?.provenance;
-    const rubric = (raw as { rubric_version?: string })?.rubric_version ?? "";
-
-    const feedback: RuntimeFeedback = {
-      schema_version: "feedback_v1",
-      rubric_version: rubric,
-      verdicts,
-      revision_scope,
-      blocks,
-      uncertainty_flags: parsed.data.uncertainty_flags,
-      provenance: {
-        model: prov?.model ?? "",
-        prompt_version: prov?.prompt_version ?? "feedback_v1",
-        generated_at: prov?.generated_at ?? "",
-      },
-    };
-    return { ok: true, feedback, issues: [...issues, ...anchorIssues] };
+    return normalizeFeedbackResponse(raw, answer, feature);
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "피드백 호출 실패" };
+    return { ok: false, error: feedbackInvokeErrorMessage(e) };
   }
 }

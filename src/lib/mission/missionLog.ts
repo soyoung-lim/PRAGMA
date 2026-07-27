@@ -10,41 +10,15 @@
 // context_judgment = 이견 채널 기록(0-r·104). 남기지 않으면 null.
 
 import { supabase } from "@/integrations/supabase/client";
-import { DIRECTION_LANGS, type LanguageDirection } from "@/lib/pragma/enums";
-import type { MissionV2 } from "@/lib/pragma/missionSchema";
+import {
+  buildMissionAttemptRow,
+  type SaveAttemptInput,
+} from "@/lib/mission/missionAttemptRow";
 
-const db = supabase as unknown as { from: (t: string) => any };
-
-export interface SaveAttemptInput {
-  mission: MissionV2;
-  /** DB 미션이면 scenarios.scenario_id(uuid), 샘플이면 null */
-  scenarioId: string | null;
-  speechAct: string | null;
-  level: string | null;
-  /** 학습 전(피드백 전) 산출 = 최초 번역/통역 */
-  firstResponse: string;
-  /** 다듬은 최종 산출(없으면 최초와 동일) */
-  revisedResponse: string;
-  /** 컴포넌트 마운트 시각(ISO) */
-  startedAtIso: string;
-  /**
-   * 학습자 이견 기록(0-r·104). 판정을 바꾸지 않는다 — 결함 문항 발견과
-   * 채점키 캘리브레이션 보조 자료로만 쓴다. 남기지 않으면 undefined.
-   */
-  contextJudgment?: LearnerDissent;
-}
-
-/** 이견 채널 저장 형태 — context_judgment jsonb에 그대로 들어간다. */
-export interface LearnerDissent {
-  kind: "learner_dissent";
-  /** 어느 화면에서 남겼는가 */
-  at: "feedback";
-  /** 다르게 본 조건(복수 선택, 코드) */
-  conditions: string[];
-  /** 한 줄 이유(선택) */
-  reason_ko: string;
-  created_at: string;
-}
+export type {
+  LearnerDissent,
+  SaveAttemptInput,
+} from "@/lib/mission/missionAttemptRow";
 
 export type SaveAttemptResult =
   | { ok: true; id: string }
@@ -61,7 +35,7 @@ export async function saveMissionAttempt(input: SaveAttemptInput): Promise<SaveA
   if (!authUserId) return { ok: false, reason: "no_auth" };
 
   // profile_id(profiles.id, NOT NULL) 조회 — auth user에 매인 프로필.
-  const { data: prof, error: profErr } = await db
+  const { data: prof, error: profErr } = await supabase
     .from("profiles")
     .select("id")
     .eq("user_id", authUserId)
@@ -70,36 +44,9 @@ export async function saveMissionAttempt(input: SaveAttemptInput): Promise<SaveA
     return { ok: false, reason: "error", message: profErr?.message ?? "프로필을 찾을 수 없습니다." };
   }
 
-  const dir = input.mission.direction as LanguageDirection;
-  const langs = DIRECTION_LANGS[dir];
-  const pt = input.mission.production_task;
-  const taskType = pt.mode === "interpreting" ? "interpreting" : "translation";
+  const row = buildMissionAttemptRow(input, prof.id, authUserId);
 
-  const row = {
-    profile_id: prof.id,
-    auth_user_id: authUserId,
-    mission_id: input.scenarioId ?? `sample:${input.mission.unit.target_feature}`,
-    cell_id: input.scenarioId, // 샘플이면 null
-    feature_id: input.mission.unit.target_feature,
-    speech_act: input.speechAct,
-    level: input.level,
-    mode: "학습", // 모드 정책(학습·복습 중 학습). 범위 확정: 수업연계 단일
-    task_type: taskType,
-    source_lang: langs.source,
-    target_lang: langs.target,
-    source_text: pt.source_text,
-    first_response: input.firstResponse,
-    revised_response: input.revisedResponse,
-    revision_target_source: "learner_free",
-    example_shown: true,
-    mission_completed: true,
-    content_ver: input.mission.unit.target_feature_version ?? null,
-    context_judgment: input.contextJudgment ?? null,
-    started_at: input.startedAtIso,
-    completed_at: new Date().toISOString(),
-  };
-
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from("learner_mission_logs")
     .insert(row)
     .select("id")
