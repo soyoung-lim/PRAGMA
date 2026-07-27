@@ -2,6 +2,7 @@ import {
   FEEDBACK_MAX_COMPLETION_TOKENS,
   feedbackPayloadIssue,
 } from '../_shared/feedbackRequestLimits.ts'
+import { repairFeedbackPragmaticLeak } from '../_shared/feedbackLayerRepair.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1516,6 +1517,8 @@ function buildFeedbackSystemPrompt(direction: Direction, isSpoken: boolean): str
 - 입력은 STT 원전사가 아니라 학습자가 직접 확인·수정한 전사다. 이 텍스트만 언어 산출로 본다.
 - 음성이 제공되지 않으므로 발음·성조·속도·휴지·유창성·음질을 추측하거나 평가하지 마라.
 - 전사 문구를 근거로 의미·문법·화용만 진단한다.
+- **통역이라고 의미 판정 기준을 더 엄격하게 바꾸지 마라.** 번역과 완전히 같은 3층 경계를
+  적용한다. 질문형·완화·선택권 표지가 사라진 것은 통역에서도 의미 손실이 아니라 화용 차이다.
 `
     : ''
   return `너는 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 수업의 화용 피드백 담당이다.
@@ -1550,6 +1553,14 @@ ${modeBoundary}
       질문형 요청이 명령형 요청으로 바뀌었더라도 요청 대상 행동·참여자·조건이 같다면
       화행 목적은 유지된 것이다. 이때 달라진 요청 강도·선택권은 ③에서만 판정한다.
    ⚠️ 문법 오류 때문에 읽기 어렵다는 이유로 의미를 깎지 마라 — 그것은 ② 소관이다.
+   🔴 **층 분리 교정 예시**:
+      원문이 "X를 해 주실 수 있나요?"라는 요청일 때,
+      - 답이 "X를 해."이면 요청 행동 X는 같으므로 의미="preserved", 문법="clean",
+        직접성·선택권만 ③ 화용에서 판정한다.
+      - 답이 문법적으로 깨졌어도 X를 해 달라는 의도를 알아볼 수 있으면 의미="preserved",
+        문법="impeding_errors"로 판정한다.
+      - X가 아닌 다른 행동을 말하거나, 요청을 철회·수락·사실 진술로 바꾼 경우에만
+        의미 손실로 판정한다.
 ② 이해 가능성(문법): **이해를 방해하는 오류만** 본다. 사소한 부자연스러움·문체 취향은
    적지 마라. 지적은 **최대 1건**, 반드시 학습자 문장에 실제로 있는 부분만 인용한다.
 ③ 화용 인상: 이 상대·이 부담에서 목표 초점이 어느 대역으로 실현되었는가.
@@ -1836,6 +1847,9 @@ Deno.serve(async (req) => {
       }
       // revision_scope는 서버·클라가 verdicts에서 도출한다(§4) — 모델 값이 와도 버린다.
       delete (parsed as { revision_scope?: unknown }).revision_scope
+      // 모델이 통역 전사에서 완화·선택권 소실을 의미 손실로 이중 계산하는 경향을
+      // 결정론적으로 막는다. 실제 사실·조건 누락 근거가 있으면 교정하지 않는다.
+      repairFeedbackPragmaticLeak(parsed)
       return new Response(
         JSON.stringify({
           feedback: {

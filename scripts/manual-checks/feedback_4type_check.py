@@ -109,7 +109,7 @@ for mode in MODES:
             print(f"\n[{label} · {repeat_index}/{args.repeat}] 기대={expect} / 실제={got}  → {hit}")
             print(f"  답안: {answer}")
             print(f"  verdicts: 의미={v.get('semantic_fidelity')} 문법={v.get('grammatical_accuracy')} 대역={v.get('pragmatic_appropriateness',{}).get('band_code')}")
-            print(f"  의미: {b.get('meaning_ko','')[:90]}")
+            print(f"  의미: {b.get('meaning_ko','')}")
             g = b.get("grammar", [])
             print(f"  문법({len(g)}건): {(g[0].get('explanation_ko','')[:80] if g else '-')}")
             print(f"  화용: {b.get('feature_ko','')[:110]}")

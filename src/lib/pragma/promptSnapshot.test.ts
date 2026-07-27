@@ -37,6 +37,12 @@ describe("prompt snapshot integrity", () => {
     expect(spoken.text).toContain("학습자가 확인·수정한 중국어 통역 전사");
     expect(spoken.text).toContain("[통역 전사 경계]");
     expect(spoken.text).toContain("발음·성조·속도·휴지·유창성·음질을 추측하거나 평가하지 마라");
+    expect(spoken.text).toContain("통역이라고 의미 판정 기준을 더 엄격하게 바꾸지 마라");
+    for (const prompt of [written, spoken]) {
+      expect(prompt.text).toContain("층 분리 교정 예시");
+      expect(prompt.text).toContain('의미="preserved", 문법="clean"');
+      expect(prompt.text).toContain('문법="impeding_errors"');
+    }
   });
 
   it("binds the five hardened quality checks into generator and critic prompts", () => {
