@@ -24,7 +24,6 @@ import {
 } from "@/lib/pragma/discourseSlots";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import {
-  SCOPE_LABEL,
   SEMANTIC_LABEL,
   GRAMMAR_LABEL,
   type RuntimeFeedback,
@@ -40,7 +39,8 @@ const srcLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].s
 const tgtLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].target];
 
 // 학습자 미션 실행 — 계약 스키마 mission_v1을 직접 구동한다(프로토타입 v2 이식).
-//   1부 판단 연습(MPJ 5) → 인계 → 2부 실전 적용(상황 확인 → 산출/통역 → 피드백 → 다듬기 → 완료)
+//   감각 익히기(MPJ 5 → 인계) → 직접 표현하기(상황 살피기 → 산출/통역) → 돌아보고 다듬기(피드백 → 다듬기 → 완료)
+//   ※ 3단계는 **표시 서사**일 뿐 화면 순서·문항 수·판정 기준·저장 계약은 종전과 같다.
 // 판정은 초점별 band 카탈로그(targetFeatures) 기준. 답별 AI 피드백은 후속(feedback-lite)이라
 // 피드백 단계는 참고 표현·핵심 원칙만 보여준다(정직 표기).
 
@@ -55,15 +55,6 @@ const JUDGMENT_STATUS_CAPTION =
 const PDR_R_LABEL: Record<string, string> = { low: "가벼운 부탁", mid: "보통", high: "부담이 큼" };
 const PDR_D_LABEL: Record<string, string> = { close: "가까운 사이", acquaintance: "아는 사이", distant: "처음/먼 사이" };
 
-// MPJ 5문항 유형 라벨(진행바 하위 스텝 노출용, 프로토타입 v2).
-const MPJ_LABEL: Record<string, string> = {
-  scale4: "적절성 판단",
-  judge3: "정도 판단",
-  fix_choice: "판단 후 교정",
-  reason_conf: "판단 + 근거",
-  multi_judge: "복수 동시 판단",
-};
-
 const card = "rounded-xl border border-[#EAE4D2] bg-white p-4";
 const srcBox = "rounded-lg border-l-[3px] border-[#EAE4D2] border-l-[#FAD338] bg-[#F5F5F2] p-3";
 // 데모/검증 전용 버튼(프로토타입 v2 "데모 채우기") — IS_DEMO(개발·데모 배포)에서만 노출.
@@ -71,14 +62,32 @@ const srcBox = "rounded-lg border-l-[3px] border-[#EAE4D2] border-l-[#FAD338] bg
 const demoBtn =
   "block w-full rounded-lg border border-dashed border-[#D8D0BC] bg-[#F5F5F2] px-3 py-2 text-[12.5px] text-muted-foreground transition-colors hover:bg-[#EFEEE9]";
 
-// ── 2부 진행 단계 ────────────────────────────────────────────────────────
+// ── 진행 단계 ────────────────────────────────────────────────────────────
 // 「오늘의 생생 표현」(보상 슬롯)은 콘텐츠 파이프라인이 붙기 전까지 렌더하지 않는다.
 // 자리표시자인데도 완료 화면에서 시각 무게가 가장 컸다. 콘텐츠가 생기면 true로.
 const LIVING_EXPRESSION_READY = false;
 
 type Phase = "mpj" | "handoff" | "ctx" | "produce" | "feedback" | "revise" | "done";
-const PART2_STEP_INDEX: Partial<Record<Phase, number>> = { ctx: 0, produce: 1, feedback: 2, revise: 3, done: 4 };
-const part2Labels = (interp: boolean) => ["상황 확인", interp ? "통역하기" : "번역하기", "피드백", "다듬기", "완료"];
+
+// 서사 3단계 — 화면 순서·문항 수·판정 기준·저장 계약은 모두 그대로이고 표시만 묶는다.
+// 「1부 판단 연습 / 2부 실전 적용」은 시험 2부작으로 읽혀, 미션을 마쳐도 "문항을
+// 풀었다"는 기억만 남았다. 같은 흐름을 감각 → 표현 → 다듬기의 한 사건으로 보인다.
+type Stage = 0 | 1 | 2;
+const STAGE_OF: Record<Phase, Stage> = {
+  mpj: 0,
+  handoff: 0,
+  ctx: 1,
+  produce: 1,
+  feedback: 2,
+  revise: 2,
+  done: 2,
+};
+const STAGE_TITLES = ["감각 익히기", "직접 표현하기", "돌아보고 다듬기"] as const;
+// 단계 안의 잔걸음. MPJ 유형명(scale4·reason_conf…)은 더 이상 노출하지 않는다 —
+// 기술 용어가 진행바에 있으면 그 자체로 시험지처럼 읽힌다.
+const STEP_INDEX: Partial<Record<Phase, number>> = { ctx: 0, produce: 1, feedback: 0, revise: 1, done: 2 };
+const stageSteps = (stage: Stage, interp: boolean) =>
+  stage === 1 ? ["상황 살피기", interp ? "통역하기" : "옮겨 쓰기"] : ["피드백 보기", "다듬기", "완료"];
 
 // ── band 라벨 헬퍼 ──────────────────────────────────────────────────────
 function bandLabel(featureCode: string, code: string): string {
@@ -272,6 +281,27 @@ function ProductionGuide({
 }
 
 /**
+ * 피드백 주 문구 — 「먼저 살펴볼 점」 한 줄.
+ * 어느 층을 볼지는 revision_scope가 이미 정해 두므로(코드 소관 도출, §4) 여기서
+ * 새로 판단하지 않는다. 다듬기·완료 화면이 같은 문구를 이어받게 화면 밖에 둔다 —
+ * 같은 원칙 문장을 세 화면에 반복하던 것이 피로의 큰 몫이었다.
+ * scope='clear'(고칠 곳 없음)면 "고쳐야 한다"는 인상을 주지 않는 제목으로 바꾼다.
+ */
+function feedbackHeadline(fb: RuntimeFeedback): { title: string; body: string } {
+  const scope = fb.revision_scope;
+  const g = fb.blocks.grammar?.[0];
+  const body =
+    scope === "meaning"
+      ? fb.blocks.meaning_ko
+      : scope === "grammar"
+        ? g?.explanation_ko ?? fb.blocks.meaning_ko
+        : scope === "feature"
+          ? fb.blocks.feature_ko
+          : fb.blocks.feature_ko || "이 상황에 충분히 적절합니다.";
+  return { title: scope === "clear" ? "지금 표현에서 잘 된 점" : "먼저 살펴볼 점", body };
+}
+
+/**
  * feedback-lite 3층 진단 화면 (계약 §4 / 0-r·103 주 카드 1개 원칙 / 0-r·108 4분기).
  * revision_scope가 가리키는 층만 펼치고 나머지 두 층은 칩으로 접는다.
  * ⚠️ 점수·등급을 표시하지 않는다(0-q·95). 화용층 문구는 모델이 비단정으로 쓴다(§4 백신4).
@@ -289,15 +319,7 @@ function FeedbackPanel({
   const g = fb.blocks.grammar?.[0];
   const alt = fb.blocks.alternatives?.[0];
   const alt2 = fb.blocks.alternatives?.[1];
-
-  const mainBody =
-    scope === "meaning"
-      ? fb.blocks.meaning_ko
-      : scope === "grammar"
-        ? g?.explanation_ko ?? fb.blocks.meaning_ko
-        : scope === "feature"
-          ? fb.blocks.feature_ko
-          : fb.blocks.feature_ko || "이 상황에 충분히 적절합니다.";
+  const head = feedbackHeadline(fb);
 
   const layers = [
     { key: "meaning", label: "뜻 전달", short: SEMANTIC_LABEL[v.semantic_fidelity], body: fb.blocks.meaning_ko },
@@ -315,10 +337,8 @@ function FeedbackPanel({
     <div className="space-y-3">
       {/* 주 카드 — 이번에 볼 것 하나만 */}
       <div className="rounded-xl border border-[#FAD338] bg-[#FFFBEA] p-4">
-        <div className="text-[11.5px] font-bold text-[#6B5518]">
-          {scope === "clear" ? "고칠 곳 없음" : `이번에 볼 것 · ${SCOPE_LABEL[scope]}`}
-        </div>
-        <p className="mt-1.5 text-[14px] leading-relaxed">{mainBody}</p>
+        <div className="text-[11.5px] font-bold text-[#6B5518]">{head.title}</div>
+        <p className="mt-1.5 text-[14px] leading-relaxed">{head.body}</p>
 
         {scope === "grammar" && g?.suggested_correction && (
           <p className="mt-2 rounded-lg bg-white/70 px-3 py-2 text-[13.5px]">
@@ -427,6 +447,7 @@ function MissionRunner({
   const pt = mission.production_task;
   const isInterp = pt.mode === "interpreting";
   const part = phase === "mpj" || phase === "handoff" ? 1 : 2;
+  const stage = STAGE_OF[phase];
   // 데모 채우기 예시 답안(참고 표현 재사용 — 산출/다듬기가 다르게 보이도록 서로 다른 안)
   const demoDraft = pt.reference_alternatives[0]?.text ?? "";
   const demoRevised = pt.reference_alternatives[1]?.text ?? pt.reference_alternatives[0]?.text ?? "";
@@ -435,6 +456,13 @@ function MissionRunner({
   const feat = getTargetFeature(mission.unit.target_feature);
   const counterRule =
     dir === "zh_ko" && feat?.counter_rule_note_zh_ko ? feat.counter_rule_note_zh_ko : feat?.counter_rule_note;
+
+  // 다듬기 화면 지침 — 피드백이 있으면 방금 본 문구를 그대로 이어받는다.
+  // 폴백 조건은 fbState('error')가 아니라 **fb 부재**다: 다듬기 단계부터 바로 재개하면
+  // 상태는 'idle'인데 fb만 비어 있어, 지침 없는 빈 화면이 될 수 있다.
+  const reviseHint = fb
+    ? feedbackHeadline(fb)
+    : { title: mission.unit.learner_label, body: mission.unit.closing_ko };
 
   // 담화 슬롯 골격(0-q·97) — **ko_zh 번역 산출에만**. 중→한은 모국어 산출이라
   // 어휘·문법 부하가 없어 지원 대상이 아니다(지원량 차등의 근거 = L2 산출 부하).
@@ -593,7 +621,7 @@ function MissionRunner({
         {/* 중단 후 재개 배너 — 2부 진행분이 남아 있을 때만 */}
         {resume && phase === "mpj" && mpjIdx === 0 && (
           <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-[#FAD338] bg-[#FFF8DE] px-3.5 py-2.5 text-[12.5px] text-[#6B5518]">
-            <span>이전에 진행하던 <b>2부</b>가 있어요.</span>
+            <span>이전에 진행하던 <b>미션</b>이 있어요.</span>
             <button
               type="button"
               onClick={applyResume}
@@ -604,60 +632,65 @@ function MissionRunner({
           </div>
         )}
 
-        {/* ── 2계층 진행바 (IS_DEMO면 클릭해 1부/2부 바로 이동 — 프로토타입 v2 devGo) ── */}
+        {/* ── 오늘 보는 감각 — 전 단계 공통 맥락 띠 ──
+            상황은 문항마다 다르지만 보는 축은 하나다. 이 줄이 없으면 서로 다른 문제
+            여섯 개로 읽힌다. 같은 라벨을 시작 카드·1부 배지에 중복 노출하던 것은 걷어냈다. */}
+        <div className="mb-2 flex flex-wrap items-baseline gap-1.5 text-[11.5px]">
+          <span className="text-[#A9B0BA]">오늘 보는 감각 ·</span>
+          <b className="text-[12.5px] text-foreground">{mission.unit.learner_label}</b>
+        </div>
+
+        {/* ── 진행 3단계 (IS_DEMO면 클릭해 단계 이동 — 프로토타입 v2 devGo) ── */}
         <div className="mb-1.5 flex gap-2">
-          {[
-            { n: "1부", label: "판단 연습", active: part === 1, done: part > 1, target: "mpj" as Phase },
-            { n: "2부", label: "실전 적용", active: part === 2, done: false, target: "ctx" as Phase },
-          ].map((t) => {
+          {STAGE_TITLES.map((label, i) => {
+            const done = stage > i;
+            const active = stage === i;
+            // devGo 착지점 — 3단계는 다듬기로 보낸다(피드백은 제출한 답이 있어야 뜬다).
+            const target: Phase = i === 0 ? "mpj" : i === 1 ? "ctx" : "revise";
             const cls = [
               "flex-1 rounded-[10px] border px-3 py-2 text-left text-[12.5px]",
-              t.done
+              done
                 ? "border-[#FAD338] bg-[#FAD338] font-bold text-[#15202B]"
-                : t.active
+                : active
                 ? "border-[#15202B] bg-[#15202B] font-bold text-white"
                 : "border-[#EAE4D2] bg-white text-muted-foreground",
               IS_DEMO ? "cursor-pointer hover:opacity-90" : "",
             ].join(" ");
             const inner = (
               <>
-                <div className="text-[11px] opacity-80">{t.n}</div>
-                {t.label} {t.done ? "✓" : ""}
+                <div className="text-[11px] opacity-80">{i + 1}단계</div>
+                {label} {done ? "✓" : ""}
               </>
             );
             return IS_DEMO ? (
               <button
-                key={t.n}
+                key={label}
                 type="button"
                 onClick={() => {
-                  if (t.target === "mpj") setMpjIdx(0);
-                  goto(t.target);
+                  if (target === "mpj") setMpjIdx(0);
+                  goto(target);
                 }}
                 className={cls}
               >
                 {inner}
               </button>
             ) : (
-              <div key={t.n} className={cls}>{inner}</div>
+              <div key={label} className={cls}>{inner}</div>
             );
           })}
         </div>
         <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#A9B0BA]">
-          {part === 1 ? (
+          {stage === 0 ? (
             phase === "handoff" ? (
-              <span className="font-bold text-foreground">판단 {items.length} / {items.length} 완료</span>
+              <span className="font-bold text-foreground">예시 {items.length} / {items.length} 살펴봄</span>
             ) : (
-              <>
-                <span>판단 {mpjIdx + 1} / {items.length}</span>
-                <span className="text-[#E3E1D8]">·</span>
-                <span className="font-bold text-foreground">{MPJ_LABEL[item.type] ?? ""}</span>
-              </>
+              <span>예시 {mpjIdx + 1} / {items.length}</span>
             )
           ) : (
-            part2Labels(isInterp).map((s, i) => (
+            stageSteps(stage, isInterp).map((s, i, arr) => (
               <span key={s} className="flex items-center gap-1.5">
-                <span className={i === (PART2_STEP_INDEX[phase] ?? 0) ? "font-bold text-foreground" : ""}>{s}</span>
-                {i < 4 && <span className="text-[#E3E1D8]">›</span>}
+                <span className={i === (STEP_INDEX[phase] ?? 0) ? "font-bold text-foreground" : ""}>{s}</span>
+                {i < arr.length - 1 && <span className="text-[#E3E1D8]">›</span>}
               </span>
             ))
           )}
@@ -672,10 +705,7 @@ function MissionRunner({
                 {JUDGMENT_STATUS_CAPTION}
               </p>
             )}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <Badge variant="secondary" className="font-normal">이번 핵심 · {mission.unit.learner_label}</Badge>
-              <span className="text-[12px] text-muted-foreground">{mpjIdx + 1} / {items.length}</span>
-            </div>
+            {/* 초점 라벨·문항 수는 위쪽 맥락 띠와 진행바가 이미 말한다(삼중 노출 제거). */}
             <MpjStage key={item.id} item={item} onDone={nextMpj} />
           </div>
         )}
@@ -705,9 +735,10 @@ function MissionRunner({
             pt={pt}
             isInterp={isInterp}
             pick={ctxPick}
-            done={ctxDone}
-            onPick={setCtxPick}
-            onConfirm={() => setCtxDone(true)}
+            onPick={(i) => {
+              setCtxPick(i);
+              setCtxDone(true); // 재개 저장 형태는 그대로 둔다(기존 저장분 호환).
+            }}
             onNext={() => goto("produce")}
           />
         )}
@@ -716,7 +747,7 @@ function MissionRunner({
         {phase === "produce" && (
           <div className="space-y-3">
             <div className="rounded-xl bg-[#15202B] p-4 text-white">
-              <div className="text-[11px] font-bold text-[#FAD338]">판단하기 정리</div>
+              <div className="text-[11px] font-bold text-[#FAD338]">감각 익히기에서 본 것</div>
               <p className="mt-1.5 text-[13.5px] leading-relaxed">
                 이 상대·이 부담에 맞는 만큼만 골라 쓰세요 — 많이 얹을수록 좋은 게 아닙니다.
               </p>
@@ -793,13 +824,14 @@ function MissionRunner({
             {/* 진단 실패 시 폴백 — 기존 정직 표기로 되돌아간다(미션은 계속 진행). */}
             {fbState === "error" && (
               <div className="rounded-lg border border-dashed border-[#B9C4CE] bg-[#F7F9FA] p-3 text-[11.5px] text-[#5B6B76]">
-                지금은 답변별 자동 진단을 불러오지 못했습니다. 아래 핵심 원칙과 참고 표현을 보고 다듬어 보세요.
+                지금은 답변별 자동 진단을 불러오지 못했습니다. 참고 표현과 이번 초점을 보고 다듬어 보세요.
               </div>
             )}
 
+            {/* 원칙 문장(closing_ko)은 완료 화면에서 한 번만 크게 정리한다 —
+                피드백·다듬기·완료에 같은 문장이 세 번 연속 나오던 것이 피로의 큰 몫이었다.
+                근거 서랍은 남긴다(접혀 있어 시각 무게가 없다). */}
             <div className={card}>
-              <div className="text-[13px] font-semibold">이번 화용 초점 — {mission.unit.learner_label}</div>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed">{mission.unit.closing_ko}</p>
               <FeedbackReasonDrawer mission={mission} />
             </div>
 
@@ -829,7 +861,8 @@ function MissionRunner({
               }
             />
 
-            <Button className="w-full" disabled={fbState === "loading"} onClick={() => goto("revise")}>고치러 가기 →</Button>
+            {/* 「한 가지만 고치기」로 읽히지 않게 — 여러 곳을 함께 다듬어도 된다. */}
+            <Button className="w-full" disabled={fbState === "loading"} onClick={() => goto("revise")}>피드백을 참고해 다듬기 →</Button>
           </div>
         )}
 
@@ -837,10 +870,26 @@ function MissionRunner({
         {phase === "revise" && (
           <div className="space-y-3">
             <div className="rounded-xl border border-[#FAD338] bg-[#FFF8DE] p-4">
-              <div className="text-[12px] font-bold text-[#6B5518]">{mission.unit.learner_label}</div>
-              <p className="mt-1 text-[14px]">{mission.unit.closing_ko}</p>
+              <div className="text-[12px] font-bold text-[#6B5518]">{reviseHint.title}</div>
+              <p className="mt-1 text-[14px] leading-relaxed">{reviseHint.body}</p>
             </div>
-            <Textarea rows={5} value={revised || draft} onChange={(e) => setRevised(e.target.value)} />
+            {/* 무엇을 고치는 중인지 보이도록 최초안을 옆에 둔다(PC 2열 · 좁은 화면 세로).
+                최초안은 읽기 전용 — first_response는 피드백 전에 확정된 값이어야 한다. */}
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className={card}>
+                <div className="text-[11.5px] font-semibold text-muted-foreground">처음 쓴 문장</div>
+                <p className="mt-1 whitespace-pre-wrap text-[14px] text-[#5B6B76]">{draft}</p>
+              </div>
+              <div className={card}>
+                <div className="text-[11.5px] font-semibold text-[#6B5518]">다듬은 문장</div>
+                <Textarea
+                  className="mt-1"
+                  rows={5}
+                  value={revised || draft}
+                  onChange={(e) => setRevised(e.target.value)}
+                />
+              </div>
+            </div>
             <Button className="w-full" onClick={finish}>마치기</Button>
             {IS_DEMO && (
               <button type="button" className={demoBtn} onClick={() => setRevised(demoRevised)}>데모 채우기 — 다듬은 안 적용</button>
@@ -851,23 +900,35 @@ function MissionRunner({
         {/* ── 완료 ── */}
         {phase === "done" && (
           <div className="space-y-3">
+            {/* 완료 화면은 "문항 몇 개를 풀었다"가 아니라 "내 표현이 무엇 때문에
+                달라졌다"로 기억되어야 한다 → 원리 1문장 → 최초·최종 → 인상 순으로 둔다.
+                closing_ko는 카탈로그 정본(R14)이고, 이제 여기서만 크게 나온다. */}
             <div className="rounded-xl bg-[#15202B] p-5 text-white">
-              <div className="text-[11.5px] font-bold text-[#FAD338]">이번 미션의 핵심</div>
+              <div className="text-[11.5px] font-bold text-[#FAD338]">오늘 익힌 원리</div>
               <p className="mt-1.5 text-[14.5px] leading-relaxed">{mission.unit.closing_ko}</p>
             </div>
 
+            {/* 감량(0-r·103): 완료 화면에서 펼쳐 두는 것은 핵심 1줄과 최초→최종뿐이다.
+                참고 표현 목록은 접는다 — 정답 카드처럼 읽히는 것을 막는 효과도 있다. */}
+            <RevisionMap first={draft} final={revised || draft} featureLabel={mission.unit.learner_label} interp={isInterp} />
 
-            {/* B2: 예외 반례 — "직접형=무조건 나쁨"이 아님을 완료 시 상기(counter_rule) */}
+            {/* 상대에게 줄 수 있는 인상 — **새로 만들지 않는다**. 피드백에서 이미 본
+                화용층 문구를 출처를 밝혀 이월할 뿐이다(정본 원칙 문장과 섞지 않는다). */}
+            {fb?.blocks.feature_ko && (
+              <div className="rounded-lg border border-[#EAE4D2] bg-white px-3.5 py-2.5">
+                <div className="text-[11.5px] font-semibold text-muted-foreground">피드백에서 본 예상 인상</div>
+                <p className="mt-0.5 text-[13.5px] leading-relaxed">{fb.blocks.feature_ko}</p>
+              </div>
+            )}
+
+            {/* B2: 예외 반례 — "직접형=무조건 나쁨"이 아님을 완료 시 상기(counter_rule).
+                오학습 방지 장치이므로 접지 않고 가볍게 펼쳐 둔다. */}
             {counterRule && (
               <div className="rounded-xl border border-dashed border-[#D8D0BC] bg-[#FFFDF4] px-4 py-3">
                 <div className="text-[11.5px] font-bold text-[#6B5518]">예외 — 늘 그런 것은 아니에요</div>
                 <p className="mt-1 text-[13px] leading-relaxed text-[#5B4A1E]">{counterRule}</p>
               </div>
             )}
-
-            {/* 감량(0-r·103): 완료 화면에서 펼쳐 두는 것은 핵심 1줄과 최초→최종뿐이다.
-                참고 표현 목록은 접는다 — 정답 카드처럼 읽히는 것을 막는 효과도 있다. */}
-            <RevisionMap first={draft} final={revised || draft} featureLabel={mission.unit.learner_label} interp={isInterp} />
 
             {/* 수행 로그 저장 상태 — 루프 마지막 노드(실행 → 저장) */}
             <div
@@ -945,8 +1006,8 @@ function MissionRunner({
                 </div>
                 <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#5B4A1E]">
                   {isInterp
-                    ? "1부 판단 연습은 건너뛰고 곧바로 번역 산출부터 이어집니다."
-                    : "1부 판단 연습은 건너뛰고 곧바로 통역 산출부터 이어집니다 — 원문 듣기 → 녹음 → 전사 확인."}
+                    ? "감각 익히기는 건너뛰고 곧바로 번역 산출부터 이어집니다."
+                    : "감각 익히기는 건너뛰고 곧바로 통역 산출부터 이어집니다 — 원문 듣기 → 녹음 → 전사 확인."}
                 </p>
               </button>
             ) : (
@@ -1224,8 +1285,8 @@ function Handoff({
     (dir === "zh_ko" && feat?.relevant_resources_zh_ko?.length ? feat.relevant_resources_zh_ko : feat?.relevant_resources) ?? [];
   return (
     <div className="rounded-xl border border-[#FAD338] bg-white p-5">
-      <div className="text-[11px] font-bold text-[#2E7D5B]">판단 연습 완료</div>
-      <h2 className="mt-0.5 text-[16px] font-bold">1부를 마쳤습니다</h2>
+      <div className="text-[11px] font-bold text-[#2E7D5B]">감각 익히기 완료</div>
+      <h2 className="mt-0.5 text-[16px] font-bold">표현 감각을 잡았어요</h2>
       <p className="mt-0.5 text-[12.5px] text-muted-foreground">방금 확인한 도구 — 문장을 외우지 말고 <b>범주</b>만 기억하세요.</p>
       {tools.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -1244,13 +1305,12 @@ function Handoff({
         </div>
       ) : (
         <div className="mt-3.5 flex gap-2.5">
-          <Button className="flex-1 bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" onClick={onContinue}>바로 실전 적용 →</Button>
+          <Button className="flex-1 bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" onClick={onContinue}>직접 표현하러 가기 →</Button>
           <Button variant="outline" className="flex-1" onClick={onSaveLater}>저장하고 나중에</Button>
         </div>
       )}
-      <p className="mt-2.5 text-[12px] text-muted-foreground">
-        ※ <b>1부 완료 ≠ 미션 완료.</b> 2부({isInterp ? "통역" : "번역"}·피드백·다듬기)까지 마쳐야 이번 주 미션이 완료됩니다.
-      </p>
+      {/* 「1부 완료 ≠ 미션 완료」 경고는 걷어냈다 — 남은 분량을 강조해 피로만 키웠다.
+          남은 단계는 위 진행 3단계가 이미 보여 준다. */}
     </div>
   );
 }
@@ -1260,59 +1320,48 @@ function CtxStage({
   pt,
   isInterp,
   pick,
-  done,
   onPick,
-  onConfirm,
   onNext,
 }: {
   pt: MissionV2["production_task"];
   isInterp: boolean;
   pick: number | null;
-  done: boolean;
   onPick: (i: number) => void;
-  onConfirm: () => void;
   onNext: () => void;
 }) {
   const ctx = useMemo(() => deriveCtx(pt.pdr), [pt.pdr]);
-  const wrong = done && pick !== ctx.right;
+  const answered = pick !== null;
+  const wrong = answered && pick !== ctx.right;
   return (
     <div className="space-y-3">
       <SituationCard situation={pt.situation_ko} relation={pt.relation_ko} />
-      <div className={card}>
-        <div className="text-[13px] font-semibold">{ctx.q}</div>
-        <p className="mt-1 text-[12px] text-muted-foreground">
-          {isInterp ? "통역" : "번역"} 전에 필요한 조절 수준을 한 번 짚어 봅니다. 점수는 없습니다.
+      {/* 문제 카드가 아니라 상황 메모다 — 여섯 번째 문항처럼 보이면 안 된다.
+          선택은 남긴다(2부에서 관계·부담을 스스로 읽는 유일한 지점이라, 자동 판단으로
+          대체하면 "판단 → 산출"의 연결이 끊긴다). 다만 확인 버튼을 없애 한 번에 끝내고,
+          결과를 본 뒤에도 다시 고를 수 있게 둔다 — 오터치가 그대로 잠기지 않도록. */}
+      <div className="rounded-xl border border-dashed border-[#D8D0BC] bg-[#FBFAF5] p-4">
+        <div className="text-[11px] font-bold text-[#6B5518]">새 상황에서 먼저 볼 것</div>
+        <p className="mt-1 text-[12.5px] text-muted-foreground">
+          직접 {isInterp ? "통역하기" : "옮기기"} 전에 상대와 부담을 한 번만 짚어 볼게요.
         </p>
+        <div className="mt-2.5 text-[13px] font-semibold">{ctx.q}</div>
         <div className="mt-2 flex flex-col gap-1.5">
           {ctx.opts.map((o, i) => (
-            <Choice key={i} label={o} selected={pick === i} disabled={done} onClick={() => onPick(i)} />
+            <Choice key={i} label={o} selected={pick === i} disabled={false} onClick={() => onPick(i)} />
           ))}
         </div>
-        {done && (
+        {answered && (
           <div className="mt-3 rounded-lg bg-[#F2FAF6] px-3.5 py-3">
             <div className="text-[12px] font-bold text-[#2E7D5B]">{wrong ? "다시 짚어 보면" : "상황 핵심"}</div>
             <p className="mt-1 text-[13px] leading-relaxed">{wrong ? ctx.okWrong : ctx.okRight}</p>
           </div>
         )}
       </div>
-      {done ? (
-        <Button className="w-full" onClick={onNext}>{isInterp ? "통역하러" : "번역하러"} 가기 →</Button>
-      ) : (
-        <>
-          <Button className="w-full" disabled={pick === null} onClick={onConfirm}>확인하기</Button>
-          {IS_DEMO && (
-            <button
-              type="button"
-              className={demoBtn}
-              onClick={() => {
-                onPick(ctx.right);
-                onConfirm();
-              }}
-            >
-              데모 채우기
-            </button>
-          )}
-        </>
+      <Button className="w-full" disabled={!answered} onClick={onNext}>
+        {isInterp ? "통역하러" : "표현하러"} 가기 →
+      </Button>
+      {IS_DEMO && !answered && (
+        <button type="button" className={demoBtn} onClick={() => onPick(ctx.right)}>데모 채우기</button>
       )}
     </div>
   );
@@ -1333,10 +1382,8 @@ function MissionContractBar({ mission }: { mission: MissionV2 }) {
         <span className="text-muted-foreground">마지막에 직접 {isInterp ? "통역할" : "옮길"} 상황 · </span>
         {mission.production_task.situation_ko}
       </p>
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
-        <Badge className="bg-[#15202B] text-white hover:bg-[#15202B]">이번 핵심 · {mission.unit.learner_label}</Badge>
-        <span className="text-muted-foreground">약 {estMin}분</span>
-      </div>
+      {/* 초점 라벨은 미션 내내 뜨는 맥락 띠가 대신한다 — 여기 배지는 중복이었다. */}
+      <div className="mt-2 text-[13px] text-muted-foreground">약 {estMin}분</div>
       <details className="mt-2 text-[12.5px]">
         <summary className="cursor-pointer text-[#6B5518]">완료 조건과 평가 기준 보기</summary>
         <div className="mt-2 space-y-1.5 text-muted-foreground">
