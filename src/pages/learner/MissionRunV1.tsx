@@ -528,7 +528,6 @@ function MissionRunner({
     } catch {
       /* localStorage 미지원 — 재개 없이 정상 진행 */
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey, startAtPart2]);
   useEffect(() => {
     if (part !== 2) return;

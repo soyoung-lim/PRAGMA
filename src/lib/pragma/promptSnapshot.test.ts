@@ -17,7 +17,8 @@ describe("prompt snapshot integrity", () => {
       resolve(process.cwd(), PROMPT_SNAPSHOT.edge_source),
       "utf8",
     );
-    const sourceHash = createHash("sha256").update(source).digest("hex");
+    const canonicalSource = source.replace(/\r\n?/g, "\n");
+    const sourceHash = createHash("sha256").update(canonicalSource).digest("hex");
 
     expect(PROMPT_SNAPSHOT.edge_source_sha256).toBe(sourceHash);
   });
