@@ -11,6 +11,7 @@ PYTHONIOENCODING=utf-8 python scripts/manual-checks/feedback_4type_check.py --mo
 # 특정 분기의 비결정성을 반복 확인할 때:
 PYTHONIOENCODING=utf-8 python scripts/manual-checks/feedback_4type_check.py --mode both --case feature --repeat 3
 PYTHONIOENCODING=utf-8 python scripts/manual-checks/quality_check_smoke.py
+PYTHONIOENCODING=utf-8 python scripts/manual-checks/audio_roundtrip_check.py
 ```
 
 - `.env`에서 URL·anon 키를 읽는다(anon 키로 edge 호출 가능 — `verify_jwt=true`여도
@@ -45,3 +46,13 @@ PYTHONIOENCODING=utf-8 python scripts/manual-checks/quality_check_smoke.py
 ⚠️ 알려진 한계: `scene_underspecified`는 이 합성 테스트에서 아직 미검출.
 실제 미션의 상황문은 코어에서 계승되고 코어 프롬프트가 5요소를 강제하므로
 구형 데이터용 백스톱으로 남겨 두었다.
+
+## audio_roundtrip_check.py — 통역 음성 배포 게이트
+
+배포된 `tts`가 만든 MP3를 그대로 `stt`에 다시 보내 한·중 음성 경로를
+끝까지 검사한다. 정상 원발화 2건과 일부러 비문을 넣은 중국어 1건을 사용한다.
+공백·문장부호 차이는 허용하지만 문자 내용이 달라지면 실패한다.
+
+오류 보존 케이스는 WER만 낮추는 전사기가 학습자의 문법 오류를 임의로
+교정하는지 잡아내기 위한 것이다. 출력에는 TTS provider/model/voice와 음원
+SHA-256, STT provider/model/language가 함께 표시되며 음원 파일은 저장하지 않는다.
