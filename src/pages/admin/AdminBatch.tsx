@@ -26,6 +26,7 @@ import {
   type BatchQuota,
 } from "@/lib/pragma/batchPlan";
 import { runBatch, type BatchCellResult } from "@/lib/pragma/batchRun";
+import { preflightAdminBatch } from "@/lib/pragma/adminBatchPreflight";
 import { runCoreBatch, type CoreCellResult } from "@/lib/pragma/coreBatchRun";
 import {
   CORE_QUALITY_AXES,
@@ -34,6 +35,7 @@ import {
   type CoreQualityPilotResult,
 } from "@/lib/pragma/coreQualityAudit";
 import { THEME_LABEL } from "@/lib/pragma/scenarioTopics";
+import { toast } from "sonner";
 
 type AnyResult = BatchCellResult | CoreCellResult;
 type GenMode = "core" | "legacy";
@@ -45,8 +47,8 @@ type GenMode = "core" | "legacy";
 // 교강사가 "직장 · 무역" 필터를 눌렀을 때 0건이 나온다.
 // 그래서 계획을 먼저 보여주고, 무엇이 몇 개 생기는지 눈으로 확인한 뒤 돌린다.
 //
-// 접근 제어는 다른 /admin/* 화면과 동일하게 DB(RLS·is_admin)에 맡긴다.
-// 저장 RPC가 관리자만 허용하므로 비관리자 세션은 전건 실패로 드러난다.
+// AI 호출 전에는 관리자 세션을 선행 검사해 비용 낭비를 막는다.
+// 최종 접근 제어는 다른 /admin/* 화면과 동일하게 DB(RLS·is_admin)가 맡는다.
 
 const LEVEL_ORDER: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
 const CORE_AXIS_LABEL: Record<CoreQualityAxis, string> = {
@@ -93,6 +95,12 @@ const AdminBatch = () => {
     setQuota((q) => ({ ...q, perLevel: { ...q.perLevel, [level]: Math.max(0, value) } }));
 
   const start = async () => {
+    const preflight = await preflightAdminBatch();
+    if ("message" in preflight) {
+      toast.error(preflight.message);
+      return;
+    }
+
     setRunning(true);
     setResults([]);
     setDone(0);
