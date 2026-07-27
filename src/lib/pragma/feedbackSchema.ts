@@ -32,9 +32,9 @@ const GrammarNoteSchema = z.object({
     ])
     .optional(),
   /** 답안 내 실제 존재를 검증할 앵커(숫자 offset 없음) */
-  anchor_text: z.string().optional(),
-  suggested_correction: z.string().min(1),
-  explanation_ko: z.string().min(1),
+  anchor_text: z.string().trim().min(1).optional(),
+  suggested_correction: z.string().trim().min(1),
+  explanation_ko: z.string().trim().min(1),
 });
 export type GrammarNote = z.infer<typeof GrammarNoteSchema>;
 
@@ -48,6 +48,25 @@ export const FeedbackVerdictsSchema = z.object({
 });
 export type FeedbackVerdicts = z.infer<typeof FeedbackVerdictsSchema>;
 
+/**
+ * 모델이 요청한 화용 초점과 카탈로그 대역 안에서만 판정했는지 확인한다.
+ * 형식상 문자열이어도 다른 초점·존재하지 않는 대역이면 해당 피드백 전체를 신뢰할 수 없다.
+ */
+export function validatePragmaticCodes(
+  verdicts: FeedbackVerdicts,
+  expectedFeatureCode: string,
+  allowedBandCodes: readonly string[],
+): string | null {
+  const pragmatic = verdicts.pragmatic_appropriateness;
+  if (pragmatic.feature_code !== expectedFeatureCode) {
+    return `feature_code 불일치(${pragmatic.feature_code} ≠ ${expectedFeatureCode})`;
+  }
+  if (!allowedBandCodes.includes(pragmatic.band_code)) {
+    return `허용되지 않은 band_code(${pragmatic.band_code})`;
+  }
+  return null;
+}
+
 /** 모델이 돌려주는 형태 — revision_scope 없음(코드가 도출한다). */
 export const FeedbackDraftSchema = z.object({
   verdicts: FeedbackVerdictsSchema,
@@ -56,7 +75,7 @@ export const FeedbackDraftSchema = z.object({
     grammar: z.array(GrammarNoteSchema).max(1).default([]), // lite: 최대 1건(0-b·18)
     feature_ko: z.string().default(""),
     alternatives: z
-      .array(z.object({ text: z.string().min(1), note_ko: z.string().default("") }))
+      .array(z.object({ text: z.string().trim().min(1), note_ko: z.string().default("") }))
       .max(2)
       .default([]),
   }),
@@ -131,6 +150,36 @@ export function stripPhantomAnchors(blocks: { grammar?: GrammarNote[] }, answer:
       delete g.anchor_text;
     }
   }
+  return issues;
+}
+
+/**
+ * 답안과 완전히 같거나 서로 중복된 대안은 학습자에게 새 선택지를 주지 못한다.
+ * 모델 응답 전체를 버리지는 않고 해당 대안만 제거한다.
+ */
+export function stripVacuousAlternatives(
+  blocks: { alternatives?: Array<{ text?: string; note_ko?: string }> },
+  answer: string,
+): string[] {
+  const issues: string[] = [];
+  const seen = new Set([answer.trim()]);
+  blocks.alternatives = (blocks.alternatives ?? []).filter((alternative) => {
+    const text = alternative.text?.trim() ?? "";
+    if (!text) {
+      issues.push("빈 alternative를 제거함");
+      return false;
+    }
+    if (seen.has(text)) {
+      issues.push(
+        text === answer.trim()
+          ? "학습자 답안과 동일한 alternative를 제거함"
+          : `중복 alternative "${text}"를 제거함`,
+      );
+      return false;
+    }
+    seen.add(text);
+    return true;
+  });
   return issues;
 }
 
