@@ -1,0 +1,194 @@
+import { describe, expect, it } from "vitest";
+
+import type { ComposerCore } from "@/lib/curriculum/composer";
+import {
+  addAssignment,
+  buildAutomaticAssignments,
+  duplicateScenarioIds,
+  filterManualCandidates,
+  removeAssignment,
+  type AssignMap,
+} from "@/lib/curriculum/composerPlanning";
+import {
+  createStandard15WeekTemplate,
+  STANDARD_TARGET_ACTS,
+} from "@/lib/curriculum/template";
+import type {
+  LanguageDirection,
+  LearnerLevel,
+} from "@/lib/pragma/enums";
+import {
+  COURSE_PRESETS,
+  type CoursePreset,
+} from "@/lib/pragma/scenarioTopics";
+
+function core(overrides: Partial<ComposerCore> & { scenario_id: string }): ComposerCore {
+  return {
+    scenario_id: overrides.scenario_id,
+    speech_act: overrides.speech_act ?? "request",
+    learner_level: overrides.learner_level ?? "intermediate",
+    domain: overrides.domain ?? "school",
+    mode: overrides.mode ?? "translation",
+    theme_code: overrides.theme_code ?? "campus_study",
+    topic_code: overrides.topic_code ?? "test_topic",
+    mission_status: overrides.mission_status ?? "reviewed",
+    target_feature: overrides.target_feature ?? "request_mitigation",
+    situation_ko: overrides.situation_ko ?? "테스트 상황",
+    source_text_ko: overrides.source_text_ko ?? "테스트 원문",
+    direction: overrides.direction ?? "ko_zh",
+  };
+}
+
+function presetPool(
+  preset: CoursePreset,
+  level: LearnerLevel,
+  direction: LanguageDirection,
+): ComposerCore[] {
+  const theme = preset.included_themes[0];
+  return STANDARD_TARGET_ACTS.flatMap((act) => [
+    core({
+      scenario_id: `${preset.preset_code}-${act}-i`,
+      speech_act: act,
+      learner_level: level,
+      direction,
+      theme_code: theme,
+      mode: "stt_interpreting",
+    }),
+    core({
+      scenario_id: `${preset.preset_code}-${act}-t1`,
+      speech_act: act,
+      learner_level: level,
+      direction,
+      theme_code: theme,
+      mode: "translation",
+    }),
+    core({
+      scenario_id: `${preset.preset_code}-${act}-t2`,
+      speech_act: act,
+      learner_level: level,
+      direction,
+      theme_code: theme,
+      mode: "translation",
+    }),
+  ]);
+}
+
+describe("프리셋 기반 15주 자동 편성", () => {
+  it.each(COURSE_PRESETS)(
+    "$label 프리셋이 공통 15주 골격의 9개 화행 주차를 검토 완료 미션으로 채운다",
+    (preset) => {
+      const cores = presetPool(preset, preset.target_level, "ko_zh");
+      const result = buildAutomaticAssignments({
+        weeks: createStandard15WeekTemplate(),
+        cores,
+        level: preset.target_level,
+        direction: "ko_zh",
+        themes: preset.included_themes,
+        interpretingRatio: preset.translation_interpreting_ratio,
+        defaultScenariosPerWeek: 3,
+      });
+
+      expect(result.filledWeeks).toBe(9);
+      expect(result.totalAssigned).toBe(27);
+      expect(duplicateScenarioIds(result.assignments)).toEqual([]);
+
+      const byId = new Map(cores.map((item) => [item.scenario_id, item]));
+      for (const items of Object.values(result.assignments)) {
+        expect(items).toHaveLength(3);
+        expect(items.filter((item) => item.slot_role === "interpreting")).toHaveLength(
+          Math.round(3 * preset.translation_interpreting_ratio),
+        );
+        for (const item of items) {
+          const selected = byId.get(item.scenario_id);
+          expect(selected?.mission_status).toBe("reviewed");
+          expect(selected?.learner_level).toBe(preset.target_level);
+          expect(selected?.direction).toBe("ko_zh");
+          expect(preset.included_themes).toContain(selected?.theme_code);
+        }
+      }
+    },
+  );
+
+  it("테마 후보가 부족하면 테마만 완화하고 검토상태·화행·수준·방향은 유지한다", () => {
+    const eligibleFallback = core({
+      scenario_id: "eligible-fallback",
+      theme_code: "career_workplace",
+    });
+    const cores: ComposerCore[] = [
+      core({ scenario_id: "selected-theme", theme_code: "campus_study" }),
+      eligibleFallback,
+      core({ scenario_id: "generated", mission_status: "generated" }),
+      core({ scenario_id: "wrong-act", speech_act: "apology" }),
+      core({ scenario_id: "wrong-level", learner_level: "advanced" }),
+      core({ scenario_id: "wrong-direction", direction: "zh_ko" }),
+    ];
+    const requestWeek = createStandard15WeekTemplate().filter(
+      (week) => week.speech_act === "request",
+    );
+    const result = buildAutomaticAssignments({
+      weeks: requestWeek,
+      cores,
+      level: "intermediate",
+      direction: "ko_zh",
+      themes: ["campus_study"],
+      interpretingRatio: 0,
+      defaultScenariosPerWeek: 2,
+    });
+
+    expect(result.assignments[2].map((item) => item.scenario_id)).toEqual([
+      "selected-theme",
+      "eligible-fallback",
+    ]);
+  });
+});
+
+describe("주차 수동 교체", () => {
+  const current = core({ scenario_id: "current" });
+  const replacement = core({ scenario_id: "replacement" });
+
+  it("기존 항목을 제거한 뒤 검토 완료 대체 미션을 추가한다", () => {
+    const before: AssignMap = {
+      2: [{ scenario_id: current.scenario_id, slot_role: "primary" }],
+    };
+    const removed = removeAssignment(before, 2, current.scenario_id);
+    const candidates = filterManualCandidates([current, replacement], {
+      act: "request",
+      level: "intermediate",
+      direction: "ko_zh",
+      themes: ["campus_study"],
+      assignments: removed,
+    });
+    expect(candidates.map((item) => item.scenario_id)).toEqual([
+      "current",
+      "replacement",
+    ]);
+
+    const replaced = addAssignment(removed, 2, replacement);
+    expect(replaced[2]).toEqual([
+      { scenario_id: "replacement", slot_role: "primary" },
+    ]);
+  });
+
+  it("다른 주차에 이미 배정된 코어와 검토 전 미션은 후보·추가에서 차단한다", () => {
+    const generated = core({
+      scenario_id: "generated",
+      mission_status: "generated",
+    });
+    const assignments: AssignMap = {
+      2: [{ scenario_id: current.scenario_id, slot_role: "primary" }],
+    };
+    const candidates = filterManualCandidates(
+      [current, replacement, generated],
+      {
+        act: "request",
+        level: "intermediate",
+        direction: "ko_zh",
+        themes: ["campus_study"],
+        assignments,
+      },
+    );
+    expect(candidates.map((item) => item.scenario_id)).toEqual(["replacement"]);
+    expect(addAssignment(assignments, 3, current)).toBe(assignments);
+    expect(addAssignment(assignments, 3, generated)).toBe(assignments);
+  });
+});
