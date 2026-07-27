@@ -4,7 +4,7 @@
 // 코드값 정합뿐이다(관리자구조md §3-①). 의미 보존·자연성·화행 구현은 검사 불가 →
 // AI 점검·인간 검수의 몫.
 //
-// 코어 서브셋(§8) = R1c·R8·R9·R10·R15·R16·R17·R19(+R22 warning).
+// 코어 서브셋(§8) = R1c·R8·R9·R10·R15·R16·R17·R19·R25·R26(+R22 warning).
 //
 // 양방향(0-l·84): 입력은 v1 또는 v2 JSON 모두 허용 — normalizeCore/normalizeMission이
 // v2 형태(중립 필드명 + direction)로 통일한 뒤 검사한다. R10은 데이터의 direction으로
@@ -53,6 +53,8 @@ export interface CheckContext {
   planned_target_feature?: string;
   /** 요청 방향(0-l·85). 생략 시 데이터의 direction을 그대로 신뢰. 지정 시 데이터와 일치 검사. */
   direction?: LanguageDirection;
+  /** 신규 생성 경로에서 서버 주입 context_spec을 강제한다. legacy 읽기는 생략한다. */
+  require_context_spec?: boolean;
 }
 
 // ── 문자 범위 ─────────────────────────────────────────────────────────
@@ -67,6 +69,47 @@ const looksKorean = (s: string) => hasHangul(s);
 // 국가 단위 일반화 패턴(R9) — 해설·note 필드 한정. 중국·한국 양방향 공통(0-l·85).
 const NATIONALIZE =
   /(중국인(들)?은|중국에서는|중국\s*문화에서는|중국어\s*화자는|일반적으로\s*중국|한국인(들)?은|한국에서는|한국\s*문화에서는|한국어\s*화자는|일반적으로\s*한국)/;
+
+// R16의 구조값(mode↔source_modality)은 서버가 채우므로 서로 맞는 값만으로도 통과할 수 있다.
+// 아래는 situation_ko가 그 구조값과 정면으로 반대되는 수행 장면을 *명시*한 경우만 잡는다.
+// 담화체·격식 추정은 하지 않는다. 즉시 반응 여부만으로도 판정하지 않는다.
+const EXPLICIT_NOT_WRITTEN_SCENE =
+  /(?:글|서면|문서|기록)(?:로|으로|에|을)?[^.!?\n]{0,24}(?:남기|적|쓰|작성|보내|전달)[^.!?\n]{0,4}(?:지\s*않|아니)/;
+const EXPLICIT_SPOKEN_SCENE =
+  /(?:직접\s*(?:만나[^.!?\n]{0,16})?|말로|구두로|대면(?:으로|에서)?|전화(?:로|에서)?|통화(?:로|에서)?)[^.!?\n]{0,28}(?:말하|묻|전하|알리|설명하|칭찬하|사과하|요청하|의견을\s*나누)|(?:말하|묻|대화하)(?:는|고\s*있는)\s*(?:자리|상황)/;
+const EXPLICIT_SPOKEN_AVOIDANCE =
+  /(?:직접\s*(?:만나[^.!?\n]{0,16})?|말로|구두로|대면(?:으로|에서)?|전화(?:로|에서)?|통화(?:로|에서)?)[^.!?\n]{0,32}(?:어렵|어색|부담|피하|대신|지\s*않|아니)/;
+const EXPLICIT_WRITTEN_SCENE =
+  /(?:이메일|메일|메신저|문자|채팅)(?:로|에|에서|를\s*통해)?[^.!?\n]{0,30}(?:작성하|쓰|적|보내|전송하|남기)|(?:글|서면|문서|기록)(?:로|으로|에|을)?[^.!?\n]{0,25}(?:작성하|쓰|적|보내|전달하|제출하|남기)/;
+
+// R26은 의미 판정기가 아니라 명백한 "산업 라벨만 있고 실제 단서는 없음"을 막는 하한선이다.
+// 범용어(회사·프로젝트·제품·고객·행사)는 단독 증거로 쓰지 않는다. 구체성의 최종 판정은
+// core_quality v4와 인간 검수가 맡는다.
+const INDUSTRY_EVIDENCE: Record<string, RegExp> = {
+  culture_content_media:
+    /엔터테인먼트|미디어|방송|영상|음원|공연|촬영|편집|콘텐츠\s*제작|배급|스트리밍/iu,
+  manufacturing:
+    /뷰티|화장품|스킨케어|메이크업|패션|의류|브랜드\s*(?:상품|매장)|온라인\s*몰|커머스|판매\s*채널/iu,
+  trade_distribution:
+    /제조|생산\s*라인|공장|무역|수출|수입|통관|물류|선적|납품|공급망|발주/iu,
+  IT_platform:
+    /IT|테크|플랫폼|소프트웨어|애플리케이션|앱|서버|데이터베이스|개발|배포|API|알고리즘/iu,
+  public_international_affairs:
+    /바이오|의료|헬스케어|병원|환자|의약|약품|임상|진료|건강\s*관리|검사\s*결과/iu,
+  tourism_hospitality:
+    /관광|여행|호텔|숙박|항공|투어|MICE|컨벤션|전시회|관광객|방문객|객실|예약/iu,
+  education_research:
+    /공공|행정|정책|교육|학교|대학|수업|학생|교수|연구|학술|논문|교육기관|연구기관/iu,
+};
+
+const explicitlyRequiresSpokenScene = (situation: string) =>
+  situation
+    .split(/[.!?\n]+/)
+    .some(
+      (sentence) =>
+        EXPLICIT_SPOKEN_SCENE.test(sentence) &&
+        !EXPLICIT_SPOKEN_AVOIDANCE.test(sentence),
+    );
 
 const add = (v: RuleViolation[], id: string, level: RuleLevel, message: string) =>
   v.push({ id, level, message });
@@ -129,6 +172,9 @@ export function checkCore(coreInput: unknown, ctx: CheckContext): RuleResult {
   }
   const core = parsed.data;
   checkDirectionMatch(v, core.direction, ctx);
+  if (ctx.require_context_spec && !core.context_spec) {
+    add(v, "R25", "fail", "신규 코어에 서버 주입 context_spec이 없음");
+  }
 
   // theme↔domain 허용 매핑(R1c 확장)
   if (!isThemeDomainValid(ctx.theme_code, ctx.domain)) {
@@ -175,9 +221,42 @@ function checkCoreCommon(
   if (ctx.mode === "translation" && ctx.source_modality !== "written") {
     add(v, "R16", "fail", "번역은 source_modality='written'이어야 함");
   }
+  const situation = core.situation_ko?.trim() ?? "";
+  if (
+    ctx.mode === "translation" &&
+    (EXPLICIT_NOT_WRITTEN_SCENE.test(situation) ||
+      explicitlyRequiresSpokenScene(situation))
+  ) {
+    add(v, "R16", "fail", `번역 셀인데 situation_ko가 구두 수행을 명시함: "${situation.slice(0, 60)}"`);
+  }
+  if (
+    ctx.mode === "stt_interpreting" &&
+    EXPLICIT_WRITTEN_SCENE.test(situation) &&
+    !EXPLICIT_NOT_WRITTEN_SCENE.test(situation)
+  ) {
+    add(v, "R16", "fail", `통역 셀인데 situation_ko가 서면 수행을 명시함: "${situation.slice(0, 60)}"`);
+  }
   // R17 산업은 work에서만
   if (ctx.industry && ctx.domain !== "work") {
     add(v, "R17", "fail", `industry는 domain='work'에서만 (현재 ${ctx.domain})`);
+  }
+  // R26 직장 산업이 지정되었지만 실제 장면·원문에 분야 고유 단서가 전혀 없음
+  if (ctx.industry && ctx.domain === "work") {
+    const evidence = INDUSTRY_EVIDENCE[ctx.industry];
+    const text = [
+      core.situation_ko ?? "",
+      core.relation_ko ?? "",
+      core.source_text ?? "",
+      core.preceding_turn ?? "",
+    ].join(" ");
+    if (!evidence || !evidence.test(text)) {
+      add(
+        v,
+        "R26",
+        "fail",
+        `지정 산업 '${ctx.industry}'을 보여 주는 구체적 업무·대상·어휘가 없음`,
+      );
+    }
   }
   // R9 국가 단위 일반화 (해설/note 성격 필드)
   for (const field of [core.situation_ko, core.relation_ko]) {

@@ -48,7 +48,10 @@ describe("core batch resume", () => {
     const existingItems = new Map(
       cells.map((item, index) => [
         coreGenerationItemKey(item, index),
-        `scenario-${index}`,
+        {
+          scenarioId: `scenario-${index}`,
+          coreContent: { situation_ko: `기존 상황 ${index}` },
+        },
       ]),
     );
     const progress: number[] = [];
@@ -64,6 +67,10 @@ describe("core batch resume", () => {
     expect(result.map((item) => item.scenarioId)).toEqual([
       "scenario-0",
       "scenario-1",
+    ]);
+    expect(result.map((item) => item.coreContent?.situation_ko)).toEqual([
+      "기존 상황 0",
+      "기존 상황 1",
     ]);
     expect(progress).toEqual([1, 2]);
   });

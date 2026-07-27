@@ -2,6 +2,7 @@ import {
   FeedbackDraftSchema,
   deriveRevisionScope,
   reconcileFeedback,
+  repairPragmaticLeakIntoMeaning,
   stripPhantomAnchors,
   stripVacuousAlternatives,
   validatePragmaticCodes,
@@ -54,6 +55,7 @@ export function normalizeFeedbackResponse(
   }
 
   const { verdicts, blocks, issues } = reconcileFeedback(parsed.data);
+  const layerIssues = repairPragmaticLeakIntoMeaning(verdicts, blocks);
   const anchorIssues = stripPhantomAnchors(blocks, answer);
   const alternativeIssues = stripVacuousAlternatives(blocks, answer);
   const revision_scope = deriveRevisionScope(verdicts, feature.within_band_code);
@@ -84,6 +86,6 @@ export function normalizeFeedbackResponse(
         generated_at: typeof provenance?.generated_at === "string" ? provenance.generated_at : "",
       },
     },
-    issues: [...issues, ...anchorIssues, ...alternativeIssues],
+    issues: [...issues, ...layerIssues, ...anchorIssues, ...alternativeIssues],
   };
 }

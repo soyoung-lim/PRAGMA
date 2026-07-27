@@ -10,13 +10,18 @@ export const FEEDBACK_MAX_PAYLOAD_CHARS = 32_000
 // 열어 두지 않고, 정상 응답에는 충분한 범위에서 출력 비용의 절대 상한을 둔다.
 export const FEEDBACK_MAX_COMPLETION_TOKENS = 1_200
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
 export function feedbackPayloadIssue(body: unknown): string | null {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return 'feedback body required'
   }
 
-  const answer = (body as { answer?: unknown }).answer
-  if (typeof answer !== 'string' || !answer.trim()) {
+  const request = body as Record<string, unknown>
+  const answer = request.answer
+  if (!isNonEmptyString(answer)) {
     return 'feedback body required (answer)'
   }
   if (answer.length > FEEDBACK_MAX_ANSWER_CHARS) {
@@ -26,6 +31,41 @@ export function feedbackPayloadIssue(body: unknown): string | null {
   const payloadChars = JSON.stringify(body).length
   if (payloadChars > FEEDBACK_MAX_PAYLOAD_CHARS) {
     return `feedback payload too large (max ${FEEDBACK_MAX_PAYLOAD_CHARS} chars)`
+  }
+
+  if (request.direction !== 'ko_zh' && request.direction !== 'zh_ko') {
+    return 'feedback body required (direction)'
+  }
+  if (request.mode !== 'translation' && request.mode !== 'interpreting') {
+    return 'feedback body required (mode)'
+  }
+  for (const field of ['situation_ko', 'relation_ko', 'source_text'] as const) {
+    if (!isNonEmptyString(request[field])) {
+      return `feedback body required (${field})`
+    }
+  }
+
+  const pdr = request.pdr
+  if (!pdr || typeof pdr !== 'object' || Array.isArray(pdr)) {
+    return 'feedback body required (pdr)'
+  }
+  const pdrObject = pdr as Record<string, unknown>
+  if (!isNonEmptyString(pdrObject.p) || !isNonEmptyString(pdrObject.d) || !isNonEmptyString(pdrObject.r)) {
+    return 'feedback body required (pdr.p/d/r)'
+  }
+
+  const feature = request.feature
+  if (!feature || typeof feature !== 'object' || Array.isArray(feature)) {
+    return 'feedback body required (feature)'
+  }
+  const featureObject = feature as Record<string, unknown>
+  if (
+    !isNonEmptyString(featureObject.code) ||
+    !isNonEmptyString(featureObject.operational_definition) ||
+    !Array.isArray(featureObject.band_schema) ||
+    featureObject.band_schema.length === 0
+  ) {
+    return 'feedback body required (feature definition/bands)'
   }
   return null
 }

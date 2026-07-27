@@ -17,8 +17,10 @@ import {
 } from "@/lib/pragma/enums";
 import {
   DEFAULT_QUOTA,
+  FULL_BATCH_QUOTA_495,
   ZH_KO_VALIDATION_ACTS,
   ZH_KO_VALIDATION_QUOTA,
+  auditTopicCompatibility,
   auditTopicCoverage,
   buildBatchPlan,
   interpretingCount,
@@ -57,7 +59,11 @@ const CORE_AXIS_LABEL: Record<CoreQualityAxis, string> = {
   distance: "D",
   burden: "R",
   domain: "도메인",
+  industry: "산업",
   mode: "모드",
+  context_spec: "역할·의무",
+  referents: "행위자·대상",
+  decision_authority: "결정 권한",
   topic_seed: "시드",
   adjacency: "인접쌍",
 };
@@ -107,25 +113,60 @@ const AdminBatch = () => {
   const targetActs = direction === "zh_ko" ? ZH_KO_VALIDATION_ACTS : undefined;
   const targetActCount = targetActs?.length ?? Object.keys(SPEECH_ACT_UI).length;
   const topicCoverage = useMemo(() => auditTopicCoverage(targetActs), [targetActs]);
+  const topicCompatibility = useMemo(
+    () => auditTopicCompatibility(targetActs),
+    [targetActs],
+  );
   const plan = useMemo(
-    () => topicCoverage.missing.length === 0 ? buildBatchPlan(quota, direction, targetActs) : [],
-    [quota, direction, targetActs, topicCoverage.missing.length],
+    () =>
+      topicCoverage.missing.length === 0 && topicCompatibility.length === 0
+        ? buildBatchPlan(quota, direction, targetActs)
+        : [],
+    [
+      quota,
+      direction,
+      targetActs,
+      topicCoverage.missing.length,
+      topicCompatibility.length,
+    ],
   );
   // 54셀 감사는 zh_ko 검증일 때 대상 화행(요청·거절·감사)만으로 좁힌다 —
   // 안 그러면 애초에 카탈로그가 없어 대상도 아닌 6화행이 "빈 셀"로 오경고된다.
   const summary = useMemo(() => summarizePlan(plan, targetActs), [plan, targetActs]);
+  const isLargeKoZhBatch = direction === "ko_zh" && summary.total >= 400;
+  const isApprovedFullBatch =
+    direction === "ko_zh" &&
+    summary.total === 495 &&
+    summary.emptyActPdrCells.length === 0 &&
+    summary.minActPdrCount >= 2 &&
+    summary.emptyActLevelModeCells.length === 0 &&
+    summary.minActLevelModeCount >= 3;
+  const fullBatchBlocked = isLargeKoZhBatch && !isApprovedFullBatch;
 
   const setLevelQuota = (level: LearnerLevel, value: number) =>
     setQuota((q) => ({ ...q, perLevel: { ...q.perLevel, [level]: Math.max(0, value) } }));
 
+  const loadFullBatchPreset = () => {
+    if (running) return;
+    setDirection("ko_zh");
+    setQuota(FULL_BATCH_QUOTA_495);
+    const next = createCoreRunId("ko_zh");
+    persistCoreRunId("ko_zh", next);
+    setCoreRunId(next);
+  };
+
   const start = async () => {
+    if (fullBatchBlocked) {
+      toast.error("400건 이상 본배치는 승인된 495 프리셋과 243·54셀 게이트를 모두 충족해야 합니다.");
+      return;
+    }
     const preflight = await preflightAdminBatch();
     if ("message" in preflight) {
       toast.error(preflight.message);
       return;
     }
 
-    let existingItems: Map<string, string>;
+    let existingItems: Awaited<ReturnType<typeof loadExistingCoreRunItems>>;
     try {
       existingItems = await loadExistingCoreRunItems(coreRunId);
     } catch {
@@ -253,13 +294,22 @@ const AdminBatch = () => {
               </Button>
             </div>
           </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={loadFullBatchPreset}
+            disabled={running}
+          >
+            495 본배치 프리셋
+          </Button>
         </div>
 
         <p className="mt-2.5 text-[12px] text-muted-foreground">
           상황·원문·태그만 생성해 코어 뱅크를 채웁니다(scenario_core_v1).{" "}
           {direction === "zh_ko"
-            ? "중→한은 현재 승격 가능한 요청·거절·감사 3화행 × 수준3 × 모드2 = 18셀 검증 범위입니다."
-            : "500 본 배치 대상(계약 0-h·57) — 화행9 × 수준3 × 모드2 = 54셀, 셀당 ≥3 목표."}
+            ? "중→한은 요청·거절·감사 3화행의 전달 커버리지 18셀을 우선 검증합니다."
+            : "본 배치는 연구 구인 243셀(화행×P×D×R)과 전달 커버리지 54셀(화행×수준×모드)을 별도로 검산합니다."}
         </p>
 
         <div className="mt-3 border-t border-[#EAE4D2] pt-3">
@@ -297,7 +347,9 @@ const AdminBatch = () => {
                 }
                 className="mt-1 h-8 text-[13px]"
               />
-              <p className="mt-1 text-[10.5px] text-muted-foreground">대면·전화=통역</p>
+              <p className="mt-1 text-[10.5px] text-muted-foreground">
+                번역 건수 대비 통역 생성 비율
+              </p>
             </div>
           </div>
         </div>
@@ -324,6 +376,23 @@ const AdminBatch = () => {
             {topicCoverage.wildcardOnly
               .map(({ speechAct, domain }) => `${SPEECH_ACT_UI[speechAct]}×${DOMAIN[domain]}`)
               .join(", ")}
+          </p>
+        )}
+        {topicCompatibility.length > 0 && (
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[12.5px] text-red-900">
+            ⛔ P·D·모드와 호환되는 topic이 없는 조합 {topicCompatibility.length}개가 있어 실행을
+            차단했습니다. topic 카탈로그의 역할·매체 제약을 먼저 조정해야 합니다.
+          </p>
+        )}
+        {fullBatchBlocked && (
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[12.5px] text-red-900">
+            ⛔ 400건 이상 실행은 승인된 495건 계획만 허용합니다. 495 프리셋을 불러오고
+            243 구인셀과 54 전달셀이 모두 채워지는지 확인하십시오.
+          </p>
+        )}
+        {isApprovedFullBatch && (
+          <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-[12.5px] text-emerald-900">
+            ✅ 승인된 495 본배치 계획입니다. 243 구인셀과 54 전달셀 게이트를 모두 충족합니다.
           </p>
         )}
 
@@ -386,6 +455,19 @@ const AdminBatch = () => {
             </p>
           );
         })()}
+
+        {summary.emptyActPdrCells.length > 0 ? (
+          <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-[12.5px] text-amber-900">
+            ⚠️ 연구 구인 행렬 {targetActCount * 27}셀(화행 × P × D × R) 중{" "}
+            <b>{summary.emptyActPdrCells.length}셀이 빕니다.</b>{" "}
+            소규모 스모크에서는 허용되지만 495건 본 배치에서는 0이어야 합니다.
+          </p>
+        ) : (
+          <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-[12.5px] text-emerald-900">
+            ✅ 연구 구인 행렬 {targetActCount * 27}셀이 모두 채워집니다 · 셀당 최소{" "}
+            {summary.minActPdrCount}개
+          </p>
+        )}
       </section>
 
       {/* ── 실행 ── */}
@@ -411,7 +493,13 @@ const AdminBatch = () => {
         <div className="flex flex-wrap items-center gap-3">
           <Button
             onClick={start}
-            disabled={running || summary.total === 0 || topicCoverage.missing.length > 0}
+            disabled={
+              running ||
+              summary.total === 0 ||
+              topicCoverage.missing.length > 0 ||
+              topicCompatibility.length > 0 ||
+              fullBatchBlocked
+            }
           >
             {running ? "생성 중…" : `${summary.total}개 생성 시작`}
           </Button>
@@ -452,7 +540,12 @@ const AdminBatch = () => {
               {failures.slice(0, 20).map((f) => (
                 <li key={f.index}>
                   {SPEECH_ACT_UI[f.cell.speech_act_ui]} · {LEVEL[f.cell.level]} ·{" "}
-                  {DOMAIN[f.cell.domain]} — {f.error}
+                  {DOMAIN[f.cell.domain]} — {f.ruleFailFirst ?? f.error}
+                  {typeof f.coreContent?.situation_ko === "string" && (
+                    <span className="mt-0.5 block pl-3 text-[11px] text-red-800">
+                      생성 상황 · {f.coreContent.situation_ko}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -493,6 +586,16 @@ const AdminBatch = () => {
                 <ul className="mt-2 max-h-80 space-y-2 overflow-auto text-[11.5px]">
                   {auditResults.map((result) => {
                     const cell = result.source.cell;
+                    const core = result.source.coreContent as {
+                      situation_ko?: string;
+                      relation_ko?: string;
+                      source_text?: string;
+                      preceding_turn?: string | null;
+                      context_spec?: {
+                        role_pair?: { speaker_ko?: string; addressee_ko?: string };
+                        decision_authority?: string;
+                      };
+                    };
                     const flaggedAxes = result.check
                       ? CORE_QUALITY_AXES.filter(
                           (axis) => result.check?.axes[axis].verdict !== "pass",
@@ -513,6 +616,23 @@ const AdminBatch = () => {
                             {result.check?.axes[axis].reason_ko}
                           </div>
                         ))}
+                        {result.check && result.check.verdict !== "pass" && (
+                          <div className="mt-2 space-y-0.5 rounded bg-[#FAF8F2] px-2.5 py-2 text-[11px] leading-relaxed">
+                            <div>상황 · {core.situation_ko ?? "—"}</div>
+                            <div>관계 · {core.relation_ko ?? "—"}</div>
+                            {core.preceding_turn && <div>상대의 직전 발화 · {core.preceding_turn}</div>}
+                            <div>원문 · {core.source_text ?? "—"}</div>
+                            {core.context_spec?.role_pair && (
+                              <div>
+                                기대 역할 · {core.context_spec.role_pair.speaker_ko ?? "—"} →{" "}
+                                {core.context_spec.role_pair.addressee_ko ?? "—"}
+                              </div>
+                            )}
+                            {core.context_spec?.decision_authority && (
+                              <div>결정 권한 · {core.context_spec.decision_authority}</div>
+                            )}
+                          </div>
+                        )}
                       </li>
                     );
                   })}

@@ -16,7 +16,11 @@ export const CORE_QUALITY_AXES = [
   "distance",
   "burden",
   "domain",
+  "industry",
   "mode",
+  "context_spec",
+  "referents",
+  "decision_authority",
   "topic_seed",
   "adjacency",
 ] as const;
@@ -34,7 +38,7 @@ export interface CoreQualityCheck {
   summary_ko: string;
   axes: Record<CoreQualityAxis, CoreQualityAxisResult>;
   model: string;
-  prompt_version: "core_quality_v1";
+  prompt_version: "core_quality_v4";
   checked_at: string;
 }
 
@@ -72,14 +76,18 @@ async function auditOne(source: CoreCellResult): Promise<CoreQualityPilotResult>
           level: LEVEL[cell.level],
           domain: cell.domain,
           domain_ko: DOMAIN[cell.domain],
+          industry: cell.industry,
           mode: cell.mode,
           pdr: {
             p: PDR_POWER_ENUM_TO_JSON[cell.pdr_power],
             d: PDR_DISTANCE_ENUM_TO_JSON[cell.pdr_distance],
             r: cell.pdr_burden,
           },
+          topic_code: cell.topic_code,
           situation_seed_ko: cell.situation_seed_ko,
           is_response_act: RESPONSE_ACTS.has(cell.speech_act_ui),
+          expected_context_spec:
+            (source.coreContent as { context_spec?: unknown }).context_spec ?? null,
         },
       },
     });

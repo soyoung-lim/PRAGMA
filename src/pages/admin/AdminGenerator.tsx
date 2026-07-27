@@ -679,9 +679,13 @@ const AdminGenerator = () => {
             action: "core",
             core: {
               direction: form.language_direction,
+              speech_act: form.speech_act_ui,
               speech_act_ko: SPEECH_ACT_UI[form.speech_act_ui],
               level_ko: LEVEL[form.level],
+              domain: form.domain,
               domain_ko: DOMAIN[form.domain],
+              industry: form.domain === "work" ? form.industry : null,
+              topic_code: topicCode,
               mode,
               channel: legacyChannelOf(mode),
               channel_ko: mode === "stt_interpreting" ? "구두(통역)" : "서면(번역)",
@@ -712,6 +716,7 @@ const AdminGenerator = () => {
           mode,
           source_modality: modalityOf(mode),
           direction: form.language_direction,
+          require_context_spec: true,
         };
         const ruleResult = checkCore(core, ctx);
         if (ruleResult.result === "fail") {
