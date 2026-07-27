@@ -1100,10 +1100,10 @@ ${JSON.stringify(b.core_content, null, 2)}`
 // ── feedback_v1 프롬프트 (계약 §4 + 0-q·95) ────────────────────────────
 // 학습자 산출에 대한 3층 진단. **점수를 매기지 않는다** — 학습 지원용 질적 피드백.
 // revision_scope는 여기서 받지 않는다(코드가 verdicts에서 도출 — §4).
-function buildFeedbackSystemPrompt(direction: Direction, isSpoken: boolean): string {
+function buildFeedbackSystemPrompt(direction: Direction, _isSpoken: boolean): string {
   const { src, tgt } = DIR_LANGS[direction]
   return `너는 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 수업의 화용 피드백 담당이다.
-학습자가 방금 제출한 ${isSpoken ? '통역(확인된 전사)' : '번역'} 한 편에 대해 진단을 쓴다.
+학습자가 방금 제출한 중국어 산출 한 편에 대해 진단을 쓴다.
 
 [가장 중요한 전제]
 - **적절한 표현은 하나가 아니다.** 네가 떠올린 표현과 다르다는 이유로 낮게 판정하지 마라.
@@ -1130,6 +1130,8 @@ function buildFeedbackSystemPrompt(direction: Direction, isSpoken: boolean): str
       "선택권을 남기지 않았다", "완곡함이 사라졌다", "부탁이 명령처럼 들린다"는
       전부 ③ 화용 층의 소관이다. **같은 현상을 ①과 ③에 이중으로 세지 마라.**
       여전히 같은 것을 요청하고 있다면 아무리 직설적이어도 "preserved"다.
+      질문형 요청이 명령형 요청으로 바뀌었더라도 요청 대상 행동·참여자·조건이 같다면
+      화행 목적은 유지된 것이다. 이때 달라진 요청 강도·선택권은 ③에서만 판정한다.
    ⚠️ 문법 오류 때문에 읽기 어렵다는 이유로 의미를 깎지 마라 — 그것은 ② 소관이다.
 ② 이해 가능성(문법): **이해를 방해하는 오류만** 본다. 사소한 부자연스러움·문체 취향은
    적지 마라. 지적은 **최대 1건**, 반드시 학습자 문장에 실제로 있는 부분만 인용한다.
@@ -1200,7 +1202,7 @@ ${inv}
 - 대역 코드(이 중에서만 고를 것): ${bands}
 - 이 초점에서 **다루지 않는 축**(지적 금지): ${(f.excluded_confounds ?? []).join(' / ') || '(없음)'}
 
-[학습자가 제출한 ${b.mode === 'interpreting' ? '통역(확인된 전사)' : '번역'}]
+[학습자가 제출한 중국어 산출]
 ${b.answer ?? ''}`
 }
 
