@@ -30,7 +30,7 @@ const LearnerHome = () => {
 
   return (
     <LearnerJourneyShell
-      headerRight={<span className="text-[12px] text-[#8899A6]">수업연계</span>}
+      headerRight={<span className="text-[12px] text-[#8899A6]">강의 연계</span>}
     >
       <div className="pb-20">
         {/* 오늘의 학습 — 홈의 유일한 주 행동 */}

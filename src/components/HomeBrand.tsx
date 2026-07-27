@@ -22,16 +22,22 @@ export const HomeBrand = () => {
       onClick={handleClick}
       aria-label="홈으로"
       className={[
-        "group inline-flex items-center gap-1.5 text-base font-medium text-[#F1EFE8] sm:text-lg",
+        "group inline-flex items-baseline gap-2 text-[#F1EFE8]",
         "cursor-pointer transition-all duration-200 hover:text-white",
         pulse ? "scale-[0.98] opacity-90" : "scale-100 opacity-100",
       ].join(" ")}
     >
       <span
         aria-hidden
-        className="inline-block h-5 w-[5px] rounded-full bg-[#FAD338]"
+        className="inline-block h-[15px] w-[5px] translate-y-[1px] rounded-full bg-[#FAD338]"
       />
-      <span>AI 기반 한·중 통번역 학습 워크플로우</span>
+      {/* 제품명은 로고타입처럼 — 자간을 넓혀 문장이 아니라 '마크'로 읽히게 한다. */}
+      <span className="text-[16px] font-bold tracking-[0.18em] sm:text-[17px]">PRAGMA</span>
+      {/* 공식 설명어(= 논문 제목의 앞부분). 좁은 화면에서는 제품명만 남긴다. */}
+      <span aria-hidden className="hidden h-[11px] w-px self-center bg-[#3E4C5A] sm:inline-block" />
+      <span className="hidden text-[13px] font-normal text-[#95A2B0] transition-colors group-hover:text-[#B7C1CC] sm:inline">
+        AI 기반 한·중 통번역 학습
+      </span>
     </button>
   );
 };

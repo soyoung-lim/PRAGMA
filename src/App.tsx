@@ -93,7 +93,16 @@ const App = () => (
           {/* legacy 별칭(옛 북마크 호환) — UI 네비게이션은 전부 /learner/practice 사용 */}
           <Route path="/learner/mission-run" element={<Navigate to="/learner/practice" replace />} />
           <Route path="/learner/mission-run/:scenarioId" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
-          <Route path="/prototype/mission-v2" element={<RequireApproved><PrototypeMissionV2 /></RequireApproved>} />
+          {/* 고정 예시 피드백을 쓰는 구 흐름 검증 화면은 개발 환경에서만 접근한다.
+              프로덕션에서 직접 URL로 열려 정본 AI 피드백과 혼동되는 일을 막는다. */}
+          <Route
+            path="/prototype/mission-v2"
+            element={
+              import.meta.env.DEV
+                ? <RequireApproved><PrototypeMissionV2 /></RequireApproved>
+                : <Navigate to="/learner/practice" replace />
+            }
+          />
           <Route path="/admin" element={<RequireAdmin><Navigate to="/admin/dashboard" replace /></RequireAdmin>} />
           <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
           <Route path="/admin/corpus" element={<RequireAdmin><AdminCorpus /></RequireAdmin>} />
