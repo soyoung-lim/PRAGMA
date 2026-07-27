@@ -15,6 +15,15 @@ import {
 } from "@/lib/curriculum/composer";
 import { isReviewedMission } from "@/lib/curriculum/composerEligibility";
 import {
+  addAssignment,
+  buildAutomaticAssignments,
+  duplicateScenarioIds,
+  filterManualCandidates,
+  removeAssignment,
+  type AssignedItem,
+  type AssignMap,
+} from "@/lib/curriculum/composerPlanning";
+import {
   DIRECTION_LABEL,
   LEVEL,
   MODE_LABEL,
@@ -42,34 +51,11 @@ import { getTargetFeature, DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFea
 
 const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
 
-type AssignedItem = { scenario_id: string; slot_role: string };
-type AssignMap = Record<number, AssignedItem[]>;
-
-const slotRoleFor = (c: ComposerCore) =>
-  c.mode === "stt_interpreting" ? "interpreting" : "primary";
-
 const missionStatusLabel = (s: string | null) =>
   s === "reviewed" ? "미션 검토완료" : s === "generated" ? "미션 생성됨" : "코어(미승격)";
 
 const weekTypeLabel = (t: string) =>
   t === "orientation" ? "오리엔테이션" : t === "midterm" ? "중간평가" : t === "final" ? "기말평가" : "특수 주차";
-
-/** 후보 중 통역 비율을 최대한 맞춰 slots개를 고른다(부족하면 남는 것으로 채움). */
-function pickByRatio(cands: ComposerCore[], slots: number, interpRatio: number): ComposerCore[] {
-  if (cands.length <= slots) return cands.slice(0, slots);
-  const interp = cands.filter((c) => c.mode === "stt_interpreting");
-  const trans = cands.filter((c) => c.mode !== "stt_interpreting");
-  const wantInterp = Math.min(interp.length, Math.round(slots * interpRatio));
-  const picked = [...interp.slice(0, wantInterp), ...trans.slice(0, slots - wantInterp)];
-  if (picked.length < slots) {
-    const chosen = new Set(picked.map((c) => c.scenario_id));
-    for (const c of cands) {
-      if (picked.length >= slots) break;
-      if (!chosen.has(c.scenario_id)) picked.push(c);
-    }
-  }
-  return picked.slice(0, slots);
-}
 
 const AdminComposer = () => {
   const [outlines, setOutlines] = useState<CurriculumOutlineRow[]>([]);
@@ -203,60 +189,27 @@ const AdminComposer = () => {
   // ── 자동 채우기 (수준·테마·통역비율 = 현재 선택값) ──
   const autoFill = () => {
     if (!outline) return;
-    const next: AssignMap = {};
-    let filledWeeks = 0;
-    const usedIds = new Set<string>(); // 동일 과정 내 core 중복 금지(2026-07-25 스펙)
-    for (const w of weeks) {
-      if (w.type !== "regular" || !w.speech_act) continue;
-      const act = w.speech_act as SpeechActUI;
-      const slots = w.scenario_slots ?? outline.scenarios_per_week ?? 3;
-      // 1차: 검토 완료 + 화행 + 수준 + 방향(outline) + 선택 테마 + 미사용 코어
-      let cands = cores.filter(
-        (c) =>
-          isReviewedMission(c) &&
-          !usedIds.has(c.scenario_id) &&
-          c.speech_act === act &&
-          c.learner_level === level &&
-          c.direction === outline.language_direction &&
-          (themes.length === 0 || (c.theme_code != null && themes.includes(c.theme_code))),
-      );
-      // 부족하면 테마만 완화한다. reviewed·화행·수준·방향은 절대 완화하지 않는다.
-      if (cands.length < slots) {
-        cands = cores.filter(
-          (c) =>
-            isReviewedMission(c) &&
-            !usedIds.has(c.scenario_id) &&
-            c.speech_act === act &&
-            c.learner_level === level &&
-            c.direction === outline.language_direction,
-        );
-      }
-      const picked = pickByRatio(cands, slots, interpRatio);
-      if (picked.length > 0) {
-        picked.forEach((c) => usedIds.add(c.scenario_id));
-        next[w.week_no] = picked.map((c) => ({ scenario_id: c.scenario_id, slot_role: slotRoleFor(c) }));
-        filledWeeks += 1;
-      }
-    }
-    setAssign(next);
+    const result = buildAutomaticAssignments({
+      weeks,
+      cores,
+      level,
+      direction: outline.language_direction as LanguageDirection,
+      themes,
+      interpretingRatio: interpRatio,
+      defaultScenariosPerWeek: outline.scenarios_per_week ?? 3,
+    });
+    setAssign(result.assignments);
     setAddingWeek(null);
-    const total = Object.values(next).reduce((s, arr) => s + arr.length, 0);
-    toast.success(`자동 채우기 완료 — ${filledWeeks}개 주차에 시나리오 ${total}개 (저장 전)`);
+    toast.success(
+      `자동 채우기 완료 — ${result.filledWeeks}개 주차에 시나리오 ${result.totalAssigned}개 (저장 전)`,
+    );
   };
 
   const removeItem = (weekNo: number, scenarioId: string) =>
-    setAssign((prev) => ({
-      ...prev,
-      [weekNo]: (prev[weekNo] ?? []).filter((it) => it.scenario_id !== scenarioId),
-    }));
+    setAssign((prev) => removeAssignment(prev, weekNo, scenarioId));
 
   const addItem = (weekNo: number, c: ComposerCore) =>
-    setAssign((prev) => {
-      if (!isReviewedMission(c)) return prev;
-      const cur = prev[weekNo] ?? [];
-      if (cur.some((it) => it.scenario_id === c.scenario_id)) return prev;
-      return { ...prev, [weekNo]: [...cur, { scenario_id: c.scenario_id, slot_role: slotRoleFor(c) }] };
-    });
+    setAssign((prev) => addAssignment(prev, weekNo, c));
 
   const handleSave = async () => {
     if (!outlineId) return;
@@ -270,6 +223,11 @@ const AdminComposer = () => {
     const unreviewed = flat.filter((item) => !isReviewedMission(coreById[item.scenario_id]));
     if (unreviewed.length > 0) {
       toast.error(`검토 완료되지 않은 미션 ${unreviewed.length}개를 편성에서 제거한 뒤 저장하세요.`);
+      return;
+    }
+    const duplicates = duplicateScenarioIds(assign);
+    if (duplicates.length > 0) {
+      toast.error(`같은 시나리오가 여러 주차에 중복 배정되어 있습니다 (${duplicates.length}개).`);
       return;
     }
     setSaving(true);
@@ -476,6 +434,7 @@ const AdminComposer = () => {
                 key={w.id}
                 week={w}
                 items={assign[w.week_no] ?? []}
+                assignments={assign}
                 coreById={coreById}
                 candidates={cores}
                 level={level}
@@ -508,6 +467,7 @@ function assignmentsToMap(rows: WeekAssignment[]): AssignMap {
 function WeekRow({
   week,
   items,
+  assignments,
   coreById,
   candidates,
   level,
@@ -520,6 +480,7 @@ function WeekRow({
 }: {
   week: CurriculumWeekRow;
   items: AssignedItem[];
+  assignments: AssignMap;
   coreById: Record<string, ComposerCore>;
   candidates: ComposerCore[];
   level: LearnerLevel;
@@ -540,17 +501,13 @@ function WeekRow({
     ? getTargetFeature(plannedFeatureCode)?.learner_label ?? plannedFeatureCode
     : null;
 
-  // 후보: 검토 완료 + 화행(있으면) + 수준 + 선택 테마 일치, 이미 배정된 것 제외
-  const assignedIds = new Set(items.map((it) => it.scenario_id));
-  const cands = candidates.filter(
-    (c) =>
-      isReviewedMission(c) &&
-      !assignedIds.has(c.scenario_id) &&
-      (act ? c.speech_act === act : true) &&
-      c.learner_level === level &&
-      c.direction === direction &&
-      (themes.length === 0 || (c.theme_code != null && themes.includes(c.theme_code))),
-  );
+  const cands = filterManualCandidates(candidates, {
+    act,
+    level,
+    direction,
+    themes,
+    assignments,
+  });
 
   return (
     <div className="rounded-xl border border-[#EAE4D2] bg-white p-4">
