@@ -20,6 +20,7 @@ const EDGE = "supabase/functions/generate-scenario/index.ts";
 const OUT = resolve(ROOT, "src/lib/pragma/promptSnapshot.generated.ts");
 
 const src = readFileSync(resolve(ROOT, EDGE), "utf8");
+const canonicalText = (text) => text.replace(/\r\n?/g, "\n");
 
 // edge 소스를 그대로 실행해 빌더 함수를 얻는다(복사본이 아니라 원본이어야 의미가 있다).
 globalThis.Deno = { serve: () => {}, env: { get: () => "SNAPSHOT" } };
@@ -116,7 +117,7 @@ const snapshot = {
   git_commit: git("git rev-parse --short HEAD", "unknown"),
   git_dirty: git("git status --porcelain -- " + EDGE, "") !== "",
   edge_source: EDGE,
-  edge_source_sha256: sha(src),
+  edge_source_sha256: sha(canonicalText(src)),
   core_surface_hash: coreSurfaceHash,
   generation_config: {
     model: S.PRIMARY_MODEL, model_fallback: S.FALLBACK_MODEL,

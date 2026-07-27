@@ -1,57 +1,67 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import Architecture from "./pages/Architecture.tsx";
-import NotFound from "./pages/NotFound.tsx";
-import AdminArchive from "./pages/AdminArchive.tsx";
-import AdminCorpus from "./pages/admin/AdminCorpus.tsx";
-import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
-import AdminGenerator from "./pages/admin/AdminGenerator.tsx";
-import AdminBatch from "./pages/admin/AdminBatch.tsx";
-import AdminBrowser from "./pages/admin/AdminBrowser.tsx";
-import AdminPromptHarness from "./pages/admin/AdminPromptHarness.tsx";
-import AdminQuestionDesigner from "./pages/admin/AdminQuestionDesigner.tsx";
-import AdminYoutubeSources from "./pages/admin/AdminYoutubeSources.tsx";
-import AdminReview from "./pages/admin/AdminReview.tsx";
-import AdminCurriculum from "./pages/admin/AdminCurriculum.tsx";
-import AdminComposer from "./pages/admin/AdminComposer.tsx";
-import AdminLearners from "./pages/admin/AdminLearners.tsx";
-import AdminReports from "./pages/admin/AdminReports.tsx";
-import AdminAnalytics from "./pages/admin/AdminAnalytics.tsx";
-import AdminExport from "./pages/admin/AdminExport.tsx";
-import AdminDecisionTraces from "./pages/admin/AdminDecisionTraces.tsx";
-import AdminLogin from "./pages/admin/AdminLogin.tsx";
-import StudentLogin from "./pages/StudentLogin.tsx";
-import PendingApproval from "./pages/PendingApproval.tsx";
-import ProfileSetup from "./pages/ProfileSetup.tsx";
-import Home from "./pages/Home.tsx";
-import Roadmap from "./pages/Roadmap.tsx";
-import WorkflowPreview from "./pages/WorkflowPreview.tsx";
-import MissionShell from "./pages/MissionShell.tsx";
-import LearnerHome from "./pages/learner/LearnerHome.tsx";
-import CourseOverview from "./pages/learner/CourseOverview.tsx";
-import WeekDetail from "./pages/learner/WeekDetail.tsx";
-import IntroArc from "./pages/learner/IntroArc.tsx";
-import LearnerRecords from "./pages/learner/LearnerRecords.tsx";
-import StrategyMap from "./pages/learner/StrategyMap.tsx";
-import PrototypeMissionV2 from "./pages/learner/PrototypeMissionV2.tsx";
-import MissionRunV1 from "./pages/learner/MissionRunV1.tsx";
-import LearnerCourseLive from "./pages/learner/LearnerCourseLive.tsx";
-import EntryTaskMode from "./pages/EntryTaskMode.tsx";
-import EntryLanguageDirection from "./pages/EntryLanguageDirection.tsx";
-import EntryUnavailable from "./pages/EntryUnavailable.tsx";
-import { RequireApproved } from "./components/RequireApproved";
-import { RequireAdmin } from "./components/RequireAdmin";
-import { AdminPlaceholder } from "@/components/AdminShell";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { seedIfEmpty } from "./lib/learningSessions";
+
+const RequireApproved = lazy(() => import("./components/RequireApproved"));
+const RequireAdmin = lazy(() => import("./components/RequireAdmin"));
+const AdminPlaceholder = lazy(() =>
+  import("@/components/AdminShell").then((module) => ({ default: module.AdminPlaceholder })),
+);
+const Index = lazy(() => import("./pages/Index.tsx"));
+const Architecture = lazy(() => import("./pages/Architecture.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const AdminArchive = lazy(() => import("./pages/AdminArchive.tsx"));
+const AdminCorpus = lazy(() => import("./pages/admin/AdminCorpus.tsx"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
+const AdminGenerator = lazy(() => import("./pages/admin/AdminGenerator.tsx"));
+const AdminBatch = lazy(() => import("./pages/admin/AdminBatch.tsx"));
+const AdminBrowser = lazy(() => import("./pages/admin/AdminBrowser.tsx"));
+const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.tsx"));
+const AdminQuestionDesigner = lazy(() => import("./pages/admin/AdminQuestionDesigner.tsx"));
+const AdminYoutubeSources = lazy(() => import("./pages/admin/AdminYoutubeSources.tsx"));
+const AdminReview = lazy(() => import("./pages/admin/AdminReview.tsx"));
+const AdminCurriculum = lazy(() => import("./pages/admin/AdminCurriculum.tsx"));
+const AdminComposer = lazy(() => import("./pages/admin/AdminComposer.tsx"));
+const AdminLearners = lazy(() => import("./pages/admin/AdminLearners.tsx"));
+const AdminReports = lazy(() => import("./pages/admin/AdminReports.tsx"));
+const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics.tsx"));
+const AdminExport = lazy(() => import("./pages/admin/AdminExport.tsx"));
+const AdminDecisionTraces = lazy(() => import("./pages/admin/AdminDecisionTraces.tsx"));
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin.tsx"));
+const StudentLogin = lazy(() => import("./pages/StudentLogin.tsx"));
+const PendingApproval = lazy(() => import("./pages/PendingApproval.tsx"));
+const ProfileSetup = lazy(() => import("./pages/ProfileSetup.tsx"));
+const Home = lazy(() => import("./pages/Home.tsx"));
+const Roadmap = lazy(() => import("./pages/Roadmap.tsx"));
+const WorkflowPreview = lazy(() => import("./pages/WorkflowPreview.tsx"));
+const MissionShell = lazy(() => import("./pages/MissionShell.tsx"));
+const LearnerHome = lazy(() => import("./pages/learner/LearnerHome.tsx"));
+const CourseOverview = lazy(() => import("./pages/learner/CourseOverview.tsx"));
+const WeekDetail = lazy(() => import("./pages/learner/WeekDetail.tsx"));
+const IntroArc = lazy(() => import("./pages/learner/IntroArc.tsx"));
+const LearnerRecords = lazy(() => import("./pages/learner/LearnerRecords.tsx"));
+const StrategyMap = lazy(() => import("./pages/learner/StrategyMap.tsx"));
+const PrototypeMissionV2 = lazy(() => import("./pages/learner/PrototypeMissionV2.tsx"));
+const MissionRunV1 = lazy(() => import("./pages/learner/MissionRunV1.tsx"));
+const LearnerCourseLive = lazy(() => import("./pages/learner/LearnerCourseLive.tsx"));
+const EntryTaskMode = lazy(() => import("./pages/EntryTaskMode.tsx"));
+const EntryLanguageDirection = lazy(() => import("./pages/EntryLanguageDirection.tsx"));
+const EntryUnavailable = lazy(() => import("./pages/EntryUnavailable.tsx"));
 
 seedIfEmpty();
 
 const queryClient = new QueryClient();
+
+const RouteFallback = () => (
+  <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+    화면을 불러오는 중…
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -60,7 +70,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <ScrollToTop />
-        <Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
           <Route path="/" element={<Index />} />
           {/* 심사 설명용 read-only 구조 화면 — 실데이터가 없어 로그인을 요구하지 않는다. */}
           <Route path="/architecture" element={<Architecture />} />
@@ -128,7 +139,8 @@ const App = () => (
           <Route path="/admin-login" element={<AdminLogin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
