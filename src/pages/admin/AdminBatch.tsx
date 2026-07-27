@@ -17,15 +17,14 @@ import {
 } from "@/lib/pragma/enums";
 import {
   DEFAULT_QUOTA,
-  ZH_KO_SMOKE_ACTS,
-  ZH_KO_SMOKE_QUOTA,
+  ZH_KO_VALIDATION_ACTS,
+  ZH_KO_VALIDATION_QUOTA,
   auditTopicCoverage,
   buildBatchPlan,
   interpretingCount,
   summarizePlan,
   type BatchQuota,
 } from "@/lib/pragma/batchPlan";
-import { runBatch, type BatchCellResult } from "@/lib/pragma/batchRun";
 import { preflightAdminBatch } from "@/lib/pragma/adminBatchPreflight";
 import {
   loadExistingCoreRunItems,
@@ -40,9 +39,6 @@ import {
 } from "@/lib/pragma/coreQualityAudit";
 import { THEME_LABEL } from "@/lib/pragma/scenarioTopics";
 import { toast } from "sonner";
-
-type AnyResult = BatchCellResult | CoreCellResult;
-type GenMode = "core" | "legacy";
 
 // 배치 생성 — 셀 목록을 순회하며 기존 생성기를 반복 호출한다.
 //
@@ -90,11 +86,10 @@ const persistCoreRunId = (direction: LanguageDirection, runId: string) => {
 
 const AdminBatch = () => {
   const [quota, setQuota] = useState<BatchQuota>(DEFAULT_QUOTA);
-  const [genMode, setGenMode] = useState<GenMode>("core");
-  // 언어 방향(0-l·89) — zh_ko는 스모크 쿼터(18셀·승격 가능 3화행)로 자동 전환.
+  // 언어 방향(0-l·89) — zh_ko는 검증 쿼터(18셀·승격 가능 3화행)로 자동 전환.
   const [direction, setDirection] = useState<LanguageDirection>("ko_zh");
   const [running, setRunning] = useState(false);
-  const [results, setResults] = useState<AnyResult[]>([]);
+  const [results, setResults] = useState<CoreCellResult[]>([]);
   const [done, setDone] = useState(0);
   const [auditRunning, setAuditRunning] = useState(false);
   const [auditResults, setAuditResults] = useState<CoreQualityPilotResult[]>([]);
@@ -105,17 +100,18 @@ const AdminBatch = () => {
   const switchDirection = (d: LanguageDirection) => {
     if (running) return;
     setDirection(d);
-    setQuota(d === "zh_ko" ? ZH_KO_SMOKE_QUOTA : DEFAULT_QUOTA);
+    setQuota(d === "zh_ko" ? ZH_KO_VALIDATION_QUOTA : DEFAULT_QUOTA);
     setCoreRunId(getOrCreateCoreRunId(d));
   };
 
-  const targetActs = direction === "zh_ko" ? ZH_KO_SMOKE_ACTS : undefined;
+  const targetActs = direction === "zh_ko" ? ZH_KO_VALIDATION_ACTS : undefined;
+  const targetActCount = targetActs?.length ?? Object.keys(SPEECH_ACT_UI).length;
   const topicCoverage = useMemo(() => auditTopicCoverage(targetActs), [targetActs]);
   const plan = useMemo(
     () => topicCoverage.missing.length === 0 ? buildBatchPlan(quota, direction, targetActs) : [],
     [quota, direction, targetActs, topicCoverage.missing.length],
   );
-  // 54셀 감사는 zh_ko 스모크일 때 대상 화행(요청·거절·감사)만으로 좁힌다 —
+  // 54셀 감사는 zh_ko 검증일 때 대상 화행(요청·거절·감사)만으로 좁힌다 —
   // 안 그러면 애초에 카탈로그가 없어 대상도 아닌 6화행이 "빈 셀"로 오경고된다.
   const summary = useMemo(() => summarizePlan(plan, targetActs), [plan, targetActs]);
 
@@ -129,17 +125,15 @@ const AdminBatch = () => {
       return;
     }
 
-    let existingItems = new Map<string, string>();
-    if (genMode === "core") {
-      try {
-        existingItems = await loadExistingCoreRunItems(coreRunId);
-      } catch {
-        toast.error("기존 배치 진행 상태를 읽지 못했습니다. 다시 로그인한 뒤 실행해 주세요.");
-        return;
-      }
-      if (existingItems.size > 0) {
-        toast.info(`같은 배치 ID로 저장된 ${existingItems.size}건은 AI 호출 없이 건너뜁니다.`);
-      }
+    let existingItems: Map<string, string>;
+    try {
+      existingItems = await loadExistingCoreRunItems(coreRunId);
+    } catch {
+      toast.error("기존 배치 진행 상태를 읽지 못했습니다. 다시 로그인한 뒤 실행해 주세요.");
+      return;
+    }
+    if (existingItems.size > 0) {
+      toast.info(`같은 배치 ID로 저장된 ${existingItems.size}건은 AI 호출 없이 건너뜁니다.`);
     }
 
     setRunning(true);
@@ -149,20 +143,17 @@ const AdminBatch = () => {
     setAuditDone(0);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-    const onProgress = (d: number, _total: number, last: AnyResult) => {
+    const onProgress = (d: number, _total: number, last: CoreCellResult) => {
       setDone(d);
       setResults((prev) => [...prev, last]);
     };
-    const out =
-      genMode === "core"
-        ? await runCoreBatch(plan, {
-            runId: coreRunId,
-            existingItems,
-            concurrency: 3,
-            signal: ctrl.signal,
-            onProgress,
-          })
-        : await runBatch(plan, { concurrency: 3, signal: ctrl.signal, onProgress });
+    const out = await runCoreBatch(plan, {
+      runId: coreRunId,
+      existingItems,
+      concurrency: 3,
+      signal: ctrl.signal,
+      onProgress,
+    });
     setResults(out);
     setRunning(false);
     abortRef.current = null;
@@ -193,13 +184,11 @@ const AdminBatch = () => {
   const reusedCount = results.filter(
     (result) => result.ok && "reused" in result && result.reused,
   ).length;
-  const warnCount = results.filter(
-    (r) => r.ok && "ruleResult" in r && r.ruleResult === "warning",
-  ).length;
+  const warnCount = results.filter((r) => r.ok && r.ruleResult === "warning").length;
   const failures = results.filter((r) => !r.ok);
   const auditableCoreResults = results.filter(
     (result): result is CoreCellResult =>
-      result.ok && "coreContent" in result && Boolean(result.coreContent),
+      result.ok && Boolean(result.coreContent),
   );
   const auditPass = auditResults.filter((result) => result.check?.verdict === "pass").length;
   const auditWarning = auditResults.filter((result) => result.check?.verdict === "warning").length;
@@ -227,30 +216,17 @@ const AdminBatch = () => {
       title="배치 생성"
       description="셀 목록을 순회해 시나리오를 일괄 생성합니다. 생성물은 검수 대기 상태로 저장됩니다."
     >
-      {/* ── 생성 설정 (모드·방향·할당량 압축) ── */}
+      {/* ── 생성 설정 (코어·방향·할당량 압축) ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-4">
         <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
           <div>
             <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-              생성 모드
+              생성 방식
             </div>
-            <div className="mt-1.5 flex gap-1.5">
-              <Button
-                size="sm"
-                variant={genMode === "core" ? "default" : "outline"}
-                onClick={() => !running && setGenMode("core")}
-                disabled={running}
-              >
-                시나리오 코어 (v1.4)
-              </Button>
-              <Button
-                size="sm"
-                variant={genMode === "legacy" ? "default" : "outline"}
-                onClick={() => !running && setGenMode("legacy")}
-                disabled={running}
-              >
-                레거시 (candidates)
-              </Button>
+            <div className="mt-1.5">
+              <Badge variant="secondary" className="px-2.5 py-1 font-semibold">
+                시나리오 코어 · v1.4
+              </Badge>
             </div>
           </div>
 
@@ -273,18 +249,16 @@ const AdminBatch = () => {
                 onClick={() => switchDirection("zh_ko")}
                 disabled={running}
               >
-                {DIRECTION_LABEL.zh_ko} (스모크)
+                {DIRECTION_LABEL.zh_ko} · 3화행 검증
               </Button>
             </div>
           </div>
         </div>
 
         <p className="mt-2.5 text-[12px] text-muted-foreground">
-          {genMode === "core"
-            ? "상황·원문·태그만 생성해 500개 뱅크를 채웁니다(scenario_core_v1)."
-            : "⚠️ 구버전 — candidates+feedback(판단형 셸용)."}{" "}
+          상황·원문·태그만 생성해 코어 뱅크를 채웁니다(scenario_core_v1).{" "}
           {direction === "zh_ko"
-            ? "중→한 스모크 쿼터(계약 0-l·89) — 승격 가능 3화행 × 수준3 × 모드2 = 18셀."
+            ? "중→한은 현재 승격 가능한 요청·거절·감사 3화행 × 수준3 × 모드2 = 18셀 검증 범위입니다."
             : "500 본 배치 대상(계약 0-h·57) — 화행9 × 수준3 × 모드2 = 54셀, 셀당 ≥3 목표."}
         </p>
 
@@ -304,7 +278,7 @@ const AdminBatch = () => {
                 />
                 <p className="mt-1 text-[10.5px] text-muted-foreground">
                   →{" "}
-                  {9 * (quota.perLevel[lv] + interpretingCount(quota.perLevel[lv], quota.interpretingRatio))}
+                  {targetActCount * (quota.perLevel[lv] + interpretingCount(quota.perLevel[lv], quota.interpretingRatio))}
                   개
                 </p>
               </div>
@@ -395,7 +369,7 @@ const AdminBatch = () => {
         </div>
 
         {(() => {
-          const cellUnitLabel = targetActs ? `${targetActs.length * 3 * 2}셀(${targetActs.length}화행 스모크)` : "54셀";
+          const cellUnitLabel = targetActs ? `${targetActs.length * 3 * 2}셀(${targetActs.length}화행 검증)` : "54셀";
           return summary.emptyActLevelModeCells.length > 0 ? (
             <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-[12.5px] text-amber-900">
               ⚠️ 화행 × 수준 × 모드 {cellUnitLabel}(생성 수준 한정) 중 <b>{summary.emptyActLevelModeCells.length}셀이 빕니다</b>:{" "}
@@ -416,26 +390,24 @@ const AdminBatch = () => {
 
       {/* ── 실행 ── */}
       <section className="mt-4 rounded-xl border border-[#EAE4D2] bg-white p-5">
-        {genMode === "core" && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#FAF8F2] px-3 py-2.5">
-            <div className="min-w-0 text-[12px] text-muted-foreground">
-              배치 ID{" "}
-              <code className="break-all font-mono text-[11.5px] text-foreground">
-                {coreRunId}
-              </code>
-              <span className="ml-2">중단 후 같은 ID로 다시 실행하면 저장 완료 항목을 건너뜁니다.</span>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={startFreshCoreRun}
-              disabled={running}
-            >
-              새 배치 ID
-            </Button>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#FAF8F2] px-3 py-2.5">
+          <div className="min-w-0 text-[12px] text-muted-foreground">
+            배치 ID{" "}
+            <code className="break-all font-mono text-[11.5px] text-foreground">
+              {coreRunId}
+            </code>
+            <span className="ml-2">중단 후 같은 ID로 다시 실행하면 저장 완료 항목을 건너뜁니다.</span>
           </div>
-        )}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={startFreshCoreRun}
+            disabled={running}
+          >
+            새 배치 ID
+          </Button>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button
             onClick={start}
@@ -451,8 +423,8 @@ const AdminBatch = () => {
           {results.length > 0 && (
             <span className="text-[13px] text-muted-foreground">
               성공 {okCount}
-              {genMode === "core" && reusedCount > 0 ? ` (기존 ${reusedCount}건 건너뜀)` : ""}
-              {genMode === "core" && warnCount > 0 ? ` (경고 ${warnCount})` : ""} · 실패 {failCount}
+              {reusedCount > 0 ? ` (기존 ${reusedCount}건 건너뜀)` : ""}
+              {warnCount > 0 ? ` (경고 ${warnCount})` : ""} · 실패 {failCount}
             </span>
           )}
         </div>
@@ -492,7 +464,7 @@ const AdminBatch = () => {
           </div>
         )}
 
-        {genMode === "core" && auditableCoreResults.length > 0 && !running && (
+        {auditableCoreResults.length > 0 && !running && (
           <div className="mt-4 rounded-lg border border-[#EAE4D2] bg-[#FAF8F2] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
