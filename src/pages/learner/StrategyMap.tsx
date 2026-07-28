@@ -37,7 +37,7 @@ const StrategyMap = () => {
               {STRATEGY_MAP_GATE}
             </p>
             <Link
-              to="/learner/course/week/2/intro"
+              to="/learner/demo/course/week/2/intro"
               className="mt-4 inline-flex items-center rounded-md bg-[#15202B] px-4 py-2 text-[13.5px] font-semibold text-white"
             >
               먼저 배우러 가기 →

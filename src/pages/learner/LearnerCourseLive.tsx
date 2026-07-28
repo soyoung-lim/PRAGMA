@@ -1,43 +1,20 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
-import { getPublishedCourse, type LearnerCourse } from "@/lib/curriculum/learnerCourse";
+import { useLearnerCourse } from "@/lib/curriculum/useLearnerCourse";
 import { MODE_LABEL, SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 
-// 편성본 강좌(학습자) — 관리자가 15주 편성기로 배정한 실제 시나리오를 주차별로 보여주고,
-// 검토 완료된 미션은 눌러서 실행(러너)까지 잇는다. 편성 → 학습자 실행 루프의 연결부.
-// (기존 목업 15주 과정 CourseOverview는 그대로 두고, 이건 DB 편성본을 소비하는 실경로)
+// 학습자 강좌 정본 — 관리자가 15주 편성기로 배정한 실제 시나리오를 주차별로 보여주고,
+// 검토 완료된 미션은 눌러서 실행(러너)까지 잇는다. 편성 → 학습자 실행 루프의 연결부다.
 
 const card = "rounded-xl border border-[#EAE4D2] bg-white p-4";
 
 const LearnerCourseLive = () => {
   const navigate = useNavigate();
-  const [course, setCourse] = useState<LearnerCourse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const c = await getPublishedCourse();
-        if (!cancelled) setCourse(c);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "강좌를 불러오지 못했습니다.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: course = null, error, isPending: loading } = useLearnerCourse();
 
   const assignedTotal =
     course?.weeks.reduce((s, w) => s + w.scenarios.length, 0) ?? 0;
@@ -53,7 +30,9 @@ const LearnerCourseLive = () => {
         {loading ? (
           <p className="mt-6 text-[13px] text-muted-foreground">불러오는 중…</p>
         ) : error ? (
-          <div className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-[13px] text-red-900">{error}</div>
+          <div className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-[13px] text-red-900">
+            {error instanceof Error ? error.message : "강좌를 불러오지 못했습니다."}
+          </div>
         ) : !course ? (
           <div className="mt-6 rounded-xl border border-dashed border-[#EAE4D2] bg-white px-6 py-10 text-center text-[13px] text-muted-foreground">
             아직 게시된 편성 강좌가 없습니다.
