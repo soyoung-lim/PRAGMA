@@ -80,3 +80,22 @@ Supabase에서 삭제하고 로컬 진입점도 제거했다.
   결과를 얻지 못했으며, 같은 생성을 반복하지 않았다.
 - 결론: **API 호환성 게이트는 통과했지만 콘텐츠 품질 게이트는 아직 통과로
   선언하지 않는다.** 프로덕션 Edge 배포와 대량 생성은 보류한다.
+
+## 경계 셀 재검증 및 Edge 배포 (2026-07-28)
+
+- 같은 `반대 · 중급 · 통역` 조건을 임시 JWT canary에서 1건만 다시 생성했다.
+- 새 코어는 선행 발화의 방안 채택 명제에 대해 시간·복잡성 근거로 직접 이견을
+  제시해 동일 명제 인접쌍을 유지했다.
+- 분리된 `gpt-4.1` 비평기 `core_quality_v4`가 12축 전부 `pass`로 판정했다.
+  생성 약 5.1초, 비평 약 4.1초였다.
+- 조건부 게이트 통과 후 Supabase 프로덕션 `generate-scenario`를 배포했다.
+- 배포본 무저장 확인 1건은 `gpt-4.1-mini`, strict 필수 5필드,
+  `scenario_core_v2`, `spoken`, `preceding_turn`을 모두 반환했고 prompt hash는
+  `4c996a00259cf54dcc23b03d0998f7afd3926a95c284ed23719910ebb1d871c0`였다.
+- Supabase 최종 목록에서 `generate-scenario`는 `ACTIVE`, version `35`,
+  `verify_jwt=true`였고 임시 canary 함수는 존재하지 않았다.
+- 임시 canary 함수는 원격과 로컬에서 모두 제거했다. DB 저장·Railway 배포·
+  18셀 재생성·495/500 배치는 실행하지 않았다.
+
+최종 판정: **코어 strict Structured Outputs의 API·품질·배포본 확인 게이트 통과.**
+이후 생성물은 기존 `24ad...`가 아니라 `4c996a...` 계열로만 관리한다.
