@@ -7,7 +7,11 @@ import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import { SPEECH_ACT_UI, LEVEL, DIRECTION_LANGS, type LanguageDirection } from "@/lib/pragma/enums";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import { SCALE4_CODES, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targetFeatures";
-import { normalizeMission, type MissionV2, type MpjItemV2 } from "@/lib/pragma/missionSchema";
+import {
+  normalizeMission,
+  type MissionRuntime,
+  type MpjItemV2,
+} from "@/lib/pragma/missionSchema";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
 import { saveMissionAttempt, type LearnerDissent } from "@/lib/mission/missionLog";
@@ -34,7 +38,7 @@ import {
 import { IS_DEMO } from "@/lib/auth/useProfile";
 
 // 샘플은 v1 → 정규화해 v2로 구동(러너는 정규화 형태만 본다, 0-l·84).
-const SAMPLE_MISSION_V2 = normalizeMission(SAMPLE_MISSION_V1).data as MissionV2;
+const SAMPLE_MISSION_V2 = normalizeMission(SAMPLE_MISSION_V1).data as MissionRuntime;
 
 // 방향별 언어 이름 라벨(0-l·85).
 const LANG_NAME: Record<"ko" | "zh", string> = { ko: "한국어", zh: "중국어" };
@@ -522,7 +526,7 @@ function MissionRunner({
   speechAct,
   level,
 }: {
-  mission: MissionV2;
+  mission: MissionRuntime;
   isSample: boolean;
   /** 수행 방식 전환으로 넘어온 경우 1부(판단 연습)를 건너뛴다 — 샘플·데모 전용 */
   startAtPart2?: boolean;
@@ -1569,7 +1573,7 @@ function Handoff({
   onContinue,
   onSaveLater,
 }: {
-  mission: MissionV2;
+  mission: MissionRuntime;
   dir: LanguageDirection;
   isInterp: boolean;
   saved: boolean;
@@ -1619,7 +1623,7 @@ function CtxStage({
   onPick,
   onNext,
 }: {
-  pt: MissionV2["production_task"];
+  pt: MissionRuntime["production_task"];
   isInterp: boolean;
   pick: number | null;
   onPick: (i: number) => void;
@@ -1668,7 +1672,7 @@ function CtxStage({
 // 먼저 읽는 화면이 됐다. 고지 자체는 계약 사항이라 삭제하지 않고 위치만 내린다.
 // ⚠️ 접힌 제목에 "다른 적절한 표현도 존재할 수 있습니다"를 남긴다 — 전부 감추면 B1
 //    (판정=AI 제안이지 유일한 정답이 아님)의 고지 효과가 사라진다.
-function MissionBriefDrawer({ mission }: { mission: MissionV2 }) {
+function MissionBriefDrawer({ mission }: { mission: MissionRuntime }) {
   const feat = getTargetFeature(mission.unit.target_feature);
   const estMin = mission.production_task.mode === "interpreting" ? 15 : 12;
   const tgtName = tgtLangName(mission.direction);
@@ -1789,7 +1793,7 @@ function DissentPanel({ onSubmit }: { onSubmit: (d: { conditions: string[]; reas
 }
 
 // ── 피드백 근거 서랍(의견4 ③) — 판정↔상황 조건 연결. 카탈로그·상황 데이터만(AI 0회) ──
-function FeedbackReasonDrawer({ mission }: { mission: MissionV2 }) {
+function FeedbackReasonDrawer({ mission }: { mission: MissionRuntime }) {
   const feat = getTargetFeature(mission.unit.target_feature);
   const pt = mission.production_task;
   return (

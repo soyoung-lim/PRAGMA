@@ -1,5 +1,5 @@
 import { getTargetFeature, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targetFeatures";
-import type { MissionV2, MpjItemV2 } from "@/lib/pragma/missionSchema";
+import type { MissionRuntime, MpjItemV2 } from "@/lib/pragma/missionSchema";
 import { DIRECTION_LABEL } from "@/lib/pragma/enums";
 
 // 관리자 눈검사 뷰 — 생성된 mission_v1을 읽기 전용으로 전개한다.
@@ -40,7 +40,7 @@ export function MissionPreview({
   mission,
   warnings,
 }: {
-  mission: MissionV2;
+  mission: MissionRuntime;
   warnings?: string[];
 }) {
   const feat = mission.unit.target_feature;

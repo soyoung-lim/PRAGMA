@@ -1,7 +1,11 @@
-// mission_v1 — 완전 미션(MPJ 5 + DCT)의 zod 스키마. 생성계약 v1.3 §3.
+// mission_v1/v2 — 기존 완전 미션(MPJ 5 + DCT) 읽기 호환.
+// mission_v3 — 현행 완전 미션(MPJ 4 + DCT). 2026-07-28 결정:
+// multi_judge는 Full Mission에서 제거하고 별도 미니 모듈 설계로 이관한다.
 //
-// 편성·데모 선별분만 코어에서 승격 생성한다. MPJ 5유형은 완전 분리 union(B12):
+// 편성·데모 선별분만 코어에서 승격 생성한다. legacy MPJ 5유형:
 //   scale4 → judge3 → fix_choice → reason_conf → multi_judge (순서 고정, R1).
+// 현행 MPJ 4유형:
+//   scale4 → judge3 → fix_choice → reason_conf (순서 고정, R1).
 // axis_feature = unit.target_feature 고정(0-b·19, R1). band code는 카탈로그 정본.
 
 import { z } from "zod";
@@ -192,13 +196,21 @@ export function parseMission(input: unknown): {
   return { ok: false, error: r.error };
 }
 
-/** 유형 순서 고정 검사용(R1). */
-export const MPJ_TYPE_ORDER = [
+/** legacy mission_v1/v2 유형 순서(R1). */
+export const MPJ_TYPE_ORDER_V2 = [
   "scale4",
   "judge3",
   "fix_choice",
   "reason_conf",
   "multi_judge",
+] as const;
+
+/** 현행 mission_v3 유형 순서(R1). */
+export const MPJ_TYPE_ORDER_V3 = [
+  "scale4",
+  "judge3",
+  "fix_choice",
+  "reason_conf",
 ] as const;
 
 // ══════════════════════════════════════════════════════════════════════
@@ -311,6 +323,32 @@ export const MissionV2Schema = z.object({
 });
 export type MissionV2 = z.infer<typeof MissionV2Schema>;
 
+// ══════════════════════════════════════════════════════════════════════
+// mission_v3 — MPJ4 + DCT (2026-07-28)
+// ══════════════════════════════════════════════════════════════════════
+// 필드 이름은 v2의 양방향 중립 계약을 그대로 유지한다. 변경점은 MPJ 구성뿐이다:
+// multi_judge를 제외하고 정확히 4개를 생성한다. 기존 v1/v2 자료는 아래 정규화
+// 경로로 계속 읽되, 신규 생성물과 provenance를 섞지 않는다.
+export const MpjItemV3Schema = z.discriminatedUnion("type", [
+  Scale4ItemV2,
+  Judge3ItemV2,
+  FixChoiceItemV2,
+  ReasonConfItemV2,
+]);
+export type MpjItemV3 = z.infer<typeof MpjItemV3Schema>;
+
+export const MissionV3Schema = z.object({
+  schema_version: z.literal("mission_v3"),
+  direction: z.enum(["ko_zh", "zh_ko"]),
+  unit: UnitSchema,
+  mpj_items: z.array(MpjItemV3Schema).length(4),
+  production_task: ProductionTaskV2Schema,
+  provenance: MissionProvenanceSchema.optional(),
+  quality_check: QualityCheckSchema.optional(),
+});
+export type MissionV3 = z.infer<typeof MissionV3Schema>;
+export type MissionRuntime = MissionV2 | MissionV3;
+
 // ── v1 → v2 항목 매핑(정규화용) ───────────────────────────────────────
 function v1ItemToV2(it: MpjItem): MpjItemV2 {
   const common = {
@@ -359,15 +397,21 @@ function v1ItemToV2(it: MpjItem): MpjItemV2 {
 }
 
 /**
- * 미션 정규화 — v1(방향 없음) 또는 v2 JSON을 읽어 v2 런타임 형태로 통일한다(0-l·84).
- * v1은 direction='ko_zh', 필드명 매핑. 규칙검사·러너·미리보기가 이 형태만 본다.
+ * 미션 정규화 — v1(방향 없음)·v2(MPJ5)·v3(MPJ4) JSON을 읽는다.
+ * v1은 direction='ko_zh', 필드명 매핑 후 legacy v2 형태가 된다.
+ * 규칙검사·러너·미리보기는 MissionRuntime만 본다.
  */
 export function normalizeMission(input: unknown): {
   ok: boolean;
-  data?: MissionV2;
+  data?: MissionRuntime;
   error?: z.ZodError;
 } {
   const sv = (input as { schema_version?: string } | null)?.schema_version;
+  if (sv === "mission_v3") {
+    const r = MissionV3Schema.safeParse(input);
+    if (r.success) return { ok: true, data: r.data };
+    return { ok: false, error: r.error };
+  }
   if (sv === "mission_v2") {
     const r = MissionV2Schema.safeParse(input);
     if (r.success) return { ok: true, data: r.data };

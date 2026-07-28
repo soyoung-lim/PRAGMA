@@ -84,4 +84,17 @@ describe("prompt snapshot integrity", () => {
     expect(feedback.text).toContain("[허용된 추가 사실]");
     expect(quality.text).toContain("production_task.usable_facts");
   });
+
+  it("keeps new Full Missions on MPJ4 without multi_judge", () => {
+    const mission = prompt("mission.system");
+    const spoken = prompt("mission.system.spoken");
+    const quality = prompt("quality.system");
+
+    for (const entry of [mission, spoken]) {
+      expect(entry.text).toContain("MPJ 4문항");
+      expect(entry.text).toContain("scale4 → judge3 → fix_choice → reason_conf");
+      expect(entry.text).not.toContain("multi_judge");
+    }
+    expect(quality.text).toContain("MPJ 4문항");
+  });
 });

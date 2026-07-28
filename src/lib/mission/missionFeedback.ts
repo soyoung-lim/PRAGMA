@@ -12,7 +12,7 @@ import {
 } from "@/lib/mission/feedbackTransport";
 import { normalizeFeedbackResponse } from "@/lib/mission/normalizeFeedback";
 import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
-import type { MissionV2 } from "@/lib/pragma/missionSchema";
+import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 
 export interface FeedbackRequestResult {
   ok: boolean;
@@ -27,7 +27,7 @@ export interface FeedbackRequestResult {
  * @param answer 통역이면 **학습자가 확인한 전사**만 넘긴다(§4 제약 7).
  */
 export async function requestFeedback(
-  mission: MissionV2,
+  mission: MissionRuntime,
   answer: string,
 ): Promise<FeedbackRequestResult> {
   const feature = getTargetFeature(mission.unit.target_feature);

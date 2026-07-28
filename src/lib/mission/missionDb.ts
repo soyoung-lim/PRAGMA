@@ -1,4 +1,4 @@
-// 학습자 미션 DB fetch — scenarios 행의 mission_content(mission_v1)를 읽어온다.
+// 학습자 미션 DB fetch — scenarios 행의 mission_content(v1/v2/v3)를 읽어온다.
 //
 // 승격·검토 경로: mission_status = NULL(코어) | 'generated' | 'reviewed'.
 // 학습자 실행 게이트는 'reviewed'만(계약 0-b·17). DEV에서는 'generated'도 허용해
@@ -7,7 +7,7 @@
 // ⚠️ 타입 우회: types.ts가 mission_content 컬럼을 아직 모른다 → AdminBrowser식 캐스트.
 
 import { supabase } from "@/integrations/supabase/client";
-import { normalizeMission, type MissionV2 } from "@/lib/pragma/missionSchema";
+import { normalizeMission, type MissionRuntime } from "@/lib/pragma/missionSchema";
 import type { LanguageDirection, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
 
 const db = supabase as unknown as { from: (t: string) => any };
@@ -20,7 +20,7 @@ export interface RunnableMission {
   learner_level: LearnerLevel | null;
   mission_status: string | null;
   direction: LanguageDirection;
-  mission: MissionV2;
+  mission: MissionRuntime;
 }
 
 export interface MissionListItem {
@@ -31,7 +31,7 @@ export interface MissionListItem {
   situation_ko: string;
 }
 
-/** 한 시나리오의 미션을 읽어 검증된 mission_v1으로 돌려준다. 없거나 파싱 실패면 에러. */
+/** 한 시나리오의 미션을 읽어 검증된 런타임 형태로 돌려준다. 없거나 파싱 실패면 에러. */
 export async function fetchMissionByScenario(scenarioId: string): Promise<RunnableMission> {
   const { data, error } = await db
     .from("scenarios")
@@ -68,12 +68,12 @@ export async function fetchMissionByScenario(scenarioId: string): Promise<Runnab
 }
 
 /**
- * 관리자 검수용 — 상태와 무관하게 미션을 읽어 검증된 mission_v1으로 돌려준다.
+ * 관리자 검수용 — 상태와 무관하게 미션을 읽어 검증된 런타임 형태로 돌려준다.
  * (실행 게이트가 아니라 눈검사용. admin RLS 전제.) 없으면 null.
  */
 export async function fetchMissionForReview(
   scenarioId: string,
-): Promise<{ mission: MissionV2; mission_status: string | null } | null> {
+): Promise<{ mission: MissionRuntime; mission_status: string | null } | null> {
   const { data, error } = await db
     .from("scenarios")
     .select("mission_status, mission_content")
