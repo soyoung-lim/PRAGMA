@@ -124,6 +124,8 @@ const ProductionTaskSchema = z.object({
   pdr: PdrSchema,
   source_text_ko: z.string().min(1), // 코어 계승(R23)
   preceding_turn_zh: z.string().nullable(),
+  /** 코어에서 계승한 명제적 Supportive Move 허용 사실. */
+  usable_facts: z.array(z.string().min(1)).max(8).optional(),
   replay_limit: z.number().int().positive().optional(), // interpreting만
   reference_alternatives: z
     .array(z.object({ zh: z.string().min(1), note_ko: z.string().min(1) }))
@@ -288,6 +290,8 @@ const ProductionTaskV2Schema = z.object({
   pdr: PdrSchema,
   source_text: z.string().min(1),
   preceding_turn: z.string().nullable(),
+  /** 코어에서 계승한 명제적 Supportive Move 허용 사실. */
+  usable_facts: z.array(z.string().min(1)).max(8).optional(),
   replay_limit: z.number().int().positive().optional(),
   reference_alternatives: z
     .array(z.object({ text: z.string().min(1), note_ko: z.string().min(1) }))
@@ -389,6 +393,7 @@ export function normalizeMission(input: unknown): {
         pdr: pt.pdr,
         source_text: pt.source_text_ko,
         preceding_turn: pt.preceding_turn_zh,
+        ...(pt.usable_facts?.length ? { usable_facts: pt.usable_facts } : {}),
         ...(pt.replay_limit ? { replay_limit: pt.replay_limit } : {}),
         reference_alternatives: pt.reference_alternatives.map((a) => ({ text: a.zh, note_ko: a.note_ko })),
       },

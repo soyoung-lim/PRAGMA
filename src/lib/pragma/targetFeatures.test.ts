@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_FEATURE_BY_ACT,
+  FEATURE_CODES_BY_ACT,
   SCALE4_CODES,
   SCALE4_LABELS,
   TARGET_FEATURES,
@@ -35,11 +36,29 @@ describe("target feature catalog integrity", () => {
   });
 
   it("keeps every default promotion mapping on the same speech act", () => {
+    expect(Object.keys(DEFAULT_FEATURE_BY_ACT)).toHaveLength(9);
     for (const [act, featureCode] of Object.entries(DEFAULT_FEATURE_BY_ACT)) {
       const feature = TARGET_FEATURES[featureCode];
       expect(feature, `${act} → ${featureCode}`).toBeDefined();
       expect(feature.speech_act).toBe(act);
     }
+  });
+
+  it("keeps approved feature lists complete while compliment response stays non-default", () => {
+    expect(Object.keys(FEATURE_CODES_BY_ACT)).toHaveLength(9);
+    for (const [act, featureCodes] of Object.entries(FEATURE_CODES_BY_ACT)) {
+      expect(featureCodes.length, act).toBeGreaterThan(0);
+      expect(new Set(featureCodes).size, act).toBe(featureCodes.length);
+      for (const featureCode of featureCodes) {
+        expect(TARGET_FEATURES[featureCode]?.speech_act, `${act} → ${featureCode}`).toBe(act);
+      }
+    }
+
+    expect(FEATURE_CODES_BY_ACT.compliment).toEqual([
+      "compliment_grounding_sensitivity",
+      "compliment_response_uptake",
+    ]);
+    expect(DEFAULT_FEATURE_BY_ACT.compliment).toBe("compliment_grounding_sensitivity");
   });
 
   it("keeps every bidirectional promotion feature complete", () => {

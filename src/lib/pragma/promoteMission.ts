@@ -3,8 +3,9 @@
 //   → 실패 시 재생성 ≤2 → save_generated_mission RPC(mission_status='generated').
 // review_mission RPC = generated → reviewed(학습자 실행 게이트, 계약 0-b·17).
 //
-// ⚠️ 승격 대상 = 화용 초점 카탈로그가 있는 화행만(현재 request·refusal·thanks).
-//    다른 화행은 DEFAULT_FEATURE_BY_ACT 미정의 → 승격 불가(카탈로그 확장 후).
+// 9개 화행 모두 사람 작성 기본 화용 초점으로 승격할 수 있다.
+// compliment_response는 카탈로그에 보존하지만 response subtype 코어 경로 전까지
+// 자동 기본값으로 선택하지 않는다.
 
 import { supabase } from "@/integrations/supabase/client";
 import { checkMission, type CheckContext } from "@/lib/pragma/missionRules";
@@ -166,6 +167,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     pdr: normCore?.pdr,
     channel: normCore?.channel,
     source_modality: core.source_modality,
+    usable_facts: normCore?.usable_facts ?? [],
   };
   const ctx: CheckContext = {
     speech_act: core.speech_act,

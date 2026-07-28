@@ -1,7 +1,8 @@
 # PRAGMA 9화행 Construct Map
 
-- 상태: **사용자 검토 전 초안 — 코드·DB·생성계약 정본 아님**
+- 상태: **사용자 승인 완료 — 연구·개발 construct 정본**
 - 작성일: 2026-07-27
+- 승인·카탈로그 확정: 2026-07-28
 - 상위 원칙: `PRAGMA_PRAGMATICS_DESIGN_PRINCIPLES_2026-07-27.md`
 - 목적: 9개 교육 과제 유형을 생성·MPJ·DCT·피드백·품질 감사에서 같은 의미로 사용하기 위한 조작적 정의
 
@@ -24,7 +25,8 @@
 - 특정 표현을 항상 공손하거나 부적절하다고 보는 규칙
 - 중국어·한국어 공동체 전체에 대한 문화 일반화
 - CCSARP 직접성 단계와 정답 대역의 자동 연결
-- 나머지 6화행의 최종 `target_feature`와 중국어·한국어 표현 자원
+- target feature의 상세 코드·대역·양방향 표현 자원은
+  `PRAGMA_6_TARGET_FEATURE_REVIEW_2026-07-28.md`와 `targetFeatures.ts`가 정한다.
 - Standard Situation을 추가 조합축으로 만드는 방안
 
 ## 1. 공통 분석 단위
@@ -473,7 +475,9 @@ interactional_subtype: compliment_giving | compliment_response
 - 미션 B: `compliment_response` MPJ5+DCT1
 - 두 미션의 로그와 target feature는 분리한다.
 
-`compliment`의 R 정의와 두 하위 유형별 target feature는 문헌 검증 필요성이 높다. 최종 확정 전 정답 대역으로 사용하지 않는다.
+`compliment`의 R 정의와 두 하위 유형별 target feature는 2026-07-28 문헌 검토를 거쳐
+각각 `compliment_grounding_sensitivity`와 `compliment_response_uptake`로 확정했다.
+단, 후자는 별도 response subtype 코어 경로 전까지 자동 승격 기본값으로 사용하지 않는다.
 
 ### 3.9 불만 `complaint`
 
@@ -612,9 +616,12 @@ interface ContextSpec {
 - 초대의 내부 키 `agreement`를 동의 응답으로 다시 해석하지 않는다.
 - `interactional_position`과 `preceding_turn_required`를 같은 필드로 취급하지 않는다.
 
-### 6.6 미완 target feature
+### 6.6 target feature 확정
 
-현재 사람 작성 정본은 요청·거절·감사 3개뿐이다. 사과·제안·초대·반대·칭찬·불만의 target feature, 대역, 학습자 문구, 한·중 표현 자원은 이 construct map 승인만으로 자동 확정되지 않는다.
+요청·거절·감사 3개와 사과·제안·초대·반대·칭찬하기·칭찬 대응·직접 불만 7개,
+총 10개 사람 작성 target feature가 확정됐다. `politeness`는 비활성 보조축이라 이 수에
+포함하지 않는다. 상세 코드·대역·학습자 문구·한중 표현 자원은
+`PRAGMA_6_TARGET_FEATURE_REVIEW_2026-07-28.md`와 `targetFeatures.ts`를 따른다.
 
 ## 7. 승인 전 남은 결정
 
@@ -622,7 +629,8 @@ interface ContextSpec {
 2. **결정 완료:** `compliment`를 상위 교육 화행군으로 두고 `compliment_giving`과 `compliment_response`를 같은 주차의 별도 미션·target feature로 운영한다.
 3. **결정 완료:** 초기 범위를 책임 당사자 또는 해결 권한자에게 하는 `addressed_complaint`로 고정한다. `third_party_complaint`는 후속 하위 과제로 이월한다.
 4. **결정 완료:** `low | mid | high`는 유지하되, 화행별 단일 1차 기준과 고정 설명 27개로 해석한다. P·D·결정권·책임·매체·공개성은 R에서 분리한다.
-5. 거절·불만의 명제적 Supportive Move를 `usable_facts`로 허용하는 방식을 채택할 것인가
+5. **결정 완료:** 거절·불만을 포함한 명제적 Supportive Move는 서버 승인
+   `usable_facts` 폐쇄 목록에 있을 때만 허용한다. 목록이 없으면 새 사실 추가를 금지한다.
 6. **결정 완료:** 최소 `context_spec` 다섯 필드를 생성 전 서버 템플릿으로 두고, 모델 응답이 아니라 서버가 코어에 주입한다.
 
 ## 8. 승인 후 구현 순서

@@ -7,8 +7,8 @@
 //
 // learner_label·closing_principle_ko는 AI가 생성하지 않고 이 파일에서 복사한다(R14).
 //
-// v1.3 시드 = 골든 미션 3개(요청·거절·감사 × 중급)에 필요한 3종 + 공손성 보조축.
-// 나머지 6화행은 배치 생성 전에 같은 구조로 추가한다.
+// v1.3 시드 = 참조 미션 3개(요청·거절·감사 × 중급)에 필요한 3종 + 공손성 보조축.
+// v1.4 = 나머지 6화행 7종(칭찬하기·칭찬 대응 분리)을 사람 작성 정본으로 추가.
 
 import type { SpeechActUI } from "@/lib/pragma/enums";
 
@@ -194,6 +194,368 @@ const GRATITUDE_CALIBRATION: TargetFeature = {
     "\"감사는 강할수록 좋다\" — 반례: 가벼운 호의(펜을 빌려줌)에는 \"고마워요\" 한 마디가 과장된 감사(\"정말 뭐라 감사드려야 할지…\")보다 자연스럽고 적절하다.",
 };
 
+// ── 사과 · 책임 인정과 수리 ────────────────────────────────────────────
+const APOLOGY_ACCOUNTABILITY_REPAIR: TargetFeature = {
+  code: "apology_accountability_repair",
+  version: "1.0",
+  speech_act: "apology",
+  learner_label: "책임 인정과 수리",
+  operational_definition:
+    "위반·피해에 대한 유감, 화자의 책임 범위, 필요한 수리의 무게를 상황에 맞추는 초점. 사과 공식만 반복하고 책임·영향을 비껴가는가, 사실과 R에 맞게 인정하는가, 또는 실제 책임과 피해를 넘어 과도한 책임·보상·약속을 떠안는가를 본다. " +
+    "설명·수리·재발 방지 약속은 원문 또는 서버가 허용한 usable_facts에 있을 때만 사용할 수 있다.",
+  band_schema: [
+    { code: "under_acknowledged", label_ko: "부족함 (책임·영향을 충분히 인정하지 않음)" },
+    { code: "within_band", label_ko: "알맞음" },
+    { code: "overextended", label_ko: "과함 (책임·수리를 실제보다 확대함)" },
+  ],
+  within_band_code: "within_band",
+  relevant_resources: [
+    "사과 공식 (对不起·不好意思·抱歉)",
+    "책임 인정 (是我没确认好·这件事是我的疏忽)",
+    "상대 영향 인정 (给您添麻烦了·让你久等了)",
+    "허용된 수리 제안 (我马上处理·费用由我承担)",
+    "허용된 재발 방지 약속 (以后我会提前确认)",
+  ],
+  excluded_confounds: [
+    "사과 공식의 개수나 문장 길이 자체",
+    "호칭·격식체 선택 — 공손성 축",
+    "원문·usable_facts에 없는 이유·보상·새 약속",
+    "설명의 유무를 책임 인정과 자동 등치하는 것",
+  ],
+  closing_principle_ko:
+    "사과는 세게 말하는 것이 아니라, 실제 책임과 상대가 받은 영향에 맞게 인정하고 필요한 수리를 제시할 때 적절합니다.",
+  counter_rule_note:
+    "\"사과는 길고 강할수록 좋다\" — 반례: 사소하고 즉시 회복된 실수에는 간결한 책임 인정과 사과가 과도한 보상 약속보다 자연스럽다.",
+  operational_definition_zh_ko:
+    "위반·피해에 대한 유감, 화자의 책임 범위, 필요한 수리의 무게를 한국어 산출에서 상황에 맞추는 초점. 사과 표현만 반복하고 책임·영향을 비껴가는가, 사실과 R에 맞게 인정하는가, 또는 실제 책임과 피해를 넘어 과도한 책임·보상·약속을 떠안는가를 본다. " +
+    "설명·수리·재발 방지 약속은 원문 또는 서버가 허용한 usable_facts에 있을 때만 사용할 수 있다.",
+  relevant_resources_zh_ko: [
+    "사과 공식 (미안해요·죄송합니다·사과드립니다)",
+    "책임 인정 (제가 확인을 놓쳤습니다·제 실수였습니다)",
+    "상대 영향 인정 (불편을 드렸습니다·오래 기다리게 했습니다)",
+    "허용된 수리 제안 (바로 처리하겠습니다·제가 비용을 부담하겠습니다)",
+    "허용된 재발 방지 약속 (앞으로는 미리 확인하겠습니다)",
+  ],
+  excluded_confounds_zh_ko: [
+    "사과 공식의 개수나 문장 길이 자체",
+    "높임 등급·호칭 — 공손성 축",
+    "원문·usable_facts에 없는 이유·보상·새 약속",
+    "설명의 유무를 책임 인정과 자동 등치하는 것",
+  ],
+  counter_rule_note_zh_ko:
+    "\"사과는 길고 강할수록 좋다\" — 반례: 사소하고 즉시 회복된 실수에는 \"제가 놓쳤네요. 미안해요\"처럼 간결한 책임 인정이 과도한 보상 약속보다 자연스럽다.",
+};
+
+// ── 제안 · 선택지와 방안 명료성 ────────────────────────────────────────
+const PROPOSAL_OPTIONALITY_CLARITY: TargetFeature = {
+  code: "proposal_optionality_clarity",
+  version: "1.0",
+  speech_act: "proposal",
+  learner_label: "선택지와 방안 명료성",
+  operational_definition:
+    "상대 또는 공동의 미래 행동 방안을 선택 가능한 안으로 분명히 제시하는 초점. 화자가 이미 정한 지시처럼 밀어붙이는가, 결정권을 존중하면서 실행할 안을 식별 가능하게 제시하는가, 또는 유보가 지나쳐 무엇을 제안하는지 흐려지는가를 본다. " +
+    "직접성 자체가 아니라 제안의 선택 가능성과 명료성을 함께 판단한다.",
+  band_schema: [
+    { code: "too_directive", label_ko: "지시적임 (제안을 확정된 결정처럼 제시함)" },
+    { code: "within_band", label_ko: "알맞음" },
+    { code: "too_tentative", label_ko: "지나치게 유보적 (제안 내용이 흐려짐)" },
+  ],
+  within_band_code: "within_band",
+  relevant_resources: [
+    "제안 공식 (不如…·要不要…·我建议…)",
+    "검토 가능성 (可以考虑…·我们是不是可以…)",
+    "조건·범위 한정 (如果…的话·先…再…)",
+    "허용된 근거와 예상 효과",
+  ],
+  excluded_confounds: [
+    "상대 행동을 요구하는 요청·지시",
+    "화자의 단독 결정 또는 통보",
+    "근거 문장 수나 표현 길이 자체",
+    "격식체 선택 — 공손성 축",
+  ],
+  closing_principle_ko:
+    "제안은 결정권을 빼앗지 않으면서도 무엇을 해 보자는지 분명해야 합니다. 직접 말해도 선택 가능한 안이면 적절할 수 있습니다.",
+  counter_rule_note:
+    "\"간접적일수록 좋은 제안이다\" — 반례: 공동 결정이 필요한 급한 상황에서는 분명한 방안을 짧게 제시하는 편이 여러 겹 유보해 안을 흐리는 것보다 적절하다.",
+  operational_definition_zh_ko:
+    "상대 또는 공동의 미래 행동 방안을 한국어로 선택 가능한 안으로 분명히 제시하는 초점. 화자가 이미 정한 지시처럼 밀어붙이는가, 결정권을 존중하면서 실행할 안을 식별 가능하게 제시하는가, 또는 유보가 지나쳐 무엇을 제안하는지 흐려지는가를 본다. " +
+    "직접성 자체가 아니라 제안의 선택 가능성과 명료성을 함께 판단한다.",
+  relevant_resources_zh_ko: [
+    "제안 공식 (-면 어떨까요·-는 게 어때요·-을 제안합니다)",
+    "검토 가능성 (-을 고려해 볼 수 있습니다·혹시 -하는 건 어떨까요)",
+    "조건·범위 한정 (-라면·우선 -하고 나서)",
+    "허용된 근거와 예상 효과",
+  ],
+  excluded_confounds_zh_ko: [
+    "상대 행동을 요구하는 요청·지시",
+    "화자의 단독 결정 또는 통보",
+    "근거 문장 수나 표현 길이 자체",
+    "높임 등급 선택 — 공손성 축",
+  ],
+  counter_rule_note_zh_ko:
+    "\"간접적일수록 좋은 제안이다\" — 반례: 공동 결정이 필요한 급한 상황에서는 \"우선 A부터 확인하는 게 어떨까요?\"처럼 방안을 분명히 제시하는 편이 지나친 유보보다 적절하다.",
+};
+
+// ── 초대 · 참여 선택권과 약속 명료성 ───────────────────────────────────
+const INVITATION_CHOICE_COMMITMENT: TargetFeature = {
+  code: "invitation_choice_commitment",
+  version: "1.0",
+  speech_act: "agreement",
+  learner_label: "참여 선택권과 약속 명료성",
+  operational_definition:
+    "화자가 관여하는 행사·활동에 상대를 초대하면서 참여 내용과 선택권을 조절하는 초점. 업무 의무나 압박처럼 수락을 강제하는가, 활동·조건을 알리고 자유로운 선택을 남기는가, 또는 초대 의도와 참여 조건이 지나치게 모호한가를 본다. " +
+    "여러 번 권하거나 설득하는 것을 진정성의 자동 기준으로 삼지 않는다.",
+  band_schema: [
+    { code: "too_pressuring", label_ko: "압박함 (참여 선택권을 충분히 남기지 않음)" },
+    { code: "within_band", label_ko: "알맞음" },
+    { code: "too_ambiguous", label_ko: "지나치게 모호함 (초대·약속 내용이 흐려짐)" },
+  ],
+  within_band_code: "within_band",
+  relevant_resources: [
+    "공동 활동 제시 (一起…吧·要不要一起…)",
+    "참여 의향 확인 (你想来吗·有空的话一起来)",
+    "공식 초대 (想邀请您参加…·欢迎您来…)",
+    "선택권·거절 여지 (不方便也没关系)",
+    "원문이 허용한 시간·장소·편의 정보",
+  ],
+  excluded_confounds: [
+    "업무상 의무 참석 요청·지시",
+    "화자 관여가 없는 일반 조언·제안",
+    "반복 권유 횟수나 문장 길이 자체",
+    "매체를 격식의 자동 기준으로 삼는 것",
+  ],
+  closing_principle_ko:
+    "초대는 함께할 활동과 약속을 알아볼 수 있게 제시하되, 상대가 실제로 수락하거나 거절할 여지를 남겨야 합니다.",
+  counter_rule_note:
+    "\"여러 번 강하게 권해야 진짜 초대다\" — 반례: 일정·비용 부담이 큰 활동에서는 한 번의 분명한 초대와 자유로운 거절 여지가 반복 설득보다 적절하다.",
+  operational_definition_zh_ko:
+    "화자가 관여하는 행사·활동에 상대를 한국어로 초대하면서 참여 내용과 선택권을 조절하는 초점. 업무 의무나 압박처럼 수락을 강제하는가, 활동·조건을 알리고 자유로운 선택을 남기는가, 또는 초대 의도와 참여 조건이 지나치게 모호한가를 본다. " +
+    "여러 번 권하거나 설득하는 것을 진정성의 자동 기준으로 삼지 않는다.",
+  relevant_resources_zh_ko: [
+    "공동 활동 제시 (같이 -할래요·함께 -하시겠어요)",
+    "참여 의향 확인 (시간 되시면 같이 가실래요·참석 가능하실까요)",
+    "공식 초대 (-에 초대합니다·함께해 주시면 좋겠습니다)",
+    "선택권·거절 여지 (어려우시면 괜찮습니다·부담 없이 말씀해 주세요)",
+    "원문이 허용한 시간·장소·편의 정보",
+  ],
+  excluded_confounds_zh_ko: [
+    "업무상 의무 참석 요청·지시",
+    "화자 관여가 없는 일반 조언·제안",
+    "반복 권유 횟수나 문장 길이 자체",
+    "매체를 격식의 자동 기준으로 삼는 것",
+  ],
+  counter_rule_note_zh_ko:
+    "\"여러 번 강하게 권해야 진짜 초대다\" — 반례: 일정·비용 부담이 큰 활동에서는 한 번의 분명한 초대와 \"어려우시면 괜찮습니다\"라는 선택권이 반복 설득보다 적절하다.",
+};
+
+// ── 반대 · 이견 명료성과 관계 조정 ────────────────────────────────────
+const OPPOSITION_STANCE_MITIGATION: TargetFeature = {
+  code: "opposition_stance_mitigation",
+  version: "1.0",
+  speech_act: "opposition",
+  learner_label: "이견 명료성과 관계 조정",
+  operational_definition:
+    "상대가 제시한 같은 명제에 대한 이견을 식별 가능하게 밝히면서 관계와 이해관계에 필요한 조정을 하는 초점. 인격 비난이나 단정으로 대립을 키우는가, 입장과 범위를 분명히 하면서 필요한 인정·한정·근거를 사용하는가, 또는 완화가 지나쳐 실제 이견이 무엇인지 감추는가를 본다. " +
+    "부분 동의나 인정은 선택적 자원이며 고정된 첫 문장 공식이 아니다.",
+  band_schema: [
+    { code: "too_confrontational", label_ko: "대립적임 (이견보다 공격·단정이 앞섬)" },
+    { code: "within_band", label_ko: "알맞음" },
+    { code: "too_obscured", label_ko: "지나치게 흐림 (이견의 대상·범위가 불분명함)" },
+  ],
+  within_band_code: "within_band",
+  relevant_resources: [
+    "이견 명시 (我不太同意…·我的看法不太一样)",
+    "상대 견해 인정 (我理解你的意思，不过…)",
+    "부분 동의·범위 한정 (这一点我同意，但是…)",
+    "입장 완화 (我觉得·可能·恐怕)",
+    "원문이 허용한 근거·대안",
+  ],
+  excluded_confounds: [
+    "상대 인격에 대한 평가·비난",
+    "preceding_turn에 없는 새 논점",
+    "부분 동의·완화 표현의 개수",
+    "격식체 선택 — 공손성 축",
+  ],
+  closing_principle_ko:
+    "반대는 관계를 공격하지 않으면서도 무엇에 어느 범위까지 동의하지 않는지 알아볼 수 있어야 합니다. 완화는 이견을 숨기는 장치가 아닙니다.",
+  counter_rule_note:
+    "\"반대는 반드시 먼저 동의해야 한다\" — 반례: 안전·권리처럼 즉시 명확한 이견이 필요한 상황에서는 근거 있는 직접 반대가 형식적인 선동의보다 적절하다.",
+  operational_definition_zh_ko:
+    "상대가 제시한 같은 명제에 대한 이견을 한국어로 식별 가능하게 밝히면서 관계와 이해관계에 필요한 조정을 하는 초점. 인격 비난이나 단정으로 대립을 키우는가, 입장과 범위를 분명히 하면서 필요한 인정·한정·근거를 사용하는가, 또는 완화가 지나쳐 실제 이견이 무엇인지 감추는가를 본다. " +
+    "부분 동의나 인정은 선택적 자원이며 고정된 첫 문장 공식이 아니다.",
+  relevant_resources_zh_ko: [
+    "이견 명시 (저는 조금 다르게 생각합니다·그 부분에는 동의하기 어렵습니다)",
+    "상대 견해 인정 (말씀하신 취지는 이해하지만·그 점은 맞지만)",
+    "부분 동의·범위 한정 (-부분에는 동의하지만·적어도 -에는)",
+    "입장 완화 (제가 보기에는·아마·조금)",
+    "원문이 허용한 근거·대안",
+  ],
+  excluded_confounds_zh_ko: [
+    "상대 인격에 대한 평가·비난",
+    "preceding_turn에 없는 새 논점",
+    "부분 동의·완화 표현의 개수",
+    "높임 등급 선택 — 공손성 축",
+  ],
+  counter_rule_note_zh_ko:
+    "\"반대는 반드시 먼저 동의해야 한다\" — 반례: 안전·권리처럼 즉시 명확한 이견이 필요한 상황에서는 \"그 방안에는 반대합니다. 안전 기준을 충족하지 못합니다\"라는 근거 있는 직접 반대가 형식적인 선동의보다 적절하다.",
+};
+
+// ── 칭찬하기 · 평가 강도와 민감도 ─────────────────────────────────────
+const COMPLIMENT_GROUNDING_SENSITIVITY: TargetFeature = {
+  code: "compliment_grounding_sensitivity",
+  version: "1.0",
+  speech_act: "compliment",
+  learner_label: "평가 강도와 민감도",
+  operational_definition:
+    "상대 또는 상대 관련 대상에 대한 긍정 평가의 강도·범위·개인성을 관찰 근거, 관계, 주제 민감도에 맞추는 초점. 성과에 비해 지나치게 약하거나 의례적으로 들리는가, 근거와 관계에 맞는가, 또는 확인하지 않은 속성·사적 영역까지 과장해 침해·아첨으로 들릴 수 있는가를 본다. " +
+    "명시적 칭찬과 암시적 칭찬은 모두 가능하며 명시성 자체를 정답으로 삼지 않는다.",
+  band_schema: [
+    { code: "under_calibrated", label_ko: "부족함 (성과·관계에 비해 평가가 약하거나 의례적임)" },
+    { code: "within_band", label_ko: "알맞음" },
+    { code: "overreaching", label_ko: "과함 (평가 범위·개인성이 근거를 넘어섬)" },
+  ],
+  within_band_code: "within_band",
+  relevant_resources: [
+    "명시적 긍정 평가 (做得真好·这个设计很清楚)",
+    "구체적 근거 (尤其是…·你把…处理得很细致)",
+    "범위 한정 (这次·这一部分·在…方面)",
+    "화자에게 미친 긍정적 효과 (让我很容易理解·很有启发)",
+    "암시적 긍정 평가",
+  ],
+  excluded_confounds: [
+    "감사·축하가 칭찬을 대체하는 것",
+    "원문에 없는 능력·외모·관계의 발명",
+    "외모·신체·사적 관계를 자동으로 적절한 칭찬 주제로 보는 것",
+    "명시성·문장 길이 자체",
+  ],
+  closing_principle_ko:
+    "칭찬은 세게 말하는 것보다, 실제로 확인한 강점을 관계와 주제의 민감도에 맞는 범위로 평가할 때 자연스럽습니다.",
+  counter_rule_note:
+    "\"구체적이고 강한 칭찬일수록 좋다\" — 반례: 관계가 멀거나 주제가 사적인 경우에는 범위를 한정한 평가가 과장된 개인 평가보다 적절하다.",
+  operational_definition_zh_ko:
+    "상대 또는 상대 관련 대상에 대한 한국어 긍정 평가의 강도·범위·개인성을 관찰 근거, 관계, 주제 민감도에 맞추는 초점. 성과에 비해 지나치게 약하거나 의례적으로 들리는가, 근거와 관계에 맞는가, 또는 확인하지 않은 속성·사적 영역까지 과장해 침해·아첨으로 들릴 수 있는가를 본다. " +
+    "명시적 칭찬과 암시적 칭찬은 모두 가능하며 명시성 자체를 정답으로 삼지 않는다.",
+  relevant_resources_zh_ko: [
+    "명시적 긍정 평가 (정말 잘했어요·이 구성이 아주 명확하네요)",
+    "구체적 근거 (특히 -부분이·-을 세심하게 처리했네요)",
+    "범위 한정 (이번 발표에서·이 부분은·-측면에서)",
+    "화자에게 미친 긍정적 효과 (이해하기 쉬웠어요·많이 배웠어요)",
+    "암시적 긍정 평가",
+  ],
+  excluded_confounds_zh_ko: [
+    "감사·축하가 칭찬을 대체하는 것",
+    "원문에 없는 능력·외모·관계의 발명",
+    "외모·신체·사적 관계를 자동으로 적절한 칭찬 주제로 보는 것",
+    "명시성·문장 길이 자체",
+  ],
+  counter_rule_note_zh_ko:
+    "\"구체적이고 강한 칭찬일수록 좋다\" — 반례: 관계가 멀거나 주제가 사적인 경우에는 \"이번 발표의 사례 구성이 명확했습니다\"처럼 범위를 한정한 평가가 과장된 개인 평가보다 적절하다.",
+};
+
+// ── 칭찬 대응 · 칭찬 처리와 관계 조정 ─────────────────────────────────
+const COMPLIMENT_RESPONSE_UPTAKE: TargetFeature = {
+  code: "compliment_response_uptake",
+  version: "1.0",
+  speech_act: "compliment",
+  learner_label: "칭찬 처리와 관계 조정",
+  operational_definition:
+    "상대가 제시한 긍정 평가를 실제로 처리하면서 수용·감사·공로 분배·자기 낮추기·비껴가기의 조합을 관계와 주제에 맞추는 초점. 칭찬을 형식적으로만 밀어내 관계적 응답이 부족한가, 맥락에 맞게 처리하는가, 또는 자기 자랑·과도한 부정·상호 칭찬이 원래 칭찬 처리를 대체하는가를 본다. " +
+    "수용·거절·비껴가기 중 어느 전략도 언어·문화의 고정 정답으로 두지 않는다.",
+  band_schema: [
+    { code: "under_engaged", label_ko: "부족함 (칭찬을 관계적으로 충분히 처리하지 않음)" },
+    { code: "within_band", label_ko: "알맞음" },
+    { code: "overextended", label_ko: "과함 (자기 평가·부정·되돌리기가 칭찬 처리를 덮음)" },
+  ],
+  within_band_code: "within_band",
+  relevant_resources: [
+    "수용과 감사 (谢谢·谢谢你这么说)",
+    "긍정 감정 표현 (你这么说我很开心)",
+    "공로 분배 (是大家一起完成的·多亏了团队)",
+    "자기 낮추기·비껴가기 (过奖了·哪里哪里)",
+    "관계에 맞는 칭찬 되돌리기",
+  ],
+  excluded_confounds: [
+    "수용·거절 전략의 국가·문화별 고정 정답화",
+    "칭찬에 실제로 응답하지 않는 주제 전환",
+    "독립적인 자기 자랑이나 과도한 자기 비하",
+    "원래 칭찬 처리를 대체하는 상호 칭찬",
+  ],
+  closing_principle_ko:
+    "칭찬 대응에는 하나의 문화 공식이 없습니다. 상대의 평가를 알아듣고, 수용·감사·공로 분배·비껴가기를 현재 관계에 맞게 조합하는 것이 핵심입니다.",
+  counter_rule_note:
+    "\"중국어 칭찬에는 반드시 부정으로 답해야 한다\" — 반례: 관계와 주제에 따라 간단한 수용과 감사가 과도한 부정보다 자연스럽고 적절할 수 있다.",
+  operational_definition_zh_ko:
+    "상대가 제시한 긍정 평가를 한국어로 실제 처리하면서 수용·감사·공로 분배·자기 낮추기·비껴가기의 조합을 관계와 주제에 맞추는 초점. 칭찬을 형식적으로만 밀어내 관계적 응답이 부족한가, 맥락에 맞게 처리하는가, 또는 자기 자랑·과도한 부정·상호 칭찬이 원래 칭찬 처리를 대체하는가를 본다. " +
+    "수용·거절·비껴가기 중 어느 전략도 언어·문화의 고정 정답으로 두지 않는다.",
+  relevant_resources_zh_ko: [
+    "수용과 감사 (고마워요·좋게 봐 주셔서 감사합니다)",
+    "긍정 감정 표현 (그렇게 말해 주셔서 기뻐요)",
+    "공로 분배 (다 같이 한 일이에요·팀 덕분이에요)",
+    "자기 낮추기·비껴가기 (아직 부족한데 좋게 봐 주셨네요)",
+    "관계에 맞는 칭찬 되돌리기",
+  ],
+  excluded_confounds_zh_ko: [
+    "수용·거절 전략의 국가·문화별 고정 정답화",
+    "칭찬에 실제로 응답하지 않는 주제 전환",
+    "독립적인 자기 자랑이나 과도한 자기 비하",
+    "원래 칭찬 처리를 대체하는 상호 칭찬",
+  ],
+  counter_rule_note_zh_ko:
+    "\"한국어 칭찬에는 반드시 겸손하게 부정해야 한다\" — 반례: 관계와 주제에 따라 \"좋게 봐 주셔서 감사합니다\"처럼 간단히 수용하는 반응이 과도한 자기 비하보다 자연스럽고 적절할 수 있다.",
+};
+
+// ── 직접 불만 · 문제 명료화와 책임 범위 ───────────────────────────────
+const COMPLAINT_PROBLEM_ACCOUNTABILITY: TargetFeature = {
+  code: "complaint_problem_accountability",
+  version: "1.0",
+  speech_act: "complaint",
+  learner_label: "문제 명료화와 책임 범위",
+  operational_definition:
+    "책임 당사자 또는 해결 권한자에게 문제·영향·책임 범위를 사실과 R에 맞게 밝히는 초점. 문제와 영향이 지나치게 흐려 수리할 대상을 알기 어려운가, 근거 있는 범위로 문제를 제기하는가, 또는 확인되지 않은 책임·의도·심각도를 확대해 인신 비난이나 위협으로 넘어가는가를 본다. " +
+    "개선·수리 요구는 원문 또는 서버가 허용한 usable_facts에 있을 때만 종속적으로 사용할 수 있고 자동 필수 요소가 아니다.",
+  band_schema: [
+    { code: "under_specified", label_ko: "부족함 (문제·영향·책임 범위가 불분명함)" },
+    { code: "within_band", label_ko: "알맞음" },
+    { code: "over_attributed", label_ko: "과함 (책임·의도·심각도를 근거보다 확대함)" },
+  ],
+  within_band_code: "within_band",
+  relevant_resources: [
+    "문제 사실 (…出了问题·已经连续…)",
+    "구체적 영향 (耽误了…·给我造成了…)",
+    "근거 있는 책임 범위 (这部分由贵方负责·上次约定的是…)",
+    "부정 평가·감정 (这让我很困扰·我对此很不满意)",
+    "허용된 개선·수리 요구 (希望尽快处理·请确认…)",
+  ],
+  excluded_confounds: [
+    "책임자가 아닌 제3자에게 하는 불평",
+    "근거 없는 의도 추정·인신 비난",
+    "보상·수리 요구의 자동 필수화",
+    "직접성·감정 표현의 존재 자체",
+  ],
+  closing_principle_ko:
+    "불만은 세게 말하는 것이 아니라, 무엇이 어떤 영향을 주었고 상대가 어디까지 책임지는지를 사실에 맞게 밝혀야 해결 가능한 문제 제기가 됩니다.",
+  counter_rule_note:
+    "\"불만은 간접적일수록 공손하다\" — 반례: 반복 피해와 책임이 분명한 상황에서는 문제와 필요한 조치를 직접 특정하는 편이 모호한 암시보다 적절하다.",
+  operational_definition_zh_ko:
+    "책임 당사자 또는 해결 권한자에게 문제·영향·책임 범위를 한국어로 사실과 R에 맞게 밝히는 초점. 문제와 영향이 지나치게 흐려 수리할 대상을 알기 어려운가, 근거 있는 범위로 문제를 제기하는가, 또는 확인되지 않은 책임·의도·심각도를 확대해 인신 비난이나 위협으로 넘어가는가를 본다. " +
+    "개선·수리 요구는 원문 또는 서버가 허용한 usable_facts에 있을 때만 종속적으로 사용할 수 있고 자동 필수 요소가 아니다.",
+  relevant_resources_zh_ko: [
+    "문제 사실 (-에 문제가 생겼습니다·계속 -되고 있습니다)",
+    "구체적 영향 (-이 지연됐습니다·-에 차질이 생겼습니다)",
+    "근거 있는 책임 범위 (이 부분은 귀사 담당입니다·지난번 합의는 -였습니다)",
+    "부정 평가·감정 (이 문제로 곤란합니다·이 점은 유감입니다)",
+    "허용된 개선·수리 요구 (빠른 처리를 요청드립니다·확인해 주시기 바랍니다)",
+  ],
+  excluded_confounds_zh_ko: [
+    "책임자가 아닌 제3자에게 하는 불평",
+    "근거 없는 의도 추정·인신 비난",
+    "보상·수리 요구의 자동 필수화",
+    "직접성·감정 표현의 존재 자체",
+  ],
+  counter_rule_note_zh_ko:
+    "\"불만은 간접적일수록 공손하다\" — 반례: 반복 피해와 책임이 분명한 상황에서는 \"배송 지연이 세 번 반복되어 일정에 차질이 생겼습니다. 처리 일정을 확인해 주십시오\"처럼 문제와 조치를 특정하는 편이 모호한 암시보다 적절하다.",
+};
+
 // ── 공손성 (보조축) — v1.3 미사용 ─────────────────────────────────────
 // 계약 0-b·19: axis_feature = unit.target_feature 고정. 공손성 혼용 금지.
 // 공손성이 '중심 초점'인 단원에서만 이 코드를 unit.target_feature로 쓴다.
@@ -222,14 +584,44 @@ export const TARGET_FEATURES: Record<string, TargetFeature> = {
   [REQUEST_MITIGATION_OPTIONALITY.code]: REQUEST_MITIGATION_OPTIONALITY,
   [REFUSAL_SOFTENING.code]: REFUSAL_SOFTENING,
   [GRATITUDE_CALIBRATION.code]: GRATITUDE_CALIBRATION,
+  [APOLOGY_ACCOUNTABILITY_REPAIR.code]: APOLOGY_ACCOUNTABILITY_REPAIR,
+  [PROPOSAL_OPTIONALITY_CLARITY.code]: PROPOSAL_OPTIONALITY_CLARITY,
+  [INVITATION_CHOICE_COMMITMENT.code]: INVITATION_CHOICE_COMMITMENT,
+  [OPPOSITION_STANCE_MITIGATION.code]: OPPOSITION_STANCE_MITIGATION,
+  [COMPLIMENT_GROUNDING_SENSITIVITY.code]: COMPLIMENT_GROUNDING_SENSITIVITY,
+  [COMPLIMENT_RESPONSE_UPTAKE.code]: COMPLIMENT_RESPONSE_UPTAKE,
+  [COMPLAINT_PROBLEM_ACCOUNTABILITY.code]: COMPLAINT_PROBLEM_ACCOUNTABILITY,
   [POLITENESS.code]: POLITENESS,
 };
 
-/** 화행 → 그 화행의 기본 화용 초점 코드(골든 미션·승격 기본값). */
-export const DEFAULT_FEATURE_BY_ACT: Partial<Record<SpeechActUI, string>> = {
+/**
+ * 화행 → 자동 승격 기본 초점.
+ * compliment_response는 정본에 포함하지만 response subtype 코어 경로 전까지 자동 기본값으로
+ * 쓰지 않는다. 7월 compliment 코어는 compliment_giving만 생성한다.
+ */
+export const DEFAULT_FEATURE_BY_ACT: Record<SpeechActUI, string> = {
   request: REQUEST_MITIGATION_OPTIONALITY.code,
   refusal: REFUSAL_SOFTENING.code,
+  apology: APOLOGY_ACCOUNTABILITY_REPAIR.code,
   thanks: GRATITUDE_CALIBRATION.code,
+  proposal: PROPOSAL_OPTIONALITY_CLARITY.code,
+  agreement: INVITATION_CHOICE_COMMITMENT.code,
+  opposition: OPPOSITION_STANCE_MITIGATION.code,
+  compliment: COMPLIMENT_GROUNDING_SENSITIVITY.code,
+  complaint: COMPLAINT_PROBLEM_ACCOUNTABILITY.code,
+};
+
+/** 한 화행에 속한 승인 feature 목록. 칭찬은 주차 안에서 두 미션으로 분리한다. */
+export const FEATURE_CODES_BY_ACT: Record<SpeechActUI, readonly string[]> = {
+  request: [REQUEST_MITIGATION_OPTIONALITY.code],
+  refusal: [REFUSAL_SOFTENING.code],
+  apology: [APOLOGY_ACCOUNTABILITY_REPAIR.code],
+  thanks: [GRATITUDE_CALIBRATION.code],
+  proposal: [PROPOSAL_OPTIONALITY_CLARITY.code],
+  agreement: [INVITATION_CHOICE_COMMITMENT.code],
+  opposition: [OPPOSITION_STANCE_MITIGATION.code],
+  compliment: [COMPLIMENT_GROUNDING_SENSITIVITY.code, COMPLIMENT_RESPONSE_UPTAKE.code],
+  complaint: [COMPLAINT_PROBLEM_ACCOUNTABILITY.code],
 };
 
 export function getTargetFeature(code: string): TargetFeature | undefined {
