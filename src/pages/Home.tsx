@@ -102,8 +102,8 @@ const Home = () => {
               학습을 시작하기 전에
             </DialogPrimitive.Title>
             <DialogPrimitive.Description className="text-sm text-muted-foreground">
-              아래 정보는 연구 배경 분석에만 익명으로 활용되며, 2~3분이면 입력할
-              수 있어요.
+              아래 정보는 학습 환경과 지원 수준을 맞추는 데 사용되며, 2~3분이면 입력할
+              수 있습니다.
             </DialogPrimitive.Description>
             <div className="-mx-2 mt-2 max-h-[65vh] overflow-y-auto px-2">
               <ProfileWizardForm

@@ -36,7 +36,7 @@ const ProfileSetup = () => {
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-12">
         <h1 className="text-2xl font-bold tracking-tight">프로필 설정</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          학습을 시작하기 전에 연구 배경 정보를 입력해 주세요. (3단계)
+          학습을 시작하기 전에 학습자 배경 정보를 입력해 주세요. (2단계)
         </p>
         <div className="mt-8">
           <ProfileWizardForm onCompleted={() => navigate("/learner/home", { replace: true })} />

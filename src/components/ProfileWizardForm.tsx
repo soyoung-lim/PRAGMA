@@ -13,7 +13,7 @@ import {
 } from "@/lib/auth/profileOptions";
 import { toast } from "sonner";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
 
 const AFFILIATION_OPTIONS = [
   "학부생",
@@ -165,7 +165,7 @@ const Field = ({
 
 const StepIndicator = ({ step }: { step: Step }) => (
   <div className="mb-6 flex items-center gap-2 text-xs">
-    {[1, 2, 3].map((n) => {
+    {[1, 2].map((n) => {
       const active = step === (n as Step);
       const done = step > n;
       return (
@@ -182,9 +182,9 @@ const StepIndicator = ({ step }: { step: Step }) => (
             {n}
           </div>
           <span className={active ? "font-medium" : "text-muted-foreground"}>
-            {n === 1 ? "기본 정보" : n === 2 ? "학습자 배경" : "동의"}
+            {n === 1 ? "기본 정보" : "학습자 배경"}
           </span>
-          {n < 3 && <span className="text-muted-foreground">›</span>}
+          {n < 2 && <span className="text-muted-foreground">›</span>}
         </div>
       );
     })}
@@ -210,11 +210,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
   const [exposureContexts, setExposureContexts] = useState<string[]>([]);
   const [tiExperience, setTiExperience] = useState("");
 
-  // Screen 3
-  const [researchConsent, setResearchConsent] = useState(false);
-  const [anonConfirmed, setAnonConfirmed] = useState(false);
-  const [reportConsent, setReportConsent] = useState(false);
-
   const [busy, setBusy] = useState(false);
 
   const trimmedName = fullName.trim();
@@ -232,8 +227,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
     (!needsChineseLevel || chineseLevel !== "") &&
     exposureContexts.length > 0 &&
     tiExperience !== "";
-  const step3Valid = researchConsent && anonConfirmed;
-  const canSubmit = step1Valid && step2Valid && step3Valid && !busy;
+  const canSubmit = step1Valid && step2Valid && !busy;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -262,9 +256,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
           chinese_level: needsChineseLevel ? chineseLevel : null,
           chinese_exposure_contexts: exposureContexts,
           ti_experience_level: tiExperience,
-          consent_data_use: researchConsent,
-          consent_anonymous_analysis: anonConfirmed,
-          consent_email_report: reportConsent,
           // Keep full_name in sync (used by other screens)
           full_name: trimmedName,
           profile_completed: true,
@@ -363,56 +354,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
         </div>
       )}
 
-      {step === 3 && (
-        <div className="space-y-6">
-          <div className="rounded-md border border-border bg-muted/30 p-4 text-xs leading-relaxed text-muted-foreground">
-            식별정보(이름·이메일)는 운영 목적으로만 사용되며, 연구 분석은
-            익명화되어 수행됩니다.
-          </div>
-
-          <div className="space-y-3">
-            <label className="flex items-start gap-3 text-sm">
-              <input
-                type="checkbox"
-                checked={researchConsent}
-                onChange={(e) => setResearchConsent(e.target.checked)}
-                className="mt-1 h-4 w-4"
-              />
-              <span>
-                <span className="font-medium">[필수]</span> 연구 목적의 학습 데이터
-                활용에 동의합니다.
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 text-sm">
-              <input
-                type="checkbox"
-                checked={anonConfirmed}
-                onChange={(e) => setAnonConfirmed(e.target.checked)}
-                className="mt-1 h-4 w-4"
-              />
-              <span>
-                <span className="font-medium">[필수]</span> 연구 분석이
-                익명화되어 수행됨을 확인했습니다.
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 text-sm">
-              <input
-                type="checkbox"
-                checked={reportConsent}
-                onChange={(e) => setReportConsent(e.target.checked)}
-                className="mt-1 h-4 w-4"
-              />
-              <span>
-                <span className="text-muted-foreground">[선택]</span> 학습 리포트
-                이메일 수신에 동의합니다.
-              </span>
-            </label>
-          </div>
-        </div>
-      )}
-
       <div className="mt-8 flex items-center justify-between gap-3">
         <button
           type="button"
@@ -423,7 +364,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
           이전
         </button>
 
-        {step < 3 ? (
+        {step < 2 ? (
           <button
             type="button"
             onClick={() => setStep((s) => (s + 1) as Step)}
