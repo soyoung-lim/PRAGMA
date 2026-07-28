@@ -94,7 +94,11 @@ export function ChatScene({
   );
 }
 
-/** target 텍스트에 highlights 부분을 <mark> 처리(정답 공개 후). */
+/**
+ * target 텍스트의 화용 표지를 제출 후에만 표시한다.
+ * 포커스를 받을 수 있어 모바일 탭·키보드로도 위치를 확인할 수 있지만,
+ * 정답 전체를 뜻하지는 않는다(설명은 호출 화면에 별도 노출).
+ */
 export function highlightZh(text: string, highlights: string[] | undefined): ReactNode {
   if (!highlights || highlights.length === 0) return text;
   const escaped = highlights
@@ -106,7 +110,13 @@ export function highlightZh(text: string, highlights: string[] | undefined): Rea
   const parts = text.split(re);
   return parts.map((p, i) =>
     highlights.includes(p) ? (
-      <mark key={i} className="rounded-[2px] border-b-2 border-[#D9A400] bg-[#FFE9A8] px-px">
+      <mark
+        key={i}
+        tabIndex={0}
+        title="이 문항에서 살펴볼 표현 — 정답 전체를 뜻하지 않습니다"
+        aria-label={`${p} — 이 문항에서 살펴볼 표현. 정답 전체를 뜻하지 않습니다.`}
+        className="cursor-help rounded-[2px] border-b-2 border-[#D9A400] bg-[#FFE9A8] px-px outline-none transition-shadow focus:ring-2 focus:ring-[#15202B] focus:ring-offset-1"
+      >
         {p}
       </mark>
     ) : (
