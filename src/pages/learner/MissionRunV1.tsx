@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -1090,6 +1090,17 @@ function MissionRunner({
               </div>
             </div>
             )}
+
+            <Link
+              to="/learner/lounge"
+              className="flex w-full items-center justify-between rounded-xl border border-[#EAE4D2] bg-[#FFFDF4] px-4 py-3 text-left transition hover:border-[#C9A227] hover:bg-[#FFF8D8]"
+            >
+              <div>
+                <div className="text-[11px] font-extrabold text-[#6B5518]">미션 밖 쉬어가기</div>
+                <div className="mt-0.5 text-[14px] font-bold text-[#15202B]">🎉 라운지 열림</div>
+              </div>
+              <span aria-hidden className="text-[#6B5518]">→</span>
+            </Link>
 
             {/* 완료 화면의 마지막 행동 — 데모/샘플에서는 「처음부터 다시 보기」 자리를
                 수행 방식 전환이 대신한다. "이어서"라는 말대로 번역을 끝까지 훑어본
