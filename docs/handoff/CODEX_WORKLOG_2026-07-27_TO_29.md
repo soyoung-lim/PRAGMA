@@ -203,6 +203,23 @@
   - 로컬 1280px·390px 잠금 화면, 교수자 공개 제어, 브라우저 콘솔 오류 없음 확인
 - 생성·평가 프롬프트와 코어 표면은 변경하지 않았다. 코어 해시는 `24adf002ee1d7ff391062445d8dbc55ba822638172aef0ede43497bbbe979b01`로 유지된다.
 
+## 12. Full Mission MPJ4 전환과 미니 모듈 경계
+
+- `/admin/browser`의 `미션 생성`은 선택한 코어를 Edge `action: mission`으로 승격해 Full Mission을 생성·검사·저장하는 실제 API 경로임을 재확인했다.
+- 495 본 배치는 `scenario_core`만 생성한다. 미션·미니 모듈을 495건에 일괄 결합하지 않는다.
+- 신규 Full Mission은 `scale4 → judge3 → fix_choice → reason_conf → DCT`의 MPJ4+DCT1 구조로 확정했다.
+- `multi_judge`는 신규 Full Mission에서 제거하되 기존 `mission_v1/v2` MPJ5 읽기와 회귀검사는 유지한다.
+- 신규 생성물은 `mission_v3`, prompt version은 `mission_v3_mpj4`로 분리했다. DB 제약은 기존 v1/v2를 보존하면서 v3만 추가 허용한다.
+- 미니 모듈 `이 상황, 이 말투`와 `뜻은 그대로`는 별도 큐레이션 단위다. 전자는 상황별 화용 적합성, 후자는 의미 충실성을 다루며 495 코어와 1:1 대응시키지 않는다.
+- 코어 프롬프트는 수정하지 않았다. 현재 브랜치의 코어 표면 해시 `4c996a00259cf54dcc23b03d0998f7afd3926a95c284ed23719910ebb1d871c0`는 이번 변경 전후 동일하다.
+- 로컬 검증: typecheck·production build 통과, 전체 Vitest `129 pass / 3 skip`(MPJ4/legacy 호환/프롬프트 스냅샷 신규 테스트 포함).
+- 원격 DB에는 `20260728163000_mission_v3_mpj4.sql` 한 건만 dry-run 확인 후 적용했다.
+- Supabase Edge `generate-scenario`를 배포했다. Railway/main 배포는 하지 않았다.
+- 실제 API 스모크 1건:
+  - 코어: `core_1784799960025`, `request|beginner_intermediate|work|schedule_change|18`
+  - 결과: `mission_v3`, provenance `mission_v3_mpj4`, MPJ 4개, 결정론 검사 pass, 1회 생성, 저장 후 새로고침 재조회 성공.
+  - AI 품질점검은 fix_choice의 오답 두 개가 존칭을 별도 기준으로 삼은 초점 혼입을 결함으로 보고했다. 자동 승인하지 않고 `generated` 상태로 남겼다.
+
 ## 종료 상태
 
 - P0-A: 원인 확정, 재로그인으로 해결, 수정 0건.

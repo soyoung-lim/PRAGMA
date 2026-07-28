@@ -91,7 +91,7 @@ const prompts = [
     "선행 발화(preceding_turn)를 반드시 채우게 하는 분기.",
     S.buildCoreUserPrompt({ ...S.CORE_PROBE_BASE, direction: "ko_zh", source_modality: "written", is_response_act: true })),
   entry("mission.system", "미션 승격 · 지시문 (번역)", "mission",
-    "코어를 MPJ 5문항 + 산출 과제로 승격시킬 때의 지시문.",
+    "코어를 MPJ 4문항 + 산출 과제로 승격시킬 때의 지시문.",
     S.buildMissionSystemPrompt(PROBE_FEATURE, false, false, "ko_zh")),
   entry("mission.system.spoken", "미션 승격 · 지시문 (통역)", "mission",
     "구두 산출 미션용 분기.", S.buildMissionSystemPrompt(PROBE_FEATURE, false, true, "ko_zh")),

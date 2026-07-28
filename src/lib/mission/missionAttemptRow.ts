@@ -1,11 +1,11 @@
 import type { Json } from "@/integrations/supabase/types";
 import { DIRECTION_LANGS, type LanguageDirection } from "@/lib/pragma/enums";
 import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
-import type { MissionV2 } from "@/lib/pragma/missionSchema";
+import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import { POLICY_VERSION } from "@/lib/research/versions";
 
 export interface SaveAttemptInput {
-  mission: MissionV2;
+  mission: MissionRuntime;
   /** DB 미션이면 scenarios.scenario_id(uuid), 샘플이면 null */
   scenarioId: string | null;
   speechAct: string | null;

@@ -22,7 +22,7 @@ import { DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
 import { promoteCore, reviewMission, type PromotableCore } from "@/lib/pragma/promoteMission";
 import { fetchMissionForReview } from "@/lib/mission/missionDb";
 import { MissionPreview } from "@/components/admin/MissionPreview";
-import type { MissionV2 } from "@/lib/pragma/missionSchema";
+import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { buildGeneratorPrefillPath } from "@/lib/pragma/adminGeneratorPrefill";
@@ -78,7 +78,7 @@ const AdminBrowser = () => {
   const [busy, setBusy] = useState<string | null>(null); // 승격 중인 scenario_id
   const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
   // 눈검사 미리보기 — scenario_id → {mission, warnings}. openId = 펼친 행.
-  const [preview, setPreview] = useState<Record<string, { mission: MissionV2; warnings: string[] }>>({});
+  const [preview, setPreview] = useState<Record<string, { mission: MissionRuntime; warnings: string[] }>>({});
   const [openId, setOpenId] = useState<string | null>(null);
 
   const togglePreview = async (r: CoreRow) => {

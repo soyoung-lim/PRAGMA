@@ -11,7 +11,12 @@
 // source/target 언어를 스왑한다. R9는 중국·한국 국가 일반화를 양방향 공통으로 잡는다.
 
 import { getTargetFeature, TARGET_FEATURES } from "@/lib/pragma/targetFeatures";
-import { normalizeMission, type MissionV2, MPJ_TYPE_ORDER } from "@/lib/pragma/missionSchema";
+import {
+  normalizeMission,
+  type MissionRuntime,
+  MPJ_TYPE_ORDER_V2,
+  MPJ_TYPE_ORDER_V3,
+} from "@/lib/pragma/missionSchema";
 import { normalizeCore, type ScenarioCoreV2 } from "@/lib/pragma/coreSchema";
 import {
   isThemeDomainValid,
@@ -287,7 +292,9 @@ export function checkMission(
 
   // ── R1 유형 순서·axis_feature·band code 존재 ──
   const typesInOrder = m.mpj_items.map((it) => it.type);
-  if (typesInOrder.join(",") !== MPJ_TYPE_ORDER.join(",")) {
+  const expectedTypeOrder =
+    m.schema_version === "mission_v3" ? MPJ_TYPE_ORDER_V3 : MPJ_TYPE_ORDER_V2;
+  if (typesInOrder.join(",") !== expectedTypeOrder.join(",")) {
     add(v, "R1", "fail", `유형 순서 위반: ${typesInOrder.join("→")}`);
   }
   if (!feature) {
@@ -464,7 +471,7 @@ export function checkMission(
 }
 
 // R20 — 미션 provenance 객체 존재 + 필수값(prompt_snapshot_hash는 선택).
-function checkProvenance(v: RuleViolation[], m: MissionV2) {
+function checkProvenance(v: RuleViolation[], m: MissionRuntime) {
   const p = m.provenance;
   if (!p) {
     add(v, "R20", "fail", "mission_content.provenance 객체가 없음");
@@ -489,7 +496,7 @@ function isResponseAct(act: SpeechActUI): boolean {
   return act === "refusal" || act === "opposition";
 }
 
-function collectBandCodes(it: MissionV2["mpj_items"][number]): string[] {
+function collectBandCodes(it: MissionRuntime["mpj_items"][number]): string[] {
   switch (it.type) {
     case "judge3":
     case "fix_choice":
@@ -600,7 +607,7 @@ function samePdrBand(
   return a.p === b.p && a.d === b.d && a.r === b.r;
 }
 
-function checkSetDistribution(v: RuleViolation[], m: MissionV2, withinCode: string) {
+function checkSetDistribution(v: RuleViolation[], m: MissionRuntime, withinCode: string) {
   // 판정형 문항(judge3/fix_choice/reason_conf/multi)의 accepted가 전부 같은 방향이면 warning
   const dirs = new Set<string>();
   for (const it of m.mpj_items) {
@@ -621,7 +628,7 @@ function checkSetDistribution(v: RuleViolation[], m: MissionV2, withinCode: stri
   }
 }
 
-function checkNationalization(v: RuleViolation[], m: MissionV2) {
+function checkNationalization(v: RuleViolation[], m: MissionRuntime) {
   const fields: string[] = [];
   for (const it of m.mpj_items) {
     fields.push(it.explanation_ko);
@@ -635,7 +642,7 @@ function checkNationalization(v: RuleViolation[], m: MissionV2) {
   }
 }
 
-function checkInternalDuplicates(v: RuleViolation[], m: MissionV2) {
+function checkInternalDuplicates(v: RuleViolation[], m: MissionRuntime) {
   const targets = m.mpj_items
     .map((it) => ("target" in it ? it.target : ""))
     .filter(Boolean);
@@ -646,7 +653,7 @@ function checkInternalDuplicates(v: RuleViolation[], m: MissionV2) {
   }
 }
 
-function checkRecommendedConsistency(v: RuleViolation[], m: MissionV2, withinCode: string) {
+function checkRecommendedConsistency(v: RuleViolation[], m: MissionRuntime, withinCode: string) {
   for (const it of m.mpj_items) {
     if (it.type === "fix_choice") {
       // 권장안이 valid 교정 중 하나와 동일하면 이상적(모순 아님). 부적절 target과 동일하면 warning
@@ -657,7 +664,7 @@ function checkRecommendedConsistency(v: RuleViolation[], m: MissionV2, withinCod
   }
 }
 
-function checkInheritance(v: RuleViolation[], m: MissionV2, core: ScenarioCoreV2) {
+function checkInheritance(v: RuleViolation[], m: MissionRuntime, core: ScenarioCoreV2) {
   const pt = m.production_task;
   if (pt.source_text !== core.source_text) {
     add(v, "R23", "fail", "production_task.source_text가 코어를 계승하지 않음");

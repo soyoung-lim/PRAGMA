@@ -45,7 +45,7 @@ import {
   type LearnerLevel,
   type SpeechActUI,
 } from "@/lib/pragma/enums";
-import { normalizeMission, type MissionV2 } from "@/lib/pragma/missionSchema";
+import { normalizeMission, type MissionRuntime } from "@/lib/pragma/missionSchema";
 import { PROMPT_SNAPSHOT } from "@/lib/pragma/promptSnapshot.generated";
 import { reviewMission } from "@/lib/pragma/promoteMission";
 
@@ -868,7 +868,7 @@ const AdminReview = () => {
                 </p>
               </div>
               {currentRapidMission ? (
-                <MissionPreview mission={currentRapidMission as MissionV2} />
+                <MissionPreview mission={currentRapidMission as MissionRuntime} />
               ) : (
                 <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900">
                   미션 스키마를 읽을 수 없어 검수 통과 처리할 수 없습니다.
