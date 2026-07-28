@@ -146,6 +146,20 @@
 - 프롬프트 스냅샷은 위 커밋의 Edge 정본을 기준으로 재생성했다
   (`git_commit=e29f54c`, `git_dirty=false`).
 
+## 8. 제품 정체성과 Can-do 정렬 원칙 확정
+
+- 사용자 확정 정체성: PRAGMA는 연구용 검사 도구가 아니라, 교육 우선형 학습 플랫폼이면서 연구 가능한 데이터를 남기는 시스템이다.
+- 학습자 안내는 상황과 Can-do 수행 목표를 앞세우고, 내부 설계·생성·연구에서는 화행과 화용론적 구성개념을 유지한다.
+- CEFR·ACTFL은 행동중심 목표 기술의 참고 틀로 사용하되, PRAGMA Can-do를 공식 “중국어 화용론 표준” 또는 인증된 정렬로 부르지 않는다.
+- 확정 명칭: `CEFR/ACTFL-informed PRAGMA 화용 수행 Can-do 기술자` 또는 `PRAGMA 보조 Can-do 기술자`.
+- ACTFL `Interpretive mode`는 통역이 아니다. 번역·통역의 직접 참고 개념은 CEFR mediation으로 둔다.
+- 특정 완곡 전략은 성공 기준이 아니라 선택 가능한 학습 자원이다. 직접성과 공손성 분리, 상황별 적절성 판단 원칙을 유지한다.
+- PRAGMA 입문·중급·고급과 CEFR·ACTFL 숙달도 간 직접 대응은 금지한다.
+- 정본:
+  - `docs/research/PRAGMA_PRODUCT_RESEARCH_IDENTITY_2026-07-28.md`
+  - `docs/research/PRAGMA_CAN_DO_ALIGNMENT_PRINCIPLES_2026-07-28.md`
+- 이번 기록은 문서만 변경했다. 생성·평가·저장 계약, DB 스키마, 프롬프트와 코어 해시는 변경하지 않았다.
+
 ## 종료 상태
 
 - P0-A: 원인 확정, 재로그인으로 해결, 수정 0건.

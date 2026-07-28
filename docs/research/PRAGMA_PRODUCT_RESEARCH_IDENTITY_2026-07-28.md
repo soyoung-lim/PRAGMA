@@ -22,6 +22,22 @@ PRAGMA는 학습자에게는 **상황과 Can-do 수행 목표**를 앞세우고,
 
 > **PRAGMA는 실제 상황에서 적절한 한·중 통번역 수행을 연습하고, 그 원리를 화용론적으로 이해하도록 돕는 교육 플랫폼이다.**
 
+### 1.2 CEFR·ACTFL과 PRAGMA Can-do의 관계
+
+PRAGMA의 Can-do 목표는 CEFR의 행동중심 접근과 Can-do 기술자, NCSSFL-ACTFL Can-Do Statements의 기능·맥락·텍스트 유형 원리를 **참고하여 재맥락화한 자체 보조 기술자**다. CEFR·ACTFL이 공인한 “중국어 화용론 표준”이나 두 체계의 공식 문구를 그대로 옮긴 것이 아니다.
+
+- 국제 기준은 목표를 관찰 가능한 언어 수행으로 기술하는 상위 원리를 제공한다.
+- PRAGMA는 여기에 상황·참여자·목적, 화행, P·D·R, 통번역 모드와 방향, `target_feature` 기반 상황 적절성 기준을 결합한다.
+- 특정 완화 표현이나 전략의 사용 자체를 성공 기준으로 고정하지 않는다. 전략과 예시는 학습 자원이며, 수행 목표는 의미를 유지하면서 관계와 부담에 맞는 선택을 하는 것이다.
+- PRAGMA 입문·중급·고급을 CEFR A1/B1/C1 또는 ACTFL 등급에 대응시키지 않는다. 현재 수준 구분은 동일한 구인 아래 제공하는 과제 지원량의 차이다.
+- ACTFL의 `Interpretive mode`는 수용적 이해를 뜻하므로 PRAGMA의 통역 모드와 동일시하지 않는다. 한·중 번역·통역의 직접 근거는 CEFR의 mediation 개념을 우선 참조한다.
+
+논문과 발표에서는 다음 수준으로 기술한다.
+
+> **본 플랫폼은 CEFR의 행동중심 접근과 Can-do 기술자, NCSSFL-ACTFL Can-Do Statements의 기능·맥락·텍스트 유형 원리를 참고하여, 이를 화행·P/D/R·통번역 모드·화용 초점에 맞게 재맥락화한 PRAGMA 화용 수행 Can-do 기술자를 개발하였다.**
+
+`국제 표준 준수 중국어 화용론 템플릿`이라는 표현은 사용하지 않는다. 상세 근거, 조립 원리와 구현 판정은 `docs/research/PRAGMA_CAN_DO_ALIGNMENT_PRINCIPLES_2026-07-28.md`를 따른다.
+
 ## 2. “연구 가능한 데이터”의 의미
 
 연구 가능한 데이터를 남긴다는 말은 PRAGMA가 곧바로 엄밀한 사전–사후 교육 효과나 인과 효과를 입증해야 한다는 뜻이 아니다.
@@ -80,4 +96,5 @@ PRAGMA는 학습자에게는 **상황과 Can-do 수행 목표**를 앞세우고,
 ## 7. 관련 정본
 
 - 화용론적 구성개념과 생성 원칙: `docs/research/PRAGMA_PRAGMATICS_DESIGN_PRINCIPLES_2026-07-27.md`
+- Can-do 국제 기준 참고와 PRAGMA 재맥락화 원칙: `docs/research/PRAGMA_CAN_DO_ALIGNMENT_PRINCIPLES_2026-07-28.md`
 - 생성·평가·저장 계약: `docs/contracts/PRAGMA_생성계약_v1_2026-07-23.md`
