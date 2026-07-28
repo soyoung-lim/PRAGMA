@@ -303,6 +303,7 @@ const AdminPromptHarness = () => {
   const [editing, setEditing] = useState<PromptTemplate | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PromptTemplate | null>(null);
+  const [legacyOpen, setLegacyOpen] = useState(false);
   // 실제 생성에 쓰인 지문 — 저장소 정본과 대조해 "이 데이터가 이 프롬프트에서 나왔다"를 보인다.
   const [usedHashes, setUsedHashes] = useState<UsedHashRow[]>([]);
   const [usedLoading, setUsedLoading] = useState(true);
@@ -326,7 +327,7 @@ const AdminPromptHarness = () => {
     setUsedError(null);
     const acc = new Map<string, UsedHashRow>();
     for (const r of data as { prompt_snapshot_hash: string | null; created_at: string }[]) {
-      const key = r.prompt_snapshot_hash ?? " null";
+      const key = r.prompt_snapshot_hash ?? "__missing_hash__";
       const cur = acc.get(key);
       if (!cur) {
         acc.set(key, {
@@ -442,8 +443,8 @@ const AdminPromptHarness = () => {
       }
       setDialogOpen(false);
       await load();
-    } catch (e: any) {
-      toast.error(`저장 실패: ${e?.message ?? e}`);
+    } catch (e: unknown) {
+      toast.error(`저장 실패: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSaving(false);
     }
@@ -493,128 +494,164 @@ const AdminPromptHarness = () => {
           혼동되지 않게 시각적으로 분리하고, 쓰이지 않는다는 사실을 명시한다.
           마감 후 삭제 후보 — 지금 지우지 않는다(마감 직전 DB 삭제 금지). */}
       <div className="mt-10 border-t-2 border-dashed border-[#EAE4D2] pt-6">
-        <h3 className="text-[15px] font-bold text-[#8a857c]">문서 보관함 (생성에 사용되지 않음)</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-[15px] font-bold text-[#8a857c]">
+              Legacy 문서 보관함
+            </h3>
+            <Badge variant="outline">DB legacy</Badge>
+            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-900">
+              런타임 미사용
+            </Badge>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setLegacyOpen((open) => !open)}>
+            {legacyOpen ? (
+              <ChevronDown className="mr-1 h-4 w-4" />
+            ) : (
+              <ChevronRight className="mr-1 h-4 w-4" />
+            )}
+            {legacyOpen ? "보관함 닫기" : `보관함 열기 (${rows.length})`}
+          </Button>
+        </div>
         <p className="mt-1 text-[12.5px] text-muted-foreground">
           별도 DB 테이블(<code>prompt_templates</code>)입니다. <b>생성·검수 파이프라인은 이 테이블을
           조회하지 않습니다</b> — 위 「저장소 정본」이 실제로 쓰이는 지시문입니다. 아래 항목은
-          2026-07-06에 틀만 만들어 둔 것으로 내용이 비어 있으며, 마감 후 정리 예정입니다.
+          2026-07-06에 만든 문서 틀이며 마감 후 정리 후보입니다. 코드 프롬프트의 DB 이관
+          계획이나 v2 구현 상태를 뜻하지 않습니다.
         </p>
       </div>
 
-      <div className="mb-4 mt-4 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          총 {rows.length}개 · 단계 {GROUP_ORDER.length}개
-        </p>
-        <Button variant="outline" onClick={openCreate}>
-          <Plus className="mr-1 h-4 w-4" /> 새 문서 추가
-        </Button>
-      </div>
+      {legacyOpen && (
+        <>
+          <div className="mb-4 mt-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              총 {rows.length}개 · 단계 {GROUP_ORDER.length}개
+            </p>
+            <Button variant="outline" onClick={openCreate}>
+              <Plus className="mr-1 h-4 w-4" /> 새 보관 문서 추가
+            </Button>
+          </div>
 
-      {loading ? (
-        <div className="rounded-md border p-6 text-sm text-muted-foreground">
-          불러오는 중…
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-md border p-6 text-sm text-muted-foreground">
-          등록된 프롬프트가 없습니다.
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {GROUP_ORDER.map((groupKey) => {
-            const items = grouped[groupKey];
-            if (!items || items.length === 0) return null;
-            return (
-              <div key={groupKey}>
-                <div className="mb-3">
-                  <h2 className="text-lg font-bold uppercase tracking-wide text-foreground">
-                    {GROUP_LABEL[groupKey]}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {GROUP_DESCRIPTION[groupKey]}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  {items.map((row) => {
-                    const isOpen = !!expanded[row.id];
-                    const display = CARD_DISPLAY[row.prompt_key];
-                    const displayTitle =
-                      display?.title || row.title || row.prompt_key;
-                    return (
-                      <Card key={row.id}>
-                        <CardHeader className="p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setExpanded((s) => ({ ...s, [row.id]: !isOpen }))
-                                  }
-                                  className="flex items-center gap-1 text-left"
-                                >
-                                  {isOpen ? (
-                                    <ChevronDown className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4" />
-                                  )}
-                                  <CardTitle className="text-base">
-                                    {displayTitle}
-                                  </CardTitle>
-                                </button>
-                                <Badge variant="outline" className="font-mono text-[11px]">
-                                  {row.prompt_key}
-                                </Badge>
-                                <Badge variant="secondary">v{row.version}</Badge>
-                                <Badge variant={row.is_active ? "default" : "outline"}>
-                                  {row.is_active ? "활성" : "비활성"}
-                                </Badge>
-                              </div>
-                              {display?.subtitle && (
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {display.subtitle}
-                                </p>
-                              )}
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                업데이트: {new Date(row.updated_at).toLocaleString()}
-                              </p>
-                            </div>
-                          <div className="flex shrink-0 gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openEdit(row)}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setDeleteTarget(row)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      {isOpen && (
-                        <CardContent className="p-4 pt-0">
-                          <pre className="whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-xs">
-                            {row.content || "(비어 있음)"}
-                          </pre>
-                          {row.notes && (
-                            <p className="mt-2 text-xs text-muted-foreground">
-                              메모: {row.notes}
-                            </p>
-                          )}
-                        </CardContent>
-                      )}
-                    </Card>
-                  );
-                })}
-              </div>
+          {loading ? (
+            <div className="rounded-md border p-6 text-sm text-muted-foreground">
+              불러오는 중…
             </div>
-          );})}
-        </div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-md border p-6 text-sm text-muted-foreground">
+              등록된 보관 문서가 없습니다.
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {GROUP_ORDER.map((groupKey) => {
+                const items = grouped[groupKey];
+                if (!items || items.length === 0) return null;
+                return (
+                  <div key={groupKey}>
+                    <div className="mb-3">
+                      <h2 className="text-lg font-bold uppercase tracking-wide text-foreground">
+                        {GROUP_LABEL[groupKey]}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {GROUP_DESCRIPTION[groupKey]}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {items.map((row) => {
+                        const isOpen = !!expanded[row.id];
+                        const display = CARD_DISPLAY[row.prompt_key];
+                        const displayTitle =
+                          display?.title || row.title || row.prompt_key;
+                        const isEmpty = !row.content.trim();
+                        return (
+                          <Card key={row.id}>
+                            <CardHeader className="p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setExpanded((s) => ({ ...s, [row.id]: !isOpen }))
+                                      }
+                                      className="flex items-center gap-1 text-left"
+                                    >
+                                      {isOpen ? (
+                                        <ChevronDown className="h-4 w-4" />
+                                      ) : (
+                                        <ChevronRight className="h-4 w-4" />
+                                      )}
+                                      <CardTitle className="text-base">
+                                        {displayTitle}
+                                      </CardTitle>
+                                    </button>
+                                    <Badge variant="outline" className="font-mono text-[11px]">
+                                      {row.prompt_key}
+                                    </Badge>
+                                    <Badge variant="secondary">v{row.version}</Badge>
+                                    <Badge variant="outline">DB legacy</Badge>
+                                    <Badge
+                                      variant="outline"
+                                      className={
+                                        isEmpty
+                                          ? "border-amber-300 bg-amber-50 text-amber-900"
+                                          : "border-slate-300 bg-slate-50 text-slate-700"
+                                      }
+                                    >
+                                      {isEmpty ? "빈 문서" : "보관 문서"}
+                                    </Badge>
+                                    <Badge variant="outline">
+                                      {row.is_active ? "DB 활성 플래그" : "DB 비활성 플래그"}
+                                    </Badge>
+                                  </div>
+                                  {display?.subtitle && (
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                      {display.subtitle}
+                                    </p>
+                                  )}
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    업데이트: {new Date(row.updated_at).toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className="flex shrink-0 gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openEdit(row)}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setDeleteTarget(row)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            {isOpen && (
+                              <CardContent className="p-4 pt-0">
+                                <pre className="whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-xs">
+                                  {row.content || "(비어 있음)"}
+                                </pre>
+                                {row.notes && (
+                                  <p className="mt-2 text-xs text-muted-foreground">
+                                    메모: {row.notes}
+                                  </p>
+                                )}
+                              </CardContent>
+                            )}
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
