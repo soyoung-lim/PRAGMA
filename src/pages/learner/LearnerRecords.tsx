@@ -9,7 +9,7 @@ import { getProgress } from "@/lib/mission/learnerState";
 const UPCOMING = [
   { label: "주간 리포트", desc: "일주일의 연습을 한 줄 진단과 다음 행동으로 정리해요." },
   { label: "언어 지문", desc: "자주 기대는 표현·전략 습관을 보여줘요." },
-  { label: "화행별 성장", desc: "요청·거절 등 화행별 감각 변화를 추적해요." },
+  { label: "상황·소통 행동별 성장", desc: "상황에 따른 요청·거절 등 소통 행동의 감각 변화를 추적해요." },
 ];
 
 const LearnerRecords = () => {

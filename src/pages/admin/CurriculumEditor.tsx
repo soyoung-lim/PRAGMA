@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -48,6 +54,7 @@ import {
   DOMAIN,
   INDUSTRY,
 } from "@/lib/pragma/enums";
+import { buildCanDoSuggestions } from "@/lib/curriculum/canDoGuide";
 import type {
   SpeechActUI,
   LearnerLevel,
@@ -153,6 +160,19 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
 
   const patchWeek = (index: number, patch: Partial<CurriculumWeekDraft>) =>
     setWeeks((prev) => prev.map((w, i) => (i === index ? { ...w, ...patch } : w)));
+
+  const addCanDoSuggestion = (index: number, suggestion: string) => {
+    const current = weeks[index]?.can_do ?? [];
+    if (current.includes(suggestion)) {
+      toast.info("이미 추가된 Can-do 목표입니다.");
+      return;
+    }
+    if (current.length >= 2) {
+      toast.warning("Can-do 목표는 주차당 최대 2개입니다. 기존 목표를 수정하거나 삭제해 주세요.");
+      return;
+    }
+    patchWeek(index, { can_do: [...current, suggestion] });
+  };
 
   // 프리셋 선택 = 수준을 프리셋 목표 수준으로 맞춘다(편의). 테마·콘텐츠 반영은 편성기.
   const applyPreset = (code: string) => {
@@ -403,6 +423,10 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
           const isRegular = w.type === REGULAR_WEEK;
           const role = weekRole(w.week_no);
           const open = openWeek === w.week_no;
+          const canDoSuggestions = buildCanDoSuggestions(
+            w,
+            outline.language_direction,
+          );
           return (
             <div key={w.week_no} className="space-y-3 rounded-lg border border-border bg-card p-4">
               {/* 컴팩트 헤더 — 주차·역할·화행·제목(읽기) + 수정 토글 */}
@@ -536,7 +560,49 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[12px]">Can-do 목표 (줄바꿈으로 구분)</Label>
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-[12px]">Can-do 목표 (줄바꿈으로 구분)</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-[11.5px]"
+                            >
+                              <CircleHelp className="mr-1 h-3.5 w-3.5" />
+                              작성 가이드
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-[380px] space-y-3">
+                            <div>
+                              <p className="text-[13px] font-semibold">상황 중심 Can-do 작성 틀</p>
+                              <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+                                [상황·관계]에서 [소통 행동]을 [맥락 조건]에 맞게 수행할 수 있다.
+                              </p>
+                              <p className="mt-1 text-[10.5px] leading-relaxed text-muted-foreground">
+                                행동 중심 원리를 반영한 PRAGMA 내부 가이드이며, CEFR·ACTFL의
+                                공식 표준 문구를 옮긴 것은 아닙니다.
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              {canDoSuggestions.map((suggestion) => (
+                                <button
+                                  key={suggestion}
+                                  type="button"
+                                  onClick={() => addCanDoSuggestion(i, suggestion)}
+                                  className="w-full rounded-md border border-[#EAE4D2] bg-[#FAF8F2] px-3 py-2 text-left text-[11.5px] leading-relaxed transition hover:bg-[#FFF7CC]"
+                                >
+                                  {suggestion}
+                                  <span className="mt-1 block font-semibold text-[#7A4A0A]">
+                                    이 목표 추가
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                       <Textarea
                         rows={2}
                         value={w.can_do.join("\n")}
