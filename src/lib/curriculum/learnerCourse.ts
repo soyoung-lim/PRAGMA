@@ -43,6 +43,7 @@ export interface LearnerCourseWeek {
   pdr_power: PdrPower | null;
   pdr_distance: PdrDistance | null;
   pdr_imposition: PdrBurden | null;
+  review_released: boolean;
   competency_focus: string | null;
   domain: Domain | null;
   scenarios: LearnerWeekScenario[];
@@ -92,6 +93,7 @@ export function assembleLearnerCourse({
       pdr_power: (week.pdr_power as PdrPower | null) ?? null,
       pdr_distance: (week.pdr_distance as PdrDistance | null) ?? null,
       pdr_imposition: (week.pdr_imposition as PdrBurden | null) ?? null,
+      review_released: week.review_released ?? false,
       competency_focus: week.competency_focus ?? null,
       domain: (week.domain as Domain | null) ?? null,
       scenarios: (byWeek.get(week.week_no) ?? []).flatMap((assignment) => {

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Popover,
   PopoverContent,
@@ -442,6 +443,11 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
                     {SPEECH_ACT_UI[w.speech_act]}
                   </span>
                 )}
+                {w.review_released && (
+                  <span className="rounded bg-emerald-50 px-2 py-0.5 text-[11.5px] font-medium text-emerald-800">
+                    복습 공개
+                  </span>
+                )}
                 <span className="min-w-0 flex-1 truncate text-[13.5px]">{w.title || "(제목 없음)"}</span>
                 <Button
                   size="sm"
@@ -616,6 +622,29 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
                         }
                       />
                     </div>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-4 rounded-lg border border-[#EAE4D2] bg-[#FAF8F2] px-4 py-3">
+                    <div>
+                      <Label
+                        htmlFor={`review-released-${w.week_no}`}
+                        className="text-[12.5px] font-semibold"
+                      >
+                        복습 자료 전체 공개
+                      </Label>
+                      <p className="mt-1 max-w-2xl text-[11.5px] leading-relaxed text-muted-foreground">
+                        켜면 미션을 아직 마치지 않은 학습자도 복습면을 볼 수 있습니다.
+                        끈 상태에서도 필수 미션을 모두 완료한 학습자에게는 자동으로 열립니다.
+                      </p>
+                    </div>
+                    <Switch
+                      id={`review-released-${w.week_no}`}
+                      checked={w.review_released}
+                      onCheckedChange={(checked) =>
+                        patchWeek(i, { review_released: checked })
+                      }
+                      aria-label={`${w.week_no}주차 복습 자료 전체 공개`}
+                    />
                   </div>
                 </>
               )}
