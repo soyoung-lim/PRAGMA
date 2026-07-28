@@ -361,6 +361,7 @@ export type Database = {
           pdr_distance: string | null
           pdr_imposition: string | null
           pdr_power: string | null
+          review_released: boolean
           scenario_slots: number | null
           speech_act: string | null
           title: string | null
@@ -381,6 +382,7 @@ export type Database = {
           pdr_distance?: string | null
           pdr_imposition?: string | null
           pdr_power?: string | null
+          review_released?: boolean
           scenario_slots?: number | null
           speech_act?: string | null
           title?: string | null
@@ -401,6 +403,7 @@ export type Database = {
           pdr_distance?: string | null
           pdr_imposition?: string | null
           pdr_power?: string | null
+          review_released?: boolean
           scenario_slots?: number | null
           speech_act?: string | null
           title?: string | null

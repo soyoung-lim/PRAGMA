@@ -79,6 +79,8 @@ export interface CurriculumWeekDraft {
   // generator's PdrBurden type — reused here; the pdr_burden KEY mapping for
   // the Generator handoff is out of scope for these types).
   pdr_imposition: PdrBurden | null;
+  /** 교수자가 주차 학습 노트의 복습면을 전체 공개했는가. */
+  review_released: boolean;
   curriculum_load_band: number | null;
   competency_focus: string;
   domain: Domain | null;

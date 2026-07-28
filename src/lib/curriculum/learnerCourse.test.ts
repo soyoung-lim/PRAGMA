@@ -29,6 +29,7 @@ const weeks = [
     pdr_power: "equal",
     pdr_distance: "acquaintance",
     pdr_imposition: "low",
+    review_released: true,
     competency_focus: "완화와 선택권",
     domain: "school",
   },
@@ -136,6 +137,7 @@ describe("학습자 편성 강좌 조립", () => {
       pdr_power: "equal",
       pdr_distance: "acquaintance",
       pdr_imposition: "low",
+      review_released: true,
       competency_focus: "완화와 선택권",
       domain: "school",
     });

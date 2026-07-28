@@ -14,6 +14,7 @@ function week(overrides: Partial<LearnerCourseWeek> = {}): LearnerCourseWeek {
     pdr_power: "higher",
     pdr_distance: "formal",
     pdr_imposition: "high",
+    review_released: false,
     competency_focus: "관계와 부담에 맞는 요청",
     domain: "work",
     scenarios: [],
