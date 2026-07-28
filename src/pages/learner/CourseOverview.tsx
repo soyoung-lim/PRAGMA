@@ -18,7 +18,7 @@ const CourseOverview = () => {
       <div className="pb-20">
         <h2 className="text-[18px] font-bold">15주 과정</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          주요 화행을 단계적으로 배우고, 조건을 바꿔 적용하며, 가끔 실력을 확인합니다.
+          실제 소통 상황에서 해야 할 행동을 단계적으로 연습하고, 조건을 바꿔 적용하며, 가끔 실력을 확인합니다.
         </p>
         <button
           type="button"

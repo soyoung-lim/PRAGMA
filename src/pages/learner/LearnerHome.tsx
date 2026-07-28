@@ -123,7 +123,7 @@ const LearnerHome = () => {
         <section className="mt-2.5 flex items-center justify-between rounded-[10px] border border-[#EAE4D2] bg-white px-4 py-3.5">
           <div>
             <div className="text-[11.5px] font-semibold text-muted-foreground">자유 연습</div>
-            <div className="mt-1 text-[14.5px]">원하는 화행·상황을 골라 연습하기</div>
+            <div className="mt-1 text-[14.5px]">원하는 상황과 소통 행동을 골라 연습하기</div>
           </div>
           <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
             준비 중
