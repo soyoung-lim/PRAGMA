@@ -3,12 +3,11 @@ import { Link, useParams } from "react-router-dom";
 
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import {
-  getPublishedCourse,
-  type LearnerCourse,
   type LearnerCourseWeek,
 } from "@/lib/curriculum/learnerCourse";
 import { buildWeeklyLearnerNote } from "@/lib/curriculum/learnerNote";
 import { resolveLearnerNoteAccess } from "@/lib/curriculum/learnerNoteAccess";
+import { useLearnerCourse } from "@/lib/curriculum/useLearnerCourse";
 import {
   DEFAULT_DIRECTION,
   SPEECH_ACT_UI,
@@ -55,36 +54,28 @@ function asDirection(value: string | null | undefined): LanguageDirection {
   return value === "zh_ko" ? "zh_ko" : DEFAULT_DIRECTION;
 }
 
-const WeeklyLearningNote = () => {
+interface WeeklyLearningNoteProps {
+  /** 개발 전용 2주차 데모에서만 고정 샘플 노트를 허용한다. */
+  allowSample?: boolean;
+}
+
+const WeeklyLearningNote = ({ allowSample = false }: WeeklyLearningNoteProps) => {
   const { weekNo: weekNoParam } = useParams();
   const weekNo = Number(weekNoParam);
-  const [course, setCourse] = useState<LearnerCourse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: course = null,
+    error: courseError,
+    isPending: loading,
+  } = useLearnerCourse();
+  const error =
+    courseError instanceof Error
+      ? courseError.message
+      : courseError
+        ? "강좌를 불러오지 못했습니다."
+        : null;
   const [completedMissionIds, setCompletedMissionIds] = useState<string[]>([]);
   const [completionLoading, setCompletionLoading] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const loaded = await getPublishedCourse();
-        if (!cancelled) setCourse(loaded);
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "강좌를 불러오지 못했습니다.");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const courseWeek = Number.isInteger(weekNo)
     ? course?.weeks.find((week) => week.week_no === weekNo) ?? null
@@ -135,7 +126,7 @@ const WeeklyLearningNote = () => {
   }, [courseWeek]);
 
   const usingSample =
-    !loading && !courseWeek && weekNo === WEEK_REQUEST.weekNo;
+    allowSample && !loading && !courseWeek && weekNo === WEEK_REQUEST.weekNo;
   const week = courseWeek ?? (usingSample ? MOCK_WEEK : null);
   const direction = asDirection(course?.outline.language_direction);
   const note = useMemo(
@@ -157,8 +148,10 @@ const WeeklyLearningNote = () => {
     completedMissionIds: effectiveCompletedMissionIds,
   });
   const returnPath = courseWeek
-    ? "/learner/course-live"
-    : `/learner/course/week/${WEEK_REQUEST.weekNo}`;
+    ? "/learner/course"
+    : allowSample
+      ? `/learner/demo/course/week/${WEEK_REQUEST.weekNo}`
+      : "/learner/course";
 
   return (
     <LearnerJourneyShell

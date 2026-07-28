@@ -87,13 +87,56 @@ const App = () => (
           <Route path="/learner/home" element={<RequireApproved><LearnerHome /></RequireApproved>} />
           <Route path="/learner/lounge" element={<RequireApproved><LoungeHome /></RequireApproved>} />
           <Route path="/learner/lounge/:corner" element={<RequireApproved><LoungeCorner /></RequireApproved>} />
-          <Route path="/learner/course" element={<RequireApproved><CourseOverview /></RequireApproved>} />
-          <Route path="/learner/course-live" element={<RequireApproved><LearnerCourseLive /></RequireApproved>} />
+          {/* 게시·편성된 DB 강좌가 일반 학습자 수업의 단일 정본이다. */}
+          <Route path="/learner/course" element={<RequireApproved><LearnerCourseLive /></RequireApproved>} />
+          <Route path="/learner/course-live" element={<Navigate to="/learner/course" replace />} />
           <Route path="/learner/course/week/:weekNo/note" element={<RequireApproved><WeeklyLearningNote /></RequireApproved>} />
-          <Route path="/learner/course/week/2" element={<RequireApproved><WeekDetail /></RequireApproved>} />
-          <Route path="/learner/course/week/2/intro" element={<RequireApproved><IntroArc /></RequireApproved>} />
+          {/* 구 2주차 목업 주소는 실제 강좌로 복귀시킨다. */}
+          <Route path="/learner/course/week/2" element={<Navigate to="/learner/course" replace />} />
+          <Route path="/learner/course/week/2/intro" element={<Navigate to="/learner/course" replace />} />
+          {/* 고정 진행률·샘플 주차 흐름은 개발 환경에서만 명시적 demo 경로로 연다. */}
+          <Route
+            path="/learner/demo/course"
+            element={
+              import.meta.env.DEV
+                ? <RequireApproved><CourseOverview /></RequireApproved>
+                : <Navigate to="/learner/course" replace />
+            }
+          />
+          <Route
+            path="/learner/demo/course/week/2"
+            element={
+              import.meta.env.DEV
+                ? <RequireApproved><WeekDetail /></RequireApproved>
+                : <Navigate to="/learner/course" replace />
+            }
+          />
+          <Route
+            path="/learner/demo/course/week/2/intro"
+            element={
+              import.meta.env.DEV
+                ? <RequireApproved><IntroArc /></RequireApproved>
+                : <Navigate to="/learner/course" replace />
+            }
+          />
+          <Route
+            path="/learner/demo/course/week/2/note"
+            element={
+              import.meta.env.DEV
+                ? <RequireApproved><WeeklyLearningNote allowSample /></RequireApproved>
+                : <Navigate to="/learner/course" replace />
+            }
+          />
           <Route path="/learner/records" element={<RequireApproved><LearnerRecords /></RequireApproved>} />
-          <Route path="/learner/strategy" element={<RequireApproved><StrategyMap /></RequireApproved>} />
+          <Route path="/learner/strategy" element={<Navigate to="/learner/course" replace />} />
+          <Route
+            path="/learner/demo/strategy"
+            element={
+              import.meta.env.DEV
+                ? <RequireApproved><StrategyMap /></RequireApproved>
+                : <Navigate to="/learner/course" replace />
+            }
+          />
           {/* legacy 판단형 셸 — 연구/앵커 후보로 보관. 개발 환경에서만 접근 가능. */}
           <Route
             path="/mission-legacy"

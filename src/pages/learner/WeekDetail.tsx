@@ -64,7 +64,7 @@ const WeekDetail = () => {
               <>
                 {" · "}
                 {/* 열렸다고 알리기만 하고 갈 곳이 없으면 안 된다 — 실제로 연결한다. */}
-                <Link to="/learner/strategy" className="font-bold underline underline-offset-2">
+                <Link to="/learner/demo/strategy" className="font-bold underline underline-offset-2">
                   전략 지도 열림 🔓
                 </Link>
               </>
@@ -73,7 +73,7 @@ const WeekDetail = () => {
         </section>
 
         <Link
-          to={`/learner/course/week/${w.weekNo}/note`}
+          to={`/learner/demo/course/week/${w.weekNo}/note`}
           className="flex items-center justify-between rounded-xl border border-[#15202B] bg-white px-4 py-3 text-[#15202B]"
         >
           <span>
@@ -94,7 +94,7 @@ const WeekDetail = () => {
         >
           <button
             type="button"
-            onClick={() => navigate(`/learner/course/week/${w.weekNo}/intro`)}
+            onClick={() => navigate(`/learner/demo/course/week/${w.weekNo}/intro`)}
             className="mt-3 w-full rounded-md bg-[#15202B] px-3 py-2.5 text-[13px] font-medium text-white"
           >
             {feature.introExplanationCompleted ? "다시 보기" : "시작"}

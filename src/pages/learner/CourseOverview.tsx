@@ -4,8 +4,7 @@ import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
 import { COURSE_WEEKS } from "@/lib/mission/mockLearnerCourse";
 import { getWeekProgress, WEEK_REQUEST } from "@/lib/mission/mockWeek";
 
-// 15주 과정 — '어디까지 배웠는지'를 보여주는 거시 화면 (mock).
-// 요청 주차만 진입 가능. 셀·과제 유형 목록은 노출하지 않는다(그건 관리자 구조).
+// 개발 전용 과정 데모. 실제 학습자 수업 정본은 LearnerCourseLive다.
 
 const CourseOverview = () => {
   const navigate = useNavigate();
@@ -13,21 +12,21 @@ const CourseOverview = () => {
 
   return (
     <LearnerJourneyShell
-      headerRight={<span className="text-[12px] text-[#8899A6]">15주 과정</span>}
+      headerRight={<span className="text-[12px] text-[#8899A6]">과정 데모</span>}
     >
       <div className="pb-20">
-        <h2 className="text-[18px] font-bold">15주 과정</h2>
+        <h2 className="text-[18px] font-bold">15주 과정 · 데모</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          실제 소통 상황에서 해야 할 행동을 단계적으로 연습하고, 조건을 바꿔 적용하며, 가끔 실력을 확인합니다.
+          고정 샘플로 학습 흐름을 확인하는 개발용 화면입니다. 실제 배정·진행 상태가 아닙니다.
         </p>
         <button
           type="button"
-          onClick={() => navigate("/learner/course-live")}
+          onClick={() => navigate("/learner/course")}
           className="mt-4 flex w-full items-center justify-between rounded-[10px] border border-[#15202B] bg-[#15202B] px-4 py-3 text-left text-white transition-colors hover:bg-[#22303C]"
         >
           <span>
-            <span className="block text-[14px] font-semibold">편성된 실제 강좌 열기</span>
-            <span className="block text-[11.5px] text-[#B9C4CE]">교강사가 배정한 주차별 과제를 실행합니다</span>
+            <span className="block text-[14px] font-semibold">실제 강좌로 돌아가기</span>
+            <span className="block text-[11.5px] text-[#B9C4CE]">게시·편성된 DB 강좌를 확인합니다</span>
           </span>
           <span className="shrink-0 text-[13px] font-semibold text-[#FAD338]">→</span>
         </button>
@@ -40,7 +39,7 @@ const CourseOverview = () => {
                 <button
                   type="button"
                   disabled={!isCurrent}
-                  onClick={() => isCurrent && navigate(`/learner/course/week/${WEEK_REQUEST.weekNo}`)}
+                  onClick={() => isCurrent && navigate(`/learner/demo/course/week/${WEEK_REQUEST.weekNo}`)}
                   className={[
                     "flex w-full items-center gap-3 rounded-[10px] border px-4 py-3 text-left",
                     isCurrent
