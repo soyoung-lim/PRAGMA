@@ -3,6 +3,14 @@ import {
   feedbackPayloadIssue,
 } from '../_shared/feedbackRequestLimits.ts'
 import { repairFeedbackPragmaticLeak } from '../_shared/feedbackLayerRepair.ts'
+import {
+  buildOpenAIChatRequest,
+  CORE_RESPONSE_FORMAT_LABEL,
+  CORE_STRUCTURED_RESPONSE_FORMAT,
+  OPENAI_MODEL_ROUTES,
+  type OpenAIResponseFormat,
+  type OpenAIUserContent,
+} from '../_shared/openaiRequestContract.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,8 +20,11 @@ const corsHeaders = {
 
 const PROMPT_VERSION = 'scenario_generator_v1'
 const PROVIDER = 'openai'
-const PRIMARY_MODEL = 'gpt-4.1-mini'
-const FALLBACK_MODEL = 'gpt-4o-mini'
+const PRIMARY_MODEL = OPENAI_MODEL_ROUTES.default.primary
+const FALLBACK_MODEL = OPENAI_MODEL_ROUTES.default.fallback
+const MISSION_PRIMARY_MODEL = OPENAI_MODEL_ROUTES.mission.primary
+const CRITIC_PRIMARY_MODEL = OPENAI_MODEL_ROUTES.critic.primary
+const CRITIC_FALLBACK_MODEL = OPENAI_MODEL_ROUTES.critic.fallback
 
 /** SHA-256 16진 — 미션 provenance의 mission_content_hash용(v1.5 0-h·56). */
 async function sha256Hex(s: string): Promise<string> {
@@ -434,14 +445,18 @@ async function fetchHskVocab(hskLevel: number): Promise<string[]> {
 
 // user content is either a plain string or an OpenAI multimodal content array
 // (text + image_url parts). gpt-4.1-mini / gpt-4o-mini both accept image_url.
-type UserContent = string | Array<Record<string, unknown>>
+interface OpenAICallOptions {
+  maxCompletionTokens?: number
+  responseFormat?: OpenAIResponseFormat
+}
+
 async function callOpenAI(
   model: string,
   apiKey: string,
   system: string,
-  user: UserContent,
+  user: OpenAIUserContent,
   temperature = 0.8,
-  maxCompletionTokens?: number,
+  options: OpenAICallOptions = {},
 ) {
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -449,16 +464,14 @@ async function callOpenAI(
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
+    body: JSON.stringify(buildOpenAIChatRequest({
       model,
-      response_format: { type: 'json_object' },
+      system,
+      user,
       temperature,
-      ...(maxCompletionTokens ? { max_completion_tokens: maxCompletionTokens } : {}),
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-    }),
+      maxCompletionTokens: options.maxCompletionTokens,
+      responseFormat: options.responseFormat,
+    })),
   })
   const raw = await res.text()
   if (!res.ok) {
@@ -892,7 +905,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
 //    두고 분기(방향2 × 모드2 × 인접쌍2 × 산업 유무2)를 전부 렌더해 넣는다.
 // 비밀값(API key·인증정보)은 어떤 경로로도 해시 입력에 포함하지 않는다.
 const CORE_TEMPERATURE = 0.7
-const CORE_RESPONSE_FORMAT = 'json_object'
+const CORE_RESPONSE_FORMAT = CORE_RESPONSE_FORMAT_LABEL
 
 /** 키 순서에 무관한 canonical JSON — 같은 내용이면 항상 같은 문자열이 된다. */
 function canonicalJson(v: unknown): string {
@@ -983,6 +996,7 @@ async function corePromptSnapshotHash(): Promise<string> {
     model_fallback: FALLBACK_MODEL,
     temperature: CORE_TEMPERATURE,
     response_format: CORE_RESPONSE_FORMAT,
+    response_schema: CORE_STRUCTURED_RESPONSE_FORMAT,
     system_prompts,
     user_prompt_templates,
     prompt_catalogs: {
@@ -1318,7 +1332,7 @@ function buildAuthenticSystemPrompt(): string {
 - "雷打不动泡茶喝" 류(습관·관용·자조 표현) → expression_resource 또는 인물·상황 배경. 요청·거절로 억지 변환 금지.`
 }
 
-function buildAuthenticUserPrompt(b: AuthenticBody): UserContent {
+function buildAuthenticUserPrompt(b: AuthenticBody): OpenAIUserContent {
   const dir = normDir(b.language_direction ?? 'zh_ko')
   const lines = [
     '[분석 요청]',
@@ -1718,10 +1732,14 @@ Deno.serve(async (req) => {
       const sys = buildCoreSystemPrompt(coreDir)
       const usr = buildCoreUserPrompt(requestBody)
       let model = PRIMARY_MODEL
-      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, CORE_TEMPERATURE)
+      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, CORE_TEMPERATURE, {
+        responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
+      })
       if (!att.ok && (att.status === 404 || att.status === 400)) {
         model = FALLBACK_MODEL
-        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, CORE_TEMPERATURE)
+        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, CORE_TEMPERATURE, {
+          responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
+        })
       }
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
@@ -1773,13 +1791,12 @@ Deno.serve(async (req) => {
       const temp = b.failure_notes ? 0.5 : 0.3 // 재시도는 온도 상향(0-d·31)
       // 미션은 복잡한 5유형 union이라 필드 누락이 잦다 → 저volume(승격분만)이므로
       // 강한 모델을 쓴다. 코어(고volume·단순)는 mini 유지.
-      const MISSION_PRIMARY = 'gpt-4o'
       const isSpoken = b.core.source_modality === 'spoken'
       const missionDir = normDir(b.direction)
       const sys = buildMissionSystemPrompt(b.feature, b.is_response_act, isSpoken, missionDir)
       const usr = buildMissionUserPrompt(b)
-      let model = MISSION_PRIMARY
-      let att = await callOpenAI(MISSION_PRIMARY, apiKey, sys, usr, temp)
+      let model = MISSION_PRIMARY_MODEL
+      let att = await callOpenAI(MISSION_PRIMARY_MODEL, apiKey, sys, usr, temp)
       if (!att.ok && (att.status === 404 || att.status === 400)) {
         model = PRIMARY_MODEL
         att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, temp)
@@ -1863,10 +1880,14 @@ Deno.serve(async (req) => {
       const sys = buildFeedbackSystemPrompt(dir, isSpoken)
       const usr = buildFeedbackUserPrompt(b)
       let model = PRIMARY_MODEL
-      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.2, FEEDBACK_MAX_COMPLETION_TOKENS)
+      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.2, {
+        maxCompletionTokens: FEEDBACK_MAX_COMPLETION_TOKENS,
+      })
       if (!att.ok && (att.status === 404 || att.status === 400)) {
         model = FALLBACK_MODEL
-        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, 0.2, FEEDBACK_MAX_COMPLETION_TOKENS)
+        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, 0.2, {
+          maxCompletionTokens: FEEDBACK_MAX_COMPLETION_TOKENS,
+        })
       }
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
@@ -1901,16 +1922,14 @@ Deno.serve(async (req) => {
       if (!b?.core_content || !b.speech_act || !b.domain || !b.mode || !b.situation_seed_ko) {
         return new Response(JSON.stringify({ error: 'core_quality body required' }), { status: 400, headers: jsonHeaders })
       }
-      const CRITIC_PRIMARY = 'gpt-4.1'
-      const CRITIC_FALLBACK = PRIMARY_MODEL
       const dir = normDir(b.direction)
       const sys = buildCoreQualitySystemPrompt(dir)
       const usr = buildCoreQualityUserPrompt(b)
-      let model = CRITIC_PRIMARY
-      let att = await callOpenAI(CRITIC_PRIMARY, apiKey, sys, usr, 0.1)
+      let model = CRITIC_PRIMARY_MODEL
+      let att = await callOpenAI(CRITIC_PRIMARY_MODEL, apiKey, sys, usr, 0.1)
       if (!att.ok && (att.status === 404 || att.status === 400)) {
-        model = CRITIC_FALLBACK
-        att = await callOpenAI(CRITIC_FALLBACK, apiKey, sys, usr, 0.1)
+        model = CRITIC_FALLBACK_MODEL
+        att = await callOpenAI(CRITIC_FALLBACK_MODEL, apiKey, sys, usr, 0.1)
       }
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
@@ -1975,17 +1994,15 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'quality body required' }), { status: 400, headers: jsonHeaders })
       }
       // 생성(mission=gpt-4o)과 **다른 계열**을 쓴다 — 같은 모델의 자기 채점을 피한다.
-      const CRITIC_PRIMARY = 'gpt-4.1'
-      const CRITIC_FALLBACK = PRIMARY_MODEL // gpt-4.1-mini
       const dir = normDir(b.direction)
       const actKo = SPEECH_ACT_KO[b.speech_act ?? ''] ?? '해당 화행'
       const sys = buildQualitySystemPrompt(dir, actKo)
       const usr = buildQualityUserPrompt(b)
-      let model = CRITIC_PRIMARY
-      let att = await callOpenAI(CRITIC_PRIMARY, apiKey, sys, usr, 0.2)
+      let model = CRITIC_PRIMARY_MODEL
+      let att = await callOpenAI(CRITIC_PRIMARY_MODEL, apiKey, sys, usr, 0.2)
       if (!att.ok && (att.status === 404 || att.status === 400)) {
-        model = CRITIC_FALLBACK
-        att = await callOpenAI(CRITIC_FALLBACK, apiKey, sys, usr, 0.2)
+        model = CRITIC_FALLBACK_MODEL
+        att = await callOpenAI(CRITIC_FALLBACK_MODEL, apiKey, sys, usr, 0.2)
       }
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })

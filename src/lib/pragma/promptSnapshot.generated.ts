@@ -15,17 +15,17 @@ export type PromptSnapshot = {
   prompts: PromptSnapshotEntry[];
 };
 export const PROMPT_SNAPSHOT: PromptSnapshot = {
-  "generated_at": "2026-07-28T00:50:29.131Z",
-  "git_commit": "b0a2ee5",
-  "git_dirty": false,
+  "generated_at": "2026-07-28T05:20:35.759Z",
+  "git_commit": "cbe1389",
+  "git_dirty": true,
   "edge_source": "supabase/functions/generate-scenario/index.ts",
-  "edge_source_sha256": "aaa2fdcaf0dd1df8e47dbc006cb0dd04a3fd52238307a7e24e4d6adbc46bc7cd",
-  "core_surface_hash": "24adf002ee1d7ff391062445d8dbc55ba822638172aef0ede43497bbbe979b01",
+  "edge_source_sha256": "73faa15b11d1d5fbde5b99704712fc5fa765df5b2be89f4122cddff2f02d370d",
+  "core_surface_hash": "4c996a00259cf54dcc23b03d0998f7afd3926a95c284ed23719910ebb1d871c0",
   "generation_config": {
     "model": "gpt-4.1-mini",
     "model_fallback": "gpt-4o-mini",
     "temperature": 0.7,
-    "response_format": "json_object"
+    "response_format": "json_schema:pragma_scenario_core_v1"
   },
   "prompts": [
     {
