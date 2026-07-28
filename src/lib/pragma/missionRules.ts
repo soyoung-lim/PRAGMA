@@ -582,10 +582,14 @@ function checkMultiJudgeLength(
 
 // band code 이름 규약으로 과소/과잉 판별(카탈로그 순서 대신 이름 패턴 — 근사)
 function isUnderBand(codes: string[]): boolean {
-  return codes.some((c) => /(too_direct|too_blunt|insufficient|impolite)/.test(c));
+  return codes.some((c) =>
+    /(too_direct|too_blunt|too_pressuring|too_confrontational|under_acknowledged|under_calibrated|under_engaged|under_specified|insufficient|impolite)/.test(c),
+  );
 }
 function isOverBand(codes: string[]): boolean {
-  return codes.some((c) => /(too_indirect|over_elaborate|excessive|overpolite)/.test(c));
+  return codes.some((c) =>
+    /(too_indirect|too_tentative|too_ambiguous|too_obscured|over_elaborate|overextended|overreaching|over_attributed|excessive|overpolite)/.test(c),
+  );
 }
 
 // strict:false 환경의 zod 추론은 필드를 optional로 준다 — 파라미터 타입도 느슨하게.
@@ -667,6 +671,14 @@ function checkInheritance(v: RuleViolation[], m: MissionV2, core: ScenarioCoreV2
   }
   if (m.direction !== core.direction) {
     add(v, "R23", "fail", `미션 방향(${m.direction}) ≠ 코어 방향(${core.direction})`);
+  }
+  const missionFacts = pt.usable_facts ?? [];
+  const coreFacts = core.usable_facts ?? [];
+  if (
+    missionFacts.length !== coreFacts.length ||
+    missionFacts.some((fact, index) => fact !== coreFacts[index])
+  ) {
+    add(v, "R23", "fail", "production_task.usable_facts가 코어의 서버 승인 사실 목록을 계승하지 않음");
   }
 }
 

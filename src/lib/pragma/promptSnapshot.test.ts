@@ -74,4 +74,14 @@ describe("prompt snapshot integrity", () => {
     expect(prompt("core.user.spoken").text).toContain("이메일·메신저·글을 작성해 보내는");
     expect(critic.text).toContain("국소적 두 턴만 본다");
   });
+  it("locks propositional supportive moves to server-authorized facts", () => {
+    const mission = prompt("mission.system");
+    const feedback = prompt("feedback.system");
+    const quality = prompt("quality.system");
+
+    expect(mission.text).toContain("[사용 가능한 추가 사실]");
+    expect(mission.text).toContain("사실 유무를 정답 단서로 만들지 마세요");
+    expect(feedback.text).toContain("[허용된 추가 사실]");
+    expect(quality.text).toContain("production_task.usable_facts");
+  });
 });

@@ -38,6 +38,7 @@ const V1_CORE = {
   preceding_turn_zh: null,
   pdr: { p: "speaker_lower", d: "acquaintance", r: "mid" },
   channel: "messenger",
+  usable_facts: ["회의실은 다음 날에도 예약할 수 있다."],
 };
 
 describe("0-l ① v1 core → v2 정규화", () => {
@@ -47,6 +48,7 @@ describe("0-l ① v1 core → v2 정규화", () => {
     expect(n.data!.direction).toBe("ko_zh");
     expect(n.data!.source_text).toBe("회의를 하루 앞당길 수 있을까요?");
     expect(n.data!.preceding_turn).toBeNull();
+    expect(n.data!.usable_facts).toEqual(["회의실은 다음 날에도 예약할 수 있다."]);
   });
 });
 

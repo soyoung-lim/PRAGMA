@@ -146,6 +146,8 @@ interface FeedbackBody {
   preceding_turn?: string | null
   /** 원문에서 유지되어야 할 핵심 사실 목록(§4 제약 3). 없으면 모델이 원문에서 도출. */
   invariants?: string[]
+  /** 원문 밖 명제적 Supportive Move에 사용할 수 있는 서버 승인 사실. */
+  usable_facts?: string[]
   feature?: {
     code?: string
     learner_label?: string
@@ -1028,6 +1030,8 @@ interface MissionGenBody {
     pdr: PdrJson
     channel?: string // @deprecated channel 폐기(2026-07-25) — legacy(무시)
     source_modality: 'written' | 'spoken'
+    /** 원문 밖 명제적 Supportive Move에 쓸 수 있는 서버 승인 폐쇄 목록. */
+    usable_facts?: string[]
   }
   error_pattern_hints_ko: string[]
   is_response_act: boolean
@@ -1047,7 +1051,7 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken
     : ''
   const bands = f.band_schema.map((b) => `"${b.code}"(${b.label_ko})`).join(' / ')
   // 게이트1(불변항) — 계약 v1.5 §7-1(0-h·54). 의미·의도 소실 예문은 화용 판단 후보가 될 수 없다.
-  const gate1 = `🔴 게이트1(불변항 — 절대 규칙): target·모든 corrections.text·모든 candidates.text·recommended_example·reference_alternatives.text는 **먼저 원문의 명제·의도·화행 목적을 유지**해야 합니다. 의미나 의도가 달라진 문장(예: 요청의 의향 묻기가 사라진 문장, 사실이 빠진 문장)은 판단 후보로 만들지 마세요. 부적절성은 오직 「${f.learner_label}」 초점의 **과소·적정·과잉 차이**로만 실현합니다. 의도 소실·의미 이탈은 화용이 아니라 의미 오류이므로 이 미션의 판단 대상이 아닙니다(그건 피드백의 의미 충실성 층 소관).`
+  const gate1 = `🔴 게이트1(불변항 — 절대 규칙): target·모든 corrections.text·모든 candidates.text·recommended_example·reference_alternatives.text는 **먼저 원문의 명제·의도·화행 목적을 유지**해야 합니다. 의미나 의도가 달라진 문장(예: 요청의 의향 묻기가 사라진 문장, 사실이 빠진 문장)은 판단 후보로 만들지 마세요. 부적절성은 오직 「${f.learner_label}」 초점의 **과소·적정·과잉 차이**로만 실현합니다. 의도 소실·의미 이탈은 화용이 아니라 의미 오류이므로 이 미션의 판단 대상이 아닙니다(그건 피드백의 의미 충실성 층 소관). 원문 밖의 이유·대안·수리·보상·새 일정은 사용자 요청서의 [사용 가능한 추가 사실] 폐쇄 목록에 있을 때만 사용할 수 있습니다.`
   // 통역 승격 = MPJ 후보도 구두체 강제(계약 0-g·52).
   const spokenRule = isSpoken
     ? `\n🔴 이 미션은 통역(구두 담화)입니다. source·target·모든 후보는 **실제 말로 주고받을 법한 구두체**로 작성하세요(이메일 문어체·서면 격식 표현 금지).`
@@ -1155,7 +1159,11 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(sourc
   "~에 대한 감사 인사" 같은 설명문 금지.
 - pdr.p는 **화자(나) 기준**입니다: 화자가 상대(상사·교수 등)보다 지위가 낮으면 "speaker_lower".
   relation_ko의 관계 서술과 pdr 값이 반드시 일치해야 합니다.
-- 모든 후보는 원문과 핵심 명제·발화 의도·화행 목적이 동일. 새 사실·이유·약속 추가 금지(정형 표현 ${formulaic}는 예외).
+- 모든 후보는 원문과 핵심 명제·발화 의도·화행 목적이 동일. 원문 밖의 새 사실·이유·대안·
+  수리·보상·새 일정은 사용자 요청서의 [사용 가능한 추가 사실]에 있는 내용만 허용합니다.
+  목록이 비어 있으면 추가 금지입니다(정형 표현 ${formulaic}는 예외).
+- 한 문항에서 usable_facts를 사용하면 대조되는 target·corrections·candidates·recommended_example
+  사이에서 같은 명제 내용을 유지하세요. 사실 유무를 정답 단서로 만들지 마세요.
 - 차이는 오직 이 화용 초점에서만. 문법·의미·길이가 정답 단서가 되면 안 됨.
 - **pdr 값은 반드시 위 '공통 코드값'만 사용**(한국어 라벨 "동등" 등 절대 금지).
 - multi_judge 후보 5개 구성: **부적절 계열 2개 + 적정(${f.within_band_code}) 2개 + 과잉 1개**.
@@ -1179,6 +1187,9 @@ function buildMissionUserPrompt(b: MissionGenBody): string {
   const { src, tgt } = DIR_LANGS[dir]
   const srcL = LANG_KO[src]
   const tgtL = LANG_KO[tgt]
+  const usableFacts = Array.isArray(b.core.usable_facts)
+    ? [...new Set(b.core.usable_facts.map((x) => x.trim()).filter(Boolean))].slice(0, 8)
+    : []
   const parts = [
     '[생성 요청]',
     `- 언어 방향: ${LANG_DIR_KO[dir]}`,
@@ -1191,6 +1202,11 @@ function buildMissionUserPrompt(b: MissionGenBody): string {
     `- 관계: ${b.core.relation_ko}`,
     `- 원문(${srcL}): ${b.core.source_text_ko}`,
     `- 관계 P/D/R: ${PDR_P_KO[b.core.pdr.p]} / ${PDR_D_KO[b.core.pdr.d]} / ${PDR_R_KO[b.core.pdr.r]}`,
+    '',
+    '[사용 가능한 추가 사실 — 명제적 Supportive Move 폐쇄 목록]',
+    ...(usableFacts.length
+      ? usableFacts.map((fact, i) => `${i + 1}. ${fact}`)
+      : ['(없음 — 원문 밖의 이유·대안·수리·보상·새 일정 추가 금지)']),
   ]
   if (b.is_response_act) {
     parts.push(`- 이 화행은 인접쌍 둘째 짝 — 모든 MPJ 문항과 후보에 preceding_turn(${tgtL} 선행 발화)를 채우세요.`)
@@ -1350,6 +1366,8 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
    원문의 **명제·의도·화행 목적**을 바꿔버렸는가. 화용 대역 판정 후보는 반드시 불변항을
    유지해야 하고, 부적절함은 오직 해당 초점의 **과소·적정·과잉 정도 차이**로만 실현되어야
    한다. 의도가 사라졌거나 사실이 추가/삭제된 문장을 "부적절 대역"으로 붙였으면 위반이다.
+   단, mission_content.production_task.usable_facts에 든 사실은 허용된 명제적
+   Supportive Move다. 목록 안 사실을 사용했다는 이유만으로 gate1 위반으로 세지 않는다.
 ② implausible_distractor — 오답 후보가 실제로 쓸 법하지 않고 우스울 만큼 빗나갔는가.
    **판별 기준(0-r·105): 중국어 초급자가 화용 지식 없이도 "이건 너무 세다/이상하다"고
    소거할 수 있으면 결함이다.** 후보는 실제로 헷갈릴 만한 **경계 사례**여야 하며,
@@ -1543,6 +1561,8 @@ ${modeBoundary}
 ① 의미: 원문의 핵심 명제·의도·화행 목적이 살아 있는가.
    불변항 체크리스트를 하나씩 대조하라. 빠지거나 뒤바뀐 사실이 있는지만 본다.
    원문에 없는 사실·이유·조건·약속을 **추가**한 것도 의미 이탈이다.
+   단, 사용자 요청서의 [허용된 추가 사실]에 있는 내용은 명제적 Supportive Move로 사용할 수 있다.
+   목록에 없는 추가 사실만 의미 이탈로 판정한다.
    ※ 관습화된 정형 표현(인사·완충어)의 추가는 명제 추가가 아니다.
    ⚠️ **판정 기준**: 원문의 어떤 **사실·조건·요구 내용**이 빠지거나 달라졌는지
       구체적으로 한 가지라도 댈 수 없으면 반드시 "preserved"로 판정하라.
@@ -1616,6 +1636,12 @@ function buildFeedbackUserPrompt(b: FeedbackBody): string {
   const inv = Array.isArray(b.invariants) && b.invariants.length
     ? b.invariants.map((s, i) => `  ${i + 1}. ${s}`).join('\n')
     : '  (별도 목록 없음 — 원문에서 직접 도출하라)'
+  const usable = Array.isArray(b.usable_facts) && b.usable_facts.length
+    ? [...new Set(b.usable_facts.map((s) => s.trim()).filter(Boolean))]
+        .slice(0, 8)
+        .map((s, i) => `  ${i + 1}. ${s}`)
+        .join('\n')
+    : '  (없음 — 원문 밖 명제적 Supportive Move 추가 금지)'
   return `[상황]
 ${b.situation_ko ?? ''}
 [상대]
@@ -1627,6 +1653,9 @@ ${b.source_text ?? ''}
 
 [불변항 체크리스트 — 유지되어야 할 것]
 ${inv}
+
+[허용된 추가 사실 — 명제적 Supportive Move 폐쇄 목록]
+${usable}
 
 [이번 화용 초점]
 - code: ${f.code ?? ''}
@@ -1794,6 +1823,9 @@ Deno.serve(async (req) => {
           pdr: b.core.pdr,
           source_text: b.core.source_text_ko,          // 코어 계승(R23) — 입력 body는 v1 이름
           preceding_turn: b.core.preceding_turn_zh ?? null,
+          ...(Array.isArray(b.core.usable_facts) && b.core.usable_facts.length
+            ? { usable_facts: [...new Set(b.core.usable_facts.map((x) => x.trim()).filter(Boolean))].slice(0, 8) }
+            : {}),
           ...(productionMode === 'interpreting' ? { replay_limit: 2 } : {}),
           reference_alternatives: Array.isArray(gen.reference_alternatives) ? gen.reference_alternatives : [],
         },

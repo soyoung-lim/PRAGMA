@@ -127,6 +127,11 @@ export const ScenarioCoreV1Schema = z.object({
   brief_note_ko: z.string().optional(),
   /** 서버가 주입한 역할·권리·의무 제약. legacy 코어는 부재 가능. */
   context_spec: ContextSpecSchema.optional(),
+  /**
+   * 원문 밖의 명제적 Supportive Move에 사용할 수 있는 서버 승인 사실.
+   * 비어 있거나 없으면 이유·대안·수리·보상·새 일정을 발명할 수 없다.
+   */
+  usable_facts: z.array(z.string().min(1)).max(8).optional(),
   /** 실제 자료 유래분만. 모델 응답이 아니라 저장 직전 주입(0-q·98) */
   provenance: CoreProvenanceSchema.optional(),
 });
@@ -166,6 +171,11 @@ export const ScenarioCoreV2Schema = z.object({
   brief_note_ko: z.string().optional(),
   /** 서버가 주입한 역할·권리·의무 제약. legacy 코어는 부재 가능. */
   context_spec: ContextSpecSchema.optional(),
+  /**
+   * 원문 밖의 명제적 Supportive Move에 사용할 수 있는 서버 승인 사실.
+   * 비어 있거나 없으면 이유·대안·수리·보상·새 일정을 발명할 수 없다.
+   */
+  usable_facts: z.array(z.string().min(1)).max(8).optional(),
   /** 실제 자료 유래분만. 모델 응답이 아니라 저장 직전 주입(0-q·98) */
   provenance: CoreProvenanceSchema.optional(),
 });
@@ -205,6 +215,7 @@ export function normalizeCore(input: unknown): {
       ...(c.channel ? { channel: c.channel } : {}), // legacy only
       ...(c.brief_note_ko ? { brief_note_ko: c.brief_note_ko } : {}),
       ...(c.context_spec ? { context_spec: c.context_spec } : {}),
+      ...(c.usable_facts?.length ? { usable_facts: c.usable_facts } : {}),
       ...(c.provenance ? { provenance: c.provenance } : {}),
     },
   };

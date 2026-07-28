@@ -50,6 +50,7 @@ export async function requestFeedback(
           pdr: pt.pdr,
           source_text: pt.source_text,
           preceding_turn: pt.preceding_turn ?? null,
+          usable_facts: pt.usable_facts ?? [],
           feature: {
             code: feature.code,
             learner_label: feature.learner_label,
