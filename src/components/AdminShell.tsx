@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { HomeBrand } from "@/components/HomeBrand";
 
 /** pending = 라우트는 있으나 내용이 후속 단계. 메뉴에 「준비 중」 배지를 단다. */
@@ -86,6 +86,12 @@ interface AdminShellProps {
 
 export const AdminShell = ({ title, description, children }: AdminShellProps) => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const visibleNavPaths = new Set([
+    STANDALONE.to,
+    ...GROUPS.flatMap((group) => group.items.map((item) => item.to)),
+  ]);
+  const mobileNavValue = visibleNavPaths.has(pathname) ? pathname : "";
 
   const standaloneClasses = (active: boolean) =>
     [
@@ -156,6 +162,38 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
         </aside>
 
         <main className="min-w-0 flex-1">
+          <div className="mb-5 md:hidden">
+            <label
+              htmlFor="admin-mobile-navigation"
+              className="mb-1.5 block text-[12px] font-medium text-muted-foreground"
+            >
+              관리자 메뉴
+            </label>
+            <select
+              id="admin-mobile-navigation"
+              value={mobileNavValue}
+              onChange={(event) => {
+                if (event.target.value) navigate(event.target.value);
+              }}
+              className="w-full rounded-md border border-border bg-white px-3 py-2.5 text-[14px] text-foreground"
+            >
+              <option value="" disabled>
+                이동할 화면 선택
+              </option>
+              <option value={STANDALONE.to}>{STANDALONE.label}</option>
+              {GROUPS.map((group) => (
+                <optgroup key={group.header} label={group.header}>
+                  {group.items.map((item) => (
+                    <option key={item.to} value={item.to}>
+                      {item.label}
+                      {item.pending ? " · 준비 중" : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
           <div className="flex items-stretch gap-3">
             <span
               aria-hidden
