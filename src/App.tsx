@@ -44,6 +44,7 @@ const LearnerHome = lazy(() => import("./pages/learner/LearnerHome.tsx"));
 const CourseOverview = lazy(() => import("./pages/learner/CourseOverview.tsx"));
 const WeekDetail = lazy(() => import("./pages/learner/WeekDetail.tsx"));
 const IntroArc = lazy(() => import("./pages/learner/IntroArc.tsx"));
+const WeeklyLearningNote = lazy(() => import("./pages/learner/WeeklyLearningNote.tsx"));
 const LearnerRecords = lazy(() => import("./pages/learner/LearnerRecords.tsx"));
 const StrategyMap = lazy(() => import("./pages/learner/StrategyMap.tsx"));
 const PrototypeMissionV2 = lazy(() => import("./pages/learner/PrototypeMissionV2.tsx"));
@@ -84,6 +85,7 @@ const App = () => (
           <Route path="/learner/home" element={<RequireApproved><LearnerHome /></RequireApproved>} />
           <Route path="/learner/course" element={<RequireApproved><CourseOverview /></RequireApproved>} />
           <Route path="/learner/course-live" element={<RequireApproved><LearnerCourseLive /></RequireApproved>} />
+          <Route path="/learner/course/week/:weekNo/note" element={<RequireApproved><WeeklyLearningNote /></RequireApproved>} />
           <Route path="/learner/course/week/2" element={<RequireApproved><WeekDetail /></RequireApproved>} />
           <Route path="/learner/course/week/2/intro" element={<RequireApproved><IntroArc /></RequireApproved>} />
           <Route path="/learner/records" element={<RequireApproved><LearnerRecords /></RequireApproved>} />

@@ -72,6 +72,19 @@ const WeekDetail = () => {
           </p>
         </section>
 
+        <Link
+          to={`/learner/course/week/${w.weekNo}/note`}
+          className="flex items-center justify-between rounded-xl border border-[#15202B] bg-white px-4 py-3 text-[#15202B]"
+        >
+          <span>
+            <span className="block text-[14px] font-semibold">이번 주 학습 노트</span>
+            <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
+              목표·상황·표현 선택 원리를 1~2장으로 정리했습니다
+            </span>
+          </span>
+          <span className="shrink-0 text-[13px] font-bold">보기 →</span>
+        </Link>
+
         {/* ① 처음 배우기 (도입 아크) — 이수 여부는 featureState로 판정 */}
         <StageCard
           no="①"
