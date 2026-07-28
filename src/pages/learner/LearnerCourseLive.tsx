@@ -86,6 +86,22 @@ const LearnerCourseLive = () => {
                       )}
                     </div>
 
+                    {w.can_do.length > 0 && (
+                      <ul className="mt-2 space-y-1 text-[12.5px] text-muted-foreground">
+                        {w.can_do.slice(0, 2).map((canDo) => (
+                          <li key={canDo}>✓ {canDo}</li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/learner/course/week/${w.week_no}/note`)}
+                      className="mt-3 inline-flex items-center rounded-md border border-[#15202B] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#15202B] transition-colors hover:bg-[#F7F4EA]"
+                    >
+                      주차 학습 노트 보기 →
+                    </button>
+
                     {w.scenarios.length === 0 ? (
                       <p className="mt-2 text-[12.5px] text-muted-foreground">
                         {isEval ? "평가 주차입니다." : "아직 배정된 과제가 없습니다."}

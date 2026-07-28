@@ -75,6 +75,40 @@
   }
 }
 
+@page weekly-learning-note {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  .weekly-learning-note {
+    page: weekly-learning-note;
+    padding: 0 !important;
+    color: #15202B;
+    font-size: 10pt;
+    line-height: 1.45;
+  }
+
+  .weekly-learning-note article {
+    gap: 3mm !important;
+  }
+
+  .weekly-learning-note section,
+  .weekly-learning-note header {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .weekly-learning-note details:not([open]) > :not(summary) {
+    display: block !important;
+  }
+
+  .weekly-learning-note * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

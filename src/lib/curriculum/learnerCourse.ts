@@ -14,6 +14,14 @@ import {
 import type { CurriculumOutlineRow, CurriculumWeekRow } from "@/lib/curriculum/types";
 import { listCoreScenarios, listWeekAssignments } from "@/lib/curriculum/composer";
 import type { ComposerCore } from "@/lib/curriculum/composer";
+import type {
+  ChannelUI,
+  Domain,
+  PdrBurden,
+  PdrDistance,
+  PdrPower,
+  SpeechActUI,
+} from "@/lib/pragma/enums";
 
 export interface LearnerWeekScenario {
   scenario_id: string;
@@ -29,7 +37,14 @@ export interface LearnerCourseWeek {
   week_no: number;
   title: string;
   type: string;
-  speech_act: string | null;
+  can_do: string[];
+  speech_act: SpeechActUI | null;
+  channel: ChannelUI | null;
+  pdr_power: PdrPower | null;
+  pdr_distance: PdrDistance | null;
+  pdr_imposition: PdrBurden | null;
+  competency_focus: string | null;
+  domain: Domain | null;
   scenarios: LearnerWeekScenario[];
 }
 
@@ -71,7 +86,14 @@ export function assembleLearnerCourse({
       week_no: week.week_no,
       title: week.title ?? `${week.week_no}주차`,
       type: week.type,
-      speech_act: week.speech_act ?? null,
+      can_do: week.can_do ?? [],
+      speech_act: (week.speech_act as SpeechActUI | null) ?? null,
+      channel: (week.channel as ChannelUI | null) ?? null,
+      pdr_power: (week.pdr_power as PdrPower | null) ?? null,
+      pdr_distance: (week.pdr_distance as PdrDistance | null) ?? null,
+      pdr_imposition: (week.pdr_imposition as PdrBurden | null) ?? null,
+      competency_focus: week.competency_focus ?? null,
+      domain: (week.domain as Domain | null) ?? null,
       scenarios: (byWeek.get(week.week_no) ?? []).flatMap((assignment) => {
         const core = coreById.get(assignment.scenario_id);
         if (!core || core.mission_status !== "reviewed") return [];

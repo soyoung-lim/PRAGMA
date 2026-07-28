@@ -23,7 +23,14 @@ const weeks = [
     week_no: 2,
     type: "regular",
     title: "요청",
+    can_do: ["상황에 맞게 요청할 수 있다."],
     speech_act: "request",
+    channel: "messenger",
+    pdr_power: "equal",
+    pdr_distance: "acquaintance",
+    pdr_imposition: "low",
+    competency_focus: "완화와 선택권",
+    domain: "school",
   },
   {
     id: "week-3",
@@ -118,5 +125,19 @@ describe("학습자 편성 강좌 조립", () => {
     const course = assembleLearnerCourse(source([], []));
 
     expect(course.weeks[1].title).toBe("3주차");
+  });
+
+  it("학습 노트에 필요한 Can-do와 주차 맥락을 학습자 강좌에 전달한다", () => {
+    const course = assembleLearnerCourse(source([], []));
+
+    expect(course.weeks[0]).toMatchObject({
+      can_do: ["상황에 맞게 요청할 수 있다."],
+      channel: "messenger",
+      pdr_power: "equal",
+      pdr_distance: "acquaintance",
+      pdr_imposition: "low",
+      competency_focus: "완화와 선택권",
+      domain: "school",
+    });
   });
 });
