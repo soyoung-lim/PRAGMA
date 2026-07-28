@@ -1,9 +1,11 @@
 import { NavLink } from "react-router-dom";
 
-// MVP 하단 메뉴 — 홈/과정/기록 3개만 활성. 자유 연습은 홈의 '준비 중' 타일로만 존재.
+// 학습자 최상위 공간 — 수업과 기록 사이에 독립적인 쉬어가기 공간을 둔다.
+// 셀프 연습은 실제 기능이 생기기 전까지 탭이나 자리표시자로 노출하지 않는다.
 const TABS = [
   { to: "/learner/home", label: "홈", icon: "⌂" },
-  { to: "/learner/course", label: "과정", icon: "▦" },
+  { to: "/learner/course", label: "수업", icon: "▦" },
+  { to: "/learner/lounge", label: "라운지", icon: "☕" },
   { to: "/learner/records", label: "기록", icon: "◷" },
 ];
 
