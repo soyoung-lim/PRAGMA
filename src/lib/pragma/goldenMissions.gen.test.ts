@@ -26,7 +26,10 @@ function readEnv(): { url: string; key: string } {
   const get = (k: string) => raw.match(new RegExp(`^${k}=(.*)$`, "m"))?.[1]?.trim() ?? "";
   return { url: get("VITE_SUPABASE_URL"), key: get("VITE_SUPABASE_PUBLISHABLE_KEY") };
 }
-const { url: SUPABASE_URL, key: ANON } = readEnv();
+const RUN_GOLDEN = process.env.RUN_GOLDEN === "1";
+const { url: SUPABASE_URL, key: ANON } = RUN_GOLDEN
+  ? readEnv()
+  : { url: "", key: "" };
 const FN_URL = `${SUPABASE_URL}/functions/v1/generate-scenario`;
 
 async function invoke(body: unknown): Promise<any> {
@@ -126,7 +129,7 @@ const REVIEW_PATH = "C:\\Users\\cnkr\\OneDrive\\바탕 화면\\최근 작업\\�
 
 // 실제 OpenAI·배포 엣지함수 호출 → 비용. CI 자동 실행 방지: RUN_GOLDEN=1 일 때만.
 //   RUN_GOLDEN=1 npx vitest run src/lib/pragma/goldenMissions.gen.test.ts
-describe.skipIf(!process.env.RUN_GOLDEN)("골든 미션 게이트 (요청·거절·감사 × 중급)", () => {
+describe.skipIf(!RUN_GOLDEN)("골든 미션 게이트 (요청·거절·감사 × 중급)", () => {
   afterAll(() => {
     if (!REVIEW.length) return;
     const lines: string[] = [
