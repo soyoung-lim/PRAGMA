@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +25,7 @@ import { MissionPreview } from "@/components/admin/MissionPreview";
 import type { MissionV2 } from "@/lib/pragma/missionSchema";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { buildGeneratorPrefillPath } from "@/lib/pragma/adminGeneratorPrefill";
 
 // 시나리오 브라우저 — 뱅크의 "풍부함"을 화행 9 × 수준 3 그리드로 가시화한다.
 // 교강사가 수준·주제·모드로 걸러 어떤 셀에 무엇이 있는지 보고, 칸을 눌러 미리본다.
@@ -63,6 +65,7 @@ const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanc
 const CORE_QUERY_TIMEOUT_MS = 15_000;
 
 const AdminBrowser = () => {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<CoreRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -232,7 +235,7 @@ const AdminBrowser = () => {
     // 여기서 실행된다. 「시나리오 브라우저」라는 이름은 그 사실을 가렸다.
     <AdminShell
       title="미션 조립"
-      description="코어 뱅크를 화행 × 수준 격자로 보고, 칸을 눌러 미리본 뒤 학습 미션으로 승격합니다."
+      description="상황별 코어를 소통 행동(화행) × 수준으로 살펴보고, 부족한 조건은 생성 화면에서 바로 채웁니다."
     >
       {/* ── 요약 ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-5">
@@ -275,7 +278,9 @@ const AdminBrowser = () => {
             <table className="w-full min-w-[520px] border-separate border-spacing-1 text-[13px]">
               <thead>
                 <tr>
-                  <th className="w-[80px] text-left font-semibold text-muted-foreground">화행 \ 수준</th>
+                  <th className="w-[104px] text-left font-semibold text-muted-foreground">
+                    소통 행동(화행) \ 수준
+                  </th>
                   {LEVELS.map((lv) => (
                     <th key={lv} className="px-2 py-1 text-center font-semibold">{LEVEL[lv]}</th>
                   ))}
@@ -293,19 +298,44 @@ const AdminBrowser = () => {
                         <td key={lv} className="text-center">
                           <button
                             type="button"
-                            disabled={n === 0}
-                            onClick={() => setSel({ act, level: lv })}
+                            onClick={() => {
+                              if (n > 0) {
+                                setSel({ act, level: lv });
+                                return;
+                              }
+                              navigate(
+                                buildGeneratorPrefillPath({
+                                  speechAct: act,
+                                  level: lv,
+                                  mode: fMode === "all" ? undefined : fMode,
+                                  domain: fDomain === "all" ? undefined : fDomain,
+                                  direction: fDirection === "all" ? undefined : fDirection,
+                                  theme: fTheme === "all" ? undefined : fTheme,
+                                }),
+                              );
+                            }}
+                            aria-label={
+                              n === 0
+                                ? `${SPEECH_ACT_UI[act]} · ${LEVEL[lv]} 조건으로 개별 생성 화면 열기`
+                                : `${SPEECH_ACT_UI[act]} · ${LEVEL[lv]} 코어 ${n}개 보기`
+                            }
                             className={`flex h-11 w-full flex-col items-center justify-center rounded-md leading-none transition ${
                               active
                                 ? "bg-[#1a1a1a] text-white"
                                 : n === 0
-                                  ? "bg-[#FAF8F2] text-amber-600"
+                                  ? "border border-dashed border-amber-300 bg-[#FAF8F2] text-amber-700 hover:bg-amber-50"
                                   : "bg-[#FFF7CC] hover:bg-[#FFEE99]"
                             }`}
-                            title="번역 / 통역"
+                            title={
+                              n === 0
+                                ? "조건을 자동 입력한 개별 생성 화면으로 이동합니다. 생성은 자동 시작되지 않습니다."
+                                : `번역 ${c.t} / 통역 ${c.i}`
+                            }
                           >
                             <span className="text-[14px] font-semibold">{n}</span>
-                            {n > 0 && (
+                            {n === 0 ? (
+                              <span className="text-[10.5px]">채우기 →</span>
+                            ) : (
                               <span className={`text-[10.5px] ${active ? "text-white/70" : "text-[#8A7A2A]"}`}>
                                 번{c.t} · 통{c.i}
                               </span>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { addDraftScenario } from "@/lib/scenarioDrafts";
 import { supabase } from "@/integrations/supabase/client";
 import AuthenticImportPanel from "./AuthenticImportPanel";
@@ -24,6 +24,7 @@ import {
   PDR_POWER_SHORT,
   PDR_DISTANCE_SHORT,
   PDR_BURDEN_SHORT,
+  DIRECTION_LABEL,
   DOMAIN,
   INDUSTRY,
   CHANNEL_UI,
@@ -54,6 +55,10 @@ import type {
   IndustrySector,
   ComplexTaskUI,
 } from "@/lib/pragma/enums";
+import {
+  parseGeneratorPrefill,
+  type GeneratorPrefill,
+} from "@/lib/pragma/adminGeneratorPrefill";
 
 interface AiCandidate {
   candidate_text: string;
@@ -257,6 +262,25 @@ const DEFAULT_FORM: FormState = {
 
 };
 
+function formWithGridPrefill(prefill: GeneratorPrefill | null): FormState {
+  if (!prefill) return DEFAULT_FORM;
+  const channel: ChannelUI =
+    prefill.mode === "stt_interpreting"
+      ? "facetoface"
+      : prefill.mode === "translation"
+        ? "email"
+        : DEFAULT_FORM.channel;
+  return {
+    ...DEFAULT_FORM,
+    speech_act_ui: prefill.speechAct,
+    level: prefill.level,
+    channel,
+    domain: prefill.domain ?? DEFAULT_FORM.domain,
+    language_direction:
+      prefill.direction ?? DEFAULT_FORM.language_direction,
+  };
+}
+
 interface Generated {
   title: string;
   source_text: string;
@@ -425,7 +449,10 @@ function buildScenario(f: FormState): Generated {
 const formField = "h-9 text-[13px] bg-[#FAF7EE] border-[#EAE4D2]";
 
 const AdminGenerator = () => {
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const [searchParams] = useSearchParams();
+  const gridPrefill = parseGeneratorPrefill(searchParams);
+  const initialForm = formWithGridPrefill(gridPrefill);
+  const [form, setForm] = useState<FormState>(initialForm);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Generated | null>(null);
   const [aiResult, setAiResult] = useState<AiScenario | null>(null);
@@ -441,7 +468,7 @@ const AdminGenerator = () => {
   // v8 UI-only state — task mode drives channel options; outline count replaces
   // the single/batch radio + size dropdown (payload unchanged).
   const [taskMode, setTaskMode] = useState<GenMode>(
-    CHANNEL_TO_MODE[DEFAULT_FORM.channel],
+    gridPrefill?.mode ?? CHANNEL_TO_MODE[initialForm.channel],
   );
   const [outlineCount, setOutlineCount] = useState<1 | 3 | 5>(1);
   const [seedsGenerated, setSeedsGenerated] = useState(false);
@@ -466,7 +493,12 @@ const AdminGenerator = () => {
   // 시작해 첫 생성이 곧바로 R1c 실패로 떨어졌다(지도교수 리포트 재현). 기본 domain을
   // 허용하는 첫 theme으로 시작한다.
   const [themeCode, setThemeCode] = useState<ThemeCode>(
-    () => THEME_CODES.find((t) => THEME_ALLOWED_DOMAINS[t].includes(DEFAULT_FORM.domain)) ?? THEME_CODES[0],
+    () =>
+      gridPrefill?.theme ??
+      THEME_CODES.find((t) =>
+        THEME_ALLOWED_DOMAINS[t].includes(initialForm.domain),
+      ) ??
+      THEME_CODES[0],
   );
   type CoreResult = {
     title: string;
@@ -925,6 +957,31 @@ const AdminGenerator = () => {
           연구자 검수 후 승인된 자료만 수업용 공개 또는 본실험 locked로 지정할 수 있습니다.
         </p>
       </div>
+
+      {gridPrefill && (
+        <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-[12px] text-amber-950">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <b>미션 조립 Grid 조건을 불러왔습니다.</b>
+              <span className="ml-2">
+                {SPEECH_ACT_UI[gridPrefill.speechAct]} · {LEVEL[gridPrefill.level]}
+                {gridPrefill.mode ? ` · ${MODE_LABEL[gridPrefill.mode]}` : ""}
+                {gridPrefill.domain ? ` · ${DOMAIN[gridPrefill.domain]}` : ""}
+                {gridPrefill.direction
+                  ? ` · ${DIRECTION_LABEL[gridPrefill.direction]}`
+                  : ""}
+                {gridPrefill.theme ? ` · ${THEME_LABEL[gridPrefill.theme]}` : ""}
+              </span>
+            </div>
+            <Link className="font-semibold underline underline-offset-2" to="/admin/browser">
+              Grid로 돌아가기
+            </Link>
+          </div>
+          <p className="mt-1">
+            조건만 자동 입력되었습니다. 개요를 확인하고 생성 버튼을 눌러야 API 호출이 시작됩니다.
+          </p>
+        </div>
+      )}
 
       {/* 0. 실제 자료에서 생성 (Authentic Source Import) — 전체 폭(좁은 칼럼에서 빼냄) */}
       <div className="mt-5">
