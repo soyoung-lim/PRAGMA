@@ -25,6 +25,7 @@ import {
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { requestSttTranscript } from "@/lib/mission/missionStt";
 import { requestTtsAudio } from "@/lib/tts";
+import { diffText, type TextDiffPart } from "@/lib/mission/textDiff";
 import {
   SEMANTIC_LABEL,
   GRAMMAR_LABEL,
@@ -211,7 +212,7 @@ const MissionRunV1 = () => {
  * 담화 슬롯 골격 — ko_zh(L2 산출) 전용 지원 (계약 0-q·97).
  * 빈 입력창 앞에서 학습자가 어휘·문법이 아니라 **담화 조직**에 주의를 쓰도록 돕는다.
  * 읽기 전용 안내이며 입력은 그대로 자유 텍스트 하나다 — 저장 형태·제출 조건 무변경.
- * ⚠️ 예문(완성 문장)을 넣지 않는다. 참고 표현은 제출 후 공개가 원칙.
+ * ⚠️ 예문(완성 문장)을 넣지 않는다. 완성된 참고 문장은 제출 후 공개가 원칙.
  */
 function ProductionGuide({
   slots,
@@ -232,7 +233,7 @@ function ProductionGuide({
     <div className="mb-3 rounded-lg border border-[#EAE4D2] bg-[#FBFAF6] px-3 py-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11.5px] font-semibold text-[#5A6B7A]">
-          {tier === "open" ? "필요할 때 참고" : "표현 구성 순서"}
+          {tier === "open" ? "표현 도구함 · 필요할 때 참고" : "표현 도구함"}
         </span>
         <button
           type="button"
@@ -240,7 +241,7 @@ function ProductionGuide({
           className="rounded px-1.5 py-0.5 text-[11.5px] font-medium text-[#2B5B7A] hover:bg-[#EEF3F7]"
           aria-expanded={expanded}
         >
-          {expanded ? "도움말 닫기 ▴" : "도움말 열기 ▾"}
+          {expanded ? "도구함 닫기 ▴" : "도구함 열기 ▾"}
         </button>
       </div>
 
@@ -264,6 +265,9 @@ function ProductionGuide({
 
       {expanded && (
         <>
+          <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+            기능 순서와 부분 표현을 참고합니다. 완성 답안이 아니며, 필요한 것만 골라 씁니다.
+          </p>
           <ul className="mt-1.5 space-y-1 text-[12.5px] text-[#3B4A57]">
             {slots.map((s, i) => {
               const hint = hintForSlot(s, resources);
@@ -403,6 +407,107 @@ function FeedbackPanel({
       <p className="px-0.5 text-[11.5px] text-muted-foreground">
         AI 진단입니다 — 유일한 정답이 아니라, 이 상황에서 살펴볼 지점을 짚어 준 것입니다.
       </p>
+    </div>
+  );
+}
+
+const FEEDBACK_REVIEW_STEPS = [
+  {
+    label: "뜻과 의도",
+    detail: "원문의 핵심 의미와 의도가 유지됐는지",
+  },
+  {
+    label: "문법과 이해",
+    detail: "이해를 방해하는 문법 문제가 있는지",
+  },
+  {
+    label: "관계와 상황",
+    detail: "이 상대·부담에 맞는 표현인지",
+  },
+] as const;
+
+/**
+ * 실제 feedback-lite의 세 진단층을 기다리는 동안 보여 주는 상태 카드.
+ * 가짜 퍼센트·인위적 지연은 쓰지 않고, API가 확인하는 기준만 정직하게 안내한다.
+ */
+function FeedbackLoadingPanel() {
+  const [activeStep, setActiveStep] = useState(0);
+  const [takingLonger, setTakingLonger] = useState(false);
+
+  useEffect(() => {
+    const grammarTimer = window.setTimeout(() => setActiveStep(1), 1_600);
+    const contextTimer = window.setTimeout(() => setActiveStep(2), 3_200);
+    const longerTimer = window.setTimeout(() => setTakingLonger(true), 4_800);
+    return () => {
+      window.clearTimeout(grammarTimer);
+      window.clearTimeout(contextTimer);
+      window.clearTimeout(longerTimer);
+    };
+  }, []);
+
+  const current = FEEDBACK_REVIEW_STEPS[activeStep];
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-[#E5D9B8] bg-white" role="status" aria-live="polite">
+      <div className="border-b border-[#EEE6D4] bg-[#FFF9E8] px-4 py-3.5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[12px] font-bold text-[#6B5518]">AI 피드백 구성 중</div>
+            <div className="mt-0.5 text-[14px] font-semibold text-[#15202B]">
+              답안을 세 기준으로 살펴보고 있습니다
+            </div>
+          </div>
+          <div className="flex shrink-0 gap-1" aria-hidden="true">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-[#D9A400]" />
+            <span className="h-2 w-2 animate-pulse rounded-full bg-[#D9A400] [animation-delay:180ms]" />
+            <span className="h-2 w-2 animate-pulse rounded-full bg-[#D9A400] [animation-delay:360ms]" />
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 py-3.5">
+        <ol className="grid gap-2 sm:grid-cols-3" aria-label="AI 피드백 확인 기준">
+          {FEEDBACK_REVIEW_STEPS.map((step, index) => {
+            const active = index === activeStep;
+            return (
+              <li
+                key={step.label}
+                className={[
+                  "rounded-lg border px-3 py-2 transition-colors",
+                  active
+                    ? "border-[#E3C54B] bg-[#FFF9E8]"
+                    : "border-[#E8E5DC] bg-[#FAFAF7] text-muted-foreground",
+                ].join(" ")}
+              >
+                <div className="flex items-center gap-1.5 text-[11.5px] font-bold">
+                  <span
+                    className={[
+                      "flex h-5 w-5 items-center justify-center rounded-full text-[10px]",
+                      active ? "bg-[#FAD338] text-[#15202B]" : "bg-[#E8E5DC] text-[#6E777E]",
+                    ].join(" ")}
+                  >
+                    {index + 1}
+                  </span>
+                  {step.label}
+                </div>
+                <p className="mt-1 text-[11.5px] leading-relaxed">{step.detail}</p>
+              </li>
+            );
+          })}
+        </ol>
+
+        <p className="mt-3 text-[12.5px] text-[#3E4C57]">
+          지금 확인하는 기준 · <strong>{current.detail}</strong>
+        </p>
+        {takingLonger && (
+          <p className="mt-1.5 rounded-md bg-[#F7F9FA] px-2.5 py-1.5 text-[11.5px] text-muted-foreground">
+            복합적인 답안은 몇 초 더 걸릴 수 있습니다. 작성한 답은 이 화면에 그대로 보존됩니다.
+          </p>
+        )}
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          결과는 확정 채점이 아니라, 답안을 다듬기 위한 AI 진단입니다.
+        </p>
+      </div>
     </div>
   );
 }
@@ -793,7 +898,7 @@ function MissionRunner({
                   </div>
                 </ChatScene>
                 <p className="px-0.5 text-[12px] text-muted-foreground">
-                  먼저 상대에게 답장하듯 직접 옮깁니다. 참고 표현은 제출한 뒤에 확인합니다.
+                  표현 도구함의 부분 표현은 필요할 때 참고하되, 완성된 참고 문장은 제출한 뒤에 확인합니다.
                 </p>
                 <Button className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" disabled={!draft.trim()} onClick={() => goto("feedback")}>번역 제출 →</Button>
                 {IS_DEMO && (
@@ -813,9 +918,7 @@ function MissionRunner({
             </div>
 
             {fbState === "loading" && (
-              <div className={card}>
-                <p className="text-[13.5px] text-muted-foreground">답을 살펴보는 중…</p>
-              </div>
+              <FeedbackLoadingPanel />
             )}
 
             {fbState === "ready" && fb && (
@@ -836,38 +939,44 @@ function MissionRunner({
               </div>
             )}
 
-            {/* 원칙 문장(closing_ko)은 완료 화면에서 한 번만 크게 정리한다 —
-                피드백·다듬기·완료에 같은 문장이 세 번 연속 나오던 것이 피로의 큰 몫이었다.
-                근거 서랍은 남긴다(접혀 있어 시각 무게가 없다). */}
-            <div className={card}>
-              <FeedbackReasonDrawer mission={mission} />
-            </div>
+            {fbState !== "loading" && (
+              <>
+                {/* 원칙 문장(closing_ko)은 완료 화면에서 한 번만 크게 정리한다 —
+                    피드백·다듬기·완료에 같은 문장이 세 번 연속 나오던 것이 피로의 큰 몫이었다.
+                    근거 서랍은 남긴다(접혀 있어 시각 무게가 없다). */}
+                <div className={card}>
+                  <FeedbackReasonDrawer mission={mission} />
+                </div>
 
-            <details className={card}>
-              <summary className="cursor-pointer text-[13px] font-semibold">참고 표현 보기</summary>
-              <p className="mt-1 text-[12px] text-muted-foreground">정답이 아니라 비교용입니다. 상황에 따라 어울리는 범위가 달라집니다.</p>
-              <ul className="mt-2.5 space-y-2">
-                {mission.production_task.reference_alternatives.map((a) => (
-                  <li key={a.text} className="rounded-lg bg-[#FAF8F2] px-3.5 py-2.5">
-                    <div className="text-[14px]">{a.text}</div>
-                    <div className="mt-0.5 text-[12px] text-muted-foreground">{a.note_ko}</div>
-                  </li>
-                ))}
-              </ul>
-            </details>
+                <details className={card}>
+                  <summary className="cursor-pointer text-[13px] font-semibold">참고 표현 보기</summary>
+                  <p className="mt-1 text-[12px] text-muted-foreground">정답이 아니라 비교용입니다. 상황에 따라 어울리는 범위가 달라집니다.</p>
+                  <ul className="mt-2.5 space-y-2">
+                    {mission.production_task.reference_alternatives.map((a) => (
+                      <li key={a.text} className="rounded-lg bg-[#FAF8F2] px-3.5 py-2.5">
+                        <div className="text-[14px]">{a.text}</div>
+                        <div className="mt-0.5 text-[12px] text-muted-foreground">{a.note_ko}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
 
-            {/* 이견 채널 — 판정을 바꾸지 않는 별도 통로(0-r·104) */}
-            <DissentPanel
-              onSubmit={(d) =>
-                setDissent({
-                  kind: "learner_dissent",
-                  at: "feedback",
-                  conditions: d.conditions,
-                  reason_ko: d.reason,
-                  created_at: new Date().toISOString(),
-                })
-              }
-            />
+                {/* 이견 채널 — 판정이 나온 뒤에만 여는 별도 통로(0-r·104) */}
+                {fbState === "ready" && (
+                  <DissentPanel
+                    onSubmit={(d) =>
+                      setDissent({
+                        kind: "learner_dissent",
+                        at: "feedback",
+                        conditions: d.conditions,
+                        reason_ko: d.reason,
+                        created_at: new Date().toISOString(),
+                      })
+                    }
+                  />
+                )}
+              </>
+            )}
 
             {/* 「한 가지만 고치기」로 읽히지 않게 — 여러 곳을 함께 다듬어도 된다. */}
             <Button className="w-full" disabled={fbState === "loading"} onClick={() => goto("revise")}>피드백을 참고해 다듬기 →</Button>
@@ -1033,7 +1142,8 @@ function MissionRunner({
 
 // ── 통역 오디오 프레임 — 듣기(≤2회) → 녹음 → STT 초안 → 전사 확인 → 제출 ──
 // 실동작: 서버 TTS(고정 음원)·MediaRecorder(서버 STT 전송)·SpeechRecognition(실패 폴백).
-// 음성 파일은 저장하지 않고 전사 후 폐기한다. 학습자가 확인한 전사만 제출·저장한다.
+// 음성 파일은 서버·DB에 저장하지 않는다. 전사 확인 중에만 브라우저 메모리에 두고,
+// 재녹음·단계 이탈 시 폐기한다. 학습자가 확인한 전사만 제출·저장한다.
 type BrowserSpeechRecognitionResultList = {
   length: number;
   [index: number]: {
@@ -1089,12 +1199,16 @@ function AudioFrame({
   const [transcript, setTranscript] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [recordingAudioUrl, setRecordingAudioUrl] = useState<string | null>(null);
+  const [recordingAudioReady, setRecordingAudioReady] = useState(false);
   const recRef = useRef<BrowserSpeechRecognition | null>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const recordingAudioRef = useRef<HTMLAudioElement | null>(null);
+  const recordingAudioUrlRef = useRef<string | null>(null);
 
   const sttSupported = useMemo(
     () => {
@@ -1114,6 +1228,7 @@ function AudioFrame({
       streamRef.current?.getTracks().forEach((t) => t.stop());
       audioRef.current?.pause();
       if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      if (recordingAudioUrlRef.current) URL.revokeObjectURL(recordingAudioUrlRef.current);
     };
   }, []);
 
@@ -1165,6 +1280,13 @@ function AudioFrame({
     setConfirmed(false);
     setTranscript("");
     setTranscribing(false);
+    recordingAudioRef.current?.pause();
+    if (recordingAudioUrlRef.current) {
+      URL.revokeObjectURL(recordingAudioUrlRef.current);
+      recordingAudioUrlRef.current = null;
+    }
+    setRecordingAudioUrl(null);
+    setRecordingAudioReady(false);
     // ① STT 초안(가능하면)
     if (sttSupported) {
       try {
@@ -1189,7 +1311,7 @@ function AudioFrame({
         /* STT 실패 — 녹음/수동 입력으로 계속 */
       }
     }
-    // ② 서버 전사용 임시 녹음 — 전사 요청 후 Blob 참조를 폐기한다.
+    // ② 서버 전사용 임시 녹음 — 전사 확인 중에만 같은 Blob을 로컬 재생에 쓴다.
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -1210,6 +1332,11 @@ function AudioFrame({
           setNotice("녹음된 음성이 없습니다 — 통역 내용을 직접 입력해 주세요.");
           return;
         }
+
+        const localAudioUrl = URL.createObjectURL(audio);
+        recordingAudioUrlRef.current = localAudioUrl;
+        setRecordingAudioUrl(localAudioUrl);
+        setRecordingAudioReady(false);
 
         setTranscribing(true);
         const result = await requestSttTranscript(
@@ -1261,6 +1388,11 @@ function AudioFrame({
 
   const canSubmit = !transcribing && confirmed && transcript.trim().length > 0;
   const dark = "rounded-xl bg-[#0F1B24] p-4 text-[#EAF0F4]";
+  const seekRecording = (seconds: number) => {
+    const audio = recordingAudioRef.current;
+    if (!audio || !recordingAudioReady || !Number.isFinite(audio.duration)) return;
+    audio.currentTime = Math.min(audio.duration, Math.max(0, audio.currentTime + seconds));
+  };
 
   return (
     <div className="space-y-3">
@@ -1330,6 +1462,42 @@ function AudioFrame({
             <div className="text-[11px] font-bold text-[#9FB0BC]">
               ③ 전사 확인 — 자동 전사를 실제로 말한 내용과 대조·수정합니다
             </div>
+            {recordingAudioUrl && (
+              <div className="mt-2.5 rounded-md border border-[#334A58] bg-[#0F1B24] p-2.5">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+                  <div className="text-[12px] font-semibold text-[#EAF0F4]">내 음성 듣기</div>
+                  <div className="text-[10.5px] text-[#9FB0BC]">STT 전사 확인용 · 발음 점수와 무관</div>
+                </div>
+                <audio
+                  ref={recordingAudioRef}
+                  src={recordingAudioUrl}
+                  controls
+                  preload="metadata"
+                  onLoadedMetadata={() => setRecordingAudioReady(true)}
+                  onError={() => setNotice("내 녹음 재생에 실패했습니다. 전사를 직접 확인해 주세요.")}
+                  className="mt-2 h-9 w-full"
+                  aria-label="내가 녹음한 통역 음성"
+                />
+                <div className="mt-1.5 flex justify-end gap-1.5">
+                  <button
+                    type="button"
+                    disabled={!recordingAudioReady}
+                    onClick={() => seekRecording(-0.5)}
+                    className="rounded border border-[#405563] px-2 py-1 text-[11px] text-[#C6D2DB] disabled:opacity-40"
+                  >
+                    −0.5초
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!recordingAudioReady}
+                    onClick={() => seekRecording(0.5)}
+                    className="rounded border border-[#405563] px-2 py-1 text-[11px] text-[#C6D2DB] disabled:opacity-40"
+                  >
+                    +0.5초
+                  </button>
+                </div>
+              </div>
+            )}
             <textarea
               rows={2}
               value={transcript}
@@ -1509,7 +1677,7 @@ function MissionBriefDrawer({ mission }: { mission: MissionV2 }) {
         <p>{JUDGMENT_STATUS_CAPTION}</p>
         <p>
           완료 조건 — 판단 {mission.mpj_items.length}문항 → {isInterp ? `${tgtName}로 통역` : `${tgtName}로 옮기기`} 1회 → 피드백 확인 → 다듬기 1회.
-          <b className="text-foreground"> 정답·참고 표현은 제출한 뒤에 공개됩니다.</b>
+          <b className="text-foreground"> 정답·완성된 참고 문장은 제출한 뒤에 공개됩니다.</b>
         </p>
         <p>확인하는 것 — ① 원문의 의미·의도가 유지됐는가 ② 의미를 방해하는 문법 오류가 있는가 ③ 이 관계·상황에서 「{mission.unit.learner_label}」이 적절한가</p>
         {feat && feat.excluded_confounds.length > 0 && (
@@ -1628,24 +1796,63 @@ function FeedbackReasonDrawer({ mission }: { mission: MissionV2 }) {
 }
 
 // ── 수정 지도(0-i) — 최초↔최종 + 수정 성격. 클라이언트만(AI·DB 0회) ──
+function DiffLine({ parts, view }: { parts: TextDiffPart[]; view: "first" | "final" }) {
+  return (
+    <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed">
+      {parts.map((part, index) => {
+        if (part.kind === "insert" && view === "first") return null;
+        if (part.kind === "delete" && view === "final") return null;
+        if (part.kind === "delete") {
+          return (
+            <span
+              key={`${part.kind}-${index}`}
+              className="text-[#87919A] line-through decoration-[#87919A] decoration-1"
+            >
+              {part.text}
+            </span>
+          );
+        }
+        if (part.kind === "insert") {
+          return (
+            <span
+              key={`${part.kind}-${index}`}
+              className="font-medium underline decoration-2 decoration-[#49677B] underline-offset-4"
+            >
+              {part.text}
+            </span>
+          );
+        }
+        return <span key={`${part.kind}-${index}`}>{part.text}</span>;
+      })}
+    </p>
+  );
+}
+
 function RevisionMap({ first, final, featureLabel, interp }: { first: string; final: string; featureLabel: string; interp: boolean }) {
   const changed = first.trim() !== final.trim();
+  const parts = useMemo(() => diffText(first, final), [first, final]);
   return (
     <div className={card}>
       <div className="text-[13px] font-semibold">내가 바꾼 부분</div>
       <div className="mt-2.5 space-y-2">
         <div className="rounded-lg bg-[#F5F5F2] px-3.5 py-2.5">
           <div className="text-[11.5px] font-semibold text-muted-foreground">최초</div>
-          <p className="mt-0.5 whitespace-pre-wrap text-[14px]">{first}</p>
+          <DiffLine parts={parts} view="first" />
         </div>
         <div className="rounded-lg border border-[#FAD338] bg-[#FFF8DE] px-3.5 py-2.5">
           <div className="text-[11.5px] font-semibold text-[#6B5518]">최종</div>
-          <p className="mt-0.5 whitespace-pre-wrap text-[14px]">{final}</p>
+          <DiffLine parts={parts} view="final" />
         </div>
       </div>
+      {changed && (
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
+          <span><span className="text-[#87919A] line-through">삭제</span> · 회색 취소선</span>
+          <span><span className="underline decoration-2 decoration-[#49677B] underline-offset-2">추가</span> · 밑줄</span>
+        </div>
+      )}
       <p className="mt-2 text-[12px] text-muted-foreground">
         {changed
-          ? `이번에 조절한 초점 · ${featureLabel}. 문장의 길이보다 이 상황에 맞게 조절한 지점을 확인합니다.`
+          ? `텍스트 변화만 표시합니다. 추가·삭제가 곧 더 알맞다는 판정은 아닙니다 — 이번에 살펴본 초점은 ${featureLabel}입니다.`
           : `이번에는 최초 ${interp ? "통역" : "번역"}을 그대로 두었습니다.`}
       </p>
     </div>
@@ -1765,6 +1972,12 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
           </>
         )}
       </ChatScene>
+      {answered && item.type !== "multi_judge" && item.highlights?.length > 0 && (
+        <p className="px-1 text-[11.5px] leading-relaxed text-muted-foreground">
+          <span className="mr-1 rounded bg-[#FFE9A8] px-1.5 py-0.5 font-semibold text-[#6B5518]">표현 단서</span>
+          밑줄은 이 문항에서 살펴볼 부분입니다. 그대로 외울 정답 표시는 아닙니다.
+        </p>
+      )}
 
       {/* 문항 맥락 고정 바 — 긴 문항(특히 multi_judge는 후보 5개 × 선택지 3개)에서
           스크롤하면 상대·원문이 화면 밖으로 나가 "무엇을 옮기는 중이었지"를 잊는다.
