@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { missionQualityVerdict } from "@/lib/pragma/adminReviewQueue";
 
 type CountState = { value: number | null; error: string | null; loading: boolean };
 const initial: CountState = { value: null, error: null, loading: true };
@@ -33,16 +34,6 @@ const LiveBadge = () => (
     DB 실시간
   </Badge>
 );
-// 아직 가동하지 않는 단계의 계수 — 0을 "구현됨"으로 오해하지 않도록 배지로 구분한다.
-const PendingBadge = () => (
-  <Badge
-    variant="outline"
-    className="whitespace-nowrap border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
-  >
-    미가동
-  </Badge>
-);
-
 // 카드마다 「DB 실시간」을 반복하면 라벨과 배지가 서로 밀어내 두 줄로 접힌다
 // (좁은 5열에서 "시나리오 코/어", "DB 실시/간"). 실시간 여부는 섹션 헤더가 이미
 // 말하므로, 카드 배지는 **그 섹션의 기본과 다를 때만** 단다(미가동 등).
@@ -104,6 +95,7 @@ const AdminDashboard = () => {
   const [coreN, setCoreN] = useState<CountState>(initial);
   const [legacyN, setLegacyN] = useState<CountState>(initial);
   const [missionGenN, setMissionGenN] = useState<CountState>(initial);
+  const [aiCheckN, setAiCheckN] = useState<CountState>(initial);
   const [reviewedN, setReviewedN] = useState<CountState>(initial);
   const [runnableN, setRunnableN] = useState<CountState>(initial);
 
@@ -137,15 +129,17 @@ const AdminDashboard = () => {
       supabase
         .from("scenarios")
         .select("*", { count: "exact", head: true })
+        .eq("content_format", "scenario_core_v1")
         .eq("review_status", "needs_review"),
-      "scenarios.needs_review",
+      "scenarios.core_needs_review",
     );
     load(setApproved, () =>
       supabase
         .from("scenarios")
         .select("*", { count: "exact", head: true })
+        .eq("content_format", "scenario_core_v1")
         .eq("review_status", "approved"),
-      "scenarios.approved",
+      "scenarios.core_approved",
     );
     load(setTraces, () =>
       supabase.from("decision_traces").select("*", { count: "exact", head: true }),
@@ -172,8 +166,24 @@ const AdminDashboard = () => {
       db
         .from("scenarios")
         .select("scenario_id", { count: "exact" })
-        .not("mission_status", "is", null),
-      "scenarios.mission_any",
+        .eq("mission_status", "generated"),
+      "scenarios.mission_pending",
+    );
+    load(
+      setAiCheckN,
+      async () => {
+        const { data, error } = await db
+          .from("scenarios")
+          .select("mission_content")
+          .eq("mission_status", "generated");
+        const count = error
+          ? null
+          : ((data ?? []) as { mission_content: unknown }[]).filter(
+              (row) => missionQualityVerdict(row.mission_content) === "pass",
+            ).length;
+        return { count, error };
+      },
+      "scenarios.mission_ai_pass_pending",
     );
     load(setReviewedN, () =>
       db
@@ -237,8 +247,6 @@ const AdminDashboard = () => {
   };
 
   const approvedN = approved.value ?? 0;
-  // 검증②(AI 품질점검)는 아직 파이프라인에 없다 — 0을 정직하게 표기한다(0-q·99·101).
-  const aiCheckN: CountState = { value: 0, error: null, loading: false };
 
   return (
     <AdminShell
@@ -250,12 +258,11 @@ const AdminDashboard = () => {
       {/* 1024~1280에서 5열이면 카드가 140px까지 좁아져 라벨이 잘린다 — 그 구간은 3열로. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard label="① 시나리오 코어" state={coreN} note="검색·편성 단위" />
-        <StatCard label="② 미션 생성" state={missionGenN} note="검토 전 포함" />
+        <StatCard label="② 미션 검수 대기" state={missionGenN} note="generated" />
         <StatCard
-          label="③ AI 품질점검"
+          label="③ AI 점검 통과·대기"
           state={aiCheckN}
-          badge={<PendingBadge />}
-          note="검증② 미구현"
+          note="교수자 승인 전"
         />
         <StatCard label="④ 교수자 검토 완료" state={reviewedN} note="reviewed" />
         <StatCard label="⑤ 실행 가능" state={runnableN} note="reviewed ∩ 주차 배정" />
@@ -277,13 +284,13 @@ const AdminDashboard = () => {
       <SectionHeader title="운영 현황" badge={<LiveBadge />} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="전체 시나리오" state={total} note="legacy 포함 총계" />
-        <StatCard label="검수 대기" state={pending} />
-        <StatCard label="승인 완료" state={approved} />
+        <StatCard label="코어 상태·대기" state={pending} note="학습자 실행 게이트 아님" />
+        <StatCard label="코어 승인 상태" state={approved} note="신규 미션 승인과 별개" />
         <StatCard label="학습자 수행 기록" state={traces} />
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        현재 승인 {approvedN}건 · 구조는 500개 수용 가능. 이 행은 코어·미션을 구분하지 않는 전체
-        집계입니다 — 보고용 수치는 위 분리 계수를 사용하세요.
+        코어 승인 상태 {approvedN}건 · 현재 누적 테스트·회귀 자료를 본 콘텐츠 수로 해석하지
+        마세요. 학습자 실행 게이트는 위의 「교수자 검토 완료」와 수업 편성입니다.
       </p>
 
       {/* Bottom: dev/test tools */}
