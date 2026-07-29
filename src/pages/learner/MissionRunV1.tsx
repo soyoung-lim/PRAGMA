@@ -1871,17 +1871,22 @@ function MpjContextSurface({
   }
 
   return (
-    <ChatScene situation={item.situation_ko} relation={item.relation_ko}>
+    <ChatScene
+      situation={item.situation_ko}
+      relation={item.relation_ko}
+      separatePanels
+      threadEyebrow="메신저 · 보내기 전"
+    >
       {item.preceding_turn && <ChatBubble side="them">{item.preceding_turn}</ChatBubble>}
       {item.type === "multi_judge" ? (
         <>
-          <ChatCaption tone="draft">전하려는 뜻 · 아직 안 보냄</ChatCaption>
+          <ChatCaption tone="draft">내가 전하려는 뜻 · 아직 안 보냄</ChatCaption>
           <ChatBubble side="me" variant="draft">{item.source}</ChatBubble>
         </>
       ) : (
         <>
-          <ChatCaption>전하려는 뜻 · {item.source}</ChatCaption>
-          <ChatCaption tone="draft">↓ AI가 만든 초안 · 아직 안 보냄</ChatCaption>
+          <ChatCaption>내가 전하려는 뜻 · {item.source}</ChatCaption>
+          <ChatCaption tone="draft">AI 번역 초안 · 아직 안 보냄</ChatCaption>
           <ChatBubble side="me" variant="draft">
             {answered ? highlightZh(item.target, item.highlights) : item.target}
           </ChatBubble>
