@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { CheckCircle2, CircleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +27,7 @@ import {
   ChatCaption,
   ChatAvatar,
   SituationText,
+  learnerCounterpartLabel,
   highlightZh,
 } from "@/components/mission/ChatScene";
 import {
@@ -42,11 +44,7 @@ import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { requestSttTranscript } from "@/lib/mission/missionStt";
 import { requestTtsAudio } from "@/lib/tts";
 import { diffText, type TextDiffPart } from "@/lib/mission/textDiff";
-import {
-  SEMANTIC_LABEL,
-  GRAMMAR_LABEL,
-  type RuntimeFeedback,
-} from "@/lib/pragma/feedbackSchema";
+import { type RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
 import { IS_DEMO } from "@/lib/auth/useProfile";
 
 // 샘플은 v1 → 정규화해 v2로 구동(러너는 정규화 형태만 본다, 0-l·84).
@@ -330,28 +328,113 @@ function FeedbackPanel({
   const v = fb.verdicts;
   const g = fb.blocks.grammar?.[0];
   const head = feedbackHeadline(fb);
+  const withinBandCode = getTargetFeature(featureCode)?.within_band_code ?? "within_band";
 
   const layers = [
-    { key: "meaning", label: "뜻 전달", short: SEMANTIC_LABEL[v.semantic_fidelity] },
-    { key: "grammar", label: "문법", short: GRAMMAR_LABEL[v.grammatical_accuracy] },
+    {
+      key: "meaning",
+      step: "1",
+      label: "뜻 전달",
+      passed: v.semantic_fidelity === "preserved",
+      short:
+        v.semantic_fidelity === "preserved"
+          ? "핵심 뜻을 잘 전달했습니다"
+          : v.semantic_fidelity === "minor_loss"
+            ? "일부 뉘앙스를 더 살려 보십시오"
+            : "뜻이 달라진 부분을 확인해 보십시오",
+    },
+    {
+      key: "grammar",
+      step: "2",
+      label: "문법",
+      passed: v.grammatical_accuracy === "clean",
+      short:
+        v.grammatical_accuracy === "clean"
+          ? "이해를 막는 오류가 없습니다"
+          : "이해를 방해하는 부분을 다듬어 보십시오",
+    },
     {
       key: "feature",
+      step: "3",
       label: "상황 맞춤",
-      short: bandLabel(featureCode, v.pragmatic_appropriateness.band_code),
+      passed: v.pragmatic_appropriateness.band_code === withinBandCode,
+      short:
+        v.pragmatic_appropriateness.band_code === withinBandCode
+          ? "이 상황에 알맞게 조절했습니다"
+          : learnerBandLabel(
+              featureCode,
+              v.pragmatic_appropriateness.band_code,
+              bandLabel(featureCode, v.pragmatic_appropriateness.band_code),
+            ),
     },
   ];
+  const passedCount = layers.filter((layer) => layer.passed).length;
+  const allPassed = passedCount === layers.length;
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-[#EAE4D2] bg-white p-2.5">
-        {layers.map((layer) => (
-          <div key={layer.key} className="min-w-0 rounded-lg bg-[#F7F7F3] px-2 py-2 text-center">
-            <div className="text-[10.5px] font-semibold text-muted-foreground">{layer.label}</div>
-            <div className="mt-0.5 truncate text-[12px] font-bold text-[#15202B]" title={layer.short}>
-              {layer.short}
+      <div className="overflow-hidden rounded-xl border border-[#DDE5DF] bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5EBE7] bg-[#F7FAF8] px-3.5 py-3">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#52645A]">AI 답안 판정</div>
+            <div className="mt-0.5 text-[13.5px] font-bold text-[#15202B]">
+              {allPassed
+                ? "좋습니다. 세 기준을 모두 안정적으로 통과했습니다."
+                : `세 기준 중 ${passedCount}가지를 통과했습니다. 표시된 부분만 다듬으면 됩니다.`}
             </div>
           </div>
-        ))}
+          <span
+            className={[
+              "rounded-full px-2.5 py-1 text-[11px] font-extrabold",
+              allPassed ? "bg-[#DFF4E7] text-[#176640]" : "bg-[#FFF1C7] text-[#755A0B]",
+            ].join(" ")}
+          >
+            {passedCount} / 3 통과
+          </span>
+        </div>
+
+        <div className="grid gap-2 p-2.5 md:grid-cols-3">
+          {layers.map((layer) => {
+            const StatusIcon = layer.passed ? CheckCircle2 : CircleAlert;
+            return (
+              <div
+                key={layer.key}
+                className={[
+                  "min-w-0 rounded-xl border px-3 py-3",
+                  layer.passed
+                    ? "border-[#BBDCC8] bg-[#F2FAF5]"
+                    : "border-[#F0D786] bg-[#FFFAE9]",
+                ].join(" ")}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={[
+                        "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-extrabold",
+                        layer.passed ? "bg-[#D5EFDF] text-[#176640]" : "bg-[#FBE8AE] text-[#755A0B]",
+                      ].join(" ")}
+                    >
+                      {layer.step}
+                    </span>
+                    <span className="text-[11px] font-bold text-[#52645A]">{layer.label}</span>
+                  </div>
+                  <span
+                    className={[
+                      "inline-flex items-center gap-1 text-[10.5px] font-extrabold",
+                      layer.passed ? "text-[#176640]" : "text-[#755A0B]",
+                    ].join(" ")}
+                  >
+                    <StatusIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    {layer.passed ? "통과" : "조절 필요"}
+                  </span>
+                </div>
+                <div className="mt-2 text-[12.5px] font-bold leading-snug text-[#15202B]">
+                  {layer.short}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="rounded-xl border border-[#FAD338] bg-[#FFFBEA] p-4">
@@ -832,7 +915,7 @@ function MissionRunner({
               />
             ) : (
               <>
-                <ChatScene situation={pt.situation_ko} relation={pt.relation_ko} eyebrow="직접 옮길 요청">
+                <ChatScene situation={pt.situation_ko} relation={pt.relation_ko} eyebrow="지금, 직접 옮길 장면">
                   {pt.preceding_turn && <ChatBubble side="them">{pt.preceding_turn}</ChatBubble>}
                   <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
                   {dir === "ko_zh" && (
@@ -1291,11 +1374,16 @@ function AudioFrame({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border-l-[3px] border-[#EAE4D2] border-l-[#15202B] bg-white p-4">
-        <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">통역 — 듣고 옮기기</div>
-        <SituationText text={situation} className="mt-1 text-[14.5px] font-semibold" />
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          <Badge variant="secondary" className="font-normal">{relation}</Badge>
+      <div className="rounded-xl border border-[#E4E0CE] border-l-4 border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#FFFFFF_72%)] p-4">
+        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-[#5A6672]">
+          <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
+          지금, 통역할 장면
+        </div>
+        <SituationText text={situation} emphasizeFirst className="mt-2 text-[14.5px] leading-[1.52]" />
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <Badge variant="secondary" className="font-normal">
+            상대 · {learnerCounterpartLabel(relation)}
+          </Badge>
           <Badge variant="secondary" className="font-normal">음성 · 순차 통역</Badge>
         </div>
       </div>
@@ -1706,13 +1794,19 @@ function MpjContextSurface({
   if (channel === "email") {
     return (
       <div className="my-3 overflow-hidden rounded-2xl border border-[#D7DDE5] bg-white">
-        <div className="border-b border-[#E4E8EE] bg-[#F6F8FA] px-4 py-3">
-          <div className="text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-muted-foreground">이메일 작성 맥락</div>
+        <div className="border-b border-l-4 border-[#E4E8EE] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#F6F8FA_74%)] px-4 py-3">
+          <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#5A6672]">
+            <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
+            지금, 이메일을 쓸 장면
+          </div>
           <SituationText
             text={item.situation_ko}
-            className="mt-1 text-[14.5px] font-bold leading-snug text-[#15202B]"
+            emphasizeFirst
+            className="mt-2 text-[14.5px] leading-[1.52]"
           />
-          <div className="mt-1.5 text-[12.5px] text-[#3E4C57]">받는 사람 · {item.relation_ko}</div>
+          <div className="mt-2.5 text-[12.5px] font-semibold text-[#3E4C57]">
+            받는 사람 · {learnerCounterpartLabel(item.relation_ko)}
+          </div>
         </div>
         <div className="space-y-3 px-4 py-4">
           {item.preceding_turn && (
@@ -1740,15 +1834,19 @@ function MpjContextSurface({
   if (channel === "facetoface" || channel === "phone") {
     return (
       <div className="my-3 overflow-hidden rounded-2xl border border-[#CFD9E3] bg-[#F3F6F9]">
-        <div className="border-b border-[#DCE4EB] bg-[#EAF0F5] px-4 py-3">
-          <div className="text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#52697E]">
-            {channel === "phone" ? "통화 발화 맥락" : "대면 발화 맥락"}
+        <div className="border-b border-l-4 border-[#DCE4EB] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#EAF0F5_74%)] px-4 py-3">
+          <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#52697E]">
+            <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
+            {channel === "phone" ? "지금, 통화할 장면" : "지금, 마주 보고 말할 장면"}
           </div>
           <SituationText
             text={item.situation_ko}
-            className="mt-1 text-[14.5px] font-bold leading-snug text-[#15202B]"
+            emphasizeFirst
+            className="mt-2 text-[14.5px] leading-[1.52]"
           />
-          <div className="mt-1.5 text-[12.5px] text-[#3E4C57]">듣는 사람 · {item.relation_ko}</div>
+          <div className="mt-2.5 text-[12.5px] font-semibold text-[#3E4C57]">
+            듣는 사람 · {learnerCounterpartLabel(item.relation_ko)}
+          </div>
         </div>
         <div className="space-y-3 px-4 py-4">
           {item.preceding_turn && (
@@ -1964,7 +2062,7 @@ function MpjStage({
         <div className="fixed inset-x-0 top-[60px] z-30 border-b border-[#EAE4D2] bg-white/95 backdrop-blur">
           <div className="mx-auto flex max-w-3xl flex-wrap items-baseline gap-x-2.5 gap-y-0.5 px-6 py-1.5 text-[12px]">
             <span className="text-muted-foreground">
-              상대 · <span className="text-foreground">{item.relation_ko}</span>
+              상대 · <span className="text-foreground">{learnerCounterpartLabel(item.relation_ko)}</span>
             </span>
             <span className="hidden text-[#E3E1D8] md:inline">|</span>
             <span className="text-muted-foreground">
@@ -2156,7 +2254,9 @@ function MpjStage({
                 <div className="mt-2 text-[11.5px] font-semibold text-[#2E7D5B]">
                   {item.type === "reason"
                     ? `핵심 원인 · ${item.reasons.find((r) => r.id === item.accepted_reason_id)?.text_ko ?? ""}`
-                    : `참고 판정 · ${item.accepted_band_codes.map((c) => bandLabel(feature, c)).join(" / ")}`}
+                    : `참고 판정 · ${item.accepted_band_codes
+                        .map((c) => learnerBandLabel(feature, c, bandLabel(feature, c)))
+                        .join(" / ")}`}
                 </div>
               )}
             </div>
@@ -2186,7 +2286,7 @@ function MpjStage({
                         answered && c.accepted_band_codes.includes(b.code) ? "border-[#2E7D5B] bg-[#F2FAF6]" : "",
                       ].join(" ")}
                     >
-                      {b.label}
+                      {learnerBandLabel(feature, b.code, b.label)}
                     </button>
                   ))}
                 </div>
