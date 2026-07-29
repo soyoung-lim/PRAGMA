@@ -436,11 +436,11 @@ export function checkMission(
           if (
             !lowCode ||
             !highCode ||
-            counts.get(lowCode) !== 1 ||
+            counts.get(lowCode) !== 2 ||
             counts.get(withinCode) !== 2 ||
             counts.get(highCode) !== 1
           ) {
-            add(v, "R5", "fail", `문항 ${it.id}: v4 MultiJudge는 과소 1·적정 2·과잉 1이어야 함`);
+            add(v, "R5", "fail", `문항 ${it.id}: v4 MultiJudge는 과소 2·적정 2·과잉 1이어야 함`);
           }
           if (pdrDifferenceCount(it.pdr, m.production_task.pdr) !== 1) {
             add(v, "R5", "fail", `문항 ${it.id}: v4 MultiJudge는 앵커 PDR에서 한 축만 바꾼 대비 상황이어야 함`);
@@ -497,13 +497,20 @@ export function checkMission(
   }
   checkSourceLang(v, dir, m.production_task.source_text, "production_task.source_text");
 
-  // ── R8 거절·응답류 preceding_turn ──
-  if (isResponseAct(ctx.speech_act)) {
+  // ── R8 v4 전 문항 또는 거절·응답류 preceding_turn ──
+  if (m.schema_version === "mission_v4" || isResponseAct(ctx.speech_act)) {
     for (const it of m.mpj_items) {
       if (!it.preceding_turn) {
-        add(v, "R8", "fail", `문항 ${it.id}: ${ctx.speech_act}는 preceding_turn 필수`);
+        add(
+          v,
+          "R8",
+          "fail",
+          `문항 ${it.id}: ${m.schema_version === "mission_v4" ? "v4 관계 맥락" : ctx.speech_act}은 preceding_turn 필수`,
+        );
       }
     }
+  }
+  if (isResponseAct(ctx.speech_act)) {
     if (!m.production_task.preceding_turn) {
       add(v, "R8", "fail", "production_task: 거절·응답류는 preceding_turn 필수");
     }

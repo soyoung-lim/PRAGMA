@@ -98,7 +98,7 @@ describe("mission_v3 MPJ4 contract", () => {
 
 const provenanceV4 = {
   ...provenance,
-  prompt_version: "mission_v4_mpj4_dct1",
+  prompt_version: "mission_v4_mpj4_dct1_context_v3",
   mission_content_hash: "mission-v4-test",
   generated_at: "2026-07-29T00:30:00Z",
 };
@@ -170,7 +170,7 @@ function missionV4() {
         pdr: { ...anchorPdr, r: "high" as const },
         situation_ko:
           "추가 샘플 발송은 상대가 물류 일정을 전면 재조정해야 하는 큰 부탁이다. 몇 차례 연락했지만 친하지 않은 거래처 담당자에게 메신저로 요청한다.",
-        candidates: oldMulti.candidates.slice(0, 4),
+        candidates: oldMulti.candidates,
       },
     ],
     provenance: provenanceV4,
@@ -205,7 +205,7 @@ describe("mission_v4 MPJ4 + DCT contract", () => {
     expect(checked.violations.filter((item) => item.level === "fail")).toEqual([]);
   });
 
-  it("rejects repeated Judge3/ReasonConf and five-candidate MultiJudge", () => {
+  it("rejects repeated Judge3/ReasonConf, four-candidate MultiJudge, and missing context", () => {
     const current = missionV4();
     const legacy = normalizeMission(SAMPLE_MISSION_V1).data!;
     expect(
@@ -226,7 +226,22 @@ describe("mission_v4 MPJ4 + DCT contract", () => {
           current.mpj_items[0],
           current.mpj_items[1],
           current.mpj_items[2],
-          { ...current.mpj_items[3], candidates: legacy.mpj_items[4].type === "multi_judge" ? legacy.mpj_items[4].candidates : [] },
+          {
+            ...current.mpj_items[3],
+            candidates:
+              current.mpj_items[3].type === "multi_judge"
+                ? current.mpj_items[3].candidates.slice(0, 4)
+                : [],
+          },
+        ],
+      }).ok,
+    ).toBe(false);
+    expect(
+      normalizeMission({
+        ...current,
+        mpj_items: [
+          { ...current.mpj_items[0], preceding_turn: undefined },
+          ...current.mpj_items.slice(1),
         ],
       }).ok,
     ).toBe(false);

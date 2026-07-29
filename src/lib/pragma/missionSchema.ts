@@ -9,7 +9,7 @@
 //   scale4 → judge3 → fix_choice → reason_conf (순서 고정, R1).
 // 현행 v4 MPJ 4유형:
 //   scale4(첫인상) → fix_choice(판정+교정) → reason(주원인)
-//   → multi_judge(4후보) (순서 고정, R1).
+//   → multi_judge(5후보) (순서 고정, R1).
 // axis_feature = unit.target_feature 고정(0-b·19, R1). band code는 카탈로그 정본.
 
 import { z } from "zod";
@@ -304,6 +304,12 @@ export const MpjItemV2Schema = z.discriminatedUnion("type", [
 ]);
 export type MpjItemV2 = z.infer<typeof MpjItemV2Schema>;
 
+export const VocabularyHintSchema = z.object({
+  source: z.string().min(1),
+  target: z.string().min(1),
+});
+export type VocabularyHint = z.infer<typeof VocabularyHintSchema>;
+
 const ProductionTaskV2Schema = z.object({
   mode: z.enum(["translation", "interpreting"]),
   source_modality: SourceModalitySchema,
@@ -314,6 +320,8 @@ const ProductionTaskV2Schema = z.object({
   pdr: PdrSchema,
   source_text: z.string().min(1),
   preceding_turn: z.string().nullable(),
+  /** 번역 산출용 비화용적 내용 어휘 힌트 2개. legacy 읽기 호환을 위해 optional. */
+  vocabulary_hints: z.array(VocabularyHintSchema).length(2).optional(),
   /** 코어에서 계승한 명제적 Supportive Move 허용 사실. */
   usable_facts: z.array(z.string().min(1)).max(8).optional(),
   replay_limit: z.number().int().positive().optional(),
@@ -372,6 +380,8 @@ const MpjCommonV4 = {
   id: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   /** UI 표현용 매체. 연구·난이도 축이 아니며 상황 서술과 일치해야 한다. */
   channel: ChannelSchema,
+  /** P·D·R의 상대와 관계를 실제 대화 맥락으로 보여 주기 위해 모든 v4 문항에 필수. */
+  preceding_turn: z.string().min(1),
 };
 
 const ScaleCodeV4 = z.enum([
@@ -434,7 +444,7 @@ const MultiJudgeItemV4 = z.object({
         note_ko: z.string().min(1),
       }),
     )
-    .length(4),
+    .length(5),
 });
 
 export const MpjItemV4Schema = z.discriminatedUnion("type", [

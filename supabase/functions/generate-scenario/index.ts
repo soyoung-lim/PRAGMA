@@ -1060,10 +1060,19 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken
   const channels = isSpoken ? '"facetoface" | "phone"' : '"email" | "messenger"'
   const lowBand = f.band_schema[0]?.code ?? 'under_band'
   const highBand = f.band_schema[f.band_schema.length - 1]?.code ?? 'over_band'
-  const precedingRule = isResponse
-    ? `\n- 🔴 이 화행은 인접쌍의 둘째 짝(응답류)입니다. **4문항 전부**에
-    "preceding_turn"(상대(${tgtL} 화자)의 ${tgtL} 선행 발화)를 문항별 상황에 맞게 반드시 채우세요(각 item 객체에 "preceding_turn":"…" 필드 추가).`
-    : ''
+  const precedingRule = `\n- 🔴 **4문항 전부**에 "preceding_turn"을 반드시 채우세요.
+  상대(${tgtL} 화자)가 방금 한 자연스러운 ${tgtL} 발화여야 하며, 각 문항의 관계·사건과 직접 이어져야 합니다.
+  학습자의 source와 같은 화행을 상대가 먼저 끝내 버리거나 정답 표현을 노출하지 마세요.${
+    isResponse ? ' 이 화행은 인접쌍의 둘째 짝이므로 두 턴의 명제·사람·소유·지시 대상을 특히 일치시키세요.' : ''
+  }`
+  const vocabularyHintsShape = isSpoken
+    ? '[]'
+    : `[{"source":"산출을 막을 수 있는 내용 어휘·짧은 구(${srcL})","target":"짧은 대응 표현(${tgtL})"},{"source":"서로 다른 내용 어휘·짧은 구(${srcL})","target":"짧은 대응 표현(${tgtL})"}]`
+  const vocabularyHintsRule = isSpoken
+    ? '- vocabulary_hints는 **빈 배열**. 통역에는 힌트를 제공하지 않습니다.'
+    : `- vocabulary_hints는 **정확히 2개**. production source_text에 실제로 있는 내용 어휘·고유명사·전문용어만 고릅니다.
+  완화·공손·선택권·호칭·종결형 등 target feature를 실현하는 화용 표현, 완성 문장과 문법 설명은 금지합니다.
+  production preceding_turn에 목표어가 이미 그대로 보이면 같은 목표어를 힌트로 다시 주지 마세요.`
   const bands = f.band_schema.map((b) => `"${b.code}"(${b.label_ko})`).join(' / ')
   const gate1 = `🔴 게이트1(불변항 — 절대 규칙): target·모든 corrections.text·모든 candidates.text·recommended_example·reference_alternatives.text는 **먼저 각 원문의 명제·의도·화행 목적을 유지**해야 합니다. 의미나 의도가 달라진 문장은 화용 판단 후보가 될 수 없습니다. 부적절성은 오직 「${f.learner_label}」 초점의 **과소·적정·과잉 차이**로만 실현합니다. MPJ 문항에는 그 문항 source 밖의 새 사실·이유·대안·수리·보상·새 일정을 추가하지 마세요. DCT reference_alternatives만 사용자 요청서의 [사용 가능한 추가 사실] 폐쇄 목록을 사용할 수 있습니다.`
   const spokenRule = isSpoken
@@ -1092,7 +1101,7 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
   band: 위 판정 대역 코드 (예: 적정 = "${f.within_band_code}")
   channel: ${channels}
 
-언어 규칙(방향 ${LANG_DIR_KO[direction]}): source 위치의 원문 = **${srcL}** / target·corrections.text·candidates.text·recommended_example·reference_alternatives.text = **${tgtL}**. situation_ko·relation_ko·explanation_ko·note_ko·reasons.text_ko = 방향과 무관하게 **항상 한국어**(학습자 UI 언어).
+언어 규칙(방향 ${LANG_DIR_KO[direction]}): source·vocabulary_hints.source 위치의 원문 = **${srcL}** / preceding_turn·target·corrections.text·candidates.text·recommended_example·reference_alternatives.text·vocabulary_hints.target = **${tgtL}**. situation_ko·relation_ko·explanation_ko·note_ko·reasons.text_ko = 방향과 무관하게 **항상 한국어**(학습자 UI 언어).
 
 아래 4문항을 모두, 축약 없이, 모든 필드를 채워 출력합니다:
 {
@@ -1104,6 +1113,7 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
       "relation_ko": "학습자가 마주한 상대의 역할·관계만 한 줄(화자 역할·화살표 제외)",
       "pdr": {"p":"이 표현이 실제로 알맞아지는 코드","d":"…","r":"…"},
       "source": "판단 대상의 실제 ${srcL} 발화",
+      "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
       "target": "소박한 규칙의 반례가 되는, 이 맥락에서는 적절한 ${tgtL} 초안",
       "highlights": ["target의 실제 부분문자열"],
       "accepted_scale_codes": ["very_appropriate","somewhat_appropriate"],
@@ -1118,6 +1128,7 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
       "relation_ko": "학습자가 마주한 상대의 역할·관계만 한 줄(화자 역할·화살표 제외)",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
+      "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
       "target": "초점 대역상 부적절하지만 의미·문법은 온전한 ${tgtL} 초안",
       "highlights": ["target의 실제 부분문자열"],
       "accepted_band_codes": ["부적절 band 정확히 1개"],
@@ -1137,15 +1148,16 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
       "relation_ko": "학습자가 마주한 상대의 역할·관계만 한 줄(화자 역할·화살표 제외)",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
+      "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
       "target": "초점 대역상 부적절하지만 의미·문법은 온전한 ${tgtL} 초안",
       "highlights": ["target의 실제 부분문자열"],
       "problem_band_code": "부적절 band 정확히 1개 — UI에는 판정을 다시 묻지 않음",
       "reasons": [
-        {"id":"r1","text_ko":"주된 target-feature 원인","kind":"primary"},
-        {"id":"r2","text_ko":"가까워 보이지만 틀린 화용 오개념","kind":"pragmatic_misconception"},
-        {"id":"r3","text_ko":"사실과 다른 의미·문법·맥락 설명","kind":"meaning_grammar_context"}
+        {"id":"r1","text_ko":"실제 문장 속 단서를 근거로 한 그럴듯하지만 주원인은 아닌 화용 해석","kind":"pragmatic_misconception"},
+        {"id":"r2","text_ko":"주된 target-feature 원인","kind":"primary"},
+        {"id":"r3","text_ko":"target의 실제 요소를 근거로 한 그럴듯하지만 주원인은 아닌 의미·문법·맥락 해석","kind":"meaning_grammar_context"}
       ],
-      "accepted_reason_id": "r1",
+      "accepted_reason_id": "r2",
       "explanation_ko": "가장 큰 원인과 부차적 맥락을 구분한 해설",
       "recommended_example": "이 상황의 적절안 1개(${tgtL})"
     },
@@ -1156,17 +1168,20 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
       "relation_ko": "바뀐 P/D/R 한 축이 드러나는 상대의 역할·관계만 한 줄(화자 역할·화살표 제외)",
       "pdr": {"p":"앵커와 같거나 한 축만 다른 코드","d":"…","r":"…"},
       "source": "비교 대상의 실제 ${srcL} 발화",
+      "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
       "candidates": [
         {"text":"과소안 1(${tgtL})","accepted_band_codes":["${lowBand}"],"note_ko":"…"},
         {"text":"적절한 전략 1(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"note_ko":"…"},
         {"text":"과잉안 1(${tgtL})","accepted_band_codes":["${highBand}"],"note_ko":"…"},
-        {"text":"적절한 전략 2(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"note_ko":"…"}
+        {"text":"적절한 전략 2(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"note_ko":"…"},
+        {"text":"과소안 2(${tgtL})","accepted_band_codes":["${lowBand}"],"note_ko":"…"}
       ],
-      "explanation_ko": "네 초안의 차이를 P·D·R과 초점 대역으로 설명",
+      "explanation_ko": "다섯 초안의 차이를 P·D·R과 초점 대역으로 설명",
       "recommended_example": "이 상황의 적절안 1개(${tgtL})"
     }
   ],
-  "reference_alternatives": [ {"text":"…(${tgtL})","note_ko":"…"} ]
+  "reference_alternatives": [ {"text":"…(${tgtL})","note_ko":"…"} ],
+  "vocabulary_hints": ${vocabularyHintsShape}
 }
 (reference_alternatives는 1~2개, 서로 다른 전략.)
 
@@ -1177,9 +1192,12 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
   reference_scale_code는 그중 대표 정도 하나입니다. 학습자가 같은 적절성 방향을 고르면 맞게 처리합니다.
 - fix_choice는 **Judge3 판단을 먼저 한 뒤 교정**하는 한 문항이다. accepted_band_codes를 생략하지 마세요.
 - reason에는 accepted_band_codes·confidence를 만들지 마세요. 질문은 "이 표현이 상황에 맞지 않는 가장 큰 이유" 하나뿐입니다.
-- reason의 정답은 정확히 1개이며 kind="primary"여야 합니다. 주원인이 두 개 이상 동등하게 방어되면 문항을 버리고 다시 만드세요.
+- reason의 정답은 정확히 1개이며 kind="primary"여야 합니다. primary의 위치와 id를 고정하지 말고 세 선택지의 순서를 매번 섞으세요.
+  오답도 target에 실제로 보이는 표현이나 이 장면의 인접한 화용 쟁점을 근거로 삼아, 정답을 모르는 학습자가 잠시 고민할 만큼 그럴듯해야 합니다.
+  황당한 문법 금지 주장, 상황과 무관한 절대 규칙, target에 없는 요소를 있다고·없다고 하는 설명은 금지합니다.
+  다만 오답이 주된 target-feature 원인과 동등하게 방어되면 문항을 버리고 다시 만드세요.
 - fix_choice의 수정안은 정확히 4개(적절한 서로 다른 전략 2 + 그럴듯한 오답 2).
-- multi_judge는 정확히 4후보(과소 1·적정 2·과잉 1: ${lowBand} 1 + ${f.within_band_code} 2 + ${highBand} 1). 후보 순서는 매번 섞으세요.
+- multi_judge는 정확히 5후보(과소 2·적정 2·과잉 1: ${lowBand} 2 + ${f.within_band_code} 2 + ${highBand} 1). 후보 순서는 매번 섞으세요.
 - 🔴 **판정 대역은 표현 형식이 아니라 관계·부담(P·D·R)에 상대적입니다.** 친밀·동등·저부담 상황에서는
   직접형·간결형도 적절할 수 있으며, **완화 표현이 없다는 이유만으로 과소 대역으로 판정하지 마세요.**
   같은 문장이 초면·고부담이면 과소, 친밀·저부담이면 적정일 수 있습니다.
@@ -1194,7 +1212,7 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
 - relation_ko는 학습자 화면의 ‘상대’ 칩에 그대로 표시됩니다. **상대의 역할과 관계만** 쓰고,
   화자(나)의 역할, "A → B" 구조, P/D/R 코드·라벨은 넣지 마세요.
 - channel은 연구 축이 아니라 UI 표현용입니다. 상황과 일치시켜 번역은 email/messenger, 통역은 facetoface/phone만 사용하세요.
-- reason의 세 선택지는 target을 사실대로 기술해야 합니다. 실제 있는 요소를 "없다"고 쓰지 말고, primary 하나만 판정의 가장 큰 원인이어야 합니다.
+- reason의 세 선택지는 target을 사실대로 기술해야 합니다. 실제 있는 요소를 "없다"고 쓰지 말고, 세 선택지 모두 표면상 검토할 가치가 있어야 하며 primary 하나만 판정의 가장 큰 원인이어야 합니다.
 - 모든 문항의 source는 **실제 ${srcL} 발화**(학습자가 옮길 원문 문장)여야 합니다 —
   "~에 대한 감사 인사" 같은 설명문 금지.
 - pdr.p는 **화자(나) 기준**입니다: 화자가 상대(상사·교수 등)보다 지위가 낮으면 "speaker_lower".
@@ -1204,6 +1222,7 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
 - DCT의 usable_facts는 reference_alternatives에서만 사용할 수 있고, 사실 유무를 정답 단서로 만들지 마세요.
 - 차이는 오직 이 화용 초점에서만. 문법·의미·길이가 정답 단서가 되면 안 됨.
 - **pdr 값은 반드시 위 '공통 코드값'만 사용**(한국어 라벨 "동등" 등 절대 금지).
+${vocabularyHintsRule}
 - multi_judge는 길이순으로 정답을 알 수 없게 섞고 최장/최단 비율을 3배 이하로 맞추세요. 과잉안이 유일한 최장문, 과소안이 유일한 최단문이 되지 않게 하세요.
 - 🔴 highlights는 target 안의 실제 부분문자열이어야 합니다.
 - source=${srcL}, 모든 target·교정안·후보=${tgtL}. 국가 단위 일반화 표현 금지.${precedingRule}
@@ -1246,7 +1265,7 @@ function buildMissionUserPrompt(b: MissionGenBody): string {
     `🔴 [참고안] reference_alternatives는 반드시 위 [산출 과제]의 "원문"(${srcL})을 ${tgtL}로 옮긴 것이어야 합니다 — MPJ 문항의 예문을 복사하거나 다른 상황의 문장을 넣지 마세요.`,
     '[앵커+대비] 1번 fix_choice와 2번 reason은 위 P/D/R을 그대로 사용하되 서로 다른 사건으로 만드세요.',
     '[앵커+대비] 3번 multi_judge는 위 P/D/R 중 정확히 한 축만 바꾼 대비 상황으로 만드세요.',
-    '[수준 정책] 선택지·후보 수는 모든 수준에서 4/3/4로 고정합니다. 난이도는 장면과 표현의 미묘함으로만 조절하세요.',
+    '[수준 정책] 수정안·이유·후보 수는 모든 수준에서 4/3/5로 고정합니다. 난이도는 장면과 표현의 미묘함으로만 조절하세요.',
   )
   if (b.error_pattern_hints_ko.length) {
     parts.push(
@@ -1864,6 +1883,9 @@ Deno.serve(async (req) => {
           pdr: b.core.pdr,
           source_text: b.core.source_text_ko,          // 코어 계승(R23) — 입력 body는 v1 이름
           preceding_turn: b.core.preceding_turn_zh ?? null,
+          ...(productionMode === 'translation'
+            ? { vocabulary_hints: Array.isArray(gen.vocabulary_hints) ? gen.vocabulary_hints : [] }
+            : {}),
           ...(Array.isArray(b.core.usable_facts) && b.core.usable_facts.length
             ? { usable_facts: [...new Set(b.core.usable_facts.map((x) => x.trim()).filter(Boolean))].slice(0, 8) }
             : {}),
@@ -1879,14 +1901,14 @@ Deno.serve(async (req) => {
         ...mission_content,
         provenance: {
           model,
-          prompt_version: 'mission_v4_mpj4_dct1',
+          prompt_version: 'mission_v4_mpj4_dct1_context_v3',
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
         },
       }
       return new Response(
-        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v4_mpj4_dct1', generated_at: genAt } }),
+        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v4_mpj4_dct1_context_v3', generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }

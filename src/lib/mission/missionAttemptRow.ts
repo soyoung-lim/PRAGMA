@@ -23,6 +23,8 @@ export interface SaveAttemptInput {
    * 화면에 제시된 선택의 비채점 trace로만 저장한다.
    */
   mpjResponses?: MpjResponseTrace[];
+  /** 번역 산출에서 내용 어휘 힌트를 열람했는지 남기는 비채점 수행 trace. */
+  productionSupport?: ProductionSupportTrace;
   /**
    * 학습자 이견 기록(0-r·104). 판정을 바꾸지 않는다 — 결함 문항 발견과
    * 채점키 캘리브레이션 보조 자료로만 쓴다. 남기지 않으면 undefined.
@@ -49,6 +51,16 @@ export interface MpjResponseTrace extends Record<string, Json | undefined> {
   confidence?: string;
   /** multi_judge 후보 순서와 같은 band code 배열 */
   candidate_band_codes?: string[];
+  /** v4 multi_judge에서 고른 BEST 1개와 WORST 1개의 0-based 위치. */
+  best_candidate_index?: number;
+  worst_candidate_index?: number;
+}
+
+export interface ProductionSupportTrace extends Record<string, Json | undefined> {
+  kind: "translation_vocabulary_hints";
+  available: boolean;
+  opened: boolean;
+  opened_at: string | null;
 }
 
 /** 이견 채널 저장 형태 — context_judgment jsonb에 그대로 들어간다. */
@@ -93,11 +105,12 @@ export function buildMissionAttemptRow(
     return withoutConfidence;
   });
   const contextJudgment =
-    mpjResponses && mpjResponses.length > 0
+    (mpjResponses && mpjResponses.length > 0) || input.productionSupport
       ? ({
           schema_version: "mpj_response_v1",
           mission_schema_version: input.mission.schema_version,
-          responses: mpjResponses,
+          responses: mpjResponses ?? [],
+          production_support: input.productionSupport ?? null,
           learner_dissent: input.contextJudgment ?? null,
         } as unknown as Json)
       : input.contextJudgment ?? null;

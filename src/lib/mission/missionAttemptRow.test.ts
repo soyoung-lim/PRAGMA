@@ -129,7 +129,20 @@ describe("mission attempt row", () => {
           confidence: "이 값은 v4에서 폐기돼야 함",
           completed_at: "2026-07-29T01:02:00.000Z",
         },
+        {
+          item_id: 4,
+          item_type: "multi_judge",
+          best_candidate_index: 1,
+          worst_candidate_index: 4,
+          completed_at: "2026-07-29T01:03:00.000Z",
+        },
       ],
+      productionSupport: {
+        kind: "translation_vocabulary_hints",
+        available: true,
+        opened: true,
+        opened_at: "2026-07-29T01:04:00.000Z",
+      },
     }, "profile-1", "user-1");
 
     expect(row.context_judgment).toMatchObject({
@@ -146,7 +159,17 @@ describe("mission attempt row", () => {
           item_type: "reason",
           reason_id: "primary",
         },
+        {
+          item_type: "multi_judge",
+          best_candidate_index: 1,
+          worst_candidate_index: 4,
+        },
       ],
+      production_support: {
+        kind: "translation_vocabulary_hints",
+        available: true,
+        opened: true,
+      },
     });
     expect(JSON.stringify(row.context_judgment)).not.toContain("confidence");
   });
