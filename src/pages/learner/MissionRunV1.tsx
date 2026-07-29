@@ -67,6 +67,10 @@ const JUDGMENT_STATUS_CAPTION =
 
 // 사이트 헤더(LearnerJourneyShell) 높이 — 문항 맥락 바가 붙는 기준선.
 const HEADER_H = 60;
+// 화행·학습 초점 + 3단계 워크플로우 고정 영역. 긴 미션에서 현재 위치를 잃지 않도록
+// 높이를 고정하고, 문항 맥락 바는 이 영역 아래에 붙인다.
+const WORKFLOW_H = 92;
+const STICKY_CONTENT_TOP = HEADER_H + WORKFLOW_H;
 
 const card = "rounded-xl border border-[#EAE4D2] bg-white p-4";
 const srcBox = "rounded-lg border-l-[3px] border-[#EAE4D2] border-l-[#FAD338] bg-[#F5F5F2] p-3";
@@ -91,6 +95,21 @@ const STAGE_OF: Record<Phase, Stage> = {
   done: 2,
 };
 const STAGE_TITLES = ["감각 익히기", "직접 표현하기", "돌아보고 다듬기"] as const;
+// 정본 target feature 이름은 생성·저장 계약에 그대로 보존한다. 학습자 화면에서는
+// 같은 구성개념을 행동 문장으로 풀어, 무엇을 연습하는지 즉시 읽히게 한다.
+const LEARNER_FOCUS_COPY: Record<string, string> = {
+  request_mitigation_optionality: "상대가 거절할 여지를 남기며 부탁하기",
+  refusal_softening: "거절은 분명하게, 관계는 부드럽게 전하기",
+  gratitude_calibration: "상황에 맞는 정도로 고마움을 표현하기",
+  apology_accountability_repair: "잘못을 인정하고 해결 방법까지 전하기",
+  proposal_optionality_clarity: "상대의 선택을 열어 두고 방안을 분명히 제안하기",
+  invitation_choice_commitment: "참여 여부는 열어 두고 약속 내용을 분명히 전하기",
+  opposition_stance_mitigation: "다른 의견을 분명히 말하면서 관계를 조절하기",
+  compliment_grounding_sensitivity: "상황에 맞는 강도로 구체적으로 칭찬하기",
+  compliment_response_uptake: "칭찬을 자연스럽게 받아들이고 대화를 이어가기",
+  complaint_problem_accountability: "문제를 분명히 말하되 책임을 과하게 단정하지 않기",
+  politeness: "상대와 상황에 맞는 공손한 표현 고르기",
+};
 // 단계 안의 잔걸음. MPJ 유형명(scale4·reason_conf…)은 더 이상 노출하지 않는다 —
 // 기술 용어가 진행바에 있으면 그 자체로 시험지처럼 읽힌다.
 const STEP_INDEX: Partial<Record<Phase, number>> = { produce: 0, feedback: 0, revise: 1, done: 2 };
@@ -602,6 +621,9 @@ function MissionRunner({
   const demoRevised = pt.reference_alternatives[1]?.text ?? pt.reference_alternatives[0]?.text ?? "";
 
   const feat = getTargetFeature(mission.unit.target_feature);
+  const learnerActLabel = feat?.speech_act ? SPEECH_ACT_UI[feat.speech_act] : "화행";
+  const learnerFocusCopy =
+    LEARNER_FOCUS_COPY[mission.unit.target_feature] ?? mission.unit.learner_label;
 
   // 다듬기 화면 지침 — 피드백이 있으면 방금 본 문구를 그대로 이어받는다.
   // 폴백 조건은 fbState('error')가 아니라 **fb 부재**다: 다듬기 단계부터 바로 재개하면
@@ -785,52 +807,58 @@ function MissionRunner({
           </div>
         )}
 
-        {/* ── 오늘 보는 감각 — 전 단계 공통 맥락 띠 ──
-            상황은 문항마다 다르지만 보는 축은 하나다. 이 줄이 없으면 서로 다른 문제
-            여섯 개로 읽힌다. 같은 라벨을 시작 카드·1부 배지에 중복 노출하던 것은 걷어냈다. */}
-        <div className="mb-2 flex flex-wrap items-baseline gap-1.5 text-[11.5px]">
-          <span className="text-[#A9B0BA]">오늘 보는 감각 ·</span>
-          <b className="text-[12.5px] text-foreground">{mission.unit.learner_label}</b>
-        </div>
+        {/* ── 화행·학습 초점 + 3단계 워크플로우 ──
+            헤더 아래에 고정해 긴 문항에서도 현재 화행·초점·단계를 잃지 않는다.
+            feature 정본명은 바꾸지 않고, 이 표면에서만 행동 문장으로 풀어 쓴다. */}
+        <div
+          className="sticky z-30 -mx-6 mb-4 h-[92px] border-b border-[#E6E0CE] bg-background/95 px-6 pb-2.5 pt-2 shadow-[0_6px_16px_rgba(21,32,43,0.05)] backdrop-blur"
+          style={{ top: `${HEADER_H}px` }}
+        >
+          <div className="mb-2 flex h-[17px] min-w-0 items-center gap-2 whitespace-nowrap">
+            <span className="shrink-0 rounded-full border border-[#E5C84A] bg-[#FFF3B5] px-2 py-0.5 text-[10.5px] font-extrabold text-[#5F4A00]">
+              {learnerActLabel}
+            </span>
+            <span className="truncate text-[12px] font-semibold text-[#3E4C57]">{learnerFocusCopy}</span>
+          </div>
 
-        {/* ── 진행 3단계 (IS_DEMO면 클릭해 단계 이동 — 프로토타입 v2 devGo) ── */}
-        <div className="mb-1.5 flex gap-2">
-          {STAGE_TITLES.map((label, i) => {
-            const done = stage > i;
-            const active = stage === i;
-            // devGo 착지점 — 3단계는 다듬기로 보낸다(피드백은 제출한 답이 있어야 뜬다).
-            const target: Phase = i === 0 ? "mpj" : i === 1 ? "produce" : "revise";
-            const cls = [
-              "flex-1 rounded-[10px] border px-3 py-2 text-left text-[12.5px]",
-              done
-                ? "border-[#FAD338] bg-[#FAD338] font-bold text-[#15202B]"
-                : active
-                ? "border-[#15202B] bg-[#15202B] font-bold text-white"
-                : "border-[#EAE4D2] bg-white text-muted-foreground",
-              IS_DEMO ? "cursor-pointer hover:opacity-90" : "",
-            ].join(" ");
-            const inner = (
-              <>
-                <div className="text-[11px] opacity-80">{i + 1}단계</div>
-                {label} {done ? "✓" : ""}
-              </>
-            );
-            return IS_DEMO ? (
-              <button
-                key={label}
-                type="button"
-                onClick={() => {
-                  if (target === "mpj") setMpjIdx(0);
-                  goto(target);
-                }}
-                className={cls}
-              >
-                {inner}
-              </button>
-            ) : (
-              <div key={label} className={cls}>{inner}</div>
-            );
-          })}
+          <div className="flex gap-2">
+            {STAGE_TITLES.map((label, i) => {
+              const done = stage > i;
+              const active = stage === i;
+              // devGo 착지점 — 3단계는 다듬기로 보낸다(피드백은 제출한 답이 있어야 뜬다).
+              const target: Phase = i === 0 ? "mpj" : i === 1 ? "produce" : "revise";
+              const cls = [
+                "flex-1 rounded-[10px] border px-3 py-1.5 text-left text-[12.5px]",
+                done
+                  ? "border-[#FAD338] bg-[#FAD338] font-bold text-[#15202B]"
+                  : active
+                  ? "border-[#15202B] bg-[#15202B] font-bold text-white"
+                  : "border-[#EAE4D2] bg-white text-muted-foreground",
+                IS_DEMO ? "cursor-pointer hover:opacity-90" : "",
+              ].join(" ");
+              const inner = (
+                <>
+                  <div className="text-[10.5px] opacity-80">{i + 1}단계</div>
+                  {label} {done ? "✓" : ""}
+                </>
+              );
+              return IS_DEMO ? (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    if (target === "mpj") setMpjIdx(0);
+                    goto(target);
+                  }}
+                  className={cls}
+                >
+                  {inner}
+                </button>
+              ) : (
+                <div key={label} className={cls}>{inner}</div>
+              );
+            })}
+          </div>
         </div>
         <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#A9B0BA]">
           {stage === 0 ? (
@@ -1924,7 +1952,7 @@ function MpjStage({
   useEffect(() => {
     const update = () => {
       const el = sceneEndRef.current;
-      if (el) setShowCtxBar(el.getBoundingClientRect().top < HEADER_H);
+      if (el) setShowCtxBar(el.getBoundingClientRect().top < STICKY_CONTENT_TOP);
     };
     update();
     window.addEventListener("scroll", update, { passive: true });
@@ -2063,7 +2091,10 @@ function MpjStage({
              정답 노출이 아니다. */}
       <div ref={sceneEndRef} aria-hidden className="h-px" />
       {showCtxBar && (
-        <div className="fixed inset-x-0 top-[60px] z-30 border-b border-[#EAE4D2] bg-white/95 backdrop-blur">
+        <div
+          className="fixed inset-x-0 z-30 border-b border-[#EAE4D2] bg-white/95 backdrop-blur"
+          style={{ top: `${STICKY_CONTENT_TOP}px` }}
+        >
           <div className="mx-auto flex max-w-3xl flex-wrap items-baseline gap-x-2.5 gap-y-0.5 px-6 py-1.5 text-[12px]">
             <span className="text-muted-foreground">
               상대 · <span className="text-foreground">{learnerCounterpartLabel(item.relation_ko)}</span>
