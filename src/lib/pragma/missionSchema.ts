@@ -1,11 +1,14 @@
 // mission_v1/v2 — 기존 완전 미션(MPJ 5 + DCT) 읽기 호환.
-// mission_v3 — 현행 완전 미션(MPJ 4 + DCT). 2026-07-28 결정:
-// multi_judge는 Full Mission에서 제거하고 별도 미니 모듈 설계로 이관한다.
+// mission_v3 — 2026-07-28 MPJ4 + DCT 기준선 읽기 호환.
+// mission_v4 — 2026-07-29 현행 완전 미션(MPJ 3 + DCT):
+//   judge3+fix_choice → reason → multi_judge.
 //
 // 편성·데모 선별분만 코어에서 승격 생성한다. legacy MPJ 5유형:
 //   scale4 → judge3 → fix_choice → reason_conf → multi_judge (순서 고정, R1).
-// 현행 MPJ 4유형:
+// v3 MPJ 4유형:
 //   scale4 → judge3 → fix_choice → reason_conf (순서 고정, R1).
+// 현행 v4 MPJ 3유형:
+//   fix_choice(판정+교정) → reason(주원인) → multi_judge(4후보) (순서 고정, R1).
 // axis_feature = unit.target_feature 고정(0-b·19, R1). band code는 카탈로그 정본.
 
 import { z } from "zod";
@@ -213,6 +216,13 @@ export const MPJ_TYPE_ORDER_V3 = [
   "reason_conf",
 ] as const;
 
+/** 현행 mission_v4 유형 순서(R1). */
+export const MPJ_TYPE_ORDER_V4 = [
+  "fix_choice",
+  "reason",
+  "multi_judge",
+] as const;
+
 // ══════════════════════════════════════════════════════════════════════
 // mission_v2 — 양방향 중립 스키마 (계약 0-l·83)
 // ══════════════════════════════════════════════════════════════════════
@@ -347,7 +357,84 @@ export const MissionV3Schema = z.object({
   quality_check: QualityCheckSchema.optional(),
 });
 export type MissionV3 = z.infer<typeof MissionV3Schema>;
-export type MissionRuntime = MissionV2 | MissionV3;
+
+// ══════════════════════════════════════════════════════════════════════
+// mission_v4 — MPJ3 + DCT (2026-07-29)
+// ══════════════════════════════════════════════════════════════════════
+// Scale4는 주간 핵심 미션에서 제외하고 진단·수업 토론용 별도 유형으로 분리한다.
+// reason은 Judge3와 confidence를 반복하지 않는다. 대신 생성·QA가 확인할 수 있는
+// problem_band_code와 오답 역할을 저장하며, 학습자는 "가장 큰 이유" 하나만 고른다.
+const MpjCommonV4 = {
+  ...MpjCommonV2,
+  id: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  /** UI 표현용 매체. 연구·난이도 축이 아니며 상황 서술과 일치해야 한다. */
+  channel: ChannelSchema,
+};
+
+const FixChoiceItemV4 = z.object({
+  ...MpjCommonV4,
+  type: z.literal("fix_choice"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  /** 학습자가 먼저 한 번만 판단하는 초점 대역. */
+  accepted_band_codes: z.array(z.string()).length(1),
+  corrections: z
+    .array(z.object({ text: z.string().min(1), is_valid: z.boolean(), note_ko: z.string().min(1) }))
+    .length(4),
+});
+
+const ReasonItemV4 = z.object({
+  ...MpjCommonV4,
+  type: z.literal("reason"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  /** UI에는 묻지 않는 내부 판정키. 반드시 적정 대역 밖이어야 한다(R4). */
+  problem_band_code: z.string().min(1),
+  reasons: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        text_ko: z.string().min(1),
+        kind: z.enum(["primary", "pragmatic_misconception", "meaning_grammar_context"]),
+      }),
+    )
+    .length(3),
+  accepted_reason_id: z.string().min(1),
+});
+
+const MultiJudgeItemV4 = z.object({
+  ...MpjCommonV4,
+  type: z.literal("multi_judge"),
+  candidates: z
+    .array(
+      z.object({
+        text: z.string().min(1),
+        accepted_band_codes: z.array(z.string()).length(1),
+        note_ko: z.string().min(1),
+      }),
+    )
+    .length(4),
+});
+
+export const MpjItemV4Schema = z.discriminatedUnion("type", [
+  FixChoiceItemV4,
+  ReasonItemV4,
+  MultiJudgeItemV4,
+]);
+export type MpjItemV4 = z.infer<typeof MpjItemV4Schema>;
+
+export const MissionV4Schema = z.object({
+  schema_version: z.literal("mission_v4"),
+  direction: z.enum(["ko_zh", "zh_ko"]),
+  unit: UnitSchema,
+  mpj_items: z.array(MpjItemV4Schema).length(3),
+  production_task: ProductionTaskV2Schema,
+  provenance: MissionProvenanceSchema.optional(),
+  quality_check: QualityCheckSchema.optional(),
+});
+export type MissionV4 = z.infer<typeof MissionV4Schema>;
+export type MissionRuntime = MissionV2 | MissionV3 | MissionV4;
+export type MpjItemRuntime = MissionRuntime["mpj_items"][number];
 
 // ── v1 → v2 항목 매핑(정규화용) ───────────────────────────────────────
 function v1ItemToV2(it: MpjItem): MpjItemV2 {
@@ -397,7 +484,7 @@ function v1ItemToV2(it: MpjItem): MpjItemV2 {
 }
 
 /**
- * 미션 정규화 — v1(방향 없음)·v2(MPJ5)·v3(MPJ4) JSON을 읽는다.
+ * 미션 정규화 — v1(방향 없음)·v2(MPJ5)·v3(MPJ4)·v4(MPJ3) JSON을 읽는다.
  * v1은 direction='ko_zh', 필드명 매핑 후 legacy v2 형태가 된다.
  * 규칙검사·러너·미리보기는 MissionRuntime만 본다.
  */
@@ -407,6 +494,11 @@ export function normalizeMission(input: unknown): {
   error?: z.ZodError;
 } {
   const sv = (input as { schema_version?: string } | null)?.schema_version;
+  if (sv === "mission_v4") {
+    const r = MissionV4Schema.safeParse(input);
+    if (r.success) return { ok: true, data: r.data };
+    return { ok: false, error: r.error };
+  }
   if (sv === "mission_v3") {
     const r = MissionV3Schema.safeParse(input);
     if (r.success) return { ok: true, data: r.data };

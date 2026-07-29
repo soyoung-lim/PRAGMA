@@ -19,10 +19,36 @@ export interface SaveAttemptInput {
   /** 컴포넌트 마운트 시각(ISO) */
   startedAtIso: string;
   /**
+   * MPJ에서 학습자가 실제로 고른 응답. 정답 점수로 환산하지 않고
+   * 화면에 제시된 선택의 비채점 trace로만 저장한다.
+   */
+  mpjResponses?: MpjResponseTrace[];
+  /**
    * 학습자 이견 기록(0-r·104). 판정을 바꾸지 않는다 — 결함 문항 발견과
    * 채점키 캘리브레이션 보조 자료로만 쓴다. 남기지 않으면 undefined.
    */
   contextJudgment?: LearnerDissent;
+}
+
+/** context_judgment의 mpj_response_v1.responses에 저장되는 문항별 비채점 응답. */
+export interface MpjResponseTrace extends Record<string, Json | undefined> {
+  item_id: number;
+  item_type: string;
+  completed_at: string;
+  /** legacy scale4 */
+  scale_code?: string;
+  /** judge3 또는 fix_choice의 최초 조절 정도 판단 */
+  band_code?: string;
+  /** fix_choice에서 고른 수정안의 0-based 위치 */
+  correction_indexes?: number[];
+  /** legacy reason_conf */
+  reason_ids?: string[];
+  /** mission_v4 reason의 단일 주원인 선택 */
+  reason_id?: string;
+  /** legacy reason_conf에만 존재한다. mission_v4에는 기록하지 않는다. */
+  confidence?: string;
+  /** multi_judge 후보 순서와 같은 band code 배열 */
+  candidate_band_codes?: string[];
 }
 
 /** 이견 채널 저장 형태 — context_judgment jsonb에 그대로 들어간다. */
@@ -59,6 +85,22 @@ export function buildMissionAttemptRow(
         distorted: "fail",
       }[feedback.verdicts.semantic_fidelity]
     : null;
+  const mpjResponses = input.mpjResponses?.map((response) => {
+    if (input.mission.schema_version !== "mission_v4" || response.confidence === undefined) {
+      return response;
+    }
+    const { confidence: _legacyConfidence, ...withoutConfidence } = response;
+    return withoutConfidence;
+  });
+  const contextJudgment =
+    mpjResponses && mpjResponses.length > 0
+      ? ({
+          schema_version: "mpj_response_v1",
+          mission_schema_version: input.mission.schema_version,
+          responses: mpjResponses,
+          learner_dissent: input.contextJudgment ?? null,
+        } as unknown as Json)
+      : input.contextJudgment ?? null;
 
   return {
     profile_id: profileId,
@@ -93,7 +135,7 @@ export function buildMissionAttemptRow(
     mission_completed: true,
     content_ver: input.mission.unit.target_feature_version ?? null,
     policy_ver: POLICY_VERSION,
-    context_judgment: input.contextJudgment ?? null,
+    context_judgment: contextJudgment,
     started_at: input.startedAtIso,
     completed_at: completedAtIso,
   };

@@ -13,9 +13,11 @@
 import { getTargetFeature, TARGET_FEATURES } from "@/lib/pragma/targetFeatures";
 import {
   normalizeMission,
+  type MissionV4,
   type MissionRuntime,
   MPJ_TYPE_ORDER_V2,
   MPJ_TYPE_ORDER_V3,
+  MPJ_TYPE_ORDER_V4,
 } from "@/lib/pragma/missionSchema";
 import { normalizeCore, type ScenarioCoreV2 } from "@/lib/pragma/coreSchema";
 import {
@@ -293,7 +295,11 @@ export function checkMission(
   // ── R1 유형 순서·axis_feature·band code 존재 ──
   const typesInOrder = m.mpj_items.map((it) => it.type);
   const expectedTypeOrder =
-    m.schema_version === "mission_v3" ? MPJ_TYPE_ORDER_V3 : MPJ_TYPE_ORDER_V2;
+    m.schema_version === "mission_v4"
+      ? MPJ_TYPE_ORDER_V4
+      : m.schema_version === "mission_v3"
+        ? MPJ_TYPE_ORDER_V3
+        : MPJ_TYPE_ORDER_V2;
   if (typesInOrder.join(",") !== expectedTypeOrder.join(",")) {
     add(v, "R1", "fail", `유형 순서 위반: ${typesInOrder.join("→")}`);
   }
@@ -348,6 +354,9 @@ export function checkMission(
         if (it.accepted_band_codes.some((c) => !inappropriate(c))) {
           add(v, "R18", "fail", `문항 ${it.id}: fix_choice accepted에 적정 대역 포함 — 부적절 계열이어야 함`);
         }
+        if (m.schema_version === "mission_v4" && !samePdrBand(it.pdr, m.production_task.pdr)) {
+          add(v, "R3", "fail", `문항 ${it.id}: v4 판단+교정은 DCT와 같은 앵커 PDR이어야 함`);
+        }
         checkTargetLangSoft(v, dir, it.id, it.corrections.map((c) => c.text));
         checkTargetHighlights(v, it.id, it.target, it.highlights);
         break;
@@ -369,9 +378,53 @@ export function checkMission(
         checkTargetHighlights(v, it.id, it.target, it.highlights);
         break;
       }
+      case "reason": {
+        const ids = new Set(it.reasons.map((r) => r.id));
+        if (!ids.has(it.accepted_reason_id)) {
+          add(v, "R4", "fail", `문항 ${it.id}: accepted_reason_id가 reasons에 없는 id 참조`);
+        }
+        const primary = it.reasons.filter((r) => r.kind === "primary");
+        const misconception = it.reasons.filter((r) => r.kind === "pragmatic_misconception");
+        const other = it.reasons.filter((r) => r.kind === "meaning_grammar_context");
+        if (primary.length !== 1 || misconception.length !== 1 || other.length !== 1) {
+          add(v, "R4", "fail", `문항 ${it.id}: 이유 역할은 주원인·화용 오개념·의미/문법/맥락 오답이 각 1개여야 함`);
+        }
+        if (primary[0]?.id !== it.accepted_reason_id) {
+          add(v, "R4", "fail", `문항 ${it.id}: accepted_reason_id는 primary 이유여야 함`);
+        }
+        if (!inappropriate(it.problem_band_code)) {
+          add(v, "R18", "fail", `문항 ${it.id}: reason problem_band_code가 적정 대역임`);
+        }
+        if (!samePdrBand(it.pdr, m.production_task.pdr)) {
+          add(v, "R4", "fail", `문항 ${it.id}: v4 이유 문항은 DCT와 같은 앵커 PDR이어야 함`);
+        }
+        checkTargetHighlights(v, it.id, it.target, it.highlights);
+        break;
+      }
       case "multi_judge": {
         // R5 길이 통제 강화판
         checkMultiJudgeLength(v, it.id, it.candidates, withinCode);
+        if (m.schema_version === "mission_v4") {
+          const lowCode = feature?.band_schema[0]?.code;
+          const highCode = feature?.band_schema[feature.band_schema.length - 1]?.code;
+          const counts = new Map<string, number>();
+          for (const candidate of it.candidates) {
+            const code = candidate.accepted_band_codes[0];
+            counts.set(code, (counts.get(code) ?? 0) + 1);
+          }
+          if (
+            !lowCode ||
+            !highCode ||
+            counts.get(lowCode) !== 1 ||
+            counts.get(withinCode) !== 2 ||
+            counts.get(highCode) !== 1
+          ) {
+            add(v, "R5", "fail", `문항 ${it.id}: v4 MultiJudge는 과소 1·적정 2·과잉 1이어야 함`);
+          }
+          if (pdrDifferenceCount(it.pdr, m.production_task.pdr) !== 1) {
+            add(v, "R5", "fail", `문항 ${it.id}: v4 MultiJudge는 앵커 PDR에서 한 축만 바꾼 대비 상황이어야 함`);
+          }
+        }
         checkTargetLangSoft(v, dir, it.id, it.candidates.map((c) => c.text));
         break;
       }
@@ -391,6 +444,7 @@ export function checkMission(
 
   // ── R12 세트 accepted 분포 전부 동일 방향(warning) ──
   checkSetDistribution(v, m, withinCode);
+  if (m.schema_version === "mission_v4") checkV4ContextPlan(v, m as MissionV4);
 
   // ── R13/R14 카탈로그 복사 검증 ──
   if (feature) {
@@ -502,6 +556,8 @@ function collectBandCodes(it: MissionRuntime["mpj_items"][number]): string[] {
     case "fix_choice":
     case "reason_conf":
       return it.accepted_band_codes;
+    case "reason":
+      return [it.problem_band_code];
     case "multi_judge":
       return it.candidates.flatMap((c) => c.accepted_band_codes);
     default:
@@ -559,7 +615,7 @@ function checkMultiJudgeLength(
       const okMin = Math.min(...okLens), okMax = Math.max(...okLens);
       const separable = badLens.every((l) => l < okMin) || badLens.every((l) => l > okMax);
       if (separable) {
-        add(v, "R5", "fail", `문항 ${id}: multi_judge 길이가 정답을 가름 — 과소안이 최단·최장 양쪽에 있어야 함`);
+        add(v, "R5", "fail", `문항 ${id}: multi_judge에서 부적절안과 적정안이 길이만으로 완전히 분리됨`);
       }
     }
   }
@@ -607,6 +663,37 @@ function samePdrBand(
   return a.p === b.p && a.d === b.d && a.r === b.r;
 }
 
+function pdrDifferenceCount(
+  a: { p?: string; d?: string; r?: string },
+  b: { p?: string; d?: string; r?: string },
+): number {
+  return Number(a.p !== b.p) + Number(a.d !== b.d) + Number(a.r !== b.r);
+}
+
+function checkV4ContextPlan(v: RuleViolation[], m: MissionV4) {
+  const production = m.production_task.situation_ko.trim();
+  const situations = m.mpj_items.map((it) => it.situation_ko.trim());
+  if (new Set(situations).size !== situations.length) {
+    add(v, "R27", "fail", "v4 MPJ 상황이 서로 중복됨 — 앵커 PDR 안에서도 장면은 달라야 함");
+  }
+  if (situations.some((s) => s === production)) {
+    add(v, "R27", "fail", "v4 MPJ 상황이 DCT 상황을 그대로 복제함 — 새 장면의 근접 전이가 아님");
+  }
+  for (const it of m.mpj_items) {
+    const sentenceMarks = (it.situation_ko.match(/[.!?。！？]/g) ?? []).length;
+    if (it.situation_ko.trim().length < 45 || sentenceMarks < 2) {
+      add(v, "R27", "warning", `문항 ${it.id}: 상황문이 짧아 P/D/R 근거가 충분히 보이지 않을 수 있음`);
+    }
+    const allowed =
+      m.production_task.mode === "interpreting"
+        ? it.channel === "facetoface" || it.channel === "phone"
+        : it.channel === "email" || it.channel === "messenger";
+    if (!allowed) {
+      add(v, "R28", "fail", `문항 ${it.id}: channel(${it.channel})이 ${m.production_task.mode} 수행 방식과 맞지 않음`);
+    }
+  }
+}
+
 function checkSetDistribution(v: RuleViolation[], m: MissionRuntime, withinCode: string) {
   // 판정형 문항(judge3/fix_choice/reason_conf/multi)의 accepted가 전부 같은 방향이면 warning
   const dirs = new Set<string>();
@@ -633,6 +720,7 @@ function checkNationalization(v: RuleViolation[], m: MissionRuntime) {
   for (const it of m.mpj_items) {
     fields.push(it.explanation_ko);
     if (it.type === "fix_choice") fields.push(...it.corrections.map((c) => c.note_ko));
+    if (it.type === "reason") fields.push(...it.reasons.map((r) => r.text_ko));
     if (it.type === "multi_judge") fields.push(...it.candidates.map((c) => c.note_ko));
   }
   for (const f of fields) {

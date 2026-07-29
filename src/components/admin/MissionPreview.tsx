@@ -1,5 +1,5 @@
 import { getTargetFeature, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targetFeatures";
-import type { MissionRuntime, MpjItemV2 } from "@/lib/pragma/missionSchema";
+import type { MissionRuntime, MpjItemRuntime } from "@/lib/pragma/missionSchema";
 import { DIRECTION_LABEL } from "@/lib/pragma/enums";
 
 // 관리자 눈검사 뷰 — 생성된 mission_v1을 읽기 전용으로 전개한다.
@@ -13,11 +13,12 @@ function bandLabel(featureCode: string, code: string): string {
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  scale4: "① 적절성 4점",
-  judge3: "② 3분류 판정",
-  fix_choice: "③ 판정+교정",
-  reason_conf: "④ 판정+이유+확신",
-  multi_judge: "⑤ 다중 발화",
+  scale4: "첫인상 판단(legacy)",
+  judge3: "조절 정도 판단(legacy)",
+  fix_choice: "판단하고 고쳐보기",
+  reason_conf: "판정+이유+확신(legacy)",
+  reason: "왜 문제일까",
+  multi_judge: "여러 초안 비교",
 };
 
 const QUALITY_LABEL: Record<string, string> = {
@@ -34,6 +35,8 @@ const QUALITY_CODE_KO: Record<string, string> = {
   unnatural_language: "부자연스러운 문장",
   internal_inconsistency: "내부 불일치",
   scene_underspecified: "장면 미명세(상상이 갈림)",
+  primary_reason_ambiguity: "주원인 복수 해석",
+  context_plan_mismatch: "앵커·대비 맥락 불일치",
 };
 
 export function MissionPreview({
@@ -103,7 +106,7 @@ export function MissionPreview({
         </div>
       )}
 
-      {/* MPJ 5문항 */}
+      {/* 미션 버전에 따른 MPJ 문항 */}
       {mission.mpj_items.map((it) => (
         <MpjReview key={it.id} item={it} featureCode={feat} />
       ))}
@@ -128,13 +131,15 @@ export function MissionPreview({
   );
 }
 
-function MpjReview({ item, featureCode }: { item: MpjItemV2; featureCode: string }) {
+function MpjReview({ item, featureCode }: { item: MpjItemRuntime; featureCode: string }) {
   const accepted =
     item.type === "scale4"
       ? item.accepted_scale_codes.map((c) => SCALE4_LABELS[c as Scale4Code] ?? c)
       : item.type === "multi_judge"
         ? []
-        : item.accepted_band_codes.map((c) => bandLabel(featureCode, c));
+        : item.type === "reason"
+          ? [bandLabel(featureCode, item.problem_band_code)]
+          : item.accepted_band_codes.map((c) => bandLabel(featureCode, c));
   return (
     <div className={box}>
       <div className="flex items-center justify-between">
@@ -166,6 +171,16 @@ function MpjReview({ item, featureCode }: { item: MpjItemV2; featureCode: string
           {item.reasons.map((r) => (
             <li key={r.id} className={item.accepted_reason_ids.includes(r.id) ? "text-[#2E7D5B]" : "text-muted-foreground"}>
               {item.accepted_reason_ids.includes(r.id) ? "✓" : "·"} {r.text_ko}
+            </li>
+          ))}
+        </ul>
+      )}
+      {item.type === "reason" && (
+        <ul className="mt-1 space-y-0.5">
+          {item.reasons.map((r) => (
+            <li key={r.id} className={item.accepted_reason_id === r.id ? "text-[#2E7D5B]" : "text-muted-foreground"}>
+              {item.accepted_reason_id === r.id ? "✓" : "·"} {r.text_ko}
+              <span className="ml-1 text-[11px] opacity-70">({r.kind})</span>
             </li>
           ))}
         </ul>

@@ -10,11 +10,15 @@ import { SCALE4_CODES, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targe
 import {
   normalizeMission,
   type MissionRuntime,
-  type MpjItemV2,
+  type MpjItemRuntime,
 } from "@/lib/pragma/missionSchema";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
-import { saveMissionAttempt, type LearnerDissent } from "@/lib/mission/missionLog";
+import {
+  saveMissionAttempt,
+  type LearnerDissent,
+  type MpjResponseTrace,
+} from "@/lib/mission/missionLog";
 import { ChatScene, ChatBubble, ChatCaption, ChatAvatar, highlightZh } from "@/components/mission/ChatScene";
 import {
   slotsForAct,
@@ -45,12 +49,13 @@ const LANG_NAME: Record<"ko" | "zh", string> = { ko: "한국어", zh: "중국어
 const srcLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].source];
 const tgtLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].target];
 
-// 학습자 미션 실행 — 계약 스키마 mission_v1을 직접 구동한다(프로토타입 v2 이식).
-//   감각 익히기(MPJ 5 → 인계) → 직접 표현하기(상황 살피기 → 산출/통역) → 돌아보고 다듬기(피드백 → 다듬기 → 완료)
+// 학습자 미션 실행 — mission_v1~v4를 정규화해 구동한다.
+//   감각 익히기(MPJ → 인계) → 직접 표현하기(상황 살피기 → 산출/통역) → 돌아보고 다듬기(피드백 → 다듬기 → 완료)
 //   ※ 3단계는 **표시 서사**일 뿐 화면 순서·문항 수·판정 기준·저장 계약은 종전과 같다.
 // 판정은 초점별 band 카탈로그(targetFeatures) 기준. 자유 산출 뒤에는 feedback-lite가
 // 의미·문법·화용을 진단하며, 실패 시 참고 표현·핵심 원칙으로 안전하게 폴백한다.
 
+// v1~v3 읽기 호환 전용. 신규 mission_v4에는 확신도 응답이 없다.
 const CONFIDENCE = ["매우 확신", "꽤 확신", "확신 없음"] as const;
 
 // B1(계약 0-g·44·0-e·⑨): 판정 대역은 proposed(확정 정답 아님). 프로토타입 v2 기준 —
@@ -538,6 +543,7 @@ function MissionRunner({
 }) {
   const [phase, setPhase] = useState<Phase>(startAtPart2 ? "ctx" : "mpj");
   const [mpjIdx, setMpjIdx] = useState(0);
+  const [mpjResponses, setMpjResponses] = useState<MpjResponseTrace[]>([]);
   const [ctxPick, setCtxPick] = useState<number | null>(null);
   const [ctxDone, setCtxDone] = useState(false);
   const [draft, setDraft] = useState("");
@@ -678,6 +684,7 @@ function MissionRunner({
       revisedResponse: revised || draft,
       ...(fb ? { feedback: fb } : {}),
       startedAtIso: startedAtRef.current,
+      ...(mpjResponses.length > 0 ? { mpjResponses } : {}),
       ...(dissent ? { contextJudgment: dissent } : {}),
     });
     if (res.ok) {
@@ -689,7 +696,11 @@ function MissionRunner({
     }
   };
 
-  const nextMpj = () => {
+  const nextMpj = (response: MpjResponseTrace) => {
+    setMpjResponses((prev) => [
+      ...prev.filter((saved) => saved.item_id !== response.item_id),
+      response,
+    ]);
     if (mpjIdx < items.length - 1) {
       setMpjIdx((i) => i + 1);
       // 문항 전환도 단계 전환과 같게 최상단으로 — 없으면 이전 문항의 스크롤 위치가
@@ -710,6 +721,7 @@ function MissionRunner({
     clearSaved();
     setPhase("mpj");
     setMpjIdx(0);
+    setMpjResponses([]);
     setCtxPick(null);
     setCtxDone(false);
     setDraft("");
@@ -1887,12 +1899,123 @@ function SituationCard({ situation, relation }: { situation: string; relation: s
   );
 }
 
+const MPJ_TASK_TITLE: Record<string, string> = {
+  scale4: "첫인상 판단",
+  judge3: "조절 정도 판단",
+  fix_choice: "판단하고 고쳐보기",
+  reason_conf: "판단 근거 살펴보기",
+  reason: "왜 문제일까",
+  multi_judge: "여러 초안 비교",
+};
+
+function MpjContextSurface({
+  item,
+  answered,
+}: {
+  item: MpjItemRuntime;
+  answered: boolean;
+}) {
+  const hasTarget = item.type !== "multi_judge";
+  const channel = item.channel ?? "messenger";
+
+  if (channel === "email") {
+    return (
+      <div className="my-3 overflow-hidden rounded-2xl border border-[#D7DDE5] bg-white">
+        <div className="border-b border-[#E4E8EE] bg-[#F6F8FA] px-4 py-3">
+          <div className="text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-muted-foreground">이메일 작성 맥락</div>
+          <div className="mt-1 text-[14.5px] font-bold leading-snug text-[#15202B]">{item.situation_ko}</div>
+          <div className="mt-1.5 text-[12.5px] text-[#3E4C57]">받는 사람 · {item.relation_ko}</div>
+        </div>
+        <div className="space-y-3 px-4 py-4">
+          {item.preceding_turn && (
+            <div className="border-l-2 border-[#C8CFD8] pl-3 text-[13px] leading-relaxed text-muted-foreground">
+              앞선 메일 · {item.preceding_turn}
+            </div>
+          )}
+          <div className="rounded-lg bg-[#FFF9DF] px-3 py-2 text-[13.5px]">
+            <span className="font-semibold text-[#6B5518]">전하려는 뜻</span>
+            <div className="mt-1">{item.source}</div>
+          </div>
+          {hasTarget && (
+            <div className="rounded-lg border border-dashed border-[#6B8FB3] bg-[#F3F7FB] px-3.5 py-3">
+              <div className="text-[10.5px] font-bold text-[#4E6F8E]">AI 이메일 초안 · 발송 전</div>
+              <div className="mt-1 text-[14.5px] leading-relaxed">
+                {answered ? highlightZh(item.target, item.highlights) : item.target}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (channel === "facetoface" || channel === "phone") {
+    return (
+      <div className="my-3 overflow-hidden rounded-2xl border border-[#CFD9E3] bg-[#F3F6F9]">
+        <div className="border-b border-[#DCE4EB] bg-[#EAF0F5] px-4 py-3">
+          <div className="text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#52697E]">
+            {channel === "phone" ? "통화 발화 맥락" : "대면 발화 맥락"}
+          </div>
+          <div className="mt-1 text-[14.5px] font-bold leading-snug text-[#15202B]">{item.situation_ko}</div>
+          <div className="mt-1.5 text-[12.5px] text-[#3E4C57]">듣는 사람 · {item.relation_ko}</div>
+        </div>
+        <div className="space-y-3 px-4 py-4">
+          {item.preceding_turn && (
+            <div className="rounded-lg bg-white px-3 py-2 text-[13.5px]">
+              <span className="mr-2 text-[11px] font-bold text-[#60758A]">상대 발화</span>{item.preceding_turn}
+            </div>
+          )}
+          <div className="rounded-lg bg-[#FFF9DF] px-3 py-2 text-[13.5px]">
+            <span className="font-semibold text-[#6B5518]">전하려는 말</span>
+            <div className="mt-1">{item.source}</div>
+          </div>
+          {hasTarget && (
+            <div className="rounded-lg border border-dashed border-[#6B8FB3] bg-white px-3.5 py-3">
+              <div className="text-[10.5px] font-bold text-[#4E6F8E]">AI 통역 초안 · 말하기 전</div>
+              <div className="mt-1 text-[14.5px] leading-relaxed">
+                {answered ? highlightZh(item.target, item.highlights) : item.target}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ChatScene situation={item.situation_ko} relation={item.relation_ko}>
+      {item.preceding_turn && <ChatBubble side="them">{item.preceding_turn}</ChatBubble>}
+      {item.type === "multi_judge" ? (
+        <>
+          <ChatCaption tone="draft">전하려는 뜻 · 아직 안 보냄</ChatCaption>
+          <ChatBubble side="me" variant="draft">{item.source}</ChatBubble>
+        </>
+      ) : (
+        <>
+          <ChatCaption>전하려는 뜻 · {item.source}</ChatCaption>
+          <ChatCaption tone="draft">↓ AI가 만든 초안 · 아직 안 보냄</ChatCaption>
+          <ChatBubble side="me" variant="draft">
+            {answered ? highlightZh(item.target, item.highlights) : item.target}
+          </ChatBubble>
+        </>
+      )}
+    </ChatScene>
+  );
+}
+
 // ── MPJ 한 문항 ─────────────────────────────────────────────────────────
-function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
+function MpjStage({
+  item,
+  onDone,
+}: {
+  item: MpjItemRuntime;
+  onDone: (response: MpjResponseTrace) => void;
+}) {
   const [answered, setAnswered] = useState(false);
   const [scalePick, setScalePick] = useState<string | null>(null);
   const [bandPick, setBandPick] = useState<string | null>(null);
   const [reasonPicks, setReasonPicks] = useState<Set<string>>(new Set());
+  const [reasonPick, setReasonPick] = useState<string | null>(null);
   const [confidence, setConfidence] = useState<string | null>(null);
   const [fixPicks, setFixPicks] = useState<Set<number>>(new Set());
   const [multiPicks, setMultiPicks] = useState<Record<number, string>>({});
@@ -1920,7 +2043,14 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
   const bands =
     item.type === "multi_judge"
       ? bandOptions(feature, item.candidates.flatMap((c) => c.accepted_band_codes))
-      : bandOptions(feature, item.type === "judge3" || item.type === "fix_choice" || item.type === "reason_conf" ? item.accepted_band_codes : []);
+      : bandOptions(
+          feature,
+          item.type === "judge3" || item.type === "fix_choice" || item.type === "reason_conf"
+            ? item.accepted_band_codes
+            : item.type === "reason"
+              ? [item.problem_band_code]
+              : [],
+        );
 
   const canReveal = (() => {
     switch (item.type) {
@@ -1932,6 +2062,8 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
         return !!bandPick && fixPicks.size > 0;
       case "reason_conf":
         return !!bandPick && reasonPicks.size > 0 && !!confidence;
+      case "reason":
+        return !!reasonPick;
       case "multi_judge":
         return Object.keys(multiPicks).length === item.candidates.length;
       default:
@@ -1965,6 +2097,9 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
         setReasonPicks(new Set(item.accepted_reason_ids));
         setConfidence("꽤 확신");
         break;
+      case "reason":
+        setReasonPick(item.accepted_reason_id);
+        break;
       case "multi_judge":
         setMultiPicks(Object.fromEntries(item.candidates.map((c, i) => [i, c.accepted_band_codes[0]])));
         break;
@@ -1972,21 +2107,44 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
     setAnswered(true);
   };
 
+  const responseTrace = (): MpjResponseTrace => {
+    const base = {
+      item_id: item.id,
+      item_type: item.type,
+      completed_at: new Date().toISOString(),
+    };
+    switch (item.type) {
+      case "scale4":
+        return { ...base, ...(scalePick ? { scale_code: scalePick } : {}) };
+      case "judge3":
+        return { ...base, ...(bandPick ? { band_code: bandPick } : {}) };
+      case "fix_choice":
+        return {
+          ...base,
+          ...(bandPick ? { band_code: bandPick } : {}),
+          correction_indexes: [...fixPicks].sort((a, b) => a - b),
+        };
+      case "reason_conf":
+        return {
+          ...base,
+          ...(bandPick ? { band_code: bandPick } : {}),
+          reason_ids: [...reasonPicks],
+          ...(confidence ? { confidence } : {}),
+        };
+      case "reason":
+        return { ...base, ...(reasonPick ? { reason_id: reasonPick } : {}) };
+      case "multi_judge":
+        return {
+          ...base,
+          candidate_band_codes: item.candidates.map((_, i) => multiPicks[i]),
+        };
+    }
+  };
+
   return (
     <div className="space-y-3">
-      {/* 대화 스킨 — 상황·선행발화 + AI 초안(내 미발송 초안 말풍선). 프로토타입 v2 */}
-      <ChatScene situation={item.situation_ko} relation={item.relation_ko}>
-        {item.preceding_turn && <ChatBubble side="them">{item.preceding_turn}</ChatBubble>}
-        <ChatCaption>전하려는 뜻 · {item.source}</ChatCaption>
-        {item.type !== "multi_judge" && (
-          <>
-            <ChatCaption tone="draft">↓ AI가 만든 초안 · 아직 안 보냄</ChatCaption>
-            <ChatBubble side="me" variant="draft">
-              {answered ? highlightZh(item.target, item.highlights) : item.target}
-            </ChatBubble>
-          </>
-        )}
-      </ChatScene>
+      <div className="px-0.5 text-[15px] font-bold text-[#15202B]">{MPJ_TASK_TITLE[item.type] ?? "표현 살펴보기"}</div>
+      <MpjContextSurface item={item} answered={answered} />
       {answered && item.type !== "multi_judge" && item.highlights?.length > 0 && (
         <p className="px-1 text-[11.5px] leading-relaxed text-muted-foreground">
           <span className="mr-1 rounded bg-[#FFE9A8] px-1.5 py-0.5 font-semibold text-[#6B5518]">표현 단서</span>
@@ -1994,7 +2152,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
         </p>
       )}
 
-      {/* 문항 맥락 고정 바 — 긴 문항(특히 multi_judge는 후보 5개 × 선택지 3개)에서
+      {/* 문항 맥락 고정 바 — 긴 문항(특히 multi_judge 후보 비교)에서
           스크롤하면 상대·원문이 화면 밖으로 나가 "무엇을 옮기는 중이었지"를 잊는다.
           ⚠️ sticky가 아니라 **대화창이 화면에서 사라졌을 때만** 뜨는 fixed 바다.
              sticky면 대화창 바로 아래에서 같은 내용을 반복해 자리만 먹는다.
@@ -2017,7 +2175,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
         </div>
       )}
 
-      {/* 단일 발화 문항(scale4/judge3/fix_choice/reason_conf) — 위 대화창 AI 초안에 대한 판정(0-i·59) */}
+      {/* 단일 발화 문항 — 위 맥락의 AI 초안에 대한 판단·교정·근거화 */}
       {item.type !== "multi_judge" && (
         <div className={card}>
           {/* scale4 */}
@@ -2032,11 +2190,11 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
             </>
           )}
 
-          {/* judge3 / fix_choice / reason_conf 공통: band 판정 */}
-          {item.type !== "scale4" && (
+          {/* Judge3는 legacy judge3/reason_conf와 현행 fix_choice에서만 묻는다. */}
+          {(item.type === "judge3" || item.type === "fix_choice" || item.type === "reason_conf") && (
             <>
-              <div className="mt-3.5 text-[13px] font-semibold">이 상황에서의 번역안 적절성</div>
-              <div className="mt-2 flex flex-col gap-1.5">
+              <div className="mt-3.5 text-[13px] font-semibold">이 표현의 조절 정도는 어떤가요?</div>
+              <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
                 {bands.map((b) => (
                   <Choice key={b.code} label={b.label} selected={bandPick === b.code} disabled={answered} onClick={() => setBandPick(b.code)} />
                 ))}
@@ -2047,7 +2205,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
           {/* fix_choice: 교정 복수 선택 */}
           {item.type === "fix_choice" && (
             <>
-              <div className="mt-4 text-[13px] font-semibold">알맞은 수정안 선택 <span className="font-normal">· 맞는 것을 모두 선택</span></div>
+              <div className="mt-4 text-[13px] font-semibold">어떻게 고치면 좋을까요? <span className="font-normal">· 알맞은 수정안을 모두 선택</span></div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {item.corrections.map((o, i) => (
                   <button
@@ -2070,6 +2228,33 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
                   >
                     <div>{o.text}</div>
                     {answered && <div className="mt-1 text-[12px] text-muted-foreground">{o.note_ko}</div>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* v4 reason: 부적절함은 전제하고 주된 원인 하나만 고른다. */}
+          {item.type === "reason" && (
+            <>
+              <div className="rounded-lg bg-[#FFF9DF] px-3 py-2 text-[12.5px] leading-relaxed text-[#5B4A1E]">
+                이 표현은 이 상황에 맞지 않습니다.
+              </div>
+              <div className="mt-4 text-[13px] font-semibold">가장 큰 이유는 무엇인가요?</div>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {item.reasons.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    disabled={answered}
+                    onClick={() => setReasonPick(r.id)}
+                    className={[
+                      "rounded-[10px] border px-3.5 py-2.5 text-left text-[14px]",
+                      reasonPick === r.id ? "border-[1.5px] border-[#15202B] bg-[#FAFAF7]" : "border-[#EAE4D2] bg-white",
+                      answered && item.accepted_reason_id === r.id ? "border-[#2E7D5B] bg-[#F2FAF6]" : "",
+                    ].join(" ")}
+                  >
+                    {r.text_ko}
                   </button>
                 ))}
               </div>
@@ -2121,7 +2306,15 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
             <div className="mt-4 rounded-lg bg-[#F2FAF6] px-3.5 py-3">
               <p className="text-[13px] leading-relaxed">{item.explanation_ko}</p>
               <div className="mt-2 text-[11.5px] font-semibold text-[#2E7D5B]">
-                기준 판정 · {(item.type === "scale4" ? item.accepted_scale_codes.map((c) => SCALE4_LABELS[c as Scale4Code] ?? c) : item.accepted_band_codes.map((c) => bandLabel(feature, c))).join(" / ")}
+                {item.type === "reason"
+                  ? `핵심 원인 · ${item.reasons.find((r) => r.id === item.accepted_reason_id)?.text_ko ?? ""}`
+                  : `참고 판정 · ${
+                      (
+                        item.type === "scale4"
+                          ? item.accepted_scale_codes.map((c) => SCALE4_LABELS[c as Scale4Code] ?? c)
+                          : item.accepted_band_codes.map((c) => bandLabel(feature, c))
+                      ).join(" / ")
+                    }`}
               </div>
             </div>
           )}
@@ -2131,7 +2324,8 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
       {/* multi_judge: 한 상황 다중 발화 */}
       {item.type === "multi_judge" && (
         <div className={card}>
-          <div className="text-[13px] font-semibold">AI가 만든 여러 번역 초안 · 각 초안의 적절성 판단</div>
+          <div className="text-[13px] font-semibold">여러 AI 번역 초안 비교하기</div>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">각 초안이 이 상황에 맞는지 판단하세요.</p>
           <ul className="mt-3 space-y-2.5">
             {item.candidates.map((c, i) => (
               <li key={c.text} className="rounded-lg border border-[#EAE4D2] px-3.5 py-3">
@@ -2173,7 +2367,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
           )}
         </>
       ) : (
-        <Button className="w-full" onClick={onDone}>다음 →</Button>
+        <Button className="w-full" onClick={() => onDone(responseTrace())}>다음 →</Button>
       )}
     </div>
   );
