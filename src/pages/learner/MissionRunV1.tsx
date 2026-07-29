@@ -1449,78 +1449,99 @@ function AudioFrame({
 
         {notice && <div className="mt-3 rounded-lg bg-[#16252F] px-3 py-2 text-[12px] leading-relaxed text-[#C6D2DB]">{notice}</div>}
 
-        {/* ③ 전사 확인 */}
-        {(recorded || notice || transcribing) && (
-          <div className="mt-3 rounded-lg border border-[#2A3A45] bg-[#16252F] p-3">
-            <div className="text-[11px] font-bold text-[#9FB0BC]">
-              ③ 전사 확인 — 자동 전사를 실제로 말한 내용과 대조·수정합니다
-            </div>
-            {recordingAudioUrl && (
-              <div className="mt-2.5 rounded-md border border-[#334A58] bg-[#0F1B24] p-2.5">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-                  <div className="text-[12px] font-semibold text-[#EAF0F4]">내 음성 듣기</div>
-                  <div className="text-[10.5px] text-[#9FB0BC]">STT 전사 확인용 · 발음 점수와 무관</div>
-                </div>
-                <audio
-                  ref={recordingAudioRef}
-                  src={recordingAudioUrl}
-                  controls
-                  preload="metadata"
-                  onLoadedMetadata={() => setRecordingAudioReady(true)}
-                  onError={() => setNotice("내 녹음 재생에 실패했습니다. 전사를 직접 확인해 주세요.")}
-                  className="mt-2 h-9 w-full"
-                  aria-label="내가 녹음한 통역 음성"
-                />
-                <div className="mt-1.5 flex justify-end gap-1.5">
-                  <button
-                    type="button"
-                    disabled={!recordingAudioReady}
-                    onClick={() => seekRecording(-0.5)}
-                    className="rounded border border-[#405563] px-2 py-1 text-[11px] text-[#C6D2DB] disabled:opacity-40"
-                  >
-                    −0.5초
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!recordingAudioReady}
-                    onClick={() => seekRecording(0.5)}
-                    className="rounded border border-[#405563] px-2 py-1 text-[11px] text-[#C6D2DB] disabled:opacity-40"
-                  >
-                    +0.5초
-                  </button>
-                </div>
-              </div>
-            )}
-            <textarea
-              rows={2}
-              value={transcript}
-              onChange={(e) => {
-                setTranscript(e.target.value);
-                setConfirmed(false);
-              }}
-              placeholder={`통역한 ${tgtName} 문장`}
-              disabled={transcribing}
-              className="mt-2 w-full rounded-md border border-[#2A3A45] bg-[#0F1B24] p-2.5 text-[14.5px] leading-relaxed text-[#EAF0F4] outline-none focus:border-[#FAD338]"
-            />
-            <div className="mt-2 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => transcript.trim() && setConfirmed(true)}
-                disabled={transcribing}
-                className={[
-                  "rounded-md border px-3 py-1.5 text-[12px] font-semibold",
-                  confirmed ? "border-[#2E7D5B] bg-[#12321F] text-[#8FE3B4]" : "border-[#2A3A45] bg-[#0F1B24] text-[#C6D2DB]",
-                ].join(" ")}
-              >
-                {transcribing ? "전사 중…" : confirmed ? "✓ 확인됨" : "전사 확인"}
-              </button>
-              <span className="text-[11px] text-[#9FB0BC]">전사 확인은 통역 구인 타당성 장치입니다.</span>
-            </div>
-          </div>
-        )}
       </div>
 
-      <Button className="w-full" disabled={!canSubmit} onClick={() => onSubmit(transcript.trim())}>
+      {/* ③ 전사 확인 — 수행 스튜디오와 분리한 밝은 편집 작업대 */}
+      {(recorded || notice || transcribing) && (
+        <div className="rounded-xl border border-[#E4DFC9] bg-[#FFFDF4] p-4 shadow-[0_8px_24px_rgba(21,32,43,0.05)]">
+          <div className="flex items-start gap-2.5">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FAD338] text-[11px] font-extrabold text-[#15202B]">
+              ③
+            </span>
+            <div>
+              <div className="text-[13px] font-bold text-[#15202B]">전사 확인</div>
+              <p className="mt-0.5 text-[11.5px] leading-relaxed text-[#66717B]">
+                자동 전사를 실제로 말한 내용과 대조하고, 다른 부분만 고쳐 주세요.
+              </p>
+            </div>
+          </div>
+
+          {recordingAudioUrl && (
+            <div className="mt-3 rounded-lg border border-[#E2DED0] bg-white p-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+                <div className="text-[12px] font-semibold text-[#273642]">내 음성 다시 듣기</div>
+                <div className="text-[10.5px] text-[#7A858D]">전사 확인용 · 발음 점수와 무관</div>
+              </div>
+              <audio
+                ref={recordingAudioRef}
+                src={recordingAudioUrl}
+                controls
+                preload="metadata"
+                onLoadedMetadata={() => setRecordingAudioReady(true)}
+                onError={() => setNotice("내 녹음 재생에 실패했습니다. 전사를 직접 확인해 주세요.")}
+                className="mt-2 h-9 w-full"
+                aria-label="내가 녹음한 통역 음성"
+              />
+              <div className="mt-1.5 flex justify-end gap-1.5">
+                <button
+                  type="button"
+                  disabled={!recordingAudioReady}
+                  onClick={() => seekRecording(-0.5)}
+                  className="rounded border border-[#D7D4C8] bg-[#FAF9F4] px-2 py-1 text-[11px] text-[#53616B] disabled:opacity-40"
+                >
+                  −0.5초
+                </button>
+                <button
+                  type="button"
+                  disabled={!recordingAudioReady}
+                  onClick={() => seekRecording(0.5)}
+                  className="rounded border border-[#D7D4C8] bg-[#FAF9F4] px-2 py-1 text-[11px] text-[#53616B] disabled:opacity-40"
+                >
+                  +0.5초
+                </button>
+              </div>
+            </div>
+          )}
+
+          <label className="mt-3 block text-[11.5px] font-bold text-[#53616B]" htmlFor="interpreting-transcript">
+            내가 말한 내용
+          </label>
+          <textarea
+            id="interpreting-transcript"
+            rows={2}
+            value={transcript}
+            onChange={(e) => {
+              setTranscript(e.target.value);
+              setConfirmed(false);
+            }}
+            placeholder={`통역한 ${tgtName} 문장`}
+            disabled={transcribing}
+            className="mt-1.5 w-full rounded-lg border border-[#D8C563] bg-[#FFF7CF] p-3 text-[15.5px] font-medium leading-relaxed text-[#15202B] shadow-inner outline-none placeholder:text-[#8C866E] focus:border-[#9F8420] focus:ring-2 focus:ring-[#FAD338]/35"
+          />
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => transcript.trim() && setConfirmed(true)}
+              disabled={transcribing}
+              className={[
+                "rounded-md border px-3 py-1.5 text-[12px] font-semibold transition-colors",
+                confirmed
+                  ? "border-[#2E7D5B] bg-[#E7F5EC] text-[#256548]"
+                  : "border-[#B8B3A2] bg-white text-[#3D4B55] hover:border-[#7E7762]",
+              ].join(" ")}
+            >
+              {transcribing ? "전사 중…" : confirmed ? "✓ 확인 완료" : "말한 내용과 같아요"}
+            </button>
+            <span className="text-[11px] text-[#7A858D]">다른 부분이 있다면 문장을 먼저 고쳐 주세요.</span>
+          </div>
+        </div>
+      )}
+
+      <Button
+        className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F5C81F]"
+        disabled={!canSubmit}
+        onClick={() => onSubmit(transcript.trim())}
+      >
         확인한 전사로 제출 →
       </Button>
       {IS_DEMO && (
