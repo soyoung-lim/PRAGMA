@@ -114,7 +114,7 @@ const LEARNER_FOCUS_COPY: Record<string, string> = {
 // 기술 용어가 진행바에 있으면 그 자체로 시험지처럼 읽힌다.
 const STEP_INDEX: Partial<Record<Phase, number>> = { produce: 0, feedback: 0, revise: 1, done: 2 };
 const stageSteps = (stage: Stage, interp: boolean) =>
-  stage === 1 ? [interp ? "통역하기" : "옮겨 쓰기"] : ["피드백 보기", "다듬기", "완료"];
+  stage === 1 ? [interp ? "통역하기" : "번역하기"] : ["피드백 보기", "다듬기", "완료"];
 
 // ── band 라벨 헬퍼 ──────────────────────────────────────────────────────
 function bandLabel(featureCode: string, code: string): string {
@@ -236,7 +236,7 @@ function ProductionGuide({
   tier: SupportTier;
   leaning: ToneLeaning;
 }) {
-  const [expanded, setExpanded] = useState(tier === "guided");
+  const [expanded, setExpanded] = useState(false);
   const visibleResources =
     tier === "guided" ? resources.slice(0, 4) : tier === "hinted" ? resources.slice(0, 3) : resources.slice(0, 2);
 
@@ -248,23 +248,20 @@ function ProductionGuide({
   };
 
   return (
-    <div className="mb-3 overflow-hidden rounded-xl border border-[#E5DDAF] bg-[#FFFDF4]">
+    <div className="mb-2.5 flex flex-col items-end">
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}
-        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-[#FFF9DD]"
+        className="inline-flex items-center gap-1.5 rounded-full border border-[#E5DDAF] bg-[#FFFDF4] px-2.5 py-1.5 text-left shadow-[0_1px_2px_rgba(21,32,43,0.04)] transition-colors hover:bg-[#FFF9DD]"
         aria-expanded={expanded}
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FFF0A8] text-[#6B5518]">
-          <Lightbulb className="h-4 w-4" aria-hidden="true" />
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FFF0A8] text-[#6B5518]">
+          <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[12.5px] font-bold text-[#3C4650]">막히면 표현 힌트 보기</span>
-          <span className="block text-[11px] text-[#69757F]">완성 답안이 아닌, 시작에 필요한 부분 표현만 확인</span>
-        </span>
+        <span className="text-[12px] font-bold text-[#4A5560]">막히면 힌트 보기</span>
         <ChevronDown
           className={[
-            "h-4 w-4 shrink-0 text-[#6B7680] transition-transform",
+            "h-3.5 w-3.5 shrink-0 text-[#6B7680] transition-transform duration-200",
             expanded ? "rotate-180" : "",
           ].join(" ")}
           aria-hidden="true"
@@ -273,31 +270,39 @@ function ProductionGuide({
 
       {/* 완화 편향 시정(0-r·106①) — 슬롯·힌트가 늘 완화 자원이라 "넣으면 된다"로
           오학습될 수 있다. 직접형이 자연스러운 상황에서는 먼저 그 사실을 말한다. */}
-      {expanded && (
-        <div className="border-t border-[#EEE5BE] px-3 pb-3 pt-2.5">
-          {leaning === "direct" && (
-            <p className="mb-2 rounded-lg bg-[#F3F6EE] px-2.5 py-2 text-[12px] leading-[1.45] text-[#4A5A3E]">
-              이 상황에서는 짧고 직접적인 표현이 더 자연스러울 수 있습니다. <strong className="font-semibold">덜어내는 것도 조절입니다.</strong>
+      <div
+        className={[
+          "grid w-full transition-[grid-template-rows,opacity] duration-200 sm:w-[78%]",
+          expanded ? "mt-2 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        ].join(" ")}
+        aria-hidden={!expanded}
+      >
+        <div className="overflow-hidden">
+          <div className="rounded-xl border border-[#E5DDAF] bg-[#FFFDF4] px-3 pb-3 pt-2.5">
+            {leaning === "direct" && (
+              <p className="mb-2 rounded-lg bg-[#F3F6EE] px-2.5 py-2 text-[12px] leading-[1.45] text-[#4A5A3E]">
+                이 상황에서는 짧고 직접적인 표현이 더 자연스러울 수 있습니다. <strong className="font-semibold">덜어내는 것도 조절입니다.</strong>
+              </p>
+            )}
+            <ul className="grid gap-1.5 sm:grid-cols-2">
+              {visibleResources.map((resource) => {
+                const hint = splitResource(resource);
+                return (
+                  <li key={resource} className="rounded-lg border border-[#EEE7CF] bg-white px-2.5 py-2">
+                    {hint.example && <div className="text-[13px] font-semibold text-[#1F4F37]">{hint.example}</div>}
+                    <div className={hint.example ? "mt-0.5 text-[10.5px] text-[#6B7680]" : "text-[12px] text-[#3B4A57]"}>
+                      {hint.label}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              필요한 표현만 골라 사용합니다. 모두 넣을 필요는 없습니다.
             </p>
-          )}
-          <ul className="grid gap-1.5 sm:grid-cols-2">
-            {visibleResources.map((resource) => {
-              const hint = splitResource(resource);
-              return (
-                <li key={resource} className="rounded-lg border border-[#EEE7CF] bg-white px-2.5 py-2">
-                  {hint.example && <div className="text-[13px] font-semibold text-[#1F4F37]">{hint.example}</div>}
-                  <div className={hint.example ? "mt-0.5 text-[10.5px] text-[#6B7680]" : "text-[12px] text-[#3B4A57]"}>
-                    {hint.label}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            필요한 표현만 골라 사용합니다. 모두 넣을 필요는 없습니다.
-          </p>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -926,7 +931,13 @@ function MissionRunner({
               />
             ) : (
               <>
-                <ChatScene situation={pt.situation_ko} relation={pt.relation_ko} eyebrow="지금, 직접 옮길 장면">
+                <ChatScene
+                  situation={pt.situation_ko}
+                  relation={pt.relation_ko}
+                  eyebrow="지금, 직접 옮길 장면"
+                  separatePanels
+                  threadEyebrow="메시지 작성 중"
+                >
                   {pt.preceding_turn && <ChatBubble side="them">{pt.preceding_turn}</ChatBubble>}
                   <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
                   {dir === "ko_zh" && (
@@ -2125,11 +2136,11 @@ function MpjStage({
 
       {/* 단일 발화 문항 — 위 맥락의 AI 초안에 대한 판단·교정·근거화 */}
       {item.type !== "multi_judge" && (
-        <div className={card}>
+        <div className="rounded-xl border border-[#EAE4D2] border-t-[3px] border-t-[#15202B] bg-white px-4 pb-4 pt-3">
           {/* scale4 */}
           {item.type === "scale4" && (
             <>
-              <div className="mt-3.5 text-[13px] font-semibold">첫인상으로 이 번역안은 얼마나 적절한가요?</div>
+              <div className="text-[13px] font-semibold">첫인상으로 이 번역안은 얼마나 적절한가요?</div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {SCALE4_CODES.map((code) => (
                   <Choice key={code} label={SCALE4_LABELS[code as Scale4Code]} selected={scalePick === code} disabled={answered} onClick={() => setScalePick(code)} />
@@ -2141,7 +2152,7 @@ function MpjStage({
           {/* Judge3는 legacy judge3/reason_conf와 현행 fix_choice에서만 묻는다. */}
           {(item.type === "judge3" || item.type === "fix_choice" || item.type === "reason_conf") && (
             <>
-              <div className="mt-3.5 text-[13px] font-semibold">이 표현의 조절 정도는 어떤가요?</div>
+              <div className="text-[13px] font-semibold">이 표현의 조절 정도는 어떤가요?</div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {bands.map((b) => (
                   <Choice
@@ -2317,7 +2328,7 @@ function MpjStage({
 
       {/* multi_judge: 한 상황 다중 발화 */}
       {item.type === "multi_judge" && (
-        <div className={card}>
+        <div className="rounded-xl border border-[#EAE4D2] border-t-[3px] border-t-[#15202B] bg-white px-4 pb-4 pt-3">
           <div className="text-[13px] font-semibold">여러 AI 번역 초안 비교하기</div>
           <p className="mt-1 text-[12.5px] text-muted-foreground">각 초안이 이 상황에 맞는지 판단하세요.</p>
           <ul className="mt-3 space-y-2.5">
