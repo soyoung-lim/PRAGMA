@@ -1188,7 +1188,6 @@ function AudioFrame({
   const [confirmed, setConfirmed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [recordingAudioUrl, setRecordingAudioUrl] = useState<string | null>(null);
-  const [recordingAudioReady, setRecordingAudioReady] = useState(false);
   const recRef = useRef<BrowserSpeechRecognition | null>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -1274,7 +1273,6 @@ function AudioFrame({
       recordingAudioUrlRef.current = null;
     }
     setRecordingAudioUrl(null);
-    setRecordingAudioReady(false);
     // ① STT 초안(가능하면)
     if (sttSupported) {
       try {
@@ -1324,7 +1322,6 @@ function AudioFrame({
         const localAudioUrl = URL.createObjectURL(audio);
         recordingAudioUrlRef.current = localAudioUrl;
         setRecordingAudioUrl(localAudioUrl);
-        setRecordingAudioReady(false);
 
         setTranscribing(true);
         const result = await requestSttTranscript(
@@ -1336,7 +1333,7 @@ function AudioFrame({
         if (result.ok === true) {
           setTranscript(result.text);
           setConfirmed(false);
-          setNotice("고품질 자동 전사가 완료됐습니다. 실제로 말한 내용과 같은지 확인해 주세요.");
+          setNotice(null);
         } else {
           setNotice(`${result.message} 브라우저 전사 초안을 확인하거나 직접 입력해 주세요.`);
         }
@@ -1376,11 +1373,6 @@ function AudioFrame({
 
   const canSubmit = !transcribing && confirmed && transcript.trim().length > 0;
   const dark = "rounded-xl bg-[#0F1B24] p-4 text-[#EAF0F4]";
-  const seekRecording = (seconds: number) => {
-    const audio = recordingAudioRef.current;
-    if (!audio || !recordingAudioReady || !Number.isFinite(audio.duration)) return;
-    audio.currentTime = Math.min(audio.duration, Math.max(0, audio.currentTime + seconds));
-  };
 
   return (
     <div className="space-y-3">
@@ -1458,12 +1450,7 @@ function AudioFrame({
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FAD338] text-[11px] font-extrabold text-[#15202B]">
               ③
             </span>
-            <div>
-              <div className="text-[13px] font-bold text-[#15202B]">전사 확인</div>
-              <p className="mt-0.5 text-[11.5px] leading-relaxed text-[#66717B]">
-                자동 전사를 실제로 말한 내용과 대조하고, 다른 부분만 고쳐 주세요.
-              </p>
-            </div>
+            <div className="pt-0.5 text-[13px] font-bold text-[#15202B]">내가 말한 내용 확인</div>
           </div>
 
           {recordingAudioUrl && (
@@ -1477,29 +1464,10 @@ function AudioFrame({
                 src={recordingAudioUrl}
                 controls
                 preload="metadata"
-                onLoadedMetadata={() => setRecordingAudioReady(true)}
                 onError={() => setNotice("내 녹음 재생에 실패했습니다. 전사를 직접 확인해 주세요.")}
                 className="mt-2 h-9 w-full"
                 aria-label="내가 녹음한 통역 음성"
               />
-              <div className="mt-1.5 flex justify-end gap-1.5">
-                <button
-                  type="button"
-                  disabled={!recordingAudioReady}
-                  onClick={() => seekRecording(-0.5)}
-                  className="rounded border border-[#D7D4C8] bg-[#FAF9F4] px-2 py-1 text-[11px] text-[#53616B] disabled:opacity-40"
-                >
-                  −0.5초
-                </button>
-                <button
-                  type="button"
-                  disabled={!recordingAudioReady}
-                  onClick={() => seekRecording(0.5)}
-                  className="rounded border border-[#D7D4C8] bg-[#FAF9F4] px-2 py-1 text-[11px] text-[#53616B] disabled:opacity-40"
-                >
-                  +0.5초
-                </button>
-              </div>
             </div>
           )}
 
