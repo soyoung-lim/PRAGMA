@@ -1,4 +1,4 @@
--- Full Mission 신규 계약: Judge3+FixChoice4 → Reason3 → MultiJudge4 → DCT.
+-- Full Mission 신규 계약: Scale4 → Judge3+FixChoice4 → Reason3 → MultiJudge4 → DCT.
 -- 2026-07-29 KST.
 --
 -- 신규 생성물만 mission_v4로 저장한다. 기존 mission_v1/v2/v3 데이터는

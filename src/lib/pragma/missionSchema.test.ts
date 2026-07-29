@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
+import { SAMPLE_MISSION_V4 } from "@/lib/mission/missionV4Sample";
 import { normalizeMission } from "@/lib/pragma/missionSchema";
 import { checkMission, type CheckContext } from "@/lib/pragma/missionRules";
 
@@ -97,13 +98,14 @@ describe("mission_v3 MPJ4 contract", () => {
 
 const provenanceV4 = {
   ...provenance,
-  prompt_version: "mission_v4_mpj3_dct1",
+  prompt_version: "mission_v4_mpj4_dct1",
   mission_content_hash: "mission-v4-test",
   generated_at: "2026-07-29T00:30:00Z",
 };
 
 function missionV4() {
   const legacy = normalizeMission(SAMPLE_MISSION_V1).data!;
+  const scale = legacy.mpj_items[0];
   const fix = legacy.mpj_items[2];
   const oldReason = legacy.mpj_items[3];
   const oldMulti = legacy.mpj_items[4];
@@ -121,15 +123,25 @@ function missionV4() {
     },
     mpj_items: [
       {
-        ...fix,
+        ...scale,
         id: 1,
+        channel: "messenger" as const,
+        pdr: { p: "equal" as const, d: "close" as const, r: "low" as const },
+        situation_ko:
+          "같은 프로젝트를 오래 함께한 친한 동료가 이미 최신 파일을 정리해 두었다. 메신저로 파일 하나를 공유해 달라고 가볍게 부탁한다.",
+        accepted_scale_codes: ["very_appropriate", "somewhat_appropriate"] as const,
+        reference_scale_code: "somewhat_appropriate" as const,
+      },
+      {
+        ...fix,
+        id: 2,
         channel: "messenger" as const,
         pdr: anchorPdr,
         situation_ko:
           "거래처 담당자는 일정 변경을 내부 팀과 다시 조율해야 한다. 몇 차례 연락했지만 아직 친하지 않은 상대에게 메신저로 변경을 부탁한다.",
       },
       {
-        id: 2,
+        id: 3,
         type: "reason" as const,
         axis_feature: oldReason.axis_feature,
         channel: "messenger" as const,
@@ -153,7 +165,7 @@ function missionV4() {
       },
       {
         ...oldMulti,
-        id: 3,
+        id: 4,
         channel: "messenger" as const,
         pdr: { ...anchorPdr, r: "high" as const },
         situation_ko:
@@ -165,12 +177,20 @@ function missionV4() {
   };
 }
 
-describe("mission_v4 MPJ3 + DCT contract", () => {
-  it("accepts Judge3+FixChoice → Reason → MultiJudge and preserves older versions", () => {
+describe("mission_v4 MPJ4 + DCT contract", () => {
+  it("keeps the local learner preview on the validated v4 contract", () => {
+    const parsed = normalizeMission(SAMPLE_MISSION_V4);
+    expect(parsed.ok).toBe(true);
+    const checked = checkMission(SAMPLE_MISSION_V4, context);
+    expect(checked.violations.filter((item) => item.level === "fail")).toEqual([]);
+  });
+
+  it("accepts Scale4 → Judge3+FixChoice → Reason → MultiJudge and preserves older versions", () => {
     const parsed = normalizeMission(missionV4());
     expect(parsed.ok).toBe(true);
     expect(parsed.data?.schema_version).toBe("mission_v4");
     expect(parsed.data?.mpj_items.map((item) => item.type)).toEqual([
+      "scale4",
       "fix_choice",
       "reason",
       "multi_judge",
@@ -191,7 +211,12 @@ describe("mission_v4 MPJ3 + DCT contract", () => {
     expect(
       normalizeMission({
         ...current,
-        mpj_items: [current.mpj_items[0], legacy.mpj_items[3], current.mpj_items[2]],
+        mpj_items: [
+          current.mpj_items[0],
+          current.mpj_items[1],
+          legacy.mpj_items[3],
+          current.mpj_items[3],
+        ],
       }).ok,
     ).toBe(false);
     expect(
@@ -200,7 +225,8 @@ describe("mission_v4 MPJ3 + DCT contract", () => {
         mpj_items: [
           current.mpj_items[0],
           current.mpj_items[1],
-          { ...current.mpj_items[2], candidates: legacy.mpj_items[4].type === "multi_judge" ? legacy.mpj_items[4].candidates : [] },
+          current.mpj_items[2],
+          { ...current.mpj_items[3], candidates: legacy.mpj_items[4].type === "multi_judge" ? legacy.mpj_items[4].candidates : [] },
         ],
       }).ok,
     ).toBe(false);
@@ -212,14 +238,15 @@ describe("mission_v4 MPJ3 + DCT contract", () => {
       ...current,
       mpj_items: [
         current.mpj_items[0],
+        current.mpj_items[1],
         {
-          ...current.mpj_items[1],
-          reasons: current.mpj_items[1].type === "reason"
-            ? current.mpj_items[1].reasons.map((reason) => ({ ...reason, kind: "primary" as const }))
+          ...current.mpj_items[2],
+          reasons: current.mpj_items[2].type === "reason"
+            ? current.mpj_items[2].reasons.map((reason) => ({ ...reason, kind: "primary" as const }))
             : [],
         },
         {
-          ...current.mpj_items[2],
+          ...current.mpj_items[3],
           pdr: { p: "speaker_higher", d: "close", r: "high" },
         },
       ],
@@ -227,5 +254,25 @@ describe("mission_v4 MPJ3 + DCT contract", () => {
     const checked = checkMission(bad, context);
     expect(checked.violations.some((item) => item.id === "R4" && item.level === "fail")).toBe(true);
     expect(checked.violations.some((item) => item.id === "R5" && item.level === "fail")).toBe(true);
+  });
+
+  it("accepts Scale4 by polarity but requires one reference degree inside that polarity", () => {
+    const current = missionV4();
+    const scale = current.mpj_items[0];
+    const invalid = checkMission(
+      {
+        ...current,
+        mpj_items: [
+          {
+            ...scale,
+            accepted_scale_codes: ["very_appropriate", "somewhat_inappropriate"],
+            reference_scale_code: "very_inappropriate",
+          },
+          ...current.mpj_items.slice(1),
+        ],
+      },
+      context,
+    );
+    expect(invalid.violations.some((item) => item.id === "R7" && item.level === "fail")).toBe(true);
   });
 });

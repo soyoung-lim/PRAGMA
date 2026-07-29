@@ -13,7 +13,7 @@ function bandLabel(featureCode: string, code: string): string {
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  scale4: "첫인상 판단(legacy)",
+  scale4: "첫인상 판단",
   judge3: "조절 정도 판단(legacy)",
   fix_choice: "판단하고 고쳐보기",
   reason_conf: "판정+이유+확신(legacy)",
@@ -155,6 +155,12 @@ function MpjReview({ item, featureCode }: { item: MpjItemRuntime; featureCode: s
 
       {item.type !== "multi_judge" && (
         <p className="mt-1 font-medium">초안: {item.target}</p>
+      )}
+      {item.type === "scale4" && "reference_scale_code" in item && (
+        <p className="mt-1 text-[11.5px] text-[#2E7D5B]">
+          대표 정도: {SCALE4_LABELS[item.reference_scale_code as Scale4Code]}
+          <span className="ml-1 text-muted-foreground">· 정오는 적절/부적절 방향만 판단</span>
+        </p>
       )}
 
       {item.type === "fix_choice" && (

@@ -1,14 +1,15 @@
 // mission_v1/v2 — 기존 완전 미션(MPJ 5 + DCT) 읽기 호환.
 // mission_v3 — 2026-07-28 MPJ4 + DCT 기준선 읽기 호환.
-// mission_v4 — 2026-07-29 현행 완전 미션(MPJ 3 + DCT):
-//   judge3+fix_choice → reason → multi_judge.
+// mission_v4 — 2026-07-29 현행 완전 미션(MPJ 4 + DCT):
+//   scale4 → judge3+fix_choice → reason → multi_judge.
 //
 // 편성·데모 선별분만 코어에서 승격 생성한다. legacy MPJ 5유형:
 //   scale4 → judge3 → fix_choice → reason_conf → multi_judge (순서 고정, R1).
 // v3 MPJ 4유형:
 //   scale4 → judge3 → fix_choice → reason_conf (순서 고정, R1).
-// 현행 v4 MPJ 3유형:
-//   fix_choice(판정+교정) → reason(주원인) → multi_judge(4후보) (순서 고정, R1).
+// 현행 v4 MPJ 4유형:
+//   scale4(첫인상) → fix_choice(판정+교정) → reason(주원인)
+//   → multi_judge(4후보) (순서 고정, R1).
 // axis_feature = unit.target_feature 고정(0-b·19, R1). band code는 카탈로그 정본.
 
 import { z } from "zod";
@@ -218,6 +219,7 @@ export const MPJ_TYPE_ORDER_V3 = [
 
 /** 현행 mission_v4 유형 순서(R1). */
 export const MPJ_TYPE_ORDER_V4 = [
+  "scale4",
   "fix_choice",
   "reason",
   "multi_judge",
@@ -359,17 +361,36 @@ export const MissionV3Schema = z.object({
 export type MissionV3 = z.infer<typeof MissionV3Schema>;
 
 // ══════════════════════════════════════════════════════════════════════
-// mission_v4 — MPJ3 + DCT (2026-07-29)
+// mission_v4 — MPJ4 + DCT (2026-07-29)
 // ══════════════════════════════════════════════════════════════════════
-// Scale4는 주간 핵심 미션에서 제외하고 진단·수업 토론용 별도 유형으로 분리한다.
+// Scale4는 4점 원응답을 보존하되 적절/부적절의 방향이 맞으면 정답으로 인정한다.
+// reference_scale_code는 정도성 차이를 참고 판정·수업 토론에 남긴다.
 // reason은 Judge3와 confidence를 반복하지 않는다. 대신 생성·QA가 확인할 수 있는
 // problem_band_code와 오답 역할을 저장하며, 학습자는 "가장 큰 이유" 하나만 고른다.
 const MpjCommonV4 = {
   ...MpjCommonV2,
-  id: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  id: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   /** UI 표현용 매체. 연구·난이도 축이 아니며 상황 서술과 일치해야 한다. */
   channel: ChannelSchema,
 };
+
+const ScaleCodeV4 = z.enum([
+  "very_appropriate",
+  "somewhat_appropriate",
+  "somewhat_inappropriate",
+  "very_inappropriate",
+]);
+
+const Scale4ItemV4 = z.object({
+  ...MpjCommonV4,
+  type: z.literal("scale4"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  /** 같은 극성의 정확히 두 응답. 즉시 피드백은 이분법적 방향만 채점한다. */
+  accepted_scale_codes: z.array(ScaleCodeV4).length(2),
+  /** 매우/다소의 정도성 비교를 위한 단일 참고 판정. */
+  reference_scale_code: ScaleCodeV4,
+});
 
 const FixChoiceItemV4 = z.object({
   ...MpjCommonV4,
@@ -417,6 +438,7 @@ const MultiJudgeItemV4 = z.object({
 });
 
 export const MpjItemV4Schema = z.discriminatedUnion("type", [
+  Scale4ItemV4,
   FixChoiceItemV4,
   ReasonItemV4,
   MultiJudgeItemV4,
@@ -427,7 +449,7 @@ export const MissionV4Schema = z.object({
   schema_version: z.literal("mission_v4"),
   direction: z.enum(["ko_zh", "zh_ko"]),
   unit: UnitSchema,
-  mpj_items: z.array(MpjItemV4Schema).length(3),
+  mpj_items: z.array(MpjItemV4Schema).length(4),
   production_task: ProductionTaskV2Schema,
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
@@ -484,7 +506,7 @@ function v1ItemToV2(it: MpjItem): MpjItemV2 {
 }
 
 /**
- * 미션 정규화 — v1(방향 없음)·v2(MPJ5)·v3(MPJ4)·v4(MPJ3) JSON을 읽는다.
+ * 미션 정규화 — v1(방향 없음)·v2(MPJ5)·v3(MPJ4)·v4(MPJ4) JSON을 읽는다.
  * v1은 direction='ko_zh', 필드명 매핑 후 legacy v2 형태가 된다.
  * 규칙검사·러너·미리보기는 MissionRuntime만 본다.
  */

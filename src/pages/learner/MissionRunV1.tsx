@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,13 +13,21 @@ import {
   type MpjItemRuntime,
 } from "@/lib/pragma/missionSchema";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
+import { SAMPLE_MISSION_V4 } from "@/lib/mission/missionV4Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
 import {
   saveMissionAttempt,
   type LearnerDissent,
   type MpjResponseTrace,
 } from "@/lib/mission/missionLog";
-import { ChatScene, ChatBubble, ChatCaption, ChatAvatar, highlightZh } from "@/components/mission/ChatScene";
+import {
+  ChatScene,
+  ChatBubble,
+  ChatCaption,
+  ChatAvatar,
+  SituationText,
+  highlightZh,
+} from "@/components/mission/ChatScene";
 import {
   slotsForAct,
   hintForSlot,
@@ -50,8 +58,8 @@ const srcLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].s
 const tgtLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].target];
 
 // 학습자 미션 실행 — mission_v1~v4를 정규화해 구동한다.
-//   감각 익히기(MPJ → 인계) → 직접 표현하기(상황 살피기 → 산출/통역) → 돌아보고 다듬기(피드백 → 다듬기 → 완료)
-//   ※ 3단계는 **표시 서사**일 뿐 화면 순서·문항 수·판정 기준·저장 계약은 종전과 같다.
+//   감각 익히기(MPJ → 인계) → 직접 표현하기(산출/통역) → 돌아보고 다듬기(피드백 → 다듬기 → 완료)
+//   ※ 3단계는 표시 서사이고, 실제 문항 수·판정·저장은 mission schema version을 따른다.
 // 판정은 초점별 band 카탈로그(targetFeatures) 기준. 자유 산출 뒤에는 feedback-lite가
 // 의미·문법·화용을 진단하며, 실패 시 참고 표현·핵심 원칙으로 안전하게 폴백한다.
 
@@ -62,10 +70,6 @@ const CONFIDENCE = ["매우 확신", "꽤 확신", "확신 없음"] as const;
 // 매 문항 반복 대신 1부 시작에 1회만 지위를 정직하게 고지한다.
 const JUDGMENT_STATUS_CAPTION =
   "판정은 현재 강의 기준 · AI 제안(검증 예정)입니다 — 유일한 정답이 아니며, 상황에 따라 다른 적절한 표현도 존재할 수 있습니다.";
-
-// PDR 학습자 라벨(근거 서랍용 — 내부 코드 노출 금지)
-const PDR_R_LABEL: Record<string, string> = { low: "가벼운 부탁", mid: "보통", high: "부담이 큼" };
-const PDR_D_LABEL: Record<string, string> = { close: "가까운 사이", acquaintance: "아는 사이", distant: "처음/먼 사이" };
 
 // 사이트 헤더(LearnerJourneyShell) 높이 — 문항 맥락 바가 붙는 기준선.
 const HEADER_H = 60;
@@ -78,20 +82,15 @@ const demoBtn =
   "block w-full rounded-lg border border-dashed border-[#D8D0BC] bg-[#F5F5F2] px-3 py-2 text-[12.5px] text-muted-foreground transition-colors hover:bg-[#EFEEE9]";
 
 // ── 진행 단계 ────────────────────────────────────────────────────────────
-// 「오늘의 생생 표현」(보상 슬롯)은 콘텐츠 파이프라인이 붙기 전까지 렌더하지 않는다.
-// 자리표시자인데도 완료 화면에서 시각 무게가 가장 컸다. 콘텐츠가 생기면 true로.
-const LIVING_EXPRESSION_READY = false;
+type Phase = "mpj" | "handoff" | "produce" | "feedback" | "revise" | "done";
 
-type Phase = "mpj" | "handoff" | "ctx" | "produce" | "feedback" | "revise" | "done";
-
-// 서사 3단계 — 화면 순서·문항 수·판정 기준·저장 계약은 모두 그대로이고 표시만 묶는다.
+// 서사 3단계 — 세부 문항 유형 대신 감각 → 표현 → 다듬기의 학습 사건으로 묶는다.
 // 「1부 판단 연습 / 2부 실전 적용」은 시험 2부작으로 읽혀, 미션을 마쳐도 "문항을
 // 풀었다"는 기억만 남았다. 같은 흐름을 감각 → 표현 → 다듬기의 한 사건으로 보인다.
 type Stage = 0 | 1 | 2;
 const STAGE_OF: Record<Phase, Stage> = {
   mpj: 0,
   handoff: 0,
-  ctx: 1,
   produce: 1,
   feedback: 2,
   revise: 2,
@@ -100,9 +99,9 @@ const STAGE_OF: Record<Phase, Stage> = {
 const STAGE_TITLES = ["감각 익히기", "직접 표현하기", "돌아보고 다듬기"] as const;
 // 단계 안의 잔걸음. MPJ 유형명(scale4·reason_conf…)은 더 이상 노출하지 않는다 —
 // 기술 용어가 진행바에 있으면 그 자체로 시험지처럼 읽힌다.
-const STEP_INDEX: Partial<Record<Phase, number>> = { ctx: 0, produce: 1, feedback: 0, revise: 1, done: 2 };
+const STEP_INDEX: Partial<Record<Phase, number>> = { produce: 0, feedback: 0, revise: 1, done: 2 };
 const stageSteps = (stage: Stage, interp: boolean) =>
-  stage === 1 ? ["상황 살피기", interp ? "통역하기" : "옮겨 쓰기"] : ["피드백 보기", "다듬기", "완료"];
+  stage === 1 ? [interp ? "통역하기" : "옮겨 쓰기"] : ["피드백 보기", "다듬기", "완료"];
 
 // ── band 라벨 헬퍼 ──────────────────────────────────────────────────────
 function bandLabel(featureCode: string, code: string): string {
@@ -116,34 +115,24 @@ function bandOptions(featureCode: string, fallback: string[]): { code: string; l
   return [...new Set(fallback)].map((c) => ({ code: c, label: c }));
 }
 
-// ── 상황 확인(판단형) — PDR에서 규칙적으로 파생. 데이터·AI 0회, 점수 없음 ──
-// 프로토타입 v2 "필요한 화용 조절점" 판단. 요청·완화 계열 기준(현행 DB 범위).
-function deriveCtx(pdr: { d?: string; r?: string }) {
-  const opts = [
-    "친한 사이라 간결·직접적으로 말해도 괜찮다",
-    "아직 친하지 않으니 상대가 선택할 여지를 남기는 완화가 필요하다",
-    "겹겹의 격식과 존대를 최대한 갖춰야 한다",
-  ];
-  // 판정 규칙은 산출 안내(ProductionGuide)와 공유한다 — 두 화면이 어긋나면
-  // 그 자체가 완화 편향을 만든다(0-r·106 3면 정렬).
-  const right = { direct: 0, mitigated: 1, formal: 2 }[toneLeaning(pdr)];
-  const okRight = [
-    "친하고 부담이 낮아 간결·직접적인 표현이 자연스럽습니다. 완화를 겹겹이 쌓으면 오히려 어색합니다.",
-    "아직 친하지 않고 상대가 결정할 여지가 있는 상황이라, 부담을 낮추는 완화와 선택권이 적절합니다. 과한 격식은 오히려 거리감을 줍니다.",
-    "부담이 크고 관계가 먼 상황이라, 격식과 존대를 충분히 갖추는 편이 안전합니다.",
-  ][right];
-  const okWrong = [
-    "이번 상대는 편한 사이입니다. 완화를 과하게 쌓기보다 간결·직접적인 표현이 더 자연스럽습니다.",
-    "이번 상대는 아직 친하지 않습니다. 간결한 직접형은 부담스럽고 과한 격식은 거리감을 줍니다 — 거절할 여지를 남기는 완화가 이 관계에 맞습니다.",
-    "이번 상대는 부담이 크고 먼 관계입니다. 간결한 직접형보다 격식을 갖추는 편이 적절합니다.",
-  ][right];
-  return { q: "이 상대·이 부담에 알맞은 요청 조절 수준", opts, right, okRight, okWrong };
+function learnerBandLabel(featureCode: string, code: string, fallback: string): string {
+  if (featureCode !== "request_mitigation_optionality") return fallback;
+  if (code === "too_direct") return "너무 직접적 — 명령처럼 들릴 수 있음";
+  if (code === "within_band") return "알맞음 — 관계와 부담에 맞음";
+  if (code === "too_indirect") return "너무 우회적 — 요청이 흐려질 수 있음";
+  return fallback;
 }
 
 // ── 페이지: 라우트 파라미터로 DB 조회, 없으면 샘플 ──────────────────────
 const MissionRunV1 = () => {
   const { scenarioId } = useParams();
   const [searchParams] = useSearchParams();
+  // 원격 migration·Edge 배포 전에도 승인된 v4 흐름을 눈으로 확인할 수 있는 DEV 전용 샘플.
+  // production build에서는 query를 붙여도 legacy 기본 샘플을 유지한다.
+  const previewV4 =
+    import.meta.env.DEV &&
+    !scenarioId &&
+    searchParams.get("preview") === "v4";
   // 데모/검증 토글 — 샘플 경로에서만 통역 흐름을 켠다(실제 DB 미션에는 영향 없음).
   const forceInterp = !scenarioId && searchParams.get("mode") === "interpreting";
   // 수행 방식 전환(번역 ↔ 통역)으로 넘어온 경우 1부를 건너뛰고 2부부터 시작한다.
@@ -190,7 +179,8 @@ const MissionRunV1 = () => {
     );
   }
 
-  const baseMission = loaded?.mission ?? SAMPLE_MISSION_V2;
+  const baseMission =
+    loaded?.mission ?? (previewV4 ? SAMPLE_MISSION_V4 : SAMPLE_MISSION_V2);
   const mission =
     forceInterp
       ? { ...baseMission, production_task: { ...baseMission.production_task, mode: "interpreting" as const } }
@@ -199,11 +189,13 @@ const MissionRunV1 = () => {
   const headerRight = loaded
     ? `${loaded.speech_act ? SPEECH_ACT_UI[loaded.speech_act] : ""} · ${loaded.learner_level ? LEVEL[loaded.learner_level] : ""}`
     // 큰 배너를 걷어내는 대신 헤더가 지위를 말한다 — "원어민 검토 전"은 헤더에 없던 정보다.
-    : "샘플 · 예문 검토 전";
+    : previewV4
+      ? "mission_v4 미리보기 · 예문 검토 전"
+      : "샘플 · 예문 검토 전";
 
   return (
     <MissionRunner
-      key={`${loaded?.scenario_id ?? "sample"}:${mission.production_task.mode}`}
+      key={`${loaded?.scenario_id ?? (previewV4 ? "sample-v4" : "sample")}:${mission.production_task.mode}`}
       mission={mission}
       isSample={isSample}
       startAtPart2={startAtPart2}
@@ -317,13 +309,16 @@ function feedbackHeadline(fb: RuntimeFeedback): { title: string; body: string } 
         : scope === "feature"
           ? fb.blocks.feature_ko
           : fb.blocks.feature_ko || "이 상황에 충분히 적절합니다.";
-  return { title: scope === "clear" ? "지금 표현에서 잘 된 점" : "먼저 살펴볼 점", body };
+  return {
+    title: scope === "clear" ? "유지해도 좋은 핵심" : "이번에 고칠 한 가지",
+    body,
+  };
 }
 
 /**
- * feedback-lite 3층 진단 화면 (계약 §4 / 0-r·103 주 카드 1개 원칙 / 0-r·108 4분기).
- * revision_scope가 가리키는 층만 펼치고 나머지 두 층은 칩으로 접는다.
- * ⚠️ 점수·등급을 표시하지 않는다(0-q·95). 화용층 문구는 모델이 비단정으로 쓴다(§4 백신4).
+ * feedback-lite 3층 진단 화면.
+ * 학생에게는 세 층의 상태와 당장 다듬을 한 지점만 보여 준다. 상세 판정 근거는
+ * 관리자 검수·로그에 남기고 학습 흐름에는 반복 노출하지 않는다.
  */
 function FeedbackPanel({
   fb,
@@ -332,84 +327,41 @@ function FeedbackPanel({
   fb: RuntimeFeedback;
   featureCode: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const scope = fb.revision_scope;
   const v = fb.verdicts;
   const g = fb.blocks.grammar?.[0];
-  const alt = fb.blocks.alternatives?.[0];
-  const alt2 = fb.blocks.alternatives?.[1];
   const head = feedbackHeadline(fb);
 
   const layers = [
-    { key: "meaning", label: "뜻 전달", short: SEMANTIC_LABEL[v.semantic_fidelity], body: fb.blocks.meaning_ko },
-    { key: "grammar", label: "이해를 막는 표현", short: GRAMMAR_LABEL[v.grammatical_accuracy], body: g?.explanation_ko ?? "" },
+    { key: "meaning", label: "뜻 전달", short: SEMANTIC_LABEL[v.semantic_fidelity] },
+    { key: "grammar", label: "문법", short: GRAMMAR_LABEL[v.grammatical_accuracy] },
     {
       key: "feature",
-      label: "상대에게 주는 인상",
+      label: "상황 맞춤",
       short: bandLabel(featureCode, v.pragmatic_appropriateness.band_code),
-      body: fb.blocks.feature_ko,
     },
   ];
-  const others = layers.filter((l) => l.key !== scope);
 
   return (
     <div className="space-y-3">
-      {/* 주 카드 — 우선 살펴볼 층을 먼저 제시하되, 다른 층의 오류를 배제하지 않는다. */}
+      <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-[#EAE4D2] bg-white p-2.5">
+        {layers.map((layer) => (
+          <div key={layer.key} className="min-w-0 rounded-lg bg-[#F7F7F3] px-2 py-2 text-center">
+            <div className="text-[10.5px] font-semibold text-muted-foreground">{layer.label}</div>
+            <div className="mt-0.5 truncate text-[12px] font-bold text-[#15202B]" title={layer.short}>
+              {layer.short}
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="rounded-xl border border-[#FAD338] bg-[#FFFBEA] p-4">
         <div className="text-[11.5px] font-bold text-[#6B5518]">{head.title}</div>
-        <p className="mt-1.5 text-[14px] leading-relaxed">{head.body}</p>
+        <p className="mt-1.5 text-[15px] font-medium leading-relaxed text-[#15202B]">{head.body}</p>
 
-        {scope === "grammar" && g?.suggested_correction && (
+        {fb.revision_scope === "grammar" && g?.suggested_correction && (
           <p className="mt-2 rounded-lg bg-white/70 px-3 py-2 text-[13.5px]">
             고친 형태 · {g.suggested_correction}
           </p>
-        )}
-
-        {alt && (
-          <div className="mt-2.5 rounded-lg bg-white/70 px-3 py-2">
-            <div className="text-[11.5px] font-semibold text-[#6B5518]">다듬은 표현 예시</div>
-            <div className="mt-0.5 text-[14px]">{alt.text}</div>
-            {alt.note_ko && <div className="mt-0.5 text-[12px] text-muted-foreground">{alt.note_ko}</div>}
-          </div>
-        )}
-      </div>
-
-      {/* 나머지 층 — 칩 */}
-      <div className={card}>
-        <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-[12.5px]">
-          {others.map((l) => (
-            <li key={l.key}>
-              <span className="text-muted-foreground">{l.label} · </span>
-              <span className="font-medium">{l.short}</span>
-            </li>
-          ))}
-        </ul>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="mt-2 rounded px-1.5 py-0.5 text-[11.5px] font-medium text-[#2B5B7A] hover:bg-[#EEF3F7]"
-          aria-expanded={open}
-        >
-          {open ? "접기 ▴" : "자세히 ▾"}
-        </button>
-        {open && (
-          <div className="mt-2 space-y-2 border-t border-[#EAE4D2] pt-2">
-            {others
-              .filter((l) => l.body)
-              .map((l) => (
-                <div key={l.key}>
-                  <div className="text-[11.5px] font-semibold text-muted-foreground">{l.label}</div>
-                  <p className="mt-0.5 text-[13px] leading-relaxed">{l.body}</p>
-                </div>
-              ))}
-            {alt2 && (
-              <div>
-                <div className="text-[11.5px] font-semibold text-muted-foreground">다른 전략</div>
-                <div className="mt-0.5 text-[13.5px]">{alt2.text}</div>
-                {alt2.note_ko && <div className="text-[12px] text-muted-foreground">{alt2.note_ko}</div>}
-              </div>
-            )}
-          </div>
         )}
       </div>
 
@@ -541,15 +493,13 @@ function MissionRunner({
   speechAct: string | null;
   level: string | null;
 }) {
-  const [phase, setPhase] = useState<Phase>(startAtPart2 ? "ctx" : "mpj");
+  const [phase, setPhase] = useState<Phase>(startAtPart2 ? "produce" : "mpj");
   const [mpjIdx, setMpjIdx] = useState(0);
   const [mpjResponses, setMpjResponses] = useState<MpjResponseTrace[]>([]);
-  const [ctxPick, setCtxPick] = useState<number | null>(null);
-  const [ctxDone, setCtxDone] = useState(false);
   const [draft, setDraft] = useState("");
   const [revised, setRevised] = useState("");
   const [savedLater, setSavedLater] = useState(false);
-  const [resume, setResume] = useState<{ phase: Phase; draft: string; revised: string; ctxPick: number | null; ctxDone: boolean } | null>(null);
+  const [resume, setResume] = useState<{ phase: Phase; draft: string; revised: string } | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "demo" | "error">("idle");
   // feedback-lite(계약 §4) — 제출 후 3층 진단. 실패하면 기존 정직 표기로 되돌아간다.
   const [fb, setFb] = useState<RuntimeFeedback | null>(null);
@@ -574,10 +524,7 @@ function MissionRunner({
   const demoDraft = pt.reference_alternatives[0]?.text ?? "";
   const demoRevised = pt.reference_alternatives[1]?.text ?? pt.reference_alternatives[0]?.text ?? "";
 
-  // B2(계약 0-k): counter_rule 반례를 완료 화면에 노출 — "직접형=무조건 나쁨" 오학습 방지.
   const feat = getTargetFeature(mission.unit.target_feature);
-  const counterRule =
-    dir === "zh_ko" && feat?.counter_rule_note_zh_ko ? feat.counter_rule_note_zh_ko : feat?.counter_rule_note;
 
   // 다듬기 화면 지침 — 피드백이 있으면 방금 본 문구를 그대로 이어받는다.
   // 폴백 조건은 fbState('error')가 아니라 **fb 부재**다: 다듬기 단계부터 바로 재개하면
@@ -627,7 +574,7 @@ function MissionRunner({
       try {
         localStorage.setItem(
           storageKey,
-          JSON.stringify({ phase: "ctx", draft: "", revised: "", ctxPick: null, ctxDone: false }),
+          JSON.stringify({ phase: "produce", draft: "", revised: "" }),
         );
       } catch {
         /* 무시 */
@@ -638,7 +585,14 @@ function MissionRunner({
       const raw = localStorage.getItem(storageKey);
       if (raw) {
         const s = JSON.parse(raw);
-        if (s && typeof s.phase === "string" && s.phase !== "mpj" && s.phase !== "handoff") setResume(s);
+        const normalizedPhase = s?.phase === "ctx" ? "produce" : s?.phase;
+        if (
+          ["produce", "feedback", "revise", "done"].includes(normalizedPhase) &&
+          typeof s?.draft === "string" &&
+          typeof s?.revised === "string"
+        ) {
+          setResume({ phase: normalizedPhase as Phase, draft: s.draft, revised: s.revised });
+        }
       }
     } catch {
       /* localStorage 미지원 — 재개 없이 정상 진행 */
@@ -647,11 +601,11 @@ function MissionRunner({
   useEffect(() => {
     if (part !== 2) return;
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ phase, draft, revised, ctxPick, ctxDone }));
+      localStorage.setItem(storageKey, JSON.stringify({ phase, draft, revised }));
     } catch {
       /* 무시 */
     }
-  }, [part, phase, draft, revised, ctxPick, ctxDone, storageKey]);
+  }, [part, phase, draft, revised, storageKey]);
   const clearSaved = () => {
     try {
       localStorage.removeItem(storageKey);
@@ -663,8 +617,6 @@ function MissionRunner({
     if (!resume) return;
     setDraft(resume.draft || "");
     setRevised(resume.revised || "");
-    setCtxPick(resume.ctxPick ?? null);
-    setCtxDone(!!resume.ctxDone);
     setPhase(resume.phase);
     setResume(null);
     window.scrollTo(0, 0);
@@ -722,8 +674,6 @@ function MissionRunner({
     setPhase("mpj");
     setMpjIdx(0);
     setMpjResponses([]);
-    setCtxPick(null);
-    setCtxDone(false);
     setDraft("");
     setRevised("");
     setSavedLater(false);
@@ -772,7 +722,7 @@ function MissionRunner({
             const done = stage > i;
             const active = stage === i;
             // devGo 착지점 — 3단계는 다듬기로 보낸다(피드백은 제출한 답이 있어야 뜬다).
-            const target: Phase = i === 0 ? "mpj" : i === 1 ? "ctx" : "revise";
+            const target: Phase = i === 0 ? "mpj" : i === 1 ? "produce" : "revise";
             const cls = [
               "flex-1 rounded-[10px] border px-3 py-2 text-left text-[12.5px]",
               done
@@ -827,7 +777,12 @@ function MissionRunner({
           <div className="space-y-3">
             {/* 문항이 첫 화면을 차지한다 — 학생이 처음 봐야 할 것은 상황이지 완료 조건이 아니다.
                 초점 라벨·문항 수는 위쪽 맥락 띠와 진행바가 이미 말한다(삼중 노출 제거). */}
-            <MpjStage key={item.id} item={item} onDone={nextMpj} />
+            <MpjStage
+              key={item.id}
+              item={item}
+              sequentialFix={mission.schema_version === "mission_v4"}
+              onDone={nextMpj}
+            />
             {mpjIdx === 0 && <MissionBriefDrawer mission={mission} />}
           </div>
         )}
@@ -839,10 +794,10 @@ function MissionRunner({
             dir={dir}
             isInterp={isInterp}
             saved={savedLater}
-            onContinue={() => goto("ctx")}
+            onContinue={() => goto("produce")}
             onSaveLater={() => {
               try {
-                localStorage.setItem(storageKey, JSON.stringify({ phase: "ctx", draft: "", revised: "", ctxPick: null, ctxDone: false }));
+                localStorage.setItem(storageKey, JSON.stringify({ phase: "produce", draft: "", revised: "" }));
               } catch {
                 /* 무시 */
               }
@@ -851,21 +806,7 @@ function MissionRunner({
           />
         )}
 
-        {/* ── 2부 ①: 상황 확인(판단형) ── */}
-        {phase === "ctx" && (
-          <CtxStage
-            pt={pt}
-            isInterp={isInterp}
-            pick={ctxPick}
-            onPick={(i) => {
-              setCtxPick(i);
-              setCtxDone(true); // 재개 저장 형태는 그대로 둔다(기존 저장분 호환).
-            }}
-            onNext={() => goto("produce")}
-          />
-        )}
-
-        {/* ── 2부 ②: 실전 산출 — 번역(입력) / 통역(오디오) ── */}
+        {/* ── 2단계: 판단을 반복하지 않고 곧바로 번역/통역 산출 ── */}
         {phase === "produce" && (
           <div className="space-y-3">
             <div className="rounded-xl bg-[#15202B] p-4 text-white">
@@ -928,9 +869,9 @@ function MissionRunner({
         {/* ── 2부 ③: 피드백 ── */}
         {phase === "feedback" && (
           <div className="space-y-3">
-            <div className={card}>
-              <div className="text-[11.5px] font-semibold text-muted-foreground">{isInterp ? "내 통역(확인한 전사)" : "내 번역"}</div>
-              <p className="mt-1 whitespace-pre-wrap text-[14.5px]">{draft}</p>
+            <div className="rounded-xl bg-[#15202B] p-4 text-white shadow-sm">
+              <div className="text-[11.5px] font-bold text-[#FAD338]">{isInterp ? "내 통역 · 확인한 전사" : "내 번역"}</div>
+              <p className="mt-2 whitespace-pre-wrap break-words text-[16px] font-medium leading-relaxed">{draft}</p>
             </div>
 
             {fbState === "loading" && (
@@ -957,13 +898,6 @@ function MissionRunner({
 
             {fbState !== "loading" && (
               <>
-                {/* 원칙 문장(closing_ko)은 완료 화면에서 한 번만 크게 정리한다 —
-                    피드백·다듬기·완료에 같은 문장이 세 번 연속 나오던 것이 피로의 큰 몫이었다.
-                    근거 서랍은 남긴다(접혀 있어 시각 무게가 없다). */}
-                <div className={card}>
-                  <FeedbackReasonDrawer mission={mission} />
-                </div>
-
                 <details className={card}>
                   <summary className="cursor-pointer text-[13px] font-semibold">참고 표현 보기</summary>
                   <p className="mt-1 text-[12px] text-muted-foreground">정답이 아니라 비교용입니다. 상황에 따라 어울리는 범위가 달라집니다.</p>
@@ -1003,25 +937,24 @@ function MissionRunner({
         {phase === "revise" && (
           <div className="space-y-3">
             <div className="rounded-xl border border-[#FAD338] bg-[#FFF8DE] p-4">
-              <div className="text-[12px] font-bold text-[#6B5518]">{reviseHint.title}</div>
-              <p className="mt-1 text-[14px] leading-relaxed">{reviseHint.body}</p>
+              <div className="text-[12px] font-bold text-[#6B5518]">이번 수정 목표</div>
+              <p className="mt-1 text-[15px] font-medium leading-relaxed text-[#15202B]">{reviseHint.body}</p>
             </div>
-            {/* 무엇을 고치는 중인지 보이도록 최초안을 옆에 둔다(PC 2열 · 좁은 화면 세로).
-                최초안은 읽기 전용 — first_response는 피드백 전에 확정된 값이어야 한다. */}
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className={card}>
-                <div className="text-[11.5px] font-semibold text-muted-foreground">처음 쓴 문장</div>
-                <p className="mt-1 whitespace-pre-wrap text-[14px] text-[#5B6B76]">{draft}</p>
-              </div>
-              <div className={card}>
-                <div className="text-[11.5px] font-semibold text-[#6B5518]">다듬은 문장</div>
-                <Textarea
-                  className="mt-1"
-                  rows={5}
-                  value={revised || draft}
-                  onChange={(e) => setRevised(e.target.value)}
-                />
-              </div>
+            <div className="rounded-xl border border-[#D7DDE5] bg-[#F5F7F9] p-4">
+              <div className="text-[11.5px] font-semibold text-[#5B6B76]">수정 전</div>
+              <p className="mt-1.5 whitespace-pre-wrap break-words text-[15px] font-medium leading-relaxed text-[#15202B]">{draft}</p>
+            </div>
+            <div className="rounded-xl border-2 border-[#FAD338] bg-white p-4 shadow-sm">
+              <label htmlFor="revised-response" className="text-[12px] font-bold text-[#6B5518]">
+                수정 후
+              </label>
+              <Textarea
+                id="revised-response"
+                className="mt-2 min-h-[150px] text-[15px] leading-relaxed"
+                rows={5}
+                value={revised || draft}
+                onChange={(e) => setRevised(e.target.value)}
+              />
             </div>
             <Button className="w-full" onClick={finish}>마치기</Button>
             {IS_DEMO && (
@@ -1033,40 +966,13 @@ function MissionRunner({
         {/* ── 완료 ── */}
         {phase === "done" && (
           <div className="space-y-3">
-            {/* 완료 화면은 "문항 몇 개를 풀었다"가 아니라 "내 표현이 무엇 때문에
-                달라졌다"로 기억되어야 한다 → 원리 1문장 → 최초·최종 → 인상 순으로 둔다.
-                closing_ko는 카탈로그 정본(R14)이고, 이제 여기서만 크게 나온다. */}
             <div className="rounded-xl bg-[#15202B] p-5 text-white">
-              <div className="text-[11.5px] font-bold text-[#FAD338]">오늘 익힌 원리</div>
+              <div className="text-[11.5px] font-bold text-[#FAD338]">이번 미션 요약</div>
               <p className="mt-1.5 text-[14.5px] leading-relaxed">{mission.unit.closing_ko}</p>
             </div>
 
-            {/* 감량(0-r·103): 완료 화면에서 펼쳐 두는 것은 핵심 1줄과 최초→최종뿐이다.
-                참고 표현 목록은 접는다 — 정답 카드처럼 읽히는 것을 막는 효과도 있다. */}
             <RevisionMap first={draft} final={revised || draft} featureLabel={mission.unit.learner_label} interp={isInterp} />
 
-            {/* 상대에게 줄 수 있는 인상 — **새로 만들지 않는다**. 피드백에서 이미 본
-                화용층 문구를 접힌 형태로 이월한다. 전체 문단을 다시 펼쳐 두어 완료 화면이
-                피드백 화면처럼 보이던 반복은 줄이고, 필요할 때만 다시 확인할 수 있게 한다. */}
-            {fb?.blocks.feature_ko && (
-              <details className="rounded-lg border border-[#EAE4D2] bg-white px-3.5 py-2.5">
-                <summary className="cursor-pointer text-[12.5px] font-semibold text-muted-foreground">
-                  피드백에서 확인한 인상 다시 보기
-                </summary>
-                <p className="mt-2 text-[13.5px] leading-relaxed">{fb.blocks.feature_ko}</p>
-              </details>
-            )}
-
-            {/* B2: 예외 반례 — "직접형=무조건 나쁨"이 아님을 완료 시 상기(counter_rule).
-                오학습 방지 장치이므로 접지 않고 가볍게 펼쳐 둔다. */}
-            {counterRule && (
-              <div className="rounded-xl border border-dashed border-[#D8D0BC] bg-[#FFFDF4] px-4 py-3">
-                <div className="text-[11.5px] font-bold text-[#6B5518]">예외 — 항상 적용되는 것은 아닙니다</div>
-                <p className="mt-1 text-[13px] leading-relaxed text-[#5B4A1E]">{counterRule}</p>
-              </div>
-            )}
-
-            {/* 수행 로그 저장 상태 — 루프 마지막 노드(실행 → 저장) */}
             <div
               className={[
                 "rounded-lg px-3.5 py-2.5 text-[12.5px]",
@@ -1079,44 +985,6 @@ function MissionRunner({
               {saveState === "error" && "수행 기록 저장에 실패했습니다. 네트워크 상태를 확인한 뒤 다시 시도하십시오."}
               {saveState === "idle" && "수행 기록을 준비 중입니다."}
             </div>
-            <details className={card}>
-              <summary className="cursor-pointer text-[13px] font-semibold">이번에 본 알맞은 표현들 다시 보기</summary>
-              <ul className="mt-2 space-y-1.5">
-                {items.map((it) => (
-                  <li key={it.id} className="rounded-lg bg-[#FAF8F2] px-3.5 py-2 text-[13.5px]">
-                    {it.recommended_example}
-                  </li>
-                ))}
-              </ul>
-            </details>
-
-            {/* 보상·환기 구역 — 학습 코어와 물리적 분리. 생생 중국어(쇼츠 발췌)는 완료 후 보상 슬롯에만(UX 분리 원칙)
-                ⚠️ 콘텐츠가 생길 때까지 렌더하지 않는다(LIVING_EXPRESSION_READY=false).
-                빈 자리표시자인데도 완료 화면에서 시각 무게가 가장 컸고, 개발 메모
-                ("레이아웃 예약 구역")가 학습자에게 그대로 노출되고 있었다. */}
-            {LIVING_EXPRESSION_READY && (
-            <div className="rounded-xl border border-[#EAE4D2] border-t-[3px] border-t-[#FAD338] bg-[#FFFDF4] p-4">
-              <div className="text-[12px] font-extrabold tracking-wide text-[#6B5518]">🎬 오늘의 생생 표현 · 쉬어가기</div>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                실제 원어민이 이 상황에서 자주 쓰는 <b>생생한 표현</b>을 가볍게 살펴보는 자리입니다. 학습 과제가 아니라 <b>보상·환기용</b>입니다.{" "}
-                <span className="text-[#A9B0BA]">(유튜브 쇼츠 발췌 — 후속 구현. 이 자리는 레이아웃 예약 구역)</span>
-              </p>
-              <div className="mt-3 rounded-[10px] border border-dashed border-[#A9B0BA] bg-white px-3 py-5 text-center text-[12.5px] text-[#A9B0BA]">
-                생생 중국어 콘텐츠 배치 예정
-              </div>
-            </div>
-            )}
-
-            <Link
-              to="/learner/lounge"
-              className="flex w-full items-center justify-between rounded-xl border border-[#EAE4D2] bg-[#FFFDF4] px-4 py-3 text-left transition hover:border-[#C9A227] hover:bg-[#FFF8D8]"
-            >
-              <div>
-                <div className="text-[11px] font-extrabold text-[#6B5518]">미션 밖 쉬어가기</div>
-                <div className="mt-0.5 text-[14px] font-bold text-[#15202B]">🎉 라운지 열림</div>
-              </div>
-              <span aria-hidden className="text-[#6B5518]">→</span>
-            </Link>
 
             {/* 완료 화면의 마지막 행동 — 데모/샘플에서는 「처음부터 다시 보기」 자리를
                 수행 방식 전환이 대신한다. "이어서"라는 말대로 번역을 끝까지 훑어본
@@ -1134,7 +1002,7 @@ function MissionRunner({
                   try {
                     localStorage.setItem(
                       storageKey,
-                      JSON.stringify({ phase: "ctx", draft: "", revised: "", ctxPick: null, ctxDone: false }),
+                      JSON.stringify({ phase: "produce", draft: "", revised: "" }),
                     );
                   } catch { /* ignore */ }
                   // part=2 — 1부(판단 연습)는 방금 마쳤으므로 건너뛰고 바로 2부로.
@@ -1425,7 +1293,7 @@ function AudioFrame({
     <div className="space-y-3">
       <div className="rounded-xl border-l-[3px] border-[#EAE4D2] border-l-[#15202B] bg-white p-4">
         <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">통역 — 듣고 옮기기</div>
-        <p className="mt-1 text-[14.5px] font-semibold">{situation}</p>
+        <SituationText text={situation} className="mt-1 text-[14.5px] font-semibold" />
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Badge variant="secondary" className="font-normal">{relation}</Badge>
           <Badge variant="secondary" className="font-normal">음성 · 순차 통역</Badge>
@@ -1627,58 +1495,6 @@ function Handoff({
   );
 }
 
-// ── 2부 상황 확인(판단형) — 산출 전 필요한 조절 수준 1문항. 점수 없음 ──
-function CtxStage({
-  pt,
-  isInterp,
-  pick,
-  onPick,
-  onNext,
-}: {
-  pt: MissionRuntime["production_task"];
-  isInterp: boolean;
-  pick: number | null;
-  onPick: (i: number) => void;
-  onNext: () => void;
-}) {
-  const ctx = useMemo(() => deriveCtx(pt.pdr), [pt.pdr]);
-  const answered = pick !== null;
-  const wrong = answered && pick !== ctx.right;
-  return (
-    <div className="space-y-3">
-      <SituationCard situation={pt.situation_ko} relation={pt.relation_ko} />
-      {/* 문제 카드가 아니라 상황 메모다 — 여섯 번째 문항처럼 보이면 안 된다.
-          선택은 남긴다(2부에서 관계·부담을 스스로 읽는 유일한 지점이라, 자동 판단으로
-          대체하면 "판단 → 산출"의 연결이 끊긴다). 다만 확인 버튼을 없애 한 번에 끝내고,
-          결과를 본 뒤에도 다시 고를 수 있게 둔다 — 오터치가 그대로 잠기지 않도록. */}
-      <div className="rounded-xl border border-dashed border-[#D8D0BC] bg-[#FBFAF5] p-4">
-        <div className="text-[11px] font-bold text-[#6B5518]">새 상황에서 먼저 볼 것</div>
-        <p className="mt-1 text-[12.5px] text-muted-foreground">
-          직접 {isInterp ? "통역하기" : "옮기기"} 전에 상대와 부담을 먼저 확인합니다.
-        </p>
-        <div className="mt-2.5 text-[13px] font-semibold">{ctx.q}</div>
-        <div className="mt-2 flex flex-col gap-1.5">
-          {ctx.opts.map((o, i) => (
-            <Choice key={i} label={o} selected={pick === i} disabled={false} onClick={() => onPick(i)} />
-          ))}
-        </div>
-        {answered && (
-          <div className="mt-3 rounded-lg bg-[#F2FAF6] px-3.5 py-3">
-            <div className="text-[12px] font-bold text-[#2E7D5B]">{wrong ? "다시 짚어 보면" : "상황 핵심"}</div>
-            <p className="mt-1 text-[13px] leading-relaxed">{wrong ? ctx.okWrong : ctx.okRight}</p>
-          </div>
-        )}
-      </div>
-      <Button className="w-full" disabled={!answered} onClick={onNext}>
-        {isInterp ? "통역하러" : "표현하러"} 가기 →
-      </Button>
-      {IS_DEMO && !answered && (
-        <button type="button" className={demoBtn} onClick={() => onPick(ctx.right)}>데모 채우기</button>
-      )}
-    </div>
-  );
-}
-
 // ── 평가 계약(0-i·65) + 판정 지위 고지(B1 · 0-g·44) — 첫 문항 아래 접기 하나로 ──
 // 종전엔 이 둘이 첫 문항 **위**에서 약 200px을 차지해, 학생이 상황보다 완료 조건을
 // 먼저 읽는 화면이 됐다. 고지 자체는 계약 사항이라 삭제하지 않고 위치만 내린다.
@@ -1804,24 +1620,6 @@ function DissentPanel({ onSubmit }: { onSubmit: (d: { conditions: string[]; reas
   );
 }
 
-// ── 피드백 근거 서랍(의견4 ③) — 판정↔상황 조건 연결. 카탈로그·상황 데이터만(AI 0회) ──
-function FeedbackReasonDrawer({ mission }: { mission: MissionRuntime }) {
-  const feat = getTargetFeature(mission.unit.target_feature);
-  const pt = mission.production_task;
-  return (
-    <details className="mt-2.5 text-[12.5px]">
-      <summary className="cursor-pointer text-[#6B5518]">이 초점을 판단한 근거</summary>
-      <div className="mt-2 space-y-1.5">
-        <div className="rounded-lg bg-[#FAF8F2] px-3 py-2 text-muted-foreground">
-          <div>상황 · {pt.relation_ko}</div>
-          <div className="mt-0.5">부담 · {PDR_R_LABEL[pt.pdr.r] ?? pt.pdr.r} / 관계 거리 · {PDR_D_LABEL[pt.pdr.d] ?? pt.pdr.d}</div>
-        </div>
-        {feat && <p className="text-foreground">{feat.operational_definition.split(".")[0]}.</p>}
-      </div>
-    </details>
-  );
-}
-
 // ── 수정 지도(0-i) — 최초↔최종 + 수정 성격. 클라이언트만(AI·DB 0회) ──
 function DiffLine({ parts, view }: { parts: TextDiffPart[]; view: "first" | "final" }) {
   return (
@@ -1886,19 +1684,6 @@ function RevisionMap({ first, final, featureLabel, interp }: { first: string; fi
   );
 }
 
-// ── 상황 카드 ───────────────────────────────────────────────────────────
-// channel 폐기(2026-07-25): 매체 배지 제거. 관계(P/D/R)만 노출한다 — 매체는 상황 자연어에 녹아 있을 뿐 축이 아니다.
-function SituationCard({ situation, relation }: { situation: string; relation: string }) {
-  return (
-    <div className="rounded-xl border-l-[3px] border-[#EAE4D2] border-l-[#15202B] bg-white p-4">
-      <p className="text-[14.5px] font-semibold">{situation}</p>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <Badge variant="secondary" className="font-normal">{relation}</Badge>
-      </div>
-    </div>
-  );
-}
-
 const MPJ_TASK_TITLE: Record<string, string> = {
   scale4: "첫인상 판단",
   judge3: "조절 정도 판단",
@@ -1923,7 +1708,10 @@ function MpjContextSurface({
       <div className="my-3 overflow-hidden rounded-2xl border border-[#D7DDE5] bg-white">
         <div className="border-b border-[#E4E8EE] bg-[#F6F8FA] px-4 py-3">
           <div className="text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-muted-foreground">이메일 작성 맥락</div>
-          <div className="mt-1 text-[14.5px] font-bold leading-snug text-[#15202B]">{item.situation_ko}</div>
+          <SituationText
+            text={item.situation_ko}
+            className="mt-1 text-[14.5px] font-bold leading-snug text-[#15202B]"
+          />
           <div className="mt-1.5 text-[12.5px] text-[#3E4C57]">받는 사람 · {item.relation_ko}</div>
         </div>
         <div className="space-y-3 px-4 py-4">
@@ -1956,7 +1744,10 @@ function MpjContextSurface({
           <div className="text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#52697E]">
             {channel === "phone" ? "통화 발화 맥락" : "대면 발화 맥락"}
           </div>
-          <div className="mt-1 text-[14.5px] font-bold leading-snug text-[#15202B]">{item.situation_ko}</div>
+          <SituationText
+            text={item.situation_ko}
+            className="mt-1 text-[14.5px] font-bold leading-snug text-[#15202B]"
+          />
           <div className="mt-1.5 text-[12.5px] text-[#3E4C57]">듣는 사람 · {item.relation_ko}</div>
         </div>
         <div className="space-y-3 px-4 py-4">
@@ -2006,12 +1797,15 @@ function MpjContextSurface({
 // ── MPJ 한 문항 ─────────────────────────────────────────────────────────
 function MpjStage({
   item,
+  sequentialFix,
   onDone,
 }: {
   item: MpjItemRuntime;
+  sequentialFix: boolean;
   onDone: (response: MpjResponseTrace) => void;
 }) {
   const [answered, setAnswered] = useState(false);
+  const [fixJudgeSubmitted, setFixJudgeSubmitted] = useState(false);
   const [scalePick, setScalePick] = useState<string | null>(null);
   const [bandPick, setBandPick] = useState<string | null>(null);
   const [reasonPicks, setReasonPicks] = useState<Set<string>>(new Set());
@@ -2090,6 +1884,7 @@ function MpjStage({
         break;
       case "fix_choice":
         setBandPick(item.accepted_band_codes[0]);
+        setFixJudgeSubmitted(true);
         setFixPicks(new Set(item.corrections.map((c, i) => (c.is_valid ? i : -1)).filter((i) => i >= 0)));
         break;
       case "reason_conf":
@@ -2140,6 +1935,10 @@ function MpjStage({
         };
     }
   };
+  const scaleDirectionMatched =
+    item.type === "scale4" &&
+    !!scalePick &&
+    item.accepted_scale_codes.includes(scalePick as Scale4Code);
 
   return (
     <div className="space-y-3">
@@ -2181,7 +1980,7 @@ function MpjStage({
           {/* scale4 */}
           {item.type === "scale4" && (
             <>
-              <div className="mt-3.5 text-[13px] font-semibold">이 상황에서의 번역안 적절성</div>
+              <div className="mt-3.5 text-[13px] font-semibold">첫인상으로 이 번역안은 얼마나 적절한가요?</div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {SCALE4_CODES.map((code) => (
                   <Choice key={code} label={SCALE4_LABELS[code as Scale4Code]} selected={scalePick === code} disabled={answered} onClick={() => setScalePick(code)} />
@@ -2194,18 +1993,30 @@ function MpjStage({
           {(item.type === "judge3" || item.type === "fix_choice" || item.type === "reason_conf") && (
             <>
               <div className="mt-3.5 text-[13px] font-semibold">이 표현의 조절 정도는 어떤가요?</div>
-              <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+              <div className="mt-2 flex flex-col gap-1.5">
                 {bands.map((b) => (
-                  <Choice key={b.code} label={b.label} selected={bandPick === b.code} disabled={answered} onClick={() => setBandPick(b.code)} />
+                  <Choice
+                    key={b.code}
+                    label={learnerBandLabel(feature, b.code, b.label)}
+                    selected={bandPick === b.code}
+                    disabled={
+                      answered ||
+                      (item.type === "fix_choice" && sequentialFix && fixJudgeSubmitted)
+                    }
+                    onClick={() => setBandPick(b.code)}
+                  />
                 ))}
               </div>
             </>
           )}
 
           {/* fix_choice: 교정 복수 선택 */}
-          {item.type === "fix_choice" && (
+          {item.type === "fix_choice" && (!sequentialFix || fixJudgeSubmitted) && (
             <>
-              <div className="mt-4 text-[13px] font-semibold">어떻게 고치면 좋을까요? <span className="font-normal">· 알맞은 수정안을 모두 선택</span></div>
+              <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">
+                판단한 표현을 어떻게 고치면 좋을까요?{" "}
+                <span className="font-normal">· 알맞은 수정안을 모두 선택</span>
+              </div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {item.corrections.map((o, i) => (
                   <button
@@ -2303,19 +2114,51 @@ function MpjStage({
               먼저 보이고, "기준 판정" 라벨은 그 아래 보조 표기로 내린다. explanation_ko 재배치만
               — 새 필드·판정 로직·저장 로그는 그대로다. */}
           {answered && (
-            <div className="mt-4 rounded-lg bg-[#F2FAF6] px-3.5 py-3">
+            <div
+              className={[
+                "mt-4 rounded-lg px-3.5 py-3",
+                item.type === "scale4" && !scaleDirectionMatched
+                  ? "bg-[#FFF8DE]"
+                  : "bg-[#F2FAF6]",
+              ].join(" ")}
+            >
               <p className="text-[13px] leading-relaxed">{item.explanation_ko}</p>
-              <div className="mt-2 text-[11.5px] font-semibold text-[#2E7D5B]">
-                {item.type === "reason"
-                  ? `핵심 원인 · ${item.reasons.find((r) => r.id === item.accepted_reason_id)?.text_ko ?? ""}`
-                  : `참고 판정 · ${
-                      (
-                        item.type === "scale4"
-                          ? item.accepted_scale_codes.map((c) => SCALE4_LABELS[c as Scale4Code] ?? c)
-                          : item.accepted_band_codes.map((c) => bandLabel(feature, c))
-                      ).join(" / ")
-                    }`}
-              </div>
+              {item.type === "scale4" ? (
+                <div
+                  className={[
+                    "mt-2 space-y-1 text-[11.5px] font-semibold",
+                    scaleDirectionMatched ? "text-[#2E7D5B]" : "text-[#7A5C12]",
+                  ].join(" ")}
+                >
+                  <div>
+                    {scaleDirectionMatched
+                      ? "✓ 참고 판정과 적절성 방향이 같습니다."
+                      : "참고 판정과 적절성 방향이 다릅니다. 상황 단서를 다시 비교해 보십시오."}
+                  </div>
+                  <div>
+                    참고 정도 ·{" "}
+                    {SCALE4_LABELS[
+                      ("reference_scale_code" in item
+                        ? item.reference_scale_code
+                        : item.accepted_scale_codes[0]) as Scale4Code
+                    ]}
+                  </div>
+                  {scalePick &&
+                    scaleDirectionMatched &&
+                    "reference_scale_code" in item &&
+                    scalePick !== item.reference_scale_code && (
+                      <div className="font-normal text-[#496B5B]">
+                        ‘매우/다소’의 차이는 오답이 아니며 수업에서 비교할 수 있습니다.
+                      </div>
+                    )}
+                </div>
+              ) : (
+                <div className="mt-2 text-[11.5px] font-semibold text-[#2E7D5B]">
+                  {item.type === "reason"
+                    ? `핵심 원인 · ${item.reasons.find((r) => r.id === item.accepted_reason_id)?.text_ko ?? ""}`
+                    : `참고 판정 · ${item.accepted_band_codes.map((c) => bandLabel(feature, c)).join(" / ")}`}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -2361,7 +2204,22 @@ function MpjStage({
 
       {!answered ? (
         <>
-          <Button className="w-full" disabled={!canReveal} onClick={() => setAnswered(true)}>확인하기</Button>
+          {item.type === "fix_choice" && sequentialFix && !fixJudgeSubmitted ? (
+            <Button
+              className="w-full"
+              disabled={!bandPick}
+              onClick={() => {
+                setFixJudgeSubmitted(true);
+                window.scrollBy({ top: 180, behavior: "smooth" });
+              }}
+            >
+              판단 제출 · 이어서 고쳐보기 →
+            </Button>
+          ) : (
+            <Button className="w-full" disabled={!canReveal} onClick={() => setAnswered(true)}>
+              확인하기
+            </Button>
+          )}
           {IS_DEMO && (
             <button type="button" className={demoBtn} onClick={demoFill}>데모 채우기 — 이 문항 자동 응답</button>
           )}

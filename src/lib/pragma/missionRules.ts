@@ -333,6 +333,27 @@ export function checkMission(
         if (!isContiguousScale(it.accepted_scale_codes)) {
           add(v, "R7", "fail", `문항 ${it.id}: scale4 accepted가 연속 구간이 아님 (${it.accepted_scale_codes.join(",")})`);
         }
+        if (m.schema_version === "mission_v4" && "reference_scale_code" in it) {
+          const accepted = new Set(it.accepted_scale_codes);
+          const isAppropriatePair =
+            accepted.has("very_appropriate") &&
+            accepted.has("somewhat_appropriate");
+          const isInappropriatePair =
+            accepted.has("somewhat_inappropriate") &&
+            accepted.has("very_inappropriate");
+          if (
+            it.accepted_scale_codes.length !== 2 ||
+            (!isAppropriatePair && !isInappropriatePair)
+          ) {
+            add(v, "R7", "fail", `문항 ${it.id}: v4 Scale4 accepted는 같은 적절성 방향의 정확히 두 응답이어야 함`);
+          }
+          if (!accepted.has(it.reference_scale_code)) {
+            add(v, "R7", "fail", `문항 ${it.id}: reference_scale_code가 accepted 방향에 포함되지 않음`);
+          }
+          if (!isAppropriatePair) {
+            add(v, "R7", "warning", `문항 ${it.id}: 첫인상 문항이 적절한 반례가 아님 — "직접적이면 항상 나쁨" 편향 차단 여부를 눈검사`);
+          }
+        }
         checkTargetHighlights(v, it.id, it.target, it.highlights);
         break;
       }

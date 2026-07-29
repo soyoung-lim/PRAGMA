@@ -85,22 +85,23 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("production_task.usable_facts");
   });
 
-  it("locks new Full Missions to Judge+Fix → Reason → MultiJudge → DCT", () => {
+  it("locks new Full Missions to Scale4 → Judge+Fix → Reason → MultiJudge → DCT", () => {
     const mission = prompt("mission.system");
     const spoken = prompt("mission.system.spoken");
     const quality = prompt("quality.system");
 
     for (const entry of [mission, spoken]) {
-      expect(entry.text).toContain("MPJ 3문항");
-      expect(entry.text).toContain("판단하고 고쳐보기 → 왜 문제일까 → 여러 초안 비교");
-      expect(entry.text).toContain("fix_choice → reason → multi_judge");
-      expect(entry.text).toContain("Judge3는 첫 문항에서 딱 한 번만");
+      expect(entry.text).toContain("MPJ 4문항");
+      expect(entry.text).toContain("첫인상 판단 → 판단하고 고쳐보기 → 왜 문제일까 → 여러 초안 비교");
+      expect(entry.text).toContain("scale4 → fix_choice → reason → multi_judge");
+      expect(entry.text).toContain("Judge3는 교정 문항에서 딱 한 번만");
       expect(entry.text).toContain("reason에는 accepted_band_codes·confidence를 만들지 마세요");
       expect(entry.text).toContain("과소 1·적정 2·과잉 1");
-      expect(entry.text).not.toContain('"type": "scale4"');
+      expect(entry.text).toContain('"type": "scale4"');
+      expect(entry.text).toContain('"reference_scale_code"');
       expect(entry.text).not.toContain('"type": "reason_conf"');
     }
-    expect(quality.text).toContain("MPJ 3문항");
+    expect(quality.text).toContain("MPJ 4문항");
     expect(quality.text).toContain("primary_reason_ambiguity");
     expect(quality.text).toContain("context_plan_mismatch");
   });
