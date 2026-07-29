@@ -4,9 +4,11 @@ import type { ReactNode } from "react";
 export function SituationText({
   text,
   className = "",
+  emphasizeFirst = false,
 }: {
   text: string;
   className?: string;
+  emphasizeFirst?: boolean;
 }) {
   const sentences =
     text
@@ -16,12 +18,30 @@ export function SituationText({
   return (
     <div className={className}>
       {sentences.map((sentence, index) => (
-        <p key={`${sentence}-${index}`} className={index === 0 ? "" : "mt-1"}>
+        <p
+          key={`${sentence}-${index}`}
+          className={[
+            index === 0 ? "" : "mt-1",
+            emphasizeFirst && index === 0 ? "font-extrabold text-[#15202B]" : "",
+            emphasizeFirst && index > 0 ? "font-medium text-[#3E4C57]" : "",
+          ].join(" ")}
+        >
           {sentence}
         </p>
       ))}
     </div>
   );
+}
+
+/**
+ * legacy relation_ko가 "화자 → 상대"를 함께 담더라도 학습자 화면의 `상대`에는
+ * 오른쪽 상대 정보만 보인다. 원문 데이터는 바꾸지 않아 기존 로그·검수 화면은 보존한다.
+ */
+export function learnerCounterpartLabel(relation: string): string {
+  const arrowIndex = relation.search(/→|->/);
+  if (arrowIndex < 0) return relation.trim();
+  const counterpart = relation.slice(arrowIndex).replace(/^(?:→|->)\s*/, "").trim();
+  return counterpart || relation.trim();
 }
 
 // 위챗 스타일 대화 스킨 — 미션 UX 프로토타입 v2 정본(2026-07-25) 이식.
@@ -92,7 +112,7 @@ export function ChatCaption({ children, tone = "muted" }: { children: ReactNode;
 export function ChatScene({
   situation,
   relation,
-  eyebrow = "대화 맥락",
+  eyebrow = "지금, 이 장면",
   extraTag,
   children,
 }: {
@@ -102,17 +122,22 @@ export function ChatScene({
   extraTag?: ReactNode;
   children: ReactNode;
 }) {
+  const counterpart = learnerCounterpartLabel(relation);
   return (
     <div className="my-3 overflow-hidden rounded-2xl border border-[#D7DDE5] bg-[#E7EBF0]">
-      <div className="border-b border-[#E4E8EE] bg-[#F6F8FA] px-3.5 pb-3 pt-2.5">
-        <div className="text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-muted-foreground">{eyebrow}</div>
+      <div className="border-b border-l-4 border-[#E4E8EE] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#F6F8FA_74%)] px-3.5 pb-3.5 pt-3">
+        <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#5A6672]">
+          <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
+          {eyebrow}
+        </div>
         <SituationText
           text={situation}
-          className="mt-1 text-[14.5px] font-bold leading-snug text-[#15202B]"
+          emphasizeFirst
+          className="mt-2 text-[14.5px] leading-[1.52]"
         />
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-snug text-[#3E4C57]">
-          <span className="rounded border border-[#D7DDE5] bg-white px-1.5 py-px text-[10px] font-extrabold text-[#5A6672]">상대</span>
-          <span>{relation}</span>
+        <div className="mt-2.5 inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-[#D7DDE5] bg-white/90 px-2.5 py-1 text-[12.5px] leading-snug text-[#3E4C57] shadow-[0_1px_2px_rgba(20,30,45,0.06)]">
+          <span className="text-[10px] font-extrabold text-[#5A6672]">상대</span>
+          <span className="font-semibold">{counterpart}</span>
           {extraTag}
         </div>
       </div>

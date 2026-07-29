@@ -28,7 +28,7 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
       channel: "messenger",
       situation_ko:
         "나는 같은 프로젝트를 오래 함께한 친한 동료에게 메신저를 보내고 있다. 상대가 이미 정리해 둔 최신 파일 하나를 공유해 달라는 가벼운 부탁이다.",
-      relation_ko: "친한 프로젝트 동료 사이 · 낮은 부담",
+      relation_ko: "친한 프로젝트 동료 · 오래 함께한 사이",
       pdr: {
         p: "equal",
         d: "close",
@@ -49,8 +49,8 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
       axis_feature: "request_mitigation_optionality",
       channel: "messenger",
       situation_ko:
-        "상대는 거래처의 일정 조정 권한을 가진 담당자이고, 나는 실무 지원을 맡고 있다. 몇 차례 연락했지만 친하지 않으며, 회의를 하루 앞당기면 상대가 내부 일정을 다시 맞춰야 한다.",
-      relation_ko: "실무 지원자 → 거래처 일정 담당자 · 몇 차례 연락한 사이",
+        "나는 거래처 일정 담당자에게 회의를 하루 앞당길 수 있는지 물으려 한다. 몇 차례 연락했지만 아직 친하지 않고, 변경하려면 상대는 내부 일정을 다시 맞춰야 한다.",
+      relation_ko: "거래처 일정 담당자 · 몇 차례 연락한 사이",
       pdr: ANCHOR_PDR,
       source: "회의를 하루 앞당길 수 있을까요?",
       target: "把会议提前一天。",
@@ -88,8 +88,8 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
       axis_feature: "request_mitigation_optionality",
       channel: "messenger",
       situation_ko:
-        "상대는 거래처 결제일을 조정할 권한이 있고, 나는 계약 실무를 보조하고 있다. 업무 연락만 몇 차례 한 사이에서 결제일을 미루면 상대가 회계팀 승인을 다시 받아야 한다.",
-      relation_ko: "계약 실무 보조자 → 거래처 결제 담당자 · 업무상 아는 사이",
+        "나는 거래처 결제 담당자에게 결제일을 사흘 미룰 수 있는지 물으려 한다. 업무 연락만 몇 차례 한 사이이고, 변경하려면 상대는 회계팀 승인을 다시 받아야 한다.",
+      relation_ko: "거래처 결제 담당자 · 업무상 아는 사이",
       pdr: ANCHOR_PDR,
       source: "결제일을 사흘 미뤄 주실 수 있을까요?",
       target: "你必须把付款日期推迟三天。",
@@ -123,8 +123,8 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
       axis_feature: "request_mitigation_optionality",
       channel: "messenger",
       situation_ko:
-        "거래처 창고는 오늘 출고를 이미 마감했고, 추가 발송에는 물류 일정을 다시 열어야 한다. 몇 차례 연락했지만 친하지 않은 담당자에게 샘플 한 개를 오늘 안에 더 보내 달라고 부탁한다.",
-      relation_ko: "실무 지원자 → 거래처 물류 담당자 · 몇 차례 연락한 사이",
+        "나는 오늘 출고를 이미 마감한 거래처 담당자에게 샘플 하나를 더 보내 달라고 부탁하려 한다. 몇 차례 연락했지만 친하지 않고, 추가 발송을 위해 상대는 물류 일정을 다시 열어야 한다.",
+      relation_ko: "거래처 물류 담당자 · 몇 차례 연락한 사이",
       pdr: {
         p: "speaker_lower",
         d: "acquaintance",
@@ -163,8 +163,8 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
     source_modality: "written",
     channel: "messenger",
     situation_ko:
-      "상대는 거래처의 배송지 변경 권한을 가진 담당자이고, 나는 주문 실무를 보조하고 있다. 몇 차례 연락했지만 친하지 않으며, 배송지를 바꾸면 상대가 운송장을 다시 발급해야 한다.",
-    relation_ko: "주문 실무 보조자 → 거래처 배송 담당자 · 업무상 아는 사이",
+      "나는 거래처 배송 담당자에게 이번 주문의 배송지를 새 사무실로 바꿀 수 있는지 물으려 한다. 몇 차례 연락했지만 아직 친하지 않고, 변경하려면 상대는 운송장을 다시 발급해야 한다.",
+    relation_ko: "거래처 배송 담당자 · 업무상 아는 사이",
     pdr: ANCHOR_PDR,
     source_text: "이번 주문의 배송지를 저희 새 사무실로 바꿔 주실 수 있을까요?",
     preceding_turn: null,

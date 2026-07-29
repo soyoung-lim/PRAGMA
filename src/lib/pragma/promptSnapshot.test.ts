@@ -105,4 +105,12 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("primary_reason_ambiguity");
     expect(quality.text).toContain("context_plan_mismatch");
   });
+
+  it("keeps learner context first-person and counterpart-only", () => {
+    for (const entry of [prompt("mission.system"), prompt("mission.system.spoken")]) {
+      expect(entry.text).toContain("학습자 1인칭의 현재 장면");
+      expect(entry.text).toContain("학습자가 마주한 상대의 역할·관계만 한 줄");
+      expect(entry.text).toContain('화자(나)의 역할, "A → B" 구조');
+    }
+  });
 });
