@@ -113,34 +113,70 @@ export function ChatScene({
   situation,
   relation,
   eyebrow = "지금, 이 장면",
+  separatePanels = false,
+  threadEyebrow = "메신저 · 보내기 전",
   extraTag,
   children,
 }: {
   situation: string;
   relation: string;
   eyebrow?: string;
+  separatePanels?: boolean;
+  threadEyebrow?: string;
   extraTag?: ReactNode;
   children: ReactNode;
 }) {
   const counterpart = learnerCounterpartLabel(relation);
-  return (
-    <div className="my-3 overflow-hidden rounded-2xl border border-[#D7DDE5] bg-[#E7EBF0]">
-      <div className="border-b border-l-4 border-[#E4E8EE] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#F6F8FA_74%)] px-3.5 pb-3.5 pt-3">
-        <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#5A6672]">
-          <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
-          {eyebrow}
-        </div>
-        <SituationText
-          text={situation}
-          emphasizeFirst
-          className="mt-2 text-[14.5px] leading-[1.52]"
-        />
-        <div className="mt-2.5 inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-[#D7DDE5] bg-white/90 px-2.5 py-1 text-[12.5px] leading-snug text-[#3E4C57] shadow-[0_1px_2px_rgba(20,30,45,0.06)]">
-          <span className="text-[10px] font-extrabold text-[#5A6672]">상대</span>
-          <span className="font-semibold">{counterpart}</span>
-          {extraTag}
+  const situationPanel = (
+    <div
+      className={[
+        "border-l-4 border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#FFFFFF_74%)] px-3.5 pb-3.5 pt-3",
+        separatePanels
+          ? "rounded-2xl border border-[#E4E0CE] shadow-[0_5px_18px_rgba(21,32,43,0.04)]"
+          : "border-b border-[#E4E8EE]",
+      ].join(" ")}
+    >
+      <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#5A6672]">
+        <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
+        {eyebrow}
+      </div>
+      <SituationText
+        text={situation}
+        emphasizeFirst
+        className="mt-2 text-[14.5px] leading-[1.52]"
+      />
+      <div className="mt-2.5 inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-[#D7DDE5] bg-white/90 px-2.5 py-1 text-[12.5px] leading-snug text-[#3E4C57] shadow-[0_1px_2px_rgba(20,30,45,0.06)]">
+        <span className="text-[10px] font-extrabold text-[#5A6672]">상대</span>
+        <span className="font-semibold">{counterpart}</span>
+        {extraTag}
+      </div>
+    </div>
+  );
+
+  if (separatePanels) {
+    return (
+      <div className="my-3 space-y-3">
+        {situationPanel}
+        <div className="overflow-hidden rounded-2xl border border-[#CBD5DD] bg-[#E8EDF2] shadow-[0_7px_20px_rgba(21,32,43,0.06)]">
+          <div className="flex items-center justify-between border-b border-[#D5DDE4] bg-white/90 px-3.5 py-2.5">
+            <div className="flex items-center gap-2 text-[11px] font-bold text-[#536675]">
+              <span className="flex gap-1" aria-hidden="true">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#8DA0AF]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#B1BEC8]" />
+              </span>
+              {threadEyebrow}
+            </div>
+            <span className="text-[10.5px] text-[#7A8791]">대화 미리보기</span>
+          </div>
+          <div className="px-3.5 py-3.5">{children}</div>
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="my-3 overflow-hidden rounded-2xl border border-[#D7DDE5] bg-[#E7EBF0]">
+      {situationPanel}
       <div className="px-3.5 py-3.5">{children}</div>
     </div>
   );
