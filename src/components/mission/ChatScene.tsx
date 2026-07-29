@@ -1,5 +1,29 @@
 import type { ReactNode } from "react";
 
+/** 자연어 상황문을 메타데이터 라벨 없이 문장별로 읽기 좋게 나눈다. */
+export function SituationText({
+  text,
+  className = "",
+}: {
+  text: string;
+  className?: string;
+}) {
+  const sentences =
+    text
+      .match(/[^.!?。！？]+[.!?。！？]?/g)
+      ?.map((sentence) => sentence.trim())
+      .filter(Boolean) ?? [text];
+  return (
+    <div className={className}>
+      {sentences.map((sentence, index) => (
+        <p key={`${sentence}-${index}`} className={index === 0 ? "" : "mt-1"}>
+          {sentence}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 // 위챗 스타일 대화 스킨 — 미션 UX 프로토타입 v2 정본(2026-07-25) 이식.
 // 채널 상표는 무표기(0-k·79①): "대화 맥락 · 상대"만 노출하고 메신저/이메일 상표는 쓰지 않는다.
 // 상황+관계 = 상단 공지 카드, 본문 = 말풍선 스레드(선행발화 them / 내 산출 me).
@@ -82,7 +106,10 @@ export function ChatScene({
     <div className="my-3 overflow-hidden rounded-2xl border border-[#D7DDE5] bg-[#E7EBF0]">
       <div className="border-b border-[#E4E8EE] bg-[#F6F8FA] px-3.5 pb-3 pt-2.5">
         <div className="text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-muted-foreground">{eyebrow}</div>
-        <div className="mt-1 text-[14.5px] font-bold leading-snug text-[#15202B]">{situation}</div>
+        <SituationText
+          text={situation}
+          className="mt-1 text-[14.5px] font-bold leading-snug text-[#15202B]"
+        />
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-snug text-[#3E4C57]">
           <span className="rounded border border-[#D7DDE5] bg-white px-1.5 py-px text-[10px] font-extrabold text-[#5A6672]">상대</span>
           <span>{relation}</span>

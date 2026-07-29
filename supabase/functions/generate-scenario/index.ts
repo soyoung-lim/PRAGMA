@@ -1061,7 +1061,7 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken
   const lowBand = f.band_schema[0]?.code ?? 'under_band'
   const highBand = f.band_schema[f.band_schema.length - 1]?.code ?? 'over_band'
   const precedingRule = isResponse
-    ? `\n- 🔴 이 화행은 인접쌍의 둘째 짝(응답류)입니다. **3문항 전부**에
+    ? `\n- 🔴 이 화행은 인접쌍의 둘째 짝(응답류)입니다. **4문항 전부**에
     "preceding_turn"(상대(${tgtL} 화자)의 ${tgtL} 선행 발화)를 문항별 상황에 맞게 반드시 채우세요(각 item 객체에 "preceding_turn":"…" 필드 추가).`
     : ''
   const bands = f.band_schema.map((b) => `"${b.code}"(${b.label_ko})`).join(' / ')
@@ -1079,8 +1079,9 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken
 
 ${gate1}${spokenRule}
 
-MPJ 3문항을 만듭니다. 학습 흐름은 **판단하고 고쳐보기 → 왜 문제일까 → 여러 초안 비교**입니다.
-Judge3는 첫 문항에서 딱 한 번만 묻고, Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
+MPJ 4문항을 만듭니다. 학습 흐름은 **첫인상 판단 → 판단하고 고쳐보기 → 왜 문제일까 → 여러 초안 비교**입니다.
+Scale4는 종합 첫인상을 4점으로 받고 적절/부적절 방향만 채점합니다. Judge3는 교정 문항에서 딱 한 번만 묻고,
+Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
 모든 판정의 축은 위 target feature band 하나뿐입니다(다른 축 혼입 금지).
 출력은 아래 JSON만, 마크다운·설명 없이 반환합니다.
 
@@ -1093,9 +1094,23 @@ Judge3는 첫 문항에서 딱 한 번만 묻고, Reason 문항에서는 판정�
 
 언어 규칙(방향 ${LANG_DIR_KO[direction]}): source 위치의 원문 = **${srcL}** / target·corrections.text·candidates.text·recommended_example·reference_alternatives.text = **${tgtL}**. situation_ko·relation_ko·explanation_ko·note_ko·reasons.text_ko = 방향과 무관하게 **항상 한국어**(학습자 UI 언어).
 
-아래 3문항을 모두, 축약 없이, 모든 필드를 채워 출력합니다:
+아래 4문항을 모두, 축약 없이, 모든 필드를 채워 출력합니다:
 {
   "mpj_items": [
+    {
+      "type": "scale4",
+      "channel": "허용 channel 코드",
+      "situation_ko": "P·D·R 근거가 자연스럽게 드러나는 서로 이어진 한국어 2~3문장",
+      "relation_ko": "화자와 상대의 구체적 관계 한 줄",
+      "pdr": {"p":"이 표현이 실제로 알맞아지는 코드","d":"…","r":"…"},
+      "source": "판단 대상의 실제 ${srcL} 발화",
+      "target": "소박한 규칙의 반례가 되는, 이 맥락에서는 적절한 ${tgtL} 초안",
+      "highlights": ["target의 실제 부분문자열"],
+      "accepted_scale_codes": ["very_appropriate","somewhat_appropriate"],
+      "reference_scale_code": "very_appropriate 또는 somewhat_appropriate 중 대표 1개",
+      "explanation_ko": "왜 직접·간결·강한 형식도 이 P·D·R에서는 적절한지 설명",
+      "recommended_example": "이 상황의 적절안 1개(${tgtL})"
+    },
     {
       "type": "fix_choice",
       "channel": "허용 channel 코드",
@@ -1156,7 +1171,10 @@ Judge3는 첫 문항에서 딱 한 번만 묻고, Reason 문항에서는 판정�
 (reference_alternatives는 1~2개, 서로 다른 전략.)
 
 핵심 규칙:
-- mpj_items는 **정확히 3개**, 순서는 fix_choice → reason → multi_judge.
+- mpj_items는 **정확히 4개**, 순서는 scale4 → fix_choice → reason → multi_judge.
+- scale4는 "직접형·간결형·강한 표현은 항상 나쁘다" 같은 소박한 규칙을 깨는 **적절한 반례**입니다.
+  accepted_scale_codes는 반드시 ["very_appropriate","somewhat_appropriate"] 두 개이고,
+  reference_scale_code는 그중 대표 정도 하나입니다. 학습자가 같은 적절성 방향을 고르면 맞게 처리합니다.
 - fix_choice는 **Judge3 판단을 먼저 한 뒤 교정**하는 한 문항이다. accepted_band_codes를 생략하지 마세요.
 - reason에는 accepted_band_codes·confidence를 만들지 마세요. 질문은 "이 표현이 상황에 맞지 않는 가장 큰 이유" 하나뿐입니다.
 - reason의 정답은 정확히 1개이며 kind="primary"여야 합니다. 주원인이 두 개 이상 동등하게 방어되면 문항을 버리고 다시 만드세요.
@@ -1167,7 +1185,8 @@ Judge3는 첫 문항에서 딱 한 번만 묻고, Reason 문항에서는 판정�
   같은 문장이 초면·고부담이면 과소, 친밀·저부담이면 적정일 수 있습니다.
   감사의 경우 호의가 클수록 강한 감사가 적정입니다 — 강한 표현을 기계적으로 과잉으로 판정하지 마세요.
 - fix_choice와 reason의 target은 해당 P·D·R에서 실제로 부적절해야 하며, 의미·문법 오류를 부적절성의 근거로 쓰지 마세요.
-- **앵커+대비**: fix_choice와 reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건, multi_judge는 DCT P/D/R 중 정확히 한 축만 바꾼 대비 사건입니다.
+- **앵커+대비**: fix_choice와 reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건,
+  scale4는 해당 표현이 실제로 적절해지는 대비 P/D/R, multi_judge는 DCT P/D/R 중 정확히 한 축만 바꾼 대비 사건입니다.
 - DCT는 코어의 같은 P/D/R에서 새 장면을 쓰는 근접 전이 과제입니다. MPJ가 DCT 상황문을 그대로 복제하면 안 됩니다.
 - situation_ko는 코드값을 풀어 쓰는 표가 아니라 **서로 이어진 2~3문장**이어야 합니다. P(권한·위계), D(접촉 이력·친밀도), R(상대가 감수할 비용·부담)의 구체적 근거가 자연스럽게 보여야 합니다.
 - channel은 연구 축이 아니라 UI 표현용입니다. 상황과 일치시켜 번역은 email/messenger, 통역은 facetoface/phone만 사용하세요.
@@ -1359,7 +1378,7 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
 
 [전제]
 - 이 미션은 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 과제이며 화행은 「${speechActKo}」다.
-- 학습자는 **판단+교정 → 주원인 선택 → 여러 초안 비교**(MPJ 3문항) 뒤 스스로 산출한다.
+- 학습자는 **첫인상 판단 → 판단+교정 → 주원인 선택 → 여러 초안 비교**(MPJ 4문항) 뒤 스스로 산출한다.
 - 형식·필드·개수·코드값·중복·길이 편차는 **이미 결정론적 규칙검사(R1~R28)가 통과시켰다.**
   너는 그것을 다시 세지 마라. 너의 몫은 **의미·자연성·후보 자격**이다.
 
@@ -1397,9 +1416,10 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
    ※ 매체 이름 라벨을 요구하는 것이 아니다. 서술만으로 장면이 정해지면 충분하다.
 ⑨ primary_reason_ambiguity — reason의 accepted_reason_id가 실제로 유일한 **가장 큰 이유**인가.
    다른 선택지도 같은 정도로 방어 가능하거나, primary가 target feature가 아닌 의미·문법 문제라면 fail이다.
-⑩ context_plan_mismatch — fix_choice·reason은 DCT와 같은 앵커 PDR의 다른 사건이고,
-   multi_judge는 P/D/R 한 축만 바꾼 대비 사건인가. 코드만 맞고 상황문의 구체적 단서가
-   그 PDR을 뒷받침하지 못하거나, 사건이 사실상 복제되면 지적하라.
+⑩ context_plan_mismatch — scale4는 소박한 규칙을 깨는 적절한 대비 장면이고,
+   fix_choice·reason은 DCT와 같은 앵커 PDR의 다른 사건이며 multi_judge는 P/D/R 한 축만
+   바꾼 대비 사건인가. 코드만 맞고 상황문의 구체적 단서가 그 PDR을 뒷받침하지 못하거나,
+   사건이 사실상 복제되면 지적하라.
 
 [필수 확인 절차 — 건너뛰지 마라]
 ①~⑩을 **하나씩 명시적으로 점검한 뒤** 판정하라. "전반적으로 괜찮아 보인다"로
@@ -1781,14 +1801,14 @@ Deno.serve(async (req) => {
       )
     }
 
-    // ── mission action: mission_v4(MPJ3) 승격 생성 (structured 1회, temp 0.3) ──
+    // ── mission action: mission_v4(MPJ4) 승격 생성 (structured 1회, temp 0.3) ──
     if (input.action === 'mission') {
       const b = input.mission
       if (!b?.feature || !b?.core) {
         return new Response(JSON.stringify({ error: 'mission body required' }), { status: 400, headers: jsonHeaders })
       }
       const temp = b.failure_notes ? 0.5 : 0.3 // 재시도는 온도 상향(0-d·31)
-      // 미션은 복합 3유형 union이라 필드 누락이 잦다 → 저volume(승격분만)이므로
+      // 미션은 복합 4유형 union이라 필드 누락이 잦다 → 저volume(승격분만)이므로
       // 강한 모델을 쓴다. 코어(고volume·단순)는 mini 유지.
       const isSpoken = b.core.source_modality === 'spoken'
       const missionDir = normDir(b.direction)
@@ -1817,7 +1837,7 @@ Deno.serve(async (req) => {
         axis_feature: b.feature.code,
       }))
       const productionMode = b.core.source_modality === 'spoken' ? 'interpreting' : 'translation'
-      // v4 중립 스키마(MPJ3) — mpj_items는 모델이 중립 키(source/target/
+      // v4 중립 스키마(MPJ4) — mpj_items는 모델이 중립 키(source/target/
       // corrections.text/candidates.text/recommended_example/preceding_turn)로 답한다.
       // production_task는 코어를 계승하되 중립 키(source_text/preceding_turn)로 조립.
       const mission_content = {
@@ -1855,14 +1875,14 @@ Deno.serve(async (req) => {
         ...mission_content,
         provenance: {
           model,
-          prompt_version: 'mission_v4_mpj3_dct1',
+          prompt_version: 'mission_v4_mpj4_dct1',
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
         },
       }
       return new Response(
-        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v4_mpj3_dct1', generated_at: genAt } }),
+        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v4_mpj4_dct1', generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }
