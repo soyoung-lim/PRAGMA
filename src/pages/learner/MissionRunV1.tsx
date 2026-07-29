@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { CheckCircle2, CircleAlert } from "lucide-react";
+import { CheckCircle2, ChevronDown, CircleAlert, Lightbulb } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,12 +31,8 @@ import {
   highlightZh,
 } from "@/components/mission/ChatScene";
 import {
-  slotsForAct,
-  hintForSlot,
   supportTier,
   toneLeaning,
-  SLOT_NUMERALS,
-  type DiscourseSlot,
   type SupportTier,
   type ToneLeaning,
 } from "@/lib/pragma/discourseSlots";
@@ -56,7 +52,7 @@ const srcLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].s
 const tgtLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].target];
 
 // 학습자 미션 실행 — mission_v1~v4를 정규화해 구동한다.
-//   감각 익히기(MPJ → 인계) → 직접 표현하기(산출/통역) → 돌아보고 다듬기(피드백 → 다듬기 → 완료)
+//   감각 익히기(MPJ → 인계) → 직접 표현하기(산출/통역) → 돌아보고 다듬기(피드백 → 필요 시 다듬기 → 완료)
 //   ※ 3단계는 표시 서사이고, 실제 문항 수·판정·저장은 mission schema version을 따른다.
 // 판정은 초점별 band 카탈로그(targetFeatures) 기준. 자유 산출 뒤에는 feedback-lite가
 // 의미·문법·화용을 진단하며, 실패 시 참고 표현·핵심 원칙으로 안전하게 폴백한다.
@@ -136,7 +132,7 @@ const MissionRunV1 = () => {
   // 수행 방식 전환(번역 ↔ 통역)으로 넘어온 경우 1부를 건너뛰고 2부부터 시작한다.
   // 같은 미션의 1부(판단 연습)를 방금 마쳤는데 또 시키면 중복이다.
   // ⚠️ 샘플 + 데모에서만 허용 — 실제 학습 세션에서 1부를 건너뛰면 "판단 → 적용"이라는
-  //    미션 구인 자체가 깨진다(완료 조건 = 판단 N문항 → 산출 → 피드백 → 다듬기).
+  //    미션 구인 자체가 깨진다(완료 조건 = 판단 N문항 → 산출 → 피드백 → 필요 시 다듬기).
   const startAtPart2 = IS_DEMO && !scenarioId && searchParams.get("part") === "2";
   const [loaded, setLoaded] = useState<RunnableMission | null>(null);
   const [loading, setLoading] = useState<boolean>(!!scenarioId);
@@ -208,82 +204,80 @@ const MissionRunV1 = () => {
 
 // ── 러너 본체 ───────────────────────────────────────────────────────────
 /**
- * 담화 슬롯 골격 — ko_zh(L2 산출) 전용 지원 (계약 0-q·97).
- * 빈 입력창 앞에서 학습자가 어휘·문법이 아니라 **담화 조직**에 주의를 쓰도록 돕는다.
- * 읽기 전용 안내이며 입력은 그대로 자유 텍스트 하나다 — 저장 형태·제출 조건 무변경.
- * ⚠️ 예문(완성 문장)을 넣지 않는다. 완성된 참고 문장은 제출 후 공개가 원칙.
+ * ko_zh(L2 산출) 전용 부분 표현 힌트.
+ * 교수설계용 담화 슬롯 이름은 숨기고, 막힌 학습자가 실제로 꺼내 쓸 수 있는
+ * 카탈로그 부분 표현만 펼쳐 본다. 완성된 참고 문장은 제출 후 공개한다.
  */
 function ProductionGuide({
-  slots,
   resources,
   tier,
   leaning,
 }: {
-  slots: DiscourseSlot[];
   resources: string[];
   tier: SupportTier;
   leaning: ToneLeaning;
 }) {
   const [expanded, setExpanded] = useState(tier === "guided");
-  // 고급(open)은 접혀 있을 때 슬롯도 감춘다 — 기본은 지금까지와 같은 자유 산출.
-  const showSlotRow = tier !== "open" && !expanded;
+  const visibleResources =
+    tier === "guided" ? resources.slice(0, 4) : tier === "hinted" ? resources.slice(0, 3) : resources.slice(0, 2);
+
+  const splitResource = (resource: string) => {
+    const match = resource.match(/^(.+?)\s*\((.+)\)$/);
+    return match
+      ? { label: match[1].trim(), example: match[2].trim().replace(/·/g, " · ") }
+      : { label: resource, example: "" };
+  };
 
   return (
-    <div className="mb-3 rounded-lg border border-[#EAE4D2] bg-[#FBFAF6] px-3 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[11.5px] font-semibold text-[#5A6B7A]">
-          {tier === "open" ? "표현 도구함 · 필요할 때 참고" : "표현 도구함"}
+    <div className="mb-3 overflow-hidden rounded-xl border border-[#E5DDAF] bg-[#FFFDF4]">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-[#FFF9DD]"
+        aria-expanded={expanded}
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FFF0A8] text-[#6B5518]">
+          <Lightbulb className="h-4 w-4" aria-hidden="true" />
         </span>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="rounded px-1.5 py-0.5 text-[11.5px] font-medium text-[#2B5B7A] hover:bg-[#EEF3F7]"
-          aria-expanded={expanded}
-        >
-          {expanded ? "도구함 닫기 ▴" : "도구함 열기 ▾"}
-        </button>
-      </div>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[12.5px] font-bold text-[#3C4650]">막히면 표현 힌트 보기</span>
+          <span className="block text-[11px] text-[#69757F]">완성 답안이 아닌, 시작에 필요한 부분 표현만 확인</span>
+        </span>
+        <ChevronDown
+          className={[
+            "h-4 w-4 shrink-0 text-[#6B7680] transition-transform",
+            expanded ? "rotate-180" : "",
+          ].join(" ")}
+          aria-hidden="true"
+        />
+      </button>
 
       {/* 완화 편향 시정(0-r·106①) — 슬롯·힌트가 늘 완화 자원이라 "넣으면 된다"로
           오학습될 수 있다. 직접형이 자연스러운 상황에서는 먼저 그 사실을 말한다. */}
-      {leaning === "direct" && (
-        <p className="mt-1.5 rounded bg-[#F3F6EE] px-2 py-1 text-[12px] leading-[1.45] text-[#4A5A3E]">
-          이 상황에서는 짧고 직접적인 표현이 더 자연스러울 수 있습니다 — <strong className="font-semibold">덜어내는 것도 조절입니다.</strong>
-        </p>
-      )}
-
-      {showSlotRow && (
-        <ol className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12.5px] text-[#3B4A57]">
-          {slots.map((s, i) => (
-            <li key={s.label}>
-              {SLOT_NUMERALS[i]} {s.label}
-            </li>
-          ))}
-        </ol>
-      )}
-
       {expanded && (
-        <>
-          <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
-            기능 순서와 부분 표현을 참고합니다. 완성 답안이 아니며, 필요한 것만 골라 씁니다.
-          </p>
-          <ul className="mt-1.5 space-y-1 text-[12.5px] text-[#3B4A57]">
-            {slots.map((s, i) => {
-              const hint = hintForSlot(s, resources);
+        <div className="border-t border-[#EEE5BE] px-3 pb-3 pt-2.5">
+          {leaning === "direct" && (
+            <p className="mb-2 rounded-lg bg-[#F3F6EE] px-2.5 py-2 text-[12px] leading-[1.45] text-[#4A5A3E]">
+              이 상황에서는 짧고 직접적인 표현이 더 자연스러울 수 있습니다. <strong className="font-semibold">덜어내는 것도 조절입니다.</strong>
+            </p>
+          )}
+          <ul className="grid gap-1.5 sm:grid-cols-2">
+            {visibleResources.map((resource) => {
+              const hint = splitResource(resource);
               return (
-                <li key={s.label}>
-                  <span className="font-medium">
-                    {SLOT_NUMERALS[i]} {s.label}
-                  </span>
-                  {hint && <span className="text-muted-foreground"> — {hint}</span>}
+                <li key={resource} className="rounded-lg border border-[#EEE7CF] bg-white px-2.5 py-2">
+                  {hint.example && <div className="text-[13px] font-semibold text-[#1F4F37]">{hint.example}</div>}
+                  <div className={hint.example ? "mt-0.5 text-[10.5px] text-[#6B7680]" : "text-[12px] text-[#3B4A57]"}>
+                    {hint.label}
+                  </div>
                 </li>
               );
             })}
           </ul>
-          <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-            ※ 범주만 참고합니다. 모두 사용할 필요는 없습니다 — 이 상대·이 부담에 맞는 만큼만 선택합니다.
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            필요한 표현만 골라 사용합니다. 모두 넣을 필요는 없습니다.
           </p>
-        </>
+        </div>
       )}
     </div>
   );
@@ -428,7 +422,7 @@ function FeedbackPanel({
                     {layer.passed ? "통과" : "조절 필요"}
                   </span>
                 </div>
-                <div className="mt-2 text-[12.5px] font-bold leading-snug text-[#15202B]">
+                <div className="mt-2 pl-[26px] text-[12.5px] font-bold leading-snug text-[#15202B]">
                   {layer.short}
                 </div>
               </div>
@@ -615,10 +609,10 @@ function MissionRunner({
   const reviseHint = fb
     ? feedbackHeadline(fb)
     : { title: mission.unit.learner_label, body: mission.unit.closing_ko };
+  const feedbackClear = fbState === "ready" && fb?.revision_scope === "clear";
 
-  // 담화 슬롯 골격(0-q·97) — **ko_zh 번역 산출에만**. 중→한은 모국어 산출이라
-  // 어휘·문법 부하가 없어 지원 대상이 아니다(지원량 차등의 근거 = L2 산출 부하).
-  const guideSlots = slotsForAct(feat?.speech_act);
+  // 부분 표현 힌트(0-q·97) — **ko_zh 번역 산출에만**. 중→한은 모국어 산출이라
+  // 어휘·문법 부하가 없어 지원 대상이 아니다. 교수설계용 슬롯명은 화면에 노출하지 않는다.
   const guideResources = feat?.relevant_resources ?? [];
   const guideTier = supportTier(level);
   // 이 미션의 조절 방향 — 「상황 확인」과 같은 규칙(0-r·106).
@@ -892,12 +886,6 @@ function MissionRunner({
         {/* ── 2단계: 판단을 반복하지 않고 곧바로 번역/통역 산출 ── */}
         {phase === "produce" && (
           <div className="space-y-3">
-            <div className="rounded-xl bg-[#15202B] p-4 text-white">
-              <div className="text-[11px] font-bold text-[#FAD338]">감각 익히기에서 본 것</div>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed">
-                이 상대·이 부담에 맞는 만큼만 선택합니다 — 표현을 많이 더한다고 더 나아지는 것은 아닙니다.
-              </p>
-            </div>
             {isInterp ? (
               <AudioFrame
                 sourceText={pt.source_text}
@@ -920,7 +908,6 @@ function MissionRunner({
                   <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
                   {dir === "ko_zh" && (
                     <ProductionGuide
-                      slots={guideSlots}
                       resources={guideResources}
                       tier={guideTier}
                       leaning={guideLeaning}
@@ -937,9 +924,6 @@ function MissionRunner({
                     <ChatAvatar side="me" />
                   </div>
                 </ChatScene>
-                <p className="px-0.5 text-[12px] text-muted-foreground">
-                  표현 도구함의 부분 표현은 필요할 때 참고하되, 완성된 참고 문장은 제출한 뒤에 확인합니다.
-                </p>
                 <Button className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" disabled={!draft.trim()} onClick={() => goto("feedback")}>번역 제출 →</Button>
                 {IS_DEMO && (
                   <button type="button" className={demoBtn} onClick={() => setDraft(demoDraft)}>데모 채우기 — 예시 답안 입력</button>
@@ -1011,8 +995,24 @@ function MissionRunner({
               </>
             )}
 
-            {/* 「한 가지만 고치기」로 읽히지 않게 — 여러 곳을 함께 다듬어도 된다. */}
-            <Button className="w-full" disabled={fbState === "loading"} onClick={() => goto("revise")}>피드백을 참고해 다듬기 →</Button>
+            {feedbackClear ? (
+              <div className="space-y-2">
+                <Button className="w-full" onClick={() => void finish()}>
+                  이 표현으로 완료 →
+                </Button>
+                <button
+                  type="button"
+                  className="w-full rounded-lg border border-[#D7DDE5] bg-white px-4 py-2.5 text-[13px] font-semibold text-[#3E4C57] transition-colors hover:bg-[#F7F9FA]"
+                  onClick={() => goto("revise")}
+                >
+                  다른 표현도 시도해보기
+                </button>
+              </div>
+            ) : (
+              <Button className="w-full" disabled={fbState === "loading"} onClick={() => goto("revise")}>
+                한 번 다듬어보기 →
+              </Button>
+            )}
           </div>
         )}
 
@@ -1020,16 +1020,24 @@ function MissionRunner({
         {phase === "revise" && (
           <div className="space-y-3">
             <div className="rounded-xl border border-[#FAD338] bg-[#FFF8DE] p-4">
-              <div className="text-[12px] font-bold text-[#6B5518]">이번 수정 목표</div>
-              <p className="mt-1 text-[15px] font-medium leading-relaxed text-[#15202B]">{reviseHint.body}</p>
+              <div className="text-[12px] font-bold text-[#6B5518]">
+                {feedbackClear ? "다른 표현으로 시도하기" : "이번 수정 목표"}
+              </div>
+              <p className="mt-1 text-[15px] font-medium leading-relaxed text-[#15202B]">
+                {feedbackClear
+                  ? "현재 표현은 그대로 사용해도 좋습니다. 원한다면 같은 뜻을 다른 방식으로 표현해 보십시오."
+                  : reviseHint.body}
+              </p>
             </div>
             <div className="rounded-xl border border-[#D7DDE5] bg-[#F5F7F9] p-4">
-              <div className="text-[11.5px] font-semibold text-[#5B6B76]">수정 전</div>
+              <div className="text-[11.5px] font-semibold text-[#5B6B76]">
+                {feedbackClear ? "현재 표현" : "수정 전"}
+              </div>
               <p className="mt-1.5 whitespace-pre-wrap break-words text-[15px] font-medium leading-relaxed text-[#15202B]">{draft}</p>
             </div>
             <div className="rounded-xl border-2 border-[#FAD338] bg-white p-4 shadow-sm">
               <label htmlFor="revised-response" className="text-[12px] font-bold text-[#6B5518]">
-                수정 후
+                {feedbackClear ? "다른 표현" : "수정 후"}
               </label>
               <Textarea
                 id="revised-response"
@@ -1039,7 +1047,9 @@ function MissionRunner({
                 onChange={(e) => setRevised(e.target.value)}
               />
             </div>
-            <Button className="w-full" onClick={finish}>마치기</Button>
+            <Button className="w-full" onClick={finish}>
+              {feedbackClear ? "이 표현으로 완료" : "마치기"}
+            </Button>
             {IS_DEMO && (
               <button type="button" className={demoBtn} onClick={() => setRevised(demoRevised)}>데모 채우기 — 다듬은 안 적용</button>
             )}
@@ -1607,7 +1617,7 @@ function MissionBriefDrawer({ mission }: { mission: MissionRuntime }) {
         </p>
         <p>{JUDGMENT_STATUS_CAPTION}</p>
         <p>
-          완료 조건 — 판단 {mission.mpj_items.length}문항 → {isInterp ? `${tgtName}로 통역` : `${tgtName}로 옮기기`} 1회 → 피드백 확인 → 다듬기 1회.
+          완료 조건 — 판단 {mission.mpj_items.length}문항 → {isInterp ? `${tgtName}로 통역` : `${tgtName}로 옮기기`} 1회 → 피드백 확인 → 필요 시 다듬기.
           <b className="text-foreground"> 정답·완성된 참고 문장은 제출한 뒤에 공개됩니다.</b>
         </p>
         <p>확인하는 것 — ① 원문의 의미·의도가 유지됐는가 ② 의미를 방해하는 문법 오류가 있는가 ③ 이 관계·상황에서 「{mission.unit.learner_label}」이 적절한가</p>
