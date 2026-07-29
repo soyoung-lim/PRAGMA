@@ -1,14 +1,25 @@
 import type { ReactNode } from "react";
 
+// MPJ와 직접 산출 단계가 같은 장면 밀도를 사용한다.
+// 높이를 고정하지 않고 패딩·행간·문장 간격만 통일해, 짧은 통역 장면에
+// 불필요한 빈 공간이 생기지 않게 한다.
+export const MISSION_SCENE_PANEL_DENSITY =
+  "px-4 py-4 sm:px-[18px] sm:py-[18px]";
+export const MISSION_SCENE_TEXT_DENSITY =
+  "mt-3 max-w-[42rem] text-[15px] leading-[1.58]";
+export const MISSION_SCENE_RELATION_GAP = "mt-3.5";
+
 /** 자연어 상황문을 메타데이터 라벨 없이 문장별로 읽기 좋게 나눈다. */
 export function SituationText({
   text,
   className = "",
   emphasizeFirst = false,
+  spacious = false,
 }: {
   text: string;
   className?: string;
   emphasizeFirst?: boolean;
+  spacious?: boolean;
 }) {
   const sentences =
     text
@@ -21,7 +32,7 @@ export function SituationText({
         <p
           key={`${sentence}-${index}`}
           className={[
-            index === 0 ? "" : "mt-1",
+            index === 0 ? "" : spacious ? "mt-1.5" : "mt-1",
             emphasizeFirst && index === 0 ? "font-extrabold text-[#15202B]" : "",
             emphasizeFirst && index > 0 ? "font-medium text-[#3E4C57]" : "",
           ].join(" ")}
@@ -130,22 +141,31 @@ export function ChatScene({
   const situationPanel = (
     <div
       className={[
-        "border-l-4 border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#FFFFFF_74%)] px-3.5 pb-3.5 pt-3",
+        "border-l-4 border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#FFFFFF_74%)]",
+        MISSION_SCENE_PANEL_DENSITY,
         separatePanels
           ? "rounded-2xl border border-[#E4E0CE] shadow-[0_5px_18px_rgba(21,32,43,0.04)]"
           : "border-b border-[#E4E8EE]",
       ].join(" ")}
     >
-      <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#5A6672]">
+      <div
+        className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.07em] text-[#5A6672]"
+      >
         <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
         {eyebrow}
       </div>
       <SituationText
         text={situation}
         emphasizeFirst
-        className="mt-2 text-[14.5px] leading-[1.52]"
+        spacious
+        className={MISSION_SCENE_TEXT_DENSITY}
       />
-      <div className="mt-2.5 inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-[#D7DDE5] bg-white/90 px-2.5 py-1 text-[12.5px] leading-snug text-[#3E4C57] shadow-[0_1px_2px_rgba(20,30,45,0.06)]">
+      <div
+        className={[
+          "inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-[#D7DDE5] bg-white/90 px-2.5 py-1 text-[12.5px] leading-snug text-[#3E4C57] shadow-[0_1px_2px_rgba(20,30,45,0.06)]",
+          MISSION_SCENE_RELATION_GAP,
+        ].join(" ")}
+      >
         <span className="text-[10px] font-extrabold text-[#5A6672]">상대</span>
         <span className="font-semibold">{counterpart}</span>
         {extraTag}

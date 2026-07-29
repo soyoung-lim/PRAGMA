@@ -34,6 +34,7 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
         d: "close",
         r: "low",
       },
+      preceding_turn: "我已经把最新的文件整理好了。",
       source: "업데이트된 파일 좀 보내 줘.",
       target: "把更新后的文件发我一下。",
       highlights: ["发我一下"],
@@ -52,6 +53,7 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
         "나는 거래처 일정 담당자에게 회의를 하루 앞당길 수 있는지 물으려 한다. 몇 차례 연락했지만 아직 친하지 않고, 변경하려면 상대는 내부 일정을 다시 맞춰야 한다.",
       relation_ko: "거래처 일정 담당자 · 몇 차례 연락한 사이",
       pdr: ANCHOR_PDR,
+      preceding_turn: "明天的会议时间已经跟内部团队确认好了。",
       source: "회의를 하루 앞당길 수 있을까요?",
       target: "把会议提前一天。",
       highlights: ["把会议提前一天"],
@@ -91,6 +93,7 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
         "나는 거래처 결제 담당자에게 결제일을 사흘 미룰 수 있는지 물으려 한다. 업무 연락만 몇 차례 한 사이이고, 변경하려면 상대는 회계팀 승인을 다시 받아야 한다.",
       relation_ko: "거래처 결제 담당자 · 업무상 아는 사이",
       pdr: ANCHOR_PDR,
+      preceding_turn: "付款日期已经按原计划录入系统了。",
       source: "결제일을 사흘 미뤄 주실 수 있을까요?",
       target: "你必须把付款日期推迟三天。",
       highlights: ["必须"],
@@ -98,21 +101,21 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
       reasons: [
         {
           id: "r1",
+          text_ko: "호칭 ‘你’가 업무상 아는 사이인 상대와의 거리를 충분히 표시하지 못했기 때문이다.",
+          kind: "pragmatic_misconception",
+        },
+        {
+          id: "r2",
           text_ko: "‘必须’가 상대의 조정 권한과 선택권을 사실상 없애기 때문이다.",
           kind: "primary",
         },
         {
-          id: "r2",
-          text_ko: "업무 요청은 관계와 부담에 상관없이 항상 길게 말해야 하기 때문이다.",
-          kind: "pragmatic_misconception",
-        },
-        {
           id: "r3",
-          text_ko: "중국어에서는 결제일 뒤에 기간 표현을 쓸 수 없기 때문이다.",
+          text_ko: "변경 기간을 ‘사흘’로 구체적으로 밝혀 상대가 조정 범위를 선택하기 어렵기 때문이다.",
           kind: "meaning_grammar_context",
         },
       ],
-      accepted_reason_id: "r1",
+      accepted_reason_id: "r2",
       explanation_ko:
         "문법이나 길이보다 핵심 문제는 강제 표현 ‘必须’가 이 관계에서 상대의 선택권을 지운다는 점입니다.",
       recommended_example: "请问付款日期可以推迟三天吗？",
@@ -130,6 +133,7 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
         d: "acquaintance",
         r: "high",
       },
+      preceding_turn: "我们今天已经截止出货了，现在再加可能有点困难。",
       source: "샘플을 오늘 안으로 하나 더 보내 주실 수 있을까요?",
       candidates: [
         {
@@ -152,6 +156,11 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
           accepted_band_codes: ["too_indirect"],
           note_ko: "완화가 지나치게 겹쳐 오늘 발송이라는 핵심 요청이 흐려집니다.",
         },
+        {
+          text: "今天还能再寄一个样品吗？",
+          accepted_band_codes: ["too_direct"],
+          note_ko: "가능 여부는 묻지만 이미 마감한 일정을 다시 여는 부담을 거의 고려하지 않습니다.",
+        },
       ],
       explanation_ko:
         "같은 요청 의미라도 큰 부담에서는 명령형이 과소하고, 완화를 겹겹이 쌓은 표현은 과잉입니다. 가운데 두 안처럼 선택권과 명료성을 함께 유지할 수 있습니다.",
@@ -167,7 +176,11 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
     relation_ko: "거래처 배송 담당자 · 업무상 아는 사이",
     pdr: ANCHOR_PDR,
     source_text: "이번 주문의 배송지를 저희 새 사무실로 바꿔 주실 수 있을까요?",
-    preceding_turn: null,
+    preceding_turn: "这次订单还是寄到原来的地址，对吗？",
+    vocabulary_hints: [
+      { source: "배송지", target: "收货地址" },
+      { source: "새 사무실", target: "新办公室" },
+    ],
     reference_alternatives: [
       {
         text: "请问这次订单的收货地址方便改成我们的新办公室吗？",
@@ -181,7 +194,7 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
   },
   provenance: {
     model: "local-preview",
-    prompt_version: "mission_v4_mpj4_dct1",
+    prompt_version: "mission_v4_mpj4_dct1_context_v3",
     mission_content_hash: "local-preview-not-stored",
     generated_at: "2026-07-29T01:25:00+09:00",
     generation_attempt: 1,

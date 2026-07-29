@@ -1,17 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { CheckCircle2, ChevronDown, CircleAlert, Lightbulb } from "lucide-react";
+import { CheckCircle2, CircleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
-import { SPEECH_ACT_UI, LEVEL, DIRECTION_LANGS, type LanguageDirection } from "@/lib/pragma/enums";
+import {
+  SPEECH_ACT_UI,
+  LEVEL,
+  DIRECTION_LANGS,
+  type LanguageDirection,
+  type LearnerLevel,
+} from "@/lib/pragma/enums";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import { SCALE4_CODES, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targetFeatures";
 import {
   normalizeMission,
   type MissionRuntime,
   type MpjItemRuntime,
+  type VocabularyHint,
 } from "@/lib/pragma/missionSchema";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { SAMPLE_MISSION_V4 } from "@/lib/mission/missionV4Sample";
@@ -29,13 +36,10 @@ import {
   SituationText,
   learnerCounterpartLabel,
   highlightZh,
+  MISSION_SCENE_PANEL_DENSITY,
+  MISSION_SCENE_TEXT_DENSITY,
+  MISSION_SCENE_RELATION_GAP,
 } from "@/components/mission/ChatScene";
-import {
-  supportTier,
-  toneLeaning,
-  type SupportTier,
-  type ToneLeaning,
-} from "@/lib/pragma/discourseSlots";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { requestSttTranscript } from "@/lib/mission/missionStt";
 import { requestTtsAudio } from "@/lib/tts";
@@ -50,20 +54,22 @@ const SAMPLE_MISSION_V2 = normalizeMission(SAMPLE_MISSION_V1).data as MissionRun
 const LANG_NAME: Record<"ko" | "zh", string> = { ko: "한국어", zh: "중국어" };
 const srcLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].source];
 const tgtLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].target];
+const RESPONSE_INPUT_ROWS: Record<LearnerLevel, 2 | 3 | 4> = {
+  beginner_intermediate: 2,
+  intermediate: 3,
+  advanced: 4,
+};
+const responseInputRows = (level: LearnerLevel | null): 2 | 3 | 4 =>
+  RESPONSE_INPUT_ROWS[level ?? "intermediate"];
 
 // 학습자 미션 실행 — mission_v1~v4를 정규화해 구동한다.
-//   감각 익히기(MPJ → 인계) → 직접 표현하기(산출/통역) → 돌아보고 다듬기(피드백 → 필요 시 다듬기 → 완료)
+//   표현 감각 익히기(MPJ → 인계) → 직접 번역/통역하기 → 피드백 확인하기(필요 시 다듬기 → 완료)
 //   ※ 3단계는 표시 서사이고, 실제 문항 수·판정·저장은 mission schema version을 따른다.
 // 판정은 초점별 band 카탈로그(targetFeatures) 기준. 자유 산출 뒤에는 feedback-lite가
 // 의미·문법·화용을 진단하며, 실패 시 참고 표현·핵심 원칙으로 안전하게 폴백한다.
 
 // v1~v3 읽기 호환 전용. 신규 mission_v4에는 확신도 응답이 없다.
 const CONFIDENCE = ["매우 확신", "꽤 확신", "확신 없음"] as const;
-
-// B1(계약 0-g·44·0-e·⑨): 판정 대역은 proposed(확정 정답 아님). 프로토타입 v2 기준 —
-// 매 문항 반복 대신 1부 시작에 1회만 지위를 정직하게 고지한다.
-const JUDGMENT_STATUS_CAPTION =
-  "판정은 현재 강의 기준 · AI 제안(검증 예정)입니다 — 유일한 정답이 아니며, 상황에 따라 다른 적절한 표현도 존재할 수 있습니다.";
 
 // 사이트 헤더(LearnerJourneyShell) 높이 — 문항 맥락 바가 붙는 기준선.
 const HEADER_H = 60;
@@ -94,7 +100,6 @@ const STAGE_OF: Record<Phase, Stage> = {
   revise: 2,
   done: 2,
 };
-const STAGE_TITLES = ["감각 익히기", "직접 표현하기", "돌아보고 다듬기"] as const;
 // 정본 target feature 이름은 생성·저장 계약에 그대로 보존한다. 학습자 화면에서는
 // 같은 구성개념을 행동 문장으로 풀어, 무엇을 연습하는지 즉시 읽히게 한다.
 const LEARNER_FOCUS_COPY: Record<string, string> = {
@@ -222,87 +227,39 @@ const MissionRunV1 = () => {
 };
 
 // ── 러너 본체 ───────────────────────────────────────────────────────────
-/**
- * ko_zh(L2 산출) 전용 부분 표현 힌트.
- * 교수설계용 담화 슬롯 이름은 숨기고, 막힌 학습자가 실제로 꺼내 쓸 수 있는
- * 카탈로그 부분 표현만 펼쳐 본다. 완성된 참고 문장은 제출 후 공개한다.
- */
+/** ko_zh 번역 산출을 막는 비화용적 내용 어휘 두 개만 한 줄로 제공한다. */
 function ProductionGuide({
-  resources,
-  tier,
-  leaning,
+  hints,
+  onOpen,
 }: {
-  resources: string[];
-  tier: SupportTier;
-  leaning: ToneLeaning;
+  hints: VocabularyHint[];
+  onOpen: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const visibleResources =
-    tier === "guided" ? resources.slice(0, 4) : tier === "hinted" ? resources.slice(0, 3) : resources.slice(0, 2);
-
-  const splitResource = (resource: string) => {
-    const match = resource.match(/^(.+?)\s*\((.+)\)$/);
-    return match
-      ? { label: match[1].trim(), example: match[2].trim().replace(/·/g, " · ") }
-      : { label: resource, example: "" };
-  };
-
   return (
     <div className="mb-2.5 flex flex-col items-end">
       <button
         type="button"
-        onClick={() => setExpanded((value) => !value)}
-        className="inline-flex items-center gap-1.5 rounded-full border border-[#E5DDAF] bg-[#FFFDF4] px-2.5 py-1.5 text-left shadow-[0_1px_2px_rgba(21,32,43,0.04)] transition-colors hover:bg-[#FFF9DD]"
+        onClick={() => {
+          if (!expanded) onOpen();
+          setExpanded((value) => !value);
+        }}
+        className="rounded-full border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-1.5 text-[12px] font-bold text-[#4A5560] transition-colors hover:bg-[#FFF9DD]"
         aria-expanded={expanded}
       >
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FFF0A8] text-[#6B5518]">
-          <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
-        </span>
-        <span className="text-[12px] font-bold text-[#4A5560]">막히면 힌트 보기</span>
-        <ChevronDown
-          className={[
-            "h-3.5 w-3.5 shrink-0 text-[#6B7680] transition-transform duration-200",
-            expanded ? "rotate-180" : "",
-          ].join(" ")}
-          aria-hidden="true"
-        />
+        막히면 어휘 힌트 {expanded ? "닫기 ▴" : "2개 보기 ▾"}
       </button>
-
-      {/* 완화 편향 시정(0-r·106①) — 슬롯·힌트가 늘 완화 자원이라 "넣으면 된다"로
-          오학습될 수 있다. 직접형이 자연스러운 상황에서는 먼저 그 사실을 말한다. */}
-      <div
-        className={[
-          "grid w-full transition-[grid-template-rows,opacity] duration-200 sm:w-[78%]",
-          expanded ? "mt-2 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-        ].join(" ")}
-        aria-hidden={!expanded}
-      >
-        <div className="overflow-hidden">
-          <div className="rounded-xl border border-[#E5DDAF] bg-[#FFFDF4] px-3 pb-3 pt-2.5">
-            {leaning === "direct" && (
-              <p className="mb-2 rounded-lg bg-[#F3F6EE] px-2.5 py-2 text-[12px] leading-[1.45] text-[#4A5A3E]">
-                이 상황에서는 짧고 직접적인 표현이 더 자연스러울 수 있습니다. <strong className="font-semibold">덜어내는 것도 조절입니다.</strong>
-              </p>
-            )}
-            <ul className="grid gap-1.5 sm:grid-cols-2">
-              {visibleResources.map((resource) => {
-                const hint = splitResource(resource);
-                return (
-                  <li key={resource} className="rounded-lg border border-[#EEE7CF] bg-white px-2.5 py-2">
-                    {hint.example && <div className="text-[13px] font-semibold text-[#1F4F37]">{hint.example}</div>}
-                    <div className={hint.example ? "mt-0.5 text-[10.5px] text-[#6B7680]" : "text-[12px] text-[#3B4A57]"}>
-                      {hint.label}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              필요한 표현만 골라 사용합니다. 모두 넣을 필요는 없습니다.
-            </p>
-          </div>
+      {expanded && (
+        <div className="mt-1.5 flex w-fit max-w-full flex-wrap justify-end gap-x-4 gap-y-1 rounded-lg border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-2 text-[12.5px]">
+          {hints.slice(0, 2).map((hint) => (
+            <span key={`${hint.source}:${hint.target}`}>
+              <span className="text-muted-foreground">{hint.source}</span>
+              <span className="mx-1 text-[#B4A36A]">→</span>
+              <strong className="font-semibold text-[#1F4F37]">{hint.target}</strong>
+            </span>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -329,6 +286,81 @@ function feedbackHeadline(fb: RuntimeFeedback): { title: string; body: string } 
     title: scope === "clear" ? "유지해도 좋은 핵심" : "이번에 고칠 한 가지",
     body,
   };
+}
+
+function revisionActionLine(
+  fb: RuntimeFeedback | null,
+  featureCode: string,
+  learnerLabel: string,
+): string {
+  if (!fb) {
+    return featureCode === "request_mitigation_optionality"
+      ? "상대와 부담을 다시 확인하고, 요청의 직접성을 한 단계 조절하세요."
+      : `「${learnerLabel}」에 맞춰 표현 한 곳만 고쳐 보세요.`;
+  }
+  if (fb.revision_scope === "meaning") {
+    return "빠지거나 달라진 핵심 의미부터 복원하세요.";
+  }
+  if (fb.revision_scope === "grammar") {
+    return "문법 피드백에서 표시된 부분 하나만 고쳐 문장을 다시 완성하세요.";
+  }
+  if (fb.revision_scope === "feature") {
+    const bandCode = fb.verdicts.pragmatic_appropriateness.band_code;
+    if (bandCode === "too_direct") {
+      return featureCode === "request_mitigation_optionality"
+        ? "명령처럼 들리는 부분을 줄이고, 가능한지 물어 거절할 여지를 남기세요."
+        : "상대에게 너무 강하게 들리는 부분을 줄이고 표현의 강도를 낮추세요.";
+    }
+    if (bandCode === "too_indirect") {
+      return featureCode === "request_mitigation_optionality"
+        ? "완화 표현을 덜어내고 요청 의도를 더 분명하게 만드세요."
+        : "우회 표현을 덜어내고 핵심 의도를 더 분명하게 만드세요.";
+    }
+    return `이 상대와 부담에 맞게 「${learnerLabel}」의 정도를 조절하세요.`;
+  }
+  return "현재 의미를 유지하면서 다른 자연스러운 표현을 시도해 보세요.";
+}
+
+function completionAdviceLine({
+  fb,
+  featureCode,
+  revisedChanged,
+}: {
+  fb: RuntimeFeedback | null;
+  featureCode: string;
+  revisedChanged: boolean;
+}): string {
+  if (!fb) {
+    if (revisedChanged) {
+      return "처음 답안을 한 번 더 다듬었습니다. 다음에도 상대와 부담을 먼저 확인해 보세요.";
+    }
+    return featureCode === "request_mitigation_optionality"
+      ? "거리 있음 · 부담 큼 → 가능한지 묻고 거절할 여지를 남기되, 공손 표현은 필요한 만큼만."
+      : "상황과 상대를 먼저 확인하고, 필요한 만큼만 표현을 조절하세요.";
+  }
+  if (fb.revision_scope === "meaning") {
+    return featureCode === "request_mitigation_optionality"
+      ? "다음에는 공손함을 조절하기 전에 누가 무엇을 요청하는지 핵심 의미부터 지켜 보세요."
+      : "다음에는 표현을 조절하기 전에 원문의 핵심 의미와 의도부터 지켜 보세요.";
+  }
+  if (fb.revision_scope === "grammar") {
+    return "핵심 의도는 유지했습니다. 다음에는 표시된 문법 부분 하나만 먼저 점검해 보세요.";
+  }
+  if (fb.revision_scope === "feature") {
+    const bandCode = fb.verdicts.pragmatic_appropriateness.band_code;
+    if (bandCode === "too_direct") {
+      return featureCode === "request_mitigation_optionality"
+        ? "요청 의도는 분명했습니다. 다음에는 가능한지 물어 거절할 여지를 조금 더 남겨 보세요."
+        : "핵심 의도는 분명했습니다. 다음에는 상대에게 들리는 강도를 조금 낮춰 보세요.";
+    }
+    if (bandCode === "too_indirect") {
+      return featureCode === "request_mitigation_optionality"
+        ? "상대를 배려했습니다. 다음에는 완화 표현을 덜어 요청 의도를 더 선명하게 해 보세요."
+        : "상대를 배려했습니다. 다음에는 우회 표현을 덜어 핵심 의도를 더 선명하게 해 보세요.";
+    }
+    return "의미는 잘 전달했습니다. 다음에는 상대와 부담에 맞는 표현의 정도를 한 번 더 확인해 보세요.";
+  }
+  return "의미·문법·상황 적절성이 안정적이었습니다. 다음에는 같은 뜻을 더 간결하게 표현해 보세요.";
 }
 
 /**
@@ -389,7 +421,7 @@ function FeedbackPanel({
   return (
     <div className="space-y-3">
       <div className="overflow-hidden rounded-xl border border-[#DDE5DF] bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5EBE7] bg-[#F7FAF8] px-3.5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5EBE7] bg-[#F7FAF8] px-3.5 py-2.5">
           <div>
             <div className="text-[11px] font-bold text-[#52645A]">답안 피드백</div>
             <div className="mt-0.5 text-[13.5px] font-bold text-[#15202B]">
@@ -415,7 +447,7 @@ function FeedbackPanel({
               <div
                 key={layer.key}
                 className={[
-                  "flex min-h-[104px] min-w-0 flex-col rounded-xl border px-3 py-3",
+                  "flex min-h-[88px] min-w-0 flex-col rounded-xl border px-3 py-2.5",
                   layer.passed
                     ? "border-[#BBDCC8] bg-[#F2FAF5]"
                     : "border-[#F0D786] bg-[#FFFAE9]",
@@ -425,7 +457,7 @@ function FeedbackPanel({
                   <span className="text-[11.5px] font-bold text-[#52645A]">{layer.label}</span>
                   <span
                     className={[
-                      "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10.5px] font-extrabold",
+                      "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-extrabold",
                       layer.passed
                         ? "bg-[#DFF4E7] text-[#176640]"
                         : "bg-[#FBE8AE] text-[#755A0B]",
@@ -435,7 +467,7 @@ function FeedbackPanel({
                     {layer.passed ? "통과" : "조절 필요"}
                   </span>
                 </div>
-                <div className="flex flex-1 items-center justify-center px-1 pt-2 text-center text-[12.5px] font-bold leading-snug text-[#15202B]">
+                <div className="flex flex-1 items-center justify-center px-1 pt-1.5 text-center text-[12.5px] font-bold leading-snug text-[#15202B]">
                   {layer.short}
                 </div>
               </div>
@@ -581,15 +613,21 @@ function MissionRunner({
   status: string | null;
   scenarioId: string | null;
   speechAct: string | null;
-  level: string | null;
+  level: LearnerLevel | null;
 }) {
   const [phase, setPhase] = useState<Phase>(startAtPart2 ? "produce" : "mpj");
   const [mpjIdx, setMpjIdx] = useState(0);
   const [mpjResponses, setMpjResponses] = useState<MpjResponseTrace[]>([]);
+  const [vocabularyHintOpenedAt, setVocabularyHintOpenedAt] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [revised, setRevised] = useState("");
   const [savedLater, setSavedLater] = useState(false);
-  const [resume, setResume] = useState<{ phase: Phase; draft: string; revised: string } | null>(null);
+  const [resume, setResume] = useState<{
+    phase: Phase;
+    draft: string;
+    revised: string;
+    vocabularyHintOpenedAt?: string | null;
+  } | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "demo" | "error">("idle");
   // feedback-lite(계약 §4) — 제출 후 3층 진단. 실패하면 기존 정직 표기로 되돌아간다.
   const [fb, setFb] = useState<RuntimeFeedback | null>(null);
@@ -608,8 +646,14 @@ function MissionRunner({
   const srcName = srcLangName(dir);
   const pt = mission.production_task;
   const isInterp = pt.mode === "interpreting";
+  const responseRows = responseInputRows(level);
   const part = phase === "mpj" || phase === "handoff" ? 1 : 2;
   const stage = STAGE_OF[phase];
+  const stageTitles = [
+    "표현 감각 익히기",
+    isInterp ? "직접 통역하기" : "직접 번역하기",
+    "피드백 확인하기",
+  ] as const;
   // 데모 채우기 예시 답안(참고 표현 재사용 — 산출/다듬기가 다르게 보이도록 서로 다른 안)
   const demoDraft = pt.reference_alternatives[0]?.text ?? "";
   const demoRevised = pt.reference_alternatives[1]?.text ?? pt.reference_alternatives[0]?.text ?? "";
@@ -619,20 +663,20 @@ function MissionRunner({
   const learnerFocusCopy =
     LEARNER_FOCUS_COPY[mission.unit.target_feature] ?? mission.unit.learner_label;
 
-  // 다듬기 화면 지침 — 피드백이 있으면 방금 본 문구를 그대로 이어받는다.
-  // 폴백 조건은 fbState('error')가 아니라 **fb 부재**다: 다듬기 단계부터 바로 재개하면
-  // 상태는 'idle'인데 fb만 비어 있어, 지침 없는 빈 화면이 될 수 있다.
-  const reviseHint = fb
-    ? feedbackHeadline(fb)
-    : { title: mission.unit.learner_label, body: mission.unit.closing_ko };
   const feedbackClear = fbState === "ready" && fb?.revision_scope === "clear";
+  const reviseAction = revisionActionLine(
+    fb,
+    mission.unit.target_feature,
+    mission.unit.learner_label,
+  );
+  const completionAdvice = completionAdviceLine({
+    fb,
+    featureCode: mission.unit.target_feature,
+    revisedChanged: !!revised.trim() && revised.trim() !== draft.trim(),
+  });
 
-  // 부분 표현 힌트(0-q·97) — **ko_zh 번역 산출에만**. 중→한은 모국어 산출이라
-  // 어휘·문법 부하가 없어 지원 대상이 아니다. 교수설계용 슬롯명은 화면에 노출하지 않는다.
-  const guideResources = feat?.relevant_resources ?? [];
-  const guideTier = supportTier(level);
-  // 이 미션의 조절 방향 — 「상황 확인」과 같은 규칙(0-r·106).
-  const guideLeaning = toneLeaning(pt.pdr);
+  // 번역 힌트는 수업·MPJ에서 다룬 화용 전략이 아니라 내용 어휘 두 개만 사용한다.
+  const vocabularyHints = pt.vocabulary_hints ?? [];
 
   // 피드백 단계 진입 시 1회 호출. 실패해도 미션을 막지 않는다(정직 표기로 폴백).
   // ⚠️ cleanup으로 취소하지 않는다 — 이 이펙트가 setFbState를 부르므로 의존성이 바뀌어
@@ -667,7 +711,12 @@ function MissionRunner({
       try {
         localStorage.setItem(
           storageKey,
-          JSON.stringify({ phase: "produce", draft: "", revised: "" }),
+          JSON.stringify({
+            phase: "produce",
+            draft: "",
+            revised: "",
+            vocabularyHintOpenedAt: null,
+          }),
         );
       } catch {
         /* 무시 */
@@ -684,7 +733,13 @@ function MissionRunner({
           typeof s?.draft === "string" &&
           typeof s?.revised === "string"
         ) {
-          setResume({ phase: normalizedPhase as Phase, draft: s.draft, revised: s.revised });
+          setResume({
+            phase: normalizedPhase as Phase,
+            draft: s.draft,
+            revised: s.revised,
+            vocabularyHintOpenedAt:
+              typeof s.vocabularyHintOpenedAt === "string" ? s.vocabularyHintOpenedAt : null,
+          });
         }
       }
     } catch {
@@ -694,11 +749,14 @@ function MissionRunner({
   useEffect(() => {
     if (part !== 2) return;
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ phase, draft, revised }));
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({ phase, draft, revised, vocabularyHintOpenedAt }),
+      );
     } catch {
       /* 무시 */
     }
-  }, [part, phase, draft, revised, storageKey]);
+  }, [part, phase, draft, revised, vocabularyHintOpenedAt, storageKey]);
   const clearSaved = () => {
     try {
       localStorage.removeItem(storageKey);
@@ -710,6 +768,7 @@ function MissionRunner({
     if (!resume) return;
     setDraft(resume.draft || "");
     setRevised(resume.revised || "");
+    setVocabularyHintOpenedAt(resume.vocabularyHintOpenedAt ?? null);
     setPhase(resume.phase);
     setResume(null);
     window.scrollTo(0, 0);
@@ -730,6 +789,16 @@ function MissionRunner({
       ...(fb ? { feedback: fb } : {}),
       startedAtIso: startedAtRef.current,
       ...(mpjResponses.length > 0 ? { mpjResponses } : {}),
+      ...(!isInterp && dir === "ko_zh"
+        ? {
+            productionSupport: {
+              kind: "translation_vocabulary_hints" as const,
+              available: vocabularyHints.length === 2,
+              opened: vocabularyHintOpenedAt !== null,
+              opened_at: vocabularyHintOpenedAt,
+            },
+          }
+        : {}),
       ...(dissent ? { contextJudgment: dissent } : {}),
     });
     if (res.ok) {
@@ -767,6 +836,7 @@ function MissionRunner({
     setPhase("mpj");
     setMpjIdx(0);
     setMpjResponses([]);
+    setVocabularyHintOpenedAt(null);
     setDraft("");
     setRevised("");
     setSavedLater(false);
@@ -778,7 +848,7 @@ function MissionRunner({
 
   return (
     <LearnerJourneyShell headerRight={<span className="text-[12px] text-[#8899A6]">{headerRight}</span>}>
-      <div className="pb-24">
+      <div>
         {/* 샘플 배너는 헤더 라벨(「샘플 · 예문 검토 전」)로 옮겼다 — 첫 화면 자리를
             문항에 내준다. 미검수(generated) 경고는 성격이 달라 배너로 남긴다. */}
         {status === "generated" && (
@@ -816,7 +886,7 @@ function MissionRunner({
           </div>
 
           <div className="flex gap-2">
-            {STAGE_TITLES.map((label, i) => {
+            {stageTitles.map((label, i) => {
               const done = stage > i;
               const active = stage === i;
               // devGo 착지점 — 3단계는 다듬기로 보낸다(피드백은 제출한 답이 있어야 뜬다).
@@ -857,7 +927,7 @@ function MissionRunner({
         <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#A9B0BA]">
           {stage === 0 ? (
             phase === "handoff" ? (
-              <span className="font-bold text-foreground">예시 {items.length} / {items.length} 살펴봄</span>
+              <span className="font-bold text-foreground">1단계 요약 · 예시 {items.length}개 정리</span>
             ) : (
               <>
                 <span>예시 {mpjIdx + 1} / {items.length}</span>
@@ -896,8 +966,8 @@ function MissionRunner({
         {phase === "handoff" && (
           <Handoff
             mission={mission}
-            dir={dir}
             isInterp={isInterp}
+            responses={mpjResponses}
             saved={savedLater}
             onContinue={() => goto("produce")}
             onSaveLater={() => {
@@ -934,23 +1004,24 @@ function MissionRunner({
                 <ChatScene
                   situation={pt.situation_ko}
                   relation={pt.relation_ko}
-                  eyebrow="지금, 직접 옮길 장면"
+                  eyebrow="지금, 직접 번역할 장면"
                   separatePanels
                   threadEyebrow="메시지 작성 중"
                 >
                   {pt.preceding_turn && <ChatBubble side="them">{pt.preceding_turn}</ChatBubble>}
                   <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
-                  {dir === "ko_zh" && (
+                  {!isInterp && dir === "ko_zh" && vocabularyHints.length === 2 && (
                     <ProductionGuide
-                      resources={guideResources}
-                      tier={guideTier}
-                      leaning={guideLeaning}
+                      hints={vocabularyHints}
+                      onOpen={() =>
+                        setVocabularyHintOpenedAt((openedAt) => openedAt ?? new Date().toISOString())
+                      }
                     />
                   )}
                   <div className="mb-3 flex items-end justify-end gap-2">
                     <Textarea
-                      className="w-[78%] resize-y rounded-[19px] rounded-br-[6px] border border-[#7ED158] bg-gradient-to-b from-[#9EED7C] to-[#8CE768] px-3 py-2 text-[14.5px] leading-[1.46] text-[#0c3300] placeholder:text-[#4a7a4a]"
-                      rows={3}
+                      className="min-h-0 w-[78%] resize-y rounded-[19px] rounded-br-[6px] border border-[#7ED158] bg-gradient-to-b from-[#9EED7C] to-[#8CE768] px-3 py-2 text-[14.5px] leading-[1.46] text-[#0c3300] placeholder:text-[#4a7a4a]"
+                      rows={responseRows}
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       placeholder={`여기에 ${tgtName}로 답장 입력…`}
@@ -1058,9 +1129,7 @@ function MissionRunner({
                 {feedbackClear ? "다른 표현으로 시도하기" : "이번 수정 목표"}
               </div>
               <p className="mt-1 text-[15px] font-medium leading-relaxed text-[#15202B]">
-                {feedbackClear
-                  ? "현재 표현은 그대로 사용해도 좋습니다. 원한다면 같은 뜻을 다른 방식으로 표현해 보십시오."
-                  : reviseHint.body}
+                {reviseAction}
               </p>
             </div>
             <div className="rounded-xl border border-[#D7DDE5] bg-[#F5F7F9] p-4">
@@ -1075,8 +1144,8 @@ function MissionRunner({
               </label>
               <Textarea
                 id="revised-response"
-                className="mt-2 min-h-[150px] text-[15px] leading-relaxed"
-                rows={5}
+                className="mt-2 min-h-0 resize-y text-[15px] leading-relaxed"
+                rows={responseRows}
                 value={revised || draft}
                 onChange={(e) => setRevised(e.target.value)}
               />
@@ -1094,8 +1163,8 @@ function MissionRunner({
         {phase === "done" && (
           <div className="space-y-3">
             <div className="rounded-xl bg-[#15202B] p-5 text-white">
-              <div className="text-[11.5px] font-bold text-[#FAD338]">이번 미션 요약</div>
-              <p className="mt-1.5 text-[14.5px] leading-relaxed">{mission.unit.closing_ko}</p>
+              <div className="text-[11.5px] font-bold text-[#FAD338]">이번 답안에 맞는 조언</div>
+              <p className="mt-1.5 text-[14.5px] font-medium leading-relaxed">{completionAdvice}</p>
             </div>
 
             <RevisionMap first={draft} final={revised || draft} featureLabel={mission.unit.learner_label} interp={isInterp} />
@@ -1133,9 +1202,13 @@ function MissionRunner({
                     );
                   } catch { /* ignore */ }
                   // part=2 — 1부(판단 연습)는 방금 마쳤으므로 건너뛰고 바로 2부로.
-                  window.location.href = isInterp
-                    ? "/learner/practice?part=2"
-                    : "/learner/practice?mode=interpreting&part=2";
+                  // v4 검토에서는 preview 쿼리를 보존해야 같은 미션과 DEV 인증 우회를
+                  // 유지한다. 빠지면 구 샘플로 바뀌고 새 탭에서는 로그인 화면으로 튄다.
+                  const nextParams = new URLSearchParams();
+                  if (mission.schema_version === "mission_v4") nextParams.set("preview", "v4");
+                  if (!isInterp) nextParams.set("mode", "interpreting");
+                  nextParams.set("part", "2");
+                  window.location.href = `/learner/practice?${nextParams.toString()}`;
                 }}
                 className="w-full rounded-xl bg-[#FAD338] px-5 py-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#F5C81F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
               >
@@ -1148,8 +1221,8 @@ function MissionRunner({
                 </div>
                 <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#5B4A1E]">
                   {isInterp
-                    ? "감각 익히기는 건너뛰고 곧바로 번역 산출부터 이어집니다."
-                    : "감각 익히기는 건너뛰고 곧바로 통역 산출부터 이어집니다 — 원문 듣기 → 녹음 → 전사 확인."}
+                    ? "표현 감각 익히기는 건너뛰고 곧바로 번역 산출부터 이어집니다."
+                    : "표현 감각 익히기는 건너뛰고 곧바로 통역 산출부터 이어집니다 — 원문 듣기 → 녹음 → 전사 확인."}
                 </p>
               </button>
             ) : (
@@ -1410,13 +1483,23 @@ function AudioFrame({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-[#E4E0CE] border-l-4 border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#FFFFFF_72%)] p-4">
+      <div
+        className={[
+          "rounded-xl border border-[#E4E0CE] border-l-4 border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#FFFFFF_72%)]",
+          MISSION_SCENE_PANEL_DENSITY,
+        ].join(" ")}
+      >
         <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-[#5A6672]">
           <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
           지금, 통역할 장면
         </div>
-        <SituationText text={situation} emphasizeFirst className="mt-2 text-[14.5px] leading-[1.52]" />
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <SituationText
+          text={situation}
+          emphasizeFirst
+          spacious
+          className={MISSION_SCENE_TEXT_DENSITY}
+        />
+        <div className={`${MISSION_SCENE_RELATION_GAP} flex flex-wrap gap-1.5`}>
           <Badge variant="secondary" className="font-normal">
             상대 · {learnerCounterpartLabel(relation)}
           </Badge>
@@ -1565,40 +1648,169 @@ function AudioFrame({
   );
 }
 
-// ── 1부 → 2부 인계(프로토타입 v2 ②) — "1부 완료 ≠ 미션 완료" ────────────
+type MpjSummaryRow = {
+  label: string;
+  comment: string;
+};
+
+function sameNumberSet(left: number[], right: number[]): boolean {
+  if (left.length !== right.length) return false;
+  const expected = new Set(right);
+  return left.every((value) => expected.has(value));
+}
+
+function buildMpjSummaryRows(
+  mission: MissionRuntime,
+  responses: MpjResponseTrace[],
+): MpjSummaryRow[] {
+  const featureCode = mission.unit.target_feature;
+  const withinBandCode = getTargetFeature(featureCode)?.within_band_code ?? "within_band";
+  const compareInClass =
+    "내 선택은 참고 판정과 달랐습니다. 왜 다르게 느꼈는지 수업에서 비교해 보세요.";
+  return mission.mpj_items.map((item) => {
+    const response = responses.find((saved) => saved.item_id === item.id);
+
+    switch (item.type) {
+      case "scale4": {
+        const sameDirection =
+           !!response?.scale_code &&
+          (item.accepted_scale_codes as readonly string[]).includes(response.scale_code);
+        return {
+          label: "첫인상 판단",
+          comment: sameDirection
+            ? featureCode === "request_mitigation_optionality"
+              ? "친밀도와 부탁의 부담에 비춰 이 정도 직접성이 자연스러운지 살폈습니다."
+              : `관계와 상황에 비춰 「${mission.unit.learner_label}」의 정도를 살폈습니다.`
+            : compareInClass,
+        };
+      }
+      case "judge3": {
+        const sameDirection =
+          !!response?.band_code &&
+          (item.accepted_band_codes as readonly string[]).includes(response.band_code);
+        return {
+          label: "판단하고 고쳐보기",
+          comment: sameDirection
+            ? featureCode === "request_mitigation_optionality"
+              ? "이 관계와 부담에서 부탁의 강도를 조절할 필요가 있는지 판단했습니다."
+              : "관계와 부담에 맞게 표현을 조절할 필요가 있는지 판단했습니다."
+            : compareInClass,
+        };
+      }
+      case "fix_choice": {
+        const selected = response?.correction_indexes ?? [];
+        const valid = item.corrections
+          .map((correction, index) => (correction.is_valid ? index : -1))
+          .filter((index) => index >= 0);
+        const sameJudgment =
+          !!response?.band_code &&
+          (item.accepted_band_codes as readonly string[]).includes(response.band_code);
+        const sameCorrections = sameNumberSet(selected, valid);
+        return {
+          label: "판단하고 고쳐보기",
+          comment: sameJudgment && sameCorrections
+            ? featureCode === "request_mitigation_optionality"
+              ? "가능한지 묻는 표현을 골라 부탁의 강도를 조절했습니다."
+              : `상황에 맞게 표현을 조절한 수정안 ${valid.length}개를 골랐습니다.`
+            : sameCorrections
+              ? "고친 방향은 알맞았지만, 첫 판단은 참고 판정과 달랐습니다."
+              : sameJudgment
+                ? "조절이 필요하다는 점은 찾았지만, 고친 방향은 참고안과 달랐습니다."
+                : compareInClass,
+        };
+      }
+      case "reason": {
+        const sameReason = response?.reason_id === item.accepted_reason_id;
+        return {
+          label: "이유 찾기",
+          comment:
+            featureCode === "request_mitigation_optionality" && sameReason
+              ? "너무 단정하면 상대가 거절하거나 조정할 여지가 줄어든다는 점을 찾았습니다."
+              : sameReason
+                ? "표현이 어긋난 가장 큰 이유를 찾았습니다."
+                : compareInClass,
+        };
+      }
+      case "reason_conf": {
+        const selected = response?.reason_ids ?? [];
+        const accepted = item.accepted_reason_ids as readonly string[];
+        const sameReason =
+          selected.length === accepted.length &&
+           selected.every((reasonId) => accepted.includes(reasonId));
+        return {
+          label: "이유 찾기",
+          comment: sameReason
+            ? "표현이 어긋난 핵심 이유를 찾았습니다."
+            : compareInClass,
+        };
+      }
+      case "multi_judge": {
+        const bestIndex = response?.best_candidate_index;
+        const worstIndex = response?.worst_candidate_index;
+        const bestBands =
+          bestIndex !== undefined ? item.candidates[bestIndex]?.accepted_band_codes ?? [] : [];
+        const worstBands =
+          worstIndex !== undefined ? item.candidates[worstIndex]?.accepted_band_codes ?? [] : [];
+        const sameDirection =
+          bestBands.includes(withinBandCode) &&
+          worstBands.length > 0 &&
+          !worstBands.includes(withinBandCode);
+        const requestComparison =
+          worstBands.includes("too_direct")
+            ? "선택권을 남긴 안과 너무 단정적인 안을 구분했습니다."
+            : worstBands.includes("too_indirect")
+              ? "선택권을 남긴 안과 지나치게 우회적인 안을 구분했습니다."
+              : "상황에 잘 맞는 안과 가장 아쉬운 안을 구분했습니다.";
+        return {
+          label: "여러 초안 비교",
+          comment: sameDirection
+            ? featureCode === "request_mitigation_optionality"
+              ? requestComparison
+              : "상황에 잘 맞는 안과 가장 아쉬운 안을 구분했습니다."
+            : compareInClass,
+        };
+      }
+    }
+  });
+}
+
+// ── 1부 → 2부 인계: 네 판단을 짧게 정리한 뒤 새 장면에 적용한다. ─────────
 function Handoff({
   mission,
-  dir,
   isInterp,
+  responses,
   saved,
   onContinue,
   onSaveLater,
 }: {
   mission: MissionRuntime;
-  dir: LanguageDirection;
   isInterp: boolean;
+  responses: MpjResponseTrace[];
   saved: boolean;
   onContinue: () => void;
   onSaveLater: () => void;
 }) {
-  const feat = getTargetFeature(mission.unit.target_feature);
-  const tools =
-    (dir === "zh_ko" && feat?.relevant_resources_zh_ko?.length ? feat.relevant_resources_zh_ko : feat?.relevant_resources) ?? [];
+  const summaryRows = buildMpjSummaryRows(mission, responses);
   return (
-    <div className="rounded-xl border border-[#FAD338] bg-white p-5">
-      <div className="text-[11px] font-bold text-[#2E7D5B]">감각 익히기 완료</div>
-      <h2 className="mt-0.5 text-[16px] font-bold">이제 직접 표현할 차례입니다</h2>
-      <p className="mt-0.5 text-[12.5px] text-muted-foreground">방금 확인한 도구 — 문장 전체보다 <b>범주</b>에 주목합니다.</p>
-      {tools.length > 0 && (
-        <ul className="mt-2 flex flex-wrap gap-1.5">
-          {tools.map((t) => (
-            <li key={t} className="rounded-md border border-[#EAE4D2] bg-[#F5F5F2] px-2.5 py-1 text-[12.5px]">{t}</li>
-          ))}
-        </ul>
-      )}
-      <p className="mt-3 text-[12.5px] text-muted-foreground">
-        이제 <b>새로운 상황</b>에서 직접 {isInterp ? "통역" : "옮겨"} 봅니다. 많이 얹을수록 좋은 것이 아니라, 이 상대·이 부담에 맞는 만큼만.
-      </p>
+    <div className="rounded-xl border border-[#FAD338] bg-white p-4 sm:p-5">
+      <div className="text-[11px] font-bold text-[#2E7D5B]">표현 감각 익히기 완료</div>
+      <h2 className="mt-0.5 text-[16px] font-bold">방금 익힌 판단 흐름</h2>
+      <ol className="mt-3 overflow-hidden rounded-xl border border-[#E5E0D2] bg-[#FCFBF7]">
+        {summaryRows.map((row, index) => (
+          <li
+            key={`${row.label}-${index}`}
+            className="grid grid-cols-[24px_minmax(0,1fr)] items-center gap-x-2.5 gap-y-0.5 border-b border-[#ECE8DD] px-3 py-2.5 last:border-b-0 sm:grid-cols-[24px_170px_minmax(0,1fr)]"
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#FAD338] text-[10.5px] font-extrabold text-[#15202B]">
+              {index + 1}
+            </span>
+            <span className="text-[12.5px] font-bold text-[#273642]">{row.label}</span>
+            <span className="col-start-2 text-[12.5px] leading-snug text-[#5B6872] sm:col-start-3">
+              {row.comment}
+            </span>
+          </li>
+        ))}
+      </ol>
       {saved ? (
         <div className="mt-3.5 rounded-lg bg-[#F2FAF6] px-3.5 py-2.5 text-[12.5px] text-[#2E7D5B]">
           저장했습니다 — 다음에 들어오면 2부부터 이어집니다.
@@ -1606,7 +1818,9 @@ function Handoff({
         </div>
       ) : (
         <div className="mt-3.5 flex gap-2.5">
-          <Button className="flex-1 bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" onClick={onContinue}>직접 표현하러 가기 →</Button>
+          <Button className="flex-1 bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" onClick={onContinue}>
+            직접 {isInterp ? "통역" : "번역"}하러 가기 →
+          </Button>
           <Button variant="outline" className="flex-1" onClick={onSaveLater}>저장하고 나중에</Button>
         </div>
       )}
@@ -1616,37 +1830,19 @@ function Handoff({
   );
 }
 
-// ── 평가 계약(0-i·65) + 판정 지위 고지(B1 · 0-g·44) — 첫 문항 아래 접기 하나로 ──
-// 종전엔 이 둘이 첫 문항 **위**에서 약 200px을 차지해, 학생이 상황보다 완료 조건을
-// 먼저 읽는 화면이 됐다. 고지 자체는 계약 사항이라 삭제하지 않고 위치만 내린다.
-// ⚠️ 접힌 제목에 "다른 적절한 표현도 존재할 수 있습니다"를 남긴다 — 전부 감추면 B1
-//    (판정=AI 제안이지 유일한 정답이 아님)의 고지 효과가 사라진다.
+// 학습자가 실제로 읽을 수 있도록 참고 판정의 지위와 확인 범위만 두 문장으로 남긴다.
 function MissionBriefDrawer({ mission }: { mission: MissionRuntime }) {
-  const feat = getTargetFeature(mission.unit.target_feature);
-  const estMin = mission.production_task.mode === "interpreting" ? 15 : 12;
-  const tgtName = tgtLangName(mission.direction);
-  const isInterp = mission.production_task.mode === "interpreting";
   return (
-    <details className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-3 text-[12.5px]">
+    <details className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-2.5 text-[12.5px]">
       <summary className="cursor-pointer text-[#6B5518]">
-        판정 기준 보기 · <b>다른 적절한 표현도 존재할 수 있습니다</b>
+        판정 기준 보기 · <b>정답은 하나가 아니에요</b>
       </summary>
-      <div className="mt-2.5 space-y-1.5 text-muted-foreground">
-        {/* 1부 문항마다 상황이 따로 있으므로, 여기 상황은 "2부에서 직접 할 일"임을 밝힌다. */}
-        <p className="text-foreground">
-          <span className="text-muted-foreground">마지막에 직접 {isInterp ? "통역할" : "옮길"} 상황 · </span>
-          {mission.production_task.situation_ko}
-          <span className="text-muted-foreground"> · 약 {estMin}분</span>
-        </p>
-        <p>{JUDGMENT_STATUS_CAPTION}</p>
+      <div className="mt-2 space-y-1 text-muted-foreground">
+        <p>현재 강의안과 AI 제안을 바탕으로 한 참고 판정입니다. 상황에 따라 다른 표현도 적절할 수 있어요.</p>
         <p>
-          완료 조건 — 판단 {mission.mpj_items.length}문항 → {isInterp ? `${tgtName}로 통역` : `${tgtName}로 옮기기`} 1회 → 피드백 확인 → 필요 시 다듬기.
-          <b className="text-foreground"> 정답·완성된 참고 문장은 제출한 뒤에 공개됩니다.</b>
+          뜻 전달 · 이해를 막는 문법 · 이 상황에 맞는 「{mission.unit.learner_label}」을 봅니다.
+          <b className="text-foreground"> 참고 표현은 제출 뒤에 공개됩니다.</b>
         </p>
-        <p>확인하는 것 — ① 원문의 의미·의도가 유지됐는가 ② 의미를 방해하는 문법 오류가 있는가 ③ 이 관계·상황에서 「{mission.unit.learner_label}」이 적절한가</p>
-        {feat && feat.excluded_confounds.length > 0 && (
-          <p>확인하지 않는 것 — {feat.excluded_confounds.join(" · ")}</p>
-        )}
       </div>
     </details>
   );
@@ -1849,7 +2045,12 @@ function MpjContextSurface({
   if (channel === "email") {
     return (
       <div className="my-1.5 overflow-hidden rounded-2xl border border-[#D7DDE5] bg-white">
-        <div className="border-b border-l-4 border-[#E4E8EE] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#F6F8FA_74%)] px-4 py-3">
+        <div
+          className={[
+            "border-b border-l-4 border-[#E4E8EE] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#F6F8FA_74%)]",
+            MISSION_SCENE_PANEL_DENSITY,
+          ].join(" ")}
+        >
           <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#5A6672]">
             <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
             지금, 이메일을 쓸 장면
@@ -1857,9 +2058,10 @@ function MpjContextSurface({
           <SituationText
             text={item.situation_ko}
             emphasizeFirst
-            className="mt-2 text-[14.5px] leading-[1.52]"
+            spacious
+            className={MISSION_SCENE_TEXT_DENSITY}
           />
-          <div className="mt-2.5 text-[12.5px] font-semibold text-[#3E4C57]">
+          <div className={`${MISSION_SCENE_RELATION_GAP} text-[12.5px] font-semibold text-[#3E4C57]`}>
             받는 사람 · {learnerCounterpartLabel(item.relation_ko)}
           </div>
         </div>
@@ -1889,7 +2091,12 @@ function MpjContextSurface({
   if (channel === "facetoface" || channel === "phone") {
     return (
       <div className="my-1.5 overflow-hidden rounded-2xl border border-[#CFD9E3] bg-[#F3F6F9]">
-        <div className="border-b border-l-4 border-[#DCE4EB] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#EAF0F5_74%)] px-4 py-3">
+        <div
+          className={[
+            "border-b border-l-4 border-[#DCE4EB] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#EAF0F5_74%)]",
+            MISSION_SCENE_PANEL_DENSITY,
+          ].join(" ")}
+        >
           <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#52697E]">
             <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
             {channel === "phone" ? "지금, 통화할 장면" : "지금, 마주 보고 말할 장면"}
@@ -1897,9 +2104,10 @@ function MpjContextSurface({
           <SituationText
             text={item.situation_ko}
             emphasizeFirst
-            className="mt-2 text-[14.5px] leading-[1.52]"
+            spacious
+            className={MISSION_SCENE_TEXT_DENSITY}
           />
-          <div className="mt-2.5 text-[12.5px] font-semibold text-[#3E4C57]">
+          <div className={`${MISSION_SCENE_RELATION_GAP} text-[12.5px] font-semibold text-[#3E4C57]`}>
             듣는 사람 · {learnerCounterpartLabel(item.relation_ko)}
           </div>
         </div>
@@ -1970,7 +2178,8 @@ function MpjStage({
   const [reasonPick, setReasonPick] = useState<string | null>(null);
   const [confidence, setConfidence] = useState<string | null>(null);
   const [fixPicks, setFixPicks] = useState<Set<number>>(new Set());
-  const [multiPicks, setMultiPicks] = useState<Record<number, string>>({});
+  const [multiBestPick, setMultiBestPick] = useState<number | null>(null);
+  const [multiWorstPick, setMultiWorstPick] = useState<number | null>(null);
 
   // 대화창 끝 지점이 헤더 위로 올라갔는지 — 올라갔을 때만 맥락 바를 띄운다.
   // IntersectionObserver 대신 스크롤 리스너를 쓴다: 같은 값이면 React가 리렌더를
@@ -2017,7 +2226,11 @@ function MpjStage({
       case "reason":
         return !!reasonPick;
       case "multi_judge":
-        return Object.keys(multiPicks).length === item.candidates.length;
+        return (
+          multiBestPick !== null &&
+          multiWorstPick !== null &&
+          multiBestPick !== multiWorstPick
+        );
       default:
         return false;
     }
@@ -2054,7 +2267,19 @@ function MpjStage({
         setReasonPick(item.accepted_reason_id);
         break;
       case "multi_judge":
-        setMultiPicks(Object.fromEntries(item.candidates.map((c, i) => [i, c.accepted_band_codes[0]])));
+        {
+          const withinBand = getTargetFeature(feature)?.within_band_code;
+          const bestIndex = item.candidates.findIndex((candidate) =>
+            withinBand ? candidate.accepted_band_codes.includes(withinBand) : false,
+          );
+          const selectedBest = bestIndex >= 0 ? bestIndex : 0;
+          const worstIndex = item.candidates.findIndex((candidate, index) =>
+            index !== selectedBest &&
+            (withinBand ? !candidate.accepted_band_codes.includes(withinBand) : true),
+          );
+          setMultiBestPick(selectedBest);
+          setMultiWorstPick(worstIndex >= 0 ? worstIndex : selectedBest === 0 ? 1 : 0);
+        }
         break;
     }
     setAnswered(true);
@@ -2089,7 +2314,8 @@ function MpjStage({
       case "multi_judge":
         return {
           ...base,
-          candidate_band_codes: item.candidates.map((_, i) => multiPicks[i]),
+          ...(multiBestPick !== null ? { best_candidate_index: multiBestPick } : {}),
+          ...(multiWorstPick !== null ? { worst_candidate_index: multiWorstPick } : {}),
         };
     }
   };
@@ -2140,7 +2366,7 @@ function MpjStage({
           {/* scale4 */}
           {item.type === "scale4" && (
             <>
-              <div className="text-[13px] font-semibold">첫인상으로 이 번역안은 얼마나 적절한가요?</div>
+              <div className="text-[13px] font-semibold">이 번역안은 이 상황에 얼마나 적절한가요?</div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {SCALE4_CODES.map((code) => (
                   <Choice key={code} label={SCALE4_LABELS[code as Scale4Code]} selected={scalePick === code} disabled={answered} onClick={() => setScalePick(code)} />
@@ -2175,7 +2401,7 @@ function MpjStage({
             <>
               <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">
                 판단한 표현을 어떻게 고치면 좋을까요?{" "}
-                <span className="font-normal">· 알맞은 수정안을 모두 선택</span>
+                <span className="font-normal">· 복수 선택 가능</span>
               </div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {item.corrections.map((o, i) => (
@@ -2208,8 +2434,14 @@ function MpjStage({
           {/* v4 reason: 부적절함은 전제하고 주된 원인 하나만 고른다. */}
           {item.type === "reason" && (
             <>
-              <div className="rounded-lg bg-[#FFF9DF] px-3 py-2 text-[12.5px] leading-relaxed text-[#5B4A1E]">
-                이 표현은 이 상황에 맞지 않습니다.
+              <div className="flex items-start gap-2.5 rounded-xl border border-[#E25743] bg-[#FFF0ED] px-3.5 py-3 text-[#942F24] shadow-[0_2px_8px_rgba(190,58,42,0.08)]">
+                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <div>
+                  <div className="text-[13px] font-extrabold">이 표현은 이 상황에 맞지 않습니다.</div>
+                  <div className="mt-0.5 text-[12px] leading-relaxed text-[#A44A3E]">
+                    무엇이 가장 크게 어긋났는지 찾아보세요.
+                  </div>
+                </div>
               </div>
               <div className="mt-4 text-[13px] font-semibold">가장 큰 이유는 무엇인가요?</div>
               <div className="mt-2 flex flex-col gap-1.5">
@@ -2329,30 +2561,64 @@ function MpjStage({
       {/* multi_judge: 한 상황 다중 발화 */}
       {item.type === "multi_judge" && (
         <div className="rounded-xl border border-[#EAE4D2] border-t-[3px] border-t-[#15202B] bg-white px-4 pb-4 pt-3">
-          <div className="text-[13px] font-semibold">여러 AI 번역 초안 비교하기</div>
-          <p className="mt-1 text-[12.5px] text-muted-foreground">각 초안이 이 상황에 맞는지 판단하세요.</p>
+          <div className="text-[13px] font-semibold">AI가 만든 번역 초안 5개 비교하기</div>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">BEST 1, WORST 1을 각각 고르세요.</p>
           <ul className="mt-3 space-y-2.5">
             {item.candidates.map((c, i) => (
-              <li key={c.text} className="rounded-lg border border-[#EAE4D2] px-3.5 py-3">
-                <div className="text-[14.5px]">{c.text}</div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {bands.map((b) => (
-                    <button
-                      key={b.code}
-                      type="button"
-                      disabled={answered}
-                      onClick={() => setMultiPicks((p) => ({ ...p, [i]: b.code }))}
-                      className={[
-                        "rounded-md border px-2.5 py-1 text-[12px]",
-                        multiPicks[i] === b.code ? "border-[1.5px] border-[#15202B] bg-[#FAFAF7] font-semibold" : "border-[#EAE4D2] bg-white text-muted-foreground",
-                        answered && c.accepted_band_codes.includes(b.code) ? "border-[#2E7D5B] bg-[#F2FAF6]" : "",
-                      ].join(" ")}
-                    >
-                      {learnerBandLabel(feature, b.code, b.label)}
-                    </button>
-                  ))}
+              <li
+                key={c.text}
+                className={[
+                  "flex items-start gap-3 rounded-lg border px-3.5 py-3",
+                  multiBestPick === i ? "border-[#2E7D5B] bg-[#F2FAF6]" : "",
+                  multiWorstPick === i ? "border-[#C94B3B] bg-[#FFF1EE]" : "",
+                  multiBestPick !== i && multiWorstPick !== i ? "border-[#EAE4D2]" : "",
+                ].join(" ")}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-[14.5px] leading-relaxed">{c.text}</div>
+                  {answered && (
+                    <div className="mt-1.5 text-[12.5px] text-muted-foreground">
+                      참고 판정 ·{" "}
+                      {c.accepted_band_codes
+                        .map((code) => learnerBandLabel(feature, code, bandLabel(feature, code)))
+                        .join(" / ")}
+                      {" · "}
+                      {c.note_ko}
+                    </div>
+                  )}
                 </div>
-                {answered && <div className="mt-2 text-[12.5px] text-muted-foreground">{c.note_ko}</div>}
+                <div className="flex shrink-0 gap-1.5">
+                  <button
+                    type="button"
+                    disabled={answered || multiWorstPick === i}
+                    aria-pressed={multiBestPick === i}
+                    onClick={() => setMultiBestPick((picked) => (picked === i ? null : i))}
+                    className={[
+                      "rounded-full border px-2.5 py-1 text-[11.5px] font-bold transition-colors",
+                      multiBestPick === i
+                        ? "border-[#2E7D5B] bg-[#2E7D5B] text-white"
+                        : "border-[#B9D8C8] bg-white text-[#2E7D5B]",
+                      multiWorstPick === i ? "cursor-not-allowed opacity-35" : "",
+                    ].join(" ")}
+                  >
+                    BEST
+                  </button>
+                  <button
+                    type="button"
+                    disabled={answered || multiBestPick === i}
+                    aria-pressed={multiWorstPick === i}
+                    onClick={() => setMultiWorstPick((picked) => (picked === i ? null : i))}
+                    className={[
+                      "rounded-full border px-2.5 py-1 text-[11.5px] font-bold transition-colors",
+                      multiWorstPick === i
+                        ? "border-[#C94B3B] bg-[#C94B3B] text-white"
+                        : "border-[#E1B8B1] bg-white text-[#A33E31]",
+                      multiBestPick === i ? "cursor-not-allowed opacity-35" : "",
+                    ].join(" ")}
+                  >
+                    WORST
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

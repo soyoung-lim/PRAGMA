@@ -96,7 +96,10 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).toContain("scale4 → fix_choice → reason → multi_judge");
       expect(entry.text).toContain("Judge3는 교정 문항에서 딱 한 번만");
       expect(entry.text).toContain("reason에는 accepted_band_codes·confidence를 만들지 마세요");
-      expect(entry.text).toContain("과소 1·적정 2·과잉 1");
+      expect(entry.text).toContain("과소 2·적정 2·과잉 1");
+      expect(entry.text).toContain("primary의 위치와 id를 고정하지 말고");
+      expect(entry.text).toContain("잠시 고민할 만큼 그럴듯해야 합니다");
+      expect(entry.text).toContain("황당한 문법 금지 주장");
       expect(entry.text).toContain('"type": "scale4"');
       expect(entry.text).toContain('"reference_scale_code"');
       expect(entry.text).not.toContain('"type": "reason_conf"');

@@ -146,7 +146,10 @@ const App = () => (
           <Route path="/entry/language-direction" element={<RequireApproved><EntryLanguageDirection /></RequireApproved>} />
           <Route path="/entry/unavailable" element={<RequireApproved><EntryUnavailable /></RequireApproved>} />
           {/* 학습 미션 정본 = /learner/practice (MissionRunV1, 프로토타입 v2 이식). 구 /scenario·mission-run은 리다이렉트/별칭 */}
-          <Route path="/learner/practice" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
+          <Route
+            path="/learner/practice"
+            element={<RequireApproved allowDevMissionPreview><MissionRunV1 /></RequireApproved>}
+          />
           <Route path="/learner/practice/:scenarioId" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
           {/* 구 학습 미션 경로 — 새 정본으로 리다이렉트(구 PracticeMission 목업 은퇴) */}
           <Route path="/scenario" element={<Navigate to="/learner/practice" replace />} />
