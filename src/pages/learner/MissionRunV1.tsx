@@ -346,34 +346,31 @@ function FeedbackPanel({
   const layers = [
     {
       key: "meaning",
-      step: "1",
-      label: "뜻 전달",
+      label: "의미 전달",
       passed: v.semantic_fidelity === "preserved",
       short:
         v.semantic_fidelity === "preserved"
-          ? "핵심 뜻을 잘 전달했습니다"
+          ? "핵심 의미가 잘 전달됐습니다"
           : v.semantic_fidelity === "minor_loss"
-            ? "일부 뉘앙스를 더 살려 보십시오"
-            : "뜻이 달라진 부분을 확인해 보십시오",
+            ? "일부 의미와 뉘앙스를 더 살려 보세요"
+            : "원문의 핵심 의미와 다른 부분을 확인해 보세요",
     },
     {
       key: "grammar",
-      step: "2",
-      label: "문법",
+      label: "문법 정확성",
       passed: v.grammatical_accuracy === "clean",
       short:
         v.grammatical_accuracy === "clean"
-          ? "이해를 막는 오류가 없습니다"
-          : "이해를 방해하는 부분을 다듬어 보십시오",
+          ? "문법적으로 자연스럽고 정확합니다"
+          : "문법적으로 다듬을 부분이 있습니다",
     },
     {
       key: "feature",
-      step: "3",
-      label: "상황 맞춤",
+      label: "상황 적절성",
       passed: v.pragmatic_appropriateness.band_code === withinBandCode,
       short:
         v.pragmatic_appropriateness.band_code === withinBandCode
-          ? "이 상황에 알맞게 조절했습니다"
+          ? "이 상황과 관계에 잘 어울립니다"
           : learnerBandLabel(
               featureCode,
               v.pragmatic_appropriateness.band_code,
@@ -389,7 +386,7 @@ function FeedbackPanel({
       <div className="overflow-hidden rounded-xl border border-[#DDE5DF] bg-white">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5EBE7] bg-[#F7FAF8] px-3.5 py-3">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#52645A]">AI 답안 판정</div>
+            <div className="text-[11px] font-bold text-[#52645A]">답안 피드백</div>
             <div className="mt-0.5 text-[13.5px] font-bold text-[#15202B]">
               {allPassed
                 ? "좋습니다. 세 기준을 모두 안정적으로 통과했습니다."
@@ -413,35 +410,27 @@ function FeedbackPanel({
               <div
                 key={layer.key}
                 className={[
-                  "min-w-0 rounded-xl border px-3 py-3",
+                  "flex min-h-[104px] min-w-0 flex-col rounded-xl border px-3 py-3",
                   layer.passed
                     ? "border-[#BBDCC8] bg-[#F2FAF5]"
                     : "border-[#F0D786] bg-[#FFFAE9]",
                 ].join(" ")}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={[
-                        "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-extrabold",
-                        layer.passed ? "bg-[#D5EFDF] text-[#176640]" : "bg-[#FBE8AE] text-[#755A0B]",
-                      ].join(" ")}
-                    >
-                      {layer.step}
-                    </span>
-                    <span className="text-[11px] font-bold text-[#52645A]">{layer.label}</span>
-                  </div>
+                  <span className="text-[11.5px] font-bold text-[#52645A]">{layer.label}</span>
                   <span
                     className={[
-                      "inline-flex items-center gap-1 text-[10.5px] font-extrabold",
-                      layer.passed ? "text-[#176640]" : "text-[#755A0B]",
+                      "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10.5px] font-extrabold",
+                      layer.passed
+                        ? "bg-[#DFF4E7] text-[#176640]"
+                        : "bg-[#FBE8AE] text-[#755A0B]",
                     ].join(" ")}
                   >
                     <StatusIcon className="h-3.5 w-3.5" aria-hidden="true" />
                     {layer.passed ? "통과" : "조절 필요"}
                   </span>
                 </div>
-                <div className="mt-2 pl-[26px] text-[12.5px] font-bold leading-snug text-[#15202B]">
+                <div className="flex flex-1 items-center justify-center px-1 pt-2 text-center text-[12.5px] font-bold leading-snug text-[#15202B]">
                   {layer.short}
                 </div>
               </div>
@@ -462,7 +451,7 @@ function FeedbackPanel({
       </div>
 
       <p className="px-0.5 text-[11.5px] text-muted-foreground">
-        AI 진단입니다 — 유일한 정답이 아니라, 이 상황에서 살펴볼 지점을 짚어 준 것입니다.
+        AI가 생성한 참고 피드백입니다. 상황에 따라 다른 판단도 가능합니다.
       </p>
     </div>
   );
@@ -470,15 +459,15 @@ function FeedbackPanel({
 
 const FEEDBACK_REVIEW_STEPS = [
   {
-    label: "뜻과 의도",
+    label: "의미 전달",
     detail: "원문의 핵심 의미와 의도가 유지됐는지",
   },
   {
-    label: "문법과 이해",
+    label: "문법 정확성",
     detail: "이해를 방해하는 문법 문제가 있는지",
   },
   {
-    label: "관계와 상황",
+    label: "상황 적절성",
     detail: "이 상대·부담에 맞는 표현인지",
   },
 ] as const;
@@ -509,7 +498,7 @@ function FeedbackLoadingPanel() {
       <div className="border-b border-[#EEE6D4] bg-[#FFF9E8] px-4 py-3.5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-[12px] font-bold text-[#6B5518]">AI 피드백 구성 중</div>
+            <div className="text-[12px] font-bold text-[#6B5518]">피드백 준비 중</div>
             <div className="mt-0.5 text-[14px] font-semibold text-[#15202B]">
               답안을 세 기준으로 살펴보고 있습니다
             </div>
@@ -523,7 +512,7 @@ function FeedbackLoadingPanel() {
       </div>
 
       <div className="px-4 py-3.5">
-        <ol className="grid gap-2 sm:grid-cols-3" aria-label="AI 피드백 확인 기준">
+        <ol className="grid gap-2 sm:grid-cols-3" aria-label="피드백 확인 기준">
           {FEEDBACK_REVIEW_STEPS.map((step, index) => {
             const active = index === activeStep;
             return (
@@ -562,7 +551,7 @@ function FeedbackLoadingPanel() {
           </p>
         )}
         <p className="mt-2 text-[11px] text-muted-foreground">
-          결과는 확정 채점이 아니라, 답안을 다듬기 위한 AI 진단입니다.
+          결과는 확정 채점이 아니며, AI가 생성한 참고 피드백입니다.
         </p>
       </div>
     </div>
@@ -811,7 +800,7 @@ function MissionRunner({
             헤더 아래에 고정해 긴 문항에서도 현재 화행·초점·단계를 잃지 않는다.
             feature 정본명은 바꾸지 않고, 이 표면에서만 행동 문장으로 풀어 쓴다. */}
         <div
-          className="sticky z-30 -mx-6 mb-4 h-[92px] border-b border-[#E6E0CE] bg-background/95 px-6 pb-2.5 pt-2 shadow-[0_6px_16px_rgba(21,32,43,0.05)] backdrop-blur"
+          className="sticky z-30 -mx-6 mb-2 h-[92px] border-b border-[#E6E0CE] bg-background/95 px-6 pb-2.5 pt-2 shadow-[0_6px_16px_rgba(21,32,43,0.05)] backdrop-blur"
           style={{ top: `${HEADER_H}px` }}
         >
           <div className="mb-2 flex h-[17px] min-w-0 items-center gap-2 whitespace-nowrap">
@@ -860,12 +849,18 @@ function MissionRunner({
             })}
           </div>
         </div>
-        <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#A9B0BA]">
+        <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#A9B0BA]">
           {stage === 0 ? (
             phase === "handoff" ? (
               <span className="font-bold text-foreground">예시 {items.length} / {items.length} 살펴봄</span>
             ) : (
-              <span>예시 {mpjIdx + 1} / {items.length}</span>
+              <>
+                <span>예시 {mpjIdx + 1} / {items.length}</span>
+                <span className="text-[#D3CEC0]">·</span>
+                <span className="font-bold text-[#15202B]">
+                  {mpjTaskTitle(item, mission.unit.target_feature)}
+                </span>
+              </>
             )
           ) : (
             stageSteps(stage, isInterp).map((s, i, arr) => (
@@ -1800,13 +1795,35 @@ function RevisionMap({ first, final, featureLabel, interp }: { first: string; fi
 }
 
 const MPJ_TASK_TITLE: Record<string, string> = {
-  scale4: "첫인상 판단",
-  judge3: "조절 정도 판단",
-  fix_choice: "판단하고 고쳐보기",
-  reason_conf: "판단 근거 살펴보기",
-  reason: "왜 문제일까",
-  multi_judge: "여러 초안 비교",
+  scale4: "이 번역, 상황에 맞을까?",
+  fix_choice: "어떻게 바꾸면 더 자연스러울까?",
+  reason_conf: "왜 이 표현이 상황에 맞지 않을까?",
+  reason: "왜 이 표현이 상황에 맞지 않을까?",
 };
+
+const JUDGE3_TASK_TITLE: Record<string, string> = {
+  request_mitigation_optionality: "부탁이 너무 직접적이거나 우회적일까?",
+  refusal_softening: "거절이 너무 단호하거나 장황할까?",
+  gratitude_calibration: "고마움의 정도가 상황에 맞을까?",
+  apology_accountability_repair: "사과가 책임과 해결을 충분히 담았을까?",
+  proposal_optionality_clarity: "제안이 선택지를 남기고 방안을 분명히 했을까?",
+  invitation_choice_commitment: "초대가 선택권과 약속을 분명히 했을까?",
+  opposition_stance_mitigation: "이견이 너무 강하거나 흐리지 않을까?",
+  compliment_grounding_sensitivity: "칭찬의 강도와 내용이 상황에 맞을까?",
+  compliment_response_uptake: "칭찬에 대한 반응이 자연스러울까?",
+  complaint_problem_accountability: "불만이 문제와 책임을 적절히 짚었을까?",
+  politeness: "공손함의 정도가 상황에 맞을까?",
+};
+
+function mpjTaskTitle(item: MpjItemRuntime, featureCode: string): string {
+  if (item.type === "judge3") {
+    return JUDGE3_TASK_TITLE[featureCode] ?? "이 표현의 정도가 상황에 맞을까?";
+  }
+  if (item.type === "multi_judge") {
+    return `번역안 ${item.candidates.length}개, 각각 상황에 맞을까?`;
+  }
+  return MPJ_TASK_TITLE[item.type] ?? "이 표현을 어떻게 볼까?";
+}
 
 function MpjContextSurface({
   item,
@@ -1820,7 +1837,7 @@ function MpjContextSurface({
 
   if (channel === "email") {
     return (
-      <div className="my-3 overflow-hidden rounded-2xl border border-[#D7DDE5] bg-white">
+      <div className="my-1.5 overflow-hidden rounded-2xl border border-[#D7DDE5] bg-white">
         <div className="border-b border-l-4 border-[#E4E8EE] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#F6F8FA_74%)] px-4 py-3">
           <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#5A6672]">
             <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
@@ -1860,7 +1877,7 @@ function MpjContextSurface({
 
   if (channel === "facetoface" || channel === "phone") {
     return (
-      <div className="my-3 overflow-hidden rounded-2xl border border-[#CFD9E3] bg-[#F3F6F9]">
+      <div className="my-1.5 overflow-hidden rounded-2xl border border-[#CFD9E3] bg-[#F3F6F9]">
         <div className="border-b border-l-4 border-[#DCE4EB] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#EAF0F5_74%)] px-4 py-3">
           <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#52697E]">
             <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
@@ -1903,7 +1920,7 @@ function MpjContextSurface({
       situation={item.situation_ko}
       relation={item.relation_ko}
       separatePanels
-      threadEyebrow="메신저 · 보내기 전"
+      threadEyebrow="메시지 작성 중"
     >
       {item.preceding_turn && <ChatBubble side="them">{item.preceding_turn}</ChatBubble>}
       {item.type === "multi_judge" ? (
@@ -2072,7 +2089,6 @@ function MpjStage({
 
   return (
     <div className="space-y-3">
-      <div className="px-0.5 text-[15px] font-bold text-[#15202B]">{MPJ_TASK_TITLE[item.type] ?? "표현 살펴보기"}</div>
       <MpjContextSurface item={item} answered={answered} />
       {answered && item.type !== "multi_judge" && item.highlights?.length > 0 && (
         <p className="px-1 text-[11.5px] leading-relaxed text-muted-foreground">

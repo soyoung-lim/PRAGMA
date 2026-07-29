@@ -114,7 +114,7 @@ export function ChatScene({
   relation,
   eyebrow = "지금, 이 장면",
   separatePanels = false,
-  threadEyebrow = "메신저 · 보내기 전",
+  threadEyebrow = "메시지 작성 중",
   extraTag,
   children,
 }: {
@@ -155,7 +155,7 @@ export function ChatScene({
 
   if (separatePanels) {
     return (
-      <div className="my-3 space-y-3">
+      <div className="my-1.5 space-y-3">
         {situationPanel}
         <div className="overflow-hidden rounded-2xl border border-[#CBD5DD] bg-[#E8EDF2] shadow-[0_7px_20px_rgba(21,32,43,0.06)]">
           <div className="flex items-center justify-between border-b border-[#D5DDE4] bg-white/90 px-3.5 py-2.5">
@@ -166,7 +166,7 @@ export function ChatScene({
               </span>
               {threadEyebrow}
             </div>
-            <span className="text-[10.5px] text-[#7A8791]">대화 미리보기</span>
+            <span className="text-[10.5px] text-[#7A8791]">대화 화면</span>
           </div>
           <div className="px-3.5 py-3.5">{children}</div>
         </div>
