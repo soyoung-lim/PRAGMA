@@ -1,7 +1,7 @@
 // scenario_core_v1 — 500개 구축 단위의 zod 스키마. 생성계약 v1.3 §2b.
 //
 // 코어 = 상황·원문·태그만. target_feature·MPJ 없음(카탈로그 미완 화행도 커버).
-// 편성·데모 선별분만 mission_v1으로 승격한다(missionSchema.ts).
+// 편성·데모 선별분만 버전된 Full Mission으로 승격한다(missionSchema.ts).
 //
 // PDR 값 개명(계약 A2 / 0-b·2): JSON은 화자 기준의 명확한 이름을 쓴다.
 //   p: speaker_lower | equal | speaker_higher   (구 enum higher/equal/lower)

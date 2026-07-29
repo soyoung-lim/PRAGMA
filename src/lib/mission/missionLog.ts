@@ -4,10 +4,9 @@
 // (auth_user_id = auth.uid()). 따라서 **실제 Supabase 세션**에서만 저장된다 —
 // 데모 스텁(auth 없음)은 저장을 건너뛴다(크래시 없이 사유 반환).
 //
-// 이번 단계 = 루프를 닫는 최소 로그(신원·방향·원문·산출·수정·완료). 계약 §6b의
-// full mission_attempt_v1(문항별 답·확신도·피드백 스냅샷)은 문항 상태 상향이 필요해
-// 후속(feedback-lite)에서 확장한다 — target_feature_observed는 지금 비움.
-// context_judgment = 이견 채널 기록(0-r·104). 남기지 않으면 null.
+// 이번 단계 = 루프를 닫는 수행 로그(신원·방향·MPJ 비채점 응답·원문·산출·수정·완료).
+// context_judgment = mpj_response_v1 봉투. 이견 채널이 있으면 learner_dissent에 함께
+// 넣는다. MPJ 응답이 없는 legacy/2부 직접 진입은 기존 이견 단독 형태도 읽기 호환한다.
 
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -17,6 +16,7 @@ import {
 
 export type {
   LearnerDissent,
+  MpjResponseTrace,
   SaveAttemptInput,
 } from "@/lib/mission/missionAttemptRow";
 

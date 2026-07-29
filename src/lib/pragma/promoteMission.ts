@@ -187,8 +187,8 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     direction, // 0-l·85 — 생성 미션의 방향이 요청과 일치하는지 검사
   };
 
-  let mission: MissionRuntime | undefined; // 정규화(v1/v2/v3 엣지 응답) — 검사·표시·반환용
-  let rawContent: unknown; // 엣지 원본(저장용 — 현 DB CHECK는 mission_v1, 라운드2에서 v2 허용)
+  let mission: MissionRuntime | undefined; // 정규화(v1/v2/v3/v4 엣지 응답) — 검사·표시·반환용
+  let rawContent: unknown; // 엣지 원본(저장용 — migration이 버전별 상위집합을 허용)
   let check: ReturnType<typeof checkMission> | undefined;
   let failureNotes: string | undefined;
   let attempts = 0;
@@ -214,7 +214,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     });
     if (error) return { ok: false, error: `미션 생성 호출 실패: ${error.message ?? error}`, attempts };
     rawContent = (data as { mission_content?: unknown })?.mission_content;
-    const parsed = normalizeMission(rawContent); // legacy v1/v2와 현행 v3 모두 허용
+    const parsed = normalizeMission(rawContent); // legacy v1/v2/v3와 현행 v4 모두 허용
     if (!parsed.ok || !parsed.data) {
       failureNotes = "스키마 파싱 실패";
       continue;

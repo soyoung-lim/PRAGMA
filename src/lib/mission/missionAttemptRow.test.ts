@@ -100,4 +100,54 @@ describe("mission attempt row", () => {
       provenance: { model: "test-model" },
     });
   });
+
+  it("stores unscored MPJ responses in a versioned context envelope", () => {
+    const missionV4Shape = {
+      ...sampleMissionV2(),
+      schema_version: "mission_v4",
+    } as unknown as ReturnType<typeof sampleMissionV2>;
+    const row = buildMissionAttemptRow({
+      mission: missionV4Shape,
+      scenarioId: "11111111-1111-1111-1111-111111111111",
+      speechAct: "request",
+      level: "intermediate",
+      firstResponse: "처음 답",
+      revisedResponse: "고친 답",
+      startedAtIso: "2026-07-29T01:00:00.000Z",
+      mpjResponses: [
+        {
+          item_id: 1,
+          item_type: "fix_choice",
+          band_code: "overdone",
+          correction_indexes: [0, 2],
+          completed_at: "2026-07-29T01:01:00.000Z",
+        },
+        {
+          item_id: 2,
+          item_type: "reason",
+          reason_id: "primary",
+          confidence: "이 값은 v4에서 폐기돼야 함",
+          completed_at: "2026-07-29T01:02:00.000Z",
+        },
+      ],
+    }, "profile-1", "user-1");
+
+    expect(row.context_judgment).toMatchObject({
+      schema_version: "mpj_response_v1",
+      mission_schema_version: "mission_v4",
+      learner_dissent: null,
+      responses: [
+        {
+          item_type: "fix_choice",
+          band_code: "overdone",
+          correction_indexes: [0, 2],
+        },
+        {
+          item_type: "reason",
+          reason_id: "primary",
+        },
+      ],
+    });
+    expect(JSON.stringify(row.context_judgment)).not.toContain("confidence");
+  });
 });

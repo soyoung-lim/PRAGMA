@@ -1,4 +1,4 @@
-// 학습자 미션 DB fetch — scenarios 행의 mission_content(v1/v2/v3)를 읽어온다.
+// 학습자 미션 DB fetch — scenarios 행의 mission_content(v1/v2/v3/v4)를 읽어온다.
 //
 // 승격·검토 경로: mission_status = NULL(코어) | 'generated' | 'reviewed'.
 // 학습자 실행 게이트는 'reviewed'만(계약 0-b·17). DEV에서는 'generated'도 허용해
