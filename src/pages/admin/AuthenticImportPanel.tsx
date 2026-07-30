@@ -46,12 +46,14 @@ type UsageType =
   | "expression_resource"
   | "unsuitable";
 
+// 2026-07-30 워딩 수렴: "씨앗"은 관리자에게 낯선 은유라 폐기. 표현 자원은 완성
+// 용도(라운지)가 보이게 표시한다 — 내부 타입명(expression_resource)은 불변.
 const USAGE_KO: Record<UsageType, string> = {
-  scenario_seed: "시나리오 씨앗",
+  scenario_seed: "시나리오",
   preceding_turn: "선행 발화",
   translation_source: "번역 출발문",
   response_task: "후속 반응 과제",
-  expression_resource: "표현 자원",
+  expression_resource: "라운지 표현 후보",
   unsuitable: "미션 부적합",
 };
 const USAGE_TONE: Record<UsageType, string> = {
@@ -68,6 +70,16 @@ const GENERATABLE: UsageType[] = [
   "preceding_turn",
   "translation_source",
   "response_task",
+];
+
+// 후보를 유형별 섹션으로 묶는다(2026-07-30 수렴안) — 원자료가 어떤 콘텐츠 갈래로
+// 나뉘는지(시나리오/선행 발화/출발문/라운지) 화면 구조 자체가 말하게 한다.
+const CANDIDATE_SECTIONS: { title: string; types: UsageType[] }[] = [
+  { title: "시나리오", types: ["scenario_seed"] },
+  { title: "선행 발화", types: ["preceding_turn"] },
+  { title: "번역 출발문·반응 과제", types: ["translation_source", "response_task"] },
+  { title: "라운지 표현 후보", types: ["expression_resource"] },
+  { title: "미션 부적합 — 참고만", types: ["unsuitable"] },
 ];
 
 // ── AI 응답 타입(관대하게 받는다) ───────────────────────────────────────
@@ -211,7 +223,11 @@ interface Props {
   onApply: (a: AuthenticApply) => void;
 }
 
+type InputTab = "image" | "text" | "youtube";
+
 const AuthenticImportPanel = ({ onApply }: Props) => {
+  const [inputTab, setInputTab] = useState<InputTab>("image");
+  const [imgLarge, setImgLarge] = useState(false);
   const [text, setText] = useState("");
   const [sourceRef, setSourceRef] = useState("");
   const [note, setNote] = useState("");
@@ -329,6 +345,7 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
         return;
       }
       setText(caption.trim());
+      setInputTab("text"); // 자막은 문구 칸에 채워진다 — 사용자가 다듬을 수 있게 탭 전환
       setInputOrigin("authentic_youtube");
       // 출처가 비어 있으면 영상 URL을 기본 출처로 채운다(provenance 0-q·98).
       if (!sourceRef.trim()) setSourceRef(u);
@@ -367,103 +384,143 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
     // 좌 = 자료 입력(고정폭 썸네일·문구·출처·방향), 우 = 분석·후보. 입력 칼럼은
     // 스크롤해도 따라오게 sticky — 후보를 훑다가 원문을 고치는 왕복이 잦다.
     <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
-      {/* ── LEFT: 자료 입력 ── */}
+      {/* ── LEFT: 자료 → 문구 확정 ── */}
       <section className="space-y-4 rounded-xl border-2 border-[#BA7517] bg-gradient-to-br from-[#FFF6E2] to-[#FBEFD9] p-4 lg:sticky lg:top-4 lg:col-span-2">
-        <p className="text-[11.5px] leading-relaxed text-[#5B5446]">
-          중국 쇼츠·드라마 캡처, 소설·메신저 문구 등 실제 자료를 넣으면 AI가 화용적 활용
-          방식을 분석해 후보를 제안합니다. 후보를 고르면 <b>개별 생성 화면</b>이 그 조건으로
-          열립니다. (업로드 이미지는 분석에만 쓰이고 저장·학습자 노출되지 않습니다.)
-        </p>
-
-        {/* 이미지 — 고정 규격 썸네일(세로 캡처가 화면을 못 삼키게) */}
+        {/* ① 원자료 가져오기 — 세 경로는 결국 전부 '문구'가 된다 */}
         <div>
-          <label className="text-[12px] font-medium text-muted-foreground">A. 캡처 이미지 1장 (선택)</label>
-          {!imageDataUrl ? (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="mt-1.5 flex h-24 w-full items-center justify-center rounded-md border border-dashed border-[#EAE4D2] bg-[#FAF7EE] text-[12px] text-muted-foreground hover:bg-muted"
-            >
-              + 캡처 이미지 업로드 (jpg·png·webp)
-            </button>
-          ) : (
-            <div className="mt-1.5 flex items-start gap-3">
-              <div className="h-36 w-24 shrink-0 overflow-hidden rounded-md border border-[#EAE4D2] bg-[#F1EDE2]">
-                <img
-                  src={imageDataUrl}
-                  alt={imageName ?? "미리보기"}
-                  className="h-full w-full object-contain"
-                />
-              </div>
-              <div className="min-w-0 space-y-1.5">
-                <p className="truncate text-[12px] text-muted-foreground">{imageName}</p>
-                <button
-                  type="button"
-                  onClick={clearImage}
-                  className="rounded-md border border-[#EAE4D2] bg-white px-2.5 py-1 text-[11.5px] text-[#1d2336] hover:bg-muted"
-                >
-                  제거
-                </button>
-              </div>
-            </div>
-          )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => onPickImage(e.target.files?.[0] ?? null)}
-          />
-        </div>
-
-        {/* 텍스트 */}
-        <div>
-          <label className="text-[12px] font-medium text-muted-foreground">B. 문구 직접 입력</label>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="짧은 중국어 또는 한국어 문구 (예: 每天都有忙不完的事)"
-            className="mt-1.5 h-24 w-full resize-none rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[13px] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
-          />
-        </div>
-
-        {/* 출처·메모·방향 */}
-        <div className="grid grid-cols-1 gap-3">
-          <div>
-            <label className="text-[12px] text-muted-foreground">출처 URL·책·시점 (선택)</label>
-            <input
-              value={sourceRef}
-              onChange={(e) => setSourceRef(e.target.value)}
-              className="mt-1.5 h-9 w-full rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
-            />
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[12.5px] font-bold text-[#7A4A0A]">① 원자료 가져오기</span>
+            <span className="text-[10.5px] text-[#8a6a2f]">이미지는 분석에만 쓰이고 저장되지 않습니다</span>
           </div>
-          <div>
-            <label className="text-[12px] text-muted-foreground">관리자 메모 (선택)</label>
-            <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="mt-1.5 h-9 w-full rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
-            />
-          </div>
-          <div>
-            <label className="text-[12px] text-muted-foreground">기본 언어 방향</label>
-            <div className="mt-1.5 flex gap-1.5">
-              {(["zh_ko", "ko_zh"] as LanguageDirection[]).map((d) => (
+          <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg bg-[#F1E8D2] p-1 text-[12px]">
+            {([["image", "이미지에서 추출"], ["text", "문구 직접 입력"], ["youtube", "YouTube 자막"]] as [InputTab, string][]).map(
+              ([k, l]) => (
                 <button
-                  key={d}
+                  key={k}
                   type="button"
-                  onClick={() => setDirection(d)}
+                  onClick={() => setInputTab(k)}
                   className={[
-                    "h-9 flex-1 rounded-md text-[12.5px] font-medium transition-colors",
-                    direction === d
-                      ? "border-2 border-[#BA7517] bg-[#FBEFD9] text-[#7A4A0A]"
-                      : "border border-[#EAE4D2] bg-transparent text-muted-foreground hover:bg-muted",
+                    "h-8 rounded-md font-medium transition-colors",
+                    inputTab === k ? "bg-white text-[#1d2336] shadow-sm" : "text-[#8a6a2f] hover:bg-white/60",
                   ].join(" ")}
                 >
-                  {d === "zh_ko" ? "중→한" : "한→중"}
+                  {l}
                 </button>
-              ))}
+              ),
+            )}
+          </div>
+
+          {inputTab === "image" && (
+            <div className="mt-2.5">
+              {!imageDataUrl ? (
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="flex h-24 w-full items-center justify-center rounded-md border border-dashed border-[#EAE4D2] bg-[#FAF7EE] text-[12px] text-muted-foreground hover:bg-muted"
+                >
+                  + 쇼츠·드라마 캡처 업로드 (jpg·png·webp)
+                </button>
+              ) : imgLarge ? (
+                <div className="space-y-1.5">
+                  <button type="button" onClick={() => setImgLarge(false)} title="클릭하면 작게 보기" className="block w-full">
+                    <img
+                      src={imageDataUrl}
+                      alt={imageName ?? "미리보기"}
+                      className="max-h-96 w-full rounded-md border border-[#EAE4D2] bg-[#F1EDE2] object-contain"
+                    />
+                  </button>
+                  <div className="flex items-center justify-between">
+                    <p className="truncate text-[12px] text-muted-foreground">{imageName}</p>
+                    <button type="button" onClick={clearImage}
+                      className="rounded-md border border-[#EAE4D2] bg-white px-2.5 py-1 text-[11.5px] text-[#1d2336] hover:bg-muted">
+                      제거
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setImgLarge(true)}
+                    title="클릭하면 크게 보기"
+                    className="h-28 w-20 shrink-0 overflow-hidden rounded-md border border-[#EAE4D2] bg-[#F1EDE2]"
+                  >
+                    <img src={imageDataUrl} alt={imageName ?? "미리보기"} className="h-full w-full object-contain" />
+                  </button>
+                  <div className="min-w-0 space-y-1.5">
+                    <p className="truncate text-[12px] text-muted-foreground">{imageName}</p>
+                    <p className="text-[10.5px] text-[#8a6a2f]">썸네일을 누르면 크게 봅니다</p>
+                    <button type="button" onClick={clearImage}
+                      className="rounded-md border border-[#EAE4D2] bg-white px-2.5 py-1 text-[11.5px] text-[#1d2336] hover:bg-muted">
+                      제거
+                    </button>
+                  </div>
+                </div>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => onPickImage(e.target.files?.[0] ?? null)}
+              />
             </div>
+          )}
+
+          {inputTab === "text" && (
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="짧은 중국어 또는 한국어 문구 (예: 每天都有忙不完的事) — 소설 구절·메신저 문구 등"
+              className="mt-2.5 h-24 w-full resize-none rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[13px] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
+            />
+          )}
+
+          {inputTab === "youtube" && (
+            <div className="mt-2.5">
+              <div className="flex gap-2">
+                <input
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=… (CC 지원 영상만)"
+                  className="h-9 flex-1 rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
+                />
+                <Button
+                  type="button"
+                  onClick={fetchCaption}
+                  disabled={ytLoading || !youtubeUrl.trim()}
+                  className="shrink-0 bg-[#BA7517] text-white hover:bg-[#BA7517]/90 disabled:opacity-60"
+                >
+                  {ytLoading ? "가져오는 중…" : "자막 가져오기"}
+                </Button>
+              </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                가져온 자막은 「문구 직접 입력」 탭에 채워집니다 — 필요한 부분만 남기고 분석하세요.
+                CC 자막이 없는 영상은 화면을 캡처해 「이미지에서 추출」을 사용하세요.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* 기본 언어 방향 */}
+        <div>
+          <label className="text-[12px] text-muted-foreground">기본 언어 방향</label>
+          <div className="mt-1.5 flex gap-1.5">
+            {(["zh_ko", "ko_zh"] as LanguageDirection[]).map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setDirection(d)}
+                className={[
+                  "h-9 flex-1 rounded-md text-[12.5px] font-medium transition-colors",
+                  direction === d
+                    ? "border-2 border-[#BA7517] bg-[#FBEFD9] text-[#7A4A0A]"
+                    : "border border-[#EAE4D2] bg-transparent text-muted-foreground hover:bg-muted",
+                ].join(" ")}
+              >
+                {d === "zh_ko" ? "중→한" : "한→중"}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -481,96 +538,95 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
           </div>
         )}
 
-        {/* 유튜브 자막 — 실사용 빈도가 낮아 보조 경로로 강등(2026-07-30, 사용자 판단:
-            중문 CC가 있으면서 앱에 맞는 영상이 드묾). 기능은 그대로 유지. */}
+        {/* ② 추출 문구 확인 — 입력의 최종 산출물은 오른쪽이 아니라 여기서 확정된다 */}
+        {analysis && (
+          <div className="rounded-md border border-[#EAE4D2] bg-white p-3">
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[12.5px] font-bold text-[#7A4A0A]">② 추출 문구 확인</span>
+              {analysis.extraction_confidence && (
+                <span
+                  className={[
+                    "rounded-full px-2 py-0.5 text-[10.5px] font-medium",
+                    (CONFIDENCE_KO[analysis.extraction_confidence] ?? CONFIDENCE_KO.text_input).tone,
+                  ].join(" ")}
+                >
+                  {(CONFIDENCE_KO[analysis.extraction_confidence] ?? CONFIDENCE_KO.text_input).label}
+                </span>
+              )}
+            </div>
+            <textarea
+              value={editedOriginal}
+              onChange={(e) => setEditedOriginal(e.target.value)}
+              className="h-20 w-full resize-none rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[13px] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
+            />
+            <button
+              type="button"
+              onClick={() => runAnalyze(editedOriginal)}
+              disabled={loading || !editedOriginal.trim()}
+              className="mt-2 rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-1 text-[11.5px] text-[#1d2336] hover:bg-muted disabled:opacity-60"
+            >
+              ↻ 수정한 문구로 다시 분석
+            </button>
+          </div>
+        )}
+
+        {/* 출처·메모 = 소스가 아니라 메타데이터 — 보조 위계로 격하 */}
         <details className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2">
           <summary className="cursor-pointer text-[12px] font-medium text-muted-foreground">
-            기타 가져오기 — YouTube 중국어 자막 (CC 지원 영상만)
+            출처 정보·관리 메모 (선택)
           </summary>
-          <div className="mt-2 flex gap-2">
-            <input
-              value={youtubeUrl}
-              onChange={(e) => setYoutubeUrl(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=…"
-              className="h-9 flex-1 rounded-md border border-[#EAE4D2] bg-white px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
-            />
-            <Button
-              type="button"
-              onClick={fetchCaption}
-              disabled={ytLoading || !youtubeUrl.trim()}
-              className="shrink-0 bg-[#BA7517] text-white hover:bg-[#BA7517]/90 disabled:opacity-60"
-            >
-              {ytLoading ? "가져오는 중…" : "자막 가져오기"}
-            </Button>
+          <div className="mt-2 space-y-2.5">
+            <div>
+              <label className="text-[11.5px] text-muted-foreground">출처 URL·책·시점</label>
+              <input
+                value={sourceRef}
+                onChange={(e) => setSourceRef(e.target.value)}
+                className="mt-1 h-9 w-full rounded-md border border-[#EAE4D2] bg-white px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
+              />
+            </div>
+            <div>
+              <label className="text-[11.5px] text-muted-foreground">관리자 메모</label>
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="mt-1 h-9 w-full rounded-md border border-[#EAE4D2] bg-white px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
+              />
+            </div>
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            가져온 자막은 위 <b>B. 문구</b> 칸에 채워지니, 필요한 부분만 남기고
-            「활용 가능성 분석」을 실행하세요.
-          </p>
         </details>
       </section>
 
-      {/* ── RIGHT: 분석·후보 ── */}
+      {/* ── RIGHT: 확정된 문구 → 활용 ── */}
       <section className="space-y-4 lg:col-span-3">
         {!analysis && (
-          <div className="flex min-h-[240px] items-center justify-center rounded-xl border border-dashed border-[#EAE4D2] bg-[#FAF8F2] px-6 py-10 text-center text-[13px] leading-relaxed text-muted-foreground">
-            왼쪽에 자료를 넣고 「활용 가능성 분석」을 실행하면
-            <br />
-            원자료 확인 → AI 분석 → 활용 후보가 여기에 표시됩니다.
+          <div className="flex min-h-[240px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#EAE4D2] bg-[#FAF8F2] px-6 py-10 text-center text-[13px] leading-relaxed text-muted-foreground">
+            <p className="font-medium text-[#5B5446]">
+              원자료 가져오기 → 추출 문구 확인 → 활용 방향 분석 → 콘텐츠 후보
+            </p>
+            <p>왼쪽에 자료를 넣고 「활용 가능성 분석」을 실행하면 여기에 활용 방향과 후보가 표시됩니다.</p>
           </div>
         )}
         {analysis && (
           <div className="space-y-4">
-              {/* 원자료 (관리자 수정 가능) */}
-              <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] p-3">
-                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-[#8a857c]">
-                    ① 원자료 (실제 자료에서 추출·입력)
-                  </span>
-                  {analysis.extraction_confidence && (
-                    <span
-                      className={[
-                        "rounded-full px-2 py-0.5 text-[10.5px] font-medium",
-                        (CONFIDENCE_KO[analysis.extraction_confidence] ?? CONFIDENCE_KO.text_input).tone,
-                      ].join(" ")}
-                    >
-                      {(CONFIDENCE_KO[analysis.extraction_confidence] ?? CONFIDENCE_KO.text_input).label}
-                    </span>
-                  )}
+              {/* ③ 활용 방향 분석 — 확정된 문구가 어떤 콘텐츠가 될 수 있는가 */}
+              <div className="space-y-2 rounded-xl border border-[#EAE4D2] bg-white p-4">
+                <div className="flex flex-wrap items-center gap-2 border-l-[3px] border-[#FAD338] pl-2.5">
+                  <span className="text-[13.5px] font-bold text-[#1d2336]">③ 활용 방향 분석</span>
+                  <span className="rounded-full bg-[#EAE4D2] px-2 py-0.5 text-[10px] font-medium text-[#5B5446]">AI 제안</span>
                 </div>
-                <textarea
-                  value={editedOriginal}
-                  onChange={(e) => setEditedOriginal(e.target.value)}
-                  className="h-16 w-full resize-none rounded-md border border-[#EAE4D2] bg-background px-3 py-2 text-[13px] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
-                />
-                <button
-                  type="button"
-                  onClick={() => runAnalyze(editedOriginal)}
-                  disabled={loading || !editedOriginal.trim()}
-                  className="mt-2 rounded-md border border-[#EAE4D2] bg-background px-3 py-1 text-[11.5px] text-[#1d2336] hover:bg-muted disabled:opacity-60"
-                >
-                  ↻ 수정한 원문으로 재분석
-                </button>
-              </div>
-
-              {/* AI 분석 */}
-              <div className="rounded-md border border-[#C4B5FD] bg-[#EDE9FE]/40 p-3 space-y-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-[#5B21B6]">
-                  ② AI 분석 (새로 해석한 내용)
-                </span>
                 {analysis.scene_ko && (
                   <p className="text-[12.5px] text-foreground">
-                    <b className="text-[#5B21B6]">장면·주제 · </b>{analysis.scene_ko}
+                    <b className="text-[#1d2336]">담화 상황 · </b>{analysis.scene_ko}
                   </p>
                 )}
                 {analysis.linguistic_features_ko && (
                   <p className="text-[12px] text-muted-foreground">
-                    <b className="text-[#5B21B6]">언어 특징 · </b>{analysis.linguistic_features_ko}
+                    <b className="text-[#1d2336]">표현 특징 · </b>{analysis.linguistic_features_ko}
                   </p>
                 )}
                 {analysis.recommended_uses && analysis.recommended_uses.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    <span className="text-[11.5px] text-[#5B21B6]">권장 활용 순위 ·</span>
+                    <span className="text-[11.5px] font-medium text-[#1d2336]">추천 활용 ·</span>
                     {analysis.recommended_uses.map((u, i) => {
                       const ut = asUsageType(u);
                       return (
@@ -583,14 +639,14 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
                 )}
                 {analysis.recommendation_reason_ko && (
                   <p className="text-[12px] text-muted-foreground">
-                    <b className="text-[#5B21B6]">이유 · </b>{analysis.recommendation_reason_ko}
+                    <b className="text-[#1d2336]">추천 근거 · </b>{analysis.recommendation_reason_ko}
                   </p>
                 )}
                 {analysis.connectable_speech_acts && analysis.connectable_speech_acts.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11.5px] text-[#5B21B6]">연결 가능 화행 ·</span>
+                    <span className="text-[11.5px] font-medium text-[#1d2336]">적용 가능한 화행 ·</span>
                     {analysis.connectable_speech_acts.map((s, i) => (
-                      <span key={i} className="rounded bg-white px-1.5 py-0.5 text-[11px] text-[#5B21B6]">
+                      <span key={i} className="rounded bg-[#FAF7EE] px-1.5 py-0.5 text-[11px] text-[#5B5446]">
                         {SPEECH_ACT_UI[asSpeechAct(s)]}
                       </span>
                     ))}
@@ -603,18 +659,32 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
                 )}
               </div>
 
-              {/* 후보 카드 — 넓은 화면에선 2열로 나란히 비교 */}
-              <div className="space-y-2.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-[#8a857c]">
-                  ③ 활용 후보 · {analysis.candidates?.length ?? 0}개
-                </span>
-                <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
-                {(analysis.candidates ?? []).map((c, i) => {
+              {/* ④ 콘텐츠 후보 — 유형별 섹션, 홀수면 마지막 카드를 2열 폭으로 확장 */}
+              <div className="space-y-4">
+                {CANDIDATE_SECTIONS.map(({ title, types }) => {
+                  const items = (analysis.candidates ?? [])
+                    .map((c, i) => ({ c, i }))
+                    .filter(({ c }) => types.includes(asUsageType(c.usage_type)));
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={title} className="space-y-2">
+                      <span className="block border-l-[3px] border-[#FAD338] pl-2.5 text-[12.5px] font-bold text-[#1d2336]">
+                        ④ {title} · {items.length}개
+                      </span>
+                      <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
+                {items.map(({ c, i }, k) => {
+                  const spanFull = items.length % 2 === 1 && k === items.length - 1;
                   const ut = asUsageType(c.usage_type);
                   const canGen = GENERATABLE.includes(ut) && !!(c.source_text ?? "").trim();
                   const norm = canGen ? normalizeApply(c) : null;
                   return (
-                    <div key={i} className="flex flex-col gap-2 rounded-md border border-border bg-background p-3">
+                    <div
+                      key={i}
+                      className={[
+                        "flex flex-col gap-2 rounded-md border border-border bg-background p-3",
+                        spanFull ? "xl:col-span-2" : "",
+                      ].join(" ")}
+                    >
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className={["rounded border px-1.5 py-0.5 text-[11px] font-medium", USAGE_TONE[ut]].join(" ")}>
                           {USAGE_KO[ut]}
@@ -713,7 +783,10 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
                     </div>
                   );
                 })}
-                </div>
+                      </div>
+                    </div>
+                  );
+                })}
                 {(analysis.candidates ?? []).length === 0 && (
                   <p className="rounded-md border border-dashed border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[12px] text-muted-foreground">
                     제안된 활용 후보가 없습니다. 원문을 수정해 재분석하거나 다른 자료를 시도하세요.

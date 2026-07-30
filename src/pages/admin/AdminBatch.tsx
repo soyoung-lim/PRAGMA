@@ -316,8 +316,8 @@ const AdminBatch = () => {
 
   return (
     <AdminShell
-      title="배치 생성"
-      description="셀 목록을 순회해 시나리오를 일괄 생성합니다. 생성물은 검수 대기 상태로 저장됩니다."
+      title="미션 재료 생성 · 대량"
+      description="셀 목록을 순회해 미션 재료(코어)를 일괄 생성합니다. 생성물은 검수 대기 상태로 저장되며, 학습 미션으로의 완성은 「학습 미션 조립」에서 합니다."
     >
       {/* ── 생성 설정 (코어·방향·할당량 압축) ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-4">

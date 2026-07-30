@@ -19,6 +19,7 @@ const AdminCorpus = lazy(() => import("./pages/admin/AdminCorpus.tsx"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
 const AdminGenerator = lazy(() => import("./pages/admin/AdminGenerator.tsx"));
 const AdminAuthentic = lazy(() => import("./pages/admin/AdminAuthentic.tsx"));
+const AdminAssembly = lazy(() => import("./pages/admin/AdminAssembly.tsx"));
 const AdminBatch = lazy(() => import("./pages/admin/AdminBatch.tsx"));
 const AdminBrowser = lazy(() => import("./pages/admin/AdminBrowser.tsx"));
 const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.tsx"));
@@ -178,6 +179,8 @@ const App = () => (
           <Route path="/admin/authentic" element={<RequireAdmin><AdminAuthentic /></RequireAdmin>} />
           <Route path="/admin/batch" element={<RequireAdmin><AdminBatch /></RequireAdmin>} />
           <Route path="/admin/library" element={<RequireAdmin><AdminBrowser /></RequireAdmin>} />
+          {/* 학습 미션 조립(2026-07-30 신설) — 코어→미션 변환의 정식 작업대 */}
+          <Route path="/admin/assembly" element={<RequireAdmin><AdminAssembly /></RequireAdmin>} />
           {/* 구 URL 호환 — 북마크·문서의 /admin/browser를 라이브러리로 보낸다. */}
           <Route path="/admin/browser" element={<Navigate to="/admin/library" replace />} />
           <Route path="/admin/curriculum" element={<RequireAdmin><AdminCurriculum /></RequireAdmin>} />
