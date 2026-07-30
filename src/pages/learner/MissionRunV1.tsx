@@ -1251,7 +1251,8 @@ function MissionRunner({
                   // v4 검토에서는 preview 쿼리를 보존해야 같은 미션과 DEV 인증 우회를
                   // 유지한다. 빠지면 구 샘플로 바뀌고 새 탭에서는 로그인 화면으로 튄다.
                   const nextParams = new URLSearchParams();
-                  if (mission.schema_version === "mission_v4") nextParams.set("preview", "v4");
+                  if (mission.schema_version === "mission_v5") nextParams.set("preview", "v5");
+                  else if (mission.schema_version === "mission_v4") nextParams.set("preview", "v4");
                   if (!isInterp) nextParams.set("mode", "interpreting");
                   nextParams.set("part", "2");
                   window.location.href = `/learner/practice?${nextParams.toString()}`;
