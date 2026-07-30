@@ -1,0 +1,295 @@
+// mission_v5 9화행 대표 표본 하네스 — 인간 검수용. 수동 실행 전용.
+//   RUN_V5_SAMPLES=1 npx vitest run src/lib/pragma/missionV5Samples.gen.test.ts
+//
+// ACTIVE_HANDOFF 크리티컬 패스 2단계: 9화행 대표 mission_v5 표본을 소량 생성해
+// 자연스러움·MPJ 변별력·P·D·R 일치·의미→문법→화용 층 분리를 사람이 검수한다.
+//
+// 셀 조합은 임의로 짜지 않고 500 배치 플래너(buildBatchPlan)에서 뽑는다 —
+// 표본이 본 배치와 다른 조합 규칙을 쓰면 검수 결과를 본 배치에 적용할 수 없다.
+// 요청 본문은 promoteMission·coreBatchRun과 같은 헬퍼를 쓴다.
+//
+// DB 저장 없음(save_generated_* RPC는 is_admin 가드). 실제 OpenAI 호출이라 비용이 든다.
+
+import { describe, it } from "vitest";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { buildBatchPlan, type BatchCell } from "@/lib/pragma/batchPlan";
+import { TARGET_FEATURES, DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
+import { errorPatternsForAct } from "@/lib/pragma/errorPatterns";
+import { LEVEL_POLICY, featureForGen } from "@/lib/pragma/promoteMission";
+import { normalizeCore } from "@/lib/pragma/coreSchema";
+import {
+  PDR_POWER_ENUM_TO_JSON,
+  PDR_DISTANCE_ENUM_TO_JSON,
+} from "@/lib/pragma/coreSchema";
+import {
+  checkCore,
+  checkMission,
+  coreLengthHintKo,
+  type CheckContext,
+} from "@/lib/pragma/missionRules";
+import { DOMAIN, LEVEL, SPEECH_ACT_UI, type GenMode } from "@/lib/pragma/enums";
+import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
+
+const RUN = process.env.RUN_V5_SAMPLES === "1";
+/** 저장된 표본으로 R규칙만 재검사 — 생성 호출 0회. 규칙 수정의 회귀 확인용. */
+const RECHECK = process.env.RUN_V5_RECHECK === "1";
+
+const OUT_DIR =
+  process.env.V5_SAMPLE_OUT ??
+  "C:\\Users\\cnkr\\AppData\\Local\\Temp\\claude\\C--Users-cnkr-OneDrive\\15ddbb98-4662-4bdb-9316-fd57968c787b\\scratchpad\\v5-samples";
+
+function readEnv(): { url: string; key: string } {
+  const raw = readFileSync(resolve(process.cwd(), ".env"), "utf8");
+  const get = (k: string) => raw.match(new RegExp(`^${k}=(.*)$`, "m"))?.[1]?.trim() ?? "";
+  return { url: get("VITE_SUPABASE_URL"), key: get("VITE_SUPABASE_PUBLISHABLE_KEY") };
+}
+
+const modalityOf = (mode: GenMode) => (mode === "stt_interpreting" ? "spoken" : "written");
+const legacyChannelOf = (mode: GenMode) => (mode === "stt_interpreting" ? "facetoface" : "messenger");
+const isResponseAct = (act: string) => act === "refusal" || act === "opposition";
+
+interface SampleResult {
+  act: string;
+  actKo: string;
+  cell: BatchCell;
+  featureCode: string;
+  core?: unknown;
+  coreResult?: string;
+  coreViolations: { id: string; level: string; message: string }[];
+  mission?: unknown;
+  missionResult?: string;
+  missionViolations: { id: string; level: string; message: string }[];
+  attempts: number;
+  error?: string;
+}
+
+describe.skipIf(!RECHECK)("저장된 v5 표본 R규칙 재검사", () => {
+  it("생성 호출 없이 checkCore·checkMission만 다시 돌린다", () => {
+    const rows: SampleResult[] = JSON.parse(
+      readFileSync(resolve(OUT_DIR, "v5-samples.json"), "utf8"),
+    );
+    for (const r of rows) {
+      if (!r.mission) {
+        console.log(`[${r.actKo}] 미션 응답 없음(생성 실패) — 재검사 불가`);
+        continue;
+      }
+      const cell = r.cell;
+      const feature = TARGET_FEATURES[r.featureCode];
+      const ctx: CheckContext = {
+        speech_act: cell.speech_act_ui,
+        level: cell.level,
+        domain: cell.domain,
+        theme_code: cell.theme_code as ThemeCode,
+        topic_code: cell.topic_code,
+        industry: cell.industry,
+        mode: cell.mode,
+        source_modality: modalityOf(cell.mode),
+        direction: cell.direction,
+        planned_target_feature: feature.code,
+      };
+      const check = checkMission(r.mission, ctx, r.core);
+      const fails = check.violations.filter((x) => x.level === "fail");
+      const warns = check.violations.filter((x) => x.level === "warning");
+      console.log(
+        `[${r.actKo}] ${check.result} — fail ${fails.length} / warning ${warns.length}` +
+          (fails.length ? "\n" + fails.map((x) => `    FAIL ${x.id}: ${x.message}`).join("\n") : "") +
+          (warns.length ? "\n" + warns.map((x) => `    warn ${x.id}: ${x.message}`).join("\n") : ""),
+      );
+    }
+  });
+});
+
+describe.skipIf(!RUN)("mission_v5 9화행 대표 표본", () => {
+  it(
+    "9화행 × 중급 × 번역 표본 생성 → R규칙 검사 → 검수 파일",
+    async () => {
+      const { url, key } = readEnv();
+      const fnUrl = `${url}/functions/v1/generate-scenario`;
+
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+      // OpenAI 조직 TPM 상한(gpt-4o 30k)에 걸리면 엣지가 502로 되돌린다.
+      // 표본 생성은 소량이므로 순차 실행 + 지수 대기로 흡수한다.
+      async function invoke(body: unknown, label = ""): Promise<any> {
+        let lastErr = "";
+        for (let attempt = 1; attempt <= 5; attempt += 1) {
+          const res = await fetch(fnUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${key}`,
+              apikey: key,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          });
+          const text = await res.text();
+          if (res.ok) return JSON.parse(text);
+          lastErr = `edge ${res.status}: ${text.slice(0, 300)}`;
+          if (!/rate limit/i.test(text)) throw new Error(lastErr);
+          const waitMs = 15_000 * attempt;
+          console.log(`  ${label} rate limit — ${waitMs / 1000}s 대기 후 재시도 ${attempt}/5`);
+          await sleep(waitMs);
+        }
+        throw new Error(`rate limit 재시도 소진 — ${lastErr}`);
+      }
+
+      // 화행당 번역 1건. interpretingCount의 바닥(≥1) 때문에 통역 셀도 생기므로 걸러낸다.
+      const cells = buildBatchPlan(
+        {
+          perLevel: { beginner_intermediate: 0, intermediate: 1, advanced: 0 },
+          interpretingRatio: 0,
+        },
+        "ko_zh",
+      ).filter((c) => c.mode === "translation");
+
+      const results: SampleResult[] = [];
+
+      async function runCell(cell: BatchCell): Promise<SampleResult> {
+        const act = cell.speech_act_ui;
+        const featureCode = DEFAULT_FEATURE_BY_ACT[act];
+        const feature = TARGET_FEATURES[featureCode];
+        const mode = cell.mode;
+        const out: SampleResult = {
+          act,
+          actKo: SPEECH_ACT_UI[act],
+          cell,
+          featureCode,
+          coreViolations: [],
+          missionViolations: [],
+          attempts: 0,
+        };
+
+        const ctx: CheckContext = {
+          speech_act: act,
+          level: cell.level,
+          domain: cell.domain,
+          theme_code: cell.theme_code as ThemeCode,
+          topic_code: cell.topic_code,
+          industry: cell.industry,
+          mode,
+          source_modality: modalityOf(mode),
+          direction: cell.direction,
+          require_context_spec: true,
+        };
+
+        try {
+          // ── 1. 코어 생성 (coreBatchRun과 같은 본문) ──
+          const coreRes = await invoke({
+            action: "core",
+            core: {
+              direction: cell.direction,
+              speech_act: act,
+              speech_act_ko: SPEECH_ACT_UI[act],
+              level_ko: LEVEL[cell.level],
+              domain: cell.domain,
+              domain_ko: DOMAIN[cell.domain],
+              industry: cell.industry,
+              topic_code: cell.topic_code,
+              mode,
+              channel: legacyChannelOf(mode),
+              channel_ko: mode === "stt_interpreting" ? "구두(통역)" : "서면(번역)",
+              pdr: {
+                p: PDR_POWER_ENUM_TO_JSON[cell.pdr_power],
+                d: PDR_DISTANCE_ENUM_TO_JSON[cell.pdr_distance],
+                r: cell.pdr_burden,
+              },
+              source_modality: modalityOf(mode),
+              situation_seed_ko: cell.situation_seed_ko,
+              is_response_act: isResponseAct(act),
+              length_hint_ko: coreLengthHintKo(cell.level, mode),
+            },
+          }, `[${SPEECH_ACT_UI[act]} core]`);
+          const core = coreRes.core_content;
+          out.core = core;
+          const coreCheck = checkCore(core, ctx);
+          out.coreResult = coreCheck.result;
+          out.coreViolations = coreCheck.violations.map((v) => ({
+            id: v.id,
+            level: v.level,
+            message: v.message,
+          }));
+
+          // ── 2. 미션 승격 (promoteMission과 같은 본문·재시도 정책) ──
+          const nc = normalizeCore(core ?? {});
+          const normCore = nc.ok ? nc.data : undefined;
+          const missionCore = {
+            situation_ko: normCore?.situation_ko,
+            relation_ko: normCore?.relation_ko,
+            source_text_ko: normCore?.source_text,
+            preceding_turn_zh: normCore?.preceding_turn ?? null,
+            pdr: normCore?.pdr,
+            channel: normCore?.channel,
+            source_modality: modalityOf(mode),
+            usable_facts: normCore?.usable_facts ?? [],
+            ...(normCore?.focal_segments?.length
+              ? { focal_segments: normCore.focal_segments }
+              : {}),
+          };
+
+          let failureNotes: string | undefined;
+          for (let attempt = 1; attempt <= 3; attempt += 1) {
+            out.attempts = attempt;
+            const mRes = await invoke({
+              action: "mission",
+              mission: {
+                direction: cell.direction,
+                speech_act_ko: SPEECH_ACT_UI[act],
+                level_ko: LEVEL[cell.level],
+                level_policy_ko: LEVEL_POLICY[cell.level],
+                feature: featureForGen(feature, cell.direction),
+                core: missionCore,
+                error_pattern_hints_ko: errorPatternsForAct(act).map(
+                  (p) => `${p.description} (예: ${p.approvedExample})`,
+                ),
+                is_response_act: isResponseAct(act),
+                failure_notes: failureNotes,
+              },
+            }, `[${SPEECH_ACT_UI[act]} mission ${attempt}]`);
+            const mission = mRes.mission_content;
+            out.mission = mission;
+            const missionCheck = checkMission(mission, { ...ctx, planned_target_feature: feature.code }, core);
+            out.missionResult = missionCheck.result;
+            out.missionViolations = missionCheck.violations.map((v) => ({
+              id: v.id,
+              level: v.level,
+              message: v.message,
+            }));
+            if (missionCheck.result !== "fail") break;
+            failureNotes = missionCheck.violations
+              .filter((v) => v.level === "fail")
+              .map((v) => `- ${v.id}: ${v.message}`)
+              .join("\n");
+          }
+        } catch (e) {
+          out.error = e instanceof Error ? e.message : String(e);
+        }
+        console.log(
+          `[${out.actKo}] 코어 ${out.coreResult ?? "-"} / 미션 ${out.missionResult ?? "-"} ` +
+            `(시도 ${out.attempts})${out.error ? " ERROR: " + out.error : ""}`,
+        );
+        return out;
+      }
+
+      // 순차 실행 — 조직 TPM 상한(gpt-4o 30k) 때문에 병렬로 돌리면 미션 호출이 502로 죽는다.
+      for (const cell of cells) {
+        results.push(await runCell(cell));
+      }
+
+      results.sort((a, b) => a.act.localeCompare(b.act));
+
+      mkdirSync(OUT_DIR, { recursive: true });
+      const jsonPath = resolve(OUT_DIR, "v5-samples.json");
+      writeFileSync(jsonPath, JSON.stringify(results, null, 2), "utf8");
+      mkdirSync(dirname(jsonPath), { recursive: true });
+      console.log(`\n표본 JSON: ${jsonPath}`);
+      console.log(
+        "요약: " +
+          results
+            .map((r) => `${r.actKo} 코어 ${r.coreResult ?? "ERR"}/미션 ${r.missionResult ?? "ERR"}`)
+            .join(" · "),
+      );
+    },
+    1_800_000,
+  );
+});
