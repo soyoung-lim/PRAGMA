@@ -21,7 +21,7 @@ import {
   type VocabularyHint,
 } from "@/lib/pragma/missionSchema";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
-import { SAMPLE_MISSION_V4 } from "@/lib/mission/missionV4Sample";
+import { SAMPLE_MISSION_V4, SAMPLE_MISSION_V5 } from "@/lib/mission/missionV4Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
 import {
   saveMissionAttempt,
@@ -41,6 +41,7 @@ import {
   MISSION_SCENE_TEXT_DENSITY,
   MISSION_SCENE_RELATION_GAP,
 } from "@/components/mission/ChatScene";
+import { FocalSourceText } from "@/components/mission/FocalSourceText";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { requestSttTranscript } from "@/lib/mission/missionStt";
 import { requestTtsAudio } from "@/lib/tts";
@@ -148,10 +149,9 @@ const MissionRunV1 = () => {
   const [searchParams] = useSearchParams();
   // 원격 migration·Edge 배포 전에도 승인된 v4 흐름을 눈으로 확인할 수 있는 DEV 전용 샘플.
   // production build에서는 query를 붙여도 legacy 기본 샘플을 유지한다.
-  const previewV4 =
-    import.meta.env.DEV &&
-    !scenarioId &&
-    searchParams.get("preview") === "v4";
+  const previewParam = import.meta.env.DEV && !scenarioId ? searchParams.get("preview") : null;
+  const previewV5 = previewParam === "v5";
+  const previewV4 = previewParam === "v4" || previewV5;
   // 데모/검증 토글 — 샘플 경로에서만 통역 흐름을 켠다(실제 DB 미션에는 영향 없음).
   const forceInterp = !scenarioId && searchParams.get("mode") === "interpreting";
   // 수행 방식 전환(번역 ↔ 통역)으로 넘어온 경우 1부를 건너뛰고 2부부터 시작한다.
@@ -199,7 +199,8 @@ const MissionRunV1 = () => {
   }
 
   const baseMission =
-    loaded?.mission ?? (previewV4 ? SAMPLE_MISSION_V4 : SAMPLE_MISSION_V2);
+    loaded?.mission ??
+    (previewV5 ? SAMPLE_MISSION_V5 : previewV4 ? SAMPLE_MISSION_V4 : SAMPLE_MISSION_V2);
   const mission =
     forceInterp
       ? { ...baseMission, production_task: { ...baseMission.production_task, mode: "interpreting" as const } }
@@ -214,7 +215,7 @@ const MissionRunV1 = () => {
 
   return (
     <MissionRunner
-      key={`${loaded?.scenario_id ?? (previewV4 ? "sample-v4" : "sample")}:${mission.production_task.mode}`}
+      key={`${loaded?.scenario_id ?? (previewV5 ? "sample-v5" : previewV4 ? "sample-v4" : "sample")}:${mission.production_task.mode}`}
       mission={mission}
       isSample={isSample}
       startAtPart2={startAtPart2}
@@ -418,6 +419,9 @@ function FeedbackPanel({
   ];
   const passedCount = layers.filter((layer) => layer.passed).length;
   const allPassed = passedCount === layers.length;
+  // 미니 담화형 DCT 층(mission_v5). 단문 DCT는 빈 값이라 렌더되지 않는다.
+  const discourse = fb.blocks.discourse_ko?.trim() ?? "";
+  const offFocus = fb.blocks.offfocus_warnings ?? [];
 
   return (
     <div className="space-y-3">
@@ -487,6 +491,30 @@ function FeedbackPanel({
           </p>
         )}
       </div>
+
+      {/* 미니 담화형 DCT 전용 — 담화 전체 확인 한 줄 + 집중 구간 밖 심각 부조화만.
+          문제가 없으면 접힌 한 줄로 남겨 감량 원칙(0-r·103)을 지킨다. */}
+      {(discourse || offFocus.length > 0) && (
+        <details className="rounded-xl border border-[#DDE5DF] bg-white px-3.5 py-2.5" open={offFocus.length > 0}>
+          <summary className="cursor-pointer list-none text-[12px] font-bold text-[#52645A]">
+            담화 전체 확인
+            {offFocus.length > 0 && (
+              <span className="ml-1.5 rounded-full bg-[#FFF1C7] px-1.5 py-0.5 text-[10.5px] font-extrabold text-[#755A0B]">
+                살펴볼 곳 {offFocus.length}
+              </span>
+            )}
+          </summary>
+          {discourse && (
+            <p className="mt-1.5 text-[13px] leading-relaxed text-[#15202B]">{discourse}</p>
+          )}
+          {offFocus.map((w, i) => (
+            <div key={i} className="mt-2 rounded-lg bg-[#FFFAE9] px-3 py-2 text-[12.5px] leading-relaxed">
+              <span className="font-semibold text-[#755A0B]">“{w.text}”</span>
+              {w.note_ko ? <span className="text-[#15202B]"> — {w.note_ko}</span> : null}
+            </div>
+          ))}
+        </details>
+      )}
 
       <p className="px-0.5 text-[11.5px] text-muted-foreground">
         AI가 생성한 참고 피드백입니다. 상황에 따라 다른 판단도 가능합니다.
@@ -678,6 +706,8 @@ function MissionRunner({
 
   // 번역 힌트는 수업·MPJ에서 다룬 화용 전략이 아니라 내용 어휘 두 개만 사용한다.
   const vocabularyHints = pt.vocabulary_hints ?? [];
+  // 미니 담화형 DCT(mission_v5)의 화용 집중 구간. 단문 DCT는 빈 배열.
+  const focalSegments = "focal_segments" in pt && Array.isArray(pt.focal_segments) ? pt.focal_segments : [];
 
   // 피드백 단계 진입 시 1회 호출. 실패해도 미션을 막지 않는다(정직 표기로 폴백).
   // ⚠️ cleanup으로 취소하지 않는다 — 이 이펙트가 setFbState를 부르므로 의존성이 바뀌어
@@ -1010,7 +1040,15 @@ function MissionRunner({
                   threadEyebrow="메시지 작성 중"
                 >
                   {pt.preceding_turn && <ChatBubble side="them">{pt.preceding_turn}</ChatBubble>}
-                  <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
+                  {focalSegments.length > 0 ? (
+                    <FocalSourceText
+                      source={pt.source_text}
+                      segments={focalSegments}
+                      focusLabel={mission.unit.learner_label}
+                    />
+                  ) : (
+                    <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
+                  )}
                   {!isInterp && dir === "ko_zh" && vocabularyHints.length === 2 && (
                     <ProductionGuide
                       hints={vocabularyHints}

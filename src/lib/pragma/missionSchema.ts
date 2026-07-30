@@ -10,6 +10,8 @@
 // 현행 v4 MPJ 4유형:
 //   scale4(첫인상) → fix_choice(판정+교정) → reason(주원인)
 //   → multi_judge(5후보) (순서 고정, R1).
+// mission_v5 — 2026-07-30 미니 담화형 DCT. MPJ는 v4와 동일, DCT 원문만
+//   2~4문장 담화 + focal_segments(화용 집중 구간)로 확장(DEC-20260730-01).
 // axis_feature = unit.target_feature 고정(0-b·19, R1). band code는 카탈로그 정본.
 
 import { z } from "zod";
@@ -17,6 +19,7 @@ import {
   PdrSchema,
   ChannelSchema,
   SourceModalitySchema,
+  FocalSegmentSchema,
 } from "@/lib/pragma/coreSchema";
 import { DEFAULT_DIRECTION, type LanguageDirection } from "@/lib/pragma/enums";
 
@@ -465,7 +468,33 @@ export const MissionV4Schema = z.object({
   quality_check: QualityCheckSchema.optional(),
 });
 export type MissionV4 = z.infer<typeof MissionV4Schema>;
-export type MissionRuntime = MissionV2 | MissionV3 | MissionV4;
+
+// ══════════════════════════════════════════════════════════════════════
+// mission_v5 — 미니 담화형 DCT (2026-07-30, DEC-20260730-01)
+// ══════════════════════════════════════════════════════════════════════
+// MPJ 4문항 구성·순서·판정은 v4와 완전히 동일하다. 변경점은 DCT뿐이다:
+//  ① production_task.source_text = 2~4문장 미니 담화(수준별 길이, R29)
+//  ② production_task.focal_segments = 코어에서 계승한 화용 집중 구간
+// 학습자는 전체 담화를 옮기고, 화용 집중 평가·화면 강조만 focal_segments에
+// 적용된다. v1~v4는 읽기 호환으로 유지하며 v5로 백필하지 않는다.
+const ProductionTaskV3Schema = ProductionTaskV2Schema.extend({
+  /** 코어 계승(R23·R29). head 1 + support 0~2, 각 text는 source_text의 부분문자열. */
+  focal_segments: z.array(FocalSegmentSchema).min(1).max(3),
+});
+export type ProductionTaskV3 = z.infer<typeof ProductionTaskV3Schema>;
+
+export const MissionV5Schema = z.object({
+  schema_version: z.literal("mission_v5"),
+  direction: z.enum(["ko_zh", "zh_ko"]),
+  unit: UnitSchema,
+  mpj_items: z.array(MpjItemV4Schema).length(4),
+  production_task: ProductionTaskV3Schema,
+  provenance: MissionProvenanceSchema.optional(),
+  quality_check: QualityCheckSchema.optional(),
+});
+export type MissionV5 = z.infer<typeof MissionV5Schema>;
+
+export type MissionRuntime = MissionV2 | MissionV3 | MissionV4 | MissionV5;
 export type MpjItemRuntime = MissionRuntime["mpj_items"][number];
 
 // ── v1 → v2 항목 매핑(정규화용) ───────────────────────────────────────
@@ -526,6 +555,11 @@ export function normalizeMission(input: unknown): {
   error?: z.ZodError;
 } {
   const sv = (input as { schema_version?: string } | null)?.schema_version;
+  if (sv === "mission_v5") {
+    const r = MissionV5Schema.safeParse(input);
+    if (r.success) return { ok: true, data: r.data };
+    return { ok: false, error: r.error };
+  }
   if (sv === "mission_v4") {
     const r = MissionV4Schema.safeParse(input);
     if (r.success) return { ok: true, data: r.data };

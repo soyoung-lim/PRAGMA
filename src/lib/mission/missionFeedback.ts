@@ -51,6 +51,10 @@ export async function requestFeedback(
           source_text: pt.source_text,
           preceding_turn: pt.preceding_turn ?? null,
           usable_facts: pt.usable_facts ?? [],
+          // 미니 담화형 DCT(mission_v5)만 존재. 화용 판정 범위를 이 구간으로 좁힌다.
+          ...("focal_segments" in pt && Array.isArray(pt.focal_segments)
+            ? { focal_segments: pt.focal_segments }
+            : {}),
           feature: {
             code: feature.code,
             learner_label: feature.learner_label,

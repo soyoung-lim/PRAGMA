@@ -47,10 +47,10 @@ describe("provenance-lite (0-q·98)", () => {
     expect(r.data?.provenance).toBeUndefined();
   });
 
-  it("② v1 → v2 정규화에서 provenance가 보존된다", () => {
+  it("② v1 → v3 정규화에서 provenance가 보존된다", () => {
     const r = normalizeCore({ ...BASE_V1, provenance: PROV });
     expect(r.ok).toBe(true);
-    expect(r.data?.schema_version).toBe("scenario_core_v2");
+    expect(r.data?.schema_version).toBe("scenario_core_v3");
     expect(r.data?.provenance?.source_type).toBe("authentic_youtube");
     expect(r.data?.provenance?.source_original).toBe("这个会议能不能推到下周？");
     expect(r.data?.provenance?.ai_adapted).toBe(true);

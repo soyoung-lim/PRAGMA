@@ -19,7 +19,11 @@ import {
   MPJ_TYPE_ORDER_V3,
   MPJ_TYPE_ORDER_V4,
 } from "@/lib/pragma/missionSchema";
-import { normalizeCore, type ScenarioCoreV2 } from "@/lib/pragma/coreSchema";
+import {
+  normalizeCore,
+  type ScenarioCoreRuntime,
+  type FocalSegment,
+} from "@/lib/pragma/coreSchema";
 import {
   isThemeDomainValid,
   getScenarioTopic,
@@ -167,6 +171,96 @@ function checkDirectionMatch(v: RuleViolation[], dataDir: LanguageDirection, ctx
   }
 }
 
+// ── R29 미니 담화형 원문 + focal segments (DEC-20260730-01) ────────────
+// 원문은 2~4문장 담화이며(하드 경계), 수준·수행 방식별 권장 범위를 벗어나면
+// warning이다(문장 경계 판정이 휴리스틱이라 fail로 배치를 막지 않는다).
+// focal_segments는 head 정확히 1 + support 0~2이고, 각 text는 source_text의
+// 정확한 부분문자열이어야 한다 — 저장·화면 강조·피드백이 같은 문자열을 본다.
+const FOCAL_SENTENCE_HARD_MIN = 2;
+const FOCAL_SENTENCE_HARD_MAX = 4;
+const SENTENCE_RANGE: Record<
+  "translation" | "stt_interpreting",
+  Record<LearnerLevel, [number, number]>
+> = {
+  translation: {
+    beginner_intermediate: [2, 3],
+    intermediate: [3, 4],
+    advanced: [3, 4],
+  },
+  stt_interpreting: {
+    beginner_intermediate: [2, 3],
+    intermediate: [2, 3],
+    advanced: [3, 4],
+  },
+};
+
+/**
+ * 코어 생성 프롬프트에 넣는 수준·모드별 분량 힌트.
+ * R29의 SENTENCE_RANGE에서 파생한다 — 생성 안내와 판정 기준이 어긋나면
+ * 그 자체가 결함이므로 표를 두 벌 두지 않는다.
+ */
+export function coreLengthHintKo(
+  level: LearnerLevel,
+  mode: "translation" | "stt_interpreting",
+): string {
+  const [lo, hi] = SENTENCE_RANGE[mode][level];
+  const span = lo === hi ? `${lo}문장` : `${lo}~${hi}문장`;
+  return mode === "stt_interpreting"
+    ? `${span}의 짧은 구두 담화 (기억 과부하 없이)`
+    : `${span}의 실무 메시지 담화`;
+}
+
+/** 한국어·중국어 종결 부호 기준 문장 수. 부호 없이 끝나는 마지막 절도 1문장으로 센다. */
+export function countSentences(text: string): number {
+  const t = text.trim();
+  if (!t) return 0;
+  const chunks = t.match(/[^.!?。！？…]+[.!?。！？…]*/g) ?? [];
+  const n = chunks.filter((c) => /[가-힣一-鿿A-Za-z0-9]/.test(c)).length;
+  return n === 0 ? 1 : n;
+}
+
+function checkFocalDiscourse(
+  v: RuleViolation[],
+  sourceText: string,
+  segments: FocalSegment[] | undefined,
+  label: string,
+  ctx: CheckContext,
+) {
+  const n = countSentences(sourceText);
+  if (n < FOCAL_SENTENCE_HARD_MIN || n > FOCAL_SENTENCE_HARD_MAX) {
+    add(v, "R29", "fail", `${label}: 미니 담화 원문은 ${FOCAL_SENTENCE_HARD_MIN}~${FOCAL_SENTENCE_HARD_MAX}문장이어야 함(실측 ${n}문장)`);
+  } else {
+    const [lo, hi] = SENTENCE_RANGE[ctx.mode][ctx.level];
+    if (n < lo || n > hi) {
+      add(v, "R29", "warning", `${label}: ${ctx.level}·${ctx.mode} 권장 ${lo}~${hi}문장인데 ${n}문장`);
+    }
+  }
+
+  if (!segments || segments.length === 0) {
+    add(v, "R29", "fail", `${label}: focal_segments가 없음(화용 집중 구간 미지정)`);
+    return;
+  }
+  const heads = segments.filter((s) => s.role === "head");
+  if (heads.length !== 1) {
+    add(v, "R29", "fail", `${label}: focal_segments의 head는 정확히 1개여야 함(실제 ${heads.length}개)`);
+  }
+  if (segments.length - heads.length > 2) {
+    add(v, "R29", "fail", `${label}: support 구간은 최대 2개(실제 ${segments.length - heads.length}개)`);
+  }
+  for (const seg of segments) {
+    if (!sourceText.includes(seg.text)) {
+      add(v, "R29", "fail", `${label}: focal segment가 원문의 부분문자열이 아님 — "${seg.text.slice(0, 30)}"`);
+    }
+  }
+  const seen = new Set<string>();
+  for (const seg of segments) {
+    if (seen.has(seg.text)) {
+      add(v, "R29", "warning", `${label}: focal segment 중복 — "${seg.text.slice(0, 30)}"`);
+    }
+    seen.add(seg.text);
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // 코어 검사 (R1c 포함 서브셋)
 // ══════════════════════════════════════════════════════════════════════
@@ -201,13 +295,18 @@ export function checkCore(coreInput: unknown, ctx: CheckContext): RuleResult {
   }
 
   checkCoreCommon(v, core, ctx);
+
+  // R29 — scenario_core_v3(미니 담화형)만 대상. legacy v1·v2 단문 코어는 면제.
+  if (core.focal_segments !== undefined) {
+    checkFocalDiscourse(v, core.source_text, core.focal_segments, "코어 source_text", ctx);
+  }
   return finalize(v);
 }
 
 // 코어·미션 production_task 공통 서브셋(R8·R9·R10·R16·R17)
 function checkCoreCommon(
   v: RuleViolation[],
-  core: Pick<ScenarioCoreV2, "direction" | "source_text" | "preceding_turn"> & {
+  core: Pick<ScenarioCoreRuntime, "direction" | "source_text" | "preceding_turn"> & {
     situation_ko?: string;
     relation_ko?: string;
   },
@@ -539,6 +638,17 @@ export function checkMission(
     if (nc.ok) checkInheritance(v, m, nc.data);
   }
 
+  // ── R29 mission_v5 미니 담화형 DCT + focal segments ──
+  if (m.schema_version === "mission_v5") {
+    checkFocalDiscourse(
+      v,
+      m.production_task.source_text,
+      m.production_task.focal_segments,
+      "production_task.source_text",
+      ctx,
+    );
+  }
+
   // ── R24 승격 입력 계획 초점 = unit.target_feature(v1.5 0-h·55) ──
   if (ctx.planned_target_feature && m.unit.target_feature !== ctx.planned_target_feature) {
     add(
@@ -780,7 +890,7 @@ function checkRecommendedConsistency(v: RuleViolation[], m: MissionRuntime, with
   }
 }
 
-function checkInheritance(v: RuleViolation[], m: MissionRuntime, core: ScenarioCoreV2) {
+function checkInheritance(v: RuleViolation[], m: MissionRuntime, core: ScenarioCoreRuntime) {
   const pt = m.production_task;
   if (pt.source_text !== core.source_text) {
     add(v, "R23", "fail", "production_task.source_text가 코어를 계승하지 않음");

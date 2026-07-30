@@ -181,6 +181,35 @@ export const ScenarioCoreV2Schema = z.object({
 });
 export type ScenarioCoreV2 = z.infer<typeof ScenarioCoreV2Schema>;
 
+// ── scenario_core_v3 — 미니 담화형 원문 + focal segments (DEC-20260730-01) ──
+// v2와 필드 이름은 모두 같고, 두 가지만 다르다:
+//  ① source_text가 한 문장이 아니라 실무 메시지처럼 2~4문장의 미니 담화다.
+//  ② focal_segments = 중심 화용 목표를 실현·조절하는 구간(서버 생성물). 학습자는
+//     전체를 옮기지만 화용 집중 평가와 화면 강조는 이 구간에만 적용된다.
+// legacy(v1·v2) 코어는 focal_segments 없이 정규화되며, 부재 = 단문 원문 취급이다.
+
+/**
+ * 화용 집중 구간. `text`는 반드시 source_text의 정확한 부분문자열이어야 한다
+ * (R29) — 그래야 저장·화면 강조·피드백이 같은 문자열을 가리킨다.
+ * role: head = 중심 화행을 수행하는 절, support = 그 강도·완화·선택권을 직접
+ * 조절하는 보조 구간. 목표와 무관한 화행(서두 인사·감사 등)은 포함하지 않는다.
+ */
+export const FocalSegmentSchema = z.object({
+  text: z.string().min(1),
+  role: z.enum(["head", "support"]),
+});
+export type FocalSegment = z.infer<typeof FocalSegmentSchema>;
+
+export const ScenarioCoreV3Schema = ScenarioCoreV2Schema.extend({
+  schema_version: z.literal("scenario_core_v3"),
+  /** head 정확히 1 + support 0~2 (R29). legacy 코어는 부재. */
+  focal_segments: z.array(FocalSegmentSchema).min(1).max(3).optional(),
+});
+export type ScenarioCoreV3 = z.infer<typeof ScenarioCoreV3Schema>;
+
+/** 정규화 런타임 형태 = v3(상위집합). 소비자는 이 형태만 본다. */
+export type ScenarioCoreRuntime = ScenarioCoreV3;
+
 /**
  * 코어 정규화 — v1(방향 없음) 또는 v2 JSON을 읽어 v2 런타임 형태로 통일한다(0-l·84).
  * v1은 자동으로 direction='ko_zh', 필드명 매핑(source_text_ko→source_text 등).
@@ -188,13 +217,19 @@ export type ScenarioCoreV2 = z.infer<typeof ScenarioCoreV2Schema>;
  */
 export function normalizeCore(input: unknown): {
   ok: boolean;
-  data?: ScenarioCoreV2;
+  data?: ScenarioCoreRuntime;
   error?: z.ZodError;
 } {
   const sv = (input as { schema_version?: string } | null)?.schema_version;
+  if (sv === "scenario_core_v3") {
+    const r = ScenarioCoreV3Schema.safeParse(input);
+    if (r.success) return { ok: true, data: r.data };
+    return { ok: false, error: r.error };
+  }
   if (sv === "scenario_core_v2") {
     const r = ScenarioCoreV2Schema.safeParse(input);
-    if (r.success) return { ok: true, data: r.data };
+    // v2 → v3 승격(focal_segments 부재 = 단문 원문). 필드명은 동일하다.
+    if (r.success) return { ok: true, data: { ...r.data, schema_version: "scenario_core_v3" } };
     return { ok: false, error: r.error };
   }
   // v1 또는 미상 → v1으로 파싱 후 v2 형태로 변환(direction=ko_zh).
@@ -204,7 +239,7 @@ export function normalizeCore(input: unknown): {
   return {
     ok: true,
     data: {
-      schema_version: "scenario_core_v2",
+      schema_version: "scenario_core_v3",
       direction: DEFAULT_DIRECTION,
       situation_ko: c.situation_ko,
       relation_ko: c.relation_ko,

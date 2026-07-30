@@ -16,18 +16,11 @@ import {
   PDR_POWER_ENUM_TO_JSON,
   PDR_DISTANCE_ENUM_TO_JSON,
 } from "@/lib/pragma/coreSchema";
-import { checkCore, type CheckContext } from "@/lib/pragma/missionRules";
+import { checkCore, coreLengthHintKo, type CheckContext } from "@/lib/pragma/missionRules";
 import type { BatchCell } from "@/lib/pragma/batchPlan";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 
 const RESPONSE_ACTS = new Set(["refusal", "opposition"]);
-
-// 수준별 원문 분량 힌트 (계약 §7-1 분량 사다리)
-const LENGTH_HINT: Record<string, string> = {
-  beginner_intermediate: "1~2문장",
-  intermediate: "2~4문장",
-  advanced: "번역 3~5문장 / 통역 짧은 구두 담화 (기억 과부하 없이)",
-};
 
 export interface CoreCellResult {
   index: number;
@@ -183,7 +176,7 @@ export async function runCoreCell(
           source_modality: sourceModality,
           situation_seed_ko: cell.situation_seed_ko,
           is_response_act: isResponse,
-          length_hint_ko: LENGTH_HINT[cell.level] ?? "2~4문장",
+          length_hint_ko: coreLengthHintKo(cell.level, mode),
         },
       },
     });

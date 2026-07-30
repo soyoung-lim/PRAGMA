@@ -32,7 +32,7 @@ import {
   MODE_LABEL,
   COMPLEX_TASK_TO_CONTEXT,
 } from "@/lib/pragma/enums";
-import { checkCore, type CheckContext } from "@/lib/pragma/missionRules";
+import { checkCore, coreLengthHintKo, type CheckContext } from "@/lib/pragma/missionRules";
 import { PDR_POWER_ENUM_TO_JSON, PDR_DISTANCE_ENUM_TO_JSON } from "@/lib/pragma/coreSchema";
 import type { CoreProvenance } from "@/lib/pragma/coreSchema";
 import {
@@ -675,11 +675,6 @@ const AdminGenerator = () => {
   const modalityOf = (m: GenMode) => (m === "stt_interpreting" ? "spoken" : "written");
   const legacyChannelOf = (m: GenMode) => (m === "stt_interpreting" ? "facetoface" : "messenger");
   const RESPONSE_ACTS = new Set(["refusal", "opposition"]);
-  const LENGTH_HINT: Record<string, string> = {
-    beginner_intermediate: "1~2문장",
-    intermediate: "2~4문장",
-    advanced: "번역 3~5문장 / 통역 짧은 구두 담화 (기억 과부하 없이)",
-  };
   const coreHash = (s: string) => {
     let h = 0;
     for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
@@ -729,7 +724,7 @@ const AdminGenerator = () => {
               source_modality: modalityOf(mode),
               situation_seed_ko: seed,
               is_response_act: isResponse,
-              length_hint_ko: LENGTH_HINT[form.level] ?? "2~4문장",
+              length_hint_ko: coreLengthHintKo(form.level, mode),
             },
           },
         });
