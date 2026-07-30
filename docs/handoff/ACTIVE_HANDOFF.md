@@ -10,7 +10,7 @@
 - 저장소: `l2-pragmatic-translator`
 - worktree: `C:\Users\cnkr\.codex\worktrees\f1be\l2-pragmatic-translator`
 - branch: `codex/mission-v5-takeover-2026-07-30`
-- HEAD: `2dad502 fix(mission): apply Codex review findings` — **origin 대비 3커밋 미푸시**
+- HEAD: `git log -1`로 확인 (2026-07-30 밤 기준 `5648705` — A1 IA 재편까지, origin 미푸시 다수)
 - 실제 branch·HEAD·원격 상태는 `git log -1 --oneline`, `git status --short --branch`로 확인한다.
 
 Claude Code는 작업 시작 시 branch/HEAD/status만 확인하고 사용자의 다음 개발 지시를 기다린다.
@@ -89,6 +89,20 @@ dev 서버 = `preview_start {name:"l2-mission-v5-dev"}` → **8096**(OneDrive `.
 - 선택지: A-lite(후보별 목표 글자 수 명시) / B(경고→fail 승격 — **승격률 붕괴 위험으로
   권고하지 않음**) / C(초점 유형별 통제 분화 = 계약 R5 개정) / D(현행 유지 + 논문에 한계 기재).
 - **495 코어 배치를 막지 않는다.** 495는 코어만 만들고 동결 대상도 코어 표면이다.
+
+## 2026-07-30 밤 — admin IA 재편(A1) + 실행 단위 확정
+
+- 커밋 `efe5806`(archive 삭제·library 개명) `419a7f4`(youtube-sources·reports 폐기)
+  `9bf1f8b`(authentic 독립 — 사용자 커밋) `5648705`(A1: 2층 IA + /admin/assembly 신설).
+- **개념 확정**: 생성 화면들의 산출물 = 미션 재료(코어), 학습 콘텐츠 = 미션(MPJ4+DCT1).
+  변환 = `/admin/assembly`(구 라이브러리 내 승격 버튼의 승격). 라이브러리는 조회 전용.
+- 조립 화면: 상호 배타 4상태 계기판 · 화행/수준/모드/방향/run/**프롬프트 계열** 필터 ·
+  계열 혼합 경고(금지사항의 UI 안전장치).
+- **실행 단위 확정(사용자, 2026-07-30 밤)**: **A2(다중 선택·일괄 조립) 폐기** — 병목은
+  조립 속도가 아니라 인간 검수 속도이고, 미검수 미션 더미 + 호출 비용만 남긴다.
+  **B1(후보 개수 강제) 폐기** — A1의 홀수 카드 2열 확장이 시각 문제를 이미 해소.
+  되살리지 말 것. **유지 = B2(R5, 배치 후·GPT 교차검증 권장) · C(표현 저장·라운지, 8월)**.
+- 확정 로드맵: **freeze → 495 → B2 → (8월) C**.
 
 ## 다음 작업 순서
 
