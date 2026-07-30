@@ -46,9 +46,9 @@ const SOURCE_TYPES = [
     key: "official_text",
     label: "영상·음성 자료",
     description:
-      "YouTube/Supadata 기반 통역 시나리오 seed (드라마 등 영상은 연구·수업용 가공 seed로만 활용)",
-    badge: { label: "연동 예정", variant: "secondary" as BadgeVariant },
-    href: "/admin/youtube-sources",
+      "유튜브 자막 기반 생성은 개별 생성 화면의 '실제 자료 가져오기'로 통합 (드라마 등 영상은 연구·수업용 가공 seed로만 활용)",
+    badge: { label: "개별 생성에 통합", variant: "secondary" as BadgeVariant },
+    href: "/admin/generator",
   },
   {
     key: "classroom_pilot_data",
