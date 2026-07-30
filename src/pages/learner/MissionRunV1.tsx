@@ -41,7 +41,7 @@ import {
   MISSION_SCENE_TEXT_DENSITY,
   MISSION_SCENE_RELATION_GAP,
 } from "@/components/mission/ChatScene";
-import { FocalSourceText } from "@/components/mission/FocalSourceText";
+import { DiscourseSourceText, FocalRecap } from "@/components/mission/FocalSourceText";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { requestSttTranscript } from "@/lib/mission/missionStt";
 import { requestTtsAudio } from "@/lib/tts";
@@ -1041,11 +1041,7 @@ function MissionRunner({
                 >
                   {pt.preceding_turn && <ChatBubble side="them">{pt.preceding_turn}</ChatBubble>}
                   {focalSegments.length > 0 ? (
-                    <FocalSourceText
-                      source={pt.source_text}
-                      segments={focalSegments}
-                      focusLabel={mission.unit.learner_label}
-                    />
+                    <DiscourseSourceText source={pt.source_text} srcName={srcName} />
                   ) : (
                     <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
                   )}
@@ -1090,7 +1086,18 @@ function MissionRunner({
             )}
 
             {fbState === "ready" && fb && (
-              <FeedbackPanel fb={fb} featureCode={mission.unit.target_feature} />
+              <div className="space-y-3">
+                <FeedbackPanel fb={fb} featureCode={mission.unit.target_feature} />
+                {/* 산출이 끝난 뒤에만 초점 구간을 공개한다 — 사전 강조는 부분 번역을
+                    유인해 제거했다(2026-07-30 실화면 검토). */}
+                {focalSegments.length > 0 && (
+                  <FocalRecap
+                    source={pt.source_text}
+                    segments={focalSegments}
+                    focusLabel={mission.unit.learner_label}
+                  />
+                )}
+              </div>
             )}
 
             {/* 진단 실패 시 폴백 — 기존 정직 표기로 되돌아간다(미션은 계속 진행). */}

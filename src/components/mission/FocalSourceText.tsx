@@ -1,11 +1,18 @@
-// 미니 담화형 DCT의 원문 표시 — 화용 집중 구간만 옅은 배경으로 표시한다.
-// DEC-20260730-01: 성격은 정답 힌트가 아니라 **주의집중 스캐폴딩**이다. 무엇을
-// 어떻게 옮길지는 알려주지 않고, 이번 주 초점이 담화의 어디에서 실현되는지만
-// 가리킨다. 밑줄은 링크로 오인되므로 쓰지 않는다.
+// 미니 담화형 DCT의 원문 표시.
 //
-// 학습 미션에서만 표시한다. 진단·평가 맥락에서는 표시하지 않는다(계약 명시).
-// 통역에는 구간 표시가 없다 — 초점 고지만 하며, 이 비대칭 때문에 번역·통역
-// 산출 결과를 직접 비교·합산하지 않는다.
+// 2026-07-30 사용자 실화면 검토 결과 **산출 전 강조를 완전히 제거**했다.
+// 이유: 강조가 "여기만 옮기면 된다"로 읽혀 부분 번역을 유인했고, 그래서
+// "(전체를 옮기세요)" 같은 문구로 땜질해야 했다. 원인을 없애면 안내도 필요 없다.
+// 학습자는 수업·화용 설명·MPJ 4문항을 거쳐 왔으므로 초점은 이미 알고 있고,
+// 상단 화행 배지와 단계 표시가 넛지 역할을 한다.
+//
+// `focal_segments`는 삭제하지 않는다 — 화면 표시와 평가 범위 지정은 별개다.
+// 서버는 계속 그 구간으로 화용 판정 범위를 좁히고(피드백 프롬프트), 학습자에게는
+// **제출 후 회고 시점에만** 공개한다(FocalRecap). 기존 "판단 제출 뒤 교정 공개"
+// (DEC-20260729-03)·"MultiJudge 참고 대역 사후 공개"와 같은 패턴이다.
+//
+// 통역에는 구간 표시가 아예 없다. 이 비대칭 때문에 번역·통역 산출 결과를
+// 직접 비교·합산하지 않는다.
 
 import type { FocalSegment } from "@/lib/pragma/coreSchema";
 
@@ -44,40 +51,56 @@ export function splitByFocalSegments(source: string, segments: FocalSegment[]): 
   return parts.filter((p) => p.text.length > 0);
 }
 
-export function FocalSourceText({
+/**
+ * 산출 단계의 원문 — 강조·라벨 없이 하나의 자연스러운 메시지로만 보여 준다.
+ * 여러 문장이므로 캡션 한 줄이 아니라 읽기 좋은 블록으로 조판한다.
+ */
+export function DiscourseSourceText({ source, srcName }: { source: string; srcName: string }) {
+  return (
+    <div className="mb-2 rounded-[12px] border border-[#DDE3E8] bg-white px-3.5 py-3">
+      <div className="mb-1.5 text-[11px] font-semibold text-[#6B7A85]">
+        내가 전할 말 ({srcName})
+      </div>
+      <p className="whitespace-pre-line text-[14.5px] leading-[1.68] text-[#1F2A33]">{source}</p>
+    </div>
+  );
+}
+
+/**
+ * 제출 후 회고용 — 이번 주 초점이 담화의 어디에서 실현됐는지 공개한다.
+ * 산출이 끝난 뒤이므로 부분 번역을 유인하지 않는다.
+ */
+export function FocalRecap({
   source,
   segments,
   focusLabel,
 }: {
   source: string;
   segments: FocalSegment[];
-  /** 이번 주 초점의 학습자용 표현. 라벨 문구에 그대로 쓴다. */
   focusLabel?: string;
 }) {
   const parts = splitByFocalSegments(source, segments);
-  const hasFocal = parts.some((p) => p.focal);
+  if (!parts.some((p) => p.focal)) return null;
 
   return (
-    <div className="mb-2 rounded-[12px] border border-[#DDE3E8] bg-white px-3 py-2.5">
-      <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="text-[11px] font-semibold text-[#3E4C57]">전할 내용 (전체를 옮기세요)</span>
-        {hasFocal && (
-          <span className="rounded-[6px] bg-[#FDF3D3] px-1.5 py-0.5 text-[10.5px] font-semibold text-[#7A5A12]">
-            이번 주 집중{focusLabel ? ` · ${focusLabel}` : ""}
-          </span>
-        )}
-      </div>
-      <p className="text-[14.5px] leading-[1.62] text-[#1F2A33]">
+    <details className="rounded-xl border border-[#DDE5DF] bg-white px-3.5 py-2.5">
+      <summary className="cursor-pointer list-none text-[12px] font-bold text-[#52645A]">
+        이번 주 초점이 있던 곳 보기
+        {focusLabel ? <span className="ml-1 font-medium text-[#6B7A85]">· {focusLabel}</span> : null}
+      </summary>
+      <p className="mt-2 text-[13.5px] leading-[1.68] text-[#1F2A33]">
         {parts.map((p, i) =>
           p.focal ? (
             <span key={i} className="rounded-[4px] bg-[#FDF3D3] px-0.5 py-[1px]">
               {p.text}
             </span>
           ) : (
-            <span key={i}>{p.text}</span>
+            <span key={i} className="text-[#6B7A85]">
+              {p.text}
+            </span>
           ),
         )}
       </p>
-    </div>
+    </details>
   );
 }

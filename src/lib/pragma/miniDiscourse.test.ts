@@ -2,7 +2,8 @@
 // 검사 대상: 문장 수 하드 경계·수준별 권장 범위, focal segments 구조·부분문자열,
 // 그리고 legacy 단문 코어가 면제되는지.
 import { describe, expect, it } from "vitest";
-import { checkCore, countSentences, coreLengthHintKo, type CheckContext } from "@/lib/pragma/missionRules";
+import { checkCore, checkMission, countSentences, coreLengthHintKo, type CheckContext } from "@/lib/pragma/missionRules";
+import { SAMPLE_MISSION_V5 } from "@/lib/mission/missionV4Sample";
 import { normalizeCore } from "@/lib/pragma/coreSchema";
 
 const SOURCE_3 =
@@ -38,6 +39,29 @@ function coreV3(over: Record<string, unknown> = {}) {
 
 const r29 = (core: unknown, ctx: CheckContext = CTX) =>
   checkCore(core, ctx).violations.filter((x) => x.id === "R29");
+
+/**
+ * 실제 v5 샘플 미션의 참고 산출안만 바꿔 checkMission을 돌린다.
+ * 미션 전체를 손으로 만들지 않고 실 데이터를 재사용해 검사 경로를 그대로 태운다.
+ */
+function altCoverageViolations(altText: string) {
+  const mission = {
+    ...SAMPLE_MISSION_V5,
+    production_task: {
+      ...SAMPLE_MISSION_V5.production_task,
+      reference_alternatives: [{ text: altText, note_ko: "테스트용" }],
+    },
+  };
+  return checkMission(mission, {
+    speech_act: "request",
+    level: "intermediate",
+    domain: "work",
+    theme_code: "career_workplace",
+    topic_code: "work_delivery_address_change",
+    mode: "translation",
+    source_modality: "written",
+  }).violations.filter((x) => x.id === "R29");
+}
 
 describe("countSentences", () => {
   it("종결 부호로 문장을 센다", () => {
@@ -121,5 +145,19 @@ describe("normalizeCore — v3 상위집합 정규화", () => {
     expect(n.ok).toBe(true);
     expect(n.data?.focal_segments).toHaveLength(1);
     expect(n.data?.focal_segments?.[0].role).toBe("head");
+  });
+});
+
+describe("R29 reference_alternatives 담화 커버리지 (2026-07-30 실화면 회귀)", () => {
+  it("중심 화행만 옮긴 참고안은 warning으로 잡힌다", () => {
+    const short = altCoverageViolations("请问这次订单的收货地址方便改成我们的新办公室吗？");
+    expect(short.some((x) => x.level === "warning" && x.message.includes("담화 전체"))).toBe(true);
+  });
+
+  it("담화 전체를 옮긴 참고안은 warning이 없다", () => {
+    const full = altCoverageViolations(
+      "上次的订单已经收到了，谢谢。不过我们这周开始要搬办公室，如果方便的话，这次订单的收货地址能改成我们的新办公室吗？麻烦您了，实在不好意思。",
+    );
+    expect(full.some((x) => x.message.includes("담화 전체"))).toBe(false);
   });
 });

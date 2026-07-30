@@ -1212,6 +1212,11 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
   "vocabulary_hints": ${vocabularyHintsShape}
 }
 (reference_alternatives는 1~2개, 서로 다른 전략.)
+🔴 **reference_alternatives는 DCT 원문 담화 전체를 옮긴 완성 산출안입니다.** 원문이 여러
+문장이면 그 문장들이 수행하는 내용을 모두 담아야 합니다. 중심 화행 문장만 옮기고 앞뒤의
+감사·상황 설명·사과·마무리를 빠뜨린 안은 참고 산출안이 될 수 없습니다(학습자가 그것을
+정답 분량으로 오해합니다). 문장 수를 기계적으로 맞추라는 뜻은 아니며, 목표어에서 자연스럽게
+합치거나 나누는 것은 허용합니다 — 빠진 내용이 없어야 한다는 뜻입니다.
 
 핵심 규칙:
 - mpj_items는 **정확히 4개**, 순서는 scale4 → fix_choice → reason → multi_judge.
