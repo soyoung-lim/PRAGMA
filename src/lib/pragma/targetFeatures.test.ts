@@ -22,6 +22,11 @@ describe("target feature catalog integrity", () => {
       expect(feature.counter_rule_note.trim()).not.toBe("");
       expect(feature.relevant_resources.length).toBeGreaterThan(0);
       expect(feature.excluded_confounds.length).toBeGreaterThan(0);
+      for (const [summaryKey, summaryCopy] of Object.entries(feature.handoff_summary)) {
+        expect(summaryCopy.trim(), `${key}.${summaryKey}`).not.toBe("");
+        expect(summaryCopy, `${key}.${summaryKey}`).not.toMatch(/[\r\n]/);
+        expect(summaryCopy.length, `${key}.${summaryKey}`).toBeLessThanOrEqual(70);
+      }
 
       const bandCodes = feature.band_schema.map((band) => band.code);
       expect(new Set(bandCodes).size).toBe(bandCodes.length);

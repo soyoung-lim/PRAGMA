@@ -18,6 +18,15 @@ export interface BandDef {
   label_ko: string;
 }
 
+/** MPJ 4개 뒤 학습자가 실제로 가져갈 판단 기준. AI 생성 없이 카탈로그에서 복사한다. */
+export interface HandoffSummaryCopy {
+  first_impression: string;
+  correction: string;
+  reason: string;
+  compare_low: string;
+  compare_high: string;
+}
+
 export interface TargetFeature {
   /** 안정 식별자 — 문항·행에 저장(R13). 예: "request_mitigation_optionality" */
   code: string;
@@ -38,6 +47,8 @@ export interface TargetFeature {
   excluded_confounds: string[];
   /** 완료 화면 핵심 한 줄 — AI 생성 금지, 여기서 복사(R14) */
   closing_principle_ko: string;
+  /** MPJ→DCT handoff의 네 줄 개념 정리 — 방향·모드 공용 */
+  handoff_summary: HandoffSummaryCopy;
   /** judge3 반례가 깨야 할 "소박한 규칙"(A1 일반화) */
   counter_rule_note: string;
   // ── zh_ko(중→한) 방향 변형 (계약 0-l·86, 선택 — 없으면 zh_ko 승격 불가) ──
@@ -77,6 +88,13 @@ const REQUEST_MITIGATION_OPTIONALITY: TargetFeature = {
   ],
   closing_principle_ko:
     "요청은 상대에게 거절할 여지를 얼마나 남기느냐로 무게가 정해집니다. 친밀·저부담이면 직접형도 알맞고, 초면·고부담이면 선택권을 남기는 표현이 어울립니다.",
+  handoff_summary: {
+    first_impression: "친밀도와 부탁의 부담에 비춰 이 정도 직접성이 자연스러운지 살폈습니다.",
+    correction: "가능한지 묻는 표현으로 부탁의 강도와 선택권을 조절했습니다.",
+    reason: "너무 단정하면 상대가 거절하거나 조정할 여지가 줄어든다는 점을 찾았습니다.",
+    compare_low: "상황에 잘 맞는 안과 선택권을 거의 남기지 않은 안을 구분했습니다.",
+    compare_high: "상황에 잘 맞는 안과 요청이 흐려질 만큼 우회적인 안을 구분했습니다.",
+  },
   counter_rule_note:
     "\"직접적이면 나쁘다\" — 반례: 친한 사이의 낮은 부담 요청에서는 직접형(把报告发我)이 오히려 자연스럽고 적절하다.",
   operational_definition_zh_ko:
@@ -126,6 +144,13 @@ const REFUSAL_SOFTENING: TargetFeature = {
   ],
   closing_principle_ko:
     "거절은 완충 장치의 양으로 무게가 정해집니다. 완충이 전혀 없으면 무뚝뚝하게 들리고, 지나치게 많으면 거절인지 아닌지 흐려집니다. 길수록 공손한 것이 아닙니다.",
+  handoff_summary: {
+    first_impression: "관계와 거절 부담에 비춰 이 정도 완충이 자연스러운지 살폈습니다.",
+    correction: "거절은 분명히 하면서 필요한 완충이나 대안을 더했습니다.",
+    reason: "완충이 없으면 무뚝뚝하고, 너무 많으면 거절이 흐려진다는 점을 찾았습니다.",
+    compare_low: "알맞게 완충한 안과 너무 단칼인 안을 구분했습니다.",
+    compare_high: "알맞게 완충한 안과 거절이 흐려질 만큼 장황한 안을 구분했습니다.",
+  },
   counter_rule_note:
     "\"거절은 길수록 공손하다\" — 반례: 친한 사이에서는 간결한 거절(今天不行，改天吧)이 장황한 거절보다 자연스럽고 적절하다.",
   operational_definition_zh_ko:
@@ -174,6 +199,13 @@ const GRATITUDE_CALIBRATION: TargetFeature = {
   ],
   closing_principle_ko:
     "감사는 받은 호의의 크기에 강도를 맞출 때 자연스럽습니다. 작은 호의에 과한 감사는 정중함이 아니라 거리감을 만들고, 큰 도움에 성의 없는 감사는 부족하게 들립니다.",
+  handoff_summary: {
+    first_impression: "받은 호의의 크기에 이 감사 강도가 맞는지 살폈습니다.",
+    correction: "호의의 크기에 맞게 감사의 강도와 부연을 조절했습니다.",
+    reason: "감사가 너무 약하면 성의 없고, 너무 강하면 거리감을 만들 수 있음을 찾았습니다.",
+    compare_low: "호의에 맞는 감사와 강도가 부족한 감사를 구분했습니다.",
+    compare_high: "호의에 맞는 감사와 지나치게 과장된 감사를 구분했습니다.",
+  },
   counter_rule_note:
     "\"감사는 강할수록 좋다\" — 반례: 가벼운 호의(펜을 빌려줌)에는 간단한 감사(谢谢)가 과장된 감사보다 자연스럽고 적절하다. " +
     "감사 과잉이 거리감을 만든다는 것은 요구분석의 실제 사례다(Dai 2023: \"Thanking too much can be alienating\").",
@@ -224,6 +256,13 @@ const APOLOGY_ACCOUNTABILITY_REPAIR: TargetFeature = {
   ],
   closing_principle_ko:
     "사과는 세게 말하는 것이 아니라, 실제 책임과 상대가 받은 영향에 맞게 인정하고 필요한 수리를 제시할 때 적절합니다.",
+  handoff_summary: {
+    first_impression: "실제 책임과 영향에 이 사과의 무게가 맞는지 살폈습니다.",
+    correction: "사과 표현만 늘리지 않고 책임·영향·허용된 수리를 조절했습니다.",
+    reason: "책임을 비껴가거나 사실보다 확대하면 적절한 사과가 되지 않음을 찾았습니다.",
+    compare_low: "책임을 알맞게 인정한 안과 책임·영향 인정이 부족한 안을 구분했습니다.",
+    compare_high: "책임을 알맞게 인정한 안과 책임·수리를 실제보다 확대한 안을 구분했습니다.",
+  },
   counter_rule_note:
     "\"사과는 길고 강할수록 좋다\" — 반례: 사소하고 즉시 회복된 실수에는 간결한 책임 인정과 사과가 과도한 보상 약속보다 자연스럽다.",
   operational_definition_zh_ko:
@@ -275,6 +314,13 @@ const PROPOSAL_OPTIONALITY_CLARITY: TargetFeature = {
   ],
   closing_principle_ko:
     "제안은 결정권을 빼앗지 않으면서도 무엇을 해 보자는지 분명해야 합니다. 직접 말해도 선택 가능한 안이면 적절할 수 있습니다.",
+  handoff_summary: {
+    first_impression: "상대의 결정권을 남기면서 제안할 방안이 분명한지 살폈습니다.",
+    correction: "선택 가능한 제안임을 드러내면서 실행할 방안을 분명히 했습니다.",
+    reason: "결정처럼 밀어붙이거나 유보가 지나치면 제안이 어긋남을 찾았습니다.",
+    compare_low: "선택 가능한 제안과 지시처럼 밀어붙인 안을 구분했습니다.",
+    compare_high: "방안이 분명한 제안과 유보가 지나쳐 내용이 흐린 안을 구분했습니다.",
+  },
   counter_rule_note:
     "\"간접적일수록 좋은 제안이다\" — 반례: 공동 결정이 필요한 급한 상황에서는 분명한 방안을 짧게 제시하는 편이 여러 겹 유보해 안을 흐리는 것보다 적절하다.",
   operational_definition_zh_ko:
@@ -326,6 +372,13 @@ const INVITATION_CHOICE_COMMITMENT: TargetFeature = {
   ],
   closing_principle_ko:
     "초대는 함께할 활동과 약속을 알아볼 수 있게 제시하되, 상대가 실제로 수락하거나 거절할 여지를 남겨야 합니다.",
+  handoff_summary: {
+    first_impression: "함께할 활동과 참여 선택권이 모두 드러나는지 살폈습니다.",
+    correction: "무엇에 초대하는지 밝히면서 수락하거나 거절할 여지를 남겼습니다.",
+    reason: "참여를 압박하거나 조건이 너무 모호하면 초대가 어긋남을 찾았습니다.",
+    compare_low: "자유로운 선택을 남긴 초대와 참여를 압박한 안을 구분했습니다.",
+    compare_high: "내용이 분명한 초대와 초대 의도·조건이 모호한 안을 구분했습니다.",
+  },
   counter_rule_note:
     "\"여러 번 강하게 권해야 진짜 초대다\" — 반례: 일정·비용 부담이 큰 활동에서는 한 번의 분명한 초대와 자유로운 거절 여지가 반복 설득보다 적절하다.",
   operational_definition_zh_ko:
@@ -378,6 +431,13 @@ const OPPOSITION_STANCE_MITIGATION: TargetFeature = {
   ],
   closing_principle_ko:
     "반대는 관계를 공격하지 않으면서도 무엇에 어느 범위까지 동의하지 않는지 알아볼 수 있어야 합니다. 완화는 이견을 숨기는 장치가 아닙니다.",
+  handoff_summary: {
+    first_impression: "이견의 대상·범위가 드러나고 관계를 공격하지 않는지 살폈습니다.",
+    correction: "입장은 분명히 하면서 필요한 인정·한정으로 관계를 조절했습니다.",
+    reason: "공격적 단정이나 지나친 완화는 이견의 초점을 흐린다는 점을 찾았습니다.",
+    compare_low: "관계를 조절한 분명한 이견과 대립적인 안을 구분했습니다.",
+    compare_high: "관계를 조절한 분명한 이견과 실제 입장이 가려진 안을 구분했습니다.",
+  },
   counter_rule_note:
     "\"반대는 반드시 먼저 동의해야 한다\" — 반례: 안전·권리처럼 즉시 명확한 이견이 필요한 상황에서는 근거 있는 직접 반대가 형식적인 선동의보다 적절하다.",
   operational_definition_zh_ko:
@@ -430,6 +490,13 @@ const COMPLIMENT_GROUNDING_SENSITIVITY: TargetFeature = {
   ],
   closing_principle_ko:
     "칭찬은 세게 말하는 것보다, 실제로 확인한 강점을 관계와 주제의 민감도에 맞는 범위로 평가할 때 자연스럽습니다.",
+  handoff_summary: {
+    first_impression: "실제 근거와 관계에 이 칭찬의 강도·범위가 맞는지 살폈습니다.",
+    correction: "확인한 강점을 관계와 주제의 민감도 안에서 구체화했습니다.",
+    reason: "근거 없이 약하거나 과장된 평가는 자연스러운 칭찬이 되기 어렵다는 점을 찾았습니다.",
+    compare_low: "근거 있는 칭찬과 지나치게 약하거나 의례적인 안을 구분했습니다.",
+    compare_high: "근거 있는 칭찬과 확인한 범위를 넘어 과장한 안을 구분했습니다.",
+  },
   counter_rule_note:
     "\"구체적이고 강한 칭찬일수록 좋다\" — 반례: 관계가 멀거나 주제가 사적인 경우에는 범위를 한정한 평가가 과장된 개인 평가보다 적절하다.",
   operational_definition_zh_ko:
@@ -482,6 +549,13 @@ const COMPLIMENT_RESPONSE_UPTAKE: TargetFeature = {
   ],
   closing_principle_ko:
     "칭찬 대응에는 하나의 문화 공식이 없습니다. 상대의 평가를 알아듣고, 수용·감사·공로 분배·비껴가기를 현재 관계에 맞게 조합하는 것이 핵심입니다.",
+  handoff_summary: {
+    first_impression: "상대의 칭찬을 실제로 처리하면서 관계에 맞게 반응했는지 살폈습니다.",
+    correction: "수용·감사·공로 분배를 현재 관계에 맞게 조절했습니다.",
+    reason: "무조건 부정하거나 자기 평가를 늘리면 원래 칭찬 처리가 가려짐을 찾았습니다.",
+    compare_low: "칭찬을 관계적으로 처리한 안과 반응이 부족한 안을 구분했습니다.",
+    compare_high: "칭찬을 관계적으로 처리한 안과 자기 평가·부정이 지나친 안을 구분했습니다.",
+  },
   counter_rule_note:
     "\"중국어 칭찬에는 반드시 부정으로 답해야 한다\" — 반례: 관계와 주제에 따라 간단한 수용과 감사가 과도한 부정보다 자연스럽고 적절할 수 있다.",
   operational_definition_zh_ko:
@@ -534,6 +608,13 @@ const COMPLAINT_PROBLEM_ACCOUNTABILITY: TargetFeature = {
   ],
   closing_principle_ko:
     "불만은 세게 말하는 것이 아니라, 무엇이 어떤 영향을 주었고 상대가 어디까지 책임지는지를 사실에 맞게 밝혀야 해결 가능한 문제 제기가 됩니다.",
+  handoff_summary: {
+    first_impression: "문제·영향·책임 범위를 사실에 맞게 드러냈는지 살폈습니다.",
+    correction: "문제와 영향을 분명히 하되 확인된 책임 범위만 제시했습니다.",
+    reason: "문제가 모호하거나 책임을 확대하면 해결 가능한 불만이 되기 어렵다는 점을 찾았습니다.",
+    compare_low: "해결할 문제를 분명히 한 안과 문제·영향이 모호한 안을 구분했습니다.",
+    compare_high: "근거 있는 불만과 책임·의도를 사실보다 확대한 안을 구분했습니다.",
+  },
   counter_rule_note:
     "\"불만은 간접적일수록 공손하다\" — 반례: 반복 피해와 책임이 분명한 상황에서는 문제와 필요한 조치를 직접 특정하는 편이 모호한 암시보다 적절하다.",
   operational_definition_zh_ko:
@@ -576,6 +657,13 @@ const POLITENESS: TargetFeature = {
   relevant_resources: ["호칭 (您/你)", "인사·안부", "격식 표지"],
   excluded_confounds: ["요청의 직접성 — 별도 축", "거절의 완충 — 별도 축"],
   closing_principle_ko: "공손함은 상황에 맞을 때 자연스럽습니다.",
+  handoff_summary: {
+    first_impression: "상대와 상황에 이 정도 공손성이 자연스러운지 살폈습니다.",
+    correction: "관계와 상황에 맞게 공손 표현의 정도를 조절했습니다.",
+    reason: "무례하거나 지나치게 공손하면 상황에 어긋날 수 있음을 찾았습니다.",
+    compare_low: "상황에 맞는 공손 표현과 무례하게 들리는 안을 구분했습니다.",
+    compare_high: "상황에 맞는 공손 표현과 지나치게 격식을 높인 안을 구분했습니다.",
+  },
   counter_rule_note: "\"공손할수록 좋다\" — 반례: 친한 사이의 과잉 격식은 거리감을 만든다.",
 };
 

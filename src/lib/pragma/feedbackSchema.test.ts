@@ -135,6 +135,21 @@ describe("feedback consistency", () => {
     expect(blocks.meaning_ko).toContain("화용 층");
   });
 
+  it("keeps gratitude intensity out of the meaning verdict", () => {
+    const v = verdicts({ semantic_fidelity: "minor_loss" });
+    const blocks = {
+      meaning_ko:
+        "도움에 대한 감사는 전달되지만 감사 강도가 약하고 부연이 없어 의미가 달라졌습니다.",
+      grammar: [],
+      feature_ko: "이 상황에서는 감사가 다소 가볍게 들릴 수 있습니다.",
+      alternatives: [],
+    };
+
+    expect(repairPragmaticLeakIntoMeaning(v, blocks)).toHaveLength(1);
+    expect(v.semantic_fidelity).toBe("preserved");
+    expect(blocks.meaning_ko).toContain("표현의 강도");
+  });
+
   it("retains a meaning verdict backed by a concrete omission", () => {
     const v = verdicts({ semantic_fidelity: "minor_loss" });
     const blocks = {

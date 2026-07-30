@@ -122,3 +122,19 @@
 - 관련 파일: `src/pages/learner/MissionRunV1.tsx`, `docs/contracts/PRAGMA_생성계약_정본_2026-07-29.md`, `docs/product/PRAGMA_학습자구조_정본_2026-07-29.md`
 - 관련 Iteration / Evidence: `ITER-20260729-03`, `EVD-20260729-04`
 - 관련 커밋: 없음
+
+## DEC-20260729-09 · mission_v4 공통 규칙을 target feature 카탈로그 주입형으로 일반화
+
+- 날짜: 2026-07-29
+- 상태: 채택, soft-freeze 후보
+- 문제: 요청 미션에서 설계·검토한 SUMMARY와 공통 생성·피드백 프롬프트에 직접성·질문형·선택권 문구가 일반 규칙처럼 남아 있어, 감사 강도·사과의 책임과 수리·불평의 문제와 책임 범위 등 다른 화용 기능을 요청의 기준으로 설명하거나 판정할 위험이 있었다.
+- 검토한 대안:
+  - 요청용 문구를 공통 기본값으로 유지하고 다른 기능은 일반 문구로 대체: 기능별 학습 초점이 사라져 기각.
+  - 화행별 페이지·프롬프트를 분기해 별도 구현: 중복과 기준 불일치 위험이 커 기각.
+  - target feature 카탈로그에 기능별 SUMMARY·대역·반례를 두고 공통 UI·프롬프트가 이를 주입받게 함: 채택.
+- 결정: 승인 교육과정의 10개 기능은 각각 네 줄 SUMMARY를 가진다. Scale4는 해당 feature의 `counter_rule_ko` 반례를 사용하고, 공통 피드백은 사실·조건·핵심 화행 내용과 목표 화용 자원의 강도·완화·선택권·명료성·범위를 분리한다. 번역과 통역은 같은 3층 평가 경계를 사용하며 통역에만 음성 추정 금지 경계를 추가한다.
+- 근거: 전 승인 기능 매트릭스에서 요청 외 기능도 기능별 문구를 반환하고, 번역·통역의 개념 SUMMARY가 동일하며, 감사 강도를 의미 손실로 세는 응답이 결정적으로 교정됨을 자동 테스트로 확인했다.
+- 한계: 새로 생성한 각 화행 미션의 자연스러움과 난이도는 자동 테스트만으로 확정하지 않으며 인간 표본 검수가 필요하다.
+- 관련 파일: `src/lib/pragma/targetFeatures.ts`, `src/lib/mission/mpjSummary.ts`, `src/lib/pragma/feedbackSchema.ts`, `supabase/functions/generate-scenario/index.ts`
+- 관련 Iteration / Evidence: `ITER-20260729-04`, `EVD-20260729-05`
+- 관련 커밋: 없음
