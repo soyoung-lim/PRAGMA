@@ -1,5 +1,12 @@
 # L2 Pragmatic Translator
 
+## 현재 작업 인수인계 · Claude Code와 Codex 공통
+
+- 기존 작업을 이어갈 때 가장 먼저 `docs/handoff/ACTIVE_HANDOFF.md`를 읽는다.
+- 문서에 적힌 작업공간·branch·HEAD를 실제 Git 상태와 대조한 뒤 수정한다.
+- 다른 worktree에 있다면 그곳을 최신 상태라고 가정하거나 사용자 변경을 정리하지 않는다.
+- Claude Code와 Codex가 같은 worktree를 동시에 편집하지 않는다.
+
 ## 제품·연구 정체성 정본
 
 - 학습자 UI, 스캐폴딩, 데이터 로깅 또는 연구 주장에 영향을 주는 작업 전에 `docs/research/PRAGMA_PRODUCT_RESEARCH_IDENTITY_2026-07-28.md`를 읽는다.
