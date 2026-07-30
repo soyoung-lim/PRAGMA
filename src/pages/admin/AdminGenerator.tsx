@@ -957,7 +957,7 @@ const AdminGenerator = () => {
 
   return (
     <AdminShell
-      title="AI 시나리오 생성"
+      title="미션 재료 생성 · 단일"
       description="한·중 통번역 학습 시나리오 자동 생성 및 검수 대기 저장"
     >
       {/* Helper note */}

@@ -25,9 +25,26 @@ const AdminAuthentic = () => {
 
   return (
     <AdminShell
-      title="실제 자료 활용"
-      description="중국 쇼츠 캡처·소설 구절·메신저 문구 같은 실제 자료를 AI가 분석해, 시나리오·선행 발화·표현 자원 활용 후보를 제안합니다."
+      title="원자료 분석"
+      description="중국 쇼츠 캡처·소설 구절·메신저 문구 같은 실제 자료를 분석해, 시나리오·선행 발화·라운지 표현 후보로 바꿉니다."
     >
+      {/* 4단계 제작 흐름 — 이 화면은 입력 폼이 아니라 변환 파이프라인이다 */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-[#EAE4D2] bg-white px-4 py-2.5 text-[12px]">
+        {["원자료 가져오기", "추출 문구 확인", "활용 방향 분석", "콘텐츠 후보"].map((step, i) => (
+          <span key={step} className="flex items-center gap-2">
+            {i > 0 && <span className="text-[#C9C2B2]">→</span>}
+            <span className="flex items-center gap-1.5">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#FAD338] text-[10.5px] font-bold text-[#1d2336]">
+                {i + 1}
+              </span>
+              <span className="text-[#5B5446]">{step}</span>
+            </span>
+          </span>
+        ))}
+        <span className="ml-auto text-[11px] text-muted-foreground">
+          후보 선택 → 미션 재료 생성 · 단일로 전달
+        </span>
+      </div>
       <div className="mt-4">
         <AuthenticImportPanel onApply={handleApply} />
       </div>

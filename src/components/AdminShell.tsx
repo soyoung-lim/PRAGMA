@@ -36,24 +36,28 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/prompt-harness", label: "생성 규칙·프롬프트" },
     ],
   },
+  // 2026-07-30 IA 재편(사용자·Codex·Claude 수렴안): 생성 화면들의 산출물은 학습
+  // 콘텐츠가 아니라 "미션 재료(코어)"다. 재료가 학습 콘텐츠(MPJ4+DCT1)가 되는
+  // 결정적 변환 = 미션 조립이 라이브러리 행 안 버튼으로 숨어 있어, 제작(재료)과
+  // 완성·관리(조립·검수)를 2층으로 분리하고 조립을 독립 화면으로 승격했다.
   {
-    header: "1 · 콘텐츠 파이프라인",
+    header: "1 · 콘텐츠 제작",
     items: [
-      { to: "/admin/generator", label: "개별 생성" },
-      // 2026-07-30: 생성기 내부 접이식 패널에서 독립 화면으로 승격(사용자 결정) —
-      // 자료 입력→AI 해석→후보 선택의 완결 워크플로우. 후보는 개별 생성으로 전달.
-      { to: "/admin/authentic", label: "실제 자료 활용" },
-      { to: "/admin/batch", label: "배치 생성" },
-      // 2026-07-30: 「학습 미션 조립」→「시나리오 라이브러리」. 이 화면은 조회·필터가
-      // 절반, 코어→미션 승격이 절반인데 이전 이름은 앞쪽을 가렸다(사용자 피드백:
-      // "브라우저라고 하니까 매번 헷갈려"). 승격 기능은 화면 설명에 명시.
-      // 레거시 /admin/archive(계약 이전 세대 화면)는 삭제 — 여기로 리다이렉트.
-      { to: "/admin/library", label: "시나리오 라이브러리" },
-      { to: "/admin/review", label: "통합 검수·승인" },
+      { to: "/admin/authentic", label: "원자료 분석" },
+      { to: "/admin/generator", label: "미션 재료 생성 · 단일" },
+      { to: "/admin/batch", label: "미션 재료 생성 · 대량" },
     ],
   },
   {
-    header: "2 · 커리큘럼·수업 준비",
+    header: "2 · 콘텐츠 완성·관리",
+    items: [
+      { to: "/admin/library", label: "미션 재료 라이브러리" },
+      { to: "/admin/assembly", label: "학습 미션 조립" },
+      { to: "/admin/review", label: "검수·승인" },
+    ],
+  },
+  {
+    header: "3 · 커리큘럼·수업 준비",
     // 둘 다 "15주"로 시작해 관계가 안 보였다(2026-07-26). ①은 빈 시간표를 만들고
     // ②는 그 칸을 채운다 — 번호로 순서를, 이름으로 무엇이 다른지 드러낸다.
     items: [
@@ -63,7 +67,7 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    header: "3 · 학습자·학습 분석",
+    header: "4 · 학습자·학습 분석",
     items: [
       { to: "/admin/learners", label: "학습자 관리" },
       { to: "/admin/decision-traces", label: "수행·의사결정 기록" },
@@ -71,7 +75,7 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    header: "4 · 연구",
+    header: "5 · 연구",
     items: [
       { to: "/admin/export", label: "연구 데이터 관리", pending: true },
     ],

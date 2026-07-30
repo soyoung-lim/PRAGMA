@@ -18,8 +18,6 @@ import {
 } from "@/lib/pragma/enums";
 import { coreDirection } from "@/lib/pragma/coreSchema";
 import { THEME_LABEL, type ThemeCode } from "@/lib/pragma/scenarioTopics";
-import { DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
-import { promoteCore, reviewMission, type PromotableCore } from "@/lib/pragma/promoteMission";
 import { fetchMissionForReview } from "@/lib/mission/missionDb";
 import { MissionPreview } from "@/components/admin/MissionPreview";
 import type { MissionRuntime } from "@/lib/pragma/missionSchema";
@@ -88,8 +86,6 @@ const AdminBrowser = () => {
   const [fDirection, setFDirection] = useState<"all" | LanguageDirection>("all");
   const [fSource, setFSource] = useState<"all" | "ai" | "authentic">("all");
   const [sel, setSel] = useState<{ act: SpeechActUI; level: LearnerLevel } | null>(null);
-  const [busy, setBusy] = useState<string | null>(null); // 승격 중인 scenario_id
-  const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
   // 눈검사 미리보기 — scenario_id → {mission, warnings}. openId = 펼친 행.
   const [preview, setPreview] = useState<Record<string, { mission: MissionRuntime; warnings: string[] }>>({});
   const [openId, setOpenId] = useState<string | null>(null);
@@ -110,60 +106,7 @@ const AdminBrowser = () => {
     }
   };
 
-  const setStatus = (id: string, status: string) =>
-    setRows((prev) => prev.map((r) => (r.scenario_id === id ? { ...r, mission_status: status } : r)));
-
-  const onGenerate = async (r: CoreRow) => {
-    setBusy(r.scenario_id);
-    setRowMsg((m) => ({ ...m, [r.scenario_id]: "미션 생성 중… (게이트1 프롬프트, 최대 3회)" }));
-    try {
-      const res = await promoteCore(r as unknown as PromotableCore);
-      if (res.ok) {
-        setStatus(r.scenario_id, "generated");
-        // 검증②(0-n·94) 결과가 있으면 함께 알린다 — 없으면(호출 실패) 침묵하지 않고 표기.
-        const qLabel = res.quality
-          ? { pass: "AI점검 통과", warning: "AI점검 주의", fail: "AI점검 결함" }[res.quality.verdict]
-          : "AI점검 미실행";
-        setRowMsg((m) => ({ ...m, [r.scenario_id]: `생성됨(${res.ruleResult}, 시도 ${res.attempts}회) · ${qLabel} — 눈검사 후 검토 완료 처리` }));
-        if (res.mission) {
-          const warnings = (res.violations ?? []).filter((v) => v.level === "warning").map((v) => `${v.id}: ${v.message}`);
-          // 품질점검은 저장 직전에 붙으므로 엣지 응답 미션에는 없다 — 미리보기용으로 합친다.
-          const withQuality = res.quality ? { ...res.mission, quality_check: res.quality } : res.mission;
-          setPreview((m) => ({ ...m, [r.scenario_id]: { mission: withQuality, warnings } }));
-          setOpenId(r.scenario_id); // 생성 직후 바로 눈검사 뷰 펼침
-        }
-        if (res.quality?.verdict === "fail") {
-          toast.warning("미션 생성됨 — AI 품질점검에서 결함이 보고되었습니다. 눈검사 필요");
-        } else {
-          toast.success("미션 생성됨 — 검토 대기");
-        }
-      } else {
-        setRowMsg((m) => ({ ...m, [r.scenario_id]: `실패: ${res.error}${res.violations?.length ? " · " + res.violations.filter((v) => v.level === "fail").map((v) => v.id).join(",") : ""}` }));
-        toast.error(res.error ?? "미션 생성 실패");
-      }
-    } catch (e) {
-      setRowMsg((m) => ({ ...m, [r.scenario_id]: `오류: ${e instanceof Error ? e.message : e}` }));
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const onReview = async (r: CoreRow) => {
-    setBusy(r.scenario_id);
-    try {
-      const res = await reviewMission(r.scenario_id);
-      if (res.ok) {
-        setStatus(r.scenario_id, "reviewed");
-        setRowMsg((m) => ({ ...m, [r.scenario_id]: "검토 완료 — 학습자 실행 가능" }));
-        toast.success("검토 완료(reviewed) — 학습자 실행 가능");
-      } else {
-        toast.error(res.error ?? "검토 처리 실패");
-      }
-    } finally {
-      setBusy(null);
-    }
-  };
-
+  // 2026-07-30: 조립·검토 액션은 /admin/assembly로 이관 — 이 화면은 조회 전용.
   const loadRows = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -249,8 +192,8 @@ const AdminBrowser = () => {
     // 이 화면은 조회·필터(라이브러리)가 절반, 코어→미션 승격이 절반이다 —
     // promoteCore·reviewMission이 여기서 실행된다. 승격 기능은 이름 대신 설명이 말한다.
     <AdminShell
-      title="시나리오 라이브러리"
-      description="생성된 코어를 화행 × 수준 그리드와 필터로 찾아보고, 여기서 바로 미션으로 승격·검토합니다."
+      title="미션 재료 라이브러리"
+      description="생성된 미션 재료(코어)를 화행 × 수준 그리드와 필터로 찾아봅니다. 조회 전용 — 재료를 학습 미션으로 완성하는 곳은 「학습 미션 조립」입니다."
     >
       {/* ── 요약 ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-5">
@@ -439,31 +382,22 @@ const AdminBrowser = () => {
                       </p>
                     )}
 
-                    {/* ── 승격 액션 ── */}
+                    {/* ── 조회 전용 — 조립·검토는 학습 미션 조립 화면에서 ── */}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      {!r.mission_status && (
-                        DEFAULT_FEATURE_BY_ACT[r.speech_act] ? (
-                          <Button size="sm" variant="outline" disabled={busy === r.scenario_id}
-                            onClick={() => onGenerate(r)}>
-                            {busy === r.scenario_id ? "생성 중…" : "미션 생성"}
-                          </Button>
-                        ) : (
-                          <span className="text-[11.5px] text-muted-foreground">화용 초점 카탈로그 없음 — 승격 불가</span>
-                        )
-                      )}
-                      {r.mission_status === "generated" && (
-                        <Button size="sm" disabled={busy === r.scenario_id} onClick={() => onReview(r)}>
-                          {busy === r.scenario_id ? "처리 중…" : "검토 완료(reviewed)"}
-                        </Button>
-                      )}
                       {(r.mission_status === "generated" || r.mission_status === "reviewed") && (
                         <Button size="sm" variant="ghost" onClick={() => togglePreview(r)}>
                           {openId === r.scenario_id ? "미션 접기 ▴" : "미션 보기 ▾"}
                         </Button>
                       )}
-                      {rowMsg[r.scenario_id] && (
-                        <span className="text-[11.5px] text-muted-foreground">{rowMsg[r.scenario_id]}</span>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          navigate(`/admin/assembly?act=${r.speech_act}&level=${r.learner_level}`)
+                        }
+                      >
+                        조립에서 열기 →
+                      </Button>
                     </div>
 
                     {openId === r.scenario_id && preview[r.scenario_id] && (
