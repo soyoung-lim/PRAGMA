@@ -1122,7 +1122,9 @@ function MissionRunner({
             <MpjStage
               key={item.id}
               item={item}
-              sequentialFix={mission.schema_version === "mission_v4"}
+              sequentialFix={
+                mission.schema_version === "mission_v4" || mission.schema_version === "mission_v5"
+              }
               onDone={nextMpj}
             />
             {mpjIdx === 0 && <MissionBriefDrawer mission={mission} />}
