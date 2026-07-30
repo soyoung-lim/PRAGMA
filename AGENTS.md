@@ -1,5 +1,12 @@
 # PRAGMA Codex 작업 가이드
 
+## 현재 작업 인수인계 · Claude Code와 Codex 공통
+
+- 기존 작업을 이어갈 때 가장 먼저 `docs/handoff/ACTIVE_HANDOFF.md`를 읽는다.
+- 문서에 적힌 작업공간·branch·HEAD를 실제 Git 상태와 대조한 뒤 수정한다.
+- 다른 worktree에 있다면 그곳을 최신 상태라고 가정하거나 사용자 변경을 정리하지 않는다.
+- Claude Code와 Codex가 같은 worktree를 동시에 편집하지 않는다.
+
 ## 모델별 작업 배분 및 실행 가이드
 
 아래 내용은 절대 규칙이 아니라 기본 권장 방식이다. 사용자 지시와 현재 작업의 성격을 우선한다.
