@@ -55,22 +55,17 @@ export function learnerCounterpartLabel(relation: string): string {
   return counterpart || relation.trim();
 }
 
-// 위챗 스타일 대화 스킨 — 미션 UX 프로토타입 v2 정본(2026-07-25) 이식.
+// 브랜드를 직접 표기하지 않는 DM형 대화 스킨.
 // 채널 상표는 무표기(0-k·79①): "대화 맥락 · 상대"만 노출하고 메신저/이메일 상표는 쓰지 않는다.
 // 상황+관계 = 상단 공지 카드, 본문 = 말풍선 스레드(선행발화 them / 내 산출 me).
 
-// 모던 플랫 SVG 아바타(실루엣 + 그라데이션 배경).
-export function ChatAvatar({ side }: { side: "them" | "me" }) {
+// 상대만 표시하는 중립 아바타. 학습자 쪽은 말풍선 정렬만으로 구분한다.
+export function ChatAvatar() {
   return (
     <span
-      className={[
-        "flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full text-white shadow-[0_1px_3px_rgba(0,0,0,0.16)]",
-        side === "them"
-          ? "bg-gradient-to-br from-[#93A3B6] to-[#5E7186]"
-          : "bg-gradient-to-br from-[#8CE768] to-[#46A836]",
-      ].join(" ")}
+      className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#C9CED6] text-white shadow-[0_1px_2px_rgba(21,32,43,0.1)]"
     >
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-[19px] w-[19px] opacity-95">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-[18px] w-[18px] opacity-90">
         <circle cx="12" cy="8" r="4" />
         <path d="M12 13.6c-4.4 0-8 2.6-8 6.1 0 .4.3.7.7.7h14.6c.4 0 .7-.3.7-.7 0-3.5-3.6-6.1-8-6.1z" />
       </svg>
@@ -78,7 +73,7 @@ export function ChatAvatar({ side }: { side: "them" | "me" }) {
   );
 }
 
-/** 대화 말풍선 한 줄(아바타 + 버블). me/them, me의 draft 변형(점선 = 미발송 초안). */
+/** DM형 대화 말풍선 한 줄. 상대 아바타만 표시한다. */
 export function ChatBubble({
   side,
   variant = "solid",
@@ -90,28 +85,36 @@ export function ChatBubble({
 }) {
   const bubble =
     side === "them"
-      ? "bg-white text-[#141414] rounded-bl-[5px] shadow-[0_1px_2px_rgba(20,30,45,0.1)]"
+      ? "border border-[#E1E5EA] bg-white text-[#15202B] shadow-[0_1px_3px_rgba(21,32,43,0.1)]"
       : variant === "draft"
-      ? "bg-[#EFFBE8] text-[#1a5200] rounded-br-[5px] border-[1.5px] border-dashed border-[#6bbf3f]"
-      : "bg-gradient-to-b from-[#9EED7C] to-[#84E15E] text-[#0c3300] rounded-br-[5px]";
+      ? "bg-[#0A84FF] text-white"
+      : "bg-[#0A84FF] text-white";
   return (
     <div className={["mb-3 flex items-end gap-2 last:mb-0", side === "me" ? "justify-end" : ""].join(" ")}>
-      {side === "them" && <ChatAvatar side="them" />}
-      <div className={["max-w-[70%] break-words rounded-[19px] px-3 py-2 text-[14.5px] leading-[1.46]", bubble].join(" ")}>
+      {side === "them" && <ChatAvatar />}
+      <div className={["max-w-[78%] break-words rounded-[24px] px-3.5 py-2.5 text-[15px] font-medium leading-[1.5]", bubble].join(" ")}>
         {children}
       </div>
-      {side === "me" && <ChatAvatar side="me" />}
     </div>
   );
 }
 
-/** 내 말풍선 위 우측 캡션 — "전하려는 뜻 · …" / 초안 안내. */
-export function ChatCaption({ children, tone = "muted" }: { children: ReactNode; tone?: "muted" | "draft" }) {
+/** 내 말풍선의 우측 캡션. 의도는 말풍선 아래, 초안 상태는 위에 둔다. */
+export function ChatCaption({
+  children,
+  tone = "muted",
+  placement = "above",
+}: {
+  children: ReactNode;
+  tone?: "muted" | "draft";
+  placement?: "above" | "below";
+}) {
   return (
     <div
       className={[
-        "mb-1.5 mr-[46px] text-right",
-        tone === "draft" ? "text-[11px] font-semibold text-[#4a7a2a]" : "text-[13px] text-[#3E4C57]",
+        "mr-1 text-right",
+        placement === "below" ? "-mt-1 mb-2" : "mb-1.5",
+        tone === "draft" ? "text-[11px] font-semibold text-[#52697E]" : "text-[13px] text-[#3E4C57]",
       ].join(" ")}
     >
       {children}
@@ -178,7 +181,7 @@ export function ChatScene({
       <div className="my-1.5 space-y-3">
         {situationPanel}
         <div className="overflow-hidden rounded-2xl border border-[#CBD5DD] bg-[#E8EDF2] shadow-[0_7px_20px_rgba(21,32,43,0.06)]">
-          <div className="flex items-center justify-between border-b border-[#D5DDE4] bg-white/90 px-3.5 py-2.5">
+          <div className="flex items-center border-b border-[#D5DDE4] bg-white/90 px-3.5 py-2.5">
             <div className="flex items-center gap-2 text-[11px] font-bold text-[#536675]">
               <span className="flex gap-1" aria-hidden="true">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#8DA0AF]" />
@@ -186,7 +189,6 @@ export function ChatScene({
               </span>
               {threadEyebrow}
             </div>
-            <span className="text-[10.5px] text-[#7A8791]">대화 화면</span>
           </div>
           <div className="px-3.5 py-3.5">{children}</div>
         </div>
