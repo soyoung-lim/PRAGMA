@@ -1118,7 +1118,7 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
       "highlights": ["target의 실제 부분문자열"],
       "accepted_scale_codes": ["very_appropriate","somewhat_appropriate"],
       "reference_scale_code": "very_appropriate 또는 somewhat_appropriate 중 대표 1개",
-      "explanation_ko": "왜 직접·간결·강한 형식도 이 P·D·R에서는 적절한지 설명",
+      "explanation_ko": "왜 이 초점의 소박한 규칙에 대한 반례가 이 P·D·R에서는 적절한지 설명",
       "recommended_example": "이 상황의 적절안 1개(${tgtL})"
     },
     {
@@ -1187,7 +1187,7 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
 
 핵심 규칙:
 - mpj_items는 **정확히 4개**, 순서는 scale4 → fix_choice → reason → multi_judge.
-- scale4는 "직접형·간결형·강한 표현은 항상 나쁘다" 같은 소박한 규칙을 깨는 **적절한 반례**입니다.
+- scale4는 위에 주입된 "깨야 할 소박한 규칙"을 깨는 **적절한 반례**입니다.
   accepted_scale_codes는 반드시 ["very_appropriate","somewhat_appropriate"] 두 개이고,
   reference_scale_code는 그중 대표 정도 하나입니다. 학습자가 같은 적절성 방향을 고르면 맞게 처리합니다.
 - fix_choice는 **Judge3 판단을 먼저 한 뒤 교정**하는 한 문항이다. accepted_band_codes를 생략하지 마세요.
@@ -1198,10 +1198,9 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
   다만 오답이 주된 target-feature 원인과 동등하게 방어되면 문항을 버리고 다시 만드세요.
 - fix_choice의 수정안은 정확히 4개(적절한 서로 다른 전략 2 + 그럴듯한 오답 2).
 - multi_judge는 정확히 5후보(과소 2·적정 2·과잉 1: ${lowBand} 2 + ${f.within_band_code} 2 + ${highBand} 1). 후보 순서는 매번 섞으세요.
-- 🔴 **판정 대역은 표현 형식이 아니라 관계·부담(P·D·R)에 상대적입니다.** 친밀·동등·저부담 상황에서는
-  직접형·간결형도 적절할 수 있으며, **완화 표현이 없다는 이유만으로 과소 대역으로 판정하지 마세요.**
-  같은 문장이 초면·고부담이면 과소, 친밀·저부담이면 적정일 수 있습니다.
-  감사의 경우 호의가 클수록 강한 감사가 적정입니다 — 강한 표현을 기계적으로 과잉으로 판정하지 마세요.
+- 🔴 **판정 대역은 표현 형식 하나가 아니라 이 target feature의 정의와 관계·부담(P·D·R)에 상대적입니다.**
+  위에 주입된 band 설명과 소박한 규칙의 반례를 따르고, 더 간접적·길거나 강한 표현을 자동으로 더 좋은 답으로 판정하지 마세요.
+  같은 표현 자원도 관계·부담과 사건의 실제 무게에 따라 과소·적정·과잉 위치가 달라질 수 있습니다.
 - fix_choice와 reason의 target은 해당 P·D·R에서 실제로 부적절해야 하며, 의미·문법 오류를 부적절성의 근거로 쓰지 마세요.
 - **앵커+대비**: fix_choice와 reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건,
   scale4는 해당 표현이 실제로 적절해지는 대비 P/D/R, multi_judge는 DCT P/D/R 중 정확히 한 축만 바꾼 대비 사건입니다.
@@ -1592,7 +1591,8 @@ function buildFeedbackSystemPrompt(direction: Direction, isSpoken: boolean): str
 - 음성이 제공되지 않으므로 발음·성조·속도·휴지·유창성·음질을 추측하거나 평가하지 마라.
 - 전사 문구를 근거로 의미·문법·화용만 진단한다.
 - **통역이라고 의미 판정 기준을 더 엄격하게 바꾸지 마라.** 번역과 완전히 같은 3층 경계를
-  적용한다. 질문형·완화·선택권 표지가 사라진 것은 통역에서도 의미 손실이 아니라 화용 차이다.
+  적용한다. 완화·강도·선택권·명료성 등 목표 화용 자원의 변화는 통역에서도 그 자체로
+  의미 손실이 아니라 화용 차이다.
 `
     : ''
   return `너는 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 수업의 화용 피드백 담당이다.
@@ -1620,23 +1620,24 @@ ${modeBoundary}
    단, 사용자 요청서의 [허용된 추가 사실]에 있는 내용은 명제적 Supportive Move로 사용할 수 있다.
    목록에 없는 추가 사실만 의미 이탈로 판정한다.
    ※ 관습화된 정형 표현(인사·완충어)의 추가는 명제 추가가 아니다.
-   ⚠️ **판정 기준**: 원문의 어떤 **사실·조건·요구 내용**이 빠지거나 달라졌는지
+   ⚠️ **판정 기준**: 원문의 어떤 **사실·조건·핵심 화행 내용**이 빠지거나 달라졌는지
       구체적으로 한 가지라도 댈 수 없으면 반드시 "preserved"로 판정하라.
-   ⚠️ **완화·공손 표현이 사라진 것은 의미 손실이 아니다.** "말투가 세졌다",
-      "선택권을 남기지 않았다", "완곡함이 사라졌다", "부탁이 명령처럼 들린다"는
-      전부 ③ 화용 층의 소관이다. **같은 현상을 ①과 ③에 이중으로 세지 마라.**
-      여전히 같은 것을 요청하고 있다면 아무리 직설적이어도 "preserved"다.
-      질문형 요청이 명령형 요청으로 바뀌었더라도 요청 대상 행동·참여자·조건이 같다면
-      화행 목적은 유지된 것이다. 이때 달라진 요청 강도·선택권은 ③에서만 판정한다.
+   ⚠️ **목표 화용 자원의 변화 자체는 의미 손실이 아니다.** 완화·공손·강도·선택권·
+      명료성·표현 범위가 달라졌더라도 핵심 명제·참여자·화행 목적이 같으면 의미는
+      "preserved"다. 이런 차이는 ③ 화용 층에서만 판정한다.
+      **같은 현상을 ①과 ③에 이중으로 세지 마라.**
    ⚠️ 문법 오류 때문에 읽기 어렵다는 이유로 의미를 깎지 마라 — 그것은 ② 소관이다.
-   🔴 **층 분리 교정 예시**:
+   🔴 **층 분리 교정 예시(특정 화행의 고정 정답이 아니라 경계 설명용)**:
       원문이 "X를 해 주실 수 있나요?"라는 요청일 때,
       - 답이 "X를 해."이면 요청 행동 X는 같으므로 의미="preserved", 문법="clean",
-        직접성·선택권만 ③ 화용에서 판정한다.
+         직접성·선택권만 ③ 화용에서 판정한다.
       - 답이 문법적으로 깨졌어도 X를 해 달라는 의도를 알아볼 수 있으면 의미="preserved",
-        문법="impeding_errors"로 판정한다.
+         문법="impeding_errors"로 판정한다.
       - X가 아닌 다른 행동을 말하거나, 요청을 철회·수락·사실 진술로 바꾼 경우에만
-        의미 손실로 판정한다.
+         의미 손실로 판정한다.
+      원문이 특정 도움에 감사를 전하는 말일 때,
+      - 감사 강도가 더 약하거나 강해져도 같은 도움에 감사를 전하면 의미="preserved"이고,
+        달라진 감사 강도는 ③ 화용에서 판정한다.
 ② 이해 가능성(문법): **이해를 방해하는 오류만** 본다. 사소한 부자연스러움·문체 취향은
    적지 마라. 지적은 **최대 1건**, 반드시 학습자 문장에 실제로 있는 부분만 인용한다.
 ③ 화용 인상: 이 상대·이 부담에서 목표 초점이 어느 대역으로 실현되었는가.
@@ -1648,7 +1649,8 @@ ${modeBoundary}
   위험의 방향만 알려준다. 확신이 없으면 uncertainty_flags에 적고 단정을 피하라.
 
 [금지]
-- 격식을 무조건 올리라고 하지 마라(과잉 방향 오교정 금지). 친밀·저부담이면 직접형이 알맞다.
+- 더 길고·간접적이고·강하거나 공손한 표현을 자동으로 상향 교정하지 마라. 적정 대역은
+  주어진 화용 초점의 카탈로그 정의와 관계·거리·부담(P/D/R)을 함께 보고 판정한다.
 - 문법 오류를 화용 문제처럼 쓰지 마라. 반대도 마찬가지다 — 두 층은 별개다.
 - 목표 초점 밖의 축(호칭·격식체 어휘·문장 길이 자체)을 지적하지 마라.
 - 학습자 문장을 통째로 바꾼 "모범답"을 제시하지 마라.
@@ -1901,14 +1903,14 @@ Deno.serve(async (req) => {
         ...mission_content,
         provenance: {
           model,
-          prompt_version: 'mission_v4_mpj4_dct1_context_v3',
+          prompt_version: 'mission_v4_mpj4_dct1_context_v4',
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
         },
       }
       return new Response(
-        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v4_mpj4_dct1_context_v3', generated_at: genAt } }),
+        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v4_mpj4_dct1_context_v4', generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }
@@ -1954,9 +1956,9 @@ Deno.serve(async (req) => {
           feedback: {
             ...parsed,
             rubric_version: b.rubric_version ?? '',
-            provenance: { model, prompt_version: 'feedback_v1', generated_at: new Date().toISOString() },
+            provenance: { model, prompt_version: 'feedback_v1_feature_general_v2', generated_at: new Date().toISOString() },
           },
-          meta: { provider: PROVIDER, model, prompt_version: 'feedback_v1' },
+          meta: { provider: PROVIDER, model, prompt_version: 'feedback_v1_feature_general_v2' },
         }),
         { status: 200, headers: jsonHeaders },
       )

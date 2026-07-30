@@ -28,6 +28,7 @@ import {
   type LearnerDissent,
   type MpjResponseTrace,
 } from "@/lib/mission/missionLog";
+import { buildMpjSummaryRows } from "@/lib/mission/mpjSummary";
 import {
   ChatScene,
   ChatBubble,
@@ -1646,132 +1647,6 @@ function AudioFrame({
       )}
     </div>
   );
-}
-
-type MpjSummaryRow = {
-  label: string;
-  comment: string;
-};
-
-function sameNumberSet(left: number[], right: number[]): boolean {
-  if (left.length !== right.length) return false;
-  const expected = new Set(right);
-  return left.every((value) => expected.has(value));
-}
-
-function buildMpjSummaryRows(
-  mission: MissionRuntime,
-  responses: MpjResponseTrace[],
-): MpjSummaryRow[] {
-  const featureCode = mission.unit.target_feature;
-  const withinBandCode = getTargetFeature(featureCode)?.within_band_code ?? "within_band";
-  const compareInClass =
-    "내 선택은 참고 판정과 달랐습니다. 왜 다르게 느꼈는지 수업에서 비교해 보세요.";
-  return mission.mpj_items.map((item) => {
-    const response = responses.find((saved) => saved.item_id === item.id);
-
-    switch (item.type) {
-      case "scale4": {
-        const sameDirection =
-           !!response?.scale_code &&
-          (item.accepted_scale_codes as readonly string[]).includes(response.scale_code);
-        return {
-          label: "첫인상 판단",
-          comment: sameDirection
-            ? featureCode === "request_mitigation_optionality"
-              ? "친밀도와 부탁의 부담에 비춰 이 정도 직접성이 자연스러운지 살폈습니다."
-              : `관계와 상황에 비춰 「${mission.unit.learner_label}」의 정도를 살폈습니다.`
-            : compareInClass,
-        };
-      }
-      case "judge3": {
-        const sameDirection =
-          !!response?.band_code &&
-          (item.accepted_band_codes as readonly string[]).includes(response.band_code);
-        return {
-          label: "판단하고 고쳐보기",
-          comment: sameDirection
-            ? featureCode === "request_mitigation_optionality"
-              ? "이 관계와 부담에서 부탁의 강도를 조절할 필요가 있는지 판단했습니다."
-              : "관계와 부담에 맞게 표현을 조절할 필요가 있는지 판단했습니다."
-            : compareInClass,
-        };
-      }
-      case "fix_choice": {
-        const selected = response?.correction_indexes ?? [];
-        const valid = item.corrections
-          .map((correction, index) => (correction.is_valid ? index : -1))
-          .filter((index) => index >= 0);
-        const sameJudgment =
-          !!response?.band_code &&
-          (item.accepted_band_codes as readonly string[]).includes(response.band_code);
-        const sameCorrections = sameNumberSet(selected, valid);
-        return {
-          label: "판단하고 고쳐보기",
-          comment: sameJudgment && sameCorrections
-            ? featureCode === "request_mitigation_optionality"
-              ? "가능한지 묻는 표현을 골라 부탁의 강도를 조절했습니다."
-              : `상황에 맞게 표현을 조절한 수정안 ${valid.length}개를 골랐습니다.`
-            : sameCorrections
-              ? "고친 방향은 알맞았지만, 첫 판단은 참고 판정과 달랐습니다."
-              : sameJudgment
-                ? "조절이 필요하다는 점은 찾았지만, 고친 방향은 참고안과 달랐습니다."
-                : compareInClass,
-        };
-      }
-      case "reason": {
-        const sameReason = response?.reason_id === item.accepted_reason_id;
-        return {
-          label: "이유 찾기",
-          comment:
-            featureCode === "request_mitigation_optionality" && sameReason
-              ? "너무 단정하면 상대가 거절하거나 조정할 여지가 줄어든다는 점을 찾았습니다."
-              : sameReason
-                ? "표현이 어긋난 가장 큰 이유를 찾았습니다."
-                : compareInClass,
-        };
-      }
-      case "reason_conf": {
-        const selected = response?.reason_ids ?? [];
-        const accepted = item.accepted_reason_ids as readonly string[];
-        const sameReason =
-          selected.length === accepted.length &&
-           selected.every((reasonId) => accepted.includes(reasonId));
-        return {
-          label: "이유 찾기",
-          comment: sameReason
-            ? "표현이 어긋난 핵심 이유를 찾았습니다."
-            : compareInClass,
-        };
-      }
-      case "multi_judge": {
-        const bestIndex = response?.best_candidate_index;
-        const worstIndex = response?.worst_candidate_index;
-        const bestBands =
-          bestIndex !== undefined ? item.candidates[bestIndex]?.accepted_band_codes ?? [] : [];
-        const worstBands =
-          worstIndex !== undefined ? item.candidates[worstIndex]?.accepted_band_codes ?? [] : [];
-        const sameDirection =
-          bestBands.includes(withinBandCode) &&
-          worstBands.length > 0 &&
-          !worstBands.includes(withinBandCode);
-        const requestComparison =
-          worstBands.includes("too_direct")
-            ? "선택권을 남긴 안과 너무 단정적인 안을 구분했습니다."
-            : worstBands.includes("too_indirect")
-              ? "선택권을 남긴 안과 지나치게 우회적인 안을 구분했습니다."
-              : "상황에 잘 맞는 안과 가장 아쉬운 안을 구분했습니다.";
-        return {
-          label: "여러 초안 비교",
-          comment: sameDirection
-            ? featureCode === "request_mitigation_optionality"
-              ? requestComparison
-              : "상황에 잘 맞는 안과 가장 아쉬운 안을 구분했습니다."
-            : compareInClass,
-        };
-      }
-    }
-  });
 }
 
 // ── 1부 → 2부 인계: 네 판단을 짧게 정리한 뒤 새 장면에 적용한다. ─────────

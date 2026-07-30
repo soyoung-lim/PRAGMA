@@ -28,7 +28,11 @@ describe("prompt snapshot integrity", () => {
     const spoken = prompt("feedback.system.spoken");
 
     for (const entry of [written, spoken]) {
-      expect(entry.text).toContain("달라진 요청 강도·선택권은 ③에서만 판정한다");
+      expect(entry.text).toContain("목표 화용 자원의 변화 자체는 의미 손실이 아니다");
+      expect(entry.text).toContain("이런 차이는 ③ 화용 층에서만 판정한다");
+      expect(entry.text).toContain("특정 화행의 고정 정답이 아니라 경계 설명용");
+      expect(entry.text).toContain("달라진 감사 강도는 ③ 화용에서 판정한다");
+      expect(entry.text).not.toContain("격식을 무조건 올리라고 하지 마라");
       expect(entry.text).toContain("① 의미:");
       expect(entry.text).toContain("② 이해 가능성(문법):");
       expect(entry.text).toContain("③ 화용 인상:");
@@ -100,6 +104,10 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).toContain("primary의 위치와 id를 고정하지 말고");
       expect(entry.text).toContain("잠시 고민할 만큼 그럴듯해야 합니다");
       expect(entry.text).toContain("황당한 문법 금지 주장");
+      expect(entry.text).toContain('위에 주입된 "깨야 할 소박한 규칙"');
+      expect(entry.text).toContain("target feature의 정의와 관계·부담(P·D·R)에 상대적");
+      expect(entry.text).not.toContain("직접형·간결형·강한 표현은 항상 나쁘다");
+      expect(entry.text).not.toContain("감사의 경우 호의가 클수록");
       expect(entry.text).toContain('"type": "scale4"');
       expect(entry.text).toContain('"reference_scale_code"');
       expect(entry.text).not.toContain('"type": "reason_conf"');
