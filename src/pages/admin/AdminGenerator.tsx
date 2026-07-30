@@ -968,8 +968,8 @@ const AdminGenerator = () => {
                 {gridPrefill.theme ? ` · ${THEME_LABEL[gridPrefill.theme]}` : ""}
               </span>
             </div>
-            <Link className="font-semibold underline underline-offset-2" to="/admin/browser">
-              Grid로 돌아가기
+            <Link className="font-semibold underline underline-offset-2" to="/admin/library">
+              라이브러리로 돌아가기
             </Link>
           </div>
           <p className="mt-1">
@@ -1370,10 +1370,10 @@ const AdminGenerator = () => {
                   </div>
                 ))}
                 <Link
-                  to="/admin/archive"
+                  to="/admin/library"
                   className="mt-1 inline-flex items-center gap-1 rounded-md border border-[#6EE7B7] bg-white px-2.5 py-1 text-[11.5px] font-medium text-[#065F46] hover:bg-[#ECFDF5]"
                 >
-                  시나리오 아카이브에서 확인 →
+                  시나리오 라이브러리에서 확인 →
                 </Link>
               </div>
             )}
@@ -1393,17 +1393,17 @@ const AdminGenerator = () => {
           {saved && savedScenarioId && (
             <div className="mt-3 rounded-lg border border-[#6EE7B7] bg-[#D1FAE5] p-3">
               <p className="text-[12.5px] font-medium text-[#065F46]">
-                ✓ 시나리오가 검수 대기 상태로 아카이브에 저장되었습니다.
+                ✓ 시나리오가 검수 대기 상태로 저장되었습니다.
               </p>
               <p className="mt-1 text-[11.5px] text-[#065F46]/85">
                 scenario_id: <code className="font-mono">{savedScenarioId}</code>
                 &nbsp;/&nbsp; 검수: needs_review &nbsp;/&nbsp; 용도: archived_only
               </p>
               <Link
-                to="/admin/archive"
+                to="/admin/library"
                 className="mt-2 inline-flex items-center gap-1 rounded-md border border-[#6EE7B7] bg-white px-2.5 py-1 text-[11.5px] font-medium text-[#065F46] hover:bg-[#ECFDF5]"
               >
-                시나리오 아카이브에서 확인 →
+                시나리오 라이브러리에서 확인 →
               </Link>
             </div>
           )}
@@ -1491,10 +1491,10 @@ const AdminGenerator = () => {
                   </div>
                 ))}
                 <Link
-                  to="/admin/archive"
+                  to="/admin/library"
                   className="inline-flex items-center gap-1 rounded-md border border-[#6EE7B7] bg-white px-2.5 py-1 text-[11.5px] font-medium text-[#065F46] hover:bg-[#ECFDF5]"
                 >
-                  시나리오 아카이브에서 검수 →
+                  시나리오 라이브러리에서 확인 →
                 </Link>
               </div>
             )}

@@ -11,8 +11,9 @@
 //    that); casts from DB text to the narrow union types rely on the DB
 //    CHECK constraints added in the curriculum migration.
 //
-// Follows the project's existing small-pure-mapper precedent
-// (AdminArchive statusToDb/statusFromDb).
+// Follows the project's small-pure-mapper precedent
+// (originally AdminArchive statusToDb/statusFromDb — that legacy screen was
+// removed 2026-07-30; the pattern lives on here).
 
 import type {
   SpeechActUI,

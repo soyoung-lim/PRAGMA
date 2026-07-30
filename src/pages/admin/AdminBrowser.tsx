@@ -230,12 +230,12 @@ const AdminBrowser = () => {
   const interp = filtered.filter((r) => r.mode === "stt_interpreting").length;
 
   return (
-    // 메뉴명과 헤드라인을 통일한다(2026-07-26). 이 화면은 조회만 하는 브라우저가
-    // 아니라 **코어를 골라 미션으로 승격하는 곳**이다 — promoteCore·reviewMission이
-    // 여기서 실행된다. 「시나리오 브라우저」라는 이름은 그 사실을 가렸다.
+    // 2026-07-30: 「미션 조립」→「시나리오 라이브러리」(URL도 /admin/library).
+    // 이 화면은 조회·필터(라이브러리)가 절반, 코어→미션 승격이 절반이다 —
+    // promoteCore·reviewMission이 여기서 실행된다. 승격 기능은 이름 대신 설명이 말한다.
     <AdminShell
-      title="미션 조립"
-      description="상황별 코어를 소통 행동(화행) × 수준으로 살펴보고, 부족한 조건은 생성 화면에서 바로 채웁니다."
+      title="시나리오 라이브러리"
+      description="생성된 코어를 화행 × 수준 그리드와 필터로 찾아보고, 여기서 바로 미션으로 승격·검토합니다."
     >
       {/* ── 요약 ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-5">

@@ -15,7 +15,6 @@ const AdminPlaceholder = lazy(() =>
 const Index = lazy(() => import("./pages/Index.tsx"));
 const Architecture = lazy(() => import("./pages/Architecture.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
-const AdminArchive = lazy(() => import("./pages/AdminArchive.tsx"));
 const AdminCorpus = lazy(() => import("./pages/admin/AdminCorpus.tsx"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
 const AdminGenerator = lazy(() => import("./pages/admin/AdminGenerator.tsx"));
@@ -170,10 +169,15 @@ const App = () => (
           <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
           <Route path="/admin/corpus" element={<RequireAdmin><AdminCorpus /></RequireAdmin>} />
           <Route path="/admin/youtube-sources" element={<RequireAdmin><AdminYoutubeSources /></RequireAdmin>} />
-          <Route path="/admin/archive" element={<RequireAdmin><AdminArchive /></RequireAdmin>} />
+          {/* 레거시 정리(2026-07-30): /admin/archive 화면은 계약 이전 세대 컬럼
+              (speech_act_text·ko-zh 하이픈 방향 등)을 읽던 화면이라 삭제. 조회·검수는
+              라이브러리(/admin/library)·통합 검수(/admin/review)로 일원화한다. */}
+          <Route path="/admin/archive" element={<Navigate to="/admin/library" replace />} />
           <Route path="/admin/generator" element={<RequireAdmin><AdminGenerator /></RequireAdmin>} />
           <Route path="/admin/batch" element={<RequireAdmin><AdminBatch /></RequireAdmin>} />
-          <Route path="/admin/browser" element={<RequireAdmin><AdminBrowser /></RequireAdmin>} />
+          <Route path="/admin/library" element={<RequireAdmin><AdminBrowser /></RequireAdmin>} />
+          {/* 구 URL 호환 — 북마크·문서의 /admin/browser를 라이브러리로 보낸다. */}
+          <Route path="/admin/browser" element={<Navigate to="/admin/library" replace />} />
           <Route path="/admin/curriculum" element={<RequireAdmin><AdminCurriculum /></RequireAdmin>} />
           <Route path="/admin/composer" element={<RequireAdmin><AdminComposer /></RequireAdmin>} />
           <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
