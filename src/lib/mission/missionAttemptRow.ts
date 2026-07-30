@@ -98,7 +98,10 @@ export function buildMissionAttemptRow(
       }[feedback.verdicts.semantic_fidelity]
     : null;
   const mpjResponses = input.mpjResponses?.map((response) => {
-    if (input.mission.schema_version !== "mission_v4" || response.confidence === undefined) {
+    // v4·v5는 같은 reason 계약(확신도 없음, DEC-20260730-01) — legacy confidence를 남기지 않는다.
+    const noConfidenceContract =
+      input.mission.schema_version === "mission_v4" || input.mission.schema_version === "mission_v5";
+    if (!noConfidenceContract || response.confidence === undefined) {
       return response;
     }
     const { confidence: _legacyConfidence, ...withoutConfidence } = response;

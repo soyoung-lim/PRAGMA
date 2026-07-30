@@ -173,4 +173,35 @@ describe("mission attempt row", () => {
     });
     expect(JSON.stringify(row.context_judgment)).not.toContain("confidence");
   });
+
+  it("strips legacy confidence for mission_v5 as well — same reason contract as v4", () => {
+    const missionV5Shape = {
+      ...sampleMissionV2(),
+      schema_version: "mission_v5",
+    } as unknown as ReturnType<typeof sampleMissionV2>;
+    const row = buildMissionAttemptRow({
+      mission: missionV5Shape,
+      scenarioId: "11111111-1111-1111-1111-111111111111",
+      speechAct: "request",
+      level: "intermediate",
+      firstResponse: "처음 답",
+      revisedResponse: "고친 답",
+      startedAtIso: "2026-07-30T01:00:00.000Z",
+      mpjResponses: [
+        {
+          item_id: 3,
+          item_type: "reason",
+          reason_id: "primary",
+          confidence: "v5에서도 폐기돼야 함",
+          completed_at: "2026-07-30T01:02:00.000Z",
+        },
+      ],
+    }, "profile-1", "user-1");
+
+    expect(row.context_judgment).toMatchObject({
+      mission_schema_version: "mission_v5",
+      responses: [{ item_type: "reason", reason_id: "primary" }],
+    });
+    expect(JSON.stringify(row.context_judgment)).not.toContain("confidence");
+  });
 });
