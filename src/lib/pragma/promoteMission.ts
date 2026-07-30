@@ -30,7 +30,7 @@ import {
 } from "@/lib/pragma/enums";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 
-const LEVEL_POLICY: Record<LearnerLevel, string> = {
+export const LEVEL_POLICY: Record<LearnerLevel, string> = {
   beginner_intermediate: "입문(HSK4): 단문 중심, 종속절 제한. 자원 조합 1개. 원문 1~2문장.",
   intermediate: "중급(HSK5): 복문 1~2개, 이유·조건 표현 사용. 자원 조합 2개. 원문 2~4문장.",
   advanced: "고급(HSK6): 담화 조직·복합 전략. 자원 선택 배열. 원문 3~5문장(통역은 짧은 구두 담화).",
@@ -40,7 +40,7 @@ const isResponseAct = (act: SpeechActUI) => act === "refusal" || act === "opposi
 
 // 방향에 맞는 카탈로그 변형을 골라 엣지에 보낸다(0-l·86). zh_ko는 _zh_ko 필드,
 // 없으면 ko_zh 기본값(하지만 승격 전 가드가 zh_ko 변형 부재를 막는다).
-function featureForGen(f: TargetFeature, dir: LanguageDirection) {
+export function featureForGen(f: TargetFeature, dir: LanguageDirection) {
   const zhko = dir === "zh_ko";
   return {
     code: f.code,
