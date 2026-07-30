@@ -57,8 +57,20 @@ interface CoreRow {
     preceding_turn?: string | null;
     preceding_turn_zh?: string | null;
     direction?: string;
+    /** 실제 자료 기반 생성의 출처(0-q·98). 순수 AI 생성에는 없다. */
+    provenance?: { source_type?: string; source_ref?: string | null } | null;
   } | null;
 }
+
+// 생성 소스 1차 구분(2026-07-30, 사용자·Codex 합의): 세부 출처(문구/이미지/유튜브)는
+// provenance에 보존돼 있지만 95%가 AI 생성이라 카드마다 배지를 달면 소음이다 —
+// 화면은 "실제 자료 기반"만 배지·필터로 구분한다.
+const isAuthentic = (cc: CoreRow["core_content"]) => !!cc?.provenance?.source_type;
+const AUTHENTIC_SOURCE_KO: Record<string, string> = {
+  authentic_text: "직접 문구",
+  authentic_image: "이미지 캡처",
+  authentic_youtube: "YouTube 자막",
+};
 
 const ACTS = Object.keys(SPEECH_ACT_UI) as SpeechActUI[];
 const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
@@ -74,6 +86,7 @@ const AdminBrowser = () => {
   const [fDomain, setFDomain] = useState<"all" | Domain>("all");
   const [fTheme, setFTheme] = useState<"all" | ThemeCode>("all");
   const [fDirection, setFDirection] = useState<"all" | LanguageDirection>("all");
+  const [fSource, setFSource] = useState<"all" | "ai" | "authentic">("all");
   const [sel, setSel] = useState<{ act: SpeechActUI; level: LearnerLevel } | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // 승격 중인 scenario_id
   const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
@@ -203,9 +216,11 @@ const AdminBrowser = () => {
           (fMode === "all" || r.mode === fMode) &&
           (fDomain === "all" || r.domain === fDomain) &&
           (fTheme === "all" || r.theme_code === fTheme) &&
-          (fDirection === "all" || coreDirection(r.core_content) === fDirection),
+          (fDirection === "all" || coreDirection(r.core_content) === fDirection) &&
+          (fSource === "all" ||
+            (fSource === "authentic" ? isAuthentic(r.core_content) : !isAuthentic(r.core_content))),
       ),
-    [rows, fMode, fDomain, fTheme, fDirection],
+    [rows, fMode, fDomain, fTheme, fDirection, fSource],
   );
 
   // (act|level) → { total, translation, interpreting } (54셀 감사 대응 — 계약 0-j·73)
@@ -259,6 +274,8 @@ const AdminBrowser = () => {
             opts={[["all", "전체"], ...Object.entries(THEME_LABEL)]} />
           <Filter label="언어 방향" value={fDirection} onChange={(v) => setFDirection(v as typeof fDirection)}
             opts={[["all", "전체"], ...Object.entries(DIRECTION_LABEL)]} />
+          <Filter label="생성 소스" value={fSource} onChange={(v) => setFSource(v as typeof fSource)}
+            opts={[["all", "전체"], ["ai", "AI 생성"], ["authentic", "실제 자료 기반"]]} />
         </div>
       </section>
 
@@ -383,6 +400,12 @@ const AdminBrowser = () => {
                         P {r.scenario_p ?? "—"} · D {r.scenario_d ?? "—"} · R {r.scenario_r ?? "—"}
                       </Badge>
                       <Badge variant="secondary" className="font-normal">{DIRECTION_LABEL[coreDirection(r.core_content)]}</Badge>
+                      {isAuthentic(r.core_content) && (
+                        <Badge className="bg-[#FBEFD9] font-normal text-[#7A4A0A] hover:bg-[#FBEFD9]"
+                          title={`세부 출처: ${AUTHENTIC_SOURCE_KO[r.core_content?.provenance?.source_type ?? ""] ?? r.core_content?.provenance?.source_type}${r.core_content?.provenance?.source_ref ? ` · ${r.core_content.provenance.source_ref}` : ""}`}>
+                          실제 자료 기반
+                        </Badge>
+                      )}
                       <Badge
                         variant="secondary"
                         className={`font-normal ${r.mission_status === "reviewed" ? "bg-emerald-100 text-emerald-900" : ""}`}

@@ -18,6 +18,7 @@ const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const AdminCorpus = lazy(() => import("./pages/admin/AdminCorpus.tsx"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
 const AdminGenerator = lazy(() => import("./pages/admin/AdminGenerator.tsx"));
+const AdminAuthentic = lazy(() => import("./pages/admin/AdminAuthentic.tsx"));
 const AdminBatch = lazy(() => import("./pages/admin/AdminBatch.tsx"));
 const AdminBrowser = lazy(() => import("./pages/admin/AdminBrowser.tsx"));
 const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.tsx"));
@@ -174,6 +175,7 @@ const App = () => (
               라이브러리(/admin/library)·통합 검수(/admin/review)로 일원화한다. */}
           <Route path="/admin/archive" element={<Navigate to="/admin/library" replace />} />
           <Route path="/admin/generator" element={<RequireAdmin><AdminGenerator /></RequireAdmin>} />
+          <Route path="/admin/authentic" element={<RequireAdmin><AdminAuthentic /></RequireAdmin>} />
           <Route path="/admin/batch" element={<RequireAdmin><AdminBatch /></RequireAdmin>} />
           <Route path="/admin/library" element={<RequireAdmin><AdminBrowser /></RequireAdmin>} />
           {/* 구 URL 호환 — 북마크·문서의 /admin/browser를 라이브러리로 보낸다. */}

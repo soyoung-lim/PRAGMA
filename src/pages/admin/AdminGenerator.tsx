@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Link, useSearchParams } from "react-router-dom";
 import { addDraftScenario } from "@/lib/scenarioDrafts";
 import { supabase } from "@/integrations/supabase/client";
-import AuthenticImportPanel from "./AuthenticImportPanel";
-import type { AuthenticApply } from "./AuthenticImportPanel";
+import { AUTHENTIC_HANDOFF_KEY, type AuthenticApply } from "./AuthenticImportPanel";
 import {
   Select,
   SelectContent,
@@ -591,6 +590,23 @@ const AdminGenerator = () => {
     setSaveError(null);
   };
 
+  // /admin/authentic에서 고른 후보를 1회 소비한다(2026-07-30 화면 분리).
+  // sessionStorage라 새로고침·뒤로가기로 재적용되지 않게 읽는 즉시 지운다.
+  useEffect(() => {
+    if (searchParams.get("from") !== "authentic") return;
+    try {
+      const raw = sessionStorage.getItem(AUTHENTIC_HANDOFF_KEY);
+      if (raw) {
+        const a = JSON.parse(raw) as AuthenticApply;
+        if (a?.source_text && a?.provenance?.source_type) applyAuthentic(a);
+      }
+    } catch {
+      // 손상된 페이로드는 조용히 버린다 — 생성기는 빈 상태로 정상 동작.
+    }
+    sessionStorage.removeItem(AUTHENTIC_HANDOFF_KEY);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 1회 소비
+  }, []);
+
   // Shared request body for single-shot / outline / final calls.
   const baseGenBody = () => ({
     // True 9-value act (2026-07-19 fix): DB enum extended to 9; the old 9→2
@@ -978,9 +994,27 @@ const AdminGenerator = () => {
         </div>
       )}
 
-      {/* 0. 실제 자료에서 생성 (Authentic Source Import) — 전체 폭(좁은 칼럼에서 빼냄) */}
-      <div className="mt-5">
-        <AuthenticImportPanel onApply={applyAuthentic} />
+      {/* 실제 자료 워크플로우는 /admin/authentic로 분리(2026-07-30) — 여기선 입구만 안내 */}
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#BA7517]/50 bg-[#FFF6E2] px-4 py-3">
+        <p className="text-[12.5px] text-[#7A4A0A]">
+          🎬 <b>실제 자료(쇼츠 캡처·소설 구절·메신저 문구)에서 시작하려면</b> — AI가 분석해
+          활용 후보를 제안하고, 고르면 이 화면이 그 조건으로 채워집니다.
+        </p>
+        <Link
+          to="/admin/authentic"
+          className="shrink-0 rounded-md border border-[#BA7517] bg-white px-3 py-1.5 text-[12.5px] font-semibold text-[#7A4A0A] hover:bg-[#FBEFD9]"
+        >
+          실제 자료 활용 화면 열기 →
+        </Link>
+        {/* 화면 분리 후 넘어온 원문이 보이지 않으면 무엇이 적용됐는지 알 수 없다 —
+            manualSourceText는 입력 UI가 없는 내부 상태라 여기서 확인시킨다. */}
+        {authenticProv && manualSourceText.trim() && (
+          <p className="w-full rounded-md border border-[#6EE7B7] bg-[#ECFDF5] px-3 py-2 text-[12px] leading-relaxed text-[#065F46]">
+            ✓ 실제 자료 후보가 적용되었습니다 · 원문 「{manualSourceText.slice(0, 60)}
+            {manualSourceText.length > 60 ? "…" : ""}」 — 생성 시 이 원문과 출처(
+            {authenticProv.source_ref ?? "출처 미입력"})가 함께 저장됩니다.
+          </p>
+        )}
       </div>
 
       {/* 2-col layout */}
