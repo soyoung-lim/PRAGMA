@@ -647,6 +647,21 @@ export function checkMission(
       "production_task.source_text",
       ctx,
     );
+    // 참고 산출안이 담화 전체가 아니라 중심 화행만 옮긴 경우를 잡는다. 학습자가
+    // 이것을 정답 분량으로 오해하면 부분 번역을 학습하게 된다(2026-07-30 실화면
+    // 발견). 목표어 압축을 허용하되 명백히 짧은 것만 warning으로 표시한다.
+    const srcLen = [...m.production_task.source_text].length;
+    for (const alt of m.production_task.reference_alternatives) {
+      const altLen = [...alt.text].length;
+      if (srcLen > 0 && altLen < srcLen * 0.45) {
+        add(
+          v,
+          "R29",
+          "warning",
+          `reference_alternatives가 담화 전체를 옮기지 않은 것으로 보임(원문 ${srcLen}자 대비 ${altLen}자): "${alt.text.slice(0, 24)}"`,
+        );
+      }
+    }
   }
 
   // ── R24 승격 입력 계획 초점 = unit.target_feature(v1.5 0-h·55) ──
