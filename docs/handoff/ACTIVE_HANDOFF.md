@@ -77,6 +77,10 @@ Codex가 같은 worktree를 동시에 편집하지 않는다.
   `4c996a00259cf54dcc23b03d0998f7afd3926a95c284ed23719910ebb1d871c0`
 - localhost 요청 미션에서 MPJ 4개와 기능별 SUMMARY 회귀 확인
 
+2026-07-30 정본 동기화에서 생성계약·학습자구조·관리자구조를 위 구현·검증 상태와
+대조했고, 프롬프트 스냅샷 provenance를 clean HEAD `0f3ccf6` 기준
+`git_dirty=false`로 다시 생성했다.
+
 미리보기 예상 URL은
 `http://localhost:8094/learner/practice?preview=v4`지만, 서버가 계속 실행 중이라고
 가정하지 않는다. 링크를 안내하기 전에 포트의 PID·실제 cwd·branch·HEAD를 확인한다.
