@@ -14,6 +14,7 @@ import { getTargetFeature, TARGET_FEATURES } from "@/lib/pragma/targetFeatures";
 import {
   normalizeMission,
   type MissionV4,
+  type MissionV5,
   type MissionRuntime,
   MPJ_TYPE_ORDER_V2,
   MPJ_TYPE_ORDER_V3,
@@ -391,14 +392,17 @@ export function checkMission(
   checkDirectionMatch(v, dir, ctx);
   const feature = getTargetFeature(m.unit.target_feature);
 
+  // mission_v5는 MPJ 4문항 구성·순서·판정이 v4와 완전히 동일하다(DEC-20260730-01).
+  // 변경점은 DCT 원문뿐이므로 아래 v4 계약 검사는 v5에도 그대로 적용한다.
+  const isV4Contract = m.schema_version === "mission_v4" || m.schema_version === "mission_v5";
+
   // ── R1 유형 순서·axis_feature·band code 존재 ──
   const typesInOrder = m.mpj_items.map((it) => it.type);
-  const expectedTypeOrder =
-    m.schema_version === "mission_v4"
-      ? MPJ_TYPE_ORDER_V4
-      : m.schema_version === "mission_v3"
-        ? MPJ_TYPE_ORDER_V3
-        : MPJ_TYPE_ORDER_V2;
+  const expectedTypeOrder = isV4Contract
+    ? MPJ_TYPE_ORDER_V4
+    : m.schema_version === "mission_v3"
+      ? MPJ_TYPE_ORDER_V3
+      : MPJ_TYPE_ORDER_V2;
   if (typesInOrder.join(",") !== expectedTypeOrder.join(",")) {
     add(v, "R1", "fail", `유형 순서 위반: ${typesInOrder.join("→")}`);
   }
@@ -432,7 +436,7 @@ export function checkMission(
         if (!isContiguousScale(it.accepted_scale_codes)) {
           add(v, "R7", "fail", `문항 ${it.id}: scale4 accepted가 연속 구간이 아님 (${it.accepted_scale_codes.join(",")})`);
         }
-        if (m.schema_version === "mission_v4" && "reference_scale_code" in it) {
+        if (isV4Contract && "reference_scale_code" in it) {
           const accepted = new Set(it.accepted_scale_codes);
           const isAppropriatePair =
             accepted.has("very_appropriate") &&
@@ -474,7 +478,7 @@ export function checkMission(
         if (it.accepted_band_codes.some((c) => !inappropriate(c))) {
           add(v, "R18", "fail", `문항 ${it.id}: fix_choice accepted에 적정 대역 포함 — 부적절 계열이어야 함`);
         }
-        if (m.schema_version === "mission_v4" && !samePdrBand(it.pdr, m.production_task.pdr)) {
+        if (isV4Contract && !samePdrBand(it.pdr, m.production_task.pdr)) {
           add(v, "R3", "fail", `문항 ${it.id}: v4 판단+교정은 DCT와 같은 앵커 PDR이어야 함`);
         }
         checkTargetLangSoft(v, dir, it.id, it.corrections.map((c) => c.text));
@@ -524,7 +528,7 @@ export function checkMission(
       case "multi_judge": {
         // R5 길이 통제 강화판
         checkMultiJudgeLength(v, it.id, it.candidates, withinCode);
-        if (m.schema_version === "mission_v4") {
+        if (isV4Contract) {
           const lowCode = feature?.band_schema[0]?.code;
           const highCode = feature?.band_schema[feature.band_schema.length - 1]?.code;
           const counts = new Map<string, number>();
@@ -564,7 +568,7 @@ export function checkMission(
 
   // ── R12 세트 accepted 분포 전부 동일 방향(warning) ──
   checkSetDistribution(v, m, withinCode);
-  if (m.schema_version === "mission_v4") checkV4ContextPlan(v, m as MissionV4);
+  if (isV4Contract) checkV4ContextPlan(v, m as MissionV4 | MissionV5);
 
   // ── R13/R14 카탈로그 복사 검증 ──
   if (feature) {
@@ -597,14 +601,14 @@ export function checkMission(
   checkSourceLang(v, dir, m.production_task.source_text, "production_task.source_text");
 
   // ── R8 v4 전 문항 또는 거절·응답류 preceding_turn ──
-  if (m.schema_version === "mission_v4" || isResponseAct(ctx.speech_act)) {
+  if (isV4Contract || isResponseAct(ctx.speech_act)) {
     for (const it of m.mpj_items) {
       if (!it.preceding_turn) {
         add(
           v,
           "R8",
           "fail",
-          `문항 ${it.id}: ${m.schema_version === "mission_v4" ? "v4 관계 맥락" : ctx.speech_act}은 preceding_turn 필수`,
+          `문항 ${it.id}: ${isV4Contract ? "v4 관계 맥락" : ctx.speech_act}은 preceding_turn 필수`,
         );
       }
     }
@@ -823,7 +827,7 @@ function pdrDifferenceCount(
   return Number(a.p !== b.p) + Number(a.d !== b.d) + Number(a.r !== b.r);
 }
 
-function checkV4ContextPlan(v: RuleViolation[], m: MissionV4) {
+function checkV4ContextPlan(v: RuleViolation[], m: MissionV4 | MissionV5) {
   const production = m.production_task.situation_ko.trim();
   const situations = m.mpj_items.map((it) => it.situation_ko.trim());
   if (new Set(situations).size !== situations.length) {

@@ -44,6 +44,16 @@ const r29 = (core: unknown, ctx: CheckContext = CTX) =>
  * 실제 v5 샘플 미션의 참고 산출안만 바꿔 checkMission을 돌린다.
  * 미션 전체를 손으로 만들지 않고 실 데이터를 재사용해 검사 경로를 그대로 태운다.
  */
+const V5_CTX: CheckContext = {
+  speech_act: "request",
+  level: "intermediate",
+  domain: "work",
+  theme_code: "career_workplace",
+  topic_code: "work_delivery_address_change",
+  mode: "translation",
+  source_modality: "written",
+};
+
 function altCoverageViolations(altText: string) {
   const mission = {
     ...SAMPLE_MISSION_V5,
@@ -52,15 +62,7 @@ function altCoverageViolations(altText: string) {
       reference_alternatives: [{ text: altText, note_ko: "테스트용" }],
     },
   };
-  return checkMission(mission, {
-    speech_act: "request",
-    level: "intermediate",
-    domain: "work",
-    theme_code: "career_workplace",
-    topic_code: "work_delivery_address_change",
-    mode: "translation",
-    source_modality: "written",
-  }).violations.filter((x) => x.id === "R29");
+  return checkMission(mission, V5_CTX).violations.filter((x) => x.id === "R29");
 }
 
 describe("countSentences", () => {
@@ -145,6 +147,28 @@ describe("normalizeCore — v3 상위집합 정규화", () => {
     expect(n.ok).toBe(true);
     expect(n.data?.focal_segments).toHaveLength(1);
     expect(n.data?.focal_segments?.[0].role).toBe("head");
+  });
+});
+
+// mission_v5는 MPJ 구성·순서·판정이 v4와 동일하다(DEC-20260730-01). 버전 분기가
+// v4만 보면 v5는 조용히 legacy(V2) 기준으로 검사돼 전 화행이 R1 fail이 된다 —
+// 2026-07-30 9화행 표본 생성에서 실제로 그렇게 나왔다. R29만 보던 기존 검사로는
+// 잡히지 않았으므로 fail 전량을 본다.
+describe("mission_v5는 v4 계약 검사를 그대로 통과한다", () => {
+  it("정상 v5 미션에는 fail 위반이 없다", () => {
+    const checked = checkMission(SAMPLE_MISSION_V5, V5_CTX);
+    expect(checked.violations.filter((x) => x.level === "fail")).toEqual([]);
+  });
+
+  it("유형 순서를 흐트러뜨리면 v5도 R1 fail이다 — 검사 면제가 아니다", () => {
+    const items = SAMPLE_MISSION_V5.mpj_items;
+    const swapped = {
+      ...SAMPLE_MISSION_V5,
+      mpj_items: [items[1], items[0], items[2], items[3]],
+    };
+    expect(
+      checkMission(swapped, V5_CTX).violations.some((x) => x.id === "R1" && x.level === "fail"),
+    ).toBe(true);
   });
 });
 
