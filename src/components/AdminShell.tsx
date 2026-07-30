@@ -41,9 +41,12 @@ const GROUPS: NavGroup[] = [
     items: [
       { to: "/admin/generator", label: "개별 생성" },
       { to: "/admin/batch", label: "배치 생성" },
-      { to: "/admin/browser", label: "학습 미션 조립" },
+      // 2026-07-30: 「학습 미션 조립」→「시나리오 라이브러리」. 이 화면은 조회·필터가
+      // 절반, 코어→미션 승격이 절반인데 이전 이름은 앞쪽을 가렸다(사용자 피드백:
+      // "브라우저라고 하니까 매번 헷갈려"). 승격 기능은 화면 설명에 명시.
+      // 레거시 /admin/archive(계약 이전 세대 화면)는 삭제 — 여기로 리다이렉트.
+      { to: "/admin/library", label: "시나리오 라이브러리" },
       { to: "/admin/review", label: "통합 검수·승인" },
-      { to: "/admin/archive", label: "시나리오 아카이브" },
     ],
   },
   {
