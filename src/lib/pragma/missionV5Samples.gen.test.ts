@@ -34,6 +34,14 @@ import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 const RUN = process.env.RUN_V5_SAMPLES === "1";
 /** 저장된 표본으로 R규칙만 재검사 — 생성 호출 0회. 규칙 수정의 회귀 확인용. */
 const RECHECK = process.env.RUN_V5_RECHECK === "1";
+/**
+ * 보충 표본 — 기존 v5-samples.json을 갱신한다.
+ * ① fail이었던 초대·불만을 같은 셀로 재생성(개별 콘텐츠 문제인지 확인)
+ * ② 고P 셀(상대가 위) 표본 추가 — 기존 9건이 전부 첫 구인 셀(대등·지인·중부담)이라
+ *    고P 편향(계약 0-t, Yu 1999)을 검수할 수 없었다. 셀은 같은 플래너의 두 번째
+ *    구인 셀(higher·acquaintance·high)에서 뽑는다.
+ */
+const SUPPLEMENT = process.env.RUN_V5_SUPPLEMENT === "1";
 
 const OUT_DIR =
   process.env.V5_SAMPLE_OUT ??
@@ -62,6 +70,176 @@ interface SampleResult {
   missionViolations: { id: string; level: string; message: string }[];
   attempts: number;
   error?: string;
+  /** 보충 표본 구분 — "high_p" = 고P 셀 추가분, "regen" = fail 셀 재생성분. */
+  variant?: "high_p" | "regen";
+}
+
+/** 코어→미션 생성 러너 — RUN·SUPPLEMENT 블록이 공유한다. 요청 본문은 실제 경로와 동일. */
+function createRunner(url: string, key: string) {
+  const fnUrl = `${url}/functions/v1/generate-scenario`;
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // OpenAI 조직 TPM 상한(gpt-4o 30k)에 걸리면 엣지가 502로 되돌린다.
+  // 표본 생성은 소량이므로 순차 실행 + 지수 대기로 흡수한다.
+  async function invoke(body: unknown, label = ""): Promise<any> {
+    let lastErr = "";
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      const res = await fetch(fnUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          apikey: key,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      if (res.ok) return JSON.parse(text);
+      lastErr = `edge ${res.status}: ${text.slice(0, 300)}`;
+      if (!/rate limit/i.test(text)) throw new Error(lastErr);
+      const waitMs = 15_000 * attempt;
+      console.log(`  ${label} rate limit — ${waitMs / 1000}s 대기 후 재시도 ${attempt}/5`);
+      await sleep(waitMs);
+    }
+    throw new Error(`rate limit 재시도 소진 — ${lastErr}`);
+  }
+
+  return async function runCell(
+    cell: BatchCell,
+    variant?: SampleResult["variant"],
+  ): Promise<SampleResult> {
+    const act = cell.speech_act_ui;
+    const featureCode = DEFAULT_FEATURE_BY_ACT[act];
+    const feature = TARGET_FEATURES[featureCode];
+    const mode = cell.mode;
+    const out: SampleResult = {
+      act,
+      actKo: variant === "high_p" ? `${SPEECH_ACT_UI[act]}·고P` : SPEECH_ACT_UI[act],
+      cell,
+      featureCode,
+      coreViolations: [],
+      missionViolations: [],
+      attempts: 0,
+      ...(variant ? { variant } : {}),
+    };
+
+    const ctx: CheckContext = {
+      speech_act: act,
+      level: cell.level,
+      domain: cell.domain,
+      theme_code: cell.theme_code as ThemeCode,
+      topic_code: cell.topic_code,
+      industry: cell.industry,
+      mode,
+      source_modality: modalityOf(mode),
+      direction: cell.direction,
+      require_context_spec: true,
+    };
+
+    try {
+      // ── 1. 코어 생성 (coreBatchRun과 같은 본문) ──
+      const coreRes = await invoke({
+        action: "core",
+        core: {
+          direction: cell.direction,
+          speech_act: act,
+          speech_act_ko: SPEECH_ACT_UI[act],
+          level_ko: LEVEL[cell.level],
+          domain: cell.domain,
+          domain_ko: DOMAIN[cell.domain],
+          industry: cell.industry,
+          topic_code: cell.topic_code,
+          mode,
+          channel: legacyChannelOf(mode),
+          channel_ko: mode === "stt_interpreting" ? "구두(통역)" : "서면(번역)",
+          pdr: {
+            p: PDR_POWER_ENUM_TO_JSON[cell.pdr_power],
+            d: PDR_DISTANCE_ENUM_TO_JSON[cell.pdr_distance],
+            r: cell.pdr_burden,
+          },
+          source_modality: modalityOf(mode),
+          situation_seed_ko: cell.situation_seed_ko,
+          is_response_act: isResponseAct(act),
+          length_hint_ko: coreLengthHintKo(cell.level, mode),
+        },
+      }, `[${out.actKo} core]`);
+      const core = coreRes.core_content;
+      out.core = core;
+      const coreCheck = checkCore(core, ctx);
+      out.coreResult = coreCheck.result;
+      out.coreViolations = coreCheck.violations.map((v) => ({
+        id: v.id,
+        level: v.level,
+        message: v.message,
+      }));
+
+      // 실제 배치(coreBatchRun)는 fail 코어를 저장하지 않으므로 미션 승격도 없다.
+      // fail 코어 위에 미션을 만들면 본 배치에 존재할 수 없는 모집단이 검수에 섞인다.
+      if (coreCheck.result === "fail") {
+        out.error = "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)";
+        return out;
+      }
+
+      // ── 2. 미션 승격 (promoteMission과 같은 본문·재시도 정책) ──
+      const nc = normalizeCore(core ?? {});
+      const normCore = nc.ok ? nc.data : undefined;
+      const missionCore = {
+        situation_ko: normCore?.situation_ko,
+        relation_ko: normCore?.relation_ko,
+        source_text_ko: normCore?.source_text,
+        preceding_turn_zh: normCore?.preceding_turn ?? null,
+        pdr: normCore?.pdr,
+        channel: normCore?.channel,
+        source_modality: modalityOf(mode),
+        usable_facts: normCore?.usable_facts ?? [],
+        ...(normCore?.focal_segments?.length
+          ? { focal_segments: normCore.focal_segments }
+          : {}),
+      };
+
+      let failureNotes: string | undefined;
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        out.attempts = attempt;
+        const mRes = await invoke({
+          action: "mission",
+          mission: {
+            direction: cell.direction,
+            speech_act_ko: SPEECH_ACT_UI[act],
+            level_ko: LEVEL[cell.level],
+            level_policy_ko: LEVEL_POLICY[cell.level],
+            feature: featureForGen(feature, cell.direction),
+            core: missionCore,
+            error_pattern_hints_ko: errorPatternsForAct(act).map(
+              (p) => `${p.description} (예: ${p.approvedExample})`,
+            ),
+            is_response_act: isResponseAct(act),
+            failure_notes: failureNotes,
+          },
+        }, `[${out.actKo} mission ${attempt}]`);
+        const mission = mRes.mission_content;
+        out.mission = mission;
+        const missionCheck = checkMission(mission, { ...ctx, planned_target_feature: feature.code }, core);
+        out.missionResult = missionCheck.result;
+        out.missionViolations = missionCheck.violations.map((v) => ({
+          id: v.id,
+          level: v.level,
+          message: v.message,
+        }));
+        if (missionCheck.result !== "fail") break;
+        failureNotes = missionCheck.violations
+          .filter((v) => v.level === "fail")
+          .map((v) => `- ${v.id}: ${v.message}`)
+          .join("\n");
+      }
+    } catch (e) {
+      out.error = e instanceof Error ? e.message : String(e);
+    }
+    console.log(
+      `[${out.actKo}] 코어 ${out.coreResult ?? "-"} / 미션 ${out.missionResult ?? "-"} ` +
+        `(시도 ${out.attempts})${out.error ? " ERROR: " + out.error : ""}`,
+    );
+    return out;
+  };
 }
 
 describe.skipIf(!RECHECK)("저장된 v5 표본 R규칙 재검사", () => {
@@ -105,34 +283,7 @@ describe.skipIf(!RUN)("mission_v5 9화행 대표 표본", () => {
     "9화행 × 중급 × 번역 표본 생성 → R규칙 검사 → 검수 파일",
     async () => {
       const { url, key } = readEnv();
-      const fnUrl = `${url}/functions/v1/generate-scenario`;
-
-      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-      // OpenAI 조직 TPM 상한(gpt-4o 30k)에 걸리면 엣지가 502로 되돌린다.
-      // 표본 생성은 소량이므로 순차 실행 + 지수 대기로 흡수한다.
-      async function invoke(body: unknown, label = ""): Promise<any> {
-        let lastErr = "";
-        for (let attempt = 1; attempt <= 5; attempt += 1) {
-          const res = await fetch(fnUrl, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${key}`,
-              apikey: key,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-          });
-          const text = await res.text();
-          if (res.ok) return JSON.parse(text);
-          lastErr = `edge ${res.status}: ${text.slice(0, 300)}`;
-          if (!/rate limit/i.test(text)) throw new Error(lastErr);
-          const waitMs = 15_000 * attempt;
-          console.log(`  ${label} rate limit — ${waitMs / 1000}s 대기 후 재시도 ${attempt}/5`);
-          await sleep(waitMs);
-        }
-        throw new Error(`rate limit 재시도 소진 — ${lastErr}`);
-      }
+      const runCell = createRunner(url, key);
 
       // 화행당 번역 1건. interpretingCount의 바닥(≥1) 때문에 통역 셀도 생기므로 걸러낸다.
       const cells = buildBatchPlan(
@@ -145,139 +296,6 @@ describe.skipIf(!RUN)("mission_v5 9화행 대표 표본", () => {
 
       const results: SampleResult[] = [];
 
-      async function runCell(cell: BatchCell): Promise<SampleResult> {
-        const act = cell.speech_act_ui;
-        const featureCode = DEFAULT_FEATURE_BY_ACT[act];
-        const feature = TARGET_FEATURES[featureCode];
-        const mode = cell.mode;
-        const out: SampleResult = {
-          act,
-          actKo: SPEECH_ACT_UI[act],
-          cell,
-          featureCode,
-          coreViolations: [],
-          missionViolations: [],
-          attempts: 0,
-        };
-
-        const ctx: CheckContext = {
-          speech_act: act,
-          level: cell.level,
-          domain: cell.domain,
-          theme_code: cell.theme_code as ThemeCode,
-          topic_code: cell.topic_code,
-          industry: cell.industry,
-          mode,
-          source_modality: modalityOf(mode),
-          direction: cell.direction,
-          require_context_spec: true,
-        };
-
-        try {
-          // ── 1. 코어 생성 (coreBatchRun과 같은 본문) ──
-          const coreRes = await invoke({
-            action: "core",
-            core: {
-              direction: cell.direction,
-              speech_act: act,
-              speech_act_ko: SPEECH_ACT_UI[act],
-              level_ko: LEVEL[cell.level],
-              domain: cell.domain,
-              domain_ko: DOMAIN[cell.domain],
-              industry: cell.industry,
-              topic_code: cell.topic_code,
-              mode,
-              channel: legacyChannelOf(mode),
-              channel_ko: mode === "stt_interpreting" ? "구두(통역)" : "서면(번역)",
-              pdr: {
-                p: PDR_POWER_ENUM_TO_JSON[cell.pdr_power],
-                d: PDR_DISTANCE_ENUM_TO_JSON[cell.pdr_distance],
-                r: cell.pdr_burden,
-              },
-              source_modality: modalityOf(mode),
-              situation_seed_ko: cell.situation_seed_ko,
-              is_response_act: isResponseAct(act),
-              length_hint_ko: coreLengthHintKo(cell.level, mode),
-            },
-          }, `[${SPEECH_ACT_UI[act]} core]`);
-          const core = coreRes.core_content;
-          out.core = core;
-          const coreCheck = checkCore(core, ctx);
-          out.coreResult = coreCheck.result;
-          out.coreViolations = coreCheck.violations.map((v) => ({
-            id: v.id,
-            level: v.level,
-            message: v.message,
-          }));
-
-          // 실제 배치(coreBatchRun)는 fail 코어를 저장하지 않으므로 미션 승격도 없다.
-          // fail 코어 위에 미션을 만들면 본 배치에 존재할 수 없는 모집단이 검수에 섞인다.
-          if (coreCheck.result === "fail") {
-            out.error = "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)";
-            return out;
-          }
-
-          // ── 2. 미션 승격 (promoteMission과 같은 본문·재시도 정책) ──
-          const nc = normalizeCore(core ?? {});
-          const normCore = nc.ok ? nc.data : undefined;
-          const missionCore = {
-            situation_ko: normCore?.situation_ko,
-            relation_ko: normCore?.relation_ko,
-            source_text_ko: normCore?.source_text,
-            preceding_turn_zh: normCore?.preceding_turn ?? null,
-            pdr: normCore?.pdr,
-            channel: normCore?.channel,
-            source_modality: modalityOf(mode),
-            usable_facts: normCore?.usable_facts ?? [],
-            ...(normCore?.focal_segments?.length
-              ? { focal_segments: normCore.focal_segments }
-              : {}),
-          };
-
-          let failureNotes: string | undefined;
-          for (let attempt = 1; attempt <= 3; attempt += 1) {
-            out.attempts = attempt;
-            const mRes = await invoke({
-              action: "mission",
-              mission: {
-                direction: cell.direction,
-                speech_act_ko: SPEECH_ACT_UI[act],
-                level_ko: LEVEL[cell.level],
-                level_policy_ko: LEVEL_POLICY[cell.level],
-                feature: featureForGen(feature, cell.direction),
-                core: missionCore,
-                error_pattern_hints_ko: errorPatternsForAct(act).map(
-                  (p) => `${p.description} (예: ${p.approvedExample})`,
-                ),
-                is_response_act: isResponseAct(act),
-                failure_notes: failureNotes,
-              },
-            }, `[${SPEECH_ACT_UI[act]} mission ${attempt}]`);
-            const mission = mRes.mission_content;
-            out.mission = mission;
-            const missionCheck = checkMission(mission, { ...ctx, planned_target_feature: feature.code }, core);
-            out.missionResult = missionCheck.result;
-            out.missionViolations = missionCheck.violations.map((v) => ({
-              id: v.id,
-              level: v.level,
-              message: v.message,
-            }));
-            if (missionCheck.result !== "fail") break;
-            failureNotes = missionCheck.violations
-              .filter((v) => v.level === "fail")
-              .map((v) => `- ${v.id}: ${v.message}`)
-              .join("\n");
-          }
-        } catch (e) {
-          out.error = e instanceof Error ? e.message : String(e);
-        }
-        console.log(
-          `[${out.actKo}] 코어 ${out.coreResult ?? "-"} / 미션 ${out.missionResult ?? "-"} ` +
-            `(시도 ${out.attempts})${out.error ? " ERROR: " + out.error : ""}`,
-        );
-        return out;
-      }
-
       // 순차 실행 — 조직 TPM 상한(gpt-4o 30k) 때문에 병렬로 돌리면 미션 호출이 502로 죽는다.
       for (const cell of cells) {
         results.push(await runCell(cell));
@@ -288,11 +306,71 @@ describe.skipIf(!RUN)("mission_v5 9화행 대표 표본", () => {
       mkdirSync(OUT_DIR, { recursive: true });
       const jsonPath = resolve(OUT_DIR, "v5-samples.json");
       writeFileSync(jsonPath, JSON.stringify(results, null, 2), "utf8");
-      mkdirSync(dirname(jsonPath), { recursive: true });
       console.log(`\n표본 JSON: ${jsonPath}`);
       console.log(
         "요약: " +
           results
+            .map((r) => `${r.actKo} 코어 ${r.coreResult ?? "ERR"}/미션 ${r.missionResult ?? "ERR"}`)
+            .join(" · "),
+      );
+    },
+    1_800_000,
+  );
+});
+
+describe.skipIf(!SUPPLEMENT)("v5 보충 표본 — fail 셀 재생성 + 고P 추가", () => {
+  it(
+    "초대·불만 같은 셀 재생성, 요청·거절 고P 셀 추가 → v5-samples.json 갱신",
+    async () => {
+      const { url, key } = readEnv();
+      const runCell = createRunner(url, key);
+      const jsonPath = resolve(OUT_DIR, "v5-samples.json");
+      const existing: SampleResult[] = JSON.parse(readFileSync(jsonPath, "utf8"));
+
+      // ① fail이었던 화행의 "원래 셀"을 파일에서 그대로 가져와 재생성한다.
+      //    플래너를 다시 돌리면 쿼터가 달라질 때 seq 커서가 밀려 topic이 바뀔 수 있다.
+      const regenActs = ["agreement", "complaint"] as const;
+      const regenCells = regenActs.map((a) => {
+        const row = existing.find((r) => r.act === a && !r.variant);
+        if (!row) throw new Error(`기존 표본에 ${a}가 없습니다`);
+        return row.cell;
+      });
+
+      // ② 고P 셀 — 같은 플래너에서 화행당 2셀을 뽑으면 두 번째가 구인 셀 #2
+      //    (higher·acquaintance·high)다. 요청·거절만 취한다(고P 편향 우려가
+      //    직접성 축에 집중되는 두 화행 — 계약 0-t, Yu 1999).
+      const highPCells = buildBatchPlan(
+        {
+          perLevel: { beginner_intermediate: 0, intermediate: 2, advanced: 0 },
+          interpretingRatio: 0,
+        },
+        "ko_zh",
+      ).filter(
+        (c) =>
+          c.mode === "translation" &&
+          c.pdr_power === "higher" &&
+          (c.speech_act_ui === "request" || c.speech_act_ui === "refusal"),
+      );
+
+      const fresh: SampleResult[] = [];
+      for (const cell of regenCells) fresh.push(await runCell(cell, "regen"));
+      for (const cell of highPCells) fresh.push(await runCell(cell, "high_p"));
+
+      // 병합: 재생성분은 같은 화행의 기존 행을 교체, 고P분은 뒤에 추가.
+      const merged = existing
+        .filter((r) => !(regenActs as readonly string[]).includes(r.act) || r.variant === "high_p")
+        .concat(fresh.filter((r) => r.variant === "regen"))
+        .concat(fresh.filter((r) => r.variant === "high_p"));
+      merged.sort((a, b) =>
+        (a.variant === "high_p" ? 1 : 0) - (b.variant === "high_p" ? 1 : 0) ||
+        a.act.localeCompare(b.act),
+      );
+
+      writeFileSync(jsonPath, JSON.stringify(merged, null, 2), "utf8");
+      console.log(`\n갱신된 표본 JSON: ${jsonPath} (총 ${merged.length}건)`);
+      console.log(
+        "보충 요약: " +
+          fresh
             .map((r) => `${r.actKo} 코어 ${r.coreResult ?? "ERR"}/미션 ${r.missionResult ?? "ERR"}`)
             .join(" · "),
       );
