@@ -134,6 +134,25 @@ async function runQualityCheck(args: {
   }
 }
 
+// OpenAI TPM 초과 시 엣지는 fallback 없이 502를 되돌린다(fallback 조건은 400/404뿐).
+// 엣지에서 모델을 바꿔 재시도하면 rate limit에 걸린 미션만 다른 모델로 생성돼
+// 배치 안에서 생성 모델이 섞인다(연구 일관성) — 같은 모델로 잠시 기다렸다 재호출한다.
+const TRANSIENT_STATUSES = new Set([429, 502, 503]);
+
+async function invokeMissionWithBackoff(
+  body: Record<string, unknown>,
+): Promise<{ data: unknown; error: unknown }> {
+  let last: { data: unknown; error: unknown } = { data: null, error: null };
+  for (let i = 0; i < 4; i += 1) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 15_000 * i));
+    last = await supabase.functions.invoke("generate-scenario", { body });
+    if (!last.error) return last;
+    const status = (last.error as { context?: { status?: number } })?.context?.status;
+    if (!status || !TRANSIENT_STATUSES.has(status)) return last;
+  }
+  return last;
+}
+
 const rpc = (fn: string, args: Record<string, unknown>) =>
   (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>)(
     fn,
@@ -199,8 +218,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
   let attempts = 0;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     attempts = attempt;
-    const { data, error } = await supabase.functions.invoke("generate-scenario", {
-      body: {
+    const { data, error } = await invokeMissionWithBackoff({
         action: "mission",
         mission: {
           direction, // 0-l·89 — 엣지가 방향별 원문·산출 언어 결정(라운드2 배포 후 활성)
@@ -215,9 +233,11 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
           is_response_act: isResponseAct(core.speech_act),
           failure_notes: failureNotes,
         },
-      },
     });
-    if (error) return { ok: false, error: `미션 생성 호출 실패: ${error.message ?? error}`, attempts };
+    if (error) {
+      const msg = (error as { message?: string })?.message ?? String(error);
+      return { ok: false, error: `미션 생성 호출 실패: ${msg}`, attempts };
+    }
     rawContent = (data as { mission_content?: unknown })?.mission_content;
     const parsed = normalizeMission(rawContent); // legacy v1/v2/v3와 현행 v4 모두 허용
     if (!parsed.ok || !parsed.data) {

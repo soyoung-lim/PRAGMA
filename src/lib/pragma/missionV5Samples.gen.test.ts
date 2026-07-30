@@ -210,6 +210,13 @@ describe.skipIf(!RUN)("mission_v5 9화행 대표 표본", () => {
             message: v.message,
           }));
 
+          // 실제 배치(coreBatchRun)는 fail 코어를 저장하지 않으므로 미션 승격도 없다.
+          // fail 코어 위에 미션을 만들면 본 배치에 존재할 수 없는 모집단이 검수에 섞인다.
+          if (coreCheck.result === "fail") {
+            out.error = "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)";
+            return out;
+          }
+
           // ── 2. 미션 승격 (promoteMission과 같은 본문·재시도 정책) ──
           const nc = normalizeCore(core ?? {});
           const normCore = nc.ok ? nc.data : undefined;
