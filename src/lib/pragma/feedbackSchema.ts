@@ -78,6 +78,21 @@ export const FeedbackDraftSchema = z.object({
       .array(z.object({ text: z.string().trim().min(1), note_ko: z.string().default("") }))
       .max(2)
       .default([]),
+    /**
+     * 미니 담화형 DCT 전용(mission_v5, DEC-20260730-01) — 담화 전체의 문장 연결·
+     * 매체 자연성 **한 줄**. 길어지면 감량 원칙(0-r·103)이 무너지므로 한 줄로 제한한다.
+     * 단문 DCT(v4 이하)에서는 빈 문자열이다.
+     */
+    discourse_ko: z.string().default(""),
+    /**
+     * 화용 집중 구간 밖 문장의 **심각한** 화용 부조화 경고(비점수). 문턱이 높다 —
+     * 관계를 실제로 손상시킬 수준만. 이 값은 revision_scope에 영향을 주지 않는다
+     * (완료 조건 불변). 최대 2건.
+     */
+    offfocus_warnings: z
+      .array(z.object({ text: z.string().trim().min(1), note_ko: z.string().default("") }))
+      .max(2)
+      .default([]),
   }),
   uncertainty_flags: z
     .array(

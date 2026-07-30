@@ -2,7 +2,7 @@
 // 원격 DB·Edge 배포 없이 승인된 MPJ4+DCT 화면 흐름을 확인하는 데만 사용한다.
 // import.meta.env.DEV로 보호된 ?preview=v4 경로에서만 선택된다.
 
-import type { MissionV4 } from "@/lib/pragma/missionSchema";
+import type { MissionV4, MissionV5 } from "@/lib/pragma/missionSchema";
 
 const ANCHOR_PDR = {
   p: "speaker_lower",
@@ -198,5 +198,31 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
     mission_content_hash: "local-preview-not-stored",
     generated_at: "2026-07-29T01:25:00+09:00",
     generation_attempt: 1,
+  },
+};
+
+// ── mission_v5 미리보기 샘플 — 미니 담화형 DCT (DEC-20260730-01) ──────────
+// MPJ 4문항은 v4 샘플을 그대로 재사용한다(구성 불변). DCT 원문만 2~4문장
+// 담화로 바꾸고 화용 집중 구간을 지정한다. ?preview=v5 경로 전용.
+const V5_SOURCE_TEXT =
+  "지난번 주문은 잘 받았습니다. 그런데 이번 주부터 사무실을 옮기게 되어서요. 가능하시다면 이번 주문의 배송지를 새 사무실로 바꿔 주실 수 있을까요? 번거롭게 해드려 죄송합니다.";
+
+export const SAMPLE_MISSION_V5: MissionV5 = {
+  ...SAMPLE_MISSION_V4,
+  schema_version: "mission_v5",
+  production_task: {
+    ...SAMPLE_MISSION_V4.production_task,
+    source_text: V5_SOURCE_TEXT,
+    focal_segments: [
+      {
+        text: "가능하시다면 이번 주문의 배송지를 새 사무실로 바꿔 주실 수 있을까요?",
+        role: "head",
+      },
+      { text: "번거롭게 해드려 죄송합니다.", role: "support" },
+    ],
+  },
+  provenance: {
+    ...SAMPLE_MISSION_V4.provenance!,
+    prompt_version: "mission_v5_mpj4_minidiscourse_v1",
   },
 };

@@ -159,6 +159,8 @@ interface FeedbackBody {
   invariants?: string[]
   /** 원문 밖 명제적 Supportive Move에 사용할 수 있는 서버 승인 사실. */
   usable_facts?: string[]
+  /** 미니 담화형 DCT(mission_v5)의 화용 집중 구간. 부재 = 단문 DCT. */
+  focal_segments?: { text: string; role: 'head' | 'support' }[]
   feature?: {
     code?: string
     learner_label?: string
@@ -772,10 +774,34 @@ function buildCoreSystemPrompt(direction: Direction): string {
 {
   "situation_ko": "상황 카드 배경 (한국어 2~3문장: 발신자·수신자·목적·관계 + 아래 [장면 완결성] 5요소)",
   "relation_ko": "발신자와 수신자의 관계 한 줄 (한국어)",
-  "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원발화",
+  "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원문 — 실제 주고받는 메시지처럼 2~4문장의 담화",
   "preceding_turn": null,
-  "brief_note_ko": "편성 화면용 한 줄 요약 (한국어)"
+  "brief_note_ko": "편성 화면용 한 줄 요약 (한국어)",
+  "focal_segments": [
+    { "text": "source_text에서 그대로 복사한 중심 화행 절", "role": "head" },
+    { "text": "그 강도·완화·선택권을 직접 조절하는 보조 구간(없으면 생략)", "role": "support" }
+  ]
 }
+
+[원문 = 미니 담화] (DEC-20260730-01)
+용건 한 문장만 달랑 보내는 메시지는 실제 통번역 재료가 아니다. source_text는
+**하나의 자연스러운 메시지 전체**로 쓴다. 지정된 화행이 담화의 중심 목적이고,
+그 앞뒤에 감사·상황 설명·사과·마무리 같은 요소가 자연스럽게 함께 올 수 있다.
+- 분량은 [생성 요청]의 "원문 분량"을 따르되 항상 2~4문장 안이다.
+- 문장을 나열하지 말고 하나의 메시지로 읽히게 연결한다(지시어·접속으로 자연스럽게).
+- 곁들이는 요소는 **관계 관리에 필요한 만큼만.** 중심 화행이 담화에서 가장 중요한
+  용건이어야 하고, 다른 화행이 중심과 대등하게 경쟁하면 실패다.
+- 원문에 없는 사실·이유·대안·보상·새 일정을 발명하지 않는다. [사용 가능한 사실]이
+  주어지면 그 안에서만 쓴다.
+
+[focal_segments = 화용 집중 구간]
+학습자는 담화 전체를 옮기지만, 이번 주 학습 초점의 화용 평가는 이 구간에만 적용된다.
+- head: 중심 화행을 실제로 수행하는 절 **정확히 1개**.
+- support: head의 강도·완화·선택권·명료성을 **직접** 조절하는 구간 0~2개.
+  (예: "가능하시다면", "번거롭게 해드려 죄송합니다"처럼 요청의 부담을 조절하는 표현)
+- 중심 목적과 무관한 요소(서두 인사, 별개 용건의 감사·설명)는 **넣지 않는다.**
+- 각 text는 source_text에서 **그대로 복사한 연속된 문자열**이어야 한다. 요약·재작성·
+  띄어쓰기 변경·부호 생략 금지. 복사한 문자열이 source_text에 없으면 실패다.
 
 [장면 완결성 — situation_ko가 반드시 분명히 할 5요소] (계약 0-r·107)
 학습자마다 다른 장면을 상상하면 판단 차이가 언어 감각이 아니라 상상의 차이에서 생긴다.
@@ -893,7 +919,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
 
 // ── 코어 생성 프롬프트 스냅샷 해시 (재현성 provenance, 2026-07-26) ──────────
 // 목적: "이 배치의 행들이 같은 프롬프트·같은 호출 설정으로 만들어졌다"를 기계로 증명한다.
-// generation_prompt_version('core_v3')만으로는 세부 개정을 구분하지 못하므로,
+// generation_prompt_version('core_v4')만으로는 세부 개정을 구분하지 못하므로,
 // 모델에 실제로 보내는 문자열에서 지문을 뽑는다.
 //
 // ⚠️ 셀별 입력값(화행·수준·도메인·P/D/R·장면시드·분량)은 해시에 넣지 않는다.
@@ -1046,6 +1072,8 @@ interface MissionGenBody {
     source_modality: 'written' | 'spoken'
     /** 원문 밖 명제적 Supportive Move에 쓸 수 있는 서버 승인 폐쇄 목록. */
     usable_facts?: string[]
+    /** 화용 집중 구간(scenario_core_v3). 부재 = legacy 단문 코어 → mission_v4로 승격. */
+    focal_segments?: { text: string; role: 'head' | 'support' }[]
   }
   error_pattern_hints_ko: string[]
   is_response_act: boolean
@@ -1578,7 +1606,11 @@ ${JSON.stringify(b.core_content, null, 2)}`
 // ── feedback_v1 프롬프트 (계약 §4 + 0-q·95) ────────────────────────────
 // 학습자 산출에 대한 3층 진단. **점수를 매기지 않는다** — 학습 지원용 질적 피드백.
 // revision_scope는 여기서 받지 않는다(코드가 verdicts에서 도출 — §4).
-function buildFeedbackSystemPrompt(direction: Direction, isSpoken: boolean): string {
+function buildFeedbackSystemPrompt(
+  direction: Direction,
+  isSpoken: boolean,
+  focal: { text: string; role: 'head' | 'support' }[] = [],
+): string {
   const { src, tgt } = DIR_LANGS[direction]
   const targetLanguage = LANG_KO[tgt]
   const submittedOutput = isSpoken
@@ -1661,7 +1693,23 @@ ${modeBoundary}
 - alternatives[1](선택) = 다른 전략을 쓴 판본. 없으면 생략한다.
 - 두 안 모두 "이것이 정답"이 아니라 "이런 선택도 있다"로 쓴다.
 
-[출력 — 오직 JSON, 마크다운·설명 금지]
+${focal.length ? `[미니 담화형 DCT — 층별 평가 범위] (DEC-20260730-01)
+원문은 2~4문장의 담화이고 학습자는 **전체**를 옮겼다. 층마다 보는 범위가 다르다.
+- ① 의미 · ② 문법: **담화 전체**를 본다. 빠진 문장·오역·이해를 막는 오류를 놓치지 않는다.
+- ③ 화용(band_code): **중심 화용 목표가 담화에서 어떻게 실현됐는지**만 판정한다. 판정의
+  근거는 아래 [화용 집중 구간]에 대응하는 학습자 표현이다. 특정 한 문장만 떼어 보지 말고,
+  그 구간이 함께 만들어내는 강도·완화·선택권·명료성을 본다. 집중 구간 **밖** 문장의 어조·
+  격식 차이는 band_code에 반영하지 않는다.
+- "discourse_ko": 담화 전체의 문장 연결·매체 자연성을 **한 줄**로 쓴다(문제가 없으면
+  자연스럽다고 한 줄). 두 문장 이상 쓰지 마라 — 화면이 다시 길어진다.
+- "offfocus_warnings": 집중 구간 **밖** 문장에 **관계를 실제로 손상시킬 수준**의 화용
+  부조화가 있을 때만 최대 2건. 어색함·문체 취향·미세한 격식 차이는 넣지 않는다. 문턱을
+  높게 유지하고, 없으면 빈 배열로 둔다. 점수·감점으로 쓰지 않는다.
+
+[화용 집중 구간 — 원문에서 서버가 지정]
+${focal.map((s) => `- ${s.role === 'head' ? '중심 화행' : '조절 구간'}: "${s.text}"`).join('\n')}
+
+` : ''}[출력 — 오직 JSON, 마크다운·설명 금지]
 {
   "verdicts": {
     "semantic_fidelity": "preserved | minor_loss | distorted",
@@ -1673,7 +1721,9 @@ ${modeBoundary}
     "grammar": [ { "anchor_text": "학습자 문장에서 인용", "suggested_correction": "고친 형태",
                    "explanation_ko": "왜 이해를 막는지 1문장" } ],
     "feature_ko": "화용 층 1~2문장(비단정)",
-    "alternatives": [ { "text": "최소대조안", "note_ko": "무엇을 하나 바꿨는지" } ]
+    "alternatives": [ { "text": "최소대조안", "note_ko": "무엇을 하나 바꿨는지" } ],
+    "discourse_ko": "담화 전체의 연결·자연성 한 줄 (미니 담화형이 아니면 \"\")",
+    "offfocus_warnings": [ { "text": "집중 구간 밖 인용", "note_ko": "왜 심각한지 1문장" } ]
   },
   "uncertainty_flags": [ { "dimension": "grammar | pragmatic", "reason": "왜 확신이 없는지" } ]
 }
@@ -1797,18 +1847,34 @@ Deno.serve(async (req) => {
       // 구조 필드는 서버가 조립(셀과 어긋나지 않게). 자유 텍스트만 모델 값 사용.
       // v2 중립 스키마(계약 0-l·83) — source_text/preceding_turn + direction.
       // 모델이 구 키(source_text_ko 등)로 답해도 관대하게 받는다(폴백).
+      const sourceText = String(gen.source_text ?? gen.source_text_ko ?? '')
+      // focal_segments — 모델이 원문에서 복사해야 하는 값이라 서버가 정합만 보정한다.
+      // 원문에 없는 구간은 버린다(R29 fail을 유발하지 않고 조용히 통과시키지 않기 위해
+      // head가 남지 않으면 빈 배열로 두어 클라 R29가 fail을 내게 한다).
+      const focalSegments = Array.isArray(gen.focal_segments)
+        ? (gen.focal_segments as unknown[])
+            .map((raw) => {
+              const seg = raw as { text?: unknown; role?: unknown }
+              const text = typeof seg?.text === 'string' ? seg.text.trim() : ''
+              const role = seg?.role === 'support' ? 'support' : 'head'
+              return { text, role } as { text: string; role: 'head' | 'support' }
+            })
+            .filter((seg) => seg.text.length > 0 && sourceText.includes(seg.text))
+            .slice(0, 3)
+        : []
       const core_content = {
-        schema_version: 'scenario_core_v2',
+        schema_version: 'scenario_core_v3',
         direction: coreDir,
         situation_ko: String(gen.situation_ko ?? ''),
         relation_ko: String(gen.relation_ko ?? ''),
         source_modality: b.source_modality,
-        source_text: String(gen.source_text ?? gen.source_text_ko ?? ''),
+        source_text: sourceText,
         preceding_turn: b.is_response_act ? (gen.preceding_turn ?? gen.preceding_turn_zh ?? null) : null,
         pdr: b.pdr,
         channel: b.channel,
         context_spec: contextSpec,
         ...(gen.brief_note_ko ? { brief_note_ko: String(gen.brief_note_ko) } : {}),
+        focal_segments: focalSegments,
       }
       return new Response(
         JSON.stringify({
@@ -1816,7 +1882,7 @@ Deno.serve(async (req) => {
           meta: {
             provider: PROVIDER,
             model,
-            prompt_version: 'core_v3',
+            prompt_version: 'core_v4',
             // 재현성 provenance — 클라이언트는 이 값을 재계산하지 말고 그대로 저장한다.
             prompt_snapshot_hash: await corePromptSnapshotHash(),
             generated_at: new Date().toISOString(),
@@ -1865,8 +1931,20 @@ Deno.serve(async (req) => {
       // v4 중립 스키마(MPJ4) — mpj_items는 모델이 중립 키(source/target/
       // corrections.text/candidates.text/recommended_example/preceding_turn)로 답한다.
       // production_task는 코어를 계승하되 중립 키(source_text/preceding_turn)로 조립.
+      // focal_segments를 계승할 수 있으면 mission_v5(미니 담화형 DCT), 없으면 v4.
+      // legacy 단문 코어(scenario_core_v1·v2)의 승격 경로를 막지 않는다.
+      const inheritedFocal = Array.isArray(b.core.focal_segments)
+        ? b.core.focal_segments
+            .map((seg) => ({
+              text: typeof seg?.text === 'string' ? seg.text.trim() : '',
+              role: seg?.role === 'support' ? ('support' as const) : ('head' as const),
+            }))
+            .filter((seg) => seg.text.length > 0 && b.core.source_text_ko.includes(seg.text))
+            .slice(0, 3)
+        : []
+      const isMiniDiscourse = inheritedFocal.some((seg) => seg.role === 'head')
       const mission_content = {
-        schema_version: 'mission_v4',
+        schema_version: isMiniDiscourse ? 'mission_v5' : 'mission_v4',
         direction: missionDir,
         unit: {
           target_feature: b.feature.code,
@@ -1893,6 +1971,7 @@ Deno.serve(async (req) => {
             : {}),
           ...(productionMode === 'interpreting' ? { replay_limit: 2 } : {}),
           reference_alternatives: Array.isArray(gen.reference_alternatives) ? gen.reference_alternatives : [],
+          ...(isMiniDiscourse ? { focal_segments: inheritedFocal } : {}),
         },
       }
       // provenance 서버 주입(계약 v1.5 0-h·56) — 모델 응답이 아니라 서버가 채운다.
@@ -1903,14 +1982,18 @@ Deno.serve(async (req) => {
         ...mission_content,
         provenance: {
           model,
-          prompt_version: 'mission_v4_mpj4_dct1_context_v4',
+          prompt_version: isMiniDiscourse
+            ? 'mission_v5_mpj4_minidiscourse_v1'
+            : 'mission_v4_mpj4_dct1_context_v4',
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
         },
       }
       return new Response(
-        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v4_mpj4_dct1_context_v4', generated_at: genAt } }),
+        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: isMiniDiscourse
+            ? 'mission_v5_mpj4_minidiscourse_v1'
+            : 'mission_v4_mpj4_dct1_context_v4', generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }
@@ -1925,7 +2008,21 @@ Deno.serve(async (req) => {
       // 학습자가 기다리는 호출이라 저지연 모델을 쓴다. 판정 흔들림을 줄이려 temp 낮춤.
       const dir = normDir(b.direction)
       const isSpoken = b.mode === 'interpreting'
-      const sys = buildFeedbackSystemPrompt(dir, isSpoken)
+      // 미니 담화형(mission_v5)만 focal 구간을 전달한다. 원문에 없는 구간은 버린다 —
+      // 프롬프트가 원문에 없는 문자열을 집중 구간으로 제시하면 판정이 흔들린다.
+      const feedbackFocal = Array.isArray(b.focal_segments)
+        ? b.focal_segments
+            .map((seg) => ({
+              text: typeof seg?.text === 'string' ? seg.text.trim() : '',
+              role: seg?.role === 'support' ? ('support' as const) : ('head' as const),
+            }))
+            .filter((seg) => seg.text.length > 0 && (b.source_text ?? '').includes(seg.text))
+            .slice(0, 3)
+        : []
+      const feedbackPromptVersion = feedbackFocal.length
+        ? 'feedback_v1_minidiscourse_v3'
+        : 'feedback_v1_feature_general_v2'
+      const sys = buildFeedbackSystemPrompt(dir, isSpoken, feedbackFocal)
       const usr = buildFeedbackUserPrompt(b)
       let model = PRIMARY_MODEL
       let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.2, {
@@ -1956,9 +2053,9 @@ Deno.serve(async (req) => {
           feedback: {
             ...parsed,
             rubric_version: b.rubric_version ?? '',
-            provenance: { model, prompt_version: 'feedback_v1_feature_general_v2', generated_at: new Date().toISOString() },
+            provenance: { model, prompt_version: feedbackPromptVersion, generated_at: new Date().toISOString() },
           },
-          meta: { provider: PROVIDER, model, prompt_version: 'feedback_v1_feature_general_v2' },
+          meta: { provider: PROVIDER, model, prompt_version: feedbackPromptVersion },
         }),
         { status: 200, headers: jsonHeaders },
       )

@@ -173,6 +173,11 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     channel: normCore?.channel,
     source_modality: core.source_modality,
     usable_facts: normCore?.usable_facts ?? [],
+    // scenario_core_v3의 화용 집중 구간. 있으면 엣지가 mission_v5로 승격한다.
+    // legacy 단문 코어는 부재 → mission_v4 경로 유지(DEC-20260730-01).
+    ...(normCore?.focal_segments?.length
+      ? { focal_segments: normCore.focal_segments }
+      : {}),
   };
   const ctx: CheckContext = {
     speech_act: core.speech_act,
