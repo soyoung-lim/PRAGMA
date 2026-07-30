@@ -210,7 +210,7 @@ const MissionRunV1 = () => {
     ? `${loaded.speech_act ? SPEECH_ACT_UI[loaded.speech_act] : ""} · ${loaded.learner_level ? LEVEL[loaded.learner_level] : ""}`
     // 큰 배너를 걷어내는 대신 헤더가 지위를 말한다 — "원어민 검토 전"은 헤더에 없던 정보다.
     : previewV4
-      ? "mission_v4 미리보기 · 예문 검토 전"
+      ? `${previewV5 ? "mission_v5(미니 담화형 DCT)" : "mission_v4"} 미리보기 · 예문 검토 전`
       : "샘플 · 예문 검토 전";
 
   return (
