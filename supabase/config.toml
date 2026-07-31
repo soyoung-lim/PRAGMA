@@ -5,9 +5,12 @@ project_id = "tlnjxagqwvefeqdagtkq"
 site_url = "http://localhost:8080"
 # ⚠️ 이 허용목록을 편집할 수 없었던 것이 Lovable 관리형을 벗어난 이유다.
 # 로컬·Railway 양쪽을 명시해야 OAuth가 앱으로 되돌아온다.
+# 2026-07-31 Railway 프로젝트명이 PRAGMA로 바뀌며 production URL이 교체됐다.
+# 대시보드 Auth 설정은 이미 새 URL로 맞춰져 있으므로, 이 파일이 옛 값을 들고 있으면
+# 다음 `supabase config push`가 대시보드를 되돌려 OAuth를 깨뜨린다.
 additional_redirect_urls = [
   "http://localhost:8080/**",
-  "https://l2-pragmatics.up.railway.app/**",
+  "https://pragma.up.railway.app/**",
 ]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true

@@ -17,6 +17,18 @@ Claude Code는 작업 시작 시 branch/HEAD/status만 확인하고 사용자의
 Codex는 Claude Code의 변경을 실제 diff·타입·테스트 기준으로 검수하며, 같은 worktree를
 동시에 편집하지 않는다.
 
+## 배포 주소 (2026-07-31 갱신)
+
+- production = **`https://pragma.up.railway.app`** — Railway 프로젝트명 `PRAGMA`.
+  Supabase Auth의 Site URL·Redirect URL 설정 완료, `supabase/config.toml`의
+  `additional_redirect_urls`도 동기화했다(옛 값을 두면 `config push`가 대시보드를
+  되돌려 OAuth를 깨뜨린다).
+- GitHub 저장소명과 Railway 내부 서비스명은 **`l2-pragmatic-translator` 유지** —
+  주소만 바뀌었지 저장소·서비스 식별자는 그대로다.
+- ⚠️ 주소 이력이 한 번 뒤집혔다. 7/26 기록은 "`l2-pragmatics…`가 라이브,
+  `pragma…`는 404"라고 적고 있는데 7/31 개명으로 **관계가 반대가 됐다.**
+  지난 문서(`CODEX_HANDOFF_2026-07-26.md` 등)의 주소는 그대로 믿지 않는다.
+
 dev 서버 = `preview_start {name:"l2-mission-v5-dev"}` → **8096**(OneDrive `.claude/launch.json`).
 기존 `l2-mission-v4-worktree`(8095)는 **구 worktree**를 가리키므로 이 branch의 UI가 나오지 않는다.
 미리보기 진입 = `/student-login` → "로그인 없이 둘러보기" → 주소창에
