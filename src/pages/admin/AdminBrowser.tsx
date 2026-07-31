@@ -73,6 +73,8 @@ const AUTHENTIC_SOURCE_KO: Record<string, string> = {
 const ACTS = Object.keys(SPEECH_ACT_UI) as SpeechActUI[];
 const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
 const CORE_QUERY_TIMEOUT_MS = 15_000;
+// 495 배치를 두 번 돌리면 코어가 1000을 넘어 상한에 조용히 잘린다(2026-07-31 실측 1299).
+const ROW_CAP = 4000;
 
 const AdminBrowser = () => {
   const navigate = useNavigate();
@@ -123,7 +125,7 @@ const AdminBrowser = () => {
         )
         .eq("content_format", "scenario_core_v1")
         .order("created_at", { ascending: false })
-        .limit(1000);
+        .limit(ROW_CAP);
       const timeout = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(
           () => reject(new Error("조회 시간이 15초를 초과했습니다.")),
@@ -204,6 +206,11 @@ const AdminBrowser = () => {
           </div>
           <div className="text-[13px] text-muted-foreground">
             전체 {rows.length} · 통역 {interp} · 미션 검토완료 {reviewed}
+            {rows.length >= ROW_CAP && (
+              <span className="ml-2 rounded bg-[#FEF3C7] px-1.5 py-0.5 text-[11.5px] text-[#92400E]">
+                조회 상한 도달 — 최신 {ROW_CAP}건만 표시
+              </span>
+            )}
           </div>
         </div>
 
