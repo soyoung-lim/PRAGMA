@@ -101,6 +101,12 @@ export interface MyMissionLogEntry {
   revisedResponse: string | null;
   /** 최초안과 최종안이 다르면 true. 별도 플래그가 없어 두 값을 비교한다. */
   revised: boolean;
+  /** 이번 수행의 목표 화용 초점 코드(카탈로그 조회용). */
+  featureId: string | null;
+  /** 시스템이 지정한 수정 지점 = meaning | grammar | feature | clear. */
+  revisionScope: string | null;
+  /** system_assigned = AI 피드백을 받고 수정했음 / learner_free = 피드백 없이 진행. */
+  revisionSource: string | null;
 }
 
 /**
@@ -121,7 +127,7 @@ export async function listMyMissionLogs(limit = 50): Promise<MyMissionLogEntry[]
   const { data, error } = await supabase
     .from("learner_mission_logs")
     .select(
-      "id, created_at, speech_act, level, task_type, source_text, first_response, revised_response",
+      "id, created_at, speech_act, level, task_type, source_text, first_response, revised_response, feature_id, revision_target_selected, revision_target_source",
     )
     .eq("auth_user_id", authUserId)
     .order("created_at", { ascending: false })
@@ -141,6 +147,9 @@ export async function listMyMissionLogs(limit = 50): Promise<MyMissionLogEntry[]
       firstResponse: first,
       revisedResponse: revisedText,
       revised: Boolean(first && revisedText && first !== revisedText),
+      featureId: (row.feature_id as string | null) ?? null,
+      revisionScope: (row.revision_target_selected as string | null) ?? null,
+      revisionSource: (row.revision_target_source as string | null) ?? null,
     };
   });
 }
