@@ -113,7 +113,7 @@ const EXPLICIT_WRITTEN_SCENE = new RegExp(
 // core_quality v4와 인간 검수가 맡는다.
 const INDUSTRY_EVIDENCE: Record<string, RegExp> = {
   culture_content_media:
-    /엔터테인먼트|미디어|방송|영상|음원|공연|촬영|편집|콘텐츠\s*제작|배급|스트리밍|드라마|웹툰|시나리오|각본|서사\s*구조/iu,
+    /엔터테인먼트|미디어|방송|영상|음원|공연|촬영|편집|콘텐츠\s*제작|배급|스트리밍|드라마|웹툰|시나리오|각본|서사\s*구조|예능|시놉시스|출연자|캐스팅|시청률|프로그램\s*(?:제작|편성)/iu,
   manufacturing:
     /뷰티|화장품|스킨케어|메이크업|패션|의류|브랜드\s*(?:상품|매장)|온라인\s*몰|커머스|판매\s*채널/iu,
   trade_distribution:
