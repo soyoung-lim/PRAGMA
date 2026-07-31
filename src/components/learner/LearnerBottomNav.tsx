@@ -1,12 +1,13 @@
 import { NavLink } from "react-router-dom";
 
-// 학습자 최상위 공간 — 수업과 기록 사이에 독립적인 쉬어가기 공간을 둔다.
+// 학습자 최상위 공간 — 학습 동선(홈→수업→기록)을 앞에 두고, 연구 무관 쉬어가기
+// 공간인 라운지를 맨 끝에 둔다(2026-07-31 사용자 지시).
 // 셀프 연습은 실제 기능이 생기기 전까지 탭이나 자리표시자로 노출하지 않는다.
 const TABS = [
   { to: "/learner/home", label: "홈", icon: "⌂" },
   { to: "/learner/course", label: "수업", icon: "▦" },
-  { to: "/learner/lounge", label: "라운지", icon: "☕" },
   { to: "/learner/records", label: "기록", icon: "◷" },
+  { to: "/learner/lounge", label: "라운지", icon: "☕" },
 ];
 
 export const LearnerBottomNav = () => (
