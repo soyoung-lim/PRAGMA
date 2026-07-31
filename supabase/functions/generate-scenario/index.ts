@@ -1255,7 +1255,12 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
 - 차이는 오직 이 화용 초점에서만. 문법·의미·길이가 정답 단서가 되면 안 됨.
 - **pdr 값은 반드시 위 '공통 코드값'만 사용**(한국어 라벨 "동등" 등 절대 금지).
 ${vocabularyHintsRule}
-- multi_judge는 길이순으로 정답을 알 수 없게 섞고 최장/최단 비율을 3배 이하로 맞추세요. 과잉안이 유일한 최장문, 과소안이 유일한 최단문이 되지 않게 하세요.
+- [multi_judge 길이 통제 — 어기면 저장이 거부됩니다] 후보 5개는 화용 지식 없이 길이만 보고 정답을 고를 수 없어야 합니다.
+  핵심 원리: **대역(적정/과소/과잉)과 길이는 별개 축입니다.** 부족한 후보는 짧아서가 아니라 핵심 요소가 빠져서 부족하고, 적정 후보는 길어서가 아니라 요소가 갖춰져서 적정합니다.
+  ① 과소·불충분 후보 중 최소 1개는 **말수는 많되 알맹이가 없는** 문장으로 쓰세요(모호한 수식·군더더기는 있는데 핵심 요소가 빠진).
+  ② 적정 후보 중 최소 1개는 **짧지만 알찬** 문장으로 쓰세요(핵심 요소를 갖춘 간결형).
+  ③ 과잉 후보는 문장을 덧붙여 길게 만들지 말고, 같은 길이대에서 강도 표지(과공손 수식·이중 표현)로 만드세요.
+  ④ 작성 후 다섯 후보의 글자 수를 비교해 스스로 점검하세요: 최장/최단이 3배를 넘거나, 과잉안이 유일한 최장문이거나, 과소안이 유일한 최단문이면 — 그 후보를 다시 쓰세요.
 - 🔴 highlights는 target 안의 실제 부분문자열이어야 합니다.
 - source=${srcL}, 모든 target·교정안·후보=${tgtL}. 국가 단위 일반화 표현 금지.${precedingRule}
 - 완료 화면 원리는 시스템이 넣으므로 생성 금지.`
@@ -1987,9 +1992,11 @@ Deno.serve(async (req) => {
         ...mission_content,
         provenance: {
           model,
+          // _v2/_v5 = multi_judge 길이 통제(대역·길이 독립) 보강판(2026-07-31, B2).
+          // 이전 버전 문자열로 생성된 미션과 길이 단서 통계를 구분하기 위해 올린다.
           prompt_version: isMiniDiscourse
-            ? 'mission_v5_mpj4_minidiscourse_v1'
-            : 'mission_v4_mpj4_dct1_context_v4',
+            ? 'mission_v5_mpj4_minidiscourse_v2'
+            : 'mission_v4_mpj4_dct1_context_v5',
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
@@ -1997,8 +2004,8 @@ Deno.serve(async (req) => {
       }
       return new Response(
         JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: isMiniDiscourse
-            ? 'mission_v5_mpj4_minidiscourse_v1'
-            : 'mission_v4_mpj4_dct1_context_v4', generated_at: genAt } }),
+            ? 'mission_v5_mpj4_minidiscourse_v2'
+            : 'mission_v4_mpj4_dct1_context_v5', generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }
