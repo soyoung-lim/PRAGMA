@@ -78,4 +78,24 @@ describe("R26 업무 분야의 구체적 실현", () => {
 
     expect(r26Fails(core, context)).toEqual([]);
   });
+
+  // 495 본배치에서 엔터테인먼트·미디어 셀이 반복해 걸렸다. 증거 목록이 영상 제작
+  // 용어에 치우쳐 드라마·예능 기획 어휘를 담지 못했다.
+  it.each([
+    ["드라마 서사 구조", "콘텐츠 기획자끼리 드라마의 서사 구조가 복잡하다는 평가를 글로 주고받는다."],
+    ["예능 시놉시스·출연자", "업무 담당자가 새로운 예능 프로그램의 시놉시스와 출연자 구성에 대해 글로 의견을 전한다."],
+  ])("엔터테인먼트·미디어 셀에서 %s는 산업 단서로 인정한다", (_label, situation_ko) => {
+    const context: CheckContext = { ...baseContext, industry: "culture_content_media" };
+    expect(r26Fails({ ...baseCore, situation_ko }, context)).toEqual([]);
+  });
+
+  it("범용 기획 표현만 있는 엔터테인먼트·미디어 셀은 여전히 차단한다", () => {
+    const context: CheckContext = { ...baseContext, industry: "culture_content_media" };
+    const core = {
+      ...baseCore,
+      situation_ko: "담당자가 새 기획안의 예산과 일정에 대해 글로 의견을 전한다.",
+    };
+
+    expect(r26Fails(core, context)).toHaveLength(1);
+  });
 });
