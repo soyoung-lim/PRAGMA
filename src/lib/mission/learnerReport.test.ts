@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLearnerReport } from "@/lib/mission/learnerReport";
+import { buildLearnerReport, josa } from "@/lib/mission/learnerReport";
 import { LEARNER_REPORT_PREVIEW_ENTRIES } from "@/lib/mission/learnerReportPreview";
 import type { MyMissionLogEntry } from "@/lib/mission/missionLog";
 
@@ -24,6 +24,31 @@ const entry = (
   revisionScope: "feature",
   revisionSource: "system_assigned",
   ...overrides,
+});
+
+describe("josa", () => {
+  it("받침 유무에 따라 조사를 고른다", () => {
+    expect(josa("조금 단정적으로 들림", "로")).toBe("으로");
+    expect(josa("알맞은 범위", "로")).toBe("로");
+    expect(josa("책임 인정과 수리", "을")).toBe("를");
+    expect(josa("완화와 선택권", "을")).toBe("을");
+    expect(josa("평가 강도와 민감도", "는")).toBe("는");
+    expect(josa("문제 명료화와 책임 범위", "는")).toBe("는");
+  });
+
+  it("ㄹ 받침에는 '으로'가 아니라 '로'를 쓴다", () => {
+    expect(josa("너무 단칼", "로")).toBe("로");
+  });
+
+  it("따옴표가 붙어 있어도 안쪽 마지막 글자로 판정한다", () => {
+    expect(josa("“알맞은 범위”", "을")).toBe("를");
+    expect(josa("‘완충과 대안’", "을")).toBe("을");
+  });
+
+  it("한글이 아니면 기본형을 쓴다", () => {
+    expect(josa("能不能", "을")).toBe("를");
+    expect(josa("", "로")).toBe("로");
+  });
 });
 
 describe("buildLearnerReport", () => {
@@ -56,7 +81,7 @@ describe("buildLearnerReport", () => {
         olderCount: 0,
       },
     });
-    expect(report.headline).toContain("최근에는 “가능하다면…”을 써보기도 했어요");
+    expect(report.headline).toContain("최근에는 “가능하다면…” 표현을 써보기도 했어요");
     expect(report.correctionNotes).toHaveLength(13);
     expect(report.correctionNotes[0]).toMatchObject({
       speechActLabel: "요청",
@@ -112,6 +137,27 @@ describe("buildLearnerReport", () => {
     expect(report.primaryCohort?.bands.map((band) => band.count)).toEqual([
       1, 1, 0,
     ]);
+  });
+
+  it("요청이 아닌 초점에서도 band 라벨 뒤 조사가 깨지지 않는다", () => {
+    const refusal = (id: string): MyMissionLogEntry =>
+      entry(id, {
+        speechAct: "refusal",
+        featureId: "refusal_softening",
+        pragmaticBandCode: "over_elaborate",
+        firstResponse: "不行。",
+        revisedResponse: "恐怕不太方便。",
+      });
+
+    const report = buildLearnerReport([
+      refusal("r1"),
+      refusal("r2"),
+      refusal("r3"),
+    ]);
+
+    // "지나치게 장황"은 받침으로 끝나므로 '로'가 아니라 '으로'여야 한다.
+    expect(report.headline).toContain("‘지나치게 장황’으로 안내된");
+    expect(report.headline).not.toContain("’로 안내된");
   });
 
   it("수정 노트에는 최초 표현과 다른 최종 표현이 있는 수행만 담는다", () => {

@@ -7,7 +7,7 @@ import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
 import { DiffLine } from "@/components/mission/DiffLine";
 import { Button } from "@/components/ui/button";
 import { IS_DEV, useProfile } from "@/lib/auth/useProfile";
-import { buildLearnerReport } from "@/lib/mission/learnerReport";
+import { buildLearnerReport, josa } from "@/lib/mission/learnerReport";
 import { LEARNER_REPORT_PREVIEW_ENTRIES } from "@/lib/mission/learnerReportPreview";
 import { listMyMissionLogs } from "@/lib/mission/missionLog";
 import { diffText } from "@/lib/mission/textDiff";
@@ -159,7 +159,7 @@ const LearnerRecords = () => {
                     <span>
                       {primary.featureKey === "request_mitigation_optionality"
                         ? "조금 단정적으로 부탁했어요"
-                        : `‘${dominant.label}’로 안내됐어요`}
+                        : `‘${dominant.label}’${josa(dominant.label, "로")} 안내됐어요`}
                     </span>
                   </p>
                   <p className="mt-1 text-[10.5px] text-muted-foreground">
@@ -174,7 +174,7 @@ const LearnerRecords = () => {
                       {primary.recentExpression.count}/{primary.recentExpression.total}회
                     </strong>
                     <span>
-                      최근에는 {primary.recentExpression.learnerCopy}을 써봤어요
+                      최근에는 {primary.recentExpression.learnerCopy} 표현을 써봤어요
                     </span>
                   </p>
                   <p className="mt-1 text-[10.5px] text-muted-foreground">
@@ -243,9 +243,12 @@ const LearnerRecords = () => {
                         <span key={band.code}>{band.label} {band.count}</span>
                       ))}
                     </div>
-                    <p className="mt-3 border-t border-[#DFE1E2] pt-2.5 text-[12.5px] leading-relaxed text-[#35414B]">
-                      이 기록에서는 {dominant?.label}으로 안내된 표현이 {dominant?.count}회 반복됐어요.
-                    </p>
+                    {dominant && (
+                      <p className="mt-3 border-t border-[#DFE1E2] pt-2.5 text-[12.5px] leading-relaxed text-[#35414B]">
+                        이 기록에서는 {dominant.label}
+                        {josa(dominant.label, "로")} 안내된 표현이 {dominant.count}회 반복됐어요.
+                      </p>
+                    )}
                   </>
                 ) : (
                   <div className="flex min-h-28 items-center">
