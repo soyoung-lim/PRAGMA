@@ -6,6 +6,7 @@ import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
 import { useLearnerCourse } from "@/lib/curriculum/useLearnerCourse";
 import { MODE_LABEL, SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
+import { hasIntroArc } from "@/lib/mission/mockIntroArc";
 
 // 학습자 강좌 정본 — 관리자가 15주 편성기로 배정한 실제 시나리오를 주차별로 보여주고,
 // 검토 완료된 미션은 눌러서 실행(러너)까지 잇는다. 편성 → 학습자 실행 루프의 연결부다.
@@ -83,6 +84,26 @@ const LearnerCourseLive = () => {
                     >
                       주차 학습 노트 보기 →
                     </button>
+
+                    {/* 이 주차의 목표 특징에 도입 아크가 있으면, 미션 앞에 먼저 둔다.
+                        Roever 교수 단계(Hook → 귀납 → 원리 → 수용)를 거친 뒤 산출로 간다. */}
+                    {w.scenarios.some((s) => hasIntroArc(s.target_feature)) && (
+                      <div className="mt-3 rounded-lg border border-[#F0E3B8] bg-[#FFFBEA] px-3.5 py-3">
+                        <div className="text-[12.5px] font-bold text-[#6B5518]">
+                          이 표현 방식은 이번이 처음이에요
+                        </div>
+                        <p className="mt-1 text-[12.5px] leading-relaxed text-[#7A6631]">
+                          장면을 먼저 보고, 무엇이 차이를 만드는지 찾은 다음 미션으로 넘어갑니다.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/learner/course/week/${w.week_no}/intro`)}
+                          className="mt-2 inline-flex items-center rounded-md bg-[#15202B] px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#22303C]"
+                        >
+                          먼저 배우기 →
+                        </button>
+                      </div>
+                    )}
 
                     {w.scenarios.length === 0 ? (
                       <p className="mt-2 text-[12.5px] text-muted-foreground">

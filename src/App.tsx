@@ -90,9 +90,11 @@ const App = () => (
           <Route path="/learner/course" element={<RequireApproved><LearnerCourseLive /></RequireApproved>} />
           <Route path="/learner/course-live" element={<Navigate to="/learner/course" replace />} />
           <Route path="/learner/course/week/:weekNo/note" element={<RequireApproved><WeeklyLearningNote /></RequireApproved>} />
+          {/* 도입 아크 — 목표 특징을 처음 배우는 자리(Hook → 귀납 → 원리 → 수용).
+              아크 콘텐츠가 있는 주차만 열리고, 없으면 IntroArc가 강좌로 돌려보낸다. */}
+          <Route path="/learner/course/week/:weekNo/intro" element={<RequireApproved><IntroArc /></RequireApproved>} />
           {/* 구 2주차 목업 주소는 실제 강좌로 복귀시킨다. */}
           <Route path="/learner/course/week/2" element={<Navigate to="/learner/course" replace />} />
-          <Route path="/learner/course/week/2/intro" element={<Navigate to="/learner/course" replace />} />
           {/* 고정 진행률·샘플 주차 흐름은 개발 환경에서만 명시적 demo 경로로 연다. */}
           <Route
             path="/learner/demo/course"
