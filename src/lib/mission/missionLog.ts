@@ -88,3 +88,59 @@ export async function saveMissionAttempt(input: SaveAttemptInput): Promise<SaveA
   }
   return { ok: true, id: data.id as string };
 }
+
+/** 학습 기록 화면 한 줄 — 학습자 본인이 쓴 것만 담는다(판정·점수 없음). */
+export interface MyMissionLogEntry {
+  id: string;
+  createdAtIso: string;
+  speechAct: string | null;
+  level: string | null;
+  taskType: string | null;
+  sourceText: string | null;
+  firstResponse: string | null;
+  revisedResponse: string | null;
+  /** 최초안과 최종안이 다르면 true. 별도 플래그가 없어 두 값을 비교한다. */
+  revised: boolean;
+}
+
+/**
+ * 학습 기록 조회 — 최신순. 세션이 없으면 빈 배열(데모에서 남의 기록이 보이지 않도록).
+ *
+ * ⚠️ `auth_user_id`를 **명시적으로** 건다. RLS의 `learner_select_own_log`만 믿으면
+ * 관리자 계정에서는 `admin_select_all_logs`가 함께 걸려 전체 학습자의 답안이 나온다
+ * (migration 20260721120000). 이 화면은 "내 기록"이므로 역할과 무관하게 본인 것만 본다.
+ *
+ * 점수·등급·AI 판정은 조회하지 않는다. 이 화면은 "내가 무엇을 썼고 어떻게 바꿨나"를
+ * 되돌아보는 곳이지 평가 결과를 받는 곳이 아니다(계약상 점수 표현 금지).
+ */
+export async function listMyMissionLogs(limit = 50): Promise<MyMissionLogEntry[]> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const authUserId = sessionData.session?.user?.id;
+  if (!authUserId) return [];
+
+  const { data, error } = await supabase
+    .from("learner_mission_logs")
+    .select(
+      "id, created_at, speech_act, level, task_type, source_text, first_response, revised_response",
+    )
+    .eq("auth_user_id", authUserId)
+    .order("created_at", { ascending: false })
+    .limit(Math.max(1, Math.floor(limit)));
+  if (error) throw new Error(`학습 기록을 불러오지 못했습니다: ${error.message}`);
+
+  return (data ?? []).map((row) => {
+    const first = (row.first_response as string | null) ?? null;
+    const revisedText = (row.revised_response as string | null) ?? null;
+    return {
+      id: row.id as string,
+      createdAtIso: row.created_at as string,
+      speechAct: (row.speech_act as string | null) ?? null,
+      level: (row.level as string | null) ?? null,
+      taskType: (row.task_type as string | null) ?? null,
+      sourceText: (row.source_text as string | null) ?? null,
+      firstResponse: first,
+      revisedResponse: revisedText,
+      revised: Boolean(first && revisedText && first !== revisedText),
+    };
+  });
+}
