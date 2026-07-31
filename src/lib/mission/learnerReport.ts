@@ -109,6 +109,35 @@ const EXPRESSION_COPY: Record<string, string> = {
   "您看方便吗": "“괜찮으실까요?”",
 };
 
+// 라벨은 받침 유무가 섞여 있다("완화와 선택권"=받침 / "책임 인정과 수리"=모음).
+// 조사를 하드코딩하면 "들림'로"처럼 깨지므로 항상 이 함수로 고른다.
+const JOSA_FORMS = {
+  을: ["을", "를"],
+  를: ["을", "를"],
+  은: ["은", "는"],
+  는: ["은", "는"],
+  이: ["이", "가"],
+  가: ["이", "가"],
+  과: ["과", "와"],
+  와: ["과", "와"],
+  로: ["으로", "로"],
+  으로: ["으로", "로"],
+} as const;
+
+export function josa(word: string, form: keyof typeof JOSA_FORMS): string {
+  const [withFinal, withoutFinal] = JOSA_FORMS[form];
+  // 따옴표·괄호 같은 후행 기호를 걷어내고 마지막 글자를 본다.
+  const cleaned = word.replace(/[^\p{L}\p{N}]+$/u, "");
+  const code = cleaned.charCodeAt(cleaned.length - 1);
+  // 한글 음절이 아니면(중국어·영문·기호) 받침을 판정할 수 없어 기본형을 쓴다.
+  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return withoutFinal;
+  const finalConsonant = (code - 0xac00) % 28;
+  if (finalConsonant === 0) return withoutFinal;
+  // ㄹ 받침은 '으로'가 아니라 '로'를 쓴다.
+  if (finalConsonant === 8 && (form === "로" || form === "으로")) return "로";
+  return withFinal;
+}
+
 const plainBandLabel = (label: string) => label.replace(/\s*\([^)]*\)\s*$/, "");
 
 const friendlyFeatureLabel = (featureKey: string, fallback: string) =>
@@ -341,12 +370,13 @@ function headlineOf(
   const recent = primary.recentExpression;
   if (primary.featureKey === "request_mitigation_optionality") {
     return recent
-      ? `요청할 때 부탁이 조금 단정적으로 들리는 경우가 반복됐지만, 최근에는 ${recent.learnerCopy}을 써보기도 했어요.`
+      ? `요청할 때 부탁이 조금 단정적으로 들리는 경우가 반복됐지만, 최근에는 ${recent.learnerCopy} 표현을 써보기도 했어요.`
       : "요청할 때 부탁이 조금 단정적으로 들리는 경우가 반복됐어요. 다음에는 가능한지 묻는 표현도 한 번 시도해보세요.";
   }
+  const bandJosa = josa(pattern.label, "로");
   return recent
-    ? `${primary.speechActLabel}에서 ‘${pattern.label}’로 안내된 표현이 반복됐고, 최근에는 ${recent.learnerCopy}을 써보기도 했어요.`
-    : `${primary.speechActLabel}에서 ‘${pattern.label}’로 안내된 표현이 ${pattern.count}/${primary.bandObservationCount}회 관찰됐어요.`;
+    ? `${primary.speechActLabel}에서 ‘${pattern.label}’${bandJosa} 안내된 표현이 반복됐고, 최근에는 ${recent.learnerCopy} 표현을 써보기도 했어요.`
+    : `${primary.speechActLabel}에서 ‘${pattern.label}’${bandJosa} 안내된 표현이 ${pattern.count}/${primary.bandObservationCount}회 관찰됐어요.`;
 }
 
 function nextStepOf(primary: PrimaryCohortReport | null): string {
@@ -355,7 +385,7 @@ function nextStepOf(primary: PrimaryCohortReport | null): string {
   }
   return (
     NEXT_STEP_BY_FEATURE[primary.featureKey] ??
-    `다음 수행에서는 ‘${primary.featureLabel}’를 한 번 의식하고 표현을 다시 읽어 보세요.`
+    `다음 수행에서는 ‘${primary.featureLabel}’${josa(primary.featureLabel, "를")} 한 번 의식하고 표현을 다시 읽어 보세요.`
   );
 }
 
