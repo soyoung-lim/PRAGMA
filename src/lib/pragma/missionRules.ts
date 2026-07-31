@@ -123,7 +123,7 @@ const INDUSTRY_EVIDENCE: Record<string, RegExp> = {
   public_international_affairs:
     /바이오|의료|헬스케어|병원|환자|의약|약품|임상|진료|건강\s*관리|검사\s*결과/iu,
   tourism_hospitality:
-    /관광|여행|호텔|숙박|항공|투어|MICE|컨벤션|전시회|관광객|방문객|객실|예약/iu,
+    /관광|여행|호텔|숙박|항공|투어|MICE|마이스|컨벤션|전시회|박람회|관광객|방문객|객실|예약/iu,
   education_research:
     /공공|행정|정책|교육|학교|대학|수업|학생|교수|연구|학술|논문|교육기관|연구기관/iu,
 };
