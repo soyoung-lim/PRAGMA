@@ -1,4 +1,5 @@
 import type { TextDiffPart } from "@/lib/mission/textDiff";
+import { cn } from "@/lib/utils";
 
 // 최초↔최종 산출의 차이 표기. 미션 수행 화면(수정 지도)과 학습 기록이 같은 표기를 쓴다.
 //
@@ -7,12 +8,21 @@ import type { TextDiffPart } from "@/lib/mission/textDiff";
 export function DiffLine({
   parts,
   view,
+  className,
+  emphasizeChanges = false,
 }: {
   parts: TextDiffPart[];
   view: "first" | "final";
+  className?: string;
+  emphasizeChanges?: boolean;
 }) {
   return (
-    <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed">
+    <p
+      className={cn(
+        "mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed",
+        className,
+      )}
+    >
       {parts.map((part, index) => {
         if (part.kind === "insert" && view === "first") return null;
         if (part.kind === "delete" && view === "final") return null;
@@ -30,7 +40,11 @@ export function DiffLine({
           return (
             <span
               key={`${part.kind}-${index}`}
-              className="font-medium underline decoration-2 decoration-[#49677B] underline-offset-4"
+              className={cn(
+                "font-medium underline decoration-2 decoration-[#49677B] underline-offset-4",
+                emphasizeChanges &&
+                  "rounded-sm bg-[#FFF0A6] px-0.5 text-[#17212B] decoration-[#B18A00]",
+              )}
             >
               {part.text}
             </span>

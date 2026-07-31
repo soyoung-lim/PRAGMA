@@ -1,0 +1,1162 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="PRAGMA 학습자 누적 패턴 프로필 정적 UI 목업"
+    />
+    <title>PRAGMA Pattern Dossier — Static Mockup</title>
+    <style>
+      :root {
+        --ink: #17212b;
+        --ink-soft: #3f4a54;
+        --paper: #f8f5ed;
+        --paper-deep: #eee9dd;
+        --white: #fffdf8;
+        --line: #d9d2c3;
+        --line-dark: #a9a191;
+        --signal: #f2cb3c;
+        --signal-soft: #fff3b8;
+        --green: #295a43;
+        --green-soft: #e8f0ea;
+        --muted: #707780;
+        --danger: #8b473f;
+        --shadow: 0 22px 70px rgba(23, 33, 43, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        min-height: 100%;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 12% 5%, rgba(242, 203, 60, 0.13), transparent 24rem),
+          #dcd8ce;
+        color: var(--ink);
+        font-family:
+          Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", "Segoe UI",
+          "Microsoft YaHei", sans-serif;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .stage {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+      }
+
+      .app {
+        width: min(1440px, 100%);
+        height: min(880px, calc(100vh - 36px));
+        min-height: 700px;
+        overflow: hidden;
+        border: 1px solid rgba(23, 33, 43, 0.18);
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .topbar {
+        height: 62px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 28px;
+        background: var(--ink);
+        color: white;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        letter-spacing: 0.18em;
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .brand::before {
+        content: "";
+        width: 5px;
+        height: 22px;
+        border-radius: 2px;
+        background: var(--signal);
+      }
+
+      .brand span {
+        color: #96a1ab;
+        letter-spacing: 0;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .top-meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #b8c0c7;
+        font-size: 11px;
+      }
+
+      .prototype-badge {
+        border: 1px solid #5d6871;
+        padding: 5px 8px;
+        color: #d9dee2;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      main {
+        height: calc(100% - 62px);
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        gap: 14px;
+        padding: 20px 28px 22px;
+      }
+
+      .file-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 13px;
+      }
+
+      .kicker {
+        margin: 0 0 5px;
+        color: #8a6c17;
+        font-family: Consolas, "SFMono-Regular", monospace;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(24px, 2.3vw, 34px);
+        line-height: 1.08;
+        letter-spacing: -0.035em;
+      }
+
+      .head-meta {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex: 0 0 auto;
+      }
+
+      .meta-item {
+        display: grid;
+        gap: 2px;
+        text-align: right;
+      }
+
+      .meta-item span {
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .meta-item strong {
+        font-size: 12px;
+      }
+
+      .profile-tabs {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .tab {
+        min-height: 32px;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        padding: 3px 15px 7px;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 700;
+        transition:
+          color 150ms ease,
+          border-color 150ms ease,
+          background 150ms ease;
+      }
+
+      .tab:hover {
+        color: var(--ink);
+        background: rgba(23, 33, 43, 0.04);
+      }
+
+      .tab[aria-selected="true"] {
+        border-color: var(--signal);
+        color: var(--ink);
+      }
+
+      .dossier {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1.7fr) minmax(310px, 0.85fr);
+        border: 1px solid var(--line-dark);
+        background: var(--white);
+      }
+
+      .finding {
+        min-width: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        padding: 24px 26px 20px;
+        border-right: 1px solid var(--line);
+      }
+
+      .file-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        color: var(--muted);
+        font-family: Consolas, "SFMono-Regular", monospace;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      .evidence-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--green);
+        font-family: inherit;
+        letter-spacing: 0;
+      }
+
+      .evidence-state::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 0 3px var(--green-soft);
+      }
+
+      .finding-copy {
+        align-self: center;
+        max-width: 900px;
+        padding: 8px 0 14px;
+      }
+
+      .finding h2 {
+        margin: 0;
+        max-width: 21ch;
+        font-size: clamp(30px, 3.15vw, 46px);
+        line-height: 1.16;
+        letter-spacing: -0.045em;
+      }
+
+      .finding h2 mark {
+        padding: 0 0.1em;
+        background: linear-gradient(
+          transparent 58%,
+          rgba(242, 203, 60, 0.58) 58%
+        );
+        color: inherit;
+      }
+
+      .finding-summary {
+        max-width: 68ch;
+        margin: 14px 0 0;
+        color: var(--ink-soft);
+        font-size: 14px;
+        line-height: 1.72;
+      }
+
+      .finding-summary strong {
+        color: var(--ink);
+      }
+
+      .why-unique {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-top: 13px;
+        color: #6c5a2b;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .why-unique::before {
+        content: "↳";
+        color: #aa8515;
+        font-size: 15px;
+      }
+
+      .evidence-map {
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+      }
+
+      .map-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+
+      .map-head strong {
+        font-size: 11px;
+      }
+
+      .map-head span {
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .attempts {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(72px, 1fr));
+        gap: 6px;
+      }
+
+      .attempt {
+        min-width: 0;
+        border: 1px solid var(--line);
+        background: #faf8f2;
+        padding: 8px 7px;
+        color: var(--ink-soft);
+        cursor: pointer;
+        text-align: left;
+        transition:
+          border-color 130ms ease,
+          background 130ms ease,
+          transform 130ms ease;
+      }
+
+      .attempt:hover {
+        border-color: #8e8678;
+        transform: translateY(-1px);
+      }
+
+      .attempt[aria-pressed="true"] {
+        border-color: var(--ink);
+        background: var(--signal-soft);
+      }
+
+      .attempt.pattern::before,
+      .attempt.exception::before,
+      .attempt.transfer::before {
+        content: "";
+        display: block;
+        width: 7px;
+        height: 7px;
+        margin-bottom: 7px;
+        border-radius: 50%;
+      }
+
+      .attempt.pattern::before {
+        background: var(--ink);
+      }
+
+      .attempt.exception::before {
+        border: 1px solid var(--line-dark);
+        background: transparent;
+      }
+
+      .attempt.transfer::before {
+        background: var(--signal);
+        box-shadow: 0 0 0 2px rgba(242, 203, 60, 0.24);
+      }
+
+      .attempt small {
+        display: block;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 9px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .attempt b {
+        display: block;
+        overflow: hidden;
+        margin-top: 3px;
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .side {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        min-width: 0;
+        background: #f4f0e6;
+      }
+
+      .counter {
+        border-bottom: 1px solid var(--line);
+        padding: 18px 20px;
+      }
+
+      .side-label {
+        margin: 0 0 7px;
+        color: var(--muted);
+        font-family: Consolas, "SFMono-Regular", monospace;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .counter strong {
+        display: block;
+        font-size: 15px;
+        line-height: 1.45;
+      }
+
+      .counter p {
+        margin: 7px 0 0;
+        color: var(--ink-soft);
+        font-size: 11.5px;
+        line-height: 1.55;
+      }
+
+      .probe {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 22px 20px;
+        background:
+          linear-gradient(135deg, rgba(242, 203, 60, 0.12), transparent 65%),
+          #fff8d8;
+      }
+
+      .probe h3 {
+        margin: 0;
+        font-size: 21px;
+        line-height: 1.35;
+        letter-spacing: -0.025em;
+      }
+
+      .probe p {
+        margin: 9px 0 0;
+        color: #675b3b;
+        font-size: 12px;
+        line-height: 1.65;
+      }
+
+      .action {
+        align-self: flex-start;
+        margin-top: 16px;
+        border: 1px solid var(--ink);
+        background: var(--ink);
+        padding: 10px 14px;
+        color: white;
+        cursor: pointer;
+        font-size: 11.5px;
+        font-weight: 800;
+        transition:
+          background 140ms ease,
+          color 140ms ease;
+      }
+
+      .action:hover {
+        background: transparent;
+        color: var(--ink);
+      }
+
+      .proof-strip {
+        display: grid;
+        grid-template-columns: 136px minmax(0, 1fr) 28px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid var(--line);
+        background: var(--white);
+        padding: 13px 15px;
+      }
+
+      .proof-context span {
+        display: block;
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .proof-context strong {
+        display: block;
+        margin-top: 3px;
+        font-size: 11px;
+        line-height: 1.35;
+      }
+
+      .proof-text {
+        overflow: hidden;
+        font-family: "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+        font-size: 13px;
+        line-height: 1.55;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .proof-text.first {
+        color: #6f777e;
+        text-decoration: line-through;
+        text-decoration-color: #a3a9ae;
+      }
+
+      .proof-text.final mark {
+        background: var(--signal-soft);
+        color: inherit;
+      }
+
+      .arrow {
+        color: #a17d11;
+        text-align: center;
+      }
+
+      .all-evidence {
+        border: 0;
+        border-bottom: 1px solid var(--ink);
+        background: transparent;
+        padding: 4px 0;
+        color: var(--ink);
+        cursor: pointer;
+        font-size: 10px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      dialog {
+        width: min(720px, calc(100% - 32px));
+        max-height: min(760px, calc(100vh - 40px));
+        border: 1px solid var(--ink);
+        background: var(--paper);
+        padding: 0;
+        color: var(--ink);
+        box-shadow: 0 28px 90px rgba(23, 33, 43, 0.3);
+      }
+
+      dialog::backdrop {
+        background: rgba(23, 33, 43, 0.64);
+        backdrop-filter: blur(3px);
+      }
+
+      .dialog-head {
+        position: sticky;
+        top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+        background: var(--paper);
+        padding: 16px 18px;
+      }
+
+      .dialog-head h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .close {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--line);
+        background: transparent;
+        cursor: pointer;
+        font-size: 18px;
+      }
+
+      .evidence-list {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 14px;
+        list-style: none;
+      }
+
+      .evidence-list li {
+        display: grid;
+        grid-template-columns: 86px 1fr auto;
+        gap: 12px;
+        align-items: center;
+        border: 1px solid var(--line);
+        background: var(--white);
+        padding: 12px;
+      }
+
+      .evidence-list time {
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .evidence-list strong {
+        font-size: 12px;
+      }
+
+      .evidence-list span {
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      @media (max-width: 980px) {
+        html,
+        body {
+          height: auto;
+          overflow: auto;
+        }
+
+        .stage {
+          display: block;
+          padding: 0;
+        }
+
+        .app {
+          width: 100%;
+          height: auto;
+          min-height: 100vh;
+          overflow: visible;
+          border: 0;
+        }
+
+        main {
+          height: auto;
+        }
+
+        .dossier {
+          grid-template-columns: 1fr;
+        }
+
+        .finding {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .side {
+          grid-template-columns: 0.7fr 1.3fr;
+          grid-template-rows: auto;
+        }
+
+        .counter {
+          border-right: 1px solid var(--line);
+          border-bottom: 0;
+        }
+
+        .proof-strip {
+          grid-template-columns: 110px 1fr;
+        }
+
+        .arrow {
+          display: none;
+        }
+
+        .all-evidence {
+          grid-column: 2;
+          justify-self: start;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .topbar,
+        main {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+
+        .brand span,
+        .prototype-badge,
+        .head-meta {
+          display: none;
+        }
+
+        .file-head {
+          align-items: start;
+        }
+
+        .profile-tabs {
+          overflow-x: auto;
+        }
+
+        .tab {
+          flex: 0 0 auto;
+        }
+
+        .finding {
+          padding: 20px 17px 16px;
+        }
+
+        .finding h2 {
+          font-size: 31px;
+        }
+
+        .attempts {
+          grid-template-columns: repeat(4, 1fr);
+        }
+
+        .side {
+          grid-template-columns: 1fr;
+        }
+
+        .counter {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .proof-strip {
+          grid-template-columns: 1fr;
+        }
+
+        .proof-text {
+          white-space: normal;
+        }
+
+        .all-evidence {
+          grid-column: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="app">
+        <header class="topbar">
+          <div class="brand">PRAGMA <span>상황 기반 한·중 통번역 학습</span></div>
+          <div class="top-meta">
+            <span>학습 기록 10건</span>
+            <span>마지막 갱신 7월 31일</span>
+            <span class="prototype-badge">static prototype</span>
+          </div>
+        </header>
+
+        <main>
+          <section class="file-head" aria-labelledby="profile-title">
+            <div>
+              <p class="kicker">Learner pattern dossier · file 01</p>
+              <h1 id="profile-title">김민준의 화용 패턴 파일</h1>
+            </div>
+            <div class="head-meta" aria-label="프로필 메타데이터">
+              <div class="meta-item">
+                <span>분석 범위</span>
+                <strong>요청 수행 7건</strong>
+              </div>
+              <div class="meta-item">
+                <span>새 단서</span>
+                <strong>이번 주 1건</strong>
+              </div>
+            </div>
+          </section>
+
+          <nav class="profile-tabs" aria-label="프로필 종류">
+            <button class="tab" type="button" aria-selected="true" data-profile="core">
+              핵심 패턴
+            </button>
+            <button class="tab" type="button" aria-selected="false" data-profile="transfer">
+              표현의 이월
+            </button>
+            <button class="tab" type="button" aria-selected="false" data-profile="revision">
+              수정 방식
+            </button>
+          </nav>
+
+          <section class="dossier" aria-live="polite">
+            <article class="finding">
+              <div class="file-label">
+                <span id="file-code">OBSERVATION / REQUEST-07</span>
+                <span class="evidence-state" id="evidence-state">7개 요청을 연결해 확인</span>
+              </div>
+
+              <div class="finding-copy">
+                <h2 id="finding-title">
+                  처음에는 <mark>麻烦您</mark>,<br />
+                  수정할 때는 선택권
+                </h2>
+                <p class="finding-summary" id="finding-summary">
+                  요청 7건 중 5건의 최초안이 <strong>麻烦您</strong>로 시작했습니다.
+                  그중 4건은 피드백 뒤 <strong>如果方便的话·能不能</strong>처럼
+                  상대의 선택 여지를 남기는 방식으로 바뀌었습니다.
+                </p>
+                <p class="why-unique" id="why-unique">
+                  한 문장의 문제가 아니라, 여러 상황에서 되풀이된 시작 전략입니다.
+                </p>
+              </div>
+
+              <div class="evidence-map">
+                <div class="map-head">
+                  <strong id="map-title">요청 수행 7건의 시작 표현</strong>
+                  <span>단서를 눌러 대표 문장을 바꿔보세요</span>
+                </div>
+                <div class="attempts" id="attempts" aria-label="수행별 근거 지도"></div>
+              </div>
+            </article>
+
+            <aside class="side">
+              <section class="counter">
+                <p class="side-label" id="counter-label">Counter evidence / 예외</p>
+                <strong id="counter-title">두 요청에서는 처음부터 질문형을 사용했습니다.</strong>
+                <p id="counter-copy">
+                  같은 상황에서도 항상 麻烦您로 시작한 것은 아닙니다. 이 예외가 있어
+                  ‘고정된 습관’이 아니라 ‘자주 선택한 전략’으로만 말합니다.
+                </p>
+              </section>
+
+              <section class="probe">
+                <p class="side-label">Next probe / 다음 확인</p>
+                <h3 id="probe-title">
+                  다음 요청에서는 麻烦您 없이 선택권을 남겨보세요.
+                </h3>
+                <p id="probe-copy">
+                  처음부터 如果方便的话 또는 能不能을 꺼낼 수 있는지 확인합니다.
+                  결과는 다음 프로필에 새 단서로 연결됩니다.
+                </p>
+                <button class="action" type="button" id="probe-action">
+                  다음 미션에서 확인하기 →
+                </button>
+              </section>
+            </aside>
+          </section>
+
+          <section class="proof-strip" aria-label="선택한 대표 근거">
+            <div class="proof-context">
+              <span id="proof-date">7월 31일 · 요청</span>
+              <strong id="proof-context">상사에게 일정 변경 요청</strong>
+            </div>
+            <div class="proof-text first" id="proof-first">
+              麻烦您把下周的会议地点改到我们公司附近。
+            </div>
+            <div class="arrow" aria-hidden="true">→</div>
+            <div class="proof-text final" id="proof-final">
+              <mark>如果方便的话</mark>，下周会议<mark>能不能</mark>改到我们公司附近？
+            </div>
+            <button class="all-evidence" type="button" id="open-evidence">
+              전체 증거 10건
+            </button>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <dialog id="evidence-dialog" aria-labelledby="evidence-title">
+      <div class="dialog-head">
+        <div>
+          <p class="kicker">Evidence drawer</p>
+          <h2 id="evidence-title">이 프로필을 만든 수행 기록</h2>
+        </div>
+        <button class="close" type="button" id="close-evidence" aria-label="닫기">
+          ×
+        </button>
+      </div>
+      <ul class="evidence-list" id="evidence-list"></ul>
+    </dialog>
+
+    <script>
+      const profiles = {
+        core: {
+          code: "OBSERVATION / REQUEST-07",
+          state: "7개 요청을 연결해 확인",
+          title: "처음에는 <mark>麻烦您</mark>,<br />수정할 때는 선택권",
+          summary:
+            "요청 7건 중 5건의 최초안이 <strong>麻烦您</strong>로 시작했습니다. 그중 4건은 피드백 뒤 <strong>如果方便的话·能不能</strong>처럼 상대의 선택 여지를 남기는 방식으로 바뀌었습니다.",
+          unique:
+            "한 문장의 문제가 아니라, 여러 상황에서 되풀이된 시작 전략입니다.",
+          mapTitle: "요청 수행 7건의 시작 표현",
+          counterLabel: "Counter evidence / 예외",
+          counterTitle: "두 요청에서는 처음부터 질문형을 사용했습니다.",
+          counterCopy:
+            "같은 상황에서도 항상 麻烦您로 시작한 것은 아닙니다. 이 예외가 있어 ‘고정된 습관’이 아니라 ‘자주 선택한 전략’으로만 말합니다.",
+          probeTitle: "다음 요청에서는 麻烦您 없이 선택권을 남겨보세요.",
+          probeCopy:
+            "처음부터 如果方便的话 또는 能不能을 꺼낼 수 있는지 확인합니다. 결과는 다음 프로필에 새 단서로 연결됩니다.",
+          attempts: [
+            {
+              kind: "pattern",
+              date: "4주차",
+              label: "麻烦您",
+              context: "상사에게 장소 변경",
+              first: "麻烦您把下周的会议地点改到我们公司附近。",
+              final: "<mark>如果方便的话</mark>，下周会议<mark>能不能</mark>改到我们公司附近？",
+            },
+            {
+              kind: "pattern",
+              date: "5주차",
+              label: "麻烦您",
+              context: "동료에게 자료 요청",
+              first: "麻烦您再发一下上次的会议资料。",
+              final: "麻烦您再发一下上次的会议资料，<mark>可以吗</mark>？",
+            },
+            {
+              kind: "exception",
+              date: "7주차",
+              label: "能不能",
+              context: "동료에게 통화 요청",
+              first: "现在能不能打个电话？",
+              final: "<mark>如果您现在方便的话</mark>，能不能通个电话？",
+            },
+            {
+              kind: "pattern",
+              date: "9주차",
+              label: "麻烦您",
+              context: "업체에 일정 조정",
+              first: "麻烦您把发货时间提前一天。",
+              final: "<mark>如果方便的话</mark>，发货时间可以提前一天吗？",
+            },
+            {
+              kind: "pattern",
+              date: "11주차",
+              label: "麻烦您",
+              context: "담당자에게 확인 요청",
+              first: "麻烦您确认一下合同里的金额。",
+              final: "麻烦您确认一下合同里的金额，<mark>您看方便吗</mark>？",
+            },
+            {
+              kind: "exception",
+              date: "13주차",
+              label: "能不能",
+              context: "팀원에게 시간 변경",
+              first: "会议能不能晚三十分钟开始？",
+              final: "<mark>如果大家方便的话</mark>，会议能不能晚三十分钟开始？",
+            },
+            {
+              kind: "pattern",
+              date: "15주차",
+              label: "麻烦您",
+              context: "거래처에 문서 회신",
+              first: "麻烦您今天回复签好的文件。",
+              final: "<mark>如果方便的话</mark>，能不能请您今天回复签好的文件？",
+            },
+          ],
+        },
+        transfer: {
+          code: "TRANSFER TRACE / EXPRESSION-03",
+          state: "피드백 이후 3개 수행을 추적",
+          title: "본 표현은 늘었지만,<br /><mark>혼자 쓸 때는 아직</mark>",
+          summary:
+            "피드백에서 <strong>如果方便的话</strong>를 4번 접했지만, 이후 새로운 요청의 최초안에서 스스로 꺼낸 것은 1번이었습니다. 수정안의 표현이 아직 독립 산출로 완전히 옮겨오지는 않았습니다.",
+          unique:
+            "피드백 직후의 성공이 다음 수행까지 이어지는지를 시간순으로 추적했습니다.",
+          mapTitle: "피드백 표현이 다음 최초안에 나타났는지",
+          counterLabel: "New clue / 새 단서",
+          counterTitle: "15주차 최초안에서 처음으로 선택권 질문이 먼저 나왔습니다.",
+          counterCopy:
+            "한 번뿐이라 이월됐다고 단정하지 않습니다. 다만 이전에는 없던 독립 사용이 처음 관찰된 중요한 단서입니다.",
+          probeTitle: "다음에는 피드백을 보기 전에 如果方便的话를 꺼내보세요.",
+          probeCopy:
+            "힌트 없이 최초안에 다시 나타나는지 확인해야 ‘본 표현’이 ‘내 표현’으로 옮겨오는 과정을 볼 수 있습니다.",
+          attempts: [
+            {
+              kind: "pattern",
+              date: "4주차",
+              label: "피드백에서 봄",
+              context: "장소 변경 요청",
+              first: "麻烦您把下周的会议地点改到我们公司附近。",
+              final: "<mark>如果方便的话</mark>，下周会议能不能改到我们公司附近？",
+            },
+            {
+              kind: "pattern",
+              date: "9주차",
+              label: "다시 봄",
+              context: "배송 일정 요청",
+              first: "麻烦您把发货时间提前一天。",
+              final: "<mark>如果方便的话</mark>，发货时间可以提前一天吗？",
+            },
+            {
+              kind: "exception",
+              date: "11주차",
+              label: "최초안 미사용",
+              context: "계약서 확인 요청",
+              first: "麻烦您确认一下合同里的金额。",
+              final: "麻烦您确认一下合同里的金额，您看方便吗？",
+            },
+            {
+              kind: "pattern",
+              date: "13주차",
+              label: "피드백에서 봄",
+              context: "회의 시간 요청",
+              first: "会议能不能晚三十分钟开始？",
+              final: "<mark>如果大家方便的话</mark>，会议能不能晚三十分钟开始？",
+            },
+            {
+              kind: "transfer",
+              date: "15주차",
+              label: "최초안에 등장",
+              context: "문서 회신 요청",
+              first: "如果方便的话，能不能请您今天回复签好的文件？",
+              final: "如果方便的话，能不能请您今天回复签好的文件？",
+            },
+          ],
+        },
+        revision: {
+          code: "REVISION TRACE / EDIT-09",
+          state: "수정 행동 9건을 연결해 확인",
+          title: "더 붙이기보다,<br /><mark>덜어낼 때 선명해집니다</mark>",
+          summary:
+            "평가·칭찬 수행에서는 원문에 없는 긍정 평가를 추가한 뒤, 피드백에서 그 부분을 덜어낸 수정이 반복됐습니다. 의미를 새로 만드는 것보다 <strong>핵심을 남기는 수정</strong>이 눈에 띕니다.",
+          unique:
+            "한 번의 문장 길이가 아니라, 여러 수정에서 삭제가 어디에 집중됐는지 연결했습니다.",
+          mapTitle: "수정에서 삭제·유지·추가가 나타난 위치",
+          counterLabel: "Boundary / 말할 수 있는 범위",
+          counterTitle: "삭제가 많다고 간결성이 능력이라고 판단하지 않습니다.",
+          counterCopy:
+            "현재는 평가 표현을 덜어낸 실제 수정만 확인합니다. 다른 화행에서도 같은 방식인지 추가 기록이 필요합니다.",
+          probeTitle: "다음 칭찬에서는 좋은 점을 하나만 근거로 남겨보세요.",
+          probeCopy:
+            "크게 칭찬하기보다 원문에서 확인되는 근거 하나를 선택해, 처음부터 덜어낼 필요 없는 문장을 시험합니다.",
+          attempts: [
+            {
+              kind: "pattern",
+              date: "6주차",
+              label: "평가 삭제",
+              context: "전시회 성공 칭찬",
+              first:
+                "这次展览的成功举办，真心祝贺您。展览空间的布置和作品的摆放都非常细致，观赏起来很舒服。此外，工作人员的热情服务让我有了很好的体验。",
+              final:
+                "这次展览的成功举办，真心祝贺您。展览空间的布置和作品的摆放都非常细致，观赏起来很舒服。",
+            },
+            {
+              kind: "pattern",
+              date: "8주차",
+              label: "과장 삭제",
+              context: "발표 구성 칭찬",
+              first: "您的发表完美无缺，每个部分都让人非常感动。",
+              final: "您的发表中，案例的安排<mark>特别清楚</mark>。",
+            },
+            {
+              kind: "exception",
+              date: "10주차",
+              label: "추가 수정",
+              context: "도움에 감사",
+              first: "谢谢您的帮助。",
+              final: "谢谢您<mark>特意抽时间</mark>帮助我。",
+            },
+            {
+              kind: "pattern",
+              date: "12주차",
+              label: "평가 삭제",
+              context: "행사 운영 칭찬",
+              first: "这次活动非常完美，工作人员也特别优秀。",
+              final: "这次活动的<mark>动线安排很清楚</mark>。",
+            },
+          ],
+        },
+      };
+
+      const tabs = [...document.querySelectorAll(".tab")];
+      const attemptsEl = document.querySelector("#attempts");
+      const dialog = document.querySelector("#evidence-dialog");
+      let activeProfile = "core";
+      let activeAttempt = 0;
+
+      function setText(id, value, asHtml = false) {
+        const element = document.querySelector(`#${id}`);
+        if (asHtml) element.innerHTML = value;
+        else element.textContent = value;
+      }
+
+      function renderAttempt(index) {
+        const attempt = profiles[activeProfile].attempts[index];
+        activeAttempt = index;
+        [...attemptsEl.children].forEach((button, buttonIndex) => {
+          button.setAttribute("aria-pressed", String(buttonIndex === index));
+        });
+        setText("proof-date", `${attempt.date} · ${activeProfile === "revision" ? "칭찬" : "요청"}`);
+        setText("proof-context", attempt.context);
+        setText("proof-first", attempt.first);
+        setText("proof-final", attempt.final, true);
+      }
+
+      function renderEvidenceList() {
+        const list = document.querySelector("#evidence-list");
+        list.innerHTML = profiles[activeProfile].attempts
+          .map(
+            (attempt) => `
+              <li>
+                <time>${attempt.date}</time>
+                <strong>${attempt.context}</strong>
+                <span>${attempt.label}</span>
+              </li>
+            `,
+          )
+          .join("");
+      }
+
+      function renderProfile(key) {
+        activeProfile = key;
+        const profile = profiles[key];
+        tabs.forEach((tab) => {
+          tab.setAttribute("aria-selected", String(tab.dataset.profile === key));
+        });
+        setText("file-code", profile.code);
+        setText("evidence-state", profile.state);
+        setText("finding-title", profile.title, true);
+        setText("finding-summary", profile.summary, true);
+        setText("why-unique", profile.unique);
+        setText("map-title", profile.mapTitle);
+        setText("counter-label", profile.counterLabel);
+        setText("counter-title", profile.counterTitle);
+        setText("counter-copy", profile.counterCopy);
+        setText("probe-title", profile.probeTitle);
+        setText("probe-copy", profile.probeCopy);
+
+        attemptsEl.innerHTML = profile.attempts
+          .map(
+            (attempt, index) => `
+              <button
+                class="attempt ${attempt.kind}"
+                type="button"
+                aria-pressed="${index === 0}"
+                aria-label="${attempt.date} ${attempt.context}: ${attempt.label}"
+                data-attempt="${index}"
+              >
+                <small>${attempt.date}</small>
+                <b>${attempt.label}</b>
+              </button>
+            `,
+          )
+          .join("");
+
+        attemptsEl.querySelectorAll(".attempt").forEach((button) => {
+          button.addEventListener("click", () => {
+            renderAttempt(Number(button.dataset.attempt));
+          });
+        });
+        renderAttempt(0);
+        renderEvidenceList();
+      }
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => renderProfile(tab.dataset.profile));
+      });
+
+      document.querySelector("#open-evidence").addEventListener("click", () => {
+        renderEvidenceList();
+        dialog.showModal();
+      });
+
+      document.querySelector("#close-evidence").addEventListener("click", () => {
+        dialog.close();
+      });
+
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+
+      document.querySelector("#probe-action").addEventListener("click", () => {
+        const button = document.querySelector("#probe-action");
+        const original = button.textContent;
+        button.textContent = "다음 미션에 연결된다는 가정의 목업입니다";
+        window.setTimeout(() => {
+          button.textContent = original;
+        }, 1800);
+      });
+
+      renderProfile("core");
+    </script>
+  </body>
+</html>
