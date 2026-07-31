@@ -46,7 +46,16 @@ export interface WeekAssignment {
   slot_role: string;
 }
 
-/** 모든 코어를 한 번에 조회(≈수백 건 규모 — 클라이언트 필터). AdminBrowser와 동일 전략. */
+/**
+ * 모든 코어를 한 번에 조회(클라이언트 필터). AdminBrowser·AdminAssembly와 동일 전략.
+ *
+ * ⚠️ 상한을 명시하지 않으면 PostgREST 기본 상한(1000)이 조용히 적용된다. 2026-07-31
+ * 시점 코어가 1299건이고 정렬이 `created_at DESC`라 정본 배치 일부가 편성기에서
+ * 사라졌다 — 같은 결함을 라이브러리·조립 큐에서 먼저 고쳤는데 이 데이터 레이어만
+ * 누락됐다. 형제 화면과 같은 4000으로 맞춘다.
+ */
+export const CORE_ROW_CAP = 4000;
+
 export async function listCoreScenarios(): Promise<ComposerCore[]> {
   const { data, error } = await db
     .from("scenarios")
@@ -54,7 +63,8 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
       "scenario_id, speech_act, learner_level, domain, mode, theme_code, topic_code, mission_status, target_feature, core_content",
     )
     .eq("content_format", "scenario_core_v1")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(CORE_ROW_CAP);
   if (error) throw new Error(`시나리오 코어 조회 실패: ${error.message}`);
   return ((data ?? []) as any[]).map((r) => ({
     scenario_id: r.scenario_id,
