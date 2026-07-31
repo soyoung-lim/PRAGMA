@@ -35,9 +35,9 @@ export type CurriculumWeekRole =
   | "orientation"
   | "foundation" // 기초 적용: 저부담 화행
   | "relationship" // 관계 조정: 고부담 화행
-  | "integration" // 상호 조정 통합·화행 연쇄
-  | "contextualization" // 프리셋 맥락화
-  | "project" // 종합 프로젝트·통번역 의사결정 리포트
+  | "integration" // 복합 화용 조정 — 복합 요구가 든 기존 미션 1개를 배정
+  | "contextualization" // 새 맥락에 적용하기 — 앞 주차와 다른 P·D·R·도메인으로 전이
+  | "project" // 통번역 의사결정 정리 — 기존 미션 1개, 설명 활동은 수업에서 운영
   | "assessment"; // 중간·기말 수행 슬롯
 
 /** 단계형 표기(구 '1/2/3순환' 대체 — 실제 반복 구조가 아니므로). */
@@ -79,17 +79,17 @@ export const STANDARD_15WEEK: readonly StandardWeekSpec[] = [
   { week_no: 2, db_type: "regular", role: "foundation", speech_act: "request", title: "요청" },
   { week_no: 3, db_type: "regular", role: "foundation", speech_act: "thanks", title: "감사" },
   { week_no: 4, db_type: "regular", role: "foundation", speech_act: "agreement", title: "초대 · 공동행동 권유" },
-  { week_no: 5, db_type: "regular", role: "foundation", speech_act: "compliment", title: "칭찬 및 칭찬 대응" },
+  { week_no: 5, db_type: "regular", role: "foundation", speech_act: "compliment", title: "칭찬하기" },
   { week_no: 6, db_type: "regular", role: "relationship", speech_act: "refusal", title: "거절" },
   { week_no: 7, db_type: "regular", role: "relationship", speech_act: "apology", title: "사과 · 수리" },
   { week_no: 8, db_type: "midterm", role: "assessment", speech_act: null, title: "중간 통합 점검" },
   { week_no: 9, db_type: "regular", role: "relationship", speech_act: "complaint", title: "불만 · 문제 제기" },
   { week_no: 10, db_type: "regular", role: "relationship", speech_act: "proposal", title: "제안 · 조언" },
   { week_no: 11, db_type: "regular", role: "relationship", speech_act: "opposition", title: "반대 · 이견 제시" },
-  { week_no: 12, db_type: "regular", role: "integration", speech_act: null, title: "상호 조정 통합 · 화행 연쇄" },
-  { week_no: 13, db_type: "regular", role: "contextualization", speech_act: null, title: "프리셋 맥락화" },
-  { week_no: 14, db_type: "regular", role: "project", speech_act: null, title: "종합 프로젝트 · 통번역 의사결정 리포트" },
-  { week_no: 15, db_type: "final", role: "assessment", speech_act: null, title: "기말 통합 시뮬레이션" },
+  { week_no: 12, db_type: "regular", role: "integration", speech_act: null, title: "복합 화용 조정" },
+  { week_no: 13, db_type: "regular", role: "contextualization", speech_act: null, title: "새 맥락에 적용하기" },
+  { week_no: 14, db_type: "regular", role: "project", speech_act: null, title: "통번역 의사결정 정리" },
+  { week_no: 15, db_type: "final", role: "assessment", speech_act: null, title: "기말 통합 수행 점검" },
 ] as const;
 
 export const STANDARD_MIDTERM_WEEK = 8;
