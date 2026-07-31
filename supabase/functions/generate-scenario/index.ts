@@ -1230,10 +1230,25 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
   황당한 문법 금지 주장, 상황과 무관한 절대 규칙, target에 없는 요소를 있다고·없다고 하는 설명은 금지합니다.
   다만 오답이 주된 target-feature 원인과 동등하게 방어되면 문항을 버리고 다시 만드세요.
 - fix_choice의 수정안은 정확히 4개(적절한 서로 다른 전략 2 + 그럴듯한 오답 2).
+- fix_choice의 오답 2개는 reason 오답과 같은 수준으로 그럴듯해야 합니다.
+  · 의미·의도는 보존하고 **이 초점에서만** 벗어난 경계 사례로 쓰세요.
+  · \`必须…\`, 단독 명령형 \`给我+V\`, 강요 기능의 \`赶紧/立即+V\`처럼 화용 판단 없이 즉시 소거되는
+    극단형은 쓰지 마세요. 단, 이 문자열이 선택권을 남기는 의문형·조건절 안에 포함됐다는 이유만으로
+    금지하지는 마세요(예: 가능 여부를 묻는 의문형 안의 \`给我\`는 극단형이 아닙니다).
+  · 오답이 "${f.within_band_code}"로도 방어되거나, 반대로 초급자도 바로 걸러낼 만큼 뻔하면
+    네 수정안을 다시 쓰세요.
 - multi_judge는 정확히 5후보(과소 2·적정 2·과잉 1: ${lowBand} 2 + ${f.within_band_code} 2 + ${highBand} 1). 후보 순서는 매번 섞으세요.
 - 🔴 **판정 대역은 표현 형식 하나가 아니라 이 target feature의 정의와 관계·부담(P·D·R)에 상대적입니다.**
   위에 주입된 band 설명과 소박한 규칙의 반례를 따르고, 더 간접적·길거나 강한 표현을 자동으로 더 좋은 답으로 판정하지 마세요.
   같은 표현 자원도 관계·부담과 사건의 실제 무게에 따라 과소·적정·과잉 위치가 달라질 수 있습니다.
+- 🔴 [대역–근거 정합] 대역을 부여하기 전에 target과 모든 후보에 **실제로 나타난** 이 초점의 자원을 확인하세요.
+  ① 실제로 있는 자원을 explanation_ko·note_ko·reasons에서 "없다"고 기술하지 마세요 — 사실 오류입니다.
+  ② 자원이 일부 있어도 P·D·R에 비해 부족하거나 강요·즉시성·의무 표지가 상쇄하면 하위 대역일 수 있습니다.
+     그때는 **무엇이 있는데 왜 충분하지 않은지**를 구체적으로 쓰세요.
+  ③ 반대로 이 초점의 자원이 실제로 기능하고 이를 상쇄하는 요소가 없다면, 자원을 더 쌓지 않았다는
+     이유만으로 하위 대역을 주지 마세요.
+  ④ 위 '이 초점이 아닌 것(혼입 금지)'에 나열된 요소는 이 초점의 판정 근거로 사용하지 마세요.
+  ⑤ 근거를 명확히 쓸 수 없거나 "${f.within_band_code}"로도 똑같이 방어되면 그 문장을 다시 쓰세요.
 - fix_choice와 reason의 target은 해당 P·D·R에서 실제로 부적절해야 하며, 의미·문법 오류를 부적절성의 근거로 쓰지 마세요.
 - **앵커+대비**: fix_choice와 reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건,
   scale4는 해당 표현이 실제로 적절해지는 대비 P/D/R, multi_judge는 DCT P/D/R 중 정확히 한 축만 바꾼 대비 사건입니다.
@@ -1993,10 +2008,13 @@ Deno.serve(async (req) => {
         provenance: {
           model,
           // _v2/_v5 = multi_judge 길이 통제(대역·길이 독립) 보강판(2026-07-31, B2).
-          // 이전 버전 문자열로 생성된 미션과 길이 단서 통계를 구분하기 위해 올린다.
+          // _v3/_v6 = 대역–근거 정합 + fix_choice 경계 오답 보강판(2026-07-31).
+          //   조립 표본에서 실제로 존재하는 완화·인정·완충 자원을 "없다"고 설명하며 하위 대역을
+          //   부여하는 사례가 요청·거절에서 확인됐다. buildMissionSystemPrompt는 v4·v5 공용이므로
+          //   두 버전 문자열을 함께 올린다.
           prompt_version: isMiniDiscourse
-            ? 'mission_v5_mpj4_minidiscourse_v2'
-            : 'mission_v4_mpj4_dct1_context_v5',
+            ? 'mission_v5_mpj4_minidiscourse_v3'
+            : 'mission_v4_mpj4_dct1_context_v6',
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
@@ -2004,8 +2022,8 @@ Deno.serve(async (req) => {
       }
       return new Response(
         JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: isMiniDiscourse
-            ? 'mission_v5_mpj4_minidiscourse_v2'
-            : 'mission_v4_mpj4_dct1_context_v5', generated_at: genAt } }),
+            ? 'mission_v5_mpj4_minidiscourse_v3'
+            : 'mission_v4_mpj4_dct1_context_v6', generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }
