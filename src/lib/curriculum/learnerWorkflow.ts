@@ -79,16 +79,7 @@ export function learnerWorkflowSummary(
     .join(" → ");
 }
 
-/** 주차 화면의 두 층 — 원리를 먼저 보고 미션으로 넘어간다. */
-export const WEEK_FLOW_STEPS = [
-  {
-    key: "principle",
-    label: "원리 익히기",
-    detail: "이번 주차에서 무엇을 왜 조절하는지 먼저 봅니다.",
-  },
-  {
-    key: "mission",
-    label: "미션 수행하기",
-    detail: "판단하고 직접 옮긴 뒤, 피드백으로 다듬습니다.",
-  },
-] as const;
+// ⚠️ 주차 화면에 「① 원리 익히기 → ② 미션」을 두었다가 되돌렸다. Roever 교수 단계의
+// Hook·Orientation → 귀납 관찰 → 명시적 원리 설명 → 수용은 주차 학습 노트가 아니라
+// 목표 특징 최초 도입 시 1회 도는 도입 아크(IntroArc·L1~L4)다. 노트는 예습·복습면이므로
+// 여기에 '원리' 이름을 붙이면 논문의 교수 단계 대응이 어긋난다.
