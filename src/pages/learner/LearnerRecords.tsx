@@ -1,35 +1,51 @@
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
+import { DiffLegend, DiffLine } from "@/components/mission/DiffLine";
 import { Button } from "@/components/ui/button";
 import { listMyMissionLogs, type MyMissionLogEntry } from "@/lib/mission/missionLog";
+import { diffText } from "@/lib/mission/textDiff";
 import { LEVEL, MODE_LABEL, SPEECH_ACT_UI } from "@/lib/pragma/enums";
+import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 
-// 학습 기록 — 학습자가 자신이 쓴 최초안·최종안을 되돌아보는 화면.
+// 학습 기록 — 학습자가 자신이 쓴 최초안·최종안과 무엇을 바꿨는지 되돌아보는 화면.
 //
-// 점수·등급·AI 판정은 싣지 않는다(계약상 점수 표현 금지). 여기서 보는 것은
-// "무엇을 썼고 어떻게 바꿨나"뿐이고, 수정 여부는 별도 플래그가 아니라
-// first_response != revised_response로 판별한다(MissionRunV1의 `revised || draft` 폴백).
+// 표현 경계(중요): 완료 횟수만으로 능력 향상을 말할 수 없다. "익혔어요"·"역량이 올랐어요"
+// 같은 문구를 쓰지 않고, 다룬 초점과 바꾼 부분이라는 사실만 적는다. 점수·등급·배지·
+// 연속 학습일도 두지 않는다(게임화 축은 2026-07 라운지 설계에서 기각).
 //
-// 통계·리포트는 여전히 미구현이다 — 증거량 3등급 원칙상 데이터가 쌓인 뒤에만 의미가 있다.
+// revision_target_selected는 "그 능력을 얻었다"는 증거가 아니라 이번 수정에서 시스템이
+// 지정한 수정 지점이다. 그래서 태그 문구도 성취가 아니라 "이번 수정 초점"이다.
 
-const UPCOMING = [
-  { label: "주간 리포트", desc: "일주일의 연습을 한 줄 진단과 다음 행동으로 정리해요." },
-  { label: "언어 지문", desc: "자주 기대는 표현·전략 습관을 보여줘요." },
-  { label: "상황·소통 행동별 성장", desc: "상황에 따른 요청·거절 등 소통 행동의 감각 변화를 추적해요." },
-];
+const SCOPE_LABEL: Record<string, string> = {
+  meaning: "의미 복원",
+  grammar: "문법 정확성",
+};
 
 const label = (map: Record<string, string>, key: string | null) =>
   key ? map[key] ?? key : null;
 
 const formatDay = (iso: string) => {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? ""
-    : `${d.getMonth() + 1}월 ${d.getDate()}일`;
+  return Number.isNaN(d.getTime()) ? "" : `${d.getMonth() + 1}월 ${d.getDate()}일`;
 };
 
+/** 이번 수정에서 무엇을 조정했는지. feature면 카탈로그의 학습자 라벨을 쓴다. */
+function revisionFocusOf(entry: MyMissionLogEntry): string | null {
+  if (entry.revisionScope === "feature") {
+    return entry.featureId ? getTargetFeature(entry.featureId)?.learner_label ?? null : null;
+  }
+  return SCOPE_LABEL[entry.revisionScope ?? ""] ?? null;
+}
+
 const RecordCard = ({ entry }: { entry: MyMissionLogEntry }) => {
+  const first = entry.firstResponse ?? "";
+  const final = entry.revisedResponse ?? "";
+  const parts = useMemo(() => diffText(first, final), [first, final]);
+  const focus = revisionFocusOf(entry);
+
   const meta = [
     formatDay(entry.createdAtIso),
     label(SPEECH_ACT_UI as Record<string, string>, entry.speechAct),
@@ -48,21 +64,36 @@ const RecordCard = ({ entry }: { entry: MyMissionLogEntry }) => {
         </p>
       )}
 
-      <div className="mt-3 space-y-2.5">
-        <div>
-          <div className="text-[11.5px] font-semibold text-muted-foreground">처음 쓴 표현</div>
-          <p className="mt-0.5 text-[14px] leading-relaxed">{entry.firstResponse ?? "—"}</p>
-        </div>
-        <div>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[11.5px] font-semibold text-muted-foreground">다듬은 표현</span>
-            <span className="text-[11px] text-muted-foreground">
-              {entry.revised ? "✎ 수정함" : "수정 없이 완료"}
-            </span>
+      {entry.revised ? (
+        <>
+          {focus && (
+            <div className="mt-3 inline-flex rounded-full bg-[#FFF8DE] px-2.5 py-1 text-[11.5px] text-[#6B5518]">
+              이번 수정 초점 · {focus}
+            </div>
+          )}
+          <div className="mt-2 space-y-2">
+            <div className="rounded-lg bg-[#F5F5F2] px-3.5 py-2.5">
+              <div className="text-[11.5px] font-semibold text-muted-foreground">최초</div>
+              <DiffLine parts={parts} view="first" />
+            </div>
+            <div className="rounded-lg border border-[#FAD338] bg-[#FFF8DE] px-3.5 py-2.5">
+              <div className="text-[11.5px] font-semibold text-[#6B5518]">최종</div>
+              <DiffLine parts={parts} view="final" />
+            </div>
           </div>
-          <p className="mt-0.5 text-[14px] leading-relaxed">{entry.revisedResponse ?? "—"}</p>
+          <DiffLegend />
+        </>
+      ) : (
+        <div className="mt-3 rounded-lg bg-[#F5F5F2] px-3.5 py-2.5">
+          <div className="text-[11.5px] font-semibold text-muted-foreground">
+            첫 시도의 표현을 그대로 유지했어요
+            {entry.revisionSource === "learner_free" && " · AI 제안 없이 완료"}
+          </div>
+          <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed">
+            {first || "—"}
+          </p>
         </div>
-      </div>
+      )}
     </li>
   );
 };
@@ -81,6 +112,15 @@ const LearnerRecords = () => {
 
   const total = entries.length;
   const revisedCount = entries.filter((e) => e.revised).length;
+  // 최근에 다룬 초점 — 완료한 미션에서 실제로 배정된 것만 모은다(추정 없음).
+  const recentFocus = [
+    ...new Set(
+      entries
+        .slice(0, 5)
+        .map((e) => (e.featureId ? getTargetFeature(e.featureId)?.learner_label : null))
+        .filter((v): v is string => Boolean(v)),
+    ),
+  ].slice(0, 3);
 
   return (
     <LearnerJourneyShell
@@ -105,13 +145,31 @@ const LearnerRecords = () => {
             <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
               첫 미션을 마치면 이곳에 기록이 쌓이기 시작해요.
             </p>
+            <Button asChild size="sm" className="mt-3.5">
+              <Link to="/learner/course">수업으로 가기 →</Link>
+            </Button>
           </section>
         ) : (
           <>
-            <p className="mt-1.5 text-[13px] text-muted-foreground">
-              지금까지 {total}회
-              {revisedCount > 0 && ` · 그중 ${revisedCount}회는 표현을 다듬었습니다`}
-            </p>
+            <section className="mt-3 rounded-xl border border-[#EAE4D2] bg-white p-4">
+              <p className="text-[15px] font-semibold">
+                최근 {total}회의 수행이 남아 있어요
+              </p>
+              <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+                {revisedCount > 0
+                  ? `그중 ${revisedCount}회는 피드백을 받고 표현을 다시 다듬었어요.`
+                  : "아직 다시 다듬은 수행은 없어요."}
+              </p>
+              {recentFocus.length > 0 && (
+                <p className="mt-1.5 text-[13px] text-muted-foreground">
+                  다룬 초점 · {recentFocus.join(" · ")}
+                </p>
+              )}
+              <Button asChild size="sm" className="mt-3">
+                <Link to="/learner/course">다음 수업으로 →</Link>
+              </Button>
+            </section>
+
             <ul className="mt-4 space-y-2.5">
               {entries.map((entry) => (
                 <RecordCard key={entry.id} entry={entry} />
@@ -119,24 +177,6 @@ const LearnerRecords = () => {
             </ul>
           </>
         )}
-
-        <div className="mt-6 text-[12px] font-semibold text-muted-foreground">곧 열리는 기록</div>
-        <ul className="mt-2 space-y-2">
-          {UPCOMING.map((u) => (
-            <li
-              key={u.label}
-              className="flex items-center justify-between gap-2 rounded-[10px] border border-[#EAE4D2] bg-white px-4 py-3.5 opacity-70"
-            >
-              <div>
-                <div className="text-[13.5px] font-medium">{u.label}</div>
-                <div className="mt-0.5 text-[12px] text-muted-foreground">{u.desc}</div>
-              </div>
-              <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
-                준비 중
-              </span>
-            </li>
-          ))}
-        </ul>
       </div>
       <LearnerBottomNav />
     </LearnerJourneyShell>

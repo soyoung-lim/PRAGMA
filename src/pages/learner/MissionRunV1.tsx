@@ -43,7 +43,8 @@ import {
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { requestSttTranscript } from "@/lib/mission/missionStt";
 import { requestTtsAudio } from "@/lib/tts";
-import { diffText, type TextDiffPart } from "@/lib/mission/textDiff";
+import { DiffLegend, DiffLine } from "@/components/mission/DiffLine";
+import { diffText } from "@/lib/mission/textDiff";
 import { type RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
 import { IS_DEMO } from "@/lib/auth/useProfile";
 
@@ -2038,37 +2039,7 @@ function DissentPanel({ onSubmit }: { onSubmit: (d: { conditions: string[]; reas
 }
 
 // ── 수정 지도(0-i) — 최초↔최종 + 수정 성격. 클라이언트만(AI·DB 0회) ──
-function DiffLine({ parts, view }: { parts: TextDiffPart[]; view: "first" | "final" }) {
-  return (
-    <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed">
-      {parts.map((part, index) => {
-        if (part.kind === "insert" && view === "first") return null;
-        if (part.kind === "delete" && view === "final") return null;
-        if (part.kind === "delete") {
-          return (
-            <span
-              key={`${part.kind}-${index}`}
-              className="text-[#87919A] line-through decoration-[#87919A] decoration-1"
-            >
-              {part.text}
-            </span>
-          );
-        }
-        if (part.kind === "insert") {
-          return (
-            <span
-              key={`${part.kind}-${index}`}
-              className="font-medium underline decoration-2 decoration-[#49677B] underline-offset-4"
-            >
-              {part.text}
-            </span>
-          );
-        }
-        return <span key={`${part.kind}-${index}`}>{part.text}</span>;
-      })}
-    </p>
-  );
-}
+// 표기 자체는 학습 기록과 공유한다(components/mission/DiffLine).
 
 function RevisionMap({ first, final, featureLabel, interp }: { first: string; final: string; featureLabel: string; interp: boolean }) {
   const changed = first.trim() !== final.trim();
@@ -2086,12 +2057,7 @@ function RevisionMap({ first, final, featureLabel, interp }: { first: string; fi
           <DiffLine parts={parts} view="final" />
         </div>
       </div>
-      {changed && (
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
-          <span><span className="text-[#87919A] line-through">삭제</span> · 회색 취소선</span>
-          <span><span className="underline decoration-2 decoration-[#49677B] underline-offset-2">추가</span> · 밑줄</span>
-        </div>
-      )}
+      {changed && <DiffLegend />}
       <p className="mt-2 text-[12px] text-muted-foreground">
         {changed
           ? `텍스트 변화만 표시합니다. 추가·삭제가 곧 더 알맞다는 판정은 아닙니다 — 이번에 살펴본 초점은 ${featureLabel}입니다.`
