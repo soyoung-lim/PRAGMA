@@ -1,5 +1,11 @@
 # PRAGMA — Codex 인수인계 (2026-07-26)
 
+> ⛔ **지난 문서 — 결정 이력으로만 읽는다.** 현재 운영 정본은 `docs/handoff/ACTIVE_HANDOFF.md`다.
+> ⚠️ **배포 주소가 바뀌었다(2026-07-31).** 아래 본문의 `l2-pragmatics.up.railway.app`은
+> 더 이상 라이브가 아니다. 현재 production URL = **`https://pragma.up.railway.app`**
+> (Railway 프로젝트명 `PRAGMA`로 개명. GitHub 저장소명·Railway 내부 서비스명은
+> `l2-pragmatic-translator` 유지). 본문은 당시 기록이라 그대로 둔다 — 주소만 바꿔 읽는다.
+
 > Claude 주간 사용량 소진으로 **2026-07-26 밤 ~ 수요일(07-29 예상)** 사이 Codex가 이어받는다.
 > 이 문서 하나만 읽고 안전하게 작업을 이어갈 수 있도록 작성했다.
 > **마감: 7/31 웹앱 완성. 7/29 코어 프롬프트 동결, 7/30까지 500 배치 — 이 일정은 협상 대상이 아니다.**
