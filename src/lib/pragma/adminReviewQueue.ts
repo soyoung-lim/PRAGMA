@@ -19,8 +19,25 @@ export type RapidReviewBlocker =
   | "run_missing"
   | "prompt_missing"
   | "prompt_mismatch"
+  | "mission_prompt_missing"
+  | "mission_prompt_mismatch"
   | "feature_missing"
   | "mission_missing";
+
+/**
+ * 현재 배포 엣지가 내보내는 미션 프롬프트 버전.
+ *
+ * `prompt_snapshot_hash`는 **코어** 표면만 해시하므로, 미션 프롬프트를 고쳐도 값이
+ * 그대로다. 그래서 코어 지문만 보는 안전 후보 판정은 구버전 프롬프트로 만든 미션을
+ * 걸러내지 못했다 — 2026-07-31 baseline 14건 중 AI점검을 통과한 감사 2건(v2 생성)이
+ * 자동 선택에 섞일 수 있었다(`DEC-20260731-02`에서 reviewed 금지로 정한 대상).
+ *
+ * 엣지 소스와 어긋나면 `promptSnapshot.test.ts`가 잡는다.
+ */
+export const CURRENT_MISSION_PROMPT_VERSIONS = [
+  "mission_v5_mpj4_minidiscourse_v3",
+  "mission_v4_mpj4_dct1_context_v6",
+] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -44,9 +61,18 @@ export function promptMatchOf(
   return promptHash === currentPromptHash ? "current" : "different";
 }
 
+export function missionPromptVersionOf(missionContent: unknown): string | null {
+  if (!isRecord(missionContent)) return null;
+  const provenance = missionContent.provenance;
+  if (!isRecord(provenance)) return null;
+  const version = provenance.prompt_version;
+  return typeof version === "string" && version.length > 0 ? version : null;
+}
+
 export function rapidReviewBlockers(
   row: ReviewQueueFacts,
   currentPromptHash: string,
+  allowedMissionPromptVersions: readonly string[] = CURRENT_MISSION_PROMPT_VERSIONS,
 ): RapidReviewBlocker[] {
   const blockers: RapidReviewBlocker[] = [];
 
@@ -61,6 +87,14 @@ export function rapidReviewBlockers(
   if (promptMatch === "missing") blockers.push("prompt_missing");
   if (promptMatch === "different") blockers.push("prompt_mismatch");
 
+  // 코어 지문은 미션 프롬프트 개정을 반영하지 않으므로 별도로 확인한다.
+  const missionPromptVersion = missionPromptVersionOf(row.mission_content);
+  if (!missionPromptVersion) {
+    blockers.push("mission_prompt_missing");
+  } else if (!allowedMissionPromptVersions.includes(missionPromptVersion)) {
+    blockers.push("mission_prompt_mismatch");
+  }
+
   if (!row.target_feature || !row.target_feature_version) {
     blockers.push("feature_missing");
   }
@@ -72,18 +106,20 @@ export function rapidReviewBlockers(
 export function isRapidReviewCandidate(
   row: ReviewQueueFacts,
   currentPromptHash: string,
+  allowedMissionPromptVersions: readonly string[] = CURRENT_MISSION_PROMPT_VERSIONS,
 ): boolean {
-  return rapidReviewBlockers(row, currentPromptHash).length === 0;
+  return rapidReviewBlockers(row, currentPromptHash, allowedMissionPromptVersions).length === 0;
 }
 
 export function rapidReviewCandidateIds(
   rows: ReviewQueueFacts[],
   currentPromptHash: string,
   limit = 25,
+  allowedMissionPromptVersions: readonly string[] = CURRENT_MISSION_PROMPT_VERSIONS,
 ): string[] {
   const safeLimit = Math.max(0, Math.floor(limit));
   return rows
-    .filter((row) => isRapidReviewCandidate(row, currentPromptHash))
+    .filter((row) => isRapidReviewCandidate(row, currentPromptHash, allowedMissionPromptVersions))
     .slice(0, safeLimit)
     .map((row) => row.scenario_id);
 }
