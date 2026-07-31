@@ -97,4 +97,37 @@ describe("R16 명시적 수행 모드 모순", () => {
     expect(r16Fails(writtenWithoutImmediateResponse, baseContext)).toEqual([]);
     expect(r16Fails(spoken, spokenContext)).toEqual([]);
   });
+
+  // 2026-07-31 495 본배치 회귀: 통역 셀 4건이 "기록으로 남기지는 않습니다"류 부정
+  // 표현에서 오탐으로 버려졌다. 부정은 보조사·거리·어간 축약을 함께 처리해야 한다.
+  describe("통역 셀에서 서면을 부정하는 표현은 오탐이 아니다", () => {
+    const spokenContext: CheckContext = {
+      ...baseContext,
+      mode: "stt_interpreting",
+      source_modality: "spoken",
+    };
+    const spokenCore = (situation_ko: string) => ({
+      ...baseCore,
+      situation_ko,
+      source_modality: "spoken",
+      channel: "facetoface",
+    });
+
+    it.each([
+      ["보조사가 낀 부정", "이 대화는 직접 말하는 자리이고, 즉각적인 반응을 기대하지만 공식 기록으로 남기지는 않습니다."],
+      ["부정어가 멀리 있는 경우", "회의실에서 직접 알리는 상황입니다. 상대는 즉시 반응을 기대하지만, 이 요청은 기록으로 남기려는 목적은 아닙니다."],
+      ["어간이 줄어든 부정", "직접 감사의 말을 전하는 장면이다. 이 감사는 구두로 전달되어 기록으로 남지 않으며, 후배가 자발적으로 도운 상황이다."],
+    ])("%s", (_label, situation) => {
+      expect(r16Fails(spokenCore(situation), spokenContext)).toEqual([]);
+    });
+
+    it("진짜 서면 장면은 그대로 차단한다 — 활용형이 바뀌어도", () => {
+      expect(
+        r16Fails(spokenCore("사내 메신저로 참여를 부탁하는 메시지를 작성한다."), spokenContext),
+      ).not.toEqual([]);
+      expect(
+        r16Fails(spokenCore("이 초대는 기록으로 남기며, 팀장의 참여 여부를 존중한다."), spokenContext),
+      ).not.toEqual([]);
+    });
+  });
 });
