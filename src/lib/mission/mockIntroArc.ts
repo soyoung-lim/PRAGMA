@@ -15,12 +15,22 @@ export type IntroStep = (typeof INTRO_STEPS)[number];
 /** 이 아크가 도입하는 전략군. 완료 시 LearnerFeatureState에 기록된다. */
 export const INTRO_FEATURE_ID = "request_directness_mitigation";
 
-// 아크 콘텐츠가 실제로 존재하는 목표 특징. 현재 15주 골격은 2~11주에 화행이 하나씩
-// 바뀌므로 목표 특징도 매 주차 처음 등장한다 — 즉 아크는 원칙상 9번 필요하다.
-// 지금 만들어 둔 것은 요청 하나뿐이고, 나머지 8개는 생성·검수 대상이다.
-// 콘텐츠가 없는 주차에 아크 진입점을 띄우면 다른 화행에 요청 사례를 보여주게 되므로,
-// 이 목록에 있는 특징에서만 아크를 연다.
-export const ARC_READY_FEATURES = ["request_mitigation_optionality"] as const;
+// 학습자에게 아크를 여는 목표 특징. 배선(라우트·주차 진입점·미션 합류)은 끝나 있고,
+// 여는 조건은 이 목록 하나다. 콘텐츠가 준비되면 여기에 특징 코드를 넣으면 된다.
+//
+// 지금은 비어 있다 — 아래 mock 콘텐츠가 검수를 통과하지 못했다(2026-07-31):
+//   ① Hook의 인과 불성립 — 필기 요청은 용건이 끝나면 대화도 끝나는 것이 자연스러워서,
+//      "대화가 멈췄다"가 화용 실패의 증거가 되지 못한다.
+//   ② REPLAY_CASES의 대안이 호칭·사과·이유·의문형·시점 선택권을 동시에 바꾼다.
+//      무엇이 차이를 만들었는지 분리할 수 없어 귀납 관찰의 목적이 훼손된다
+//      (생성계약의 excluded_confounds 정신과 어긋남).
+//   ③ CLASSIFY_ITEMS의 대역이 길이와 완전히 공변한다(8·20·35자) — R5의 길이 단서 문제.
+//   ④ 과잉 예시가 동급생 상황에 비현실적으로 과장돼 중간 정도의 과잉을 다루지 못한다.
+//   ⑤ CLASS_LABELS가 미션 band 라벨과 다른 용어를 쓴다.
+//
+// 결정: 아크 콘텐츠는 손으로 9개를 쓰지 않고 생성 계약에 얹는다. 코어에서 파생시키고
+// 변인 분리·길이 등가·밴드 라벨 일치를 규칙으로 강제한 뒤 검수한다.
+export const ARC_READY_FEATURES = [] as const;
 
 export function hasIntroArc(featureCode: string | null | undefined): boolean {
   return (
