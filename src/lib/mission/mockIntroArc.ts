@@ -15,6 +15,20 @@ export type IntroStep = (typeof INTRO_STEPS)[number];
 /** 이 아크가 도입하는 전략군. 완료 시 LearnerFeatureState에 기록된다. */
 export const INTRO_FEATURE_ID = "request_directness_mitigation";
 
+// 아크 콘텐츠가 실제로 존재하는 목표 특징. 현재 15주 골격은 2~11주에 화행이 하나씩
+// 바뀌므로 목표 특징도 매 주차 처음 등장한다 — 즉 아크는 원칙상 9번 필요하다.
+// 지금 만들어 둔 것은 요청 하나뿐이고, 나머지 8개는 생성·검수 대상이다.
+// 콘텐츠가 없는 주차에 아크 진입점을 띄우면 다른 화행에 요청 사례를 보여주게 되므로,
+// 이 목록에 있는 특징에서만 아크를 연다.
+export const ARC_READY_FEATURES = ["request_mitigation_optionality"] as const;
+
+export function hasIntroArc(featureCode: string | null | undefined): boolean {
+  return (
+    typeof featureCode === "string" &&
+    (ARC_READY_FEATURES as readonly string[]).includes(featureCode)
+  );
+}
+
 export interface IntroContextFrame {
   physical: string;
   social: string;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
@@ -18,11 +18,13 @@ import {
   CLASSIFY_CONTEXT,
   CLASSIFY_ITEMS,
   ARC_CLOSING,
+  hasIntroArc,
   type ClassLabel,
   type IntroContextFrame,
 } from "@/lib/mission/mockIntroArc";
 import { WEEK_REQUEST } from "@/lib/mission/mockWeek";
 import { updateFeatureState } from "@/lib/mission/learnerState";
+import { useLearnerCourse } from "@/lib/curriculum/useLearnerCourse";
 import { IS_DEMO } from "@/lib/auth/useProfile";
 
 // 도입 아크 — 새 목표 특징 최초 도입 시 1회. 입력 먼저(맥락→관찰→명시→수용) 후
@@ -71,6 +73,18 @@ const ContextFrame = ({ context }: { context: IntroContextFrame }) => (
 
 const IntroArc = () => {
   const navigate = useNavigate();
+  // 편성 강좌에서 들어오면 :weekNo가 붙는다. 파라미터가 없으면 개발용 2주차 목업이다.
+  const { weekNo: weekNoParam } = useParams();
+  const liveWeekNo = weekNoParam ? Number(weekNoParam) : null;
+  const { data: course = null, isPending: courseLoading } = useLearnerCourse();
+  const liveWeek =
+    liveWeekNo !== null && course
+      ? course.weeks.find((w) => w.week_no === liveWeekNo) ?? null
+      : null;
+  // 아크를 마치면 같은 주차의 실제 미션으로 합류한다(아크 사례 ≠ 산출 문항).
+  const arcScenario =
+    liveWeek?.scenarios.find((s) => hasIntroArc(s.target_feature) && s.runnable) ??
+    null;
   const [stepIdx, setStepIdx] = useState(0);
   const [foundClues, setFoundClues] = useState<number[]>([]);
   const [picks, setPicks] = useState<Record<number, ClassLabel>>({});
@@ -113,7 +127,7 @@ const IntroArc = () => {
 
   const finish = () => {
     updateFeatureState(INTRO_FEATURE_ID, { introExplanationCompleted: true });
-    navigate("/learner/practice");
+    navigate(arcScenario ? `/learner/practice/${arcScenario.scenario_id}` : "/learner/practice");
   };
 
   // ── 화면들 ──
@@ -405,18 +419,30 @@ const IntroArc = () => {
     "다음: 새 장면에 적용",
   ][stepIdx];
 
+  // 편성 강좌에서 들어왔는데 이 주차에 아크 콘텐츠가 없으면 열지 않는다 —
+  // 다른 화행 주차에 요청 사례를 보여주는 것이 가장 나쁜 실패다.
+  if (liveWeekNo !== null) {
+    if (courseLoading) {
+      return (
+        <LearnerJourneyShell>
+          <p className="text-[13px] text-muted-foreground">불러오는 중…</p>
+        </LearnerJourneyShell>
+      );
+    }
+    if (!arcScenario) return <Navigate to="/learner/course" replace />;
+  }
+
+  const weekLabel =
+    liveWeek !== null
+      ? `${liveWeek.week_no}주차 · ${liveWeek.title}`
+      : `${WEEK_REQUEST.weekNo}주차 · ${WEEK_REQUEST.speechAct}`;
+
   return (
     <LearnerJourneyShell
-      headerRight={
-        <span className="text-[12px] text-[#8899A6]">
-          {WEEK_REQUEST.weekNo}주차 · {WEEK_REQUEST.speechAct}
-        </span>
-      }
+      headerRight={<span className="text-[12px] text-[#8899A6]">{weekLabel}</span>}
     >
       <nav aria-label="학습 위치" className="mb-3 text-[12px] text-muted-foreground">
-        <span className="font-medium text-foreground">
-          {WEEK_REQUEST.weekNo}주차 {WEEK_REQUEST.speechAct}
-        </span>
+        <span className="font-medium text-foreground">{weekLabel}</span>
         <span aria-hidden className="mx-1.5">›</span>
         처음 배우기
       </nav>
