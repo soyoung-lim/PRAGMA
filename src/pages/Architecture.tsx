@@ -13,9 +13,9 @@ const LANE = {
 } as const;
 
 const Node = ({ lane, title, desc }: { lane: Lane; title: string; desc: string }) => (
-  <div className={`rounded-[9px] border px-2.5 py-[7px] ${LANE[lane].node}`}>
-    <div className="text-[12.5px] font-bold leading-[1.3] text-[#15202B]">{title}</div>
-    <div className="mt-0.5 text-[11px] leading-[1.4] text-muted-foreground">{desc}</div>
+  <div className={`rounded-[9px] border px-3 py-2.5 ${LANE[lane].node}`}>
+    <div className="text-[13px] font-bold leading-[1.3] text-[#15202B]">{title}</div>
+    <div className="mt-0.5 text-[11.5px] leading-[1.4] text-muted-foreground">{desc}</div>
   </div>
 );
 
@@ -29,19 +29,25 @@ const Mark = ({ children }: { children: React.ReactNode }) => (
 // 연결자는 타이핑한 글리프(↓·→)가 아니라 아이콘으로 둔다 — 글리프는 폰트마다
 // 굵기·baseline이 달라 도식 안에서 혼자 손글씨처럼 보인다.
 const Down = () => (
-  <div className="grid h-2.5 place-items-center" aria-hidden>
+  <div className="grid h-4 place-items-center" aria-hidden>
     <ChevronDown size={11} strokeWidth={2} className="text-[#B6BEC7]" />
   </div>
 );
 
+// 레인 사이의 인계는 이 도식에서 가장 중요한 두 지점이다(승인분만 넘어간다 /
+// 수행 로그만 넘어간다). 옅은 화살표 하나로는 그 관문이 보이지 않아, 레인 높이를
+// 관통하는 세로선 위에 노란 토큰으로 얹는다.
 const Handoff = ({ label }: { label: string }) => (
-  <div className="grid content-center justify-items-center gap-1.5" aria-hidden>
-    <ArrowRight size={20} strokeWidth={1.75} className="text-[#B9A25E]" />
-    <span
-      className="text-[9.5px] font-bold tracking-[0.05em] text-[#909AA6]"
-      style={{ writingMode: "vertical-rl" }}
-    >
-      {label}
+  <div className="relative grid content-center justify-items-center" aria-hidden>
+    <span className="absolute inset-y-6 left-1/2 w-px -translate-x-1/2 bg-[#E7E1CF]" />
+    <span className="relative grid justify-items-center gap-1 rounded-full border border-[#E3D08F] bg-[#FFF8E1] px-[7px] py-2.5 shadow-[0_2px_6px_-3px_rgba(21,32,43,.35)]">
+      <ArrowRight size={16} strokeWidth={2.5} className="text-[#A9761A]" />
+      <span
+        className="text-[10px] font-bold tracking-[0.08em] text-[#6B5518]"
+        style={{ writingMode: "vertical-rl" }}
+      >
+        {label}
+      </span>
     </span>
   </div>
 );
@@ -79,11 +85,11 @@ const Architecture = () => (
       </div>
     </header>
 
-    <div className="mx-auto max-w-[1120px] px-6 pb-2 pt-4">
+    <div className="mx-auto max-w-[1120px] px-6 pb-4 pt-7">
       {/* 세 레인을 한 문장으로 — 강조한 세 마디가 그대로 ①②③ 제목이다.
           밑줄 2px 대신 글자 아래쪽을 덮는 반투명 형광펜을 쓴다(랜딩 후크와 같은 어법).
           문장 자체는 굵기를 낮춰, 강조가 세 마디에만 남게 한다. */}
-      <p className="mb-2 text-[15px] font-medium leading-relaxed text-[#4A5A66]">
+      <p className="mb-3 text-[15px] font-medium leading-relaxed text-[#4A5A66]">
         <Mark>콘텐츠를 생성·검수</Mark>하고, <Mark>학습자가 수행</Mark>하며, 그 기록이{" "}
         <Mark>평가와 설계</Mark>로 돌아옵니다.
       </p>
@@ -91,18 +97,20 @@ const Architecture = () => (
       {/* 3레인 */}
       <div className="grid grid-cols-1 items-stretch lg:grid-cols-[.86fr_52px_1.85fr_52px_.86fr]">
         {/* ① 콘텐츠 생성·검수 */}
-        <section className="rounded-[13px] border border-border bg-card px-3 pb-2 pt-3">
+        <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4">
           <div className="mb-0.5 flex items-center gap-2">
             <span className={`grid h-[18px] w-[18px] place-items-center rounded-full text-[10.5px] font-bold text-white ${LANE.supply.num}`}>
               1
             </span>
             <h2 className="text-[14px] font-bold tracking-tight">콘텐츠 생성·검수</h2>
           </div>
-          <p className="mb-2.5 text-[11.5px] text-muted-foreground">최종 공개 여부는 교수자가 결정</p>
+          <p className="mb-2.5 text-[11.5px] text-muted-foreground">
+            9개 화행 × 수준 3 × 주제 · 최종 공개는 교수자가 결정
+          </p>
 
-          <Node lane="supply" title="목표 화용 요소 카탈로그" desc="9개 화행 · 대역과 제외 혼입변인 정의" />
+          <Node lane="supply" title="목표 화용 요소 카탈로그" desc="화행마다 대역과 제외 혼입변인을 정의" />
           <Down />
-          <Node lane="supply" title="시나리오 코어 대량 생성" desc="관계·부담 × 매체 × 도메인 조합" />
+          <Node lane="supply" title="시나리오 코어 대량 생성" desc="수준 × 관계·부담 × 매체 × 주제 조합" />
           <Down />
           <Node lane="supply" title="학습 미션 조립" desc="코어 → 판단 4문항 + 산출 과제" />
           <Down />
@@ -116,7 +124,7 @@ const Architecture = () => (
         <Handoff label="승인분만" />
 
         {/* ② 학습자 워크플로우 */}
-        <section className="rounded-[13px] border border-[#D3D1C7] bg-card px-3 pb-2 pt-3 shadow-[0_8px_20px_-18px_rgba(21,32,43,.55)]">
+        <section className="rounded-[13px] border border-[#D3D1C7] bg-card px-3.5 pb-4 pt-4 shadow-[0_8px_20px_-18px_rgba(21,32,43,.55)]">
           <div className="mb-0.5 flex items-center gap-2">
             <span className={`grid h-[18px] w-[18px] place-items-center rounded-full text-[10.5px] font-bold text-white ${LANE.learn.num}`}>
               2
@@ -124,10 +132,14 @@ const Architecture = () => (
             <h2 className="text-[14px] font-bold tracking-tight">학습자 워크플로우</h2>
           </div>
           <p className="mb-2.5 text-[11.5px] text-muted-foreground">
-            한 단원에 목표 화용 요소 하나 · 승인된 콘텐츠만
+            수준·주제에 맞는 강좌 · 한 주차에 목표 화용 요소 하나
           </p>
 
-          <Node lane="learn" title="15주 편성 · 화행 순환 배치" desc="교수자가 승인 미션을 주차에 배정" />
+          <Node
+            lane="learn"
+            title="15주 강좌 편성"
+            desc="9개 화행을 순환 배치 · 승인 미션만 주차에 배정"
+          />
           <Down />
           <Node lane="learn" title="주차 학습 노트" desc="예습·복습면 · 주차 목표와 상황 읽는 기준" />
           <Down />
@@ -165,7 +177,7 @@ const Architecture = () => (
         <Handoff label="수행 로그" />
 
         {/* ③ 연구·평가·설계 */}
-        <section className="rounded-[13px] border border-border bg-card px-3 pb-2 pt-3">
+        <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4">
           <div className="mb-0.5 flex items-center gap-2">
             <span className={`grid h-[18px] w-[18px] place-items-center rounded-full text-[10.5px] font-bold text-white ${LANE.res.num}`}>
               3
@@ -188,75 +200,10 @@ const Architecture = () => (
         </section>
       </div>
 
-      <p className="mt-1 text-center text-[11.5px] text-muted-foreground">
-        <b className="font-semibold text-foreground">승인된 콘텐츠만</b> 학습자에게 공개
-        <span className="mx-[7px] text-[#D3D1C7]">·</span>생성은{" "}
-        <b className="font-semibold text-foreground">동결된 프롬프트 지문에서만</b>
-        <span className="mx-[7px] text-[#D3D1C7]">·</span>
-        <b className="font-semibold text-foreground">모든 수행 로그가 자동 저장</b>(콘텐츠·정책·프롬프트 버전 포함)
-      </p>
-
-      {/* 두 개의 사이클 */}
-      <div className="mt-0.5">
-        <svg
-          viewBox="0 0 1200 98"
-          className="block h-auto w-full"
-          role="img"
-          aria-label="두 개의 사이클: 수행 로그가 다음 학습 배정으로, 설계 추적이 콘텐츠·프롬프트 개정으로 되돌아온다"
-        >
-          <defs>
-            <marker id="arch-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="#C9A93A" />
-            </marker>
-            <marker id="arch-ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="#8A6A55" />
-            </marker>
-          </defs>
-          <path
-            d="M1030,4 C1030,38 870,44 730,44 C655,44 600,38 600,6"
-            fill="none"
-            stroke="#C9A93A"
-            strokeWidth="2.2"
-            markerEnd="url(#arch-ah)"
-          />
-          <text x="820" y="38" textAnchor="middle" fontSize="12" fontWeight="700" fill="#8A6D00">
-            빠른 사이클
-          </text>
-          <text x="820" y="55" textAnchor="middle" fontSize="11" fill="#5C6A7A">
-            수행 로그 → 다음 학습 배정
-          </text>
-          <path
-            d="M1110,4 C1110,80 900,84 600,84 C320,84 130,82 130,8"
-            fill="none"
-            stroke="#8A6A55"
-            strokeWidth="2.2"
-            strokeDasharray="5 4"
-            markerEnd="url(#arch-ah2)"
-          />
-          <text x="372" y="76" textAnchor="middle" fontSize="12" fontWeight="700" fill="#7A5A46">
-            느린 사이클
-          </text>
-          <text x="372" y="93" textAnchor="middle" fontSize="11" fill="#5C6A7A">
-            설계 추적 → 콘텐츠·프롬프트 개정
-          </text>
-        </svg>
-      </div>
-
-      {/* 공통 기반 */}
-      <div className="mt-1 flex flex-wrap items-center gap-3 rounded-[11px] border border-border bg-card px-3.5 py-1.5">
-        <span className="text-[10.5px] font-bold tracking-[0.07em] text-[#909AA6]">공통 정책·버전 관리 기반</span>
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            "수준 정책 (입문·중급·고급)",
-            "콘텐츠·프롬프트·정책 버전",
-            "검수 이력",
-          ].map((c) => (
-            <span key={c} className="rounded-full border border-[#D3D1C7] bg-background px-[11px] py-1 text-[11.5px] font-semibold">
-              {c}
-            </span>
-          ))}
-        </div>
-      </div>
+      {/* 하단 가로 띠는 없앴다 — 세로 3레인이 주인공인 도식에서 가로로 긴 카드가
+          시선을 아래로 끌어내렸다. 그 안에 있던 축(9화행·수준·주제)은 레인 부제와
+          노드 설명으로 옮겼고, 버전·검수 이력은 원래 그것을 만드는 노드가 이미
+          말하고 있다(교수자 최종 승인 · 학습 수행 로그). 순환은 맨 위 한 줄이 말한다. */}
     </div>
   </div>
 );
