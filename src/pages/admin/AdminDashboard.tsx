@@ -141,9 +141,12 @@ const AdminDashboard = () => {
         .eq("review_status", "approved"),
       "scenarios.core_approved",
     );
+    // 학습자 수행 = mission_v4·v5 실행 로그(learner_mission_logs). 예전에는 프로토타입
+    // 시절 트레이서인 decision_traces를 세어, 실제 수행이 쌓여도 0으로 표시됐다.
+    // head:true는 권한 거부를 삼키고 0을 돌려주므로 본문 응답으로 받는다.
     load(setTraces, () =>
-      supabase.from("decision_traces").select("*", { count: "exact", head: true }),
-      "decision_traces.total",
+      db.from("learner_mission_logs").select("id", { count: "exact" }),
+      "learner_mission_logs.total",
     );
 
     // head:true 카운트는 권한 거부(401)를 삼키고 0을 돌려준다 — 보고용 수치가 "0건"으로
@@ -286,7 +289,7 @@ const AdminDashboard = () => {
         <StatCard label="전체 시나리오" state={total} note="legacy 포함 총계" />
         <StatCard label="코어 상태·대기" state={pending} note="학습자 실행 게이트 아님" />
         <StatCard label="코어 승인 상태" state={approved} note="신규 미션 승인과 별개" />
-        <StatCard label="학습자 수행 기록" state={traces} />
+        <StatCard label="학습자 수행 기록" state={traces} note="미션 실행 로그" />
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
         코어 승인 상태 {approvedN}건 · 현재 누적 테스트·회귀 자료를 본 콘텐츠 수로 해석하지

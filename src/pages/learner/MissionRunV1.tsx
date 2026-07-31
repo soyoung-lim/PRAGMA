@@ -47,6 +47,10 @@ import { DiffLegend, DiffLine } from "@/components/mission/DiffLine";
 import { diffText } from "@/lib/mission/textDiff";
 import { type RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
 import { IS_DEMO } from "@/lib/auth/useProfile";
+import {
+  learnerWorkflowSteps,
+  type LearnerWorkflowStepKey,
+} from "@/lib/curriculum/learnerWorkflow";
 
 // 샘플은 v1 → 정규화해 v2로 구동(러너는 정규화 형태만 본다, 0-l·84).
 const SAMPLE_MISSION_V2 = normalizeMission(SAMPLE_MISSION_V1).data as MissionRuntime;
@@ -134,20 +138,28 @@ const demoBtn =
   "block w-full rounded-lg border border-dashed border-[#D8D0BC] bg-[#F5F5F2] px-3 py-2 text-[12.5px] text-muted-foreground transition-colors hover:bg-[#EFEEE9]";
 
 // ── 진행 단계 ────────────────────────────────────────────────────────────
-type Phase = "mpj" | "handoff" | "produce" | "feedback" | "revise" | "done";
+type Phase = "intro" | "mpj" | "handoff" | "produce" | "feedback" | "revise" | "done";
 
-// 서사 3단계 — 세부 문항 유형 대신 감각 → 표현 → 다듬기의 학습 사건으로 묶는다.
-// 「1부 판단 연습 / 2부 실전 적용」은 시험 2부작으로 읽혀, 미션을 마쳐도 "문항을
-// 풀었다"는 기억만 남았다. 같은 흐름을 감각 → 표현 → 다듬기의 한 사건으로 보인다.
-type Stage = 0 | 1 | 2;
-const STAGE_OF: Record<Phase, Stage> = {
-  mpj: 0,
-  handoff: 0,
-  produce: 1,
-  feedback: 2,
-  revise: 2,
-  done: 2,
+// 미션의 각 국면이 학습자 여정의 어느 단계인가. 이름·순서는 learnerWorkflow 정본을
+// 따르고, 여기서는 국면 → 단계 대응만 둔다.
+const STEP_OF: Record<Phase, LearnerWorkflowStepKey> = {
+  intro: "scenario",
+  mpj: "judge",
+  handoff: "judge",
+  produce: "produce",
+  feedback: "feedback",
+  revise: "revise",
+  done: "revise",
 };
+// 레일에서 단계를 눌렀을 때(데모 전용) 착지할 국면.
+const PHASE_OF_STEP: Record<LearnerWorkflowStepKey, Phase> = {
+  scenario: "intro",
+  judge: "mpj",
+  produce: "produce",
+  feedback: "feedback",
+  revise: "revise",
+};
+
 // 정본 target feature 이름은 생성·저장 계약에 그대로 보존한다. 학습자 화면에서는
 // 같은 구성개념을 행동 문장으로 풀어, 무엇을 연습하는지 즉시 읽히게 한다.
 const LEARNER_FOCUS_COPY: Record<string, string> = {
@@ -163,12 +175,6 @@ const LEARNER_FOCUS_COPY: Record<string, string> = {
   complaint_problem_accountability: "문제를 분명히 말하되 책임을 과하게 단정하지 않기",
   politeness: "상대와 상황에 맞는 공손한 표현 고르기",
 };
-// 단계 안의 잔걸음. MPJ 유형명(scale4·reason_conf…)은 더 이상 노출하지 않는다 —
-// 기술 용어가 진행바에 있으면 그 자체로 시험지처럼 읽힌다.
-const STEP_INDEX: Partial<Record<Phase, number>> = { produce: 0, feedback: 0, revise: 1, done: 2 };
-const stageSteps = (stage: Stage, interp: boolean) =>
-  stage === 1 ? [interp ? "통역하기" : "번역하기"] : ["피드백 보기", "다듬기", "완료"];
-
 // ── band 라벨 헬퍼 ──────────────────────────────────────────────────────
 function bandLabel(featureCode: string, code: string): string {
   const feat = getTargetFeature(featureCode);
@@ -773,7 +779,7 @@ function MissionRunner({
   speechAct: string | null;
   level: LearnerLevel | null;
 }) {
-  const [phase, setPhase] = useState<Phase>(startAtPart2 ? "produce" : "mpj");
+  const [phase, setPhase] = useState<Phase>(startAtPart2 ? "produce" : "intro");
   const [mpjIdx, setMpjIdx] = useState(0);
   const [mpjResponses, setMpjResponses] = useState<MpjResponseTrace[]>([]);
   const [vocabularyHintOpenedAt, setVocabularyHintOpenedAt] = useState<string | null>(null);
@@ -805,13 +811,14 @@ function MissionRunner({
   const pt = mission.production_task;
   const isInterp = pt.mode === "interpreting";
   const responseRows = responseInputRows(level);
-  const part = phase === "mpj" || phase === "handoff" ? 1 : 2;
-  const stage = STAGE_OF[phase];
-  const stageTitles = [
-    "표현 감각 익히기",
-    isInterp ? "직접 통역하기" : "직접 번역하기",
-    "피드백 확인하기",
-  ] as const;
+  const part = phase === "intro" || phase === "mpj" || phase === "handoff" ? 1 : 2;
+  // 여정 단계 — 이름·순서는 learnerWorkflow 정본, 문항 수는 실제 미션에서 온다.
+  const journeySteps = learnerWorkflowSteps({
+    interpreting: isInterp,
+    mpjCount: items.length,
+  });
+  const currentStepKey = STEP_OF[phase];
+  const currentStepIndex = journeySteps.findIndex((s) => s.key === currentStepKey);
   // v5 미리보기에서는 문법·화용 실패 화면을 재현하고, 그 외 샘플은 기존 참고 표현을 쓴다.
   const hasRevisionDemo =
     IS_DEMO &&
@@ -1001,7 +1008,7 @@ function MissionRunner({
 
   const resetAll = () => {
     clearSaved();
-    setPhase("mpj");
+    setPhase("intro");
     setMpjIdx(0);
     setMpjResponses([]);
     setVocabularyHintOpenedAt(null);
@@ -1026,7 +1033,7 @@ function MissionRunner({
         )}
 
         {/* 중단 후 재개 배너 — 2부 진행분이 남아 있을 때만 */}
-        {resume && phase === "mpj" && mpjIdx === 0 && (
+        {resume && (phase === "intro" || phase === "mpj") && mpjIdx === 0 && (
           <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-[#FAD338] bg-[#FFF8DE] px-3.5 py-2.5 text-[12.5px] text-[#6B5518]">
             <span>이전에 진행하던 <b>미션</b>이 있습니다.</span>
             <button
@@ -1053,67 +1060,138 @@ function MissionRunner({
             <span className="truncate text-[12px] font-semibold text-[#3E4C57]">{learnerFocusCopy}</span>
           </div>
 
-          <div className="flex gap-2">
-            {stageTitles.map((label, i) => {
-              const done = stage > i;
-              const active = stage === i;
-              // devGo 착지점 — 3단계는 다듬기로 보낸다(피드백은 제출한 답이 있어야 뜬다).
-              const target: Phase = i === 0 ? "mpj" : i === 1 ? "produce" : "revise";
-              const cls = [
-                "flex-1 rounded-[10px] border px-3 py-1.5 text-left text-[12.5px]",
+          {/* 진행 레일 — 완료는 노란 원+체크, 현재는 노란 링, 예정은 회색 테두리.
+              연결선은 지나온 구간만 노랑이다. 단계 이름은 레일 아래에 둔다. */}
+          <div className="flex items-start" aria-label="미션 진행 단계">
+            {journeySteps.map((step, i) => {
+              const done = i < currentStepIndex;
+              const active = i === currentStepIndex;
+              const circle = [
+                "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold leading-none",
                 done
-                  ? "border-[#D7D2C4] bg-white font-semibold text-[#3E4C57]"
+                  ? "bg-[#FAD338] text-[#15202B]"
                   : active
-                  ? "border-[#15202B] bg-[#15202B] font-bold text-white"
-                  : "border-[#EAE4D2] bg-white text-muted-foreground",
-                IS_DEMO ? "cursor-pointer hover:opacity-90" : "",
+                    ? "border-[3.5px] border-[#FAD338] bg-white"
+                    : "border border-[#D7D2C4] bg-white",
               ].join(" ");
+              const line = (filled: boolean, hidden: boolean) => (
+                <span
+                  aria-hidden
+                  className={`h-[2px] flex-1 ${
+                    hidden ? "bg-transparent" : filled ? "bg-[#FAD338]" : "bg-[#E3DFD2]"
+                  }`}
+                />
+              );
               const inner = (
                 <>
-                  <div className="text-[10.5px] opacity-80">{i + 1}단계</div>
-                  {label} {done ? "✓" : ""}
+                  <span className="flex w-full items-center">
+                    {line(done || active, i === 0)}
+                    <span className={circle}>{done ? "✓" : ""}</span>
+                    {line(done, i === journeySteps.length - 1)}
+                  </span>
+                  <span
+                    className={`mt-1 block px-0.5 text-center text-[9.5px] leading-tight ${
+                      active
+                        ? "font-bold text-[#15202B]"
+                        : done
+                          ? "text-[#5B6670]"
+                          : "text-[#A9B0BA]"
+                    }`}
+                  >
+                    {step.label}
+                  </span>
                 </>
               );
               return IS_DEMO ? (
                 <button
-                  key={label}
+                  key={step.key}
                   type="button"
                   onClick={() => {
+                    const target = PHASE_OF_STEP[step.key];
                     if (target === "mpj") setMpjIdx(0);
                     goto(target);
                   }}
-                  className={cls}
+                  className="flex min-w-0 flex-1 flex-col items-center"
                 >
                   {inner}
                 </button>
               ) : (
-                <div key={label} className={cls}>{inner}</div>
+                <div key={step.key} className="flex min-w-0 flex-1 flex-col items-center">
+                  {inner}
+                </div>
               );
             })}
           </div>
         </div>
+        {/* 현재 단계의 잔걸음. 연구 표기(MPJ·DCT)는 여기 보조 라벨로만 남긴다. */}
         <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#A9B0BA]">
-          {stage === 0 ? (
-            phase === "handoff" ? (
-              <span className="font-bold text-foreground">1단계 요약 · 예시 {items.length}개 정리</span>
-            ) : (
-              <>
-                <span>예시 {mpjIdx + 1} / {items.length}</span>
-                <span className="text-[#D3CEC0]">·</span>
-                <span className="font-bold text-[#15202B]">
-                  {mpjTaskTitle(item, mission.unit.target_feature)}
-                </span>
-              </>
-            )
-          ) : (
-            stageSteps(stage, isInterp).map((s, i, arr) => (
-              <span key={s} className="flex items-center gap-1.5">
-                <span className={i === (STEP_INDEX[phase] ?? 0) ? "font-bold text-foreground" : ""}>{s}</span>
-                {i < arr.length - 1 && <span className="text-[#E3E1D8]">›</span>}
+          <span className="rounded bg-[#F2EEE0] px-1.5 py-0.5 text-[10px] font-semibold text-[#8A8272]">
+            {journeySteps[currentStepIndex]?.aside}
+          </span>
+          {phase === "mpj" && (
+            <>
+              <span>예시 {mpjIdx + 1} / {items.length}</span>
+              <span className="text-[#D3CEC0]">·</span>
+              <span className="font-bold text-[#15202B]">
+                {mpjTaskTitle(item, mission.unit.target_feature)}
               </span>
-            ))
+            </>
           )}
+          {phase === "handoff" && (
+            <span className="font-bold text-foreground">예시 {items.length}개 정리</span>
+          )}
+          {phase === "done" && <span className="font-bold text-foreground">완료</span>}
         </div>
+
+        {/* ── 0부: 여정 미리 보기 ──
+            "미션 시작"을 눌렀을 때 무엇을 하게 되는지 모른 채 첫 문항으로 떨어지던
+            것을 막는다. 판정·저장에는 관여하지 않는 안내 화면이다. */}
+        {phase === "intro" && (
+          <div className="space-y-3">
+            <div className={card}>
+              <h2 className="text-[16px] font-bold text-[#15202B]">
+                이 미션에서 하게 되는 일
+              </h2>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                {learnerActLabel} 상황에서 <b className="text-[#3E4C57]">{learnerFocusCopy}</b>를
+                연습합니다. 아래 순서로 한 번에 이어집니다.
+              </p>
+
+              <ol className="mt-3.5 space-y-2.5">
+                {journeySteps.map((step, i) => (
+                  <li key={step.key} className="flex gap-3">
+                    <span className="mt-0.5 flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full bg-[#F2EEE0] text-[11px] font-bold text-[#5B5446]">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[13.5px] font-semibold text-[#27323C]">
+                          {step.label}
+                        </span>
+                        <span className="text-[10px] text-[#A9B0BA]">{step.aside}</span>
+                      </div>
+                      <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">
+                        {step.detail}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <div className={srcBox}>
+              <div className="text-[11px] font-bold text-[#5F4A00]">상황</div>
+              <p className="mt-1 text-[13.5px] leading-relaxed">{pt.situation_ko}</p>
+            </div>
+
+            <Button
+              className="w-full bg-[#15202B] py-6 text-[14px] font-bold text-white hover:bg-[#22303C]"
+              onClick={() => goto("mpj")}
+            >
+              시작하기 →
+            </Button>
+          </div>
+        )}
 
         {/* ── 1부: 판단 연습(MPJ) ── */}
         {phase === "mpj" && (

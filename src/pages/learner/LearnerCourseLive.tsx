@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
 import { useLearnerCourse } from "@/lib/curriculum/useLearnerCourse";
+import { WEEK_FLOW_STEPS } from "@/lib/curriculum/learnerWorkflow";
 import { MODE_LABEL, SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 
@@ -11,6 +12,7 @@ import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 // 검토 완료된 미션은 눌러서 실행(러너)까지 잇는다. 편성 → 학습자 실행 루프의 연결부다.
 
 const card = "rounded-xl border border-[#EAE4D2] bg-white p-4";
+const stepBadge = (n: 1 | 2) => (n === 1 ? "①" : "②");
 
 const LearnerCourseLive = () => {
   const navigate = useNavigate();
@@ -73,13 +75,32 @@ const LearnerCourseLive = () => {
                       </ul>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/learner/course/week/${w.week_no}/note`)}
-                      className="mt-3 inline-flex items-center rounded-md border border-[#15202B] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#15202B] transition-colors hover:bg-[#F7F4EA]"
-                    >
-                      주차 학습 노트 보기 →
-                    </button>
+                    {/* ① 원리 → ② 미션. 두 층을 나란히 두면 학습 노트를 지나쳐
+                        곧장 미션으로 가게 되므로, 순서를 화면에 새긴다. */}
+                    <div className="mt-3 border-t border-[#F0ECE0] pt-3">
+                      <div className="text-[11.5px] font-bold text-[#8A8272]">
+                        {stepBadge(1)} {WEEK_FLOW_STEPS[0].label}
+                      </div>
+                      <p className="mt-1 text-[12.5px] text-muted-foreground">
+                        {WEEK_FLOW_STEPS[0].detail}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/learner/course/week/${w.week_no}/note`)}
+                        className="mt-2 inline-flex items-center rounded-md border border-[#15202B] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#15202B] transition-colors hover:bg-[#F7F4EA]"
+                      >
+                        원리 보기 →
+                      </button>
+                    </div>
+
+                    <div className="mt-3 border-t border-[#F0ECE0] pt-3">
+                      <div className="text-[11.5px] font-bold text-[#8A8272]">
+                        {stepBadge(2)} {WEEK_FLOW_STEPS[1].label}
+                      </div>
+                      <p className="mt-1 text-[12.5px] text-muted-foreground">
+                        {WEEK_FLOW_STEPS[1].detail}
+                      </p>
+                    </div>
 
                     {w.scenarios.length === 0 ? (
                       <p className="mt-2 text-[12.5px] text-muted-foreground">

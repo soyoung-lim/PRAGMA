@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
 import { useLearnerCourse } from "@/lib/curriculum/useLearnerCourse";
+import { learnerWorkflowSteps } from "@/lib/curriculum/learnerWorkflow";
 
 // 학습자 홈 — 메뉴판이 아니라 '다음 행동'을 알려주는 화면.
 // 게시·편성된 실제 강좌만 현재 상태로 제시한다.
@@ -84,9 +85,28 @@ const LearnerHome = () => {
           )}
         </section>
 
+        {/* 한 미션의 여정 예고 — 홈에서 "여기서 무엇을 하게 되는지"를 먼저 보인다.
+            단계 이름·순서는 learnerWorkflow 정본에서만 가져온다. */}
+        <section className="mt-4 rounded-[10px] border border-[#EAE4D2] bg-white px-4 py-3.5">
+          <div className="text-[11.5px] font-semibold text-muted-foreground">
+            미션 하나의 흐름
+          </div>
+          <ol className="mt-2.5 space-y-1.5">
+            {learnerWorkflowSteps().map((step, index) => (
+              <li key={step.key} className="flex items-baseline gap-2.5">
+                <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-[#F2EEE0] text-[10.5px] font-bold text-[#5B5446]">
+                  {index + 1}
+                </span>
+                <span className="text-[13.5px] text-[#27323C]">{step.label}</span>
+                <span className="text-[10.5px] text-[#A9B0BA]">{step.aside}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <Link
           to="/learner/course"
-          className="mt-4 flex items-center justify-between rounded-[10px] border border-[#EAE4D2] bg-white px-4 py-3.5 hover:bg-[#FAFAF7]"
+          className="mt-2.5 flex items-center justify-between rounded-[10px] border border-[#EAE4D2] bg-white px-4 py-3.5 hover:bg-[#FAFAF7]"
         >
           <div>
             <div className="text-[11.5px] font-semibold text-muted-foreground">
