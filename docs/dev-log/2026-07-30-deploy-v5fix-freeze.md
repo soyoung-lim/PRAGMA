@@ -102,3 +102,39 @@ C안(축별 규칙 분화)은 **기각이 아니라 유보** — 완전 분리�
 - 통역 셀 상황문에 서면 목적("공식 기록으로 남기기 위한 것이다")이 섞여 들어오는
   패턴이 반복된다 — 규칙 오탐이 아니라 코어 프롬프트의 통역 셀 지침 문제로 보인다.
   B2(R5)와 함께 다룬다.
+
+## v3 대역–근거 정합 표본과 검증② 계약 보완 (2026-07-31)
+
+- `mission_v5_mpj4_minidiscourse_v3` 엣지 배포 후 직접 호출로 provenance를 확인했다.
+  코어 표면 지문은 `dc8f149400de…`로 불변이다.
+- 사용자가 성공 사례를 제외하고 제공한 조립 화면에서 확인된 신버전 잔여 문제:
+  - 제안 `#852ac0e0`: fix_choice 오답에 `必须…`·강요 기능의 `立即…`가 남았다.
+    v3 생성 지시가 명시적으로 금지한 극단형이므로 실제 생성 결함이다. 같은 건의 R29
+    reference_alternatives 미완역 경고는 별도 잔여 문제다.
+  - 요청: 한 건은 R4·R5로 저장 전 차단됐고, 같은 화면의 `#2174af38`은 검증②를
+    통과했다. 결정론적 실패는 학습자 노출 위험이 아니라 조립 효율 문제다.
+  - 사과 `#b15e3c48`: 검증②가 fix_choice의 `is_valid=false`를 "완전히 부적절한
+    문장"으로 읽고, `note_ko`의 한국어 설명을 correction 표현처럼 인용했다.
+    corrections의 불리언은 `true=within_band`, `false=non-within 경계 오답`이며
+    false가 문법 오류·완전 무효를 뜻하지 않으므로 일부 finding은 점검기 오판이다.
+  - 11:52 반대 R5 캡처는 v3 배포 전 localhost 표본이므로 신버전 효과 집계에서 제외한다.
+  사용자가 실패 화면만 선별했으므로 이 캡처 묶음으로 통과율은 계산하지 않는다.
+- 검증② 코드에서 추가 결함을 확인했다. 프롬프트 출력 enum에는
+  `primary_reason_ambiguity`·`context_plan_mismatch`가 있으나 응답 정규화 allowlist에는
+  빠져 있어 두 코드가 `internal_inconsistency`로 덮였다. 따라서 baseline 14건의
+  `internal_inconsistency` 코드 중 일부는 원래 두 코드였을 수 있다. 과거 표본은 finding
+  **코드 라벨이 아니라 note_ko 서술을 직접 읽어** 증거로 사용한다.
+- 보완 및 배포:
+  - 검증②에 fix_choice `is_valid`의 조작적 의미와 `note_ko` 오인 금지 규칙 추가
+  - 누락된 finding code 2개를 allowlist에 추가
+  - 결정론 규칙 범위 R1~R29로 동기화, 검증② provenance `quality_v1`→`quality_v2`
+  - 프롬프트 스냅샷 재생성. 코어 표면 지문 불변 확인
+- 검증: prompt snapshot 6/6, typecheck, 전체 176 pass(생성형 6 skip), `git diff --check`
+  통과. 사용자 승인 후 엣지 재배포를 완료했고, DB 저장 없는 배포본 직접 호출에서
+  `quality_check.prompt_version`과 `meta.prompt_version`이 모두 `quality_v2`
+  (critic=`gpt-4.1`)임을 확인했다.
+- 측정 한계: 다음 표본은 생성기 v3와 점검기 quality_v2가 함께 적용되므로, 단일 결함률
+  전후 차이를 어느 한 수정의 효과로 귀속할 수 없다. `必须/立即` 잔존·실제 자원과 대역의
+  모순은 **생성 문장 자체**, `is_valid=false`를 완전 무효로 해석하는 지적은 **점검기
+  판정**으로 나누어 finding 서술을 인간이 직접 읽는다. 소수 표본 확인 전에는 해결로
+  판정하지 않는다.
