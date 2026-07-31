@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { CURRENT_MISSION_PROMPT_VERSIONS } from "@/lib/pragma/adminReviewQueue";
 import { PROMPT_SNAPSHOT } from "@/lib/pragma/promptSnapshot.generated";
 
 function prompt(key: string) {
@@ -25,6 +26,12 @@ describe("prompt snapshot integrity", () => {
       "'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch'",
     );
     expect(canonicalSource).toContain("prompt_version: 'quality_v2'");
+
+    // 안전 후보 판정이 쓰는 미션 프롬프트 버전 목록이 엣지와 어긋나면 구버전 미션이
+    // 자동 선택에 섞이거나 정상 미션이 통째로 막힌다. 양쪽을 여기서 묶어 둔다.
+    for (const version of CURRENT_MISSION_PROMPT_VERSIONS) {
+      expect(canonicalSource).toContain(`'${version}'`);
+    }
   });
 
   it("keeps written and spoken feedback on the same diagnostic rubric", () => {

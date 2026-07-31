@@ -579,7 +579,12 @@ const AdminReview = () => {
               선택 {selectedIds.size}건 · 사람 검수 통과 {approvalReadyIds.length}건
             </div>
             <div className="text-[11px] text-muted-foreground">
-              자동 선택은 최대 25건. 실제 승인 전 각 미션을 한 번씩 확인해야 한다.
+              자동 선택은 최대 25건이며 <b>현재 화면 필터 안에서</b> 앞에서부터 고른다 — 수준·화행
+              분포를 맞추지 않으므로, 편성에 쓸 조건(예: 중급·한→중)을 먼저 걸어라. 구버전 미션
+              프롬프트로 만든 미션은 자동 선택에서 제외된다. 실제 승인 전 각 미션을 한 번씩 확인해야 한다.
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              사람 검수 통과 표시는 화면에만 남는다 — 새로고침하면 초기화되므로 한 묶음을 끝내고 승인하라.
             </div>
           </div>
           <div className="flex flex-wrap gap-2">

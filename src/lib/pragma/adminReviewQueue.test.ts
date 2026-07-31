@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  CURRENT_MISSION_PROMPT_VERSIONS,
   isRapidReviewCandidate,
+  missionPromptVersionOf,
   missionQualityVerdict,
   promptMatchOf,
   rapidReviewBlockers,
@@ -9,6 +11,7 @@ import {
 } from "@/lib/pragma/adminReviewQueue";
 
 const CURRENT_HASH = "current-hash";
+const CURRENT_MISSION_PROMPT = CURRENT_MISSION_PROMPT_VERSIONS[0];
 
 function row(overrides: Partial<ReviewQueueFacts> = {}): ReviewQueueFacts {
   return {
@@ -18,6 +21,7 @@ function row(overrides: Partial<ReviewQueueFacts> = {}): ReviewQueueFacts {
     mission_content: {
       schema_version: "mission_v1",
       quality_check: { verdict: "pass" },
+      provenance: { prompt_version: CURRENT_MISSION_PROMPT },
     },
     generation_run_id: "run-1",
     prompt_snapshot_hash: CURRENT_HASH,
@@ -60,8 +64,33 @@ describe("admin rapid review queue", () => {
       "ai_quality_not_pass",
       "run_missing",
       "prompt_mismatch",
+      "mission_prompt_missing",
       "feature_missing",
     ]);
+  });
+
+  it("reads the mission prompt version from provenance", () => {
+    expect(missionPromptVersionOf(row().mission_content)).toBe(CURRENT_MISSION_PROMPT);
+    expect(missionPromptVersionOf({ provenance: {} })).toBeNull();
+    expect(missionPromptVersionOf({ provenance: { prompt_version: "" } })).toBeNull();
+    expect(missionPromptVersionOf(null)).toBeNull();
+  });
+
+  // 코어 지문은 미션 프롬프트 개정을 반영하지 않는다. 구버전 프롬프트로 만든 미션은
+  // 코어 지문이 같더라도 자동 선택에서 빠져야 한다(DEC-20260731-02: baseline reviewed 금지).
+  it("blocks missions built by a superseded mission prompt", () => {
+    const stale = row({
+      mission_content: {
+        quality_check: { verdict: "pass" },
+        provenance: { prompt_version: "mission_v5_mpj4_minidiscourse_v2" },
+      },
+    });
+
+    expect(rapidReviewBlockers(stale, CURRENT_HASH)).toEqual(["mission_prompt_mismatch"]);
+    expect(isRapidReviewCandidate(stale, CURRENT_HASH)).toBe(false);
+    expect(
+      rapidReviewCandidateIds([stale, row({ scenario_id: "scenario-2" })], CURRENT_HASH),
+    ).toEqual(["scenario-2"]);
   });
 
   it("caps batch selection and preserves queue order", () => {
