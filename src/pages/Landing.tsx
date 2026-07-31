@@ -1,8 +1,13 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { ArrowRight, GraduationCap, SlidersHorizontal } from "lucide-react";
 import { HomeBrand } from "@/components/HomeBrand";
 import { ensureSession } from "@/lib/tracking";
 import { IS_DEMO } from "@/lib/auth/useProfile";
+
+// 화살표는 hover에서 진행 방향으로 살짝 미끄러진다. 카드가 통째로 떠오르는 동작은
+// "이 카드가 반응한다"까지만 말하고, 화살표의 이동이 "누르면 저쪽으로 간다"를 말한다.
+const arrow = "transition-transform duration-150 group-hover:translate-x-0.5";
 
 const Landing = () => {
   useEffect(() => {
@@ -20,7 +25,7 @@ const Landing = () => {
       </header>
 
       {/* 랜딩은 '읽는 페이지'가 아니라 '갈라지는 문'이다 — 스크롤 없이 한 화면에
-          후크 → 설명 → 두 갈래 → 구조 보기가 모두 들어와야 한다. */}
+          후크 → 설명 → 흐름 → 두 갈래가 모두 들어와야 한다. */}
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-6 sm:py-8">
         <section className="text-center">
           {/* 후크 — 두 줄이 차례로 올라온 뒤 핵심어에 형광펜이 그어진다. 메시지
@@ -45,48 +50,60 @@ const Landing = () => {
             </span>
           </h1>
 
-          {/* break-keep — 없으면 「AI 피 / 드백을」처럼 낱말 중간에서 줄이 끊긴다.
-              nbsp로 「AI」와 「피드백을」을 묶어 줄 끝에 「AI」만 남지 않게 한다. */}
+          {/* break-keep — 없으면 낱말 중간에서 줄이 끊긴다. */}
           <p className="mx-auto mt-5 max-w-[620px] break-keep text-[15.5px] leading-relaxed text-muted-foreground sm:text-[16.5px]">
-            PRAGMA는 한·중 통번역 과정에서 여러 표현의 차이를 비교하고, 직접 번역·통역한 결과를{" "}
-            {"AI 피드백을"} 바탕으로 관계와 상황에 맞게 다듬는 수업 플랫폼입니다.
+            PRAGMA는 한·중 통번역에서 관계와 상황에 맞는 표현을 판단하고, 직접 옮겨
+            다듬는 과정을 하나의 흐름으로 잇는 수업 플랫폼입니다.
           </p>
         </section>
 
         {/* 두 갈래 — 이 페이지의 유일한 주 행동. 「선택하세요」 안내문은 카드가 이미
-            같은 말을 하므로 두지 않는다. */}
-        <section className="mt-8 grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
+            같은 말을 하므로 두지 않는다.
+            두 영역은 주·부가 아니라 대등한 두 입구다. 그래서 테두리·그림자·크기는
+            똑같이 두고, 왼쪽 띠와 버튼의 색으로만 갈라진다 — 학습자는 노랑, 교수자는
+            남색. 카드를 통째로 칠하지 않는 것은 후크의 형광펜과 색이 부딪히기 때문이다. */}
+        <section className="mt-6 grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
             to="/student-login"
-            className="group flex flex-col items-start rounded-xl border border-[#15202B] bg-[#FAD338] px-6 py-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#E8B91F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+            className="group flex flex-col items-start rounded-xl border border-[#E6E1D2] border-l-[5px] border-l-[#FAD338] bg-white px-6 py-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#D5CEBB] hover:border-l-[#FAD338] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
           >
+            {/* 이모지는 기기마다 다르게 그려지고 색이 튄다 — 앱이 이미 쓰는 lucide
+                라인 아이콘으로 바꿔 글자와 같은 무게로 맞춘다. */}
             <span className="flex items-center gap-2 text-[19px] font-bold text-[#15202B]">
-              <span aria-hidden>👤</span> 학습자 영역
+              <GraduationCap aria-hidden size={19} strokeWidth={1.75} className="text-[#3E4C57]" />
+              학습자 영역
             </span>
-            <span className="mt-2.5 break-keep text-[14px] leading-relaxed text-[#15202B]/80">
-              강의에 배정된 한·중 통번역 미션을 수행하고,
-              <br />
-              AI 피드백을 참고하여 자신의 표현을 다듬습니다.
+            <span className="mt-2.5 break-keep text-[14px] leading-relaxed text-muted-foreground">
+              주차별 학습을 따라 표현을 비교하고 직접 번역·통역합니다.
+              다듬은 과정은 학습 기록에 쌓입니다.
             </span>
-            <span className="mt-4 inline-flex items-center gap-1 rounded-md border border-[#15202B] bg-transparent px-4 py-1.5 text-[14px] font-medium text-[#15202B]">
-              학습 시작하기 →
+            {/* hover에서 어둡게 눌리면 '비활성'처럼 보인다 — 같은 색상을 한 단계
+                밝혀서 떠오르는 쪽으로 반응하게 한다. */}
+            <span className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[#15202B] bg-[#FAD338] px-4 py-1.5 text-[14px] font-bold text-[#15202B] transition-colors group-hover:bg-[#FCE07A]">
+              학습 시작하기
+              <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
             </span>
           </Link>
 
           <Link
             to="/admin-login"
-            className="group flex flex-col items-start rounded-xl border border-[#15202B] bg-[#FAFAFA] px-6 py-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+            className="group flex flex-col items-start rounded-xl border border-[#E6E1D2] border-l-[5px] border-l-[#3E4C57] bg-white px-6 py-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#D5CEBB] hover:border-l-[#3E4C57] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
           >
             <span className="flex items-center gap-2 text-[19px] font-bold text-[#15202B]">
-              <span aria-hidden>⚙️</span> 교수자 영역
+              <SlidersHorizontal aria-hidden size={19} strokeWidth={1.75} className="text-[#3E4C57]" />
+              교수자 영역
             </span>
             <span className="mt-2.5 break-keep text-[14px] leading-relaxed text-muted-foreground">
-              AI가 생성한 한·중 통번역 학습 콘텐츠를 검수하고,
-              <br />
-              주차별 강의 편성과 학습 수행 기록을 관리합니다.
+              시나리오와 AI 학습 미션을 생성·검수해 15주 강좌에 편성하고,
+              게시와 학습 수행 기록까지 운영합니다.
             </span>
-            <span className="mt-4 inline-flex items-center gap-1 rounded-md border border-[#15202B] bg-transparent px-4 py-1.5 text-[14px] font-medium text-[#15202B]">
-              교수자 영역으로 →
+            {/* 카드 제목이 이미 '교수자 영역'이라 버튼까지 같은 말이면 한 번 더 읽게 된다.
+                버튼은 무엇을 하러 가는지만 말한다 — 학습 시작하기 / 수업 운영하기.
+                채움색은 헤더의 #15202B보다 한 단계 연한 남색이다. 순검정-흰색 대비는
+                노랑 버튼보다 훨씬 세서, 같은 크기여도 교수자 쪽이 앞으로 튀어나온다. */}
+            <span className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[#3E4C57] bg-[#3E4C57] px-4 py-1.5 text-[14px] font-bold text-white transition-colors group-hover:bg-[#4E5F6C]">
+              수업 운영하기
+              <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
             </span>
           </Link>
         </section>
@@ -98,16 +115,16 @@ const Landing = () => {
             to="/architecture"
             className="mt-6 inline-flex items-center gap-2.5 rounded-lg border-[1.5px] border-[#15202B] bg-white px-5 py-2.5 text-[14px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
           >
+            {/* 노랑은 형광펜과 학습자 버튼 두 곳으로 끝낸다 — 여기까지 노랑이면
+                시선이 한 번 더 새고, 주 경로가 그만큼 흐려진다. */}
             <span
               aria-hidden
-              className="grid h-[24px] w-[24px] place-items-center rounded-[7px] bg-[#FAD338] text-[13px]"
+              className="grid h-[24px] w-[24px] place-items-center rounded-[7px] bg-[#EFEBDD] text-[13px] text-[#5C6A7A]"
             >
               ◎
             </span>
             PRAGMA 전체 구조 보기
-            <span aria-hidden className="text-[#5C6A7A]">
-              →
-            </span>
+            <ArrowRight aria-hidden size={14} strokeWidth={2} className={`text-[#5C6A7A] ${arrow}`} />
           </Link>
         )}
       </main>
@@ -115,8 +132,8 @@ const Landing = () => {
       {/* 연구 산출물임을 로그인 전에 밝혀 둔다 — 심사에서 바로 가리킬 수 있는 한 줄. */}
       <footer className="mx-auto w-full max-w-3xl px-6 pb-7">
         <p className="break-keep border-t border-[#E6E1D2] pt-4 text-center text-[12.5px] leading-relaxed text-[#7C8794]">
-          PRAGMA는 「AI 기반 한중 통번역 학습 워크플로우 개발 연구」를 위해 개발된 수업
-          플랫폼입니다.
+          PRAGMA는 「AI 기반 한·중 통번역 학습 워크플로우 개발 연구」를 위해 설계·개발된
+          수업 연계형 연구 플랫폼입니다.
         </p>
       </footer>
     </div>
