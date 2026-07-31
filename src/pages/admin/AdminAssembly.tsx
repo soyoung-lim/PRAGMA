@@ -82,6 +82,9 @@ const ACTS = Object.keys(SPEECH_ACT_UI) as SpeechActUI[];
 const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
 const QUERY_TIMEOUT_MS = 15_000;
 const LIST_CAP = 50;
+// 조회 상한. 495 배치를 두 번 돌리면 코어가 1000을 넘어 상한에 조용히 잘린다
+// (2026-07-31 실측 1299건) — 상한에 닿으면 화면에 알린다.
+const ROW_CAP = 4000;
 
 const shortHash = (h: string | null) => (h ? `${h.slice(0, 8)}…` : "legacy·없음");
 
@@ -127,7 +130,7 @@ const AdminAssembly = () => {
         )
         .eq("content_format", "scenario_core_v1")
         .order("created_at", { ascending: false })
-        .limit(1000);
+        .limit(ROW_CAP);
       const timeout = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => reject(new Error("조회 시간이 15초를 초과했습니다.")), QUERY_TIMEOUT_MS);
       });
@@ -306,6 +309,12 @@ const AdminAssembly = () => {
           네 상태는 서로 겹치지 않습니다. 카드를 누르면 해당 상태만 필터됩니다 · 「이번 조립 실패」는
           이 세션에서 시도한 결과이며 저장되지 않습니다.
         </p>
+        {rows.length >= ROW_CAP && (
+          <p className="mt-2 rounded-md border border-[#FCD34D] bg-[#FEF3C7] px-3 py-2 text-[12px] text-[#92400E]">
+            ⚠️ 조회 상한 {ROW_CAP}건에 도달했습니다 — 최신 {ROW_CAP}건만 보고 있습니다. 아래 숫자를
+            전체 현황으로 읽지 마세요.
+          </p>
+        )}
 
         {/* ── 필터 ── */}
         <div className="mt-4 flex flex-wrap gap-3 text-[12.5px]">
