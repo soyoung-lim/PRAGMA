@@ -38,17 +38,17 @@ const ROADMAP: RoadmapItem[] = [
   { week: 2, stage: "기초 적용", topic: "요청" },
   { week: 3, stage: "기초 적용", topic: "감사" },
   { week: 4, stage: "기초 적용", topic: "초대 · 공동행동 권유" },
-  { week: 5, stage: "기초 적용", topic: "칭찬 및 칭찬 대응" },
+  { week: 5, stage: "기초 적용", topic: "칭찬하기" },
   { week: 6, stage: "관계 조정", topic: "거절" },
   { week: 7, stage: "관계 조정", topic: "사과 · 수리" },
   { week: 8, stage: "중간점검", topic: "중간 통합 점검" },
   { week: 9, stage: "관계 조정", topic: "불만 · 문제 제기" },
   { week: 10, stage: "관계 조정", topic: "제안 · 조언" },
   { week: 11, stage: "관계 조정", topic: "반대 · 이견 제시" },
-  { week: 12, stage: "통합 수행", topic: "상호 조정 통합 · 화행 연쇄" },
-  { week: 13, stage: "통합 수행", topic: "프리셋 맥락화" },
-  { week: 14, stage: "통합 수행", topic: "종합 프로젝트 · 통번역 의사결정 리포트" },
-  { week: 15, stage: "기말 종합", topic: "기말 통합 시뮬레이션" },
+  { week: 12, stage: "통합 수행", topic: "복합 화용 조정" },
+  { week: 13, stage: "통합 수행", topic: "새 맥락에 적용하기" },
+  { week: 14, stage: "통합 수행", topic: "통번역 의사결정 정리" },
+  { week: 15, stage: "기말 종합", topic: "기말 통합 수행 점검" },
 ];
 
 const TODAY = {
