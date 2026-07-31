@@ -21,6 +21,10 @@ describe("prompt snapshot integrity", () => {
     const sourceHash = createHash("sha256").update(canonicalSource).digest("hex");
 
     expect(PROMPT_SNAPSHOT.edge_source_sha256).toBe(sourceHash);
+    expect(canonicalSource).toContain(
+      "'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch'",
+    );
+    expect(canonicalSource).toContain("prompt_version: 'quality_v2'");
   });
 
   it("keeps written and spoken feedback on the same diagnostic rubric", () => {
@@ -115,6 +119,10 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("MPJ 4문항");
     expect(quality.text).toContain("primary_reason_ambiguity");
     expect(quality.text).toContain("context_plan_mismatch");
+    expect(quality.text).toContain("결정론적 규칙검사(R1~R29)");
+    expect(quality.text).toContain("fix_choice의 is_valid 의미");
+    expect(quality.text).toContain("false는 \"문법적으로 틀림\"이나 \"완전히 부적절함\"이라는 뜻이 아니다");
+    expect(quality.text).toContain("note_ko 문장을 중국어 correction 자체로 오인하지 마라");
   });
 
   it("keeps learner context first-person and counterpart-only", () => {

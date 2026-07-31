@@ -173,7 +173,7 @@ interface FeedbackBody {
 }
 
 // ── 검증②: AI 품질·일관성 점검 (계약 0-n·94 정의, 0-q·99 세칙) ─────────────
-// 규칙검사(R1~R24)가 못 잡는 의미·자연성·후보 자격을 생성 모델과 **다른 모델**로
+// 규칙검사(R1~R29)가 못 잡는 의미·자연성·후보 자격을 생성 모델과 **다른 모델**로
 // 2차 선별한다. 학습자에게 노출되지 않는 관리자 품질관리 장치이며, 인간 눈검사·
 // 교수자 승인을 대체하지 않는다(AI = QA 보조).
 interface QualityCheckBody {
@@ -1454,7 +1454,7 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
 [전제]
 - 이 미션은 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 과제이며 화행은 「${speechActKo}」다.
 - 학습자는 **첫인상 판단 → 판단+교정 → 주원인 선택 → 여러 초안 비교**(MPJ 4문항) 뒤 스스로 산출한다.
-- 형식·필드·개수·코드값·중복·길이 편차는 **이미 결정론적 규칙검사(R1~R28)가 통과시켰다.**
+- 형식·필드·개수·코드값·중복·길이 편차는 **이미 결정론적 규칙검사(R1~R29)가 통과시켰다.**
   너는 그것을 다시 세지 마라. 너의 몫은 **의미·자연성·후보 자격**이다.
 
 [반드시 지킬 판정 원칙]
@@ -1462,6 +1462,14 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
    다르다"는 결함이 아니다. 지역·세대·업종에 따른 변이도 결함이 아니다.
 2. **결함으로 셀 것은 '학습자가 잘못 배우게 되는 것'뿐이다.** 취향·문체 선호를 적지 마라.
 3. 확신이 없으면 fail로 올리지 말고 warning으로 두고 근거에 불확실함을 적어라.
+4. **fix_choice의 is_valid 의미** — corrections에서 is_valid=true는 해당 P·D·R의
+   적정 대역(within_band)에 들어가는 수정안이고, is_valid=false는 적정 대역 밖의
+   경계 오답이다. false는 "문법적으로 틀림"이나 "완전히 부적절함"이라는 뜻이 아니다.
+   과소·과잉 대역의 자연스러운 문장이나 목표 자원이 일부 남은 문장도 false일 수 있다.
+   따라서 "완전히 부적절하지 않다"거나 "다른 부적절 대역으로 볼 수 있다"는 이유만으로
+   band_mismatch를 보고하지 마라. 실제 문장이 within_band인데 false이거나, 실제 문장이
+   non-within인데 true일 때만 대역 불일치다. note_ko는 근거 설명이지 판정 대상 표현이나
+   별도의 대역 코드가 아니므로, note_ko 문장을 중국어 correction 자체로 오인하지 마라.
 
 [검사 항목]
 ① gate1_violation — 판정 후보(target·corrections·candidates·recommended·reference)가
@@ -2192,7 +2200,7 @@ Deno.serve(async (req) => {
       const CODES = [
         'gate1_violation', 'implausible_distractor', 'answer_cue', 'band_mismatch',
         'focus_contamination', 'unnatural_language', 'internal_inconsistency',
-        'scene_underspecified',
+        'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch',
       ]
       const rawFindings = Array.isArray(parsed.findings) ? parsed.findings : []
       const findings = rawFindings.slice(0, 20).map((raw) => {
@@ -2223,10 +2231,10 @@ Deno.serve(async (req) => {
             summary_ko: typeof parsed.summary_ko === 'string' ? parsed.summary_ko.slice(0, 400) : '',
             findings,
             model,
-            prompt_version: 'quality_v1',
+            prompt_version: 'quality_v2',
             checked_at: checkedAt,
           },
-          meta: { provider: PROVIDER, model, prompt_version: 'quality_v1', generated_at: checkedAt },
+          meta: { provider: PROVIDER, model, prompt_version: 'quality_v2', generated_at: checkedAt },
         }),
         { status: 200, headers: jsonHeaders },
       )
