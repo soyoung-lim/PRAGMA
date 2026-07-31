@@ -96,6 +96,8 @@ export interface MyMissionLogEntry {
   speechAct: string | null;
   level: string | null;
   taskType: string | null;
+  /** 학습자가 산출한 언어. 카탈로그 표현 예시를 방향에 맞게 읽는 데 사용한다. */
+  targetLang: string | null;
   sourceText: string | null;
   firstResponse: string | null;
   revisedResponse: string | null;
@@ -103,6 +105,12 @@ export interface MyMissionLogEntry {
   revised: boolean;
   /** 이번 수행의 목표 화용 초점 코드(카탈로그 조회용). */
   featureId: string | null;
+  /** 목표 화용 초점 버전. 서로 다른 판정 계약을 한 집계에 섞지 않는 데 사용한다. */
+  featureVersion?: string | null;
+  /** 피드백 rubric 버전. 버전이 다른 판정은 같은 프로파일 분모로 묶지 않는다. */
+  feedbackRubricVersion?: string | null;
+  /** 해당 화용 초점의 수행별 AI 피드백 band. 초점 간 합산하지 않는다. */
+  pragmaticBandCode?: string | null;
   /** 시스템이 지정한 수정 지점 = meaning | grammar | feature | clear. */
   revisionScope: string | null;
   /** system_assigned = AI 피드백을 받고 수정했음 / learner_free = 피드백 없이 진행. */
@@ -116,8 +124,9 @@ export interface MyMissionLogEntry {
  * 관리자 계정에서는 `admin_select_all_logs`가 함께 걸려 전체 학습자의 답안이 나온다
  * (migration 20260721120000). 이 화면은 "내 기록"이므로 역할과 무관하게 본인 것만 본다.
  *
- * 점수·등급·AI 판정은 조회하지 않는다. 이 화면은 "내가 무엇을 썼고 어떻게 바꿨나"를
- * 되돌아보는 곳이지 평가 결과를 받는 곳이 아니다(계약상 점수 표현 금지).
+ * 점수·등급은 조회하지 않는다. `target_feature_observed`에서는 현재 초점의 수행별
+ * band만 읽어 같은 초점·방식·버전 안에서 분포를 보여 준다. 화행·초점 간 합산이나
+ * 숙달도 해석에는 사용하지 않는다(계약상 점수 표현 금지).
  */
 export async function listMyMissionLogs(limit = 50): Promise<MyMissionLogEntry[]> {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -127,7 +136,7 @@ export async function listMyMissionLogs(limit = 50): Promise<MyMissionLogEntry[]
   const { data, error } = await supabase
     .from("learner_mission_logs")
     .select(
-      "id, created_at, speech_act, level, task_type, source_text, first_response, revised_response, feature_id, revision_target_selected, revision_target_source",
+      "id, created_at, speech_act, level, task_type, target_lang, source_text, first_response, revised_response, feature_id, content_ver, target_feature_observed, revision_target_selected, revision_target_source",
     )
     .eq("auth_user_id", authUserId)
     .order("created_at", { ascending: false })
@@ -137,17 +146,43 @@ export async function listMyMissionLogs(limit = 50): Promise<MyMissionLogEntry[]
   return (data ?? []).map((row) => {
     const first = (row.first_response as string | null) ?? null;
     const revisedText = (row.revised_response as string | null) ?? null;
+    const observed =
+      row.target_feature_observed &&
+      typeof row.target_feature_observed === "object" &&
+      !Array.isArray(row.target_feature_observed)
+        ? row.target_feature_observed
+        : null;
+    const verdicts =
+      observed?.verdicts &&
+      typeof observed.verdicts === "object" &&
+      !Array.isArray(observed.verdicts)
+        ? observed.verdicts
+        : null;
+    const pragmatic =
+      verdicts?.pragmatic_appropriateness &&
+      typeof verdicts.pragmatic_appropriateness === "object" &&
+      !Array.isArray(verdicts.pragmatic_appropriateness)
+        ? verdicts.pragmatic_appropriateness
+        : null;
     return {
       id: row.id as string,
       createdAtIso: row.created_at as string,
       speechAct: (row.speech_act as string | null) ?? null,
       level: (row.level as string | null) ?? null,
       taskType: (row.task_type as string | null) ?? null,
+      targetLang: (row.target_lang as string | null) ?? null,
       sourceText: (row.source_text as string | null) ?? null,
       firstResponse: first,
       revisedResponse: revisedText,
       revised: Boolean(first && revisedText && first !== revisedText),
       featureId: (row.feature_id as string | null) ?? null,
+      featureVersion: (row.content_ver as string | null) ?? null,
+      feedbackRubricVersion:
+        typeof observed?.rubric_version === "string"
+          ? observed.rubric_version
+          : null,
+      pragmaticBandCode:
+        typeof pragmatic?.band_code === "string" ? pragmatic.band_code : null,
       revisionScope: (row.revision_target_selected as string | null) ?? null,
       revisionSource: (row.revision_target_source as string | null) ?? null,
     };
