@@ -56,7 +56,8 @@ export interface LearnerReportSummary {
   nextStep: string;
 }
 
-const FRIENDLY_FEATURE_LABEL: Record<string, string> = {
+// 목표 특징의 학습자용 이름. 리포트와 강좌 카드가 같은 말을 쓰도록 여기서만 정한다.
+export const FRIENDLY_FEATURE_LABEL: Record<string, string> = {
   request_mitigation_optionality: "부탁을 부드럽게 말하기",
   refusal_softening: "거절을 부드럽고 분명하게 말하기",
   gratitude_calibration: "도움의 크기에 맞게 감사하기",
@@ -140,7 +141,7 @@ export function josa(word: string, form: keyof typeof JOSA_FORMS): string {
 
 const plainBandLabel = (label: string) => label.replace(/\s*\([^)]*\)\s*$/, "");
 
-const friendlyFeatureLabel = (featureKey: string, fallback: string) =>
+export const friendlyFeatureLabel = (featureKey: string, fallback: string) =>
   FRIENDLY_FEATURE_LABEL[featureKey] ?? fallback;
 
 function speechActLabel(entry: MyMissionLogEntry): string {

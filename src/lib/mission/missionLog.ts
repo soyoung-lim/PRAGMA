@@ -44,9 +44,12 @@ export async function listCompletedMissionIds(
   }
   if (!sessionData.session?.user?.id) return [];
 
+  // ⚠️ `auth_user_id`를 명시적으로 건다. RLS에는 관리자 전체 조회 정책이 함께 있어,
+  // 관리자 계정으로 학습자 화면을 열면 남의 완료가 내 진행률로 잡힌다.
   const { data, error } = await supabase
     .from("learner_mission_logs")
     .select("mission_id")
+    .eq("auth_user_id", sessionData.session.user.id)
     .in("mission_id", uniqueMissionIds)
     .eq("mission_completed", true);
   if (error) {
