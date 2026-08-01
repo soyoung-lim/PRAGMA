@@ -94,4 +94,10 @@ branch `codex/learner-report-v1-2026-07-31` · base `9a244f0`
   좌측 정렬을 확인했고, 375×812에서 가로 넘침 없이 안내 문구가 두 줄로 표시되는 것을
   확인했다. 새 브라우저 오류는 없었고 기존 React Router v7 사전 경고만 남았다.
 - 학습설계·생성계약·데이터 구조·평가 방식의 변경이 아닌 로그인 진입부의 문구와 시각 위계
-  교정이므로 `docs/research-trail`은 갱신하지 않았다.
+  교정이므로 `01_design_traceability`, `02_decision_log`, `03_iteration_log`는 갱신하지
+  않았다. 아래 운영 배포 증거만 `04_evidence_index`에 연결했다.
+- `2e8a72e`를 `main`에 fast-forward 푸시해 Railway 자동 배포를 시작했다. 운영 URL
+  `https://pragma.up.railway.app/`이 HTTP 200으로 응답했고, 새 청크
+  `StudentLogin-CZV_zPm1.js`에서 `학습 시작하기`와 계정 변경 시 기록 분리 안내를,
+  `Index-CkxXKPaY.js`에서 새 랜딩 문구를 확인했다. 구문 `직접 옮겨`는 운영 랜딩 청크에
+  남아 있지 않았다. 이 환경에는 Railway CLI가 없어 배포 ID는 기록하지 않았다.
