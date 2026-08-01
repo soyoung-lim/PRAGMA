@@ -48,8 +48,14 @@ export const isIntegrationWeek = (w: LearnerCourseWeek) =>
 export const isMilestoneWeek = (w: LearnerCourseWeek) => w.type !== "regular";
 
 /**
- * 지금 할 주차 — 미완료 미션이 남은 가장 빠른 화행 주차, 없으면 통합 주차.
- * 그것도 없으면 null이다. 억지로 아무 주차나 가리키지 않는다.
+ * 지금 할 주차 — 실제로 시작할 미션이 남아 있는 주차만 고른다.
+ *
+ * 순서: ①진행 중인 주차(일부 완료) → ②아직 시작 안 한 가장 빠른 주차.
+ * 이어서 할 것이 있으면 그것부터 가리키는 편이 자연스럽고, 편성상 앞선 주차를
+ * 무조건 앞세우면 진행 중이던 학습이 화면에서 사라진다.
+ *
+ * `nextScenario`가 있는 주차만 후보다 — 화면의 「미션 시작」 버튼이 그려지는 조건과
+ * 같은 식을 쓴다. 다른 식을 쓰면 CTA가 가리킨 주차를 열었을 때 시작할 것이 없다.
  */
 export function pickCurrentWeek(
   weeks: LearnerCourseWeek[],
@@ -57,9 +63,8 @@ export function pickCurrentWeek(
   lookupFailed = false,
 ): WeekProgress | null {
   const ordered = [...weeks.filter(isActWeek), ...weeks.filter(isIntegrationWeek)];
-  return (
-    ordered
-      .map((w) => weekProgress(w, completed, lookupFailed))
-      .find((p) => p.assigned.length > 0 && p.doneCount < p.assigned.length) ?? null
-  );
+  const startable = ordered
+    .map((w) => weekProgress(w, completed, lookupFailed))
+    .filter((p) => p.nextScenario !== null);
+  return startable.find((p) => p.state === "doing") ?? startable[0] ?? null;
 }

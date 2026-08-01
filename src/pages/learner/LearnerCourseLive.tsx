@@ -15,8 +15,10 @@ import {
   isMilestoneWeek,
   pickCurrentWeek,
   weekProgress,
+  type WeekProgress,
   type WeekState,
 } from "@/lib/curriculum/learnerProgress";
+import { MPJ_ITEM_COUNT } from "@/lib/curriculum/learnerWorkflow";
 import { hasIntroArc } from "@/lib/mission/mockIntroArc";
 import { listCompletedMissionIds } from "@/lib/mission/missionLog";
 
@@ -34,7 +36,7 @@ const STATE_BADGE: Record<WeekState, { label: string; cls: string }> = {
   done: { label: "완료", cls: "bg-[#E7F1EC] text-[#2E6F63]" },
   doing: { label: "학습 중", cls: "bg-[#FFF3C9] text-[#7A5E00]" },
   todo: { label: "예정", cls: "bg-[#F0EDE4] text-[#7C7466]" },
-  empty: { label: "준비 중", cls: "bg-[#F0EDE4] text-[#A29A8B]" },
+  empty: { label: "콘텐츠 준비 중", cls: "bg-[#F0EDE4] text-[#A29A8B]" },
   unknown: { label: "확인 필요", cls: "bg-[#F4EAEA] text-[#8A5B5B]" },
 };
 
@@ -87,8 +89,27 @@ const LearnerCourseLive = () => {
 
   const openDetail = openWeek === null ? null : (course?.weeks.find((w) => w.week_no === openWeek) ?? null);
 
-  const toggle = (weekNo: number) =>
+  const toggle = (weekNo: number) => {
     setOpenWeek((prev) => (prev === weekNo ? null : weekNo));
+    // 상세 패널은 그리드 아래에 열린다 — 카드가 아니라 패널을 시야로 가져와야
+    // "눌렀는데 아무 일도 없다"로 보이지 않는다.
+    window.requestAnimationFrame(() =>
+      document
+        .getElementById("week-detail")
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+    );
+  };
+
+  /** 「미션 시작」이 그려지는 조건과 같은 식으로 시작 지점을 정한다. */
+  const startWeek = (progress: WeekProgress) => {
+    const scenario = progress.nextScenario;
+    if (!scenario) return;
+    if (hasIntroArc(scenario.target_feature)) {
+      navigate(`/learner/course/week/${progress.week.week_no}/intro`);
+      return;
+    }
+    navigate(`/learner/practice/${scenario.scenario_id}`);
+  };
 
   return (
     <LearnerJourneyShell headerRight={<span className="text-[12px] text-[#8899A6]">편성 강좌</span>}>
@@ -124,22 +145,20 @@ const LearnerCourseLive = () => {
                 {weekGoal(current.week) && (
                   <p className="mt-0.5 text-[12.5px] text-[#B9C4CE]">{weekGoal(current.week)}</p>
                 )}
-                {/* 미션으로 직행하지 않는다 — 15주 지도에서 자기 위치를 확인한 뒤
-                    그 카드 안에서 원리·미션을 고르게 한다. */}
+                {/* 이 화면이 이미 15주 지도다 — 여기서는 미션으로 바로 보낸다.
+                    카드를 펼치게 하면 상세 패널이 그리드 아래라 화면 밖에 열려,
+                    "눌렀는데 아무것도 없다"가 된다. */}
+                <p className="mt-2 text-[11.5px] text-[#8899A6]">
+                  표현 비교 {MPJ_ITEM_COUNT}문항 → 직접 옮기기 → 피드백 → 다시 다듬기
+                </p>
                 <Button
                   className="mt-3 bg-[#FAD338] text-[#15202B] hover:bg-[#FCE07A]"
-                  onClick={() => {
-                    setOpenWeek(current.week.week_no);
-                    document
-                      .getElementById(`week-card-${current.week.week_no}`)
-                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
+                  onClick={() => startWeek(current)}
                 >
-                  {current.week.week_no}주차{" "}
                   {current.week.speech_act
                     ? SPEECH_ACT_UI[current.week.speech_act as SpeechActUI]
                     : current.week.title}{" "}
-                  열기 ↓
+                  미션 시작하기 →
                 </Button>
               </section>
             )}
@@ -155,7 +174,6 @@ const LearnerCourseLive = () => {
                   : progressLoading && runnableTotal > 0
                     ? "진행 상태를 확인하는 중…"
                     : `경험한 화행 ${experienced}/${actWeeks.length}`}
-                <span className="mx-1.5 text-[#D3CEC0]">·</span>번역과 통역
                 <span className="mx-1.5 text-[#D3CEC0]">·</span>
                 {course.weeks.length}주 학습 여정
               </p>
@@ -166,16 +184,24 @@ const LearnerCourseLive = () => {
                 const p = progressOf(w);
                 const badge = STATE_BADGE[p.state];
                 const open = openWeek === w.week_no;
+                // 배정이 없는 주차는 눌러도 열 것이 없다 — 눌리는 것처럼 보이지 않게 한다.
+                const empty = p.state === "empty";
                 return (
                   <li key={w.week_no} id={`week-card-${w.week_no}`}>
                     <button
                       type="button"
+                      disabled={empty}
                       onClick={() => toggle(w.week_no)}
                       className={[
-                        "flex h-full w-full flex-col items-start rounded-xl border bg-white p-3.5 text-left transition-all hover:-translate-y-0.5",
-                        open
-                          ? "border-[#15202B] shadow-sm"
-                          : "border-[#EAE4D2] hover:border-[#D5CEBB]",
+                        "flex h-full w-full flex-col items-start rounded-xl border p-3.5 text-left transition-all",
+                        empty
+                          ? "cursor-default border-dashed border-[#E4DED0] bg-[#FAF8F2]"
+                          : "bg-white hover:-translate-y-0.5",
+                        empty
+                          ? ""
+                          : open
+                            ? "border-[#15202B] shadow-sm"
+                            : "border-[#EAE4D2] hover:border-[#D5CEBB]",
                       ].join(" ")}
                     >
                       <div className="flex w-full items-center justify-between gap-2">
@@ -194,8 +220,9 @@ const LearnerCourseLive = () => {
                       <p className="mt-0.5 min-h-[32px] text-[12px] leading-snug text-muted-foreground">
                         {weekGoal(w) ?? "학습 초점 준비 중"}
                       </p>
+                      {/* 배정이 없으면 「미션 0/0」처럼 실행 가능해 보이는 표기를 쓰지 않는다. */}
                       <div className="mt-2 text-[11.5px] font-semibold text-[#3E4C57]">
-                        {p.assigned.length === 0 ? "미션 준비 중" : `미션 ${p.doneCount}/${p.assigned.length}`}
+                        {empty ? " " : `미션 ${p.doneCount}/${p.assigned.length}`}
                       </div>
                     </button>
                   </li>
@@ -205,7 +232,7 @@ const LearnerCourseLive = () => {
 
             {/* 선택한 주차 상세 — 카드를 늘리지 않고 전체 폭 패널 하나만 연다. */}
             {openDetail && (
-              <section className={`mt-3 ${card}`}>
+              <section id="week-detail" className={`mt-3 ${card}`}>
                 <div className="flex flex-wrap items-baseline gap-2">
                   <span className="text-[13.5px] font-bold">
                     {openDetail.week_no}주차 ·{" "}
@@ -254,8 +281,16 @@ const LearnerCourseLive = () => {
                     아직 배정된 과제가 없습니다.
                   </p>
                 ) : (
+                  // 아직 안 한 미션을 먼저 — 완료분의 「다시 하기」가 위에 오면
+                  // 지금 눌러야 할 버튼이 아래로 밀린다.
                   <ul className="mt-3 space-y-2">
-                    {openDetail.scenarios.map((s) => {
+                    {[...openDetail.scenarios]
+                      .sort(
+                        (a, b) =>
+                          Number(completed.has(a.scenario_id)) -
+                          Number(completed.has(b.scenario_id)),
+                      )
+                      .map((s) => {
                       const feat = s.target_feature ? getTargetFeature(s.target_feature) : undefined;
                       const isDone = completed.has(s.scenario_id);
                       return (
@@ -276,17 +311,21 @@ const LearnerCourseLive = () => {
                             </p>
                           </div>
                           {s.runnable ? (
-                            <Button size="sm" onClick={() => navigate(`/learner/practice/${s.scenario_id}`)}>
+                            <Button
+                              size="sm"
+                              variant={isDone ? "outline" : "default"}
+                              onClick={() => navigate(`/learner/practice/${s.scenario_id}`)}
+                            >
                               {isDone ? "다시 하기 →" : "미션 시작 →"}
                             </Button>
                           ) : (
                             <span className="shrink-0 rounded-md bg-[#EFEBDD] px-2.5 py-1 text-[11.5px] text-[#8A8272]">
-                              준비 중
+                              콘텐츠 준비 중
                             </span>
                           )}
                         </li>
                       );
-                    })}
+                      })}
                   </ul>
                 )}
               </section>
