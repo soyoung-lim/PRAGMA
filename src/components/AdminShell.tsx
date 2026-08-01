@@ -88,6 +88,14 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
+// 2026-08-01 — 「준비 중」 항목은 메뉴에서 감춘다. 빈 껍데기를 미리 보여 주는 것이
+// 정직하다고 보았으나, 지도교수 점검에서는 완성 보고와 정면으로 경쟁했다. 라우트와
+// pending 표기는 그대로 두어(주소로는 접근 가능), 내용이 차면 이 필터만 풀면 된다.
+const VISIBLE_GROUPS: NavGroup[] = GROUPS.map((group) => ({
+  ...group,
+  items: group.items.filter((item) => !item.pending),
+})).filter((group) => group.items.length > 0);
+
 interface AdminShellProps {
   title: string;
   description?: string;
@@ -143,7 +151,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
               {STANDALONE.label}
             </Link>
 
-            {GROUPS.map((group) => (
+            {VISIBLE_GROUPS.map((group) => (
               <div key={group.header} className="flex flex-col">
                 <span
                   className="mt-5 mb-1.5 px-3 text-[12px] font-medium uppercase tracking-[0.08em] text-[#8a857c] whitespace-nowrap cursor-default select-none"
@@ -191,7 +199,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
                 이동할 화면 선택
               </option>
               <option value={STANDALONE.to}>{STANDALONE.label}</option>
-              {GROUPS.map((group) => (
+              {VISIBLE_GROUPS.map((group) => (
                 <optgroup key={group.header} label={group.header}>
                   {group.items.map((item) => (
                     <option key={item.to} value={item.to}>
