@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { HomeBrand } from "@/components/HomeBrand";
-import { devStubSignIn, IS_DEMO } from "@/lib/auth/useProfile";
 import { toast } from "sonner";
 
 const StudentLogin = () => {
-  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
 
   // Supabase가 Google OAuth를 직접 수행한다(Lovable 브로커 경유 없음) —
@@ -27,12 +25,6 @@ const StudentLogin = () => {
       toast.error("Google 로그인 중 오류가 발생했습니다.");
       setBusy(false);
     }
-  };
-
-  // 시연·개발용: 승인·프로필 완료 상태로 만들어 학습 홈까지 한 번에 진입한다.
-  const handleDevStub = () => {
-    devStubSignIn(undefined, { ready: true });
-    navigate("/learner/course", { replace: true });
   };
 
   return (
@@ -98,24 +90,6 @@ const StudentLogin = () => {
             {busy ? "이동 중…" : "Google로 계속하기"}
           </button>
 
-          {/* 대비책 — 과거 Google 로그인이 막힌 이력이 있어 우회 수단을 남긴다(보조 위계) */}
-          {IS_DEMO && (
-            <>
-              <div className="mt-5 flex items-center gap-3">
-                <span className="h-px flex-1 bg-[#EDE9DD]" />
-                <span className="text-[11px] text-muted-foreground">또는</span>
-                <span className="h-px flex-1 bg-[#EDE9DD]" />
-              </div>
-
-              <button
-                type="button"
-                onClick={handleDevStub}
-                className="mt-4 w-full rounded-lg border border-[#E4E0D4] bg-transparent px-5 py-2.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-[#15202B]/[0.04] hover:text-[#15202B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
-              >
-                로그인 없이 둘러보기 →
-              </button>
-            </>
-          )}
         </section>
 
         <Link

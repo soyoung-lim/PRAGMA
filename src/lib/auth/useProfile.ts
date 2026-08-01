@@ -14,11 +14,7 @@ export const IS_DEV = import.meta.env.DEV;
 export const IS_DEV_TEST_ENTRY_ENABLED =
   IS_DEV && import.meta.env.VITE_ENABLE_TEST_ENTRY !== "false";
 
-// 시연 모드 — 개발 환경이거나, 배포 환경에서 VITE_ENABLE_DEMO=true 로 명시 허용한 경우.
-// Google 로그인이 인증 서버 이전 중이라 배포 환경에서 학습 화면을 볼 수 없는 문제를
-// 푼다. 노출 위험이 없는 이유: 학습자 여정은 전부 mock 데이터를 읽고, 이 스텁은
-// role='learner'인 가짜 프로필만 만든다. 관리자 화면은 RequireAdmin이 실제 Supabase
-// 세션 + profiles.role='admin'을 요구하므로 스텁으로는 들어갈 수 없다.
+// 시연 UI 모드 — 미션 검토 도구 등에만 사용한다. 인증 우회와는 분리한다.
 export const IS_DEMO = IS_DEV || import.meta.env.VITE_ENABLE_DEMO === "true";
 
 type DevStub = {
@@ -30,11 +26,13 @@ type DevStub = {
 };
 
 function readDevStub(): DevStub | null {
-  if (!IS_DEMO) return null;
   try {
-    // Clean up legacy stubs that persisted across sessions in localStorage —
-    // they made the app look "logged in" without a real account.
+    // 배포 환경에서는 과거 시연용 세션도 인증으로 인정하지 않는다.
     localStorage.removeItem(DEV_STUB_KEY);
+    if (!IS_DEV_TEST_ENTRY_ENABLED) {
+      sessionStorage.removeItem(DEV_STUB_KEY);
+      return null;
+    }
     const raw = sessionStorage.getItem(DEV_STUB_KEY);
     return raw ? (JSON.parse(raw) as DevStub) : null;
   } catch {
@@ -43,13 +41,13 @@ function readDevStub(): DevStub | null {
 }
 
 function writeDevStub(stub: DevStub | null) {
-  if (!IS_DEMO) return;
+  if (!IS_DEV_TEST_ENTRY_ENABLED) return;
   if (stub) sessionStorage.setItem(DEV_STUB_KEY, JSON.stringify(stub));
   else sessionStorage.removeItem(DEV_STUB_KEY);
 }
 
 /**
- * 시연용 임시 학습자 로그인 (개발 환경 + VITE_ENABLE_DEMO=true 인 배포 환경).
+ * 로컬 개발 전용 임시 학습자 로그인.
  * 기본은 승인 대기 상태(승인 플로우 테스트용). `ready: true`를 주면 승인·프로필
  * 완료 상태로 만들어 학습 화면까지 한 번에 들어간다.
  */
@@ -57,7 +55,7 @@ export function devStubSignIn(
   email = "dev.learner@example.com",
   opts?: { ready?: boolean },
 ) {
-  if (!IS_DEMO) return;
+  if (!IS_DEV_TEST_ENTRY_ENABLED) return;
   const existing = readDevStub();
   const base: DevStub = existing ?? {
     user_id: `dev-${crypto.randomUUID()}`,
@@ -82,7 +80,7 @@ export function devStubSignOut() {
 }
 
 export function devStubApproveCurrent() {
-  if (!IS_DEMO) return;
+  if (!IS_DEV_TEST_ENTRY_ENABLED) return;
   const stub = readDevStub();
   if (!stub) return;
   writeDevStub({ ...stub, approval_status: APPROVAL_STATUS.APPROVED });
@@ -90,7 +88,7 @@ export function devStubApproveCurrent() {
 }
 
 export function devStubCompleteProfile(full_name: string) {
-  if (!IS_DEMO) return;
+  if (!IS_DEV_TEST_ENTRY_ENABLED) return;
   const stub = readDevStub();
   if (!stub) return;
   writeDevStub({ ...stub, profile_completed: true, full_name });
