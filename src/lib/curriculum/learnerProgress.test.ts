@@ -76,6 +76,28 @@ describe("pickCurrentWeek", () => {
     expect(pickCurrentWeek(weeks, new Set(["a"]))?.week.week_no).toBe(3);
   });
 
+  it("진행 중인 주차가 있으면 편성상 앞선 미시작 주차보다 먼저 고른다", () => {
+    const weeks = [
+      week(2, { scenarios: [scenario("a1"), scenario("a2")] }),
+      week(5, { scenarios: [scenario("b1"), scenario("b2")] }),
+    ];
+
+    // 5주차만 하나 마친 상태 — 이어서 할 것이 있는 5주차를 가리켜야 한다.
+    const picked = pickCurrentWeek(weeks, new Set(["b1"]));
+    expect(picked?.week.week_no).toBe(5);
+    expect(picked?.nextScenario?.scenario_id).toBe("b2");
+  });
+
+  it("시작할 미션이 없는 주차는 후보가 아니다 — CTA가 빈 주차를 가리키면 안 된다", () => {
+    const weeks = [
+      week(2, { scenarios: [scenario("a", false)] }),
+      week(3, { scenarios: [] }),
+      week(5, { scenarios: [scenario("c")] }),
+    ];
+
+    expect(pickCurrentWeek(weeks, new Set())?.week.week_no).toBe(5);
+  });
+
   it("화행 주차를 모두 마치면 통합 주차로 넘어간다", () => {
     const weeks = [
       week(2, { scenarios: [scenario("a")] }),

@@ -1177,19 +1177,17 @@ function MissionRunner({
                   </li>
                 ))}
               </ol>
+
+              {/* 시작 버튼은 단계 목록 바로 아래 — 상황 전문 뒤에 두면 화면 밖으로
+                  밀려, 들어온 사람이 다음에 무엇을 눌러야 할지 보이지 않는다. */}
+              <Button
+                className="mt-4 w-full bg-[#FAD338] py-6 text-[14px] font-bold text-[#15202B] hover:bg-[#FCE07A]"
+                onClick={() => goto("mpj")}
+              >
+                표현 비교 {items.length}문항부터 시작하기 →
+              </Button>
             </div>
 
-            <div className={srcBox}>
-              <div className="text-[11px] font-bold text-[#5F4A00]">상황</div>
-              <p className="mt-1 text-[13.5px] leading-relaxed">{pt.situation_ko}</p>
-            </div>
-
-            <Button
-              className="w-full bg-[#15202B] py-6 text-[14px] font-bold text-white hover:bg-[#22303C]"
-              onClick={() => goto("mpj")}
-            >
-              시작하기 →
-            </Button>
           </div>
         )}
 
