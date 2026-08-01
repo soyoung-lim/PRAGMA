@@ -39,7 +39,7 @@ const ProfileSetup = () => {
           학습을 시작하기 전에 학습자 배경 정보를 입력해 주세요. (2단계)
         </p>
         <div className="mt-8">
-          <ProfileWizardForm onCompleted={() => navigate("/learner/home", { replace: true })} />
+          <ProfileWizardForm onCompleted={() => navigate("/learner/course", { replace: true })} />
         </div>
       </main>
     </div>

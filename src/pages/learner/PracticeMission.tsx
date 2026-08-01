@@ -458,7 +458,7 @@ const PracticeMission = () => {
             {nextLabel} →
           </Button>
         ) : (
-          <Button onClick={() => navigate("/learner/home")}>홈으로 →</Button>
+          <Button onClick={() => navigate("/learner/course")}>홈으로 →</Button>
         )}
       </div>
 

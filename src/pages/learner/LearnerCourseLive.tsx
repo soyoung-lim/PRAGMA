@@ -9,6 +9,14 @@ import type { LearnerCourseWeek } from "@/lib/curriculum/learnerCourse";
 import { MODE_LABEL, SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import { friendlyFeatureLabel } from "@/lib/mission/learnerReport";
+import {
+  isActWeek,
+  isIntegrationWeek,
+  isMilestoneWeek,
+  pickCurrentWeek,
+  weekProgress,
+  type WeekState,
+} from "@/lib/curriculum/learnerProgress";
 import { hasIntroArc } from "@/lib/mission/mockIntroArc";
 import { listCompletedMissionIds } from "@/lib/mission/missionLog";
 
@@ -22,8 +30,6 @@ import { listCompletedMissionIds } from "@/lib/mission/missionLog";
 
 const card = "rounded-xl border border-[#EAE4D2] bg-white p-4";
 
-type WeekState = "done" | "doing" | "todo" | "empty" | "unknown";
-
 const STATE_BADGE: Record<WeekState, { label: string; cls: string }> = {
   done: { label: "완료", cls: "bg-[#E7F1EC] text-[#2E6F63]" },
   doing: { label: "학습 중", cls: "bg-[#FFF3C9] text-[#7A5E00]" },
@@ -31,13 +37,6 @@ const STATE_BADGE: Record<WeekState, { label: string; cls: string }> = {
   empty: { label: "준비 중", cls: "bg-[#F0EDE4] text-[#A29A8B]" },
   unknown: { label: "확인 필요", cls: "bg-[#F4EAEA] text-[#8A5B5B]" },
 };
-
-interface WeekProgress {
-  week: LearnerCourseWeek;
-  assigned: number;
-  done: number;
-  state: WeekState;
-}
 
 /** 주차의 학습자용 한 줄 목표. 미션·리포트와 같은 이름을 쓴다. */
 function weekGoal(week: LearnerCourseWeek): string | null {
@@ -71,39 +70,20 @@ const LearnerCourseLive = () => {
   });
   const completed = useMemo(() => new Set(completedIds ?? []), [completedIds]);
 
-  const progressOf = (week: LearnerCourseWeek): WeekProgress => {
-    const assignedList = week.scenarios.filter((s) => s.runnable);
-    const doneCount = assignedList.filter((s) => completed.has(s.scenario_id)).length;
-    const state: WeekState =
-      assignedList.length === 0
-        ? "empty"
-        : progressFailed
-          ? "unknown"
-          : doneCount === assignedList.length
-            ? "done"
-            : doneCount > 0
-              ? "doing"
-              : "todo";
-    return { week, assigned: assignedList.length, done: doneCount, state };
-  };
+  // 판정 규칙은 learnerProgress 한 곳에서만 정한다 — 홈과 이 화면이 각자 계산하면
+  // 서로 다른 주차를 "이번 학습"으로 가리키게 된다.
+  const progressOf = (week: LearnerCourseWeek) =>
+    weekProgress(week, completed, progressFailed);
 
-  // 화행 주차 = 카드 그리드 / 화행 없는 정규 주차 = 통합 수행 / 그 외 = 이정표.
-  // 주차 번호를 하드코딩하지 않고 편성 데이터의 모양으로 나눈다.
-  const actWeeks = (course?.weeks ?? []).filter((w) => w.speech_act);
-  const integrationWeeks = (course?.weeks ?? []).filter(
-    (w) => !w.speech_act && w.type === "regular",
-  );
-  const milestoneWeeks = (course?.weeks ?? []).filter((w) => w.type !== "regular");
+  const actWeeks = (course?.weeks ?? []).filter(isActWeek);
+  const integrationWeeks = (course?.weeks ?? []).filter(isIntegrationWeek);
+  const milestoneWeeks = (course?.weeks ?? []).filter(isMilestoneWeek);
 
   const runnableTotal = runnableIds.length;
-  const experienced = actWeeks.filter((w) => progressOf(w).done > 0).length;
-
-  // 이번 학습 = 미완료 미션이 남은 가장 빠른 화행 주차 → 없으면 통합 주차 →
-  // 그것도 없으면 표시하지 않는다. 억지로 아무 주차나 가리키지 않는다.
-  const current =
-    [...actWeeks, ...integrationWeeks]
-      .map(progressOf)
-      .find((p) => p.assigned > 0 && p.done < p.assigned) ?? null;
+  const experienced = actWeeks.filter((w) => progressOf(w).doneCount > 0).length;
+  const current = course
+    ? pickCurrentWeek(course.weeks, completed, progressFailed)
+    : null;
 
   const openDetail = openWeek === null ? null : (course?.weeks.find((w) => w.week_no === openWeek) ?? null);
 
@@ -144,14 +124,22 @@ const LearnerCourseLive = () => {
                 {weekGoal(current.week) && (
                   <p className="mt-0.5 text-[12.5px] text-[#B9C4CE]">{weekGoal(current.week)}</p>
                 )}
+                {/* 미션으로 직행하지 않는다 — 15주 지도에서 자기 위치를 확인한 뒤
+                    그 카드 안에서 원리·미션을 고르게 한다. */}
                 <Button
                   className="mt-3 bg-[#FAD338] text-[#15202B] hover:bg-[#FCE07A]"
                   onClick={() => {
                     setOpenWeek(current.week.week_no);
-                    window.scrollTo({ top: 240, behavior: "smooth" });
+                    document
+                      .getElementById(`week-card-${current.week.week_no}`)
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
                   }}
                 >
-                  이어서 학습하기 →
+                  {current.week.week_no}주차{" "}
+                  {current.week.speech_act
+                    ? SPEECH_ACT_UI[current.week.speech_act as SpeechActUI]
+                    : current.week.title}{" "}
+                  열기 ↓
                 </Button>
               </section>
             )}
@@ -179,7 +167,7 @@ const LearnerCourseLive = () => {
                 const badge = STATE_BADGE[p.state];
                 const open = openWeek === w.week_no;
                 return (
-                  <li key={w.week_no}>
+                  <li key={w.week_no} id={`week-card-${w.week_no}`}>
                     <button
                       type="button"
                       onClick={() => toggle(w.week_no)}
@@ -207,7 +195,7 @@ const LearnerCourseLive = () => {
                         {weekGoal(w) ?? "학습 초점 준비 중"}
                       </p>
                       <div className="mt-2 text-[11.5px] font-semibold text-[#3E4C57]">
-                        {p.assigned === 0 ? "미션 준비 중" : `미션 ${p.done}/${p.assigned}`}
+                        {p.assigned.length === 0 ? "미션 준비 중" : `미션 ${p.doneCount}/${p.assigned.length}`}
                       </div>
                     </button>
                   </li>
@@ -330,7 +318,7 @@ const LearnerCourseLive = () => {
                             {w.title}
                           </span>
                           <span className="mt-1.5 text-[11.5px] text-muted-foreground">
-                            {p.assigned === 0 ? "미션 준비 중" : `미션 ${p.done}/${p.assigned}`}
+                            {p.assigned.length === 0 ? "미션 준비 중" : `미션 ${p.doneCount}/${p.assigned.length}`}
                           </span>
                         </button>
                       </li>

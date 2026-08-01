@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildLearnerReport, josa } from "@/lib/mission/learnerReport";
+import {
+  buildLearnerReport,
+  josa,
+  latestFocusCarryOver,
+} from "@/lib/mission/learnerReport";
 import { LEARNER_REPORT_PREVIEW_ENTRIES } from "@/lib/mission/learnerReportPreview";
 import type { MyMissionLogEntry } from "@/lib/mission/missionLog";
 
@@ -48,6 +52,34 @@ describe("josa", () => {
   it("한글이 아니면 기본형을 쓴다", () => {
     expect(josa("能不能", "을")).toBe("를");
     expect(josa("", "로")).toBe("로");
+  });
+});
+
+describe("latestFocusCarryOver", () => {
+  it("가장 최근 수행의 초점을 잇는다 — 가장 많이 쌓인 초점이 아니다", () => {
+    const carry = latestFocusCarryOver([
+      entry("latest", { speechAct: "refusal", featureId: "refusal_softening" }),
+      entry("older-1"),
+      entry("older-2"),
+    ]);
+
+    expect(carry?.featureKey).toBe("refusal_softening");
+    expect(carry?.speechActLabel).toBe("거절");
+    expect(carry?.advice).toContain("거절은 분명히 하면서");
+  });
+
+  it("초점이 없는 기록은 건너뛴다", () => {
+    const carry = latestFocusCarryOver([
+      entry("no-feature", { featureId: null }),
+      entry("has-feature"),
+    ]);
+
+    expect(carry?.featureKey).toBe("request_mitigation_optionality");
+  });
+
+  it("기록이 없거나 조언이 없는 초점이면 아무것도 만들지 않는다", () => {
+    expect(latestFocusCarryOver([])).toBeNull();
+    expect(latestFocusCarryOver([entry("unknown", { featureId: "not-a-feature" })])).toBeNull();
   });
 });
 

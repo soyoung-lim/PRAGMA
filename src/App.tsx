@@ -39,7 +39,6 @@ const Home = lazy(() => import("./pages/Home.tsx"));
 const Roadmap = lazy(() => import("./pages/Roadmap.tsx"));
 const WorkflowPreview = lazy(() => import("./pages/WorkflowPreview.tsx"));
 const MissionShell = lazy(() => import("./pages/MissionShell.tsx"));
-const LearnerHome = lazy(() => import("./pages/learner/LearnerHome.tsx"));
 const LoungeHome = lazy(() => import("./pages/learner/LoungeHome.tsx"));
 const LoungeCorner = lazy(() => import("./pages/learner/LoungeCorner.tsx"));
 const CourseOverview = lazy(() => import("./pages/learner/CourseOverview.tsx"));
@@ -83,7 +82,8 @@ const App = () => (
           <Route path="/home" element={<Home />} />
           <Route path="/roadmap" element={<RequireApproved><Roadmap /></RequireApproved>} />
           <Route path="/workflow-preview" element={<WorkflowPreview />} />
-          <Route path="/learner/home" element={<RequireApproved><LearnerHome /></RequireApproved>} />
+          {/* 홈은 폐지 — 학습자 착지 화면은 수업이다(2026-08-01). 옛 링크·북마크는 그대로 잇는다. */}
+          <Route path="/learner/home" element={<Navigate to="/learner/course" replace />} />
           <Route path="/learner/lounge" element={<RequireApproved><LoungeHome /></RequireApproved>} />
           <Route path="/learner/lounge/:corner" element={<RequireApproved><LoungeCorner /></RequireApproved>} />
           {/* 게시·편성된 DB 강좌가 일반 학습자 수업의 단일 정본이다. */}

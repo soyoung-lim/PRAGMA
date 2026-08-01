@@ -17,7 +17,7 @@ const StudentLogin = () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: window.location.origin + "/learner/home" },
+        options: { redirectTo: window.location.origin + "/learner/course" },
       });
       if (error) {
         toast.error("Google 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.");
@@ -32,7 +32,7 @@ const StudentLogin = () => {
   // 시연·개발용: 승인·프로필 완료 상태로 만들어 학습 홈까지 한 번에 진입한다.
   const handleDevStub = () => {
     devStubSignIn(undefined, { ready: true });
-    navigate("/learner/home", { replace: true });
+    navigate("/learner/course", { replace: true });
   };
 
   return (
