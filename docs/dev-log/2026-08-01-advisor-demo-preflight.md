@@ -57,6 +57,9 @@ branch `codex/learner-report-v1-2026-07-31` · base `9a244f0`
   - 미션 인트로 하단 중복 상황 전문 비노출, 노란 시작 버튼 유지.
   - 라운지 `scrollHeight=720`, `innerHeight=720`, 세 코너 모두 노출.
   - 관리자 `pending` 링크 4종의 실제 link count가 모두 0.
+- `main` 푸시 뒤 Railway production에서 코드 묶음 커밋 `6202604`가
+  `Active / Deployment successful` 상태임을 확인했고, `https://pragma.up.railway.app`의
+  정상 응답을 확인했다(배포 ID `0674d126-e1c9-4169-b8c5-d876a2fe5cc5`).
 - 검증 과정에서 실제 번역 수행 기록 1건이 추가됐다. 콘텐츠·스키마 변경은 없다.
 
 ## 범위 밖
