@@ -52,8 +52,12 @@ const Landing = () => {
 
           {/* break-keep — 없으면 낱말 중간에서 줄이 끊긴다. */}
           <p className="mx-auto mt-5 max-w-[620px] break-keep text-[15.5px] leading-relaxed text-muted-foreground sm:text-[16.5px]">
-            PRAGMA는 한·중 통번역에서 상황과 관계에 맞는 표현을 판단하고, 직접 옮겨
-            다듬는 과정을 하나의 흐름으로 잇는 수업 플랫폼입니다.
+            <span className="block">
+              PRAGMA는 한·중 통번역에서 상황과 관계에 맞는 표현을 판단하고,
+            </span>
+            <span className="block">
+              번역·통역한 결과를 AI 피드백으로 다듬는 수업 플랫폼입니다.
+            </span>
           </p>
         </section>
 
