@@ -41,7 +41,7 @@ const Landing = () => {
                 />
                 {/* 형광펜 위에 얹히도록 텍스트도 위치를 잡아 준다(-z-10은 페이지
                     배경 뒤로 숨어 버린다). */}
-                <span className="relative">관계와 상황</span>
+                <span className="relative">상황과 관계</span>
               </span>
               에 따라
             </span>
@@ -52,7 +52,7 @@ const Landing = () => {
 
           {/* break-keep — 없으면 낱말 중간에서 줄이 끊긴다. */}
           <p className="mx-auto mt-5 max-w-[620px] break-keep text-[15.5px] leading-relaxed text-muted-foreground sm:text-[16.5px]">
-            PRAGMA는 한·중 통번역에서 관계와 상황에 맞는 표현을 판단하고, 직접 옮겨
+            PRAGMA는 한·중 통번역에서 상황과 관계에 맞는 표현을 판단하고, 직접 옮겨
             다듬는 과정을 하나의 흐름으로 잇는 수업 플랫폼입니다.
           </p>
         </section>
