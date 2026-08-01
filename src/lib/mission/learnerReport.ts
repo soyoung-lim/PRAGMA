@@ -390,6 +390,38 @@ function nextStepOf(primary: PrimaryCohortReport | null): string {
   );
 }
 
+export interface FocusCarryOver {
+  featureKey: string;
+  featureLabel: string;
+  speechActLabel: string;
+  advice: string;
+}
+
+/**
+ * 다음 수행에서 다시 살펴볼 한 가지 — 가장 최근 수행의 초점을 그대로 잇는다.
+ *
+ * ⚠️ 저장된 개별 피드백을 해석한 문장이 아니라 **초점별 고정 조언**이다. 화면에서는
+ * 반드시 어느 수행·어느 초점에서 왔는지 함께 보여, 개인화된 피드백 해석으로 읽히지
+ * 않게 한다. (누적 리포트의 nextStep은 최근 수행이 아니라 가장 큰 비교 집단을 쓰므로
+ * 이월 표시에는 쓰지 않는다.)
+ */
+export function latestFocusCarryOver(
+  entries: MyMissionLogEntry[],
+): FocusCarryOver | null {
+  // entries는 최신순이다(listMyMissionLogs: created_at desc).
+  const latest = entries.find((entry) => entry.featureId);
+  if (!latest?.featureId) return null;
+  const advice = NEXT_STEP_BY_FEATURE[latest.featureId];
+  if (!advice) return null;
+  const feature = getTargetFeature(latest.featureId);
+  return {
+    featureKey: latest.featureId,
+    featureLabel: friendlyFeatureLabel(latest.featureId, feature?.learner_label ?? ""),
+    speechActLabel: speechActLabel(latest),
+    advice,
+  };
+}
+
 export function buildLearnerReport(
   entries: MyMissionLogEntry[],
 ): LearnerReportSummary {

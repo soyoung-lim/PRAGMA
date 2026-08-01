@@ -6,11 +6,11 @@ import { HomeBrand } from "@/components/HomeBrand";
 import { ProfileWizardForm } from "@/components/ProfileWizardForm";
 import { cn } from "@/lib/utils";
 
-// /home = 프로필 관문 전용 화면. 프로필을 마친 학습자는 아래에서 /learner/home으로
+// /home = 프로필 관문 전용 화면. 프로필을 마친 학습자는 아래에서 /learner/course으로
 // 리디렉트되므로, 이 페이지 본문은 **미완료 학습자에게만** 보인다.
 // ⚠️ 여기에 학습 여정을 설명하지 않는다 — 구 5단계 번역 워크플로우 안내가 그렇게
 //    남아 있다가 실제 여정과 어긋난 채 모달 뒤에 비쳤다(2026-07-26 교체). 여정 설명은
-//    /learner/home 한 곳에서만 관리한다.
+//    /learner/course 한 곳에서만 관리한다.
 const Home = () => {
   const navigate = useNavigate();
   const { loading, session, profile, isDevStub } = useProfile();
@@ -40,7 +40,7 @@ const Home = () => {
   }
 
   if (profile?.profile_completed) {
-    return <Navigate to="/learner/home" replace />;
+    return <Navigate to="/learner/course" replace />;
   }
 
   return (
@@ -109,7 +109,7 @@ const Home = () => {
               <ProfileWizardForm
                 onCompleted={() => {
                   setProfileOpen(false);
-                  navigate("/learner/home", { replace: true });
+                  navigate("/learner/course", { replace: true });
                 }}
               />
 
