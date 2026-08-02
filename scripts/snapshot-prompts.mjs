@@ -27,6 +27,7 @@ globalThis.Deno = { serve: () => {}, env: { get: () => "SNAPSHOT" } };
 const EXPOSE = `
 ;globalThis.__S = {
   buildCoreSystemPrompt, buildCoreUserPrompt, corePromptSnapshotHash, CORE_PROBE_BASE,
+  buildCoreSourceRepairPrompt,
   buildMissionSystemPrompt, buildFeedbackSystemPrompt, buildQualitySystemPrompt,
   buildCoreQualitySystemPrompt,
   buildAuthenticSystemPrompt,
@@ -90,6 +91,15 @@ const prompts = [
   entry("core.user.response_act", "코어 생성 · 요청서 (거절·반대 등 인접쌍)", "core",
     "선행 발화(preceding_turn)를 반드시 채우게 하는 분기.",
     S.buildCoreUserPrompt({ ...S.CORE_PROBE_BASE, direction: "ko_zh", source_modality: "written", is_response_act: true })),
+  entry("core.user.sentence_repair", "코어 생성 · 문장 경계 1회 교정", "core",
+    "R29 문장 수만 실패했을 때 기존 사실을 보존하며 전체 JSON을 한 번 교정한다.",
+    S.buildCoreSourceRepairPrompt({
+      originalUserPrompt: "PROBE_USER_PROMPT",
+      previousOutput: { source_text: "PROBE_SOURCE_TEXT", focal_segments: [] },
+      sourceLanguage: "zh",
+      lengthHintKo: "PROBE_LEN",
+      measuredSentenceCount: 1,
+    })),
   entry("mission.system", "미션 승격 · 지시문 (번역)", "mission",
     "코어를 MPJ 4문항 + 산출 과제로 승격시킬 때의 지시문.",
     S.buildMissionSystemPrompt(PROBE_FEATURE, false, false, "ko_zh")),
