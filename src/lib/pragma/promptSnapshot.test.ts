@@ -21,6 +21,23 @@ describe("prompt snapshot integrity", () => {
     });
   });
 
+  it("locks interpreting cores to a bilingual mediated scene", () => {
+    const system = prompt("core.system.zh_ko");
+    const response = prompt("core.user.spoken.zh_ko.response_act");
+    const repair = prompt("core.user.preceding_turn_repair");
+    const sceneRepair = prompt("core.user.bilingual_scene_repair");
+
+    expect(system.text).toContain("A=중국어 화자, B=한국어 화자");
+    expect(system.text).toContain("왜 통역이 필요한 장면인지");
+    expect(response.text).toContain("통역 참여자 언어: A는 중국어 화자, B는 한국어 화자");
+    expect(response.text).toContain("서로 다른 언어인 것은 정상");
+    expect(response.text).toContain("두 턴을 같은 언어로 통일하지 마세요");
+    expect(repair.text).toContain("자연스러운 한국어 발화");
+    expect(repair.text).toContain("중국어로 쓰지 마세요");
+    expect(sceneRepair.text).toContain("A=중국어 화자, B=한국어 화자");
+    expect(sceneRepair.text).toContain("기존 역할·P/D/R·사건은 바꾸지 말고");
+  });
+
   it("matches the current Edge source", () => {
     const source = readFileSync(
       resolve(process.cwd(), PROMPT_SNAPSHOT.edge_source),
@@ -34,6 +51,9 @@ describe("prompt snapshot integrity", () => {
       "'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch'",
     );
     expect(canonicalSource).toContain("prompt_version: 'quality_v2'");
+    expect(canonicalSource).toContain("corePrecedingTurnIssue(");
+    expect(canonicalSource).toContain("preceding_turn_repair_applied: precedingTurnRepairApplied");
+    expect(canonicalSource).toContain("DIR_LANGS[coreDir].tgt");
 
     // 안전 후보 판정이 쓰는 미션 프롬프트 버전 목록이 엣지와 어긋나면 구버전 미션이
     // 자동 선택에 섞이거나 정상 미션이 통째로 막힌다. 양쪽을 여기서 묶어 둔다.
