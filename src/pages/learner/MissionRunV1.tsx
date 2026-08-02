@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { CheckCircle2, CircleAlert, Mail, MessageCircle, Send, Sparkles } from "lucide-react";
+import { CheckCircle2, CircleAlert, Mail, MessageCircle, Mic, Send, Sparkles, Volume2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -1144,7 +1144,7 @@ function MissionRunner({
               <span>예시 {mpjIdx + 1} / {items.length}</span>
               <span className="text-[#D3CEC0]">·</span>
               <span className="font-bold text-[#15202B]">
-                {mpjTaskTitle(item, mission.unit.target_feature)}
+                {mpjTaskTitle(item, mission.unit.target_feature, pt.mode)}
               </span>
             </>
           )}
@@ -1563,20 +1563,14 @@ function MissionColdOpen({
   const turnPrompt = isResponse
     ? isInterpreting
       ? "상대의 말이 끝났습니다. 이제 내 통역 차례입니다."
-      : writingSkin === "email"
-        ? "받은 메일에 내가 답할 차례입니다."
-        : "상대의 메시지가 도착했습니다. 이제 내가 답할 차례입니다."
+      : "상대의 이전 메시지에 내가 답할 차례입니다."
     : isResponseFallback
       ? isInterpreting
         ? "대화가 이어지는 순간입니다. 이제 내가 응답할 차례입니다."
-        : writingSkin === "email"
-          ? "이전 대화에 이어 답장을 작성할 차례입니다."
-          : "대화가 이어지고 있습니다. 이제 내가 응답할 차례입니다."
+        : "이전 대화에 이어 답안을 작성할 차례입니다."
     : isInterpreting
       ? "내가 먼저 말을 꺼내는 장면입니다."
-      : writingSkin === "email"
-        ? "내가 먼저 새 이메일을 보낼 차례입니다."
-        : "내가 먼저 메시지를 보낼 차례입니다.";
+      : "내가 먼저 번역을 작성할 차례입니다.";
 
   return (
     <div className="space-y-3" data-cold-open-kind={coldOpen.kind}>
@@ -1608,9 +1602,7 @@ function MissionColdOpen({
             mode={isInterpreting ? "interpreting" : "translation"}
             situation={productionTask.situation_ko}
             relation={productionTask.relation_ko}
-            {...(!isInterpreting
-              ? { formatLabel: writingSkin === "email" ? "이메일 · 번역" : "메시지 · 번역" }
-              : {})}
+            {...(!isInterpreting ? { formatLabel: "작성 · 번역" } : {})}
           />
           <Button
             className="w-full bg-[#15202B] py-6 text-[14px] font-bold text-white hover:bg-[#26384A]"
@@ -1641,7 +1633,7 @@ function MissionColdOpen({
           <div className="overflow-hidden rounded-2xl border border-[#CDD5DD] bg-white shadow-[0_8px_22px_rgba(21,32,43,0.07)]">
             <div className="flex items-center gap-2 border-b border-[#E2E6EA] bg-[#F7F9FA] px-4 py-2.5 text-[12px] font-bold text-[#40515F]">
               <Mail className="h-4 w-4" aria-hidden="true" />
-              {isResponse || isResponseFallback ? "답장 준비" : "새 이메일"}
+              {isResponse || isResponseFallback ? "답장 준비" : "새 번역 작성"}
             </div>
             <div className="border-b border-[#E7EAED] px-4 py-2.5 text-[12.5px] text-[#5B6B76]">
               받는 사람 <span className="ml-2 font-semibold text-[#273642]">{counterpart}</span>
@@ -1737,7 +1729,7 @@ function TranslationComposer({
         mode="translation"
         situation={situation}
         relation={relation}
-        formatLabel={skin === "email" ? "이메일 · 번역" : "메시지 · 번역"}
+        formatLabel="작성 · 번역"
       />
 
       <div className="rounded-2xl border border-[#E1DED5] bg-[#F2F1ED] p-4 shadow-[0_7px_20px_rgba(21,32,43,0.04)]">
@@ -1754,22 +1746,22 @@ function TranslationComposer({
           <div className="flex items-center justify-between border-b border-[#E1E6EA] bg-[#F7F9FA] px-4 py-2.5">
             <div className="flex items-center gap-2 text-[12px] font-bold text-[#40515F]">
               <Mail className="h-4 w-4" aria-hidden="true" />
-              {previousTurn ? "답장 작성" : "새 이메일"}
+              {previousTurn ? "답장 작성" : "새 번역 작성"}
             </div>
-            <span className="text-[10.5px] text-[#81909B]">발송 전 초안</span>
+            <span className="text-[10.5px] text-[#81909B]">제출 전 초안</span>
           </div>
           <div className="border-b border-[#E7EAED] px-4 py-2.5 text-[12.5px] text-[#5B6B76]">
             받는 사람 <span className="ml-2 font-semibold text-[#273642]">{counterpart}</span>
           </div>
           {previousTurn && (
             <div className="mx-4 mt-3 rounded-lg bg-[#F4F6F7] px-3 py-2.5 text-[12.5px] leading-relaxed text-[#667681]">
-              <div className="mb-1 text-[10.5px] font-bold text-[#7A8892]">받은 메일</div>
+              <div className="mb-1 text-[10.5px] font-bold text-[#7A8892]">이전 메시지</div>
               {previousTurn}
             </div>
           )}
           {!previousTurn && (
             <div className="mx-4 mt-3 text-[11.5px] font-semibold text-[#71808B]">
-              내가 먼저 이메일을 보내는 장면
+              내가 먼저 번역을 작성하는 장면
             </div>
           )}
           <label className="sr-only" htmlFor="translation-draft">② 내 번역 ({tgtName})</label>
@@ -1779,12 +1771,12 @@ function TranslationComposer({
             rows={rows}
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
-            placeholder={`${tgtName} 이메일을 작성하세요…`}
+            placeholder={`${tgtName} 번역을 작성하세요…`}
           />
           <div className="flex items-center justify-between border-t border-[#E7EAED] bg-[#FBFCFC] px-4 py-2.5">
             <span className="text-[11px] text-[#82909A]">② 내 번역 ({tgtName})</span>
             <span className="inline-flex items-center gap-1.5 rounded-md bg-[#D9E0E5] px-3 py-1.5 text-[11.5px] font-bold text-[#5F6E79]">
-              <Send className="h-3.5 w-3.5" aria-hidden="true" /> 발송 전
+              <Send className="h-3.5 w-3.5" aria-hidden="true" /> 제출 전
             </span>
           </div>
         </div>
@@ -2089,68 +2081,90 @@ function AudioFrame({
   const canSubmit = !transcribing && confirmed && transcript.trim().length > 0;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-scene-skin="oral-console">
       <DctScenePanel mode="interpreting" situation={situation} relation={relation} />
 
-      {/* ① 원문 듣기 */}
-      <div className="rounded-2xl bg-[#101922] p-4 text-[#EAF0F4] shadow-[0_8px_22px_rgba(16,25,34,0.14)]">
-        <div className="text-[11.5px] font-bold text-[#FAD338]">① 원문 듣기 ({srcName}) · 최대 {MAX_PLAYS}회</div>
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={play}
-            disabled={plays >= MAX_PLAYS || playing || ttsLoading}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FAD338] text-[18px] font-bold text-[#15202B] disabled:opacity-40"
-          >
-            {playing || ttsLoading ? "❚❚" : "▶"}
-          </button>
-          <div>
-            <div className="text-[14px] font-semibold text-white">
-              {ttsLoading ? "고품질 음성 준비 중…" : playing ? "재생 중…" : "원발화 재생"}
+      {/* 번역 DCT의 이메일 작성기와 같은 차분한 작업대 톤. 통역 구인은 듣기·녹음으로 유지한다. */}
+      <div className="overflow-hidden rounded-2xl border border-[#CBD4DC] bg-white shadow-[0_8px_22px_rgba(21,32,43,0.07)]">
+        <div className="flex items-center justify-between gap-3 border-b border-[#E1E6EA] bg-[#F7F9FA] px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2 text-[12px] font-bold text-[#40515F]">
+            <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>통역 수행 콘솔</span>
+          </div>
+          <span className="shrink-0 text-[10.5px] text-[#7B8994]">듣기 → 녹음</span>
+        </div>
+
+        <div className="p-4">
+          {/* ① 원문 듣기 */}
+          <section aria-labelledby="interpreting-listen-heading">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 id="interpreting-listen-heading" className="text-[12px] font-bold text-[#273642]">
+                ① 원문 듣기 ({srcName})
+              </h3>
+              <span className="text-[10.5px] text-[#7B8994]">최대 {MAX_PLAYS}회</span>
             </div>
-            <div className="text-[12px] text-[#A5B5C1]">남은 재생 {Math.max(0, MAX_PLAYS - plays)}회 · 재생 {plays}회</div>
+            <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#E1E6EA] bg-[#FAFBFC] p-3">
+              <button
+                type="button"
+                onClick={play}
+                disabled={plays >= MAX_PLAYS || playing || ttsLoading}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#B7C3CD] bg-white text-[#273642] shadow-sm transition-colors hover:bg-[#F3F6F8] disabled:opacity-40"
+                aria-label={playing || ttsLoading ? "원발화 재생 중" : "원발화 재생"}
+              >
+                <Volume2 className="h-[18px] w-[18px]" aria-hidden="true" />
+              </button>
+              <div>
+                <div className="text-[13.5px] font-semibold text-[#273642]">
+                  {ttsLoading ? "고품질 음성 준비 중…" : playing ? "재생 중…" : "원발화 재생"}
+                </div>
+                <div className="text-[11.5px] text-[#7B8994]">
+                  남은 재생 {Math.max(0, MAX_PLAYS - plays)}회 · 재생 {plays}회
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ② 통역 녹음 */}
+          <section className="mt-4 border-t border-[#E1E6EA] pt-4" aria-labelledby="interpreting-record-heading">
+            <h3 id="interpreting-record-heading" className="text-[12px] font-bold text-[#273642]">
+              ② 통역 녹음 ({tgtName})
+            </h3>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={recording ? stopRec : startRec}
+                disabled={transcribing}
+                className={[
+                  "rounded-lg border px-4 py-2 text-[13px] font-bold transition-colors disabled:cursor-wait disabled:opacity-60",
+                  recording
+                    ? "border-[#B44647] bg-[#B44647] text-white"
+                    : "border-[#B8C2CA] bg-white text-[#40515F] hover:border-[#7D8C98] hover:bg-[#F7F9FA]",
+                ].join(" ")}
+              >
+                {recording ? "■ 녹음 정지" : transcribing ? "전사 중…" : recorded ? "● 다시 녹음" : "● 녹음 시작"}
+              </button>
+              <span className="text-[11.5px] text-[#6D7B86]">
+                {recording
+                  ? "녹음 중…"
+                  : transcribing
+                    ? "고품질 자동 전사 중…"
+                    : recorded
+                      ? "전사 완료 · 아래에서 확인"
+                      : "버튼을 누른 뒤 통역 시작"}
+              </span>
+            </div>
+            <p className="mt-2.5 text-[10.5px] leading-relaxed text-[#7B8994]">
+              마이크 음성은 자동 전사를 위해 OpenAI 음성 인식 API로 전송됩니다.
+              PRAGMA는 음성 파일을 저장하지 않으며, 확인한 전사만 제출·저장합니다.
+            </p>
+          </section>
+
+          {notice && (
+            <div className="mt-3 rounded-lg border border-[#E1E6EA] bg-[#F7F9FA] px-3 py-2 text-[12px] leading-relaxed text-[#536572]">
+              {notice}
+            </div>
+          )}
           </div>
-        </div>
-
-        {/* ② 통역 녹음 */}
-        <div className="mt-5 border-t border-[#2B3944] pt-4 text-[11.5px] font-bold text-[#A5B5C1]">
-          ② 통역 녹음 ({tgtName})
-        </div>
-        <div className="mt-2 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={recording ? stopRec : startRec}
-            disabled={transcribing}
-            className={[
-              "rounded-lg border px-4 py-2 text-[13px] font-bold disabled:cursor-wait disabled:opacity-60",
-              recording
-                ? "border-[#C4494A] bg-[#C4494A] text-white"
-                : "border-[#C4494A] bg-transparent text-[#F0A3A4]",
-            ].join(" ")}
-          >
-            {recording ? "■ 녹음 정지" : transcribing ? "전사 중…" : recorded ? "● 다시 녹음" : "● 녹음 시작"}
-          </button>
-          <span className="text-[12px] text-[#A5B5C1]">
-            {recording
-              ? "녹음 중…"
-              : transcribing
-                ? "고품질 자동 전사 중…"
-                : recorded
-                  ? "전사 완료 · 아래에서 확인"
-                : "버튼을 누른 뒤 통역 시작"}
-          </span>
-        </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-[#93A6B4]">
-          마이크 음성은 자동 전사를 위해 OpenAI 음성 인식 API로 전송됩니다.
-          PRAGMA는 음성 파일을 저장하지 않으며, 확인한 전사만 제출·저장합니다.
-        </p>
-
-        {notice && (
-          <div className="mt-3 rounded-lg bg-[#182630] px-3 py-2 text-[12px] leading-relaxed text-[#C7D3DC]">
-            {notice}
-          </div>
-        )}
-
       </div>
 
       {/* ③ 전사 확인 — 같은 모노크롬 페이퍼 톤의 편집 작업대 */}
@@ -2503,14 +2517,20 @@ const JUDGE3_TASK_TITLE: Record<string, string> = {
   politeness: "공손함의 정도가 상황에 맞을까?",
 };
 
-function mpjTaskTitle(item: MpjItemRuntime, featureCode: string): string {
+function mpjTaskTitle(
+  item: MpjItemRuntime,
+  featureCode: string,
+  mode: MissionPresentationMode,
+): string {
+  const outputName = mode === "interpreting" ? "통역" : "번역";
   if (item.type === "judge3") {
     return JUDGE3_TASK_TITLE[featureCode] ?? "이 표현의 정도가 상황에 맞을까?";
   }
   if (item.type === "multi_judge") {
-    return `번역안 ${item.candidates.length}개, 각각 상황에 맞을까?`;
+    return `${outputName}안 ${item.candidates.length}개, 각각 상황에 맞을까?`;
   }
-  return MPJ_TASK_TITLE[item.type] ?? "이 표현을 어떻게 볼까?";
+  const title = MPJ_TASK_TITLE[item.type] ?? "이 표현을 어떻게 볼까?";
+  return mode === "interpreting" ? title.replace("번역", "통역") : title;
 }
 
 function MpjContextSurface({
@@ -2525,118 +2545,30 @@ function MpjContextSurface({
   const hasTarget = item.type !== "multi_judge";
   const channel = mpjPresentationChannel(mode, item.channel);
 
-  if (channel === "email") {
-    return (
-      <div className="my-1.5 overflow-hidden rounded-2xl border border-[#D7DDE5] bg-white">
-        <div
-          className={[
-            "border-b border-l-4 border-[#E4E8EE] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#F6F8FA_74%)]",
-            MISSION_SCENE_PANEL_DENSITY,
-          ].join(" ")}
-        >
-          <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#5A6672]">
-            <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
-            지금, 이메일을 쓸 장면
-          </div>
-          <SituationText
-            text={item.situation_ko}
-            emphasizeFirst
-            spacious
-            className={MISSION_SCENE_TEXT_DENSITY}
-          />
-          <div className={`${MISSION_SCENE_RELATION_GAP} text-[12.5px] font-semibold text-[#3E4C57]`}>
-            받는 사람 · {learnerCounterpartLabel(item.relation_ko)}
-          </div>
-        </div>
-        <div className="space-y-3 px-4 py-4">
-          {item.preceding_turn && (
-            <div className="border-l-2 border-[#C8CFD8] pl-3 text-[13px] leading-relaxed text-muted-foreground">
-              앞선 메일 · {item.preceding_turn}
-            </div>
-          )}
-          <div className="rounded-lg bg-[#FFF9DF] px-3 py-2 text-[13.5px]">
-            <span className="font-semibold text-[#6B5518]">전하려는 뜻</span>
-            <div className="mt-1">{item.source}</div>
-          </div>
-          {hasTarget && (
-            <div className="rounded-lg border border-dashed border-[#6B8FB3] bg-[#F3F7FB] px-3.5 py-3">
-              <div className="text-[10.5px] font-bold text-[#4E6F8E]">AI 이메일 초안 · 발송 전</div>
-              <div className="mt-1 text-[15px] font-medium leading-relaxed">
-                {answered ? highlightZh(item.target, item.highlights) : item.target}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (channel === "facetoface" || channel === "phone") {
-    return (
-      <div className="my-1.5 overflow-hidden rounded-2xl border border-[#CFD9E3] bg-[#F3F6F9]">
-        <div
-          className={[
-            "border-b border-l-4 border-[#DCE4EB] border-l-[#FAD338] bg-[linear-gradient(135deg,#FFFDF4_0%,#EAF0F5_74%)]",
-            MISSION_SCENE_PANEL_DENSITY,
-          ].join(" ")}
-        >
-          <div className="flex items-center gap-2 text-[10.5px] font-extrabold uppercase tracking-[0.07em] text-[#52697E]">
-            <span className="h-2 w-2 rounded-full bg-[#FAD338] shadow-[0_0_0_3px_rgba(250,211,56,0.22)]" aria-hidden="true" />
-            {channel === "phone" ? "지금, 통화할 장면" : "지금, 마주 보고 말할 장면"}
-          </div>
-          <SituationText
-            text={item.situation_ko}
-            emphasizeFirst
-            spacious
-            className={MISSION_SCENE_TEXT_DENSITY}
-          />
-          <div className={`${MISSION_SCENE_RELATION_GAP} text-[12.5px] font-semibold text-[#3E4C57]`}>
-            듣는 사람 · {learnerCounterpartLabel(item.relation_ko)}
-          </div>
-        </div>
-        <div className="space-y-3 px-4 py-4">
-          {item.preceding_turn && (
-            <div className="rounded-lg bg-white px-3 py-2 text-[13.5px]">
-              <span className="mr-2 text-[11px] font-bold text-[#60758A]">상대 발화</span>{item.preceding_turn}
-            </div>
-          )}
-          <div className="rounded-lg bg-[#FFF9DF] px-3 py-2 text-[13.5px]">
-            <span className="font-semibold text-[#6B5518]">전하려는 말</span>
-            <div className="mt-1">{item.source}</div>
-          </div>
-          {hasTarget && (
-            <div className="rounded-lg border border-dashed border-[#6B8FB3] bg-white px-3.5 py-3">
-              <div className="text-[10.5px] font-bold text-[#4E6F8E]">AI 통역 초안 · 말하기 전</div>
-              <div className="mt-1 text-[15px] font-medium leading-relaxed">
-                {answered ? highlightZh(item.target, item.highlights) : item.target}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <ChatScene
-      situation={item.situation_ko}
-      relation={item.relation_ko}
-      separatePanels
-      threadEyebrow="메시지 작성 중"
-    >
-      {item.preceding_turn && <ChatBubble side="them">{item.preceding_turn}</ChatBubble>}
-      {item.type === "multi_judge" ? (
-        <ChatCaption placement="below">내가 전할 말: {item.source}</ChatCaption>
-      ) : (
-        <>
-          <ChatCaption tone="draft">AI 번역 초안 · 아직 안 보냄</ChatCaption>
-          <ChatBubble side="me" variant="draft">
-            {answered ? highlightZh(item.target, item.highlights) : item.target}
-          </ChatBubble>
+    <div data-mpj-skin={channel}>
+      <ChatScene
+        situation={item.situation_ko}
+        relation={item.relation_ko}
+        separatePanels
+        threadEyebrow="DM 대화 · 표현 비교 중"
+      >
+        {item.preceding_turn && <ChatBubble side="them">{item.preceding_turn}</ChatBubble>}
+        {item.type === "multi_judge" ? (
           <ChatCaption placement="below">내가 전할 말: {item.source}</ChatCaption>
-        </>
-      )}
-    </ChatScene>
+        ) : (
+          <>
+            <ChatCaption tone="draft">
+              AI {mode === "interpreting" ? "통역" : "번역"} 초안 · 비교 전
+            </ChatCaption>
+            <ChatBubble side="me" variant="draft">
+              {answered ? highlightZh(item.target, item.highlights) : item.target}
+            </ChatBubble>
+            <ChatCaption placement="below">내가 전할 말: {item.source}</ChatCaption>
+          </>
+        )}
+      </ChatScene>
+    </div>
   );
 }
 
@@ -2848,7 +2780,9 @@ function MpjStage({
           {/* scale4 */}
           {item.type === "scale4" && (
             <>
-              <div className="text-[13px] font-semibold">이 번역안은 이 상황에 얼마나 적절한가요?</div>
+              <div className="text-[13px] font-semibold">
+                이 {mode === "interpreting" ? "통역안" : "번역안"}은 이 상황에 얼마나 적절한가요?
+              </div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {SCALE4_CODES.map((code) => (
                   <Choice key={code} label={SCALE4_LABELS[code as Scale4Code]} selected={scalePick === code} disabled={answered} onClick={() => setScalePick(code)} />
@@ -3043,7 +2977,9 @@ function MpjStage({
       {/* multi_judge: 한 상황 다중 발화 */}
       {item.type === "multi_judge" && (
         <div className="rounded-xl border border-[#EAE4D2] border-t-[3px] border-t-[#15202B] bg-white px-4 pb-4 pt-3">
-          <div className="text-[13px] font-semibold">AI가 만든 번역 초안 5개 비교하기</div>
+          <div className="text-[13px] font-semibold">
+            AI가 만든 {mode === "interpreting" ? "통역" : "번역"} 초안 5개 비교하기
+          </div>
           <p className="mt-1 text-[12.5px] text-muted-foreground">BEST 1, WORST 1을 각각 고르세요.</p>
           <ul className="mt-3 space-y-2.5">
             {item.candidates.map((c, i) => (
