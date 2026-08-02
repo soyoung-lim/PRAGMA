@@ -137,3 +137,15 @@ R29와 DB 유일성 제약은 품질·실행 추적을 지키는 유효한 안�
 - core_v7 생성 계약·DB·`policy_ver`·길이 정책·콘텐츠는 변경하지 않았다.
 - AI 품질점검 결함을 규칙 실패 재시도로 자동 처리하지 않았고, 초대 대역 정의 변경은 승인
   전 확인 필요로 남겼다.
+
+### 배포
+
+- 구현·기록 커밋 `f2f78e5`, `bd17845`를 PR #14로 병합했다(merge commit `3c7e57d`).
+- Supabase `generate-scenario` Edge를 프로젝트 `tlnjxagqwvefeqdagtkq`에 배포했다.
+- 전용 worktree를 `railway up . --path-as-root --detach`로 배포했고, deployment
+  `e69237d2-e748-4ffa-b223-cdbdf96f53a7`의 `SUCCESS`를 확인했다.
+- 운영 홈과 `adminReviewQueue-rP6hl3b5.js`, `missionRules-Bq4lFbWH.js`가 HTTP 200을
+  반환했다. 운영 청크에서 새 미션 버전 2개, R27 중복 위치 문구, R5 초점 자원·대역 보존
+  문구를 확인했다.
+- 운영 DB 저장이나 콘텐츠 생성은 수행하지 않았다. 같은 core_v7 표본의 소수 재조립 결과는
+  사용자가 다음 라운드에서 실패 유형별로 확인한다.
