@@ -82,4 +82,15 @@ describe("target feature catalog integrity", () => {
       expect(SCALE4_LABELS[code].trim()).not.toBe("");
     }
   });
+
+  it("keeps invitation choice and commitment band boundaries explicit", () => {
+    const feature = TARGET_FEATURES.invitation_choice_commitment;
+
+    expect(feature.version).toBe("1.1");
+    expect(feature.operational_definition).toContain("희망·환영형은 그 자체로 압박이 아니다");
+    expect(feature.operational_definition).toContain("선택권을 넓힌다는 이유만으로 모호하다고 판정하지 않는다");
+    expect(feature.operational_definition_zh_ko).toContain("'참석해 주시면 좋겠습니다'");
+    expect(feature.operational_definition_zh_ko).toContain("통상적 희망형은 그 자체로 압박이 아니다");
+    expect(feature.operational_definition_zh_ko).toContain("'일정이 맞지 않으면 조정하겠습니다'");
+  });
 });
