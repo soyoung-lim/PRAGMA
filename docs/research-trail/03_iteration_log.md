@@ -716,6 +716,10 @@
   - 카탈로그 **6 pass**, 전체 **239 pass / 6 skip**, typecheck, 변경 파일 ESLint,
     production build(**1901 modules**) 통과.
   - 코어 프롬프트 surface와 hash `07d82beaab49…`는 불변이다.
+  - PR #16을 merge commit `d592946`으로 병합하고 Railway production deployment
+    `57c64116-a817-4047-baae-d53d43d22494`을 배포했다. Railway `SUCCESS`, 운영 URL
+    HTTP 200과 `targetFeatures-DpMM3B1Z.js`의 feature `v1.1`·한국어 경계 예시 포함을
+    확인했다.
 - 예상과 달랐던 점:
   - AI 품질점검은 오분류를 정확히 탐지했다. 결함은 비평기가 아니라 생성기가 정해진 후보
     슬롯을 채우기 위해 정상 표현에 부적절 대역을 붙인 데 있었다.
@@ -727,4 +731,4 @@
   - 배포 뒤 동일 core 계열의 초대 표본을 소수 재조립해 규칙 성공률과 AI 대역 finding을
     분리 집계한다.
 - 관련 Decision / Evidence: `DEC-20260803-01`, `EVD-20260803-01`
-- 관련 커밋: `39c5574`
+- 관련 커밋: `39c5574`, `20baa79`, `d592946`
