@@ -4,7 +4,10 @@ import {
 } from '../_shared/feedbackRequestLimits.ts'
 import { repairFeedbackPragmaticLeak } from '../_shared/feedbackLayerRepair.ts'
 import {
+  buildCoreOutputRepairPrompt,
   buildCoreSourceRepairPrompt,
+  coreBilingualSceneIssue,
+  corePrecedingTurnIssue,
   coreSourceIssue,
 } from '../_shared/coreSourceRepair.ts'
 import {
@@ -880,6 +883,9 @@ function buildCoreSystemPrompt(direction: Direction): string {
   제안·초대는 B에게 실질적 선택권이 있어야 하며, 불만은 문제 책임자나 조정 가능한 상대를 향한다.
 - 수행 모드와 situation_ko의 장면 서술은 반드시 일치해야 한다. 번역 셀을 "직접 말하는
   상황", 통역 셀을 "글로 작성해 보내는 상황"으로 서술하는 식의 명시적 모순은 금지한다.
+- 통역 셀에서는 A=${srcL} 화자, B=${tgtL} 화자이고, 학습자가 A의 ${srcL} 발화를 B에게
+  ${tgtL}로 옮기는 이중언어 상호작용이다. situation_ko에 두 사람의 언어 역할과 통역이
+  개입하는 자리임을 자연스럽게 드러내어, 왜 통역이 필요한 장면인지 알 수 있게 한다.
 - 출력 전에 화행·도메인·P·D·R·수행 모드뿐 아니라 행위자 지시·산업 단서·topic·인접쌍 명제·
   결정 권한을 내부적으로 하나씩 대조한다.
 - "중국인은/중국에서는/한국인은/한국에서는" 같은 국가 단위 일반화 표현 금지.
@@ -932,6 +938,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   if (b.source_modality === 'spoken') {
     parts.push(
       `- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 ${srcL} 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지. situation_ko도 직접 말하고 듣는 장면으로 서술하며, 이메일·메신저·글을 작성해 보내는 장면으로 만들지 마세요.`,
+      `- 통역 참여자 언어: A는 ${srcL} 화자, B는 ${tgtL} 화자이며 학습자가 A의 말을 B에게 옮깁니다. situation_ko에 두 언어 화자와 통역의 개입을 자연스럽게 명시하세요. 같은 언어 사용자끼리 통역 없이 대화하는 장면으로 만들면 실패입니다.`,
     )
   } else {
     parts.push(`- 수행 모드: 번역 — source_text는 자연스러운 ${srcL} 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정. situation_ko도 글을 작성해 전달하는 장면으로 서술하며, "글로 남기지 않고 직접 말한다"거나 대면·통화로만 수행하는 장면으로 만들지 마세요.`)
@@ -940,6 +947,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
     parts.push(
       `- 이 화행은 인접쌍의 둘째 짝입니다. preceding_turn에 상대(${tgtL} 화자)의 선행 발화를 '${tgtL}'로 반드시 채우세요(null 금지).`,
       `- preceding_turn의 화자는 B, source_text의 화자는 A입니다. 두 턴에서 사람·소유·행위 대상과 핵심 명제를 일관되게 유지하세요.`,
+      `- preceding_turn(${tgtL})과 source_text(${srcL})가 서로 다른 언어인 것은 정상입니다. B의 말을 들은 A가 자기 언어로 응답하고, 학습자가 그 응답을 B의 언어로 옮기는 장면이므로 두 턴을 같은 언어로 통일하지 마세요.`,
     )
     if (b.speech_act === 'opposition') {
       parts.push(
@@ -953,7 +961,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
 
 // ── 코어 생성 프롬프트 스냅샷 해시 (재현성 provenance, 2026-07-26) ──────────
 // 목적: "이 배치의 행들이 같은 프롬프트·같은 호출 설정으로 만들어졌다"를 기계로 증명한다.
-// generation_prompt_version('core_v5')만으로는 세부 개정을 구분하지 못하므로,
+// generation_prompt_version만으로는 세부 개정을 구분하지 못하므로,
 // 모델에 실제로 보내는 문자열에서 지문을 뽑는다.
 //
 // ⚠️ 셀별 입력값(화행·수준·도메인·P/D/R·장면시드·분량)은 해시에 넣지 않는다.
@@ -1053,7 +1061,7 @@ async function corePromptSnapshotHash(): Promise<string> {
     ),
   )
   coreSnapshotHashCache = await sha256Hex(canonicalJson({
-    v: 5,
+    v: 7,
     scope: 'core_generation',
     action: 'core',
     model: PRIMARY_MODEL,
@@ -1077,6 +1085,48 @@ async function corePromptSnapshotHash(): Promise<string> {
       measuredEffectiveCharCount: 999,
       effectiveCharRange: { min: 30, max: 45 },
     }),
+    preceding_turn_repair_prompt_templates: (['ko', 'zh'] as const).map((expectedLanguage) =>
+      buildCoreOutputRepairPrompt({
+        originalUserPrompt: 'PROBE_USER_PROMPT',
+        previousOutput: {
+          source_text: 'PROBE_SOURCE_TEXT',
+          preceding_turn: 'PROBE_PRECEDING_TURN',
+          focal_segments: [],
+        },
+        sourceLanguage: expectedLanguage === 'ko' ? 'zh' : 'ko',
+        lengthHintKo: '유효 글자 PROBE_MIN~PROBE_MAX자',
+        effectiveCharRange: { min: 30, max: 45 },
+        sourceIssue: null,
+        precedingTurnIssue: {
+          code: 'wrong_language',
+          expectedLanguage,
+          message: 'PROBE_PRECEDING_TURN_LANGUAGE_ERROR',
+        },
+        bilingualSceneIssue: null,
+      })
+    ),
+    bilingual_scene_repair_prompt_templates: (['ko_zh', 'zh_ko'] as const).map((direction) =>
+      buildCoreOutputRepairPrompt({
+        originalUserPrompt: 'PROBE_USER_PROMPT',
+        previousOutput: {
+          situation_ko: 'PROBE_SITUATION',
+          source_text: 'PROBE_SOURCE_TEXT',
+          preceding_turn: null,
+          focal_segments: [],
+        },
+        sourceLanguage: DIR_LANGS[direction].src,
+        lengthHintKo: '유효 글자 PROBE_MIN~PROBE_MAX자',
+        effectiveCharRange: { min: 30, max: 45 },
+        sourceIssue: null,
+        precedingTurnIssue: null,
+        bilingualSceneIssue: {
+          sourceLanguage: DIR_LANGS[direction].src,
+          targetLanguage: DIR_LANGS[direction].tgt,
+          missing: ['source_speaker', 'target_speaker', 'interpreting'],
+          message: 'PROBE_BILINGUAL_SCENE_ERROR',
+        },
+      })
+    ),
     prompt_catalogs: {
       pdr_p_ko: PDR_P_KO,
       pdr_d_ko: PDR_D_KO,
@@ -1807,7 +1857,7 @@ ${focal.map((s) => `- ${s.role === 'head' ? '중심 화행' : '조절 구간'}: 
                    "explanation_ko": "왜 이해를 막는지 1문장" } ],
     "feature_ko": "화용 층 1~2문장(비단정)",
     "alternatives": [ { "text": "최소대조안", "note_ko": "무엇을 하나 바꿨는지" } ],
-    "discourse_ko": "담화 전체의 연결·자연성 한 줄 (미니 담화형이 아니면 \"\")",
+    "discourse_ko": "담화 전체의 연결·자연성 한 줄 (미니 담화형이 아니면 "")",
     "offfocus_warnings": [ { "text": "집중 구간 밖 인용", "note_ko": "왜 심각한지 1문장" } ]
   },
   "uncertainty_flags": [ { "dimension": "grammar | pragmatic", "reason": "왜 확신이 없는지" } ]
@@ -1929,27 +1979,43 @@ Deno.serve(async (req) => {
       } catch (e) {
         return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
       }
-      // 길이 정책과 2~4문장 담화 형태를 생성 단계에서 한 번 더 보장한다. 특히 중국어
-      // 구두 담화를 쉼표로 길게 잇거나 수준 범위를 벗어나는 출력을 클라이언트까지
-      // 내려보내지 않고, 기존 사실·역할을 고정한 1회 교정 호출로 맞춘다.
+      // 길이 정책·2~4문장 담화 형태·응답 화행의 target-language 선행 발화를 생성
+      // 단계에서 한 번 더 보장한다. 오류가 여럿이어도 기존 사실·역할을 고정한 단 한 번의
+      // 교정 호출로 함께 맞춘다.
       const lengthLevel = coreLengthLevel(b)
       const lengthMode = coreLengthMode(b)
       const lengthRange = coreLengthRange(lengthLevel, lengthMode)
       const lengthHintKo = coreLengthHintKo(lengthLevel, lengthMode)
       const initialSourceText = String(gen.source_text ?? gen.source_text_ko ?? '')
       const initialSourceIssue = coreSourceIssue(initialSourceText, lengthRange)
-      let sourceRepairAttempted = false
+      const initialPrecedingTurn = gen.preceding_turn ?? gen.preceding_turn_zh ?? null
+      const initialPrecedingTurnIssue = corePrecedingTurnIssue(
+        initialPrecedingTurn,
+        DIR_LANGS[coreDir].tgt,
+        b.is_response_act,
+      )
+      const initialBilingualSceneIssue = coreBilingualSceneIssue(
+        gen.situation_ko,
+        DIR_LANGS[coreDir].src,
+        DIR_LANGS[coreDir].tgt,
+        b.source_modality === 'spoken',
+      )
+      const coreRepairAttempted = Boolean(
+        initialSourceIssue || initialPrecedingTurnIssue || initialBilingualSceneIssue
+      )
       let sourceRepairApplied = false
-      if (initialSourceIssue) {
-        sourceRepairAttempted = true
-        const repairUser = buildCoreSourceRepairPrompt({
+      let precedingTurnRepairApplied = false
+      let bilingualSceneRepairApplied = false
+      if (coreRepairAttempted) {
+        const repairUser = buildCoreOutputRepairPrompt({
           originalUserPrompt: usr,
           previousOutput: gen,
           sourceLanguage: DIR_LANGS[coreDir].src,
           lengthHintKo,
-          measuredSentenceCount: initialSourceIssue.sentenceCount,
-          measuredEffectiveCharCount: initialSourceIssue.effectiveCharCount,
           effectiveCharRange: lengthRange,
+          sourceIssue: initialSourceIssue,
+          precedingTurnIssue: initialPrecedingTurnIssue,
+          bilingualSceneIssue: initialBilingualSceneIssue,
         })
         let repairModel = model
         let repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
@@ -1965,13 +2031,31 @@ Deno.serve(async (req) => {
           try {
             const repaired = parseOpenAIContent(repairAttempt.raw) as Record<string, unknown>
             const repairedSourceText = String(repaired.source_text ?? repaired.source_text_ko ?? '')
-            if (!coreSourceIssue(repairedSourceText, lengthRange)) {
+            const repairedPrecedingTurn = repaired.preceding_turn ?? repaired.preceding_turn_zh ?? null
+            const repairedPrecedingTurnIssue = corePrecedingTurnIssue(
+              repairedPrecedingTurn,
+              DIR_LANGS[coreDir].tgt,
+              b.is_response_act,
+            )
+            const repairedBilingualSceneIssue = coreBilingualSceneIssue(
+              repaired.situation_ko,
+              DIR_LANGS[coreDir].src,
+              DIR_LANGS[coreDir].tgt,
+              b.source_modality === 'spoken',
+            )
+            if (
+              !coreSourceIssue(repairedSourceText, lengthRange) &&
+              !repairedPrecedingTurnIssue &&
+              !repairedBilingualSceneIssue
+            ) {
               gen = repaired
               model = repairModel
-              sourceRepairApplied = true
+              sourceRepairApplied = Boolean(initialSourceIssue)
+              precedingTurnRepairApplied = Boolean(initialPrecedingTurnIssue)
+              bilingualSceneRepairApplied = Boolean(initialBilingualSceneIssue)
             }
           } catch {
-            // 교정 응답이 파싱되지 않으면 최초 출력을 그대로 내려 클라이언트 R29가 차단한다.
+            // 교정 응답이 파싱되지 않으면 최초 출력을 그대로 내려 클라이언트 R8/R10/R29가 차단한다.
           }
         }
       }
@@ -2020,9 +2104,11 @@ Deno.serve(async (req) => {
           meta: {
             provider: PROVIDER,
             model,
-            prompt_version: sourceRepairApplied ? 'core_v6_length_chars_v1_repair' : 'core_v6_length_chars_v1',
-            generation_attempt: sourceRepairAttempted ? 2 : 1,
+            prompt_version: sourceRepairApplied || precedingTurnRepairApplied || bilingualSceneRepairApplied ? 'core_v7_bilingual_scene_v1_repair' : 'core_v7_bilingual_scene_v1',
+            generation_attempt: coreRepairAttempted ? 2 : 1,
             source_repair_applied: sourceRepairApplied,
+            preceding_turn_repair_applied: precedingTurnRepairApplied,
+            bilingual_scene_repair_applied: bilingualSceneRepairApplied,
             length_policy_version: CORE_LENGTH_POLICY_VERSION,
             // 재현성 provenance — 클라이언트는 이 값을 재계산하지 말고 그대로 저장한다.
             prompt_snapshot_hash: await corePromptSnapshotHash(),
