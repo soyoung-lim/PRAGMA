@@ -1,13 +1,20 @@
 // R29 — 미니 담화형 원문 + focal segments (DEC-20260730-01)
-// 검사 대상: 문장 수 하드 경계·수준별 권장 범위, focal segments 구조·부분문자열,
+// 검사 대상: 유효 글자 수 하드 경계·문장 수 권장 범위, focal segments 구조·부분문자열,
 // 그리고 legacy 단문 코어가 면제되는지.
 import { describe, expect, it } from "vitest";
-import { checkCore, checkMission, countSentences, coreLengthHintKo, type CheckContext } from "@/lib/pragma/missionRules";
+import {
+  checkCore,
+  checkMission,
+  countCoreEffectiveChars,
+  countSentences,
+  coreLengthHintKo,
+  type CheckContext,
+} from "@/lib/pragma/missionRules";
 import { SAMPLE_MISSION_V5 } from "@/lib/mission/missionV4Sample";
-import { normalizeCore } from "@/lib/pragma/coreSchema";
+import { coreContentForHash, normalizeCore } from "@/lib/pragma/coreSchema";
 
 const SOURCE_3 =
-  "지난번에 보내주신 샘플은 잘 받았습니다. 내부 검토에 하나가 더 필요해서요. 가능하시다면 오늘 중으로 하나 더 보내주실 수 있을까요?";
+  "지난번에 보내주신 샘플은 잘 받았습니다. 내부 품질 검토 자료로 샘플 하나가 더 꼭 필요해서요. 가능하시다면 오늘 중으로 하나 더 보내주실 수 있을까요?";
 
 const CTX: CheckContext = {
   speech_act: "request",
@@ -74,14 +81,19 @@ describe("countSentences", () => {
   });
 });
 
-describe("coreLengthHintKo — 생성 안내는 R29 범위에서 파생된다", () => {
-  it("수준·모드별로 다른 문장 수를 안내한다", () => {
-    expect(coreLengthHintKo("beginner_intermediate", "translation")).toContain("2~3문장");
-    expect(coreLengthHintKo("intermediate", "translation")).toContain("3~4문장");
-    expect(coreLengthHintKo("advanced", "stt_interpreting")).toContain("3~4문장");
+describe("coreLengthHintKo — 생성 안내는 R29 글자 수 정책에서 파생된다", () => {
+  it("수준·모드별로 다른 유효 글자 범위를 안내한다", () => {
+    expect(coreLengthHintKo("beginner_intermediate", "translation")).toContain("45~65자");
+    expect(coreLengthHintKo("intermediate", "translation")).toContain("60~85자");
+    expect(coreLengthHintKo("advanced", "stt_interpreting")).toContain("55~85자");
+    expect(coreLengthHintKo("advanced", "stt_interpreting")).toContain("2~4문장");
   });
   it("통역 안내에는 기억 부담 경계가 붙는다", () => {
     expect(coreLengthHintKo("intermediate", "stt_interpreting")).toContain("기억 과부하");
+  });
+
+  it("공백·문장부호를 제외해 원문 부담을 센다", () => {
+    expect(countCoreEffectiveChars(SOURCE_3)).toBe(61);
   });
 });
 
@@ -90,7 +102,7 @@ describe("R29 focal segments", () => {
     expect(r29(coreV3())).toHaveLength(0);
   });
 
-  it("한 문장 원문은 fail", () => {
+  it("글자 수 하한보다 짧은 한 문장 원문은 fail", () => {
     const v = r29(coreV3({ source_text: "샘플 하나 더 보내주실 수 있을까요?", focal_segments: [{ text: "샘플 하나 더 보내주실 수 있을까요?", role: "head" }] }));
     expect(v.some((x) => x.level === "fail")).toBe(true);
   });
@@ -117,12 +129,11 @@ describe("R29 focal segments", () => {
     expect(v.some((x) => x.level === "fail")).toBe(true);
   });
 
-  it("수준 권장 범위를 벗어나면 fail이 아니라 warning", () => {
-    // 입문 권장 2~3문장인데 4문장 → warning만
-    const four = SOURCE_3 + " 번거롭게 해드려 죄송합니다.";
-    const v = r29(coreV3({ source_text: four }), { ...CTX, level: "beginner_intermediate" });
+  it("글자 수 범위 안에서 문장 수만 벗어나면 warning", () => {
+    const five = SOURCE_3 + " 감사합니다. 부탁드립니다.";
+    const v = r29(coreV3({ source_text: five }));
     expect(v.some((x) => x.level === "fail")).toBe(false);
-    expect(v.some((x) => x.level === "warning")).toBe(true);
+    expect(v.some((x) => x.level === "warning" && x.message.includes("2~4문장"))).toBe(true);
   });
 
   it("legacy 단문 코어(v2)는 R29 면제 — focal_segments 부재", () => {
@@ -147,6 +158,21 @@ describe("normalizeCore — v3 상위집합 정규화", () => {
     expect(n.ok).toBe(true);
     expect(n.data?.focal_segments).toHaveLength(1);
     expect(n.data?.focal_segments?.[0].role).toBe("head");
+  });
+
+  it("길이 정책 스냅샷은 정규화하되 콘텐츠 동일성 hash 입력에서는 제외한다", () => {
+    const lengthPolicy = {
+      version: "effective_chars_v1",
+      unit: "effective_chars" as const,
+      min: 60,
+      max: 85,
+      actual: 61,
+    };
+    const n = normalizeCore(coreV3({ length_policy: lengthPolicy }));
+
+    expect(n.ok).toBe(true);
+    expect(n.data?.length_policy).toEqual(lengthPolicy);
+    expect(coreContentForHash(n.data ?? {})).not.toHaveProperty("length_policy");
   });
 });
 

@@ -33,7 +33,11 @@ import {
 } from "@/lib/pragma/enums";
 import { checkCore, coreLengthHintKo, type CheckContext } from "@/lib/pragma/missionRules";
 import { createCoreGenerationRunId } from "@/lib/pragma/coreGenerationRun";
-import { PDR_POWER_ENUM_TO_JSON, PDR_DISTANCE_ENUM_TO_JSON } from "@/lib/pragma/coreSchema";
+import {
+  PDR_POWER_ENUM_TO_JSON,
+  PDR_DISTANCE_ENUM_TO_JSON,
+  coreContentForHash,
+} from "@/lib/pragma/coreSchema";
 import type { CoreProvenance } from "@/lib/pragma/coreSchema";
 import {
   THEME_CODES,
@@ -727,6 +731,7 @@ const AdminGenerator = () => {
               direction: form.language_direction,
               speech_act: form.speech_act_ui,
               speech_act_ko: SPEECH_ACT_UI[form.speech_act_ui],
+              level: form.level,
               level_ko: LEVEL[form.level],
               domain: form.domain,
               domain_ko: DOMAIN[form.domain],
@@ -780,7 +785,7 @@ const AdminGenerator = () => {
         core.channel = legacyChannelOf(mode);
         // content_hash는 provenance를 **포함하지 않는다** — 내용이 같은 코어는 출처가
         // 달라도 같은 해시여야 중복 탐지가 작동한다(미션 provenance와 같은 취급).
-        const contentHash = coreHash(JSON.stringify(core));
+        const contentHash = coreHash(JSON.stringify(coreContentForHash(core)));
         // 실제 자료 원문이 이 생성에 실제로 쓰였을 때만 출처를 남긴다(seed 조건과 동일).
         if (authenticProv && sourceMode === "manual" && manualSourceText.trim()) {
           core.provenance = authenticProv;

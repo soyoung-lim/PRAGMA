@@ -5,8 +5,17 @@ import {
 import { repairFeedbackPragmaticLeak } from '../_shared/feedbackLayerRepair.ts'
 import {
   buildCoreSourceRepairPrompt,
-  coreSourceSentenceIssue,
+  coreSourceIssue,
 } from '../_shared/coreSourceRepair.ts'
+import {
+  CORE_LENGTH_POLICY_VERSION,
+  CORE_LENGTH_RANGES,
+  coreLengthHintKo,
+  coreLengthRange,
+  countCoreEffectiveChars,
+  type CoreLengthLevel,
+  type CoreLengthMode,
+} from '../_shared/coreLengthPolicy.ts'
 import {
   buildOpenAIChatRequest,
   CORE_RESPONSE_FORMAT_LABEL,
@@ -513,19 +522,20 @@ interface CoreGenBody {
   direction?: string // 0-l·90 — 부재 시 ko_zh
   speech_act?: string
   speech_act_ko: string
+  level?: CoreLengthLevel
   level_ko: string
   domain?: string
   domain_ko: string
   industry?: string | null
   topic_code?: string
-  mode?: string // 수행 방식(channel 폐기 2026-07-25) — translation | stt_interpreting
+  mode?: CoreLengthMode // 수행 방식(channel 폐기 2026-07-25)
   channel?: string // @deprecated legacy(무시)
   channel_ko?: string // @deprecated legacy(무시)
   pdr: PdrJson
   source_modality: 'written' | 'spoken'
   situation_seed_ko: string
   is_response_act: boolean
-  length_hint_ko: string
+  length_hint_ko?: string // @deprecated: 서버가 level·mode에서 정책값을 계산한다.
   /** 서버가 구성해 buildCoreUserPrompt에 전달한다. 클라이언트 값은 신뢰하지 않는다. */
   context_spec?: CoreContextSpec
 }
@@ -750,6 +760,20 @@ function coreSpeechActCode(b: CoreGenBody): string {
   return Object.keys(SPEECH_ACT_KO).find((code) => SPEECH_ACT_KO[code] === b.speech_act_ko) ?? 'request'
 }
 
+function coreLengthLevel(b: CoreGenBody): CoreLengthLevel {
+  if (b.level === 'beginner_intermediate' || b.level === 'intermediate' || b.level === 'advanced') {
+    return b.level
+  }
+  if (b.level_ko?.includes('입문')) return 'beginner_intermediate'
+  if (b.level_ko?.includes('고급')) return 'advanced'
+  return 'intermediate'
+}
+
+function coreLengthMode(b: CoreGenBody): CoreLengthMode {
+  if (b.mode === 'stt_interpreting' || b.source_modality === 'spoken') return 'stt_interpreting'
+  return 'translation'
+}
+
 function buildCoreContextSpec(b: CoreGenBody): CoreContextSpec {
   const domain = coreDomainCode(b)
   const act = coreSpeechActCode(b)
@@ -868,6 +892,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   const srcL = LANG_KO[src]
   const tgtL = LANG_KO[tgt]
   const sentencePunctuation = src === 'zh' ? '중국어 종결부호(。！？)' : '한국어 종결부호(.?!)'
+  const lengthHintKo = coreLengthHintKo(coreLengthLevel(b), coreLengthMode(b))
   const parts = [
     '[생성 요청]',
     `- 언어 방향: ${LANG_DIR_KO[dir]}`,
@@ -878,7 +903,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
     `- 관계 D(거리): ${PDR_D_KO[b.pdr.d] ?? b.pdr.d}`,
     `- 관계 R(부담): ${PDR_R_KO[b.pdr.r] ?? b.pdr.r}`,
     `- 장면 시드: ${b.situation_seed_ko}`,
-    `- 원문 분량: ${b.length_hint_ko}`,
+    `- 원문 분량: ${lengthHintKo}`,
     `- 문장 경계: 쉼표로 절을 길게 잇지 말고 ${sentencePunctuation}로 위 분량의 문장 수를 명시하세요.`,
   ]
   if (b.industry) {
@@ -954,6 +979,7 @@ function canonicalJson(v: unknown): string {
 const CORE_PROBE_BASE: Omit<CoreGenBody, 'direction' | 'source_modality' | 'is_response_act'> = {
   speech_act: 'request',
   speech_act_ko: 'PROBE_ACT',
+  level: 'beginner_intermediate',
   level_ko: 'PROBE_LV',
   domain: 'work',
   domain_ko: 'PROBE_DOM',
@@ -961,7 +987,6 @@ const CORE_PROBE_BASE: Omit<CoreGenBody, 'direction' | 'source_modality' | 'is_r
   industry: null,
   pdr: { p: 'PROBE_P', d: 'PROBE_D', r: 'PROBE_R' },
   situation_seed_ko: 'PROBE_SEED',
-  length_hint_ko: 'PROBE_LEN',
   context_spec: {
     standard_situation_code: 'PROBE_STANDARD_SITUATION',
     role_pair: {
@@ -983,17 +1008,21 @@ async function corePromptSnapshotHash(): Promise<string> {
   const user_prompt_templates: string[] = []
   for (const direction of directions) {
     for (const source_modality of ['written', 'spoken'] as const) {
-      for (const is_response_act of [false, true]) {
-        for (const industry of [null, 'PROBE_INDUSTRY']) {
-          user_prompt_templates.push(
-            buildCoreUserPrompt({
-              ...CORE_PROBE_BASE,
-              direction,
-              source_modality,
-              is_response_act,
-              industry,
-            }),
-          )
+      for (const level of ['beginner_intermediate', 'intermediate', 'advanced'] as const) {
+        for (const is_response_act of [false, true]) {
+          for (const industry of [null, 'PROBE_INDUSTRY']) {
+            user_prompt_templates.push(
+              buildCoreUserPrompt({
+                ...CORE_PROBE_BASE,
+                direction,
+                source_modality,
+                mode: source_modality === 'spoken' ? 'stt_interpreting' : 'translation',
+                level,
+                is_response_act,
+                industry,
+              }),
+            )
+          }
         }
       }
     }
@@ -1024,7 +1053,7 @@ async function corePromptSnapshotHash(): Promise<string> {
     ),
   )
   coreSnapshotHashCache = await sha256Hex(canonicalJson({
-    v: 4,
+    v: 5,
     scope: 'core_generation',
     action: 'core',
     model: PRIMARY_MODEL,
@@ -1032,14 +1061,21 @@ async function corePromptSnapshotHash(): Promise<string> {
     temperature: CORE_TEMPERATURE,
     response_format: CORE_RESPONSE_FORMAT,
     response_schema: CORE_STRUCTURED_RESPONSE_FORMAT,
+    source_length_policy: {
+      version: CORE_LENGTH_POLICY_VERSION,
+      unit: 'effective_chars',
+      ranges: CORE_LENGTH_RANGES,
+    },
     system_prompts,
     user_prompt_templates,
     sentence_repair_prompt_template: buildCoreSourceRepairPrompt({
       originalUserPrompt: 'PROBE_USER_PROMPT',
       previousOutput: { source_text: 'PROBE_SOURCE_TEXT', focal_segments: [] },
       sourceLanguage: 'zh',
-      lengthHintKo: 'PROBE_LEN',
+      lengthHintKo: '유효 글자 PROBE_MIN~PROBE_MAX자',
       measuredSentenceCount: 1,
+      measuredEffectiveCharCount: 999,
+      effectiveCharRange: { min: 30, max: 45 },
     }),
     prompt_catalogs: {
       pdr_p_ko: PDR_P_KO,
@@ -1893,21 +1929,27 @@ Deno.serve(async (req) => {
       } catch (e) {
         return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
       }
-      // R29 하드 경계(2~4문장)를 생성 단계에서 한 번 더 보장한다. 특히 중국어
-      // 구두 담화를 쉼표로만 길게 잇는 경향은 클라이언트 검사까지 내려보내지 않고,
-      // 기존 사실·역할을 고정한 1회 교정 호출로 문장 경계와 focal segment를 맞춘다.
+      // 길이 정책과 2~4문장 담화 형태를 생성 단계에서 한 번 더 보장한다. 특히 중국어
+      // 구두 담화를 쉼표로 길게 잇거나 수준 범위를 벗어나는 출력을 클라이언트까지
+      // 내려보내지 않고, 기존 사실·역할을 고정한 1회 교정 호출로 맞춘다.
+      const lengthLevel = coreLengthLevel(b)
+      const lengthMode = coreLengthMode(b)
+      const lengthRange = coreLengthRange(lengthLevel, lengthMode)
+      const lengthHintKo = coreLengthHintKo(lengthLevel, lengthMode)
       const initialSourceText = String(gen.source_text ?? gen.source_text_ko ?? '')
-      const sentenceIssue = coreSourceSentenceIssue(initialSourceText)
-      let sentenceRepairAttempted = false
-      let sentenceRepairApplied = false
-      if (sentenceIssue) {
-        sentenceRepairAttempted = true
+      const initialSourceIssue = coreSourceIssue(initialSourceText, lengthRange)
+      let sourceRepairAttempted = false
+      let sourceRepairApplied = false
+      if (initialSourceIssue) {
+        sourceRepairAttempted = true
         const repairUser = buildCoreSourceRepairPrompt({
           originalUserPrompt: usr,
           previousOutput: gen,
           sourceLanguage: DIR_LANGS[coreDir].src,
-          lengthHintKo: b.length_hint_ko,
-          measuredSentenceCount: sentenceIssue.count,
+          lengthHintKo,
+          measuredSentenceCount: initialSourceIssue.sentenceCount,
+          measuredEffectiveCharCount: initialSourceIssue.effectiveCharCount,
+          effectiveCharRange: lengthRange,
         })
         let repairModel = model
         let repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
@@ -1923,10 +1965,10 @@ Deno.serve(async (req) => {
           try {
             const repaired = parseOpenAIContent(repairAttempt.raw) as Record<string, unknown>
             const repairedSourceText = String(repaired.source_text ?? repaired.source_text_ko ?? '')
-            if (!coreSourceSentenceIssue(repairedSourceText)) {
+            if (!coreSourceIssue(repairedSourceText, lengthRange)) {
               gen = repaired
               model = repairModel
-              sentenceRepairApplied = true
+              sourceRepairApplied = true
             }
           } catch {
             // 교정 응답이 파싱되지 않으면 최초 출력을 그대로 내려 클라이언트 R29가 차단한다.
@@ -1964,6 +2006,13 @@ Deno.serve(async (req) => {
         context_spec: contextSpec,
         ...(gen.brief_note_ko ? { brief_note_ko: String(gen.brief_note_ko) } : {}),
         focal_segments: focalSegments,
+        length_policy: {
+          version: CORE_LENGTH_POLICY_VERSION,
+          unit: 'effective_chars',
+          min: lengthRange.min,
+          max: lengthRange.max,
+          actual: countCoreEffectiveChars(sourceText),
+        },
       }
       return new Response(
         JSON.stringify({
@@ -1971,9 +2020,10 @@ Deno.serve(async (req) => {
           meta: {
             provider: PROVIDER,
             model,
-            prompt_version: sentenceRepairApplied ? 'core_v5_sentence_repair_v1' : 'core_v5',
-            generation_attempt: sentenceRepairAttempted ? 2 : 1,
-            sentence_repair_applied: sentenceRepairApplied,
+            prompt_version: sourceRepairApplied ? 'core_v6_length_chars_v1_repair' : 'core_v6_length_chars_v1',
+            generation_attempt: sourceRepairAttempted ? 2 : 1,
+            source_repair_applied: sourceRepairApplied,
+            length_policy_version: CORE_LENGTH_POLICY_VERSION,
             // 재현성 provenance — 클라이언트는 이 값을 재계산하지 말고 그대로 저장한다.
             prompt_snapshot_hash: await corePromptSnapshotHash(),
             generated_at: new Date().toISOString(),

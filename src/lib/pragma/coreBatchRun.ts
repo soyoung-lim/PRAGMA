@@ -15,6 +15,7 @@ import {
 import {
   PDR_POWER_ENUM_TO_JSON,
   PDR_DISTANCE_ENUM_TO_JSON,
+  coreContentForHash,
 } from "@/lib/pragma/coreSchema";
 import { checkCore, coreLengthHintKo, type CheckContext } from "@/lib/pragma/missionRules";
 import type { BatchCell } from "@/lib/pragma/batchPlan";
@@ -159,6 +160,7 @@ export async function runCoreCell(
           direction: cell.direction, // 0-l·89 — 엣지가 방향별 원문·산출 언어 결정(라운드2 배포 후 활성)
           speech_act: cell.speech_act_ui,
           speech_act_ko: SPEECH_ACT_UI[cell.speech_act_ui],
+          level: cell.level,
           level_ko: LEVEL[cell.level],
           domain: cell.domain,
           domain_ko: DOMAIN[cell.domain],
@@ -225,7 +227,7 @@ export async function runCoreCell(
       meta,
       generation_run_id: opts.runId,
       generation_item_key: itemKey,
-      content_hash: hashString(JSON.stringify(core)),
+      content_hash: hashString(JSON.stringify(coreContentForHash(core))),
       // 프롬프트 지문 — 엣지가 '보내기 직전 문자열'로 계산한 값을 그대로 넘긴다.
       // 여기서 재계산하면 로컬 코드 기준이 되어 배포본과 어긋날 수 있다(=거짓 기록).
       prompt_snapshot_hash: meta?.prompt_snapshot_hash ?? null,

@@ -13,6 +13,14 @@ function prompt(key: string) {
 }
 
 describe("prompt snapshot integrity", () => {
+  it("records the versioned effective-character pilot policy", () => {
+    expect(PROMPT_SNAPSHOT.source_length_policy.version).toBe("effective_chars_v1");
+    expect(PROMPT_SNAPSHOT.source_length_policy.ranges.stt_interpreting.intermediate).toEqual({
+      min: 40,
+      max: 60,
+    });
+  });
+
   it("matches the current Edge source", () => {
     const source = readFileSync(
       resolve(process.cwd(), PROMPT_SNAPSHOT.edge_source),
@@ -89,8 +97,9 @@ describe("prompt snapshot integrity", () => {
     expect(prompt("core.user.spoken").text).toContain("이메일·메신저·글을 작성해 보내는");
     expect(prompt("core.system.zh_ko").text).toContain("중국어 종결부호(。！？)");
     expect(prompt("core.user.spoken").text).toContain("문장 경계:");
-    expect(prompt("core.user.sentence_repair").text).toContain("직전 출력의 구조 오류");
-    expect(prompt("core.user.sentence_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
+    expect(prompt("core.user.source_repair").text).toContain("직전 출력의 구조 오류");
+    expect(prompt("core.user.source_repair").text).toContain("유효 글자 수를 반드시");
+    expect(prompt("core.user.source_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(critic.text).toContain("국소적 두 턴만 본다");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {
