@@ -29,11 +29,14 @@
 - 변경 파일 ESLint와 `git diff --check` 통과.
 - production build 통과(**1901 modules**).
 - core prompt surface와 hash `07d82beaab49…`는 변경하지 않았다.
+- PR #16을 merge commit `d592946`으로 병합했다.
+- Railway production 배포 `57c64116-a817-4047-baae-d53d43d22494`가 `SUCCESS`였고,
+  운영 URL HTTP 200과 `/assets/targetFeatures-DpMM3B1Z.js`의 feature `v1.1`·한국어
+  경계 예시 포함을 확인했다.
 
 ## 범위·후속 확인
 
 - DB·코어 생성계약·R1~R29·`policy_ver`·콘텐츠·검수 상태는 변경하지 않았다.
 - 기존 `invitation_choice_commitment v1.0` 미션을 소급 수정하지 않는다. `v1.1`은 배포 뒤
   새로 조립하는 미션부터 적용한다.
-- 실제 생성 모델의 오분류 감소는 배포 뒤 core_v7 초대 소수 재조립로 확인해야 한다.
-
+- 실제 생성 모델의 오분류 감소는 core_v7 초대 소수 재조립으로 확인해야 한다.
