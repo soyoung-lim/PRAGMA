@@ -715,4 +715,4 @@
 - 관련 파일: `src/pages/learner/MissionRunV1.tsx`,
   `src/lib/mission/missionPresentation.ts`
 - 관련 Iteration / Evidence: `ITER-20260802-03`, `EVD-20260802-03`
-- 관련 커밋: 확인 필요
+- 관련 커밋: `b07e2a9`
