@@ -35,8 +35,8 @@ export type RapidReviewBlocker =
  * 엣지 소스와 어긋나면 `promptSnapshot.test.ts`가 잡는다.
  */
 export const CURRENT_MISSION_PROMPT_VERSIONS = [
-  "mission_v5_mpj4_minidiscourse_v3",
-  "mission_v4_mpj4_dct1_context_v6",
+  "mission_v5_mpj4_minidiscourse_v4",
+  "mission_v4_mpj4_dct1_context_v7",
 ] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
