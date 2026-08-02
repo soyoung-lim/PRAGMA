@@ -720,7 +720,7 @@
 ## DEC-20260802-04 · 미니 담화·실행 유일성 규칙을 유지하고 생성 단계에서 실패 복구
 
 - 날짜: 2026-08-02
-- 상태: 채택·로컬 구현/자동 검증 완료
+- 상태: 채택·운영 배포/최소 표본 검증 완료
 - 문제: 통역·중→한 코어가 여러 절을 중국어 쉼표로만 연결해 R29에서 1문장으로 측정됐고,
   동일 조건의 단일 생성 재실행은 결정론적 run ID를 재사용해 DB 유일성 제약과 충돌했다.
 - 검토한 대안:
@@ -744,4 +744,4 @@
   `supabase/functions/_shared/coreSourceRepair.ts`,
   `src/pages/admin/AdminGenerator.tsx`, `src/lib/pragma/coreGenerationRun.ts`
 - 관련 Iteration / Evidence: `ITER-20260802-04`, `EVD-20260802-04`
-- 관련 커밋: `d29ffa2`
+- 관련 커밋: `d29ffa2`, `07fb3b5`
