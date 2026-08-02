@@ -40,7 +40,8 @@ R29와 DB 유일성 제약은 품질·실행 추적을 지키는 유효한 안�
 - 새 helper·테스트·snapshot script의 ESLint 통과. 전체 수정 파일 검사에서는 기존
   `AdminGenerator.tsx`의 `no-explicit-any` 2건과 Edge 함수의 `no-useless-escape` 1건이
   남아 있으며, 이번 변경에서 추가된 오류는 아니다.
-- 프롬프트 스냅샷 13종 재생성. 현재 core surface hash는 `e12af89e99bd…`이다.
+- 프롬프트 스냅샷 13종 재생성. core surface hash는 `e12af89e99bd…`이며 구현 커밋
+  `d29ffa2`, `git_dirty=false` provenance를 확인했다.
 
 ## 범위와 확인 필요
 
@@ -48,4 +49,3 @@ R29와 DB 유일성 제약은 품질·실행 추적을 지키는 유효한 안�
 - 콘텐츠를 대량 재생성하거나 자동 검수·승인하지 않았다.
 - Edge 함수 배포와 운영 관리자 화면의 통역·중→한 최소 표본 재생성 smoke는 아직 수행하지
   않았다. 배포 뒤 1~3건으로 문장 수와 반복 실행 저장을 각각 확인해야 한다.
-

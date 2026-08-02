@@ -743,4 +743,5 @@
 - 관련 파일: `supabase/functions/generate-scenario/index.ts`,
   `supabase/functions/_shared/coreSourceRepair.ts`,
   `src/pages/admin/AdminGenerator.tsx`, `src/lib/pragma/coreGenerationRun.ts`
-- 관련 Iteration / Evidence: `ITER-20260802-04`; Evidence는 배포·운영 smoke 후 연결
+- 관련 Iteration / Evidence: `ITER-20260802-04`, `EVD-20260802-04`
+- 관련 커밋: `d29ffa2`
