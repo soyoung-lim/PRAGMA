@@ -43,6 +43,13 @@ email/messenger 채널은 언어 표현의 핵심 연구 축이 아니므로, �
   - 통역 DCT의 정적 수행 콘솔에서 기존 듣기·녹음 affordance가 유지됨을 확인했다.
   - 인앱 브라우저 564×731에서 수평 overflow가 없고 새 콘솔 오류가 없었다. 기존 React
     Router future flag 경고만 확인했다.
+- GitHub PR [#6](https://github.com/cnkr-commits/l2-pragmatic-translator/pull/6)을 merge commit
+  `056bf394`로 병합했다.
+- Railway production 배포 `1504272b-af34-42e2-a0ce-7f6f75df7b1e`가 해당 commit으로
+  `SUCCESS`·`RUNNING`임을 확인했다.
+- 운영 URL `https://pragma.up.railway.app/`가 HTTP 200을 반환하고 운영 미션 chunk
+  `MissionRunV1-UzDgKnJw.js`에서 DM 표면, `통역안`, `작성 · 번역`, `이전 메시지`,
+  `통역 수행 콘솔` 문구를 확인했다.
 
 ## 확인 필요
 
