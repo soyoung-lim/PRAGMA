@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { CheckCircle2, CircleAlert, Mail, MessageCircle, Send, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,8 +44,12 @@ import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { requestSttTranscript } from "@/lib/mission/missionStt";
 import { requestTtsAudio } from "@/lib/tts";
 import {
+  classifyColdOpen,
   mpjPresentationChannel,
+  responseWasRevised,
+  shouldShowCorrectionNotesLink,
   translationWritingSkin,
+  type MissionSaveState,
   type MissionPresentationMode,
 } from "@/lib/mission/missionPresentation";
 import { DiffLegend, DiffLine } from "@/components/mission/DiffLine";
@@ -797,7 +801,7 @@ function MissionRunner({
     revised: string;
     vocabularyHintOpenedAt?: string | null;
   } | null>(null);
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "demo" | "error">("idle");
+  const [saveState, setSaveState] = useState<MissionSaveState>("idle");
   // feedback-lite(계약 §4) — 제출 후 3층 진단. 실패하면 기존 정직 표기로 되돌아간다.
   const [fb, setFb] = useState<RuntimeFeedback | null>(null);
   const [fbState, setFbState] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -840,6 +844,8 @@ function MissionRunner({
     LEARNER_FOCUS_COPY[mission.unit.target_feature] ?? mission.unit.learner_label;
 
   const feedbackClear = fbState === "ready" && fb?.revision_scope === "clear";
+  const finalResponse = revised || draft;
+  const revisedChanged = responseWasRevised(draft, finalResponse);
   const reviseAction = revisionActionLine(
     fb,
     mission.unit.target_feature,
@@ -848,7 +854,7 @@ function MissionRunner({
   const completionAdvice = completionAdviceLine({
     fb,
     featureCode: mission.unit.target_feature,
-    revisedChanged: !!revised.trim() && revised.trim() !== draft.trim(),
+    revisedChanged,
   });
 
   // 번역 힌트는 수업·MPJ에서 다룬 화용 전략이 아니라 내용 어휘 두 개만 사용한다.
@@ -965,7 +971,7 @@ function MissionRunner({
       speechAct,
       level,
       firstResponse: draft,
-      revisedResponse: revised || draft,
+      revisedResponse: finalResponse,
       ...(fb ? { feedback: fb } : {}),
       startedAtIso: startedAtRef.current,
       ...(mpjResponses.length > 0 ? { mpjResponses } : {}),
@@ -1154,6 +1160,7 @@ function MissionRunner({
         {phase === "intro" && (
           <MissionColdOpen
             productionTask={pt}
+            speechAct={speechAct ?? feat?.speech_act ?? null}
             learnerActLabel={learnerActLabel}
             learnerFocusCopy={learnerFocusCopy}
             mpjCount={items.length}
@@ -1395,12 +1402,24 @@ function MissionRunner({
         {/* ── 완료 ── */}
         {phase === "done" && (
           <div className="space-y-3">
-            <div className="rounded-xl bg-[#15202B] p-5 text-white">
-              <div className="text-[11.5px] font-bold text-[#FAD338]">이번 답안에 맞는 조언</div>
-              <p className="mt-1.5 text-[14.5px] font-medium leading-relaxed">{completionAdvice}</p>
-            </div>
+            <RevisionMap
+              first={draft}
+              final={finalResponse}
+              featureLabel={learnerFocusCopy}
+              interp={isInterp}
+              strategy={revisedChanged ? reviseAction : "첫 표현을 그대로 최종안으로 확정했습니다."}
+              advice={completionAdvice}
+            />
 
-            <RevisionMap first={draft} final={revised || draft} featureLabel={mission.unit.learner_label} interp={isInterp} />
+            {shouldShowCorrectionNotesLink(saveState, draft, finalResponse) && (
+              <Link
+                to="/learner/records#correction-notes"
+                className="flex items-center justify-between rounded-xl border border-[#CFE4D8] bg-[#F2FAF6] px-4 py-3 text-[13px] font-semibold text-[#236847] transition-colors hover:bg-[#E8F5ED] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2E7D5B] focus-visible:ring-offset-2"
+              >
+                <span>나의 수정 노트에 저장됨</span>
+                <span>모아보기 →</span>
+              </Link>
+            )}
 
             <div
               className={[
@@ -1409,7 +1428,10 @@ function MissionRunner({
               ].join(" ")}
             >
               {saveState === "saving" && "수행 기록 저장 중…"}
-              {saveState === "saved" && "✓ 수행 기록이 저장되었습니다 (기록 탭에서 확인)"}
+              {saveState === "saved" &&
+                (revisedChanged
+                  ? "✓ 이번 수행과 수정 결과가 저장되었습니다."
+                  : "✓ 이번 수행 결과가 저장되었습니다.")}
               {saveState === "demo" && "데모 모드입니다 — 실제 로그인 시 수행 기록이 저장됩니다."}
               {saveState === "error" && "수행 기록 저장에 실패했습니다. 네트워크 상태를 확인한 뒤 다시 시도하십시오."}
               {saveState === "idle" && "수행 기록을 준비 중입니다."}
@@ -1499,28 +1521,57 @@ type SpeechRecognitionWindow = Window & {
 
 function MissionColdOpen({
   productionTask,
+  speechAct,
   learnerActLabel,
   learnerFocusCopy,
   mpjCount,
   onStart,
 }: {
   productionTask: MissionRuntime["production_task"];
+  speechAct: string | null;
   learnerActLabel: string;
   learnerFocusCopy: string;
   mpjCount: number;
   onStart: () => void;
 }) {
+  const [step, setStep] = useState<"scene" | "turn">("scene");
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const mountedRef = useRef(false);
   const isInterpreting = productionTask.mode === "interpreting";
-  const precedingTurn = productionTask.preceding_turn?.trim() || null;
+  const coldOpen = classifyColdOpen(speechAct, productionTask.preceding_turn);
+  const precedingTurn = coldOpen.precedingTurn;
   const writingSkin = translationWritingSkin(productionTask.situation_ko);
   const counterpart = learnerCounterpartLabel(productionTask.relation_ko);
+  const isResponse = coldOpen.kind === "response";
+  const isResponseFallback = coldOpen.kind === "response-fallback";
 
-  const turnPrompt = precedingTurn
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    stepHeadingRef.current?.focus();
+  }, [step]);
+
+  useEffect(() => {
+    if (!isResponseFallback || !import.meta.env.DEV) return;
+    console.warn(
+      `[mission cold open] ${speechAct ?? "unknown"} 응답 화행에 preceding_turn이 없어 중립 진입 화면을 사용합니다.`,
+    );
+  }, [isResponseFallback, speechAct]);
+
+  const turnPrompt = isResponse
     ? isInterpreting
       ? "상대의 말이 끝났습니다. 이제 내 통역 차례입니다."
       : writingSkin === "email"
         ? "받은 메일에 내가 답할 차례입니다."
         : "상대의 메시지가 도착했습니다. 이제 내가 답할 차례입니다."
+    : isResponseFallback
+      ? isInterpreting
+        ? "대화가 이어지는 순간입니다. 이제 내가 응답할 차례입니다."
+        : writingSkin === "email"
+          ? "이전 대화에 이어 답장을 작성할 차례입니다."
+          : "대화가 이어지고 있습니다. 이제 내가 응답할 차례입니다."
     : isInterpreting
       ? "내가 먼저 말을 꺼내는 장면입니다."
       : writingSkin === "email"
@@ -1528,23 +1579,48 @@ function MissionColdOpen({
         : "내가 먼저 메시지를 보낼 차례입니다.";
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-cold-open-kind={coldOpen.kind}>
       <div className="px-0.5">
-        <div className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#8A7350]">
-          오늘의 장면
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#8A7350]">
+            오늘의 장면
+          </div>
+          <div className="flex items-center gap-1.5" aria-label={`콜드 오픈 ${step === "scene" ? "1" : "2"}/2`}>
+            <span className={`h-1.5 w-7 rounded-full ${step === "scene" ? "bg-[#15202B]" : "bg-[#D9D3C5]"}`} />
+            <span className={`h-1.5 w-7 rounded-full ${step === "turn" ? "bg-[#15202B]" : "bg-[#D9D3C5]"}`} />
+          </div>
         </div>
-        <h2 className="mt-1 text-[19px] font-extrabold tracking-[-0.02em] text-[#15202B]">
-          지금, 이 장면에 들어왔습니다
+        <h2
+          ref={stepHeadingRef}
+          tabIndex={-1}
+          className="mt-1 rounded-sm text-[19px] font-extrabold tracking-[-0.02em] text-[#15202B] outline-none focus-visible:ring-2 focus-visible:ring-[#FAD338]"
+        >
+          {step === "scene" ? "장면 열기" : "당신 차례"}
         </h2>
+        <p className="mt-0.5 text-[12px] text-[#76818A]">
+          {step === "scene" ? "상황과 상대를 먼저 확인하세요." : "이제 장면 속 마지막 신호를 확인하세요."}
+        </p>
       </div>
 
-      {isInterpreting ? (
+      {step === "scene" ? (
         <div className="space-y-3">
           <DctScenePanel
-            mode="interpreting"
+            mode={isInterpreting ? "interpreting" : "translation"}
             situation={productionTask.situation_ko}
             relation={productionTask.relation_ko}
+            {...(!isInterpreting
+              ? { formatLabel: writingSkin === "email" ? "이메일 · 번역" : "메시지 · 번역" }
+              : {})}
           />
+          <Button
+            className="w-full bg-[#15202B] py-6 text-[14px] font-bold text-white hover:bg-[#26384A]"
+            onClick={() => setStep("turn")}
+          >
+            당신 차례 보기 →
+          </Button>
+        </div>
+      ) : isInterpreting ? (
+        <div className="space-y-3" data-scene-skin="spoken">
           <div className="rounded-2xl border border-[#CCD7E0] bg-[#EEF3F6] p-4 shadow-[0_7px_20px_rgba(21,32,43,0.05)]">
             {precedingTurn && (
               <div className="rounded-xl bg-white px-3.5 py-3 text-[14px] font-medium leading-relaxed text-[#273642] shadow-sm">
@@ -1562,16 +1638,10 @@ function MissionColdOpen({
         </div>
       ) : writingSkin === "email" ? (
         <div className="space-y-3" data-scene-skin="email">
-          <DctScenePanel
-            mode="translation"
-            situation={productionTask.situation_ko}
-            relation={productionTask.relation_ko}
-            formatLabel="이메일 · 번역"
-          />
           <div className="overflow-hidden rounded-2xl border border-[#CDD5DD] bg-white shadow-[0_8px_22px_rgba(21,32,43,0.07)]">
             <div className="flex items-center gap-2 border-b border-[#E2E6EA] bg-[#F7F9FA] px-4 py-2.5 text-[12px] font-bold text-[#40515F]">
               <Mail className="h-4 w-4" aria-hidden="true" />
-              {precedingTurn ? "받은 메일 · 답장 준비" : "새 이메일"}
+              {isResponse || isResponseFallback ? "답장 준비" : "새 이메일"}
             </div>
             <div className="border-b border-[#E7EAED] px-4 py-2.5 text-[12.5px] text-[#5B6B76]">
               받는 사람 <span className="ml-2 font-semibold text-[#273642]">{counterpart}</span>
@@ -1587,38 +1657,49 @@ function MissionColdOpen({
           </div>
         </div>
       ) : (
-        <div data-scene-skin="messenger">
-          <ChatScene
-            situation={productionTask.situation_ko}
-            relation={productionTask.relation_ko}
-            separatePanels
-            threadEyebrow={precedingTurn ? "새 메시지 1개" : "새 대화"}
-          >
+        <div
+          className="overflow-hidden rounded-2xl border border-[#CBD5DD] bg-[#E8EDF2] shadow-[0_7px_20px_rgba(21,32,43,0.06)]"
+          data-scene-skin="messenger"
+        >
+          <div className="flex items-center gap-2 border-b border-[#D5DDE4] bg-white/95 px-3.5 py-2.5 text-[11px] font-bold text-[#536675]">
+            <MessageCircle className="h-4 w-4" aria-hidden="true" />
+            {isResponse ? "새 메시지 1개" : isResponseFallback ? "이어지는 대화" : "새 대화"}
+          </div>
+          <div className="px-3.5 py-3.5">
             {precedingTurn && <ChatBubble side="them">{precedingTurn}</ChatBubble>}
-            <ChatCaption tone="draft">{precedingTurn ? "이제 내 차례" : "내가 먼저 말을 꺼낼 차례"}</ChatCaption>
+            <ChatCaption tone="draft">
+              {isResponse ? "이제 내 차례" : isResponseFallback ? "내가 응답할 차례" : "내가 먼저 말을 꺼낼 차례"}
+            </ChatCaption>
             <div className="flex justify-end">
               <div className="max-w-[78%] rounded-[24px] border-2 border-dashed border-[#8DA0AF] bg-white/70 px-3.5 py-2.5 text-[13px] font-semibold leading-relaxed text-[#52616C]">
                 {turnPrompt}
               </div>
             </div>
-          </ChatScene>
+          </div>
         </div>
       )}
 
-      <div className="rounded-2xl border border-[#E7DDC2] bg-[#FFF9E8] p-4">
-        <p className="text-[13.5px] font-semibold leading-relaxed text-[#3C3528]">
-          {learnerActLabel} 상황에서 <strong>{learnerFocusCopy}</strong>
-        </p>
-        <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#74664B]">
-          이 장면에 답하기 전, 짧은 표현 비교 {mpjCount}개로 감각을 먼저 익힙니다.
-        </p>
-        <Button
-          className="mt-3.5 w-full bg-[#FAD338] py-6 text-[14px] font-bold text-[#15202B] hover:bg-[#FCE07A]"
-          onClick={onStart}
-        >
-          이 장면에 필요한 표현 살펴보기 →
-        </Button>
-      </div>
+      {step === "turn" && (
+        <div className="rounded-2xl border border-[#E7DDC2] bg-[#FFF9E8] p-4">
+          <p className="text-[13.5px] font-semibold leading-relaxed text-[#3C3528]">
+            {learnerActLabel} 상황에서 <strong>{learnerFocusCopy}</strong>
+          </p>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#74664B]">
+            이 장면에 답하기 전, 짧은 표현 비교 {mpjCount}개로 감각을 먼저 익힙니다.
+          </p>
+          <div className="mt-3.5 grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+            <Button variant="outline" className="px-3" onClick={() => setStep("scene")}>
+              ← 장면
+            </Button>
+            <Button
+              className="bg-[#FAD338] py-6 text-[14px] font-bold text-[#15202B] hover:bg-[#FCE07A]"
+              onClick={onStart}
+            >
+              표현 비교 시작하기 →
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2326,29 +2407,78 @@ function DissentPanel({ onSubmit }: { onSubmit: (d: { conditions: string[]; reas
 // ── 수정 지도(0-i) — 최초↔최종 + 수정 성격. 클라이언트만(AI·DB 0회) ──
 // 표기 자체는 학습 기록과 공유한다(components/mission/DiffLine).
 
-function RevisionMap({ first, final, featureLabel, interp }: { first: string; final: string; featureLabel: string; interp: boolean }) {
-  const changed = first.trim() !== final.trim();
+function RevisionMap({
+  first,
+  final,
+  featureLabel,
+  interp,
+  strategy,
+  advice,
+}: {
+  first: string;
+  final: string;
+  featureLabel: string;
+  interp: boolean;
+  strategy: string;
+  advice: string;
+}) {
+  const changed = responseWasRevised(first, final);
   const parts = useMemo(() => diffText(first, final), [first, final]);
   return (
-    <div className={card}>
-      <div className="text-[13px] font-semibold">내가 바꾼 부분</div>
-      <div className="mt-2.5 space-y-2">
-        <div className="rounded-lg bg-[#F5F5F2] px-3.5 py-2.5">
-          <div className="text-[11.5px] font-semibold text-muted-foreground">최초</div>
+    <article className="overflow-hidden rounded-2xl border border-[#D9D4C7] bg-white shadow-[0_10px_28px_rgba(21,32,43,0.08)]">
+      <header className="bg-[#15202B] px-5 py-4 text-white">
+        <div className="flex items-center gap-2 text-[11.5px] font-bold text-[#FAD338]">
+          <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+          미션 완료
+        </div>
+        <h2 className="mt-1.5 text-[19px] font-extrabold tracking-[-0.02em]">
+          내가 완성한 {interp ? "통역" : "번역"}
+        </h2>
+        <p className="mt-1 text-[12px] text-[#BAC5CD]">처음 만든 표현과 최종 선택을 한 장에 남겼습니다.</p>
+      </header>
+
+      <div className="space-y-3 p-4">
+        <div className="rounded-xl bg-[#F5F5F2] px-3.5 py-3">
+          <div className="text-[11.5px] font-bold text-[#66717A]">Take 1 · 최초 작성</div>
+          <p className="mt-0.5 text-[10.5px] text-[#8A9197]">피드백을 보기 전 내가 만든 최초 산출</p>
           <DiffLine parts={parts} view="first" />
         </div>
-        <div className="rounded-lg border border-[#FAD338] bg-[#FFF8DE] px-3.5 py-2.5">
-          <div className="text-[11.5px] font-semibold text-[#6B5518]">최종</div>
+
+        <div className="rounded-xl border-2 border-[#FAD338] bg-[#FFF8DE] px-3.5 py-3 shadow-[3px_3px_0_rgba(250,211,56,0.22)]">
+          <div className="text-[11.5px] font-bold text-[#6B5518]">
+            {changed ? "Take 2 · 피드백 후 수정" : "Take 2 · 최종 확정 — 변경 없음"}
+          </div>
+          <p className="mt-0.5 text-[10.5px] text-[#8A7345]">
+            {changed ? "피드백을 반영해 내가 확정한 최종 산출" : "최초 산출을 그대로 최종안으로 선택"}
+          </p>
           <DiffLine parts={parts} view="final" />
         </div>
+
+        {changed && <DiffLegend />}
+
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="rounded-xl border border-[#E4E0D7] bg-[#FBFAF7] p-3">
+            <div className="text-[10.5px] font-bold text-[#7A6A4C]">이번에 다듬은 초점</div>
+            <p className="mt-1 text-[12.5px] font-semibold leading-relaxed text-[#27323C]">{featureLabel}</p>
+          </div>
+          <div className="rounded-xl border border-[#E4E0D7] bg-[#FBFAF7] p-3">
+            <div className="text-[10.5px] font-bold text-[#7A6A4C]">이번 수정 전략</div>
+            <p className="mt-1 text-[12.5px] font-semibold leading-relaxed text-[#27323C]">{strategy}</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-[#EEF3F6] px-3.5 py-3">
+          <div className="text-[10.5px] font-bold text-[#557087]">다음에도 기억할 한 가지</div>
+          <p className="mt-1 text-[13px] font-medium leading-relaxed text-[#273642]">{advice}</p>
+        </div>
+
+        <p className="text-[11px] leading-relaxed text-[#7C858C]">
+          {changed
+            ? "표시는 텍스트의 추가·삭제만 보여 줍니다. 변화 자체가 더 알맞다는 점수는 아닙니다."
+            : `이번에는 최초 ${interp ? "통역" : "번역"}을 그대로 최종안으로 확정했습니다.`}
+        </p>
       </div>
-      {changed && <DiffLegend />}
-      <p className="mt-2 text-[12px] text-muted-foreground">
-        {changed
-          ? `텍스트 변화만 표시합니다. 추가·삭제가 곧 더 알맞다는 판정은 아닙니다 — 이번에 살펴본 초점은 ${featureLabel}입니다.`
-          : `이번에는 최초 ${interp ? "통역" : "번역"}을 그대로 두었습니다.`}
-      </p>
-    </div>
+    </article>
   );
 }
 
