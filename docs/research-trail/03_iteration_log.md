@@ -609,16 +609,28 @@
   - 신규 공유 정책·테스트·snapshot·batch 파일 ESLint와 `git diff --check`를 통과했다.
     저장소 전체 lint는 기존 오류 19건·경고 11건으로 실패했으며 이번 파일럿의 신규 오류로
     판정하지 않았다.
+  - PR #10을 merge commit `36e75e0`으로 병합하고 `generate-scenario` Edge 함수를 배포했다.
+    DB 미저장 중→한 통역 smoke에서 37자·3문장, `core_v6_length_chars_v1_repair`, 보정 1회,
+    정책 버전 `effective_chars_v1`, 동일 prompt hash를 확인했다.
+  - Railway production 배포 `3df7e817-e377-40f0-8698-8510d0266085`가 Online이고, 빌드
+    로그의 스냅샷 13종·동일 hash와 운영 규칙/schema 청크의 정책 버전·`length_policy`
+    필드를 확인했다.
 - 예상과 달랐던 점:
   - 운영 SQL의 995건은 정본 run만의 수가 아니라 임시·잉여 생성물을 합친 값이어서 이번
     정책 판단의 분모로 사용할 수 없었다. 사용자가 현 데이터를 전량 삭제 후 다시 생성하기로
     했으므로 run 분해·구계열 정리는 이번 오류 수정 범위에서 제외했다.
   - `review_status='needs_review'`는 DB에 기록된 코어 승인 0건을 뜻하지만 사람이 화면에서
     관찰했는지까지 부정하는 증거는 아니므로, 인간 검토 0건으로 확대 해석하지 않았다.
+  - 최초 `railway up --detach`는 Git worktree의 `.git` 포인터를 따라 루트 저장소를 배포해
+    구 스냅샷 12종·hash `24adf002…`가 잠시 운영됐다. 루트 파일은 수정하지 않았고, 빌드
+    로그·운영 청크 대조로 즉시 발견했다. `railway up . --path-as-root --detach`로 worktree
+    자체를 강제 업로드해 교정했다.
 - 다음 설계에 반영할 교훈:
   - 생성 힌트가 hash 밖에 있더라도 정책 의미가 바뀌면 명시적 버전과 생성 계열을 남긴다.
   - 문장 수는 담화 형태, 유효 글자 수는 부담 통제라는 서로 다른 역할로 사용한다.
   - 통역 본배치 전 TTS provider·model·voice·방향·duration을 저장한 수준별 파일럿으로 범위를
     확인한 뒤 한 번만 재동결한다.
+  - Git worktree에서 Railway 직접 배포 시에는 항상 경로 인수와 `--path-as-root`를 함께 써서
+    루트 저장소의 미커밋 상태가 배포 입력으로 섞이지 않게 한다.
 - 관련 Decision / Evidence: `DEC-20260802-05`, `EVD-20260802-05`
 - 관련 커밋: `1056c9b`
