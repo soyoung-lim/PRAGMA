@@ -778,7 +778,23 @@ function checkMultiJudgeLength(
       const okMin = Math.min(...okLens), okMax = Math.max(...okLens);
       const separable = badLens.every((l) => l < okMin) || badLens.every((l) => l > okMax);
       if (separable) {
-        add(v, "R5", "fail", `문항 ${id}: multi_judge에서 부적절안과 적정안이 길이만으로 완전히 분리됨`);
+        const separation = badLens.every((l) => l < okMin)
+          ? "부적절안이 모두 적정안보다 짧음"
+          : "부적절안이 모두 적정안보다 김";
+        const candidateLengths = candidates
+          .map((candidate, index) => {
+            const bands = codesOf(candidate).join("|") || "대역 없음";
+            return `후보 ${index + 1}[${bands}]=${lens[index]}자`;
+          })
+          .join(", ");
+        add(
+          v,
+          "R5",
+          "fail",
+          `문항 ${id}: multi_judge에서 부적절안과 적정안이 길이만으로 완전히 분리됨` +
+            ` (${separation}; ${candidateLengths}). 재생성 시 각 후보의 초점 자원과 대역은 유지하고,` +
+            ` 새 사실을 더하지 않는 중립적 연결·부연 또는 문장 압축으로 적정안과 부적절안의 길이 범위를 겹치게 하세요`,
+        );
       }
     }
   }
@@ -836,12 +852,34 @@ function pdrDifferenceCount(
 function checkV4ContextPlan(v: RuleViolation[], m: MissionV4 | MissionV5) {
   const production = m.production_task.situation_ko.trim();
   const situations = m.mpj_items.map((it) => it.situation_ko.trim());
-  if (new Set(situations).size !== situations.length) {
-    add(v, "R27", "fail", "v4 MPJ 상황이 서로 중복됨 — 앵커 PDR 안에서도 장면은 달라야 함");
+  const situationIndexes = new Map<string, number[]>();
+  situations.forEach((situation, index) => {
+    const indexes = situationIndexes.get(situation) ?? [];
+    indexes.push(index + 1);
+    situationIndexes.set(situation, indexes);
+  });
+  for (const [situation, indexes] of situationIndexes) {
+    if (indexes.length < 2) continue;
+    add(
+      v,
+      "R27",
+      "fail",
+      `v4 MPJ 문항 ${indexes.join("·")}의 situation_ko가 완전히 중복됨: ` +
+        `"${situation.slice(0, 90)}${situation.length > 90 ? "…" : ""}". ` +
+        "앵커 PDR은 유지하되 인물의 구체적 용건·대상·사건을 서로 다르게 다시 만드세요",
+    );
   }
-  if (situations.some((s) => s === production)) {
-    add(v, "R27", "fail", "v4 MPJ 상황이 DCT 상황을 그대로 복제함 — 새 장면의 근접 전이가 아님");
-  }
+  situations.forEach((situation, index) => {
+    if (situation !== production) return;
+    add(
+      v,
+      "R27",
+      "fail",
+      `v4 MPJ 문항 ${index + 1}의 situation_ko가 DCT 상황을 그대로 복제함: ` +
+        `"${situation.slice(0, 90)}${situation.length > 90 ? "…" : ""}". ` +
+        "같은 앵커 PDR을 유지하면서도 DCT와 다른 인물의 구체적 용건·대상·사건으로 다시 만드세요",
+    );
+  });
   for (const it of m.mpj_items) {
     const sentenceMarks = (it.situation_ko.match(/[.!?。！？]/g) ?? []).length;
     if (it.situation_ko.trim().length < 45 || sentenceMarks < 2) {

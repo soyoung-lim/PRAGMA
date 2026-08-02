@@ -271,6 +271,83 @@ describe("mission_v4 MPJ4 + DCT contract", () => {
     expect(checked.violations.some((item) => item.id === "R5" && item.level === "fail")).toBe(true);
   });
 
+  it("returns actionable R27 retry details for duplicated MPJ and DCT situations", () => {
+    const current = missionV4();
+    const duplicateMpjs = checkMission(
+      {
+        ...current,
+        mpj_items: [
+          current.mpj_items[0],
+          { ...current.mpj_items[1], situation_ko: current.mpj_items[0].situation_ko },
+          ...current.mpj_items.slice(2),
+        ],
+      },
+      context,
+    );
+    expect(
+      duplicateMpjs.violations.some(
+        (item) =>
+          item.id === "R27" &&
+          item.level === "fail" &&
+          item.message.includes("문항 1·2") &&
+          item.message.includes("용건·대상·사건"),
+      ),
+    ).toBe(true);
+
+    const copiedDct = checkMission(
+      {
+        ...current,
+        mpj_items: [
+          current.mpj_items[0],
+          { ...current.mpj_items[1], situation_ko: current.production_task.situation_ko },
+          ...current.mpj_items.slice(2),
+        ],
+      },
+      context,
+    );
+    expect(
+      copiedDct.violations.some(
+        (item) =>
+          item.id === "R27" &&
+          item.level === "fail" &&
+          item.message.includes("문항 2") &&
+          item.message.includes("DCT 상황을 그대로 복제"),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns candidate bands, lengths, and a focus-preserving R5 retry instruction", () => {
+    const current = missionV4();
+    const multi = current.mpj_items[3];
+    if (multi.type !== "multi_judge") throw new Error("fixture multi_judge changed");
+    const texts = ["줘", "바로 줘", "가능하다면 지금 보내 주실 수 있을까요", "혹시 지금 공유해 주실 수 있을까요", "혹시"];
+    const bands = ["too_direct", "too_direct", "within_band", "within_band", "too_indirect"] as const;
+    const checked = checkMission(
+      {
+        ...current,
+        mpj_items: [
+          ...current.mpj_items.slice(0, 3),
+          {
+            ...multi,
+            candidates: multi.candidates.map((candidate, index) => ({
+              ...candidate,
+              text: texts[index],
+              accepted_band_codes: [bands[index]],
+            })),
+          },
+        ],
+      },
+      context,
+    );
+    const violation = checked.violations.find(
+      (item) => item.id === "R5" && item.level === "fail" && item.message.includes("길이만으로 완전히 분리"),
+    );
+    expect(violation?.message).toContain("후보 1[too_direct]=1자");
+    expect(violation?.message).toContain("후보 3[within_band]");
+    expect(violation?.message).toContain("초점 자원과 대역은 유지");
+    expect(violation?.message).toContain("길이 범위를 겹치게");
+  });
+
   it("accepts Scale4 by polarity but requires one reference degree inside that polarity", () => {
     const current = missionV4();
     const scale = current.mpj_items[0];
