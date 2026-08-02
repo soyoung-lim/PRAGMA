@@ -12,26 +12,21 @@ export interface ColdOpenPresentation {
 const RESPONSE_SPEECH_ACTS = new Set(["refusal", "opposition"]);
 
 /**
- * MPJ 원본 채널은 감사·로그를 위해 보존하고, 번역 학습 화면의 서면 예시는
- * 일관된 메신저 장면으로만 보여 준다. 통역과 대면/통화 장면은 기존 표면을 유지한다.
+ * MPJ 원본 채널·수행 모드는 감사·로그에만 남기고, 학습 화면은 모두 같은 DM 장면으로
+ * 보여 준다. MPJ의 역할은 실제 매체를 재현하는 것이 아니라 DCT 직전 표현을 빠르게
+ * 관찰·비교하는 것이므로, 표시층에서는 단계 정체성을 채널 정체성보다 우선한다.
  */
 export function mpjPresentationChannel(
-  mode: MissionPresentationMode,
-  channel: MissionPresentationChannel | undefined,
+  _mode: MissionPresentationMode,
+  _channel: MissionPresentationChannel | undefined,
 ): MissionPresentationChannel {
-  const resolved = channel ?? "messenger";
-  if (mode === "translation" && (resolved === "email" || resolved === "messenger")) {
-    return "messenger";
-  }
-  return resolved;
+  return "messenger";
 }
 
-// DB channel은 legacy batch에서 신뢰할 수 없으므로 읽지 않는다. 장면 서술에 이메일이
-// 명시된 경우만 이메일 작성기를 쓰고, 그 밖의 번역 장면은 메신저로 보수적으로 폴백한다.
-const EXPLICIT_EMAIL_CUE = /(?:이메일|전자\s*(?:우편|메일)|e[\s-]?mail|메일)/iu;
-
-export function translationWritingSkin(situationText: string): TranslationWritingSkin {
-  return EXPLICIT_EMAIL_CUE.test(situationText) ? "email" : "messenger";
+// DB channel과 장면 텍스트의 매체 단서는 메타데이터로만 보존한다. 번역 DCT는 MPJ의
+// 동적인 DM 관찰 화면과 구분되는 차분한 최종 수행 단계이므로 항상 이메일 작성기를 쓴다.
+export function translationWritingSkin(_situationText: string): TranslationWritingSkin {
+  return "email";
 }
 
 /**
