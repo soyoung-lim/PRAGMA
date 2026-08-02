@@ -52,4 +52,22 @@ branch `codex/interpreting-zhko-fixes-2026-08-02`
 - 통역 본배치 전 방향·수준별 표본에 대해 TTS provider·model·voice·duration을 함께 기록해
   범위를 확인해야 한다. 범위를 바꿀 때는 `effective_chars_v1`을 덮어쓰지 않고 새 버전을
   발급한다.
-- Edge 함수·Railway 운영 배포와 운영 저장 smoke는 아직 수행하지 않았다.
+
+## PR·배포·운영 smoke
+
+- PR [#10](https://github.com/cnkr-commits/l2-pragmatic-translator/pull/10)을 merge commit
+  `36e75e0`으로 `main`에 병합했다.
+- Supabase project `tlnjxagqwvefeqdagtkq`의 `generate-scenario` Edge 함수를 배포했다.
+- 운영 Edge를 DB 저장 없이 통역·중→한 1건 호출했다. 원문은 중국어 37자·3문장으로
+  입문 범위 30~45자에 들어왔고, `core_v6_length_chars_v1_repair`, attempt 2,
+  `source_repair_applied=true`, 정책 버전 `effective_chars_v1`, hash `4ee4076a7b51…`를
+  확인했다.
+- 첫 `railway up --detach`는 worktree의 `.git` 포인터를 따라 루트 저장소를 업로드했다.
+  배포 `ad59d4da-5f77-4886-8e1b-1d51cad7d798`의 빌드 로그가 스냅샷 12종·구 hash
+  `24adf002…`를 보여 운영 청크 대조에서 발견했다. 루트 저장소 파일은 수정하지 않았다.
+- `railway up . --path-as-root --detach`로 전용 worktree 자체를 강제 업로드했다. 교정 배포
+  `3df7e817-e377-40f0-8698-8510d0266085`는 Online이며 빌드 로그에서 스냅샷 13종·새 hash를
+  확인했다.
+- 운영 URL은 HTTP 200이고 `missionRules-Dt9nDnzo.js`의 `effective_chars_v1`,
+  `coreSchema-BBEdWDRx.js`의 `length_policy`·`effective_chars`를 확인했다.
+- 인증 관리자 화면에서 실제 저장하는 종단 smoke와 수준별 TTS 파일럿은 아직 수행하지 않았다.
