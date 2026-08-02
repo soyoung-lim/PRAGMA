@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCoreSourceRepairPrompt,
+  coreSourceIssue,
   coreSourceSentenceIssue,
   countCoreSourceSentences,
 } from "../../../supabase/functions/_shared/coreSourceRepair";
+import {
+  CORE_LENGTH_POLICY_VERSION,
+  coreLengthRange,
+  countCoreEffectiveChars,
+} from "../../../supabase/functions/_shared/coreLengthPolicy";
 
 describe("core source discourse boundary", () => {
   it("중국어 쉼표만 이어진 장문은 한 문장으로 판정한다", () => {
@@ -23,6 +29,19 @@ describe("core source discourse boundary", () => {
     expect(coreSourceSentenceIssue(source)).toBeNull();
   });
 
+  it("공백·문장부호를 제외한 유효 글자 수를 센다", () => {
+    expect(countCoreEffectiveChars("你好，世界！ 2026")).toBe(8);
+  });
+
+  it("통역 입문 범위를 벗어난 장문은 글자 수 교정 대상으로 잡는다", () => {
+    const issue = coreSourceIssue(
+      "我想先说明一下现在的情况。因为原来的安排已经改变，我们需要重新确认所有细节，也要尽快通知相关同学和老师。",
+      coreLengthRange("beginner_intermediate", "stt_interpreting"),
+    );
+    expect(issue?.lengthOutOfRange).toBe(true);
+    expect(CORE_LENGTH_POLICY_VERSION).toBe("effective_chars_v1");
+  });
+
   it("교정 요청은 기존 사실 보존과 중국어 문장 경계를 함께 고정한다", () => {
     const prompt = buildCoreSourceRepairPrompt({
       originalUserPrompt: "PROBE_REQUEST",
@@ -30,10 +49,13 @@ describe("core source discourse boundary", () => {
       sourceLanguage: "zh",
       lengthHintKo: "2~3문장의 짧은 구두 담화",
       measuredSentenceCount: 1,
+      measuredEffectiveCharCount: 12,
+      effectiveCharRange: { min: 30, max: 45 },
     });
 
     expect(prompt).toContain("PROBE_REQUEST");
     expect(prompt).toContain("중국어 종결부호(。！？)");
+    expect(prompt).toContain("유효 글자 수를 반드시 30~45자");
     expect(prompt).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(prompt).toContain("focal_segments");
   });

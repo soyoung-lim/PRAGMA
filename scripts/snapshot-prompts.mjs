@@ -32,6 +32,7 @@ const EXPOSE = `
   buildCoreQualitySystemPrompt,
   buildAuthenticSystemPrompt,
   PRIMARY_MODEL, FALLBACK_MODEL, CORE_TEMPERATURE, CORE_RESPONSE_FORMAT,
+  CORE_LENGTH_POLICY_VERSION, CORE_LENGTH_RANGES,
 };`;
 // Edge가 _shared 모듈을 import해도 실행 가능하도록 로컬 의존성까지 한 번에 묶는다.
 // EXPOSE를 진입 소스 안에 붙여야 번들 IIFE 내부 심볼을 안전하게 꺼낼 수 있다.
@@ -91,14 +92,16 @@ const prompts = [
   entry("core.user.response_act", "코어 생성 · 요청서 (거절·반대 등 인접쌍)", "core",
     "선행 발화(preceding_turn)를 반드시 채우게 하는 분기.",
     S.buildCoreUserPrompt({ ...S.CORE_PROBE_BASE, direction: "ko_zh", source_modality: "written", is_response_act: true })),
-  entry("core.user.sentence_repair", "코어 생성 · 문장 경계 1회 교정", "core",
-    "R29 문장 수만 실패했을 때 기존 사실을 보존하며 전체 JSON을 한 번 교정한다.",
+  entry("core.user.source_repair", "코어 생성 · 원문 분량 1회 교정", "core",
+    "R29 글자 수·문장 경계가 어긋났을 때 기존 사실을 보존하며 전체 JSON을 한 번 교정한다.",
     S.buildCoreSourceRepairPrompt({
       originalUserPrompt: "PROBE_USER_PROMPT",
       previousOutput: { source_text: "PROBE_SOURCE_TEXT", focal_segments: [] },
       sourceLanguage: "zh",
-      lengthHintKo: "PROBE_LEN",
+      lengthHintKo: "유효 글자 30~45자",
       measuredSentenceCount: 1,
+      measuredEffectiveCharCount: 999,
+      effectiveCharRange: { min: 30, max: 45 },
     })),
   entry("mission.system", "미션 승격 · 지시문 (번역)", "mission",
     "코어를 MPJ 4문항 + 산출 과제로 승격시킬 때의 지시문.",
@@ -133,6 +136,11 @@ const snapshot = {
     model: S.PRIMARY_MODEL, model_fallback: S.FALLBACK_MODEL,
     temperature: S.CORE_TEMPERATURE, response_format: S.CORE_RESPONSE_FORMAT,
   },
+  source_length_policy: {
+    version: S.CORE_LENGTH_POLICY_VERSION,
+    unit: "effective_chars",
+    ranges: S.CORE_LENGTH_RANGES,
+  },
   prompts,
 };
 
@@ -151,6 +159,7 @@ export type PromptSnapshot = {
   generated_at: string; git_commit: string; git_dirty: boolean;
   edge_source: string; edge_source_sha256: string; core_surface_hash: string;
   generation_config: { model: string; model_fallback: string; temperature: number; response_format: string };
+  source_length_policy: { version: string; unit: "effective_chars"; ranges: Record<string, Record<string, { min: number; max: number }>> };
   prompts: PromptSnapshotEntry[];
 };
 export const PROMPT_SNAPSHOT: PromptSnapshot = ${JSON.stringify(snapshot, null, 2)} as const;
