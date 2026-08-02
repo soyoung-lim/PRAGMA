@@ -612,3 +612,39 @@
   `src/pages/learner/LearnerCourseLive.tsx`, `src/pages/learner/MissionRunV1.tsx`
 - 관련 Iteration / Evidence: `ITER-20260801-01`, `EVD-20260801-01`
 - 관련 커밋: `aa835c9`, `9a244f0`, `6ad1e06`
+
+## DEC-20260802-01 · 미션 장면성 1차는 생성계약이 아니라 표시층의 장면 연속성으로 구현
+
+- 날짜: 2026-08-02
+- 상태: 채택·로컬 구현/검증 완료
+- 문제: 현행 인트로는 학습 절차를 먼저 설명하고, 번역 DCT는 장면 매체와 무관한 공통
+  작성 상자를 사용했다. 동시에 legacy batch가 모든 번역 core의 channel을 messenger로
+  저장하고 MPJ 생성기는 channel 배분 규칙이 없어, DB channel을 실제 장면 표면의 정본으로
+  쓰면 현재 데이터 결함을 UI 계약으로 고착할 위험이 있었다.
+- 검토한 대안:
+  - DB channel 정제·마이그레이션과 프롬프트 배분 규칙 추가: 실제 장면 경험은 개선할 수
+    있으나 콘텐츠 재생성·정책 버전 변경을 동반하고 현재 16건 규모의 1차 검증에 비해 비용이
+    커 기각.
+  - 모든 번역 화면을 channel 그대로 이메일/메신저로 분기: raw 값의 신뢰도가 없어 기각.
+  - 모든 번역 DCT를 메신저로 통일: 안정적이지만 명시적 이메일 장면 2건의 생태적 단서를
+    버리므로 기각.
+  - MPJ는 서면 예시를 메신저 말풍선으로 통일하고, 최종 DCT만 장면 서술의 명시적 이메일
+    단서에 따라 작성기를 분기: 채택.
+- 결정:
+  1. 번역 MPJ의 `email`·`messenger`는 모두 메신저 말풍선으로 표시한다. raw channel은
+     변경·저장하지 않는다.
+  2. 인트로는 최종 `production_task` 장면의 콜드 오픈으로 바꾼다. `preceding_turn`이 있으면
+     상대 턴→내 차례, 없으면 내가 먼저 말을 꺼내는 장면으로 표시한다.
+  3. 번역 DCT는 `situation_ko`에 이메일이 명시된 경우만 이메일 작성기를 사용하고,
+     그 밖에는 메시지 작성기로 폴백한다. deprecated `production_task.channel`은 읽지 않는다.
+  4. 이번 결정은 presentation-only다. DB·스키마·프롬프트·생성계약·평가·저장·
+     `policy_ver`는 변경하지 않는다.
+  5. 완료 비교·소유 카드와 `/learner/records` 연결은 2차 패치로 분리한다.
+- 근거: 1차 목표는 매체 분포를 새 연구 축으로 복원하는 것이 아니라, 이미 검수·편성된
+  미션을 더 실제 장면처럼 경험하게 하는 것이다. 신뢰할 수 없는 메타데이터를 교정하는
+  비용보다 기존 자연어 장면과 선행 턴을 표시층에서 재사용하는 편이 feasibility와 가성비가
+  높고, 이후 전체 UX가 확정될 때 `policy_ver`를 한 번만 올리는 동결 계획과도 맞는다.
+- 관련 파일: `src/pages/learner/MissionRunV1.tsx`,
+  `src/lib/mission/missionPresentation.ts`
+- 관련 Iteration / Evidence: `ITER-20260802-01`, `EVD-20260802-01`
+- 관련 커밋: `397c3c8`
