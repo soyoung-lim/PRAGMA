@@ -38,6 +38,17 @@ import {
   type LearnerLevel,
   type SpeechActUI,
 } from "@/lib/pragma/enums";
+import {
+  CORE_LENGTH_POLICY_VERSION,
+  coreLengthHintKo as sharedCoreLengthHintKo,
+  coreLengthRange,
+  countCoreEffectiveChars,
+} from "../../../supabase/functions/_shared/coreLengthPolicy";
+import {
+  CORE_SOURCE_SENTENCE_MAX,
+  CORE_SOURCE_SENTENCE_MIN,
+  countCoreSourceSentences,
+} from "../../../supabase/functions/_shared/coreSourceRepair";
 
 export type RuleLevel = "fail" | "warning";
 export interface RuleViolation {
@@ -187,52 +198,13 @@ function checkDirectionMatch(v: RuleViolation[], dataDir: LanguageDirection, ctx
 }
 
 // ── R29 미니 담화형 원문 + focal segments (DEC-20260730-01) ────────────
-// 원문은 2~4문장 담화이며(하드 경계), 수준·수행 방식별 권장 범위를 벗어나면
-// warning이다(문장 경계 판정이 휴리스틱이라 fail로 배치를 막지 않는다).
+// 중국어 쉼표 연결 장문과 한국어 문장 경계의 비대칭을 피하기 위해 분량 하드 경계는
+// 공백·문장부호 제외 유효 글자 수로 판정한다. 2~4문장은 담화 형태를 유도하는 warning이다.
 // focal_segments는 head 정확히 1 + support 0~2이고, 각 text는 source_text의
 // 정확한 부분문자열이어야 한다 — 저장·화면 강조·피드백이 같은 문자열을 본다.
-const FOCAL_SENTENCE_HARD_MIN = 2;
-const FOCAL_SENTENCE_HARD_MAX = 4;
-const SENTENCE_RANGE: Record<
-  "translation" | "stt_interpreting",
-  Record<LearnerLevel, [number, number]>
-> = {
-  translation: {
-    beginner_intermediate: [2, 3],
-    intermediate: [3, 4],
-    advanced: [3, 4],
-  },
-  stt_interpreting: {
-    beginner_intermediate: [2, 3],
-    intermediate: [2, 3],
-    advanced: [3, 4],
-  },
-};
-
-/**
- * 코어 생성 프롬프트에 넣는 수준·모드별 분량 힌트.
- * R29의 SENTENCE_RANGE에서 파생한다 — 생성 안내와 판정 기준이 어긋나면
- * 그 자체가 결함이므로 표를 두 벌 두지 않는다.
- */
-export function coreLengthHintKo(
-  level: LearnerLevel,
-  mode: "translation" | "stt_interpreting",
-): string {
-  const [lo, hi] = SENTENCE_RANGE[mode][level];
-  const span = lo === hi ? `${lo}문장` : `${lo}~${hi}문장`;
-  return mode === "stt_interpreting"
-    ? `${span}의 짧은 구두 담화 (기억 과부하 없이)`
-    : `${span}의 실무 메시지 담화`;
-}
-
-/** 한국어·중국어 종결 부호 기준 문장 수. 부호 없이 끝나는 마지막 절도 1문장으로 센다. */
-export function countSentences(text: string): number {
-  const t = text.trim();
-  if (!t) return 0;
-  const chunks = t.match(/[^.!?。！？…]+[.!?。！？…]*/g) ?? [];
-  const n = chunks.filter((c) => /[가-힣一-鿿A-Za-z0-9]/.test(c)).length;
-  return n === 0 ? 1 : n;
-}
+export const coreLengthHintKo = sharedCoreLengthHintKo;
+export const countSentences = countCoreSourceSentences;
+export { CORE_LENGTH_POLICY_VERSION, countCoreEffectiveChars };
 
 function checkFocalDiscourse(
   v: RuleViolation[],
@@ -241,14 +213,24 @@ function checkFocalDiscourse(
   label: string,
   ctx: CheckContext,
 ) {
-  const n = countSentences(sourceText);
-  if (n < FOCAL_SENTENCE_HARD_MIN || n > FOCAL_SENTENCE_HARD_MAX) {
-    add(v, "R29", "fail", `${label}: 미니 담화 원문은 ${FOCAL_SENTENCE_HARD_MIN}~${FOCAL_SENTENCE_HARD_MAX}문장이어야 함(실측 ${n}문장)`);
-  } else {
-    const [lo, hi] = SENTENCE_RANGE[ctx.mode][ctx.level];
-    if (n < lo || n > hi) {
-      add(v, "R29", "warning", `${label}: ${ctx.level}·${ctx.mode} 권장 ${lo}~${hi}문장인데 ${n}문장`);
-    }
+  const sentenceCount = countSentences(sourceText);
+  if (sentenceCount < CORE_SOURCE_SENTENCE_MIN || sentenceCount > CORE_SOURCE_SENTENCE_MAX) {
+    add(
+      v,
+      "R29",
+      "warning",
+      `${label}: 미니 담화는 종결부호 기준 ${CORE_SOURCE_SENTENCE_MIN}~${CORE_SOURCE_SENTENCE_MAX}문장 권장(실측 ${sentenceCount}문장)`,
+    );
+  }
+  const effectiveChars = countCoreEffectiveChars(sourceText);
+  const range = coreLengthRange(ctx.level, ctx.mode);
+  if (effectiveChars < range.min || effectiveChars > range.max) {
+    add(
+      v,
+      "R29",
+      "fail",
+      `${label}: ${CORE_LENGTH_POLICY_VERSION} 기준 유효 글자 ${range.min}~${range.max}자여야 함(공백·문장부호 제외 실측 ${effectiveChars}자)`,
+    );
   }
 
   if (!segments || segments.length === 0) {

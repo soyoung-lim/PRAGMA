@@ -12,20 +12,55 @@ export type PromptSnapshot = {
   generated_at: string; git_commit: string; git_dirty: boolean;
   edge_source: string; edge_source_sha256: string; core_surface_hash: string;
   generation_config: { model: string; model_fallback: string; temperature: number; response_format: string };
+  source_length_policy: { version: string; unit: "effective_chars"; ranges: Record<string, Record<string, { min: number; max: number }>> };
   prompts: PromptSnapshotEntry[];
 };
 export const PROMPT_SNAPSHOT: PromptSnapshot = {
-  "generated_at": "2026-08-02T12:04:50.677Z",
-  "git_commit": "d29ffa2",
+  "generated_at": "2026-08-02T13:11:58.070Z",
+  "git_commit": "1056c9b",
   "git_dirty": false,
   "edge_source": "supabase/functions/generate-scenario/index.ts",
-  "edge_source_sha256": "85b4256696cb07d554d5c0ec3e4981f2ab88e9b48a2e48d975114dfe1bdb61d7",
-  "core_surface_hash": "e12af89e99bdc88bfa1a95d2035b13179b30903e8d350591d4e633273e812640",
+  "edge_source_sha256": "e9a00b833a6f8d0def7bc6af480ac27faaca1595fcc3e7295cee8b47bc74196f",
+  "core_surface_hash": "4ee4076a7b51a6ff515893097c0d891a18e24cf3b02088dde218b1f53989cd7e",
   "generation_config": {
     "model": "gpt-4.1-mini",
     "model_fallback": "gpt-4o-mini",
     "temperature": 0.7,
     "response_format": "json_schema:pragma_scenario_core_v2"
+  },
+  "source_length_policy": {
+    "version": "effective_chars_v1",
+    "unit": "effective_chars",
+    "ranges": {
+      "translation": {
+        "beginner_intermediate": {
+          "min": 45,
+          "max": 65
+        },
+        "intermediate": {
+          "min": 60,
+          "max": 85
+        },
+        "advanced": {
+          "min": 80,
+          "max": 110
+        }
+      },
+      "stt_interpreting": {
+        "beginner_intermediate": {
+          "min": 30,
+          "max": 45
+        },
+        "intermediate": {
+          "min": 40,
+          "max": 60
+        },
+        "advanced": {
+          "min": 55,
+          "max": 85
+        }
+      }
+    }
   },
   "prompts": [
     {
@@ -49,32 +84,32 @@ export const PROMPT_SNAPSHOT: PromptSnapshot = {
       "label": "코어 생성 · 요청서 (번역)",
       "group": "core",
       "note": "직장·산업 셀 조건이 들어가는 자리. PROBE_* 는 호출마다 바뀌는 값.",
-      "sha256": "99d8b68ce29bf55ce6bd61fbbd793382d18e63910c682434e5f27bf3a0b001cb",
-      "text": "[생성 요청]\n- 언어 방향: 한국어 → 중국어\n- 화행: PROBE_ACT\n- 학습자 수준: PROBE_LV\n- 도메인: PROBE_DOM\n- 산업 배경: PROBE_INDUSTRY (PROBE_INDUSTRY)\n- 관계 P(지위): PROBE_P\n- 관계 D(거리): PROBE_D\n- 관계 R(부담): PROBE_R\n- 장면 시드: PROBE_SEED\n- 원문 분량: PROBE_LEN\n- 문장 경계: 쉼표로 절을 길게 잇지 말고 한국어 종결부호(.?!)로 위 분량의 문장 수를 명시하세요.\n\n[context_spec — 서버 고정 조건]\n- 표준상황 코드: PROBE_STANDARD_SITUATION\n- 역할 쌍: 화자=PROBE_SPEAKER_ROLE / 상대=PROBE_ADDRESSEE_ROLE\n- 화자의 정당한 권리·책임: PROBE_SPEAKER_ENTITLEMENT\n- 상대의 의무·선택권: PROBE_ADDRESSEE_OBLIGATION\n- 결정 권한: PROBE_DECISION_AUTHORITY\n- 행위자 고정: A=화자(PROBE_SPEAKER_ROLE), B=상대(PROBE_ADDRESSEE_ROLE). 모든 필드에서 A/B, 문제 책임자, 요청받은 행위자를 바꾸지 마세요.\n- 산업 실현: 산업 라벨을 보지 않고도 분야를 알아볼 수 있는 구체적 업무·대상·전문 어휘 중 서로 다른 종류의 단서 두 가지 이상을 situation_ko/source_text에 넣으세요. 범용어만 쓰면 실패입니다.\n- 수행 모드: 번역 — source_text는 자연스러운 한국어 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정. situation_ko도 글을 작성해 전달하는 장면으로 서술하며, \"글로 남기지 않고 직접 말한다\"거나 대면·통화로만 수행하는 장면으로 만들지 마세요.\n\n위 조건에 맞는 상황·원문을 JSON으로만 반환하세요."
+      "sha256": "de7bfb1eb258ed4f5790920556d038f61ccf4cd61102c86e2e89e0c9edd60781",
+      "text": "[생성 요청]\n- 언어 방향: 한국어 → 중국어\n- 화행: PROBE_ACT\n- 학습자 수준: PROBE_LV\n- 도메인: PROBE_DOM\n- 산업 배경: PROBE_INDUSTRY (PROBE_INDUSTRY)\n- 관계 P(지위): PROBE_P\n- 관계 D(거리): PROBE_D\n- 관계 R(부담): PROBE_R\n- 장면 시드: PROBE_SEED\n- 원문 분량: 유효 글자 45~65자(공백·문장부호 제외), 종결부호 기준 2~4문장의 실무 메시지 담화\n- 문장 경계: 쉼표로 절을 길게 잇지 말고 한국어 종결부호(.?!)로 위 분량의 문장 수를 명시하세요.\n\n[context_spec — 서버 고정 조건]\n- 표준상황 코드: PROBE_STANDARD_SITUATION\n- 역할 쌍: 화자=PROBE_SPEAKER_ROLE / 상대=PROBE_ADDRESSEE_ROLE\n- 화자의 정당한 권리·책임: PROBE_SPEAKER_ENTITLEMENT\n- 상대의 의무·선택권: PROBE_ADDRESSEE_OBLIGATION\n- 결정 권한: PROBE_DECISION_AUTHORITY\n- 행위자 고정: A=화자(PROBE_SPEAKER_ROLE), B=상대(PROBE_ADDRESSEE_ROLE). 모든 필드에서 A/B, 문제 책임자, 요청받은 행위자를 바꾸지 마세요.\n- 산업 실현: 산업 라벨을 보지 않고도 분야를 알아볼 수 있는 구체적 업무·대상·전문 어휘 중 서로 다른 종류의 단서 두 가지 이상을 situation_ko/source_text에 넣으세요. 범용어만 쓰면 실패입니다.\n- 수행 모드: 번역 — source_text는 자연스러운 한국어 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정. situation_ko도 글을 작성해 전달하는 장면으로 서술하며, \"글로 남기지 않고 직접 말한다\"거나 대면·통화로만 수행하는 장면으로 만들지 마세요.\n\n위 조건에 맞는 상황·원문을 JSON으로만 반환하세요."
     },
     {
       "key": "core.user.spoken",
       "label": "코어 생성 · 요청서 (통역)",
       "group": "core",
       "note": "통역 셀은 구두 담화체 지시가 추가된다.",
-      "sha256": "9ef090a5577316867d3a203dc1c302e53f1f1ba5e5d6f54574a683f27907e495",
-      "text": "[생성 요청]\n- 언어 방향: 한국어 → 중국어\n- 화행: PROBE_ACT\n- 학습자 수준: PROBE_LV\n- 도메인: PROBE_DOM\n- 관계 P(지위): PROBE_P\n- 관계 D(거리): PROBE_D\n- 관계 R(부담): PROBE_R\n- 장면 시드: PROBE_SEED\n- 원문 분량: PROBE_LEN\n- 문장 경계: 쉼표로 절을 길게 잇지 말고 한국어 종결부호(.?!)로 위 분량의 문장 수를 명시하세요.\n\n[context_spec — 서버 고정 조건]\n- 표준상황 코드: PROBE_STANDARD_SITUATION\n- 역할 쌍: 화자=PROBE_SPEAKER_ROLE / 상대=PROBE_ADDRESSEE_ROLE\n- 화자의 정당한 권리·책임: PROBE_SPEAKER_ENTITLEMENT\n- 상대의 의무·선택권: PROBE_ADDRESSEE_OBLIGATION\n- 결정 권한: PROBE_DECISION_AUTHORITY\n- 행위자 고정: A=화자(PROBE_SPEAKER_ROLE), B=상대(PROBE_ADDRESSEE_ROLE). 모든 필드에서 A/B, 문제 책임자, 요청받은 행위자를 바꾸지 마세요.\n- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 한국어 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지. situation_ko도 직접 말하고 듣는 장면으로 서술하며, 이메일·메신저·글을 작성해 보내는 장면으로 만들지 마세요.\n\n위 조건에 맞는 상황·원문을 JSON으로만 반환하세요."
+      "sha256": "59d71adf2694e7270f8a6ae2f08e56bb667acd31ac1d7cef7cc60a4f6d3d7436",
+      "text": "[생성 요청]\n- 언어 방향: 한국어 → 중국어\n- 화행: PROBE_ACT\n- 학습자 수준: PROBE_LV\n- 도메인: PROBE_DOM\n- 관계 P(지위): PROBE_P\n- 관계 D(거리): PROBE_D\n- 관계 R(부담): PROBE_R\n- 장면 시드: PROBE_SEED\n- 원문 분량: 유효 글자 30~45자(공백·문장부호 제외), 종결부호 기준 2~4문장의 짧은 구두 담화 (기억 과부하 없이)\n- 문장 경계: 쉼표로 절을 길게 잇지 말고 한국어 종결부호(.?!)로 위 분량의 문장 수를 명시하세요.\n\n[context_spec — 서버 고정 조건]\n- 표준상황 코드: PROBE_STANDARD_SITUATION\n- 역할 쌍: 화자=PROBE_SPEAKER_ROLE / 상대=PROBE_ADDRESSEE_ROLE\n- 화자의 정당한 권리·책임: PROBE_SPEAKER_ENTITLEMENT\n- 상대의 의무·선택권: PROBE_ADDRESSEE_OBLIGATION\n- 결정 권한: PROBE_DECISION_AUTHORITY\n- 행위자 고정: A=화자(PROBE_SPEAKER_ROLE), B=상대(PROBE_ADDRESSEE_ROLE). 모든 필드에서 A/B, 문제 책임자, 요청받은 행위자를 바꾸지 마세요.\n- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 한국어 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지. situation_ko도 직접 말하고 듣는 장면으로 서술하며, 이메일·메신저·글을 작성해 보내는 장면으로 만들지 마세요.\n\n위 조건에 맞는 상황·원문을 JSON으로만 반환하세요."
     },
     {
       "key": "core.user.response_act",
       "label": "코어 생성 · 요청서 (거절·반대 등 인접쌍)",
       "group": "core",
       "note": "선행 발화(preceding_turn)를 반드시 채우게 하는 분기.",
-      "sha256": "a84d4c0c0eade0b3e5ff64d5c1d71349ca5557688d5b76cfa601ff4c7320281a",
-      "text": "[생성 요청]\n- 언어 방향: 한국어 → 중국어\n- 화행: PROBE_ACT\n- 학습자 수준: PROBE_LV\n- 도메인: PROBE_DOM\n- 관계 P(지위): PROBE_P\n- 관계 D(거리): PROBE_D\n- 관계 R(부담): PROBE_R\n- 장면 시드: PROBE_SEED\n- 원문 분량: PROBE_LEN\n- 문장 경계: 쉼표로 절을 길게 잇지 말고 한국어 종결부호(.?!)로 위 분량의 문장 수를 명시하세요.\n\n[context_spec — 서버 고정 조건]\n- 표준상황 코드: PROBE_STANDARD_SITUATION\n- 역할 쌍: 화자=PROBE_SPEAKER_ROLE / 상대=PROBE_ADDRESSEE_ROLE\n- 화자의 정당한 권리·책임: PROBE_SPEAKER_ENTITLEMENT\n- 상대의 의무·선택권: PROBE_ADDRESSEE_OBLIGATION\n- 결정 권한: PROBE_DECISION_AUTHORITY\n- 행위자 고정: A=화자(PROBE_SPEAKER_ROLE), B=상대(PROBE_ADDRESSEE_ROLE). 모든 필드에서 A/B, 문제 책임자, 요청받은 행위자를 바꾸지 마세요.\n- 수행 모드: 번역 — source_text는 자연스러운 한국어 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정. situation_ko도 글을 작성해 전달하는 장면으로 서술하며, \"글로 남기지 않고 직접 말한다\"거나 대면·통화로만 수행하는 장면으로 만들지 마세요.\n- 이 화행은 인접쌍의 둘째 짝입니다. preceding_turn에 상대(중국어 화자)의 선행 발화를 '중국어'로 반드시 채우세요(null 금지).\n- preceding_turn의 화자는 B, source_text의 화자는 A입니다. 두 턴에서 사람·소유·행위 대상과 핵심 명제를 일관되게 유지하세요.\n\n위 조건에 맞는 상황·원문을 JSON으로만 반환하세요."
+      "sha256": "f8722cb50c054600bc94e1c3626a072922bcbb38e98b5152f6040baaf4209a7f",
+      "text": "[생성 요청]\n- 언어 방향: 한국어 → 중국어\n- 화행: PROBE_ACT\n- 학습자 수준: PROBE_LV\n- 도메인: PROBE_DOM\n- 관계 P(지위): PROBE_P\n- 관계 D(거리): PROBE_D\n- 관계 R(부담): PROBE_R\n- 장면 시드: PROBE_SEED\n- 원문 분량: 유효 글자 45~65자(공백·문장부호 제외), 종결부호 기준 2~4문장의 실무 메시지 담화\n- 문장 경계: 쉼표로 절을 길게 잇지 말고 한국어 종결부호(.?!)로 위 분량의 문장 수를 명시하세요.\n\n[context_spec — 서버 고정 조건]\n- 표준상황 코드: PROBE_STANDARD_SITUATION\n- 역할 쌍: 화자=PROBE_SPEAKER_ROLE / 상대=PROBE_ADDRESSEE_ROLE\n- 화자의 정당한 권리·책임: PROBE_SPEAKER_ENTITLEMENT\n- 상대의 의무·선택권: PROBE_ADDRESSEE_OBLIGATION\n- 결정 권한: PROBE_DECISION_AUTHORITY\n- 행위자 고정: A=화자(PROBE_SPEAKER_ROLE), B=상대(PROBE_ADDRESSEE_ROLE). 모든 필드에서 A/B, 문제 책임자, 요청받은 행위자를 바꾸지 마세요.\n- 수행 모드: 번역 — source_text는 자연스러운 한국어 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정. situation_ko도 글을 작성해 전달하는 장면으로 서술하며, \"글로 남기지 않고 직접 말한다\"거나 대면·통화로만 수행하는 장면으로 만들지 마세요.\n- 이 화행은 인접쌍의 둘째 짝입니다. preceding_turn에 상대(중국어 화자)의 선행 발화를 '중국어'로 반드시 채우세요(null 금지).\n- preceding_turn의 화자는 B, source_text의 화자는 A입니다. 두 턴에서 사람·소유·행위 대상과 핵심 명제를 일관되게 유지하세요.\n\n위 조건에 맞는 상황·원문을 JSON으로만 반환하세요."
     },
     {
-      "key": "core.user.sentence_repair",
-      "label": "코어 생성 · 문장 경계 1회 교정",
+      "key": "core.user.source_repair",
+      "label": "코어 생성 · 원문 분량 1회 교정",
       "group": "core",
-      "note": "R29 문장 수만 실패했을 때 기존 사실을 보존하며 전체 JSON을 한 번 교정한다.",
-      "sha256": "587efd5821971f048ba81d1e2101c3fec2782e3444312ebb93f7a7a43e5dc27f",
-      "text": "PROBE_USER_PROMPT\n\n[직전 출력의 구조 오류 — 한 번만 교정]\n- 직전 source_text는 1문장으로 판정되어 실패했습니다.\n- 원문 분량은 PROBE_LEN이며, 반드시 종결부호 기준 2~4문장이어야 합니다.\n- 쉼표로 여러 절을 길게 잇는 한 문장으로 만들지 말고, 중국어 종결부호(。！？)로 자연스러운 문장 경계를 명시하세요.\n- 직전 출력의 인물·관계·상황·사실·화행 목적은 그대로 보존하세요. 새 이유·대안·일정·보상을 추가하지 마세요.\n- source_text를 고친 뒤 focal_segments도 새 source_text에서 그대로 복사한 부분문자열로 다시 맞추세요.\n- 수정된 전체 JSON만 반환하세요.\n\n[직전 출력]\n{\n  \"source_text\": \"PROBE_SOURCE_TEXT\",\n  \"focal_segments\": []\n}"
+      "note": "R29 글자 수·문장 경계가 어긋났을 때 기존 사실을 보존하며 전체 JSON을 한 번 교정한다.",
+      "sha256": "ced7cfc30af9722df95573a61a9b2e1913d0a4a07a72c18fb78b56c58ecb5aae",
+      "text": "PROBE_USER_PROMPT\n\n[직전 출력의 구조 오류 — 한 번만 교정]\n- 직전 source_text 실측: 종결부호 기준 1문장, 유효 글자 999자.\n- 원문 분량은 유효 글자 30~45자입니다.\n- 공백·문장부호를 제외한 유효 글자 수를 반드시 30~45자로 맞추세요.\n- 종결부호 기준 2~4문장으로 나누세요.\n- 쉼표로 여러 절을 길게 잇는 한 문장으로 만들지 말고, 중국어 종결부호(。！？)로 자연스러운 문장 경계를 명시하세요.\n- 직전 출력의 인물·관계·상황·사실·화행 목적은 그대로 보존하세요. 새 이유·대안·일정·보상을 추가하지 마세요.\n- source_text를 고친 뒤 focal_segments도 새 source_text에서 그대로 복사한 부분문자열로 다시 맞추세요.\n- 수정된 전체 JSON만 반환하세요.\n\n[직전 출력]\n{\n  \"source_text\": \"PROBE_SOURCE_TEXT\",\n  \"focal_segments\": []\n}"
     },
     {
       "key": "mission.system",
