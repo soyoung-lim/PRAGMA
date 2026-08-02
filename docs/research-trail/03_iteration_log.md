@@ -541,6 +541,9 @@
   - localhost에서 번역·통역 MPJ 모두 DM 표면과 모드별 판단 문구를 확인했다.
   - 번역 DCT의 고정 이메일형 작성기·중립 라벨, 통역 DCT의 정적 듣기·녹음 콘솔을 확인했다.
   - 인앱 브라우저 564×731에서 수평 overflow 없음과 새 콘솔 오류 없음을 확인했다.
+  - PR #6을 merge commit `056bf394`로 병합한 뒤 Railway production 배포
+    `1504272b-af34-42e2-a0ce-7f6f75df7b1e`의 SUCCESS·RUNNING과 운영 미션 chunk의
+    DM·번역 작성기·통역 수행 콘솔 문구를 확인했다.
 - 예상과 달랐던 점:
   - 1차 구현은 channel을 연구 축으로 복원하지 않았지만, 통역 MPJ와 번역 DCT 표시 분기에는
     여전히 channel 의미가 남아 있었다. 데이터 층위의 격하만으로는 경험 층위의 격하가
