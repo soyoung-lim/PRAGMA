@@ -200,10 +200,22 @@ export const FocalSegmentSchema = z.object({
 });
 export type FocalSegment = z.infer<typeof FocalSegmentSchema>;
 
+/** 서버가 실측해 주입하는 원문 분량 정책 스냅샷. 모델 출력 필드는 아니다. */
+export const CoreLengthPolicySnapshotSchema = z.object({
+  version: z.string().min(1),
+  unit: z.literal("effective_chars"),
+  min: z.number().int().nonnegative(),
+  max: z.number().int().positive(),
+  actual: z.number().int().nonnegative(),
+});
+export type CoreLengthPolicySnapshot = z.infer<typeof CoreLengthPolicySnapshotSchema>;
+
 export const ScenarioCoreV3Schema = ScenarioCoreV2Schema.extend({
   schema_version: z.literal("scenario_core_v3"),
   /** head 정확히 1 + support 0~2 (R29). legacy 코어는 부재. */
   focal_segments: z.array(FocalSegmentSchema).min(1).max(3).optional(),
+  /** 생성 당시 길이 정책과 실측값. legacy 코어는 부재. */
+  length_policy: CoreLengthPolicySnapshotSchema.optional(),
 });
 export type ScenarioCoreV3 = z.infer<typeof ScenarioCoreV3Schema>;
 
@@ -260,4 +272,12 @@ export function normalizeCore(input: unknown): {
 export function coreDirection(input: unknown): LanguageDirection {
   const d = (input as { direction?: string } | null)?.direction;
   return d === "zh_ko" ? "zh_ko" : DEFAULT_DIRECTION;
+}
+
+/** provenance 성격의 필드를 제외해 내용 중복 해시를 정책 버전과 독립시킨다. */
+export function coreContentForHash(
+  core: Record<string, unknown>,
+): Record<string, unknown> {
+  const { provenance: _provenance, length_policy: _lengthPolicy, ...content } = core;
+  return content;
 }
