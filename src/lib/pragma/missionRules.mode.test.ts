@@ -81,7 +81,8 @@ describe("R16 명시적 수행 모드 모순", () => {
     };
     const spoken = {
       ...baseCore,
-      situation_ko: "담당자를 직접 만나 일정 변경을 요청하는 상황이다.",
+      situation_ko:
+        "한국 회사 직원이 중국 협력사 담당자를 직접 만나 통역을 사이에 두고 일정 변경을 요청하는 상황이다.",
       source_modality: "spoken",
       channel: "facetoface",
     };
@@ -108,7 +109,7 @@ describe("R16 명시적 수행 모드 모순", () => {
     };
     const spokenCore = (situation_ko: string) => ({
       ...baseCore,
-      situation_ko,
+      situation_ko: `한국 회사 직원과 중국 협력사 담당자가 통역을 사이에 두고 대화한다. ${situation_ko}`,
       source_modality: "spoken",
       channel: "facetoface",
     });
@@ -139,6 +140,41 @@ describe("R16 명시적 수행 모드 모순", () => {
       expect(
         r16Fails(spokenCore("이 초대는 기록으로 남기며, 팀장의 참여 여부를 존중한다."), spokenContext),
       ).not.toEqual([]);
+    });
+  });
+
+  describe("통역 장면의 이중언어 참여자", () => {
+    const spokenContext: CheckContext = {
+      ...baseContext,
+      mode: "stt_interpreting",
+      source_modality: "spoken",
+    };
+    const spokenCore = (situation_ko: string) => ({
+      ...baseCore,
+      situation_ko,
+      source_modality: "spoken",
+      channel: "facetoface",
+    });
+
+    it("같은 언어 사용자끼리 통역 없이 대화하는 모호한 장면은 차단한다", () => {
+      const failures = r16Fails(
+        spokenCore("두 연구책임자가 처음 만나 예산 배분을 직접 논의한다."),
+        spokenContext,
+      );
+      expect(failures.map((item) => item.message)).toContainEqual(
+        expect.stringContaining("이중언어 화자·통역 개입 장면이 불명확"),
+      );
+    });
+
+    it("한국어 화자·중국어 화자와 통역 개입이 드러나는 장면은 통과한다", () => {
+      expect(
+        r16Fails(
+          spokenCore(
+            "한국 교육청 담당자와 중국 연구소 연구원이 순차통역을 사이에 두고 예산 배분을 논의한다.",
+          ),
+          spokenContext,
+        ),
+      ).toEqual([]);
     });
   });
 });
