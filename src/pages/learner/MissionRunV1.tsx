@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { CheckCircle2, CircleAlert, Sparkles } from "lucide-react";
+import { CheckCircle2, CircleAlert, Mail, MessageCircle, Send, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +43,11 @@ import {
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { requestSttTranscript } from "@/lib/mission/missionStt";
 import { requestTtsAudio } from "@/lib/tts";
+import {
+  mpjPresentationChannel,
+  translationWritingSkin,
+  type MissionPresentationMode,
+} from "@/lib/mission/missionPresentation";
 import { DiffLegend, DiffLine } from "@/components/mission/DiffLine";
 import { diffText } from "@/lib/mission/textDiff";
 import { type RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
@@ -1143,52 +1148,17 @@ function MissionRunner({
           {phase === "done" && <span className="font-bold text-foreground">완료</span>}
         </div>
 
-        {/* ── 0부: 여정 미리 보기 ──
-            "미션 시작"을 눌렀을 때 무엇을 하게 되는지 모른 채 첫 문항으로 떨어지던
-            것을 막는다. 판정·저장에는 관여하지 않는 안내 화면이다. */}
+        {/* ── 0부: 최종 DCT 장면 콜드 오픈 ──
+            절차 설명보다 먼저 실제 수행 장면을 보여 준다. production_task를 읽기만 하며
+            판정·저장에는 관여하지 않는다. */}
         {phase === "intro" && (
-          <div className="space-y-3">
-            <div className={card}>
-              <h2 className="text-[16px] font-bold text-[#15202B]">
-                이 미션에서 하게 되는 일
-              </h2>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                {learnerActLabel} 상황에서 <b className="text-[#3E4C57]">{learnerFocusCopy}</b>를
-                연습합니다. 아래 순서로 한 번에 이어집니다.
-              </p>
-
-              <ol className="mt-3.5 space-y-2.5">
-                {journeySteps.map((step, i) => (
-                  <li key={step.key} className="flex gap-3">
-                    <span className="mt-0.5 flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full bg-[#F2EEE0] text-[11px] font-bold text-[#5B5446]">
-                      {i + 1}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-[13.5px] font-semibold text-[#27323C]">
-                          {step.label}
-                        </span>
-                        <span className="text-[10px] text-[#A9B0BA]">{step.aside}</span>
-                      </div>
-                      <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                        {step.detail}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-
-              {/* 시작 버튼은 단계 목록 바로 아래 — 상황 전문 뒤에 두면 화면 밖으로
-                  밀려, 들어온 사람이 다음에 무엇을 눌러야 할지 보이지 않는다. */}
-              <Button
-                className="mt-4 w-full bg-[#FAD338] py-6 text-[14px] font-bold text-[#15202B] hover:bg-[#FCE07A]"
-                onClick={() => goto("mpj")}
-              >
-                표현 비교 {items.length}문항부터 시작하기 →
-              </Button>
-            </div>
-
-          </div>
+          <MissionColdOpen
+            productionTask={pt}
+            learnerActLabel={learnerActLabel}
+            learnerFocusCopy={learnerFocusCopy}
+            mpjCount={items.length}
+            onStart={() => goto("mpj")}
+          />
         )}
 
         {/* ── 1부: 판단 연습(MPJ) ── */}
@@ -1199,6 +1169,7 @@ function MissionRunner({
             <MpjStage
               key={item.id}
               item={item}
+              mode={pt.mode}
               sequentialFix={
                 mission.schema_version === "mission_v4" || mission.schema_version === "mission_v5"
               }
@@ -1247,35 +1218,18 @@ function MissionRunner({
               />
             ) : (
               <>
-                <DctScenePanel
-                  mode="translation"
+                <TranslationComposer
                   situation={pt.situation_ko}
                   relation={pt.relation_ko}
-                />
-                <div className="rounded-2xl border border-[#E1DED5] bg-[#F2F1ED] p-4 shadow-[0_7px_20px_rgba(21,32,43,0.04)]">
-                  <div className="text-[11.5px] font-bold text-[#53616B]">
-                    ① 번역할 내용 ({srcName})
-                  </div>
-                  <div className="mt-2 rounded-xl border border-[#D8D4CA] bg-white px-4 py-3.5">
-                    <p className="whitespace-pre-line text-[15px] font-medium leading-[1.68] text-[#15202B]">
-                      {pt.source_text}
-                    </p>
-                  </div>
-
-                  <div className="mt-4">
-                    <label className="text-[11.5px] font-bold text-[#53616B]" htmlFor="translation-draft">
-                      ② 내 번역 ({tgtName})
-                    </label>
-                  </div>
-                  <Textarea
-                    id="translation-draft"
-                    className="mt-2 min-h-0 resize-y rounded-xl border-2 border-[#15202B] bg-white px-4 py-3 text-[15.5px] font-medium leading-[1.58] text-[#15202B] shadow-[4px_4px_0_rgba(21,32,43,0.1)] placeholder:text-[#8A8F94] focus-visible:ring-2 focus-visible:ring-[#FAD338]/55 focus-visible:ring-offset-2"
-                    rows={responseRows}
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    placeholder={`${tgtName} 번역을 입력하세요…`}
-                  />
-                  {!isInterp && dir === "ko_zh" && vocabularyHints.length === 2 && (
+                  precedingTurn={pt.preceding_turn}
+                  sourceText={pt.source_text}
+                  srcName={srcName}
+                  tgtName={tgtName}
+                  rows={responseRows}
+                  draft={draft}
+                  onDraftChange={setDraft}
+                >
+                  {dir === "ko_zh" && vocabularyHints.length === 2 && (
                     <ProductionGuide
                       hints={vocabularyHints}
                       onOpen={() =>
@@ -1283,7 +1237,7 @@ function MissionRunner({
                       }
                     />
                   )}
-                </div>
+                </TranslationComposer>
                 <Button className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" disabled={!draft.trim()} onClick={() => goto("feedback")}>번역 제출 →</Button>
                 {IS_DEMO && (
                   <button type="button" className={demoBtn} onClick={() => setDraft(demoDraft)}>
@@ -1543,14 +1497,269 @@ type SpeechRecognitionWindow = Window & {
   SpeechRecognition?: BrowserSpeechRecognitionConstructor;
 };
 
+function MissionColdOpen({
+  productionTask,
+  learnerActLabel,
+  learnerFocusCopy,
+  mpjCount,
+  onStart,
+}: {
+  productionTask: MissionRuntime["production_task"];
+  learnerActLabel: string;
+  learnerFocusCopy: string;
+  mpjCount: number;
+  onStart: () => void;
+}) {
+  const isInterpreting = productionTask.mode === "interpreting";
+  const precedingTurn = productionTask.preceding_turn?.trim() || null;
+  const writingSkin = translationWritingSkin(productionTask.situation_ko);
+  const counterpart = learnerCounterpartLabel(productionTask.relation_ko);
+
+  const turnPrompt = precedingTurn
+    ? isInterpreting
+      ? "상대의 말이 끝났습니다. 이제 내 통역 차례입니다."
+      : writingSkin === "email"
+        ? "받은 메일에 내가 답할 차례입니다."
+        : "상대의 메시지가 도착했습니다. 이제 내가 답할 차례입니다."
+    : isInterpreting
+      ? "내가 먼저 말을 꺼내는 장면입니다."
+      : writingSkin === "email"
+        ? "내가 먼저 새 이메일을 보낼 차례입니다."
+        : "내가 먼저 메시지를 보낼 차례입니다.";
+
+  return (
+    <div className="space-y-3">
+      <div className="px-0.5">
+        <div className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#8A7350]">
+          오늘의 장면
+        </div>
+        <h2 className="mt-1 text-[19px] font-extrabold tracking-[-0.02em] text-[#15202B]">
+          지금, 이 장면에 들어왔습니다
+        </h2>
+      </div>
+
+      {isInterpreting ? (
+        <div className="space-y-3">
+          <DctScenePanel
+            mode="interpreting"
+            situation={productionTask.situation_ko}
+            relation={productionTask.relation_ko}
+          />
+          <div className="rounded-2xl border border-[#CCD7E0] bg-[#EEF3F6] p-4 shadow-[0_7px_20px_rgba(21,32,43,0.05)]">
+            {precedingTurn && (
+              <div className="rounded-xl bg-white px-3.5 py-3 text-[14px] font-medium leading-relaxed text-[#273642] shadow-sm">
+                <div className="mb-1 text-[10.5px] font-bold text-[#60758A]">상대 턴</div>
+                {precedingTurn}
+              </div>
+            )}
+            <div className={precedingTurn ? "mt-3 flex items-center gap-2" : "flex items-center gap-2"}>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FAD338] text-[15px]" aria-hidden="true">
+                ▶
+              </span>
+              <p className="text-[13.5px] font-bold text-[#273642]">{turnPrompt}</p>
+            </div>
+          </div>
+        </div>
+      ) : writingSkin === "email" ? (
+        <div className="space-y-3" data-scene-skin="email">
+          <DctScenePanel
+            mode="translation"
+            situation={productionTask.situation_ko}
+            relation={productionTask.relation_ko}
+            formatLabel="이메일 · 번역"
+          />
+          <div className="overflow-hidden rounded-2xl border border-[#CDD5DD] bg-white shadow-[0_8px_22px_rgba(21,32,43,0.07)]">
+            <div className="flex items-center gap-2 border-b border-[#E2E6EA] bg-[#F7F9FA] px-4 py-2.5 text-[12px] font-bold text-[#40515F]">
+              <Mail className="h-4 w-4" aria-hidden="true" />
+              {precedingTurn ? "받은 메일 · 답장 준비" : "새 이메일"}
+            </div>
+            <div className="border-b border-[#E7EAED] px-4 py-2.5 text-[12.5px] text-[#5B6B76]">
+              받는 사람 <span className="ml-2 font-semibold text-[#273642]">{counterpart}</span>
+            </div>
+            {precedingTurn && (
+              <div className="mx-4 mt-3 border-l-2 border-[#C8CFD8] pl-3 text-[13px] leading-relaxed text-[#60707B]">
+                {precedingTurn}
+              </div>
+            )}
+            <div className="m-4 rounded-xl border-2 border-dashed border-[#AAB6C0] bg-[#FBFCFC] px-3.5 py-3 text-[13px] font-semibold text-[#52616C]">
+              {turnPrompt}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div data-scene-skin="messenger">
+          <ChatScene
+            situation={productionTask.situation_ko}
+            relation={productionTask.relation_ko}
+            separatePanels
+            threadEyebrow={precedingTurn ? "새 메시지 1개" : "새 대화"}
+          >
+            {precedingTurn && <ChatBubble side="them">{precedingTurn}</ChatBubble>}
+            <ChatCaption tone="draft">{precedingTurn ? "이제 내 차례" : "내가 먼저 말을 꺼낼 차례"}</ChatCaption>
+            <div className="flex justify-end">
+              <div className="max-w-[78%] rounded-[24px] border-2 border-dashed border-[#8DA0AF] bg-white/70 px-3.5 py-2.5 text-[13px] font-semibold leading-relaxed text-[#52616C]">
+                {turnPrompt}
+              </div>
+            </div>
+          </ChatScene>
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-[#E7DDC2] bg-[#FFF9E8] p-4">
+        <p className="text-[13.5px] font-semibold leading-relaxed text-[#3C3528]">
+          {learnerActLabel} 상황에서 <strong>{learnerFocusCopy}</strong>
+        </p>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#74664B]">
+          이 장면에 답하기 전, 짧은 표현 비교 {mpjCount}개로 감각을 먼저 익힙니다.
+        </p>
+        <Button
+          className="mt-3.5 w-full bg-[#FAD338] py-6 text-[14px] font-bold text-[#15202B] hover:bg-[#FCE07A]"
+          onClick={onStart}
+        >
+          이 장면에 필요한 표현 살펴보기 →
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function TranslationComposer({
+  situation,
+  relation,
+  precedingTurn,
+  sourceText,
+  srcName,
+  tgtName,
+  rows,
+  draft,
+  onDraftChange,
+  children,
+}: {
+  situation: string;
+  relation: string;
+  precedingTurn: string | null;
+  sourceText: string;
+  srcName: string;
+  tgtName: string;
+  rows: number;
+  draft: string;
+  onDraftChange: (value: string) => void;
+  children?: ReactNode;
+}) {
+  const skin = translationWritingSkin(situation);
+  const counterpart = learnerCounterpartLabel(relation);
+  const previousTurn = precedingTurn?.trim() || null;
+
+  return (
+    <div className="space-y-3" data-scene-skin={skin}>
+      <DctScenePanel
+        mode="translation"
+        situation={situation}
+        relation={relation}
+        formatLabel={skin === "email" ? "이메일 · 번역" : "메시지 · 번역"}
+      />
+
+      <div className="rounded-2xl border border-[#E1DED5] bg-[#F2F1ED] p-4 shadow-[0_7px_20px_rgba(21,32,43,0.04)]">
+        <div className="text-[11.5px] font-bold text-[#53616B]">① 번역할 내용 ({srcName})</div>
+        <div className="mt-2 rounded-xl border border-[#D8D4CA] bg-white px-4 py-3.5">
+          <p className="whitespace-pre-line text-[15px] font-medium leading-[1.68] text-[#15202B]">
+            {sourceText}
+          </p>
+        </div>
+      </div>
+
+      {skin === "email" ? (
+        <div className="overflow-hidden rounded-2xl border border-[#CBD4DC] bg-white shadow-[0_8px_22px_rgba(21,32,43,0.07)]">
+          <div className="flex items-center justify-between border-b border-[#E1E6EA] bg-[#F7F9FA] px-4 py-2.5">
+            <div className="flex items-center gap-2 text-[12px] font-bold text-[#40515F]">
+              <Mail className="h-4 w-4" aria-hidden="true" />
+              {previousTurn ? "답장 작성" : "새 이메일"}
+            </div>
+            <span className="text-[10.5px] text-[#81909B]">발송 전 초안</span>
+          </div>
+          <div className="border-b border-[#E7EAED] px-4 py-2.5 text-[12.5px] text-[#5B6B76]">
+            받는 사람 <span className="ml-2 font-semibold text-[#273642]">{counterpart}</span>
+          </div>
+          {previousTurn && (
+            <div className="mx-4 mt-3 rounded-lg bg-[#F4F6F7] px-3 py-2.5 text-[12.5px] leading-relaxed text-[#667681]">
+              <div className="mb-1 text-[10.5px] font-bold text-[#7A8892]">받은 메일</div>
+              {previousTurn}
+            </div>
+          )}
+          {!previousTurn && (
+            <div className="mx-4 mt-3 text-[11.5px] font-semibold text-[#71808B]">
+              내가 먼저 이메일을 보내는 장면
+            </div>
+          )}
+          <label className="sr-only" htmlFor="translation-draft">② 내 번역 ({tgtName})</label>
+          <Textarea
+            id="translation-draft"
+            className="min-h-0 resize-y rounded-none border-0 bg-white px-4 py-4 text-[15.5px] font-medium leading-[1.58] text-[#15202B] shadow-none placeholder:text-[#8A8F94] focus-visible:ring-0"
+            rows={rows}
+            value={draft}
+            onChange={(event) => onDraftChange(event.target.value)}
+            placeholder={`${tgtName} 이메일을 작성하세요…`}
+          />
+          <div className="flex items-center justify-between border-t border-[#E7EAED] bg-[#FBFCFC] px-4 py-2.5">
+            <span className="text-[11px] text-[#82909A]">② 내 번역 ({tgtName})</span>
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-[#D9E0E5] px-3 py-1.5 text-[11.5px] font-bold text-[#5F6E79]">
+              <Send className="h-3.5 w-3.5" aria-hidden="true" /> 발송 전
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-[#CBD5DD] bg-[#E8EDF2] shadow-[0_8px_22px_rgba(21,32,43,0.07)]">
+          <div className="flex items-center justify-between border-b border-[#D5DDE4] bg-white/95 px-4 py-2.5">
+            <div className="flex min-w-0 items-center gap-2 text-[12px] font-bold text-[#40515F]">
+              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">{counterpart}</span>
+            </div>
+            <span className="text-[10.5px] text-[#81909B]">메시지 작성 중</span>
+          </div>
+          <div className="px-3.5 pb-3.5 pt-3">
+            {previousTurn && <ChatBubble side="them">{previousTurn}</ChatBubble>}
+            {!previousTurn && (
+              <div className="mb-2 text-center text-[11.5px] font-semibold text-[#71808B]">
+                내가 먼저 메시지를 보내는 장면
+              </div>
+            )}
+            <label className="mb-1.5 block text-right text-[11px] font-semibold text-[#52697E]" htmlFor="translation-draft">
+              ② 내 번역 ({tgtName}) · 아직 안 보냄
+            </label>
+            <div className="rounded-[22px] border-2 border-[#6F8291] bg-white shadow-[0_2px_5px_rgba(21,32,43,0.08)]">
+              <Textarea
+                id="translation-draft"
+                className="min-h-0 resize-y rounded-[20px] border-0 bg-transparent px-4 py-3 text-[15.5px] font-medium leading-[1.58] text-[#15202B] shadow-none placeholder:text-[#8A8F94] focus-visible:ring-2 focus-visible:ring-[#FAD338]/55"
+                rows={rows}
+                value={draft}
+                onChange={(event) => onDraftChange(event.target.value)}
+                placeholder={`${tgtName} 메시지를 입력하세요…`}
+              />
+            </div>
+            <div className="mt-2 flex justify-end">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#9DABB5] text-white" aria-label="제출 전에는 메시지가 전송되지 않습니다">
+                <Send className="h-4 w-4" aria-hidden="true" />
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {children}
+    </div>
+  );
+}
+
 function DctScenePanel({
   mode,
   situation,
   relation,
+  formatLabel,
 }: {
   mode: "translation" | "interpreting";
   situation: string;
   relation: string;
+  formatLabel?: string;
 }) {
   const isInterpreting = mode === "interpreting";
   return (
@@ -1574,7 +1783,7 @@ function DctScenePanel({
           상대 · {learnerCounterpartLabel(relation)}
         </Badge>
         <Badge variant="secondary" className="font-normal">
-          {isInterpreting ? "음성 · 순차 통역" : "문자 · 번역"}
+          {formatLabel ?? (isInterpreting ? "음성 · 순차 통역" : "문자 · 번역")}
         </Badge>
       </div>
     </div>
@@ -2177,12 +2386,14 @@ function mpjTaskTitle(item: MpjItemRuntime, featureCode: string): string {
 function MpjContextSurface({
   item,
   answered,
+  mode,
 }: {
   item: MpjItemRuntime;
   answered: boolean;
+  mode: MissionPresentationMode;
 }) {
   const hasTarget = item.type !== "multi_judge";
-  const channel = item.channel ?? "messenger";
+  const channel = mpjPresentationChannel(mode, item.channel);
 
   if (channel === "email") {
     return (
@@ -2302,10 +2513,12 @@ function MpjContextSurface({
 // ── MPJ 한 문항 ─────────────────────────────────────────────────────────
 function MpjStage({
   item,
+  mode,
   sequentialFix,
   onDone,
 }: {
   item: MpjItemRuntime;
+  mode: MissionPresentationMode;
   sequentialFix: boolean;
   onDone: (response: MpjResponseTrace) => void;
 }) {
@@ -2465,7 +2678,7 @@ function MpjStage({
 
   return (
     <div className="space-y-3">
-      <MpjContextSurface item={item} answered={answered} />
+      <MpjContextSurface item={item} answered={answered} mode={mode} />
       {answered && item.type !== "multi_judge" && item.highlights?.length > 0 && (
         <p className="px-1 text-[11.5px] leading-relaxed text-muted-foreground">
           <span className="mr-1 rounded bg-[#FFE9A8] px-1.5 py-0.5 font-semibold text-[#6B5518]">표현 단서</span>
