@@ -47,5 +47,14 @@ R29와 DB 유일성 제약은 품질·실행 추적을 지키는 유효한 안�
 
 - DB·스키마·R29·`policy_ver`는 변경하지 않았다.
 - 콘텐츠를 대량 재생성하거나 자동 검수·승인하지 않았다.
-- Edge 함수 배포와 운영 관리자 화면의 통역·중→한 최소 표본 재생성 smoke는 아직 수행하지
-  않았다. 배포 뒤 1~3건으로 문장 수와 반복 실행 저장을 각각 확인해야 한다.
+- PR [#8](https://github.com/cnkr-commits/l2-pragmatic-translator/pull/8)을 merge commit
+  `07fb3b5`로 main에 병합했다.
+- Supabase project `tlnjxagqwvefeqdagtkq`의 `generate-scenario` Edge 함수를 배포했다.
+- Railway 운영 URL이 HTTP 200을 반환하고 관리자 chunk `AdminGenerator-CBhfO0_U.js`에
+  `crypto.randomUUID()` 기반 run ID 로직이 포함된 것을 확인했다.
+- 운영 Edge를 DB 저장 없이 통역·중→한 2건 호출했다. UTF-8로 확인한 감사 표본은 중국어
+  2문장, `prompt_version=core_v5`, `generation_attempt=1`, `sentence_repair_applied=false`,
+  hash `e12af89e99bd…`였다. 따라서 캡처의 R29 문장 수 실패 경로와 배포 provenance가
+  교정됐음을 확인했다.
+- 인증 관리자 화면에서 동일 조건을 두 번 실제 저장하는 종단 smoke는 수행하지 않았다.
+  unique 충돌 수정은 UUID 단위 테스트와 운영 번들 반영으로 검증했다.
