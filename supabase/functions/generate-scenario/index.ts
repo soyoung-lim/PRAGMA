@@ -4,6 +4,10 @@ import {
 } from '../_shared/feedbackRequestLimits.ts'
 import { repairFeedbackPragmaticLeak } from '../_shared/feedbackLayerRepair.ts'
 import {
+  buildCoreSourceRepairPrompt,
+  coreSourceSentenceIssue,
+} from '../_shared/coreSourceRepair.ts'
+import {
   buildOpenAIChatRequest,
   CORE_RESPONSE_FORMAT_LABEL,
   CORE_STRUCTURED_RESPONSE_FORMAT,
@@ -767,6 +771,7 @@ function buildCoreSystemPrompt(direction: Direction): string {
   const { src, tgt } = DIR_LANGS[direction]
   const srcL = LANG_KO[src] // 원문 언어
   const tgtL = LANG_KO[tgt] // 산출(옮길) 언어
+  const sentencePunctuation = src === 'zh' ? '중국어 종결부호(。！？)' : '한국어 종결부호(.?!)'
   return `당신은 ${LANG_DIR_KO[direction]} 통번역 교육용 시나리오의 '상황·원문'을 설계하는 전문가입니다.
 학습자가 판단·번역·통역할 재료(상황과 ${srcL} 원문)만 만듭니다. 문항·후보·피드백은 만들지 않습니다.
 출력은 아래 JSON만, 마크다운·설명 없이 그대로 반환합니다.
@@ -774,7 +779,7 @@ function buildCoreSystemPrompt(direction: Direction): string {
 {
   "situation_ko": "상황 카드 배경 (한국어 2~3문장: 발신자·수신자·목적·관계 + 아래 [장면 완결성] 5요소)",
   "relation_ko": "발신자와 수신자의 관계 한 줄 (한국어)",
-  "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원문 — 실제 주고받는 메시지처럼 2~4문장의 담화",
+  "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원문 — 실제 의사소통처럼 이어지는 2~4문장의 담화",
   "preceding_turn": null,
   "brief_note_ko": "편성 화면용 한 줄 요약 (한국어)",
   "focal_segments": [
@@ -784,10 +789,12 @@ function buildCoreSystemPrompt(direction: Direction): string {
 }
 
 [원문 = 미니 담화] (DEC-20260730-01)
-용건 한 문장만 달랑 보내는 메시지는 실제 통번역 재료가 아니다. source_text는
-**하나의 자연스러운 메시지 전체**로 쓴다. 지정된 화행이 담화의 중심 목적이고,
+용건 한 문장만 달랑 제시하는 발화·메시지는 실제 통번역 재료가 아니다. source_text는
+**하나의 자연스러운 발화 또는 메시지 전체**로 쓴다. 지정된 화행이 담화의 중심 목적이고,
 그 앞뒤에 감사·상황 설명·사과·마무리 같은 요소가 자연스럽게 함께 올 수 있다.
 - 분량은 [생성 요청]의 "원문 분량"을 따르되 항상 2~4문장 안이다.
+- 문장 수는 쉼표로 이어진 절이 아니라 실제 종결부호 기준이다. ${sentencePunctuation}를
+  사용해 물리적으로 2~4문장으로 나누며, 쉼표만 이어 붙인 한 문장은 실패다.
 - 문장을 나열하지 말고 하나의 메시지로 읽히게 연결한다(지시어·접속으로 자연스럽게).
 - 곁들이는 요소는 **관계 관리에 필요한 만큼만.** 중심 화행이 담화에서 가장 중요한
   용건이어야 하고, 다른 화행이 중심과 대등하게 경쟁하면 실패다.
@@ -860,6 +867,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   const { src, tgt } = DIR_LANGS[dir]
   const srcL = LANG_KO[src]
   const tgtL = LANG_KO[tgt]
+  const sentencePunctuation = src === 'zh' ? '중국어 종결부호(。！？)' : '한국어 종결부호(.?!)'
   const parts = [
     '[생성 요청]',
     `- 언어 방향: ${LANG_DIR_KO[dir]}`,
@@ -871,6 +879,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
     `- 관계 R(부담): ${PDR_R_KO[b.pdr.r] ?? b.pdr.r}`,
     `- 장면 시드: ${b.situation_seed_ko}`,
     `- 원문 분량: ${b.length_hint_ko}`,
+    `- 문장 경계: 쉼표로 절을 길게 잇지 말고 ${sentencePunctuation}로 위 분량의 문장 수를 명시하세요.`,
   ]
   if (b.industry) {
     parts.splice(
@@ -919,7 +928,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
 
 // ── 코어 생성 프롬프트 스냅샷 해시 (재현성 provenance, 2026-07-26) ──────────
 // 목적: "이 배치의 행들이 같은 프롬프트·같은 호출 설정으로 만들어졌다"를 기계로 증명한다.
-// generation_prompt_version('core_v4')만으로는 세부 개정을 구분하지 못하므로,
+// generation_prompt_version('core_v5')만으로는 세부 개정을 구분하지 못하므로,
 // 모델에 실제로 보내는 문자열에서 지문을 뽑는다.
 //
 // ⚠️ 셀별 입력값(화행·수준·도메인·P/D/R·장면시드·분량)은 해시에 넣지 않는다.
@@ -1015,7 +1024,7 @@ async function corePromptSnapshotHash(): Promise<string> {
     ),
   )
   coreSnapshotHashCache = await sha256Hex(canonicalJson({
-    v: 3,
+    v: 4,
     scope: 'core_generation',
     action: 'core',
     model: PRIMARY_MODEL,
@@ -1025,6 +1034,13 @@ async function corePromptSnapshotHash(): Promise<string> {
     response_schema: CORE_STRUCTURED_RESPONSE_FORMAT,
     system_prompts,
     user_prompt_templates,
+    sentence_repair_prompt_template: buildCoreSourceRepairPrompt({
+      originalUserPrompt: 'PROBE_USER_PROMPT',
+      previousOutput: { source_text: 'PROBE_SOURCE_TEXT', focal_segments: [] },
+      sourceLanguage: 'zh',
+      lengthHintKo: 'PROBE_LEN',
+      measuredSentenceCount: 1,
+    }),
     prompt_catalogs: {
       pdr_p_ko: PDR_P_KO,
       pdr_d_ko: PDR_D_KO,
@@ -1877,6 +1893,46 @@ Deno.serve(async (req) => {
       } catch (e) {
         return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
       }
+      // R29 하드 경계(2~4문장)를 생성 단계에서 한 번 더 보장한다. 특히 중국어
+      // 구두 담화를 쉼표로만 길게 잇는 경향은 클라이언트 검사까지 내려보내지 않고,
+      // 기존 사실·역할을 고정한 1회 교정 호출로 문장 경계와 focal segment를 맞춘다.
+      const initialSourceText = String(gen.source_text ?? gen.source_text_ko ?? '')
+      const sentenceIssue = coreSourceSentenceIssue(initialSourceText)
+      let sentenceRepairAttempted = false
+      let sentenceRepairApplied = false
+      if (sentenceIssue) {
+        sentenceRepairAttempted = true
+        const repairUser = buildCoreSourceRepairPrompt({
+          originalUserPrompt: usr,
+          previousOutput: gen,
+          sourceLanguage: DIR_LANGS[coreDir].src,
+          lengthHintKo: b.length_hint_ko,
+          measuredSentenceCount: sentenceIssue.count,
+        })
+        let repairModel = model
+        let repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
+          responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
+        })
+        if (!repairAttempt.ok && (repairAttempt.status === 404 || repairAttempt.status === 400) && repairModel !== FALLBACK_MODEL) {
+          repairModel = FALLBACK_MODEL
+          repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
+            responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
+          })
+        }
+        if (repairAttempt.ok) {
+          try {
+            const repaired = parseOpenAIContent(repairAttempt.raw) as Record<string, unknown>
+            const repairedSourceText = String(repaired.source_text ?? repaired.source_text_ko ?? '')
+            if (!coreSourceSentenceIssue(repairedSourceText)) {
+              gen = repaired
+              model = repairModel
+              sentenceRepairApplied = true
+            }
+          } catch {
+            // 교정 응답이 파싱되지 않으면 최초 출력을 그대로 내려 클라이언트 R29가 차단한다.
+          }
+        }
+      }
       // 구조 필드는 서버가 조립(셀과 어긋나지 않게). 자유 텍스트만 모델 값 사용.
       // v2 중립 스키마(계약 0-l·83) — source_text/preceding_turn + direction.
       // 모델이 구 키(source_text_ko 등)로 답해도 관대하게 받는다(폴백).
@@ -1915,7 +1971,9 @@ Deno.serve(async (req) => {
           meta: {
             provider: PROVIDER,
             model,
-            prompt_version: 'core_v4',
+            prompt_version: sentenceRepairApplied ? 'core_v5_sentence_repair_v1' : 'core_v5',
+            generation_attempt: sentenceRepairAttempted ? 2 : 1,
+            sentence_repair_applied: sentenceRepairApplied,
             // 재현성 provenance — 클라이언트는 이 값을 재계산하지 말고 그대로 저장한다.
             prompt_snapshot_hash: await corePromptSnapshotHash(),
             generated_at: new Date().toISOString(),
