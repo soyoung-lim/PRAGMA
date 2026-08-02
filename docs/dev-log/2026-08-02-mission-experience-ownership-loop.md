@@ -65,12 +65,19 @@ branch `codex/mission-experience-2026-08-02` · 선행 구현 `397c3c8` · 구�
   - 통역은 DEV 데모의 듣기 2회·녹음/전사 확인 경로를 거쳐 피드백·완료 카드까지 완주했다.
   - 390×844에서 콜드 오픈 두 화면과 변경 있음 소유 카드를 확인했고 수평 overflow가 없었다.
   - 새 콘솔 오류는 없었다. 기존 React Router v7 future flag 경고만 확인했다.
+- GitHub PR [#4](https://github.com/cnkr-commits/l2-pragmatic-translator/pull/4)를 생성해
+  `main`에 merge commit `e340e408`로 병합했다.
+- Railway production 배포 `286da3d5-5bbd-46f2-9587-a0feac1c7e41`가 해당 merge commit을
+  빌드해 `SUCCESS`·`RUNNING` 상태임을 확인했다.
+- 운영 URL `https://pragma.up.railway.app/`가 HTTP 200을 반환하고, 운영 미션 chunk
+  `MissionRunV1-2jFGpeUr.js`에 `장면 열기`, `표현 비교 시작하기`, Take 1·2,
+  `이번 수정 전략`, 수정 노트 연결 문구가 포함된 것을 확인했다.
 
 ## 확인 필요
 
 - localhost는 인증 없는 데모여서 실제 `saved` 상태의 링크 클릭과 비동기 기록 조회 후
   anchor 착지는 DB 쓰기 없이 종단 확인할 수 없었다. 상태 정책은 순수 함수 테스트로
-  검증했으며, 배포 전 로그인한 테스트 계정으로 1회 smoke가 필요하다.
+  검증했으며, 로그인한 테스트 계정으로 1회 smoke가 필요하다.
 - 인앱 브라우저 자동화에서 포커스 표시는 확인했지만 Enter key dispatch가 동작하지 않아,
   실제 키보드만 사용하는 수동 smoke가 1회 필요하다.
 - reviewed 16건 전수 smoke, AI defect 9건 재검수, 8월 1일 17건/현재 16건 불일치 원인
