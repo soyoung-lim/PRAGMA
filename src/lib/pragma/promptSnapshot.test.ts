@@ -87,6 +87,10 @@ describe("prompt snapshot integrity", () => {
     expect(critic.text).toContain("즉시 확장하기");
     expect(written.text).toContain('"글로 남기지 않고 직접 말한다"');
     expect(prompt("core.user.spoken").text).toContain("이메일·메신저·글을 작성해 보내는");
+    expect(prompt("core.system.zh_ko").text).toContain("중국어 종결부호(。！？)");
+    expect(prompt("core.user.spoken").text).toContain("문장 경계:");
+    expect(prompt("core.user.sentence_repair").text).toContain("직전 출력의 구조 오류");
+    expect(prompt("core.user.sentence_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(critic.text).toContain("국소적 두 턴만 본다");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {

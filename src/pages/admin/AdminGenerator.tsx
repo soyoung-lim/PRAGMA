@@ -32,6 +32,7 @@ import {
   COMPLEX_TASK_TO_CONTEXT,
 } from "@/lib/pragma/enums";
 import { checkCore, coreLengthHintKo, type CheckContext } from "@/lib/pragma/missionRules";
+import { createCoreGenerationRunId } from "@/lib/pragma/coreGenerationRun";
 import { PDR_POWER_ENUM_TO_JSON, PDR_DISTANCE_ENUM_TO_JSON } from "@/lib/pragma/coreSchema";
 import type { CoreProvenance } from "@/lib/pragma/coreSchema";
 import {
@@ -706,7 +707,9 @@ const AdminGenerator = () => {
     setCoreResults(null);
     const indices = [...selectedOutlines].sort((a, b) => a - b);
     const results: CoreResult[] = [];
-    const runId = `gen-${coreHash(String(indices.length) + topicCode + form.speech_act_ui)}`;
+    // 같은 조건을 다시 생성하는 것은 이전 실행 재개가 아니라 새 실행이다. 내용 기반
+    // runId를 재사용하면 과거 행과 (generation_run_id, item_key)가 충돌한다.
+    const runId = createCoreGenerationRunId();
     const mode = taskMode;
     const isResponse = RESPONSE_ACTS.has(form.speech_act_ui);
     for (const i of indices) {
