@@ -687,6 +687,9 @@
     production build(**1901 modules**), 프롬프트 스냅샷 재생성·`git diff --check`가 통과했다.
   - core surface hash `07d82beaab49…`가 유지됐고 스냅샷은 구현 커밋 `f2f78e5`와
     `git_dirty=false`를 기록해 코어 계열이 바뀌지 않았음을 확인했다.
+  - PR #14를 merge commit `3c7e57d`로 병합하고 Supabase Edge와 Railway deployment
+    `e69237d2-e748-4ffa-b223-cdbdf96f53a7`을 배포했다. Railway `SUCCESS`, 운영 홈·신규
+    review/rules 청크 HTTP 200과 새 버전·R27·R5 문구 포함을 확인했다.
 - 예상과 달랐던 점:
   - 구계열 코어 혼합이 아니라 core_v7 자체를 사용해도 미션 조립 병목이 재현됐다.
   - 규칙 실패와 AI 대역 finding은 발동 시점이 달라 한 재시도 패치로 합칠 수 없었다.
@@ -695,4 +698,4 @@
   - 배포 후 같은 core_v7 표본을 소수 재조립해 R27·R5 재발 건수를 분리 측정한다.
   - 초대의 선택권·약속 명료성 교환 관계는 카탈로그 변경 승인 전 별도 표본으로 확인한다.
 - 관련 Decision / Evidence: `DEC-20260802-07`, `EVD-20260802-07`
-- 관련 커밋: `f2f78e5`
+- 관련 커밋: `f2f78e5`, `bd17845`, `3c7e57d`
