@@ -2214,9 +2214,10 @@ Deno.serve(async (req) => {
           //   조립 표본에서 실제로 존재하는 완화·인정·완충 자원을 "없다"고 설명하며 하위 대역을
           //   부여하는 사례가 요청·거절에서 확인됐다. buildMissionSystemPrompt는 v4·v5 공용이므로
           //   두 버전 문자열을 함께 올린다.
+          // _v4/_v7 = R5·R27 재시도에 후보별 대역·길이와 중복 문항을 구조화해 되먹이는 판(2026-08-02).
           prompt_version: isMiniDiscourse
-            ? 'mission_v5_mpj4_minidiscourse_v3'
-            : 'mission_v4_mpj4_dct1_context_v6',
+            ? 'mission_v5_mpj4_minidiscourse_v4'
+            : 'mission_v4_mpj4_dct1_context_v7',
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
@@ -2224,8 +2225,8 @@ Deno.serve(async (req) => {
       }
       return new Response(
         JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: isMiniDiscourse
-            ? 'mission_v5_mpj4_minidiscourse_v3'
-            : 'mission_v4_mpj4_dct1_context_v6', generated_at: genAt } }),
+            ? 'mission_v5_mpj4_minidiscourse_v4'
+            : 'mission_v4_mpj4_dct1_context_v7', generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }
