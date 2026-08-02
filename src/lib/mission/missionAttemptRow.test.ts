@@ -62,6 +62,22 @@ describe("mission attempt row", () => {
     });
   });
 
+  it("persists Take 1 and Take 2 verbatim without redefining revision", () => {
+    const row = buildMissionAttemptRow({
+      mission: sampleMissionV2(),
+      scenarioId: "11111111-1111-1111-1111-111111111111",
+      speechAct: "request",
+      level: "intermediate",
+      firstResponse: "처음 답",
+      revisedResponse: "처음 답 ",
+      startedAtIso: "2026-07-27T01:00:00.000Z",
+    }, "profile-1", "user-1");
+
+    expect(row.first_response).toBe("처음 답");
+    expect(row.revised_response).toBe("처음 답 ");
+    expect(row.first_response !== row.revised_response).toBe(true);
+  });
+
   it("uses a stable synthetic mission id for an unsaved sample", () => {
     const mission = sampleMissionV2();
     const row = buildMissionAttemptRow({

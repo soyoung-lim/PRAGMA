@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
@@ -41,6 +41,16 @@ const LearnerRecords = () => {
       dominant &&
       dominant.count >= 2,
   );
+
+  // 비동기 기록 조회 뒤에 섹션이 생겨도 완료 화면의 해시 링크가 정확히 착지한다.
+  useEffect(() => {
+    if (loading || report.correctionNotes.length === 0) return;
+    if (window.location.hash !== "#correction-notes") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("correction-notes")?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [loading, report.correctionNotes.length]);
 
   return (
     <LearnerJourneyShell
@@ -289,12 +299,13 @@ const LearnerRecords = () => {
 
             {report.correctionNotes.length > 0 && (
               <section
+                id="correction-notes"
                 className="mt-2 rounded-2xl border border-[#E4E0D7] bg-white p-3 shadow-[0_4px_14px_rgba(23,33,43,0.04)]"
-                aria-labelledby="correction-notes"
+                aria-labelledby="correction-notes-heading"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <h3 id="correction-notes" className="text-[14px] font-bold text-[#27323C]">
+                    <h3 id="correction-notes-heading" className="text-[14px] font-bold text-[#27323C]">
                       나의 수정 노트
                     </h3>
                     <p className="mt-0.5 text-[10.5px] text-muted-foreground">
