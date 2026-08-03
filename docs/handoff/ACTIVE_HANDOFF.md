@@ -1,9 +1,92 @@
 # PRAGMA ACTIVE HANDOFF
 
-> 최종 갱신: 2026-07-31 KST (Claude Code → Codex 인계, 아래 「2026-07-31」 절이 최신 상태)
-> 개발 담당: **2026-07-31 낮부터 Codex**(Claude Code 사용량 한도로 2~3시간 이관)
-> 검수 담당: Claude Code(복귀 후)
-> 상세 인수인계: `docs/handoff/CLAUDE_TAKEOVER_HANDOFF_2026-07-30.md`
+> **최종 갱신: 2026-08-03 KST. 아래 「2026-08-03 최신 인수인계」가 현재 정본이다.**
+> 그 아래 7월 기록은 결정 이력으로만 읽고, 작업공간·HEAD·다음 작업 지시로 사용하지 않는다.
+
+## 2026-08-03 최신 인수인계
+
+### 사용자 우선순위·역할
+
+- 2026-08-01부터 **박사학위논문 집필이 메인, 웹앱은 보완 개발인 서브**다. 앱에서 새 기능을
+  넓히기보다 논문 근거에 필요한 결함과 학습 흐름 blocker만 고친다.
+- 일정 기준: 2026-10-01 지도교수 검토용 학위논문 초안, 11-01 심사위원 전달본, 11월 중순
+  디펜스. KCI 소논문 2편은 12-30 목표(최종 2027-01-15 투고 마지노선).
+- 이번 라운드의 사용자 지정 역할은 **Claude/Opus = 구현, Codex = 검수**였다. 기존
+  `AGENTS.md`의 기본 역할보다 이 사용자 지정이 우선했다. 새 작업에서는 사용자의 역할 지시를
+  다시 확인하되, 같은 worktree를 동시에 편집하지 않는다.
+
+### 현재 Git 정본
+
+- 활성 UI worktree:
+  `C:\Users\cnkr\Documents\Projects\l2-pragmatic-translator\.worktrees\mission-experience-2026-08-02`
+- branch: `codex/mission-experience-2026-08-02`
+- HEAD: `515a5ec fix(learner): stop leaking the target axis before the first judgment`
+- 상태: clean, `origin/codex/mission-experience-2026-08-02`까지 push 완료.
+- `origin/main`은 `be170b0`; 활성 branch는 main보다 6커밋 앞이다. **아직 main 병합·Railway
+  배포 완료로 간주하지 않는다.** PR 존재·상태는 다음 세션에서 실제로 확인한다.
+- 운영 검증 기록 worktree:
+  `C:\Users\cnkr\Documents\Projects\l2-pragmatic-translator\.worktrees\interpreting-zhko-fixes-2026-08-02`
+  — branch `codex/interpreting-zhko-fixes-2026-08-02`, HEAD `d5da15b`, clean·push 완료.
+- 루트 저장소는 사용자 작업이 있는 dirty worktree다. **수정·정리·reset하지 않는다.**
+
+### 2026-08-03 완료된 변경
+
+1. `3c5ed8f` — 학습 미션 콜드 오픈을 한→중 기준 단일 장면 화면으로 재구성. 첫 판단 전
+   대역 축은 노출하지 않는다.
+2. `feaf470` — 오류 패턴 시드를 산출 방향으로 필터. 중국어 전용 오류 시드가 중→한 미션에
+   들어가던 결함을 차단. 중→한 전용 오류 패턴은 아직 0건이며 문헌 근거 후 별도 설계한다.
+3. `feb2710` — `invitation_choice_commitment` v1.1→v1.2. 과잉 대역을 행사 정보 소실이
+   아니라 **초대 의도는 식별되지만 응답·참여 약속이 성립하지 않는 상태**로 이동했다.
+   기존 v1.0/v1.1 미션은 소급 수정하지 않는다.
+4. `d5da15b` — v1.1 운영 소수 재조립 결과 기록. 저장 1/2, 인간 눈검사 통과 0/2,
+   AI가 `too_ambiguous` 오분류를 놓친 사실을 dev-log·iteration·evidence에 기록했다.
+5. `515a5ec` — 첫 Scale4 판단 전 목표 화용 축 노출 제거, 일반 Scale4 앵커, 미리보기
+   후보·시간 관계 개선, 내부 판정 언어 제거, `선택됨/내 선택` 라벨과 CTA 문구 개선.
+
+최종 자동 검증은 `515a5ec` 기록 기준 typecheck·production build 통과, Vitest
+**249 pass / 6 skip**이다. DB·migration·운영 콘텐츠·생성 프롬프트·판정 로직은 변경하지
+않았다. 관련 정본 기록은 다음을 먼저 읽는다.
+
+- `docs/dev-log/2026-08-03-mpj-answer-leak-and-candidates.md`
+- `docs/dev-log/2026-08-03-invitation-band-v1_2.md`
+- `docs/dev-log/2026-08-03-cold-open-single-screen.md`
+- `docs/dev-log/2026-08-03-error-pattern-direction-filter.md`
+- `docs/dev-log/2026-08-03-invitation-band-boundary.md`
+
+### 다음 세션에서 먼저 할 일
+
+1. `AGENTS.md`와 이 최신 절을 읽고 위 두 worktree의 branch·HEAD·status를 실제 Git과 대조한다.
+2. `515a5ec`을 코드 diff·실화면 기준으로 검수한다. 범위는 **첫 판단 누출, 후보 자연성,
+   CTA·상태 회귀, 모바일 blocker**이며 전체 UI 재설계는 하지 않는다.
+3. v1.2는 배포 전 별도 검증이 남았다. 새 초대 소수 재조립과 인간 눈검사로
+   `too_ambiguous`가 gate1을 보존하면서 실현되는지 확인한다. dev-log의 중국어 견본
+   `您到时候根据情况安排就可以`은 원어민 자연성 미확인이다.
+4. 미완료 UI 백로그는 one-decision-at-a-time compact 접기·작은 맥락 strip, 복수 선택 수와
+   추천/다른 가능성 라벨, 재개 배너 조건, 모바일 캡처다. **논문보다 우선하지 않으며 blocker만
+   선택 구현한다.**
+5. merge·PR·Railway 배포는 사용자 승인 뒤 진행한다. 기존 DB·미션 상태를 소급 수정하거나
+   generated를 자동 reviewed로 올리지 않는다.
+
+### 연구 판단 가드
+
+- 초대 v1.1과 gate1의 충돌만 현재 확정됐다. 다른 9축은 미검증이며 5축 일괄 정의 변경은
+  철회했다.
+- R5는 원인이 아니라 검출기다. 과소안이 짧고 과잉안이 길면 부적절안이 양쪽에 걸쳐 hard
+  fail이 아니며, 유일 최장·전부 최단은 warning이다. 길이를 대역 설계 근거로 쓰지 않는다.
+- 축별 과잉 실현 기준은 `동일 명제·동일 화행 의도를 보존하면서 실제로 쓸 법한 경계 사례를
+  만들 수 있는가`다. 감사에서 확인한 강도·양 가설을 다른 축의 확정 규칙으로 일반화하지 않는다.
+- 학습 효과·전이 효과를 주장하지 않는다. 논문 표현은 `기른다`보다 `기르도록 설계했다`,
+  전이는 `전이 지향 설계` 수준으로 제한한다.
+- 교수 피드백에 따른 논문 중심 장 구조는 **3장 워크플로우 기획과 설계 → 4장 워크플로우
+  개발 → 5장 워크플로우 활용 전략**이다. 프롬프트는 콘텐츠 생성·검수용과 플랫폼 구축용을
+  구분해 단계적으로 기록한다.
+
+---
+
+## 과거 인수인계 기록 · 2026-07-31 이하
+
+> 개발 담당: 2026-07-31 낮부터 Codex, 검수 담당: Claude Code였던 당시 기록.
+> 상세 이력: `docs/handoff/CLAUDE_TAKEOVER_HANDOFF_2026-07-30.md`
 
 ## 현재 작업 기준
 
