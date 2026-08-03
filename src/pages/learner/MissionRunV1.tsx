@@ -929,10 +929,14 @@ function MissionRunner({
       if (raw) {
         const s = JSON.parse(raw);
         const normalizedPhase = s?.phase === "ctx" ? "produce" : s?.phase;
+        // 실제로 이어서 할 내용이 있을 때만 재개로 본다. 빈 초안까지 재개로 치면
+        // 처음 들어온 학습자에게도 "이전에 진행하던 미션" 배너가 뜬다.
+        const hasProgress = Boolean(s?.draft?.trim() || s?.revised?.trim());
         if (
           ["produce", "feedback", "revise", "done"].includes(normalizedPhase) &&
           typeof s?.draft === "string" &&
-          typeof s?.revised === "string"
+          typeof s?.revised === "string" &&
+          hasProgress
         ) {
           setResume({
             phase: normalizedPhase as Phase,
@@ -2502,13 +2506,65 @@ function MpjContextSurface({
   item,
   answered,
   mode,
+  collapsed = false,
 }: {
   item: MpjItemRuntime;
   answered: boolean;
   mode: MissionPresentationMode;
+  /** 다음 과업으로 넘어간 뒤 — 끝난 장면·대화는 접어 한 번에 한 판단만 남긴다. */
+  collapsed?: boolean;
 }) {
   const hasTarget = item.type !== "multi_judge";
   const channel = mpjPresentationChannel(mode, item.channel);
+  // 문항이 바뀌면 key로 다시 마운트되므로 새 장면은 항상 전체 메신저로 시작한다.
+  const [sceneExpanded, setSceneExpanded] = useState(false);
+  // relation_ko = "거래처 일정 담당자 · 몇 차례 연락한 사이" 형태다. 상대와 관계를 갈라
+  // 쓰되, 화살표 legacy 형식이면 기존 헬퍼가 상대만 뽑아 주므로 그 결과를 쓴다.
+  const relationParts = item.relation_ko.split("·").map((x) => x.trim()).filter(Boolean);
+  const counterpartLabel =
+    relationParts.length > 1 ? relationParts[0] : learnerCounterpartLabel(item.relation_ko);
+  const relationTail = relationParts.length > 1 ? relationParts.slice(1).join(" · ") : "";
+
+  // 접어도 **메신저 장면 그대로** 남긴다. PRAGMA의 학습 경험은 대화 장면 안에서
+  // 화용 판단을 하는 것이라, 평문 목록으로 납작하게 만들면 은유가 깨진다.
+  // 줄이는 것은 반복 설명(상황문·캡션)이지 말풍선이 아니다.
+  if (collapsed && !sceneExpanded) {
+    return (
+      <div
+        className="rounded-2xl border border-[#E3E1D8] bg-[#F2F1ED] px-3.5 py-3"
+        data-mpj-skin={channel}
+        data-scene-compact="true"
+      >
+        <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11.5px] text-muted-foreground">
+          <span>
+            상대 · <span className="text-foreground">{counterpartLabel}</span>
+          </span>
+          {relationTail && (
+            <span>
+              관계 · <span className="text-foreground">{relationTail}</span>
+            </span>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          {item.preceding_turn && <ChatBubble side="them">{item.preceding_turn}</ChatBubble>}
+          {hasTarget && (
+            <ChatBubble side="me" variant="draft">
+              {answered ? highlightZh(item.target, item.highlights) : item.target}
+            </ChatBubble>
+          )}
+          {!hasTarget && <ChatCaption placement="below">내가 전할 말: {item.source}</ChatCaption>}
+        </div>
+        {/* 조작은 하나만 — chevron과 '장면 다시 보기'를 겹쳐 두지 않는다. */}
+        <button
+          type="button"
+          onClick={() => setSceneExpanded(true)}
+          className="mt-2 text-[11.5px] font-semibold text-[#3E4C57] underline underline-offset-2"
+        >
+          전체 대화 보기
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div data-mpj-skin={channel}>
@@ -2533,6 +2589,15 @@ function MpjContextSurface({
           </>
         )}
       </ChatScene>
+      {collapsed && (
+        <button
+          type="button"
+          onClick={() => setSceneExpanded(false)}
+          className="mt-1.5 text-[11.5px] font-semibold text-[#3E4C57] underline underline-offset-2"
+        >
+          간단히 보기
+        </button>
+      )}
     </div>
   );
 }
@@ -2715,6 +2780,10 @@ function MpjStage({
     !!scalePick &&
     item.accepted_scale_codes.includes(scalePick as Scale4Code);
 
+  // relation_ko는 "거래처 일정 담당자 · 몇 차례 연락한 사이"처럼 상대와 관계가 붙어 있다.
+  // 앞부분(상대)은 이미 따로 쓰므로 뒷부분만 관계로 떼어 쓴다.
+  const relationContextLabel = item.relation_ko.split("·").slice(1).join("·").trim();
+
   // 답변 후에만 쓰는 "이번 선택에서 사용한 조절 방식" 한 줄.
   // 기존 판정 근거(note_ko)에서만 도출한다 — 새 필드·분류체계를 만들지 않고,
   // 학습자가 실제로 고른 안에 구현된 전략만 말한다(성향 단정 금지).
@@ -2738,13 +2807,15 @@ function MpjStage({
 
   return (
     <div className="space-y-3">
-      <MpjContextSurface item={item} answered={answered} mode={mode} />
-      {answered && item.type !== "multi_judge" && item.highlights?.length > 0 && (
-        <p className="px-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          <span className="mr-1 rounded bg-[#FFE9A8] px-1.5 py-0.5 font-semibold text-[#6B5518]">표현 단서</span>
-          밑줄은 이 문항에서 살펴볼 부분입니다. 그대로 외울 정답 표시는 아닙니다.
-        </p>
-      )}
+      {/* 한 번에 한 판단만 — 다음 과업(수정안 고르기·피드백 읽기)으로 넘어가면
+          끝난 장면·대화를 요약으로 접는다. 세로 누적을 줄이는 것이 목적이고,
+          접힌 요약을 펼치면 원래 장면을 그대로 다시 볼 수 있다. */}
+      <MpjContextSurface
+        item={item}
+        answered={answered}
+        mode={mode}
+        collapsed={answered || (item.type === "fix_choice" && sequentialFix && fixJudgeSubmitted)}
+      />
 
       {/* 문항 맥락 고정 바 — 긴 문항(특히 multi_judge 후보 비교)에서
           스크롤하면 상대·원문이 화면 밖으로 나가 "무엇을 옮기는 중이었지"를 잊는다.
@@ -2761,9 +2832,18 @@ function MpjStage({
           style={{ top: `${STICKY_CONTENT_TOP}px` }}
         >
           <div className="mx-auto flex max-w-3xl flex-wrap items-baseline gap-x-2.5 gap-y-0.5 px-6 py-1.5 text-[12px]">
+            {/* 객관적 맥락만 — 판정 방향(완화·직접성·거절 여지)은 넣지 않는다. */}
             <span className="text-muted-foreground">
               상대 · <span className="text-foreground">{learnerCounterpartLabel(item.relation_ko)}</span>
             </span>
+            {relationContextLabel && (
+              <>
+                <span className="hidden text-[#E3E1D8] md:inline">|</span>
+                <span className="text-muted-foreground">
+                  관계 · <span className="text-foreground">{relationContextLabel}</span>
+                </span>
+              </>
+            )}
             <span className="hidden text-[#E3E1D8] md:inline">|</span>
             <span className="text-muted-foreground">
               전하려는 뜻 · <span className="text-foreground">{item.source}</span>
@@ -2814,8 +2894,11 @@ function MpjStage({
           {item.type === "fix_choice" && (!sequentialFix || fixJudgeSubmitted) && (
             <>
               <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">
-                판단한 표현을 어떻게 고치면 좋을까요?{" "}
-                <span className="font-normal">· 복수 선택 가능</span>
+                이 상황에 알맞은 수정안을 모두 선택하세요.{" "}
+                <span className="font-normal text-muted-foreground">
+                  · 여러 개를 선택할 수 있습니다
+                  {fixPicks.size > 0 && ` · ${fixPicks.size}개 선택됨`}
+                </span>
               </div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {item.corrections.map((o, i) => (
