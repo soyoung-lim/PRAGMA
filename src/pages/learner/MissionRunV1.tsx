@@ -803,6 +803,9 @@ function MissionRunner({
   const [phase, setPhase] = useState<Phase>(startAtPart2 ? "produce" : "intro");
   const [mpjIdx, setMpjIdx] = useState(0);
   const [mpjResponses, setMpjResponses] = useState<MpjResponseTrace[]>([]);
+  // 목표 화용 축(초점)은 첫 판단을 제출한 뒤에만 공개한다. 첫 판단 전에 초점을 보이면
+  // Scale4가 재는 것이 첫인상이 아니라 '알려준 방향에 맞추기'가 된다.
+  const [focusRevealed, setFocusRevealed] = useState(false);
   const [vocabularyHintOpenedAt, setVocabularyHintOpenedAt] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [revised, setRevised] = useState("");
@@ -1080,7 +1083,11 @@ function MissionRunner({
                 <span className="shrink-0 rounded-full border border-[#E5C84A] bg-[#FFF3B5] px-2 py-0.5 text-[10.5px] font-extrabold text-[#5F4A00]">
                   {learnerActLabel}
                 </span>
-                <span className="truncate text-[12px] font-semibold text-[#3E4C57]">{learnerFocusCopy}</span>
+                {/* 첫 판단 전에는 과제명만 — 초점 문구는 판정 방향을 알려주므로 숨긴다.
+                    공개는 첫 판단 제출 이후(focusRevealed)에만 일어난다. */}
+                <span className="truncate text-[12px] font-semibold text-[#3E4C57]">
+                  {focusRevealed ? `이번 미션의 초점 · ${learnerFocusCopy}` : "상황에 맞는 표현 판단하기"}
+                </span>
               </div>
 
               {/* 진행 레일 — 완료는 노란 원+체크, 현재는 노란 링, 예정은 회색 테두리.
@@ -1196,9 +1203,11 @@ function MissionRunner({
               sequentialFix={
                 mission.schema_version === "mission_v4" || mission.schema_version === "mission_v5"
               }
+              isLastItem={mpjIdx === items.length - 1}
               onDone={nextMpj}
+              onFirstAnswer={() => setFocusRevealed(true)}
             />
-            {mpjIdx === 0 && <MissionBriefDrawer mission={mission} />}
+            {mpjIdx === 0 && <MissionBriefDrawer mission={mission} focusRevealed={focusRevealed} />}
           </div>
         )}
 
@@ -2244,18 +2253,42 @@ function Handoff({
 }
 
 // 학습자가 실제로 읽을 수 있도록 참고 판정의 지위와 확인 범위만 두 문장으로 남긴다.
-function MissionBriefDrawer({ mission }: { mission: MissionRuntime }) {
+// Scale4 일반 앵커 — 목표 축을 드러내지 않고 '얼마나 적절한가'의 기준만 준다.
+// 축별 문구를 쓰면 첫 판단 전에 판정 방향이 새므로, 장면 무관 일반 서술로 고정한다.
+const SCALE4_ANCHORS: { label: string; note: string }[] = [
+  { label: "매우 적절", note: "이 장면에서 대표적으로 자연스러움" },
+  { label: "다소 적절", note: "가능하지만 더 자연스러운 대안이 있음" },
+  { label: "다소 부적절", note: "의도는 전달되지만 관계·부담 조절이 어색함" },
+  { label: "매우 부적절", note: "관계·부담 또는 의도에 명백히 어긋남" },
+];
+
+function MissionBriefDrawer({
+  mission,
+  focusRevealed,
+}: {
+  mission: MissionRuntime;
+  focusRevealed: boolean;
+}) {
   return (
     <details className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-2.5 text-[12.5px]">
       <summary className="cursor-pointer text-[#6B5518]">
         판정 기준 보기 · <b>정답은 하나가 아니에요</b>
       </summary>
-      <div className="mt-2 space-y-1 text-muted-foreground">
+      <div className="mt-2 space-y-2 text-muted-foreground">
         <p>현재 강의안과 AI 제안을 바탕으로 한 참고 판정입니다. 상황에 따라 다른 표현도 적절할 수 있어요.</p>
         <p>
-          뜻 전달 · 이해를 막는 문법 · 이 상황에 맞는 「{mission.unit.learner_label}」을 봅니다.
+          {/* 첫 판단 전에는 초점명(「완화와 선택권」 등)을 쓰지 않는다 — 그 자체가 판정 방향이다. */}
+          뜻 전달 · 이해를 막는 문법 ·{" "}
+          {focusRevealed ? `이 상황에 맞는 「${mission.unit.learner_label}」` : "이 상황에 맞는 표현"}을 봅니다.
           <b className="text-foreground"> 참고 표현은 제출 뒤에 공개됩니다.</b>
         </p>
+        <ul className="space-y-0.5">
+          {SCALE4_ANCHORS.map((a) => (
+            <li key={a.label}>
+              <b className="text-foreground">{a.label}</b> · {a.note}
+            </li>
+          ))}
+        </ul>
       </div>
     </details>
   );
@@ -2509,14 +2542,26 @@ function MpjStage({
   item,
   mode,
   sequentialFix,
+  isLastItem,
   onDone,
+  onFirstAnswer,
 }: {
   item: MpjItemRuntime;
   mode: MissionPresentationMode;
   sequentialFix: boolean;
+  /** 마지막 문항이면 CTA를 다음 단계로 바꾼다. */
+  isLastItem: boolean;
   onDone: (response: MpjResponseTrace) => void;
+  /** 첫 판단이 제출된 시점 — 목표 화용 축은 이 시점 이후에만 공개된다. */
+  onFirstAnswer?: () => void;
 }) {
   const [answered, setAnswered] = useState(false);
+  // 판정 공개는 반드시 이 함수를 거친다. setAnswered를 직접 부르면 초점 공개 시점이
+  // 어긋나 첫 판단 전에 정답 방향이 새어 나간다.
+  const reveal = () => {
+    setAnswered(true);
+    onFirstAnswer?.();
+  };
   const [fixJudgeSubmitted, setFixJudgeSubmitted] = useState(false);
   const [scalePick, setScalePick] = useState<string | null>(null);
   const [bandPick, setBandPick] = useState<string | null>(null);
@@ -2628,7 +2673,7 @@ function MpjStage({
         }
         break;
     }
-    setAnswered(true);
+    reveal();
   };
 
   const responseTrace = (): MpjResponseTrace => {
@@ -2669,6 +2714,27 @@ function MpjStage({
     item.type === "scale4" &&
     !!scalePick &&
     item.accepted_scale_codes.includes(scalePick as Scale4Code);
+
+  // 답변 후에만 쓰는 "이번 선택에서 사용한 조절 방식" 한 줄.
+  // 기존 판정 근거(note_ko)에서만 도출한다 — 새 필드·분류체계를 만들지 않고,
+  // 학습자가 실제로 고른 안에 구현된 전략만 말한다(성향 단정 금지).
+  const answeredStrategyLine = (() => {
+    if (!answered) return "";
+    const clean = (s: string) => s.replace(/[.。]\s*$/, "").trim();
+    if (item.type === "fix_choice") {
+      return [...fixPicks]
+        .map((i) => item.corrections[i])
+        .filter((c) => c?.is_valid)
+        .map((c) => clean(c.note_ko))
+        .join(" · ");
+    }
+    if (item.type === "multi_judge" && multiBestPick !== null) {
+      const best = item.candidates[multiBestPick];
+      const within = getTargetFeature(feature)?.within_band_code;
+      if (best && within && best.accepted_band_codes.includes(within)) return clean(best.note_ko);
+    }
+    return "";
+  })();
 
   return (
     <div className="space-y-3">
@@ -2864,41 +2930,31 @@ function MpjStage({
             >
               <p className="text-[13px] leading-relaxed">{item.explanation_ko}</p>
               {item.type === "scale4" ? (
-                <div
-                  className={[
-                    "mt-2 space-y-1 text-[11.5px] font-semibold",
-                    scaleDirectionMatched ? "text-[#2E7D5B]" : "text-[#7A5C12]",
-                  ].join(" ")}
-                >
-                  <div>
+                <div className="mt-2 space-y-1 text-[11.5px]">
+                  {/* 내부 판정 언어(참고 판정·참고 정도)를 학습자용 이유로 바꾼다.
+                      맞았다/틀렸다가 아니라, 이 관계·부담에서 왜 그렇게 읽히는지를 말한다. */}
+                  <div className={scaleDirectionMatched ? "text-[#2E7D5B]" : "text-[#7A5C12]"}>
                     {scaleDirectionMatched
-                      ? "✓ 참고 판정과 적절성 방향이 같습니다."
-                      : "참고 판정과 적절성 방향이 다릅니다. 상황 단서를 다시 비교해 보십시오."}
+                      ? "이 장면을 읽은 방향이 참고 해설과 같습니다."
+                      : "참고 해설은 다르게 봅니다. 위 설명에서 관계와 부담을 다시 견주어 보세요."}
                   </div>
-                  <div>
-                    참고 정도 ·{" "}
-                    {SCALE4_LABELS[
-                      ("reference_scale_code" in item
-                        ? item.reference_scale_code
-                        : item.accepted_scale_codes[0]) as Scale4Code
-                    ]}
-                  </div>
-                  {scalePick &&
-                    scaleDirectionMatched &&
-                    "reference_scale_code" in item &&
-                    scalePick !== item.reference_scale_code && (
-                      <div className="font-normal text-[#496B5B]">
-                        ‘매우/다소’의 차이는 오답이 아니며 수업에서 비교할 수 있습니다.
-                      </div>
-                    )}
+                  {scalePick && "reference_scale_code" in item && scalePick !== item.reference_scale_code && (
+                    <div className="text-[#496B5B]">
+                      ‘매우/다소’의 차이는 오답이 아니며 수업에서 비교할 수 있습니다.
+                    </div>
+                  )}
                 </div>
-              ) : (
+              ) : item.type === "reason" ? (
                 <div className="mt-2 text-[11.5px] font-semibold text-[#2E7D5B]">
-                  {item.type === "reason"
-                    ? `핵심 원인 · ${item.reasons.find((r) => r.id === item.accepted_reason_id)?.text_ko ?? ""}`
-                    : `참고 판정 · ${item.accepted_band_codes
-                        .map((c) => learnerBandLabel(feature, c, bandLabel(feature, c)))
-                        .join(" / ")}`}
+                  {`핵심 원인 · ${item.reasons.find((r) => r.id === item.accepted_reason_id)?.text_ko ?? ""}`}
+                </div>
+              ) : null}
+              {/* 이번 선택에서 실제로 쓰인 조절 방식만 적는다. 한 문항으로 학습자의
+                  성향을 단정하지 않고, 특정 표현을 모든 상황의 정답으로 가르치지 않는다. */}
+              {answeredStrategyLine && (
+                <div className="mt-2 border-t border-black/5 pt-2 text-[11.5px] text-[#3E4C57]">
+                  <span className="font-semibold">이번 선택에서 사용한 조절 방식</span> ·{" "}
+                  {answeredStrategyLine}
                 </div>
               )}
             </div>
@@ -2994,7 +3050,7 @@ function MpjStage({
               판단 제출 · 이어서 고쳐보기 →
             </Button>
           ) : (
-            <Button className="w-full" disabled={!canReveal} onClick={() => setAnswered(true)}>
+            <Button className="w-full" disabled={!canReveal} onClick={reveal}>
               확인하기
             </Button>
           )}
@@ -3003,23 +3059,31 @@ function MpjStage({
           )}
         </>
       ) : (
-        <Button className="w-full" onClick={() => onDone(responseTrace())}>다음 →</Button>
+        <Button className="w-full" onClick={() => onDone(responseTrace())}>{isLastItem ? "정리 화면으로 →" : "다음 예시로 →"}</Button>
       )}
     </div>
   );
 }
 
+// 선택 상태를 색·테두리로만 표시하면 색을 못 보는 환경에서 구별되지 않는다.
+// 제출 전은 `선택됨`, 제출 후(disabled)는 `내 선택`으로 글자를 함께 붙인다.
 const Choice = ({ label, selected, disabled, onClick }: { label: string; selected: boolean; disabled: boolean; onClick: () => void }) => (
   <button
     type="button"
     disabled={disabled}
     onClick={onClick}
+    aria-pressed={selected}
     className={[
-      "rounded-[10px] border px-3.5 py-2.5 text-left text-[14px] transition-colors",
+      "flex items-start justify-between gap-2 rounded-[10px] border px-3.5 py-2.5 text-left text-[14px] transition-colors",
       selected ? "border-[1.5px] border-[#15202B] bg-[#FAFAF7] font-semibold" : "border-[#EAE4D2] bg-white hover:bg-[#FAFAF7]",
     ].join(" ")}
   >
-    {label}
+    <span>{label}</span>
+    {selected && (
+      <span className="mt-0.5 shrink-0 rounded-full border border-[#15202B] px-1.5 py-0.5 text-[10.5px] font-semibold">
+        {disabled ? "내 선택" : "선택됨"}
+      </span>
+    )}
   </button>
 );
 
