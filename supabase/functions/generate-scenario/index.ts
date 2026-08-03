@@ -4,6 +4,22 @@ import {
 } from '../_shared/feedbackRequestLimits.ts'
 import { repairFeedbackPragmaticLeak } from '../_shared/feedbackLayerRepair.ts'
 import {
+  buildCoreOutputRepairPrompt,
+  buildCoreSourceRepairPrompt,
+  coreBilingualSceneIssue,
+  corePrecedingTurnIssue,
+  coreSourceIssue,
+} from '../_shared/coreSourceRepair.ts'
+import {
+  CORE_LENGTH_POLICY_VERSION,
+  CORE_LENGTH_RANGES,
+  coreLengthHintKo,
+  coreLengthRange,
+  countCoreEffectiveChars,
+  type CoreLengthLevel,
+  type CoreLengthMode,
+} from '../_shared/coreLengthPolicy.ts'
+import {
   buildOpenAIChatRequest,
   CORE_RESPONSE_FORMAT_LABEL,
   CORE_STRUCTURED_RESPONSE_FORMAT,
@@ -509,19 +525,20 @@ interface CoreGenBody {
   direction?: string // 0-l·90 — 부재 시 ko_zh
   speech_act?: string
   speech_act_ko: string
+  level?: CoreLengthLevel
   level_ko: string
   domain?: string
   domain_ko: string
   industry?: string | null
   topic_code?: string
-  mode?: string // 수행 방식(channel 폐기 2026-07-25) — translation | stt_interpreting
+  mode?: CoreLengthMode // 수행 방식(channel 폐기 2026-07-25)
   channel?: string // @deprecated legacy(무시)
   channel_ko?: string // @deprecated legacy(무시)
   pdr: PdrJson
   source_modality: 'written' | 'spoken'
   situation_seed_ko: string
   is_response_act: boolean
-  length_hint_ko: string
+  length_hint_ko?: string // @deprecated: 서버가 level·mode에서 정책값을 계산한다.
   /** 서버가 구성해 buildCoreUserPrompt에 전달한다. 클라이언트 값은 신뢰하지 않는다. */
   context_spec?: CoreContextSpec
 }
@@ -746,6 +763,20 @@ function coreSpeechActCode(b: CoreGenBody): string {
   return Object.keys(SPEECH_ACT_KO).find((code) => SPEECH_ACT_KO[code] === b.speech_act_ko) ?? 'request'
 }
 
+function coreLengthLevel(b: CoreGenBody): CoreLengthLevel {
+  if (b.level === 'beginner_intermediate' || b.level === 'intermediate' || b.level === 'advanced') {
+    return b.level
+  }
+  if (b.level_ko?.includes('입문')) return 'beginner_intermediate'
+  if (b.level_ko?.includes('고급')) return 'advanced'
+  return 'intermediate'
+}
+
+function coreLengthMode(b: CoreGenBody): CoreLengthMode {
+  if (b.mode === 'stt_interpreting' || b.source_modality === 'spoken') return 'stt_interpreting'
+  return 'translation'
+}
+
 function buildCoreContextSpec(b: CoreGenBody): CoreContextSpec {
   const domain = coreDomainCode(b)
   const act = coreSpeechActCode(b)
@@ -767,6 +798,7 @@ function buildCoreSystemPrompt(direction: Direction): string {
   const { src, tgt } = DIR_LANGS[direction]
   const srcL = LANG_KO[src] // 원문 언어
   const tgtL = LANG_KO[tgt] // 산출(옮길) 언어
+  const sentencePunctuation = src === 'zh' ? '중국어 종결부호(。！？)' : '한국어 종결부호(.?!)'
   return `당신은 ${LANG_DIR_KO[direction]} 통번역 교육용 시나리오의 '상황·원문'을 설계하는 전문가입니다.
 학습자가 판단·번역·통역할 재료(상황과 ${srcL} 원문)만 만듭니다. 문항·후보·피드백은 만들지 않습니다.
 출력은 아래 JSON만, 마크다운·설명 없이 그대로 반환합니다.
@@ -774,7 +806,7 @@ function buildCoreSystemPrompt(direction: Direction): string {
 {
   "situation_ko": "상황 카드 배경 (한국어 2~3문장: 발신자·수신자·목적·관계 + 아래 [장면 완결성] 5요소)",
   "relation_ko": "발신자와 수신자의 관계 한 줄 (한국어)",
-  "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원문 — 실제 주고받는 메시지처럼 2~4문장의 담화",
+  "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원문 — 실제 의사소통처럼 이어지는 2~4문장의 담화",
   "preceding_turn": null,
   "brief_note_ko": "편성 화면용 한 줄 요약 (한국어)",
   "focal_segments": [
@@ -784,10 +816,12 @@ function buildCoreSystemPrompt(direction: Direction): string {
 }
 
 [원문 = 미니 담화] (DEC-20260730-01)
-용건 한 문장만 달랑 보내는 메시지는 실제 통번역 재료가 아니다. source_text는
-**하나의 자연스러운 메시지 전체**로 쓴다. 지정된 화행이 담화의 중심 목적이고,
+용건 한 문장만 달랑 제시하는 발화·메시지는 실제 통번역 재료가 아니다. source_text는
+**하나의 자연스러운 발화 또는 메시지 전체**로 쓴다. 지정된 화행이 담화의 중심 목적이고,
 그 앞뒤에 감사·상황 설명·사과·마무리 같은 요소가 자연스럽게 함께 올 수 있다.
 - 분량은 [생성 요청]의 "원문 분량"을 따르되 항상 2~4문장 안이다.
+- 문장 수는 쉼표로 이어진 절이 아니라 실제 종결부호 기준이다. ${sentencePunctuation}를
+  사용해 물리적으로 2~4문장으로 나누며, 쉼표만 이어 붙인 한 문장은 실패다.
 - 문장을 나열하지 말고 하나의 메시지로 읽히게 연결한다(지시어·접속으로 자연스럽게).
 - 곁들이는 요소는 **관계 관리에 필요한 만큼만.** 중심 화행이 담화에서 가장 중요한
   용건이어야 하고, 다른 화행이 중심과 대등하게 경쟁하면 실패다.
@@ -849,6 +883,9 @@ function buildCoreSystemPrompt(direction: Direction): string {
   제안·초대는 B에게 실질적 선택권이 있어야 하며, 불만은 문제 책임자나 조정 가능한 상대를 향한다.
 - 수행 모드와 situation_ko의 장면 서술은 반드시 일치해야 한다. 번역 셀을 "직접 말하는
   상황", 통역 셀을 "글로 작성해 보내는 상황"으로 서술하는 식의 명시적 모순은 금지한다.
+- 통역 셀에서는 A=${srcL} 화자, B=${tgtL} 화자이고, 학습자가 A의 ${srcL} 발화를 B에게
+  ${tgtL}로 옮기는 이중언어 상호작용이다. situation_ko에 두 사람의 언어 역할과 통역이
+  개입하는 자리임을 자연스럽게 드러내어, 왜 통역이 필요한 장면인지 알 수 있게 한다.
 - 출력 전에 화행·도메인·P·D·R·수행 모드뿐 아니라 행위자 지시·산업 단서·topic·인접쌍 명제·
   결정 권한을 내부적으로 하나씩 대조한다.
 - "중국인은/중국에서는/한국인은/한국에서는" 같은 국가 단위 일반화 표현 금지.
@@ -860,6 +897,8 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   const { src, tgt } = DIR_LANGS[dir]
   const srcL = LANG_KO[src]
   const tgtL = LANG_KO[tgt]
+  const sentencePunctuation = src === 'zh' ? '중국어 종결부호(。！？)' : '한국어 종결부호(.?!)'
+  const lengthHintKo = coreLengthHintKo(coreLengthLevel(b), coreLengthMode(b))
   const parts = [
     '[생성 요청]',
     `- 언어 방향: ${LANG_DIR_KO[dir]}`,
@@ -870,7 +909,8 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
     `- 관계 D(거리): ${PDR_D_KO[b.pdr.d] ?? b.pdr.d}`,
     `- 관계 R(부담): ${PDR_R_KO[b.pdr.r] ?? b.pdr.r}`,
     `- 장면 시드: ${b.situation_seed_ko}`,
-    `- 원문 분량: ${b.length_hint_ko}`,
+    `- 원문 분량: ${lengthHintKo}`,
+    `- 문장 경계: 쉼표로 절을 길게 잇지 말고 ${sentencePunctuation}로 위 분량의 문장 수를 명시하세요.`,
   ]
   if (b.industry) {
     parts.splice(
@@ -898,6 +938,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   if (b.source_modality === 'spoken') {
     parts.push(
       `- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 ${srcL} 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지. situation_ko도 직접 말하고 듣는 장면으로 서술하며, 이메일·메신저·글을 작성해 보내는 장면으로 만들지 마세요.`,
+      `- 통역 참여자 언어: A는 ${srcL} 화자, B는 ${tgtL} 화자이며 학습자가 A의 말을 B에게 옮깁니다. situation_ko에 두 언어 화자와 통역의 개입을 자연스럽게 명시하세요. 같은 언어 사용자끼리 통역 없이 대화하는 장면으로 만들면 실패입니다.`,
     )
   } else {
     parts.push(`- 수행 모드: 번역 — source_text는 자연스러운 ${srcL} 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정. situation_ko도 글을 작성해 전달하는 장면으로 서술하며, "글로 남기지 않고 직접 말한다"거나 대면·통화로만 수행하는 장면으로 만들지 마세요.`)
@@ -906,6 +947,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
     parts.push(
       `- 이 화행은 인접쌍의 둘째 짝입니다. preceding_turn에 상대(${tgtL} 화자)의 선행 발화를 '${tgtL}'로 반드시 채우세요(null 금지).`,
       `- preceding_turn의 화자는 B, source_text의 화자는 A입니다. 두 턴에서 사람·소유·행위 대상과 핵심 명제를 일관되게 유지하세요.`,
+      `- preceding_turn(${tgtL})과 source_text(${srcL})가 서로 다른 언어인 것은 정상입니다. B의 말을 들은 A가 자기 언어로 응답하고, 학습자가 그 응답을 B의 언어로 옮기는 장면이므로 두 턴을 같은 언어로 통일하지 마세요.`,
     )
     if (b.speech_act === 'opposition') {
       parts.push(
@@ -919,7 +961,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
 
 // ── 코어 생성 프롬프트 스냅샷 해시 (재현성 provenance, 2026-07-26) ──────────
 // 목적: "이 배치의 행들이 같은 프롬프트·같은 호출 설정으로 만들어졌다"를 기계로 증명한다.
-// generation_prompt_version('core_v4')만으로는 세부 개정을 구분하지 못하므로,
+// generation_prompt_version만으로는 세부 개정을 구분하지 못하므로,
 // 모델에 실제로 보내는 문자열에서 지문을 뽑는다.
 //
 // ⚠️ 셀별 입력값(화행·수준·도메인·P/D/R·장면시드·분량)은 해시에 넣지 않는다.
@@ -945,6 +987,7 @@ function canonicalJson(v: unknown): string {
 const CORE_PROBE_BASE: Omit<CoreGenBody, 'direction' | 'source_modality' | 'is_response_act'> = {
   speech_act: 'request',
   speech_act_ko: 'PROBE_ACT',
+  level: 'beginner_intermediate',
   level_ko: 'PROBE_LV',
   domain: 'work',
   domain_ko: 'PROBE_DOM',
@@ -952,7 +995,6 @@ const CORE_PROBE_BASE: Omit<CoreGenBody, 'direction' | 'source_modality' | 'is_r
   industry: null,
   pdr: { p: 'PROBE_P', d: 'PROBE_D', r: 'PROBE_R' },
   situation_seed_ko: 'PROBE_SEED',
-  length_hint_ko: 'PROBE_LEN',
   context_spec: {
     standard_situation_code: 'PROBE_STANDARD_SITUATION',
     role_pair: {
@@ -974,17 +1016,21 @@ async function corePromptSnapshotHash(): Promise<string> {
   const user_prompt_templates: string[] = []
   for (const direction of directions) {
     for (const source_modality of ['written', 'spoken'] as const) {
-      for (const is_response_act of [false, true]) {
-        for (const industry of [null, 'PROBE_INDUSTRY']) {
-          user_prompt_templates.push(
-            buildCoreUserPrompt({
-              ...CORE_PROBE_BASE,
-              direction,
-              source_modality,
-              is_response_act,
-              industry,
-            }),
-          )
+      for (const level of ['beginner_intermediate', 'intermediate', 'advanced'] as const) {
+        for (const is_response_act of [false, true]) {
+          for (const industry of [null, 'PROBE_INDUSTRY']) {
+            user_prompt_templates.push(
+              buildCoreUserPrompt({
+                ...CORE_PROBE_BASE,
+                direction,
+                source_modality,
+                mode: source_modality === 'spoken' ? 'stt_interpreting' : 'translation',
+                level,
+                is_response_act,
+                industry,
+              }),
+            )
+          }
         }
       }
     }
@@ -1015,7 +1061,7 @@ async function corePromptSnapshotHash(): Promise<string> {
     ),
   )
   coreSnapshotHashCache = await sha256Hex(canonicalJson({
-    v: 3,
+    v: 7,
     scope: 'core_generation',
     action: 'core',
     model: PRIMARY_MODEL,
@@ -1023,8 +1069,64 @@ async function corePromptSnapshotHash(): Promise<string> {
     temperature: CORE_TEMPERATURE,
     response_format: CORE_RESPONSE_FORMAT,
     response_schema: CORE_STRUCTURED_RESPONSE_FORMAT,
+    source_length_policy: {
+      version: CORE_LENGTH_POLICY_VERSION,
+      unit: 'effective_chars',
+      ranges: CORE_LENGTH_RANGES,
+    },
     system_prompts,
     user_prompt_templates,
+    sentence_repair_prompt_template: buildCoreSourceRepairPrompt({
+      originalUserPrompt: 'PROBE_USER_PROMPT',
+      previousOutput: { source_text: 'PROBE_SOURCE_TEXT', focal_segments: [] },
+      sourceLanguage: 'zh',
+      lengthHintKo: '유효 글자 PROBE_MIN~PROBE_MAX자',
+      measuredSentenceCount: 1,
+      measuredEffectiveCharCount: 999,
+      effectiveCharRange: { min: 30, max: 45 },
+    }),
+    preceding_turn_repair_prompt_templates: (['ko', 'zh'] as const).map((expectedLanguage) =>
+      buildCoreOutputRepairPrompt({
+        originalUserPrompt: 'PROBE_USER_PROMPT',
+        previousOutput: {
+          source_text: 'PROBE_SOURCE_TEXT',
+          preceding_turn: 'PROBE_PRECEDING_TURN',
+          focal_segments: [],
+        },
+        sourceLanguage: expectedLanguage === 'ko' ? 'zh' : 'ko',
+        lengthHintKo: '유효 글자 PROBE_MIN~PROBE_MAX자',
+        effectiveCharRange: { min: 30, max: 45 },
+        sourceIssue: null,
+        precedingTurnIssue: {
+          code: 'wrong_language',
+          expectedLanguage,
+          message: 'PROBE_PRECEDING_TURN_LANGUAGE_ERROR',
+        },
+        bilingualSceneIssue: null,
+      })
+    ),
+    bilingual_scene_repair_prompt_templates: (['ko_zh', 'zh_ko'] as const).map((direction) =>
+      buildCoreOutputRepairPrompt({
+        originalUserPrompt: 'PROBE_USER_PROMPT',
+        previousOutput: {
+          situation_ko: 'PROBE_SITUATION',
+          source_text: 'PROBE_SOURCE_TEXT',
+          preceding_turn: null,
+          focal_segments: [],
+        },
+        sourceLanguage: DIR_LANGS[direction].src,
+        lengthHintKo: '유효 글자 PROBE_MIN~PROBE_MAX자',
+        effectiveCharRange: { min: 30, max: 45 },
+        sourceIssue: null,
+        precedingTurnIssue: null,
+        bilingualSceneIssue: {
+          sourceLanguage: DIR_LANGS[direction].src,
+          targetLanguage: DIR_LANGS[direction].tgt,
+          missing: ['source_speaker', 'target_speaker', 'interpreting'],
+          message: 'PROBE_BILINGUAL_SCENE_ERROR',
+        },
+      })
+    ),
     prompt_catalogs: {
       pdr_p_ko: PDR_P_KO,
       pdr_d_ko: PDR_D_KO,
@@ -1755,7 +1857,7 @@ ${focal.map((s) => `- ${s.role === 'head' ? '중심 화행' : '조절 구간'}: 
                    "explanation_ko": "왜 이해를 막는지 1문장" } ],
     "feature_ko": "화용 층 1~2문장(비단정)",
     "alternatives": [ { "text": "최소대조안", "note_ko": "무엇을 하나 바꿨는지" } ],
-    "discourse_ko": "담화 전체의 연결·자연성 한 줄 (미니 담화형이 아니면 \"\")",
+    "discourse_ko": "담화 전체의 연결·자연성 한 줄 (미니 담화형이 아니면 "")",
     "offfocus_warnings": [ { "text": "집중 구간 밖 인용", "note_ko": "왜 심각한지 1문장" } ]
   },
   "uncertainty_flags": [ { "dimension": "grammar | pragmatic", "reason": "왜 확신이 없는지" } ]
@@ -1877,6 +1979,86 @@ Deno.serve(async (req) => {
       } catch (e) {
         return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
       }
+      // 길이 정책·2~4문장 담화 형태·응답 화행의 target-language 선행 발화를 생성
+      // 단계에서 한 번 더 보장한다. 오류가 여럿이어도 기존 사실·역할을 고정한 단 한 번의
+      // 교정 호출로 함께 맞춘다.
+      const lengthLevel = coreLengthLevel(b)
+      const lengthMode = coreLengthMode(b)
+      const lengthRange = coreLengthRange(lengthLevel, lengthMode)
+      const lengthHintKo = coreLengthHintKo(lengthLevel, lengthMode)
+      const initialSourceText = String(gen.source_text ?? gen.source_text_ko ?? '')
+      const initialSourceIssue = coreSourceIssue(initialSourceText, lengthRange)
+      const initialPrecedingTurn = gen.preceding_turn ?? gen.preceding_turn_zh ?? null
+      const initialPrecedingTurnIssue = corePrecedingTurnIssue(
+        initialPrecedingTurn,
+        DIR_LANGS[coreDir].tgt,
+        b.is_response_act,
+      )
+      const initialBilingualSceneIssue = coreBilingualSceneIssue(
+        gen.situation_ko,
+        DIR_LANGS[coreDir].src,
+        DIR_LANGS[coreDir].tgt,
+        b.source_modality === 'spoken',
+      )
+      const coreRepairAttempted = Boolean(
+        initialSourceIssue || initialPrecedingTurnIssue || initialBilingualSceneIssue
+      )
+      let sourceRepairApplied = false
+      let precedingTurnRepairApplied = false
+      let bilingualSceneRepairApplied = false
+      if (coreRepairAttempted) {
+        const repairUser = buildCoreOutputRepairPrompt({
+          originalUserPrompt: usr,
+          previousOutput: gen,
+          sourceLanguage: DIR_LANGS[coreDir].src,
+          lengthHintKo,
+          effectiveCharRange: lengthRange,
+          sourceIssue: initialSourceIssue,
+          precedingTurnIssue: initialPrecedingTurnIssue,
+          bilingualSceneIssue: initialBilingualSceneIssue,
+        })
+        let repairModel = model
+        let repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
+          responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
+        })
+        if (!repairAttempt.ok && (repairAttempt.status === 404 || repairAttempt.status === 400) && repairModel !== FALLBACK_MODEL) {
+          repairModel = FALLBACK_MODEL
+          repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
+            responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
+          })
+        }
+        if (repairAttempt.ok) {
+          try {
+            const repaired = parseOpenAIContent(repairAttempt.raw) as Record<string, unknown>
+            const repairedSourceText = String(repaired.source_text ?? repaired.source_text_ko ?? '')
+            const repairedPrecedingTurn = repaired.preceding_turn ?? repaired.preceding_turn_zh ?? null
+            const repairedPrecedingTurnIssue = corePrecedingTurnIssue(
+              repairedPrecedingTurn,
+              DIR_LANGS[coreDir].tgt,
+              b.is_response_act,
+            )
+            const repairedBilingualSceneIssue = coreBilingualSceneIssue(
+              repaired.situation_ko,
+              DIR_LANGS[coreDir].src,
+              DIR_LANGS[coreDir].tgt,
+              b.source_modality === 'spoken',
+            )
+            if (
+              !coreSourceIssue(repairedSourceText, lengthRange) &&
+              !repairedPrecedingTurnIssue &&
+              !repairedBilingualSceneIssue
+            ) {
+              gen = repaired
+              model = repairModel
+              sourceRepairApplied = Boolean(initialSourceIssue)
+              precedingTurnRepairApplied = Boolean(initialPrecedingTurnIssue)
+              bilingualSceneRepairApplied = Boolean(initialBilingualSceneIssue)
+            }
+          } catch {
+            // 교정 응답이 파싱되지 않으면 최초 출력을 그대로 내려 클라이언트 R8/R10/R29가 차단한다.
+          }
+        }
+      }
       // 구조 필드는 서버가 조립(셀과 어긋나지 않게). 자유 텍스트만 모델 값 사용.
       // v2 중립 스키마(계약 0-l·83) — source_text/preceding_turn + direction.
       // 모델이 구 키(source_text_ko 등)로 답해도 관대하게 받는다(폴백).
@@ -1908,6 +2090,13 @@ Deno.serve(async (req) => {
         context_spec: contextSpec,
         ...(gen.brief_note_ko ? { brief_note_ko: String(gen.brief_note_ko) } : {}),
         focal_segments: focalSegments,
+        length_policy: {
+          version: CORE_LENGTH_POLICY_VERSION,
+          unit: 'effective_chars',
+          min: lengthRange.min,
+          max: lengthRange.max,
+          actual: countCoreEffectiveChars(sourceText),
+        },
       }
       return new Response(
         JSON.stringify({
@@ -1915,7 +2104,12 @@ Deno.serve(async (req) => {
           meta: {
             provider: PROVIDER,
             model,
-            prompt_version: 'core_v4',
+            prompt_version: sourceRepairApplied || precedingTurnRepairApplied || bilingualSceneRepairApplied ? 'core_v7_bilingual_scene_v1_repair' : 'core_v7_bilingual_scene_v1',
+            generation_attempt: coreRepairAttempted ? 2 : 1,
+            source_repair_applied: sourceRepairApplied,
+            preceding_turn_repair_applied: precedingTurnRepairApplied,
+            bilingual_scene_repair_applied: bilingualSceneRepairApplied,
+            length_policy_version: CORE_LENGTH_POLICY_VERSION,
             // 재현성 provenance — 클라이언트는 이 값을 재계산하지 말고 그대로 저장한다.
             prompt_snapshot_hash: await corePromptSnapshotHash(),
             generated_at: new Date().toISOString(),
@@ -2020,9 +2214,10 @@ Deno.serve(async (req) => {
           //   조립 표본에서 실제로 존재하는 완화·인정·완충 자원을 "없다"고 설명하며 하위 대역을
           //   부여하는 사례가 요청·거절에서 확인됐다. buildMissionSystemPrompt는 v4·v5 공용이므로
           //   두 버전 문자열을 함께 올린다.
+          // _v4/_v7 = R5·R27 재시도에 후보별 대역·길이와 중복 문항을 구조화해 되먹이는 판(2026-08-02).
           prompt_version: isMiniDiscourse
-            ? 'mission_v5_mpj4_minidiscourse_v3'
-            : 'mission_v4_mpj4_dct1_context_v6',
+            ? 'mission_v5_mpj4_minidiscourse_v4'
+            : 'mission_v4_mpj4_dct1_context_v7',
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
@@ -2030,8 +2225,8 @@ Deno.serve(async (req) => {
       }
       return new Response(
         JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: isMiniDiscourse
-            ? 'mission_v5_mpj4_minidiscourse_v3'
-            : 'mission_v4_mpj4_dct1_context_v6', generated_at: genAt } }),
+            ? 'mission_v5_mpj4_minidiscourse_v4'
+            : 'mission_v4_mpj4_dct1_context_v7', generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }

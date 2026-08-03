@@ -13,6 +13,31 @@ function prompt(key: string) {
 }
 
 describe("prompt snapshot integrity", () => {
+  it("records the versioned effective-character pilot policy", () => {
+    expect(PROMPT_SNAPSHOT.source_length_policy.version).toBe("effective_chars_v1");
+    expect(PROMPT_SNAPSHOT.source_length_policy.ranges.stt_interpreting.intermediate).toEqual({
+      min: 40,
+      max: 60,
+    });
+  });
+
+  it("locks interpreting cores to a bilingual mediated scene", () => {
+    const system = prompt("core.system.zh_ko");
+    const response = prompt("core.user.spoken.zh_ko.response_act");
+    const repair = prompt("core.user.preceding_turn_repair");
+    const sceneRepair = prompt("core.user.bilingual_scene_repair");
+
+    expect(system.text).toContain("A=중국어 화자, B=한국어 화자");
+    expect(system.text).toContain("왜 통역이 필요한 장면인지");
+    expect(response.text).toContain("통역 참여자 언어: A는 중국어 화자, B는 한국어 화자");
+    expect(response.text).toContain("서로 다른 언어인 것은 정상");
+    expect(response.text).toContain("두 턴을 같은 언어로 통일하지 마세요");
+    expect(repair.text).toContain("자연스러운 한국어 발화");
+    expect(repair.text).toContain("중국어로 쓰지 마세요");
+    expect(sceneRepair.text).toContain("A=중국어 화자, B=한국어 화자");
+    expect(sceneRepair.text).toContain("기존 역할·P/D/R·사건은 바꾸지 말고");
+  });
+
   it("matches the current Edge source", () => {
     const source = readFileSync(
       resolve(process.cwd(), PROMPT_SNAPSHOT.edge_source),
@@ -26,6 +51,9 @@ describe("prompt snapshot integrity", () => {
       "'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch'",
     );
     expect(canonicalSource).toContain("prompt_version: 'quality_v2'");
+    expect(canonicalSource).toContain("corePrecedingTurnIssue(");
+    expect(canonicalSource).toContain("preceding_turn_repair_applied: precedingTurnRepairApplied");
+    expect(canonicalSource).toContain("DIR_LANGS[coreDir].tgt");
 
     // 안전 후보 판정이 쓰는 미션 프롬프트 버전 목록이 엣지와 어긋나면 구버전 미션이
     // 자동 선택에 섞이거나 정상 미션이 통째로 막힌다. 양쪽을 여기서 묶어 둔다.
@@ -87,6 +115,11 @@ describe("prompt snapshot integrity", () => {
     expect(critic.text).toContain("즉시 확장하기");
     expect(written.text).toContain('"글로 남기지 않고 직접 말한다"');
     expect(prompt("core.user.spoken").text).toContain("이메일·메신저·글을 작성해 보내는");
+    expect(prompt("core.system.zh_ko").text).toContain("중국어 종결부호(。！？)");
+    expect(prompt("core.user.spoken").text).toContain("문장 경계:");
+    expect(prompt("core.user.source_repair").text).toContain("직전 출력의 구조 오류");
+    expect(prompt("core.user.source_repair").text).toContain("유효 글자 수를 반드시");
+    expect(prompt("core.user.source_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(critic.text).toContain("국소적 두 턴만 본다");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {
