@@ -32,7 +32,12 @@ import {
   COMPLEX_TASK_TO_CONTEXT,
 } from "@/lib/pragma/enums";
 import { checkCore, coreLengthHintKo, type CheckContext } from "@/lib/pragma/missionRules";
-import { PDR_POWER_ENUM_TO_JSON, PDR_DISTANCE_ENUM_TO_JSON } from "@/lib/pragma/coreSchema";
+import { createCoreGenerationRunId } from "@/lib/pragma/coreGenerationRun";
+import {
+  PDR_POWER_ENUM_TO_JSON,
+  PDR_DISTANCE_ENUM_TO_JSON,
+  coreContentForHash,
+} from "@/lib/pragma/coreSchema";
 import type { CoreProvenance } from "@/lib/pragma/coreSchema";
 import {
   THEME_CODES,
@@ -706,7 +711,9 @@ const AdminGenerator = () => {
     setCoreResults(null);
     const indices = [...selectedOutlines].sort((a, b) => a - b);
     const results: CoreResult[] = [];
-    const runId = `gen-${coreHash(String(indices.length) + topicCode + form.speech_act_ui)}`;
+    // 같은 조건을 다시 생성하는 것은 이전 실행 재개가 아니라 새 실행이다. 내용 기반
+    // runId를 재사용하면 과거 행과 (generation_run_id, item_key)가 충돌한다.
+    const runId = createCoreGenerationRunId();
     const mode = taskMode;
     const isResponse = RESPONSE_ACTS.has(form.speech_act_ui);
     for (const i of indices) {
@@ -724,6 +731,7 @@ const AdminGenerator = () => {
               direction: form.language_direction,
               speech_act: form.speech_act_ui,
               speech_act_ko: SPEECH_ACT_UI[form.speech_act_ui],
+              level: form.level,
               level_ko: LEVEL[form.level],
               domain: form.domain,
               domain_ko: DOMAIN[form.domain],
@@ -777,7 +785,7 @@ const AdminGenerator = () => {
         core.channel = legacyChannelOf(mode);
         // content_hash는 provenance를 **포함하지 않는다** — 내용이 같은 코어는 출처가
         // 달라도 같은 해시여야 중복 탐지가 작동한다(미션 provenance와 같은 취급).
-        const contentHash = coreHash(JSON.stringify(core));
+        const contentHash = coreHash(JSON.stringify(coreContentForHash(core)));
         // 실제 자료 원문이 이 생성에 실제로 쓰였을 때만 출처를 남긴다(seed 조건과 동일).
         if (authenticProv && sourceMode === "manual" && manualSourceText.trim()) {
           core.provenance = authenticProv;
