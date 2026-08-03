@@ -47,6 +47,18 @@ export function classifyColdOpen(
   return { kind: "initiation", precedingTurn: null };
 }
 
+/**
+ * 콜드 오픈 표제용 다듬기 — 문장 첫머리의 1인칭 주어만 걷어낸다.
+ * 「나는 …하려 한다」보다 「…하려 한다」가 장면으로 먼저 읽힌다. 표시층 전용이며
+ * 저장·판정에 쓰는 situation_ko 원문은 건드리지 않는다.
+ * 3인칭 서술문("처음 연락하는 학생이 …")은 주어가 정보이므로 그대로 둔다.
+ */
+const SELF_SUBJECT_PREFIX = /^(나는|내가|저는|제가)\s+/;
+
+export function sceneHeadline(sentence: string): string {
+  return sentence.replace(SELF_SUBJECT_PREFIX, "").trim();
+}
+
 /** 저장·기록 계약과 같은 수정 판정. 공백 정규화나 의미 추정은 하지 않는다. */
 export function responseWasRevised(firstResponse: string, revisedResponse: string): boolean {
   return firstResponse !== revisedResponse;

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import {
   SPEECH_ACT_UI,
+  SPEECH_ACT_VERB_KO,
   LEVEL,
   DIRECTION_LANGS,
   type LanguageDirection,
@@ -47,6 +48,7 @@ import {
   classifyColdOpen,
   mpjPresentationChannel,
   responseWasRevised,
+  sceneHeadline,
   shouldShowCorrectionNotesLink,
   translationWritingSkin,
   type MissionSaveState,
@@ -267,8 +269,18 @@ const MissionRunV1 = () => {
       ? { ...baseMission, production_task: { ...baseMission.production_task, mode: "interpreting" as const } }
       : baseMission;
   const isSample = !loaded;
+  // 방향·수행 방식은 학습자가 지금 무엇을 산출하는지 말해 준다 — 급수 표기보다 유용하다.
+  const directionModeLabel = `${mission.direction === "zh_ko" ? "중→한" : "한→중"} ${
+    mission.production_task.mode === "interpreting" ? "통역" : "번역"
+  }`;
   const headerRight = loaded
-    ? `${loaded.speech_act ? SPEECH_ACT_UI[loaded.speech_act] : ""} · ${loaded.learner_level ? LEVEL[loaded.learner_level] : ""}`
+    ? [
+        loaded.speech_act ? SPEECH_ACT_UI[loaded.speech_act] : "",
+        loaded.learner_level ? LEVEL[loaded.learner_level] : "",
+        directionModeLabel,
+      ]
+        .filter(Boolean)
+        .join(" · ")
     // 큰 배너를 걷어내는 대신 헤더가 지위를 말한다 — "원어민 검토 전"은 헤더에 없던 정보다.
     : previewV4
       ? `${previewV5 ? "mission_v5(미니 담화형 DCT)" : "mission_v4"} 미리보기 · 예문 검토 전`
@@ -1057,102 +1069,107 @@ function MissionRunner({
           </div>
         )}
 
-        {/* ── 화행·학습 초점 + 3단계 워크플로우 ──
-            헤더 아래에 고정해 긴 문항에서도 현재 화행·초점·단계를 잃지 않는다.
-            feature 정본명은 바꾸지 않고, 이 표면에서만 행동 문장으로 풀어 쓴다. */}
-        <div
-          className="sticky z-30 -mx-6 mb-2 h-[92px] border-b border-[#E6E0CE] bg-background/95 px-6 pb-2.5 pt-2 shadow-[0_6px_16px_rgba(21,32,43,0.05)] backdrop-blur"
-          style={{ top: `${HEADER_H}px` }}
-        >
-          <div className="mb-2 flex h-[17px] min-w-0 items-center gap-2 whitespace-nowrap">
-            <span className="shrink-0 rounded-full border border-[#E5C84A] bg-[#FFF3B5] px-2 py-0.5 text-[10.5px] font-extrabold text-[#5F4A00]">
-              {learnerActLabel}
-            </span>
-            <span className="truncate text-[12px] font-semibold text-[#3E4C57]">{learnerFocusCopy}</span>
-          </div>
+            {/* ── 화행·학습 초점 + 3단계 워크플로우 ──
+                헤더 아래에 고정해 긴 문항에서도 현재 화행·초점·단계를 잃지 않는다.
+                feature 정본명은 바꾸지 않고, 이 표면에서만 행동 문장으로 풀어 쓴다. */}
+            <div
+              className="sticky z-30 -mx-6 mb-2 h-[92px] border-b border-[#E6E0CE] bg-background/95 px-6 pb-2.5 pt-2 shadow-[0_6px_16px_rgba(21,32,43,0.05)] backdrop-blur"
+              style={{ top: `${HEADER_H}px` }}
+            >
+              <div className="mb-2 flex h-[17px] min-w-0 items-center gap-2 whitespace-nowrap">
+                <span className="shrink-0 rounded-full border border-[#E5C84A] bg-[#FFF3B5] px-2 py-0.5 text-[10.5px] font-extrabold text-[#5F4A00]">
+                  {learnerActLabel}
+                </span>
+                <span className="truncate text-[12px] font-semibold text-[#3E4C57]">{learnerFocusCopy}</span>
+              </div>
 
-          {/* 진행 레일 — 완료는 노란 원+체크, 현재는 노란 링, 예정은 회색 테두리.
-              연결선은 지나온 구간만 노랑이다. 단계 이름은 레일 아래에 둔다. */}
-          <div className="flex items-start" aria-label="미션 진행 단계">
-            {journeySteps.map((step, i) => {
-              const done = i < currentStepIndex;
-              const active = i === currentStepIndex;
-              const circle = [
-                "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold leading-none",
-                done
-                  ? "bg-[#FAD338] text-[#15202B]"
-                  : active
-                    ? "border-[3.5px] border-[#FAD338] bg-white"
-                    : "border border-[#D7D2C4] bg-white",
-              ].join(" ");
-              const line = (filled: boolean, hidden: boolean) => (
-                <span
-                  aria-hidden
-                  className={`h-[2px] flex-1 ${
-                    hidden ? "bg-transparent" : filled ? "bg-[#FAD338]" : "bg-[#E3DFD2]"
-                  }`}
-                />
-              );
-              const inner = (
+              {/* 진행 레일 — 완료는 노란 원+체크, 현재는 노란 링, 예정은 회색 테두리.
+                  연결선은 지나온 구간만 노랑이다. 단계 이름은 레일 아래에 둔다. */}
+              <div className="flex items-start" aria-label="미션 진행 단계">
+                {journeySteps.map((step, i) => {
+                  const done = i < currentStepIndex;
+                  const active = i === currentStepIndex;
+                  const circle = [
+                    "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold leading-none",
+                    done
+                      ? "bg-[#FAD338] text-[#15202B]"
+                      : active
+                        ? "border-[3.5px] border-[#FAD338] bg-white"
+                        : "border border-[#D7D2C4] bg-white",
+                  ].join(" ");
+                  const line = (filled: boolean, hidden: boolean) => (
+                    <span
+                      aria-hidden
+                      className={`h-[2px] flex-1 ${
+                        hidden ? "bg-transparent" : filled ? "bg-[#FAD338]" : "bg-[#E3DFD2]"
+                      }`}
+                    />
+                  );
+                  const inner = (
+                    <>
+                      <span className="flex w-full items-center">
+                        {line(done || active, i === 0)}
+                        <span className={circle}>{done ? "✓" : ""}</span>
+                        {line(done, i === journeySteps.length - 1)}
+                      </span>
+                      {/* 콜드 오픈에서는 라벨을 숨긴다 — 5단계 이름이 다 펼쳐지면 장면이
+                          아니라 과제량 고지로 읽힌다. 자리는 남겨 단계 전환 시 높이가
+                          흔들리지 않게 하고, 화면 낭독기에는 그대로 남는다. */}
+                      <span
+                        className={`mt-1 block px-0.5 text-center text-[9.5px] leading-tight transition-opacity ${
+                          phase === "intro" ? "opacity-0" : ""
+                        } ${
+                          active
+                            ? "font-bold text-[#15202B]"
+                            : done
+                              ? "text-[#5B6670]"
+                              : "text-[#A9B0BA]"
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                    </>
+                  );
+                  return IS_DEMO ? (
+                    <button
+                      key={step.key}
+                      type="button"
+                      onClick={() => {
+                        const target = PHASE_OF_STEP[step.key];
+                        if (target === "mpj") setMpjIdx(0);
+                        goto(target);
+                      }}
+                      className="flex min-w-0 flex-1 flex-col items-center"
+                    >
+                      {inner}
+                    </button>
+                  ) : (
+                    <div key={step.key} className="flex min-w-0 flex-1 flex-col items-center">
+                      {inner}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {/* 현재 단계의 잔걸음. 연구 표기(MPJ·DCT)는 여기 보조 라벨로만 남긴다. */}
+            <div className={phase === "intro" ? "hidden" : "mb-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#A9B0BA]"}>
+              <span className="rounded bg-[#F2EEE0] px-1.5 py-0.5 text-[10px] font-semibold text-[#8A8272]">
+                {journeySteps[currentStepIndex]?.aside}
+              </span>
+              {phase === "mpj" && (
                 <>
-                  <span className="flex w-full items-center">
-                    {line(done || active, i === 0)}
-                    <span className={circle}>{done ? "✓" : ""}</span>
-                    {line(done, i === journeySteps.length - 1)}
-                  </span>
-                  <span
-                    className={`mt-1 block px-0.5 text-center text-[9.5px] leading-tight ${
-                      active
-                        ? "font-bold text-[#15202B]"
-                        : done
-                          ? "text-[#5B6670]"
-                          : "text-[#A9B0BA]"
-                    }`}
-                  >
-                    {step.label}
+                  <span>예시 {mpjIdx + 1} / {items.length}</span>
+                  <span className="text-[#D3CEC0]">·</span>
+                  <span className="font-bold text-[#15202B]">
+                    {mpjTaskTitle(item, mission.unit.target_feature, pt.mode)}
                   </span>
                 </>
-              );
-              return IS_DEMO ? (
-                <button
-                  key={step.key}
-                  type="button"
-                  onClick={() => {
-                    const target = PHASE_OF_STEP[step.key];
-                    if (target === "mpj") setMpjIdx(0);
-                    goto(target);
-                  }}
-                  className="flex min-w-0 flex-1 flex-col items-center"
-                >
-                  {inner}
-                </button>
-              ) : (
-                <div key={step.key} className="flex min-w-0 flex-1 flex-col items-center">
-                  {inner}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        {/* 현재 단계의 잔걸음. 연구 표기(MPJ·DCT)는 여기 보조 라벨로만 남긴다. */}
-        <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#A9B0BA]">
-          <span className="rounded bg-[#F2EEE0] px-1.5 py-0.5 text-[10px] font-semibold text-[#8A8272]">
-            {journeySteps[currentStepIndex]?.aside}
-          </span>
-          {phase === "mpj" && (
-            <>
-              <span>예시 {mpjIdx + 1} / {items.length}</span>
-              <span className="text-[#D3CEC0]">·</span>
-              <span className="font-bold text-[#15202B]">
-                {mpjTaskTitle(item, mission.unit.target_feature, pt.mode)}
-              </span>
-            </>
-          )}
-          {phase === "handoff" && (
-            <span className="font-bold text-foreground">예시 {items.length}개 정리</span>
-          )}
-          {phase === "done" && <span className="font-bold text-foreground">완료</span>}
-        </div>
+              )}
+              {phase === "handoff" && (
+                <span className="font-bold text-foreground">예시 {items.length}개 정리</span>
+              )}
+              {phase === "done" && <span className="font-bold text-foreground">완료</span>}
+            </div>
 
         {/* ── 0부: 최종 DCT 장면 콜드 오픈 ──
             절차 설명보다 먼저 실제 수행 장면을 보여 준다. production_task를 읽기만 하며
@@ -1161,8 +1178,7 @@ function MissionRunner({
           <MissionColdOpen
             productionTask={pt}
             speechAct={speechAct ?? feat?.speech_act ?? null}
-            learnerActLabel={learnerActLabel}
-            learnerFocusCopy={learnerFocusCopy}
+            direction={mission.direction}
             mpjCount={items.length}
             onStart={() => goto("mpj")}
           />
@@ -1519,179 +1535,95 @@ type SpeechRecognitionWindow = Window & {
   SpeechRecognition?: BrowserSpeechRecognitionConstructor;
 };
 
+/**
+ * 최종 DCT 장면 콜드 오픈 — **한 화면**이다.
+ * 9개 화행 중 7개가 개시형이라 "상대 신호" 박자가 구조적으로 비므로 2단계를 두지 않는다.
+ * 선행 발화(preceding_turn)도 여기서는 **보여 주지 않는다** — 장면을 흐리고, 어차피 DCT
+ * 수행 화면에서 원문과 함께 제시된다. 콜드 오픈의 일은 장면 하나와 질문 하나뿐이다.
+ *
+ * 🔴 대역(band) 축은 이 화면에서 절대 노출하지 않는다. MPJ는 Scale4(첫인상) → FixChoice →
+ * Reason → MultiJudge로 축을 단계적으로 공개하도록 설계돼 있고, 여기서 "밀어붙이면/돌려
+ * 말하면" 같은 양극단을 미리 말하면 Scale4가 재는 것이 첫인상이 아니게 된다. 또한
+ * '간접적이면 모호하다'는 소박한 규칙을 설치해 카탈로그 counter_rule과 충돌한다.
+ * 학습자에게는 **판단에 필요한 상황 사실**만 준다.
+ */
 function MissionColdOpen({
   productionTask,
   speechAct,
-  learnerActLabel,
-  learnerFocusCopy,
+  direction,
   mpjCount,
   onStart,
 }: {
   productionTask: MissionRuntime["production_task"];
   speechAct: string | null;
-  learnerActLabel: string;
-  learnerFocusCopy: string;
+  direction: MissionRuntime["direction"];
   mpjCount: number;
   onStart: () => void;
 }) {
-  const [step, setStep] = useState<"scene" | "turn">("scene");
-  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
-  const mountedRef = useRef(false);
-  const isInterpreting = productionTask.mode === "interpreting";
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // 화면에는 안 쓰지만 분류는 유지한다 — QA·감사용 data 속성과 결측 경고의 근거다.
   const coldOpen = classifyColdOpen(speechAct, productionTask.preceding_turn);
-  const precedingTurn = coldOpen.precedingTurn;
-  const writingSkin = translationWritingSkin(productionTask.situation_ko);
-  const counterpart = learnerCounterpartLabel(productionTask.relation_ko);
-  const isResponse = coldOpen.kind === "response";
   const isResponseFallback = coldOpen.kind === "response-fallback";
+  const situationBeats =
+    productionTask.situation_ko
+      .match(/[^.!?。！？]+[.!?。！？]?/g)
+      ?.map((sentence) => sentence.trim())
+      .filter(Boolean) ?? [productionTask.situation_ko];
+  const sceneGoal = sceneHeadline(situationBeats[0]);
+  const sceneContext = situationBeats.slice(1).join(" ").trim();
+
+  // 화행별 동사형이 없으면 문장을 깨뜨리는 대신 중립형으로 떨어뜨린다.
+  const actVerb = (speechAct && (SPEECH_ACT_VERB_KO as Record<string, string>)[speechAct]) || "말하면";
+  const targetLangKo = direction === "zh_ko" ? "한국어" : "중국어";
 
   useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      return;
-    }
-    stepHeadingRef.current?.focus();
-  }, [step]);
+    headingRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!isResponseFallback || !import.meta.env.DEV) return;
     console.warn(
-      `[mission cold open] ${speechAct ?? "unknown"} 응답 화행에 preceding_turn이 없어 중립 진입 화면을 사용합니다.`,
+      `[mission cold open] ${speechAct ?? "unknown"} 응답 화행에 preceding_turn이 없습니다(콘텐츠 결측).`,
     );
   }, [isResponseFallback, speechAct]);
 
-  const turnPrompt = isResponse
-    ? isInterpreting
-      ? "상대의 말이 끝났습니다. 이제 내 통역 차례입니다."
-      : "상대의 이전 메시지에 내가 답할 차례입니다."
-    : isResponseFallback
-      ? isInterpreting
-        ? "대화가 이어지는 순간입니다. 이제 내가 응답할 차례입니다."
-        : "이전 대화에 이어 답안을 작성할 차례입니다."
-    : isInterpreting
-      ? "내가 먼저 말을 꺼내는 장면입니다."
-      : "내가 먼저 번역을 작성할 차례입니다.";
-
   return (
-    <div className="space-y-3" data-cold-open-kind={coldOpen.kind}>
-      <div className="px-0.5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#8A7350]">
-            오늘의 장면
-          </div>
-          <div className="flex items-center gap-1.5" aria-label={`콜드 오픈 ${step === "scene" ? "1" : "2"}/2`}>
-            <span className={`h-1.5 w-7 rounded-full ${step === "scene" ? "bg-[#15202B]" : "bg-[#D9D3C5]"}`} />
-            <span className={`h-1.5 w-7 rounded-full ${step === "turn" ? "bg-[#15202B]" : "bg-[#D9D3C5]"}`} />
-          </div>
-        </div>
+    <div className="mx-auto w-full max-w-[600px] pt-1" data-cold-open-kind={coldOpen.kind}>
+      <section
+        className="mission-message-in overflow-hidden rounded-[22px] bg-[#1B2733] px-6 py-7 shadow-[0_14px_34px_rgba(21,32,43,0.18)] sm:px-8 sm:py-8"
+        aria-label="오늘 수행할 장면"
+      >
+        {/* 진입 시 낭독기가 장면부터 읽도록 포커스만 옮긴다. 표시용 링은 두지 않는다 —
+            제목은 조작 대상이 아니라서 테두리가 뜨면 입력란처럼 보인다.
+            break-keep은 한국어에 필수다. 없으면 balance가 "배송지/를"처럼 조사를 잘라
+            어절이 두 줄로 쪼개진다. keep-all + balance라야 어절 단위로 고르게 끊긴다. */}
         <h2
-          ref={stepHeadingRef}
+          ref={headingRef}
           tabIndex={-1}
-          className="mt-1 rounded-sm text-[19px] font-extrabold tracking-[-0.02em] text-[#15202B] outline-none focus-visible:ring-2 focus-visible:ring-[#FAD338]"
+          style={{ textWrap: "balance" }}
+          className="break-keep text-[23px] font-semibold leading-[1.4] tracking-[-0.028em] text-[#F5F2EA] outline-none sm:text-[25px]"
         >
-          {step === "scene" ? "장면 열기" : "당신 차례"}
+          {sceneGoal}
         </h2>
-        <p className="mt-0.5 text-[12px] text-[#76818A]">
-          {step === "scene" ? "상황과 상대를 먼저 확인하세요." : "이제 장면 속 마지막 신호를 확인하세요."}
-        </p>
-      </div>
+        {sceneContext && (
+          <p className="mt-3 break-keep text-[13.5px] leading-[1.65] tracking-[-0.01em] text-[#8B99A7]">
+            {sceneContext}
+          </p>
+        )}
 
-      {step === "scene" ? (
-        <div className="space-y-3">
-          <DctScenePanel
-            mode={isInterpreting ? "interpreting" : "translation"}
-            situation={productionTask.situation_ko}
-            relation={productionTask.relation_ko}
-            {...(!isInterpreting ? { formatLabel: "작성 · 번역" } : {})}
-          />
+        <p className="mt-7 text-[21px] font-semibold leading-[1.35] tracking-[-0.028em] text-[#F5C842] sm:text-[23px]">
+          {targetLangKo}로는 어떻게 {actVerb} 좋을까?
+        </p>
+
+        <div className="mt-6">
           <Button
-            className="w-full bg-[#15202B] py-6 text-[14px] font-bold text-white hover:bg-[#26384A]"
-            onClick={() => setStep("turn")}
+            className="h-auto rounded-full bg-[#F5C842] px-7 py-3 text-[14.5px] font-semibold tracking-[-0.015em] text-[#15202B] shadow-none transition-transform hover:-translate-y-0.5 hover:bg-[#FCE07A] active:translate-y-0 motion-reduce:transform-none"
+            onClick={onStart}
           >
-            당신 차례 보기 →
+            비슷한 상황 {mpjCount}개로 감 잡기 <span aria-hidden="true">→</span>
           </Button>
         </div>
-      ) : isInterpreting ? (
-        <div className="space-y-3" data-scene-skin="spoken">
-          <div className="rounded-2xl border border-[#CCD7E0] bg-[#EEF3F6] p-4 shadow-[0_7px_20px_rgba(21,32,43,0.05)]">
-            {precedingTurn && (
-              <div className="rounded-xl bg-white px-3.5 py-3 text-[14px] font-medium leading-relaxed text-[#273642] shadow-sm">
-                <div className="mb-1 text-[10.5px] font-bold text-[#60758A]">상대 턴</div>
-                {precedingTurn}
-              </div>
-            )}
-            <div className={precedingTurn ? "mt-3 flex items-center gap-2" : "flex items-center gap-2"}>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FAD338] text-[15px]" aria-hidden="true">
-                ▶
-              </span>
-              <p className="text-[13.5px] font-bold text-[#273642]">{turnPrompt}</p>
-            </div>
-          </div>
-        </div>
-      ) : writingSkin === "email" ? (
-        <div className="space-y-3" data-scene-skin="email">
-          <div className="overflow-hidden rounded-2xl border border-[#CDD5DD] bg-white shadow-[0_8px_22px_rgba(21,32,43,0.07)]">
-            <div className="flex items-center gap-2 border-b border-[#E2E6EA] bg-[#F7F9FA] px-4 py-2.5 text-[12px] font-bold text-[#40515F]">
-              <Mail className="h-4 w-4" aria-hidden="true" />
-              {isResponse || isResponseFallback ? "답장 준비" : "새 번역 작성"}
-            </div>
-            <div className="border-b border-[#E7EAED] px-4 py-2.5 text-[12.5px] text-[#5B6B76]">
-              받는 사람 <span className="ml-2 font-semibold text-[#273642]">{counterpart}</span>
-            </div>
-            {precedingTurn && (
-              <div className="mx-4 mt-3 border-l-2 border-[#C8CFD8] pl-3 text-[13px] leading-relaxed text-[#60707B]">
-                {precedingTurn}
-              </div>
-            )}
-            <div className="m-4 rounded-xl border-2 border-dashed border-[#AAB6C0] bg-[#FBFCFC] px-3.5 py-3 text-[13px] font-semibold text-[#52616C]">
-              {turnPrompt}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div
-          className="overflow-hidden rounded-2xl border border-[#CBD5DD] bg-[#E8EDF2] shadow-[0_7px_20px_rgba(21,32,43,0.06)]"
-          data-scene-skin="messenger"
-        >
-          <div className="flex items-center gap-2 border-b border-[#D5DDE4] bg-white/95 px-3.5 py-2.5 text-[11px] font-bold text-[#536675]">
-            <MessageCircle className="h-4 w-4" aria-hidden="true" />
-            {isResponse ? "새 메시지 1개" : isResponseFallback ? "이어지는 대화" : "새 대화"}
-          </div>
-          <div className="px-3.5 py-3.5">
-            {precedingTurn && <ChatBubble side="them">{precedingTurn}</ChatBubble>}
-            <ChatCaption tone="draft">
-              {isResponse ? "이제 내 차례" : isResponseFallback ? "내가 응답할 차례" : "내가 먼저 말을 꺼낼 차례"}
-            </ChatCaption>
-            <div className="flex justify-end">
-              <div className="max-w-[78%] rounded-[24px] border-2 border-dashed border-[#8DA0AF] bg-white/70 px-3.5 py-2.5 text-[13px] font-semibold leading-relaxed text-[#52616C]">
-                {turnPrompt}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {step === "turn" && (
-        <div className="rounded-2xl border border-[#E7DDC2] bg-[#FFF9E8] p-4">
-          <p className="text-[13.5px] font-semibold leading-relaxed text-[#3C3528]">
-            {learnerActLabel} 상황에서 <strong>{learnerFocusCopy}</strong>
-          </p>
-          <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#74664B]">
-            이 장면에 답하기 전, 짧은 표현 비교 {mpjCount}개로 감각을 먼저 익힙니다.
-          </p>
-          <div className="mt-3.5 grid grid-cols-[auto_minmax(0,1fr)] gap-2">
-            <Button variant="outline" className="px-3" onClick={() => setStep("scene")}>
-              ← 장면
-            </Button>
-            <Button
-              className="bg-[#FAD338] py-6 text-[14px] font-bold text-[#15202B] hover:bg-[#FCE07A]"
-              onClick={onStart}
-            >
-              표현 비교 시작하기 →
-            </Button>
-          </div>
-        </div>
-      )}
+      </section>
     </div>
   );
 }
