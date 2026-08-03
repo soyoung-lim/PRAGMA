@@ -227,7 +227,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
           level_policy_ko: LEVEL_POLICY[core.learner_level],
           feature: featureForGen(feature, direction),
           core: missionCore,
-          error_pattern_hints_ko: errorPatternsForAct(core.speech_act).map(
+          error_pattern_hints_ko: errorPatternsForAct(core.speech_act, direction).map(
             (p) => `${p.description} (예: ${p.approvedExample})`,
           ),
           is_response_act: isResponseAct(core.speech_act),

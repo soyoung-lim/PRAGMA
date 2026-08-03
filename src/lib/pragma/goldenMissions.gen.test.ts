@@ -204,7 +204,8 @@ describe.skipIf(!RUN_GOLDEN)("골든 미션 게이트 (요청·거절·감사 ×
                 channel: core.channel,
                 source_modality: core.source_modality,
               },
-              error_pattern_hints_ko: errorPatternsForAct(cell.act).map(
+              // golden 셀은 전부 한→중이다(GoldenCell에 방향 축이 없다).
+              error_pattern_hints_ko: errorPatternsForAct(cell.act, "ko_zh").map(
                 (p) => `${p.description} (예: ${p.approvedExample})`,
               ),
               is_response_act: isResponse,
