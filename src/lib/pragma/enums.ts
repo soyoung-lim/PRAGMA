@@ -30,6 +30,20 @@ export const SPEECH_ACT_UI: Record<SpeechActUI, string> = {
   compliment: "칭찬",
   complaint: "불만",
 };
+// 콜드 오픈 질문("{목표어}로는 어떻게 __ 좋을까?")에 끼우는 동사형.
+// SPEECH_ACT_UI의 명사를 그대로 쓰면 "감사하면"·"불만하면"처럼 깨지므로 별도로 둔다.
+// 정답 하나를 암시하지 않도록 당위형("해야 할까") 대신 "하면 좋을까" 어미를 전제한다.
+export const SPEECH_ACT_VERB_KO: Record<SpeechActUI, string> = {
+  request: "요청하면",
+  refusal: "거절하면",
+  apology: "사과하면",
+  thanks: "고마움을 전하면",
+  proposal: "제안하면",
+  agreement: "초대하면",
+  opposition: "반대 의견을 말하면",
+  compliment: "칭찬하면",
+  complaint: "불만을 전하면",
+};
 export const SPEECH_ACT_UI_EN: Record<SpeechActUI, string> = {
   request: "Request",
   refusal: "Refusal",

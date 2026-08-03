@@ -4,9 +4,28 @@ import {
   classifyColdOpen,
   mpjPresentationChannel,
   responseWasRevised,
+  sceneHeadline,
   shouldShowCorrectionNotesLink,
   translationWritingSkin,
 } from "@/lib/mission/missionPresentation";
+
+describe("sceneHeadline", () => {
+  it("drops a leading first-person subject so the scene reads first", () => {
+    expect(sceneHeadline("나는 교수님께 행사 참여를 여쭈려 한다.")).toBe(
+      "교수님께 행사 참여를 여쭈려 한다.",
+    );
+    expect(sceneHeadline("제가 팀장에게 일정을 다시 묻는다.")).toBe("팀장에게 일정을 다시 묻는다.");
+  });
+
+  it("keeps third-person subjects — there the subject carries information", () => {
+    const third = "처음 연락하는 학생이 교수님께 초대 메시지를 보낸다.";
+    expect(sceneHeadline(third)).toBe(third);
+  });
+
+  it("does not strip a word that merely starts with the same syllables", () => {
+    expect(sceneHeadline("나는다는 표현을 쓴다.")).toBe("나는다는 표현을 쓴다.");
+  });
+});
 
 describe("mpjPresentationChannel", () => {
   it("presents every translation MPJ raw channel as a messenger scene", () => {
