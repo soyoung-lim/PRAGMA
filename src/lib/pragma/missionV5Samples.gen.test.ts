@@ -209,7 +209,7 @@ function createRunner(url: string, key: string) {
             level_policy_ko: LEVEL_POLICY[cell.level],
             feature: featureForGen(feature, cell.direction),
             core: missionCore,
-            error_pattern_hints_ko: errorPatternsForAct(act).map(
+            error_pattern_hints_ko: errorPatternsForAct(act, cell.direction).map(
               (p) => `${p.description} (예: ${p.approvedExample})`,
             ),
             is_response_act: isResponseAct(act),
