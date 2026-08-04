@@ -943,3 +943,36 @@
   - `_02`는 차단 증거로 보존하고 전체 refresh·자동 reviewed 승격에 사용하지 않는다.
 - 관련 Decision / Evidence: `DEC-20260804-04`, `EVD-20260804-04`
 - 관련 커밋: `8b30d3d`, `dee7279`, `426caf7`
+
+## ITER-20260804-05 · 모델 강등 차단·품질점검 fail-closed·호출 원장
+
+- 날짜: 2026-08-04
+- 시작 문제:
+  - 다른 모델로 조용히 폴백하는 계약, 품질점검 실패 뒤에도 저장되는 경로, 호출별 usage
+    미기록이 같은 배치의 통제와 논문 재현성을 약화했다.
+- 변경:
+  - 연구 생성·비평 경로의 모델 교체 폴백을 제거하고 학습자 피드백 폴백을 별도 정책으로
+    분리했다.
+  - 품질점검 호출·형식·필수 메타데이터가 유효하지 않으면 저장하지 않으며 DB RPC도
+    `quality_check` 최소 계약을 강제하도록 했다.
+  - 작업 유형·시도·모델·usage·소요 시간·프롬프트 계보를 호출별로 남기는 append-only 원장과
+    mutation 거부 trigger를 추가했다.
+- 실제 검증:
+  - 사전 DB 감사에서 연구 경로 모델 강등 0건, 품질점검 누락 1건은 `archived_only`임을
+    확인했다.
+  - 전체 Vitest **259 pass / 7 skip**, typecheck, 변경 파일 ESLint, production build
+    **1902 modules**를 통과했다.
+  - 모델 폴백 구성을 포함한 prompt snapshot 17종의 core surface hash가
+    `8efd726f49ec…`로 바뀌었다.
+  - migration·Edge·Railway와 기존 DB 행에는 적용하지 않았다.
+- 예상과 달랐던 점:
+  - 실제 과거 폴백은 0건이라 기존 495 배치의 모델 순도 격리는 필요하지 않았다.
+  - AI non-pass까지 인간 승인에서 막는 것은 fail-closed보다 넓은 결정이므로 제거했다.
+  - scenario FK의 `ON DELETE SET NULL`은 refresh 때 과거 장부를 바꿔 append-only와 충돌해,
+    논리 UUID만 보존하고 mutation trigger로 고정했다.
+- 다음 설계에 반영할 교훈:
+  - 모델 실패, 응답 계약 실패, 콘텐츠 판정 실패를 하나의 `fail`로 뭉치지 않는다.
+  - 연구 호출은 모델 라우팅과 usage 기록을 프롬프트 계보와 함께 버전 관리한다.
+  - 운영 적용은 migration → Edge → 소수 smoke 순으로 원자적으로 연다.
+- 관련 Decision / Evidence: `DEC-20260804-05`, `EVD-20260804-05`
+- 관련 커밋: `91e2a33`
