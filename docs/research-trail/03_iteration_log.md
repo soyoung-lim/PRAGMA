@@ -976,3 +976,38 @@
   - 운영 적용은 migration → Edge → 소수 smoke 순으로 원자적으로 연다.
 - 관련 Decision / Evidence: `DEC-20260804-05`, `EVD-20260804-05`
 - 관련 커밋: `91e2a33`
+
+## ITER-20260804-06 · R16/R29 복합 repair의 부분 성공 보존
+
+- 날짜: 2026-08-04
+- 시작 문제:
+  - 후보 `_02`의 새 코어 6셀 중 5셀이 R29, 그중 2셀이 R16과 함께 실패해 코어 안정성
+    게이트가 차단됐다.
+  - 한 번의 repair가 여러 오류를 모두 통과하지 못하면 유효한 필드까지 전부 폐기하는
+    all-or-nothing 경로가 있었다.
+  - 당시 카나리 JSON에는 Edge meta가 없어 적용/거부된 repair 필드를 사후 구분할 수 없었다.
+- 변경:
+  - repair 응답을 source_text·preceding_turn·situation_ko 단위로 독립 검증·합성했다.
+  - source_text 교정에는 길이·문장 경계와 focal segment 구조를 함께 요구했다.
+  - 길이 목표를 범위 중앙값으로 두고 실측 대비 증감량·최종 재계산 지시를 추가했다.
+  - 후보 `_03`, repair prompt `_repair_v2`로 계보를 분리하고 카나리 결과에 `coreMeta`를
+    보존하도록 했다.
+- 실제 검증:
+  - 부분 성공 채택, 실패 필드 원본 유지, 비요청 필드 보존, 잘못된 focal segment 거부를
+    회귀 테스트로 확인했다.
+  - 관련 36 pass, 전체 **262 pass / 7 skip**, typecheck, 변경 파일 ESLint,
+    `git diff --check`, production build **1902 modules**를 통과했다.
+  - prompt snapshot 17종과 `core_surface_hash=8e9b7ec87869…`를 생성했다. 미커밋 상태이므로
+    snapshot은 `git_dirty=true`다.
+  - migration·Edge·Railway·DB row·모델 호출은 변경하거나 실행하지 않았다.
+- 예상과 달랐던 점:
+  - 실패가 단순히 모델의 R16/R29 지시 불이행만은 아니었다. 서버 채택 정책이 독립 오류를
+    결합해 부분 성공을 보존하지 못했다.
+  - 이전 하네스가 repair meta를 버려 실제 모델의 부분 성공 여부를 소급 확인할 수 없었다.
+- 다음 설계에 반영할 교훈:
+  - 복합 repair는 전체 응답을 신뢰하지 말고 오류 책임 필드별로 검증·합성한다.
+  - 생성 하네스는 최종 산출뿐 아니라 시도·적용 여부 meta를 함께 보존해야 실패 원인을
+    재구성할 수 있다.
+  - 원격 효과 확인 전에는 `_03`의 코어 안정성 개선을 완료로 판정하지 않는다.
+- 관련 Decision / Evidence: `DEC-20260804-06`, `EVD-20260804-06`
+- 관련 커밋: 확인 필요(현재 미커밋)

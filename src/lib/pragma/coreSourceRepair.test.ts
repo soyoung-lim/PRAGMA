@@ -8,6 +8,7 @@ import {
   coreSourceIssue,
   coreSourceSentenceIssue,
   countCoreSourceSentences,
+  mergeValidatedCoreRepair,
 } from "../../../supabase/functions/_shared/coreSourceRepair";
 import {
   CORE_LENGTH_POLICY_VERSION,
@@ -59,6 +60,9 @@ describe("core source discourse boundary", () => {
     expect(prompt).toContain("PROBE_REQUEST");
     expect(prompt).toContain("중국어 종결부호(。！？)");
     expect(prompt).toContain("유효 글자 수를 반드시 30~45자");
+    expect(prompt).toContain("유효 글자 37자를 목표");
+    expect(prompt).toContain("현재보다 약 25자 늘리세요");
+    expect(prompt).toContain("반환 직전에 source_text의 유효 글자 수를 다시 세어");
     expect(prompt).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(prompt).toContain("focal_segments");
   });
@@ -133,5 +137,87 @@ describe("core source discourse boundary", () => {
     expect(
       coreBilingualSceneIssue("거래처 담당자에게 이메일을 보낸다.", "ko", "zh", false),
     ).toBeNull();
+  });
+
+  it("여러 교정 중 통과한 source_text만 원본에 합성한다", () => {
+    const original = {
+      situation_ko: "두 담당자가 통역 없이 협의한다.",
+      source_text: "너무 짧다.",
+      focal_segments: [{ text: "너무 짧다", role: "head" }],
+      relation_ko: "기존 관계",
+    };
+    const result = mergeValidatedCoreRepair({
+      originalOutput: original,
+      repairedOutput: {
+        situation_ko: "여전히 두 담당자가 협의한다.",
+        source_text: "일정 변경이 필요합니다. 가능한 시간을 알려 주세요.",
+        focal_segments: [
+          { text: "일정 변경이 필요합니다", role: "head" },
+          { text: "가능한 시간을 알려 주세요", role: "support" },
+        ],
+        relation_ko: "모델이 바꾼 관계",
+      },
+      effectiveCharRange: { min: 20, max: 35 },
+      sourceIssue: coreSourceIssue("너무 짧다.", { min: 20, max: 35 }),
+      precedingTurnIssue: null,
+      bilingualSceneIssue: {
+        sourceLanguage: "ko",
+        targetLanguage: "zh",
+        missing: ["source_speaker", "target_speaker", "interpreting"],
+        message: "이중언어 장면 누락",
+      },
+    });
+
+    expect(result.sourceRepairApplied).toBe(true);
+    expect(result.bilingualSceneRepairApplied).toBe(false);
+    expect(result.output.source_text).toBe("일정 변경이 필요합니다. 가능한 시간을 알려 주세요.");
+    expect(result.output.situation_ko).toBe(original.situation_ko);
+    expect(result.output.relation_ko).toBe("기존 관계");
+  });
+
+  it("길이가 아직 실패해도 통과한 이중언어 장면은 독립적으로 합성한다", () => {
+    const result = mergeValidatedCoreRepair({
+      originalOutput: {
+        situation_ko: "두 담당자가 협의한다.",
+        source_text: "너무 짧다.",
+        focal_segments: [{ text: "너무 짧다", role: "head" }],
+      },
+      repairedOutput: {
+        situation_ko: "한국어 화자와 중국어 화자 사이에서 학습자가 순차통역한다.",
+        source_text: "여전히 짧다.",
+        focal_segments: [{ text: "여전히 짧다", role: "head" }],
+      },
+      effectiveCharRange: { min: 20, max: 35 },
+      sourceIssue: coreSourceIssue("너무 짧다.", { min: 20, max: 35 }),
+      precedingTurnIssue: null,
+      bilingualSceneIssue: {
+        sourceLanguage: "ko",
+        targetLanguage: "zh",
+        missing: ["source_speaker", "target_speaker", "interpreting"],
+        message: "이중언어 장면 누락",
+      },
+    });
+
+    expect(result.sourceRepairApplied).toBe(false);
+    expect(result.bilingualSceneRepairApplied).toBe(true);
+    expect(result.output.source_text).toBe("너무 짧다.");
+    expect(result.output.situation_ko).toContain("한국어 화자와 중국어 화자");
+  });
+
+  it("원문 교정은 head가 없는 focal_segments를 채택하지 않는다", () => {
+    const result = mergeValidatedCoreRepair({
+      originalOutput: { source_text: "너무 짧다." },
+      repairedOutput: {
+        source_text: "일정 변경이 필요합니다. 가능한 시간을 알려 주세요.",
+        focal_segments: [{ text: "가능한 시간을 알려 주세요", role: "support" }],
+      },
+      effectiveCharRange: { min: 20, max: 35 },
+      sourceIssue: coreSourceIssue("너무 짧다.", { min: 20, max: 35 }),
+      precedingTurnIssue: null,
+      bilingualSceneIssue: null,
+    });
+
+    expect(result.sourceRepairApplied).toBe(false);
+    expect(result.output.source_text).toBe("너무 짧다.");
   });
 });

@@ -106,3 +106,42 @@
 - DB row 생성·수정·삭제, migration, live inventory, Railway 배포는 실행하지 않았다.
 - 후보 `_02`는 **차단**한다. 전체 refresh는 시작하지 않는다. 다음 반복은 (1) R16/R29 코어
   생성 안정성, (2) PDR 정확성·R27 고유성 등 미션 구조 준수를 별도 게이트로 다룬다.
+
+## 후보 `_03` · 코어 repair 독립 채택과 중앙값 목표(로컬)
+
+### 확인한 문제
+
+- 차단된 `_02` 새 코어 카나리의 5개 실패 셀은 모두 R29였고, 그중 2개는 R16도 함께
+  실패했다. R29 실측은 `59/60`, `75/60`, `46/45`, `54/60`, `53/55`였다. 세 건은 허용
+  경계에서 1~2자 차이였다.
+- Edge 코드를 대조하니 한 번의 repair 응답이 source_text·preceding_turn·situation_ko를
+  **모두 동시에** 통과해야 전체 JSON을 채택했다. 따라서 한 필드가 남으면 다른 필드의 유효한
+  교정도 함께 폐기되는 경로가 있었다.
+- `_02` 카나리 하네스는 Edge 응답의 `meta`를 결과 파일에 보존하지 않아, 당시 repair가 어느
+  필드까지 고쳤는지는 사후 확정할 수 없다. 위 경로가 실제 다섯 실패를 각각 만들었다고
+  단정하지 않고 코드상 안정성 결함으로만 판정했다.
+
+### 변경
+
+- 단 한 번의 repair 호출과 동일 모델 고정은 유지한다. repair 응답은 요청된 세 필드를
+  독립적으로 재검사하고, 통과한 필드만 원본 JSON에 합성한다. 요청하지 않은 관계·상황·원문
+  변경은 채택하지 않는다.
+- source_text는 길이·2~4문장뿐 아니라 정확히 한 head, 최대 두 support, 원문 부분문자열인
+  focal segment까지 확인한 경우에만 교정본을 채택한다.
+- 길이 repair는 허용 구간 경계를 겨냥하지 않고 중앙값을 목표로 하며, 현재 실측과의 증감량과
+  반환 직전 재계산을 명시한다. R29 범위와 판정 수준은 바꾸지 않았다.
+- 생성 기준이 바뀌었으므로 후보를 `pragma_content_candidate_20260804_03`, repair prompt를
+  `core_v8_learner_scene_v1_repair_v2`로 분리했다. inventory와 runbook도 `_03`으로 맞췄다.
+- 다음 카나리부터 원인 추적이 가능하도록 `missionV5Samples.gen.test.ts` 결과에 Edge
+  `coreMeta`를 보존한다.
+
+### 검증과 현재 게이트
+
+- 독립 합성·비요청 필드 보존·focal segment 차단을 포함한 관련 36개 테스트 통과.
+- 전체 Vitest **262 pass / 7 skip**, typecheck, 변경 파일 ESLint, `git diff --check` 통과.
+- production build **1902 modules** 통과. prompt snapshot 17종,
+  `core_surface_hash=8e9b7ec87869…`, 현재 미커밋 상태라 snapshot의 `git_dirty=true`다.
+- migration·Edge·Railway·DB row에는 적용하지 않았고 모델 호출도 실행하지 않았다. 원격 Edge는
+  계속 version 47·후보 `_02`다.
+- 다음 검증은 `DEC-20260804-05`의 순서대로 호출 원장 migration → Edge 배포 → 소수 smoke에서
+  원장 적재 확인 → DB 미저장 `_03` 6셀 코어 카나리다. 사용자 승인 전에는 실행하지 않는다.

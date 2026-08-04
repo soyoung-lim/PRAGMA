@@ -150,6 +150,104 @@ interface CoreOutputRepairPromptInput {
   bilingualSceneIssue?: CoreBilingualSceneIssue | null
 }
 
+export interface MergeValidatedCoreRepairInput {
+  originalOutput: Record<string, unknown>
+  repairedOutput: Record<string, unknown>
+  effectiveCharRange: CoreLengthRange
+  sourceIssue: CoreSourceIssue | null
+  precedingTurnIssue: CorePrecedingTurnIssue | null
+  bilingualSceneIssue?: CoreBilingualSceneIssue | null
+}
+
+export interface MergeValidatedCoreRepairResult {
+  output: Record<string, unknown>
+  sourceRepairApplied: boolean
+  precedingTurnRepairApplied: boolean
+  bilingualSceneRepairApplied: boolean
+}
+
+function hasValidFocalSegments(sourceText: string, raw: unknown): boolean {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 3) return false
+  let headCount = 0
+  let supportCount = 0
+  for (const item of raw) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return false
+    const segment = item as { text?: unknown; role?: unknown }
+    if (typeof segment.text !== 'string' || !segment.text.trim()) return false
+    if (!sourceText.includes(segment.text.trim())) return false
+    if (segment.role === 'head') headCount += 1
+    else if (segment.role === 'support') supportCount += 1
+    else return false
+  }
+  return headCount === 1 && supportCount <= 2
+}
+
+/**
+ * 한 번의 repair가 여러 필드를 동시에 고칠 때, 통과한 필드만 원본에 합성한다.
+ * 한 항목이 아직 실패했다는 이유로 다른 항목의 유효한 교정까지 폐기하지 않는다.
+ */
+export function mergeValidatedCoreRepair(
+  input: MergeValidatedCoreRepairInput,
+): MergeValidatedCoreRepairResult {
+  const output = { ...input.originalOutput }
+  let sourceRepairApplied = false
+  let precedingTurnRepairApplied = false
+  let bilingualSceneRepairApplied = false
+
+  if (input.sourceIssue) {
+    const repairedSourceText = String(
+      input.repairedOutput.source_text ?? input.repairedOutput.source_text_ko ?? '',
+    )
+    if (
+      !coreSourceIssue(repairedSourceText, input.effectiveCharRange) &&
+      hasValidFocalSegments(repairedSourceText, input.repairedOutput.focal_segments)
+    ) {
+      output.source_text = repairedSourceText
+      delete output.source_text_ko
+      output.focal_segments = input.repairedOutput.focal_segments
+      sourceRepairApplied = true
+    }
+  }
+
+  if (input.precedingTurnIssue) {
+    const repairedPrecedingTurn =
+      input.repairedOutput.preceding_turn ?? input.repairedOutput.preceding_turn_zh ?? null
+    if (
+      !corePrecedingTurnIssue(
+        repairedPrecedingTurn,
+        input.precedingTurnIssue.expectedLanguage,
+        true,
+      )
+    ) {
+      output.preceding_turn = repairedPrecedingTurn
+      delete output.preceding_turn_zh
+      precedingTurnRepairApplied = true
+    }
+  }
+
+  if (input.bilingualSceneIssue) {
+    const repairedSituation = String(input.repairedOutput.situation_ko ?? '')
+    if (
+      !coreBilingualSceneIssue(
+        repairedSituation,
+        input.bilingualSceneIssue.sourceLanguage,
+        input.bilingualSceneIssue.targetLanguage,
+        true,
+      )
+    ) {
+      output.situation_ko = repairedSituation
+      bilingualSceneRepairApplied = true
+    }
+  }
+
+  return {
+    output,
+    sourceRepairApplied,
+    precedingTurnRepairApplied,
+    bilingualSceneRepairApplied,
+  }
+}
+
 /** 원문 분량과 응답 화행 선행 발화 언어 오류를 한 번의 제한된 호출로 함께 교정한다. */
 export function buildCoreOutputRepairPrompt(input: CoreOutputRepairPromptInput): string {
   const punctuation = input.sourceLanguage === 'zh'
@@ -158,13 +256,22 @@ export function buildCoreOutputRepairPrompt(input: CoreOutputRepairPromptInput):
   const repairRules: string[] = []
 
   if (input.sourceIssue) {
+    const targetEffectiveCharCount = Math.floor(
+      (input.effectiveCharRange.min + input.effectiveCharRange.max) / 2,
+    )
+    const targetDelta = targetEffectiveCharCount - input.sourceIssue.effectiveCharCount
+    const targetDeltaInstruction = targetDelta >= 0
+      ? `현재보다 약 ${targetDelta}자 늘리세요.`
+      : `현재보다 약 ${Math.abs(targetDelta)}자 줄이세요.`
     repairRules.push(
       `- 직전 source_text 실측: 종결부호 기준 ${input.sourceIssue.sentenceCount}문장, 유효 글자 ${input.sourceIssue.effectiveCharCount}자.`,
       `- 원문 분량은 ${input.lengthHintKo}입니다.`,
       `- 공백·문장부호를 제외한 유효 글자 수를 반드시 ${input.effectiveCharRange.min}~${input.effectiveCharRange.max}자로 맞추세요.`,
+      `- 허용 범위의 경계를 겨냥하지 말고 유효 글자 ${targetEffectiveCharCount}자를 목표로 하세요. ${targetDeltaInstruction}`,
       '- 종결부호 기준 2~4문장으로 나누세요.',
       `- 쉼표로 여러 절을 길게 잇는 한 문장으로 만들지 말고, ${punctuation}로 자연스러운 문장 경계를 명시하세요.`,
       '- source_text를 고친 뒤 focal_segments도 새 source_text에서 그대로 복사한 부분문자열로 다시 맞추세요.',
+      `- 반환 직전에 source_text의 유효 글자 수를 다시 세어 ${input.effectiveCharRange.min}~${input.effectiveCharRange.max}자 안인지 확인하세요.`,
     )
   } else {
     repairRules.push('- source_text와 focal_segments는 직전 출력에서 바꾸지 마세요.')

@@ -9,6 +9,7 @@ import {
   coreBilingualSceneIssue,
   corePrecedingTurnIssue,
   coreSourceIssue,
+  mergeValidatedCoreRepair,
 } from '../_shared/coreSourceRepair.ts'
 import {
   CORE_LENGTH_POLICY_VERSION,
@@ -2220,29 +2221,24 @@ Deno.serve(async (req) => {
         if (repairAttempt.ok) {
           try {
             const repaired = parseOpenAIContent(repairAttempt.raw) as Record<string, unknown>
-            const repairedSourceText = String(repaired.source_text ?? repaired.source_text_ko ?? '')
-            const repairedPrecedingTurn = repaired.preceding_turn ?? repaired.preceding_turn_zh ?? null
-            const repairedPrecedingTurnIssue = corePrecedingTurnIssue(
-              repairedPrecedingTurn,
-              DIR_LANGS[coreDir].tgt,
-              b.is_response_act,
-            )
-            const repairedBilingualSceneIssue = coreBilingualSceneIssue(
-              repaired.situation_ko,
-              DIR_LANGS[coreDir].src,
-              DIR_LANGS[coreDir].tgt,
-              b.source_modality === 'spoken',
-            )
+            const mergedRepair = mergeValidatedCoreRepair({
+              originalOutput: gen,
+              repairedOutput: repaired,
+              effectiveCharRange: lengthRange,
+              sourceIssue: initialSourceIssue,
+              precedingTurnIssue: initialPrecedingTurnIssue,
+              bilingualSceneIssue: initialBilingualSceneIssue,
+            })
             if (
-              !coreSourceIssue(repairedSourceText, lengthRange) &&
-              !repairedPrecedingTurnIssue &&
-              !repairedBilingualSceneIssue
+              mergedRepair.sourceRepairApplied ||
+              mergedRepair.precedingTurnRepairApplied ||
+              mergedRepair.bilingualSceneRepairApplied
             ) {
-              gen = repaired
+              gen = mergedRepair.output
               model = repairModel
-              sourceRepairApplied = Boolean(initialSourceIssue)
-              precedingTurnRepairApplied = Boolean(initialPrecedingTurnIssue)
-              bilingualSceneRepairApplied = Boolean(initialBilingualSceneIssue)
+              sourceRepairApplied = mergedRepair.sourceRepairApplied
+              precedingTurnRepairApplied = mergedRepair.precedingTurnRepairApplied
+              bilingualSceneRepairApplied = mergedRepair.bilingualSceneRepairApplied
             }
           } catch {
             // 교정 응답이 파싱되지 않으면 최초 출력을 그대로 내려 클라이언트 R8/R10/R29가 차단한다.
