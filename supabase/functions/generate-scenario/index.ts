@@ -24,6 +24,7 @@ import {
   CORE_RESPONSE_FORMAT_LABEL,
   CORE_STRUCTURED_RESPONSE_FORMAT,
   OPENAI_MODEL_ROUTES,
+  parseOpenAIInvocationMetadata,
   type OpenAIResponseFormat,
   type OpenAIUserContent,
 } from '../_shared/openaiRequestContract.ts'
@@ -46,7 +47,8 @@ const PRIMARY_MODEL = OPENAI_MODEL_ROUTES.default.primary
 const FALLBACK_MODEL = OPENAI_MODEL_ROUTES.default.fallback
 const MISSION_PRIMARY_MODEL = OPENAI_MODEL_ROUTES.mission.primary
 const CRITIC_PRIMARY_MODEL = OPENAI_MODEL_ROUTES.critic.primary
-const CRITIC_FALLBACK_MODEL = OPENAI_MODEL_ROUTES.critic.fallback
+const FEEDBACK_PRIMARY_MODEL = OPENAI_MODEL_ROUTES.feedback.primary
+const FEEDBACK_FALLBACK_MODEL = OPENAI_MODEL_ROUTES.feedback.fallback
 
 /** SHA-256 16진 — 미션 provenance의 mission_content_hash용(v1.5 0-h·56). */
 async function sha256Hex(s: string): Promise<string> {
@@ -162,6 +164,13 @@ interface GenInput {
   core_quality?: CoreQualityCheckBody
   // feedback_v1(계약 §4) — 학습자 산출 3층 진단. 학습자 런타임에서 호출된다.
   feedback?: FeedbackBody
+  /** 호출 장부 상관키. 프롬프트·학습자 답안 같은 본문은 받거나 저장하지 않는다. */
+  telemetry?: {
+    scenario_id?: string | null
+    generation_run_id?: string | null
+    generation_item_key?: string | null
+    invocation_attempt?: number | null
+  }
 }
 
 // ── feedback_v1 (계약 §4) ──────────────────────────────────────────────
@@ -469,9 +478,110 @@ async function fetchHskVocab(hskLevel: number): Promise<string[]> {
 
 // user content is either a plain string or an OpenAI multimodal content array
 // (text + image_url parts). gpt-4.1-mini / gpt-4o-mini both accept image_url.
+type LlmOperation =
+  | 'core_generate'
+  | 'core_repair'
+  | 'mission_generate'
+  | 'core_critic'
+  | 'mission_critic'
+  | 'authentic_analyze'
+  | 'legacy_outline'
+  | 'legacy_scenario_generate'
+  | 'learner_feedback'
+
+interface OpenAITelemetry {
+  requestGroupId: string
+  operation: LlmOperation
+  scenarioId?: string | null
+  generationRunId?: string | null
+  generationItemKey?: string | null
+  invocationAttempt?: number
+  isModelFallback?: boolean
+  fallbackFrom?: string | null
+  promptVersion?: string | null
+  promptSnapshotHash?: string | null
+  /** 연구 산출물은 호출 장부 저장 실패 시 결과도 실패시켜 무기록 저장을 막는다. */
+  required: boolean
+}
+
 interface OpenAICallOptions {
   maxCompletionTokens?: number
   responseFormat?: OpenAIResponseFormat
+  telemetry: OpenAITelemetry
+}
+
+function cleanTelemetryText(value: unknown, maxLength: number): string | null {
+  return typeof value === 'string' && value.trim()
+    ? value.trim().slice(0, maxLength)
+    : null
+}
+
+async function recordOpenAIInvocation(args: {
+  telemetry: OpenAITelemetry
+  modelRequested: string
+  statusCode: number
+  ok: boolean
+  raw: string
+  durationMs: number
+  requestId: string | null
+}): Promise<boolean> {
+  const url = Deno.env.get('SUPABASE_URL')
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!url || !key) {
+    console.error('[llm_invocation_events] Supabase service configuration missing')
+    return false
+  }
+
+  const metadata = parseOpenAIInvocationMetadata(args.raw)
+  const t = args.telemetry
+  const payload = {
+    request_group_id: t.requestGroupId,
+    provider: PROVIDER,
+    operation: t.operation,
+    scenario_id: cleanTelemetryText(t.scenarioId, 36),
+    generation_run_id: cleanTelemetryText(t.generationRunId, 160),
+    generation_item_key: cleanTelemetryText(t.generationItemKey, 160),
+    invocation_attempt: Math.max(1, Math.trunc(t.invocationAttempt ?? 1)),
+    model_requested: args.modelRequested,
+    model_returned: metadata.model,
+    is_model_fallback: t.isModelFallback ?? false,
+    fallback_from: cleanTelemetryText(t.fallbackFrom, 120),
+    status_code: args.statusCode,
+    success: args.ok,
+    finish_reason: metadata.finishReason,
+    prompt_tokens: metadata.promptTokens,
+    completion_tokens: metadata.completionTokens,
+    total_tokens: metadata.totalTokens,
+    cached_tokens: metadata.cachedTokens,
+    reasoning_tokens: metadata.reasoningTokens,
+    duration_ms: Math.max(0, Math.trunc(args.durationMs)),
+    provider_request_id: cleanTelemetryText(args.requestId, 200),
+    provider_response_id: metadata.responseId,
+    prompt_version: cleanTelemetryText(t.promptVersion, 160),
+    prompt_snapshot_hash: cleanTelemetryText(t.promptSnapshotHash, 128),
+    content_release_id: CURRENT_CONTENT_RELEASE_ID,
+  }
+
+  try {
+    const res = await fetch(`${url}/rest/v1/llm_invocation_events`, {
+      method: 'POST',
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      console.error('[llm_invocation_events] insert failed', { status: res.status })
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('[llm_invocation_events] insert exception', (error as Error).message)
+    return false
+  }
 }
 
 async function callOpenAI(
@@ -480,8 +590,9 @@ async function callOpenAI(
   system: string,
   user: OpenAIUserContent,
   temperature = 0.8,
-  options: OpenAICallOptions = {},
+  options: OpenAICallOptions,
 ) {
+  const startedAt = Date.now()
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -498,6 +609,22 @@ async function callOpenAI(
     })),
   })
   const raw = await res.text()
+  const logged = await recordOpenAIInvocation({
+    telemetry: options.telemetry,
+    modelRequested: model,
+    statusCode: res.status,
+    ok: res.ok,
+    raw,
+    durationMs: Date.now() - startedAt,
+    requestId: res.headers.get('x-request-id'),
+  })
+  if (res.ok && !logged && options.telemetry.required) {
+    return {
+      ok: false as const,
+      status: 503,
+      raw: JSON.stringify({ error: 'LLM 호출 장부 저장 실패 — 연구 산출물을 저장하지 않습니다.' }),
+    }
+  }
   if (!res.ok) {
     return { ok: false as const, status: res.status, raw }
   }
@@ -1996,6 +2123,21 @@ Deno.serve(async (req) => {
     }
 
     const input = (await req.json()) as GenInput
+    const requestGroupId = crypto.randomUUID()
+    const telemetryFor = (
+      operation: LlmOperation,
+      required: boolean,
+      details: Partial<Omit<OpenAITelemetry, 'requestGroupId' | 'operation' | 'required'>> = {},
+    ): OpenAITelemetry => ({
+      requestGroupId,
+      operation,
+      required,
+      scenarioId: input.telemetry?.scenario_id ?? null,
+      generationRunId: input.telemetry?.generation_run_id ?? null,
+      generationItemKey: input.telemetry?.generation_item_key ?? null,
+      invocationAttempt: input.telemetry?.invocation_attempt ?? 1,
+      ...details,
+    })
 
     // ── core action: scenario_core_v1 상황·원문 생성 (v1.4 §7-0, temp 0.7) ──
     if (input.action === 'core') {
@@ -2011,15 +2153,14 @@ Deno.serve(async (req) => {
       const sys = buildCoreSystemPrompt(coreDir)
       const usr = buildCoreUserPrompt(requestBody)
       let model = PRIMARY_MODEL
-      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, CORE_TEMPERATURE, {
+      const promptSnapshotHash = await corePromptSnapshotHash()
+      const att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, CORE_TEMPERATURE, {
         responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
+        telemetry: telemetryFor('core_generate', true, {
+          promptVersion: CURRENT_CORE_PROMPT_VERSIONS[0],
+          promptSnapshotHash,
+        }),
       })
-      if (!att.ok && (att.status === 404 || att.status === 400)) {
-        model = FALLBACK_MODEL
-        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, CORE_TEMPERATURE, {
-          responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
-        })
-      }
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
       }
@@ -2067,16 +2208,15 @@ Deno.serve(async (req) => {
           precedingTurnIssue: initialPrecedingTurnIssue,
           bilingualSceneIssue: initialBilingualSceneIssue,
         })
-        let repairModel = model
-        let repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
+        const repairModel = model
+        const repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
           responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
+          telemetry: telemetryFor('core_repair', true, {
+            invocationAttempt: 2,
+            promptVersion: CURRENT_CORE_PROMPT_VERSIONS[1],
+            promptSnapshotHash,
+          }),
         })
-        if (!repairAttempt.ok && (repairAttempt.status === 404 || repairAttempt.status === 400) && repairModel !== FALLBACK_MODEL) {
-          repairModel = FALLBACK_MODEL
-          repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
-            responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
-          })
-        }
         if (repairAttempt.ok) {
           try {
             const repaired = parseOpenAIContent(repairAttempt.raw) as Record<string, unknown>
@@ -2130,7 +2270,6 @@ Deno.serve(async (req) => {
       const corePromptVersion = sourceRepairApplied || precedingTurnRepairApplied || bilingualSceneRepairApplied
         ? CURRENT_CORE_PROMPT_VERSIONS[1]
         : CURRENT_CORE_PROMPT_VERSIONS[0]
-      const promptSnapshotHash = await corePromptSnapshotHash()
       const generatedAt = new Date().toISOString()
       const core_content = {
         schema_version: 'scenario_core_v3',
@@ -2192,14 +2331,27 @@ Deno.serve(async (req) => {
       // 강한 모델을 쓴다. 코어(고volume·단순)는 mini 유지.
       const isSpoken = b.core.source_modality === 'spoken'
       const missionDir = normDir(b.direction)
+      const inheritedFocal = Array.isArray(b.core.focal_segments)
+        ? b.core.focal_segments
+            .map((seg) => ({
+              text: typeof seg?.text === 'string' ? seg.text.trim() : '',
+              role: seg?.role === 'support' ? ('support' as const) : ('head' as const),
+            }))
+            .filter((seg) => seg.text.length > 0 && b.core.source_text_ko.includes(seg.text))
+            .slice(0, 3)
+        : []
+      const isMiniDiscourse = inheritedFocal.some((seg) => seg.role === 'head')
       const sys = buildMissionSystemPrompt(b.feature, b.is_response_act, isSpoken, missionDir)
       const usr = buildMissionUserPrompt(b)
-      let model = MISSION_PRIMARY_MODEL
-      let att = await callOpenAI(MISSION_PRIMARY_MODEL, apiKey, sys, usr, temp)
-      if (!att.ok && (att.status === 404 || att.status === 400)) {
-        model = PRIMARY_MODEL
-        att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, temp)
-      }
+      const model = MISSION_PRIMARY_MODEL
+      const missionPromptVersion = isMiniDiscourse
+        ? CURRENT_MISSION_PROMPT_VERSIONS[0]
+        : CURRENT_MISSION_PROMPT_VERSIONS[1]
+      const att = await callOpenAI(MISSION_PRIMARY_MODEL, apiKey, sys, usr, temp, {
+        telemetry: telemetryFor('mission_generate', true, {
+          promptVersion: missionPromptVersion,
+        }),
+      })
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
       }
@@ -2222,16 +2374,6 @@ Deno.serve(async (req) => {
       // production_task는 코어를 계승하되 중립 키(source_text/preceding_turn)로 조립.
       // focal_segments를 계승할 수 있으면 mission_v5(미니 담화형 DCT), 없으면 v4.
       // legacy 단문 코어(scenario_core_v1·v2)의 승격 경로를 막지 않는다.
-      const inheritedFocal = Array.isArray(b.core.focal_segments)
-        ? b.core.focal_segments
-            .map((seg) => ({
-              text: typeof seg?.text === 'string' ? seg.text.trim() : '',
-              role: seg?.role === 'support' ? ('support' as const) : ('head' as const),
-            }))
-            .filter((seg) => seg.text.length > 0 && b.core.source_text_ko.includes(seg.text))
-            .slice(0, 3)
-        : []
-      const isMiniDiscourse = inheritedFocal.some((seg) => seg.role === 'head')
       const mission_content = {
         schema_version: isMiniDiscourse ? 'mission_v5' : 'mission_v4',
         direction: missionDir,
@@ -2278,9 +2420,7 @@ Deno.serve(async (req) => {
           //   두 버전 문자열을 함께 올린다.
           // _v4/_v7 = R5·R27 재시도에 후보별 대역·길이와 중복 문항을 구조화해 되먹이는 판(2026-08-02).
           // _v5/_v8 = 직전 실패 문장까지 함께 전달해 재생성이 아니라 직접 편집하게 하는 판(2026-08-04).
-          prompt_version: isMiniDiscourse
-            ? CURRENT_MISSION_PROMPT_VERSIONS[0]
-            : CURRENT_MISSION_PROMPT_VERSIONS[1],
+            prompt_version: missionPromptVersion,
           content_release_id: CURRENT_CONTENT_RELEASE_ID,
           mission_content_hash: contentHash,
           generated_at: genAt,
@@ -2288,9 +2428,7 @@ Deno.serve(async (req) => {
         },
       }
       return new Response(
-        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: isMiniDiscourse
-            ? CURRENT_MISSION_PROMPT_VERSIONS[0]
-            : CURRENT_MISSION_PROMPT_VERSIONS[1], content_release_id: CURRENT_CONTENT_RELEASE_ID, generated_at: genAt } }),
+        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: missionPromptVersion, content_release_id: CURRENT_CONTENT_RELEASE_ID, generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }
@@ -2321,14 +2459,23 @@ Deno.serve(async (req) => {
         : CURRENT_FEEDBACK_PROMPT_VERSIONS[1]
       const sys = buildFeedbackSystemPrompt(dir, isSpoken, feedbackFocal)
       const usr = buildFeedbackUserPrompt(b)
-      let model = PRIMARY_MODEL
-      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.2, {
+      let model = FEEDBACK_PRIMARY_MODEL
+      let att = await callOpenAI(FEEDBACK_PRIMARY_MODEL, apiKey, sys, usr, 0.2, {
         maxCompletionTokens: FEEDBACK_MAX_COMPLETION_TOKENS,
+        telemetry: telemetryFor('learner_feedback', false, {
+          promptVersion: feedbackPromptVersion,
+        }),
       })
       if (!att.ok && (att.status === 404 || att.status === 400)) {
-        model = FALLBACK_MODEL
-        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, 0.2, {
+        model = FEEDBACK_FALLBACK_MODEL
+        att = await callOpenAI(FEEDBACK_FALLBACK_MODEL, apiKey, sys, usr, 0.2, {
           maxCompletionTokens: FEEDBACK_MAX_COMPLETION_TOKENS,
+          telemetry: telemetryFor('learner_feedback', false, {
+            invocationAttempt: 2,
+            isModelFallback: true,
+            fallbackFrom: FEEDBACK_PRIMARY_MODEL,
+            promptVersion: feedbackPromptVersion,
+          }),
         })
       }
       if (!att.ok) {
@@ -2367,12 +2514,12 @@ Deno.serve(async (req) => {
       const dir = normDir(b.direction)
       const sys = buildCoreQualitySystemPrompt(dir)
       const usr = buildCoreQualityUserPrompt(b)
-      let model = CRITIC_PRIMARY_MODEL
-      let att = await callOpenAI(CRITIC_PRIMARY_MODEL, apiKey, sys, usr, 0.1)
-      if (!att.ok && (att.status === 404 || att.status === 400)) {
-        model = CRITIC_FALLBACK_MODEL
-        att = await callOpenAI(CRITIC_FALLBACK_MODEL, apiKey, sys, usr, 0.1)
-      }
+      const model = CRITIC_PRIMARY_MODEL
+      const att = await callOpenAI(CRITIC_PRIMARY_MODEL, apiKey, sys, usr, 0.1, {
+        telemetry: telemetryFor('core_critic', true, {
+          promptVersion: 'core_quality_v4',
+        }),
+      })
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
       }
@@ -2440,12 +2587,12 @@ Deno.serve(async (req) => {
       const actKo = SPEECH_ACT_KO[b.speech_act ?? ''] ?? '해당 화행'
       const sys = buildQualitySystemPrompt(dir, actKo)
       const usr = buildQualityUserPrompt(b)
-      let model = CRITIC_PRIMARY_MODEL
-      let att = await callOpenAI(CRITIC_PRIMARY_MODEL, apiKey, sys, usr, 0.2)
-      if (!att.ok && (att.status === 404 || att.status === 400)) {
-        model = CRITIC_FALLBACK_MODEL
-        att = await callOpenAI(CRITIC_FALLBACK_MODEL, apiKey, sys, usr, 0.2)
-      }
+      const model = CRITIC_PRIMARY_MODEL
+      const att = await callOpenAI(CRITIC_PRIMARY_MODEL, apiKey, sys, usr, 0.2, {
+        telemetry: telemetryFor('mission_critic', true, {
+          promptVersion: 'quality_v2',
+        }),
+      })
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
       }
@@ -2509,13 +2656,12 @@ Deno.serve(async (req) => {
       }
       const sys = buildAuthenticSystemPrompt()
       const usr = buildAuthenticUserPrompt(b)
-      // 이미지 입력도 gpt-4.1-mini/gpt-4o-mini 모두 vision 지원 → 동일 폴백 체인.
-      let model = PRIMARY_MODEL
-      let att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.6)
-      if (!att.ok && (att.status === 404 || att.status === 400)) {
-        model = FALLBACK_MODEL
-        att = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr, 0.6)
-      }
+      const model = PRIMARY_MODEL
+      const att = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.6, {
+        telemetry: telemetryFor('authentic_analyze', true, {
+          promptVersion: 'authentic_analyze_v1',
+        }),
+      })
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
       }
@@ -2545,12 +2691,12 @@ Deno.serve(async (req) => {
       const hsk = mapLevelToHsk(input)
       const sys = buildOutlineSystemPrompt(count, input.domain)
       const usr = buildUserPrompt(input, count, [], hsk, 'outline')
-      let outlineModel = PRIMARY_MODEL
-      let oa = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr)
-      if (!oa.ok && (oa.status === 404 || oa.status === 400)) {
-        outlineModel = FALLBACK_MODEL
-        oa = await callOpenAI(FALLBACK_MODEL, apiKey, sys, usr)
-      }
+      const outlineModel = PRIMARY_MODEL
+      const oa = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.8, {
+        telemetry: telemetryFor('legacy_outline', true, {
+          promptVersion: PROMPT_VERSION,
+        }),
+      })
       if (!oa.ok) {
         return new Response(
           JSON.stringify({ error: 'OpenAI API 호출에 실패했습니다.', detail: oa.raw.slice(0, 500), status: oa.status }),
@@ -2615,16 +2761,12 @@ Deno.serve(async (req) => {
       candidateCount,
     })
 
-    let modelUsed = PRIMARY_MODEL
-    let attempt = await callOpenAI(PRIMARY_MODEL, apiKey, system, user)
-    if (!attempt.ok && (attempt.status === 404 || attempt.status === 400)) {
-      console.warn('primary model failed, retrying with fallback', {
-        status: attempt.status,
-        raw: attempt.raw.slice(0, 300),
-      })
-      modelUsed = FALLBACK_MODEL
-      attempt = await callOpenAI(FALLBACK_MODEL, apiKey, system, user)
-    }
+    const modelUsed = PRIMARY_MODEL
+    const attempt = await callOpenAI(PRIMARY_MODEL, apiKey, system, user, 0.8, {
+      telemetry: telemetryFor('legacy_scenario_generate', true, {
+        promptVersion: PROMPT_VERSION,
+      }),
+    })
 
     if (!attempt.ok) {
       console.error('OpenAI error', attempt.status, attempt.raw)

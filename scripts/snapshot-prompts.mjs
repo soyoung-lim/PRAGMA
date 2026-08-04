@@ -234,7 +234,7 @@ export type PromptSnapshotEntry = {
 export type PromptSnapshot = {
   generated_at: string; git_commit: string; git_dirty: boolean;
   edge_source: string; edge_source_sha256: string; core_surface_hash: string;
-  generation_config: { model: string; model_fallback: string; temperature: number; response_format: string };
+  generation_config: { model: string; model_fallback: string | null; temperature: number; response_format: string };
   source_length_policy: { version: string; unit: "effective_chars"; ranges: Record<string, Record<string, { min: number; max: number }>> };
   prompts: PromptSnapshotEntry[];
 };
