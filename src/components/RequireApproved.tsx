@@ -3,7 +3,7 @@ import { IS_DEV, useProfile } from "@/lib/auth/useProfile";
 
 type Props = {
   children: React.ReactNode;
-  /** 로그인 상태와 무관하게 명시적인 DEV mission_v4 검토 링크만 연다. */
+  /** 로그인 상태와 무관하게 명시적인 DEV mission_v4/v5 검토 링크만 연다. */
   allowDevMissionPreview?: boolean;
 };
 
@@ -12,14 +12,15 @@ type Props = {
 export const RequireApproved = ({ children, allowDevMissionPreview = false }: Props) => {
   const location = useLocation();
   const { loading, session, profile, isDevStub } = useProfile();
+  const previewVersion = new URLSearchParams(location.search).get("preview");
   const isDevMissionPreview =
     IS_DEV &&
     allowDevMissionPreview &&
     location.pathname === "/learner/practice" &&
-    new URLSearchParams(location.search).get("preview") === "v4";
+    (previewVersion === "v4" || previewVersion === "v5");
 
   // 검토 URL은 새 탭에서 열리므로 sessionStorage 기반 DEV stub을 공유하지 못한다.
-  // 실제 시나리오 경로와 production에는 적용하지 않고, 명시적 v4 preview만 우회한다.
+  // 실제 시나리오 경로와 production에는 적용하지 않고, 명시적 v4/v5 preview만 우회한다.
   if (isDevMissionPreview) {
     return <>{children}</>;
   }

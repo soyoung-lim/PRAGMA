@@ -113,3 +113,12 @@
 - `추천 표현 / 다른 가능성` 라벨 정리(참고 표현 영역).
 - 맥락 strip의 `부담 ·` 항목 — `situation_ko`에서 부담 문장을 안정적으로 떼어낼 방법이
   없어 넣지 않았다. 생성 계약에 필드를 두는 문제라 별건으로 본다.
+
+## 로컬 mission_v5 미리보기 진입 보정 (같은 날)
+
+- `MissionRunV1`은 `?preview=v5` 샘플을 지원하지만 `RequireApproved`의 DEV 인증 우회가
+  `preview=v4`만 허용해, 로그아웃 상태에서는 v5 링크가 `/student-login`으로 이동했다.
+- DEV 환경의 명시적 `/learner/practice?preview=v4|v5`만 인증 없이 열도록 가드를 맞췄다.
+  실제 시나리오 경로와 production의 인증 정책은 바꾸지 않았다.
+- 로컬 `8097`에서 로그아웃 상태로 `?preview=v5`를 직접 열어 URL이 유지되고
+  `mission_v5(미니 담화형 DCT) 미리보기`와 첫 장면이 렌더링되는 것을 확인했다.
