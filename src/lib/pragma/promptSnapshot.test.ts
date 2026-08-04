@@ -107,6 +107,8 @@ describe("prompt snapshot integrity", () => {
     expect(written.text).toContain("행위자 고정: A=화자");
     expect(critic.text).toContain("industry");
     expect(critic.text).toContain("context_spec");
+    expect(critic.text).toContain("situation_ko는 학습자에게 보이는 장면");
+    expect(critic.text).toContain("평가 기준처럼 설명");
     expect(critic.text).toContain("referents");
     expect(critic.text).toContain("decision_authority");
     expect(critic.text).toContain("[축 — 12개 모두 빠짐없이 판정]");
@@ -121,6 +123,9 @@ describe("prompt snapshot integrity", () => {
     expect(prompt("core.user.source_repair").text).toContain("유효 글자 수를 반드시");
     expect(prompt("core.user.source_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(critic.text).toContain("국소적 두 턴만 본다");
+    expect(
+      readFileSync(resolve(process.cwd(), "supabase/functions/generate-scenario/index.ts"), "utf8"),
+    ).toContain("core_v8_learner_scene_v1");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {
     const mission = prompt("mission.system");
@@ -163,6 +168,13 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("fix_choice의 is_valid 의미");
     expect(quality.text).toContain("false는 \"문법적으로 틀림\"이나 \"완전히 부적절함\"이라는 뜻이 아니다");
     expect(quality.text).toContain("note_ko 문장을 중국어 correction 자체로 오인하지 마라");
+    expect(quality.text).toContain("판단에 필요한 장면이");
+    expect(quality.text).toContain("관찰 가능한 사실로 그려지는가");
+    expect(quality.text).toContain("관계·접촉 이력");
+    expect(quality.text).toContain("문장이 짧다는");
+    expect(quality.text).toContain("이유만으로 보고하지 마라");
+    expect(quality.text).not.toContain("①말하는 자리인지 적어 보내는 것인지");
+    expect(quality.text).not.toContain("①~⑤ 중 **셋 이상이 불명확**");
   });
 
   it("keeps learner context first-person and counterpart-only", () => {
@@ -170,6 +182,14 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).toContain("학습자 1인칭의 현재 장면");
       expect(entry.text).toContain("학습자가 마주한 상대의 역할·관계만 한 줄");
       expect(entry.text).toContain('화자(나)의 역할, "A → B" 구조');
+    }
+
+    for (const entry of [prompt("core.system.ko_zh"), prompt("core.system.zh_ko")]) {
+      expect(entry.text).toContain("학생용 장면 정보");
+      expect(entry.text).toContain("매체 속성을 연구 설명처럼 풀어 쓰지 않는다");
+      expect(entry.text).toContain("평가 기준을 설명하지");
+      expect(entry.text).toContain("별도 '상대'·'관계' 태그로 나누지 않고 한 칩에 표시된다");
+      expect(entry.text).not.toContain("발신자와 수신자의 관계 한 줄");
     }
   });
 });
