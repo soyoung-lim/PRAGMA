@@ -7,30 +7,38 @@
 
 ### 현재 상태
 
-- 역할은 **Codex = 개발자, Claude = 감수자**다. 같은 worktree를 동시에 편집하지 않는다.
+- 역할은 **Codex = 개발자, Claude = 감수자**다. 현재 Claude는 다른 작업 중이므로 로컬 구현의
+  선행조건으로 기다리지 않고, 카나리·inventory 증거가 생긴 뒤 감수를 요청한다. 같은
+  worktree를 동시에 편집하지 않는다.
 - 작업공간: `.worktrees/mission-experience-2026-08-02`
 - branch: `codex/mission-experience-2026-08-02`
 - 구현 커밋: `bc18e35` — 콘텐츠 후보 릴리스, 혼합 차단, 6셀 카나리, 읽기 전용 DB
   inventory와 runbook.
+- 운영 가시성 커밋: `ee96b7b` — 관리자 검수 화면의 현재·이전·혼합·미표식 release 집계·
+  필터·행 배지와 빠른 검수 제외 사유.
 - 콘텐츠는 최종 lock이 아니다. 현재 작업 후보는
   `pragma_content_candidate_20260804_01`이며 시나리오·MPJ·DCT·피드백 기준이 바뀌면 새 후보
   ID를 만든다.
 - 원격 Edge·DB·Railway에는 이번 변경을 적용하지 않았다. DB migration·row 변경·삭제도 없다.
-- 구현 검증: 전체 **255 pass / 7 skip**, typecheck, 변경 파일 ESLint, production build
-  **1902 modules**. prompt snapshot은 `bc18e35`, `git_dirty=false`, core hash
+- 구현 검증: 전체 **256 pass / 7 skip**, typecheck, 변경 파일 ESLint, production build
+  **1902 modules**. 현재 prompt snapshot은 `ee96b7b`, `git_dirty=false`, core hash
   `6dc227d791fb…`다.
+- localhost 관리자 화면에서 release 통계와 3열×2행 필터를 확인했다. 현재 브라우저 세션은
+  `scenarios` 권한이 없어 실제 행 분류와 live inventory는 아직 확인하지 못했다.
 
 ### 핵심 결정
 
 1. 코어·미션·런타임 피드백이 같은 `content_release_id`를 가져야 같은 검수 묶음이다.
 2. 표식이 없거나 서로 다른 행은 rapid-review 안전 후보에서 제외한다. 기존 행을 현 후보처럼
    소급 수정하지 않는다.
-3. refresh 순서는 읽기 전용 inventory → 무저장 6셀 카나리 → Claude P0 감수 → 실제 로그인
+3. 차단은 관리자에게 숨기지 않는다. 현재·이전·혼합·미표식 상태와 제외 원인을 화면에서
+   확인할 수 있어야 한다.
+4. refresh 순서는 읽기 전용 inventory → 무저장 6셀 카나리 → Claude P0 감수 → 실제 로그인
    E2E → 별도 승인된 전체 refresh다.
-4. `learner_mission_logs`, `experiment_locked`, 평가 폼 참조는 자동 삭제하지 않고,
+5. `learner_mission_logs`, `experiment_locked`, 평가 폼 참조는 자동 삭제하지 않고,
    `generated`를 자동 `reviewed`로 올리지 않는다.
 
-### Claude 감수 요청
+### 향후 Claude 감수 요청
 
 - 구현 커밋 `bc18e35`를 읽기 전용으로 검토한다.
 - 특히 다음 네 가지를 본다.
@@ -43,10 +51,11 @@
 
 ### 다음 실행 게이트
 
-1. Claude P0 결과 반영.
-2. 사용자 승인 뒤 `generate-scenario` Edge 배포.
-3. `RUN_CONTENT_CANARY=1`로 DB 미저장 6셀 생성. 후보 ID 일치와 R검사 non-fail 확인.
-4. 사용자가 실제 admin 로그인한 뒤 `supabase/queries/content_refresh_inventory.sql` 실행.
+1. 사용자 승인 뒤 `generate-scenario` Edge 배포.
+2. `RUN_CONTENT_CANARY=1`로 DB 미저장 6셀 생성. 후보 ID 일치와 R검사 non-fail 확인.
+3. 사용자가 실제 admin 로그인한 뒤 `supabase/queries/content_refresh_inventory.sql` 실행하고
+   검수 화면의 실제 release 분류를 확인한다.
+4. Claude에게 코드만 먼저 주는 대신 위 카나리 결과·inventory와 함께 P0 감수를 요청한다.
 5. 새 reviewed 미션 1건의 실제 학습자 수행·피드백·수정·DB 저장·reload 복구 확인.
 6. 위 증거 뒤 전체 refresh 범위와 실행을 별도 승인받는다.
 
