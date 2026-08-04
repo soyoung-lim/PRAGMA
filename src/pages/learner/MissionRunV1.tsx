@@ -144,6 +144,11 @@ const HEADER_H = 60;
 const WORKFLOW_EXPANDED_H = 92;
 const WORKFLOW_COMPACT_H = 52;
 const WORKFLOW_COMPACT_SCROLL_Y = 160;
+// 접힘·펼침 임계값을 벌려 둔다(히스테리시스). 단일 임계값이면 진동한다 —
+// 이 레일은 sticky지만 흐름에서 자리를 차지하므로 92→52px로 접히면 문서 높이가
+// 40px 줄고, 브라우저가 scrollY를 그만큼 끌어내려 임계값을 다시 넘나든다.
+// 두 임계값의 간격(60px)이 높이 변화(40px)보다 커야 그 되먹임이 끊긴다.
+const WORKFLOW_EXPAND_SCROLL_Y = 100;
 const SCROLL_TARGET_GAP = 12;
 
 const card = "rounded-xl border border-[#EAE4D2] bg-white p-4";
@@ -909,7 +914,12 @@ function MissionRunner({
   // 긴 문항의 상단을 덮지 않게 하고, 브라우저의 anchor/scrollIntoView 착지도 같은
   // 고정 영역 아래로 맞춘다.
   useEffect(() => {
-    const update = () => setWorkflowCompact(window.scrollY > WORKFLOW_COMPACT_SCROLL_Y);
+    const update = () =>
+      setWorkflowCompact((prev) =>
+        prev
+          ? window.scrollY > WORKFLOW_EXPAND_SCROLL_Y // 접힌 뒤에는 더 올라와야 펼친다
+          : window.scrollY > WORKFLOW_COMPACT_SCROLL_Y,
+      );
     update();
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
@@ -1112,7 +1122,10 @@ function MissionRunner({
                 feature 정본명은 바꾸지 않고, 이 표면에서만 행동 문장으로 풀어 쓴다. */}
             <div
               className={[
-                "sticky z-30 -mx-6 mb-2 border-b border-[#E6E0CE] bg-background/95 px-6 shadow-[0_6px_16px_rgba(21,32,43,0.05)] backdrop-blur transition-[height] duration-150 motion-reduce:transition-none",
+                // height 트랜지션을 두지 않는다 — 150ms 동안 높이가 매 프레임 변하면
+                // 그때마다 문서 높이·scrollY가 흔들려 임계값 판정이 계속 뒤집힌다.
+                // 안쪽 레일은 어차피 hidden으로 즉시 사라지므로 애니메이션 이득도 없다.
+                "sticky z-30 -mx-6 mb-2 border-b border-[#E6E0CE] bg-background/95 px-6 shadow-[0_6px_16px_rgba(21,32,43,0.05)] backdrop-blur",
                 workflowCompact ? "h-[52px] py-2" : "h-[92px] pb-2.5 pt-2",
               ].join(" ")}
               style={{ top: `${HEADER_H}px` }}
@@ -1629,6 +1642,15 @@ function MissionColdOpen({
       .filter(Boolean) ?? [productionTask.situation_ko];
   const sceneGoal = sceneHeadline(situationBeats[0]);
   const sceneContext = situationBeats.slice(1).join(" ").trim();
+  // 제목은 콘텐츠 길이에 따라 단계적으로 줄인다. 생성물의 첫 문장이 길면 23px에서
+  // 다섯 줄이 되어 장면이 아니라 안내문으로 읽힌다. 근본 해결은 생성 쪽이지만,
+  // 화면이 먼저 깨지지는 않게 한다.
+  const sceneGoalSize =
+    sceneGoal.length <= 40
+      ? "text-[23px] sm:text-[25px]"
+      : sceneGoal.length <= 70
+        ? "text-[19px] sm:text-[21px]"
+        : "text-[17px] sm:text-[18px]";
 
   // 화행별 동사형이 없으면 문장을 깨뜨리는 대신 중립형으로 떨어뜨린다.
   const actVerb = (speechAct && (SPEECH_ACT_VERB_KO as Record<string, string>)[speechAct]) || "말하면";
@@ -1645,6 +1667,27 @@ function MissionColdOpen({
     );
   }, [isResponseFallback, speechAct]);
 
+  // 생성 계약은 situation_ko에 매체 속성·상대의 권리·평가 기준을 풀어 쓰지 말라고
+  // 명시한다("기록으로 남기는 목적", "즉각적인 반응을 요구하지 않는다" 등). 화면에서
+  // 가리면 위반이 은폐되므로, 표시는 그대로 두고 개발 중에만 결함으로 드러낸다.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (sceneGoal.length > 70) {
+      console.warn(
+        `[mission cold open] situation_ko 첫 문장이 ${sceneGoal.length}자입니다. 장면 제목으로 너무 깁니다.`,
+      );
+    }
+    const banned = ["기록으로", "즉시 반응", "즉각적인 반응", "추가 승인", "내부 보고", "권한이 없", "선택권"];
+    // 첫 문장이 표제(sceneGoal)로 분리되더라도 계약 검사는 situation_ko 전체를 본다.
+    // 첫 문장에 금지 서술이 들어온 경우를 놓치면 화면 분리 방식이 검사 공백을 만든다.
+    const hit = banned.filter((w) => productionTask.situation_ko.includes(w));
+    if (hit.length) {
+      console.warn(
+        `[mission cold open] situation_ko에 계약이 금지한 매체·권리 서술이 있습니다: ${hit.join(", ")}`,
+      );
+    }
+  }, [productionTask.situation_ko, sceneGoal]);
+
   return (
     <div className="mx-auto w-full max-w-[600px] pt-1" data-cold-open-kind={coldOpen.kind}>
       <section
@@ -1659,7 +1702,7 @@ function MissionColdOpen({
           ref={headingRef}
           tabIndex={-1}
           style={{ textWrap: "balance" }}
-          className="break-keep text-[23px] font-semibold leading-[1.4] tracking-[-0.028em] text-[#F5F2EA] outline-none sm:text-[25px]"
+          className={`break-keep ${sceneGoalSize} font-semibold leading-[1.4] tracking-[-0.028em] text-[#F5F2EA] outline-none`}
         >
           {sceneGoal}
         </h2>
