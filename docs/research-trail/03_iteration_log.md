@@ -881,15 +881,21 @@
     처리하고 결과 JSON만 `.tmp`에 남기며 DB에는 저장하지 않는다.
   - `scenarios`의 편성·패키지·평가 폼·학습자 로그·supersedes·피드백/legacy 후보 참조를 세는
     읽기 전용 SQL과 refresh runbook을 추가했다.
+  - rapid-review 차단을 운영자가 해석할 수 있도록 현재·이전·혼합·미표식 release 분류,
+    대기 집계와 필터, 행별 제외 사유와 정확한 release ID를 관리자 검수 화면에 추가했다.
 - 실제 검증:
-  - 전체 Vitest **255 pass / 7 skip**, typecheck, 변경 파일 ESLint, production build
+  - 전체 Vitest **256 pass / 7 skip**, typecheck, 변경 파일 ESLint, production build
     **1902 modules** 통과.
-  - prompt snapshot 16종을 구현 커밋 `bc18e35`, `git_dirty=false`로 재생성했다.
+  - prompt snapshot 16종을 가시성 보완 커밋 `ee96b7b`, `git_dirty=false`로 재생성했다.
     core surface hash는 `6dc227d791fb…`로 불변이다.
   - inventory SQL에 쓰기·DDL 동사가 없고 알려진 참조 테이블을 모두 감사하는지 테스트했다.
+  - localhost 관리자 화면에서 release 통계·필터 레이아웃을 확인했다. 브라우저 세션에
+    `scenarios` 권한이 없어 실제 행의 분류 표시는 자동 테스트로만 검증했다.
   - 원격 Edge·DB·Railway에는 변경을 적용하지 않았고, DB 행을 수정·삭제하지 않았다.
 - 예상과 달랐던 점:
   - UI의 DEV admin 우회는 실제 RLS 권한을 주지 않으므로 live inventory를 대신할 수 없었다.
+  - 안전 게이트만 추가하면 레거시 행이 선택 불가로 조용히 보일 뿐 refresh 대상인지 다른
+    품질 문제인지 알 수 없었다. 게이트와 운영 설명 가능성을 한 묶음으로 설계해야 했다.
   - 현 Edge v45는 새 후보 stamp를 알지 못하므로, 배포 전 카나리는 콘텐츠 품질은 볼 수 있어도
     세 층의 동일 후보 계약을 검증할 수 없다. 따라서 clean 구현 커밋과 승인된 Edge 배포가
     카나리보다 먼저다.
@@ -899,4 +905,4 @@
     E2E → 승인된 전체 실행 순으로 연다.
   - 후보 계약이 바뀌면 과거 행을 소급 승격하지 않고 새 후보로 재생성한다.
 - 관련 Decision / Evidence: `DEC-20260804-03`, `EVD-20260804-03`
-- 관련 커밋: `bc18e35`
+- 관련 커밋: `bc18e35`, `ee96b7b`

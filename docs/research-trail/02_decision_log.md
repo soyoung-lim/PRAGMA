@@ -1057,6 +1057,8 @@
      별도 승인한다. `learner_mission_logs`, `experiment_locked`, 평가 폼 참조는 자동 삭제하지
      않는다.
   6. 새로 생성됐다는 이유로 `generated`를 자동 `reviewed`로 승격하지 않는다.
+  7. 안전 게이트의 제외는 관리자 화면에서 숨기지 않는다. 코어·미션 쌍을 현재·이전·혼합·
+     미표식으로 구분하고, 빠른 검수 제외 원인을 운영자가 행과 집계에서 확인할 수 있게 한다.
 - 근거: 후보 계보, 자동 게이트, 인간 감수, 실데이터 E2E를 분리하면 콘텐츠 개선을 계속하면서도
   구버전 혼합과 성급한 데이터 파괴를 막을 수 있다. 실행 추적과 의미 버전을 분리해야 반복
   생성·재현·논문 근거가 서로 오염되지 않는다.
@@ -1065,4 +1067,4 @@
   `src/lib/pragma/contentCanaryPlan.ts`, `supabase/queries/content_refresh_inventory.sql`,
   `docs/operations/CONTENT_REFRESH_RUNBOOK.md`
 - 관련 Iteration / Evidence: `ITER-20260804-03`, `EVD-20260804-03`
-- 관련 커밋: `bc18e35`
+- 관련 커밋: `bc18e35`, `ee96b7b`
