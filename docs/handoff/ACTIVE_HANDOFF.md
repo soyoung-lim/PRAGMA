@@ -1,7 +1,53 @@
 # PRAGMA ACTIVE HANDOFF
 
-> **최종 갱신: 2026-08-04 KST. 아래 「2026-08-04 오후 최신 인수인계」가 현재 정본이다.**
+> **최종 갱신: 2026-08-04 KST. 아래 「2026-08-04 카나리 후 최신 인수인계」가 현재 정본이다.**
 > 그 아래 이전 기록은 결정 이력으로만 읽고, 작업공간·HEAD·다음 작업 지시로 사용하지 않는다.
+
+## 2026-08-04 카나리 후 최신 인수인계
+
+### 현재 상태
+
+- 작업공간: `.worktrees/mission-experience-2026-08-02`
+- branch: `codex/mission-experience-2026-08-02`
+- 최신 구현 커밋: `8b30d3d`, `dee7279`, `426caf7`.
+- 현재 후보: `pragma_content_candidate_20260804_02`. 콘텐츠 lock을 뜻하지 않으며 카나리
+  결과는 **차단**이다.
+- `generate-scenario` Edge version 47 ACTIVE. DB row·migration·live inventory·Railway에는
+  변경이 없다.
+- 후보 `_01` 첫 무저장 6셀은 코어 6/6 pass, 미션 2셀 R5 hard fail이었다. 재시도가 실제 실패
+  문장을 받지 못한 것이 원인이어서 `_02`부터 직전 MPJ·참조안·힌트를 제한적으로 전달한다.
+- `_02` 새 코어 카나리는 코어 1/6 pass(R16·R29 실패), `_01` 코어 고정 mission replay는
+  원래 R5 실패 두 셀이 pass/warning으로 개선됐지만 다른 구조 실패로 3/6 mission fail이다.
+- 검증: 전체 257 pass/7 skip, typecheck, production build 1902 modules, snapshot 17종,
+  core surface hash `6dc227d791fb…`.
+
+### 현재 해석
+
+1. 직전 실패 산출을 직접 수리하는 retry는 원래 두 R5 실패에는 효과가 있었다.
+2. 그러나 후보 `_02` 전체는 통과하지 못했다. 전체 DB refresh와 자동 `reviewed` 승격을
+   시작하지 않는다.
+3. 새 코어 생성과 고정 코어 mission replay를 같은 지표로 합치지 않는다. 전자는 운영 생성
+   안정성, 후자는 미션 프롬프트 변화의 효과를 본다.
+4. R5 규칙은 완화하지 않는다. 차단 산출물은 실패 증거로 보존한다.
+
+### 다음 개발 순서
+
+1. **코어 안정성:** R16 장면 언어 혼입과 R29 길이 범위 이탈이 생성 후 repair에서도 남는
+   경로를 추적하고, 새 코어 6셀 non-fail을 만든다.
+2. **미션 구조 준수:** PDR anchor와 정확히 한 축만 다르게 만드는 규칙, reason PDR 일치,
+   R27 상황문 고유성을 구조적으로 보정한다.
+3. 두 게이트가 non-fail인 산출물이 생기면 Claude에게 코드와 JSON을 읽기 전용으로 감수
+   요청한다.
+4. 그 뒤에만 실제 admin inventory와 reviewed 1건 학습자 E2E를 수행하고, 전체 refresh는
+   다시 사용자 승인을 받는다.
+
+### 근거
+
+- `docs/dev-log/2026-08-04-content-refresh-candidate.md`
+- `DEC-20260804-04`, `ITER-20260804-04`, `EVD-20260804-04`
+- `.tmp/content-canary/pragma_content_candidate_20260804_01.json`
+- `.tmp/content-canary/pragma_content_candidate_20260804_02.json`
+- `.tmp/content-canary/pragma_content_candidate_20260804_02.mission-replay.json`
 
 ## 2026-08-04 오후 최신 인수인계
 
