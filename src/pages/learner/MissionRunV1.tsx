@@ -137,10 +137,12 @@ const CONFIDENCE = ["매우 확신", "꽤 확신", "확신 없음"] as const;
 
 // 사이트 헤더(LearnerJourneyShell) 높이 — 문항 맥락 바가 붙는 기준선.
 const HEADER_H = 60;
-// 화행·학습 초점 + 3단계 워크플로우 고정 영역. 긴 미션에서 현재 위치를 잃지 않도록
-// 높이를 고정하고, 문항 맥락 바는 이 영역 아래에 붙인다.
-const WORKFLOW_H = 92;
-const STICKY_CONTENT_TOP = HEADER_H + WORKFLOW_H;
+// 화행·학습 초점 + 워크플로우 고정 영역. 첫 화면에서는 전체 레일을 보여 주고,
+// 스크롤 뒤에는 현재 단계만 남겨 본문을 가리는 높이를 줄인다.
+const WORKFLOW_EXPANDED_H = 92;
+const WORKFLOW_COMPACT_H = 52;
+const WORKFLOW_COMPACT_SCROLL_Y = 160;
+const SCROLL_TARGET_GAP = 12;
 
 const card = "rounded-xl border border-[#EAE4D2] bg-white p-4";
 const srcBox = "rounded-lg border-l-[3px] border-[#EAE4D2] border-l-[#FAD338] bg-[#F5F5F2] p-3";
@@ -516,8 +518,8 @@ function FeedbackPanel({
       : passedCount === 1
         ? "잘 잡은 부분이 있습니다. 표시된 부분을 차례로 살펴봅시다."
         : "먼저 핵심 의미부터 차례로 정리해 봅시다.";
-  // 미니 담화형 DCT 층(mission_v5). 단문 DCT는 빈 값이라 렌더되지 않는다.
-  const discourse = fb.blocks.discourse_ko?.trim() ?? "";
+  // 미니 담화형 DCT의 집중 구간 밖 심각 부조화만 예외적으로 알린다.
+  // 일반 담화 총평은 세 판정과 겹치고 다음 행동으로 이어지지 않아 학습자 화면에서 숨긴다.
   const offFocus = fb.blocks.offfocus_warnings ?? [];
 
   return (
@@ -562,7 +564,9 @@ function FeedbackPanel({
               allPassed ? "bg-[#DFF4E7] text-[#176640]" : "bg-[#FFF1C7] text-[#755A0B]",
             ].join(" ")}
           >
-            {passedCount} / 3 통과
+            {allPassed
+              ? `${passedCount}개 안정`
+              : `${passedCount}개 안정 · ${layers.length - passedCount}개 점검`}
           </span>
         </div>
 
@@ -649,28 +653,19 @@ function FeedbackPanel({
         </div>
       )}
 
-      {/* 미니 담화형 DCT 전용 — 담화 전체 확인 한 줄 + 집중 구간 밖 심각 부조화만.
-          문제가 없으면 접힌 한 줄로 남겨 감량 원칙(0-r·103)을 지킨다. */}
-      {(discourse || offFocus.length > 0) && (
-        <details className="rounded-xl border border-[#DDE5DF] bg-white px-3.5 py-2.5" open={offFocus.length > 0}>
-          <summary className="cursor-pointer list-none text-[12px] font-bold text-[#52645A]">
-            담화 전체 확인
-            {offFocus.length > 0 && (
-              <span className="ml-1.5 rounded-full bg-[#FFF1C7] px-1.5 py-0.5 text-[10.5px] font-extrabold text-[#755A0B]">
-                살펴볼 곳 {offFocus.length}
-              </span>
-            )}
-          </summary>
-          {discourse && (
-            <p className="mt-1.5 text-[13px] leading-relaxed text-[#15202B]">{discourse}</p>
-          )}
+      {offFocus.length > 0 && (
+        <div className="rounded-xl border border-[#E7D28B] bg-[#FFFCF0] px-3.5 py-3">
+          <div className="flex items-center gap-1.5 text-[12px] font-bold text-[#755A0B]">
+            <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" />
+            추가로 확인할 부분
+          </div>
           {offFocus.map((w, i) => (
             <div key={i} className="mt-2 rounded-lg bg-[#FFFAE9] px-3 py-2 text-[12.5px] leading-relaxed">
               <span className="font-semibold text-[#755A0B]">“{w.text}”</span>
               {w.note_ko ? <span className="text-[#15202B]"> — {w.note_ko}</span> : null}
             </div>
           ))}
-        </details>
+        </div>
       )}
 
       <p className="px-0.5 text-[11.5px] text-muted-foreground">
@@ -807,6 +802,7 @@ function MissionRunner({
   // 목표 화용 축(초점)은 첫 판단을 제출한 뒤에만 공개한다. 첫 판단 전에 초점을 보이면
   // Scale4가 재는 것이 첫인상이 아니라 '알려준 방향에 맞추기'가 된다.
   const [focusRevealed, setFocusRevealed] = useState(false);
+  const [workflowCompact, setWorkflowCompact] = useState(false);
   const [vocabularyHintOpenedAt, setVocabularyHintOpenedAt] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [revised, setRevised] = useState("");
@@ -844,6 +840,8 @@ function MissionRunner({
   });
   const currentStepKey = STEP_OF[phase];
   const currentStepIndex = journeySteps.findIndex((s) => s.key === currentStepKey);
+  const workflowHeight = workflowCompact ? WORKFLOW_COMPACT_H : WORKFLOW_EXPANDED_H;
+  const stickyContentTop = HEADER_H + workflowHeight;
   // v5 미리보기에서는 문법·화용 실패 화면을 재현하고, 그 외 샘플은 기존 참고 표현을 쓴다.
   const hasRevisionDemo =
     IS_DEMO &&
@@ -904,6 +902,25 @@ function MissionRunner({
       }
     });
   }, [phase, draft, mission, fbRetryNonce, hasRevisionDemo]);
+
+  // 진행 레일은 첫 화면에서만 전체를 보여 준다. 수행 중에는 현재 단계 한 줄로 줄여
+  // 긴 문항의 상단을 덮지 않게 하고, 브라우저의 anchor/scrollIntoView 착지도 같은
+  // 고정 영역 아래로 맞춘다.
+  useEffect(() => {
+    const update = () => setWorkflowCompact(window.scrollY > WORKFLOW_COMPACT_SCROLL_Y);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = root.style.scrollPaddingTop;
+    root.style.scrollPaddingTop = `${stickyContentTop + SCROLL_TARGET_GAP}px`;
+    return () => {
+      root.style.scrollPaddingTop = previous;
+    };
+  }, [stickyContentTop]);
 
   // 중단 후 재개(프로토타입 v2 ②) — 2부 진행분만 미션별 localStorage에 보존. 실패해도 흐름 무해.
   const storageKey = `pragma:mrun:${scenarioId ?? "sample"}`;
@@ -1092,23 +1109,31 @@ function MissionRunner({
                 헤더 아래에 고정해 긴 문항에서도 현재 화행·초점·단계를 잃지 않는다.
                 feature 정본명은 바꾸지 않고, 이 표면에서만 행동 문장으로 풀어 쓴다. */}
             <div
-              className="sticky z-30 -mx-6 mb-2 h-[92px] border-b border-[#E6E0CE] bg-background/95 px-6 pb-2.5 pt-2 shadow-[0_6px_16px_rgba(21,32,43,0.05)] backdrop-blur"
+              className={[
+                "sticky z-30 -mx-6 mb-2 border-b border-[#E6E0CE] bg-background/95 px-6 shadow-[0_6px_16px_rgba(21,32,43,0.05)] backdrop-blur transition-[height] duration-150 motion-reduce:transition-none",
+                workflowCompact ? "h-[52px] py-2" : "h-[92px] pb-2.5 pt-2",
+              ].join(" ")}
               style={{ top: `${HEADER_H}px` }}
             >
-              <div className="mb-2 flex h-[17px] min-w-0 items-center gap-2 whitespace-nowrap">
+              <div className={`${workflowCompact ? "h-full" : "mb-2 h-[17px]"} flex min-w-0 items-center gap-2 whitespace-nowrap`}>
                 <span className="shrink-0 rounded-full border border-[#E5C84A] bg-[#FFF3B5] px-2 py-0.5 text-[10.5px] font-extrabold text-[#5F4A00]">
                   {learnerActLabel}
                 </span>
                 {/* 첫 판단 전에는 과제명만 — 초점 문구는 판정 방향을 알려주므로 숨긴다.
                     공개는 첫 판단 제출 이후(focusRevealed)에만 일어난다. */}
-                <span className="truncate text-[12px] font-semibold text-[#3E4C57]">
+                <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[#3E4C57]">
                   {focusRevealed ? `이번 미션의 초점 · ${learnerFocusCopy}` : "상황에 맞는 표현 판단하기"}
                 </span>
+                {workflowCompact && (
+                  <span className="ml-auto shrink-0 rounded-full bg-[#F2EEE0] px-2 py-1 text-[10.5px] font-bold text-[#3E4C57]">
+                    {currentStepIndex + 1}/{journeySteps.length} · {journeySteps[currentStepIndex]?.label}
+                  </span>
+                )}
               </div>
 
               {/* 진행 레일 — 완료는 노란 원+체크, 현재는 노란 링, 예정은 회색 테두리.
                   연결선은 지나온 구간만 노랑이다. 단계 이름은 레일 아래에 둔다. */}
-              <div className="flex items-start" aria-label="미션 진행 단계">
+              <div className={workflowCompact ? "hidden" : "flex items-start"} aria-label="미션 진행 단계">
                 {journeySteps.map((step, i) => {
                   const done = i < currentStepIndex;
                   const active = i === currentStepIndex;
@@ -1220,6 +1245,7 @@ function MissionRunner({
                 mission.schema_version === "mission_v4" || mission.schema_version === "mission_v5"
               }
               isLastItem={mpjIdx === items.length - 1}
+              stickyContentTop={stickyContentTop}
               onDone={nextMpj}
               onFirstAnswer={() => setFocusRevealed(true)}
             />
@@ -1650,7 +1676,7 @@ function MissionColdOpen({
             className="h-auto rounded-full bg-[#F5C842] px-7 py-3 text-[14.5px] font-semibold tracking-[-0.015em] text-[#15202B] shadow-none transition-transform hover:-translate-y-0.5 hover:bg-[#FCE07A] active:translate-y-0 motion-reduce:transform-none"
             onClick={onStart}
           >
-            비슷한 상황 {mpjCount}개로 감 잡기 <span aria-hidden="true">→</span>
+            {mpjCount}개 장면으로 감 잡기 <span aria-hidden="true">→</span>
           </Button>
         </div>
       </section>
@@ -2046,9 +2072,9 @@ function AudioFrame({
     <div className="space-y-3" data-scene-skin="oral-console">
       <DctScenePanel mode="interpreting" situation={situation} relation={relation} />
 
-      {/* 번역 DCT의 이메일 작성기와 같은 차분한 작업대 톤. 통역 구인은 듣기·녹음으로 유지한다. */}
+      {/* 밝은 장비 프레임 안에서 실제 재생·녹음 조작부만 암실 모듈로 구분한다. */}
       <div className="overflow-hidden rounded-2xl border border-[#CBD4DC] bg-white shadow-[0_8px_22px_rgba(21,32,43,0.07)]">
-        <div className="flex items-center justify-between gap-3 border-b border-[#E1E6EA] bg-[#F7F9FA] px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-[#E1E6EA] bg-[#F7F9FA] px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-2 text-[12px] font-bold text-[#40515F]">
             <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span>통역 수행 콘솔</span>
@@ -2056,7 +2082,7 @@ function AudioFrame({
           <span className="shrink-0 text-[10.5px] text-[#7B8994]">듣기 → 녹음</span>
         </div>
 
-        <div className="p-4">
+        <div className="p-3.5">
           {/* ① 원문 듣기 */}
           <section aria-labelledby="interpreting-listen-heading">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -2065,21 +2091,21 @@ function AudioFrame({
               </h3>
               <span className="text-[10.5px] text-[#7B8994]">최대 {MAX_PLAYS}회</span>
             </div>
-            <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#E1E6EA] bg-[#FAFBFC] p-3">
+            <div className="mt-2 flex items-center gap-3 rounded-xl border border-[#263746] bg-[#101922] p-3 shadow-[0_5px_14px_rgba(16,25,34,0.12)]">
               <button
                 type="button"
                 onClick={play}
                 disabled={plays >= MAX_PLAYS || playing || ttsLoading}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#B7C3CD] bg-white text-[#273642] shadow-sm transition-colors hover:bg-[#F3F6F8] disabled:opacity-40"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#FAD338] bg-[#FAD338] text-[#15202B] shadow-sm transition-colors hover:bg-[#FFE06B] disabled:opacity-40"
                 aria-label={playing || ttsLoading ? "원발화 재생 중" : "원발화 재생"}
               >
                 <Volume2 className="h-[18px] w-[18px]" aria-hidden="true" />
               </button>
               <div>
-                <div className="text-[13.5px] font-semibold text-[#273642]">
+                <div className="text-[13.5px] font-semibold text-white">
                   {ttsLoading ? "고품질 음성 준비 중…" : playing ? "재생 중…" : "원발화 재생"}
                 </div>
-                <div className="text-[11.5px] text-[#7B8994]">
+                <div className="text-[11.5px] text-[#A5B5C1]">
                   남은 재생 {Math.max(0, MAX_PLAYS - plays)}회 · 재생 {plays}회
                 </div>
               </div>
@@ -2087,11 +2113,11 @@ function AudioFrame({
           </section>
 
           {/* ② 통역 녹음 */}
-          <section className="mt-4 border-t border-[#E1E6EA] pt-4" aria-labelledby="interpreting-record-heading">
+          <section className="mt-3" aria-labelledby="interpreting-record-heading">
             <h3 id="interpreting-record-heading" className="text-[12px] font-bold text-[#273642]">
               ② 통역 녹음 ({tgtName})
             </h3>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
+            <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-[#263746] bg-[#101922] p-3 shadow-[0_5px_14px_rgba(16,25,34,0.12)]">
               <button
                 type="button"
                 onClick={recording ? stopRec : startRec}
@@ -2100,12 +2126,12 @@ function AudioFrame({
                   "rounded-lg border px-4 py-2 text-[13px] font-bold transition-colors disabled:cursor-wait disabled:opacity-60",
                   recording
                     ? "border-[#B44647] bg-[#B44647] text-white"
-                    : "border-[#B8C2CA] bg-white text-[#40515F] hover:border-[#7D8C98] hover:bg-[#F7F9FA]",
+                    : "border-[#C4494A] bg-transparent text-[#F0A3A4] hover:bg-[#C4494A] hover:text-white",
                 ].join(" ")}
               >
                 {recording ? "■ 녹음 정지" : transcribing ? "전사 중…" : recorded ? "● 다시 녹음" : "● 녹음 시작"}
               </button>
-              <span className="text-[11.5px] text-[#6D7B86]">
+              <span className="text-[11.5px] text-[#A5B5C1]">
                 {recording
                   ? "녹음 중…"
                   : transcribing
@@ -2115,7 +2141,7 @@ function AudioFrame({
                       : "버튼을 누른 뒤 통역 시작"}
               </span>
             </div>
-            <p className="mt-2.5 text-[10.5px] leading-relaxed text-[#7B8994]">
+            <p className="mt-2.5 border-t border-[#E7EAED] pt-2.5 text-[10.5px] leading-relaxed text-[#7B8994]">
               마이크 음성은 자동 전사를 위해 OpenAI 음성 인식 API로 전송됩니다.
               PRAGMA는 음성 파일을 저장하지 않으며, 확인한 전사만 제출·저장합니다.
             </p>
@@ -2485,8 +2511,8 @@ function RevisionMap({
 const MPJ_TASK_TITLE: Record<string, string> = {
   scale4: "이 번역, 상황에 맞을까?",
   fix_choice: "어떻게 바꾸면 더 자연스러울까?",
-  reason_conf: "왜 이 표현이 상황에 맞지 않을까?",
-  reason: "왜 이 표현이 상황에 맞지 않을까?",
+  reason_conf: "이 표현이 상황에 맞지 않는 이유가 무엇인지 고르세요",
+  reason: "이 표현이 상황에 맞지 않는 이유가 무엇인지 고르세요",
 };
 
 const JUDGE3_TASK_TITLE: Record<string, string> = {
@@ -2589,7 +2615,7 @@ function MpjContextSurface({
         situation={item.situation_ko}
         relation={item.relation_ko}
         separatePanels
-        threadEyebrow="DM 대화 · 표현 비교 중"
+        threadEyebrow="표현 비교"
       >
         {item.preceding_turn && <ChatBubble side="them">{item.preceding_turn}</ChatBubble>}
         {item.type === "multi_judge" ? (
@@ -2597,7 +2623,7 @@ function MpjContextSurface({
         ) : (
           <>
             <ChatCaption tone="draft">
-              AI {mode === "interpreting" ? "통역" : "번역"} 초안 · 비교 전
+              AI {mode === "interpreting" ? "통역" : "번역"} 초안
             </ChatCaption>
             <ChatBubble side="me" variant="draft">
               {answered ? highlightZh(item.target, item.highlights) : item.target}
@@ -2625,6 +2651,7 @@ function MpjStage({
   mode,
   sequentialFix,
   isLastItem,
+  stickyContentTop,
   onDone,
   onFirstAnswer,
 }: {
@@ -2633,6 +2660,8 @@ function MpjStage({
   sequentialFix: boolean;
   /** 마지막 문항이면 CTA를 다음 단계로 바꾼다. */
   isLastItem: boolean;
+  /** 사이트 헤더와 현재(전체/축약) 진행바를 합친 실제 고정 높이. */
+  stickyContentTop: number;
   onDone: (response: MpjResponseTrace) => void;
   /** 첫 판단이 제출된 시점 — 목표 화용 축은 이 시점 이후에만 공개된다. */
   onFirstAnswer?: () => void;
@@ -2653,6 +2682,15 @@ function MpjStage({
   const [fixPicks, setFixPicks] = useState<Set<number>>(new Set());
   const [multiBestPick, setMultiBestPick] = useState<number | null>(null);
   const [multiWorstPick, setMultiWorstPick] = useState<number | null>(null);
+  const fixChoicesRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!fixJudgeSubmitted) return;
+    const frame = window.requestAnimationFrame(() => {
+      fixChoicesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [fixJudgeSubmitted]);
 
   // 대화창 끝 지점이 헤더 위로 올라갔는지 — 올라갔을 때만 맥락 바를 띄운다.
   // IntersectionObserver 대신 스크롤 리스너를 쓴다: 같은 값이면 React가 리렌더를
@@ -2662,7 +2700,7 @@ function MpjStage({
   useEffect(() => {
     const update = () => {
       const el = sceneEndRef.current;
-      if (el) setShowCtxBar(el.getBoundingClientRect().top < STICKY_CONTENT_TOP);
+      if (el) setShowCtxBar(el.getBoundingClientRect().top < stickyContentTop);
     };
     update();
     window.addEventListener("scroll", update, { passive: true });
@@ -2671,7 +2709,7 @@ function MpjStage({
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
-  }, []);
+  }, [stickyContentTop]);
 
   const feature = item.axis_feature;
   const bands =
@@ -2846,7 +2884,7 @@ function MpjStage({
       {showCtxBar && (
         <div
           className="fixed inset-x-0 z-30 border-b border-[#EAE4D2] bg-white/95 backdrop-blur"
-          style={{ top: `${STICKY_CONTENT_TOP}px` }}
+          style={{ top: `${stickyContentTop}px` }}
         >
           <div className="mx-auto flex max-w-3xl flex-wrap items-baseline gap-x-2.5 gap-y-0.5 px-6 py-1.5 text-[12px]">
             {/* 객관적 맥락만 — 판정 방향(완화·직접성·거절 여지)은 넣지 않는다. */}
@@ -2909,7 +2947,10 @@ function MpjStage({
 
           {/* fix_choice: 교정 복수 선택 */}
           {item.type === "fix_choice" && (!sequentialFix || fixJudgeSubmitted) && (
-            <>
+            <div
+              ref={fixChoicesRef}
+              style={{ scrollMarginTop: `${stickyContentTop + SCROLL_TARGET_GAP}px` }}
+            >
               <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">
                 이 상황에 알맞은 수정안을 모두 선택하세요.{" "}
                 <span className="font-normal text-muted-foreground">
@@ -2942,23 +2983,12 @@ function MpjStage({
                   </button>
                 ))}
               </div>
-            </>
+            </div>
           )}
 
-          {/* v4 reason: 부적절함은 전제하고 주된 원인 하나만 고른다. */}
+          {/* v4 reason: 상단 문항 제목에서 행동을 안내하고 여기서는 선택지만 제시한다. */}
           {item.type === "reason" && (
-            <>
-              <div className="flex items-start gap-2.5 rounded-xl border border-[#E25743] bg-[#FFF0ED] px-3.5 py-3 text-[#942F24] shadow-[0_2px_8px_rgba(190,58,42,0.08)]">
-                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                <div>
-                  <div className="text-[13px] font-extrabold">이 표현은 이 상황에 맞지 않습니다.</div>
-                  <div className="mt-0.5 text-[12px] leading-relaxed text-[#A44A3E]">
-                    무엇이 가장 크게 어긋났는지 찾아보세요.
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 text-[13px] font-semibold">가장 큰 이유는 무엇인가요?</div>
-              <div className="mt-2 flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
                 {item.reasons.map((r) => (
                   <button
                     key={r.id}
@@ -2974,8 +3004,7 @@ function MpjStage({
                     {r.text_ko}
                   </button>
                 ))}
-              </div>
-            </>
+            </div>
           )}
 
           {/* reason_conf: 이유 + 확신도 */}
@@ -3144,7 +3173,6 @@ function MpjStage({
               disabled={!bandPick}
               onClick={() => {
                 setFixJudgeSubmitted(true);
-                window.scrollBy({ top: 180, behavior: "smooth" });
               }}
             >
               판단 제출 · 이어서 고쳐보기 →

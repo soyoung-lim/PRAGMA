@@ -225,7 +225,7 @@ export function highlightZh(text: string, highlights: string[] | undefined): Rea
         tabIndex={0}
         title="이 문항에서 살펴볼 표현 — 정답 전체를 뜻하지 않습니다"
         aria-label={`${p} — 이 문항에서 살펴볼 표현. 정답 전체를 뜻하지 않습니다.`}
-        className="cursor-help rounded-[2px] border-b-2 border-[#D9A400] bg-[#FFE9A8] px-px outline-none transition-shadow focus:ring-2 focus:ring-[#15202B] focus:ring-offset-1"
+        className="cursor-help bg-transparent p-0 text-inherit underline decoration-[#FAD338] decoration-[3px] underline-offset-[4px] outline-none transition-[text-decoration-thickness] focus-visible:decoration-[4px]"
       >
         {p}
       </mark>

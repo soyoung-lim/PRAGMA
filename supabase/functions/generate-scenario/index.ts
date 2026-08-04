@@ -804,8 +804,8 @@ function buildCoreSystemPrompt(direction: Direction): string {
 출력은 아래 JSON만, 마크다운·설명 없이 그대로 반환합니다.
 
 {
-  "situation_ko": "상황 카드 배경 (한국어 2~3문장: 발신자·수신자·목적·관계 + 아래 [장면 완결성] 5요소)",
-  "relation_ko": "발신자와 수신자의 관계 한 줄 (한국어)",
+  "situation_ko": "학생에게 보여 줄 상황 카드 배경 (한국어 2~3문장: 상대·할 일·접촉 이력·실제 부담)",
+  "relation_ko": "상대의 역할과 나와의 관계를 합친 자연스러운 한 줄 (한국어)",
   "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원문 — 실제 의사소통처럼 이어지는 2~4문장의 담화",
   "preceding_turn": null,
   "brief_note_ko": "편성 화면용 한 줄 요약 (한국어)",
@@ -837,18 +837,17 @@ function buildCoreSystemPrompt(direction: Direction): string {
 - 각 text는 source_text에서 **그대로 복사한 연속된 문자열**이어야 한다. 요약·재작성·
   띄어쓰기 변경·부호 생략 금지. 복사한 문자열이 source_text에 없으면 실패다.
 
-[장면 완결성 — situation_ko가 반드시 분명히 할 5요소] (계약 0-r·107)
+[학생용 장면 정보 — situation_ko가 분명히 할 요소] (계약 0-r·107)
 학습자마다 다른 장면을 상상하면 판단 차이가 언어 감각이 아니라 상상의 차이에서 생긴다.
-매체 이름을 라벨로 붙이지 말고(예: "이메일로", "메신저에서" 같은 분류 표기 금지),
-**자연스러운 서술 안에서** 다음이 드러나게 쓴다.
-  ① 직접 말하는 자리인가, 글로 적어 보내는 것인가
-  ② 상대의 즉시 반응을 기대하는 상황인가
-  ③ 기록으로 남는 요청인가
-  ④ 이미 앞선 대화가 진행 중인가(그렇다면 preceding_turn을 채운다)
-  ⑤ 상대가 혼자 처리할 수 있는 일인가, 내부 보고·승인이 필요한 일인가
-※ 다섯 가지를 항목처럼 나열하지 말고 2~3문장 서술에 자연스럽게 녹인다.
-  예) "평소 연락하던 거래처 담당자와 일정 확인 통화를 하던 중, 다음 결제일을
-      일주일 늦출 수 있는지 직접 묻는다." (①말함 ②즉시반응 ③기록아님 ④진행중 ⑤내부승인필요)
+**자연스러운 서술 안에서** 다음 사실만 드러나게 쓴다.
+  ① 학습자가 누구에게 무엇을 하려는지
+  ② 두 사람이 어느 정도 알고 지낸 사이인지
+  ③ 상대가 실제로 감수할 비용·수고·조정 범위가 무엇인지
+  ④ 앞선 대화가 실제로 진행 중이면 그 사실(preceding_turn도 함께 채운다)
+직접 말하는지 글로 보내는지는 자연스러운 행동 서술로만 드러내고, "기록으로 남기는
+목적", "즉각적인 반응을 요구하지 않는다"처럼 매체 속성을 연구 설명처럼 풀어 쓰지 않는다.
+상대의 권리·선택권·의무나 답안에 포함할 완화·강도·명료성 같은 **평가 기준을 설명하지
+않는다.** 이런 조건은 내부 context_spec·P/D/R·target feature에만 남긴다.
 
 규칙:
 - source_text는 반드시 ${srcL}. 지정된 화행·관계·부담에 맞는 자연스러운 발화.
@@ -868,6 +867,9 @@ function buildCoreSystemPrompt(direction: Direction): string {
 - 장면 시드와 topic_code는 사건·행위자·상호작용 목적을 정하는 필수 소재다. 여러 대안이 있으면
   지정 조건에 맞는 한 갈래만 선택하되, 핵심 관계나 사건을 다른 소재로 교체하지 않는다.
   topic_code에 host_family, hotel, neighbor처럼 구체적 관계·장소 명사가 있으면 그것도 필수다.
+- relation_ko는 별도 '상대'·'관계' 태그로 나누지 않고 한 칩에 표시된다. 상대 B의 역할과
+  학습자와의 관계를 한 줄로 자연스럽게 합치되, "학생과 교수"처럼 두 역할을 병렬로
+  나열하거나 화자 역할·A→B 구조·P/D/R 코드를 넣지 않는다.
 - relation_ko와 상황 속 실제 역할은 지정된 P와 D를 정확히 구현해야 한다.
 - 장면 시드의 인물 관계가 지정된 P·D와 충돌하면, 시드의 소재(상황·사건)는 유지하되
   인물 관계를 P·D에 맞게 재설정한다. 연구 축이 시드보다 우선한다.
@@ -1594,11 +1596,12 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
    서술어를 갖춘 완전문이거나, 해당 관계·매체에서 실제로 쓰지 않을 문어체면 지적하라.
    ※ 유행어를 넣으라는 뜻이 아니다. **그 관계에서 실제로 그렇게 말하는가**만 본다.
 ⑦ internal_inconsistency — 상황 설명·관계·선행 발화·해설·정답 키가 서로 어긋나는가.
-⑧ scene_underspecified — 상황 서술만 읽고 **장면이 하나로 그려지는가**(0-r·107).
-   ①말하는 자리인지 적어 보내는 것인지 ②즉시 반응을 기대하는지 ③기록으로 남는지
-   ④앞선 대화가 있는지 ⑤상대 혼자 처리할 일인지 — 이 중 판단에 영향을 주는 요소가
-   빠져 학습자마다 다른 장면(전화/이메일/대면)을 상상하게 되면 지적하라.
-   ※ 매체 이름 라벨을 요구하는 것이 아니다. 서술만으로 장면이 정해지면 충분하다.
+⑧ scene_underspecified — 학습자에게 보이는 situation_ko만 읽어도 **판단에 필요한 장면이
+   관찰 가능한 사실로 그려지는가**(0-r·107). ①누구에게 무엇을 하려는지 ②관계·접촉 이력
+   ③상대가 실제로 감당할 부담·조정 범위 ④앞선 대화가 있다면 그 사실과 preceding_turn을
+   확인하라. 이 핵심 사실이 빠져 학습자마다 P·D·R을 다르게 추론하게 되면 지적하라.
+   ※ 기록 목적·즉시 반응 여부·권리/선택권/완화 전략 같은 내부 평가 기준을 학생용 장면에
+   설명하라고 요구하지 마라. 매체 이름 라벨도 필수 조건이 아니다.
 ⑨ primary_reason_ambiguity — reason의 accepted_reason_id가 실제로 유일한 **가장 큰 이유**인가.
    다른 선택지도 같은 정도로 방어 가능하거나, primary가 target feature가 아닌 의미·문법 문제라면 fail이다.
 ⑩ context_plan_mismatch — scale4는 소박한 규칙을 깨는 적절한 대비 장면이고,
@@ -1614,8 +1617,9 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
   않은 사람도 "이건 너무 세다"고 알 수 있기 때문이다. "이 정도는 실제로 쓸 수도
   있다"는 이유로 넘기지 마라 — 기준은 *실제 사용 가능성*이 아니라 *화용 지식
   없이 소거 가능한가*이다.
-- ⑧의 임계: situation_ko가 한두 문장뿐이고 ①~⑤ 중 **셋 이상이 불명확**하면
-  scene_underspecified를 반드시 보고하라.
+- ⑧의 임계: 상대 또는 용건이 불명확하거나, 관계·접촉 이력과 실제 부담이 모두 빠져
+  P·D·R 판단이 둘 이상으로 갈릴 때 scene_underspecified를 보고하라. 문장이 짧다는
+  이유만으로 보고하지 마라.
 
 [판정]
 - fail: 학습자가 **틀린 것을 배우게 되는** 결함이 하나라도 있다(①④⑦ 또는 심한 ②).
@@ -1660,6 +1664,9 @@ function buildCoreQualitySystemPrompt(direction: Direction): string {
   그 의미도 기대 조건으로 사용한다.
 - context_spec은 역할·권리·의무의 기대 조건이다. 단어를 그대로 복사했는지가 아니라 실제
   상황과 relation_ko가 그 구조를 구현하는지 판정한다. 결정 권한은 별도 축에서 더 엄격히 본다.
+- situation_ko는 학습자에게 보이는 장면이다. 내부 권리·의무나 정답에 포함할 표현 자원을
+  평가 기준처럼 설명하거나, 기록 목적·즉시 반응 여부를 연구 설명처럼 서술하면 context_spec을
+  fail로 두고 관찰 가능한 상대·용건·접촉 이력·실제 부담만 남기도록 지적한다.
 - referents는 화자 A와 상대 B, 문제 책임자, 소유자, 행위 대상, 요청받은 수행자가
   situation_ko·relation_ko·preceding_turn·source_text 전체에서 같은지를 본다. 대명사·소유
   표현이 뒤집혀 A가 만든 문제를 B에게 해결하라고 하는 식이면 fail이다.
@@ -2104,7 +2111,7 @@ Deno.serve(async (req) => {
           meta: {
             provider: PROVIDER,
             model,
-            prompt_version: sourceRepairApplied || precedingTurnRepairApplied || bilingualSceneRepairApplied ? 'core_v7_bilingual_scene_v1_repair' : 'core_v7_bilingual_scene_v1',
+            prompt_version: sourceRepairApplied || precedingTurnRepairApplied || bilingualSceneRepairApplied ? 'core_v8_learner_scene_v1_repair' : 'core_v8_learner_scene_v1',
             generation_attempt: coreRepairAttempted ? 2 : 1,
             source_repair_applied: sourceRepairApplied,
             preceding_turn_repair_applied: precedingTurnRepairApplied,
