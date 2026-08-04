@@ -194,6 +194,15 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).not.toContain("①~⑤ 중 **셋 이상이 불명확**");
   });
 
+  it("feeds the previous failed mission back for targeted retry editing", () => {
+    const retry = prompt("mission.user.retry");
+
+    expect(retry.text).toContain("[직전 실패 출력 — 진단이 가리킨 실제 문장을 직접 고칠 것]");
+    expect(retry.text).toContain("PROBE_FAILED_CANDIDATE");
+    expect(retry.text).toContain("대역은 바꾸지 않은 채 길이 범위만 겹치게");
+    expect(retry.text).toContain("실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지");
+  });
+
   it("keeps learner context first-person and counterpart-only", () => {
     for (const entry of [prompt("mission.system"), prompt("mission.system.spoken")]) {
       expect(entry.text).toContain("학습자 1인칭의 현재 장면");

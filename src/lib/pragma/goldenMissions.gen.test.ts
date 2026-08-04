@@ -187,6 +187,7 @@ describe.skipIf(!RUN_GOLDEN)("골든 미션 게이트 (요청·거절·감사 ×
         let mission: any;
         let missionCheck: ReturnType<typeof checkMission> | undefined;
         let failureNotes: string | undefined;
+        let previousMission: unknown;
         for (let attempt = 1; attempt <= 3; attempt++) {
           const mRes = await invoke({
             action: "mission",
@@ -210,6 +211,7 @@ describe.skipIf(!RUN_GOLDEN)("골든 미션 게이트 (요청·거절·감사 ×
               ),
               is_response_act: isResponse,
               failure_notes: failureNotes,
+              previous_mission: failureNotes ? previousMission : undefined,
             },
           });
           mission = mRes.mission_content;
@@ -217,6 +219,7 @@ describe.skipIf(!RUN_GOLDEN)("골든 미션 게이트 (요청·거절·감사 ×
           console.log(`\n── MISSION attempt ${attempt}: ${missionCheck.result} ──`);
           console.log(fmtViolations(missionCheck.violations));
           if (missionCheck.result !== "fail") break;
+          previousMission = mission;
           failureNotes = missionCheck.violations
             .filter((x) => x.level === "fail")
             .map((x) => `- ${x.id}: ${x.message}`)

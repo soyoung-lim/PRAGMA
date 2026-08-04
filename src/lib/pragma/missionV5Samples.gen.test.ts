@@ -208,6 +208,7 @@ function createRunner(url: string, key: string) {
       };
 
       let failureNotes: string | undefined;
+      let previousMission: unknown;
       for (let attempt = 1; attempt <= 3; attempt += 1) {
         out.attempts = attempt;
         const mRes = await invoke({
@@ -224,6 +225,7 @@ function createRunner(url: string, key: string) {
             ),
             is_response_act: isResponseAct(act),
             failure_notes: failureNotes,
+            previous_mission: failureNotes ? previousMission : undefined,
           },
         }, `[${out.actKo} mission ${attempt}]`);
         const mission = mRes.mission_content;
@@ -236,6 +238,7 @@ function createRunner(url: string, key: string) {
           message: v.message,
         }));
         if (missionCheck.result !== "fail") break;
+        previousMission = mission;
         failureNotes = missionCheck.violations
           .filter((v) => v.level === "fail")
           .map((v) => `- ${v.id}: ${v.message}`)

@@ -1188,6 +1188,8 @@ interface MissionGenBody {
   error_pattern_hints_ko: string[]
   is_response_act: boolean
   failure_notes?: string
+  /** 직전 실패 출력을 재시도 모델이 직접 편집할 수 있게 전달한다. DB 저장물 아님. */
+  previous_mission?: unknown
 }
 
 function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken = false, direction: Direction = 'ko_zh'): string {
@@ -1442,6 +1444,41 @@ function buildMissionUserPrompt(b: MissionGenBody): string {
       `[직전 시도 실패 — 아래를 반드시 고쳐 재생성]:`,
       b.failure_notes,
     )
+    const previous = b.previous_mission
+    if (previous && typeof previous === 'object' && !Array.isArray(previous)) {
+      const previousRecord = previous as Record<string, unknown>
+      const productionTask = previousRecord.production_task &&
+          typeof previousRecord.production_task === 'object' &&
+          !Array.isArray(previousRecord.production_task)
+        ? previousRecord.production_task as Record<string, unknown>
+        : undefined
+      const retryExcerpt = {
+        mpj_items: Array.isArray(previousRecord.mpj_items)
+          ? previousRecord.mpj_items.slice(0, 4)
+          : [],
+        reference_alternatives: Array.isArray(productionTask?.reference_alternatives)
+          ? productionTask.reference_alternatives
+          : Array.isArray(previousRecord.reference_alternatives)
+            ? previousRecord.reference_alternatives
+            : [],
+        vocabulary_hints: Array.isArray(productionTask?.vocabulary_hints)
+          ? productionTask.vocabulary_hints
+          : Array.isArray(previousRecord.vocabulary_hints)
+            ? previousRecord.vocabulary_hints
+            : [],
+      }
+      parts.push(
+        '',
+        '[직전 실패 출력 — 진단이 가리킨 실제 문장을 직접 고칠 것]:',
+        JSON.stringify(retryExcerpt, null, 2),
+        '',
+        '[재시도 편집 규칙]:',
+        '- 직전 출력에서 실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지하세요.',
+        '- R5 실패라면 직전 multi_judge의 후보 문장과 대역을 직접 보고, 대역은 바꾸지 않은 채 길이 범위만 겹치게 고치세요.',
+        '- 길이 조절을 위해 새 명제·이유·대안·보상·일정을 만들지 마세요. 중립적 연결·군더더기 또는 문장 압축만 사용하세요.',
+        '- 수정 범위가 작아도 응답은 스키마의 전체 JSON을 빠짐없이 다시 출력하세요.',
+      )
+    }
   }
   parts.push('', 'JSON만 반환하세요.')
   return parts.join('\n')
@@ -2240,6 +2277,7 @@ Deno.serve(async (req) => {
           //   부여하는 사례가 요청·거절에서 확인됐다. buildMissionSystemPrompt는 v4·v5 공용이므로
           //   두 버전 문자열을 함께 올린다.
           // _v4/_v7 = R5·R27 재시도에 후보별 대역·길이와 중복 문항을 구조화해 되먹이는 판(2026-08-02).
+          // _v5/_v8 = 직전 실패 문장까지 함께 전달해 재생성이 아니라 직접 편집하게 하는 판(2026-08-04).
           prompt_version: isMiniDiscourse
             ? CURRENT_MISSION_PROMPT_VERSIONS[0]
             : CURRENT_MISSION_PROMPT_VERSIONS[1],
