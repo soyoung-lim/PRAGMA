@@ -139,8 +139,8 @@
 
 - 독립 합성·비요청 필드 보존·focal segment 차단을 포함한 관련 36개 테스트 통과.
 - 전체 Vitest **262 pass / 7 skip**, typecheck, 변경 파일 ESLint, `git diff --check` 통과.
-- production build **1902 modules** 통과. prompt snapshot 17종,
-  `core_surface_hash=8e9b7ec87869…`, 현재 미커밋 상태라 snapshot의 `git_dirty=true`다.
+- production build **1902 modules** 통과. 구현 커밋 `b47c39e` 기준 prompt snapshot 17종,
+  `core_surface_hash=8e9b7ec87869…`, `git_dirty=false`다.
 - migration·Edge·Railway·DB row에는 적용하지 않았고 모델 호출도 실행하지 않았다. 원격 Edge는
   계속 version 47·후보 `_02`다.
 - 다음 검증은 `DEC-20260804-05`의 순서대로 호출 원장 migration → Edge 배포 → 소수 smoke에서

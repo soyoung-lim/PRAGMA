@@ -9,8 +9,8 @@
 
 - 작업공간: `.worktrees/mission-experience-2026-08-02`
 - branch: `codex/mission-experience-2026-08-02`
-- 기준 HEAD: `08405ba docs: wrap up August 4 work`, 원격보다 2커밋 앞선 상태에서 작업을
-  재개했다. 현재 변경은 **미커밋**이며 working tree는 dirty다.
+- 구현 커밋: `b47c39e fix(core): preserve validated repair fields`. 이 기록·스냅샷 커밋까지
+  마친 뒤 최종 HEAD는 `git log -1`로 확인한다.
 - 차단된 `_02` 코어 카나리의 R16/R29 안정성 후속을 로컬 구현했다. 복합 repair는 검증된
   source_text·preceding_turn·situation_ko만 독립 합성하고, 길이는 허용 구간 중앙값을
   목표로 한다. R16/R29 기준, 모델, repair 1회 제한은 바꾸지 않았다.
@@ -18,8 +18,8 @@
   `core_v8_learner_scene_v1_repair_v2`다. 카나리 하네스는 다음 실행부터 Edge `coreMeta`를
   결과 JSON에 보존한다.
 - 검증: 관련 36 pass, 전체 **262 pass / 7 skip**, typecheck, 변경 파일 ESLint,
-  `git diff --check`, production build **1902 modules**. prompt snapshot 17종,
-  `core_surface_hash=8e9b7ec87869…`, 미커밋 상태라 `git_dirty=true`다.
+  `git diff --check`, production build **1902 modules**. 구현 커밋 `b47c39e` 기준 prompt
+  snapshot 17종, `core_surface_hash=8e9b7ec87869…`, `git_dirty=false`다.
 
 ### 원격 상태와 다음 게이트
 
@@ -35,7 +35,7 @@
 
 - dev-log: `docs/dev-log/2026-08-04-content-refresh-candidate.md`
 - research trail: `DEC-20260804-06`, `ITER-20260804-06`, `EVD-20260804-06`
-- 관련 커밋: 확인 필요(현재 미커밋)
+- 관련 구현 커밋: `b47c39e`
 
 > **과거 기록: 2026-08-04 밤 WRAP UP.** 현재 상태는 위 식후 재개 WRAP UP을 따른다.
 
