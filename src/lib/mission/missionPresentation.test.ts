@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyColdOpen,
   mpjPresentationChannel,
+  responseHasSubstantiveRevision,
   responseWasRevised,
   sceneHeadline,
   shouldShowCorrectionNotesLink,
@@ -92,6 +93,16 @@ describe("responseWasRevised", () => {
     expect(responseWasRevised("처음 답", "처음 답")).toBe(false);
     expect(responseWasRevised("처음 답", "처음 답 ")).toBe(true);
     expect(responseWasRevised("처음 답", "고친 답")).toBe(true);
+  });
+});
+
+describe("responseHasSubstantiveRevision", () => {
+  it("requires a non-empty response that differs beyond edge whitespace", () => {
+    expect(responseHasSubstantiveRevision("처음 답", "")).toBe(false);
+    expect(responseHasSubstantiveRevision("처음 답", "처음 답")).toBe(false);
+    expect(responseHasSubstantiveRevision("처음 답", "  처음 답  ")).toBe(false);
+    expect(responseHasSubstantiveRevision("처음 답", "고친 답")).toBe(true);
+    expect(responseHasSubstantiveRevision("처음답", "처음 답")).toBe(true);
   });
 });
 

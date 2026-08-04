@@ -47,6 +47,7 @@ import { requestTtsAudio } from "@/lib/tts";
 import {
   classifyColdOpen,
   mpjPresentationChannel,
+  responseHasSubstantiveRevision,
   responseWasRevised,
   sceneHeadline,
   shouldShowCorrectionNotesLink,
@@ -75,7 +76,7 @@ const DEMO_REVISION_DRAFT =
 const DEMO_REVISION_FEEDBACK: RuntimeFeedback = {
   schema_version: "feedback_v1",
   rubric_version: "request_mitigation_optionality@1.0",
-  revision_scope: "grammar",
+  revision_scope: "feature",
   verdicts: {
     semantic_fidelity: "preserved",
     grammatical_accuracy: "impeding_errors",
@@ -433,7 +434,7 @@ function specificPraiseLine(fb: RuntimeFeedback, learnerLabel: string): string {
 
 /**
  * feedback-lite 3층 진단 화면.
- * 통과한 층은 구체적으로 칭찬하고, 조절이 필요한 층만 어디·왜·이렇게 구조로
+ * 통과한 층은 구체적으로 칭찬하고, 수정이 필요한 층만 어디·왜·이렇게 구조로
  * 펼쳐 보여 준다. 필수 피드백을 뒤집기나 접기 뒤에 숨기지 않는다.
  */
 function FeedbackPanel({
@@ -589,7 +590,7 @@ function FeedbackPanel({
                     ].join(" ")}
                   >
                     <StatusIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                    {layer.passed ? "통과" : "조절 필요"}
+                    {layer.passed ? "통과" : "수정 필요"}
                   </span>
                 </div>
                 <div className="flex flex-1 items-center justify-center px-1 pt-1.5 text-center text-[12.5px] font-bold leading-snug text-[#15202B]">
@@ -611,7 +612,7 @@ function FeedbackPanel({
               <div className="flex items-center gap-2 border-b border-[#F1E4B8] bg-[#FFFAE9] px-3.5 py-2.5">
                 <CircleAlert className="h-4 w-4 text-[#9A7411]" aria-hidden="true" />
                 <span className="text-[12px] font-extrabold text-[#6B5518]">
-                  {layer.label} · 조절할 부분
+                  {layer.label} · 수정할 부분
                 </span>
               </div>
               <dl className="divide-y divide-[#ECE8DE] px-3.5">
@@ -859,7 +860,8 @@ function MissionRunner({
     LEARNER_FOCUS_COPY[mission.unit.target_feature] ?? mission.unit.learner_label;
 
   const feedbackClear = fbState === "ready" && fb?.revision_scope === "clear";
-  const finalResponse = revised || draft;
+  const revisionReady = responseHasSubstantiveRevision(draft, revised);
+  const finalResponse = revisionReady ? revised : draft;
   const revisedChanged = responseWasRevised(draft, finalResponse);
   const reviseAction = revisionActionLine(
     fb,
@@ -1034,6 +1036,16 @@ function MissionRunner({
   const goto = (p: Phase) => {
     setPhase(p);
     window.scrollTo(0, 0);
+  };
+
+  const beginRevision = () => {
+    setRevised(feedbackClear ? "" : draft);
+    goto("revise");
+  };
+
+  const finishRevision = () => {
+    if (!revisionReady) return;
+    void finish();
   };
 
   const resetAll = () => {
@@ -1361,13 +1373,13 @@ function MissionRunner({
                 <button
                   type="button"
                   className="w-full rounded-lg border border-[#D7DDE5] bg-white px-4 py-2.5 text-[13px] font-semibold text-[#3E4C57] transition-colors hover:bg-[#F7F9FA]"
-                  onClick={() => goto("revise")}
+                  onClick={beginRevision}
                 >
                   다른 표현도 시도해보기
                 </button>
               </div>
             ) : (
-              <Button className="w-full" disabled={fbState === "loading"} onClick={() => goto("revise")}>
+              <Button className="w-full" disabled={fbState === "loading"} onClick={beginRevision}>
                 한 번 다듬어보기 →
               </Button>
             )}
@@ -1406,7 +1418,7 @@ function MissionRunner({
                 id="revised-response"
                 className="mt-2 min-h-0 resize-y rounded-xl border-2 border-[#15202B] bg-white px-4 py-3 text-[15px] font-medium leading-relaxed text-[#15202B] shadow-[4px_4px_0_rgba(21,32,43,0.1)] placeholder:text-[#8A8F94] focus-visible:ring-2 focus-visible:ring-[#FAD338]/55 focus-visible:ring-offset-2"
                 rows={responseRows}
-                value={feedbackClear ? revised : revised || draft}
+                value={revised}
                 onChange={(e) => setRevised(e.target.value)}
                 placeholder={
                   feedbackClear
@@ -1414,11 +1426,16 @@ function MissionRunner({
                     : "위 피드백을 반영해 표현을 고쳐 쓰세요…"
                 }
               />
+              {!revisionReady && (
+                <p className="mt-2 text-[12px] font-medium text-[#755A0B]">
+                  원문과 다른 수정안을 입력해야 완료할 수 있습니다.
+                </p>
+              )}
             </div>
             <Button
               className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]"
-              disabled={feedbackClear && !revised.trim()}
-              onClick={finish}
+              disabled={!revisionReady}
+              onClick={finishRevision}
             >
               {feedbackClear ? "새 표현으로 완료 →" : "수정 완료 →"}
             </Button>
