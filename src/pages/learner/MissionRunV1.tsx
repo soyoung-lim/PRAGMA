@@ -58,6 +58,7 @@ import {
 import { DiffLegend, DiffLine } from "@/components/mission/DiffLine";
 import { diffText } from "@/lib/mission/textDiff";
 import { type RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
+import { CURRENT_CONTENT_RELEASE_ID } from "../../../supabase/functions/_shared/contentRelease";
 import { IS_DEMO } from "@/lib/auth/useProfile";
 import {
   learnerWorkflowSteps,
@@ -110,6 +111,7 @@ const DEMO_REVISION_FEEDBACK: RuntimeFeedback = {
   provenance: {
     model: "demo-fixture",
     prompt_version: "mission_v5_revision_preview",
+    content_release_id: CURRENT_CONTENT_RELEASE_ID,
     generated_at: "2026-07-30T00:00:00.000Z",
   },
 };

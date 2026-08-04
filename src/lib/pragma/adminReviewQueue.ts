@@ -1,3 +1,8 @@
+import {
+  CURRENT_CONTENT_RELEASE_ID,
+  CURRENT_MISSION_PROMPT_VERSIONS,
+} from "../../../supabase/functions/_shared/contentRelease";
+
 export type ReviewVerdict = "pass" | "warning" | "fail" | "missing";
 export type PromptMatch = "current" | "different" | "missing";
 
@@ -5,6 +10,7 @@ export interface ReviewQueueFacts {
   scenario_id: string;
   mission_status: string | null;
   auto_check_result: string | null;
+  core_content: unknown;
   mission_content: unknown;
   generation_run_id: string | null;
   prompt_snapshot_hash: string | null;
@@ -21,6 +27,8 @@ export type RapidReviewBlocker =
   | "prompt_mismatch"
   | "mission_prompt_missing"
   | "mission_prompt_mismatch"
+  | "content_release_missing"
+  | "content_release_mismatch"
   | "feature_missing"
   | "mission_missing";
 
@@ -34,10 +42,7 @@ export type RapidReviewBlocker =
  *
  * 엣지 소스와 어긋나면 `promptSnapshot.test.ts`가 잡는다.
  */
-export const CURRENT_MISSION_PROMPT_VERSIONS = [
-  "mission_v5_mpj4_minidiscourse_v4",
-  "mission_v4_mpj4_dct1_context_v7",
-] as const;
+export { CURRENT_MISSION_PROMPT_VERSIONS };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -69,6 +74,22 @@ export function missionPromptVersionOf(missionContent: unknown): string | null {
   return typeof version === "string" && version.length > 0 ? version : null;
 }
 
+function contentReleaseIdOf(value: unknown, path: "core" | "mission"): string | null {
+  if (!isRecord(value)) return null;
+  const parent = path === "core" ? value.generation : value.provenance;
+  if (!isRecord(parent)) return null;
+  const releaseId = parent.content_release_id;
+  return typeof releaseId === "string" && releaseId.length > 0 ? releaseId : null;
+}
+
+export function coreContentReleaseIdOf(coreContent: unknown): string | null {
+  return contentReleaseIdOf(coreContent, "core");
+}
+
+export function missionContentReleaseIdOf(missionContent: unknown): string | null {
+  return contentReleaseIdOf(missionContent, "mission");
+}
+
 export function rapidReviewBlockers(
   row: ReviewQueueFacts,
   currentPromptHash: string,
@@ -82,6 +103,18 @@ export function rapidReviewBlockers(
     blockers.push("ai_quality_not_pass");
   }
   if (!row.generation_run_id) blockers.push("run_missing");
+
+  const coreReleaseId = coreContentReleaseIdOf(row.core_content);
+  const missionReleaseId = missionContentReleaseIdOf(row.mission_content);
+  if (!coreReleaseId || !missionReleaseId) {
+    blockers.push("content_release_missing");
+  } else if (
+    coreReleaseId !== CURRENT_CONTENT_RELEASE_ID ||
+    missionReleaseId !== CURRENT_CONTENT_RELEASE_ID ||
+    coreReleaseId !== missionReleaseId
+  ) {
+    blockers.push("content_release_mismatch");
+  }
 
   const promptMatch = promptMatchOf(row.prompt_snapshot_hash, currentPromptHash);
   if (promptMatch === "missing") blockers.push("prompt_missing");

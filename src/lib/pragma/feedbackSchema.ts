@@ -111,6 +111,8 @@ export const FeedbackSchema = FeedbackDraftSchema.extend({
   provenance: z.object({
     model: z.string().default(""),
     prompt_version: z.string().default(""),
+    /** 같은 후보 계약으로 생성된 코어·미션·피드백을 묶는 표식. */
+    content_release_id: z.string().default(""),
     generated_at: z.string().default(""),
   }),
 });

@@ -173,6 +173,17 @@ describe("normalizeCore — v3 상위집합 정규화", () => {
     expect(n.ok).toBe(true);
     expect(n.data?.length_policy).toEqual(lengthPolicy);
     expect(coreContentForHash(n.data ?? {})).not.toHaveProperty("length_policy");
+    expect(
+      coreContentForHash({
+        ...(n.data ?? {}),
+        generation: {
+          content_release_id: "candidate",
+          prompt_version: "core_v8",
+          prompt_snapshot_hash: "hash",
+          generated_at: "now",
+        },
+      }),
+    ).not.toHaveProperty("generation");
   });
 });
 
