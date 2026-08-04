@@ -8,20 +8,20 @@
 ### 현재 역할·작업공간
 
 - 사용자 지정 역할: **Codex = 개발자, Claude = 감수자**. 같은 worktree를 동시에 편집하지
-  않는다. 현재 변경은 Claude 감수 전 로컬 diff이므로 Claude는 읽기 전용으로 검토한다.
+  않는다. 현재 변경은 커밋·원격 반영·운영 배포까지 끝났고 Claude 감수 전이므로, Claude는
+  구현 커밋과 정본 기록을 읽기 전용으로 검토한다.
 - 작업공간: `.worktrees/mission-experience-2026-08-02`
 - branch: `codex/mission-experience-2026-08-02`
-- 구현 HEAD: `6e3985e`; 원격에는 앞선 로컬 커밋과 이번 구현을 아직 push하지 않았다.
-  로컬 작업 커밋은 다음과 같다.
+- 원격 브랜치는 이번 배포 증거 기록까지 push한다. 정확한 최종 HEAD는 `git log -1`로 확인한다.
+  이번 작업 커밋은 다음과 같다.
   - `0959ca5` — DEV에서 명시적 `?preview=v5`도 인증 없이 localhost 검토 가능
   - `7b21913` — 수정 필요 완료 게이트와 목표 화용 축 우선순위 구현·테스트
   - `a284774` — 정본·dev-log·research-trail 동기화
   - `9b837aa` — 위 수정 게이트의 감수 인수인계
   - `6e3985e` — 학습자 장면 계약·MPJ/피드백 표현·진행바·강조·통역 콘솔 개선
-- 구현과 정본 계약은 커밋했고, clean prompt snapshot과 연구·인수인계 문서는 후속 동기화
-  커밋으로 묶는다. 정확한 상태는 `git status --short`와 `git log -2`를 기준으로 확인한다.
-- **main 병합·Railway/Supabase Edge 배포·DB 변경은 하지 않았다.** push·commit·merge·deploy는
-  사용자 승인 게이트를 그대로 유지한다.
+  - `b5e4cb1` — clean prompt snapshot과 개발·연구 추적 기록
+- 사용자 승인으로 브랜치 push, Supabase Edge와 Railway production 직접 배포를 완료했다.
+  **main은 병합하지 않았고 DB migration은 변경·적용하지 않았다.**
 
 ### 2026-08-04 변경 요약
 
@@ -49,13 +49,14 @@
       밝은 작업대 톤은 `b07e2a9`(2026-08-02 16:08 KST)에서 들어온 변경이었다.
 - `내가 전할 말:` 삭제는 이번 승인 범위가 아니어서 변경하지 않았다.
 
-### 검증·Claude 감수 요청
+### 검증·배포·Claude 감수 요청
 
-- 현재 미커밋 범위 관련 계약·presentation 테스트 **23 pass**, 전체 Vitest **250 pass / 6 skip**.
+- 이번 구현 범위 관련 계약·presentation 테스트 **23 pass**, 전체 Vitest **250 pass / 6 skip**.
 - typecheck, 변경 파일 ESLint, production build **1901 modules** 통과.
 - 전체 `npm run lint`는 이번 변경 밖 기존 `no-explicit-any` 17건 때문에 실패했다. 위 변경
   파일만 직접 검사하면 오류 0건이다.
-- prompt snapshot 16종의 새 `core_surface_hash=6dc227d791fb…`.
+- prompt snapshot 16종은 구현 커밋 `6e3985e`, `git_dirty=false`, 새
+  `core_surface_hash=6dc227d791fb…`다.
 - localhost `8097`에서 MPJ의 새 패널·초안 문구, MPJ3 일반 텍스트, DCT 한 칩, 일반 담화
   확인 비노출을 확인했다. 기존 `offfocus_warnings`가 빈 데모 피드백으로 조건부 경고의
   비노출만 확인했다.
@@ -63,7 +64,11 @@
   확인했다. 스크롤 뒤 진행바는 52px, 고정 하단 112px, 문서 착지 여백은 124px이었다.
 - MPJ 표지는 투명 배경·흰 글자·3px 노란 밑줄로 확인했다. 통역 콘솔 외곽은 흰색,
   재생·녹음 모듈은 `rgb(16, 25, 34)`이며 높이는 66px·65px, 전체 콘솔은 305px였다.
-- Claude는 현재 working-tree diff를 중심으로 다음을 본다.
+- `generate-scenario` Edge version **45**는 ACTIVE다. Railway deployment
+  `f67d4e1b-69c7-402c-93ad-ce37ef98b6aa`는 SUCCESS·Online이며 운영 홈과 미션 딥링크가
+  HTTP 200이다. 운영 MissionRun chunk의 새 문구와 prompt snapshot chunk의 동일 core hash를
+  확인했다.
+- Claude는 구현 커밋 `6e3985e`와 `EVD-20260804-02`를 중심으로 다음을 본다.
   1. `situation_ko` 규칙이 학습자에게 필요한 맥락까지 과도하게 지우지 않는지
   2. 평가 기준 누출 금지가 번역·통역과 양방향에 중립적으로 적용되는지
   3. `relation_ko` 한 줄·한 칩 결정이 prompt와 UI 양쪽에서 유지되는지
@@ -71,7 +76,7 @@
   5. MPJ3 중립 문항과 `표현 비교`·AI 초안 문구가 다른 MPJ 회귀를 만들지 않는지
   6. 미션 품질검사가 새 장면 계약을 과소지정으로 오판하지 않는지
 - 아직 미확인: 새 core_v8 실제 모델 표본, Claude 감수 결과, 로그인 실계정 DB 저장 smoke,
-  push/PR/main/Railway/Edge.
+  PR·main 병합.
 
 - 정본 기록:
   - `docs/dev-log/2026-08-04-revision-completion-gate.md`

@@ -71,9 +71,23 @@
 
 ## 범위 밖·확인 필요
 
-- 새 core_v8 생성 계약은 로컬 코드·스냅샷까지만 검증했다. 실제 모델 표본 생성과 인간
-  눈검사, Supabase Edge 배포는 수행하지 않았다.
+- 새 core_v8 생성 계약의 실제 모델 표본 생성과 인간 눈검사는 수행하지 않았다.
 - 기존 core_v7 미션은 문구를 소급 변환하지 않는다.
 - `내가 전할 말:` 문장 삭제는 이번 사용자 승인 범위에 포함되지 않아 변경하지 않았다.
-- Claude 감수, 로그인 실계정 저장 smoke, push·PR·main 병합·Railway/Edge 배포는 이 기록
-  시점에는 수행하지 않았다.
+- Claude 감수, 로그인 실계정 저장 smoke, PR·main 병합은 수행하지 않았다.
+
+## 원격 반영·운영 배포
+
+- 브랜치 `codex/mission-experience-2026-08-02`를 구현 커밋 `6e3985e`와 스냅샷·연구기록
+  커밋 `b5e4cb1`까지 원격에 push했다. `main`은 병합하지 않았다.
+- DB migration 변경은 없어 `supabase db push`를 실행하지 않았다.
+- Supabase project `tlnjxagqwvefeqdagtkq`에 `generate-scenario`만 `--use-api`로 배포했다.
+  원격 목록에서 version **45**, status **ACTIVE**, function id
+  `895a57b2-fe86-4f98-a040-14f1bf1b32f7`을 확인했다.
+- 전용 worktree를 `railway up . --path-as-root --detach`로 올렸다. Railway production deployment
+  `f67d4e1b-69c7-402c-93ad-ce37ef98b6aa`가 **SUCCESS**, 서비스가 **Online**인 것을 확인했다.
+- `https://pragma.up.railway.app/`과
+  `/learner/practice?preview=v5&mode=interpreting&part=2`가 모두 HTTP 200을 반환했다.
+  운영 `MissionRunV1-dVwG-gpU.js`에는 새 MPJ 문구 3종이, 운영
+  `promptSnapshot.generated-ZpgQvPV1.js`에는 core hash
+  `6dc227d791fbcdb5f105a24b2ea8d611cc1bd2b5e354c46d6c84fcf344432ac9`가 포함됐다.
