@@ -1,7 +1,43 @@
 # PRAGMA ACTIVE HANDOFF
 
-> **최종 갱신: 2026-08-04 KST. 아래 「2026-08-04 밤 WRAP UP」이 현재 정본이다.**
+> **최종 갱신: 2026-08-04 KST. 아래 「2026-08-04 식후 재개 WRAP UP」이 현재 정본이다.**
 > 그 아래 이전 기록은 결정 이력으로만 읽고, 작업공간·HEAD·다음 작업 지시로 사용하지 않는다.
+
+## 2026-08-04 식후 재개 WRAP UP
+
+### 현재 Git·구현 상태
+
+- 작업공간: `.worktrees/mission-experience-2026-08-02`
+- branch: `codex/mission-experience-2026-08-02`
+- 기준 HEAD: `08405ba docs: wrap up August 4 work`, 원격보다 2커밋 앞선 상태에서 작업을
+  재개했다. 현재 변경은 **미커밋**이며 working tree는 dirty다.
+- 차단된 `_02` 코어 카나리의 R16/R29 안정성 후속을 로컬 구현했다. 복합 repair는 검증된
+  source_text·preceding_turn·situation_ko만 독립 합성하고, 길이는 허용 구간 중앙값을
+  목표로 한다. R16/R29 기준, 모델, repair 1회 제한은 바꾸지 않았다.
+- 새 로컬 후보는 `pragma_content_candidate_20260804_03`, repair prompt는
+  `core_v8_learner_scene_v1_repair_v2`다. 카나리 하네스는 다음 실행부터 Edge `coreMeta`를
+  결과 JSON에 보존한다.
+- 검증: 관련 36 pass, 전체 **262 pass / 7 skip**, typecheck, 변경 파일 ESLint,
+  `git diff --check`, production build **1902 modules**. prompt snapshot 17종,
+  `core_surface_hash=8e9b7ec87869…`, 미커밋 상태라 `git_dirty=true`다.
+
+### 원격 상태와 다음 게이트
+
+- migration·Supabase Edge·Railway·DB row·모델 호출은 실행하지 않았다. 원격 Edge는 계속
+  version 47·후보 `_02`이며 `_03`의 실모델 효과는 미확인이다.
+- 다음 외부 작업은 `DEC-20260804-05` 순서를 유지한다: 호출 원장 migration 적용 → Edge 배포
+  → 소수 smoke와 원장 조회 → DB 미저장 `_03` 6셀 코어 카나리.
+- 위 원격 단계는 사용자 명시 승인 전에는 실행하지 않는다. `_03` 6셀 non-fail 전에는 미션
+  구조(PDR exactness·reason PDR·R27) 변경을 같은 후보에 섞지 않는다.
+- 전체 refresh, 자동 `reviewed`, main 병합, Railway 배포는 여전히 금지다.
+
+### 기록
+
+- dev-log: `docs/dev-log/2026-08-04-content-refresh-candidate.md`
+- research trail: `DEC-20260804-06`, `ITER-20260804-06`, `EVD-20260804-06`
+- 관련 커밋: 확인 필요(현재 미커밋)
+
+> **과거 기록: 2026-08-04 밤 WRAP UP.** 현재 상태는 위 식후 재개 WRAP UP을 따른다.
 
 ## 2026-08-04 밤 WRAP UP
 

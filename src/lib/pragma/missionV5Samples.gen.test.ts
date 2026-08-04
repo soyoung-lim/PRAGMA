@@ -69,6 +69,7 @@ interface SampleResult {
   cell: BatchCell;
   featureCode: string;
   core?: unknown;
+  coreMeta?: unknown;
   coreResult?: string;
   coreViolations: { id: string; level: string; message: string }[];
   mission?: unknown;
@@ -151,7 +152,7 @@ function createRunner(url: string, key: string) {
 
     try {
       // ── 1. 코어 생성 (coreBatchRun과 같은 본문) ──
-      const core = coreFixture ?? (await invoke({
+      const coreResponse = coreFixture ? undefined : await invoke({
           action: "core",
           core: {
             direction: cell.direction,
@@ -175,7 +176,9 @@ function createRunner(url: string, key: string) {
             is_response_act: isResponseAct(act),
             length_hint_ko: coreLengthHintKo(cell.level, mode),
           },
-        }, `[${out.actKo} core]`)).core_content;
+        }, `[${out.actKo} core]`);
+      const core = coreFixture ?? coreResponse?.core_content;
+      if (coreResponse?.meta) out.coreMeta = coreResponse.meta;
       out.core = core;
       const coreCheck = checkCore(core, ctx);
       out.coreResult = coreCheck.result;
