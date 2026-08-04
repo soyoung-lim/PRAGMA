@@ -1023,3 +1023,46 @@
   `docs/product/PRAGMA_학습자구조_정본_2026-07-29.md`
 - 관련 Iteration / Evidence: `ITER-20260804-02`, `EVD-20260804-02`
 - 관련 커밋: `6e3985e`
+
+## DEC-20260804-03 · 미동결 콘텐츠는 후보 릴리스로 묶고 혼합·즉시 refresh를 막는다
+
+- 날짜: 2026-08-04
+- 상태: 채택·로컬 구현, 원격 카나리·DB inventory·Claude 감수 대기
+- 문제:
+  - 시나리오, MPJ, DCT와 피드백 기준은 계속 개선될 예정이므로 기존 DB 생성물을 모두 다시
+    만들어야 하지만, 어느 생성물이 같은 설계 세대인지 묶는 공통 표식이 없었다.
+  - 코어·미션·피드백의 개별 `prompt_version`과 배치 실행용 `generation_run_id`만으로는 서로
+    다른 세대가 섞이지 않았음을 한 번에 증명할 수 없다.
+  - 기존 행은 강좌 편성, 패키지, 평가 폼, 학습자 로그와 연결될 수 있어 즉시 전량 삭제하면
+    연구 증거와 운영 참조를 훼손할 수 있다.
+- 검토한 대안:
+  - 개별 prompt version만 비교: 세 층을 하나의 검수 단위로 묶지 못해 기각.
+  - `generation_run_id`를 콘텐츠 버전으로 재사용: 같은 설계 후보를 여러 소량 실행으로 만들 수
+    있고 실행 ID는 재시도·배치 추적 책임이므로 기각.
+  - 먼저 전량 삭제한 뒤 최신 프롬프트로 재생성: 콘텐츠가 아직 미동결이고 참조·로그 범위도
+    미확정이라 기각.
+  - DB 전용 release column과 migration을 즉시 추가: 조회 규모상 JSON provenance로 먼저
+    안전 게이트를 만들 수 있고 원격 스키마 변경을 앞당길 이유가 없어 보류.
+- 결정:
+  1. 현재 작업 세대는 최종 lock이 아니라
+     `pragma_content_candidate_20260804_01` 후보로 명시한다. 설계나 생성 기준이 바뀌면 기존 ID를
+     덮어쓰지 않고 새 후보 ID를 만든다.
+  2. 서버가 코어·미션·런타임 피드백에 같은 `content_release_id`를 주입한다. 코어 해시는 이
+     provenance를 제외해 내용 동일성 비교와 생성 계보를 분리한다.
+  3. 코어와 미션의 후보 ID가 현재 값과 모두 일치하지 않으면 rapid-review 안전 후보에서
+     제외한다. 레거시 행을 수작업으로 현 후보처럼 바꾸지 않는다.
+  4. 실제 refresh 전에 읽기 전용 dependency inventory를 실행하고, 본 배치 플래너에서 뽑은
+     양방향·양모드 6셀을 DB 저장 없이 생성해 R검사와 후보 ID를 확인한다.
+  5. Claude P0 감수와 실제 로그인 미션 E2E까지 통과한 뒤에만 삭제·보존 범위와 전체 refresh를
+     별도 승인한다. `learner_mission_logs`, `experiment_locked`, 평가 폼 참조는 자동 삭제하지
+     않는다.
+  6. 새로 생성됐다는 이유로 `generated`를 자동 `reviewed`로 승격하지 않는다.
+- 근거: 후보 계보, 자동 게이트, 인간 감수, 실데이터 E2E를 분리하면 콘텐츠 개선을 계속하면서도
+  구버전 혼합과 성급한 데이터 파괴를 막을 수 있다. 실행 추적과 의미 버전을 분리해야 반복
+  생성·재현·논문 근거가 서로 오염되지 않는다.
+- 관련 파일: `supabase/functions/_shared/contentRelease.ts`,
+  `supabase/functions/generate-scenario/index.ts`, `src/lib/pragma/adminReviewQueue.ts`,
+  `src/lib/pragma/contentCanaryPlan.ts`, `supabase/queries/content_refresh_inventory.sql`,
+  `docs/operations/CONTENT_REFRESH_RUNBOOK.md`
+- 관련 Iteration / Evidence: `ITER-20260804-03`, `EVD-20260804-03`
+- 관련 커밋: `bc18e35`
