@@ -5,6 +5,7 @@ import {
 
 export type ReviewVerdict = "pass" | "warning" | "fail" | "missing";
 export type PromptMatch = "current" | "different" | "missing";
+export type ContentReleaseMatch = "current" | "previous" | "mixed" | "missing";
 
 export interface ReviewQueueFacts {
   scenario_id: string;
@@ -42,7 +43,7 @@ export type RapidReviewBlocker =
  *
  * 엣지 소스와 어긋나면 `promptSnapshot.test.ts`가 잡는다.
  */
-export { CURRENT_MISSION_PROMPT_VERSIONS };
+export { CURRENT_CONTENT_RELEASE_ID, CURRENT_MISSION_PROMPT_VERSIONS };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -88,6 +89,18 @@ export function coreContentReleaseIdOf(coreContent: unknown): string | null {
 
 export function missionContentReleaseIdOf(missionContent: unknown): string | null {
   return contentReleaseIdOf(missionContent, "mission");
+}
+
+export function contentReleaseMatchOf(
+  coreContent: unknown,
+  missionContent: unknown,
+): ContentReleaseMatch {
+  const coreReleaseId = coreContentReleaseIdOf(coreContent);
+  const missionReleaseId = missionContentReleaseIdOf(missionContent);
+
+  if (!coreReleaseId || !missionReleaseId) return "missing";
+  if (coreReleaseId !== missionReleaseId) return "mixed";
+  return coreReleaseId === CURRENT_CONTENT_RELEASE_ID ? "current" : "previous";
 }
 
 export function rapidReviewBlockers(

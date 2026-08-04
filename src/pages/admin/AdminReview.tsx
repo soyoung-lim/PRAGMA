@@ -26,11 +26,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  contentReleaseMatchOf,
+  coreContentReleaseIdOf,
+  CURRENT_CONTENT_RELEASE_ID,
   isRapidReviewCandidate,
+  missionContentReleaseIdOf,
   missionQualityVerdict,
   promptMatchOf,
+  rapidReviewBlockers,
   rapidReviewCandidateIds,
+  type ContentReleaseMatch,
   type PromptMatch,
+  type RapidReviewBlocker,
   type ReviewVerdict,
 } from "@/lib/pragma/adminReviewQueue";
 import {
@@ -53,6 +60,7 @@ type ReviewScope = "mission" | "core";
 type QueueStatus = "pending" | "reviewed" | "all";
 type QualityFilter = ReviewVerdict | "candidate" | "all";
 type PromptFilter = PromptMatch | "all";
+type ReleaseFilter = ContentReleaseMatch | "all";
 
 interface ReviewRow {
   scenario_id: string;
@@ -133,6 +141,40 @@ const PROMPT_LABEL: Record<PromptMatch, string> = {
   missing: "지문 없음",
 };
 
+const RELEASE_LABEL: Record<ContentReleaseMatch, string> = {
+  current: "현재 후보",
+  previous: "이전 후보",
+  mixed: "후보 혼합",
+  missing: "후보 표식 없음",
+};
+
+const RELEASE_CLASS: Record<ContentReleaseMatch, string> = {
+  current: "border-emerald-300 bg-emerald-50 text-emerald-900",
+  previous: "border-slate-300 bg-slate-50 text-slate-700",
+  mixed: "border-amber-300 bg-amber-50 text-amber-900",
+  missing: "border-red-300 bg-red-50 text-red-900",
+};
+
+const BLOCKER_LABEL: Record<RapidReviewBlocker, string> = {
+  not_generated: "미션 생성 대기",
+  core_rule_not_pass: "코어 규칙 미통과",
+  ai_quality_not_pass: "AI 품질 미통과",
+  run_missing: "run ID 없음",
+  prompt_missing: "코어 지문 없음",
+  prompt_mismatch: "코어 지문 다름",
+  mission_prompt_missing: "미션 프롬프트 없음",
+  mission_prompt_mismatch: "미션 프롬프트 다름",
+  content_release_missing: "후보 표식 없음",
+  content_release_mismatch: "현재 후보 아님",
+  feature_missing: "학습 초점 버전 없음",
+  mission_missing: "미션 없음",
+};
+
+const CURRENT_RELEASE_SHORT = CURRENT_CONTENT_RELEASE_ID.replace(
+  "pragma_content_candidate_",
+  "",
+);
+
 function selectLabel(map: Record<string, string>, value: string | null): string {
   return value ? map[value] ?? value : "—";
 }
@@ -184,6 +226,7 @@ const AdminReview = () => {
   const [statusFilter, setStatusFilter] = useState<QueueStatus>("pending");
   const [qualityFilter, setQualityFilter] = useState<QualityFilter>("all");
   const [promptFilter, setPromptFilter] = useState<PromptFilter>("all");
+  const [releaseFilter, setReleaseFilter] = useState<ReleaseFilter>("all");
   const [runFilter, setRunFilter] = useState("");
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -235,13 +278,15 @@ const AdminReview = () => {
 
   const stats = useMemo(() => {
     const missionPending = rows.filter((row) => row.mission_status === "generated");
+    const currentReleasePending = missionPending.filter(
+      (row) => contentReleaseMatchOf(row.core_content, row.mission_content) === "current",
+    ).length;
     return {
       cores: rows.length,
       corePending: rows.filter((row) => row.review_status === "needs_review").length,
       missionPending: missionPending.length,
-      aiPass: missionPending.filter(
-        (row) => missionQualityVerdict(row.mission_content) === "pass",
-      ).length,
+      currentReleasePending,
+      refreshTargetPending: missionPending.length - currentReleasePending,
       reviewed: rows.filter((row) => row.mission_status === "reviewed").length,
     };
   }, [rows]);
@@ -264,6 +309,9 @@ const AdminReview = () => {
         PROMPT_SNAPSHOT.core_surface_hash,
       );
       if (promptFilter !== "all" && promptMatch !== promptFilter) return false;
+
+      const releaseMatch = contentReleaseMatchOf(row.core_content, row.mission_content);
+      if (releaseFilter !== "all" && releaseMatch !== releaseFilter) return false;
 
       if (scope === "mission") {
         const quality = missionQualityVerdict(row.mission_content);
@@ -301,6 +349,7 @@ const AdminReview = () => {
     statusFilter,
     runFilter,
     promptFilter,
+    releaseFilter,
     qualityFilter,
     search,
   ]);
@@ -329,7 +378,25 @@ const AdminReview = () => {
     setSelectedIds(new Set(ids));
     setHumanPassedIds(new Set());
     if (ids.length === 0) {
-      toast.warning("현재 조건에서 안전한 빠른 검수 후보가 없습니다.");
+      const blockerCounts = new Map<RapidReviewBlocker, number>();
+      for (const row of filtered) {
+        for (const blocker of rapidReviewBlockers(
+          row,
+          PROMPT_SNAPSHOT.core_surface_hash,
+        )) {
+          blockerCounts.set(blocker, (blockerCounts.get(blocker) ?? 0) + 1);
+        }
+      }
+      const summary = [...blockerCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 2)
+        .map(([blocker, count]) => `${BLOCKER_LABEL[blocker]} ${count}건`)
+        .join(" · ");
+      toast.warning(
+        summary
+          ? `빠른 검수 후보가 없습니다: ${summary}`
+          : "현재 조건에서 안전한 빠른 검수 후보가 없습니다.",
+      );
     } else {
       toast.success(`${ids.length}건을 선택했습니다. 사람 검수를 시작하십시오.`);
     }
@@ -438,15 +505,26 @@ const AdminReview = () => {
             <b>현재 누적 자료는 테스트·회귀 생성물을 포함합니다.</b> 큐에 보인다는 이유만으로 본
             콘텐츠가 아닙니다. 본배치에서는 반드시 해당 run ID를 하나 선택하고, 사람 미리보기를
             통과한 미션만 승인하십시오. AI 품질점검은 승인자가 아니라 검수 순서를 돕는 보조 장치입니다.
+            빠른 검수는 코어와 미션이 모두 현재 후보 <code>{CURRENT_RELEASE_SHORT}</code>인 경우에만
+            허용됩니다.
           </div>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Stat label="코어 전체" value={stats.cores} note="scenario_core_v1" />
         <Stat label="코어 상태·대기" value={stats.corePending} note="학습자 실행 게이트 아님" />
         <Stat label="미션 검수 대기" value={stats.missionPending} note="mission_status=generated" />
-        <Stat label="AI 통과·대기" value={stats.aiPass} note="교수자 승인 전" />
+        <Stat
+          label="현재 후보·대기"
+          value={stats.currentReleasePending}
+          note={CURRENT_RELEASE_SHORT}
+        />
+        <Stat
+          label="refresh 대상·대기"
+          value={stats.refreshTargetPending}
+          note="이전·혼합·표식 없음"
+        />
         <Stat label="교수자 검토 완료" value={stats.reviewed} note="mission_status=reviewed" />
       </div>
 
@@ -494,7 +572,7 @@ const AdminReview = () => {
           </p>
         )}
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <label className="text-[11.5px] text-muted-foreground">
             상태
             <select
@@ -538,6 +616,20 @@ const AdminReview = () => {
             </select>
           </label>
           <label className="text-[11.5px] text-muted-foreground">
+            콘텐츠 후보 상태
+            <select
+              value={releaseFilter}
+              onChange={(event) => setReleaseFilter(event.target.value as ReleaseFilter)}
+              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-[12.5px] text-foreground"
+            >
+              <option value="all">전체 — 코어·미션 한 쌍 기준</option>
+              <option value="current">현재 후보</option>
+              <option value="previous">이전 후보</option>
+              <option value="mixed">후보 혼합</option>
+              <option value="missing">후보 표식 없음</option>
+            </select>
+          </label>
+          <label className="text-[11.5px] text-muted-foreground">
             코어 prompt 지문
             <select
               value={promptFilter}
@@ -567,7 +659,8 @@ const AdminReview = () => {
             {filtered.length > visibleRows.length && ` · 화면에는 최근 ${visibleRows.length}건 표시`}
           </span>
           <span className="break-all font-mono text-[10.5px] text-muted-foreground">
-            current prompt {PROMPT_SNAPSHOT.core_surface_hash.slice(0, 12)}…
+            current release {CURRENT_RELEASE_SHORT} · prompt{" "}
+            {PROMPT_SNAPSHOT.core_surface_hash.slice(0, 12)}…
           </span>
         </div>
       </div>
@@ -580,8 +673,9 @@ const AdminReview = () => {
             </div>
             <div className="text-[11px] text-muted-foreground">
               자동 선택은 최대 25건이며 <b>현재 화면 필터 안에서</b> 앞에서부터 고른다 — 수준·화행
-              분포를 맞추지 않으므로, 편성에 쓸 조건(예: 중급·한→중)을 먼저 걸어라. 구버전 미션
-              프롬프트로 만든 미션은 자동 선택에서 제외된다. 실제 승인 전 각 미션을 한 번씩 확인해야 한다.
+              분포를 맞추지 않으므로, 편성에 쓸 조건(예: 중급·한→중)을 먼저 걸어라. 현재 후보가
+              아니거나 구버전 미션 프롬프트로 만든 미션은 자동 선택에서 제외된다. 실제 승인 전 각
+              미션을 한 번씩 확인해야 한다.
             </div>
             <div className="text-[11px] text-muted-foreground">
               사람 검수 통과 표시는 화면에만 남는다 — 새로고침하면 초기화되므로 한 묶음을 끝내고 승인하라.
@@ -684,6 +778,17 @@ const AdminReview = () => {
               row.prompt_snapshot_hash,
               PROMPT_SNAPSHOT.core_surface_hash,
             );
+            const releaseMatch = contentReleaseMatchOf(
+              row.core_content,
+              row.mission_content,
+            );
+            const blockers =
+              scope === "mission"
+                ? rapidReviewBlockers(row, PROMPT_SNAPSHOT.core_surface_hash)
+                : [];
+            const blockerSummary = blockers.map((blocker) => BLOCKER_LABEL[blocker]).join(" · ");
+            const coreReleaseId = coreContentReleaseIdOf(row.core_content);
+            const missionReleaseId = missionContentReleaseIdOf(row.mission_content);
             const candidate =
               scope === "mission" &&
               Boolean(runFilter) &&
@@ -716,7 +821,11 @@ const AdminReview = () => {
                       title={
                         candidate
                           ? "빠른 사람 검수 후보로 선택"
-                          : "현재 조건에서는 빠른 검수 후보가 아닙니다"
+                          : !runFilter
+                            ? "먼저 하나의 run ID를 선택하십시오"
+                            : blockerSummary
+                              ? `빠른 검수 제외: ${blockerSummary}`
+                              : "현재 조건에서는 빠른 검수 후보가 아닙니다"
                       }
                       onChange={(event) => {
                         setSelectedIds((previous) => {
@@ -764,6 +873,9 @@ const AdminReview = () => {
                       >
                         {PROMPT_LABEL[promptMatch]}
                       </Badge>
+                      <Badge variant="outline" className={RELEASE_CLASS[releaseMatch]}>
+                        {RELEASE_LABEL[releaseMatch]}
+                      </Badge>
                       {humanPassed && (
                         <Badge className="bg-emerald-700 text-white">
                           <CheckCircle2 className="mr-1 h-3 w-3" />
@@ -783,6 +895,11 @@ const AdminReview = () => {
                         AI 점검 · {qualitySummary(row.mission_content)}
                       </p>
                     )}
+                    {scope === "mission" && blockers.length > 0 && (
+                      <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11.5px] text-amber-950">
+                        빠른 검수 제외 · {blockerSummary}
+                      </p>
+                    )}
 
                     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10.5px] text-muted-foreground">
                       <span>run {row.generation_run_id ?? "—"}</span>
@@ -795,6 +912,11 @@ const AdminReview = () => {
                         {scope === "mission"
                           ? `mission ${row.mission_status ?? "없음"}`
                           : `core ${row.review_status ?? "—"}`}
+                      </span>
+                      <span
+                        title={`core ${coreReleaseId ?? "—"} · mission ${missionReleaseId ?? "—"}`}
+                      >
+                        release core {coreReleaseId ?? "—"} · mission {missionReleaseId ?? "—"}
                       </span>
                     </div>
                   </div>
