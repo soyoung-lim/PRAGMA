@@ -1,7 +1,44 @@
 # PRAGMA ACTIVE HANDOFF
 
-> **최종 갱신: 2026-08-04 KST. 아래 「2026-08-04 카나리 후 최신 인수인계」가 현재 정본이다.**
+> **최종 갱신: 2026-08-04 KST. 아래 「2026-08-04 밤 WRAP UP」이 현재 정본이다.**
 > 그 아래 이전 기록은 결정 이력으로만 읽고, 작업공간·HEAD·다음 작업 지시로 사용하지 않는다.
+
+## 2026-08-04 밤 WRAP UP
+
+### 현재 Git·배포 상태
+
+- 작업공간: `.worktrees/mission-experience-2026-08-02`
+- branch: `codex/mission-experience-2026-08-02`
+- 로컬 HEAD: `81776ca fix: stabilize learner mission header`
+- 원격 HEAD: `5b0bd4d docs: record LLM invocation control decision`
+- 본 WRAP UP 기록 전 working tree는 clean이고 로컬이 원격보다 **1커밋 앞섰다**.
+  `81776ca`는 push하지 않았으며, 이 인수인계 커밋 뒤에는 원격보다 2커밋 앞서게 된다.
+- `81776ca`에는 `MissionRunV1.tsx`의 헤더 진동·콜드 오픈 표시/DEV 검사 보완과 관련
+  dev-log 2개만 있다. 검증은 typecheck, 전체 Vitest 259 pass/7 skip, 변경 파일 ESLint,
+  localhost 진동 재현 측정까지 완료했다.
+- `91e2a33`의 연구 LLM 호출 통제 3종은 원격 브랜치에는 있으나, 해당 migration·Supabase
+  Edge·Railway에는 적용하지 않았다. DB 행도 변경하지 않았다.
+- **오늘 UI 단독 Railway 배포는 하지 않았다.** 현재 운영 배포의 정확한 Git 기준점과
+  `81776ca`의 선행 UI 의존성을 분리 검증해야 했고, 사용자가 검사까지 필요한 선배포는
+  중단하기로 결정했다. main 병합·배포 브랜치 생성·Railway 배포를 모두 수행하지 않았다.
+
+### 다음 세션에서 바로 지킬 것
+
+1. UI 결함 2건은 코드상 수정·검증됐지만 **운영에는 아직 반영되지 않았다**.
+2. 사용자가 다시 명시적으로 요청하기 전에는 UI 단독 배포 분리 작업을 재개하지 않는다.
+3. 추후 배포한다면 먼저 Railway의 실제 배포 기준 커밋을 확인하고, 그 기준에서
+   `81776ca`의 UI 변경만 분리한 조합을 typecheck·테스트·production build로 검증한다.
+4. `91e2a33`은 별도 순서인 migration → Edge → 소수 smoke → 원장 조회 승인 게이트를
+   유지한다. UI 배포와 묶지 않는다.
+5. `scene_title_ko`는 `hook_ko`와 동일한 미구현 후보를 통일한 문서상 명칭일 뿐이다.
+   스키마·생성계약·프롬프트에는 아직 구현하지 않았고 별도 승인 전에는 착수하지 않는다.
+
+### 기록
+
+- UI 검수 dev-log: `docs/dev-log/2026-08-04-learner-header-and-cold-open-review.md`
+- LLM 통제 dev-log: `docs/dev-log/2026-08-04-llm-invocation-controls.md`
+- 이번 WRAP UP에서는 새 설계나 연구 구성개념을 변경하지 않았으므로 research-trail은
+  추가 갱신하지 않는다.
 
 ## 2026-08-04 카나리 후 최신 인수인계
 
