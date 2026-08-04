@@ -62,6 +62,9 @@ describe("core source discourse boundary", () => {
     expect(prompt).toContain("유효 글자 수를 반드시 30~45자");
     expect(prompt).toContain("유효 글자 37자를 목표");
     expect(prompt).toContain("현재보다 약 25자 늘리세요");
+    expect(prompt).toContain("정확히 3문장");
+    expect(prompt).toContain("약 10~15자");
+    expect(prompt).toContain("각 문장의 유효 글자 수를 따로 확인");
     expect(prompt).toContain("반환 직전에 source_text의 유효 글자 수를 다시 세어");
     expect(prompt).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(prompt).toContain("focal_segments");
