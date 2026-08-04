@@ -1186,4 +1186,4 @@
   `supabase/functions/_shared/contentRelease.ts`,
   `src/lib/pragma/missionV5Samples.gen.test.ts`
 - 관련 Iteration / Evidence: `ITER-20260804-06`, `EVD-20260804-06`
-- 관련 커밋: 확인 필요(현재 미커밋)
+- 관련 커밋: `b47c39e`

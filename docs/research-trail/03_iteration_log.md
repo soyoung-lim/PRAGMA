@@ -997,8 +997,8 @@
     회귀 테스트로 확인했다.
   - 관련 36 pass, 전체 **262 pass / 7 skip**, typecheck, 변경 파일 ESLint,
     `git diff --check`, production build **1902 modules**를 통과했다.
-  - prompt snapshot 17종과 `core_surface_hash=8e9b7ec87869…`를 생성했다. 미커밋 상태이므로
-    snapshot은 `git_dirty=true`다.
+  - 구현 커밋 `b47c39e` 기준 prompt snapshot 17종과 `core_surface_hash=8e9b7ec87869…`를
+    생성했고 `git_dirty=false`를 확인했다.
   - migration·Edge·Railway·DB row·모델 호출은 변경하거나 실행하지 않았다.
 - 예상과 달랐던 점:
   - 실패가 단순히 모델의 R16/R29 지시 불이행만은 아니었다. 서버 채택 정책이 독립 오류를
@@ -1010,4 +1010,4 @@
     재구성할 수 있다.
   - 원격 효과 확인 전에는 `_03`의 코어 안정성 개선을 완료로 판정하지 않는다.
 - 관련 Decision / Evidence: `DEC-20260804-06`, `EVD-20260804-06`
-- 관련 커밋: 확인 필요(현재 미커밋)
+- 관련 커밋: `b47c39e`
