@@ -61,5 +61,48 @@
 ## 확인 필요
 
 - 새 후보 ID는 현재 작업 세대의 이름이며 콘텐츠 최종 lock을 뜻하지 않는다.
-- Edge v45에는 후보 stamp가 없으므로 새 카나리 전에 배포가 필요하다.
 - `experiment_locked`, 평가 폼 참조, 학습자 로그가 존재하면 자동 삭제하지 않는다.
+
+## 승인 후 원격 카나리 결과
+
+### 후보 `_01` · 첫 무저장 실행
+
+- 사용자 승인 뒤 `generate-scenario` Edge version 46을 배포했다. DB 저장 요청 없이 본 배치
+  플래너의 양방향·양모드 6셀을 호출했고, 여섯 코어는 모두 규칙을 통과하며
+  `pragma_content_candidate_20260804_01`을 반환했다.
+- 미션은 4셀이 통과했지만 불만 한→중 통역과 감사 중→한 통역이 세 번의 시도 뒤에도 R5
+  완전 분리 hard fail로 끝났다. 두 셀 모두 non-within 후보가 within 후보보다 전부 짧았다.
+- 재시도 프롬프트를 추적한 결과 규칙 코드·대역·길이만 전달하고 실제로 실패한 후보 문장은
+  전달하지 않았다. 모델은 실패 문장을 직접 고치지 않고 미션 전체를 다시 생성했다.
+- 산출물: `.tmp/content-canary/pragma_content_candidate_20260804_01.json`.
+
+### 후보 `_02` · 실패 산출 직접 수정과 비교 방식 분리
+
+- 미션 재시도에 직전 `mpj_items`, `reference_alternatives`, `vocabulary_hints`의 정제된 발췌를
+  전달하고, 정상 부분은 보존하면서 실패 문장을 직접 고치도록 했다. 생성계약이 바뀌었으므로
+  기존 후보를 덮어쓰지 않고 `pragma_content_candidate_20260804_02`로 승격했다.
+- mission prompt version은 v5 `mission_v5_mpj4_minidiscourse_v5`, v4
+  `mission_v4_mpj4_dct1_context_v8`이다. Edge version 47이 ACTIVE다.
+- 새 코어까지 다시 뽑은 `_02` 카나리는 코어 1/6만 통과했다. R16의 장면 언어 혼입과 R29의
+  길이 범위 이탈이 주된 원인이었다. 이는 미션 재시도 변경의 효과와 코어 생성 확률 변동을
+  한 실행에서 섞어 비교한 카나리 설계 문제도 드러냈다.
+- 따라서 `_01`의 동일한 여섯 코어를 고정해 미션만 `_02`로 다시 생성하는 replay 모드를
+  추가했다. 원래 R5 hard fail이던 불만 셀은 2차 시도에 통과했고, 감사 셀은 3차 시도에
+  warning으로 개선되어 직전 실패 산출을 직접 고치는 재시도의 효과는 확인됐다.
+- 그러나 고정 코어 replay 전체는 3/6 mission fail이었다. 남은 hard fail은 PDR anchor와의
+  정확한 1축 차이 위반, reason PDR 불일치, R27 상황문 중복, 일부 R5 길이 분리였다.
+- 새 코어 산출물: `.tmp/content-canary/pragma_content_candidate_20260804_02.json`.
+- 고정 코어 산출물:
+  `.tmp/content-canary/pragma_content_candidate_20260804_02.mission-replay.json`.
+
+### 검증·운영 판정
+
+- 전체 Vitest **257 pass / 7 skip**, typecheck, production build **1902 modules** 통과.
+- 관련 변경 파일 ESLint는 통과했다. `goldenMissions.gen.test.ts`만 기존
+  `no-explicit-any` 4건이 남아 전체 변경 목록 lint에는 포함하지 못했다.
+- prompt snapshot은 17종이며 `git_dirty=false`, core surface hash는
+  `6dc227d791fb…`로 유지됐다.
+- 관련 커밋: `8b30d3d`, `dee7279`, `426caf7`.
+- DB row 생성·수정·삭제, migration, live inventory, Railway 배포는 실행하지 않았다.
+- 후보 `_02`는 **차단**한다. 전체 refresh는 시작하지 않는다. 다음 반복은 (1) R16/R29 코어
+  생성 안정성, (2) PDR 정확성·R27 고유성 등 미션 구조 준수를 별도 게이트로 다룬다.
