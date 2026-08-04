@@ -5,6 +5,7 @@ import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
 import { normalizeMission } from "@/lib/pragma/missionSchema";
 import { POLICY_VERSION } from "@/lib/research/versions";
+import { CURRENT_CONTENT_RELEASE_ID } from "../../../supabase/functions/_shared/contentRelease";
 
 function sampleMissionV2() {
   const normalized = normalizeMission(SAMPLE_MISSION_V1);
@@ -34,6 +35,7 @@ const feedback: RuntimeFeedback = {
   provenance: {
     model: "test-model",
     prompt_version: "feedback_v1",
+    content_release_id: CURRENT_CONTENT_RELEASE_ID,
     generated_at: "2026-07-27T01:03:00.000Z",
   },
 };

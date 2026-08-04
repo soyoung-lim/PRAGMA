@@ -27,6 +27,12 @@ import {
   type OpenAIResponseFormat,
   type OpenAIUserContent,
 } from '../_shared/openaiRequestContract.ts'
+import {
+  CURRENT_CONTENT_RELEASE_ID,
+  CURRENT_CORE_PROMPT_VERSIONS,
+  CURRENT_FEEDBACK_PROMPT_VERSIONS,
+  CURRENT_MISSION_PROMPT_VERSIONS,
+} from '../_shared/contentRelease.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -2084,6 +2090,11 @@ Deno.serve(async (req) => {
             .filter((seg) => seg.text.length > 0 && sourceText.includes(seg.text))
             .slice(0, 3)
         : []
+      const corePromptVersion = sourceRepairApplied || precedingTurnRepairApplied || bilingualSceneRepairApplied
+        ? CURRENT_CORE_PROMPT_VERSIONS[1]
+        : CURRENT_CORE_PROMPT_VERSIONS[0]
+      const promptSnapshotHash = await corePromptSnapshotHash()
+      const generatedAt = new Date().toISOString()
       const core_content = {
         schema_version: 'scenario_core_v3',
         direction: coreDir,
@@ -2104,6 +2115,12 @@ Deno.serve(async (req) => {
           max: lengthRange.max,
           actual: countCoreEffectiveChars(sourceText),
         },
+        generation: {
+          content_release_id: CURRENT_CONTENT_RELEASE_ID,
+          prompt_version: corePromptVersion,
+          prompt_snapshot_hash: promptSnapshotHash,
+          generated_at: generatedAt,
+        },
       }
       return new Response(
         JSON.stringify({
@@ -2111,15 +2128,16 @@ Deno.serve(async (req) => {
           meta: {
             provider: PROVIDER,
             model,
-            prompt_version: sourceRepairApplied || precedingTurnRepairApplied || bilingualSceneRepairApplied ? 'core_v8_learner_scene_v1_repair' : 'core_v8_learner_scene_v1',
+            prompt_version: corePromptVersion,
+            content_release_id: CURRENT_CONTENT_RELEASE_ID,
             generation_attempt: coreRepairAttempted ? 2 : 1,
             source_repair_applied: sourceRepairApplied,
             preceding_turn_repair_applied: precedingTurnRepairApplied,
             bilingual_scene_repair_applied: bilingualSceneRepairApplied,
             length_policy_version: CORE_LENGTH_POLICY_VERSION,
             // 재현성 provenance — 클라이언트는 이 값을 재계산하지 말고 그대로 저장한다.
-            prompt_snapshot_hash: await corePromptSnapshotHash(),
-            generated_at: new Date().toISOString(),
+            prompt_snapshot_hash: promptSnapshotHash,
+            generated_at: generatedAt,
           },
         }),
         { status: 200, headers: jsonHeaders },
@@ -2223,8 +2241,9 @@ Deno.serve(async (req) => {
           //   두 버전 문자열을 함께 올린다.
           // _v4/_v7 = R5·R27 재시도에 후보별 대역·길이와 중복 문항을 구조화해 되먹이는 판(2026-08-02).
           prompt_version: isMiniDiscourse
-            ? 'mission_v5_mpj4_minidiscourse_v4'
-            : 'mission_v4_mpj4_dct1_context_v7',
+            ? CURRENT_MISSION_PROMPT_VERSIONS[0]
+            : CURRENT_MISSION_PROMPT_VERSIONS[1],
+          content_release_id: CURRENT_CONTENT_RELEASE_ID,
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
@@ -2232,8 +2251,8 @@ Deno.serve(async (req) => {
       }
       return new Response(
         JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: isMiniDiscourse
-            ? 'mission_v5_mpj4_minidiscourse_v4'
-            : 'mission_v4_mpj4_dct1_context_v7', generated_at: genAt } }),
+            ? CURRENT_MISSION_PROMPT_VERSIONS[0]
+            : CURRENT_MISSION_PROMPT_VERSIONS[1], content_release_id: CURRENT_CONTENT_RELEASE_ID, generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }
@@ -2260,8 +2279,8 @@ Deno.serve(async (req) => {
             .slice(0, 3)
         : []
       const feedbackPromptVersion = feedbackFocal.length
-        ? 'feedback_v1_minidiscourse_v3'
-        : 'feedback_v1_feature_general_v2'
+        ? CURRENT_FEEDBACK_PROMPT_VERSIONS[0]
+        : CURRENT_FEEDBACK_PROMPT_VERSIONS[1]
       const sys = buildFeedbackSystemPrompt(dir, isSpoken, feedbackFocal)
       const usr = buildFeedbackUserPrompt(b)
       let model = PRIMARY_MODEL
@@ -2293,9 +2312,9 @@ Deno.serve(async (req) => {
           feedback: {
             ...parsed,
             rubric_version: b.rubric_version ?? '',
-            provenance: { model, prompt_version: feedbackPromptVersion, generated_at: new Date().toISOString() },
+            provenance: { model, prompt_version: feedbackPromptVersion, content_release_id: CURRENT_CONTENT_RELEASE_ID, generated_at: new Date().toISOString() },
           },
-          meta: { provider: PROVIDER, model, prompt_version: feedbackPromptVersion },
+          meta: { provider: PROVIDER, model, prompt_version: feedbackPromptVersion, content_release_id: CURRENT_CONTENT_RELEASE_ID },
         }),
         { status: 200, headers: jsonHeaders },
       )

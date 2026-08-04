@@ -3,8 +3,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { CURRENT_MISSION_PROMPT_VERSIONS } from "@/lib/pragma/adminReviewQueue";
 import { PROMPT_SNAPSHOT } from "@/lib/pragma/promptSnapshot.generated";
+import {
+  CURRENT_CONTENT_RELEASE_ID,
+  CURRENT_CORE_PROMPT_VERSIONS,
+  CURRENT_FEEDBACK_PROMPT_VERSIONS,
+  CURRENT_MISSION_PROMPT_VERSIONS,
+} from "../../../supabase/functions/_shared/contentRelease";
 
 function prompt(key: string) {
   const entry = PROMPT_SNAPSHOT.prompts.find((item) => item.key === key);
@@ -43,6 +48,10 @@ describe("prompt snapshot integrity", () => {
       resolve(process.cwd(), PROMPT_SNAPSHOT.edge_source),
       "utf8",
     );
+    const releaseSource = readFileSync(
+      resolve(process.cwd(), "supabase/functions/_shared/contentRelease.ts"),
+      "utf8",
+    ).replace(/\r\n?/g, "\n");
     const canonicalSource = source.replace(/\r\n?/g, "\n");
     const sourceHash = createHash("sha256").update(canonicalSource).digest("hex");
 
@@ -55,11 +64,21 @@ describe("prompt snapshot integrity", () => {
     expect(canonicalSource).toContain("preceding_turn_repair_applied: precedingTurnRepairApplied");
     expect(canonicalSource).toContain("DIR_LANGS[coreDir].tgt");
 
-    // 안전 후보 판정이 쓰는 미션 프롬프트 버전 목록이 엣지와 어긋나면 구버전 미션이
-    // 자동 선택에 섞이거나 정상 미션이 통째로 막힌다. 양쪽을 여기서 묶어 둔다.
-    for (const version of CURRENT_MISSION_PROMPT_VERSIONS) {
-      expect(canonicalSource).toContain(`'${version}'`);
+    // 생성·안전 후보 판정이 공유하는 릴리스 매니페스트가 Edge 소스와 끊어지면
+    // 서로 다른 세대의 코어·미션·피드백이 한 묶음으로 섞일 수 있다.
+    expect(canonicalSource).toContain("CURRENT_CONTENT_RELEASE_ID");
+    expect(canonicalSource).toContain("CURRENT_CORE_PROMPT_VERSIONS");
+    expect(canonicalSource).toContain("CURRENT_MISSION_PROMPT_VERSIONS");
+    expect(canonicalSource).toContain("CURRENT_FEEDBACK_PROMPT_VERSIONS");
+    expect(releaseSource).toContain(`id: "${CURRENT_CONTENT_RELEASE_ID}"`);
+    for (const version of [
+      ...CURRENT_CORE_PROMPT_VERSIONS,
+      ...CURRENT_MISSION_PROMPT_VERSIONS,
+      ...CURRENT_FEEDBACK_PROMPT_VERSIONS,
+    ]) {
+      expect(releaseSource).toContain(`"${version}"`);
     }
+    expect(canonicalSource).toContain("content_release_id: CURRENT_CONTENT_RELEASE_ID");
   });
 
   it("keeps written and spoken feedback on the same diagnostic rubric", () => {
@@ -123,9 +142,7 @@ describe("prompt snapshot integrity", () => {
     expect(prompt("core.user.source_repair").text).toContain("유효 글자 수를 반드시");
     expect(prompt("core.user.source_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(critic.text).toContain("국소적 두 턴만 본다");
-    expect(
-      readFileSync(resolve(process.cwd(), "supabase/functions/generate-scenario/index.ts"), "utf8"),
-    ).toContain("core_v8_learner_scene_v1");
+    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v8_learner_scene_v1");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {
     const mission = prompt("mission.system");

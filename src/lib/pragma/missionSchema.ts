@@ -151,6 +151,8 @@ export type ProductionTask = z.infer<typeof ProductionTaskSchema>;
 export const MissionProvenanceSchema = z.object({
   model: z.string().min(1),
   prompt_version: z.string().min(1),
+  /** 같은 후보 계약으로 생성된 코어·미션·피드백을 묶는 표식. legacy는 부재 가능. */
+  content_release_id: z.string().min(1).optional(),
   prompt_snapshot_hash: z.string().optional(),
   mission_content_hash: z.string().min(1),
   generated_at: z.string().min(1),

@@ -10,10 +10,12 @@
 //
 // DB 저장 없음(save_generated_* RPC는 is_admin 가드). 실제 OpenAI 호출이라 비용이 든다.
 
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { buildBatchPlan, type BatchCell } from "@/lib/pragma/batchPlan";
+import { buildContentCanaryPlan } from "@/lib/pragma/contentCanaryPlan";
+import { CURRENT_CONTENT_RELEASE_ID } from "../../../supabase/functions/_shared/contentRelease";
 import { TARGET_FEATURES, DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
 import { errorPatternsForAct } from "@/lib/pragma/errorPatterns";
 import { LEVEL_POLICY, featureForGen } from "@/lib/pragma/promoteMission";
@@ -42,6 +44,8 @@ const RECHECK = process.env.RUN_V5_RECHECK === "1";
  *    구인 셀(higher·acquaintance·high)에서 뽑는다.
  */
 const SUPPLEMENT = process.env.RUN_V5_SUPPLEMENT === "1";
+/** refresh 전 두 방향·두 모드 대표 6셀을 생성하는 릴리스 canary. DB 저장 없음. */
+const CANARY = process.env.RUN_CONTENT_CANARY === "1";
 
 const OUT_DIR =
   process.env.V5_SAMPLE_OUT ??
@@ -81,7 +85,7 @@ function createRunner(url: string, key: string) {
 
   // OpenAI 조직 TPM 상한(gpt-4o 30k)에 걸리면 엣지가 502로 되돌린다.
   // 표본 생성은 소량이므로 순차 실행 + 지수 대기로 흡수한다.
-  async function invoke(body: unknown, label = ""): Promise<any> {
+  async function invoke(body: unknown, label = ""): Promise<Record<string, unknown>> {
     let lastErr = "";
     for (let attempt = 1; attempt <= 5; attempt += 1) {
       const res = await fetch(fnUrl, {
@@ -94,7 +98,13 @@ function createRunner(url: string, key: string) {
         body: JSON.stringify(body),
       });
       const text = await res.text();
-      if (res.ok) return JSON.parse(text);
+      if (res.ok) {
+        const parsed: unknown = JSON.parse(text);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error(`edge 응답이 객체가 아닙니다: ${text.slice(0, 300)}`);
+        }
+        return parsed as Record<string, unknown>;
+      }
       lastErr = `edge ${res.status}: ${text.slice(0, 300)}`;
       if (!/rate limit/i.test(text)) throw new Error(lastErr);
       const waitMs = 15_000 * attempt;
@@ -374,6 +384,61 @@ describe.skipIf(!SUPPLEMENT)("v5 보충 표본 — fail 셀 재생성 + 고P 추
             .map((r) => `${r.actKo} 코어 ${r.coreResult ?? "ERR"}/미션 ${r.missionResult ?? "ERR"}`)
             .join(" · "),
       );
+    },
+    1_800_000,
+  );
+});
+
+describe.skipIf(!CANARY)("콘텐츠 후보 refresh canary", () => {
+  it(
+    "본 배치 플래너의 대표 6셀을 생성하고 버전 표식·R규칙 결과를 남긴다",
+    async () => {
+      const { url, key } = readEnv();
+      const runCell = createRunner(url, key);
+      const results: SampleResult[] = [];
+
+      // 순차 실행 — 조직 TPM 상한을 넘기지 않으면서 실패 셀도 끝까지 기록한다.
+      for (const cell of buildContentCanaryPlan()) {
+        results.push(await runCell(cell));
+      }
+
+      const outDir =
+        process.env.CONTENT_CANARY_OUT ?? resolve(process.cwd(), ".tmp", "content-canary");
+      mkdirSync(outDir, { recursive: true });
+      const jsonPath = resolve(outDir, `${CURRENT_CONTENT_RELEASE_ID}.json`);
+      writeFileSync(jsonPath, JSON.stringify(results, null, 2), "utf8");
+
+      const summary = results.map((result) => ({
+        act: result.act,
+        direction: result.cell.direction,
+        mode: result.cell.mode,
+        core: result.coreResult ?? "error",
+        mission: result.missionResult ?? "error",
+        coreRelease:
+          (result.core as { generation?: { content_release_id?: string } } | undefined)
+            ?.generation?.content_release_id ?? null,
+        missionRelease:
+          (result.mission as { provenance?: { content_release_id?: string } } | undefined)
+            ?.provenance?.content_release_id ?? null,
+      }));
+      console.log(`\ncanary JSON: ${jsonPath}`);
+      console.log(JSON.stringify(summary, null, 2));
+
+      for (const result of results) {
+        expect(result.error, `${result.actKo} 생성 오류`).toBeUndefined();
+        expect(result.coreResult, `${result.actKo} 코어 R검사`).not.toBe("fail");
+        expect(result.missionResult, `${result.actKo} 미션 R검사`).not.toBe("fail");
+        expect(
+          (result.core as { generation?: { content_release_id?: string } } | undefined)
+            ?.generation?.content_release_id,
+          `${result.actKo} 코어 후보 ID`,
+        ).toBe(CURRENT_CONTENT_RELEASE_ID);
+        expect(
+          (result.mission as { provenance?: { content_release_id?: string } } | undefined)
+            ?.provenance?.content_release_id,
+          `${result.actKo} 미션 후보 ID`,
+        ).toBe(CURRENT_CONTENT_RELEASE_ID);
+      }
     },
     1_800_000,
   );

@@ -67,6 +67,15 @@ export type Pdr = z.infer<typeof PdrSchema>;
 export const ChannelSchema = z.enum(["email", "messenger", "facetoface", "phone"]);
 export const SourceModalitySchema = z.enum(["written", "spoken"]);
 
+/** 서버가 코어 생성 직전에 주입하는 콘텐츠 후보·프롬프트 provenance. */
+export const CoreGenerationStampSchema = z.object({
+  content_release_id: z.string().min(1),
+  prompt_version: z.string().min(1),
+  prompt_snapshot_hash: z.string().min(1),
+  generated_at: z.string().min(1),
+});
+export type CoreGenerationStamp = z.infer<typeof CoreGenerationStampSchema>;
+
 // ── provenance-lite (계약 0-q·98 / 0-t) ────────────────────────────────
 // 「실제 자료에서 생성」(Authentic Import)으로 만든 코어의 출처를 보존한다.
 // 지금까지는 패널이 수집한 출처·원자료를 applyAuthentic이 **버리고 있었다**.
@@ -134,6 +143,8 @@ export const ScenarioCoreV1Schema = z.object({
   usable_facts: z.array(z.string().min(1)).max(8).optional(),
   /** 실제 자료 유래분만. 모델 응답이 아니라 저장 직전 주입(0-q·98) */
   provenance: CoreProvenanceSchema.optional(),
+  /** AI 생성분의 작업 후보·프롬프트 표식. legacy 코어는 부재 가능. */
+  generation: CoreGenerationStampSchema.optional(),
 });
 export type ScenarioCoreV1 = z.infer<typeof ScenarioCoreV1Schema>;
 
@@ -178,6 +189,8 @@ export const ScenarioCoreV2Schema = z.object({
   usable_facts: z.array(z.string().min(1)).max(8).optional(),
   /** 실제 자료 유래분만. 모델 응답이 아니라 저장 직전 주입(0-q·98) */
   provenance: CoreProvenanceSchema.optional(),
+  /** AI 생성분의 작업 후보·프롬프트 표식. legacy 코어는 부재 가능. */
+  generation: CoreGenerationStampSchema.optional(),
 });
 export type ScenarioCoreV2 = z.infer<typeof ScenarioCoreV2Schema>;
 
@@ -264,6 +277,7 @@ export function normalizeCore(input: unknown): {
       ...(c.context_spec ? { context_spec: c.context_spec } : {}),
       ...(c.usable_facts?.length ? { usable_facts: c.usable_facts } : {}),
       ...(c.provenance ? { provenance: c.provenance } : {}),
+      ...(c.generation ? { generation: c.generation } : {}),
     },
   };
 }
@@ -278,6 +292,11 @@ export function coreDirection(input: unknown): LanguageDirection {
 export function coreContentForHash(
   core: Record<string, unknown>,
 ): Record<string, unknown> {
-  const { provenance: _provenance, length_policy: _lengthPolicy, ...content } = core;
+  const {
+    provenance: _provenance,
+    generation: _generation,
+    length_policy: _lengthPolicy,
+    ...content
+  } = core;
   return content;
 }
