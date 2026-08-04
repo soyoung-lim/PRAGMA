@@ -2198,6 +2198,11 @@ Deno.serve(async (req) => {
       let sourceRepairApplied = false
       let precedingTurnRepairApplied = false
       let bilingualSceneRepairApplied = false
+      let repairResponseStatus: 'not_attempted' | 'call_failed' | 'parse_failed' | 'parsed' =
+        'not_attempted'
+      let sourceRepairCandidate: ReturnType<
+        typeof mergeValidatedCoreRepair
+      >['sourceRepairCandidate'] = null
       if (coreRepairAttempted) {
         const repairUser = buildCoreOutputRepairPrompt({
           originalUserPrompt: usr,
@@ -2218,9 +2223,11 @@ Deno.serve(async (req) => {
             promptSnapshotHash,
           }),
         })
+        repairResponseStatus = repairAttempt.ok ? 'parse_failed' : 'call_failed'
         if (repairAttempt.ok) {
           try {
             const repaired = parseOpenAIContent(repairAttempt.raw) as Record<string, unknown>
+            repairResponseStatus = 'parsed'
             const mergedRepair = mergeValidatedCoreRepair({
               originalOutput: gen,
               repairedOutput: repaired,
@@ -2229,6 +2236,7 @@ Deno.serve(async (req) => {
               precedingTurnIssue: initialPrecedingTurnIssue,
               bilingualSceneIssue: initialBilingualSceneIssue,
             })
+            sourceRepairCandidate = mergedRepair.sourceRepairCandidate
             if (
               mergedRepair.sourceRepairApplied ||
               mergedRepair.precedingTurnRepairApplied ||
@@ -2306,6 +2314,15 @@ Deno.serve(async (req) => {
             source_repair_applied: sourceRepairApplied,
             preceding_turn_repair_applied: precedingTurnRepairApplied,
             bilingual_scene_repair_applied: bilingualSceneRepairApplied,
+            repair_response_status: repairResponseStatus,
+            source_repair_candidate: sourceRepairCandidate
+              ? {
+                  sentence_count: sourceRepairCandidate.sentenceCount,
+                  effective_char_count: sourceRepairCandidate.effectiveCharCount,
+                  source_structure_valid: sourceRepairCandidate.sourceStructureValid,
+                  focal_segments_valid: sourceRepairCandidate.focalSegmentsValid,
+                }
+              : null,
             length_policy_version: CORE_LENGTH_POLICY_VERSION,
             // 재현성 provenance — 클라이언트는 이 값을 재계산하지 말고 그대로 저장한다.
             prompt_snapshot_hash: promptSnapshotHash,

@@ -169,6 +169,14 @@ describe("core source discourse boundary", () => {
     });
 
     expect(result.sourceRepairApplied).toBe(true);
+    expect(result.sourceRepairCandidate).toEqual({
+      sentenceCount: 2,
+      effectiveCharCount: countCoreEffectiveChars(
+        "일정 변경이 필요합니다. 가능한 시간을 알려 주세요.",
+      ),
+      sourceStructureValid: true,
+      focalSegmentsValid: true,
+    });
     expect(result.bilingualSceneRepairApplied).toBe(false);
     expect(result.output.source_text).toBe("일정 변경이 필요합니다. 가능한 시간을 알려 주세요.");
     expect(result.output.situation_ko).toBe(original.situation_ko);
@@ -199,6 +207,10 @@ describe("core source discourse boundary", () => {
     });
 
     expect(result.sourceRepairApplied).toBe(false);
+    expect(result.sourceRepairCandidate).toMatchObject({
+      sourceStructureValid: false,
+      focalSegmentsValid: true,
+    });
     expect(result.bilingualSceneRepairApplied).toBe(true);
     expect(result.output.source_text).toBe("너무 짧다.");
     expect(result.output.situation_ko).toContain("한국어 화자와 중국어 화자");

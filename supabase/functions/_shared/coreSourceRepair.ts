@@ -164,6 +164,12 @@ export interface MergeValidatedCoreRepairResult {
   sourceRepairApplied: boolean
   precedingTurnRepairApplied: boolean
   bilingualSceneRepairApplied: boolean
+  sourceRepairCandidate: {
+    sentenceCount: number
+    effectiveCharCount: number
+    sourceStructureValid: boolean
+    focalSegmentsValid: boolean
+  } | null
 }
 
 function hasValidFocalSegments(sourceText: string, raw: unknown): boolean {
@@ -193,15 +199,24 @@ export function mergeValidatedCoreRepair(
   let sourceRepairApplied = false
   let precedingTurnRepairApplied = false
   let bilingualSceneRepairApplied = false
+  let sourceRepairCandidate: MergeValidatedCoreRepairResult['sourceRepairCandidate'] = null
 
   if (input.sourceIssue) {
     const repairedSourceText = String(
       input.repairedOutput.source_text ?? input.repairedOutput.source_text_ko ?? '',
     )
-    if (
-      !coreSourceIssue(repairedSourceText, input.effectiveCharRange) &&
-      hasValidFocalSegments(repairedSourceText, input.repairedOutput.focal_segments)
-    ) {
+    const repairedSourceIssue = coreSourceIssue(repairedSourceText, input.effectiveCharRange)
+    const focalSegmentsValid = hasValidFocalSegments(
+      repairedSourceText,
+      input.repairedOutput.focal_segments,
+    )
+    sourceRepairCandidate = {
+      sentenceCount: countCoreSourceSentences(repairedSourceText),
+      effectiveCharCount: countCoreEffectiveChars(repairedSourceText),
+      sourceStructureValid: !repairedSourceIssue,
+      focalSegmentsValid,
+    }
+    if (!repairedSourceIssue && focalSegmentsValid) {
       output.source_text = repairedSourceText
       delete output.source_text_ko
       output.focal_segments = input.repairedOutput.focal_segments
@@ -245,6 +260,7 @@ export function mergeValidatedCoreRepair(
     sourceRepairApplied,
     precedingTurnRepairApplied,
     bilingualSceneRepairApplied,
+    sourceRepairCandidate,
   }
 }
 
