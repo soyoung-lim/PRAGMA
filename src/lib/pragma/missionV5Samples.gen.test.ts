@@ -48,8 +48,6 @@ const SUPPLEMENT = process.env.RUN_V5_SUPPLEMENT === "1";
 const CANARY = process.env.RUN_CONTENT_CANARY === "1";
 /** 코어 안정성 게이트만 측정한다. 미션 호출을 섞지 않아 실패 층과 비용을 분리한다. */
 const CANARY_CORE_ONLY = process.env.CONTENT_CANARY_CORE_ONLY === "1";
-/** `act|direction|mode` 한 셀만 재현한다. 전체 결과 파일을 덮어쓰지 않는 진단용이다. */
-const CANARY_CELL_FILTER = process.env.CONTENT_CANARY_CELL_FILTER?.trim();
 /** 이전 카나리의 통과 코어를 고정해 미션 프롬프트 변경만 비교할 때 사용한다. */
 const CANARY_CORE_FIXTURE = process.env.CONTENT_CANARY_CORE_FIXTURE?.trim();
 
@@ -421,18 +419,8 @@ describe.skipIf(!CANARY)("콘텐츠 후보 refresh canary", () => {
         ]),
       );
 
-      const canaryCells = CANARY_CELL_FILTER
-        ? buildContentCanaryPlan().filter(
-            (cell) =>
-              `${cell.speech_act_ui}|${cell.direction}|${cell.mode}` === CANARY_CELL_FILTER,
-          )
-        : buildContentCanaryPlan();
-      if (CANARY_CELL_FILTER && canaryCells.length !== 1) {
-        throw new Error(`카나리 셀 필터가 정확히 1건과 일치하지 않습니다: ${CANARY_CELL_FILTER}`);
-      }
-
       // 순차 실행 — 조직 TPM 상한을 넘기지 않으면서 실패 셀도 끝까지 기록한다.
-      for (const cell of canaryCells) {
+      for (const cell of buildContentCanaryPlan()) {
         const fixtureKey = `${cell.speech_act_ui}|${cell.direction}|${cell.mode}`;
         const coreFixture = CANARY_CORE_FIXTURE ? fixtureByCell.get(fixtureKey) : undefined;
         if (CANARY_CORE_FIXTURE && !coreFixture) {
@@ -444,13 +432,10 @@ describe.skipIf(!CANARY)("콘텐츠 후보 refresh canary", () => {
       const outDir =
         process.env.CONTENT_CANARY_OUT ?? resolve(process.cwd(), ".tmp", "content-canary");
       mkdirSync(outDir, { recursive: true });
-      const filterSuffix = CANARY_CELL_FILTER
-        ? `.${CANARY_CELL_FILTER.replace(/[^a-z0-9_-]+/gi, "-")}`
-        : "";
       const suffix = CANARY_CORE_FIXTURE
         ? ".mission-replay"
         : CANARY_CORE_ONLY
-          ? `.core-only${filterSuffix}`
+          ? ".core-only"
           : "";
       const jsonPath = resolve(outDir, `${CURRENT_CONTENT_RELEASE_ID}${suffix}.json`);
       writeFileSync(jsonPath, JSON.stringify(results, null, 2), "utf8");
