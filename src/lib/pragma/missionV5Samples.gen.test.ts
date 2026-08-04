@@ -46,6 +46,8 @@ const RECHECK = process.env.RUN_V5_RECHECK === "1";
 const SUPPLEMENT = process.env.RUN_V5_SUPPLEMENT === "1";
 /** refresh 전 두 방향·두 모드 대표 6셀을 생성하는 릴리스 canary. DB 저장 없음. */
 const CANARY = process.env.RUN_CONTENT_CANARY === "1";
+/** 코어 안정성 게이트만 측정한다. 미션 호출을 섞지 않아 실패 층과 비용을 분리한다. */
+const CANARY_CORE_ONLY = process.env.CONTENT_CANARY_CORE_ONLY === "1";
 /** 이전 카나리의 통과 코어를 고정해 미션 프롬프트 변경만 비교할 때 사용한다. */
 const CANARY_CORE_FIXTURE = process.env.CONTENT_CANARY_CORE_FIXTURE?.trim();
 
@@ -194,6 +196,7 @@ function createRunner(url: string, key: string) {
         out.error = "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)";
         return out;
       }
+      if (CANARY_CORE_ONLY) return out;
 
       // ── 2. 미션 승격 (promoteMission과 같은 본문·재시도 정책) ──
       const nc = normalizeCore(core ?? {});
@@ -429,7 +432,11 @@ describe.skipIf(!CANARY)("콘텐츠 후보 refresh canary", () => {
       const outDir =
         process.env.CONTENT_CANARY_OUT ?? resolve(process.cwd(), ".tmp", "content-canary");
       mkdirSync(outDir, { recursive: true });
-      const suffix = CANARY_CORE_FIXTURE ? ".mission-replay" : "";
+      const suffix = CANARY_CORE_FIXTURE
+        ? ".mission-replay"
+        : CANARY_CORE_ONLY
+          ? ".core-only"
+          : "";
       const jsonPath = resolve(outDir, `${CURRENT_CONTENT_RELEASE_ID}${suffix}.json`);
       writeFileSync(jsonPath, JSON.stringify(results, null, 2), "utf8");
 
@@ -452,7 +459,9 @@ describe.skipIf(!CANARY)("콘텐츠 후보 refresh canary", () => {
       for (const result of results) {
         expect(result.error, `${result.actKo} 생성 오류`).toBeUndefined();
         expect(result.coreResult, `${result.actKo} 코어 R검사`).not.toBe("fail");
-        expect(result.missionResult, `${result.actKo} 미션 R검사`).not.toBe("fail");
+        if (!CANARY_CORE_ONLY) {
+          expect(result.missionResult, `${result.actKo} 미션 R검사`).not.toBe("fail");
+        }
         if (!CANARY_CORE_FIXTURE) {
           expect(
             (result.core as { generation?: { content_release_id?: string } } | undefined)
@@ -460,11 +469,13 @@ describe.skipIf(!CANARY)("콘텐츠 후보 refresh canary", () => {
             `${result.actKo} 코어 후보 ID`,
           ).toBe(CURRENT_CONTENT_RELEASE_ID);
         }
-        expect(
-          (result.mission as { provenance?: { content_release_id?: string } } | undefined)
-            ?.provenance?.content_release_id,
-          `${result.actKo} 미션 후보 ID`,
-        ).toBe(CURRENT_CONTENT_RELEASE_ID);
+        if (!CANARY_CORE_ONLY) {
+          expect(
+            (result.mission as { provenance?: { content_release_id?: string } } | undefined)
+              ?.provenance?.content_release_id,
+            `${result.actKo} 미션 후보 ID`,
+          ).toBe(CURRENT_CONTENT_RELEASE_ID);
+        }
       }
     },
     1_800_000,

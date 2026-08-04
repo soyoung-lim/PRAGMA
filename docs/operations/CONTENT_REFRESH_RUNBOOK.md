@@ -12,7 +12,8 @@
 1. `supabase/queries/content_refresh_inventory.sql`을 읽기 전용으로 실행한다.
 2. `experiment_locked_rows`, `assessment_refs`, `learner_log_refs`가 1건 이상이면
    물리 삭제를 중단하고 사용자·연구 검토를 받는다.
-3. `RUN_CONTENT_CANARY=1`로 대표 6셀을 DB 저장 없이 생성한다.
+3. `RUN_CONTENT_CANARY=1 CONTENT_CANARY_CORE_ONLY=1`로 대표 6셀의 코어만 DB 저장 없이
+   생성한다. 코어 게이트가 non-fail인 뒤에만 core fixture mission replay를 별도로 실행한다.
 4. 코어·미션의 `content_release_id`가 모두 현재 후보와 일치하고 R검사가 fail이 아닌
    표본만 Claude 눈검사로 넘긴다.
 5. Claude는 전체 재설계를 하지 않고 상황 자연성, MPJ 변별력, DCT 과업 정합,
