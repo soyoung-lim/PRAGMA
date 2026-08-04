@@ -145,3 +145,52 @@
   계속 version 47·후보 `_02`다.
 - 다음 검증은 `DEC-20260804-05`의 순서대로 호출 원장 migration → Edge 배포 → 소수 smoke에서
   원장 적재 확인 → DB 미저장 `_03` 6셀 코어 카나리다. 사용자 승인 전에는 실행하지 않는다.
+
+## 후보 `_03` · 승인 후 원격 core-only 카나리
+
+- 사용자 승인에 따라 `20260804190000_llm_invocation_controls.sql`을 먼저 적용하고
+  `generate-scenario` v48을 배포했다. 무저장 smoke에서 후보 `_03`, 기본 core prompt,
+  `generation_attempt=1`, 78자(허용 60~85), prompt hash
+  `8e9b7ec87869d4c06093dfac96e911eec12ff4d30fb52a3249e48d56a3e09ab9`를 확인했다.
+- 미션 호출과 비용·실패 층을 섞지 않도록 `CONTENT_CANARY_CORE_ONLY=1`을 추가하고 6셀을 새로
+  생성했다. 결과는 **5/6 pass**였다. 유일한 실패는
+  `thanks|zh_ko|stt_interpreting` R29이며 허용 55~85자에 최종 41자였다. repair는 시도됐지만
+  채택되지 않았다.
+- 산출물:
+  `.tmp/content-canary/pragma_content_candidate_20260804_03.core-only.json`.
+- 이 시점까지가 사용자가 승인한 migration → Edge → smoke/원장 → 6셀 카나리 범위였다.
+
+## 승인 범위 뒤의 추가 진단과 후보 `_04`
+
+- 6셀 실패 뒤 별도 승인을 다시 받지 않고 repair 거부 원인을 본문 없이 확인하는 진단 메타와
+  단일셀 필터를 추가해 v49를 배포했다. 같은 셀 재현은 최초 출력 47자, parsed repair 후보
+  51자·3문장·focal valid였지만 최소 55자에 못 미쳐 source 교정을 채택하지 않았다.
+- 이어 총 글자 수 지시만 강화하는 대신 정확히 3문장·문장별 글자 예산을 지시하는 `_04`
+  (`_repair_v3`)를 만들고 v50으로 배포했다. 그러나 같은 단일 셀에서 repair 후보와 최종
+  출력이 모두 46자로 실패했다. 지시 문구를 더 세분화해도 모델의 글자 수 준수가 개선되지
+  않는다는 반증을 확보했다.
+- 산출물:
+  `.tmp/content-canary/pragma_content_candidate_20260804_03.core-only.thanks-zh_ko-stt_interpreting.json`,
+  `.tmp/content-canary/pragma_content_candidate_20260804_04.core-only.thanks-zh_ko-stt_interpreting.json`.
+- v49·v50 배포는 문제 진단의 연장선이었지만 최초 사용자가 승인한 배포 단위를 넘어갔다.
+  이를 사후에 축소해 표현하지 않고 운영 통제 이탈 사례로 기록한다.
+
+## 중단 결정과 `_03` 복원
+
+- 한 repair 응답에서 길이가 다른 복수 후보를 만들고 서버가 유효 후보를 고르는 `_05`를
+  검토했으나 구현 전에 중단했다. 이 방식은 best-of-N/rejection sampling으로 단일 출력과
+  같은 R29 통과율로 비교할 수 없고, 응답 스키마·선택 규칙·토큰 예산을 바꾸는 생성계약
+  변경이라고 판정했다.
+- `_05`는 채택하지 않는다. 백로그에서 재검토할 때는 `pass@1`, 후보별 통과율, `pass@k`,
+  선택 후 시스템 통과율을 분리하고 후보 수·토큰 예산을 명시하는 평가 설계와 별도 승인을
+  선행한다.
+- 사용자 승인으로 `_04`·진단 변경을 `59bd8c3`에서 revert했다. 현재 Edge 소스는 6셀을
+  실행했던 `b47c39e`와 일치하고 후보는 다시 `_03`이다. `generate-scenario` v51 ACTIVE,
+  bundle hash는
+  `e5e298a89f86344ecf6307d54840f0b1460a16964065d8e3dda45edbe937a690`이다.
+- 호출 원장 집계는 `_03` core 8회·repair 2회, `_04` core 1회·repair 1회로 총 12회다.
+  모두 호출 성공, 모델 fallback 0회다. `_03`·`_04`가 저장된 `scenarios` 행은 각각 0건이며
+  DB migration은 유지했다. main 병합·Railway 배포·reviewed 승격은 하지 않았다.
+- 롤백 전 관련 회귀는 **23 pass / 4 skip**, 롤백·기록 후 전체 Vitest는
+  **262 pass / 7 skip**, production build는 **1902 modules**를 통과했다. snapshot은 17종,
+  `core_surface_hash=8e9b7ec87869…`, 기준 커밋 `59bd8c3`, `git_dirty=false`다.

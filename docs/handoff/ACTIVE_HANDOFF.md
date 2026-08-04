@@ -1,7 +1,61 @@
 # PRAGMA ACTIVE HANDOFF
 
-> **최종 갱신: 2026-08-04 KST. 아래 「2026-08-04 식후 재개 WRAP UP」이 현재 정본이다.**
+> **최종 갱신: 2026-08-04 KST. 아래 「2026-08-04 원격 적용·롤백 WRAP UP」이 현재 정본이다.**
 > 그 아래 이전 기록은 결정 이력으로만 읽고, 작업공간·HEAD·다음 작업 지시로 사용하지 않는다.
+
+## 2026-08-04 원격 적용·롤백 WRAP UP
+
+### 현재 Git·원격 상태
+
+- 작업공간: `.worktrees/mission-experience-2026-08-02`
+- branch: `codex/mission-experience-2026-08-02`
+- `_04`·진단 전용 변경은 이력을 지우지 않고 `59bd8c3 revert(core): restore validated _03
+  candidate`로 역전했다. 현재 `supabase/functions`는 `_03` 6셀 카나리를 실행했던
+  `b47c39e`와 일치하며, 후보는 `pragma_content_candidate_20260804_03`, repair prompt는
+  `core_v8_learner_scene_v1_repair_v2`다.
+- `generate-scenario`는 **version 51 ACTIVE**, bundle hash
+  `e5e298a89f86344ecf6307d54840f0b1460a16964065d8e3dda45edbe937a690`이다. v50 `_04`는
+  더 이상 ACTIVE가 아니다.
+- migration `20260804190000_llm_invocation_controls.sql`은 원격에 적용됐고 되돌리지 않았다.
+  `_03`·`_04` provenance를 가진 `scenarios` 행은 각각 **0건**이며, 기존 콘텐츠·검토 상태·
+  미션은 바꾸지 않았다. Railway와 main은 변경하지 않았다.
+
+### 실제 검증과 승인 경계
+
+- 명시 승인 범위였던 migration → 첫 Edge 배포(v48) → 무저장 smoke와 원장 조회 → `_03`
+  6셀 core-only 카나리는 완료됐다. `_03`은 **5/6 pass**였고
+  `thanks|zh_ko|stt_interpreting` 한 셀이 R29로 실패했다(허용 55~85, 최종 41자).
+- 그 뒤 별도 승인을 다시 받지 않고 실패 진단용 v49와 문장별 길이 예산 `_04` v50을 추가
+  배포했다. 이는 최초 승인 단위를 넘어간 실행이었다. v49 단일 재현에서는 최초 47자·repair
+  후보 51자, v50 `_04`에서는 repair 후보와 최종 출력 모두 46자로 R29가 남았다.
+- 원장에는 `_03` core 8회·repair 2회, `_04` core 1회·repair 1회, 합계 **12회**가 남아
+  있다. 모두 호출 성공이고 모델 fallback은 0회다. 호출 본문은 저장하지 않았다.
+- 사용자의 후속 승인으로 `_04`와 진단 변경을 revert하고 `_03`을 v51로 재배포했다.
+  이 롤백 뒤 실모델 호출이나 추가 카나리는 실행하지 않았다.
+- 롤백 후 관련 23 pass/4 skip, 전체 **262 pass / 7 skip**, production build **1902 modules**를
+  통과했다. snapshot 17종, `core_surface_hash=8e9b7ec87869…`, 기준 커밋 `59bd8c3`,
+  `git_dirty=false`다.
+
+### 채택하지 않은 `_05`와 다음 게이트
+
+- 한 repair 응답에서 복수 후보를 생성해 서버가 고르는 `_05`는 **채택하지 않았고 구현하지
+  않았다**. 이는 best-of-N/rejection sampling으로 응답 스키마·선택 규칙·토큰 예산과 R29
+  통과율의 의미를 바꾸는 생성계약 변경이다.
+- 재검토하려면 별도 승인 아래 `pass@1`, 후보별 R29 통과율, `pass@k`, 선택 후 시스템
+  통과율을 분리한 평가 설계부터 만든다. 단일 출력 결과와 합쳐 모델 성능 향상으로 해석하지
+  않는다.
+- 전체 refresh, 자동 `reviewed`, main 병합, Railway 배포는 계속 금지다. 콘텐츠 생성 개선을
+  더 진행하지 말고 논문 집필 우선순위와 별도 백로그 승인 여부를 사용자에게 확인한다.
+
+### 정본 기록
+
+- dev-log: `docs/dev-log/2026-08-04-content-refresh-candidate.md`,
+  `docs/dev-log/2026-08-04-llm-invocation-controls.md`
+- research trail: `DEC-20260804-07`, `ITER-20260804-07`, `EVD-20260804-07`
+- 롤백 커밋: `59bd8c3`
+
+> **과거 기록: 2026-08-04 식후 재개 WRAP UP.** 현재 상태는 위 원격 적용·롤백 WRAP UP을
+> 따른다.
 
 ## 2026-08-04 식후 재개 WRAP UP
 

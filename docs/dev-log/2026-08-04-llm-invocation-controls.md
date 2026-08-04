@@ -47,3 +47,21 @@
   필수다. Edge를 먼저 배포하면 연구 호출 원장을 쓸 테이블이 없어 fail-closed로 중단된다.
 - blocked 후보 `_02`와 기존 generated/reviewed 행을 이번 변경으로 소급 승격하거나 수정하지
   않는다.
+
+## 원격 적용·원장 확인 결과
+
+- 사용자 승인에 따라 migration `20260804190000`을 원격에 적용했다. 이후 migration list에서
+  local·remote가 일치함을 재확인했으며 DB migration은 롤백하지 않았다.
+- migration 뒤 `generate-scenario` v48을 배포하고 DB 미저장 core smoke를 실행했다. 원장에
+  `core_generate`, 요청 모델 `gpt-4.1-mini`, 반환 모델
+  `gpt-4.1-mini-2025-04-14`, HTTP 200, success, fallback false, 3015/230/3245
+  prompt/completion/total tokens, 5277ms, 후보 `_03`과 prompt hash가 적재됨을 확인했다.
+- 후속 6셀·단일셀 진단까지 포함한 최종 집계는 `_03` core 8회·repair 2회, `_04` core
+  1회·repair 1회로 총 12회다. 모두 success이고 모델 fallback은 0회다. 프롬프트·응답
+  본문은 원장에 저장하지 않았다.
+- `_03`·`_04` provenance를 가진 `scenarios` 행은 각각 0건이다. 카나리는 Edge 응답과 원장만
+  남겼고 기존 생성·검토 콘텐츠를 바꾸지 않았다.
+- 콘텐츠 진단 과정에서 v49·v50을 별도 승인 없이 추가 배포한 사실을 확인하고 중단했다.
+  후속 승인으로 `_03` 소스를 v51에 재배포했으며 현재 v51 ACTIVE, bundle hash는
+  `e5e298a89f86344ecf6307d54840f0b1460a16964065d8e3dda45edbe937a690`이다. 이 롤백은
+  원장 migration과 이미 적재된 append-only 호출 행을 변경하지 않았다.
