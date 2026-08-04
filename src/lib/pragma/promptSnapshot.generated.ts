@@ -16,12 +16,12 @@ export type PromptSnapshot = {
   prompts: PromptSnapshotEntry[];
 };
 export const PROMPT_SNAPSHOT: PromptSnapshot = {
-  "generated_at": "2026-08-04T10:42:12.680Z",
-  "git_commit": "917b4a2",
+  "generated_at": "2026-08-04T10:20:04.161Z",
+  "git_commit": "b47c39e",
   "git_dirty": false,
   "edge_source": "supabase/functions/generate-scenario/index.ts",
-  "edge_source_sha256": "b4c9cdbf172113f75c2a50ba5f23bd586e47d39ad10838112a427bae11fdb83d",
-  "core_surface_hash": "3f2ad68303aeca1937d9d8b43f0a644e1981e657ff391ec29f052198d150934f",
+  "edge_source_sha256": "e461aad3b5b12f4869363f5b2b47781cdf4a4abd11a5bbbf1a81e0bfaf6cd04c",
+  "core_surface_hash": "8e9b7ec87869d4c06093dfac96e911eec12ff4d30fb52a3249e48d56a3e09ab9",
   "generation_config": {
     "model": "gpt-4.1-mini",
     "model_fallback": null,
@@ -116,8 +116,8 @@ export const PROMPT_SNAPSHOT: PromptSnapshot = {
       "label": "코어 생성 · 원문 분량 1회 교정",
       "group": "core",
       "note": "R29 글자 수·문장 경계가 어긋났을 때 기존 사실을 보존하며 전체 JSON을 한 번 교정한다.",
-      "sha256": "53d203522ddedf1d1fd20fd367e42f80fbecbd69e6efa4a0863e76369a67cbfe",
-      "text": "PROBE_USER_PROMPT\n\n[직전 출력의 구조 오류 — 한 번만 교정]\n- 직전 source_text 실측: 종결부호 기준 1문장, 유효 글자 999자.\n- 원문 분량은 유효 글자 30~45자입니다.\n- 공백·문장부호를 제외한 유효 글자 수를 반드시 30~45자로 맞추세요.\n- 허용 범위의 경계를 겨냥하지 말고 유효 글자 37자를 목표로 하세요. 현재보다 약 962자 줄이세요.\n- source_text를 정확히 3문장으로 만들고, 각 문장을 공백·문장부호 제외 약 10~15자로 구성하세요.\n- 각 문장의 유효 글자 수를 따로 확인한 뒤 합계가 30~45자인지 다시 확인하세요.\n- 쉼표로 여러 절을 길게 잇는 한 문장으로 만들지 말고, 중국어 종결부호(。！？)로 자연스러운 문장 경계를 명시하세요.\n- source_text를 고친 뒤 focal_segments도 새 source_text에서 그대로 복사한 부분문자열로 다시 맞추세요.\n- 반환 직전에 source_text의 유효 글자 수를 다시 세어 30~45자 안인지 확인하세요.\n- preceding_turn은 직전 출력에서 바꾸지 마세요.\n- situation_ko는 직전 출력에서 바꾸지 마세요.\n- 직전 출력의 인물·관계·상황·사실·화행 목적은 그대로 보존하세요. 새 이유·대안·일정·보상을 추가하지 마세요.\n- 수정된 전체 JSON만 반환하세요.\n\n[직전 출력]\n{\n  \"source_text\": \"PROBE_SOURCE_TEXT\",\n  \"focal_segments\": []\n}"
+      "sha256": "f0a749b1aa01c97c909b220a0e39fe5a46e2362cb45887a71164bac64ee3e71a",
+      "text": "PROBE_USER_PROMPT\n\n[직전 출력의 구조 오류 — 한 번만 교정]\n- 직전 source_text 실측: 종결부호 기준 1문장, 유효 글자 999자.\n- 원문 분량은 유효 글자 30~45자입니다.\n- 공백·문장부호를 제외한 유효 글자 수를 반드시 30~45자로 맞추세요.\n- 허용 범위의 경계를 겨냥하지 말고 유효 글자 37자를 목표로 하세요. 현재보다 약 962자 줄이세요.\n- 종결부호 기준 2~4문장으로 나누세요.\n- 쉼표로 여러 절을 길게 잇는 한 문장으로 만들지 말고, 중국어 종결부호(。！？)로 자연스러운 문장 경계를 명시하세요.\n- source_text를 고친 뒤 focal_segments도 새 source_text에서 그대로 복사한 부분문자열로 다시 맞추세요.\n- 반환 직전에 source_text의 유효 글자 수를 다시 세어 30~45자 안인지 확인하세요.\n- preceding_turn은 직전 출력에서 바꾸지 마세요.\n- situation_ko는 직전 출력에서 바꾸지 마세요.\n- 직전 출력의 인물·관계·상황·사실·화행 목적은 그대로 보존하세요. 새 이유·대안·일정·보상을 추가하지 마세요.\n- 수정된 전체 JSON만 반환하세요.\n\n[직전 출력]\n{\n  \"source_text\": \"PROBE_SOURCE_TEXT\",\n  \"focal_segments\": []\n}"
     },
     {
       "key": "core.user.preceding_turn_repair",

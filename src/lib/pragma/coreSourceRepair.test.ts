@@ -62,9 +62,6 @@ describe("core source discourse boundary", () => {
     expect(prompt).toContain("유효 글자 수를 반드시 30~45자");
     expect(prompt).toContain("유효 글자 37자를 목표");
     expect(prompt).toContain("현재보다 약 25자 늘리세요");
-    expect(prompt).toContain("정확히 3문장");
-    expect(prompt).toContain("약 10~15자");
-    expect(prompt).toContain("각 문장의 유효 글자 수를 따로 확인");
     expect(prompt).toContain("반환 직전에 source_text의 유효 글자 수를 다시 세어");
     expect(prompt).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(prompt).toContain("focal_segments");
@@ -172,14 +169,6 @@ describe("core source discourse boundary", () => {
     });
 
     expect(result.sourceRepairApplied).toBe(true);
-    expect(result.sourceRepairCandidate).toEqual({
-      sentenceCount: 2,
-      effectiveCharCount: countCoreEffectiveChars(
-        "일정 변경이 필요합니다. 가능한 시간을 알려 주세요.",
-      ),
-      sourceStructureValid: true,
-      focalSegmentsValid: true,
-    });
     expect(result.bilingualSceneRepairApplied).toBe(false);
     expect(result.output.source_text).toBe("일정 변경이 필요합니다. 가능한 시간을 알려 주세요.");
     expect(result.output.situation_ko).toBe(original.situation_ko);
@@ -210,10 +199,6 @@ describe("core source discourse boundary", () => {
     });
 
     expect(result.sourceRepairApplied).toBe(false);
-    expect(result.sourceRepairCandidate).toMatchObject({
-      sourceStructureValid: false,
-      focalSegmentsValid: true,
-    });
     expect(result.bilingualSceneRepairApplied).toBe(true);
     expect(result.output.source_text).toBe("너무 짧다.");
     expect(result.output.situation_ko).toContain("한국어 화자와 중국어 화자");
