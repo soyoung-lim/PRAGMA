@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  contentReleaseMatchOf,
+  coreContentReleaseIdOf,
+  CURRENT_CONTENT_RELEASE_ID,
   CURRENT_MISSION_PROMPT_VERSIONS,
   isRapidReviewCandidate,
+  missionContentReleaseIdOf,
   missionPromptVersionOf,
   missionQualityVerdict,
   promptMatchOf,
@@ -9,7 +13,6 @@ import {
   rapidReviewCandidateIds,
   type ReviewQueueFacts,
 } from "@/lib/pragma/adminReviewQueue";
-import { CURRENT_CONTENT_RELEASE_ID } from "../../../supabase/functions/_shared/contentRelease";
 
 const CURRENT_HASH = "current-hash";
 const CURRENT_MISSION_PROMPT = CURRENT_MISSION_PROMPT_VERSIONS[0];
@@ -104,6 +107,27 @@ describe("admin rapid review queue", () => {
       },
     });
     expect(rapidReviewBlockers(mixed, CURRENT_HASH)).toContain("content_release_mismatch");
+  });
+
+  it("classifies current, previous, mixed, and unmarked content release pairs", () => {
+    const current = row();
+    expect(contentReleaseMatchOf(current.core_content, current.mission_content)).toBe("current");
+    expect(coreContentReleaseIdOf(current.core_content)).toBe(CURRENT_CONTENT_RELEASE_ID);
+    expect(missionContentReleaseIdOf(current.mission_content)).toBe(CURRENT_CONTENT_RELEASE_ID);
+
+    expect(
+      contentReleaseMatchOf(
+        { generation: { content_release_id: "older_release" } },
+        { provenance: { content_release_id: "older_release" } },
+      ),
+    ).toBe("previous");
+    expect(
+      contentReleaseMatchOf(
+        { generation: { content_release_id: CURRENT_CONTENT_RELEASE_ID } },
+        { provenance: { content_release_id: "older_release" } },
+      ),
+    ).toBe("mixed");
+    expect(contentReleaseMatchOf({}, current.mission_content)).toBe("missing");
   });
 
   // 코어 지문은 미션 프롬프트 개정을 반영하지 않는다. 구버전 프롬프트로 만든 미션은
