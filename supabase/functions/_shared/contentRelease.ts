@@ -6,15 +6,15 @@
  * 새 학습설계 또는 생성 기준을 시험할 때는 기존 ID를 덮어쓰지 말고 새 ID를 만든다.
  */
 export const CURRENT_CONTENT_RELEASE = {
-  id: "pragma_content_candidate_20260804_01",
+  id: "pragma_content_candidate_20260804_02",
   lifecycle: "candidate",
   corePromptVersions: [
     "core_v8_learner_scene_v1",
     "core_v8_learner_scene_v1_repair",
   ],
   missionPromptVersions: [
-    "mission_v5_mpj4_minidiscourse_v4",
-    "mission_v4_mpj4_dct1_context_v7",
+    "mission_v5_mpj4_minidiscourse_v5",
+    "mission_v4_mpj4_dct1_context_v8",
   ],
   feedbackPromptVersions: [
     "feedback_v1_minidiscourse_v3",

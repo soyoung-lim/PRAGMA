@@ -28,7 +28,7 @@ const EXPOSE = `
 ;globalThis.__S = {
   buildCoreSystemPrompt, buildCoreUserPrompt, corePromptSnapshotHash, CORE_PROBE_BASE,
   buildCoreSourceRepairPrompt, buildCoreOutputRepairPrompt,
-  buildMissionSystemPrompt, buildFeedbackSystemPrompt, buildQualitySystemPrompt,
+  buildMissionSystemPrompt, buildMissionUserPrompt, buildFeedbackSystemPrompt, buildQualitySystemPrompt,
   buildCoreQualitySystemPrompt,
   buildAuthenticSystemPrompt,
   PRIMARY_MODEL, FALLBACK_MODEL, CORE_TEMPERATURE, CORE_RESPONSE_FORMAT,
@@ -152,6 +152,38 @@ const prompts = [
     S.buildMissionSystemPrompt(PROBE_FEATURE, false, false, "ko_zh")),
   entry("mission.system.spoken", "미션 승격 · 지시문 (통역)", "mission",
     "구두 산출 미션용 분기.", S.buildMissionSystemPrompt(PROBE_FEATURE, false, true, "ko_zh")),
+  entry("mission.user.retry", "미션 승격 · 실패 출력 직접 교정 요청서", "mission",
+    "R5·R27 실패 시 직전 실제 문장을 함께 전달해 실패 위치만 직접 고치게 한다.",
+    S.buildMissionUserPrompt({
+      direction: "ko_zh",
+      speech_act_ko: "PROBE_ACT",
+      level_ko: "PROBE_LEVEL",
+      level_policy_ko: "PROBE_LEVEL_POLICY",
+      feature: PROBE_FEATURE,
+      core: {
+        situation_ko: "PROBE_SITUATION",
+        relation_ko: "PROBE_RELATION",
+        source_text_ko: "PROBE_SOURCE_TEXT",
+        preceding_turn_zh: null,
+        pdr: { p: "equal", d: "acquaintance", r: "mid" },
+        source_modality: "spoken",
+      },
+      error_pattern_hints_ko: [],
+      is_response_act: false,
+      failure_notes: "- R5: PROBE_FAILURE_WITH_LENGTHS",
+      previous_mission: {
+        mpj_items: [{
+          type: "multi_judge",
+          candidates: [
+            { text: "PROBE_FAILED_CANDIDATE", accepted_band_codes: ["PROBE_BAND_LOW"] },
+          ],
+        }],
+        production_task: {
+          reference_alternatives: [{ text: "PROBE_REFERENCE" }],
+          vocabulary_hints: [],
+        },
+      },
+    })),
   entry("quality.system", "검증② · AI 품질점검 지시문", "review",
     "생성과 분리된 모델이 미션을 비평한다(계약 0-n·94).",
     S.buildQualitySystemPrompt("ko_zh", "PROBE_ACT")),

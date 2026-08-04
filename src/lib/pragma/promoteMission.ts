@@ -215,6 +215,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
   let rawContent: unknown; // 엣지 원본(저장용 — migration이 버전별 상위집합을 허용)
   let check: ReturnType<typeof checkMission> | undefined;
   let failureNotes: string | undefined;
+  let previousMission: unknown;
   let attempts = 0;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     attempts = attempt;
@@ -232,6 +233,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
           ),
           is_response_act: isResponseAct(core.speech_act),
           failure_notes: failureNotes,
+          previous_mission: failureNotes ? previousMission : undefined,
         },
     });
     if (error) {
@@ -241,6 +243,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     rawContent = (data as { mission_content?: unknown })?.mission_content;
     const parsed = normalizeMission(rawContent); // legacy v1/v2/v3와 현행 v4 모두 허용
     if (!parsed.ok || !parsed.data) {
+      previousMission = rawContent;
       failureNotes = "스키마 파싱 실패";
       continue;
     }
@@ -248,6 +251,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     // R23 계승 검사는 원본 core_content(v1/v2)를 넘긴다 — checkMission이 내부 정규화.
     check = checkMission(rawContent, ctx, core.core_content ?? undefined);
     if (check.result !== "fail") break;
+    previousMission = rawContent;
     failureNotes = check.violations
       .filter((x) => x.level === "fail")
       .map((x) => `- ${x.id}: ${x.message}`)
