@@ -7,6 +7,7 @@ import {
   CORE_STRUCTURED_RESPONSE_FORMAT,
   OPENAI_JSON_OBJECT_RESPONSE_FORMAT,
   OPENAI_MODEL_ROUTES,
+  parseOpenAIInvocationMetadata,
 } from "../../../supabase/functions/_shared/openaiRequestContract";
 
 describe("OpenAI request contract", () => {
@@ -14,16 +15,60 @@ describe("OpenAI request contract", () => {
     expect(OPENAI_MODEL_ROUTES).toEqual({
       default: {
         primary: "gpt-4.1-mini",
-        fallback: "gpt-4o-mini",
+        fallback: null,
       },
       mission: {
         primary: "gpt-4o",
-        fallback: "gpt-4.1-mini",
+        fallback: null,
       },
       critic: {
         primary: "gpt-4.1",
-        fallback: "gpt-4.1-mini",
+        fallback: null,
       },
+      feedback: {
+        primary: "gpt-4.1-mini",
+        fallback: "gpt-4o-mini",
+      },
+    });
+  });
+
+  it("extracts usage without retaining prompt or response content", () => {
+    const metadata = parseOpenAIInvocationMetadata(JSON.stringify({
+      id: "chatcmpl-test",
+      model: "gpt-4.1-2026-01-01",
+      choices: [{ finish_reason: "stop", message: { content: "private output" } }],
+      usage: {
+        prompt_tokens: 120,
+        completion_tokens: 30,
+        total_tokens: 150,
+        prompt_tokens_details: { cached_tokens: 80 },
+        completion_tokens_details: { reasoning_tokens: 12 },
+      },
+    }));
+
+    expect(metadata).toEqual({
+      responseId: "chatcmpl-test",
+      model: "gpt-4.1-2026-01-01",
+      finishReason: "stop",
+      promptTokens: 120,
+      completionTokens: 30,
+      totalTokens: 150,
+      cachedTokens: 80,
+      reasoningTokens: 12,
+    });
+    expect(metadata).not.toHaveProperty("content");
+  });
+
+  it("returns nullable usage fields for non-JSON error bodies", () => {
+    expect(parseOpenAIInvocationMetadata("upstream timeout")).toEqual({
+      responseId: null,
+      model: null,
+      finishReason: null,
+      promptTokens: null,
+      completionTokens: null,
+      totalTokens: null,
+      cachedTokens: null,
+      reasoningTokens: null,
     });
   });
 

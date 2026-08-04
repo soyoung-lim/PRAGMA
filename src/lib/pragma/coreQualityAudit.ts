@@ -68,6 +68,10 @@ async function auditOne(source: CoreCellResult): Promise<CoreQualityPilotResult>
     const { data, error } = await supabase.functions.invoke("generate-scenario", {
       body: {
         action: "core_quality_check",
+        telemetry: {
+          scenario_id: source.scenarioId ?? null,
+          invocation_attempt: 1,
+        },
         core_quality: {
           core_content: source.coreContent,
           direction: cell.direction,

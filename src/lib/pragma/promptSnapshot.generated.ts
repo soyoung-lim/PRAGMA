@@ -11,20 +11,20 @@ export type PromptSnapshotEntry = {
 export type PromptSnapshot = {
   generated_at: string; git_commit: string; git_dirty: boolean;
   edge_source: string; edge_source_sha256: string; core_surface_hash: string;
-  generation_config: { model: string; model_fallback: string; temperature: number; response_format: string };
+  generation_config: { model: string; model_fallback: string | null; temperature: number; response_format: string };
   source_length_policy: { version: string; unit: "effective_chars"; ranges: Record<string, Record<string, { min: number; max: number }>> };
   prompts: PromptSnapshotEntry[];
 };
 export const PROMPT_SNAPSHOT: PromptSnapshot = {
-  "generated_at": "2026-08-04T07:18:58.425Z",
-  "git_commit": "8b30d3d",
-  "git_dirty": false,
+  "generated_at": "2026-08-04T09:00:59.254Z",
+  "git_commit": "605d22b",
+  "git_dirty": true,
   "edge_source": "supabase/functions/generate-scenario/index.ts",
-  "edge_source_sha256": "dfc72895078b0463dc60450a58a7af7717cada7dec8f7ab22b3837d6d77ab8f6",
-  "core_surface_hash": "6dc227d791fbcdb5f105a24b2ea8d611cc1bd2b5e354c46d6c84fcf344432ac9",
+  "edge_source_sha256": "f97ac39cd5d54b62f80a4852506bf62aad732e065b1a674f4297b3b14671d488",
+  "core_surface_hash": "8efd726f49ec5f9523a7d69459ee176a01dca87f21a4ba1d1c5ab1611a232b79",
   "generation_config": {
     "model": "gpt-4.1-mini",
-    "model_fallback": "gpt-4o-mini",
+    "model_fallback": null,
     "temperature": 0.7,
     "response_format": "json_schema:pragma_scenario_core_v2"
   },

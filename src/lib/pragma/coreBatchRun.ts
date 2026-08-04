@@ -151,11 +151,17 @@ export async function runCoreCell(
     const mode = cell.mode;
     const sourceModality = modalityOf(mode);
     const isResponse = RESPONSE_ACTS.has(cell.speech_act_ui);
+    const itemKey = coreGenerationItemKey(cell, index);
 
     // 1. 코어 생성 (엣지함수 action:'core')
     const { data, error } = await supabase.functions.invoke("generate-scenario", {
       body: {
         action: "core",
+        telemetry: {
+          generation_run_id: opts.runId,
+          generation_item_key: itemKey,
+          invocation_attempt: 1,
+        },
         core: {
           direction: cell.direction, // 0-l·89 — 엣지가 방향별 원문·산출 언어 결정(라운드2 배포 후 활성)
           speech_act: cell.speech_act_ui,
@@ -210,7 +216,6 @@ export async function runCoreCell(
     // genre 행 태그(legacy)를 task_mode에서 파생 — RPC가 core_content.channel로 genre를
     // 만들므로(DB 무변경) 저장 직전 mode에서 legacy channel을 주입한다. channel은 축이 아님.
     core.channel = legacyChannelOf(mode);
-    const itemKey = coreGenerationItemKey(cell, index);
     const payload = {
       title: core.brief_note_ko || core.situation_ko?.slice(0, 40),
       speech_act: cell.speech_act_ui,

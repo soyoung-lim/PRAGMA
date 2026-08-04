@@ -70,6 +70,8 @@ export interface PromotableCore {
   topic_code: string | null;
   /** 행 태그(0-l·82) — core_content.direction이 정본, 이건 조회 필터용. 없으면 ko_zh */
   language_direction?: LanguageDirection | null;
+  generation_run_id?: string | null;
+  generation_item_key?: string | null;
   core_content: Record<string, unknown> | null;
 }
 
@@ -81,27 +83,36 @@ export interface PromoteResult {
   violations?: { id: string; level: string; message: string }[];
   attempts?: number;
   savedId?: string;
-  /** 검증②(0-n·94) 결과. 호출 실패 시 undefined — 승격 자체는 막지 않는다. */
+  /** 검증②(0-n·94) 결과. 유효한 결과가 없으면 미션은 저장하지 않는다. */
   quality?: QualityCheck;
   error?: string;
 }
 
 /**
  * 검증② — 규칙검사 통과분을 **생성과 분리된 모델**로 비평(계약 0-n·94, 세칙 0-q·99).
- * 관리자 품질관리 장치이며 학습자에게 노출되지 않는다. 호출이 실패해도 undefined를
- * 돌려 승격을 계속한다 — AI는 QA 보조이고, 실행 게이트는 교수자 눈검사(reviewed)다.
+ * 관리자 품질관리 장치이며 학습자에게 노출되지 않는다. 호출·스키마 검증이 실패하면
+ * 생성 결과를 반환하되 generated 상태로 저장하지 않는다.
  */
 async function runQualityCheck(args: {
   missionContent: unknown;
   feature: TargetFeature;
   direction: LanguageDirection;
   speechAct: SpeechActUI;
-}): Promise<QualityCheck | undefined> {
+  scenarioId: string;
+  generationRunId?: string | null;
+  generationItemKey?: string | null;
+}): Promise<{ ok: true; quality: QualityCheck } | { ok: false; error: string }> {
   const { missionContent, feature, direction, speechAct } = args;
   try {
     const { data, error } = await supabase.functions.invoke("generate-scenario", {
       body: {
         action: "quality_check",
+        telemetry: {
+          scenario_id: args.scenarioId,
+          generation_run_id: args.generationRunId ?? null,
+          generation_item_key: args.generationItemKey ?? null,
+          invocation_attempt: 1,
+        },
         quality: {
           mission_content: missionContent,
           feature: {
@@ -119,24 +130,27 @@ async function runQualityCheck(args: {
       },
     });
     if (error) {
-      console.warn("[quality_check] 호출 실패 — 승격은 계속합니다:", error);
-      return undefined;
+      console.warn("[quality_check] 호출 실패 — 저장하지 않습니다:", error);
+      return { ok: false, error: `품질점검 호출 실패: ${(error as { message?: string }).message ?? String(error)}` };
     }
     const parsed = QualityCheckSchema.safeParse((data as { quality_check?: unknown })?.quality_check);
     if (!parsed.success) {
-      console.warn("[quality_check] 응답 형식 불일치 — 기록하지 않습니다:", parsed.error.message);
-      return undefined;
+      console.warn("[quality_check] 응답 형식 불일치 — 저장하지 않습니다:", parsed.error.message);
+      return { ok: false, error: `품질점검 응답 형식 불일치: ${parsed.error.message}` };
     }
-    return parsed.data;
+    if (!parsed.data.model.trim() || !parsed.data.prompt_version.trim() || !parsed.data.checked_at.trim()) {
+      console.warn("[quality_check] 필수 메타데이터 누락 — 저장하지 않습니다.");
+      return { ok: false, error: "품질점검 응답 형식 불일치: 모델·프롬프트 버전·점검 시각이 필요합니다." };
+    }
+    return { ok: true, quality: parsed.data };
   } catch (e) {
-    console.warn("[quality_check] 예외 — 승격은 계속합니다:", e);
-    return undefined;
+    console.warn("[quality_check] 예외 — 저장하지 않습니다:", e);
+    return { ok: false, error: `품질점검 예외: ${(e as Error).message ?? String(e)}` };
   }
 }
 
-// OpenAI TPM 초과 시 엣지는 fallback 없이 502를 되돌린다(fallback 조건은 400/404뿐).
-// 엣지에서 모델을 바꿔 재시도하면 rate limit에 걸린 미션만 다른 모델로 생성돼
-// 배치 안에서 생성 모델이 섞인다(연구 일관성) — 같은 모델로 잠시 기다렸다 재호출한다.
+// 엣지는 연구 산출물의 모델을 바꾸지 않는다. 일시 전송 오류만 같은 모델·같은 계약으로
+// 잠시 기다렸다 재호출해 배치 안의 생성 모델과 품질 수준을 고정한다.
 const TRANSIENT_STATUSES = new Set([429, 502, 503]);
 
 async function invokeMissionWithBackoff(
@@ -221,6 +235,12 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     attempts = attempt;
     const { data, error } = await invokeMissionWithBackoff({
         action: "mission",
+        telemetry: {
+          scenario_id: core.scenario_id,
+          generation_run_id: core.generation_run_id ?? null,
+          generation_item_key: core.generation_item_key ?? null,
+          invocation_attempt: attempt,
+        },
         mission: {
           direction, // 0-l·89 — 엣지가 방향별 원문·산출 언어 결정(라운드2 배포 후 활성)
           speech_act_ko: SPEECH_ACT_UI[core.speech_act],
@@ -268,19 +288,32 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
 
   // 검사 통과 → 저장(generated). 엣지 원본을 저장한다.
   // 검증②(0-n·94) — 규칙검사를 통과한 것만 비평한다(fail을 비평해봐야 재생성 대상).
-  // 결과는 mission_content에 얹어 함께 저장 — provenance와 동일 취급이라 새 컬럼·
-  // 마이그레이션이 필요 없다(마감 앞 스키마 변경 회피, 0-h·55 취지).
+  // 결과는 mission_content에 얹어 함께 저장한다. 별도 품질 컬럼은 만들지 않되,
+  // save_generated_mission RPC가 이 객체의 존재와 최소 계약을 fail-closed로 강제한다.
   // ⚠️ content_hash는 이 필드를 포함하지 않는다(provenance와 마찬가지로 사후 주입).
-  const quality = await runQualityCheck({
+  const qualityResult = await runQualityCheck({
     missionContent: rawContent,
     feature,
     direction,
     speechAct: core.speech_act,
+    scenarioId: core.scenario_id,
+    generationRunId: core.generation_run_id,
+    generationItemKey: core.generation_item_key,
   });
-  const contentToSave =
-    quality && rawContent && typeof rawContent === "object"
-      ? { ...(rawContent as Record<string, unknown>), quality_check: quality }
-      : rawContent;
+  if (qualityResult.ok === false) {
+    return {
+      ok: false,
+      mission,
+      ruleResult: check.result as "pass" | "warning",
+      violations,
+      attempts,
+      error: `${qualityResult.error} — 미션은 저장하지 않았습니다.`,
+    };
+  }
+  const quality = qualityResult.quality;
+  const contentToSave = rawContent && typeof rawContent === "object"
+    ? { ...(rawContent as Record<string, unknown>), quality_check: quality }
+    : rawContent;
 
   const { data: savedId, error: saveErr } = await rpc("save_generated_mission", {
     p_scenario_id: core.scenario_id,
