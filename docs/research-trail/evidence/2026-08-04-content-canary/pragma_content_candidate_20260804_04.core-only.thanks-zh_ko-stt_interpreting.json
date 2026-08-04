@@ -1,0 +1,102 @@
+[
+  {
+    "act": "thanks",
+    "actKo": "감사",
+    "cell": {
+      "speech_act_ui": "thanks",
+      "level": "advanced",
+      "domain": "school",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "lower",
+      "pdr_distance": "formal",
+      "pdr_burden": "mid",
+      "theme_code": "campus_study",
+      "topic_code": "group_work_coordination",
+      "situation_seed_ko": "조별 과제를 함께 수행하는 학생들 사이에서 생기는 상호작용 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "gratitude_calibration",
+    "coreViolations": [
+      {
+        "id": "R29",
+        "level": "fail",
+        "message": "코어 source_text: effective_chars_v1 기준 유효 글자 55~85자여야 함(공백·문장부호 제외 실측 46자)"
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v8_learner_scene_v1",
+      "content_release_id": "pragma_content_candidate_20260804_04",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "repair_response_status": "parsed",
+      "source_repair_candidate": {
+        "sentence_count": 3,
+        "effective_char_count": 46,
+        "source_structure_valid": false,
+        "focal_segments_valid": true
+      },
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "3f2ad68303aeca1937d9d8b43f0a644e1981e657ff391ec29f052198d150934f",
+      "generated_at": "2026-08-04T10:43:53.195Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "중국어를 사용하는 수업 담당자인 나는 한국어를 쓰는 조별 과제 참여 학생과 처음 직접 만나 대화를 나눈다. 우리는 서로 다른 언어를 사용하므로 내가 하는 말을 학생에게 정확히 전달하기 위해 통역이 필요하다. 지금 나는 학생의 과제 기여에 대해 감사의 말을 전하는 상황이다.",
+      "relation_ko": "수업 담당자인 나와 처음 만난 조별 과제 참여 학생",
+      "source_modality": "spoken",
+      "source_text": "非常感谢你在这次小组项目中付出的努力。你的建议对团队帮助很大，我很感激。希望以后我们还能有机会合作。",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "distant",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "school.group_work_coordination.thanks",
+        "role_pair": {
+          "speaker_ko": "수업·프로그램의 책임자 또는 담당자",
+          "addressee_ko": "처음 상대하는 학생·참여자"
+        },
+        "speaker_entitlement": "화자는 자신이 받은 도움·호의와 상대의 기여를 구체적으로 인정할 위치에 있다.",
+        "addressee_obligation": "상대는 도움·호의의 제공자이며 감사에 응답하거나 추가 행동을 할 의무는 없다.",
+        "decision_authority": "별도의 의사결정은 요구하지 않으며, 감사 대상인 기여가 실제로 존재해야 한다."
+      },
+      "brief_note_ko": "조별 과제 참여 학생에게 감사 인사를 전하는 수업 담당자",
+      "focal_segments": [
+        {
+          "text": "非常感谢你在这次小组项目中付出的努力。",
+          "role": "head"
+        },
+        {
+          "text": "你的建议对团队帮助很大，我很感激。",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 55,
+        "max": 85,
+        "actual": 46
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260804_04",
+        "prompt_version": "core_v8_learner_scene_v1",
+        "prompt_snapshot_hash": "3f2ad68303aeca1937d9d8b43f0a644e1981e657ff391ec29f052198d150934f",
+        "generated_at": "2026-08-04T10:43:53.195Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  }
+]

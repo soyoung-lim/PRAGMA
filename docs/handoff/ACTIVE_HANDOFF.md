@@ -53,6 +53,9 @@
   `docs/dev-log/2026-08-04-llm-invocation-controls.md`
 - research trail: `DEC-20260804-07`, `ITER-20260804-07`, `EVD-20260804-07`
 - 롤백 커밋: `59bd8c3`
+- `_01`~`_04` 카나리 JSON 6개는 Git에서 제외되는 `.tmp`에서
+  `docs/research-trail/evidence/2026-08-04-content-canary/`로 승격했다. 원본·보존본
+  SHA-256 일치를 확인한 뒤 임시 원본을 제거했으며, 해시는 같은 폴더의 `README.md`에 있다.
 
 > **과거 기록: 2026-08-04 식후 재개 WRAP UP.** 현재 상태는 위 원격 적용·롤백 WRAP UP을
 > 따른다.
@@ -172,9 +175,9 @@
 
 - `docs/dev-log/2026-08-04-content-refresh-candidate.md`
 - `DEC-20260804-04`, `ITER-20260804-04`, `EVD-20260804-04`
-- `.tmp/content-canary/pragma_content_candidate_20260804_01.json`
-- `.tmp/content-canary/pragma_content_candidate_20260804_02.json`
-- `.tmp/content-canary/pragma_content_candidate_20260804_02.mission-replay.json`
+- `docs/research-trail/evidence/2026-08-04-content-canary/pragma_content_candidate_20260804_01.json`
+- `docs/research-trail/evidence/2026-08-04-content-canary/pragma_content_candidate_20260804_02.json`
+- `docs/research-trail/evidence/2026-08-04-content-canary/pragma_content_candidate_20260804_02.mission-replay.json`
 
 ## 2026-08-04 오후 최신 인수인계
 
