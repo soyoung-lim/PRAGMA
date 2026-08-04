@@ -64,6 +64,15 @@ export function responseWasRevised(firstResponse: string, revisedResponse: strin
   return firstResponse !== revisedResponse;
 }
 
+/** 수정 과업 완료 게이트. 빈 답이나 앞뒤 공백만 달라진 답은 수정으로 보지 않는다. */
+export function responseHasSubstantiveRevision(
+  firstResponse: string,
+  revisedResponse: string,
+): boolean {
+  const normalizedRevision = revisedResponse.trim();
+  return normalizedRevision.length > 0 && firstResponse.trim() !== normalizedRevision;
+}
+
 /** 수정 노트는 실제 수정이 DB 저장까지 끝난 경우에만 연결한다. */
 export function shouldShowCorrectionNotesLink(
   saveState: MissionSaveState,

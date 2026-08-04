@@ -23,11 +23,23 @@ const verdicts = (
 });
 
 describe("feedback scope", () => {
-  it("uses the fixed meaning → grammar → feature → clear priority", () => {
+  it("uses the fixed meaning → target feature → grammar → clear revision priority", () => {
     expect(deriveRevisionScope(verdicts({
       semantic_fidelity: "minor_loss",
       grammatical_accuracy: "impeding_errors",
+      pragmatic_appropriateness: {
+        feature_code: "request_mitigation_optionality",
+        band_code: "too_direct",
+      },
     }), "within_band")).toBe("meaning");
+
+    expect(deriveRevisionScope(verdicts({
+      grammatical_accuracy: "impeding_errors",
+      pragmatic_appropriateness: {
+        feature_code: "request_mitigation_optionality",
+        band_code: "too_direct",
+      },
+    }), "within_band")).toBe("feature");
 
     expect(deriveRevisionScope(verdicts({
       grammatical_accuracy: "impeding_errors",

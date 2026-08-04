@@ -117,14 +117,14 @@ export const FeedbackSchema = FeedbackDraftSchema.extend({
 export type RuntimeFeedback = z.infer<typeof FeedbackSchema>;
 
 /**
- * revision_scope 도출 — 코드 소관(§4). 우선순위 = 의미 → 문법 → 화용 → 없음.
- * 근거(0-q·95): 먼저 "상황에서 기능하는가·의도가 전달되는가"를 보고, 그다음
- * 이해를 막는 오류, 마지막으로 화용 인상을 본다. 특정 표현의 유무로 판정하지 않는다.
+ * revision_scope 도출 — 코드 소관(§4). 수정 우선순위 = 의미 → 목표 화용 축 → 문법 → 없음.
+ * 한 번의 수정 과업에서는 의미 전달을 먼저 회복하고, 의미가 보존됐다면 이번 미션이
+ * 훈련하는 목표 화용 축을 문법보다 먼저 다룬다. 세 층의 독립 판정 자체는 유지한다.
  */
 export function deriveRevisionScope(v: FeedbackVerdicts, withinBandCode: string): RevisionScope {
   if (v.semantic_fidelity !== "preserved") return "meaning";
-  if (v.grammatical_accuracy === "impeding_errors") return "grammar";
   if (v.pragmatic_appropriateness.band_code !== withinBandCode) return "feature";
+  if (v.grammatical_accuracy === "impeding_errors") return "grammar";
   return "clear";
 }
 
