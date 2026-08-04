@@ -862,3 +862,41 @@
   - 기존 core_v7 행은 오류 계보와 재현성을 위해 소급 수정하지 않는다.
 - 관련 Decision / Evidence: `DEC-20260804-02`, `EVD-20260804-02`
 - 관련 커밋: `6e3985e`
+
+## ITER-20260804-03 · 미동결 콘텐츠의 후보 계보와 안전 refresh 게이트
+
+- 날짜: 2026-08-04
+- 시작 문제:
+  - 콘텐츠와 피드백 기준은 추가 개선될 예정이고 DB 생성물도 전면 refresh해야 하지만,
+    코어·미션·피드백을 같은 설계 세대로 묶는 계약과 삭제 전 dependency inventory가 없었다.
+  - 최신 Edge는 core_v8을 생성하지만 실제 표본과 실계정 DB 저장은 미검증이었고, 관리자
+    DEV 우회 화면은 실제 admin 세션이 없어 `scenarios` 조회 권한 오류를 냈다.
+- 변경:
+  - `pragma_content_candidate_20260804_01` 단일 매니페스트를 만들고 서버 응답의 코어·미션·
+    피드백 provenance에 주입했다.
+  - 코어 해시에서는 생성 stamp를 제외하고, rapid-review는 코어와 미션이 모두 현재 후보일
+    때만 안전 후보로 인정하도록 했다.
+  - 실제 495/중→한 검증 배치 플래너에서 양방향·번역/통역·응답 화행·PDR 극단을 포함한
+    대표 6셀을 결정론적으로 뽑았다. 수동 카나리는 오류, R검사 fail, 후보 ID 누락을 실패로
+    처리하고 결과 JSON만 `.tmp`에 남기며 DB에는 저장하지 않는다.
+  - `scenarios`의 편성·패키지·평가 폼·학습자 로그·supersedes·피드백/legacy 후보 참조를 세는
+    읽기 전용 SQL과 refresh runbook을 추가했다.
+- 실제 검증:
+  - 전체 Vitest **255 pass / 7 skip**, typecheck, 변경 파일 ESLint, production build
+    **1902 modules** 통과.
+  - prompt snapshot 16종을 구현 커밋 `bc18e35`, `git_dirty=false`로 재생성했다.
+    core surface hash는 `6dc227d791fb…`로 불변이다.
+  - inventory SQL에 쓰기·DDL 동사가 없고 알려진 참조 테이블을 모두 감사하는지 테스트했다.
+  - 원격 Edge·DB·Railway에는 변경을 적용하지 않았고, DB 행을 수정·삭제하지 않았다.
+- 예상과 달랐던 점:
+  - UI의 DEV admin 우회는 실제 RLS 권한을 주지 않으므로 live inventory를 대신할 수 없었다.
+  - 현 Edge v45는 새 후보 stamp를 알지 못하므로, 배포 전 카나리는 콘텐츠 품질은 볼 수 있어도
+    세 층의 동일 후보 계약을 검증할 수 없다. 따라서 clean 구현 커밋과 승인된 Edge 배포가
+    카나리보다 먼저다.
+- 다음 설계에 반영할 교훈:
+  - 콘텐츠 의미 버전은 배치 실행 ID나 개별 prompt version과 분리한다.
+  - refresh는 삭제 스크립트부터 만들지 않고 inventory → 무저장 카나리 → 인간 감수 → 실계정
+    E2E → 승인된 전체 실행 순으로 연다.
+  - 후보 계약이 바뀌면 과거 행을 소급 승격하지 않고 새 후보로 재생성한다.
+- 관련 Decision / Evidence: `DEC-20260804-03`, `EVD-20260804-03`
+- 관련 커밋: `bc18e35`
