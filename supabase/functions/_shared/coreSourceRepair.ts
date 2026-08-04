@@ -275,6 +275,9 @@ export function buildCoreOutputRepairPrompt(input: CoreOutputRepairPromptInput):
     const targetEffectiveCharCount = Math.floor(
       (input.effectiveCharRange.min + input.effectiveCharRange.max) / 2,
     )
+    const targetSentenceCount = targetEffectiveCharCount >= 90 ? 4 : 3
+    const perSentenceMin = Math.ceil(input.effectiveCharRange.min / targetSentenceCount)
+    const perSentenceMax = Math.floor(input.effectiveCharRange.max / targetSentenceCount)
     const targetDelta = targetEffectiveCharCount - input.sourceIssue.effectiveCharCount
     const targetDeltaInstruction = targetDelta >= 0
       ? `현재보다 약 ${targetDelta}자 늘리세요.`
@@ -284,7 +287,8 @@ export function buildCoreOutputRepairPrompt(input: CoreOutputRepairPromptInput):
       `- 원문 분량은 ${input.lengthHintKo}입니다.`,
       `- 공백·문장부호를 제외한 유효 글자 수를 반드시 ${input.effectiveCharRange.min}~${input.effectiveCharRange.max}자로 맞추세요.`,
       `- 허용 범위의 경계를 겨냥하지 말고 유효 글자 ${targetEffectiveCharCount}자를 목표로 하세요. ${targetDeltaInstruction}`,
-      '- 종결부호 기준 2~4문장으로 나누세요.',
+      `- source_text를 정확히 ${targetSentenceCount}문장으로 만들고, 각 문장을 공백·문장부호 제외 약 ${perSentenceMin}~${perSentenceMax}자로 구성하세요.`,
+      `- 각 문장의 유효 글자 수를 따로 확인한 뒤 합계가 ${input.effectiveCharRange.min}~${input.effectiveCharRange.max}자인지 다시 확인하세요.`,
       `- 쉼표로 여러 절을 길게 잇는 한 문장으로 만들지 말고, ${punctuation}로 자연스러운 문장 경계를 명시하세요.`,
       '- source_text를 고친 뒤 focal_segments도 새 source_text에서 그대로 복사한 부분문자열로 다시 맞추세요.',
       `- 반환 직전에 source_text의 유효 글자 수를 다시 세어 ${input.effectiveCharRange.min}~${input.effectiveCharRange.max}자 안인지 확인하세요.`,
