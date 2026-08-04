@@ -1,0 +1,1836 @@
+[
+  {
+    "act": "request",
+    "actKo": "요청",
+    "cell": {
+      "speech_act_ui": "request",
+      "level": "intermediate",
+      "domain": "daily",
+      "mode": "translation",
+      "industry": null,
+      "pdr_power": "lower",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "travel_mobility",
+      "topic_code": "booking_change",
+      "situation_seed_ko": "식당·투어 예약을 변경하거나 취소를 알리며 양해를 구하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "request_mitigation_optionality",
+    "coreViolations": [],
+    "missionViolations": [
+      {
+        "id": "R5",
+        "level": "warning",
+        "message": "문항 4: 과잉안이 유일한 최장문 — 길이 단서 가능(눈검사)"
+      }
+    ],
+    "attempts": 1,
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "모임 운영자인 제가 참여자인 후배에게 투어 예약 변경을 요청하는 내용의 메시지를 작성해야 합니다. 서로 잘 알지만 어색한 사이여서 정중하게 양해를 구하는 문체를 사용합니다. 후배가 요청을 검토하고 결정할 수 있는 상황입니다.",
+      "relation_ko": "모임 운영자이자 선배인 저와 모임 참여자인 후배",
+      "source_modality": "written",
+      "source_text": "안녕하세요, 갑작스러운 요청이라 죄송합니다만, 예정된 투어 일정을 다음 주로 변경해 주실 수 있나요? 불편을 드려 정말 죄송하고, 가능하시다면 빠른 답변 부탁드립니다.",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "messenger",
+      "context_spec": {
+        "standard_situation_code": "daily.booking_change.request",
+        "role_pair": {
+          "speaker_ko": "알고 지내는 모임 운영자·선배",
+          "addressee_ko": "그 모임의 참여자·후배"
+        },
+        "speaker_entitlement": "화자에게 해당 행동을 요청할 합리적 사유는 있으나, 상대의 선택권을 자동으로 박탈하지 않는다.",
+        "addressee_obligation": "상대는 요청을 이해하고 검토할 수 있으나, 수락 의무는 역할·규정·상황에 따라 달라진다.",
+        "decision_authority": "상대가 요청받은 행동을 직접 수행하거나 승인·연결할 실질적 권한을 가진다."
+      },
+      "brief_note_ko": "투어 예약 변경 요청 메시지 작성",
+      "focal_segments": [
+        {
+          "text": "예정된 투어 일정을 다음 주로 변경해 주실 수 있나요?",
+          "role": "head"
+        },
+        {
+          "text": "가능하시다면",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 60,
+        "max": 85,
+        "actual": 68
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "prompt_version": "core_v8_learner_scene_v1",
+        "prompt_snapshot_hash": "6dc227d791fbcdb5f105a24b2ea8d611cc1bd2b5e354c46d6c84fcf344432ac9",
+        "generated_at": "2026-08-04T07:02:38.185Z"
+      }
+    },
+    "coreResult": "pass",
+    "mission": {
+      "schema_version": "mission_v5",
+      "direction": "ko_zh",
+      "unit": {
+        "target_feature": "request_mitigation_optionality",
+        "target_feature_version": "1.0",
+        "learner_label": "완화와 선택권",
+        "closing_ko": "요청은 상대에게 거절할 여지를 얼마나 남기느냐로 무게가 정해집니다. 친밀·저부담이면 직접형도 알맞고, 초면·고부담이면 선택권을 남기는 표현이 어울립니다."
+      },
+      "mpj_items": [
+        {
+          "type": "scale4",
+          "channel": "messenger",
+          "situation_ko": "나는 모임 운영자로서 친한 친구에게 모임 장소를 변경해 달라고 요청하려고 합니다. 친구와는 매우 친한 사이여서 직접적으로 부탁해도 부담이 없습니다.",
+          "relation_ko": "모임 운영자이자 친구",
+          "pdr": {
+            "p": "equal",
+            "d": "close",
+            "r": "low"
+          },
+          "source": "모임 장소를 변경해 줄 수 있어?",
+          "preceding_turn": "我们下周的聚会地点定了吗？",
+          "target": "把聚会地点改一下。",
+          "highlights": [
+            "把聚会地点改一下"
+          ],
+          "accepted_scale_codes": [
+            "very_appropriate",
+            "somewhat_appropriate"
+          ],
+          "reference_scale_code": "very_appropriate",
+          "explanation_ko": "친한 친구 사이에서는 직접적인 요청이 자연스럽고 적절합니다. 부담이 낮고 상대방이 거절할 여지가 충분히 있습니다.",
+          "recommended_example": "把聚会地点改一下。",
+          "id": 1,
+          "axis_feature": "request_mitigation_optionality"
+        },
+        {
+          "type": "fix_choice",
+          "channel": "messenger",
+          "situation_ko": "나는 모임 운영자로서 후배에게 모임 자료를 준비해 달라고 요청하려고 합니다. 후배와는 잘 알지만 어색한 사이여서 정중하게 부탁해야 합니다.",
+          "relation_ko": "모임 운영자이자 선배인 저와 모임 참여자인 후배",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "acquaintance",
+            "r": "high"
+          },
+          "source": "모임 자료를 준비해 주실 수 있나요?",
+          "preceding_turn": "下周的聚会需要准备什么资料吗？",
+          "target": "请把聚会资料准备好。",
+          "highlights": [
+            "请把聚会资料准备好"
+          ],
+          "accepted_band_codes": [
+            "too_direct"
+          ],
+          "corrections": [
+            {
+              "text": "能不能帮我准备一下聚会资料？",
+              "is_valid": true,
+              "note_ko": "능원동사로 완화하여 요청의 부담을 줄입니다."
+            },
+            {
+              "text": "如果方便的话，能帮我准备一下聚会资料吗？",
+              "is_valid": true,
+              "note_ko": "조건절을 사용하여 상대방에게 선택권을 남깁니다."
+            },
+            {
+              "text": "请准备好聚会资料。",
+              "is_valid": false,
+              "note_ko": "명령형으로 요청이 강압적으로 들립니다."
+            },
+            {
+              "text": "把聚会资料准备一下好吗？",
+              "is_valid": false,
+              "note_ko": "명령형이 포함되어 있어 선택권이 부족합니다."
+            }
+          ],
+          "explanation_ko": "P·D·R 단서에서 화자가 상대보다 지위가 높고, 지인 관계이지만 어색한 사이입니다. 따라서 직접적인 명령형은 부적절하고, 완화된 표현이 필요합니다.",
+          "recommended_example": "能不能帮我准备一下聚会资料？",
+          "id": 2,
+          "axis_feature": "request_mitigation_optionality"
+        },
+        {
+          "type": "reason",
+          "channel": "messenger",
+          "situation_ko": "나는 모임 운영자로서 후배에게 모임 시간 변경을 요청하려고 합니다. 후배와는 잘 알지만 어색한 사이여서 정중하게 부탁해야 합니다.",
+          "relation_ko": "모임 운영자이자 선배인 저와 모임 참여자인 후배",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "acquaintance",
+            "r": "high"
+          },
+          "source": "모임 시간을 변경해 주실 수 있나요?",
+          "preceding_turn": "下周的聚会时间定了吗？",
+          "target": "请把聚会时间改一下。",
+          "highlights": [
+            "请把聚会时间改一下"
+          ],
+          "problem_band_code": "too_direct",
+          "reasons": [
+            {
+              "id": "r1",
+              "text_ko": "문장에 '부탁드립니다'라는 표현이 없어서 정중하지 않습니다.",
+              "kind": "pragmatic_misconception"
+            },
+            {
+              "id": "r2",
+              "text_ko": "명령형 표현이어서 상대방에게 선택권을 주지 않습니다.",
+              "kind": "primary"
+            },
+            {
+              "id": "r3",
+              "text_ko": "문법적으로는 맞지만, 요청의 부담을 줄이는 표현이 없습니다.",
+              "kind": "meaning_grammar_context"
+            }
+          ],
+          "accepted_reason_id": "r2",
+          "explanation_ko": "명령형 표현은 상대방에게 선택권을 주지 않으며, 이로 인해 요청이 강압적으로 들릴 수 있습니다. 이는 P·D·R에서 부적절합니다.",
+          "recommended_example": "能不能帮我改一下聚会时间？",
+          "id": 3,
+          "axis_feature": "request_mitigation_optionality"
+        },
+        {
+          "type": "multi_judge",
+          "channel": "messenger",
+          "situation_ko": "나는 모임 운영자로서 후배에게 모임 장소를 변경해 달라고 요청하려고 합니다. 후배와는 잘 알지만 어색한 사이여서 정중하게 부탁해야 합니다.",
+          "relation_ko": "모임 운영자이자 선배인 저와 모임 참여자인 후배",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "acquaintance",
+            "r": "mid"
+          },
+          "source": "모임 장소를 변경해 주실 수 있나요?",
+          "preceding_turn": "下周的聚会地点定了吗？",
+          "candidates": [
+            {
+              "text": "请把聚会地点改一下。",
+              "accepted_band_codes": [
+                "too_direct"
+              ],
+              "note_ko": "명령형으로 요청이 강압적으로 들립니다."
+            },
+            {
+              "text": "能不能帮我改一下聚会地点？",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "능원동사로 완화하여 요청의 부담을 줄입니다."
+            },
+            {
+              "text": "如果您方便的话，能否帮我改一下聚会地点呢？",
+              "accepted_band_codes": [
+                "too_indirect"
+              ],
+              "note_ko": "지나치게 우회적이며 요청이 흐려질 수 있습니다."
+            },
+            {
+              "text": "可以帮我改一下聚会地点吗？",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "상대방에게 선택권을 남기는 표현입니다."
+            },
+            {
+              "text": "把聚会地点改一下好吗？",
+              "accepted_band_codes": [
+                "too_direct"
+              ],
+              "note_ko": "명령형이 포함되어 있어 선택권이 부족합니다."
+            }
+          ],
+          "explanation_ko": "다섯 초안의 차이는 요청의 직접성과 완화 정도에 있습니다. P·D·R에서 상대방에게 선택권을 주고 부담을 줄이는 표현이 적절합니다.",
+          "recommended_example": "能不能帮我改一下聚会地点？",
+          "id": 4,
+          "axis_feature": "request_mitigation_optionality"
+        }
+      ],
+      "production_task": {
+        "mode": "translation",
+        "source_modality": "written",
+        "situation_ko": "모임 운영자인 제가 참여자인 후배에게 투어 예약 변경을 요청하는 내용의 메시지를 작성해야 합니다. 서로 잘 알지만 어색한 사이여서 정중하게 양해를 구하는 문체를 사용합니다. 후배가 요청을 검토하고 결정할 수 있는 상황입니다.",
+        "relation_ko": "모임 운영자이자 선배인 저와 모임 참여자인 후배",
+        "channel": "messenger",
+        "pdr": {
+          "p": "speaker_higher",
+          "d": "acquaintance",
+          "r": "high"
+        },
+        "source_text": "안녕하세요, 갑작스러운 요청이라 죄송합니다만, 예정된 투어 일정을 다음 주로 변경해 주실 수 있나요? 불편을 드려 정말 죄송하고, 가능하시다면 빠른 답변 부탁드립니다.",
+        "preceding_turn": null,
+        "vocabulary_hints": [
+          {
+            "source": "모임 장소",
+            "target": "聚会地点"
+          },
+          {
+            "source": "변경",
+            "target": "改"
+          }
+        ],
+        "reference_alternatives": [
+          {
+            "text": "您好，很抱歉突然请求，但能否将预定的旅行安排改到下周？非常抱歉给您带来不便，如果可以的话，请尽快回复。",
+            "note_ko": "정중한 요청과 빠른 답변을 부탁하는 표현을 사용하여 상대방에게 선택권을 남깁니다."
+          }
+        ],
+        "focal_segments": [
+          {
+            "text": "예정된 투어 일정을 다음 주로 변경해 주실 수 있나요?",
+            "role": "head"
+          },
+          {
+            "text": "가능하시다면",
+            "role": "support"
+          }
+        ]
+      },
+      "provenance": {
+        "model": "gpt-4o",
+        "prompt_version": "mission_v5_mpj4_minidiscourse_v4",
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "mission_content_hash": "c3da48444ff67fe68c2ba4df49d735242b7f20e5e7d4004f10533c174b63e92d",
+        "generated_at": "2026-08-04T07:03:10.772Z",
+        "generation_attempt": 1
+      }
+    },
+    "missionResult": "warning"
+  },
+  {
+    "act": "request",
+    "actKo": "요청",
+    "cell": {
+      "speech_act_ui": "request",
+      "level": "intermediate",
+      "domain": "work",
+      "mode": "stt_interpreting",
+      "industry": "trade_distribution",
+      "pdr_power": "lower",
+      "pdr_distance": "formal",
+      "pdr_burden": "mid",
+      "theme_code": "commerce_customer",
+      "topic_code": "price_negotiation",
+      "situation_seed_ko": "판매자·거래처에 가격이나 조건을 문의·조정하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "request_mitigation_optionality",
+    "coreViolations": [],
+    "missionViolations": [
+      {
+        "id": "R5",
+        "level": "warning",
+        "message": "문항 4: 과잉안이 유일한 최장문 — 길이 단서 가능(눈검사)"
+      },
+      {
+        "id": "R27",
+        "level": "warning",
+        "message": "문항 4: 상황문이 짧아 P/D/R 근거가 충분히 보이지 않을 수 있음"
+      }
+    ],
+    "attempts": 2,
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "학습자는 한국어 화자인 제조업체 발주 담당자로, 처음 만나는 중국어 화자 신규 거래처 직원과 직접 대면하여 생산 단가와 물류비 조건을 통역을 통해 문의하는 상황입니다. 두 사람은 서로 잘 모르는 사이이며, 학습자는 통역을介入시켜 대화를 진행해야 합니다.",
+      "relation_ko": "신규 거래처의 실무 담당자와 처음 만나는 제조업체 발주 담당자",
+      "source_modality": "spoken",
+      "source_text": "안녕하세요. 이번에 주문할 부품 단가와 배송 조건을 알려주실 수 있나요? 생산량에 따른 가격 조정도 가능한지 궁금합니다.",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "distant",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "work.price_negotiation.request",
+        "role_pair": {
+          "speaker_ko": "해당 업무의 책임자·발주측 결정권자",
+          "addressee_ko": "처음 상대하는 신규 직원·외부 실무 담당자"
+        },
+        "speaker_entitlement": "화자에게 해당 행동을 요청할 합리적 사유는 있으나, 상대의 선택권을 자동으로 박탈하지 않는다.",
+        "addressee_obligation": "상대는 요청을 이해하고 검토할 수 있으나, 수락 의무는 역할·규정·상황에 따라 달라진다.",
+        "decision_authority": "상대가 요청받은 행동을 직접 수행하거나 승인·연결할 실질적 권한을 가진다."
+      },
+      "brief_note_ko": "제조업체 발주 담당자가 신규 거래처에 단가와 배송 조건 문의",
+      "focal_segments": [
+        {
+          "text": "이번에 주문할 부품 단가와 배송 조건을 알려주실 수 있나요?",
+          "role": "head"
+        },
+        {
+          "text": "생산량에 따른 가격 조정도 가능한지 궁금합니다.",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 49
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "prompt_version": "core_v8_learner_scene_v1_repair",
+        "prompt_snapshot_hash": "6dc227d791fbcdb5f105a24b2ea8d611cc1bd2b5e354c46d6c84fcf344432ac9",
+        "generated_at": "2026-08-04T07:03:21.735Z"
+      }
+    },
+    "coreResult": "pass",
+    "mission": {
+      "schema_version": "mission_v5",
+      "direction": "ko_zh",
+      "unit": {
+        "target_feature": "request_mitigation_optionality",
+        "target_feature_version": "1.0",
+        "learner_label": "완화와 선택권",
+        "closing_ko": "요청은 상대에게 거절할 여지를 얼마나 남기느냐로 무게가 정해집니다. 친밀·저부담이면 직접형도 알맞고, 초면·고부담이면 선택권을 남기는 표현이 어울립니다."
+      },
+      "mpj_items": [
+        {
+          "type": "scale4",
+          "channel": "facetoface",
+          "situation_ko": "나는 신규 거래처의 실무 담당자와 처음 만나 물류비 조건에 대해 문의하려고 한다. 상대방과는 초면이라 대화가 어색할 수 있다.",
+          "relation_ko": "신규 거래처의 실무 담당자",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "distant",
+            "r": "mid"
+          },
+          "source": "물류비 조건을 알려주실 수 있나요?",
+          "preceding_turn": "您好，请问有什么可以帮您的吗？",
+          "target": "能不能告诉我物流费用的条件？",
+          "highlights": [
+            "能不能告诉我"
+          ],
+          "accepted_scale_codes": [
+            "very_appropriate",
+            "somewhat_appropriate"
+          ],
+          "reference_scale_code": "very_appropriate",
+          "explanation_ko": "초면이지만 화자가 상대보다 지위가 높고, 요청의 부담이 중간 정도라서 '能不能'을 사용한 직접적인 요청이 적절하다.",
+          "recommended_example": "能不能告诉我物流费用的条件？",
+          "id": 1,
+          "axis_feature": "request_mitigation_optionality"
+        },
+        {
+          "type": "fix_choice",
+          "channel": "facetoface",
+          "situation_ko": "나는 신규 거래처의 실무 담당자와 처음 만나 품질 관리 기준에 대해 물어보려고 한다. 상대방과는 초면이라 대화가 어색할 수 있다.",
+          "relation_ko": "신규 거래처의 실무 담당자",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "distant",
+            "r": "mid"
+          },
+          "source": "품질 관리 기준을 설명해 주시겠어요?",
+          "preceding_turn": "您好，请问您有什么问题吗？",
+          "target": "请您解释一下质量管理标准。",
+          "highlights": [
+            "请您解释一下"
+          ],
+          "accepted_band_codes": [
+            "too_direct"
+          ],
+          "corrections": [
+            {
+              "text": "能不能解释一下质量管理标准？",
+              "is_valid": true,
+              "note_ko": "'能不能'을 사용하여 요청을 완화하고 선택권을 남긴다."
+            },
+            {
+              "text": "如果方便的话，您能解释一下质量管理标准吗？",
+              "is_valid": true,
+              "note_ko": "조건절을 사용하여 상대방에게 선택권을 남긴다."
+            },
+            {
+              "text": "请您详细解释质量管理标准。",
+              "is_valid": false,
+              "note_ko": "'请您详细'는 여전히 직접적이다."
+            },
+            {
+              "text": "解释一下质量管理标准好吗？",
+              "is_valid": false,
+              "note_ko": "'好吗'는 선택권을 남기지만 '请'이 없어 여전히 직접적이다."
+            }
+          ],
+          "explanation_ko": "화자는 상대보다 지위가 높지만 초면이라 직접적인 명령형 표현은 부적절하다. '能不能'이나 조건절을 사용해 완화해야 한다.",
+          "recommended_example": "如果方便的话，您能解释一下质量管理标准吗？",
+          "id": 2,
+          "axis_feature": "request_mitigation_optionality"
+        },
+        {
+          "type": "reason",
+          "channel": "facetoface",
+          "situation_ko": "나는 신규 거래처의 실무 담당자와 처음 만나 계약서의 특정 조항에 대해 문의하려고 한다. 상대방과는 초면이라 대화가 어색할 수 있다.",
+          "relation_ko": "신규 거래처의 실무 담당자",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "distant",
+            "r": "mid"
+          },
+          "source": "계약서의 특정 조항을 설명해 주시겠어요?",
+          "preceding_turn": "您好，请问您有什么需要了解的吗？",
+          "target": "请您解释一下合同的特定条款。",
+          "highlights": [
+            "请您解释一下"
+          ],
+          "problem_band_code": "too_direct",
+          "reasons": [
+            {
+              "id": "r1",
+              "text_ko": "화자가 상대보다 지위가 높기 때문에 직접적인 요청이 가능하다.",
+              "kind": "pragmatic_misconception"
+            },
+            {
+              "id": "r2",
+              "text_ko": "초면이고 상대방에게 선택권을 주지 않아 직접적인 표현이 부적절하다.",
+              "kind": "primary"
+            },
+            {
+              "id": "r3",
+              "text_ko": "문법적으로는 문제가 없지만, 상대방이 부담을 느낄 수 있다.",
+              "kind": "meaning_grammar_context"
+            }
+          ],
+          "accepted_reason_id": "r2",
+          "explanation_ko": "초면인 상황에서 상대방에게 선택권을 주지 않는 직접적인 표현은 부적절하다. '能不能'이나 조건절을 사용해야 한다.",
+          "recommended_example": "能不能解释一下合同的特定条款？",
+          "id": 3,
+          "axis_feature": "request_mitigation_optionality"
+        },
+        {
+          "type": "multi_judge",
+          "channel": "facetoface",
+          "situation_ko": "나는 신규 거래처의 실무 담당자와 자주 연락하는 사이로, 이번에 제품의 배송 일정을 확인하려고 한다.",
+          "relation_ko": "자주 연락하는 신규 거래처의 실무 담당자",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "close",
+            "r": "mid"
+          },
+          "source": "배송 일정을 확인해 주시겠어요?",
+          "preceding_turn": "您好，您需要知道什么信息呢？",
+          "candidates": [
+            {
+              "text": "请您确认一下发货时间。",
+              "accepted_band_codes": [
+                "too_direct"
+              ],
+              "note_ko": "지위가 높아도 자주 연락하는 사이에서는 너무 직접적이다."
+            },
+            {
+              "text": "能不能确认一下发货时间？",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "'能不能'을 사용하여 요청을 완화하고 선택권을 남긴다."
+            },
+            {
+              "text": "如果方便的话，您能确认一下发货时间吗？",
+              "accepted_band_codes": [
+                "too_indirect"
+              ],
+              "note_ko": "자주 연락하는 사이에서는 지나치게 우회적이다."
+            },
+            {
+              "text": "确认一下发货时间好吗？",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "'好吗'를 사용하여 선택권을 남기고 적절하다."
+            },
+            {
+              "text": "请确认一下发货时间。",
+              "accepted_band_codes": [
+                "too_direct"
+              ],
+              "note_ko": "직접적인 명령형으로 선택권이 없다."
+            }
+          ],
+          "explanation_ko": "자주 연락하는 사이에서는 '能不能'이나 '好吗'를 사용하여 요청을 완화하고 선택권을 남기는 것이 적절하다. 지나치게 우회적인 표현은 불필요하다.",
+          "recommended_example": "能不能确认一下发货时间？",
+          "id": 4,
+          "axis_feature": "request_mitigation_optionality"
+        }
+      ],
+      "production_task": {
+        "mode": "interpreting",
+        "source_modality": "spoken",
+        "situation_ko": "학습자는 한국어 화자인 제조업체 발주 담당자로, 처음 만나는 중국어 화자 신규 거래처 직원과 직접 대면하여 생산 단가와 물류비 조건을 통역을 통해 문의하는 상황입니다. 두 사람은 서로 잘 모르는 사이이며, 학습자는 통역을介入시켜 대화를 진행해야 합니다.",
+        "relation_ko": "신규 거래처의 실무 담당자와 처음 만나는 제조업체 발주 담당자",
+        "channel": "facetoface",
+        "pdr": {
+          "p": "speaker_higher",
+          "d": "distant",
+          "r": "mid"
+        },
+        "source_text": "안녕하세요. 이번에 주문할 부품 단가와 배송 조건을 알려주실 수 있나요? 생산량에 따른 가격 조정도 가능한지 궁금합니다.",
+        "preceding_turn": null,
+        "replay_limit": 2,
+        "reference_alternatives": [
+          {
+            "text": "您好，这次能告诉我订购零件的单价和运输条件吗？我也想知道根据生产量是否可以调整价格。",
+            "note_ko": "'能告诉我'와 '是否可以'를 사용하여 완화하고 선택권을 남긴다."
+          }
+        ],
+        "focal_segments": [
+          {
+            "text": "이번에 주문할 부품 단가와 배송 조건을 알려주실 수 있나요?",
+            "role": "head"
+          },
+          {
+            "text": "생산량에 따른 가격 조정도 가능한지 궁금합니다.",
+            "role": "support"
+          }
+        ]
+      },
+      "provenance": {
+        "model": "gpt-4o",
+        "prompt_version": "mission_v5_mpj4_minidiscourse_v4",
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "mission_content_hash": "b8f3dd282963213da8fdd04be0341d698a127d5c15a2090146a9098ad67d52c1",
+        "generated_at": "2026-08-04T07:03:55.609Z",
+        "generation_attempt": 2
+      }
+    },
+    "missionResult": "warning"
+  },
+  {
+    "act": "refusal",
+    "actKo": "거절",
+    "cell": {
+      "speech_act_ui": "refusal",
+      "level": "beginner_intermediate",
+      "domain": "school",
+      "mode": "translation",
+      "industry": null,
+      "pdr_power": "higher",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "campus_study",
+      "topic_code": "school_request_refusal",
+      "situation_seed_ko": "학교 관계의 상대가 부탁한 과제 관련 역할을 맡지 않겠다고 알리는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "refusal_softening",
+    "coreViolations": [],
+    "missionViolations": [
+      {
+        "id": "R5",
+        "level": "warning",
+        "message": "문항 4: 과잉안이 유일한 최장문 — 길이 단서 가능(눈검사)"
+      },
+      {
+        "id": "R5",
+        "level": "warning",
+        "message": "문항 4: 최장/최단 길이 비율 4.8 > 3"
+      },
+      {
+        "id": "R29",
+        "level": "warning",
+        "message": "reference_alternatives가 담화 전체를 옮기지 않은 것으로 보임(원문 79자 대비 22자): \"抱歉，我有个人原因，不能参与。感谢您的理解。\""
+      }
+    ],
+    "attempts": 1,
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "학습자가 학교에서 조교로부터 과제 관련 역할을 맡아달라는 요청을 받았다. 두 사람은 같은 수업을 듣는 사이로 서로 알고 있지만 친하지는 않다. 학습자는 바쁜 개인 사정 때문에 이 역할을 맡기 어렵다는 뜻을 글로 정중하게 전달하려 한다.",
+      "relation_ko": "조교이자 수업 내 역할 분담을 담당하는 지인",
+      "source_modality": "written",
+      "source_text": "과제 역할을 맡아달라는 요청을 받았지만, 지금은 개인 사정으로 참여하기 어렵습니다. 도와드리지 못해 죄송합니다. 이해해 주시면 감사하겠습니다.",
+      "preceding_turn": "请你帮忙承担一下课题的角色好吗？",
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "messenger",
+      "context_spec": {
+        "standard_situation_code": "school.school_request_refusal.refusal",
+        "role_pair": {
+          "speaker_ko": "수업을 듣거나 지도를 받는 학생",
+          "addressee_ko": "알고 지내는 교수·조교·조장·공식 멘토 등 해당 일의 권한이 더 큰 상대"
+        },
+        "speaker_entitlement": "화자는 앞선 요청·제안·초대의 수용 여부를 결정할 재량이 있다.",
+        "addressee_obligation": "상대는 거절 대상 행동을 먼저 요청·제안·초대한 사람이며, 거절을 수용할 여지가 있어야 한다.",
+        "decision_authority": "화자가 자신의 참여·수락 여부를 결정하며, 거절 대상과 범위가 분명해야 한다."
+      },
+      "brief_note_ko": "과제 역할 맡기 요청에 정중히 거절하는 메시지",
+      "focal_segments": [
+        {
+          "text": "지금은 개인 사정으로 참여하기 어렵습니다.",
+          "role": "head"
+        },
+        {
+          "text": "도와드리지 못해 죄송합니다.",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 45,
+        "max": 65,
+        "actual": 60
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "prompt_version": "core_v8_learner_scene_v1",
+        "prompt_snapshot_hash": "6dc227d791fbcdb5f105a24b2ea8d611cc1bd2b5e354c46d6c84fcf344432ac9",
+        "generated_at": "2026-08-04T07:04:00.348Z"
+      }
+    },
+    "coreResult": "pass",
+    "mission": {
+      "schema_version": "mission_v5",
+      "direction": "ko_zh",
+      "unit": {
+        "target_feature": "refusal_softening",
+        "target_feature_version": "1.0",
+        "learner_label": "완충과 대안",
+        "closing_ko": "거절은 완충 장치의 양으로 무게가 정해집니다. 완충이 전혀 없으면 무뚝뚝하게 들리고, 지나치게 많으면 거절인지 아닌지 흐려집니다. 길수록 공손한 것이 아닙니다."
+      },
+      "mpj_items": [
+        {
+          "type": "scale4",
+          "channel": "email",
+          "situation_ko": "나는 친구가 주말에 같이 여행을 가자고 했지만, 이미 다른 약속이 있어 거절해야 한다. 친구와는 친한 사이로, 간단하게 거절해도 이해할 것이다.",
+          "relation_ko": "친한 친구",
+          "pdr": {
+            "p": "equal",
+            "d": "close",
+            "r": "low"
+          },
+          "source": "주말에 여행 가자는 제안을 받았지만, 다른 약속이 있어서 이번에는 함께할 수 없어. 다음에 가자.",
+          "preceding_turn": "周末我们一起去旅行吧！",
+          "target": "这周末我有其他安排，下次一起去吧。",
+          "highlights": [
+            "这周末我有其他安排，下次一起去吧。"
+          ],
+          "accepted_scale_codes": [
+            "very_appropriate",
+            "somewhat_appropriate"
+          ],
+          "reference_scale_code": "very_appropriate",
+          "explanation_ko": "친한 친구 사이에서는 간단한 이유와 대안 제시만으로도 충분히 공손하게 거절할 수 있다.",
+          "recommended_example": "这周末我有其他安排，下次一起去吧。",
+          "id": 1,
+          "axis_feature": "refusal_softening"
+        },
+        {
+          "type": "fix_choice",
+          "channel": "email",
+          "situation_ko": "나는 회사 동료로부터 프로젝트 회의에 참석해 달라는 요청을 받았다. 우리는 업무상으로만 알고 지내는 사이이며, 나는 다른 중요한 일정이 있어 참석할 수 없음을 정중하게 전하려 한다.",
+          "relation_ko": "회사 동료",
+          "pdr": {
+            "p": "speaker_lower",
+            "d": "acquaintance",
+            "r": "high"
+          },
+          "source": "프로젝트 회의에 참석해 달라는 요청을 받았지만, 다른 중요한 일정이 있어서 참석할 수 없습니다. 이해해 주시면 감사하겠습니다.",
+          "preceding_turn": "请您参加我们的项目会议。",
+          "target": "抱歉，我有其他重要安排，不能参加会议。感谢您的理解。",
+          "highlights": [
+            "抱歉，我有其他重要安排，不能参加会议。感谢您的理解。"
+          ],
+          "accepted_band_codes": [
+            "over_elaborate"
+          ],
+          "corrections": [
+            {
+              "text": "抱歉，我有其他安排，不能参加会议。",
+              "is_valid": true,
+              "note_ko": "간결한 이유와 사과로 충분하다."
+            },
+            {
+              "text": "对不起，这次不能参加会议。",
+              "is_valid": true,
+              "note_ko": "간단한 사과와 거절로 충분하다."
+            },
+            {
+              "text": "不能参加会议。",
+              "is_valid": false,
+              "note_ko": "완충 없이 너무 단도직입적이다."
+            },
+            {
+              "text": "我非常抱歉，实在是因为我有其他重要安排，不能参加会议。希望您能理解。",
+              "is_valid": false,
+              "note_ko": "장황하게 설명하여 거절의 명확성이 흐려진다."
+            }
+          ],
+          "explanation_ko": "회사 동료와의 관계에서는 간결하면서도 정중한 이유 제시와 사과가 적절하다.",
+          "recommended_example": "抱歉，我有其他安排，不能参加会议。",
+          "id": 2,
+          "axis_feature": "refusal_softening"
+        },
+        {
+          "type": "reason",
+          "channel": "email",
+          "situation_ko": "나는 동아리 선배로부터 동아리 행사 준비를 도와달라는 요청을 받았다. 우리는 동아리 활동을 통해 알고 지내는 사이이며, 나는 개인 사정으로 도와줄 수 없음을 정중하게 전하려 한다.",
+          "relation_ko": "동아리 선배",
+          "pdr": {
+            "p": "speaker_lower",
+            "d": "acquaintance",
+            "r": "high"
+          },
+          "source": "동아리 행사 준비를 도와달라는 요청을 받았지만, 개인 사정으로 도와드릴 수 없습니다. 이해해 주시면 감사하겠습니다.",
+          "preceding_turn": "请您帮忙准备我们的社团活动。",
+          "target": "抱歉，我有个人原因，不能帮忙。感谢您的理解。",
+          "highlights": [
+            "抱歉，我有个人原因，不能帮忙。感谢您的理解。"
+          ],
+          "problem_band_code": "over_elaborate",
+          "reasons": [
+            {
+              "id": "r1",
+              "text_ko": "이유 제시가 부족하여 상대방이 이해하기 어려울 수 있다.",
+              "kind": "pragmatic_misconception"
+            },
+            {
+              "id": "r2",
+              "text_ko": "장황한 설명으로 인해 거절의 명확성이 흐려진다.",
+              "kind": "primary"
+            },
+            {
+              "id": "r3",
+              "text_ko": "문법적으로는 맞지만, 맥락상 너무 간단하여 무례하게 들릴 수 있다.",
+              "kind": "meaning_grammar_context"
+            }
+          ],
+          "accepted_reason_id": "r2",
+          "explanation_ko": "장황한 설명으로 인해 거절의 명확성이 흐려지는 것이 주된 문제이다.",
+          "recommended_example": "抱歉，我有个人原因，不能帮忙。",
+          "id": 3,
+          "axis_feature": "refusal_softening"
+        },
+        {
+          "type": "multi_judge",
+          "channel": "email",
+          "situation_ko": "나는 학교에서 교수님으로부터 연구 발표 준비를 도와달라는 요청을 받았다. 교수님과는 수업을 통해 알고 지내는 사이이며, 나는 다른 중요한 일정이 있어 도와드릴 수 없음을 정중하게 전하려 한다.",
+          "relation_ko": "교수님",
+          "pdr": {
+            "p": "speaker_lower",
+            "d": "distant",
+            "r": "high"
+          },
+          "source": "연구 발표 준비를 도와달라는 요청을 받았지만, 다른 중요한 일정이 있어서 도와드릴 수 없습니다. 이해해 주시면 감사하겠습니다.",
+          "preceding_turn": "请您帮忙准备研究发表。",
+          "candidates": [
+            {
+              "text": "抱歉，我有其他安排，不能帮忙。",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "간결한 이유와 사과로 충분하다."
+            },
+            {
+              "text": "对不起，我这次不能帮忙。",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "간단한 사과와 거절로 충분하다."
+            },
+            {
+              "text": "不能帮忙。",
+              "accepted_band_codes": [
+                "too_blunt"
+              ],
+              "note_ko": "완충 없이 너무 단도직입적이다."
+            },
+            {
+              "text": "抱歉，我有其他重要安排，不能帮忙。感谢您的理解。",
+              "accepted_band_codes": [
+                "over_elaborate"
+              ],
+              "note_ko": "장황하게 설명하여 거절의 명확성이 흐려진다."
+            },
+            {
+              "text": "抱歉，不能帮忙。",
+              "accepted_band_codes": [
+                "too_blunt"
+              ],
+              "note_ko": "이유와 사과가 부족하여 무뚝뚝하게 들린다."
+            }
+          ],
+          "explanation_ko": "교수님과의 관계에서는 간결하면서도 정중한 이유 제시와 사과가 적절하다. 너무 간단하거나 장황한 표현은 피해야 한다.",
+          "recommended_example": "抱歉，我有其他安排，不能帮忙。",
+          "id": 4,
+          "axis_feature": "refusal_softening"
+        }
+      ],
+      "production_task": {
+        "mode": "translation",
+        "source_modality": "written",
+        "situation_ko": "학습자가 학교에서 조교로부터 과제 관련 역할을 맡아달라는 요청을 받았다. 두 사람은 같은 수업을 듣는 사이로 서로 알고 있지만 친하지는 않다. 학습자는 바쁜 개인 사정 때문에 이 역할을 맡기 어렵다는 뜻을 글로 정중하게 전달하려 한다.",
+        "relation_ko": "조교이자 수업 내 역할 분담을 담당하는 지인",
+        "channel": "messenger",
+        "pdr": {
+          "p": "speaker_lower",
+          "d": "acquaintance",
+          "r": "high"
+        },
+        "source_text": "과제 역할을 맡아달라는 요청을 받았지만, 지금은 개인 사정으로 참여하기 어렵습니다. 도와드리지 못해 죄송합니다. 이해해 주시면 감사하겠습니다.",
+        "preceding_turn": "请你帮忙承担一下课题的角色好吗？",
+        "vocabulary_hints": [
+          {
+            "source": "과제 역할",
+            "target": "任务角色"
+          },
+          {
+            "source": "개인 사정",
+            "target": "个人原因"
+          }
+        ],
+        "reference_alternatives": [
+          {
+            "text": "抱歉，我有个人原因，不能参与。感谢您的理解。",
+            "note_ko": "정중한 사과와 이유 제시로 적절하게 거절한다."
+          }
+        ],
+        "focal_segments": [
+          {
+            "text": "지금은 개인 사정으로 참여하기 어렵습니다.",
+            "role": "head"
+          },
+          {
+            "text": "도와드리지 못해 죄송합니다.",
+            "role": "support"
+          }
+        ]
+      },
+      "provenance": {
+        "model": "gpt-4o",
+        "prompt_version": "mission_v5_mpj4_minidiscourse_v4",
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "mission_content_hash": "57e1558918b61fb1f7bc8fb99be7637936e7e94093c484eb63e99acaf6fc4eeb",
+        "generated_at": "2026-08-04T07:04:15.993Z",
+        "generation_attempt": 1
+      }
+    },
+    "missionResult": "warning"
+  },
+  {
+    "act": "complaint",
+    "actKo": "불만",
+    "cell": {
+      "speech_act_ui": "complaint",
+      "level": "beginner_intermediate",
+      "domain": "daily",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "higher",
+      "pdr_distance": "formal",
+      "pdr_burden": "mid",
+      "theme_code": "travel_mobility",
+      "topic_code": "hotel_request",
+      "situation_seed_ko": "호텔·숙소에 방 변경이나 문제 해결을 요청하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "complaint_problem_accountability",
+    "coreViolations": [],
+    "missionViolations": [
+      {
+        "id": "R5",
+        "level": "fail",
+        "message": "문항 4: multi_judge에서 부적절안과 적정안이 길이만으로 완전히 분리됨 (부적절안이 모두 적정안보다 짧음; 후보 1[within_band]=13자, 후보 2[over_attributed]=11자, 후보 3[under_specified]=9자, 후보 4[within_band]=13자, 후보 5[under_specified]=9자). 재생성 시 각 후보의 초점 자원과 대역은 유지하고, 새 사실을 더하지 않는 중립적 연결·부연 또는 문장 압축으로 적정안과 부적절안의 길이 범위를 겹치게 하세요"
+      },
+      {
+        "id": "R5",
+        "level": "warning",
+        "message": "문항 4: 과소안이 전부 최단 — 길이 단서 가능(눈검사)"
+      }
+    ],
+    "attempts": 3,
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "학습자는 호텔 프런트에서 처음 만나는 직원과 직접 한국어로 대화하며, 방에 문제가 있어 통역사가 학습자의 말을 중국어로 전달하는 상황이다. 두 사람은 서로 잘 모르는 사이이고, 직원은 문제 해결 권한이 있다. 학습자는 방 문제로 인해 불편함을 겪었고, 직원의 적절한 조치를 기대한다.",
+      "relation_ko": "호텔 직원과 처음 마주한 고객",
+      "source_modality": "spoken",
+      "source_text": "죄송한데 방에 에어컨이 고장 났어요. 너무 더워서 잠을 잘 수가 없습니다. 가능한 빨리 수리해 주실 수 있나요?",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "distant",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "daily.hotel_request.complaint",
+        "role_pair": {
+          "speaker_ko": "일반 이용자 또는 처음 온 참여자",
+          "addressee_ko": "처음 상대하는 시설·행사·서비스의 결정권자"
+        },
+        "speaker_entitlement": "화자는 자신이 겪은 문제·피해 또는 대표할 권한이 있는 문제를 제기할 자격이 있다.",
+        "addressee_obligation": "상대는 문제에 일정한 책임이 있거나 설명·수리·전달을 할 실질적 권한이 있어야 한다.",
+        "decision_authority": "상대가 직접 수리하거나 적절한 책임자에게 전달할 권한을 가진다."
+      },
+      "brief_note_ko": "호텔 방 에어컨 고장에 대해 불만을 말하는 상황",
+      "focal_segments": [
+        {
+          "text": "방에 에어컨이 고장 났어요.",
+          "role": "head"
+        },
+        {
+          "text": "가능한 빨리 수리해 주실 수 있나요?",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 30,
+        "max": 45,
+        "actual": 43
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "prompt_version": "core_v8_learner_scene_v1_repair",
+        "prompt_snapshot_hash": "6dc227d791fbcdb5f105a24b2ea8d611cc1bd2b5e354c46d6c84fcf344432ac9",
+        "generated_at": "2026-08-04T07:04:25.394Z"
+      }
+    },
+    "coreResult": "pass",
+    "mission": {
+      "schema_version": "mission_v5",
+      "direction": "ko_zh",
+      "unit": {
+        "target_feature": "complaint_problem_accountability",
+        "target_feature_version": "1.0",
+        "learner_label": "문제 명료화와 책임 범위",
+        "closing_ko": "불만은 세게 말하는 것이 아니라, 무엇이 어떤 영향을 주었고 상대가 어디까지 책임지는지를 사실에 맞게 밝혀야 해결 가능한 문제 제기가 됩니다."
+      },
+      "mpj_items": [
+        {
+          "type": "scale4",
+          "channel": "facetoface",
+          "situation_ko": "나는 호텔에서 체크인하는 중인데, 방이 너무 더러워서 프런트 직원에게 직접 해결을 요청하려 한다. 직원과는 처음 만나는 사이이고, 나는 이번 문제가 빨리 해결되기를 바라고 있다.",
+          "relation_ko": "호텔 직원과 처음 마주한 고객",
+          "pdr": {
+            "p": "speaker_lower",
+            "d": "distant",
+            "r": "mid"
+          },
+          "source": "죄송한데 방이 너무 더럽습니다. 청소를 부탁드릴 수 있을까요?",
+          "preceding_turn": "欢迎光临，请问有什么可以帮您的吗？",
+          "target": "不好意思，房间太脏了，能帮我打扫一下吗？",
+          "highlights": [
+            "房间太脏了"
+          ],
+          "accepted_scale_codes": [
+            "very_appropriate",
+            "somewhat_appropriate"
+          ],
+          "reference_scale_code": "very_appropriate",
+          "explanation_ko": "프런트 직원과의 첫 대면에서 방의 청결 문제를 직접적이고 명확하게 요청하는 것이 적절하다. 이는 문제의 심각성을 명확히 하고 직원의 책임 범위 내에 있는 사항이라 직접 요구하는 것이 더 효율적이다.",
+          "recommended_example": "不好意思，房间太脏了，能帮我打扫一下吗？",
+          "id": 1,
+          "axis_feature": "complaint_problem_accountability"
+        },
+        {
+          "type": "fix_choice",
+          "channel": "facetoface",
+          "situation_ko": "나는 호텔에서 방에 있는 전화가 고장 나서 프런트 직원에게 직접 고쳐달라고 요청하려 한다. 직원과는 처음 만나는 사이이고, 나는 이 문제가 빨리 해결되기를 바라고 있다.",
+          "relation_ko": "호텔 직원과 처음 마주한 고객",
+          "pdr": {
+            "p": "speaker_lower",
+            "d": "distant",
+            "r": "mid"
+          },
+          "source": "전화가 고장 났어요. 바로 고쳐 주세요.",
+          "preceding_turn": "欢迎光临，请问有什么可以帮您的吗？",
+          "target": "电话坏了，快点修一下。",
+          "highlights": [
+            "快点修一下"
+          ],
+          "accepted_band_codes": [
+            "over_attributed"
+          ],
+          "corrections": [
+            {
+              "text": "电话坏了，能帮我修一下吗？",
+              "is_valid": true,
+              "note_ko": "요청을 부드럽게 하여 상대의 부담을 줄임."
+            },
+            {
+              "text": "电话坏了，麻烦您帮我看看。",
+              "is_valid": true,
+              "note_ko": "상대에게 부탁하는 형식으로 표현하여 공손함을 유지."
+            },
+            {
+              "text": "电话坏了，赶快修理。",
+              "is_valid": false,
+              "note_ko": "지나치게 명령조로 표현되어 상대에게 부담을 줌."
+            },
+            {
+              "text": "电话坏了，请立刻修理。",
+              "is_valid": false,
+              "note_ko": "즉시 수리를 요구하여 상대에게 과도한 부담을 줌."
+            }
+          ],
+          "explanation_ko": "프런트 직원에게 직접적인 명령조로 요청하는 것은 과도한 책임 전가로 받아들여질 수 있다. 요청을 부드럽게 하여 상대의 부담을 줄이는 것이 적절하다.",
+          "recommended_example": "电话坏了，能帮我修一下吗？",
+          "id": 2,
+          "axis_feature": "complaint_problem_accountability"
+        },
+        {
+          "type": "reason",
+          "channel": "facetoface",
+          "situation_ko": "나는 호텔에서 조식 서비스가 누락되어 프런트 직원에게 직접 문의하려 한다. 직원과는 처음 만나는 사이이고, 나는 이 문제가 빨리 해결되기를 바라고 있다.",
+          "relation_ko": "호텔 직원과 처음 마주한 고객",
+          "pdr": {
+            "p": "speaker_lower",
+            "d": "distant",
+            "r": "mid"
+          },
+          "source": "조식이 안 왔어요. 바로 가져다 주세요.",
+          "preceding_turn": "欢迎光临，请问有什么可以帮您的吗？",
+          "target": "早餐没送来，快点送过来。",
+          "highlights": [
+            "快点送过来"
+          ],
+          "problem_band_code": "over_attributed",
+          "reasons": [
+            {
+              "id": "r1",
+              "text_ko": "조식을 빨리 가져다 달라는 요청은 문제 해결을 위해 필요하다.",
+              "kind": "pragmatic_misconception"
+            },
+            {
+              "id": "r2",
+              "text_ko": "직접적인 명령조로 요청하여 상대에게 과도한 책임을 전가하고 있다.",
+              "kind": "primary"
+            },
+            {
+              "id": "r3",
+              "text_ko": "조식 서비스가 누락된 상황에서 빠르게 조치를 요청하는 것은 자연스럽다.",
+              "kind": "meaning_grammar_context"
+            }
+          ],
+          "accepted_reason_id": "r2",
+          "explanation_ko": "직접적인 명령조로 요청하는 것은 상대에게 과도한 책임 전가로 받아들여질 수 있다. 부드럽게 요청하는 것이 더 적절하다.",
+          "recommended_example": "早餐没送来，能帮我看看吗？",
+          "id": 3,
+          "axis_feature": "complaint_problem_accountability"
+        },
+        {
+          "type": "multi_judge",
+          "channel": "facetoface",
+          "situation_ko": "나는 호텔에서 방에 있는 냉장고가 작동하지 않아 프런트 직원에게 직접 해결을 요청하려 한다. 직원과는 처음 만나는 사이이며, 나는 이 문제가 빨리 해결되기를 바라고 있다.",
+          "relation_ko": "호텔 직원과 친분이 있는 고객",
+          "pdr": {
+            "p": "speaker_lower",
+            "d": "acquaintance",
+            "r": "mid"
+          },
+          "source": "냉장고가 작동하지 않아요. 고쳐 주세요.",
+          "preceding_turn": "欢迎光临，请问有什么可以帮您的吗？",
+          "candidates": [
+            {
+              "text": "冰箱坏了，能帮我修一下吗？",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "문제를 명확히 하고 요청을 부드럽게 하여 적절함."
+            },
+            {
+              "text": "冰箱坏了，快点修一下。",
+              "accepted_band_codes": [
+                "over_attributed"
+              ],
+              "note_ko": "직접적인 명령조로 상대에게 부담을 줌."
+            },
+            {
+              "text": "冰箱好像有点问题。",
+              "accepted_band_codes": [
+                "under_specified"
+              ],
+              "note_ko": "문제의 구체적 내용을 명확히 하지 않음."
+            },
+            {
+              "text": "冰箱坏了，麻烦您帮我看看。",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "부드럽게 부탁하는 형식으로 공손함을 유지."
+            },
+            {
+              "text": "冰箱可能有点问题。",
+              "accepted_band_codes": [
+                "under_specified"
+              ],
+              "note_ko": "문제를 구체적으로 제시하지 않아 상대가 이해하기 어려움."
+            }
+          ],
+          "explanation_ko": "적절한 후보는 문제를 명확히 하고 부드럽게 요청하여 상대의 부담을 줄인다. 과잉 후보는 직접적인 명령조로 표현하여 상대에게 부담을 주고, 과소 후보는 문제를 명확히 제시하지 않아 상대가 이해하기 어렵다.",
+          "recommended_example": "冰箱坏了，能帮我修一下吗？",
+          "id": 4,
+          "axis_feature": "complaint_problem_accountability"
+        }
+      ],
+      "production_task": {
+        "mode": "interpreting",
+        "source_modality": "spoken",
+        "situation_ko": "학습자는 호텔 프런트에서 처음 만나는 직원과 직접 한국어로 대화하며, 방에 문제가 있어 통역사가 학습자의 말을 중국어로 전달하는 상황이다. 두 사람은 서로 잘 모르는 사이이고, 직원은 문제 해결 권한이 있다. 학습자는 방 문제로 인해 불편함을 겪었고, 직원의 적절한 조치를 기대한다.",
+        "relation_ko": "호텔 직원과 처음 마주한 고객",
+        "channel": "facetoface",
+        "pdr": {
+          "p": "speaker_lower",
+          "d": "distant",
+          "r": "mid"
+        },
+        "source_text": "죄송한데 방에 에어컨이 고장 났어요. 너무 더워서 잠을 잘 수가 없습니다. 가능한 빨리 수리해 주실 수 있나요?",
+        "preceding_turn": null,
+        "replay_limit": 2,
+        "reference_alternatives": [
+          {
+            "text": "不好意思，房间的空调坏了，太热了，无法入睡。可以尽快修一下吗？",
+            "note_ko": "원문을 충실히 옮긴 완성 산출안."
+          }
+        ],
+        "focal_segments": [
+          {
+            "text": "방에 에어컨이 고장 났어요.",
+            "role": "head"
+          },
+          {
+            "text": "가능한 빨리 수리해 주실 수 있나요?",
+            "role": "support"
+          }
+        ]
+      },
+      "provenance": {
+        "model": "gpt-4o",
+        "prompt_version": "mission_v5_mpj4_minidiscourse_v4",
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "mission_content_hash": "cb62e9e1100dafce7c35b194dc00ca6c220702111c627e9d4cca94a5cecc76a9",
+        "generated_at": "2026-08-04T07:05:17.902Z",
+        "generation_attempt": 2
+      }
+    },
+    "missionResult": "fail"
+  },
+  {
+    "act": "request",
+    "actKo": "요청",
+    "cell": {
+      "speech_act_ui": "request",
+      "level": "intermediate",
+      "domain": "daily",
+      "mode": "translation",
+      "industry": null,
+      "pdr_power": "lower",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "low",
+      "theme_code": "digital_content",
+      "topic_code": "content_reuse_permission",
+      "situation_seed_ko": "다른 크리에이터에게 콘텐츠 2차 사용 허락을 요청하거나, 온 요청을 정중히 거절하는 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "request_mitigation_optionality",
+    "coreViolations": [],
+    "missionViolations": [
+      {
+        "id": "R5",
+        "level": "warning",
+        "message": "문항 4: 과잉안이 유일한 최장문 — 길이 단서 가능(눈검사)"
+      }
+    ],
+    "attempts": 1,
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "학습자는 알고 지내는 모임의 운영자로, 참여자인 후배에게 콘텐츠 2차 사용 허락을 정중히 요청하는 메시지를 작성해 전달하려 합니다. 두 사람은 서로 알고 지내지만 다소 어색한 사이이고, 후배가 요청을 검토할 수 있는 권한과 선택권을 가지고 있습니다. 학습자는 부담을 최소화하며 허락을 부탁하는 상황입니다.",
+      "relation_ko": "모임 운영자인 선배와 참여자인 후배의 관계",
+      "source_modality": "written",
+      "source_text": "您好，我想征求您的同意，使用您之前分享的内容进行二次创作。如果您有任何顾虑，请随时告诉我，我们可以一起讨论解决方案。谢谢您的理解和支持！",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "acquaintance",
+        "r": "low"
+      },
+      "channel": "messenger",
+      "context_spec": {
+        "standard_situation_code": "daily.content_reuse_permission.request",
+        "role_pair": {
+          "speaker_ko": "알고 지내는 모임 운영자·선배",
+          "addressee_ko": "그 모임의 참여자·후배"
+        },
+        "speaker_entitlement": "화자에게 해당 행동을 요청할 합리적 사유는 있으나, 상대의 선택권을 자동으로 박탈하지 않는다.",
+        "addressee_obligation": "상대는 요청을 이해하고 검토할 수 있으나, 수락 의무는 역할·규정·상황에 따라 달라진다.",
+        "decision_authority": "상대가 요청받은 행동을 직접 수행하거나 승인·연결할 실질적 권한을 가진다."
+      },
+      "brief_note_ko": "참여자의 콘텐츠 2차 사용 허락을 정중히 요청하는 메시지",
+      "focal_segments": [
+        {
+          "text": "我想征求您的同意，使用您之前分享的内容进行二次创作。",
+          "role": "head"
+        },
+        {
+          "text": "如果您有任何顾虑，请随时告诉我，",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 60,
+        "max": 85,
+        "actual": 61
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "prompt_version": "core_v8_learner_scene_v1",
+        "prompt_snapshot_hash": "6dc227d791fbcdb5f105a24b2ea8d611cc1bd2b5e354c46d6c84fcf344432ac9",
+        "generated_at": "2026-08-04T07:05:22.903Z"
+      }
+    },
+    "coreResult": "pass",
+    "mission": {
+      "schema_version": "mission_v5",
+      "direction": "zh_ko",
+      "unit": {
+        "target_feature": "request_mitigation_optionality",
+        "target_feature_version": "1.0",
+        "learner_label": "완화와 선택권",
+        "closing_ko": "요청은 상대에게 거절할 여지를 얼마나 남기느냐로 무게가 정해집니다. 친밀·저부담이면 직접형도 알맞고, 초면·고부담이면 선택권을 남기는 표현이 어울립니다."
+      },
+      "mpj_items": [
+        {
+          "type": "scale4",
+          "channel": "messenger",
+          "situation_ko": "나는 동아리 후배에게 그가 만든 콘텐츠를 2차로 사용해도 되는지 허락을 구하려고 한다. 우리는 알고 지내지만 다소 어색한 사이이고, 후배는 요청을 검토할 권한이 있다.",
+          "relation_ko": "동아리 후배",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "acquaintance",
+            "r": "low"
+          },
+          "source": "你好，我想征求您的同意，使用您之前分享的内容进行二次创作。如果您有任何顾虑，请随时告诉我，我们可以一起讨论解决方案。谢谢您的理解和支持！",
+          "preceding_turn": "안녕하세요, 선배님. 요즘 동아리 활동은 잘 진행되고 있나요?",
+          "target": "그 파일 좀 보내 줘.",
+          "highlights": [
+            "그 파일 좀 보내 줘"
+          ],
+          "accepted_scale_codes": [
+            "very_appropriate",
+            "somewhat_appropriate"
+          ],
+          "reference_scale_code": "very_appropriate",
+          "explanation_ko": "이 상황에서는 후배와의 관계가 다소 어색하지만, 요청의 부담이 낮고 후배가 선택권을 가지고 있어 직접적인 표현이 적절합니다.",
+          "recommended_example": "그 파일 좀 보내 줘.",
+          "id": 1,
+          "axis_feature": "request_mitigation_optionality"
+        },
+        {
+          "type": "fix_choice",
+          "channel": "messenger",
+          "situation_ko": "나는 동아리 후배에게 그가 만든 사진을 홍보 자료로 사용해도 되는지 허락을 구하려고 한다. 우리는 알고 지내지만 다소 어색한 사이이고, 후배는 요청을 검토할 권한이 있다.",
+          "relation_ko": "동아리 후배",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "acquaintance",
+            "r": "low"
+          },
+          "source": "您好，我想请您允许我使用您之前拍摄的照片作为宣传材料。如果您有任何问题，请随时告诉我。",
+          "preceding_turn": "안녕하세요, 선배님. 요즘 동아리 활동은 잘 진행되고 있나요?",
+          "target": "당신이 찍은 사진을 홍보 자료로 쓸게요.",
+          "highlights": [
+            "당신이 찍은 사진을 홍보 자료로 쓸게요"
+          ],
+          "accepted_band_codes": [
+            "too_direct"
+          ],
+          "corrections": [
+            {
+              "text": "혹시 당신이 찍은 사진을 홍보 자료로 사용해도 될까요?",
+              "is_valid": true,
+              "note_ko": "의문형 완화로 요청의 부담을 줄입니다."
+            },
+            {
+              "text": "바쁘지 않으시면 당신이 찍은 사진을 홍보 자료로 써도 될지요?",
+              "is_valid": true,
+              "note_ko": "조건절 포석을 사용해 선택권을 남깁니다."
+            },
+            {
+              "text": "당신이 찍은 사진을 홍보 자료로 써도 괜찮을까요?",
+              "is_valid": false,
+              "note_ko": "의문형 완화가 있으나, 선택권을 충분히 남기지 못합니다."
+            },
+            {
+              "text": "사진을 홍보 자료로 사용할게요. 괜찮으시죠?",
+              "is_valid": false,
+              "note_ko": "확인형 질문이지만, 선택권을 충분히 남기지 못합니다."
+            }
+          ],
+          "explanation_ko": "후배와의 관계가 다소 어색하고 요청의 부담이 낮기 때문에, 직접적인 표현보다는 완화된 표현이 적절합니다.",
+          "recommended_example": "혹시 당신이 찍은 사진을 홍보 자료로 사용해도 될까요?",
+          "id": 2,
+          "axis_feature": "request_mitigation_optionality"
+        },
+        {
+          "type": "reason",
+          "channel": "messenger",
+          "situation_ko": "나는 동아리 후배에게 그가 만든 동영상을 행사 홍보에 사용해도 되는지 허락을 구하려고 한다. 우리는 알고 지내지만 다소 어색한 사이이고, 후배는 요청을 검토할 권한이 있다.",
+          "relation_ko": "동아리 후배",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "acquaintance",
+            "r": "low"
+          },
+          "source": "您好，我想请您允许我使用您之前制作的视频作为活动宣传。如果您有任何问题，请随时告诉我。",
+          "preceding_turn": "안녕하세요, 선배님. 요즘 동아리 활동은 잘 진행되고 있나요?",
+          "target": "당신이 만든 동영상을 행사 홍보에 쓸게요.",
+          "highlights": [
+            "당신이 만든 동영상을 행사 홍보에 쓸게요"
+          ],
+          "problem_band_code": "too_direct",
+          "reasons": [
+            {
+              "id": "r1",
+              "text_ko": "후배가 요청을 거절할 수 있는 권한이 없다고 가정했습니다.",
+              "kind": "pragmatic_misconception"
+            },
+            {
+              "id": "r2",
+              "text_ko": "후배가 요청을 검토할 권한이 있으므로 선택권을 남기는 표현이 필요합니다.",
+              "kind": "primary"
+            },
+            {
+              "id": "r3",
+              "text_ko": "문법적으로는 문제가 없으나, 요청의 부담을 줄이는 표현이 부족합니다.",
+              "kind": "meaning_grammar_context"
+            }
+          ],
+          "accepted_reason_id": "r2",
+          "explanation_ko": "후배가 요청을 검토할 권한이 있으므로, 선택권을 남기는 표현이 필요합니다. 직접적인 표현은 후배에게 부담을 줄 수 있습니다.",
+          "recommended_example": "혹시 당신이 만든 동영상을 행사 홍보에 사용해도 될까요?",
+          "id": 3,
+          "axis_feature": "request_mitigation_optionality"
+        },
+        {
+          "type": "multi_judge",
+          "channel": "messenger",
+          "situation_ko": "나는 동아리 후배에게 그가 만든 포스터를 행사 홍보에 사용해도 되는지 허락을 구하려고 한다. 우리는 서로 친한 사이이고, 후배는 요청을 검토할 권한이 있다.",
+          "relation_ko": "친한 동아리 후배",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "close",
+            "r": "low"
+          },
+          "source": "您好，我想请您允许我使用您之前设计的海报作为活动宣传。如果您有任何问题，请随时告诉我。",
+          "preceding_turn": "안녕하세요, 선배님. 요즘 동아리 활동은 잘 진행되고 있나요?",
+          "candidates": [
+            {
+              "text": "당신이 만든 포스터를 행사 홍보에 쓸게요.",
+              "accepted_band_codes": [
+                "too_direct"
+              ],
+              "note_ko": "친한 사이지만 선택권을 남기지 않는 표현입니다."
+            },
+            {
+              "text": "혹시 당신이 만든 포스터를 행사 홍보에 사용해도 될까요?",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "친한 사이에서도 선택권을 남기는 적절한 표현입니다."
+            },
+            {
+              "text": "당신이 만든 포스터를 행사 홍보에 사용해도 괜찮을지 모르겠어요.",
+              "accepted_band_codes": [
+                "too_indirect"
+              ],
+              "note_ko": "요청의 핵심이 흐려지는 표현입니다."
+            },
+            {
+              "text": "당신이 만든 포스터를 행사 홍보에 써도 될까요?",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "친한 사이에서 적절한 완화된 표현입니다."
+            },
+            {
+              "text": "포스터를 행사 홍보에 쓸게요.",
+              "accepted_band_codes": [
+                "too_direct"
+              ],
+              "note_ko": "선택권을 남기지 않는 직접적인 표현입니다."
+            }
+          ],
+          "explanation_ko": "후배와 친한 사이이므로 직접적인 표현도 가능하지만, 요청의 부담을 줄이기 위해 선택권을 남기는 표현이 적절합니다. 과잉 표현은 요청의 핵심을 흐리게 합니다.",
+          "recommended_example": "혹시 당신이 만든 포스터를 행사 홍보에 사용해도 될까요?",
+          "id": 4,
+          "axis_feature": "request_mitigation_optionality"
+        }
+      ],
+      "production_task": {
+        "mode": "translation",
+        "source_modality": "written",
+        "situation_ko": "학습자는 알고 지내는 모임의 운영자로, 참여자인 후배에게 콘텐츠 2차 사용 허락을 정중히 요청하는 메시지를 작성해 전달하려 합니다. 두 사람은 서로 알고 지내지만 다소 어색한 사이이고, 후배가 요청을 검토할 수 있는 권한과 선택권을 가지고 있습니다. 학습자는 부담을 최소화하며 허락을 부탁하는 상황입니다.",
+        "relation_ko": "모임 운영자인 선배와 참여자인 후배의 관계",
+        "channel": "messenger",
+        "pdr": {
+          "p": "speaker_higher",
+          "d": "acquaintance",
+          "r": "low"
+        },
+        "source_text": "您好，我想征求您的同意，使用您之前分享的内容进行二次创作。如果您有任何顾虑，请随时告诉我，我们可以一起讨论解决方案。谢谢您的理解和支持！",
+        "preceding_turn": null,
+        "vocabulary_hints": [
+          {
+            "source": "内容",
+            "target": "콘텐츠"
+          },
+          {
+            "source": "二次创作",
+            "target": "2차 창작"
+          }
+        ],
+        "reference_alternatives": [
+          {
+            "text": "안녕하세요, 제가 이전에 공유해 주신 콘텐츠를 2차 창작에 사용해도 될지 동의를 구하고 싶습니다. 혹시 걱정되는 부분이 있다면 언제든지 말씀해 주세요. 함께 해결책을 논의할 수 있습니다. 이해와 지원에 감사드립니다.",
+            "note_ko": "원문의 요청을 한국어로 적절히 옮긴 예시입니다."
+          }
+        ],
+        "focal_segments": [
+          {
+            "text": "我想征求您的同意，使用您之前分享的内容进行二次创作。",
+            "role": "head"
+          },
+          {
+            "text": "如果您有任何顾虑，请随时告诉我，",
+            "role": "support"
+          }
+        ]
+      },
+      "provenance": {
+        "model": "gpt-4o",
+        "prompt_version": "mission_v5_mpj4_minidiscourse_v4",
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "mission_content_hash": "2e0a239e91213024aa03765fff8fc2e897b3597ba1a6858958e9ba7db84f6835",
+        "generated_at": "2026-08-04T07:05:48.688Z",
+        "generation_attempt": 1
+      }
+    },
+    "missionResult": "warning"
+  },
+  {
+    "act": "thanks",
+    "actKo": "감사",
+    "cell": {
+      "speech_act_ui": "thanks",
+      "level": "advanced",
+      "domain": "school",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "lower",
+      "pdr_distance": "formal",
+      "pdr_burden": "mid",
+      "theme_code": "campus_study",
+      "topic_code": "group_work_coordination",
+      "situation_seed_ko": "조별 과제를 함께 수행하는 학생들 사이에서 생기는 상호작용 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "gratitude_calibration",
+    "coreViolations": [],
+    "missionViolations": [
+      {
+        "id": "R5",
+        "level": "fail",
+        "message": "문항 4: multi_judge에서 부적절안과 적정안이 길이만으로 완전히 분리됨 (부적절안이 모두 적정안보다 짧음; 후보 1[insufficient]=6자, 후보 2[within_band]=21자, 후보 3[excessive]=15자, 후보 4[within_band]=19자, 후보 5[insufficient]=8자). 재생성 시 각 후보의 초점 자원과 대역은 유지하고, 새 사실을 더하지 않는 중립적 연결·부연 또는 문장 압축으로 적정안과 부적절안의 길이 범위를 겹치게 하세요"
+      },
+      {
+        "id": "R5",
+        "level": "warning",
+        "message": "문항 4: 최장/최단 길이 비율 3.5 > 3"
+      }
+    ],
+    "attempts": 3,
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "학업 프로그램의 책임자인 내가 조별 과제에 처음 참여한 학생에게 직접 말하며, 우리 대화에는 중국어 화자인 나, 한국어 화자인 상대, 그리고 두 언어 사이 통역을 하는 학습자가 개입되어 있다. 나는 상대가 조별 과제에 적극적으로 참여한 점에 대해 감사의 뜻을 전하려 한다.",
+      "relation_ko": "학업 프로그램 책임자와 처음 만나는 조별 과제 참여 학생",
+      "source_modality": "spoken",
+      "source_text": "非常感谢你在这次小组作业中积极投入和协助，这对我们项目的顺利推进帮助很大。我知道你刚加入团队，希望以后我们能继续合作愉快。",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "distant",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "school.group_work_coordination.thanks",
+        "role_pair": {
+          "speaker_ko": "수업·프로그램의 책임자 또는 담당자",
+          "addressee_ko": "처음 상대하는 학생·참여자"
+        },
+        "speaker_entitlement": "화자는 자신이 받은 도움·호의와 상대의 기여를 구체적으로 인정할 위치에 있다.",
+        "addressee_obligation": "상대는 도움·호의의 제공자이며 감사에 응답하거나 추가 행동을 할 의무는 없다.",
+        "decision_authority": "별도의 의사결정은 요구하지 않으며, 감사 대상인 기여가 실제로 존재해야 한다."
+      },
+      "brief_note_ko": "조별 과제 참여 학생에게 감사 인사를 전하는 상황",
+      "focal_segments": [
+        {
+          "text": "非常感谢你在这次小组作业中积极投入和协助",
+          "role": "head"
+        },
+        {
+          "text": "这对我们项目的顺利推进帮助很大",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 55,
+        "max": 85,
+        "actual": 57
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "prompt_version": "core_v8_learner_scene_v1",
+        "prompt_snapshot_hash": "6dc227d791fbcdb5f105a24b2ea8d611cc1bd2b5e354c46d6c84fcf344432ac9",
+        "generated_at": "2026-08-04T07:05:53.672Z"
+      }
+    },
+    "coreResult": "pass",
+    "mission": {
+      "schema_version": "mission_v5",
+      "direction": "zh_ko",
+      "unit": {
+        "target_feature": "gratitude_calibration",
+        "target_feature_version": "1.0",
+        "learner_label": "강도 조절",
+        "closing_ko": "감사는 받은 호의의 크기에 강도를 맞출 때 자연스럽습니다. 작은 호의에 과한 감사는 정중함이 아니라 거리감을 만들고, 큰 도움에 성의 없는 감사는 부족하게 들립니다."
+      },
+      "mpj_items": [
+        {
+          "type": "scale4",
+          "channel": "facetoface",
+          "situation_ko": "나는 학업 프로그램의 책임자로서 조별 과제에 처음 참여한 학생에게 직접 감사의 뜻을 전하려 한다. 우리는 초면이라 서로 잘 알지 못하지만, 상대가 이번 과제에 적극적으로 참여해 준 것이 큰 도움이 되었다.",
+          "relation_ko": "학업 프로그램 책임자와 처음 만나는 조별 과제 참여 학생",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "distant",
+            "r": "mid"
+          },
+          "source": "谢谢你借给我笔。",
+          "preceding_turn": "펜이 없어서 좀 곤란했는데, 혹시 펜 하나 빌려줄 수 있나요?",
+          "target": "고마워요.",
+          "highlights": [
+            "고마워요"
+          ],
+          "accepted_scale_codes": [
+            "very_appropriate",
+            "somewhat_appropriate"
+          ],
+          "reference_scale_code": "very_appropriate",
+          "explanation_ko": "가벼운 호의에 대한 간단한 감사 표현이 적절하다. 상대와 초면이고, 부담이 적은 상황에서 '고마워요'는 자연스럽다.",
+          "recommended_example": "고마워요.",
+          "id": 1,
+          "axis_feature": "gratitude_calibration"
+        },
+        {
+          "type": "fix_choice",
+          "channel": "facetoface",
+          "situation_ko": "나는 학업 프로그램의 책임자로서 조별 과제에 처음 참여한 학생에게 직접 감사의 뜻을 전하려 한다. 상대는 처음이라 낯설지만, 이번 과제에서 큰 도움을 주었다.",
+          "relation_ko": "학업 프로그램 책임자와 처음 만나는 조별 과제 참여 학생",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "distant",
+            "r": "mid"
+          },
+          "source": "非常感谢你的帮助。",
+          "preceding_turn": "이번 과제에서 정말 많이 도와주셔서 감사합니다.",
+          "target": "정말 감사드립니다.",
+          "highlights": [
+            "정말 감사드립니다"
+          ],
+          "accepted_band_codes": [
+            "excessive"
+          ],
+          "corrections": [
+            {
+              "text": "감사합니다, 덕분에 과제가 잘 진행됐어요.",
+              "is_valid": true,
+              "note_ko": "적절한 감사와 구체적 효과를 언급하여 적정 강도로 표현."
+            },
+            {
+              "text": "고맙습니다. 앞으로도 잘 부탁드려요.",
+              "is_valid": true,
+              "note_ko": "감사와 함께 미래 협력 의사를 밝혀 적절함."
+            },
+            {
+              "text": "정말 뭐라 감사드려야 할지 모르겠습니다.",
+              "is_valid": false,
+              "note_ko": "과장된 표현으로 거리감을 줄 수 있음."
+            },
+            {
+              "text": "진심으로 감사드립니다. 신세 갚을게요.",
+              "is_valid": false,
+              "note_ko": "과하게 진지하고 부담을 줄 수 있는 표현."
+            }
+          ],
+          "explanation_ko": "상대와의 관계가 초면이고 부담이 중간인 상황에서 '정말 감사드립니다'는 과도하게 진지한 표현으로, 적절한 강도보다 과하다.",
+          "recommended_example": "감사합니다, 덕분에 과제가 잘 진행됐어요.",
+          "id": 2,
+          "axis_feature": "gratitude_calibration"
+        },
+        {
+          "type": "reason",
+          "channel": "facetoface",
+          "situation_ko": "나는 학업 프로그램의 책임자로서 조별 과제에 처음 참여한 학생에게 직접 감사 인사를 하려 한다. 상대는 처음 보는 사람이라 낯설지만, 이번 과제에서 큰 도움을 주었다.",
+          "relation_ko": "학업 프로그램 책임자와 처음 만나는 조별 과제 참여 학생",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "distant",
+            "r": "mid"
+          },
+          "source": "谢谢你帮我完成这次项目。",
+          "preceding_turn": "이번 프로젝트에서 많은 도움을 주셔서 감사합니다.",
+          "target": "정말 감사합니다.",
+          "highlights": [
+            "정말 감사합니다"
+          ],
+          "problem_band_code": "excessive",
+          "reasons": [
+            {
+              "id": "r1",
+              "text_ko": "상대가 초면이기 때문에 너무 과한 감사 표현은 부담을 줄 수 있다.",
+              "kind": "pragmatic_misconception"
+            },
+            {
+              "id": "r2",
+              "text_ko": "'정말 감사합니다'는 상대와의 거리감을 줄 수 있는 과도한 표현이다.",
+              "kind": "primary"
+            },
+            {
+              "id": "r3",
+              "text_ko": "문법적으로는 문제가 없지만, 표현의 강도가 과하다.",
+              "kind": "meaning_grammar_context"
+            }
+          ],
+          "accepted_reason_id": "r2",
+          "explanation_ko": "상대와의 관계가 초면이고 부담이 중간인 상황에서 '정말 감사합니다'는 과도하게 진지한 표현으로, 적절한 강도보다 과하다.",
+          "recommended_example": "감사합니다, 덕분에 과제가 잘 진행됐어요.",
+          "id": 3,
+          "axis_feature": "gratitude_calibration"
+        },
+        {
+          "type": "multi_judge",
+          "channel": "facetoface",
+          "situation_ko": "나는 학업 프로그램의 책임자로서 조별 과제에 오랜만에 다시 참여한 학생에게 감사의 뜻을 전하려 한다. 우리는 이전에 몇 번 만난 적이 있다.",
+          "relation_ko": "학업 프로그램 책임자와 몇 번 만난 적 있는 조별 과제 참여 학생",
+          "pdr": {
+            "p": "speaker_higher",
+            "d": "acquaintance",
+            "r": "mid"
+          },
+          "source": "谢谢你这次的帮助。",
+          "preceding_turn": "이번에 도와주셔서 정말 감사합니다.",
+          "candidates": [
+            {
+              "text": "고맙습니다.",
+              "accepted_band_codes": [
+                "insufficient"
+              ],
+              "note_ko": "관계가 조금 더 가까워졌으므로 단순한 감사는 부족하다."
+            },
+            {
+              "text": "감사합니다, 덕분에 일이 잘 풀렸어요.",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "구체적인 효과를 언급한 적절한 감사."
+            },
+            {
+              "text": "정말 진심으로 감사드립니다.",
+              "accepted_band_codes": [
+                "excessive"
+              ],
+              "note_ko": "관계에 비해 과도하게 진지한 표현이다."
+            },
+            {
+              "text": "고맙습니다. 다음에 꼭 밥 살게요.",
+              "accepted_band_codes": [
+                "within_band"
+              ],
+              "note_ko": "감사와 함께 보답의 의사를 밝혀 적절하다."
+            },
+            {
+              "text": "정말 고마워요.",
+              "accepted_band_codes": [
+                "insufficient"
+              ],
+              "note_ko": "조금 더 구체적인 감사 표현이 필요하다."
+            }
+          ],
+          "explanation_ko": "관계가 조금 더 가까워졌으므로 단순한 감사보다 구체적인 효과나 보답 의사를 표현하는 것이 적절하다. 과도한 진지함은 거리감을 줄 수 있다.",
+          "recommended_example": "감사합니다, 덕분에 일이 잘 풀렸어요.",
+          "id": 4,
+          "axis_feature": "gratitude_calibration"
+        }
+      ],
+      "production_task": {
+        "mode": "interpreting",
+        "source_modality": "spoken",
+        "situation_ko": "학업 프로그램의 책임자인 내가 조별 과제에 처음 참여한 학생에게 직접 말하며, 우리 대화에는 중국어 화자인 나, 한국어 화자인 상대, 그리고 두 언어 사이 통역을 하는 학습자가 개입되어 있다. 나는 상대가 조별 과제에 적극적으로 참여한 점에 대해 감사의 뜻을 전하려 한다.",
+        "relation_ko": "학업 프로그램 책임자와 처음 만나는 조별 과제 참여 학생",
+        "channel": "facetoface",
+        "pdr": {
+          "p": "speaker_higher",
+          "d": "distant",
+          "r": "mid"
+        },
+        "source_text": "非常感谢你在这次小组作业中积极投入和协助，这对我们项目的顺利推进帮助很大。我知道你刚加入团队，希望以后我们能继续合作愉快。",
+        "preceding_turn": null,
+        "replay_limit": 2,
+        "reference_alternatives": [
+          {
+            "text": "이번 조별 과제에서 적극적으로 참여해 주셔서 정말 감사합니다. 덕분에 우리 프로젝트가 순조롭게 진행되었습니다. 앞으로도 함께 잘 협력할 수 있길 바랍니다.",
+            "note_ko": "적절한 감사와 협력 의사를 밝힌 표현."
+          }
+        ],
+        "focal_segments": [
+          {
+            "text": "非常感谢你在这次小组作业中积极投入和协助",
+            "role": "head"
+          },
+          {
+            "text": "这对我们项目的顺利推进帮助很大",
+            "role": "support"
+          }
+        ]
+      },
+      "provenance": {
+        "model": "gpt-4o",
+        "prompt_version": "mission_v5_mpj4_minidiscourse_v4",
+        "content_release_id": "pragma_content_candidate_20260804_01",
+        "mission_content_hash": "f5773adb199d5869d2890bd18f7d8c914f3576388ac706ef15ae0fbc734278b2",
+        "generated_at": "2026-08-04T07:06:40.462Z",
+        "generation_attempt": 2
+      }
+    },
+    "missionResult": "fail"
+  }
+]

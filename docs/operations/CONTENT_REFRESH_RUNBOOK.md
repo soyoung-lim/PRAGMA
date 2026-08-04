@@ -30,6 +30,9 @@
 - `package_items`와 `curriculum_week_scenarios`는 새 콘텐츠 ID로 재편성하기 전까지
   임의로 연결을 옮기지 않는다.
 - 구버전 행을 수작업으로 신버전처럼 고치지 않는다. 새 후보로 재생성한다.
+- 카나리 실행 중 출력은 `.tmp/content-canary`를 사용하되, dev-log나 evidence index에서
+  근거로 채택한 JSON은 `docs/research-trail/evidence/<날짜>-content-canary/`로 복사하고
+  SHA-256을 기록한 뒤에만 임시 원본을 정리한다.
 
 ## 완료 조건
 

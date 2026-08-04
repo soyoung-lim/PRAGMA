@@ -74,7 +74,7 @@
   완전 분리 hard fail로 끝났다. 두 셀 모두 non-within 후보가 within 후보보다 전부 짧았다.
 - 재시도 프롬프트를 추적한 결과 규칙 코드·대역·길이만 전달하고 실제로 실패한 후보 문장은
   전달하지 않았다. 모델은 실패 문장을 직접 고치지 않고 미션 전체를 다시 생성했다.
-- 산출물: `.tmp/content-canary/pragma_content_candidate_20260804_01.json`.
+- 산출물: `docs/research-trail/evidence/2026-08-04-content-canary/pragma_content_candidate_20260804_01.json`.
 
 ### 후보 `_02` · 실패 산출 직접 수정과 비교 방식 분리
 
@@ -91,9 +91,9 @@
   warning으로 개선되어 직전 실패 산출을 직접 고치는 재시도의 효과는 확인됐다.
 - 그러나 고정 코어 replay 전체는 3/6 mission fail이었다. 남은 hard fail은 PDR anchor와의
   정확한 1축 차이 위반, reason PDR 불일치, R27 상황문 중복, 일부 R5 길이 분리였다.
-- 새 코어 산출물: `.tmp/content-canary/pragma_content_candidate_20260804_02.json`.
+- 새 코어 산출물: `docs/research-trail/evidence/2026-08-04-content-canary/pragma_content_candidate_20260804_02.json`.
 - 고정 코어 산출물:
-  `.tmp/content-canary/pragma_content_candidate_20260804_02.mission-replay.json`.
+  `docs/research-trail/evidence/2026-08-04-content-canary/pragma_content_candidate_20260804_02.mission-replay.json`.
 
 ### 검증·운영 판정
 
@@ -157,7 +157,7 @@
   `thanks|zh_ko|stt_interpreting` R29이며 허용 55~85자에 최종 41자였다. repair는 시도됐지만
   채택되지 않았다.
 - 산출물:
-  `.tmp/content-canary/pragma_content_candidate_20260804_03.core-only.json`.
+  `docs/research-trail/evidence/2026-08-04-content-canary/pragma_content_candidate_20260804_03.core-only.json`.
 - 이 시점까지가 사용자가 승인한 migration → Edge → smoke/원장 → 6셀 카나리 범위였다.
 
 ## 승인 범위 뒤의 추가 진단과 후보 `_04`
@@ -170,8 +170,8 @@
   출력이 모두 46자로 실패했다. 지시 문구를 더 세분화해도 모델의 글자 수 준수가 개선되지
   않는다는 반증을 확보했다.
 - 산출물:
-  `.tmp/content-canary/pragma_content_candidate_20260804_03.core-only.thanks-zh_ko-stt_interpreting.json`,
-  `.tmp/content-canary/pragma_content_candidate_20260804_04.core-only.thanks-zh_ko-stt_interpreting.json`.
+  `docs/research-trail/evidence/2026-08-04-content-canary/pragma_content_candidate_20260804_03.core-only.thanks-zh_ko-stt_interpreting.json`,
+  `docs/research-trail/evidence/2026-08-04-content-canary/pragma_content_candidate_20260804_04.core-only.thanks-zh_ko-stt_interpreting.json`.
 - v49·v50 배포는 문제 진단의 연장선이었지만 최초 사용자가 승인한 배포 단위를 넘어갔다.
   이를 사후에 축소해 표현하지 않고 운영 통제 이탈 사례로 기록한다.
 
@@ -194,3 +194,14 @@
 - 롤백 전 관련 회귀는 **23 pass / 4 skip**, 롤백·기록 후 전체 Vitest는
   **262 pass / 7 skip**, production build는 **1902 modules**를 통과했다. snapshot은 17종,
   `core_surface_hash=8e9b7ec87869…`, 기준 커밋 `59bd8c3`, `git_dirty=false`다.
+
+## 연구 증거 보존 위치 정정
+
+- dev-log와 evidence index가 카나리 JSON을 Git 제외 경로인 `.tmp/content-canary`에서 직접
+  참조하고 있어 일반 캐시 청소로 원자료가 사라질 수 있음을 확인했다.
+- `_01`~`_04` JSON 6개를
+  `docs/research-trail/evidence/2026-08-04-content-canary/`로 원문 그대로 복사하고, 파일별
+  SHA-256이 임시 원본과 일치함을 확인했다. credential·authorization·password 계열 문자열은
+  검출되지 않았고 여섯 파일 모두 JSON 파싱을 통과했다.
+- dev-log·ACTIVE_HANDOFF·evidence index의 참조를 새 위치로 바꾸고 해시 대장을 추가한 뒤
+  `.tmp` 원본을 제거했다. 카나리 실행기의 임시 출력 위치 자체는 변경하지 않았다.
