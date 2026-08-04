@@ -1106,3 +1106,45 @@
   `src/lib/pragma/goldenMissions.gen.test.ts`
 - 관련 Iteration / Evidence: `ITER-20260804-04`, `EVD-20260804-04`
 - 관련 커밋: `8b30d3d`, `dee7279`, `426caf7`
+
+## DEC-20260804-05 · 연구 LLM 호출은 모델을 고정하고 점검·usage 기록을 fail-closed로 묶는다
+
+- 날짜: 2026-08-04
+- 상태: 채택·로컬 구현 및 자동 검증 완료, migration·Edge 미배포
+- 문제:
+  - 연구 콘텐츠가 주 모델 실패 시 더 작은 다른 모델로 조용히 바뀔 수 있어 같은 배치의 생성
+    조건이 섞일 가능성이 있었다.
+  - 미션 품질점검 호출이나 응답 계약이 실패해도 generated로 저장하는 fail-open 경로가 있었다.
+  - OpenAI 응답 usage를 버려 작업 유형·재시도·비평별 토큰과 실제 응답 모델을 재구성할 수
+    없었다.
+- 확인한 사실:
+  - 정본 run과 전체 DB에서 코어·미션·품질점검의 모델 강등 사용은 0건이었다. 과거 배치 격리는
+    필요하지 않다.
+  - 품질점검 없는 과거 미션 1건은 `archived_only`로 학습자 실행 대상이 아니며 소급 수정하지
+    않았다.
+- 검토한 대안:
+  - 동급 모델 폴백: 무엇을 동급으로 볼지 새 연구 조건이 되고 실제 판정 모델이 섞여 기각.
+  - 폴백 산출물을 저장하되 플래그 후 제외: 결함 산출물과 후속 대기열을 불필요하게 만들고
+    이번 감사에서 실제 폴백도 0건이라 기각.
+  - usage를 기존 provenance 한 객체에 누적: 재시도·생성·비평 호출을 독립 행으로 조회하기
+    어렵고 갱신형 기록이 되어 기각.
+  - AI verdict가 pass가 아니면 인간 승인도 DB에서 금지: AI를 최종 판정자로 올리는 범위 확장이라
+    기각. 점검 자체의 성공과 AI 판정 내용은 분리한다.
+- 결정:
+  1. 연구 콘텐츠는 모델 교체 폴백을 두지 않는다. 동일 모델의 일시 전송 오류 재시도는 품질
+     강등이 아니므로 유지한다.
+  2. 품질점검 호출·응답 계약·필수 메타데이터 중 하나라도 실패하면 generated 저장을 막고,
+     `save_generated_mission` RPC도 동일 최소 계약을 강제한다.
+  3. 호출별 usage는 별도 `llm_invocation_events`에 append-only로 기록한다. 프롬프트와 응답
+     본문은 중복 저장하지 않는다.
+  4. 연구 산출물은 공급자 성공뿐 아니라 호출 원장 적재까지 성공해야 성공으로 처리한다.
+     학습자 런타임 피드백은 가용성 폴백을 유지하고 원장 장애가 학습을 막지는 않게 한다.
+  5. migration을 Edge보다 먼저 적용하고 소수 smoke로 원장 기록과 fail-closed를 확인한 뒤
+     본 배치를 연다.
+- 근거: 생성 조건의 동일성을 보장하면서 실패도 숨기지 않고, 호출 단위의 모델·usage·재시도를
+  논문 검증 자료로 남길 수 있다. 인간 최종 조정 권한은 유지한다.
+- 관련 파일: `supabase/functions/_shared/openaiRequestContract.ts`,
+  `supabase/functions/generate-scenario/index.ts`, `src/lib/pragma/promoteMission.ts`,
+  `supabase/migrations/20260804190000_llm_invocation_controls.sql`
+- 관련 Iteration / Evidence: `ITER-20260804-05`, `EVD-20260804-05`
+- 관련 커밋: `91e2a33`
