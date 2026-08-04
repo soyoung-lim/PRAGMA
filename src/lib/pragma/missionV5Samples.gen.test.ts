@@ -46,6 +46,8 @@ const RECHECK = process.env.RUN_V5_RECHECK === "1";
 const SUPPLEMENT = process.env.RUN_V5_SUPPLEMENT === "1";
 /** refresh 전 두 방향·두 모드 대표 6셀을 생성하는 릴리스 canary. DB 저장 없음. */
 const CANARY = process.env.RUN_CONTENT_CANARY === "1";
+/** 이전 카나리의 통과 코어를 고정해 미션 프롬프트 변경만 비교할 때 사용한다. */
+const CANARY_CORE_FIXTURE = process.env.CONTENT_CANARY_CORE_FIXTURE?.trim();
 
 const OUT_DIR =
   process.env.V5_SAMPLE_OUT ??
@@ -117,6 +119,7 @@ function createRunner(url: string, key: string) {
   return async function runCell(
     cell: BatchCell,
     variant?: SampleResult["variant"],
+    coreFixture?: unknown,
   ): Promise<SampleResult> {
     const act = cell.speech_act_ui;
     const featureCode = DEFAULT_FEATURE_BY_ACT[act];
@@ -148,32 +151,31 @@ function createRunner(url: string, key: string) {
 
     try {
       // ── 1. 코어 생성 (coreBatchRun과 같은 본문) ──
-      const coreRes = await invoke({
-        action: "core",
-        core: {
-          direction: cell.direction,
-          speech_act: act,
-          speech_act_ko: SPEECH_ACT_UI[act],
-          level_ko: LEVEL[cell.level],
-          domain: cell.domain,
-          domain_ko: DOMAIN[cell.domain],
-          industry: cell.industry,
-          topic_code: cell.topic_code,
-          mode,
-          channel: legacyChannelOf(mode),
-          channel_ko: mode === "stt_interpreting" ? "구두(통역)" : "서면(번역)",
-          pdr: {
-            p: PDR_POWER_ENUM_TO_JSON[cell.pdr_power],
-            d: PDR_DISTANCE_ENUM_TO_JSON[cell.pdr_distance],
-            r: cell.pdr_burden,
+      const core = coreFixture ?? (await invoke({
+          action: "core",
+          core: {
+            direction: cell.direction,
+            speech_act: act,
+            speech_act_ko: SPEECH_ACT_UI[act],
+            level_ko: LEVEL[cell.level],
+            domain: cell.domain,
+            domain_ko: DOMAIN[cell.domain],
+            industry: cell.industry,
+            topic_code: cell.topic_code,
+            mode,
+            channel: legacyChannelOf(mode),
+            channel_ko: mode === "stt_interpreting" ? "구두(통역)" : "서면(번역)",
+            pdr: {
+              p: PDR_POWER_ENUM_TO_JSON[cell.pdr_power],
+              d: PDR_DISTANCE_ENUM_TO_JSON[cell.pdr_distance],
+              r: cell.pdr_burden,
+            },
+            source_modality: modalityOf(mode),
+            situation_seed_ko: cell.situation_seed_ko,
+            is_response_act: isResponseAct(act),
+            length_hint_ko: coreLengthHintKo(cell.level, mode),
           },
-          source_modality: modalityOf(mode),
-          situation_seed_ko: cell.situation_seed_ko,
-          is_response_act: isResponseAct(act),
-          length_hint_ko: coreLengthHintKo(cell.level, mode),
-        },
-      }, `[${out.actKo} core]`);
-      const core = coreRes.core_content;
+        }, `[${out.actKo} core]`)).core_content;
       out.core = core;
       const coreCheck = checkCore(core, ctx);
       out.coreResult = coreCheck.result;
@@ -399,16 +401,33 @@ describe.skipIf(!CANARY)("콘텐츠 후보 refresh canary", () => {
       const { url, key } = readEnv();
       const runCell = createRunner(url, key);
       const results: SampleResult[] = [];
+      const fixtureRows = CANARY_CORE_FIXTURE
+        ? JSON.parse(
+            readFileSync(resolve(process.cwd(), CANARY_CORE_FIXTURE), "utf8"),
+          ) as SampleResult[]
+        : [];
+      const fixtureByCell = new Map(
+        fixtureRows.map((row) => [
+          `${row.act}|${row.cell.direction}|${row.cell.mode}`,
+          row.core,
+        ]),
+      );
 
       // 순차 실행 — 조직 TPM 상한을 넘기지 않으면서 실패 셀도 끝까지 기록한다.
       for (const cell of buildContentCanaryPlan()) {
-        results.push(await runCell(cell));
+        const fixtureKey = `${cell.speech_act_ui}|${cell.direction}|${cell.mode}`;
+        const coreFixture = CANARY_CORE_FIXTURE ? fixtureByCell.get(fixtureKey) : undefined;
+        if (CANARY_CORE_FIXTURE && !coreFixture) {
+          throw new Error(`고정 코어 fixture에 ${fixtureKey} 셀이 없습니다.`);
+        }
+        results.push(await runCell(cell, undefined, coreFixture));
       }
 
       const outDir =
         process.env.CONTENT_CANARY_OUT ?? resolve(process.cwd(), ".tmp", "content-canary");
       mkdirSync(outDir, { recursive: true });
-      const jsonPath = resolve(outDir, `${CURRENT_CONTENT_RELEASE_ID}.json`);
+      const suffix = CANARY_CORE_FIXTURE ? ".mission-replay" : "";
+      const jsonPath = resolve(outDir, `${CURRENT_CONTENT_RELEASE_ID}${suffix}.json`);
       writeFileSync(jsonPath, JSON.stringify(results, null, 2), "utf8");
 
       const summary = results.map((result) => ({
@@ -431,11 +450,13 @@ describe.skipIf(!CANARY)("콘텐츠 후보 refresh canary", () => {
         expect(result.error, `${result.actKo} 생성 오류`).toBeUndefined();
         expect(result.coreResult, `${result.actKo} 코어 R검사`).not.toBe("fail");
         expect(result.missionResult, `${result.actKo} 미션 R검사`).not.toBe("fail");
-        expect(
-          (result.core as { generation?: { content_release_id?: string } } | undefined)
-            ?.generation?.content_release_id,
-          `${result.actKo} 코어 후보 ID`,
-        ).toBe(CURRENT_CONTENT_RELEASE_ID);
+        if (!CANARY_CORE_FIXTURE) {
+          expect(
+            (result.core as { generation?: { content_release_id?: string } } | undefined)
+              ?.generation?.content_release_id,
+            `${result.actKo} 코어 후보 ID`,
+          ).toBe(CURRENT_CONTENT_RELEASE_ID);
+        }
         expect(
           (result.mission as { provenance?: { content_release_id?: string } } | undefined)
             ?.provenance?.content_release_id,
