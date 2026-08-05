@@ -171,7 +171,9 @@ prompt_snapshot_hash, model_requested, model_returned, notes
 - 저장된 17건의 C2는 pass 17, warning 0, fail 0, 호출 실패 0이었다.
 - DB 실행 ID 필터에서 17건, 후보 릴리스 `_03`, 현재 코어 지문 `8e9b7ec87869…`,
   `needs_review` 상태를 확인했다.
-- H0 사람 판정, 원장 `model_returned` 직접 확인, 미션 조립은 아직 수행하지 않았다.
+- 사용자는 항목별 직접 검토 대신 AI 보조 기본 분류를 운영상 채택했다(후보 5·보류 6·기각 6).
+  따라서 이를 독립적인 H0 사람 검수 완료나 교차 벤더 검토로 산입하지 않는다.
+- 원장 `model_returned` 직접 확인과 미션 조립은 아직 수행하지 않았다.
 - 원자료는
   `docs/research-trail/evidence/2026-08-05-zh-ko-core-pilot.md`에 보존한다.
 
