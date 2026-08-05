@@ -87,7 +87,9 @@ export type CoreGenerationStamp = z.infer<typeof CoreGenerationStampSchema>;
 export const CoreSourceTypeSchema = z.enum([
   "authentic_text", // 관리자가 붙여넣은 실제 문구
   "authentic_image", // 이미지 업로드 → vision 판독
-  "authentic_youtube", // YouTube 중국어 자막(supadata)
+  // 레거시(2026-08-05 신규 입력 경로 제거). 이미 저장된 provenance를 읽기 위해 남긴다 —
+  // 값을 없애면 이 출처로 저장된 기존 코어가 스키마 검증에서 깨진다.
+  "authentic_youtube", // YouTube 중국어 자막(supadata) — 읽기 전용
 ]);
 export type CoreSourceType = z.infer<typeof CoreSourceTypeSchema>;
 
