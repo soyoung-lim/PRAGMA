@@ -128,7 +128,6 @@ describe("core source discourse boundary", () => {
       "target_speaker",
       "interpreting",
       "learner_interpreter",
-      "participant_separation",
     ]);
     expect(
       coreBilingualSceneIssue(
@@ -155,8 +154,18 @@ describe("core source discourse boundary", () => {
     );
 
     expect(invitation?.missing).toContain("role_overlap");
-    expect(invitation?.missing).toContain("participant_separation");
     expect(complaint?.missing).toContain("role_overlap");
+  });
+
+  it("세 역할이 명시되면 '두 사람 사이' 같은 고정 문구 없이도 통과한다", () => {
+    expect(
+      coreBilingualSceneIssue(
+        "중국어 원발화자인 담당자가 한국인 학생에게 감사하고, 학습자는 이 대화를 통역하는 통역사 역할을 맡는다.",
+        "zh",
+        "ko",
+        true,
+      ),
+    ).toBeNull();
   });
 
   it("학생용 상황문의 정답 방향 노출을 별도 오류로 잡는다", () => {

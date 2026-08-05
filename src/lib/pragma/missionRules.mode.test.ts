@@ -182,6 +182,17 @@ describe("R16 명시적 수행 모드 모순", () => {
       ).toEqual([]);
     });
 
+    it("역할 명사가 분리되면 '두 사람 사이'라는 고정 문구를 요구하지 않는다", () => {
+      expect(
+        r16Fails(
+          spokenCore(
+            "한국어 원발화자인 담당자가 중국인 직원에게 감사하고, 학습자는 이 대화를 통역하는 통역사 역할을 맡는다.",
+          ),
+          spokenContext,
+        ),
+      ).toEqual([]);
+    });
+
     it("학습자가 직접 화행을 수행하면서 통역하는 역할 중첩은 차단한다", () => {
       const failures = r16Fails(
         spokenCore(

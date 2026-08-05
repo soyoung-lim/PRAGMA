@@ -48,7 +48,6 @@ export interface CoreBilingualSceneIssue {
     | 'target_speaker'
     | 'interpreting'
     | 'learner_interpreter'
-    | 'participant_separation'
     | 'role_overlap'
   >
   message: string
@@ -70,7 +69,6 @@ const CORE_SCENE_LANGUAGE_MARKER: Record<CoreLanguage, RegExp> = {
 }
 
 const LEARNER_INTERPRETER_MARKER = /(?:학습자|학생)(?:는|가|에게|이)?[^.!?]{0,50}(?:통역|옮기|전달)/u
-const DISTINCT_PARTICIPANT_MARKER = /(?:두 사람|두 화자|양측|서로 다른 두 사람)[^.!?]{0,35}(?:사이|통역)|(?:사이에서|사이에|사이를)[^.!?]{0,35}(?:학습자|학생|통역)/u
 const LEARNER_SPEAKER_OVERLAP = /(?:학습자|학생)(?:는|가|이)?[^.!?]{0,25}(?:중국어|한국어)\s*화자(?:로서|이며|이고|이다|역할)|(?:학습자|학생)(?:는|가|이)?[^.!?]{0,80}(?:직접|스스로)[^.!?]{0,45}(?:말|발화|구두|초대|불만|요청|거절|감사|사과|제안)[^.!?]{0,80}(?:통역|옮기)/u
 
 const LEARNER_SCENE_EVALUATION_CUES = [
@@ -103,7 +101,6 @@ export function coreBilingualSceneIssue(
   if (!CORE_SCENE_LANGUAGE_MARKER[targetLanguage].test(value)) missing.push('target_speaker')
   if (!/통역/u.test(value)) missing.push('interpreting')
   if (!LEARNER_INTERPRETER_MARKER.test(value)) missing.push('learner_interpreter')
-  if (!DISTINCT_PARTICIPANT_MARKER.test(value)) missing.push('participant_separation')
   if (LEARNER_SPEAKER_OVERLAP.test(value)) missing.push('role_overlap')
   if (missing.length === 0) return null
   return {
