@@ -171,6 +171,7 @@ const SPEECH_ACTS: SpeechActUI[] = [
   "agreement", "opposition", "compliment", "complaint",
 ];
 const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
+const MODES: GenMode[] = ["translation", "stt_interpreting"];
 const DOMAINS: Domain[] = ["daily", "school", "work"];
 
 export interface TopicCoverageCell {
@@ -281,13 +282,47 @@ export const PDR_CONSTRUCT_CELLS: {
   };
 });
 
-// zh_ko 검증 범위(계약 0-l·89) — 승격 가능 3화행 × 수준3 × 모드2 = 18셀, 셀당 ≥1.
-// 500 본 배치는 ko_zh 중심 유지. zh_ko 확장 쿼터는 18셀 눈검사 후 별도 결정.
-export const ZH_KO_VALIDATION_ACTS: SpeechActUI[] = ["request", "refusal", "thanks"];
-export const ZH_KO_VALIDATION_QUOTA: BatchQuota = {
+// zh_ko 30셀 혼합 파일럿(계약 0-l·89, 2026-08-05 개정).
+// 핵심 3화행은 수준3 × 모드2를 유지하고, 나머지 6화행은 중급 × 모드2로 먼저 검증한다.
+// 인간 눈검사 전에는 54셀 완전 대칭이나 본배치로 자동 확대하지 않는다.
+export const ZH_KO_ANCHOR_ACTS: SpeechActUI[] = ["request", "refusal", "thanks"];
+export const ZH_KO_EXPANSION_ACTS: SpeechActUI[] = [
+  "apology", "proposal", "agreement", "opposition", "compliment", "complaint",
+];
+export const ZH_KO_VALIDATION_ACTS: SpeechActUI[] = [
+  ...ZH_KO_ANCHOR_ACTS,
+  ...ZH_KO_EXPANSION_ACTS,
+];
+const ZH_KO_ANCHOR_QUOTA: BatchQuota = {
   perLevel: { beginner_intermediate: 1, intermediate: 1, advanced: 1 },
   interpretingRatio: 0.5, // max(1,round(1×0.5))=1 → 셀당 번역1·통역1
 };
+const ZH_KO_EXPANSION_QUOTA: BatchQuota = {
+  perLevel: { beginner_intermediate: 0, intermediate: 1, advanced: 0 },
+  interpretingRatio: 0.5,
+};
+
+export interface DeliveryCoverageCell {
+  speechAct: SpeechActUI;
+  level: LearnerLevel;
+  mode: GenMode;
+}
+
+const deliveryCells = (
+  acts: SpeechActUI[],
+  levels: LearnerLevel[],
+): DeliveryCoverageCell[] =>
+  acts.flatMap((speechAct) =>
+    levels.flatMap((level) =>
+      MODES.map((mode) => ({ speechAct, level, mode })),
+    ),
+  );
+
+/** 혼합 파일럿에서 의도한 전달 커버리지 30셀의 명시 목록. */
+export const ZH_KO_VALIDATION_DELIVERY_CELLS: DeliveryCoverageCell[] = [
+  ...deliveryCells(ZH_KO_ANCHOR_ACTS, LEVELS),
+  ...deliveryCells(ZH_KO_EXPANSION_ACTS, ["intermediate"]),
+];
 
 /**
  * 할당량으로부터 셀 목록을 만든다. 순수 함수 — 같은 입력이면 같은 계획.
@@ -295,8 +330,8 @@ export const ZH_KO_VALIDATION_QUOTA: BatchQuota = {
  * 도메인은 계획에 못박지만 산업은 work 도메인 안에서만 회전시킨다
  * (스키마 CHECK: industry는 domain='work'가 아니면 null).
  *
- * direction(0-l·89) = 셀에 찍는 방향 태그(기본 ko_zh). acts = 화행 부분집합
- * (zh_ko 검증 범위는 ZH_KO_VALIDATION_ACTS 3종으로 좁힌다).
+ * direction(0-l·89) = 셀에 찍는 방향 태그(기본 ko_zh). acts = 화행 부분집합.
+ * zh_ko 혼합 파일럿은 화행별 수준 범위가 다르므로 buildZhKoValidationPlan을 사용한다.
  */
 export function buildBatchPlan(
   quota: BatchQuota = DEFAULT_QUOTA,
@@ -369,6 +404,17 @@ export function buildBatchPlan(
   return cells;
 }
 
+/**
+ * 중→한 9화행·30셀 혼합 파일럿 계획.
+ * 핵심 3화행 18셀 + 확장 6화행 중급 12셀을 합치되 실제 생성·저장은 호출자가 결정한다.
+ */
+export function buildZhKoValidationPlan(): BatchCell[] {
+  return [
+    ...buildBatchPlan(ZH_KO_ANCHOR_QUOTA, "zh_ko", ZH_KO_ANCHOR_ACTS),
+    ...buildBatchPlan(ZH_KO_EXPANSION_QUOTA, "zh_ko", ZH_KO_EXPANSION_ACTS),
+  ];
+}
+
 /** 계획을 실행 전에 눈으로 검산하기 위한 분포 요약. */
 export interface PlanSummary {
   total: number;
@@ -401,11 +447,15 @@ export interface PlanSummary {
 /**
  * 계획을 실행 전에 눈으로 검산하기 위한 분포 요약.
  *
- * @param targetActs 감사 대상 화행(기본 = 9화행 전부). zh_ko 검증처럼 화행이
- *   의도적으로 좁혀진 계획(ZH_KO_VALIDATION_ACTS)을 요약할 때 넘긴다 — 안 넘기면
- *   대상 밖 화행이 "빈 셀"로 오경고된다(0-l·89 검증 vs 0-h·57 54셀 감사 범위 분리).
+ * @param targetActs 감사 대상 화행(기본 = 9화행 전부).
+ * @param expectedDeliveryCells 혼합 파일럿처럼 화행별 수준 범위가 다를 때 의도한
+ *   전달 셀을 명시한다. 생략하면 기존 54셀(또는 화행 부분집합×등장 수준×2) 감사를 유지한다.
  */
-export function summarizePlan(cells: BatchCell[], targetActs: SpeechActUI[] = SPEECH_ACTS): PlanSummary {
+export function summarizePlan(
+  cells: BatchCell[],
+  targetActs: SpeechActUI[] = SPEECH_ACTS,
+  expectedDeliveryCells?: DeliveryCoverageCell[],
+): PlanSummary {
   const bump = (rec: Record<string, number>, key: string, by = 1) => {
     rec[key] = (rec[key] ?? 0) + by;
   };
@@ -443,29 +493,29 @@ export function summarizePlan(cells: BatchCell[], targetActs: SpeechActUI[] = SP
     );
   }
 
+  const expectedActLevelPairs = expectedDeliveryCells
+    ? Array.from(new Set(expectedDeliveryCells.map(({ speechAct, level }) => `${speechAct}|${level}`)))
+    : targetActs.flatMap((act) => LEVELS.map((level) => `${act}|${level}`));
   const emptyActLevelCells: string[] = [];
-  for (const act of targetActs) {
-    for (const level of LEVELS) {
-      if (!actLevel.has(`${act}|${level}`)) emptyActLevelCells.push(`${act}·${level}`);
-    }
+  for (const key of expectedActLevelPairs) {
+    if (!actLevel.has(key)) emptyActLevelCells.push(key.replace("|", "·"));
   }
 
-  // 54셀(또는 targetActs 축소분) 감사 — 계획에 등장한 수준만 대상(perLevel=0 수준은 의도된 제외).
-  const MODES = ["translation", "stt_interpreting"] as const;
+  // 기본은 54셀(또는 targetActs 축소분), 혼합 파일럿은 명시된 expectedDeliveryCells만 감사한다.
   const emptyActLevelModeCells: string[] = [];
   const underMinCells: string[] = [];
   let minActLevelModeCount = Infinity;
-  for (const level of LEVELS) {
-    if (!levelsPresent.has(level)) continue;
-    for (const act of targetActs) {
-      for (const mode of MODES) {
-        const n = actLevelModeCount[`${act}|${level}|${mode}`] ?? 0;
-        const label = `${act}·${level}·${mode === "translation" ? "번역" : "통역"}`;
-        if (n === 0) emptyActLevelModeCells.push(label);
-        if (n < 3) underMinCells.push(label);
-        if (n < minActLevelModeCount) minActLevelModeCount = n;
-      }
-    }
+  const deliveryAuditCells = expectedDeliveryCells ?? LEVELS
+    .filter((level) => levelsPresent.has(level))
+    .flatMap((level) => targetActs.flatMap((speechAct) =>
+      MODES.map((mode) => ({ speechAct, level, mode })),
+    ));
+  for (const { speechAct, level, mode } of deliveryAuditCells) {
+    const n = actLevelModeCount[`${speechAct}|${level}|${mode}`] ?? 0;
+    const label = `${speechAct}·${level}·${mode === "translation" ? "번역" : "통역"}`;
+    if (n === 0) emptyActLevelModeCells.push(label);
+    if (n < 3) underMinCells.push(label);
+    if (n < minActLevelModeCount) minActLevelModeCount = n;
   }
   if (!Number.isFinite(minActLevelModeCount)) minActLevelModeCount = 0;
 

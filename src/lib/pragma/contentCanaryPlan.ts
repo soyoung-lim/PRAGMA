@@ -1,8 +1,7 @@
 import {
   FULL_BATCH_QUOTA_495,
-  ZH_KO_VALIDATION_ACTS,
-  ZH_KO_VALIDATION_QUOTA,
   buildBatchPlan,
+  buildZhKoValidationPlan,
   type BatchCell,
 } from "@/lib/pragma/batchPlan";
 
@@ -24,11 +23,7 @@ function requireCell(
  */
 export function buildContentCanaryPlan(): BatchCell[] {
   const koZh = buildBatchPlan(FULL_BATCH_QUOTA_495, "ko_zh");
-  const zhKo = buildBatchPlan(
-    ZH_KO_VALIDATION_QUOTA,
-    "zh_ko",
-    ZH_KO_VALIDATION_ACTS,
-  );
+  const zhKo = buildZhKoValidationPlan();
 
   return [
     requireCell(
