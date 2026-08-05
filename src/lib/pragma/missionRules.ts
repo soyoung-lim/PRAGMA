@@ -48,6 +48,7 @@ import {
   CORE_SOURCE_SENTENCE_MAX,
   CORE_SOURCE_SENTENCE_MIN,
   coreBilingualSceneIssue,
+  coreLearnerSceneIssue,
   countCoreSourceSentences,
 } from "../../../supabase/functions/_shared/coreSourceRepair";
 
@@ -348,6 +349,10 @@ function checkCoreCommon(
   );
   if (bilingualSceneIssue) {
     add(v, "R16", "fail", `통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: ${bilingualSceneIssue.message}`);
+  }
+  const learnerSceneIssue = coreLearnerSceneIssue(situation);
+  if (learnerSceneIssue) {
+    add(v, "R30", "fail", `학생용 situation_ko에 답안 평가 기준이 노출됨: ${learnerSceneIssue.message}`);
   }
   // R17 산업은 work에서만
   if (ctx.industry && ctx.domain !== "work") {

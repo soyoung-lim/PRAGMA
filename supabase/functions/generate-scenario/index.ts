@@ -7,6 +7,7 @@ import {
   buildCoreOutputRepairPrompt,
   buildCoreSourceRepairPrompt,
   coreBilingualSceneIssue,
+  coreLearnerSceneIssue,
   corePrecedingTurnIssue,
   coreSourceIssue,
   mergeValidatedCoreRepair,
@@ -32,6 +33,7 @@ import {
 import {
   CURRENT_CONTENT_RELEASE_ID,
   CURRENT_CORE_PROMPT_VERSIONS,
+  CURRENT_CORE_QUALITY_PROMPT_VERSION,
   CURRENT_FEEDBACK_PROMPT_VERSIONS,
   CURRENT_MISSION_PROMPT_VERSIONS,
 } from '../_shared/contentRelease.ts'
@@ -974,7 +976,7 @@ function buildCoreSystemPrompt(direction: Direction): string {
 [학생용 장면 정보 — situation_ko가 분명히 할 요소] (계약 0-r·107)
 학습자마다 다른 장면을 상상하면 판단 차이가 언어 감각이 아니라 상상의 차이에서 생긴다.
 **자연스러운 서술 안에서** 다음 사실만 드러나게 쓴다.
-  ① 학습자가 누구에게 무엇을 하려는지
+  ① 원문 화자 A가 상대 B에게 무엇을 하려는지
   ② 두 사람이 어느 정도 알고 지낸 사이인지
   ③ 상대가 실제로 감수할 비용·수고·조정 범위가 무엇인지
   ④ 앞선 대화가 실제로 진행 중이면 그 사실(preceding_turn도 함께 채운다)
@@ -991,9 +993,11 @@ function buildCoreSystemPrompt(direction: Direction): string {
   이를 바꾸거나, 권한 없는 상대가 결정을 내리게 하거나, 선택 가능한 요청을 지시로 바꾸지 않는다.
   역할 쌍에 든 "친구·선배·담당자" 같은 말은 P/D를 설명하는 범주 예시이지 topic의 인물을
   교체할 허가가 아니다. 실제 인물 명칭은 topic_code·장면 시드에 맞게 구체화한다.
-- 화자 A(학습자)와 상대 B를 먼저 고정하고 situation_ko·relation_ko·preceding_turn·source_text
+- 화자 A와 상대 B를 먼저 고정하고 situation_ko·relation_ko·preceding_turn·source_text
   전체에서 같은 인물로 유지한다. 문제를 일으킨 사람, 행위 대상, 소유자, 요청받은 수행자를
   대명사·소유 표현까지 포함해 뒤집지 않는다. 요청은 B가 수행하거나 결정할 수 있는 행위여야 한다.
+- 통역 셀에서 학습자는 A도 B도 아닌 별도의 통역사다. A가 화행을 수행하고 B가 그 발화의
+  청자이며, 학습자는 A의 발화를 B에게 옮긴다. 자기 발화를 자기가 통역하는 장면은 실패다.
 - 산업 배경이 주어지면 직장 장면의 실제 업무·대상·어휘에 드러나야 한다. 산업명을 보지 않고도
   어느 분야인지 추론할 수 있도록 서로 다른 종류의 구체적 단서(업무/대상/전문 어휘) 두 가지 이상을
   넣는다. "회사·프로젝트·제품·고객·행사" 같은 범용어만으로 산업을 구현했다고 보지 않는다.
@@ -1019,11 +1023,12 @@ function buildCoreSystemPrompt(direction: Direction): string {
   제안·초대는 B에게 실질적 선택권이 있어야 하며, 불만은 문제 책임자나 조정 가능한 상대를 향한다.
 - 수행 모드와 situation_ko의 장면 서술은 반드시 일치해야 한다. 번역 셀을 "직접 말하는
   상황", 통역 셀을 "글로 작성해 보내는 상황"으로 서술하는 식의 명시적 모순은 금지한다.
-- 통역 셀에서는 A=${srcL} 화자, B=${tgtL} 화자이고, 학습자가 A의 ${srcL} 발화를 B에게
-  ${tgtL}로 옮기는 이중언어 상호작용이다. situation_ko에 두 사람의 언어 역할과 통역이
-  개입하는 자리임을 자연스럽게 드러내어, 왜 통역이 필요한 장면인지 알 수 있게 한다.
+- 통역 셀에서는 A=${srcL} 원발화자, B=${tgtL} 청자이고, A/B와 다른 학습자 통역사가 A의
+  ${srcL} 발화를 B에게 ${tgtL}로 옮기는 3자 이중언어 상호작용이다. situation_ko에 세 사람의
+  역할을 자연스럽게 드러내어, 왜 통역이 필요한 장면인지 알 수 있게 한다.
 - 출력 전에 화행·도메인·P·D·R·수행 모드뿐 아니라 행위자 지시·산업 단서·topic·인접쌍 명제·
-  결정 권한을 내부적으로 하나씩 대조한다.
+  결정 권한·통역 세 참여자 분리·학생용 평가 기준 비노출·상황과 원문의 사건 대응을 내부적으로
+  하나씩 대조한다.
 - "중국인은/중국에서는/한국인은/한국에서는" 같은 국가 단위 일반화 표현 금지.
 - 정치·시사·정부 기관 소재 금지.`
 }
@@ -1074,7 +1079,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   if (b.source_modality === 'spoken') {
     parts.push(
       `- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 ${srcL} 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지. situation_ko도 직접 말하고 듣는 장면으로 서술하며, 이메일·메신저·글을 작성해 보내는 장면으로 만들지 마세요.`,
-      `- 통역 참여자 언어: A는 ${srcL} 화자, B는 ${tgtL} 화자이며 학습자가 A의 말을 B에게 옮깁니다. situation_ko에 두 언어 화자와 통역의 개입을 자연스럽게 명시하세요. 같은 언어 사용자끼리 통역 없이 대화하는 장면으로 만들면 실패입니다.`,
+      `- 통역 참여자 언어: A는 ${srcL} 원발화자, B는 ${tgtL} 청자이며, 학습자는 A/B와 다른 통역사로서 A의 말을 B에게 옮깁니다. situation_ko에 세 참여자의 역할을 자연스럽게 명시하세요. 학습자가 A의 화행을 직접 수행하거나 자기 말을 스스로 통역하면 실패입니다.`,
     )
   } else {
     parts.push(`- 수행 모드: 번역 — source_text는 자연스러운 ${srcL} 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정. situation_ko도 글을 작성해 전달하는 장면으로 서술하며, "글로 남기지 않고 직접 말한다"거나 대면·통화로만 수행하는 장면으로 만들지 마세요.`)
@@ -1239,6 +1244,7 @@ async function corePromptSnapshotHash(): Promise<string> {
           message: 'PROBE_PRECEDING_TURN_LANGUAGE_ERROR',
         },
         bilingualSceneIssue: null,
+        learnerSceneIssue: null,
       })
     ),
     bilingual_scene_repair_prompt_templates: (['ko_zh', 'zh_ko'] as const).map((direction) =>
@@ -1261,8 +1267,28 @@ async function corePromptSnapshotHash(): Promise<string> {
           missing: ['source_speaker', 'target_speaker', 'interpreting'],
           message: 'PROBE_BILINGUAL_SCENE_ERROR',
         },
+        learnerSceneIssue: null,
       })
     ),
+    learner_scene_repair_prompt_template: buildCoreOutputRepairPrompt({
+      originalUserPrompt: 'PROBE_USER_PROMPT',
+      previousOutput: {
+        situation_ko: 'PROBE_SITUATION_WITH_EVALUATION_CUE',
+        source_text: 'PROBE_SOURCE_TEXT',
+        preceding_turn: null,
+        focal_segments: [],
+      },
+      sourceLanguage: 'zh',
+      lengthHintKo: '유효 글자 PROBE_MIN~PROBE_MAX자',
+      effectiveCharRange: { min: 30, max: 45 },
+      sourceIssue: null,
+      precedingTurnIssue: null,
+      bilingualSceneIssue: null,
+      learnerSceneIssue: {
+        code: 'evaluation_criteria',
+        message: 'PROBE_LEARNER_SCENE_EVALUATION_ERROR',
+      },
+    }),
     prompt_catalogs: {
       pdr_p_ko: PDR_P_KO,
       pdr_d_ko: PDR_D_KO,
@@ -1836,8 +1862,14 @@ function buildCoreQualitySystemPrompt(direction: Direction): string {
 - context_spec은 역할·권리·의무의 기대 조건이다. 단어를 그대로 복사했는지가 아니라 실제
   상황과 relation_ko가 그 구조를 구현하는지 판정한다. 결정 권한은 별도 축에서 더 엄격히 본다.
 - situation_ko는 학습자에게 보이는 장면이다. 내부 권리·의무나 정답에 포함할 표현 자원을
-  평가 기준처럼 설명하거나, 기록 목적·즉시 반응 여부를 연구 설명처럼 서술하면 context_spec을
+  평가 기준처럼 설명하거나, 기록 목적·즉시 반응 여부를 연구 설명처럼 서술하면 learner_scene을
   fail로 두고 관찰 가능한 상대·용건·접촉 이력·실제 부담만 남기도록 지적한다.
+- 통역 mode에서는 A=source_text 원발화자, 학습자=통역사, B=target 언어 청자가 서로 다른
+  세 사람이어야 한다. 학습자가 A의 화행을 직접 수행하면서 자기 말을 통역하거나, A/B 중 한 명을
+  통역사로 겸하게 하면 participant_roles fail이다. 언어명과 '통역' 단어만 있다고 pass하지 마라.
+- scene_source_alignment는 situation_ko와 source_text의 사건·행위·문제·일정·대상 목록을
+  각각 먼저 추출해 대조한다. 상황에만 있는 핵심 사건이나 원문에만 있는 핵심 사건, 행위자·소유자
+  역전은 fail이다. 넓은 범주의 자연스러운 요약은 허용하되 없는 사건을 보충했다고 추측하지 마라.
 - referents는 화자 A와 상대 B, 문제 책임자, 소유자, 행위 대상, 요청받은 수행자가
   situation_ko·relation_ko·preceding_turn·source_text 전체에서 같은지를 본다. 대명사·소유
   표현이 뒤집혀 A가 만든 문제를 B에게 해결하라고 하는 식이면 fail이다.
@@ -1861,7 +1893,7 @@ function buildCoreQualitySystemPrompt(direction: Direction): string {
 - adjacency fail은 선행발화가 동일한 앞선 행위에 대한 거절·반대 응답을 이미 수행하여
   source_text가 병렬 응답이나 반복이 되는 경우처럼, 국소 인접쌍이 명백히 어긋날 때만 준다.
 
-[축 — 12개 모두 빠짐없이 판정]
+[축 — 15개 모두 빠짐없이 판정]
 1. speech_act: source_text가 지정 화행의 의도와 목적을 수행하는가
 2. power: 상황 속 화자와 상대의 실제 지위가 지정 P와 맞는가
 3. distance: 두 사람의 친밀도·낯섦이 지정 D와 맞는가
@@ -1874,6 +1906,9 @@ function buildCoreQualitySystemPrompt(direction: Direction): string {
 10. decision_authority: 화행별 결정·수행·승인 권한이 있는 사람을 향하는가
 11. topic_seed: 지정 시드의 핵심 관계·사건·목적을 유지했는가
 12. adjacency: 응답 화행의 명제와 화자 지시가 일관된 인접쌍인가
+13. participant_roles: 통역이면 A·학습자 통역사·B가 서로 다른 세 참여자인가
+14. scene_source_alignment: situation_ko와 source_text의 핵심 사건·행위자·대상이 대응하는가
+15. learner_scene: 학생용 상황문이 답의 화용 방향이나 내부 평가 기준을 노출하지 않는가
 
 [출력 — 오직 JSON, 설명·마크다운 금지]
 {
@@ -1891,7 +1926,10 @@ function buildCoreQualitySystemPrompt(direction: Direction): string {
     "referents": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
     "decision_authority": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
     "topic_seed": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
-    "adjacency": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" }
+    "adjacency": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "participant_roles": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "scene_source_alignment": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" },
+    "learner_scene": { "verdict": "pass | warning | fail", "reason_ko": "관찰 근거" }
   }
 }`
 }
@@ -2192,12 +2230,14 @@ Deno.serve(async (req) => {
         DIR_LANGS[coreDir].tgt,
         b.source_modality === 'spoken',
       )
+      const initialLearnerSceneIssue = coreLearnerSceneIssue(gen.situation_ko)
       const coreRepairAttempted = Boolean(
-        initialSourceIssue || initialPrecedingTurnIssue || initialBilingualSceneIssue
+        initialSourceIssue || initialPrecedingTurnIssue || initialBilingualSceneIssue || initialLearnerSceneIssue
       )
       let sourceRepairApplied = false
       let precedingTurnRepairApplied = false
       let bilingualSceneRepairApplied = false
+      let learnerSceneRepairApplied = false
       if (coreRepairAttempted) {
         const repairUser = buildCoreOutputRepairPrompt({
           originalUserPrompt: usr,
@@ -2208,6 +2248,7 @@ Deno.serve(async (req) => {
           sourceIssue: initialSourceIssue,
           precedingTurnIssue: initialPrecedingTurnIssue,
           bilingualSceneIssue: initialBilingualSceneIssue,
+          learnerSceneIssue: initialLearnerSceneIssue,
         })
         const repairModel = model
         const repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
@@ -2228,20 +2269,24 @@ Deno.serve(async (req) => {
               sourceIssue: initialSourceIssue,
               precedingTurnIssue: initialPrecedingTurnIssue,
               bilingualSceneIssue: initialBilingualSceneIssue,
+              learnerSceneIssue: initialLearnerSceneIssue,
             })
             if (
               mergedRepair.sourceRepairApplied ||
               mergedRepair.precedingTurnRepairApplied ||
-              mergedRepair.bilingualSceneRepairApplied
+              mergedRepair.bilingualSceneRepairApplied ||
+              mergedRepair.learnerSceneRepairApplied
             ) {
               gen = mergedRepair.output
               model = repairModel
               sourceRepairApplied = mergedRepair.sourceRepairApplied
               precedingTurnRepairApplied = mergedRepair.precedingTurnRepairApplied
               bilingualSceneRepairApplied = mergedRepair.bilingualSceneRepairApplied
+              learnerSceneRepairApplied = mergedRepair.learnerSceneRepairApplied
             }
           } catch {
-            // 교정 응답이 파싱되지 않으면 최초 출력을 그대로 내려 클라이언트 R8/R10/R29가 차단한다.
+            // 교정 응답이 파싱되지 않으면 최초 출력을 그대로 내려
+            // 클라이언트 R8/R10/R16/R29/R30이 차단한다.
           }
         }
       }
@@ -2306,6 +2351,7 @@ Deno.serve(async (req) => {
             source_repair_applied: sourceRepairApplied,
             preceding_turn_repair_applied: precedingTurnRepairApplied,
             bilingual_scene_repair_applied: bilingualSceneRepairApplied,
+            learner_scene_repair_applied: learnerSceneRepairApplied,
             length_policy_version: CORE_LENGTH_POLICY_VERSION,
             // 재현성 provenance — 클라이언트는 이 값을 재계산하지 말고 그대로 저장한다.
             prompt_snapshot_hash: promptSnapshotHash,
@@ -2513,7 +2559,7 @@ Deno.serve(async (req) => {
       const model = CRITIC_PRIMARY_MODEL
       const att = await callOpenAI(CRITIC_PRIMARY_MODEL, apiKey, sys, usr, 0.1, {
         telemetry: telemetryFor('core_critic', true, {
-          promptVersion: 'core_quality_v4',
+          promptVersion: CURRENT_CORE_QUALITY_PROMPT_VERSION,
         }),
       })
       if (!att.ok) {
@@ -2529,7 +2575,8 @@ Deno.serve(async (req) => {
       const AXIS_CODES = [
         'speech_act', 'power', 'distance', 'burden',
         'domain', 'industry', 'mode', 'context_spec', 'referents',
-        'decision_authority', 'topic_seed', 'adjacency',
+        'decision_authority', 'topic_seed', 'adjacency', 'participant_roles',
+        'scene_source_alignment', 'learner_scene',
       ] as const
       const rawAxes = parsed.axes && typeof parsed.axes === 'object'
         ? parsed.axes as Record<string, unknown>
@@ -2563,10 +2610,10 @@ Deno.serve(async (req) => {
             summary_ko: typeof parsed.summary_ko === 'string' ? parsed.summary_ko.slice(0, 400) : '',
             axes,
             model,
-            prompt_version: 'core_quality_v4',
+            prompt_version: CURRENT_CORE_QUALITY_PROMPT_VERSION,
             checked_at: checkedAt,
           },
-          meta: { provider: PROVIDER, model, prompt_version: 'core_quality_v4', generated_at: checkedAt },
+          meta: { provider: PROVIDER, model, prompt_version: CURRENT_CORE_QUALITY_PROMPT_VERSION, generated_at: checkedAt },
         }),
         { status: 200, headers: jsonHeaders },
       )

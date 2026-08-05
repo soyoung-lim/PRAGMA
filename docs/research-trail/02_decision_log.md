@@ -1385,3 +1385,30 @@
   `docs/research-trail/evidence/2026-08-05-zh-ko-four-core-human-decision.md`,
   `supabase/functions/_shared/coreSourceRepair.ts`, `supabase/functions/generate-scenario/index.ts`
 - 관련 Iteration / Evidence / Trace: `ITER-20260805-05`, `EVD-20260805-03`, `TRC-20260805-01`
+
+## DEC-20260805-05 · 통역 장면은 세 참여자를 분리하고 학생용 장면 노출을 이중 차단한다
+
+- 날짜: 2026-08-05
+- 상태: 채택·코드와 회귀 검증 완료, 새 Edge 배포·실모델 표본 미실행
+- 문제:
+  - 통역 코어 두 건에서 원발화자와 학습자 통역사가 합쳐졌지만 기존 언어 표지 검사는 이를
+    통과시켰고, 품질점검도 같은 결함을 놓쳤다.
+  - 학생용 장면의 평가 기준 노출과 상황–원문 사건 불일치도 자동 품질 축에서 분리되지 않았다.
+- 검토한 대안:
+  - `통역`과 두 언어 이름의 존재만 계속 검사: 역할 중첩 재발을 막지 못해 기각.
+  - 상황–원문 의미 대응까지 정규식으로 자동 확정: 한·중 표현의 의미 대응을 거짓 정밀도로
+    판정할 위험이 있어 기각.
+  - 생성·교정·결정론적 규칙·AI 품질점검을 결함 성격에 맞춰 분리: 채택.
+- 결정:
+  1. 통역 장면의 A는 원발화자, 학습자는 별도 통역사, B는 목표언어 청자로 고정한다.
+  2. 역할 중첩과 학생용 평가 기준 노출은 서버 교정과 클라이언트 규칙 R16·R30으로 이중 차단한다.
+  3. 품질점검에 `participant_roles`, `scene_source_alignment`, `learner_scene`을 추가한다.
+  4. 의미 대응은 결정론적 문자열 통과로 위장하지 않고 AI 점검과 사람 검수의 독립 축으로 남긴다.
+  5. 변경된 생성 표면은 새 후보 release와 prompt/quality version으로 분리하며 기존 개발·테스트
+     콘텐츠와 같은 세대로 취급하지 않는다.
+- 근거: B·C·D 블라인드 판정의 확정 사유를 회귀 fixture로 만들었고, 관련 42건·전체 273건,
+  ESLint·typecheck·production build가 통과했다.
+- 관련 파일: `supabase/functions/generate-scenario/index.ts`,
+  `supabase/functions/_shared/coreSourceRepair.ts`, `src/lib/pragma/missionRules.ts`,
+  `supabase/functions/_shared/contentRelease.ts`
+- 관련 Iteration / Evidence / Trace: `ITER-20260805-06`, `EVD-20260805-04`, `TRC-20260805-01`

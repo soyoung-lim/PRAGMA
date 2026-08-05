@@ -71,6 +71,9 @@ const CORE_AXIS_LABEL: Record<CoreQualityAxis, string> = {
   decision_authority: "결정 권한",
   topic_seed: "시드",
   adjacency: "인접쌍",
+  participant_roles: "통역 참여자",
+  scene_source_alignment: "상황·원문 대응",
+  learner_scene: "학생용 장면",
 };
 
 const coreRunStorageKey = (direction: LanguageDirection) =>
