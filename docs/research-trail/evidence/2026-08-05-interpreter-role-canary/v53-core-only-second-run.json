@@ -1,0 +1,520 @@
+[
+  {
+    "act": "request",
+    "actKo": "요청",
+    "cell": {
+      "speech_act_ui": "request",
+      "level": "intermediate",
+      "domain": "daily",
+      "mode": "translation",
+      "industry": null,
+      "pdr_power": "lower",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "travel_mobility",
+      "topic_code": "booking_change",
+      "situation_seed_ko": "식당·투어 예약을 변경하거나 취소를 알리며 양해를 구하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "request_mitigation_optionality",
+    "coreViolations": [],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v9_interpreter_roles_v1_repair_v1",
+      "content_release_id": "pragma_content_candidate_20260805_01",
+      "generation_attempt": 2,
+      "source_repair_applied": true,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+      "generated_at": "2026-08-05T14:04:29.650Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "모임 운영자인 나는 참여자인 후배에게 예정된 식당 투어 예약 변경을 요청하려고 한다. 우리는 알고 지내는 사이지만, 서로 어색한 감정이 있고 이번 변경으로 인해 후배가 불편할 수 있기에 조심스럽다. 나는 변경 요청 내용을 글로 보내 양해를 구하며 협조를 부탁하는 상황이다.",
+      "relation_ko": "모임 운영자인 선배와 참여자인 후배",
+      "source_modality": "written",
+      "source_text": "예정된 식당 투어 예약을 변경해야 해서 부탁드리고자 합니다. 가능하시다면 이번 주 금요일에서 다음 주 월요일로 일정 조정이 가능한지 확인 부탁드립니다.",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "messenger",
+      "context_spec": {
+        "standard_situation_code": "daily.booking_change.request",
+        "role_pair": {
+          "speaker_ko": "알고 지내는 모임 운영자·선배",
+          "addressee_ko": "그 모임의 참여자·후배"
+        },
+        "speaker_entitlement": "화자에게 해당 행동을 요청할 합리적 사유는 있으나, 상대의 선택권을 자동으로 박탈하지 않는다.",
+        "addressee_obligation": "상대는 요청을 이해하고 검토할 수 있으나, 수락 의무는 역할·규정·상황에 따라 달라진다.",
+        "decision_authority": "상대가 요청받은 행동을 직접 수행하거나 승인·연결할 실질적 권한을 가진다."
+      },
+      "brief_note_ko": "식당 투어 예약 변경 요청과 양해 구하기",
+      "focal_segments": [
+        {
+          "text": "예정된 식당 투어 예약을 변경해야 해서 부탁드리고자 합니다",
+          "role": "head"
+        },
+        {
+          "text": "가능하시다면",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 60,
+        "max": 85,
+        "actual": 63
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260805_01",
+        "prompt_version": "core_v9_interpreter_roles_v1_repair_v1",
+        "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+        "generated_at": "2026-08-05T14:04:29.650Z"
+      }
+    },
+    "coreResult": "pass"
+  },
+  {
+    "act": "request",
+    "actKo": "요청",
+    "cell": {
+      "speech_act_ui": "request",
+      "level": "intermediate",
+      "domain": "work",
+      "mode": "stt_interpreting",
+      "industry": "trade_distribution",
+      "pdr_power": "lower",
+      "pdr_distance": "formal",
+      "pdr_burden": "mid",
+      "theme_code": "commerce_customer",
+      "topic_code": "price_negotiation",
+      "situation_seed_ko": "판매자·거래처에 가격이나 조건을 문의·조정하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "request_mitigation_optionality",
+    "coreViolations": [],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v9_interpreter_roles_v1_repair_v1",
+      "content_release_id": "pragma_content_candidate_20260805_01",
+      "generation_attempt": 2,
+      "source_repair_applied": true,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+      "generated_at": "2026-08-05T14:04:38.622Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "저는 한국 제조업체의 해외 무역 담당자입니다. 오늘 처음 만난 중국 거래처 신규 직원과 직접 가격 조정과 납기 조건 협의를 해야 합니다. 학습자는 저와 거래처 직원 사이에서 한국어 발화를 중국어로 통역하는 역할을 맡았습니다.",
+      "relation_ko": "해외 거래처 신규 직원과 처음 만나는 한국 제조업체 무역 담당자",
+      "source_modality": "spoken",
+      "source_text": "안녕하세요, 이번에 요청드릴 가격 견적서와 납기 조건을 다시 한 번 확인해 주실 수 있을까요? 우리 쪽 생산 일정에 맞춰 협조가 필요합니다.",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "distant",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "work.price_negotiation.request",
+        "role_pair": {
+          "speaker_ko": "해당 업무의 책임자·발주측 결정권자",
+          "addressee_ko": "처음 상대하는 신규 직원·외부 실무 담당자"
+        },
+        "speaker_entitlement": "화자에게 해당 행동을 요청할 합리적 사유는 있으나, 상대의 선택권을 자동으로 박탈하지 않는다.",
+        "addressee_obligation": "상대는 요청을 이해하고 검토할 수 있으나, 수락 의무는 역할·규정·상황에 따라 달라진다.",
+        "decision_authority": "상대가 요청받은 행동을 직접 수행하거나 승인·연결할 실질적 권한을 가진다."
+      },
+      "brief_note_ko": "신규 거래처에 가격과 납기 조건 재확인 요청",
+      "focal_segments": [
+        {
+          "text": "이번에 요청드릴 가격 견적서와 납기 조건을 다시 한 번 확인해 주실 수 있을까요?",
+          "role": "head"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 55
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260805_01",
+        "prompt_version": "core_v9_interpreter_roles_v1_repair_v1",
+        "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+        "generated_at": "2026-08-05T14:04:38.622Z"
+      }
+    },
+    "coreResult": "pass"
+  },
+  {
+    "act": "refusal",
+    "actKo": "거절",
+    "cell": {
+      "speech_act_ui": "refusal",
+      "level": "beginner_intermediate",
+      "domain": "school",
+      "mode": "translation",
+      "industry": null,
+      "pdr_power": "higher",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "campus_study",
+      "topic_code": "school_request_refusal",
+      "situation_seed_ko": "학교 관계의 상대가 부탁한 과제 관련 역할을 맡지 않겠다고 알리는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "refusal_softening",
+    "coreViolations": [],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v9_interpreter_roles_v1",
+      "content_release_id": "pragma_content_candidate_20260805_01",
+      "generation_attempt": 1,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+      "generated_at": "2026-08-05T14:04:42.963Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "학생인 나는 교수님이 부탁한 과제 관련 역할을 맡지 않겠다는 뜻을 글로 알리려 한다. 교수님과는 알고 지내지만 평소에 대화가 많지 않아 어색한 사이이다. 이 요청을 거절하는 것이 교수님께 번거로움을 줄 수 있기에 신중하게 표현하려 한다.",
+      "relation_ko": "교수님과 알고 지내는 학생",
+      "source_modality": "written",
+      "source_text": "교수님, 이번 과제 역할은 맡기 어려울 것 같습니다. 개인 일정이 겹쳐서 준비할 시간이 부족합니다. 죄송하지만 이해 부탁드립니다.",
+      "preceding_turn": "这次的课题角色需要你来负责，你能帮忙吗？",
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "messenger",
+      "context_spec": {
+        "standard_situation_code": "school.school_request_refusal.refusal",
+        "role_pair": {
+          "speaker_ko": "수업을 듣거나 지도를 받는 학생",
+          "addressee_ko": "알고 지내는 교수·조교·조장·공식 멘토 등 해당 일의 권한이 더 큰 상대"
+        },
+        "speaker_entitlement": "화자는 앞선 요청·제안·초대의 수용 여부를 결정할 재량이 있다.",
+        "addressee_obligation": "상대는 거절 대상 행동을 먼저 요청·제안·초대한 사람이며, 거절을 수용할 여지가 있어야 한다.",
+        "decision_authority": "화자가 자신의 참여·수락 여부를 결정하며, 거절 대상과 범위가 분명해야 한다."
+      },
+      "brief_note_ko": "과제 역할 거절 의사 전달",
+      "focal_segments": [
+        {
+          "text": "이번 과제 역할은 맡기 어려울 것 같습니다",
+          "role": "head"
+        },
+        {
+          "text": "죄송하지만 이해 부탁드립니다",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 45,
+        "max": 65,
+        "actual": 52
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260805_01",
+        "prompt_version": "core_v9_interpreter_roles_v1",
+        "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+        "generated_at": "2026-08-05T14:04:42.963Z"
+      }
+    },
+    "coreResult": "pass"
+  },
+  {
+    "act": "complaint",
+    "actKo": "불만",
+    "cell": {
+      "speech_act_ui": "complaint",
+      "level": "beginner_intermediate",
+      "domain": "daily",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "higher",
+      "pdr_distance": "formal",
+      "pdr_burden": "mid",
+      "theme_code": "travel_mobility",
+      "topic_code": "hotel_request",
+      "situation_seed_ko": "호텔·숙소에 방 변경이나 문제 해결을 요청하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "complaint_problem_accountability",
+    "coreViolations": [],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v9_interpreter_roles_v1",
+      "content_release_id": "pragma_content_candidate_20260805_01",
+      "generation_attempt": 1,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+      "generated_at": "2026-08-05T14:04:49.226Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "학습자는 호텔 고객으로, 처음 만나는 호텔 직원에게 숙소 방의 문제를 직접 말하며 해결을 요청한다. 학습자와 직원은 서로 처음 보는 사이이며, 방 교체나 수리 등 실질적 조치를 기대하는 상황이다. 학습자는 통역사로서 한국어 고객의 말을 중국어로 전달해야 한다.",
+      "relation_ko": "호텔 직원과 처음 만나는 고객",
+      "source_modality": "spoken",
+      "source_text": "방에 에어컨이 고장 나서 너무 더워요. 바로 고쳐 주실 수 있나요? 가능한 빨리 조치해 주셨으면 합니다.",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "distant",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "daily.hotel_request.complaint",
+        "role_pair": {
+          "speaker_ko": "일반 이용자 또는 처음 온 참여자",
+          "addressee_ko": "처음 상대하는 시설·행사·서비스의 결정권자"
+        },
+        "speaker_entitlement": "화자는 자신이 겪은 문제·피해 또는 대표할 권한이 있는 문제를 제기할 자격이 있다.",
+        "addressee_obligation": "상대는 문제에 일정한 책임이 있거나 설명·수리·전달을 할 실질적 권한이 있어야 한다.",
+        "decision_authority": "상대가 직접 수리하거나 적절한 책임자에게 전달할 권한을 가진다."
+      },
+      "brief_note_ko": "호텔 방 에어컨 고장에 대해 불만 제기하며 조치 요청",
+      "focal_segments": [
+        {
+          "text": "방에 에어컨이 고장 나서 너무 더워요",
+          "role": "head"
+        },
+        {
+          "text": "바로 고쳐 주실 수 있나요? 가능한 빨리 조치해 주셨으면 합니다",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 30,
+        "max": 45,
+        "actual": 40
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260805_01",
+        "prompt_version": "core_v9_interpreter_roles_v1",
+        "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+        "generated_at": "2026-08-05T14:04:49.226Z"
+      }
+    },
+    "coreResult": "pass"
+  },
+  {
+    "act": "request",
+    "actKo": "요청",
+    "cell": {
+      "speech_act_ui": "request",
+      "level": "intermediate",
+      "domain": "daily",
+      "mode": "translation",
+      "industry": null,
+      "pdr_power": "lower",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "low",
+      "theme_code": "digital_content",
+      "topic_code": "content_reuse_permission",
+      "situation_seed_ko": "다른 크리에이터에게 콘텐츠 2차 사용 허락을 요청하거나, 온 요청을 정중히 거절하는 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "request_mitigation_optionality",
+    "coreViolations": [],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v9_interpreter_roles_v1",
+      "content_release_id": "pragma_content_candidate_20260805_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": true,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+      "generated_at": "2026-08-05T14:04:58.055Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "모임 운영자인 나는 알지만 어색한 후배에게 콘텐츠를 2차 사용해도 되는지 글로 요청하려 한다. 후배는 이 요청을 검토할 수 있으나 수락할 의무는 없으며, 결정 권한도 가지고 있다. 나는 요청 내용을 명확히 전달해 후배가 판단할 수 있게 하려 한다.",
+      "relation_ko": "모임 운영자인 선배와 참여자인 후배 사이",
+      "source_modality": "written",
+      "source_text": "您好，我想征求您的同意，能否将您之前发布的内容用于我们的下一个活动宣传中？如果您有任何顾虑，请随时告诉我，我们可以一起讨论解决方案。非常感谢您的支持和配合！",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "acquaintance",
+        "r": "low"
+      },
+      "channel": "messenger",
+      "context_spec": {
+        "standard_situation_code": "daily.content_reuse_permission.request",
+        "role_pair": {
+          "speaker_ko": "알고 지내는 모임 운영자·선배",
+          "addressee_ko": "그 모임의 참여자·후배"
+        },
+        "speaker_entitlement": "화자에게 해당 행동을 요청할 합리적 사유는 있으나, 상대의 선택권을 자동으로 박탈하지 않는다.",
+        "addressee_obligation": "상대는 요청을 이해하고 검토할 수 있으나, 수락 의무는 역할·규정·상황에 따라 달라진다.",
+        "decision_authority": "상대가 요청받은 행동을 직접 수행하거나 승인·연결할 실질적 권한을 가진다."
+      },
+      "brief_note_ko": "콘텐츠 2차 사용 허락을 정중히 요청하는 메시지",
+      "focal_segments": [
+        {
+          "text": "我想征求您的同意，能否将您之前发布的内容用于我们的下一个活动宣传中？",
+          "role": "head"
+        },
+        {
+          "text": "如果您有任何顾虑，请随时告诉我，我们可以一起讨论解决方案。",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 60,
+        "max": 85,
+        "actual": 71
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260805_01",
+        "prompt_version": "core_v9_interpreter_roles_v1",
+        "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+        "generated_at": "2026-08-05T14:04:58.055Z"
+      }
+    },
+    "coreResult": "pass"
+  },
+  {
+    "act": "thanks",
+    "actKo": "감사",
+    "cell": {
+      "speech_act_ui": "thanks",
+      "level": "advanced",
+      "domain": "school",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "lower",
+      "pdr_distance": "formal",
+      "pdr_burden": "mid",
+      "theme_code": "campus_study",
+      "topic_code": "group_work_coordination",
+      "situation_seed_ko": "조별 과제를 함께 수행하는 학생들 사이에서 생기는 상호작용 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "gratitude_calibration",
+    "coreViolations": [],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v9_interpreter_roles_v1_repair_v1",
+      "content_release_id": "pragma_content_candidate_20260805_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": true,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+      "generated_at": "2026-08-05T14:05:06.072Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "중국어 원발화자인 수업 담당자인 나는 조별 과제 중 처음 만난 한국어 청자인 학생에게 직접 말한다. 학습자인 학생은 조원으로 참여해 기획안 작성에 도움을 주었고, 나는 학습자 통역사를 통해 그 감사의 뜻을 전하는 상황이다. 학습자는 나와 처음 만나 다소 긴장하지만, 감사 인사를 듣는다.",
+      "relation_ko": "수업 담당자인 나와 조별 과제에 처음 참여한 학생",
+      "source_modality": "spoken",
+      "source_text": "非常感谢你这次帮忙整理了调研资料，内容很详实，对我们项目帮助很大。我知道你也是第一次参与这样的活动，希望以后还能多多合作。",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "distant",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "school.group_work_coordination.thanks",
+        "role_pair": {
+          "speaker_ko": "수업·프로그램의 책임자 또는 담당자",
+          "addressee_ko": "처음 상대하는 학생·참여자"
+        },
+        "speaker_entitlement": "화자는 자신이 받은 도움·호의와 상대의 기여를 구체적으로 인정할 위치에 있다.",
+        "addressee_obligation": "상대는 도움·호의의 제공자이며 감사에 응답하거나 추가 행동을 할 의무는 없다.",
+        "decision_authority": "별도의 의사결정은 요구하지 않으며, 감사 대상인 기여가 실제로 존재해야 한다."
+      },
+      "brief_note_ko": "조별 과제 도움에 대한 감사 인사",
+      "focal_segments": [
+        {
+          "text": "非常感谢你这次帮忙整理了调研资料",
+          "role": "head"
+        },
+        {
+          "text": "内容很详实，对我们项目帮助很大",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 55,
+        "max": 85,
+        "actual": 56
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260805_01",
+        "prompt_version": "core_v9_interpreter_roles_v1_repair_v1",
+        "prompt_snapshot_hash": "cdf82d06c049f50a5535a41a93af79c3a6a07eee479b4d9bfd00f99e1ac6e227",
+        "generated_at": "2026-08-05T14:05:06.072Z"
+      }
+    },
+    "coreResult": "pass"
+  }
+]

@@ -1389,7 +1389,7 @@
 ## DEC-20260805-05 · 통역 장면은 세 참여자를 분리하고 학생용 장면 노출을 이중 차단한다
 
 - 날짜: 2026-08-05
-- 상태: 채택·코드와 회귀 검증 완료, 새 Edge 배포·실모델 표본 미실행
+- 상태: 채택·Edge v53 적용·실모델 카나리 완료, 역할 참조 모호성의 Fable 교차검증 대기
 - 문제:
   - 통역 코어 두 건에서 원발화자와 학습자 통역사가 합쳐졌지만 기존 언어 표지 검사는 이를
     통과시켰고, 품질점검도 같은 결함을 놓쳤다.
@@ -1406,9 +1406,18 @@
   4. 의미 대응은 결정론적 문자열 통과로 위장하지 않고 AI 점검과 사람 검수의 독립 축으로 남긴다.
   5. 변경된 생성 표면은 새 후보 release와 prompt/quality version으로 분리하며 기존 개발·테스트
      콘텐츠와 같은 세대로 취급하지 않는다.
-- 근거: B·C·D 블라인드 판정의 확정 사유를 회귀 fixture로 만들었고, 관련 42건·전체 273건,
+- 근거: B·C·D 블라인드 판정의 확정 사유를 회귀 fixture로 만들었고, 관련 44건·전체 275건,
   ESLint·typecheck·production build가 통과했다.
 - 관련 파일: `supabase/functions/generate-scenario/index.ts`,
   `supabase/functions/_shared/coreSourceRepair.ts`, `src/lib/pragma/missionRules.ts`,
   `supabase/functions/_shared/contentRelease.ts`
 - 관련 Iteration / Evidence / Trace: `ITER-20260805-06`, `EVD-20260805-04`, `TRC-20260805-01`
+
+### 운영 검증 후속
+
+- 고정 문구를 요구하던 R16 1차 구현은 유효한 중→한 통역 장면을 잘못 차단해 어휘 의존을
+  제거했다. 역할 명사와 행위 주체가 분리되면 특정 표현 없이도 통과시키되, 직접 화행 수행과
+  통역을 겸하는 기존 fixture는 계속 차단한다.
+- 보정 뒤 R검사 6/6 통과만으로 결정을 종결하지 않는다. 통역 3건 중 2건은 사람이 읽으면
+  `학습자` 지시가 청자/고객과 통역사에 겹쳤고, 새 `participant_roles` 비평도 이를 pass로
+  판정했다. Fable 교차검증 전에는 새 정규식이나 프롬프트 예시를 추가하지 않는다.
