@@ -19,10 +19,11 @@ import {
   DEFAULT_QUOTA,
   FULL_BATCH_QUOTA_495,
   ZH_KO_VALIDATION_ACTS,
-  ZH_KO_VALIDATION_QUOTA,
+  ZH_KO_VALIDATION_DELIVERY_CELLS,
   auditTopicCompatibility,
   auditTopicCoverage,
   buildBatchPlan,
+  buildZhKoValidationPlan,
   interpretingCount,
   summarizePlan,
   type BatchQuota,
@@ -109,7 +110,7 @@ const parseSelectedPlanIndexes = (raw: string, total: number) => {
 
 const AdminBatch = () => {
   const [quota, setQuota] = useState<BatchQuota>(DEFAULT_QUOTA);
-  // 언어 방향(0-l·89) — zh_ko는 검증 쿼터(18셀·승격 가능 3화행)로 자동 전환.
+  // 언어 방향(0-l·89) — zh_ko는 고정 9화행·30셀 혼합 파일럿으로 전환.
   const [direction, setDirection] = useState<LanguageDirection>("ko_zh");
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState<CoreCellResult[]>([]);
@@ -125,7 +126,7 @@ const AdminBatch = () => {
   const switchDirection = (d: LanguageDirection) => {
     if (running) return;
     setDirection(d);
-    setQuota(d === "zh_ko" ? ZH_KO_VALIDATION_QUOTA : DEFAULT_QUOTA);
+    if (d === "ko_zh") setQuota(DEFAULT_QUOTA);
     setCoreRunId(getOrCreateCoreRunId(d));
   };
 
@@ -139,19 +140,26 @@ const AdminBatch = () => {
   const plan = useMemo(
     () =>
       topicCoverage.missing.length === 0 && topicCompatibility.length === 0
-        ? buildBatchPlan(quota, direction, targetActs)
+        ? direction === "zh_ko"
+          ? buildZhKoValidationPlan()
+          : buildBatchPlan(quota, direction)
         : [],
     [
       quota,
       direction,
-      targetActs,
       topicCoverage.missing.length,
       topicCompatibility.length,
     ],
   );
-  // 54셀 감사는 zh_ko 검증일 때 대상 화행(요청·거절·감사)만으로 좁힌다 —
-  // 안 그러면 애초에 카탈로그가 없어 대상도 아닌 6화행이 "빈 셀"로 오경고된다.
-  const summary = useMemo(() => summarizePlan(plan, targetActs), [plan, targetActs]);
+  // zh_ko는 핵심 3화행 18셀 + 확장 6화행 중급 12셀의 명시 커버리지만 감사한다.
+  const summary = useMemo(
+    () => summarizePlan(
+      plan,
+      targetActs,
+      direction === "zh_ko" ? ZH_KO_VALIDATION_DELIVERY_CELLS : undefined,
+    ),
+    [direction, plan, targetActs],
+  );
   const selectedPlan = useMemo(
     () => parseSelectedPlanIndexes(selectedCellNumbers, plan.length),
     [selectedCellNumbers, plan.length],
@@ -352,7 +360,7 @@ const AdminBatch = () => {
                 onClick={() => switchDirection("zh_ko")}
                 disabled={running}
               >
-                {DIRECTION_LABEL.zh_ko} · 3화행 검증
+                {DIRECTION_LABEL.zh_ko} · 9화행 검증
               </Button>
             </div>
           </div>
@@ -370,50 +378,70 @@ const AdminBatch = () => {
         <p className="mt-2.5 text-[12px] text-muted-foreground">
           상황·원문·태그만 생성해 코어 뱅크를 채웁니다(scenario_core_v1).{" "}
           {direction === "zh_ko"
-            ? "중→한은 요청·거절·감사 3화행의 전달 커버리지 18셀을 우선 검증합니다."
+            ? "중→한은 핵심 3화행 18셀과 확장 6화행 중급 12셀을 합친 30셀 혼합 파일럿을 우선 검증합니다."
             : "본 배치는 연구 구인 243셀(화행×P×D×R)과 전달 커버리지 54셀(화행×수준×모드)을 별도로 검산합니다."}
         </p>
 
         <div className="mt-3 border-t border-[#EAE4D2] pt-3">
-          <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
-            {LEVEL_ORDER.map((lv) => (
-              <div key={lv} className="w-[104px]">
-                <Label className="text-[11.5px] text-muted-foreground">{LEVEL[lv]}</Label>
+          {direction === "zh_ko" ? (
+            <div className="grid gap-2 text-[12px] sm:grid-cols-2">
+              <div className="rounded-lg bg-[#FAF8F2] px-4 py-3">
+                <div className="font-semibold">핵심 3화행 · 18셀</div>
+                <p className="mt-1 text-muted-foreground">
+                  요청·거절·감사 × 3수준 × 번역/통역
+                </p>
+              </div>
+              <div className="rounded-lg bg-[#FAF8F2] px-4 py-3">
+                <div className="font-semibold">확장 6화행 · 12셀</div>
+                <p className="mt-1 text-muted-foreground">
+                  사과·제안·동의·반대·칭찬·불만 × 중급 × 번역/통역
+                </p>
+              </div>
+              <p className="sm:col-span-2 text-[11px] text-muted-foreground">
+                고정 파일럿입니다. 인간 눈검사 전에는 54셀이나 본배치로 자동 확대하지 않습니다.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+              {LEVEL_ORDER.map((lv) => (
+                <div key={lv} className="w-[104px]">
+                  <Label className="text-[11.5px] text-muted-foreground">{LEVEL[lv]}</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={quota.perLevel[lv]}
+                    disabled={running}
+                    onChange={(e) => setLevelQuota(lv, Number(e.target.value))}
+                    className="mt-1 h-8 text-[13px]"
+                  />
+                  <p className="mt-1 text-[10.5px] text-muted-foreground">
+                    →{" "}
+                    {targetActCount * (quota.perLevel[lv] + interpretingCount(quota.perLevel[lv], quota.interpretingRatio))}
+                    개
+                  </p>
+                </div>
+              ))}
+              <div className="w-[104px]">
+                <Label className="text-[11.5px] text-muted-foreground">통역 비율</Label>
                 <Input
                   type="number"
                   min={0}
-                  max={30}
-                  value={quota.perLevel[lv]}
+                  max={1}
+                  step={0.1}
+                  value={quota.interpretingRatio}
                   disabled={running}
-                  onChange={(e) => setLevelQuota(lv, Number(e.target.value))}
+                  onChange={(e) =>
+                    setQuota((q) => ({ ...q, interpretingRatio: Number(e.target.value) }))
+                  }
                   className="mt-1 h-8 text-[13px]"
                 />
                 <p className="mt-1 text-[10.5px] text-muted-foreground">
-                  →{" "}
-                  {targetActCount * (quota.perLevel[lv] + interpretingCount(quota.perLevel[lv], quota.interpretingRatio))}
-                  개
+                  번역 건수 대비 통역 생성 비율
                 </p>
               </div>
-            ))}
-            <div className="w-[104px]">
-              <Label className="text-[11.5px] text-muted-foreground">통역 비율</Label>
-              <Input
-                type="number"
-                min={0}
-                max={1}
-                step={0.1}
-                value={quota.interpretingRatio}
-                disabled={running}
-                onChange={(e) =>
-                  setQuota((q) => ({ ...q, interpretingRatio: Number(e.target.value) }))
-                }
-                className="mt-1 h-8 text-[13px]"
-              />
-              <p className="mt-1 text-[10.5px] text-muted-foreground">
-                번역 건수 대비 통역 생성 비율
-              </p>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -500,7 +528,7 @@ const AdminBatch = () => {
         </div>
 
         {(() => {
-          const cellUnitLabel = targetActs ? `${targetActs.length * 3 * 2}셀(${targetActs.length}화행 검증)` : "54셀";
+          const cellUnitLabel = direction === "zh_ko" ? "30셀(9화행 혼합 검증)" : "54셀";
           return summary.emptyActLevelModeCells.length > 0 ? (
             <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-[12.5px] text-amber-900">
               ⚠️ 화행 × 수준 × 모드 {cellUnitLabel}(생성 수준 한정) 중 <b>{summary.emptyActLevelModeCells.length}셀이 빕니다</b>:{" "}
@@ -509,7 +537,7 @@ const AdminBatch = () => {
           ) : (
             <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-[12.5px] text-emerald-900">
               ✅ {cellUnitLabel}(생성 수준 한정)이 모두 채워집니다 · 셀당 최소 {summary.minActLevelModeCount}개
-              {summary.minActLevelModeCount < 3 && (
+              {direction === "ko_zh" && summary.minActLevelModeCount < 3 && (
                 <span className="text-amber-800">
                   {" "}— 500 본 배치는 셀당 ≥3 권장(현재 {summary.underMinCells.length}셀이 3 미만)
                 </span>

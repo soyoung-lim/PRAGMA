@@ -3,9 +3,14 @@ import {
   auditTopicCompatibility,
   auditTopicCoverage,
   buildBatchPlan,
+  buildZhKoValidationPlan,
   FULL_BATCH_QUOTA_495,
   PDR_CONSTRUCT_CELLS,
   summarizePlan,
+  ZH_KO_ANCHOR_ACTS,
+  ZH_KO_EXPANSION_ACTS,
+  ZH_KO_VALIDATION_ACTS,
+  ZH_KO_VALIDATION_DELIVERY_CELLS,
 } from "@/lib/pragma/batchPlan";
 import {
   getScenarioTopic,
@@ -116,6 +121,76 @@ describe("construct matrix coverage", () => {
     for (const domain of ["daily", "school", "work"] as const) {
       expect(new Set(plan.filter((cell) => cell.domain === domain).map((cell) => cell.pdr_power)))
         .toEqual(new Set(["equal", "higher", "lower"]));
+    }
+  });
+});
+
+describe("zh_ko nine-act validation pilot", () => {
+  it("builds the approved 30-cell mixed delivery plan", () => {
+    const plan = buildZhKoValidationPlan();
+    const summary = summarizePlan(
+      plan,
+      ZH_KO_VALIDATION_ACTS,
+      ZH_KO_VALIDATION_DELIVERY_CELLS,
+    );
+
+    expect(plan).toHaveLength(30);
+    expect(summary.total).toBe(30);
+    expect(summary.byDirection).toEqual({ zh_ko: 30 });
+    expect(summary.translation).toBe(15);
+    expect(summary.interpreting).toBe(15);
+    expect(summary.byLevel).toEqual({
+      beginner_intermediate: 6,
+      intermediate: 18,
+      advanced: 6,
+    });
+    expect(summary.emptyActLevelCells).toEqual([]);
+    expect(summary.emptyActLevelModeCells).toEqual([]);
+    expect(summary.minActLevelModeCount).toBe(1);
+  });
+
+  it("keeps three anchors across all levels and adds six acts at intermediate", () => {
+    const plan = buildZhKoValidationPlan();
+
+    expect(new Set(plan.map((cell) => cell.speech_act_ui))).toEqual(
+      new Set(ZH_KO_VALIDATION_ACTS),
+    );
+    for (const act of ZH_KO_ANCHOR_ACTS) {
+      const cells = plan.filter((cell) => cell.speech_act_ui === act);
+      expect(cells).toHaveLength(6);
+      expect(new Set(cells.map((cell) => cell.level))).toEqual(
+        new Set(["beginner_intermediate", "intermediate", "advanced"]),
+      );
+      expect(new Set(cells.map((cell) => cell.mode))).toEqual(
+        new Set(["translation", "stt_interpreting"]),
+      );
+    }
+    for (const act of ZH_KO_EXPANSION_ACTS) {
+      const cells = plan.filter((cell) => cell.speech_act_ui === act);
+      expect(cells).toHaveLength(2);
+      expect(new Set(cells.map((cell) => cell.level))).toEqual(new Set(["intermediate"]));
+      expect(new Set(cells.map((cell) => cell.mode))).toEqual(
+        new Set(["translation", "stt_interpreting"]),
+      );
+    }
+  });
+
+  it("is deterministic and uses compatible topic seeds", () => {
+    const plan = buildZhKoValidationPlan();
+
+    expect(plan).toEqual(buildZhKoValidationPlan());
+    for (const cell of plan) {
+      const topic = getScenarioTopic(cell.topic_code);
+      expect(topic?.allowedSpeechActs).toContain(cell.speech_act_ui);
+      expect(
+        topicSupportsContext(topic!, {
+          speechAct: cell.speech_act_ui,
+          domain: cell.domain,
+          power: cell.pdr_power,
+          distance: cell.pdr_distance,
+          mode: cell.mode,
+        }),
+      ).toBe(true);
     }
   });
 });
