@@ -1291,4 +1291,4 @@
 - 관련 파일: `docs/operations/ZH_KO_30_CELL_PILOT_EVALUATION_PLAN_2026-08-05.md`,
   `docs/operations/CONTENT_REFRESH_RUNBOOK.md`
 - 관련 Iteration / Trace: `ITER-20260805-02`, `TRC-20260805-01`
-- 관련 커밋: `[반영 후 기록]`
+- 관련 커밋: `abcdfda`
