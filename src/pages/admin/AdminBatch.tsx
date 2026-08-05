@@ -35,6 +35,10 @@ import {
   type CoreCellResult,
 } from "@/lib/pragma/coreBatchRun";
 import {
+  createCoreRunId,
+  isCoreRunIdForDirection,
+} from "@/lib/pragma/coreRunIdentity";
+import {
   CORE_QUALITY_AXES,
   runCoreQualityPilot,
   type CoreQualityAxis,
@@ -71,9 +75,6 @@ const CORE_AXIS_LABEL: Record<CoreQualityAxis, string> = {
 
 const coreRunStorageKey = (direction: LanguageDirection) =>
   `pragma:admin-core-batch-run:${direction}`;
-
-const createCoreRunId = (direction: LanguageDirection) =>
-  `core_${direction}_${Date.now()}`;
 
 const getOrCreateCoreRunId = (direction: LanguageDirection) => {
   const fresh = createCoreRunId(direction);
@@ -119,6 +120,7 @@ const AdminBatch = () => {
   const [auditResults, setAuditResults] = useState<CoreQualityPilotResult[]>([]);
   const [auditDone, setAuditDone] = useState(0);
   const [coreRunId, setCoreRunId] = useState(() => getOrCreateCoreRunId("ko_zh"));
+  const [resumeRunId, setResumeRunId] = useState("");
   const [selectedCellNumbers, setSelectedCellNumbers] = useState("");
   const [activeTotal, setActiveTotal] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
@@ -128,6 +130,7 @@ const AdminBatch = () => {
     setDirection(d);
     if (d === "ko_zh") setQuota(DEFAULT_QUOTA);
     setCoreRunId(getOrCreateCoreRunId(d));
+    setResumeRunId("");
   };
 
   const targetActs = direction === "zh_ko" ? ZH_KO_VALIDATION_ACTS : undefined;
@@ -232,7 +235,7 @@ const AdminBatch = () => {
     abortRef.current = null;
   };
 
-  const startSelected = async () => {
+  const startSelected = async (runMode: "current" | "fresh") => {
     if (selectedPlan.invalid || selectedPlan.indexes.length === 0) {
       toast.error("현재 계획 안의 셀 번호를 쉼표로 입력해 주세요.");
       return;
@@ -244,9 +247,19 @@ const AdminBatch = () => {
     }
 
     const selectedCells = selectedPlan.indexes.map((index) => plan[index]);
-    const nextRunId = createCoreRunId(direction);
-    persistCoreRunId(direction, nextRunId);
-    setCoreRunId(nextRunId);
+    const targetRunId = runMode === "current" ? coreRunId : createCoreRunId(direction);
+    let existingItems: Awaited<ReturnType<typeof loadExistingCoreRunItems>> | undefined;
+    if (runMode === "current") {
+      try {
+        existingItems = await loadExistingCoreRunItems(targetRunId);
+      } catch {
+        toast.error("기존 배치 진행 상태를 읽지 못했습니다. 다시 로그인한 뒤 실행해 주세요.");
+        return;
+      }
+    } else {
+      persistCoreRunId(direction, targetRunId);
+      setCoreRunId(targetRunId);
+    }
     setRunning(true);
     setResults([]);
     setDone(0);
@@ -256,8 +269,9 @@ const AdminBatch = () => {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     const out = await runCoreBatch(selectedCells, {
-      runId: nextRunId,
+      runId: targetRunId,
       itemIndexes: selectedPlan.indexes,
+      existingItems,
       concurrency: 3,
       signal: ctrl.signal,
       onProgress: (count, _total, last) => {
@@ -288,6 +302,24 @@ const AdminBatch = () => {
     setAuditResults([]);
     setAuditDone(0);
     toast.success("새 배치 ID를 만들었습니다.");
+  };
+
+  const loadCoreRunId = () => {
+    if (running) return;
+    const next = resumeRunId.trim();
+    if (!isCoreRunIdForDirection(next, direction)) {
+      toast.error(`${DIRECTION_LABEL[direction]} 방향의 코어 배치 ID를 입력해 주세요.`);
+      return;
+    }
+    persistCoreRunId(direction, next);
+    setCoreRunId(next);
+    setResumeRunId("");
+    setResults([]);
+    setDone(0);
+    setActiveTotal(0);
+    setAuditResults([]);
+    setAuditDone(0);
+    toast.success("기존 배치 ID를 불러왔습니다.");
   };
 
   const okCount = results.filter((r) => r.ok).length;
@@ -580,6 +612,30 @@ const AdminBatch = () => {
             새 배치 ID
           </Button>
         </div>
+        <div className="mb-4 flex flex-wrap items-end gap-2">
+          <div className="min-w-[280px] flex-1">
+            <Label htmlFor="resume-core-run-id" className="text-[11.5px] text-muted-foreground">
+              기존 배치 ID 불러오기
+            </Label>
+            <Input
+              id="resume-core-run-id"
+              value={resumeRunId}
+              onChange={(event) => setResumeRunId(event.target.value)}
+              placeholder={`core_${direction}_…`}
+              disabled={running}
+              className="mt-1 h-8 font-mono text-[12px]"
+            />
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={loadCoreRunId}
+            disabled={running || resumeRunId.trim().length === 0}
+          >
+            불러오기
+          </Button>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button
             onClick={start}
@@ -611,7 +667,7 @@ const AdminBatch = () => {
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-[260px] flex-1">
               <Label htmlFor="selected-core-cells" className="text-[11.5px] text-muted-foreground">
-                검수용 선택 재생성 · 현재 계획의 셀 번호
+                선택 셀 실행 · 현재 계획의 셀 번호
               </Label>
               <Input
                 id="selected-core-cells"
@@ -626,7 +682,21 @@ const AdminBatch = () => {
               type="button"
               size="sm"
               variant="outline"
-              onClick={startSelected}
+              onClick={() => startSelected("current")}
+              disabled={
+                running ||
+                selectedPlan.invalid ||
+                selectedPlan.indexes.length === 0 ||
+                plan.length === 0
+              }
+            >
+              선택 {selectedPlan.indexes.length}셀 · 현재 ID 재개
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => startSelected("fresh")}
               disabled={
                 running ||
                 selectedPlan.invalid ||
@@ -638,8 +708,8 @@ const AdminBatch = () => {
             </Button>
           </div>
           <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-            전체 재실행 없이 사람 검수에서 탈락한 셀만 교체합니다. 실행할 때마다 새 배치 ID를
-            발급하며, 코어 생성 프롬프트와 해당 해시는 바뀌지 않습니다.
+            중단된 배치는 현재 ID로 미완료 셀만 재개합니다. 검수 탈락 셀을 교체할 때만 새 ID로
+            생성합니다. 두 방식 모두 코어 생성 프롬프트와 해당 해시는 바뀌지 않습니다.
           </p>
           {selectedPlan.indexes.length > 0 && !selectedPlan.invalid && (
             <div className="mt-2 flex flex-wrap gap-1.5">
