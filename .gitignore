@@ -33,5 +33,9 @@ supabase/.temp/
 # 에이전트 도구 — 머신별 설정은 공유하지 않고, 공용 실행 설정(launch.json)만 추적한다
 .claude/settings.local.json
 
+# 로컬 병렬 작업공간·임시 추출물 — 실제 파일은 보존하되 웹앱 저장소에는 넣지 않는다
+.worktrees/
+tmp/
+
 # 수동 백업본 (예: CLAUDE.md.bak-20260723) — 정본은 항상 원본 파일
 *.bak-*

@@ -53,8 +53,9 @@
   생성된 UI 키트이고 번들에서 트리셰이킹된다. 나중에 쓸 수 있어 남긴다.
 - **ESLint 오류 16건(`no-explicit-any`)**: 10개 앱 파일에 흩어져 있다. 타입을 좁히는
   작업이라 파일별 판단이 필요하고, 동작에 영향이 없어 이번 정비 범위에서 제외했다.
-- **경고 10건(`react-refresh/only-export-components`)**: 전부 shadcn `ui/*`의 HMR 힌트다.
-  실행에 영향이 없다. 없애려면 그 폴더에 ESLint override를 두면 된다.
+- **경고 10건(`react-refresh/only-export-components`)**: shadcn `ui/*` 7건과 미션 표시
+  컴포넌트(`ChatScene` 2건·`FocalSourceText` 1건)의 Fast Refresh 구조 경고다. 실행에는
+  영향이 없으며, 정리하려면 상수·도우미 export를 컴포넌트 파일 밖으로 분리해야 한다.
 - **의존성 취약점 10건**: 아래 참조. `package-lock.json` 변경은 Railway 빌드에 직접
   영향을 주므로 사용자 승인 전에는 실행하지 않는다.
 - **`supabase/functions/youtube-transcript/`**: 앱에서 호출부는 제거됐지만(`21ed27c`)
