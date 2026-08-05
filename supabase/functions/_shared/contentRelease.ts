@@ -6,11 +6,11 @@
  * 새 학습설계 또는 생성 기준을 시험할 때는 기존 ID를 덮어쓰지 말고 새 ID를 만든다.
  */
 export const CURRENT_CONTENT_RELEASE = {
-  id: "pragma_content_candidate_20260804_03",
+  id: "pragma_content_candidate_20260805_01",
   lifecycle: "candidate",
   corePromptVersions: [
-    "core_v8_learner_scene_v1",
-    "core_v8_learner_scene_v1_repair_v2",
+    "core_v9_interpreter_roles_v1",
+    "core_v9_interpreter_roles_v1_repair_v1",
   ],
   missionPromptVersions: [
     "mission_v5_mpj4_minidiscourse_v5",
@@ -21,7 +21,7 @@ export const CURRENT_CONTENT_RELEASE = {
     "feedback_v1_feature_general_v2",
   ],
   qualityPromptVersions: {
-    core: "core_quality_v4",
+    core: "core_quality_v5",
     mission: "quality_v2",
   },
 } as const;
@@ -30,3 +30,4 @@ export const CURRENT_CONTENT_RELEASE_ID = CURRENT_CONTENT_RELEASE.id;
 export const CURRENT_CORE_PROMPT_VERSIONS = CURRENT_CONTENT_RELEASE.corePromptVersions;
 export const CURRENT_MISSION_PROMPT_VERSIONS = CURRENT_CONTENT_RELEASE.missionPromptVersions;
 export const CURRENT_FEEDBACK_PROMPT_VERSIONS = CURRENT_CONTENT_RELEASE.feedbackPromptVersions;
+export const CURRENT_CORE_QUALITY_PROMPT_VERSION = CURRENT_CONTENT_RELEASE.qualityPromptVersions.core;

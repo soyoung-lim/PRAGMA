@@ -28,6 +28,11 @@ const r16Fails = (core: unknown, context: CheckContext) =>
     (violation) => violation.id === "R16" && violation.level === "fail",
   );
 
+const r30Fails = (core: unknown, context: CheckContext) =>
+  checkCore(core, context).violations.filter(
+    (violation) => violation.id === "R30" && violation.level === "fail",
+  );
+
 describe("R16 명시적 수행 모드 모순", () => {
   it("번역 셀에서 글을 부정하고 직접 말한다고 하면 저장 전 차단한다", () => {
     const core = {
@@ -82,7 +87,7 @@ describe("R16 명시적 수행 모드 모순", () => {
     const spoken = {
       ...baseCore,
       situation_ko:
-        "한국 회사 직원이 중국 협력사 담당자를 직접 만나 통역을 사이에 두고 일정 변경을 요청하는 상황이다.",
+        "한국어 원발화자가 중국어 청자에게 일정 변경을 요청하며, 학습자는 두 사람 사이에서 통역한다.",
       source_modality: "spoken",
       channel: "facetoface",
     };
@@ -109,7 +114,7 @@ describe("R16 명시적 수행 모드 모순", () => {
     };
     const spokenCore = (situation_ko: string) => ({
       ...baseCore,
-      situation_ko: `한국 회사 직원과 중국 협력사 담당자가 통역을 사이에 두고 대화한다. ${situation_ko}`,
+      situation_ko: `한국어 원발화자와 중국어 청자가 대화하며, 학습자는 두 사람 사이에서 통역한다. ${situation_ko}`,
       source_modality: "spoken",
       channel: "facetoface",
     });
@@ -166,15 +171,46 @@ describe("R16 명시적 수행 모드 모순", () => {
       );
     });
 
-    it("한국어 화자·중국어 화자와 통역 개입이 드러나는 장면은 통과한다", () => {
+    it("원발화자·학습자 통역사·청자의 세 역할이 분리된 장면은 통과한다", () => {
       expect(
         r16Fails(
           spokenCore(
-            "한국 교육청 담당자와 중국 연구소 연구원이 순차통역을 사이에 두고 예산 배분을 논의한다.",
+            "한국어 원발화자와 중국어 청자가 예산을 논의하며, 학습자는 두 사람 사이에서 순차통역한다.",
           ),
           spokenContext,
         ),
       ).toEqual([]);
+    });
+
+    it("학습자가 직접 화행을 수행하면서 통역하는 역할 중첩은 차단한다", () => {
+      const failures = r16Fails(
+        spokenCore(
+          "학습자는 중국 연구원을 직접 구두로 초대하고자 하며, 학습자가 한국 담당자에게 통역하는 상황이다.",
+        ),
+        spokenContext,
+      );
+      expect(failures.map((item) => item.message)).toContainEqual(
+        expect.stringContaining("학습자가 원발화자를 겸하면 안 됩니다"),
+      );
+    });
+  });
+
+  describe("R30 학생용 평가 기준 비노출", () => {
+    it("정중성·부담 완화 방향을 상황문에 알려 주면 저장 전 차단한다", () => {
+      const core = {
+        ...baseCore,
+        situation_ko:
+          "처음 만난 협력 기관 담당자를 발표회에 부담을 주지 않으면서도 정중하게 초대한다.",
+      };
+      expect(r30Fails(core, baseContext)).not.toEqual([]);
+    });
+
+    it("관찰 가능한 상대·용건만 제시한 상황문은 통과한다", () => {
+      const core = {
+        ...baseCore,
+        situation_ko: "처음 만난 협력 기관 담당자를 금요일 발표회와 점심 모임에 초대한다.",
+      };
+      expect(r30Fails(core, baseContext)).toEqual([]);
     });
   });
 });

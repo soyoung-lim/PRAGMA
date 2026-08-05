@@ -9,6 +9,7 @@ import {
   PDR_POWER_ENUM_TO_JSON,
 } from "@/lib/pragma/coreSchema";
 import type { CoreCellResult } from "@/lib/pragma/coreBatchRun";
+import { CURRENT_CORE_QUALITY_PROMPT_VERSION } from "../../../supabase/functions/_shared/contentRelease";
 
 export const CORE_QUALITY_AXES = [
   "speech_act",
@@ -23,6 +24,9 @@ export const CORE_QUALITY_AXES = [
   "decision_authority",
   "topic_seed",
   "adjacency",
+  "participant_roles",
+  "scene_source_alignment",
+  "learner_scene",
 ] as const;
 
 export type CoreQualityAxis = (typeof CORE_QUALITY_AXES)[number];
@@ -38,7 +42,7 @@ export interface CoreQualityCheck {
   summary_ko: string;
   axes: Record<CoreQualityAxis, CoreQualityAxisResult>;
   model: string;
-  prompt_version: "core_quality_v4";
+  prompt_version: typeof CURRENT_CORE_QUALITY_PROMPT_VERSION;
   checked_at: string;
 }
 

@@ -4,6 +4,7 @@ import {
   buildCoreOutputRepairPrompt,
   buildCoreSourceRepairPrompt,
   coreBilingualSceneIssue,
+  coreLearnerSceneIssue,
   corePrecedingTurnIssue,
   coreSourceIssue,
   coreSourceSentenceIssue,
@@ -122,13 +123,51 @@ describe("core source discourse boundary", () => {
         "ko",
         true,
       )?.missing,
-    ).toEqual(["source_speaker", "target_speaker", "interpreting"]);
+    ).toEqual([
+      "source_speaker",
+      "target_speaker",
+      "interpreting",
+      "learner_interpreter",
+      "participant_separation",
+    ]);
     expect(
       coreBilingualSceneIssue(
-        "중국 연구원과 한국 담당자가 순차통역을 사이에 두고 예산을 논의한다.",
+        "중국어 원발화자와 한국어 청자가 예산을 논의하며, 학습자는 두 사람 사이에서 순차통역한다.",
         "zh",
         "ko",
         true,
+      ),
+    ).toBeNull();
+  });
+
+  it("학습자가 원발화자와 통역사를 겸하는 실제 실패 문형을 차단한다", () => {
+    const invitation = coreBilingualSceneIssue(
+      "학습자는 중국 연구원을 직접 구두로 초대하고자 하며, 학습자가 한국 담당자에게 통역하는 상황이다.",
+      "zh",
+      "ko",
+      true,
+    );
+    const complaint = coreBilingualSceneIssue(
+      "학습자는 중국어 화자로서 상사에게 직접 말로 불만을 전달하는 한국어 통역 상황이다.",
+      "zh",
+      "ko",
+      true,
+    );
+
+    expect(invitation?.missing).toContain("role_overlap");
+    expect(invitation?.missing).toContain("participant_separation");
+    expect(complaint?.missing).toContain("role_overlap");
+  });
+
+  it("학생용 상황문의 정답 방향 노출을 별도 오류로 잡는다", () => {
+    expect(
+      coreLearnerSceneIssue(
+        "중국 연구원이 한국 동료를 발표회에 부담을 주지 않으면서도 정중하게 초대한다.",
+      ),
+    ).toMatchObject({ code: "evaluation_criteria" });
+    expect(
+      coreLearnerSceneIssue(
+        "중국 연구원이 처음 만난 한국 동료를 발표회와 점심 모임에 초대한다.",
       ),
     ).toBeNull();
   });
@@ -183,7 +222,7 @@ describe("core source discourse boundary", () => {
         focal_segments: [{ text: "너무 짧다", role: "head" }],
       },
       repairedOutput: {
-        situation_ko: "한국어 화자와 중국어 화자 사이에서 학습자가 순차통역한다.",
+        situation_ko: "한국어 원발화자와 중국어 청자 사이에서 학습자가 순차통역한다.",
         source_text: "여전히 짧다.",
         focal_segments: [{ text: "여전히 짧다", role: "head" }],
       },
@@ -201,7 +240,34 @@ describe("core source discourse boundary", () => {
     expect(result.sourceRepairApplied).toBe(false);
     expect(result.bilingualSceneRepairApplied).toBe(true);
     expect(result.output.source_text).toBe("너무 짧다.");
-    expect(result.output.situation_ko).toContain("한국어 화자와 중국어 화자");
+    expect(result.output.situation_ko).toContain("한국어 원발화자와 중국어 청자");
+  });
+
+  it("평가 기준 제거 repair만 통과해도 situation_ko를 독립 합성한다", () => {
+    const result = mergeValidatedCoreRepair({
+      originalOutput: {
+        situation_ko: "상대를 부담 없이 정중하게 초대한다.",
+        source_text: "我想邀请您参加周五的活动。期待您的回复。",
+      },
+      repairedOutput: {
+        situation_ko: "처음 만난 협력 기관 담당자를 금요일 발표회에 초대한다.",
+        source_text: "MODEL_CHANGED_SOURCE",
+      },
+      effectiveCharRange: { min: 20, max: 35 },
+      sourceIssue: null,
+      precedingTurnIssue: null,
+      bilingualSceneIssue: null,
+      learnerSceneIssue: {
+        code: "evaluation_criteria",
+        message: "학생용 평가 기준 노출",
+      },
+    });
+
+    expect(result.learnerSceneRepairApplied).toBe(true);
+    expect(result.output.situation_ko).toBe(
+      "처음 만난 협력 기관 담당자를 금요일 발표회에 초대한다.",
+    );
+    expect(result.output.source_text).toBe("我想邀请您参加周五的活动。期待您的回复。");
   });
 
   it("원문 교정은 head가 없는 focal_segments를 채택하지 않는다", () => {

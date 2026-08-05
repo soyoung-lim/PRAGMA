@@ -43,7 +43,19 @@ export interface CorePrecedingTurnIssue {
 export interface CoreBilingualSceneIssue {
   sourceLanguage: CoreLanguage
   targetLanguage: CoreLanguage
-  missing: Array<'source_speaker' | 'target_speaker' | 'interpreting'>
+  missing: Array<
+    | 'source_speaker'
+    | 'target_speaker'
+    | 'interpreting'
+    | 'learner_interpreter'
+    | 'participant_separation'
+    | 'role_overlap'
+  >
+  message: string
+}
+
+export interface CoreLearnerSceneIssue {
+  code: 'evaluation_criteria'
   message: string
 }
 
@@ -57,7 +69,27 @@ const CORE_SCENE_LANGUAGE_MARKER: Record<CoreLanguage, RegExp> = {
   zh: /중국|중국어|중화권/u,
 }
 
-/** 통역 장면이 두 언어 화자와 통역 개입을 명시하는지 확인한다. */
+const LEARNER_INTERPRETER_MARKER = /(?:학습자|학생)(?:는|가|에게|이)?[^.!?]{0,50}(?:통역|옮기|전달)/u
+const DISTINCT_PARTICIPANT_MARKER = /(?:두 사람|두 화자|양측|서로 다른 두 사람)[^.!?]{0,35}(?:사이|통역)|(?:사이에서|사이에|사이를)[^.!?]{0,35}(?:학습자|학생|통역)/u
+const LEARNER_SPEAKER_OVERLAP = /(?:학습자|학생)(?:는|가|이)?[^.!?]{0,25}(?:중국어|한국어)\s*화자(?:로서|이며|이고|이다|역할)|(?:학습자|학생)(?:는|가|이)?[^.!?]{0,80}(?:직접|스스로)[^.!?]{0,45}(?:말|발화|구두|초대|불만|요청|거절|감사|사과|제안)[^.!?]{0,80}(?:통역|옮기)/u
+
+const LEARNER_SCENE_EVALUATION_CUES = [
+  /부담(?:을|이)\s*(?:주지|느끼지)\s*않[^.!?]{0,35}(?:정중|공손)/u,
+  /(?:정중|공손)하게[^.!?]{0,35}(?:요청|거절|초대|제안|사과|감사|불만|반대|칭찬|표현|말|전달)/u,
+  /(?:완화|직접성|선택권|화용|대역|적절성|강도|명료성)(?:을|를|이|가|은|는)?[^.!?]{0,30}(?:조절|유지|남기|보장|드러내|표현|고려)/u,
+]
+
+/** 학생용 situation_ko에 목표 화용 답의 방향이 노출되는지 확인한다. */
+export function coreLearnerSceneIssue(situationKo: unknown): CoreLearnerSceneIssue | null {
+  const value = typeof situationKo === 'string' ? situationKo.trim() : ''
+  if (!LEARNER_SCENE_EVALUATION_CUES.some((pattern) => pattern.test(value))) return null
+  return {
+    code: 'evaluation_criteria',
+    message: '학생용 situation_ko에 정중성·완화·선택권·강도 같은 답안 평가 기준을 노출하면 안 됩니다.',
+  }
+}
+
+/** 통역 장면이 서로 다른 원발화자·학습자 통역사·청자의 3자 구조인지 확인한다. */
 export function coreBilingualSceneIssue(
   situationKo: unknown,
   sourceLanguage: CoreLanguage,
@@ -70,12 +102,15 @@ export function coreBilingualSceneIssue(
   if (!CORE_SCENE_LANGUAGE_MARKER[sourceLanguage].test(value)) missing.push('source_speaker')
   if (!CORE_SCENE_LANGUAGE_MARKER[targetLanguage].test(value)) missing.push('target_speaker')
   if (!/통역/u.test(value)) missing.push('interpreting')
+  if (!LEARNER_INTERPRETER_MARKER.test(value)) missing.push('learner_interpreter')
+  if (!DISTINCT_PARTICIPANT_MARKER.test(value)) missing.push('participant_separation')
+  if (LEARNER_SPEAKER_OVERLAP.test(value)) missing.push('role_overlap')
   if (missing.length === 0) return null
   return {
     sourceLanguage,
     targetLanguage,
     missing,
-    message: `통역 situation_ko에 ${CORE_LANGUAGE_KO[sourceLanguage]} 화자·${CORE_LANGUAGE_KO[targetLanguage]} 화자·통역 개입이 모두 드러나야 합니다.`,
+    message: `통역 situation_ko에는 서로 다른 ${CORE_LANGUAGE_KO[sourceLanguage]} 원발화자·학습자 통역사·${CORE_LANGUAGE_KO[targetLanguage]} 청자가 드러나야 하며, 학습자가 원발화자를 겸하면 안 됩니다.`,
   }
 }
 
@@ -148,6 +183,7 @@ interface CoreOutputRepairPromptInput {
   sourceIssue: CoreSourceIssue | null
   precedingTurnIssue: CorePrecedingTurnIssue | null
   bilingualSceneIssue?: CoreBilingualSceneIssue | null
+  learnerSceneIssue?: CoreLearnerSceneIssue | null
 }
 
 export interface MergeValidatedCoreRepairInput {
@@ -157,6 +193,7 @@ export interface MergeValidatedCoreRepairInput {
   sourceIssue: CoreSourceIssue | null
   precedingTurnIssue: CorePrecedingTurnIssue | null
   bilingualSceneIssue?: CoreBilingualSceneIssue | null
+  learnerSceneIssue?: CoreLearnerSceneIssue | null
 }
 
 export interface MergeValidatedCoreRepairResult {
@@ -164,6 +201,7 @@ export interface MergeValidatedCoreRepairResult {
   sourceRepairApplied: boolean
   precedingTurnRepairApplied: boolean
   bilingualSceneRepairApplied: boolean
+  learnerSceneRepairApplied: boolean
 }
 
 function hasValidFocalSegments(sourceText: string, raw: unknown): boolean {
@@ -193,6 +231,7 @@ export function mergeValidatedCoreRepair(
   let sourceRepairApplied = false
   let precedingTurnRepairApplied = false
   let bilingualSceneRepairApplied = false
+  let learnerSceneRepairApplied = false
 
   if (input.sourceIssue) {
     const repairedSourceText = String(
@@ -225,18 +264,21 @@ export function mergeValidatedCoreRepair(
     }
   }
 
-  if (input.bilingualSceneIssue) {
+  if (input.bilingualSceneIssue || input.learnerSceneIssue) {
     const repairedSituation = String(input.repairedOutput.situation_ko ?? '')
-    if (
-      !coreBilingualSceneIssue(
+    const bilingualIssue = input.bilingualSceneIssue
+      ? coreBilingualSceneIssue(
         repairedSituation,
         input.bilingualSceneIssue.sourceLanguage,
         input.bilingualSceneIssue.targetLanguage,
         true,
       )
-    ) {
+      : null
+    const learnerIssue = coreLearnerSceneIssue(repairedSituation)
+    if (!bilingualIssue && !learnerIssue) {
       output.situation_ko = repairedSituation
-      bilingualSceneRepairApplied = true
+      bilingualSceneRepairApplied = Boolean(input.bilingualSceneIssue)
+      learnerSceneRepairApplied = Boolean(input.learnerSceneIssue)
     }
   }
 
@@ -245,6 +287,7 @@ export function mergeValidatedCoreRepair(
     sourceRepairApplied,
     precedingTurnRepairApplied,
     bilingualSceneRepairApplied,
+    learnerSceneRepairApplied,
   }
 }
 
@@ -296,10 +339,21 @@ export function buildCoreOutputRepairPrompt(input: CoreOutputRepairPromptInput):
     const targetLanguage = CORE_LANGUAGE_KO[input.bilingualSceneIssue.targetLanguage]
     repairRules.push(
       `- situation_ko 오류: ${input.bilingualSceneIssue.message}`,
-      `- situation_ko에 A=${sourceLanguage} 화자, B=${targetLanguage} 화자이고 학습자가 A의 말을 B에게 통역하는 자리임을 자연스럽게 명시하세요.`,
-      '- 기존 역할·P/D/R·사건은 바꾸지 말고 두 사람의 언어 역할과 통역 개입만 분명히 하세요.',
+      `- situation_ko에 A=${sourceLanguage} 원발화자, B=${targetLanguage} 청자, 그리고 A/B와 다른 학습자 통역사의 세 참여자를 자연스럽게 명시하세요.`,
+      '- 학습자는 A의 말을 B에게 옮길 뿐, A의 화행을 직접 수행하거나 자기 말을 스스로 통역하지 않습니다.',
+      '- 기존 역할·P/D/R·사건은 바꾸지 말고 세 사람의 언어 역할과 통역 개입만 분명히 하세요.',
     )
-  } else {
+  }
+
+  if (input.learnerSceneIssue) {
+    repairRules.push(
+      `- situation_ko 오류: ${input.learnerSceneIssue.message}`,
+      '- 정중성·완화·선택권·강도·명료성처럼 답의 방향을 알려 주는 표현만 제거하세요.',
+      '- 상대·용건·접촉 이력·실제 부담·수행 모드는 관찰 가능한 사실로 그대로 보존하세요.',
+    )
+  }
+
+  if (!input.bilingualSceneIssue && !input.learnerSceneIssue) {
     repairRules.push('- situation_ko는 직전 출력에서 바꾸지 마세요.')
   }
 
@@ -338,5 +392,6 @@ export function buildCoreSourceRepairPrompt(input: CoreSourceRepairPromptInput):
     },
     precedingTurnIssue: null,
     bilingualSceneIssue: null,
+    learnerSceneIssue: null,
   })
 }
