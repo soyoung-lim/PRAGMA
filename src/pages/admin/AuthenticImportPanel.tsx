@@ -223,7 +223,10 @@ interface Props {
   onApply: (a: AuthenticApply) => void;
 }
 
-type InputTab = "image" | "text" | "youtube";
+// YouTube 자막 탭 제거(2026-08-05): supadata 연동이 배포 환경에 없어 동작하지 않았고,
+// 실제 원자료 취득은 이미지 추출·문구 입력으로 수행해 왔다. 기존에 저장된
+// provenance `authentic_youtube`는 읽기 위해 스키마·라벨에 그대로 남긴다.
+type InputTab = "image" | "text";
 
 const AuthenticImportPanel = ({ onApply }: Props) => {
   const [inputTab, setInputTab] = useState<InputTab>("image");
@@ -234,8 +237,6 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
   const [direction, setDirection] = useState<LanguageDirection>("zh_ko");
-  const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [ytLoading, setYtLoading] = useState(false);
   // 원자료 취득 경로 = provenance.source_type(0-q·98). 명시적 입력 행위에서만 바뀐다.
   // 이미지에서 뽑은 텍스트를 관리자가 고쳐 재분석해도 출처는 여전히 이미지다.
   const [inputOrigin, setInputOrigin] = useState<CoreSourceType>("authentic_text");
@@ -310,58 +311,6 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
     }
   };
 
-  // C. YouTube 중국어 자막 자동 입력 — 기존 youtube-transcript(supadata) edge 함수 재호출.
-  // 신규 연동/함수 수정 없음(§7 준수) — 가져온 자막을 텍스트 칸에 채워 관리자가 다듬은 뒤 분석.
-  const fetchCaption = async () => {
-    const u = youtubeUrl.trim();
-    if (!u) {
-      setError("YouTube URL을 입력하세요.");
-      return;
-    }
-    setYtLoading(true);
-    setError(null);
-    try {
-      const { data, error: fnErr } = await supabase.functions.invoke("youtube-transcript", {
-        body: { url: u, lang: "zh", text: false },
-      });
-      if (fnErr) throw fnErr;
-      if (data?.error) {
-        const em = typeof data.error === "string" ? data.error : JSON.stringify(data.error);
-        throw new Error(em);
-      }
-      if (data?.async) {
-        setError("자막이 비동기 처리 중입니다 — 잠시 후 다시 시도하거나 문구를 직접 붙여넣어 주세요.");
-        return;
-      }
-      const content = (data?.raw as { content?: unknown } | undefined)?.content;
-      const caption =
-        typeof content === "string"
-          ? content
-          : Array.isArray(content)
-          ? content.map((s: { text?: string }) => s?.text ?? "").join(" ")
-          : (data?.textPreview as string | undefined) ?? "";
-      if (!caption.trim()) {
-        setError("이 영상에서 중국어 자막(CC)을 찾지 못했습니다. 다른 영상이나 직접 입력을 사용하세요.");
-        return;
-      }
-      setText(caption.trim());
-      setInputTab("text"); // 자막은 문구 칸에 채워진다 — 사용자가 다듬을 수 있게 탭 전환
-      setInputOrigin("authentic_youtube");
-      // 출처가 비어 있으면 영상 URL을 기본 출처로 채운다(provenance 0-q·98).
-      if (!sourceRef.trim()) setSourceRef(u);
-      setDirection("zh_ko");
-    } catch (e) {
-      const msg = (e as Error).message ?? "";
-      setError(
-        msg.includes("SUPADATA_API_KEY")
-          ? "서버에 SUPADATA_API_KEY가 설정되지 않았습니다 — 배포 환경변수 설정 필요(이미지·문구 입력은 정상 동작)."
-          : msg || "자막을 가져오지 못했습니다.",
-      );
-    } finally {
-      setYtLoading(false);
-    }
-  };
-
   const apply = (c: RawCandidate, i: number) => {
     const base = normalizeApply(c);
     // 관리자가 확정한 원문을 우선한다(없으면 모델이 판독한 원문).
@@ -392,8 +341,8 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
             <span className="text-[12.5px] font-bold text-[#7A4A0A]">① 원자료 가져오기</span>
             <span className="text-[10.5px] text-[#8a6a2f]">이미지는 분석에만 쓰이고 저장되지 않습니다</span>
           </div>
-          <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg bg-[#F1E8D2] p-1 text-[12px]">
-            {([["image", "이미지에서 추출"], ["text", "문구 직접 입력"], ["youtube", "YouTube 자막"]] as [InputTab, string][]).map(
+          <div className="mt-2 grid grid-cols-2 gap-1 rounded-lg bg-[#F1E8D2] p-1 text-[12px]">
+            {([["image", "이미지에서 추출"], ["text", "문구 직접 입력"]] as [InputTab, string][]).map(
               ([k, l]) => (
                 <button
                   key={k}
@@ -476,30 +425,6 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
             />
           )}
 
-          {inputTab === "youtube" && (
-            <div className="mt-2.5">
-              <div className="flex gap-2">
-                <input
-                  value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=… (CC 지원 영상만)"
-                  className="h-9 flex-1 rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#BA7517]/40"
-                />
-                <Button
-                  type="button"
-                  onClick={fetchCaption}
-                  disabled={ytLoading || !youtubeUrl.trim()}
-                  className="shrink-0 bg-[#BA7517] text-white hover:bg-[#BA7517]/90 disabled:opacity-60"
-                >
-                  {ytLoading ? "가져오는 중…" : "자막 가져오기"}
-                </Button>
-              </div>
-              <p className="mt-1.5 text-[11px] text-muted-foreground">
-                가져온 자막은 「문구 직접 입력」 탭에 채워집니다 — 필요한 부분만 남기고 분석하세요.
-                CC 자막이 없는 영상은 화면을 캡처해 「이미지에서 추출」을 사용하세요.
-              </p>
-            </div>
-          )}
         </div>
 
         {/* 기본 언어 방향 */}

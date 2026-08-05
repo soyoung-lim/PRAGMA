@@ -517,8 +517,9 @@ const AdminGenerator = () => {
   // v9 UI-only — source acquisition mode. "ai" keeps current flow.
   // "manual" swaps the LLM-generated source_text with the user's own text
   // after the Edge Function returns (payload/columns unchanged).
-  // "bank" is a shell only (다음 단계).
-  type SourceMode = "ai" | "bank" | "manual";
+  // "bank" 모드는 미구현 상태로 남아 있던 죽은 값이라 제거했다(2026-08-05).
+  // 선택 UI 자체는 2026-07-25에 이미 없어졌고, 여기에 union 멤버만 남아 있었다.
+  type SourceMode = "ai" | "manual";
   const [sourceMode, setSourceMode] = useState<SourceMode>("ai");
   // 실제 자료 유래 코어의 출처(0-q·98). applyAuthentic에서만 채워지고,
   // 저장 시 manualSourceText가 실제로 쓰였을 때만 core_content에 붙는다.
