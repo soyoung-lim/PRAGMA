@@ -1260,4 +1260,4 @@
 - 관련 파일: `src/lib/pragma/batchPlan.ts`, `src/pages/admin/AdminBatch.tsx`,
   `docs/contracts/PRAGMA_생성계약_v1_2026-07-23.md`
 - 관련 Iteration / Trace: `ITER-20260805-01`, `TRC-20260805-01`
-- 관련 커밋: 이번 변경 커밋 `[반영 후 기록]`
+- 관련 커밋: `1f10320`
