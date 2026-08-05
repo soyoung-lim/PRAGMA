@@ -24,8 +24,8 @@
 | B·C 역할 중첩 회귀 | 차단 |
 | 정상 세 참여자 장면 | 통과 |
 | D 평가 기준 노출 회귀 | 차단 |
-| 관련 테스트 | 42/42 통과 |
-| 전체 테스트 | 273 통과, 7 skip |
+| 관련 테스트 | 44/44 통과 |
+| 전체 테스트 | 275 통과, 7 skip |
 | ESLint / typecheck | 통과 / 통과 |
 | production build | 통과, 1,903 modules |
 | prompt snapshot | 18종, `core_surface_hash=cdf82d06c049…` |

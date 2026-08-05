@@ -13,14 +13,19 @@
 - 통역 역할 중첩과 학생용 평가 기준 노출을 막는 코드·계약·회귀 테스트를 구현했다.
 - 새 후보는 `pragma_content_candidate_20260805_01`, 프롬프트는
   `core_v9_interpreter_roles_v1`, 품질점검은 `core_quality_v5`다.
-- 관련 42건·전체 273건, ESLint·typecheck·production build가 통과했다.
-- 이 절 기록 시점에는 새 Edge를 배포하지 않았고 DB 행·미션·상태·호출 원장을 바꾸지 않았다.
+- 운영 카나리에서 R16 어휘 의존을 보정한 최종 코드는 관련 44/44·전체 275건(7 skip),
+  ESLint·typecheck·production build(1,903 modules)를 통과했다.
+- 새 Edge는 v53 ACTIVE(hash `4971719a…`)다. 콘텐츠 DB 행·미션·상태는 바꾸지 않았고,
+  실모델 호출 원장만 추가됐다.
+- v53 core-only 6셀은 R검사 6/6이지만 통역 3건 중 2건에 역할 지시 모호성이 남았고,
+  `participant_roles` 비평도 이를 놓쳤다. 자동 통과를 실질 통과로 읽지 않는다.
 
 ### 다음 게이트
 
-1. 변경을 커밋·push하고 prompt snapshot의 clean 기준 커밋을 고정한다.
-2. 새 Edge를 배포한 뒤 DB 저장 없는 소수 중→한 통역 표본으로 세 참여자 분리를 확인한다.
-3. 실표본이 나오면 Fable 교차검증을 요청한다.
+1. `docs/research-trail/evidence/2026-08-05-interpreter-role-canary/FABLE_CROSS_VALIDATION_PACKET.md`의
+   A/B/C를 Fable이 블라인드 판정한다.
+2. 그 판정 뒤 역할 명명 계약과 결정론적 가드/비평 축을 함께 보정한다. 그 전에는 호출을 늘리지 않는다.
+3. 보정 후에도 DB 저장 없는 소수 표본만 재검증한다.
 4. 통과해도 정식 콘텐츠로 승격하지 않고, 나머지 프롬프트·문항·상황 조건 LOCK 뒤 전량 재생산한다.
 
 ## 2026-08-04 원격 적용·롤백 WRAP UP

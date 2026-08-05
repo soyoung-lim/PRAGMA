@@ -1,0 +1,230 @@
+[
+  {
+    "act": "request",
+    "direction": "ko_zh",
+    "mode": "stt_interpreting",
+    "situation_ko": "저는 한국 제조업체의 해외 무역 담당자입니다. 오늘 처음 만난 중국 거래처 신규 직원과 직접 가격 조정과 납기 조건 협의를 해야 합니다. 학습자는 저와 거래처 직원 사이에서 한국어 발화를 중국어로 통역하는 역할을 맡았습니다.",
+    "source_text": "안녕하세요, 이번에 요청드릴 가격 견적서와 납기 조건을 다시 한 번 확인해 주실 수 있을까요? 우리 쪽 생산 일정에 맞춰 협조가 필요합니다.",
+    "quality": {
+      "verdict": "fail",
+      "summary_ko": "화자의 실제 지위(P)가 기대와 반대로 상위자로 설정되어 있음.",
+      "axes": {
+        "speech_act": {
+          "verdict": "pass",
+          "reason_ko": "가격 견적서와 납기 조건 확인을 요청하는 발화로, 요청 화행이 분명히 드러남."
+        },
+        "power": {
+          "verdict": "fail",
+          "reason_ko": "pdr.p가 'speaker_higher'로, 화자가 상위자로 설정되어 있으나 기대 조건은 lower임."
+        },
+        "distance": {
+          "verdict": "pass",
+          "reason_ko": "처음 만나는 신규 직원과의 공식적 거리감이 situation_ko와 pdr.d('distant')에 반영됨."
+        },
+        "burden": {
+          "verdict": "pass",
+          "reason_ko": "가격 및 납기 조건 재확인 요청은 mid 수준의 부담에 해당함."
+        },
+        "domain": {
+          "verdict": "pass",
+          "reason_ko": "해외 무역 담당자와 거래처 직원 간의 업무 상황으로 work 도메인에 부합함."
+        },
+        "industry": {
+          "verdict": "pass",
+          "reason_ko": "한국 제조업체, 해외 무역, 가격 협상 등 제조·글로벌 무역 산업 배경이 명확히 드러남."
+        },
+        "mode": {
+          "verdict": "pass",
+          "reason_ko": "학습자가 통역사 역할을 맡고, 구두(face to face) 상황임이 명확히 제시됨."
+        },
+        "context_spec": {
+          "verdict": "fail",
+          "reason_ko": "화자가 실제로 상위자(책임자·결정권자)로 설정되어 기대 조건의 lower와 불일치함."
+        },
+        "referents": {
+          "verdict": "pass",
+          "reason_ko": "화자=한국 무역 담당자, 상대=중국 거래처 신규 직원으로 모든 필드에서 일관됨."
+        },
+        "decision_authority": {
+          "verdict": "pass",
+          "reason_ko": "상대가 요청받은 행동(확인)을 직접 수행할 권한이 있음."
+        },
+        "topic_seed": {
+          "verdict": "pass",
+          "reason_ko": "판매자·거래처에 가격 및 조건 문의·조정 상황이 그대로 구현됨."
+        },
+        "adjacency": {
+          "verdict": "pass",
+          "reason_ko": "응답 화행이 아니므로 해당 없음."
+        },
+        "participant_roles": {
+          "verdict": "pass",
+          "reason_ko": "화자, 학습자(통역사), 상대방이 명확히 구분되어 있음."
+        },
+        "scene_source_alignment": {
+          "verdict": "pass",
+          "reason_ko": "상황 설명과 source_text의 핵심 사건(가격·납기 조건 확인 요청)이 일치함."
+        },
+        "learner_scene": {
+          "verdict": "pass",
+          "reason_ko": "상황문이 답의 방향이나 평가 기준을 노출하지 않고 실제 장면만 제시함."
+        }
+      },
+      "model": "gpt-4.1",
+      "prompt_version": "core_quality_v5",
+      "checked_at": "2026-08-05T14:06:31.598Z"
+    }
+  },
+  {
+    "act": "complaint",
+    "direction": "ko_zh",
+    "mode": "stt_interpreting",
+    "situation_ko": "학습자는 호텔 고객으로, 처음 만나는 호텔 직원에게 숙소 방의 문제를 직접 말하며 해결을 요청한다. 학습자와 직원은 서로 처음 보는 사이이며, 방 교체나 수리 등 실질적 조치를 기대하는 상황이다. 학습자는 통역사로서 한국어 고객의 말을 중국어로 전달해야 한다.",
+    "source_text": "방에 에어컨이 고장 나서 너무 더워요. 바로 고쳐 주실 수 있나요? 가능한 빨리 조치해 주셨으면 합니다.",
+    "quality": {
+      "verdict": "fail",
+      "summary_ko": "지위(P)가 'speaker_lower'로 지정되어 기대 조건의 상위자(higher)와 불일치함.",
+      "axes": {
+        "speech_act": {
+          "verdict": "pass",
+          "reason_ko": "에어컨 고장에 대한 불만을 제기하고 조치를 요청하는 발화로, 불만 화행을 충실히 수행함."
+        },
+        "power": {
+          "verdict": "fail",
+          "reason_ko": "pdr.p가 'speaker_lower'로 설정되어 있으나, 기대 조건은 'higher'임. 실제 상황 설명에서도 고객이 상위자여야 하나, 하위자로 처리됨."
+        },
+        "distance": {
+          "verdict": "pass",
+          "reason_ko": "처음 만나는 호텔 직원과 고객의 공식적이고 낯선 관계로, 'formal'에 부합함."
+        },
+        "burden": {
+          "verdict": "pass",
+          "reason_ko": "즉각적인 수리와 조치를 요구하는 mid 수준의 부담이 적절히 구현됨."
+        },
+        "domain": {
+          "verdict": "pass",
+          "reason_ko": "호텔에서의 일상적 상황으로, daily 도메인에 부합함."
+        },
+        "industry": {
+          "verdict": "pass",
+          "reason_ko": "직장/산업 배경이 요구되지 않는 일상 상황이므로 pass."
+        },
+        "mode": {
+          "verdict": "pass",
+          "reason_ko": "구두 통역 상황(호텔 고객-직원 대화)으로, spoken modality와 일치함."
+        },
+        "context_spec": {
+          "verdict": "fail",
+          "reason_ko": "상위자(higher) 고객이 하위자 직원에게 불만을 제기해야 하나, pdr.p가 하위자로 설정되어 역할 구조가 기대와 다름."
+        },
+        "referents": {
+          "verdict": "pass",
+          "reason_ko": "문제 제기자(고객)와 해결 책임자(직원)의 지시가 상황 및 source_text 전반에서 일관됨."
+        },
+        "decision_authority": {
+          "verdict": "pass",
+          "reason_ko": "직원이 직접 수리하거나 전달할 권한이 있는 상대임이 명확히 드러남."
+        },
+        "topic_seed": {
+          "verdict": "pass",
+          "reason_ko": "호텔 방 문제(에어컨 고장)와 해결 요청이라는 시드가 핵심적으로 구현됨."
+        },
+        "adjacency": {
+          "verdict": "pass",
+          "reason_ko": "응답 화행이 아니므로 pass."
+        },
+        "participant_roles": {
+          "verdict": "pass",
+          "reason_ko": "고객(A), 통역사(학습자), 직원(B) 세 참여자가 구분되어 있음."
+        },
+        "scene_source_alignment": {
+          "verdict": "pass",
+          "reason_ko": "상황 설명과 source_text 모두 에어컨 고장 및 조치 요청이라는 핵심 사건이 일치함."
+        },
+        "learner_scene": {
+          "verdict": "pass",
+          "reason_ko": "상황문이 답의 방향이나 평가 기준을 노출하지 않고, 실제 접촉 이력과 부담만 기술함."
+        }
+      },
+      "model": "gpt-4.1",
+      "prompt_version": "core_quality_v5",
+      "checked_at": "2026-08-05T14:06:39.543Z"
+    }
+  },
+  {
+    "act": "thanks",
+    "direction": "zh_ko",
+    "mode": "stt_interpreting",
+    "situation_ko": "중국어 원발화자인 수업 담당자인 나는 조별 과제 중 처음 만난 한국어 청자인 학생에게 직접 말한다. 학습자인 학생은 조원으로 참여해 기획안 작성에 도움을 주었고, 나는 학습자 통역사를 통해 그 감사의 뜻을 전하는 상황이다. 학습자는 나와 처음 만나 다소 긴장하지만, 감사 인사를 듣는다.",
+    "source_text": "非常感谢你这次帮忙整理了调研资料，内容很详实，对我们项目帮助很大。我知道你也是第一次参与这样的活动，希望以后还能多多合作。",
+    "quality": {
+      "verdict": "fail",
+      "summary_ko": "화자의 실제 지위가 기대 조건과 반대로 상위자로 설정되어 P축 등에서 불일치가 발생한다.",
+      "axes": {
+        "speech_act": {
+          "verdict": "pass",
+          "reason_ko": "source_text가 구체적 기여에 대해 감사를 표하는 내용임이 명확하다."
+        },
+        "power": {
+          "verdict": "fail",
+          "reason_ko": "상황에서 화자가 '수업 담당자', 상대가 '학생'으로 설정되어 실제로 화자가 상위자(P: higher)이나, 기대 조건은 화자가 하위자(P: lower)여야 한다."
+        },
+        "distance": {
+          "verdict": "pass",
+          "reason_ko": "처음 만난 학생과의 공식적이고 다소 긴장된 분위기로, formal(distant) 관계가 잘 구현됨."
+        },
+        "burden": {
+          "verdict": "pass",
+          "reason_ko": "감사 인사로 상대에게 추가 행동을 요구하지 않아 mid 수준의 부담이 적절히 반영됨."
+        },
+        "domain": {
+          "verdict": "pass",
+          "reason_ko": "학교 내 조별 과제 상황으로 school 도메인에 부합한다."
+        },
+        "industry": {
+          "verdict": "pass",
+          "reason_ko": "직장/산업 배경이 요구되지 않는 상황이므로 pass."
+        },
+        "mode": {
+          "verdict": "pass",
+          "reason_ko": "구두 상황에서 통역사가 화자의 감사를 전달하는 구성이 자연스럽다."
+        },
+        "context_spec": {
+          "verdict": "fail",
+          "reason_ko": "화자가 '수업 담당자'로, 상대가 '학생'으로 설정되어 기대 역할(화자가 기여를 인정하는 학생, 상대가 도움 제공자 학생)과 불일치한다."
+        },
+        "referents": {
+          "verdict": "fail",
+          "reason_ko": "화자가 상위자(담당자), 상대가 하위자(학생)로, 기대 조건(학생이 감사, 상대가 도움 제공자 학생)과 지시가 어긋난다."
+        },
+        "decision_authority": {
+          "verdict": "pass",
+          "reason_ko": "감사 화행으로 별도의 의사결정 권한이 요구되지 않는다."
+        },
+        "topic_seed": {
+          "verdict": "pass",
+          "reason_ko": "조별 과제에서 학생들 간 상호작용(감사)이 유지된다."
+        },
+        "adjacency": {
+          "verdict": "pass",
+          "reason_ko": "응답 화행이 아니므로 pass."
+        },
+        "participant_roles": {
+          "verdict": "pass",
+          "reason_ko": "원발화자(수업 담당자), 통역사(학습자), 청자(학생)로 세 참여자가 구분된다."
+        },
+        "scene_source_alignment": {
+          "verdict": "pass",
+          "reason_ko": "상황 설명과 source_text 모두 조별 과제, 도움, 감사의 핵심 사건이 일치한다."
+        },
+        "learner_scene": {
+          "verdict": "pass",
+          "reason_ko": "상황문이 답의 방향이나 평가 기준을 노출하지 않는다."
+        }
+      },
+      "model": "gpt-4.1",
+      "prompt_version": "core_quality_v5",
+      "checked_at": "2026-08-05T14:06:52.959Z"
+    }
+  }
+]
