@@ -80,8 +80,19 @@ const App = () => (
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/profile-setup" element={<ProfileSetup />} />
           <Route path="/home" element={<Home />} />
-          <Route path="/roadmap" element={<RequireApproved><Roadmap /></RequireApproved>} />
-          <Route path="/workflow-preview" element={<WorkflowPreview />} />
+          {/* 정적 주차표·정적 흐름 예시 — 개발 환경에서만 접근한다(2026-08-05).
+              Roadmap은 현재 주차가 `getCurrentWeek() = 1` 고정값이고 주차 배정 로직과
+              무관한 표시용 화면이라, 프로덕션에서 URL로 열리면 실제 편성과 어긋난 주차표를
+              보여 준다. WorkflowPreview는 그 화면 안의 버튼에서만 들어가는 정적 목업이다.
+              UI 네비게이션에 두 화면으로 가는 링크는 없다. */}
+          <Route
+            path="/roadmap"
+            element={import.meta.env.DEV ? <RequireApproved><Roadmap /></RequireApproved> : <Navigate to="/learner/course" replace />}
+          />
+          <Route
+            path="/workflow-preview"
+            element={import.meta.env.DEV ? <WorkflowPreview /> : <Navigate to="/learner/course" replace />}
+          />
           {/* 홈은 폐지 — 학습자 착지 화면은 수업이다(2026-08-01). 옛 링크·북마크는 그대로 잇는다. */}
           <Route path="/learner/home" element={<Navigate to="/learner/course" replace />} />
           <Route path="/learner/lounge" element={<RequireApproved><LoungeHome /></RequireApproved>} />
@@ -197,7 +208,8 @@ const App = () => (
           <Route path="/admin/export" element={<RequireAdmin><AdminExport /></RequireAdmin>} />
           {/* 워크플로 골격 — 후속 구현 화면(준비중). AdminPlaceholder가 "이 화면은 후속 단계에서 구현됩니다" 렌더 */}
           <Route path="/admin/package" element={<RequireAdmin><AdminPlaceholder title="수업 자료 생성" description="주차별 수업 패키지 = 교수자용 교안(이론·예상 Q&A) + 학습자용 도입 화면(도입 장면·화용 설명·원리)" /></RequireAdmin>} />
-          <Route path="/admin/course-ops" element={<RequireAdmin><AdminPlaceholder title="교과목 운영" description="개설 교과목·수강 코호트 운영" /></RequireAdmin>} />
+          {/* /admin/course-ops 제거(2026-08-05) — 메뉴에 없고 어디서도 링크되지 않는 고아
+              라우트였다. 교과목 운영은 9월 실증 사안으로 백로그에 있다(AdminShell 주석 참조). */}
           <Route path="/admin/users" element={<RequireAdmin><AdminPlaceholder title="사용자·권한" description="관리자·교수자·학습자 계정 및 권한" /></RequireAdmin>} />
           <Route path="/admin-login" element={<AdminLogin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
