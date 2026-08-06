@@ -57,7 +57,7 @@ const Landing = () => {
               PRAGMA는 한·중 통번역에서 주어진 원문의 의미는 유지하면서
             </span>
             <span className="block">
-              상황과 관계에 맞는 표현을 판단하고 산출하는 수업 연계형 AI 플랫폼입니다.
+              상황과 관계에 맞게 판단하고 산출하는 수업 연계형 AI 플랫폼입니다.
             </span>
           </p>
         </section>
