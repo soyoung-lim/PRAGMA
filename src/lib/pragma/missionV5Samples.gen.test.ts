@@ -14,7 +14,10 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { buildBatchPlan, type BatchCell } from "@/lib/pragma/batchPlan";
-import { buildContentCanaryPlan } from "@/lib/pragma/contentCanaryPlan";
+import {
+  buildContentCanaryPlan,
+  buildInterpreterRoleCanaryPlan,
+} from "@/lib/pragma/contentCanaryPlan";
 import { CURRENT_CONTENT_RELEASE_ID } from "../../../supabase/functions/_shared/contentRelease";
 import { TARGET_FEATURES, DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
 import { errorPatternsForAct } from "@/lib/pragma/errorPatterns";
@@ -46,6 +49,8 @@ const RECHECK = process.env.RUN_V5_RECHECK === "1";
 const SUPPLEMENT = process.env.RUN_V5_SUPPLEMENT === "1";
 /** refresh 전 두 방향·두 모드 대표 6셀을 생성하는 릴리스 canary. DB 저장 없음. */
 const CANARY = process.env.RUN_CONTENT_CANARY === "1";
+/** 역할 계약 배포 뒤 9화행×양방향 통역 코어 18건. DB 콘텐츠 저장 없음. */
+const INTERPRETER_ROLE_CANARY = process.env.RUN_INTERPRETER_ROLE_CANARY === "1";
 /** 코어 안정성 게이트만 측정한다. 미션 호출을 섞지 않아 실패 층과 비용을 분리한다. */
 const CANARY_CORE_ONLY = process.env.CONTENT_CANARY_CORE_ONLY === "1";
 /** 이전 카나리의 통과 코어를 고정해 미션 프롬프트 변경만 비교할 때 사용한다. */
@@ -84,7 +89,7 @@ interface SampleResult {
 }
 
 /** 코어→미션 생성 러너 — RUN·SUPPLEMENT 블록이 공유한다. 요청 본문은 실제 경로와 동일. */
-function createRunner(url: string, key: string) {
+function createRunner(url: string, key: string, options: { coreOnly?: boolean } = {}) {
   const fnUrl = `${url}/functions/v1/generate-scenario`;
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -196,7 +201,7 @@ function createRunner(url: string, key: string) {
         out.error = "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)";
         return out;
       }
-      if (CANARY_CORE_ONLY) return out;
+      if (options.coreOnly ?? CANARY_CORE_ONLY) return out;
 
       // ── 2. 미션 승격 (promoteMission과 같은 본문·재시도 정책) ──
       const nc = normalizeCore(core ?? {});
@@ -476,6 +481,62 @@ describe.skipIf(!CANARY)("콘텐츠 후보 refresh canary", () => {
             `${result.actKo} 미션 후보 ID`,
           ).toBe(CURRENT_CONTENT_RELEASE_ID);
         }
+      }
+    },
+    1_800_000,
+  );
+});
+
+describe.skipIf(!INTERPRETER_ROLE_CANARY)("통역 역할 계약 운영 canary", () => {
+  it(
+    "9화행×양방향 통역 코어 18건을 DB 미저장으로 생성하고 버전·R규칙을 확인한다",
+    async () => {
+      const { url, key } = readEnv();
+      const runCell = createRunner(url, key, { coreOnly: true });
+      const results: SampleResult[] = [];
+
+      for (const cell of buildInterpreterRoleCanaryPlan()) {
+        results.push(await runCell(cell));
+      }
+
+      const outDir =
+        process.env.CONTENT_CANARY_OUT ?? resolve(process.cwd(), ".tmp", "content-canary");
+      mkdirSync(outDir, { recursive: true });
+      const jsonPath = resolve(
+        outDir,
+        `${CURRENT_CONTENT_RELEASE_ID}.interpreter-role.core-only.json`,
+      );
+      writeFileSync(jsonPath, JSON.stringify(results, null, 2), "utf8");
+
+      const summary = results.map((result) => ({
+        act: result.act,
+        direction: result.cell.direction,
+        pdr: [
+          result.cell.pdr_power,
+          result.cell.pdr_distance,
+          result.cell.pdr_burden,
+        ].join("/"),
+        core: result.coreResult ?? "error",
+        coreRelease:
+          (result.core as { generation?: { content_release_id?: string } } | undefined)
+            ?.generation?.content_release_id ?? null,
+      }));
+      console.log(`\ninterpreter role canary JSON: ${jsonPath}`);
+      console.log(JSON.stringify(summary, null, 2));
+
+      expect(results).toHaveLength(18);
+      for (const result of results) {
+        expect(result.cell.mode).toBe("stt_interpreting");
+        expect(result.error, `${result.cell.direction} ${result.actKo} 생성 오류`).toBeUndefined();
+        expect(result.coreResult, `${result.cell.direction} ${result.actKo} 코어 R검사`).not.toBe(
+          "fail",
+        );
+        expect(result.mission).toBeUndefined();
+        expect(
+          (result.core as { generation?: { content_release_id?: string } } | undefined)
+            ?.generation?.content_release_id,
+          `${result.cell.direction} ${result.actKo} 코어 후보 ID`,
+        ).toBe(CURRENT_CONTENT_RELEASE_ID);
       }
     },
     1_800_000,

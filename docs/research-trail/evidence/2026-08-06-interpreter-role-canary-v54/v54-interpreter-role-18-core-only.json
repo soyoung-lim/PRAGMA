@@ -1,0 +1,1810 @@
+[
+  {
+    "act": "request",
+    "actKo": "요청",
+    "cell": {
+      "speech_act_ui": "request",
+      "level": "beginner_intermediate",
+      "domain": "school",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "higher",
+      "pdr_distance": "formal",
+      "pdr_burden": "mid",
+      "theme_code": "international_exchange",
+      "topic_code": "exchange_housing_assignment",
+      "situation_seed_ko": "국제교류처가 배정한 기숙사 방·입실 일정의 문제를 알리고 조정을 요청하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "request_mitigation_optionality",
+    "coreViolations": [],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": true,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:25:33.538Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "당신은 한국어를 사용하는 학생과 중국어를 사용하는 학사 담당자 사이에서 통역을 맡았다. 학생은 국제교류처가 배정한 기숙사 방과 입실 일정에 문제가 있어 조정을 요청하려 한다. 두 사람은 처음 만나는 사이이며, 담당자는 조정 권한을 가진다.",
+      "relation_ko": "처음 문의하는 학생과 처음 상대하는 학사 담당자의 공식적 관계이다.",
+      "source_modality": "spoken",
+      "source_text": "교수님, 기숙사 입실 날짜를 조정할 수 있을까요? 가능하다면 부탁드립니다.",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "distant",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "school.exchange_housing_assignment.request",
+        "role_pair": {
+          "speaker_ko": "처음 문의하는 학생",
+          "addressee_ko": "처음 상대하는 교수·조교·학사 담당자"
+        },
+        "speaker_entitlement": "화자에게 해당 행동을 요청할 합리적 사유는 있으나, 상대의 선택권을 자동으로 박탈하지 않는다.",
+        "addressee_obligation": "상대는 요청을 이해하고 검토할 수 있으나, 수락 의무는 역할·규정·상황에 따라 달라진다.",
+        "decision_authority": "상대가 요청받은 행동을 직접 수행하거나 승인·연결할 실질적 권한을 가진다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "기숙사 방 배정 문제로 입실 일정 조정을 요청하는 통역 상황",
+      "focal_segments": [
+        {
+          "text": "입실 날짜를 조정할 수 있을까요?",
+          "role": "head"
+        },
+        {
+          "text": "가능하다면 부탁드립니다.",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 30,
+        "max": 45,
+        "actual": 30
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:25:33.538Z"
+      }
+    },
+    "coreResult": "pass"
+  },
+  {
+    "act": "refusal",
+    "actKo": "거절",
+    "cell": {
+      "speech_act_ui": "refusal",
+      "level": "beginner_intermediate",
+      "domain": "work",
+      "mode": "stt_interpreting",
+      "industry": "tourism_hospitality",
+      "pdr_power": "lower",
+      "pdr_distance": "formal",
+      "pdr_burden": "high",
+      "theme_code": "digital_content",
+      "topic_code": "content_reuse_permission",
+      "situation_seed_ko": "다른 크리에이터에게 콘텐츠 2차 사용 허락을 요청하거나, 온 요청을 정중히 거절하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "refusal_softening",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 한국어 원발화자 A·중국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:25:42.096Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "당신은 관광 컨벤션 센터의 콘텐츠 관리 책임자 A와 중국에서 온 신규 협력사 직원 B 사이의 통역을 맡았다. B는 행사 홍보 영상의 2차 사용 허락을 요청했으며, A는 콘텐츠 저작권과 계약 조건을 고려해 이를 정중히 거절하려 한다. 두 사람은 처음 만나 대화를 나누며, A는 거절 의사를 명확히 전달해야 한다.",
+      "relation_ko": "A는 관광 컨벤션 센터의 콘텐츠 관리 책임자이고 B는 중국 협력사 신규 직원으로, 두 사람은 업무상 처음 만난 사이이다.",
+      "source_modality": "spoken",
+      "source_text": "홍보 영상의 2차 사용은 허락할 수 없습니다. 저작권 문제가 있어서요. 협력해 주셔서 감사합니다.",
+      "preceding_turn": "您好，我们希望能获得活动宣传视频的二次使用许可。",
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "distant",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "work.content_reuse_permission.refusal",
+        "role_pair": {
+          "speaker_ko": "해당 업무의 책임자·발주측 결정권자",
+          "addressee_ko": "처음 상대하는 신규 직원·외부 실무 담당자"
+        },
+        "speaker_entitlement": "화자는 앞선 요청·제안·초대의 수용 여부를 결정할 재량이 있다.",
+        "addressee_obligation": "상대는 거절 대상 행동을 먼저 요청·제안·초대한 사람이며, 거절을 수용할 여지가 있어야 한다.",
+        "decision_authority": "화자가 자신의 참여·수락 여부를 결정하며, 거절 대상과 범위가 분명해야 한다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "행사 홍보 영상 2차 사용 요청에 대한 정중한 거절",
+      "focal_segments": [
+        {
+          "text": "홍보 영상의 2차 사용은 허락할 수 없습니다.",
+          "role": "head"
+        },
+        {
+          "text": "저작권 문제가 있어서요.",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 30,
+        "max": 45,
+        "actual": 39
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:25:42.096Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "thanks",
+    "actKo": "감사",
+    "cell": {
+      "speech_act_ui": "thanks",
+      "level": "beginner_intermediate",
+      "domain": "work",
+      "mode": "stt_interpreting",
+      "industry": "tourism_hospitality",
+      "pdr_power": "equal",
+      "pdr_distance": "close",
+      "pdr_burden": "mid",
+      "theme_code": "career_workplace",
+      "topic_code": "work_support_thanks",
+      "situation_seed_ko": "직장 관계의 상대가 업무 검토·협조·문제 해결에 도움을 준 뒤, 그 구체적인 기여에 감사를 전하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "gratitude_calibration",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 한국어 원발화자 A·중국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": true,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:25:54.573Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "당신은 A와 B 사이에서 통역을 맡았다. A와 B는 관광 컨벤션센터에서 함께 일하는 동료이며, B가 최근 개최한 국제 컨퍼런스의 참가자 관리와 현장 로지스틱스 업무를 도와 A가 크게 도움을 받았다. 두 사람은 친밀한 관계로, A가 B의 도움에 대해 감사의 뜻을 전하려 한다.",
+      "relation_ko": "동료 간 친밀한 업무 협력 관계",
+      "source_modality": "spoken",
+      "source_text": "참가자 등록을 빠르게 처리해 주셔서 감사합니다. 현장 장비 점검도 꼼꼼히 해 주셔서 큰 도움이 되었습니다.",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "equal",
+        "d": "close",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "work.work_support_thanks.thanks",
+        "role_pair": {
+          "speaker_ko": "가깝게 협업해 온 동료",
+          "addressee_ko": "가깝게 협업해 온 동등한 동료"
+        },
+        "speaker_entitlement": "화자는 자신이 받은 도움·호의와 상대의 기여를 구체적으로 인정할 위치에 있다.",
+        "addressee_obligation": "상대는 도움·호의의 제공자이며 감사에 응답하거나 추가 행동을 할 의무는 없다.",
+        "decision_authority": "별도의 의사결정은 요구하지 않으며, 감사 대상인 기여가 실제로 존재해야 한다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "동료의 구체적인 업무 도움에 감사 인사",
+      "focal_segments": [
+        {
+          "text": "참가자 등록을 빠르게 처리해 주셔서 감사합니다.",
+          "role": "head"
+        },
+        {
+          "text": "현장 장비 점검도 꼼꼼히 해 주셔서 큰 도움이 되었습니다.",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 30,
+        "max": 45,
+        "actual": 43
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:25:54.573Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "apology",
+    "actKo": "사과",
+    "cell": {
+      "speech_act_ui": "apology",
+      "level": "beginner_intermediate",
+      "domain": "school",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "higher",
+      "pdr_distance": "close",
+      "pdr_burden": "high",
+      "theme_code": "international_exchange",
+      "topic_code": "cultural_misunderstanding_apology",
+      "situation_seed_ko": "문화 차이로 생긴 오해나 실수를 현지 상대에게 사과하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "apology_accountability_repair",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 한국어 원발화자 A·중국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": true,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:26:05.738Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "당신은 가까운 후배인 학생 A와 친밀하게 지도하는 선배 B 사이에서 통역을 맡았다. A가 문화 차이로 인해 발생한 오해에 대해 B에게 사과하려 한다. 두 사람은 평소에도 자주 소통하며 관계가 가깝지만, 이번 일로 인해 B가 불편함을 겪은 상태다.",
+      "relation_ko": "후배인 학생 A가 친밀하게 지도하는 선배 B에게 사과하는 관계이다.",
+      "source_modality": "spoken",
+      "source_text": "제가 무례하게 행동해서 죄송합니다. 문화 차이를 몰라서 실수했습니다. 앞으로 더 주의하겠습니다.",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "close",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "school.cultural_misunderstanding_apology.apology",
+        "role_pair": {
+          "speaker_ko": "가까운 후배·멘티인 학생",
+          "addressee_ko": "친밀하게 지도하는 선배·멘토"
+        },
+        "speaker_entitlement": "화자는 자신과 관련된 위반·피해를 인정하고 가능한 수리를 제안할 책임이 있다.",
+        "addressee_obligation": "상대는 피해·불편의 당사자이며 사과를 즉시 수락하거나 용서할 의무는 없다.",
+        "decision_authority": "화자는 가능한 수리를 실행·제안할 수 있고, 상대는 피해 인정과 수용 여부를 판단한다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "문화 차이로 생긴 오해에 대해 후배가 선배에게 사과한다.",
+      "focal_segments": [
+        {
+          "text": "제가 무례하게 행동해서 죄송합니다",
+          "role": "head"
+        },
+        {
+          "text": "문화 차이를 몰라서 실수했습니다",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 30,
+        "max": 45,
+        "actual": 40
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:26:05.738Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "proposal",
+    "actKo": "제안",
+    "cell": {
+      "speech_act_ui": "proposal",
+      "level": "intermediate",
+      "domain": "daily",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "lower",
+      "pdr_distance": "formal",
+      "pdr_burden": "mid",
+      "theme_code": "relationship_social",
+      "topic_code": "friend_group_plan_coordination",
+      "situation_seed_ko": "일상 모임의 날짜·장소를 조율하거나 변경을 제안·거절하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "proposal_optionality_clarity",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 한국어 원발화자 A·중국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:26:14.252Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "당신은 A와 B 사이에서 통역을 맡았습니다. A는 일상 모임의 책임자이며, B는 이번에 처음 만나는 참여자입니다. A가 모임 날짜와 장소 변경에 대해 제안을 하려는 상황입니다. B는 제안을 검토할 수 있으나 수락할 의무는 없습니다.",
+      "relation_ko": "일상 모임 책임자인 A와 처음 만나는 참여자인 B 사이의 공식적인 관계입니다.",
+      "source_modality": "spoken",
+      "source_text": "모임 날짜를 다음 주 금요일로 바꾸는 게 어떨까요? 장소도 좀 더 편한 카페로 옮기는 것을 제안합니다. 가능하다면 알려 주세요.",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "distant",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "daily.friend_group_plan_coordination.proposal",
+        "role_pair": {
+          "speaker_ko": "행사·시설의 책임자 또는 결정권자",
+          "addressee_ko": "처음 상대하는 참여자·이용자"
+        },
+        "speaker_entitlement": "화자는 미래 행동 방안을 제안할 참여 권한은 있지만 단독 결정권을 전제하지 않는다.",
+        "addressee_obligation": "상대는 제안을 검토할 수 있지만 수락할 의무는 없다.",
+        "decision_authority": "제안된 행동은 상대 또는 공동의 결정 대상이며 화자가 이미 확정한 지시가 아니다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "일상 모임 날짜와 장소 변경 제안",
+      "focal_segments": [
+        {
+          "text": "모임 날짜를 다음 주 금요일로 바꾸는 게 어떨까요?",
+          "role": "head"
+        },
+        {
+          "text": "장소도 좀 더 편한 카페로 옮기는 것을 제안합니다.",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 50
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:26:14.252Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "agreement",
+    "actKo": "초대",
+    "cell": {
+      "speech_act_ui": "agreement",
+      "level": "intermediate",
+      "domain": "work",
+      "mode": "stt_interpreting",
+      "industry": "tourism_hospitality",
+      "pdr_power": "equal",
+      "pdr_distance": "close",
+      "pdr_burden": "low",
+      "theme_code": "career_workplace",
+      "topic_code": "work_activity_invitation",
+      "situation_seed_ko": "직장 관계의 상대에게 점심·직무 스터디·사내 행사 등 공동 활동에 함께 참여하자고 초대하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "invitation_choice_commitment",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 한국어 원발화자 A·중국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": true,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:26:22.842Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "당신은 관광 컨벤션 기획팀에서 함께 일하는 동료 A와 B 사이에서 통역을 맡았습니다. A는 B와 친밀한 관계로 업무 협업을 자주 하며, 이번에는 신상품 투어 프로그램과 사내 워크숍 일정에 대해 이야기하고 있습니다. A는 B를 점심 식사와 직무 스터디 모임에 초대하려고 합니다.",
+      "relation_ko": "동등한 직장 동료 사이로, 친밀한 관계에서 업무 관련 공동 활동에 참여하도록 초대하는 상황",
+      "source_modality": "spoken",
+      "source_text": "오늘 점심에 새 투어 패키지에 대해 이야기하려고 합니다. 오후에는 마케팅 교육 모임이 있는데, 같이 참여하면 좋겠습니다. 시간 괜찮으세요?",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "equal",
+        "d": "close",
+        "r": "low"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "work.work_activity_invitation.agreement",
+        "role_pair": {
+          "speaker_ko": "가깝게 협업해 온 동료",
+          "addressee_ko": "가깝게 협업해 온 동등한 동료"
+        },
+        "speaker_entitlement": "화자는 상대를 공동 활동에 초대할 수 있지만 참여를 강제할 권리는 없다.",
+        "addressee_obligation": "상대는 초대받은 활동의 참여 여부를 선택할 권리가 있다.",
+        "decision_authority": "최종 참여 여부는 초대받은 상대가 결정한다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "동료에게 점심과 스터디 모임 참여를 권유하는 초대 발화",
+      "focal_segments": [
+        {
+          "text": "같이 참여하면 좋겠습니다.",
+          "role": "head"
+        },
+        {
+          "text": "시간 괜찮으세요?",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 56
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:26:22.842Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "opposition",
+    "actKo": "반대",
+    "cell": {
+      "speech_act_ui": "opposition",
+      "level": "intermediate",
+      "domain": "daily",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "higher",
+      "pdr_distance": "close",
+      "pdr_burden": "mid",
+      "theme_code": "digital_content",
+      "topic_code": "comment_feedback_disagreement",
+      "situation_seed_ko": "상대가 만든 콘텐츠에 관해 상대가 명시한 하나의 평가·제안과 같은 명제를 두고 이견을 밝히는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "opposition_stance_mitigation",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 한국어 원발화자 A·중국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": true,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:26:33.711Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "당신은 A와 B 사이에서 통역을 맡았다. A는 B가 만든 콘텐츠에 대해 의견을 제시하는 친밀한 후배이며, B는 해당 일의 결정권을 가진 선배다. B는 최근 콘텐츠가 너무 길다고 평가하며 간결함을 강조했다. A는 이견을 가지고 중간 정도 부담을 느끼며 반대 의견을 말하려 한다.",
+      "relation_ko": "A는 친밀한 후배이고 B는 결정권이 더 큰 선배로, 콘텐츠 제작과 평가에 관해 의견을 주고받는 사이이다.",
+      "source_modality": "spoken",
+      "source_text": "콘텐츠가 길다는 의견은 이해하지만, 모든 부분을 줄이는 것은 좋지 않다고 생각해요. 중요한 정보는 빠뜨리지 않아야 합니다.",
+      "preceding_turn": "我觉得内容太长了，应该尽量简短。",
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "close",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "daily.comment_feedback_disagreement.opposition",
+        "role_pair": {
+          "speaker_ko": "친밀한 관계에서 결정권이 상대적으로 적은 후배·돌봄 대상",
+          "addressee_ko": "가깝지만 해당 일의 결정권이 더 큰 선배·보호자"
+        },
+        "speaker_entitlement": "화자는 자신이 관련된 의견·평가·방안에 이견을 밝힐 정당한 참여 자격이 있다.",
+        "addressee_obligation": "상대는 이견 대상 의견·평가·방안을 제시한 사람이며 반대 의견을 검토할 수 있다.",
+        "decision_authority": "이견 대상 사안은 상대 또는 공동 논의의 결정 범위 안에 있다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "콘텐츠 길이에 대한 선배 평가에 후배가 반대 의견을 말함",
+      "focal_segments": [
+        {
+          "text": "모든 부분을 줄이는 것은 좋지 않다고 생각해요",
+          "role": "head"
+        },
+        {
+          "text": "중요한 정보는 빠뜨리지 않아야 합니다",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 50
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:26:33.711Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "compliment",
+    "actKo": "칭찬",
+    "cell": {
+      "speech_act_ui": "compliment",
+      "level": "intermediate",
+      "domain": "school",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "lower",
+      "pdr_distance": "close",
+      "pdr_burden": "high",
+      "theme_code": "campus_study",
+      "topic_code": "school_academic_compliment",
+      "situation_seed_ko": "학교 관계의 상대가 발표나 과제에서 보인 구체적인 강점을 칭찬하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "compliment_grounding_sensitivity",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 한국어 원발화자 A·중국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      },
+      {
+        "id": "R29",
+        "level": "fail",
+        "message": "코어 source_text: effective_chars_v1 기준 유효 글자 40~60자여야 함(공백·문장부호 제외 실측 68자)"
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:26:41.561Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "당신은 A와 B 사이에서 통역을 맡았습니다. A는 학교에서 친밀하게 지도하는 선배이며, B는 가까운 후배 학생입니다. A는 B가 최근 발표나 과제에서 보여준 구체적인 강점을 칭찬하려고 합니다. 상황은 구두로 진행되고, 칭찬의 부담이 높아 신중한 표현이 요구됩니다.",
+      "relation_ko": "친밀한 선배가 후배에게 발표와 과제에서 잘한 점을 칭찬하는 관계",
+      "source_modality": "spoken",
+      "source_text": "이번 발표에서 논리 전개가 아주 명확해서 듣기 편했어. 그리고 과제 내용도 깊이가 있어서 정말 인상적이었어. 앞으로도 이런 자세를 유지하면 분명 좋은 결과가 있을 거야!",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "close",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "school.school_academic_compliment.compliment",
+        "role_pair": {
+          "speaker_ko": "친밀하게 지도하는 선배·멘토",
+          "addressee_ko": "가까운 후배·멘티인 학생"
+        },
+        "speaker_entitlement": "화자는 직접 관찰했거나 근거가 있는 구체적 강점에 긍정적 평가를 표현할 수 있다.",
+        "addressee_obligation": "상대는 칭찬의 대상이며 특정한 방식으로 반응할 의무는 없다.",
+        "decision_authority": "운영상 결정권은 요구하지 않으며, 평가 근거와 주제의 민감도가 상황에 맞아야 한다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "후배의 발표와 과제를 구체적으로 칭찬하는 선배의 말",
+      "focal_segments": [
+        {
+          "text": "이번 발표에서 논리 전개가 아주 명확해서 듣기 편했어",
+          "role": "head"
+        },
+        {
+          "text": "그리고 과제 내용도 깊이가 있어서 정말 인상적이었어",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 68
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:26:41.561Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "complaint",
+    "actKo": "불만",
+    "cell": {
+      "speech_act_ui": "complaint",
+      "level": "intermediate",
+      "domain": "daily",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "equal",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "travel_mobility",
+      "topic_code": "hotel_request",
+      "situation_seed_ko": "호텔·숙소에 방 변경이나 문제 해결을 요청하는 상황",
+      "direction": "ko_zh",
+      "count": 1
+    },
+    "featureCode": "complaint_problem_accountability",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 한국어 원발화자 A·중국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:26:49.853Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "ko_zh",
+      "situation_ko": "당신은 한국어를 사용하는 투숙객과 중국어를 하는 호텔 담당자 사이에서 통역을 맡았다. 투숙객은 방에 문제가 있어 방 변경을 요청하려 하며, 두 사람은 서로 알고는 있지만 다소 어색한 지인 사이이다. 투숙객은 불편함을 겪었기에 담당자가 신속하게 문제를 해결해 주길 기대한다.",
+      "relation_ko": "투숙객과 호텔 담당자로서 동등한 위치에서 문제 해결을 위해 소통하는 지인 관계이다.",
+      "source_modality": "spoken",
+      "source_text": "방에 에어컨이 고장 나서 너무 더웠어요. 그런데 바꿔 줄 방이 없다고 하니 정말 불편합니다. 가능한 한 빨리 조치를 부탁드려요!",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "equal",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "daily.hotel_request.complaint",
+        "role_pair": {
+          "speaker_ko": "숙박 시설을 이용하며 방 문제를 겪는 투숙객",
+          "addressee_ko": "방 변경 요청을 접수·처리하는 호텔·숙소 담당자"
+        },
+        "speaker_entitlement": "화자는 자신이 겪은 문제·피해 또는 대표할 권한이 있는 문제를 제기할 자격이 있다.",
+        "addressee_obligation": "상대는 문제에 일정한 책임이 있거나 설명·수리·전달을 할 실질적 권한이 있어야 한다.",
+        "decision_authority": "상대가 직접 수리하거나 적절한 책임자에게 전달할 권한을 가진다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "에어컨 고장으로 방 변경 요청하며 불만 표시",
+      "focal_segments": [
+        {
+          "text": "바꿔 줄 방이 없다고 하니 정말 불편합니다",
+          "role": "head"
+        },
+        {
+          "text": "가능한 한 빨리 조치를 부탁드려요!",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 50
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:26:49.853Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "request",
+    "actKo": "요청",
+    "cell": {
+      "speech_act_ui": "request",
+      "level": "beginner_intermediate",
+      "domain": "daily",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "higher",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "travel_mobility",
+      "topic_code": "hotel_request",
+      "situation_seed_ko": "호텔·숙소에 방 변경이나 문제 해결을 요청하는 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "request_mitigation_optionality",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 중국어 원발화자 A·한국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:26:57.795Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "당신은 중국어를 사용하는 투숙객 A와 한국어 관리자 B 사이에서 통역을 맡았다. A는 호텔 객실에 문제가 있어 방을 바꾸고 싶어 하며, B는 방 변경 권한과 문제 해결 책임이 있다. A와 B는 서로 얼굴을 알고 있으나 어색한 사이이고, A의 요청은 B가 검토하여 수락 여부를 결정할 부담이 있다.",
+      "relation_ko": "투숙객 A는 호텔 관리자 B에게 객실 문제 해결과 방 변경을 요청하는 관계이다.",
+      "source_modality": "spoken",
+      "source_text": "您好，我在房间里发现空调不工作了，可以帮我换个房间吗？如果可以的话，我希望能搬到安静一点的楼层。谢谢！",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "daily.hotel_request.request",
+        "role_pair": {
+          "speaker_ko": "숙박 시설을 이용하며 방 문제를 겪는 일반 투숙객",
+          "addressee_ko": "방 변경·문제 해결 권한이 더 큰 호텔·숙소 관리자"
+        },
+        "speaker_entitlement": "화자에게 해당 행동을 요청할 합리적 사유는 있으나, 상대의 선택권을 자동으로 박탈하지 않는다.",
+        "addressee_obligation": "상대는 요청을 이해하고 검토할 수 있으나, 수락 의무는 역할·규정·상황에 따라 달라진다.",
+        "decision_authority": "상대가 요청받은 행동을 직접 수행하거나 승인·연결할 실질적 권한을 가진다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "투숙객이 객실 에어컨 문제로 조용한 방으로 변경 요청하기",
+      "focal_segments": [
+        {
+          "text": "可以帮我换个房间吗？",
+          "role": "head"
+        },
+        {
+          "text": "如果可以的话，我希望能搬到安静一点的楼层。",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 30,
+        "max": 45,
+        "actual": 45
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:26:57.795Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "refusal",
+    "actKo": "거절",
+    "cell": {
+      "speech_act_ui": "refusal",
+      "level": "intermediate",
+      "domain": "work",
+      "mode": "stt_interpreting",
+      "industry": "manufacturing",
+      "pdr_power": "equal",
+      "pdr_distance": "formal",
+      "pdr_burden": "high",
+      "theme_code": "career_workplace",
+      "topic_code": "task_delegation_refusal",
+      "situation_seed_ko": "직장 관계의 상대가 요청한 추가 업무를 맡지 않겠다고 알리는 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "refusal_softening",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 중국어 원발화자 A·한국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:27:06.650Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "당신은 중국어 원발화자 업무 담당자 A와 한국어 청자 동등 직급의 상대 B 사이에서 통역을 맡았다. 뷰티 제조업체에서 패션 액세서리 디자인과 온라인 상점 운영을 맡는 두 사람이 협업 중이며, B가 추가 업무를 요청했으나 A는 이를 거절하려는 상황이다. A는 이 요청을 수용하지 않겠다는 의사를 명확히 전달해야 하며, 상대가 이 거절을 받아들일 여지가 있다.",
+      "relation_ko": "업무 담당자 A와 처음 협업하는 동등한 직급의 상대 B 사이의 공식적인 업무 관계",
+      "source_modality": "spoken",
+      "source_text": "我理解您的要求，但我目前负责的珠宝设计项目已经很满了，无法承担更多的任务。希望您能理解我的工作安排。",
+      "preceding_turn": "저희가 새로운 패션 액세서리 라인 출시를 준비하는데, 추가로 온라인 마케팅 업무도 맡아주실 수 있나요?",
+      "pdr": {
+        "p": "equal",
+        "d": "distant",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "work.task_delegation_refusal.refusal",
+        "role_pair": {
+          "speaker_ko": "업무 담당자",
+          "addressee_ko": "처음 협업하는 동등한 직급의 상대 담당자"
+        },
+        "speaker_entitlement": "화자는 앞선 요청·제안·초대의 수용 여부를 결정할 재량이 있다.",
+        "addressee_obligation": "상대는 거절 대상 행동을 먼저 요청·제안·초대한 사람이며, 거절을 수용할 여지가 있어야 한다.",
+        "decision_authority": "화자가 자신의 참여·수락 여부를 결정하며, 거절 대상과 범위가 분명해야 한다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "추가 업무 요청에 대한 거절 의사 전달",
+      "focal_segments": [
+        {
+          "text": "我目前负责的珠宝设计项目已经很满了，无法承担更多的任务。",
+          "role": "head"
+        },
+        {
+          "text": "希望您能理解我的工作安排。",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 46
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:27:06.650Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "thanks",
+    "actKo": "감사",
+    "cell": {
+      "speech_act_ui": "thanks",
+      "level": "advanced",
+      "domain": "school",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "lower",
+      "pdr_distance": "formal",
+      "pdr_burden": "mid",
+      "theme_code": "campus_study",
+      "topic_code": "group_work_coordination",
+      "situation_seed_ko": "조별 과제를 함께 수행하는 학생들 사이에서 생기는 상호작용 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "gratitude_calibration",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 중국어 원발화자 A·한국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:27:16.627Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "당신은 수업 담당자 A와 이번 조별 과제에 처음 참여하는 학생 B 사이에서 통역을 맡았습니다. A는 과제 진행과 조율을 책임지고 있으며, B는 과제에 새로 합류한 구성원입니다. A는 B가 보여 준 협력과 노력에 대해 감사의 마음을 전하려 합니다.",
+      "relation_ko": "수업 담당자인 A가 이번 조별 과제에 새로 참여한 학생 B에게 감사의 뜻을 전하는 관계입니다.",
+      "source_modality": "spoken",
+      "source_text": "非常感谢你积极参与我们的项目组，虽然我们刚开始合作，但你的努力给了团队很大帮助。我相信在接下来的工作中，我们会有更好的配合。",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_higher",
+        "d": "distant",
+        "r": "mid"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "school.group_work_coordination.thanks",
+        "role_pair": {
+          "speaker_ko": "수업·프로그램의 책임자 또는 담당자",
+          "addressee_ko": "처음 상대하는 학생·참여자"
+        },
+        "speaker_entitlement": "화자는 자신이 받은 도움·호의와 상대의 기여를 구체적으로 인정할 위치에 있다.",
+        "addressee_obligation": "상대는 도움·호의의 제공자이며 감사에 응답하거나 추가 행동을 할 의무는 없다.",
+        "decision_authority": "별도의 의사결정은 요구하지 않으며, 감사 대상인 기여가 실제로 존재해야 한다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "조별 과제 담당자가 새 참여자에게 협력에 감사함을 전함",
+      "focal_segments": [
+        {
+          "text": "非常感谢你积极参与我们的项目组",
+          "role": "head"
+        },
+        {
+          "text": "虽然我们刚开始合作，但你的努力给了团队很大帮助",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 55,
+        "max": 85,
+        "actual": 57
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:27:16.627Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "apology",
+    "actKo": "사과",
+    "cell": {
+      "speech_act_ui": "apology",
+      "level": "intermediate",
+      "domain": "work",
+      "mode": "stt_interpreting",
+      "industry": "IT_platform",
+      "pdr_power": "higher",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "commerce_customer",
+      "topic_code": "complaint_response",
+      "situation_seed_ko": "고객의 불만에 사과하고 해결책을 제시하는 상황(응대 직원 입장)",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "apology_accountability_repair",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 중국어 원발화자 A·한국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      },
+      {
+        "id": "R29",
+        "level": "fail",
+        "message": "코어 source_text: effective_chars_v1 기준 유효 글자 40~60자여야 함(공백·문장부호 제외 실측 67자)"
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:27:25.757Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "당신은 IT 플랫폼 회사의 고객 지원팀 직원 A와 고객사 책임자 B 사이에서 통역을 맡았다. A는 서비스 지연과 데이터 분석 오류로 인해 발생한 문제에 대해 사과하고, 기술팀의 긴급 점검 계획을 설명하며 문제 해결 방안을 제안하는 중이다. 두 사람은 이전에 몇 차례 업무상 만남이 있었으나 다소 어색한 관계이고, B가 문제 해결에 따른 추가 조정과 일정 변경을 감수해야 하는 상황이다.",
+      "relation_ko": "화자 A는 고객 지원 담당 직원이고, 상대 B는 고객사 책임자로서 업무적으로 알지만 다소 어색한 관계이다.",
+      "source_modality": "spoken",
+      "source_text": "非常抱歉，由于系统升级导致数据分析出现延迟。我们已经安排技术团队进行紧急检查，希望尽快解决这个问题。请您放心，我们会密切跟进进度，确保服务恢复正常。",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "work.complaint_response.apology",
+        "role_pair": {
+          "speaker_ko": "업무를 수행하는 실무자·후배 직원",
+          "addressee_ko": "알고 지내는 상사·고객 책임자·선배 담당자"
+        },
+        "speaker_entitlement": "화자는 자신과 관련된 위반·피해를 인정하고 가능한 수리를 제안할 책임이 있다.",
+        "addressee_obligation": "상대는 피해·불편의 당사자이며 사과를 즉시 수락하거나 용서할 의무는 없다.",
+        "decision_authority": "화자는 가능한 수리를 실행·제안할 수 있고, 상대는 피해 인정과 수용 여부를 판단한다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "서비스 지연 사과와 긴급 점검 계획 설명",
+      "focal_segments": [
+        {
+          "text": "非常抱歉，由于系统升级导致数据分析出现延迟。",
+          "role": "head"
+        },
+        {
+          "text": "我们已经安排技术团队进行紧急检查，希望尽快解决这个问题。",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 67
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:27:25.757Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "proposal",
+    "actKo": "제안",
+    "cell": {
+      "speech_act_ui": "proposal",
+      "level": "intermediate",
+      "domain": "school",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "higher",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "campus_study",
+      "topic_code": "group_work_coordination",
+      "situation_seed_ko": "조별 과제를 함께 수행하는 학생들 사이에서 생기는 상호작용 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "proposal_optionality_clarity",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 중국어 원발화자 A·한국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      },
+      {
+        "id": "R29",
+        "level": "fail",
+        "message": "코어 source_text: effective_chars_v1 기준 유효 글자 40~60자여야 함(공백·문장부호 제외 실측 39자)"
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:27:34.351Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "당신은 조별 과제를 함께 수행하는 학생 A와 조장 B 사이에서 통역을 맡았습니다. A는 조장 B에게 과제 진행 방식을 제안하려고 하며, 두 사람은 서로 알고 있지만 어색한 사이입니다. A가 제안하는 방안은 조장이 검토할 수 있으나, 수락 여부는 조장의 판단에 달려 있습니다.",
+      "relation_ko": "학생 A가 조장 B에게 조별 과제 진행 관련 제안을 하는 관계입니다.",
+      "source_modality": "spoken",
+      "source_text": "我觉得我们可以先分工，然后每个人负责一部分内容。这样效率会更高。您觉得这样安排可以吗？",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "school.group_work_coordination.proposal",
+        "role_pair": {
+          "speaker_ko": "수업을 듣거나 지도를 받는 학생",
+          "addressee_ko": "알고 지내는 교수·조교·조장·공식 멘토 등 해당 일의 권한이 더 큰 상대"
+        },
+        "speaker_entitlement": "화자는 미래 행동 방안을 제안할 참여 권한은 있지만 단독 결정권을 전제하지 않는다.",
+        "addressee_obligation": "상대는 제안을 검토할 수 있지만 수락할 의무는 없다.",
+        "decision_authority": "제안된 행동은 상대 또는 공동의 결정 대상이며 화자가 이미 확정한 지시가 아니다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "조별 과제 진행 방식을 제안하는 발화",
+      "focal_segments": [
+        {
+          "text": "我觉得我们可以先分工，然后每个人负责一部分内容。",
+          "role": "head"
+        },
+        {
+          "text": "您觉得这样安排可以吗？",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 39
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:27:34.351Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "agreement",
+    "actKo": "초대",
+    "cell": {
+      "speech_act_ui": "agreement",
+      "level": "intermediate",
+      "domain": "work",
+      "mode": "stt_interpreting",
+      "industry": "public_international_affairs",
+      "pdr_power": "higher",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "career_workplace",
+      "topic_code": "work_activity_invitation",
+      "situation_seed_ko": "직장 관계의 상대에게 점심·직무 스터디·사내 행사 등 공동 활동에 함께 참여하자고 초대하는 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "invitation_choice_commitment",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 중국어 원발화자 A·한국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:27:43.252Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "당신은 A와 B 사이에서 통역을 맡았습니다. A는 바이오 제약회사에서 연구원으로 일하며, B는 해당 부서의 선임 관리자로서 연구 프로젝트 진행 상황을 공유하는 중입니다. A는 B에게 점심시간에 신약 개발 관련 직무 스터디 모임과 사내 건강 세미나 참석을 제안하려고 합니다. 상대가 업무 일정과 부담을 고려해 참여 여부를 결정할 수 있습니다.",
+      "relation_ko": "후배 연구원이 선임 관리자인 지인에게 직무 스터디와 사내 행사 참여를 요청하는 관계입니다.",
+      "source_modality": "spoken",
+      "source_text": "您好，下午好！我想邀请您参加今天中午的药物研发项目讨论会，还有下午三点的健康管理讲座。希望您能抽空一起来。",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "work.work_activity_invitation.agreement",
+        "role_pair": {
+          "speaker_ko": "업무를 수행하는 실무자·후배 직원",
+          "addressee_ko": "알고 지내는 상사·고객 책임자·선배 담당자"
+        },
+        "speaker_entitlement": "화자는 상대를 공동 활동에 초대할 수 있지만 참여를 강제할 권리는 없다.",
+        "addressee_obligation": "상대는 초대받은 활동의 참여 여부를 선택할 권리가 있다.",
+        "decision_authority": "최종 참여 여부는 초대받은 상대가 결정한다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "직장 동료에게 직무 스터디와 사내 행사 참여를 정중히 초대하는 발화",
+      "focal_segments": [
+        {
+          "text": "我想邀请您参加今天中午的药物研发项目讨论会",
+          "role": "head"
+        },
+        {
+          "text": "还有下午三点的健康管理讲座。希望您能抽空一起来。",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 48
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:27:43.252Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "opposition",
+    "actKo": "반대",
+    "cell": {
+      "speech_act_ui": "opposition",
+      "level": "intermediate",
+      "domain": "daily",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "higher",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "digital_content",
+      "topic_code": "comment_feedback_disagreement",
+      "situation_seed_ko": "상대가 만든 콘텐츠에 관해 상대가 명시한 하나의 평가·제안과 같은 명제를 두고 이견을 밝히는 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "opposition_stance_mitigation",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 중국어 원발화자 A·한국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:27:52.333Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "당신은 콘텐츠 모임의 후배 창작자 A와 운영자이자 선배 창작자 B 사이에서 통역을 맡았다. B는 최근 제작된 콘텐츠에 대해 평가와 제안을 했고, A는 그 의견에 대해 자신의 입장을 조심스럽게 밝히려 한다. 두 사람은 서로 알고 지내지만 아직 어색한 관계이며, A는 자신의 의견을 표현하는 데 부담을 느끼고 있다.",
+      "relation_ko": "후배 창작자인 A가 운영자이자 선배 창작자인 B에게 자신의 의견을 조심스럽게 전달하는 관계이다.",
+      "source_modality": "spoken",
+      "source_text": "您说增加视频的频率能吸引更多观众，但我认为内容质量比数量更重要。频繁更新可能会影响作品的深度。",
+      "preceding_turn": "저는 영상 업로드 빈도를 늘리면 더 많은 시청자를 끌어들일 수 있다고 생각합니다.",
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "daily.comment_feedback_disagreement.opposition",
+        "role_pair": {
+          "speaker_ko": "콘텐츠 모임·커뮤니티의 후배 참여자·창작자",
+          "addressee_ko": "해당 콘텐츠에 평가·제안을 제시한 운영자·선배 창작자"
+        },
+        "speaker_entitlement": "화자는 자신이 관련된 의견·평가·방안에 이견을 밝힐 정당한 참여 자격이 있다.",
+        "addressee_obligation": "상대는 이견 대상 의견·평가·방안을 제시한 사람이며 반대 의견을 검토할 수 있다.",
+        "decision_authority": "이견 대상 사안은 상대 또는 공동 논의의 결정 범위 안에 있다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "운영자의 영상 업로드 빈도 증가 제안에 후배 창작자가 반대 의견을 밝힘",
+      "focal_segments": [
+        {
+          "text": "我认为内容质量比数量更重要。",
+          "role": "head"
+        },
+        {
+          "text": "频繁更新可能会影响作品的深度。",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 44
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:27:52.333Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "compliment",
+    "actKo": "칭찬",
+    "cell": {
+      "speech_act_ui": "compliment",
+      "level": "intermediate",
+      "domain": "school",
+      "mode": "stt_interpreting",
+      "industry": null,
+      "pdr_power": "higher",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "campus_study",
+      "topic_code": "school_academic_compliment",
+      "situation_seed_ko": "학교 관계의 상대가 발표나 과제에서 보인 구체적인 강점을 칭찬하는 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "compliment_grounding_sensitivity",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 중국어 원발화자 A·한국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": false,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:28:01.701Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "당신은 A와 B 사이에서 통역을 맡았다. A는 수업을 듣는 학생이고, B는 해당 수업의 조교다. 두 사람은 서로 알고 지내지만 어색한 사이이고, A가 수업 중 B의 발표 내용을 긍정적으로 평가하여 칭찬을 전하려 한다. A는 B가 발표나 과제에서 보인 구체적인 강점을 강조하는 데 부담이 크다.",
+      "relation_ko": "학생인 A가 조교인 B에게 발표와 과제에서 보인 강점을 칭찬하는 관계이다.",
+      "source_modality": "spoken",
+      "source_text": "您的报告非常详尽，逻辑也很清晰。特别是您对数据分析部分的把握令人印象深刻，这对我们项目帮助很大！",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "school.school_academic_compliment.compliment",
+        "role_pair": {
+          "speaker_ko": "수업을 듣거나 지도를 받는 학생",
+          "addressee_ko": "알고 지내는 교수·조교·조장·공식 멘토 등 해당 일의 권한이 더 큰 상대"
+        },
+        "speaker_entitlement": "화자는 직접 관찰했거나 근거가 있는 구체적 강점에 긍정적 평가를 표현할 수 있다.",
+        "addressee_obligation": "상대는 칭찬의 대상이며 특정한 방식으로 반응할 의무는 없다.",
+        "decision_authority": "운영상 결정권은 요구하지 않으며, 평가 근거와 주제의 민감도가 상황에 맞아야 한다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "조교의 발표와 과제를 구체적으로 칭찬하는 학생의 발화",
+      "focal_segments": [
+        {
+          "text": "您的报告非常详尽，逻辑也很清晰。",
+          "role": "head"
+        },
+        {
+          "text": "特别是您对数据分析部分的把握令人印象深刻，这对我们项目帮助很大！",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 44
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:28:01.701Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  },
+  {
+    "act": "complaint",
+    "actKo": "불만",
+    "cell": {
+      "speech_act_ui": "complaint",
+      "level": "intermediate",
+      "domain": "work",
+      "mode": "stt_interpreting",
+      "industry": "education_research",
+      "pdr_power": "higher",
+      "pdr_distance": "acquaintance",
+      "pdr_burden": "high",
+      "theme_code": "career_workplace",
+      "topic_code": "work_process_complaint",
+      "situation_seed_ko": "직장 관계의 상대에게 반복된 일정 변경·업무 전달 누락·품질 문제로 겪은 어려움을 알리는 상황",
+      "direction": "zh_ko",
+      "count": 1
+    },
+    "featureCode": "complaint_problem_accountability",
+    "coreViolations": [
+      {
+        "id": "R16",
+        "level": "fail",
+        "message": "통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: 통역 situation_ko에는 서로 다른 중국어 원발화자 A·한국어 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다."
+      }
+    ],
+    "missionViolations": [],
+    "attempts": 0,
+    "coreMeta": {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+      "content_release_id": "pragma_content_candidate_20260806_01",
+      "generation_attempt": 2,
+      "source_repair_applied": true,
+      "preceding_turn_repair_applied": false,
+      "bilingual_scene_repair_applied": false,
+      "learner_scene_repair_applied": false,
+      "length_policy_version": "effective_chars_v1",
+      "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+      "generated_at": "2026-08-06T05:28:09.141Z"
+    },
+    "core": {
+      "schema_version": "scenario_core_v3",
+      "direction": "zh_ko",
+      "situation_ko": "당신은 업무를 수행하는 실무자와 그의 상사 사이에서 통역을 맡았다. 실무자는 연구 프로젝트의 일정 변경과 교육 자료 전달 누락, 그리고 데이터 분석 품질 문제로 어려움을 겪고 있으며 이를 상사에게 전달해야 하는 상황이다. 두 사람은 서로를 알고 있으나 대화가 다소 어색하며, 문제 해결에 대한 부담이 큰 상태이다.",
+      "relation_ko": "업무를 수행하는 후배 직원인 원발화자와 그의 상사인 상대의 관계이다.",
+      "source_modality": "spoken",
+      "source_text": "最近项目时间又改了，导致实验室设备预约冲突。还有几次教学资料没及时传达，影响了课程进度。",
+      "preceding_turn": null,
+      "pdr": {
+        "p": "speaker_lower",
+        "d": "acquaintance",
+        "r": "high"
+      },
+      "channel": "facetoface",
+      "context_spec": {
+        "standard_situation_code": "work.work_process_complaint.complaint",
+        "role_pair": {
+          "speaker_ko": "업무를 수행하는 실무자·후배 직원",
+          "addressee_ko": "알고 지내는 상사·고객 책임자·선배 담당자"
+        },
+        "speaker_entitlement": "화자는 자신이 겪은 문제·피해 또는 대표할 권한이 있는 문제를 제기할 자격이 있다.",
+        "addressee_obligation": "상대는 문제에 일정한 책임이 있거나 설명·수리·전달을 할 실질적 권한이 있어야 한다.",
+        "decision_authority": "상대가 직접 수리하거나 적절한 책임자에게 전달할 권한을 가진다.",
+        "interpreter_role_contract": {
+          "source_speaker": "A",
+          "target_addressee": "B",
+          "learner_interpreter": "C",
+          "pdr_relation": "A_to_B"
+        }
+      },
+      "brief_note_ko": "일정 변경 및 자료 누락, 품질 문제에 대한 불만 전달",
+      "focal_segments": [
+        {
+          "text": "最近项目时间又改了，导致实验室设备预约冲突。",
+          "role": "head"
+        },
+        {
+          "text": "还有几次教学资料没及时传达，影响了课程进度。",
+          "role": "support"
+        }
+      ],
+      "length_policy": {
+        "version": "effective_chars_v1",
+        "unit": "effective_chars",
+        "min": 40,
+        "max": 60,
+        "actual": 40
+      },
+      "generation": {
+        "content_release_id": "pragma_content_candidate_20260806_01",
+        "prompt_version": "core_v10_interpreter_role_contract_v1_repair_v1",
+        "prompt_snapshot_hash": "b87e21b9b07e5758f8d6502d73b2aa209a24ae5cea77d8fbdfec966a44704e29",
+        "generated_at": "2026-08-06T05:28:09.141Z"
+      }
+    },
+    "coreResult": "fail",
+    "error": "코어 R검사 fail — 본 배치 경로대로 미션 승격 생략(코어 재생성 필요)"
+  }
+]
