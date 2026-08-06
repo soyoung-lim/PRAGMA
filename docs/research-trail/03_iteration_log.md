@@ -1403,3 +1403,29 @@
   Fable 요청도 보내지 않았다. Lovable의 Supabase 타입 축소는 재카나리와 분리해 검증하고,
   재카나리는 다음 별도 승인 게이트로 남겼다.
 - 추가 증거: `EVD-20260806-05`
+
+## ITER-20260806-03 · Lovable 직접 쓰기 오염을 운영 DB 타입과 npm 단일 락으로 전진 복구
+
+- 날짜: 2026-08-06
+- 시작 문제:
+  - 제3 AI 도구가 `main`에 직접 push해 npm 의존성 방침과 Supabase 타입 정본을 오염시켰다.
+  - 봇 커밋을 지우지 않으면서 현재 DB와 일치하는 안전한 복구 기준을 선택해야 했다.
+- 변경과 실행:
+  - `004a04a`·`5a2c5d5`의 작성자·변경 범위와 `bun.lock(b)` 제거 선례를 Git에서 직접 확인했다.
+  - `b63784c` 복원안과 운영 DB 타입 재생성안을 table/RPC 집합과 파일 크기로 비교했다.
+  - 운영 DB 재생성 타입을 채택하고 `bun.lock`을 제거했다. DB 쓰기·배포는 수행하지 않았다.
+- 실제 검증:
+  - Lovable 12 tables/3 RPCs, `b63784c` 20/6, 운영 DB 재생성 21/7이었다.
+  - 필수 12개 정의가 모두 복구됐고 typecheck, 전체 284 tests(8 skip), production build
+    1,903 modules가 통과했다.
+  - 공식 Railway CLI는 지시서와 달리 current `5a2c5d5`·SUCCESS·RUNNING을 반환했다.
+- 예상과 달랐던 점:
+  - 직전 Git 타입도 운영 DB의 `llm_invocation_events`와 신규 프로필 RPC를 아직 반영하지 않아
+    단순 되돌리기가 완전한 복구가 아니었다.
+  - Vite production build 성공과 Railway SUCCESS가 타입 계약 파손을 차단하지 못했다.
+- 다음 설계에 반영할 교훈:
+  - 외부 AI 쓰기 권한과 코드 생성 정본을 분리하고, Git 보고·배포 보고는 직접 상태와 대조한다.
+  - 생성 타입 변경은 최소한 필수 table/RPC 존재 검사와 `npm run typecheck`를 함께 통과시킨다.
+  - 사건 커밋은 삭제하지 않고 복구 커밋·실패 로그·직접 조회 증거로 연결한다.
+- 관련 Decision / Evidence: `DEC-20260806-03`, `EVD-20260806-06`
+- 관련 증거: `docs/research-trail/evidence/2026-08-06-lovable-git-contamination-recovery.md`
