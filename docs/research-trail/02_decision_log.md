@@ -1518,3 +1518,39 @@
 - 관련 파일: `src/integrations/supabase/types.ts`, `package-lock.json`,
   `docs/dev-log/2026-08-06-lovable-git-contamination-recovery.md`
 - 관련 Iteration / Evidence: `ITER-20260806-03`, `EVD-20260806-06`
+
+## DEC-20260806-04 · 통역 역할·언어 프레임은 모델 repair에서 분리해 서버가 결정론적으로 조립한다
+
+- 날짜: 2026-08-06
+- 상태: 채택·`_03` 로컬 구현 및 자동 검증 완료, push·배포·실모델 재카나리 미실행
+- 문제:
+  - v55 `_02` 18건에서 `core_repair` 16회가 모두 공급자 success였지만 R16 실패 15건,
+    사람 역할 결함 2건, 언어 역할 LV 실패 15건이 남았다.
+  - 역할·언어·분량·평가기준을 한 모델 repair에 함께 맡기면, 역할을 고치려던 출력에서 C와 A가
+    다시 합쳐지거나 A가 `학습자`로 재명명될 수 있었다.
+- 검토한 대안:
+  - 프롬프트 문구를 더 늘리고 같은 통합 repair를 반복: v54·v55의 공급자 성공/콘텐츠 실패가
+    반복됐고 호출 비용만 늘리므로 기각.
+  - 언어 표지와 `학습자 A`를 허용하도록 R16을 완화: 확정 A/B/C 계약과 사람 결함 판정을
+    거스르므로 기각.
+  - 역할·언어 프레임은 구조 필드에서 서버가 렌더링하고, 모델 repair는 분량·선행발화·평가기준에
+    한정하며 남은 역할 오류는 R16으로 차단: 채택.
+- 결정:
+  1. 통역 situation 첫 문장은 방향별 source/target 언어와 A/B/C를 포함한 표준 문장으로 서버가
+     조립한다. 역할 소개 문장은 교체하고 사건 문장은 보존한다.
+  2. 계약상 불가능한 `학습자 A/B`는 situation과 relation 모두에서 원발화자 A·청자 B로
+     정규화하되, 실제 신분일 수 있는 `학생 A/B`는 바꾸지 않는다.
+  3. relation에만 `학습자 A/B`가 남아도 R16 역할 중첩으로 차단한다.
+  4. 역할 오류는 모델 repair 입력에서 제외한다. 평가 기준 repair가 situation을 바꿀 때도
+     결정론적 정규화와 R16을 다시 통과한 출력만 합성한다.
+  5. H6 사건 대응은 이 결정으로 해결됐다고 간주하지 않는다. 모델 source repair의 사실 추가·누락은
+     별도 사람 검수·교차검증 축으로 유지한다.
+  6. 변경된 생성 표면은 `_03`과 core v11 두 버전으로 분리하며 배포·생성은 계속 승인 게이트다.
+- 근거: v55 원본 18건을 새 규칙에 재생한 회귀에서 R16 역할 오류 0/18이고, K8 C=멘토 합체와
+  Z5 `학습자 A` situation/relation 반례가 개별 회귀를 통과했다. 전체 290 pass·8 skip,
+  typecheck·변경 파일 ESLint·production build가 통과했다.
+- 관련 파일: `supabase/functions/_shared/coreSourceRepair.ts`,
+  `supabase/functions/generate-scenario/index.ts`, `src/lib/pragma/missionRules.ts`,
+  `supabase/functions/_shared/contentRelease.ts`, `src/lib/pragma/coreSourceRepair.test.ts`
+- 관련 Iteration / Evidence / Trace: `ITER-20260806-05`, `EVD-20260806-08`, `TRC-20260806-01`
+- 관련 커밋: `7c7246c`

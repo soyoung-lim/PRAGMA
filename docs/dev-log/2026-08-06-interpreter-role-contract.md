@@ -118,3 +118,28 @@
 - 원본·사람 판정·Fable 대기 플래그는
   `docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v55/`에 보존했다.
   추가 프롬프트 수정·재생성·배포는 수행하지 않았다.
+
+## v55 반례 기반 `_03` 로컬 교정
+
+- v55에서 16회의 `core_repair`가 공급자 success였어도 R16 15건과 사람 역할 결함 2건이
+  남은 원인을 확인했다. 역할·언어 장면 교정을 분량·선행발화 교정과 같은 모델 호출에 맡긴
+  구조에서는 교정 응답이 다시 C를 A와 합치거나 `학습자 A`를 만들 수 있었다.
+- 통역 `situation_ko`의 첫 문장을 방향별로 서버가 결정론적으로 조립하도록 바꿨다. 표준 문장은
+  `학습자 통역사 C인 당신은 [source 언어] 원발화자 A와 [target 언어] 청자 B 사이에서 통역을
+  맡았습니다.`이며, 모델의 기존 첫 문장이 역할 소개이면 교체하고 사건 서술이면 앞에 붙인다.
+- 계약상 불가능한 `학습자 A/B`는 situation과 relation에서 각각 `원발화자 A`·`청자 B`로
+  정규화한다. 실제 신분일 수 있는 `학생 A/B`는 바꾸지 않는다. relation에만 역할 중첩이 남아도
+  R16이 실패하도록 검사 범위를 넓혔다.
+- 역할 오류는 더 이상 모델 repair 사유에 넣지 않는다. 모델 repair는 source 분량·선행발화 언어·
+  학생용 평가 기준 제거에만 사용하며, 평가 기준 repair가 역할을 다시 합치면 정규화 후 R16을
+  통과한 경우에만 채택한다. 남는 역할 오류는 그대로 저장 전 차단한다.
+- 새 생성 표면은 `pragma_content_candidate_20260806_03`, core prompt는
+  `core_v11_interpreter_scene_canonical_v1`·`core_v11_source_context_repair_v1`로 분리했다.
+- v55 원본 18건을 재생성 없이 새 정규화에 재생한 회귀에서 R16 역할 오류는 0/18이었다.
+  K8의 C=선배 멘토 합체와 Z5의 `학습자 A` situation/relation 사례를 개별 fixture로도 고정했다.
+- 검증은 관련 46건, 전체 290 pass·8 skip, `npm run typecheck`, 변경 TypeScript 파일 ESLint,
+  production build 1,903 modules를 통과했다. prompt snapshot은 18종,
+  `core_surface_hash=0f15492f114d…`다. 전체 lint는 이번 변경 밖의 기존 `no-explicit-any`
+  16건과 fast-refresh warning 10건 때문에 실패했으며 변경 파일 lint는 통과했다.
+- 구현 커밋은 `7c7246c`다. Edge·Railway 배포, AI 생성, DB 쓰기, 미션 승격, push는 하지 않았다.
+  H6 사건 대응 3건과 K1 언어 역할 경계의 Fable flag는 계속 `FLAGGED_NOT_SENT`로 남긴다.

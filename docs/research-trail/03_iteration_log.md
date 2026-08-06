@@ -1456,3 +1456,41 @@
   - K1·K8·Z5와 H6 세 건은 Fable 블라인드 교차검증 대상으로 flag하되 4.1 집필 중에는 보내지 않는다.
 - 관련 Decision / Evidence / Trace: `DEC-20260806-02`, `EVD-20260806-07`, `TRC-20260806-01`
 - 관련 증거: `docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v55/`
+
+## ITER-20260806-05 · v55 역할 반례를 결정론적 장면 조립과 repair 경계 분리로 전환
+
+- 날짜: 2026-08-06
+- 시작 문제:
+  - `_02` 모델 repair가 성공해도 역할·언어 결함이 남았고, K8은 C를 선배 멘토 A와 합쳤으며
+    Z5는 situation과 relation에서 A를 `학습자`로 불렀다.
+  - 같은 모델 호출에 역할과 source 분량을 함께 맡기는 구조 자체를 줄이지 않으면 프롬프트 문구
+    추가만으로 재발을 막기 어려웠다.
+- 변경과 실행:
+  - 방향별 A/B/C 역할·언어 문장을 서버 함수로 조립해 통역 situation 첫 문장에 고정했다.
+  - `학습자 A/B`를 situation·relation에서 정규화하고 relation까지 R16 검사 범위에 넣었다.
+  - 역할 오류를 모델 repair 트리거·지시에서 제외하고, source 분량·preceding turn·학생용 평가
+    기준만 repair하도록 경계를 나눴다.
+  - learner scene repair 결과는 역할 정규화와 R16을 다시 통과한 경우에만 독립 합성했다.
+  - 후보 release를 `_03`, core prompt를 v11 두 버전으로 올리고 스냅숏·읽기 전용 inventory를 맞췄다.
+- 실제 검증:
+  - K8·Z5 개별 fixture와 v55 원본 18건 replay에서 정규화 후 R16 역할 오류가 0/18이었다.
+  - 관련 46건, 전체 290건이 통과했고 8건은 기존 조건부 테스트로 skip됐다.
+  - `npm run typecheck`, 변경 TypeScript 파일 ESLint, production build 1,903 modules가 통과했다.
+    전체 lint는 기존 변경 밖 `no-explicit-any` 16건과 warning 10건으로 실패했다.
+  - snapshot 18종, `core_surface_hash=0f15492f114d…`; 구현 커밋 `7c7246c`다.
+  - Edge·Railway 배포, AI 생성, DB 쓰기, 미션 생성·승격, push는 0이다.
+- 예상과 달랐던 점:
+  - v55의 역할 결함 두 건은 모델을 다시 호출하지 않고 구조 필드로부터 재렌더링할 수 있었다.
+  - situation만 검사하면 Z5 relation의 `학습자 A`가 남으므로 자연어 역할 계약은 여러 표시 필드의
+    결속을 함께 봐야 했다.
+  - 역할 replay 18/18은 H6 사건 대응의 개선 증거가 아니다. K6·Z3·Z9의 추가·누락은 그대로
+    사람 검수 대상으로 남는다.
+- 다음 설계에 반영할 교훈:
+  - 구조에서 이미 아는 불변항은 모델에게 재추론시키지 않고 렌더링하며, 자유 생성이 필요한 필드와
+    결정론적 계약 필드를 repair 단계에서도 분리한다.
+  - `_03` 실제 모델 성능은 별도 승인 뒤 DB 미저장 카나리로 측정하고, 기존 18건 replay를 새 생성
+    성공률로 보고하지 않는다.
+  - Fable은 4.1 집필 중이므로 H6·K1 교차검증 요청은 계속 flag만 유지한다.
+- 관련 Decision / Evidence / Trace: `DEC-20260806-04`, `EVD-20260806-08`, `TRC-20260806-01`
+- 관련 증거: `src/lib/pragma/coreSourceRepair.test.ts`,
+  `docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v55/`
