@@ -83,8 +83,20 @@
   `docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v54/`에 보존했다. Fable은 논문
   4.1 집필 중이므로 요청하지 않고 `FLAGGED_NOT_SENT`로만 남겼다.
 
-## 현재 배포 게이트
+## 승인 후 `_02` 운영 배포 정합성
 
-- `_02` 검증기·후보 변경은 로컬에만 있으며 Edge/Railway에 배포하지 않았다.
-- `_02` 재카나리도 실행하지 않았다. push·Railway 자동 배포와 Edge 재배포, 이후 18건 재생성은
-  각각 사용자 승인 뒤에만 실행한다.
+- 사용자 승인 뒤 clean `main@6ca2f17`의 두 로컬 커밋을 `origin/main`에 push했다. Railway
+  production 배포 `8de5e60f-7daf-4429-a6a7-0fda13df6f98`은 같은 커밋에서 SUCCESS였다.
+  직후 Lovable bot이 `bun.lock`과 `src/integrations/supabase/types.ts`를 바꾸는 두 커밋을 push해
+  이 배포는 REMOVED가 됐고, 현재 Railway는 후속 `5a2c5d5` 배포 `01a9cf65…`가 SUCCESS다.
+- 같은 HEAD에서 `generate-scenario`만 다시 배포했다. 2026-08-06 15:02:08 KST 기준 운영 함수는
+  v55·ACTIVE, `verify_jwt=true`, bundle SHA-256
+  `2c3cc34482e38b37c959ea0933f3037d67874e1d54962af046d7f72dc31d8207`이다.
+- v55 소스를 API로 다시 내려받은 결과 `index.ts`와 `_shared` 6개 파일이 줄바꿈 정규화 뒤
+  `HEAD@6ca2f17`과 7/7 바이트 일치했다. 후속 `5a2c5d5`도 이 7개 파일을 변경하지 않았다.
+  엔트리 canonical SHA-256은
+  `1343BBC77877A789AC7767C6306B8D46CCB1B41206A166791A9020ABC9E4D0D4`, 고친
+  `coreSourceRepair.ts`는 `2A5C290CDBBD0FE1547B0A4A9A97677616793DBC809A06D07294F4A967008574`다.
+- 이번 단계에서는 AI 생성 요청, 콘텐츠 DB 저장, 미션 생성, 상태 승격을 수행하지 않았다.
+  Claude/Fable에도 요청을 보내지 않았다. 다음 게이트는 별도 승인 뒤 `_02` 통역 core-only
+  18건 재카나리다.
