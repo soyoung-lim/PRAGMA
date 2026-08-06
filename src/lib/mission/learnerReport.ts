@@ -80,25 +80,25 @@ const FRIENDLY_BAND_LABEL: Record<string, Record<string, string>> = {
 
 const NEXT_STEP_BY_FEATURE: Record<string, string> = {
   request_mitigation_optionality:
-    "‘麻烦您’만 쓰기보다, ‘가능하다면…’이라고 먼저 말하거나 가능한지 한 번 물어보세요.",
+    "‘麻烦您’ 외에도 ‘가능하다면…’이라고 먼저 말하거나, 가능한지를 묻는 다른 방식도 시도해 볼 수 있어요.",
   refusal_softening:
-    "거절은 분명히 하면서, 이유나 다른 방법 가운데 한 가지만 덧붙여 보세요.",
+    "거절은 분명히 하면서, 이유나 다른 방법 가운데 하나를 덧붙이는 방식도 시도해 볼 수 있어요.",
   gratitude_calibration:
-    "받은 도움의 크기를 먼저 떠올리고, 감사 표현의 세기를 한 단계 조절해 보세요.",
+    "받은 도움의 크기에 따라 감사 표현의 세기를 다르게 조절해 볼 수도 있어요.",
   apology_accountability_repair:
-    "사과 표현을 늘리기보다, 내 책임이나 상대가 받은 영향 하나를 밝혀 보세요.",
+    "사과 표현을 늘리는 대신 내 책임이나 상대가 받은 영향을 하나 밝혀 보는 방식도 있어요.",
   proposal_optionality_clarity:
-    "제안의 핵심은 분명히 말하고, 상대가 고를 수 있는 여지를 남겨 보세요.",
+    "제안의 핵심을 분명히 하면서 상대가 고를 수 있는 여지를 남기는 방식도 시도해 볼 수 있어요.",
   invitation_choice_commitment:
-    "초대 의도는 분명히 하되, 상대가 부담 없이 답할 수 있게 말해 보세요.",
+    "초대 의도를 분명히 하면서 상대가 부담 없이 답할 수 있는 표현도 선택해 볼 수 있어요.",
   opposition_stance_mitigation:
-    "반대 입장은 숨기지 말고, 먼저 동의할 수 있는 지점 하나를 짚어 보세요.",
+    "반대 입장을 분명히 하면서 먼저 동의할 수 있는 지점을 하나 짚는 방식도 있어요.",
   compliment_grounding_sensitivity:
-    "크게 칭찬하기보다, 좋았던 근거를 한 가지 구체적으로 말해 보세요.",
+    "칭찬의 세기를 높이는 대신 좋았던 근거를 하나 구체적으로 말해 볼 수도 있어요.",
   compliment_response_uptake:
-    "칭찬을 바로 밀어내기보다, 먼저 고맙다고 받아 보세요.",
+    "칭찬을 바로 밀어내는 대신 먼저 고맙다고 받아들이는 방식도 시도해 볼 수 있어요.",
   complaint_problem_accountability:
-    "감정을 세게 말하기보다, 문제와 실제 영향을 한 가지씩 말해 보세요.",
+    "감정의 세기를 높이는 대신 문제와 실제 영향을 하나씩 말해 보는 방식도 있어요.",
 };
 
 const EXPRESSION_COPY: Record<string, string> = {
