@@ -6,6 +6,8 @@ import { repairFeedbackPragmaticLeak } from '../_shared/feedbackLayerRepair.ts'
 import {
   buildCoreOutputRepairPrompt,
   buildCoreSourceRepairPrompt,
+  canonicalizeInterpreterPartyLabels,
+  canonicalizeInterpreterSituation,
   coreBilingualSceneIssue,
   coreLearnerSceneIssue,
   corePrecedingTurnIssue,
@@ -1047,8 +1049,7 @@ function buildCoreSystemPrompt(direction: Direction): string {
   제안·초대는 B에게 실질적 선택권이 있어야 하며, 불만은 문제 책임자나 조정 가능한 상대를 향한다.
 - 수행 모드와 situation_ko의 장면 서술은 반드시 일치해야 한다. 번역 셀을 "직접 말하는
   상황", 통역 셀을 "글로 작성해 보내는 상황"으로 서술하는 식의 명시적 모순은 금지한다.
-- 통역 셀에서는 situation_ko의 첫 문장을 "당신은 A와 B 사이에서 통역을 맡았다"는 학습자
-  통역사 관점으로 시작한다. 이어 A=${srcL} 원발화자와 B=${tgtL} 청자의 구체적 역할,
+- 통역 셀에서는 situation_ko의 첫 문장을 "학습자 통역사 C인 당신은 ${srcL} 원발화자 A와 ${tgtL} 청자 B 사이에서 통역을 맡았습니다."로 정확히 시작한다. 이어 A와 B의 구체적 역할,
   A↔B의 접촉 이력과 부담을 자연스럽게 드러낸다. A의 1인칭 시점과 "학습자가 직접
   요청·사과·불만을 말한다" 같은 당사자 서술은 금지한다.
 - 출력 전에 화행·도메인·P·D·R·수행 모드뿐 아니라 행위자 지시·산업 단서·topic·인접쌍 명제·
@@ -1112,7 +1113,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   if (b.source_modality === 'spoken') {
     parts.push(
       `- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 ${srcL} 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지. situation_ko는 통역사의 중개가 필요한 구두 장면으로 서술하며, 이메일·메신저·글을 작성해 보내는 장면으로 만들지 마세요.`,
-      `- 통역 참여자 언어: A는 ${srcL} 원발화자, B는 ${tgtL} 청자, C는 학습자 통역사입니다. situation_ko는 "당신은 A와 B 사이에서 통역을 맡았습니다"처럼 C의 관점으로 시작하고, A/B의 구체 역할과 A↔B 관계를 이어 쓰세요.`,
+      `- 통역 참여자 언어: A는 ${srcL} 원발화자, B는 ${tgtL} 청자, C는 학습자 통역사입니다. situation_ko는 "학습자 통역사 C인 당신은 ${srcL} 원발화자 A와 ${tgtL} 청자 B 사이에서 통역을 맡았습니다."로 정확히 시작하고, A/B의 구체 역할과 A↔B 관계를 이어 쓰세요.`,
       '- 금지: A/B를 학습자라고 부르기, 학습자가 화행을 직접 수행하거나 받기, 자기 발화를 스스로 통역하기, A를 `저는`·`나는`으로 서술하기, P·D·R을 C↔A/B 관계로 바꾸기.',
       `- 등가 원칙: C는 A의 의미·의도·화용적 힘을 B에게 기능적으로 등가 재현합니다. ${tgtL}에 필요한 형식 조정은 허용하지만 A의 힘·태도·화행 목적을 더 좋게 고치거나 바꾸지 마세요.`,
       '- 문체: 통역 situation_ko에서는 오해를 부르는 `직접`을 기본적으로 쓰지 마세요. `학습자가 현장에서 직접 통역한다`는 허용되지만, `학습자가 직접 요청한다`·`통역 없이 직접 대화한다`는 실패입니다.',
@@ -1238,7 +1239,7 @@ async function corePromptSnapshotHash(): Promise<string> {
     ),
   )
   coreSnapshotHashCache = await sha256Hex(canonicalJson({
-    v: 8,
+    v: 9,
     scope: 'core_generation',
     action: 'core',
     model: PRIMARY_MODEL,
@@ -1283,29 +1284,15 @@ async function corePromptSnapshotHash(): Promise<string> {
         learnerSceneIssue: null,
       })
     ),
-    bilingual_scene_repair_prompt_templates: (['ko_zh', 'zh_ko'] as const).map((direction) =>
-      buildCoreOutputRepairPrompt({
-        originalUserPrompt: 'PROBE_USER_PROMPT',
-        previousOutput: {
-          situation_ko: 'PROBE_SITUATION',
-          source_text: 'PROBE_SOURCE_TEXT',
-          preceding_turn: null,
-          focal_segments: [],
-        },
-        sourceLanguage: DIR_LANGS[direction].src,
-        lengthHintKo: '유효 글자 PROBE_MIN~PROBE_MAX자',
-        effectiveCharRange: { min: 30, max: 45 },
-        sourceIssue: null,
-        precedingTurnIssue: null,
-        bilingualSceneIssue: {
-          sourceLanguage: DIR_LANGS[direction].src,
-          targetLanguage: DIR_LANGS[direction].tgt,
-          missing: ['source_speaker', 'target_speaker', 'interpreting'],
-          message: 'PROBE_BILINGUAL_SCENE_ERROR',
-        },
-        learnerSceneIssue: null,
-      })
-    ),
+    interpreter_scene_canonicalization: (['ko_zh', 'zh_ko'] as const).map((direction) => ({
+      direction,
+      output: canonicalizeInterpreterSituation(
+        '당신은 PROBE_ROLE로서 통역을 맡았습니다. PROBE_EVENT를 수행합니다.',
+        DIR_LANGS[direction].src,
+        DIR_LANGS[direction].tgt,
+        true,
+      ).value,
+    })),
     learner_scene_repair_prompt_template: buildCoreOutputRepairPrompt({
       originalUserPrompt: 'PROBE_USER_PROMPT',
       previousOutput: {
@@ -2277,13 +2264,31 @@ Deno.serve(async (req) => {
       } catch (e) {
         return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
       }
-      // 길이 정책·2~4문장 담화 형태·응답 화행의 target-language 선행 발화를 생성
-      // 단계에서 한 번 더 보장한다. 오류가 여럿이어도 기존 사실·역할을 고정한 단 한 번의
-      // 교정 호출로 함께 맞춘다.
+      // 통역 역할·언어 첫 문장과 `학습자 A/B` 금지는 모델 repair에 맡기지 않고 서버가
+      // 결정론적으로 조립한다. 모델 repair는 분량·선행발화·평가기준 제거에만 사용한다.
       const lengthLevel = coreLengthLevel(b)
       const lengthMode = coreLengthMode(b)
       const lengthRange = coreLengthRange(lengthLevel, lengthMode)
       const lengthHintKo = coreLengthHintKo(lengthLevel, lengthMode)
+      const interpreterSceneRequired = b.source_modality === 'spoken'
+      const canonicalSituation = canonicalizeInterpreterSituation(
+        gen.situation_ko,
+        DIR_LANGS[coreDir].src,
+        DIR_LANGS[coreDir].tgt,
+        interpreterSceneRequired,
+      )
+      const canonicalRelation = canonicalizeInterpreterPartyLabels(
+        gen.relation_ko,
+        interpreterSceneRequired,
+      )
+      const bilingualSceneCanonicalizationApplied = canonicalSituation.applied || canonicalRelation.applied
+      if (bilingualSceneCanonicalizationApplied) {
+        gen = {
+          ...gen,
+          situation_ko: canonicalSituation.value,
+          relation_ko: canonicalRelation.value,
+        }
+      }
       const initialSourceText = String(gen.source_text ?? gen.source_text_ko ?? '')
       const initialSourceIssue = coreSourceIssue(initialSourceText, lengthRange)
       const initialPrecedingTurn = gen.preceding_turn ?? gen.preceding_turn_zh ?? null
@@ -2292,15 +2297,9 @@ Deno.serve(async (req) => {
         DIR_LANGS[coreDir].tgt,
         b.is_response_act,
       )
-      const initialBilingualSceneIssue = coreBilingualSceneIssue(
-        gen.situation_ko,
-        DIR_LANGS[coreDir].src,
-        DIR_LANGS[coreDir].tgt,
-        b.source_modality === 'spoken',
-      )
       const initialLearnerSceneIssue = coreLearnerSceneIssue(gen.situation_ko)
       const coreRepairAttempted = Boolean(
-        initialSourceIssue || initialPrecedingTurnIssue || initialBilingualSceneIssue || initialLearnerSceneIssue
+        initialSourceIssue || initialPrecedingTurnIssue || initialLearnerSceneIssue
       )
       let sourceRepairApplied = false
       let precedingTurnRepairApplied = false
@@ -2315,7 +2314,7 @@ Deno.serve(async (req) => {
           effectiveCharRange: lengthRange,
           sourceIssue: initialSourceIssue,
           precedingTurnIssue: initialPrecedingTurnIssue,
-          bilingualSceneIssue: initialBilingualSceneIssue,
+          bilingualSceneIssue: null,
           learnerSceneIssue: initialLearnerSceneIssue,
         })
         const repairModel = model
@@ -2336,8 +2335,14 @@ Deno.serve(async (req) => {
               effectiveCharRange: lengthRange,
               sourceIssue: initialSourceIssue,
               precedingTurnIssue: initialPrecedingTurnIssue,
-              bilingualSceneIssue: initialBilingualSceneIssue,
+              bilingualSceneIssue: null,
               learnerSceneIssue: initialLearnerSceneIssue,
+              interpreterScene: {
+                sourceLanguage: DIR_LANGS[coreDir].src,
+                targetLanguage: DIR_LANGS[coreDir].tgt,
+                required: interpreterSceneRequired,
+                relationKo: gen.relation_ko,
+              },
             })
             if (
               mergedRepair.sourceRepairApplied ||
@@ -2380,6 +2385,13 @@ Deno.serve(async (req) => {
         ? CURRENT_CORE_PROMPT_VERSIONS[1]
         : CURRENT_CORE_PROMPT_VERSIONS[0]
       const generatedAt = new Date().toISOString()
+      const bilingualSceneIssueRemaining = Boolean(coreBilingualSceneIssue(
+        gen.situation_ko,
+        DIR_LANGS[coreDir].src,
+        DIR_LANGS[coreDir].tgt,
+        interpreterSceneRequired,
+        gen.relation_ko,
+      ))
       const core_content = {
         schema_version: 'scenario_core_v3',
         direction: coreDir,
@@ -2419,6 +2431,8 @@ Deno.serve(async (req) => {
             source_repair_applied: sourceRepairApplied,
             preceding_turn_repair_applied: precedingTurnRepairApplied,
             bilingual_scene_repair_applied: bilingualSceneRepairApplied,
+            bilingual_scene_canonicalization_applied: bilingualSceneCanonicalizationApplied,
+            bilingual_scene_issue_remaining: bilingualSceneIssueRemaining,
             learner_scene_repair_applied: learnerSceneRepairApplied,
             length_policy_version: CORE_LENGTH_POLICY_VERSION,
             // 재현성 provenance — 클라이언트는 이 값을 재계산하지 말고 그대로 저장한다.

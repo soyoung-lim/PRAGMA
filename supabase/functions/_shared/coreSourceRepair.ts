@@ -64,6 +64,11 @@ export interface CoreLearnerSceneIssue {
   message: string
 }
 
+export interface CanonicalInterpreterTextResult {
+  value: string
+  applied: boolean
+}
+
 const CORE_LANGUAGE_KO: Record<CoreLanguage, string> = {
   ko: '한국어',
   zh: '중국어',
@@ -79,9 +84,12 @@ const CORE_SCENE_LANGUAGE_MARKER: Record<CoreLanguage, RegExp> = {
 const LEARNER_INTERPRETER_MARKER = /(?:당신(?:은|이|가)?[^.!?]{0,80}(?:통역|옮기|옮긴|옮겨|전달)|(?:학습자|학생)(?:(?:는|가|이)[^.!?]{0,50}(?:통역|옮기|옮긴|옮겨|전달)|\s*통역사))/u
 const LEARNER_LANGUAGE_SPEAKER = /(?:학습자|학생)(?:는|가|이)?[^.!?]{0,25}(?:중국어|한국어)\s*화자(?:로서|이며|이고|이다|역할)/u
 const LEARNER_PARTY_ROLE = /(?:학습자|학생)(?:는|가|이)\s*(?:호텔\s*)?(?:고객|투숙객|학생|조원|직원|담당자|교수|연구원|상사|후배|선배)(?:으로|로|이며|이고|이다|입니다)|(?:학습자|학생)인\s*(?:고객|투숙객|학생|조원|직원|담당자|교수|연구원|상사|후배|선배)(?:은|는|이|가)/u
+const LEARNER_PARTY_LABEL = /학습자\s*(?:인\s*)?[AB](?![A-Za-z])|[AB](?![A-Za-z])(?:는|은|이|가)?\s*(?:학습자)(?:는|은|이|가|로서|이다|입니다)?/u
 const LEARNER_DIRECT_SPEECH_ACT = /(?:학습자|학생)(?:는|가|이)?[^.!?]{0,90}(?:직접\s*(?:말|구두|발화)[^.!?]{0,30}|(?:상대|청자|직원|담당자|고객|학생|상사|교수)에게[^.!?]{0,45})(?:요청하|거절하|감사하|사과하|제안하|초대하|반대하|칭찬하|불만(?:을|을\s*직접)?\s*(?:말하|제기하)|말하)/u
 const LEARNER_SPEECH_ACT_RECIPIENT = /(?:학습자|학생)(?:는|가|이)?[^.!?]{0,70}(?:감사|사과|칭찬|초대|요청|불만|제안|반대)(?:\s*인사|\s*말)?(?:을|를)?[^.!?]{0,18}(?:듣|받)/u
 const LEARNER_SELF_INTERPRETING = /(?:학습자|학생)(?:는|가|이)?[^.!?]{0,60}(?:자기|자신)(?:의)?\s*(?:말|발화)[^.!?]{0,45}(?:통역|옮기|전달)/u
+const YOU_PARTY_ROLE = /당신(?:은|이|가)\s*(?:호텔\s*)?(?:고객|투숙객|학생|조원|직원|담당자|교수|연구원|상사|후배|선배|멘토|책임자|관리자)(?:으로|로|이며|이고|이다|입니다|로서)/u
+const YOU_DIRECT_SPEECH_ACT = /당신(?:은|이|가)?[^.!?]{0,90}(?:직접\s*(?:말|구두|발화)[^.!?]{0,30}|(?:상대|청자|직원|담당자|고객|학생|상사|교수)에게[^.!?]{0,45})(?:요청하|거절하|감사하|사과하|제안하|초대하|반대하|칭찬하|불만(?:을|를)?\s*(?:말하|제기하)|말하)/u
 const SOURCE_FIRST_PERSON_NARRATION = /(?:^|[.!?]\s*)(?:저는|나는)\s|원발화자[^.!?]{0,35}(?:저는|나는)\s/u
 const NO_INTERPRETER_DIRECT_TALK = /통역\s*(?:이|을|가)?\s*없이(?:도)?[^.!?]{0,30}(?:직접\s*)?(?:대화|협의|논의|말)/u
 const AMBIGUOUS_DIRECT_PARTY_INTERACTION = /(?:원발화자|화자|청자|담당자|직원|고객|학생|A|B)[^.!?]{0,55}직접[^.!?]{0,25}(?:대화|협의|논의|말)/u
@@ -91,6 +99,70 @@ const LEARNER_SCENE_EVALUATION_CUES = [
   /(?:정중|공손)하게[^.!?]{0,35}(?:요청|거절|초대|제안|사과|감사|불만|반대|칭찬|표현|말|전달)/u,
   /(?:완화|직접성|선택권|화용|대역|적절성|강도|명료성)(?:을|를|이|가|은|는)?[^.!?]{0,30}(?:조절|유지|남기|보장|드러내|표현|고려)/u,
 ]
+
+/** 통역 코어의 첫 문장을 방향에 따라 같은 A/B/C 역할·언어 계약으로 고정한다. */
+export function canonicalInterpreterSituationLead(
+  sourceLanguage: CoreLanguage,
+  targetLanguage: CoreLanguage,
+): string {
+  return `학습자 통역사 C인 당신은 ${CORE_LANGUAGE_KO[sourceLanguage]} 원발화자 A와 ${CORE_LANGUAGE_KO[targetLanguage]} 청자 B 사이에서 통역을 맡았습니다.`
+}
+
+/**
+ * `학습자 A/B`는 확정 계약상 불가능한 결속이므로 모델 문체가 아니라 구조 오류로 본다.
+ * 사람의 실제 신분일 수 있는 `학생 A/B`는 바꾸지 않는다.
+ */
+export function canonicalizeInterpreterPartyLabels(
+  text: unknown,
+  required: boolean,
+): CanonicalInterpreterTextResult {
+  const value = typeof text === 'string' ? text.trim() : ''
+  if (!required || !value) return { value, applied: false }
+  const normalized = value
+    .replace(/학습자\s*(?:인\s*)?A(?![A-Za-z])/gu, '원발화자 A')
+    .replace(/학습자\s*(?:인\s*)?B(?![A-Za-z])/gu, '청자 B')
+    .replace(/A(?![A-Za-z])\s*\(\s*학습자\s*\)/gu, '원발화자 A')
+    .replace(/B(?![A-Za-z])\s*\(\s*학습자\s*\)/gu, '청자 B')
+  return { value: normalized, applied: normalized !== value }
+}
+
+/**
+ * 모델이 C를 A/B와 합친 역할 소개 문장을 만들지 못하게 첫 문장을 서버가 조립한다.
+ * 기존 첫 문장이 역할 소개라면 교체하고, 사건 서술이라면 앞에 붙여 사건 사실을 보존한다.
+ */
+export function canonicalizeInterpreterSituation(
+  situationKo: unknown,
+  sourceLanguage: CoreLanguage,
+  targetLanguage: CoreLanguage,
+  required: boolean,
+): CanonicalInterpreterTextResult {
+  const value = typeof situationKo === 'string' ? situationKo.trim() : ''
+  if (!required) return { value, applied: false }
+
+  const canonicalLead = canonicalInterpreterSituationLead(sourceLanguage, targetLanguage)
+  const labelNormalized = canonicalizeInterpreterPartyLabels(value, true).value
+  if (!labelNormalized) return { value: canonicalLead, applied: true }
+
+  const chunks = (labelNormalized.match(/[^.!?。！？…]+[.!?。！？…]*/gu) ?? [])
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+  const first = chunks[0] ?? labelNormalized
+  if (first === canonicalLead) {
+    const normalized = [canonicalLead, ...chunks.slice(1)].join(' ')
+    return {
+      value: normalized,
+      applied: normalized !== value,
+    }
+  }
+
+  const firstIsRoleFrame =
+    /^(?:학습자\s*통역사\s*C인\s*)?당신(?:은|이|가)/u.test(first) ||
+    /(?:학습자|학생)\s*(?:인\s*)?[AB](?![A-Za-z])/u.test(first) ||
+    /통역[^.!?。！？…]{0,35}(?:맡|역할|진행)|(?:맡|역할)[^.!?。！？…]{0,35}통역/u.test(first)
+  const remainder = firstIsRoleFrame && chunks.length > 1 ? chunks.slice(1) : chunks
+  const normalized = [canonicalLead, ...remainder].join(' ')
+  return { value: normalized, applied: normalized !== value }
+}
 
 /** 학생용 situation_ko에 목표 화용 답의 방향이 노출되는지 확인한다. */
 export function coreLearnerSceneIssue(situationKo: unknown): CoreLearnerSceneIssue | null {
@@ -108,21 +180,27 @@ export function coreBilingualSceneIssue(
   sourceLanguage: CoreLanguage,
   targetLanguage: CoreLanguage,
   required: boolean,
+  relationKo?: unknown,
 ): CoreBilingualSceneIssue | null {
   if (!required) return null
   const value = typeof situationKo === 'string' ? situationKo.trim() : ''
+  const relationValue = typeof relationKo === 'string' ? relationKo.trim() : ''
+  const roleScope = `${value} ${relationValue}`.trim()
   const missing: CoreBilingualSceneIssue['missing'] = []
   if (!CORE_SCENE_LANGUAGE_MARKER[sourceLanguage].test(value)) missing.push('source_speaker')
   if (!CORE_SCENE_LANGUAGE_MARKER[targetLanguage].test(value)) missing.push('target_speaker')
   if (!/통역/u.test(value)) missing.push('interpreting')
   if (!LEARNER_INTERPRETER_MARKER.test(value)) missing.push('learner_interpreter')
   if (
-    LEARNER_LANGUAGE_SPEAKER.test(value) ||
-    LEARNER_PARTY_ROLE.test(value) ||
-    LEARNER_DIRECT_SPEECH_ACT.test(value) ||
-    LEARNER_SPEECH_ACT_RECIPIENT.test(value) ||
-    LEARNER_SELF_INTERPRETING.test(value) ||
-    NO_INTERPRETER_DIRECT_TALK.test(value)
+    LEARNER_LANGUAGE_SPEAKER.test(roleScope) ||
+    LEARNER_PARTY_ROLE.test(roleScope) ||
+    LEARNER_PARTY_LABEL.test(roleScope) ||
+    LEARNER_DIRECT_SPEECH_ACT.test(roleScope) ||
+    LEARNER_SPEECH_ACT_RECIPIENT.test(roleScope) ||
+    LEARNER_SELF_INTERPRETING.test(roleScope) ||
+    YOU_PARTY_ROLE.test(roleScope) ||
+    YOU_DIRECT_SPEECH_ACT.test(roleScope) ||
+    NO_INTERPRETER_DIRECT_TALK.test(roleScope)
   ) missing.push('role_overlap')
   if (SOURCE_FIRST_PERSON_NARRATION.test(value)) missing.push('source_first_person')
   if (missing.length === 0) return null
@@ -232,6 +310,12 @@ export interface MergeValidatedCoreRepairInput {
   precedingTurnIssue: CorePrecedingTurnIssue | null
   bilingualSceneIssue?: CoreBilingualSceneIssue | null
   learnerSceneIssue?: CoreLearnerSceneIssue | null
+  interpreterScene?: {
+    sourceLanguage: CoreLanguage
+    targetLanguage: CoreLanguage
+    required: boolean
+    relationKo?: unknown
+  }
 }
 
 export interface MergeValidatedCoreRepairResult {
@@ -303,15 +387,32 @@ export function mergeValidatedCoreRepair(
   }
 
   if (input.bilingualSceneIssue || input.learnerSceneIssue) {
-    const repairedSituation = String(input.repairedOutput.situation_ko ?? '')
+    const repairedSituationRaw = String(input.repairedOutput.situation_ko ?? '')
+    const repairedSituation = input.interpreterScene
+      ? canonicalizeInterpreterSituation(
+        repairedSituationRaw,
+        input.interpreterScene.sourceLanguage,
+        input.interpreterScene.targetLanguage,
+        input.interpreterScene.required,
+      ).value
+      : repairedSituationRaw
     const bilingualIssue = input.bilingualSceneIssue
       ? coreBilingualSceneIssue(
         repairedSituation,
         input.bilingualSceneIssue.sourceLanguage,
         input.bilingualSceneIssue.targetLanguage,
         true,
+        input.interpreterScene?.relationKo,
       )
-      : null
+      : input.interpreterScene
+        ? coreBilingualSceneIssue(
+          repairedSituation,
+          input.interpreterScene.sourceLanguage,
+          input.interpreterScene.targetLanguage,
+          input.interpreterScene.required,
+          input.interpreterScene.relationKo,
+        )
+        : null
     const learnerIssue = coreLearnerSceneIssue(repairedSituation)
     if (!bilingualIssue && !learnerIssue) {
       output.situation_ko = repairedSituation

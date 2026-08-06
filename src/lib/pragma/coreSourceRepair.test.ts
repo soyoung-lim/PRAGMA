@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import {
   buildCoreOutputRepairPrompt,
   buildCoreSourceRepairPrompt,
+  canonicalInterpreterSituationLead,
+  canonicalizeInterpreterPartyLabels,
+  canonicalizeInterpreterSituation,
   coreBilingualSceneIssue,
   coreBilingualSceneWarning,
   coreLearnerSceneIssue,
@@ -178,6 +183,114 @@ describe("core source discourse boundary", () => {
         true,
       ),
     ).toBeNull();
+  });
+
+  it("통역 첫 문장을 방향별 A/B/C 역할·언어 계약으로 결정론적으로 고정한다", () => {
+    const koZh = canonicalizeInterpreterSituation(
+      "한국 담당자가 중국 거래처에 일정을 제안한다. 두 사람은 처음 만났다.",
+      "ko",
+      "zh",
+      true,
+    );
+    const zhKo = canonicalizeInterpreterSituation(
+      "중국 담당자가 한국 거래처에 일정을 제안한다. 두 사람은 처음 만났다.",
+      "zh",
+      "ko",
+      true,
+    );
+
+    expect(koZh.value.startsWith(canonicalInterpreterSituationLead("ko", "zh"))).toBe(true);
+    expect(zhKo.value.startsWith(canonicalInterpreterSituationLead("zh", "ko"))).toBe(true);
+    expect(coreBilingualSceneIssue(koZh.value, "ko", "zh", true)).toBeNull();
+    expect(coreBilingualSceneIssue(zhKo.value, "zh", "ko", true)).toBeNull();
+    expect(canonicalizeInterpreterSituation(koZh.value, "ko", "zh", true)).toEqual({
+      value: koZh.value,
+      applied: false,
+    });
+  });
+
+  it("v55의 C=멘토 합체 역할 문장을 서버 역할 문장으로 교체한다", () => {
+    const result = canonicalizeInterpreterSituation(
+      "당신은 선배 멘토로서 후배 학생과 구두로 대화하며 통역을 맡았다. 후배가 최근 발표와 과제에서 보여준 뛰어난 분석력과 창의성에 대해 칭찬하는 상황이다. 후배는 선배의 긍정적 평가를 부담스러워할 수 있다.",
+      "ko",
+      "zh",
+      true,
+    );
+
+    expect(result.applied).toBe(true);
+    expect(result.value).not.toContain("당신은 선배 멘토");
+    expect(result.value).toContain("후배가 최근 발표와 과제");
+    expect(coreBilingualSceneIssue(result.value, "ko", "zh", true)).toBeNull();
+  });
+
+  it("v55의 학습자 A 결속을 situation·relation 모두 원발화자 A로 정규화한다", () => {
+    const situation = canonicalizeInterpreterSituation(
+      "당신은 조별 과제에서 학습자 A와 조장인 B 사이에서 통역을 맡았다. A는 조원으로서 조장에게 과제 진행 방식을 제안하려 한다.",
+      "zh",
+      "ko",
+      true,
+    );
+    const relation = canonicalizeInterpreterPartyLabels(
+      "학습자 A는 조별 과제 조원이고, 상대 B는 조장이다.",
+      true,
+    );
+
+    expect(situation.value).not.toContain("학습자 A");
+    expect(relation.value).toContain("원발화자 A");
+    expect(coreBilingualSceneIssue(situation.value, "zh", "ko", true, relation.value)).toBeNull();
+  });
+
+  it("v55 무저장 재카나리 18건을 새 역할 정규화에 재생하면 R16 역할 오류가 남지 않는다", () => {
+    type CanaryRow = {
+      act: string;
+      cell: { topic_code: string; direction: "ko_zh" | "zh_ko" };
+      core: { situation_ko: string; relation_ko: string };
+    };
+    const rows = JSON.parse(
+      readFileSync(
+        resolve(
+          process.cwd(),
+          "docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v55/v55-interpreter-role-18-core-only.json",
+        ),
+        "utf8",
+      ),
+    ) as CanaryRow[];
+    const failures = rows.flatMap((row) => {
+      const sourceLanguage = row.cell.direction === "ko_zh" ? "ko" : "zh";
+      const targetLanguage = row.cell.direction === "ko_zh" ? "zh" : "ko";
+      const situation = canonicalizeInterpreterSituation(
+        row.core.situation_ko,
+        sourceLanguage,
+        targetLanguage,
+        true,
+      ).value;
+      const relation = canonicalizeInterpreterPartyLabels(row.core.relation_ko, true).value;
+      const issue = coreBilingualSceneIssue(
+        situation,
+        sourceLanguage,
+        targetLanguage,
+        true,
+        relation,
+      );
+      return issue
+        ? [{ act: row.act, topic: row.cell.topic_code, missing: issue.missing, situation, relation }]
+        : [];
+    });
+
+    expect(rows).toHaveLength(18);
+    expect(failures).toEqual([]);
+  });
+
+  it("학습자 A/B 결속은 relation_ko에만 남아도 역할 중첩으로 차단한다", () => {
+    expect(
+      coreBilingualSceneIssue(
+        canonicalInterpreterSituationLead("zh", "ko"),
+        "zh",
+        "ko",
+        true,
+        "학습자 A는 조원이고 B는 조장이다.",
+      )?.missing,
+    ).toContain("role_overlap");
   });
 
   it("A/B인 학생 뒤에 통역 단어가 있다는 이유만으로 C가 있다고 오인하지 않는다", () => {
@@ -363,6 +476,37 @@ describe("core source discourse boundary", () => {
       "처음 만난 협력 기관 담당자를 금요일 발표회에 초대한다.",
     );
     expect(result.output.source_text).toBe("我想邀请您参加周五的活动。期待您的回复。");
+  });
+
+  it("평가 기준 repair가 통역 역할을 다시 합치면 정규화 후에도 남는 오류를 채택하지 않는다", () => {
+    const originalSituation = `${canonicalInterpreterSituationLead("ko", "zh")} 한국 담당자 A가 중국 담당자 B에게 행사 참석을 요청한다.`;
+    const result = mergeValidatedCoreRepair({
+      originalOutput: {
+        situation_ko: originalSituation,
+        relation_ko: "한국 담당자 A와 중국 담당자 B는 처음 만난 관계다.",
+        source_text: "행사에 참석해 주세요. 의견을 나누고 싶습니다.",
+      },
+      repairedOutput: {
+        situation_ko: "학습자는 담당자로서 중국 고객에게 직접 참석을 요청한다. 통역을 맡는다.",
+      },
+      effectiveCharRange: { min: 20, max: 35 },
+      sourceIssue: null,
+      precedingTurnIssue: null,
+      bilingualSceneIssue: null,
+      learnerSceneIssue: {
+        code: "evaluation_criteria",
+        message: "학생용 평가 기준 노출",
+      },
+      interpreterScene: {
+        sourceLanguage: "ko",
+        targetLanguage: "zh",
+        required: true,
+        relationKo: "한국 담당자 A와 중국 담당자 B는 처음 만난 관계다.",
+      },
+    });
+
+    expect(result.learnerSceneRepairApplied).toBe(false);
+    expect(result.output.situation_ko).toBe(originalSituation);
   });
 
   it("원문 교정은 head가 없는 focal_segments를 채택하지 않는다", () => {

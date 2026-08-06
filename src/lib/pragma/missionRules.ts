@@ -358,6 +358,7 @@ function checkCoreCommon(
     DIRECTION_LANGS[dir].source,
     DIRECTION_LANGS[dir].target,
     ctx.mode === "stt_interpreting",
+    core.relation_ko,
   );
   if (bilingualSceneIssue) {
     add(v, "R16", "fail", `통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: ${bilingualSceneIssue.message}`);
