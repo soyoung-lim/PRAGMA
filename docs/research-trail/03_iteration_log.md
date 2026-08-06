@@ -1494,3 +1494,37 @@
 - 관련 Decision / Evidence / Trace: `DEC-20260806-04`, `EVD-20260806-08`, `TRC-20260806-01`
 - 관련 증거: `src/lib/pragma/coreSourceRepair.test.ts`,
   `docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v55/`
+
+## ITER-20260806-06 · v56 `_03` 역할 계약 운영 확인과 길이·사건 잔여 결함 분리
+
+- 날짜: 2026-08-06
+- 시작 문제:
+  - v55 결과 replay가 아니라 실제 새 생성에서도 서버 역할 프레임과 repair 분리가 작동하는지
+    같은 18셀로 확인해야 했다.
+  - 배포본이 로컬 `_03`과 같은지, 콘텐츠가 DB에 저장되지 않았는지 독립 확인이 필요했다.
+- 변경과 실행:
+  - 배포 전 GitHub·로컬·Edge·Railway를 직접 조회하고 `generate-scenario`만 v56으로 배포했다.
+  - 배포 소스를 다시 내려받아 엔트리와 `_shared` 6개를 SHA-256으로 대조했다.
+  - 9화행×양방향 통역 core-only 18건을 순차 생성하고 자동 R규칙·H1~H6·LV를 분리 판정했다.
+  - 읽기 전용 SQL로 `_03` scenario/mission 수와 같은 시간대 호출 원장을 대조했다.
+- 실제 검증:
+  - Edge v56은 ACTIVE·`verify_jwt=true`, bundle `6ed9f805…`; 소스는 로컬과 7/7 일치했다.
+  - 자동 clean pass 14, warning 1, fail 3. R16 fail 0·warning 1, R29 fail 3이다.
+  - H1~H5·LV는 모두 18/18, H6는 16P·2F다. H6 실패는 Z3의 미래 협업 추가와 Z9의
+    업무 전달 누락·품질 문제 대상 변경이다.
+  - `_03` scenarios 0, missions 0. ledger는 generate 18·repair 10회 모두 success·fallback 0,
+    총 121,109 tokens다.
+  - 원본은 79,442 bytes, SHA-256 `260E1D81…`다. 미션 생성·상태 승격·Railway 배포·push는 0이다.
+- 예상과 달랐던 점:
+  - 모델이 18건 모두 표준 역할 문장을 직접 지켜 서버 canonicalization 적용 횟수는 0이었지만,
+    이는 후처리가 불필요하다는 뜻이 아니라 프롬프트·검사·서버 계약이 같은 표면으로 정렬된 결과다.
+  - 역할·언어 문제를 제거해 자동 clean pass가 크게 늘어도 R29는 세 세대 연속 3건으로 남았다.
+  - H6 실패 두 건은 모두 repair 채택 출력이지만 최초 생성 원문 부재로 repair가 결함을 새로
+    만들었다고 단정할 수 없다.
+- 다음 설계에 반영할 교훈:
+  - 역할 계약은 유지하고, 다음 수정 단위는 source repair의 길이 성공률과 사실 보존 관측 가능성으로
+    분리한다. 새 생성·배포는 다시 사용자 승인 게이트를 거친다.
+  - Z3·Z9 H6와 Z6 `직접 말로` warning은 Fable 교차검증 대상으로 flag하되 4.1 집필 중에는 보내지 않는다.
+  - `_03`은 콘텐츠 LOCK 근거가 아니며 기존 콘텐츠 전량 재생산도 시작하지 않는다.
+- 관련 Decision / Evidence / Trace: `DEC-20260806-04`, `EVD-20260806-09`, `TRC-20260806-01`
+- 관련 증거: `docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v56/`
