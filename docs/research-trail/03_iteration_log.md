@@ -1390,3 +1390,16 @@
   - Fable은 논문 4.1 집필 중이므로 요청을 보내지 않고 근거 패킷만 `FLAGGED_NOT_SENT`로 둔다.
 - 관련 Decision / Evidence / Trace: `DEC-20260806-02`, `EVD-20260806-04`, `TRC-20260806-01`
 - 관련 증거: `docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v54/`
+
+### `_02` 운영 배포 후속
+
+- 사용자 승인 뒤 `main@6ca2f17`을 origin에 push했다. 해당 Railway 배포는 SUCCESS였으나 직후
+  Lovable bot의 두 후속 커밋으로 REMOVED됐고, 현재 Railway는 `5a2c5d5`에서 SUCCESS다.
+  후속 커밋은 Edge 관련 7개 파일을 바꾸지 않았으며 `generate-scenario`는
+  v55·ACTIVE·`verify_jwt=true`다.
+- Edge bundle SHA-256은 `2c3cc34482e38b37c959ea0933f3037d67874e1d54962af046d7f72dc31d8207`다.
+  API로 다시 내려받은 엔트리와 `_shared` 6개 파일은 줄바꿈 정규화 뒤 HEAD와 7/7 일치했다.
+- 배포와 정합성 대조만 수행했고 `_02` 생성·콘텐츠 DB 저장·미션 생성·상태 승격은 0이다.
+  Fable 요청도 보내지 않았다. Lovable의 Supabase 타입 축소는 재카나리와 분리해 검증하고,
+  재카나리는 다음 별도 승인 게이트로 남겼다.
+- 추가 증거: `EVD-20260806-05`
