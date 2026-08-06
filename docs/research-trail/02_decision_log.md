@@ -1447,3 +1447,36 @@
   `src/lib/pragma/coreSchema.ts`, `src/lib/pragma/missionRules.ts`
 - 관련 Iteration / Evidence / Trace: `ITER-20260806-01`, `EVD-20260806-02`, `TRC-20260806-01`
 - 관련 커밋: 정본 반영 `c1a9345`, 구현 `1fa7aab`
+
+## DEC-20260806-02 · 통역 역할 검증기 교정은 새 후보 세대로 분리하고 재배포 전 의미 경계를 보류한다
+
+- 날짜: 2026-08-06
+- 상태: 채택·로컬 구현 및 자동 검증 완료, Edge/Railway 재배포·재카나리 미실행
+- 문제:
+  - v54 통역 core-only 18건에서 자동 게이트가 1건만 통과했으나, 사람 판정은 A/B/C와 A↔B
+    P·D·R을 18건 모두 분리했다.
+  - 프롬프트는 C를 `당신`으로 쓰게 했지만 검증기는 이를 인정하지 않았고, A/B인 `학생`은
+    뒤의 통역 단어 때문에 C로 오인할 수 있었다.
+- 검토한 대안:
+  - 자동 실패 17건을 모두 모델 콘텐츠 실패로 처리: 검증기와 계약의 직접 모순 때문에 기각.
+  - 검증기만 바꾸고 기존 `_01` 후보 ID를 유지: 수용 결과와 repair 동작이 달라져 계보를
+    덮어쓰므로 기각.
+  - 검증기 결속을 교정하고 `_02`·`repair_v2`로 분리하되 LV·H6 판정 경계는 교차검증 전
+    유지: 채택.
+- 결정:
+  1. C의 정식 2인칭 표기 `당신`은 통역 행위와 결속될 때 learner interpreter marker로 인정한다.
+  2. A/B의 직업·신분일 수 있는 `학생`은 조사 없는 단순 근접만으로 C에 결속하지 않는다.
+  3. 변경된 수용·교정 동작은 `pragma_content_candidate_20260806_02`와
+     `core_v10_interpreter_role_contract_v1_repair_v2`로 분리한다.
+  4. H1 참여자 분리와 LV 언어 역할 가시성을 독립 축으로 유지한다. LV를 hard gate에서
+     완화하거나 H6 사건 대응 경계를 바꾸는 결정은 Fable 교차검증 뒤로 미룬다.
+  5. 현행 콘텐츠는 계속 LOCK 전 개발·테스트 자료이며 `_02` 배포·재생성·DB 저장은 별도
+     사용자 승인 없이는 실행하지 않는다.
+- 근거: 동일한 v54 JSON을 고친 규칙으로 재판정하면 1/18이 아니라 4/18이 역할 규칙을
+  통과하고, 나머지 14건은 실제 언어 표지 누락으로 남는다. 사람 검수는 H1~H5 18/18,
+  H6 13통과·1보류·4실패, LV 4/18이었다. 전체 테스트 284 pass·8 skip과 typecheck·build가
+  통과했다.
+- 관련 파일: `supabase/functions/_shared/coreSourceRepair.ts`,
+  `supabase/functions/_shared/contentRelease.ts`, `src/lib/pragma/coreSourceRepair.test.ts`,
+  `docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v54/`
+- 관련 Iteration / Evidence / Trace: `ITER-20260806-02`, `EVD-20260806-04`, `TRC-20260806-01`

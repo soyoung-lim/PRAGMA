@@ -169,6 +169,28 @@ describe("core source discourse boundary", () => {
     ).toBeNull();
   });
 
+  it("학습자 C를 가리키는 2인칭 '당신' 통역 문장을 계약상 유효하게 본다", () => {
+    expect(
+      coreBilingualSceneIssue(
+        "당신은 한국어 원발화자 A와 중국어 청자 B 사이에서 통역을 맡았다.",
+        "ko",
+        "zh",
+        true,
+      ),
+    ).toBeNull();
+  });
+
+  it("A/B인 학생 뒤에 통역 단어가 있다는 이유만으로 C가 있다고 오인하지 않는다", () => {
+    expect(
+      coreBilingualSceneIssue(
+        "한국어를 사용하는 학생 A와 중국어 담당자 B 사이에서 통역이 진행된다.",
+        "ko",
+        "zh",
+        true,
+      )?.missing,
+    ).toContain("learner_interpreter");
+  });
+
   it("부분 블라인드 패킷의 역할 중첩·A 1인칭 사례를 새 계약으로 구분한다", () => {
     const firstPerson = coreBilingualSceneIssue(
       "저는 한국 제조업체의 해외 무역 담당자입니다. 중국어 청자와 협의하며, 학습자는 한국어 원발화자와 청자 사이에서 통역합니다.",
