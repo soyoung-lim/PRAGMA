@@ -163,7 +163,7 @@ describe("prompt snapshot integrity", () => {
     expect(prompt("core.user.source_repair").text).toContain("유효 글자 수를 반드시");
     expect(prompt("core.user.source_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(critic.text).toContain("국소적 두 턴만 본다");
-    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v10_interpreter_role_contract_v1");
+    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v11_interpreter_scene_canonical_v1");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {
     const mission = prompt("mission.system");
