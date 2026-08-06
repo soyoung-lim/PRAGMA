@@ -6,23 +6,23 @@
  * 새 학습설계 또는 생성 기준을 시험할 때는 기존 ID를 덮어쓰지 말고 새 ID를 만든다.
  */
 export const CURRENT_CONTENT_RELEASE = {
-  id: "pragma_content_candidate_20260805_01",
+  id: "pragma_content_candidate_20260806_01",
   lifecycle: "candidate",
   corePromptVersions: [
-    "core_v9_interpreter_roles_v1",
-    "core_v9_interpreter_roles_v1_repair_v1",
+    "core_v10_interpreter_role_contract_v1",
+    "core_v10_interpreter_role_contract_v1_repair_v1",
   ],
   missionPromptVersions: [
-    "mission_v5_mpj4_minidiscourse_v5",
-    "mission_v4_mpj4_dct1_context_v8",
+    "mission_v5_mpj4_minidiscourse_v6_interpreter_roles",
+    "mission_v4_mpj4_dct1_context_v9_interpreter_roles",
   ],
   feedbackPromptVersions: [
     "feedback_v1_minidiscourse_v3",
     "feedback_v1_feature_general_v2",
   ],
   qualityPromptVersions: {
-    core: "core_quality_v5",
-    mission: "quality_v2",
+    core: "core_quality_v6_interpreter_roles",
+    mission: "quality_v3_interpreter_roles",
   },
 } as const;
 
@@ -31,3 +31,4 @@ export const CURRENT_CORE_PROMPT_VERSIONS = CURRENT_CONTENT_RELEASE.corePromptVe
 export const CURRENT_MISSION_PROMPT_VERSIONS = CURRENT_CONTENT_RELEASE.missionPromptVersions;
 export const CURRENT_FEEDBACK_PROMPT_VERSIONS = CURRENT_CONTENT_RELEASE.feedbackPromptVersions;
 export const CURRENT_CORE_QUALITY_PROMPT_VERSION = CURRENT_CONTENT_RELEASE.qualityPromptVersions.core;
+export const CURRENT_MISSION_QUALITY_PROMPT_VERSION = CURRENT_CONTENT_RELEASE.qualityPromptVersions.mission;

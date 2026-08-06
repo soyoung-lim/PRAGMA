@@ -7,7 +7,9 @@ import { PROMPT_SNAPSHOT } from "@/lib/pragma/promptSnapshot.generated";
 import {
   CURRENT_CONTENT_RELEASE_ID,
   CURRENT_CORE_PROMPT_VERSIONS,
+  CURRENT_CORE_QUALITY_PROMPT_VERSION,
   CURRENT_FEEDBACK_PROMPT_VERSIONS,
+  CURRENT_MISSION_QUALITY_PROMPT_VERSION,
   CURRENT_MISSION_PROMPT_VERSIONS,
 } from "../../../supabase/functions/_shared/contentRelease";
 
@@ -33,18 +35,24 @@ describe("prompt snapshot integrity", () => {
     const sceneRepair = prompt("core.user.bilingual_scene_repair");
     const learnerSceneRepair = prompt("core.user.learner_scene_repair");
 
-    expect(system.text).toContain("A=중국어 원발화자, B=한국어 청자");
-    expect(system.text).toContain("왜 통역이 필요한 장면인지");
+    expect(system.text).toContain("A=중국어 원발화자(화행 목적의 소유자)");
+    expect(system.text).toContain("B=한국어 청자");
+    expect(system.text).toContain("P·D·R은 A↔B 관계로만 해석");
+    expect(system.text).toContain("기능적으로 등가하게 재현");
+    expect(system.text).toContain('A를 "저는"·"나는"으로 서술');
     expect(response.text).toContain("통역 참여자 언어: A는 중국어 원발화자, B는 한국어 청자");
-    expect(response.text).toContain("학습자는 A/B와 다른 통역사");
+    expect(response.text).toContain("C는 학습자 통역사");
+    expect(response.text).toContain("통역 P·D·R 준거: A↔B");
+    expect(response.text).toContain("필요한 형식 조정은 허용");
     expect(response.text).toContain("서로 다른 언어인 것은 정상");
     expect(response.text).toContain("두 턴을 같은 언어로 통일하지 마세요");
     expect(repair.text).toContain("자연스러운 한국어 발화");
     expect(repair.text).toContain("중국어로 쓰지 마세요");
     expect(sceneRepair.text).toContain("A=중국어 원발화자, B=한국어 청자");
-    expect(sceneRepair.text).toContain("A/B와 다른 학습자 통역사");
-    expect(sceneRepair.text).toContain("자기 말을 스스로 통역하지 않습니다");
-    expect(sceneRepair.text).toContain("기존 역할·P/D/R·사건은 바꾸지 말고");
+    expect(sceneRepair.text).toContain("C=학습자 통역사");
+    expect(sceneRepair.text).toContain("자기 말을 스스로 통역");
+    expect(sceneRepair.text).toContain("P·D·R은 A↔B 관계");
+    expect(sceneRepair.text).toContain("기존 A/B 역할·P/D/R·사건은 바꾸지 말고");
     expect(learnerSceneRepair.text).toContain("답의 방향을 알려 주는 표현만 제거");
     expect(learnerSceneRepair.text).toContain("관찰 가능한 사실로 그대로 보존");
   });
@@ -65,7 +73,7 @@ describe("prompt snapshot integrity", () => {
     expect(canonicalSource).toContain(
       "'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch'",
     );
-    expect(canonicalSource).toContain("prompt_version: 'quality_v2'");
+    expect(canonicalSource).toContain("CURRENT_MISSION_QUALITY_PROMPT_VERSION");
     expect(canonicalSource).toContain("corePrecedingTurnIssue(");
     expect(canonicalSource).toContain("preceding_turn_repair_applied: precedingTurnRepairApplied");
     expect(canonicalSource).toContain("learner_scene_repair_applied: learnerSceneRepairApplied");
@@ -78,6 +86,8 @@ describe("prompt snapshot integrity", () => {
     expect(canonicalSource).toContain("CURRENT_MISSION_PROMPT_VERSIONS");
     expect(canonicalSource).toContain("CURRENT_FEEDBACK_PROMPT_VERSIONS");
     expect(releaseSource).toContain(`id: "${CURRENT_CONTENT_RELEASE_ID}"`);
+    expect(releaseSource).toContain(`core: "${CURRENT_CORE_QUALITY_PROMPT_VERSION}"`);
+    expect(releaseSource).toContain(`mission: "${CURRENT_MISSION_QUALITY_PROMPT_VERSION}"`);
     for (const version of [
       ...CURRENT_CORE_PROMPT_VERSIONS,
       ...CURRENT_MISSION_PROMPT_VERSIONS,
@@ -122,7 +132,7 @@ describe("prompt snapshot integrity", () => {
 
     expect(system.text).toContain("[context_spec]의 역할 쌍·권리·의무·결정 권한");
     expect(system.text).toContain("화자 A와 상대 B");
-    expect(system.text).toContain("통역 셀에서 학습자는 A도 B도 아닌 별도의 통역사");
+    expect(system.text).toContain("C=학습자 통역사");
     expect(system.text).toContain("서로 다른 종류의 구체적 단서");
     expect(system.text).toContain("장면 시드와 topic_code");
     expect(system.text).toContain("host_family, hotel, neighbor");
@@ -153,7 +163,7 @@ describe("prompt snapshot integrity", () => {
     expect(prompt("core.user.source_repair").text).toContain("유효 글자 수를 반드시");
     expect(prompt("core.user.source_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(critic.text).toContain("국소적 두 턴만 본다");
-    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v9_interpreter_roles_v1");
+    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v10_interpreter_role_contract_v1");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {
     const mission = prompt("mission.system");
@@ -214,12 +224,19 @@ describe("prompt snapshot integrity", () => {
     expect(retry.text).toContain("실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지");
   });
 
-  it("keeps learner context first-person and counterpart-only", () => {
-    for (const entry of [prompt("mission.system"), prompt("mission.system.spoken")]) {
-      expect(entry.text).toContain("학습자 1인칭의 현재 장면");
-      expect(entry.text).toContain("학습자가 마주한 상대의 역할·관계만 한 줄");
-      expect(entry.text).toContain('화자(나)의 역할, "A → B" 구조');
-    }
+  it("keeps translation first-person but interpreting in the learner-interpreter viewpoint", () => {
+    const written = prompt("mission.system");
+    const spoken = prompt("mission.system.spoken");
+
+    expect(written.text).toContain("학습자 1인칭의 현재 장면");
+    expect(written.text).toContain("학습자가 마주한 상대의 역할·관계만 한 줄");
+    expect(written.text).toContain('화자(나)의 역할, "A → B" 구조');
+    expect(spoken.text).not.toContain("학습자 1인칭의 현재 장면");
+    expect(spoken.text).toContain("학습자 통역사 C의 현재 장면");
+    expect(spoken.text).toContain("P·D·R은 A↔B 관계");
+    expect(spoken.text).toContain("A의 1인칭(저는·나는)");
+    expect(spoken.text).toContain("원발화자 A와 청자 B의 역할·관계만 한 줄");
+    expect(spoken.text).toContain("목표어 형식 조정은 허용");
 
     for (const entry of [prompt("core.system.ko_zh"), prompt("core.system.zh_ko")]) {
       expect(entry.text).toContain("학생용 장면 정보");

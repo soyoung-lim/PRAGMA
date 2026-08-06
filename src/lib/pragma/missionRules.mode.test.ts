@@ -33,6 +33,11 @@ const r30Fails = (core: unknown, context: CheckContext) =>
     (violation) => violation.id === "R30" && violation.level === "fail",
   );
 
+const r16Warnings = (core: unknown, context: CheckContext) =>
+  checkCore(core, context).violations.filter(
+    (violation) => violation.id === "R16" && violation.level === "warning",
+  );
+
 describe("R16 명시적 수행 모드 모순", () => {
   it("번역 셀에서 글을 부정하고 직접 말한다고 하면 저장 전 차단한다", () => {
     const core = {
@@ -201,8 +206,61 @@ describe("R16 명시적 수행 모드 모순", () => {
         spokenContext,
       );
       expect(failures.map((item) => item.message)).toContainEqual(
-        expect.stringContaining("학습자가 원발화자를 겸하면 안 됩니다"),
+        expect.stringContaining("학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고"),
       );
+    });
+
+    it("A/B의 직접 협의만 강조하면 차단 대신 사람 확인 경고를 남긴다", () => {
+      const warnings = r16Warnings(
+        spokenCore(
+          "한국어 원발화자와 중국어 청자가 직접 협의하며, 학습자는 두 사람 사이에서 통역한다.",
+        ),
+        spokenContext,
+      );
+      expect(warnings.map((item) => item.message)).toContainEqual(
+        expect.stringContaining("중개 역할이 모호"),
+      );
+    });
+
+    it("신규 통역 코어는 구조화된 A/B/C·PDR 역할 계약도 필요하다", () => {
+      const strictContext: CheckContext = {
+        ...spokenContext,
+        require_context_spec: true,
+      };
+      const situation =
+        "한국어 원발화자와 중국어 청자가 예산을 논의하며, 학습자는 두 사람 사이에서 통역한다.";
+      const commonSpec = {
+        standard_situation_code: "work.schedule_change.request",
+        role_pair: { speaker_ko: "한국 담당자", addressee_ko: "중국 담당자" },
+        speaker_entitlement: "요청 권한",
+        addressee_obligation: "검토 권한",
+        decision_authority: "상대가 결정",
+      };
+      const missingContract = spokenCore(situation) as typeof baseCore & {
+        context_spec?: typeof commonSpec;
+      };
+      missingContract.context_spec = commonSpec;
+      const withContract = {
+        ...spokenCore(situation),
+        context_spec: {
+          ...commonSpec,
+          interpreter_role_contract: {
+            source_speaker: "A",
+            target_addressee: "B",
+            learner_interpreter: "C",
+            pdr_relation: "A_to_B",
+          },
+        },
+      };
+
+      expect(
+        checkCore(missingContract, strictContext).violations.map((item) => item.message),
+      ).toContainEqual(expect.stringContaining("A/B/C 및 P·D·R=A↔B"));
+      expect(
+        checkCore(withContract, strictContext).violations.filter(
+          (item) => item.id === "R25" && item.level === "fail",
+        ),
+      ).toEqual([]);
     });
   });
 

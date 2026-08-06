@@ -118,6 +118,16 @@ export const ContextSpecSchema = z.object({
   speaker_entitlement: z.string().min(1),
   addressee_obligation: z.string().min(1),
   decision_authority: z.string().min(1),
+  /**
+   * 통역 셀에서만 서버가 주입하는 역할 계약. 자연어 situation_ko보다 먼저
+   * A/B/C와 P·D·R 준거를 구조값으로 고정한다. legacy·번역 코어는 부재 가능하다.
+   */
+  interpreter_role_contract: z.object({
+    source_speaker: z.literal("A"),
+    target_addressee: z.literal("B"),
+    learner_interpreter: z.literal("C"),
+    pdr_relation: z.literal("A_to_B"),
+  }).optional(),
 });
 export type ContextSpec = z.infer<typeof ContextSpecSchema>;
 

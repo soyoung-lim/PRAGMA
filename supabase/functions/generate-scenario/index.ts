@@ -35,6 +35,7 @@ import {
   CURRENT_CORE_PROMPT_VERSIONS,
   CURRENT_CORE_QUALITY_PROMPT_VERSION,
   CURRENT_FEEDBACK_PROMPT_VERSIONS,
+  CURRENT_MISSION_QUALITY_PROMPT_VERSION,
   CURRENT_MISSION_PROMPT_VERSIONS,
 } from '../_shared/contentRelease.ts'
 
@@ -648,6 +649,12 @@ interface CoreContextSpec {
   speaker_entitlement: string
   addressee_obligation: string
   decision_authority: string
+  interpreter_role_contract?: {
+    source_speaker: 'A'
+    target_addressee: 'B'
+    learner_interpreter: 'C'
+    pdr_relation: 'A_to_B'
+  }
 }
 const PDR_P_KO: Record<string, string> = {
   speaker_lower: '화자(나)가 상대보다 낮음', equal: '동등', speaker_higher: '화자(나)가 상대보다 높음',
@@ -921,12 +928,23 @@ function buildCoreContextSpec(b: CoreGenBody): CoreContextSpec {
     speaker_ko: '지정된 P·D 조건을 따르는 화자',
     addressee_ko: '지정된 P·D 조건을 따르는 상대',
   }
+  const isInterpreting = coreLengthMode(b) === 'stt_interpreting'
   return {
     standard_situation_code: `${domain}.${b.topic_code ?? 'general'}.${act}`,
     role_pair: rolePair,
     speaker_entitlement: SPEAKER_ENTITLEMENT[act] ?? SPEAKER_ENTITLEMENT.request,
     addressee_obligation: ADDRESSEE_OBLIGATION[act] ?? ADDRESSEE_OBLIGATION.request,
     decision_authority: DECISION_AUTHORITY[act] ?? DECISION_AUTHORITY.request,
+    ...(isInterpreting
+      ? {
+          interpreter_role_contract: {
+            source_speaker: 'A' as const,
+            target_addressee: 'B' as const,
+            learner_interpreter: 'C' as const,
+            pdr_relation: 'A_to_B' as const,
+          },
+        }
+      : {}),
   }
 }
 
@@ -941,7 +959,7 @@ function buildCoreSystemPrompt(direction: Direction): string {
 
 {
   "situation_ko": "학생에게 보여 줄 상황 카드 배경 (한국어 2~3문장: 상대·할 일·접촉 이력·실제 부담)",
-  "relation_ko": "상대의 역할과 나와의 관계를 합친 자연스러운 한 줄 (한국어)",
+  "relation_ko": "번역이면 학습자와 상대의 관계, 통역이면 원발화자 A와 청자 B의 관계를 합친 자연스러운 한 줄 (한국어)",
   "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원문 — 실제 의사소통처럼 이어지는 2~4문장의 담화",
   "preceding_turn": null,
   "brief_note_ko": "편성 화면용 한 줄 요약 (한국어)",
@@ -996,8 +1014,14 @@ function buildCoreSystemPrompt(direction: Direction): string {
 - 화자 A와 상대 B를 먼저 고정하고 situation_ko·relation_ko·preceding_turn·source_text
   전체에서 같은 인물로 유지한다. 문제를 일으킨 사람, 행위 대상, 소유자, 요청받은 수행자를
   대명사·소유 표현까지 포함해 뒤집지 않는다. 요청은 B가 수행하거나 결정할 수 있는 행위여야 한다.
-- 통역 셀에서 학습자는 A도 B도 아닌 별도의 통역사다. A가 화행을 수행하고 B가 그 발화의
-  청자이며, 학습자는 A의 발화를 B에게 옮긴다. 자기 발화를 자기가 통역하는 장면은 실패다.
+- 통역 셀에서 A=${srcL} 원발화자(화행 목적의 소유자), B=${tgtL} 청자, C=학습자 통역사다.
+  세 사람을 서로 다르게 고정하고 P·D·R은 A↔B 관계로만 해석한다. C를 A/B 또는 화행의
+  수행자·수신자로 만들거나, 자기 발화를 자기가 통역하게 하면 실패다.
+- 통역사 C는 A의 발화를 더 공손하거나 더 좋은 말로 자의적으로 개선하지 않는다. A의
+  의미·의도·화용적 힘을 B에게 기능적으로 등가하게 재현한다. 등가는 축자역이 아니므로
+  목표어에 필요한 형식 조정은 허용하지만 A의 힘·태도·화행 목적을 바꾸면 실패다.
+- 통역 situation_ko는 학습자 통역사 관점에서 서술한다. A를 "저는"·"나는"으로 서술하거나
+  A/B를 "학습자"라고 부르지 않는다. 생성 문체에서는 "직접"을 피한다.
 - 산업 배경이 주어지면 직장 장면의 실제 업무·대상·어휘에 드러나야 한다. 산업명을 보지 않고도
   어느 분야인지 추론할 수 있도록 서로 다른 종류의 구체적 단서(업무/대상/전문 어휘) 두 가지 이상을
   넣는다. "회사·프로젝트·제품·고객·행사" 같은 범용어만으로 산업을 구현했다고 보지 않는다.
@@ -1005,9 +1029,9 @@ function buildCoreSystemPrompt(direction: Direction): string {
 - 장면 시드와 topic_code는 사건·행위자·상호작용 목적을 정하는 필수 소재다. 여러 대안이 있으면
   지정 조건에 맞는 한 갈래만 선택하되, 핵심 관계나 사건을 다른 소재로 교체하지 않는다.
   topic_code에 host_family, hotel, neighbor처럼 구체적 관계·장소 명사가 있으면 그것도 필수다.
-- relation_ko는 별도 '상대'·'관계' 태그로 나누지 않고 한 칩에 표시된다. 상대 B의 역할과
-  학습자와의 관계를 한 줄로 자연스럽게 합치되, "학생과 교수"처럼 두 역할을 병렬로
-  나열하거나 화자 역할·A→B 구조·P/D/R 코드를 넣지 않는다.
+- relation_ko는 별도 '상대'·'관계' 태그로 나누지 않고 한 칩에 표시된다. 번역 셀은 상대 B의
+  역할과 학습자와의 관계를, 통역 셀은 원발화자 A와 청자 B의 역할·관계를 한 줄로 자연스럽게
+  합친다. 통역 셀의 relation_ko에 학습자 C와 A/B의 관계를 P·D·R 근거처럼 쓰지 않는다.
 - relation_ko와 상황 속 실제 역할은 지정된 P와 D를 정확히 구현해야 한다.
 - 장면 시드의 인물 관계가 지정된 P·D와 충돌하면, 시드의 소재(상황·사건)는 유지하되
   인물 관계를 P·D에 맞게 재설정한다. 연구 축이 시드보다 우선한다.
@@ -1023,9 +1047,10 @@ function buildCoreSystemPrompt(direction: Direction): string {
   제안·초대는 B에게 실질적 선택권이 있어야 하며, 불만은 문제 책임자나 조정 가능한 상대를 향한다.
 - 수행 모드와 situation_ko의 장면 서술은 반드시 일치해야 한다. 번역 셀을 "직접 말하는
   상황", 통역 셀을 "글로 작성해 보내는 상황"으로 서술하는 식의 명시적 모순은 금지한다.
-- 통역 셀에서는 A=${srcL} 원발화자, B=${tgtL} 청자이고, A/B와 다른 학습자 통역사가 A의
-  ${srcL} 발화를 B에게 ${tgtL}로 옮기는 3자 이중언어 상호작용이다. situation_ko에 세 사람의
-  역할을 자연스럽게 드러내어, 왜 통역이 필요한 장면인지 알 수 있게 한다.
+- 통역 셀에서는 situation_ko의 첫 문장을 "당신은 A와 B 사이에서 통역을 맡았다"는 학습자
+  통역사 관점으로 시작한다. 이어 A=${srcL} 원발화자와 B=${tgtL} 청자의 구체적 역할,
+  A↔B의 접촉 이력과 부담을 자연스럽게 드러낸다. A의 1인칭 시점과 "학습자가 직접
+  요청·사과·불만을 말한다" 같은 당사자 서술은 금지한다.
 - 출력 전에 화행·도메인·P·D·R·수행 모드뿐 아니라 행위자 지시·산업 단서·topic·인접쌍 명제·
   결정 권한·통역 세 참여자 분리·학생용 평가 기준 비노출·상황과 원문의 사건 대응을 내부적으로
   하나씩 대조한다.
@@ -1040,13 +1065,15 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   const tgtL = LANG_KO[tgt]
   const sentencePunctuation = src === 'zh' ? '중국어 종결부호(。！？)' : '한국어 종결부호(.?!)'
   const lengthHintKo = coreLengthHintKo(coreLengthLevel(b), coreLengthMode(b))
+  const isInterpreting = coreLengthMode(b) === 'stt_interpreting'
+  const powerLabel = PDR_P_KO[b.pdr.p] ?? b.pdr.p
   const parts = [
     '[생성 요청]',
     `- 언어 방향: ${LANG_DIR_KO[dir]}`,
     `- 화행: ${b.speech_act_ko}`,
     `- 학습자 수준: ${b.level_ko}`,
     `- 도메인: ${b.domain_ko}`,
-    `- 관계 P(지위): ${PDR_P_KO[b.pdr.p] ?? b.pdr.p}`,
+    `- 관계 P(지위): ${isInterpreting ? powerLabel.replace('화자(나)', '원발화자 A') : powerLabel}`,
     `- 관계 D(거리): ${PDR_D_KO[b.pdr.d] ?? b.pdr.d}`,
     `- 관계 R(부담): ${PDR_R_KO[b.pdr.r] ?? b.pdr.r}`,
     `- 장면 시드: ${b.situation_seed_ko}`,
@@ -1071,6 +1098,12 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
     `- 결정 권한: ${contextSpec.decision_authority}`,
     `- 행위자 고정: A=화자(${contextSpec.role_pair.speaker_ko}), B=상대(${contextSpec.role_pair.addressee_ko}). 모든 필드에서 A/B, 문제 책임자, 요청받은 행위자를 바꾸지 마세요.`,
   )
+  if (isInterpreting) {
+    parts.push(
+      '- 통역 역할 구조: A=원발화자, B=목표 청자, C=학습자 통역사. 세 역할은 서로 다른 사람이며 학습자는 C로만 부르세요.',
+      '- 통역 P·D·R 준거: A↔B. 학습자 C와 A/B의 관계를 P·D·R 근거로 사용하지 마세요.',
+    )
+  }
   if (b.industry) {
     parts.push(
       `- 산업 실현: 산업 라벨을 보지 않고도 분야를 알아볼 수 있는 구체적 업무·대상·전문 어휘 중 서로 다른 종류의 단서 두 가지 이상을 situation_ko/source_text에 넣으세요. 범용어만 쓰면 실패입니다.`,
@@ -1078,8 +1111,11 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   }
   if (b.source_modality === 'spoken') {
     parts.push(
-      `- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 ${srcL} 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지. situation_ko도 직접 말하고 듣는 장면으로 서술하며, 이메일·메신저·글을 작성해 보내는 장면으로 만들지 마세요.`,
-      `- 통역 참여자 언어: A는 ${srcL} 원발화자, B는 ${tgtL} 청자이며, 학습자는 A/B와 다른 통역사로서 A의 말을 B에게 옮깁니다. situation_ko에 세 참여자의 역할을 자연스럽게 명시하세요. 학습자가 A의 화행을 직접 수행하거나 자기 말을 스스로 통역하면 실패입니다.`,
+      `- 수행 모드: 통역 — source_text는 실제 '말로' 전달할 법한 자연스러운 ${srcL} 구두 담화체로 작성(문어체 낭독 금지). 기억 과부하를 유발하는 장문 금지. situation_ko는 통역사의 중개가 필요한 구두 장면으로 서술하며, 이메일·메신저·글을 작성해 보내는 장면으로 만들지 마세요.`,
+      `- 통역 참여자 언어: A는 ${srcL} 원발화자, B는 ${tgtL} 청자, C는 학습자 통역사입니다. situation_ko는 "당신은 A와 B 사이에서 통역을 맡았습니다"처럼 C의 관점으로 시작하고, A/B의 구체 역할과 A↔B 관계를 이어 쓰세요.`,
+      '- 금지: A/B를 학습자라고 부르기, 학습자가 화행을 직접 수행하거나 받기, 자기 발화를 스스로 통역하기, A를 `저는`·`나는`으로 서술하기, P·D·R을 C↔A/B 관계로 바꾸기.',
+      `- 등가 원칙: C는 A의 의미·의도·화용적 힘을 B에게 기능적으로 등가 재현합니다. ${tgtL}에 필요한 형식 조정은 허용하지만 A의 힘·태도·화행 목적을 더 좋게 고치거나 바꾸지 마세요.`,
+      '- 문체: 통역 situation_ko에서는 오해를 부르는 `직접`을 기본적으로 쓰지 마세요. `학습자가 현장에서 직접 통역한다`는 허용되지만, `학습자가 직접 요청한다`·`통역 없이 직접 대화한다`는 실패입니다.',
     )
   } else {
     parts.push(`- 수행 모드: 번역 — source_text는 자연스러운 ${srcL} 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정. situation_ko도 글을 작성해 전달하는 장면으로 서술하며, "글로 남기지 않고 직접 말한다"거나 대면·통화로만 수행하는 장면으로 만들지 마세요.`)
@@ -1202,7 +1238,7 @@ async function corePromptSnapshotHash(): Promise<string> {
     ),
   )
   coreSnapshotHashCache = await sha256Hex(canonicalJson({
-    v: 7,
+    v: 8,
     scope: 'core_generation',
     action: 'core',
     model: PRIMARY_MODEL,
@@ -1370,8 +1406,30 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken
   const bands = f.band_schema.map((b) => `"${b.code}"(${b.label_ko})`).join(' / ')
   const gate1 = `🔴 게이트1(불변항 — 절대 규칙): target·모든 corrections.text·모든 candidates.text·recommended_example·reference_alternatives.text는 **먼저 각 원문의 명제·의도·화행 목적을 유지**해야 합니다. 의미나 의도가 달라진 문장은 화용 판단 후보가 될 수 없습니다. 부적절성은 오직 「${f.learner_label}」 초점의 **과소·적정·과잉 차이**로만 실현합니다. MPJ 문항에는 그 문항 source 밖의 새 사실·이유·대안·수리·보상·새 일정을 추가하지 마세요. DCT reference_alternatives만 사용자 요청서의 [사용 가능한 추가 사실] 폐쇄 목록을 사용할 수 있습니다.`
   const spokenRule = isSpoken
-    ? `\n🔴 이 미션은 통역(구두 담화)입니다. source·target·모든 후보는 **실제 말로 주고받을 법한 구두체**로 작성하세요(이메일 문어체·서면 격식 표현 금지).`
+    ? `\n🔴 이 미션은 통역(구두 담화)입니다. source·target·모든 후보는 **실제 말로 주고받을 법한 구두체**로 작성하세요(이메일 문어체·서면 격식 표현 금지).
+- 모든 장면은 A=${srcL} 원발화자, B=${tgtL} 청자, C=학습자 통역사의 서로 다른 세 참여자로 구성합니다. P·D·R은 A↔B 관계입니다.
+- C는 A의 의미·의도·화용적 힘을 B에게 기능적으로 등가 재현합니다. 목표어 형식 조정은 허용하지만 A의 힘·태도·화행 목적을 자의적으로 개선하지 마세요.
+- situation_ko는 C의 관점으로 쓰고 A를 \`저는\`·\`나는\`으로 서술하지 마세요. A/B를 학습자라고 부르거나 C를 화행 수행자·수신자로 만들면 실패입니다.`
     : ''
+  const situationShape = isSpoken
+    ? '학습자 통역사 관점에서 A·B·C의 서로 다른 역할과 A↔B의 P·D·R 근거가 자연스럽게 이어지는 한국어 2~3문장(A의 1인칭 금지)'
+    : '학습자가 지금 하려는 일을 1인칭으로 시작하고 P·D·R 근거가 자연스럽게 이어지는 한국어 2~3문장'
+  const relationShape = isSpoken
+    ? '원발화자 A와 청자 B의 역할·관계만 한 줄(학습자 C와의 관계·P/D/R 코드 제외)'
+    : '학습자가 마주한 상대의 역할·관계만 한 줄(화자 역할·화살표 제외)'
+  const sceneRules = isSpoken
+    ? `- 통역 situation_ko는 **학습자 통역사 C의 현재 장면**으로 이어지는 2~3문장입니다.
+  첫 문장은 "당신은 A와 B 사이에서 통역을 맡았다"는 구조가 자연스럽게 보이게 하고, 다음 문장에서 A와 B의 구체 역할·접촉 이력과 B가 감수할 부담을 드러내세요.
+  A의 1인칭(저는·나는), A/B를 학습자라고 부르는 표현, 학습자가 직접 화행을 수행·수신하는 표현, 역할 메타데이터 나열은 금지합니다.
+- 통역 relation_ko는 원발화자 A와 청자 B의 역할·관계를 한 줄로 쓰고, 학습자 C와 A/B의 관계를 P·D·R 근거로 쓰지 마세요.`
+    : `- 번역 situation_ko는 코드값을 풀어 쓰는 표가 아니라 **학습자 1인칭의 현재 장면으로 이어지는 2~3문장**이어야 합니다.
+  첫 문장은 "나는 지금 누구에게 무엇을 하려 한다"가 자연스럽게 보이게 하고, 다음 문장에서 D(접촉 이력·친밀도)와 R(상대가 감수할 비용·부담)을 구체화하세요.
+  "상대는 …이고, 나는 …이다"처럼 역할 메타데이터를 나열하지 마세요.
+- 번역 relation_ko는 학습자 화면의 ‘상대’ 칩에 그대로 표시됩니다. **상대의 역할과 관계만** 쓰고,
+  화자(나)의 역할, "A → B" 구조, P/D/R 코드·라벨은 넣지 마세요.`
+  const pdrPerspectiveRule = isSpoken
+    ? '- pdr.p는 **원발화자 A 기준**입니다: A가 청자 B보다 지위가 낮으면 "speaker_lower". relation_ko의 A↔B 관계와 pdr 값이 반드시 일치해야 합니다.'
+    : '- pdr.p는 **화자(나) 기준**입니다: 화자가 상대(상사·교수 등)보다 지위가 낮으면 "speaker_lower". relation_ko의 관계 서술과 pdr 값이 반드시 일치해야 합니다.'
   return `당신은 ${LANG_DIR_KO[direction]} 통번역 교육용 '메타화용 판단 미션'을 설계하는 전문가입니다.
 이번 단원의 화용 초점은 「${f.learner_label}」입니다.
 초점 정의: ${f.operational_definition}
@@ -1403,8 +1461,8 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
     {
       "type": "scale4",
       "channel": "허용 channel 코드",
-      "situation_ko": "학습자가 지금 하려는 일을 1인칭으로 시작하고 P·D·R 근거가 자연스럽게 이어지는 한국어 2~3문장",
-      "relation_ko": "학습자가 마주한 상대의 역할·관계만 한 줄(화자 역할·화살표 제외)",
+      "situation_ko": "${situationShape}",
+      "relation_ko": "${relationShape}",
       "pdr": {"p":"이 표현이 실제로 알맞아지는 코드","d":"…","r":"…"},
       "source": "판단 대상의 실제 ${srcL} 발화",
       "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
@@ -1418,8 +1476,8 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
     {
       "type": "fix_choice",
       "channel": "허용 channel 코드",
-      "situation_ko": "학습자가 지금 하려는 일을 1인칭으로 시작하고 P·D·R 근거가 자연스럽게 이어지는 한국어 2~3문장",
-      "relation_ko": "학습자가 마주한 상대의 역할·관계만 한 줄(화자 역할·화살표 제외)",
+      "situation_ko": "${situationShape}",
+      "relation_ko": "${relationShape}",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
       "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
@@ -1438,8 +1496,8 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
     {
       "type": "reason",
       "channel": "허용 channel 코드",
-      "situation_ko": "첫 문항과 다른 사건에서 학습자가 지금 하려는 일을 1인칭으로 시작하고 같은 P·D·R 근거가 드러나는 한국어 2~3문장",
-      "relation_ko": "학습자가 마주한 상대의 역할·관계만 한 줄(화자 역할·화살표 제외)",
+      "situation_ko": "첫 문항과 다른 사건. ${situationShape}",
+      "relation_ko": "${relationShape}",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
       "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
@@ -1458,8 +1516,8 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
     {
       "type": "multi_judge",
       "channel": "허용 channel 코드",
-      "situation_ko": "앵커 PDR에서 정확히 한 축만 바꾼 뒤 학습자가 지금 하려는 일을 1인칭으로 시작하는 한국어 2~3문장",
-      "relation_ko": "바뀐 P/D/R 한 축이 드러나는 상대의 역할·관계만 한 줄(화자 역할·화살표 제외)",
+      "situation_ko": "앵커 PDR에서 정확히 한 축만 바꾼 장면. ${situationShape}",
+      "relation_ko": "${relationShape}",
       "pdr": {"p":"앵커와 같거나 한 축만 다른 코드","d":"…","r":"…"},
       "source": "비교 대상의 실제 ${srcL} 발화",
       "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
@@ -1519,17 +1577,12 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
 - **앵커+대비**: fix_choice와 reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건,
   scale4는 해당 표현이 실제로 적절해지는 대비 P/D/R, multi_judge는 DCT P/D/R 중 정확히 한 축만 바꾼 대비 사건입니다.
 - DCT는 코어의 같은 P/D/R에서 새 장면을 쓰는 근접 전이 과제입니다. MPJ가 DCT 상황문을 그대로 복제하면 안 됩니다.
-- situation_ko는 코드값을 풀어 쓰는 표가 아니라 **학습자 1인칭의 현재 장면으로 이어지는 2~3문장**이어야 합니다.
-  첫 문장은 "나는 지금 누구에게 무엇을 하려 한다"가 자연스럽게 보이게 하고, 다음 문장에서 D(접촉 이력·친밀도)와 R(상대가 감수할 비용·부담)을 구체화하세요.
-  "상대는 …이고, 나는 …이다"처럼 역할 메타데이터를 나열하지 마세요.
-- relation_ko는 학습자 화면의 ‘상대’ 칩에 그대로 표시됩니다. **상대의 역할과 관계만** 쓰고,
-  화자(나)의 역할, "A → B" 구조, P/D/R 코드·라벨은 넣지 마세요.
+${sceneRules}
 - channel은 연구 축이 아니라 UI 표현용입니다. 상황과 일치시켜 번역은 email/messenger, 통역은 facetoface/phone만 사용하세요.
 - reason의 세 선택지는 target을 사실대로 기술해야 합니다. 실제 있는 요소를 "없다"고 쓰지 말고, 세 선택지 모두 표면상 검토할 가치가 있어야 하며 primary 하나만 판정의 가장 큰 원인이어야 합니다.
 - 모든 문항의 source는 **실제 ${srcL} 발화**(학습자가 옮길 원문 문장)여야 합니다 —
   "~에 대한 감사 인사" 같은 설명문 금지.
-- pdr.p는 **화자(나) 기준**입니다: 화자가 상대(상사·교수 등)보다 지위가 낮으면 "speaker_lower".
-  relation_ko의 관계 서술과 pdr 값이 반드시 일치해야 합니다.
+${pdrPerspectiveRule}
 - 모든 target·교정안·후보는 해당 source의 핵심 명제·발화 의도·화행 목적을 유지합니다.
   MPJ에서는 원문 밖의 새 사실 추가 금지(정형 표현 ${formulaic}는 예외).
 - DCT의 usable_facts는 reference_alternatives에서만 사용할 수 있고, 사실 유무를 정답 단서로 만들지 마세요.
@@ -1793,6 +1846,10 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
    서술어를 갖춘 완전문이거나, 해당 관계·매체에서 실제로 쓰지 않을 문어체면 지적하라.
    ※ 유행어를 넣으라는 뜻이 아니다. **그 관계에서 실제로 그렇게 말하는가**만 본다.
 ⑦ internal_inconsistency — 상황 설명·관계·선행 발화·해설·정답 키가 서로 어긋나는가.
+   통역 미션이면 각 MPJ 장면에서 A=원발화자, B=청자, C=학습자 통역사가 서로 다른지,
+   P·D·R이 A↔B인지 논항 구조로 확인한다. A/B를 학습자라고 부르거나 C가 화행을 직접
+   수행·수신하거나 A의 1인칭 시점으로 서술하면 fail이다. "듣는다"라는 동사만으로 판단하지
+   말고 C가 A의 원발화를 듣는지, B로서 감사·사과 등을 받는지를 구분한다.
 ⑧ scene_underspecified — 학습자에게 보이는 situation_ko만 읽어도 **판단에 필요한 장면이
    관찰 가능한 사실로 그려지는가**(0-r·107). ①누구에게 무엇을 하려는지 ②관계·접촉 이력
    ③상대가 실제로 감당할 부담·조정 범위 ④앞선 대화가 있다면 그 사실과 preceding_turn을
@@ -1864,9 +1921,20 @@ function buildCoreQualitySystemPrompt(direction: Direction): string {
 - situation_ko는 학습자에게 보이는 장면이다. 내부 권리·의무나 정답에 포함할 표현 자원을
   평가 기준처럼 설명하거나, 기록 목적·즉시 반응 여부를 연구 설명처럼 서술하면 learner_scene을
   fail로 두고 관찰 가능한 상대·용건·접촉 이력·실제 부담만 남기도록 지적한다.
-- 통역 mode에서는 A=source_text 원발화자, 학습자=통역사, B=target 언어 청자가 서로 다른
-  세 사람이어야 한다. 학습자가 A의 화행을 직접 수행하면서 자기 말을 통역하거나, A/B 중 한 명을
-  통역사로 겸하게 하면 participant_roles fail이다. 언어명과 '통역' 단어만 있다고 pass하지 마라.
+- 통역 mode에서는 먼저 논항 구조를 적어 대조한다: 누가(A) 어떤 화행을 누구에게(B) 하며,
+  누가(C) 그 원발화를 옮기는가. A=source_text 원발화자, B=target 언어 청자, C=학습자
+  통역사는 서로 다른 세 사람이고 P·D·R은 A↔B 관계다. "학습자"는 C에만 결속한다.
+  A/B를 학습자라고 부르거나, C가 화행을 직접 수행·수신하거나, 자기 말을 통역하거나,
+  P·D·R을 C↔A/B 관계로 서술하면 participant_roles fail이다. 언어명과 '통역' 단어만
+  있다고 pass하지 마라. "듣는다" 자체는 결함이 아니며, C가 A의 원발화를 듣는지 B로서
+  감사·사과 등을 받는지를 논항으로 구분한다.
+- 통역 situation_ko는 C의 관점이어야 한다. A를 "저는"·"나는"으로 서술하면
+  participant_roles fail이다. "학습자가 현장에서 직접 통역한다"는 허용하고,
+  "학습자가 직접 [화행]한다"·"통역 없이 직접 대화한다"는 fail, A/B가 직접 협의한다고만
+  적어 중개가 모호하면 warning이다.
+- 통역 target·후보는 A의 의미·의도·화용적 힘을 B에게 기능적으로 등가 재현해야 한다.
+  목표어 형식 조정은 축자역을 피하기 위해 허용하지만, A의 힘·태도·화행 목적을 자의적으로
+  더 좋게 고치면 의미 또는 후보 자격 결함이다.
 - scene_source_alignment는 situation_ko와 source_text의 사건·행위·문제·일정·대상 목록을
   각각 먼저 추출해 대조한다. 상황에만 있는 핵심 사건이나 원문에만 있는 핵심 사건, 행위자·소유자
   역전은 fail이다. 넓은 범주의 자연스러운 요약은 허용하되 없는 사건을 보충했다고 추측하지 마라.
@@ -1906,7 +1974,7 @@ function buildCoreQualitySystemPrompt(direction: Direction): string {
 10. decision_authority: 화행별 결정·수행·승인 권한이 있는 사람을 향하는가
 11. topic_seed: 지정 시드의 핵심 관계·사건·목적을 유지했는가
 12. adjacency: 응답 화행의 명제와 화자 지시가 일관된 인접쌍인가
-13. participant_roles: 통역이면 A·학습자 통역사·B가 서로 다른 세 참여자인가
+13. participant_roles: 통역이면 A·B·학습자 통역사 C가 서로 다르고 P·D·R이 A↔B이며, 학습자가 화행 수행자·수신자가 아닌가
 14. scene_source_alignment: situation_ko와 source_text의 핵심 사건·행위자·대상이 대응하는가
 15. learner_scene: 학생용 상황문이 답의 화용 방향이나 내부 평가 기준을 노출하지 않는가
 
@@ -2308,7 +2376,7 @@ Deno.serve(async (req) => {
             .filter((seg) => seg.text.length > 0 && sourceText.includes(seg.text))
             .slice(0, 3)
         : []
-      const corePromptVersion = sourceRepairApplied || precedingTurnRepairApplied || bilingualSceneRepairApplied
+      const corePromptVersion = sourceRepairApplied || precedingTurnRepairApplied || bilingualSceneRepairApplied || learnerSceneRepairApplied
         ? CURRENT_CORE_PROMPT_VERSIONS[1]
         : CURRENT_CORE_PROMPT_VERSIONS[0]
       const generatedAt = new Date().toISOString()
@@ -2633,7 +2701,7 @@ Deno.serve(async (req) => {
       const model = CRITIC_PRIMARY_MODEL
       const att = await callOpenAI(CRITIC_PRIMARY_MODEL, apiKey, sys, usr, 0.2, {
         telemetry: telemetryFor('mission_critic', true, {
-          promptVersion: 'quality_v2',
+          promptVersion: CURRENT_MISSION_QUALITY_PROMPT_VERSION,
         }),
       })
       if (!att.ok) {
@@ -2680,10 +2748,10 @@ Deno.serve(async (req) => {
             summary_ko: typeof parsed.summary_ko === 'string' ? parsed.summary_ko.slice(0, 400) : '',
             findings,
             model,
-            prompt_version: 'quality_v2',
+            prompt_version: CURRENT_MISSION_QUALITY_PROMPT_VERSION,
             checked_at: checkedAt,
           },
-          meta: { provider: PROVIDER, model, prompt_version: 'quality_v2', generated_at: checkedAt },
+          meta: { provider: PROVIDER, model, prompt_version: CURRENT_MISSION_QUALITY_PROMPT_VERSION, generated_at: checkedAt },
         }),
         { status: 200, headers: jsonHeaders },
       )
