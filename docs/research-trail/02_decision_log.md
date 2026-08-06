@@ -1480,3 +1480,32 @@
   `supabase/functions/_shared/contentRelease.ts`, `src/lib/pragma/coreSourceRepair.test.ts`,
   `docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v54/`
 - 관련 Iteration / Evidence / Trace: `ITER-20260806-02`, `EVD-20260806-04`, `TRC-20260806-01`
+
+## DEC-20260806-03 · 외부 AI의 직접 Git 쓰기는 이력을 보존한 전진 복구와 독립 게이트로 통제한다
+
+- 날짜: 2026-08-06
+- 상태: 채택·로컬 복구 및 검증 완료, push·배포 미실행
+- 문제:
+  - Lovable bot이 `main`에 npm 방침과 다른 락파일을 추가하고 최신 Supabase 타입을 낡은
+    스키마 시야로 축소했다.
+  - Railway build 성공은 TypeScript 타입 손실을 탐지하지 못했고, 제3 도구가 정본 변경과
+    검증 게이트를 우회할 수 있었다.
+- 검토한 대안:
+  - bot 커밋을 이력에서 제거: 사건 계보와 DDR 협업 증거가 사라져 기각.
+  - `b63784c` 타입을 그대로 복원: 필수 정의는 복구되지만 현재 DB의 호출 원장 table과 신규
+    RPC가 빠져 있어 기각.
+  - 운영 DB에서 타입만 읽기 전용 재생성하고 npm 단일 락을 복구하는 후속 커밋: 채택.
+- 결정:
+  1. `004a04a`·`5a2c5d5`는 이력에 보존하고 후속 복구 커밋으로 정정한다.
+  2. Supabase 생성 타입의 정본은 현재 연결된 운영 DB 스키마에서 읽기 전용 생성한 결과로 한다.
+  3. 이 프로젝트는 `package-lock.json`을 단일 의존성 락으로 유지하며 `bun.lock`·`bun.lockb`를
+     저장소에 두지 않는다.
+  4. Railway/Vite build와 별개로 `npm run typecheck`를 필수 독립 게이트로 유지한다.
+  5. 제3 AI 도구의 GitHub 직접 쓰기 연결은 사용자가 명시적으로 관리하고, 외부 상태 보고는
+     Git·Railway·Supabase 직접 조회와 대조한다.
+- 근거: 운영 DB 재생성본은 public table/RPC 21/7로 Lovable 12/3과 `b63784c` 20/6보다
+  최신이며, 필수 12개 정의를 모두 포함한다. 복구 뒤 typecheck, 전체 284 tests, production
+  build가 통과했다.
+- 관련 파일: `src/integrations/supabase/types.ts`, `package-lock.json`,
+  `docs/dev-log/2026-08-06-lovable-git-contamination-recovery.md`
+- 관련 Iteration / Evidence: `ITER-20260806-03`, `EVD-20260806-06`
