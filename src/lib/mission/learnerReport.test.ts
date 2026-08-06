@@ -114,6 +114,9 @@ describe("buildLearnerReport", () => {
       },
     });
     expect(report.headline).toContain("최근에는 “가능하다면…” 표현을 써보기도 했어요");
+    expect(report.nextStep).toBe(
+      "‘麻烦您’ 외에도 ‘가능하다면…’이라고 먼저 말하거나, 가능한지를 묻는 다른 방식도 시도해 볼 수 있어요.",
+    );
     expect(report.correctionNotes).toHaveLength(13);
     expect(report.correctionNotes[0]).toMatchObject({
       speechActLabel: "요청",

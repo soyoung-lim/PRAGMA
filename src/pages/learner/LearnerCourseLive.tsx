@@ -166,7 +166,7 @@ const LearnerCourseLive = () => {
             {/* ② 9개 화행의 다양성 */}
             <div className="mt-6">
               <h3 className="text-[14.5px] font-bold">
-                요청부터 반대·이견까지, {actWeeks.length}가지 상황을 연습합니다
+                요청부터 반대·이견까지, {actWeeks.length}가지 화행을 연습합니다
               </h3>
               <p className="mt-0.5 text-[12px] text-muted-foreground">
                 {progressFailed

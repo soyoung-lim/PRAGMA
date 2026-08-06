@@ -267,7 +267,7 @@ const LearnerRecords = () => {
                         같은 조건의 기록을 더 모으고 있어요
                       </h3>
                       <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                        같은 화용 초점과 수행 방식에서 AI 피드백 판정이 3회 이상 쌓이면 분포를 보여드려요.
+                        같은 학습 목표와 수행 방식(번역·통역)에서 AI 피드백 판정이 3회 이상 쌓이면 분포를 보여드려요.
                       </p>
                     </div>
                   </div>
