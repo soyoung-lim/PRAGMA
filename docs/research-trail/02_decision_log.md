@@ -1451,7 +1451,7 @@
 ## DEC-20260806-02 · 통역 역할 검증기 교정은 새 후보 세대로 분리하고 재배포 전 의미 경계를 보류한다
 
 - 날짜: 2026-08-06
-- 상태: 채택·운영 Edge v55 배포 완료, Railway 후속 `5a2c5d5` SUCCESS, `_02` 재카나리 미실행
+- 상태: 채택·운영 Edge v55 배포 및 `_02` 재카나리 완료, 추가 수정·재생성 판단 대기
 - 문제:
   - v54 통역 core-only 18건에서 자동 게이트가 1건만 통과했으나, 사람 판정은 A/B/C와 A↔B
     P·D·R을 18건 모두 분리했다.
@@ -1480,6 +1480,15 @@
   `supabase/functions/_shared/contentRelease.ts`, `src/lib/pragma/coreSourceRepair.test.ts`,
   `docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v54/`
 - 관련 Iteration / Evidence / Trace: `ITER-20260806-02`, `EVD-20260806-04`, `TRC-20260806-01`
+
+### v55 `_02` 운영 재카나리 후속
+
+- 승인된 통역 core-only 18건의 자동 전체 통과는 2/18, R16 실패 15, R29 실패 3이었다.
+- `repair_v2` 16회가 모두 공급자 success였지만 최종 역할·언어 가시성 실패를 제거하지 못했다.
+- 사람 판정에서도 K8의 A/C 합체와 Z5의 learner 지시 분열이 남았고, LV는 2P·1U·15F였다.
+- 따라서 `_02` 배포 완료를 역할 계약 LOCK 근거로 사용하지 않는다. 사람 판정 경계의
+  교차검증과 생성·repair 전략의 별도 결정 전에는 추가 생성으로 넘어가지 않는다.
+- 관련 Evidence: `EVD-20260806-07`
 
 ## DEC-20260806-03 · 외부 AI의 직접 Git 쓰기는 이력을 보존한 전진 복구와 독립 게이트로 통제한다
 
