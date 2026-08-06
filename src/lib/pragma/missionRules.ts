@@ -48,6 +48,7 @@ import {
   CORE_SOURCE_SENTENCE_MAX,
   CORE_SOURCE_SENTENCE_MIN,
   coreBilingualSceneIssue,
+  coreBilingualSceneWarning,
   coreLearnerSceneIssue,
   countCoreSourceSentences,
 } from "../../../supabase/functions/_shared/coreSourceRepair";
@@ -275,6 +276,17 @@ export function checkCore(coreInput: unknown, ctx: CheckContext): RuleResult {
   if (ctx.require_context_spec && !core.context_spec) {
     add(v, "R25", "fail", "신규 코어에 서버 주입 context_spec이 없음");
   }
+  if (
+    ctx.require_context_spec &&
+    ctx.mode === "stt_interpreting" &&
+    (!core.context_spec?.interpreter_role_contract ||
+      core.context_spec.interpreter_role_contract.source_speaker !== "A" ||
+      core.context_spec.interpreter_role_contract.target_addressee !== "B" ||
+      core.context_spec.interpreter_role_contract.learner_interpreter !== "C" ||
+      core.context_spec.interpreter_role_contract.pdr_relation !== "A_to_B")
+  ) {
+    add(v, "R25", "fail", "신규 통역 코어의 context_spec에 A/B/C 및 P·D·R=A↔B 역할 계약이 없음");
+  }
 
   // theme↔domain 허용 매핑(R1c 확장)
   if (!isThemeDomainValid(ctx.theme_code, ctx.domain)) {
@@ -349,6 +361,13 @@ function checkCoreCommon(
   );
   if (bilingualSceneIssue) {
     add(v, "R16", "fail", `통역 셀인데 이중언어 화자·통역 개입 장면이 불명확함: ${bilingualSceneIssue.message}`);
+  }
+  const bilingualSceneWarning = coreBilingualSceneWarning(
+    situation,
+    ctx.mode === "stt_interpreting",
+  );
+  if (bilingualSceneWarning) {
+    add(v, "R16", "warning", `통역 역할 확인 필요: ${bilingualSceneWarning.message}`);
   }
   const learnerSceneIssue = coreLearnerSceneIssue(situation);
   if (learnerSceneIssue) {

@@ -4,6 +4,7 @@ import {
   buildCoreOutputRepairPrompt,
   buildCoreSourceRepairPrompt,
   coreBilingualSceneIssue,
+  coreBilingualSceneWarning,
   coreLearnerSceneIssue,
   corePrecedingTurnIssue,
   coreSourceIssue,
@@ -166,6 +167,69 @@ describe("core source discourse boundary", () => {
         true,
       ),
     ).toBeNull();
+  });
+
+  it("부분 블라인드 패킷의 역할 중첩·A 1인칭 사례를 새 계약으로 구분한다", () => {
+    const firstPerson = coreBilingualSceneIssue(
+      "저는 한국 제조업체의 해외 무역 담당자입니다. 중국어 청자와 협의하며, 학습자는 한국어 원발화자와 청자 사이에서 통역합니다.",
+      "ko",
+      "zh",
+      true,
+    );
+    const learnerAsCustomer = coreBilingualSceneIssue(
+      "학습자는 호텔 고객으로, 중국어 청자인 직원에게 문제 해결을 요청한다. 학습자는 한국어 원발화자의 말을 통역한다.",
+      "ko",
+      "zh",
+      true,
+    );
+    const learnerAsRecipient = coreBilingualSceneIssue(
+      "중국어 원발화자인 담당자인 나는 한국어 청자인 학생에게 감사한다. 학습자는 통역사이면서 감사 인사를 듣는다.",
+      "zh",
+      "ko",
+      true,
+    );
+
+    expect(firstPerson?.missing).toContain("source_first_person");
+    expect(learnerAsCustomer?.missing).toContain("role_overlap");
+    expect(learnerAsRecipient?.missing).toEqual(
+      expect.arrayContaining(["role_overlap", "source_first_person"]),
+    );
+  });
+
+  it("통역사가 원발화를 듣는 정상 논항은 차단하지 않는다", () => {
+    expect(
+      coreBilingualSceneIssue(
+        "당신은 중국어 원발화자와 한국어 청자 사이에서 통역을 맡았다. 학습자는 원발화자의 말을 듣고 청자에게 옮긴다.",
+        "zh",
+        "ko",
+        true,
+      ),
+    ).toBeNull();
+  });
+
+  it("'직접'은 역할에 따라 hard fail·warning·허용으로 나눈다", () => {
+    expect(
+      coreBilingualSceneIssue(
+        "한국어 원발화자와 중국어 청자 사이에서 학습자가 현장에서 직접 통역한다.",
+        "ko",
+        "zh",
+        true,
+      ),
+    ).toBeNull();
+    expect(
+      coreBilingualSceneWarning(
+        "한국어 원발화자와 중국어 청자가 직접 협의하며 학습자는 통역한다.",
+        true,
+      )?.code,
+    ).toBe("ambiguous_direct_party_interaction");
+    expect(
+      coreBilingualSceneIssue(
+        "한국어 원발화자와 중국어 청자가 통역 없이 직접 대화하고 학습자는 통역사로 참여한다.",
+        "ko",
+        "zh",
+        true,
+      )?.missing,
+    ).toContain("role_overlap");
   });
 
   it("학생용 상황문의 정답 방향 노출을 별도 오류로 잡는다", () => {

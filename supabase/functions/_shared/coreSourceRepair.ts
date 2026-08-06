@@ -49,7 +49,13 @@ export interface CoreBilingualSceneIssue {
     | 'interpreting'
     | 'learner_interpreter'
     | 'role_overlap'
+    | 'source_first_person'
   >
+  message: string
+}
+
+export interface CoreBilingualSceneWarning {
+  code: 'ambiguous_direct_party_interaction'
   message: string
 }
 
@@ -68,8 +74,15 @@ const CORE_SCENE_LANGUAGE_MARKER: Record<CoreLanguage, RegExp> = {
   zh: /중국|중국어|중화권/u,
 }
 
-const LEARNER_INTERPRETER_MARKER = /(?:학습자|학생)(?:는|가|에게|이)?[^.!?]{0,50}(?:통역|옮기|전달)/u
-const LEARNER_SPEAKER_OVERLAP = /(?:학습자|학생)(?:는|가|이)?[^.!?]{0,25}(?:중국어|한국어)\s*화자(?:로서|이며|이고|이다|역할)|(?:학습자|학생)(?:는|가|이)?[^.!?]{0,80}(?:직접|스스로)[^.!?]{0,45}(?:말|발화|구두|초대|불만|요청|거절|감사|사과|제안)[^.!?]{0,80}(?:통역|옮기)/u
+const LEARNER_INTERPRETER_MARKER = /(?:학습자|학생)(?:는|가|에게|이|인)?[^.!?]{0,50}(?:통역|옮기|옮긴|옮겨|전달)/u
+const LEARNER_LANGUAGE_SPEAKER = /(?:학습자|학생)(?:는|가|이)?[^.!?]{0,25}(?:중국어|한국어)\s*화자(?:로서|이며|이고|이다|역할)/u
+const LEARNER_PARTY_ROLE = /(?:학습자|학생)(?:는|가|이)\s*(?:호텔\s*)?(?:고객|투숙객|학생|조원|직원|담당자|교수|연구원|상사|후배|선배)(?:으로|로|이며|이고|이다|입니다)|(?:학습자|학생)인\s*(?:고객|투숙객|학생|조원|직원|담당자|교수|연구원|상사|후배|선배)(?:은|는|이|가)/u
+const LEARNER_DIRECT_SPEECH_ACT = /(?:학습자|학생)(?:는|가|이)?[^.!?]{0,90}(?:직접\s*(?:말|구두|발화)[^.!?]{0,30}|(?:상대|청자|직원|담당자|고객|학생|상사|교수)에게[^.!?]{0,45})(?:요청하|거절하|감사하|사과하|제안하|초대하|반대하|칭찬하|불만(?:을|을\s*직접)?\s*(?:말하|제기하)|말하)/u
+const LEARNER_SPEECH_ACT_RECIPIENT = /(?:학습자|학생)(?:는|가|이)?[^.!?]{0,70}(?:감사|사과|칭찬|초대|요청|불만|제안|반대)(?:\s*인사|\s*말)?(?:을|를)?[^.!?]{0,18}(?:듣|받)/u
+const LEARNER_SELF_INTERPRETING = /(?:학습자|학생)(?:는|가|이)?[^.!?]{0,60}(?:자기|자신)(?:의)?\s*(?:말|발화)[^.!?]{0,45}(?:통역|옮기|전달)/u
+const SOURCE_FIRST_PERSON_NARRATION = /(?:^|[.!?]\s*)(?:저는|나는)\s|원발화자[^.!?]{0,35}(?:저는|나는)\s/u
+const NO_INTERPRETER_DIRECT_TALK = /통역\s*(?:이|을|가)?\s*없이(?:도)?[^.!?]{0,30}(?:직접\s*)?(?:대화|협의|논의|말)/u
+const AMBIGUOUS_DIRECT_PARTY_INTERACTION = /(?:원발화자|화자|청자|담당자|직원|고객|학생|A|B)[^.!?]{0,55}직접[^.!?]{0,25}(?:대화|협의|논의|말)/u
 
 const LEARNER_SCENE_EVALUATION_CUES = [
   /부담(?:을|이)\s*(?:주지|느끼지)\s*않[^.!?]{0,35}(?:정중|공손)/u,
@@ -101,13 +114,39 @@ export function coreBilingualSceneIssue(
   if (!CORE_SCENE_LANGUAGE_MARKER[targetLanguage].test(value)) missing.push('target_speaker')
   if (!/통역/u.test(value)) missing.push('interpreting')
   if (!LEARNER_INTERPRETER_MARKER.test(value)) missing.push('learner_interpreter')
-  if (LEARNER_SPEAKER_OVERLAP.test(value)) missing.push('role_overlap')
+  if (
+    LEARNER_LANGUAGE_SPEAKER.test(value) ||
+    LEARNER_PARTY_ROLE.test(value) ||
+    LEARNER_DIRECT_SPEECH_ACT.test(value) ||
+    LEARNER_SPEECH_ACT_RECIPIENT.test(value) ||
+    LEARNER_SELF_INTERPRETING.test(value) ||
+    NO_INTERPRETER_DIRECT_TALK.test(value)
+  ) missing.push('role_overlap')
+  if (SOURCE_FIRST_PERSON_NARRATION.test(value)) missing.push('source_first_person')
   if (missing.length === 0) return null
   return {
     sourceLanguage,
     targetLanguage,
     missing,
-    message: `통역 situation_ko에는 서로 다른 ${CORE_LANGUAGE_KO[sourceLanguage]} 원발화자·학습자 통역사·${CORE_LANGUAGE_KO[targetLanguage]} 청자가 드러나야 하며, 학습자가 원발화자를 겸하면 안 됩니다.`,
+    message: `통역 situation_ko에는 서로 다른 ${CORE_LANGUAGE_KO[sourceLanguage]} 원발화자 A·${CORE_LANGUAGE_KO[targetLanguage]} 청자 B·학습자 통역사 C가 드러나야 합니다. 학습자는 A/B나 화행 수행자·수신자를 겸할 수 없고, A의 1인칭 시점으로 서술하면 안 됩니다.`,
+  }
+}
+
+/**
+ * `직접` 자체는 금칙어가 아니다. 학습자가 현장에서 직접 통역하는 서술은 허용하고,
+ * A/B가 직접 대화·협의한다고만 써 중개 여부가 모호한 경우만 사람 확인 경고로 돌린다.
+ */
+export function coreBilingualSceneWarning(
+  situationKo: unknown,
+  required: boolean,
+): CoreBilingualSceneWarning | null {
+  if (!required) return null
+  const value = typeof situationKo === 'string' ? situationKo.trim() : ''
+  if (!AMBIGUOUS_DIRECT_PARTY_INTERACTION.test(value)) return null
+  if (/(?:학습자|학생)[^.!?]{0,35}직접[^.!?]{0,12}통역/u.test(value)) return null
+  return {
+    code: 'ambiguous_direct_party_interaction',
+    message: 'A/B가 직접 대화·협의한다고 서술되어 통역사의 중개 역할이 모호할 수 있습니다.',
   }
 }
 
@@ -336,9 +375,11 @@ export function buildCoreOutputRepairPrompt(input: CoreOutputRepairPromptInput):
     const targetLanguage = CORE_LANGUAGE_KO[input.bilingualSceneIssue.targetLanguage]
     repairRules.push(
       `- situation_ko 오류: ${input.bilingualSceneIssue.message}`,
-      `- situation_ko에 A=${sourceLanguage} 원발화자, B=${targetLanguage} 청자, 그리고 A/B와 다른 학습자 통역사의 세 참여자를 자연스럽게 명시하세요.`,
-      '- 학습자는 A의 말을 B에게 옮길 뿐, A의 화행을 직접 수행하거나 자기 말을 스스로 통역하지 않습니다.',
-      '- 기존 역할·P/D/R·사건은 바꾸지 말고 세 사람의 언어 역할과 통역 개입만 분명히 하세요.',
+      `- situation_ko는 "당신은 A와 B 사이에서 통역을 맡았습니다"처럼 학습자 통역사 C의 관점으로 시작하세요. A=${sourceLanguage} 원발화자, B=${targetLanguage} 청자, C=학습자 통역사의 세 참여자를 자연스럽게 명시하세요.`,
+      '- `학습자`는 C만 가리킵니다. A/B를 학습자라고 부르거나, 학습자가 화행을 직접 수행·수신하거나 자기 말을 스스로 통역하게 만들지 마세요.',
+      '- A를 `저는`·`나는`으로 서술하지 마세요. P·D·R은 A↔B 관계이며 C와 A/B의 관계가 아닙니다.',
+      '- C는 A의 의미·의도·화용적 힘을 기능적으로 등가 재현합니다. 목표어 형식 조정은 허용하지만 힘·태도·화행 목적을 자의적으로 개선하지 마세요.',
+      '- 기존 A/B 역할·P/D/R·사건은 바꾸지 말고 세 사람의 언어 역할과 통역 개입만 분명히 하세요.',
     )
   }
 
