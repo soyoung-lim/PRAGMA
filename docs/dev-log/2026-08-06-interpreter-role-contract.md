@@ -143,3 +143,28 @@
   16건과 fast-refresh warning 10건 때문에 실패했으며 변경 파일 lint는 통과했다.
 - 구현 커밋은 `7c7246c`다. Edge·Railway 배포, AI 생성, DB 쓰기, 미션 승격, push는 하지 않았다.
   H6 사건 대응 3건과 K1 언어 역할 경계의 Fable flag는 계속 `FLAGGED_NOT_SENT`로 남긴다.
+
+## 승인 후 v56 `_03` Edge 배포·DB 미저장 재카나리
+
+- 배포 직전 GitHub `main`과 `origin/main`은 `5a2c5d5`, 로컬은 clean `812c099`로 5커밋
+  앞선 상태였다. Railway production은 `5a2c5d5`·`SUCCESS`·`RUNNING`으로 재확인했고
+  변경하지 않았다.
+- 사용자 승인 뒤 `generate-scenario`만 v56으로 배포했다. 2026-08-06 16:07:25 KST 기준
+  `ACTIVE`, `verify_jwt=true`, bundle SHA-256은
+  `6ed9f8055907d3daa6e5c01281a276cc9461730aecf88e82a709f12f19817f3c`다.
+- 배포 소스를 API로 다시 내려받아 엔트리와 `_shared` 6개를 비교했고 LF 정규화 SHA-256이
+  7/7 일치했다.
+- 같은 결정론적 18셀을 통역 core-only로 생성했다. 자동 결과는 clean pass 14, warning 1,
+  fail 3이다. R16 fail은 0이고 Z6의 `직접 말로`만 warning 1, fail 3건은 전부 R29 길이다.
+- 모델이 18건 모두 표준 역할·언어 첫 문장을 직접 반환해 결정론적 후처리 적용은 0건이지만,
+  최종 `bilingual_scene_issue_remaining`도 0건이었다. source repair는 10회 시도·7회 채택됐다.
+- 사람 판정은 H1~H5와 LV가 각각 18/18 통과, H6는 16P·2F다. Z3은 상황에 없는 미래 협업을
+  추가했고 Z9은 업무 지시 누락·자료 품질 문제를 보고서 미수신·연구 지연으로 바꿨다.
+- 읽기 전용 SQL로 `_03` scenarios 0, missions 0을 확인했다. 호출 원장은 generate 18회
+  73,689 tokens, repair 10회 47,420 tokens로 모두 success·fallback 0, 총 121,109 tokens다.
+- 원본 79,442 bytes SHA-256은
+  `260E1D81B40CF6D1A2C2B7C2FAF843C74E2394EBFA7DCA764B183D581293C5C9`다.
+  원본·사람 판정·배포 정합성·Fable 대기 플래그를
+  `docs/research-trail/evidence/2026-08-06-interpreter-role-canary-v56/`에 보존했다.
+- Fable에는 요청하지 않았다. Z3·Z9 H6와 Z6 warning을 `FLAGGED_NOT_SENT`로 남겼다.
+  `_03`은 역할·언어 계약은 운영 확인됐지만 R29·H6가 남아 콘텐츠 LOCK 근거로 사용하지 않는다.
