@@ -112,6 +112,6 @@ PRAGMA의 권장 조립식은 다음과 같다.
 
 - 제품·연구 정체성: `docs/research/PRAGMA_PRODUCT_RESEARCH_IDENTITY_2026-07-28.md`
 - 화용론 구성개념: `docs/research/PRAGMA_PRAGMATICS_DESIGN_PRINCIPLES_2026-07-27.md`
-- 생성·평가·저장 계약: `docs/contracts/PRAGMA_생성계약_정본_2026-07-28.md`
-- 학습자 구조: `docs/product/PRAGMA_학습자구조_정본_2026-07-28.md`
-- 관리자 구조: `docs/product/PRAGMA_관리자구조_정본_2026-07-28.md`
+- 당시 생성·평가·저장 계약: `docs/contracts/history/legacy/PRAGMA_생성계약_정본_2026-07-28.md`
+- 당시 학습자 구조: `docs/product/history/legacy/PRAGMA_학습자구조_정본_2026-07-28.md`
+- 당시 관리자 구조: `docs/product/history/legacy/PRAGMA_관리자구조_정본_2026-07-28.md`
