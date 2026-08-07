@@ -18,11 +18,12 @@ const Landing = () => {
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       {/* 브랜드는 앱 전체와 같은 고정 헤더로만 세운다 — hero 중앙에 다시 두면 같은
           문구가 두 번 나오고, 랜딩만 헤더가 없어 다른 화면과 골격이 어긋난다. */}
-      {/* 로고는 좌측 유지. 다만 헤더가 본문(max-w-3xl)과 다른 1240 칼럼을 쓰고 있어
-          로고 좌측이 카드·푸터 좌측보다 260px 바깥에 떠 있었다 — 같은 칼럼으로 맞춰
-          로고·카드·푸터가 하나의 세로 선에서 시작하게 한다. */}
+      {/* 워드마크는 띠의 왼쪽 모서리에 붙인다. 본문 칼럼(396)에 맞춰 봤더니 오히려
+          어두운 띠 한가운데에 떠서 읽히지 않았다 — 로고의 존재감은 본문과의 정렬이
+          아니라 모서리 고정에서 나온다. 그래서 칼럼을 따르지 않고 화면 좌측 여백에
+          건다(대부분의 사이트가 로고를 뷰포트 거터에 다는 이유와 같다). */}
       <header className="sticky top-0 z-40 bg-[#15202B]">
-        <div className="mx-auto flex max-w-3xl items-center px-6 py-4">
+        <div className="flex items-center px-8 py-4">
           <HomeBrand />
         </div>
       </header>
