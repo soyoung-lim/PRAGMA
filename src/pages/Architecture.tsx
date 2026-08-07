@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, RotateCcw } from "lucide-react";
 
 // 심사 설명용 read-only 화면. 새 데이터·API 없이 설계 문서를 코드 상수로 표현한다.
 // 학습자 메뉴에는 노출하지 않는다(랜딩 진입점은 VITE_ENABLE_DEMO로 통제).
@@ -12,10 +12,49 @@ const LANE = {
   res: { num: "bg-[#8A6A55]", node: "bg-[#F4EDE7] border-[#E3D5C8]" },
 } as const;
 
-const Node = ({ lane, title, desc }: { lane: Lane; title: string; desc: string }) => (
+const Node = ({
+  lane,
+  title,
+  desc,
+  status,
+}: {
+  lane: Lane;
+  title: string;
+  desc: React.ReactNode;
+  status?: string;
+}) => (
   <div className={`rounded-[9px] border px-3 py-2.5 ${LANE[lane].node}`}>
-    <div className="text-[13px] font-bold leading-[1.3] text-[#15202B]">{title}</div>
-    <div className="mt-0.5 text-[11.5px] leading-[1.4] text-muted-foreground">{desc}</div>
+    <div className="flex items-start justify-between gap-2">
+      <div className="text-[13px] font-bold leading-[1.3] text-[#15202B]">{title}</div>
+      {status && (
+        <span className="shrink-0 rounded-full border border-[#D5C6B8] bg-white/70 px-1.5 py-0.5 text-[9.5px] font-semibold leading-none text-[#765D4C]">
+          {status}
+        </span>
+      )}
+    </div>
+    <div className="mt-0.5 text-[11px] leading-[1.35] text-muted-foreground">{desc}</div>
+  </div>
+);
+
+const LaneHeader = ({
+  lane,
+  num,
+  title,
+  desc,
+}: {
+  lane: Lane;
+  num: string;
+  title: string;
+  desc: React.ReactNode;
+}) => (
+  <div className="mb-3">
+    <div className="flex items-center gap-2">
+      <span className={`grid h-5 w-5 place-items-center rounded-full text-[11px] font-bold text-white ${LANE[lane].num}`}>
+        {num}
+      </span>
+      <h2 className="text-[15.5px] font-extrabold leading-tight tracking-[-0.025em] text-[#15202B]">{title}</h2>
+    </div>
+    <p className="mt-1 pl-7 text-[11px] leading-[1.35] text-muted-foreground">{desc}</p>
   </div>
 );
 
@@ -30,7 +69,7 @@ const Mark = ({ children }: { children: React.ReactNode }) => (
 // 굵기·baseline이 달라 도식 안에서 혼자 손글씨처럼 보인다.
 const Down = () => (
   <div className="grid h-4 place-items-center" aria-hidden>
-    <ChevronDown size={11} strokeWidth={2} className="text-[#B6BEC7]" />
+    <ChevronDown size={13} strokeWidth={2.25} className="text-[#8996A3]" />
   </div>
 );
 
@@ -38,8 +77,8 @@ const Down = () => (
 // 수행 로그만 넘어간다). 옅은 화살표 하나로는 그 관문이 보이지 않아, 레인 높이를
 // 관통하는 세로선 위에 노란 토큰으로 얹는다.
 const Handoff = ({ label }: { label: string }) => (
-  <div className="relative grid content-center justify-items-center" aria-hidden>
-    <span className="absolute inset-y-6 left-1/2 w-px -translate-x-1/2 bg-[#E7E1CF]" />
+  <div className="relative grid self-stretch content-center justify-items-center" aria-hidden>
+    <span className="absolute inset-y-4 left-1/2 w-px -translate-x-1/2 bg-[#E7E1CF]" />
     <span className="relative grid justify-items-center gap-1 rounded-full border border-[#E3D08F] bg-[#FFF8E1] px-[7px] py-2.5 shadow-[0_2px_6px_-3px_rgba(21,32,43,.35)]">
       <ArrowRight size={16} strokeWidth={2.5} className="text-[#A9761A]" />
       <span
@@ -52,6 +91,44 @@ const Handoff = ({ label }: { label: string }) => (
   </div>
 );
 
+// ③의 개선 판단이 다음 ①·② 설계로 돌아가는 회귀 경로. 데스크톱에서는
+// 오른쪽에서 출발해 아래를 감고 왼쪽 ①로 올라가는 U자형 화살표로 순환을 명시한다.
+const CycleReturn = () => (
+  <div
+    className="relative mt-1 h-[40px]"
+    aria-label="평가와 개선 결과를 다음 콘텐츠, 미션, 수업 설계에 반영"
+  >
+    <svg
+      className="absolute inset-0 hidden h-full w-full overflow-visible lg:block"
+      viewBox="0 0 1000 40"
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      <defs>
+        <marker id="cycle-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L7,3 z" fill="#A9761A" />
+        </marker>
+      </defs>
+      <path
+        d="M 965 1 V 8 C 965 20 954 24 932 24 H 68 C 46 24 35 20 35 8 V 1"
+        fill="none"
+        stroke="#A9761A"
+        strokeWidth="2"
+        vectorEffect="non-scaling-stroke"
+        markerEnd="url(#cycle-arrowhead)"
+      />
+    </svg>
+    <div className="absolute left-1/2 top-[10px] hidden -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#E3D08F] bg-[#FFF8E1] px-3 py-1 shadow-[0_2px_6px_-3px_rgba(21,32,43,.35)] lg:flex">
+      <RotateCcw size={13} strokeWidth={2.5} className="text-[#A9761A]" aria-hidden />
+      <span className="text-[10.5px] font-bold text-[#6B5518]">개선안 반영</span>
+    </div>
+    <div className="flex items-center justify-center gap-1.5 rounded-full border border-[#E3D08F] bg-[#FFF8E1] px-3 py-2 shadow-[0_2px_6px_-3px_rgba(21,32,43,.35)] lg:hidden">
+      <RotateCcw size={14} strokeWidth={2.5} className="shrink-0 text-[#A9761A]" aria-hidden />
+      <span className="text-[11px] font-bold text-[#6B5518]">개선안 반영</span>
+    </div>
+  </div>
+);
+
 const Architecture = () => (
   <div className="min-h-screen bg-background text-foreground">
     <header className="sticky top-0 z-40 bg-[#15202B]">
@@ -60,7 +137,7 @@ const Architecture = () => (
           <span aria-hidden className="h-[34px] w-[5px] rounded-sm bg-[#FAD338]" />
           <div>
             <h1 className="text-[16.5px] font-bold leading-tight tracking-tight text-white">
-              PRAGMA · 전체 시스템 구조
+              PRAGMA · 통합 워크플로우
             </h1>
             {/* 관리자·심사 화면에서는 제품 설명어 대신 논문 가제를 그대로 쓴다. */}
             <p className="mt-0.5 text-[13px] text-[#95A2B0]">
@@ -85,30 +162,27 @@ const Architecture = () => (
       </div>
     </header>
 
-    <div className="mx-auto max-w-[1120px] px-6 pb-4 pt-7">
+    <div className="mx-auto max-w-[1024px] px-6 pb-0 pt-3 lg:flex lg:h-[calc(100dvh-66px)] lg:flex-col lg:pt-4">
       {/* 세 레인을 한 문장으로 — 강조한 세 마디가 그대로 ①②③ 제목이다.
           밑줄 2px 대신 글자 아래쪽을 덮는 반투명 형광펜을 쓴다(랜딩 후크와 같은 어법).
           문장 자체는 굵기를 낮춰, 강조가 세 마디에만 남게 한다. */}
-      <p className="mb-3 text-[15px] font-medium leading-relaxed text-[#4A5A66]">
+      <p className="mb-2 text-[14.5px] font-medium leading-relaxed text-[#4A5A66]">
         <Mark>콘텐츠를 생성·검수</Mark>하고, <Mark>학습자가 수행</Mark>하며, 그 기록이{" "}
         <Mark>평가와 설계</Mark>로 돌아옵니다.
       </p>
 
       {/* 3레인 */}
-      <div className="grid grid-cols-1 items-stretch lg:grid-cols-[.86fr_52px_1.85fr_52px_.86fr]">
+      <div className="grid grid-cols-1 items-start lg:min-h-0 lg:flex-1 lg:grid-cols-[243px_44px_393px_44px_251px] lg:items-stretch">
         {/* ① 콘텐츠 생성·검수 */}
-        <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4">
-          <div className="mb-0.5 flex items-center gap-2">
-            <span className={`grid h-[18px] w-[18px] place-items-center rounded-full text-[10.5px] font-bold text-white ${LANE.supply.num}`}>
-              1
-            </span>
-            <h2 className="text-[14px] font-bold tracking-tight">콘텐츠 생성·검수</h2>
-          </div>
-          <p className="mb-2.5 text-[11.5px] text-muted-foreground">
-            9개 화행 × 수준 3 × 주제 · 최종 공개는 교수자가 결정
-          </p>
+        <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:justify-between">
+          <LaneHeader
+            lane="supply"
+            num="1"
+            title="콘텐츠 생성·검수"
+            desc="화행 9종 × 입문·중급·고급 × 주제"
+          />
 
-          <Node lane="supply" title="목표 화용 요소 카탈로그" desc="화행마다 대역과 제외 혼입변인을 정의" />
+          <Node lane="supply" title="목표 화용 요소 카탈로그" desc="화행별 대역·제외 혼입변인 정의" />
           <Down />
           <Node lane="supply" title="시나리오 코어 대량 생성" desc="수준 × 관계·부담 × 매체 × 주제 조합" />
           <Down />
@@ -116,24 +190,23 @@ const Architecture = () => (
           <Down />
           <Node lane="supply" title="자동 규칙 검증" desc="사전 노출·선산출·대역 정합" />
           <Down />
-          <Node lane="supply" title="AI 품질 점검" desc="판정이 아니라 경고" />
+          <Node lane="supply" title="GPT 품질 점검" desc="생성 결과 1차 점검" />
+          <Down />
+          <Node lane="supply" title="Claude 교차 검증" desc="독립 비판 검토" />
           <Down />
           <Node lane="supply" title="교수자 최종 승인" desc="승인자 · 일시 · 모델 · 프롬프트 지문" />
         </section>
 
-        <Handoff label="승인분만" />
+        <Handoff label="교수자 승인" />
 
         {/* ② 학습자 워크플로우 */}
-        <section className="rounded-[13px] border border-[#D3D1C7] bg-card px-3.5 pb-4 pt-4 shadow-[0_8px_20px_-18px_rgba(21,32,43,.55)]">
-          <div className="mb-0.5 flex items-center gap-2">
-            <span className={`grid h-[18px] w-[18px] place-items-center rounded-full text-[10.5px] font-bold text-white ${LANE.learn.num}`}>
-              2
-            </span>
-            <h2 className="text-[14px] font-bold tracking-tight">학습자 워크플로우</h2>
-          </div>
-          <p className="mb-2.5 text-[11.5px] text-muted-foreground">
-            수준·주제에 맞는 강좌 · 한 주차에 목표 화용 요소 하나
-          </p>
+        <section className="rounded-[13px] border border-[#D3D1C7] bg-card px-3.5 pb-4 pt-4 shadow-[0_8px_20px_-18px_rgba(21,32,43,.55)] lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:justify-between">
+          <LaneHeader
+            lane="learn"
+            num="2"
+            title="학습자 워크플로우"
+            desc="수준·주제에 맞는 강좌 · 한 주차에 목표 화용 요소 하나"
+          />
 
           <Node
             lane="learn"
@@ -141,7 +214,7 @@ const Architecture = () => (
             desc="9개 화행을 순환 배치 · 승인 미션만 주차에 배정"
           />
           <Down />
-          <Node lane="learn" title="주차 학습 노트" desc="예습·복습면 · 주차 목표와 상황 읽는 기준" />
+          <Node lane="learn" title="주차 학습 노트" desc="예습·복습용 · 주차 목표와 상황 판단 기준" />
           <Down />
           <Node
             lane="learn"
@@ -155,11 +228,11 @@ const Architecture = () => (
             <span className="inline-block rounded-[5px] bg-[#FDF1C4] px-[7px] py-0.5 text-[10px] font-bold tracking-[0.07em] text-[#8A6D00]">
               한 미션의 흐름 · 매 미션 반복
             </span>
-            <div className="mt-2 flex flex-wrap items-center gap-[5px]">
-              {["장면 이해", "표현 비교", "직접 번역·통역", "피드백 살피기", "다시 다듬기"].map((step, i) => (
+            <div className="mt-2 flex flex-wrap items-center gap-[5px] lg:flex-nowrap lg:justify-center lg:gap-0.5 xl:gap-1">
+              {["상황 이해", "표현 비교", "번역·통역", "피드백 검토", "다듬기"].map((step, i) => (
                 <span key={step} className="contents">
-                  {i > 0 && <ChevronRight size={12} strokeWidth={2.25} className="text-[#D6B84A]" />}
-                  <span className="whitespace-nowrap rounded-md border border-[#EADFAF] bg-white px-2 py-[5px] text-[11.5px] font-semibold">
+                  {i > 0 && <ChevronRight size={9} strokeWidth={2.25} className="shrink-0 text-[#D6B84A]" />}
+                  <span className="whitespace-nowrap rounded-md border border-[#EADFAF] bg-white px-2 py-1 text-[11px] font-semibold lg:px-[5px] lg:text-[9.5px] xl:px-1.5 xl:text-[10px]">
                     {step}
                   </span>
                 </span>
@@ -172,38 +245,91 @@ const Architecture = () => (
 
           <Down />
           <Node lane="learn" title="학습 기록" desc="최초안 · 최종안 · 수정 초점 누적" />
+          <Down />
+          <Node
+            lane="learn"
+            title="결과 비교·수업 토론"
+            desc="수행 결과·이견·수정 사례를 함께 비교"
+            status="수업 운영"
+          />
         </section>
 
-        <Handoff label="수행 로그" />
+        <Handoff label="학습 데이터" />
 
         {/* ③ 연구·평가·설계 */}
-        <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4">
-          <div className="mb-0.5 flex items-center gap-2">
-            <span className={`grid h-[18px] w-[18px] place-items-center rounded-full text-[10.5px] font-bold text-white ${LANE.res.num}`}>
-              3
-            </span>
-            <h2 className="text-[14px] font-bold tracking-tight">연구·평가·설계</h2>
-          </div>
-          <p className="mb-2.5 text-[11.5px] text-muted-foreground">학습과 연구를 분리</p>
+        <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:justify-between">
+          <LaneHeader
+            lane="res"
+            num="3"
+            title="연구·평가·설계"
+            desc="교수·학습 운영과 연구 분석을 분리"
+          />
 
-          <Node lane="res" title="학습 수행 로그" desc="콘텐츠·정책·프롬프트 버전과 함께 저장" />
+          <Node
+            lane="res"
+            title="학습 수행 기록"
+            desc={
+              <>
+                판단·선택·수정·최종 산출을
+                <br />
+                맥락·버전과 함께 저장
+              </>
+            }
+          />
           <Down />
-          <Node lane="res" title="학습자 이견 기록" desc="AI 판정에 대한 이견을 수행 로그와 함께 보관" />
+          <Node
+            lane="res"
+            title="학습자 이견 기록"
+            desc={
+              <>
+                AI 판정 이견·선택적 근거를
+                <br />
+                수행 로그에 연결
+              </>
+            }
+          />
           <Down />
-          <Node lane="res" title="설계 추적 기록" desc="결정 · 반복 · 증거를 ID로 연결" />
+          <Node
+            lane="res"
+            title="설계 추적 기록"
+            desc={
+              <>
+                설계 결정·변경·근거·관련 데이터를
+                <br />
+                ID로 연결
+              </>
+            }
+          />
           <Down />
-          <Node lane="res" title="전문가 형성 평가" desc="승인 루브릭 · 이중 평정" />
+          <Node
+            lane="res"
+            title="전문가 형성 평가"
+            desc="외부 전문가 3인 · 대표 미션 독립 평가"
+            status="연구 예정"
+          />
           <Down />
-          <Node lane="res" title="연구 데이터 내보내기" desc="가명 처리 · 대응표 분리 보관" />
+          <Node
+            lane="res"
+            title="연구 데이터 내보내기"
+            desc="가명 처리 · 대응표 분리 보관"
+            status="준비 중"
+          />
           <Down />
-          <Node lane="res" title="교수·학습 설계 개선" desc="사람이 결정" />
+          <Node
+            lane="res"
+            title="교수·학습 설계 개선"
+            desc={
+              <>
+                수행 데이터·전문가 의견을 근거로
+                <br />
+                설계를 개선
+              </>
+            }
+          />
         </section>
       </div>
 
-      {/* 하단 가로 띠는 없앴다 — 세로 3레인이 주인공인 도식에서 가로로 긴 카드가
-          시선을 아래로 끌어내렸다. 그 안에 있던 축(9화행·수준·주제)은 레인 부제와
-          노드 설명으로 옮겼고, 버전·검수 이력은 원래 그것을 만드는 노드가 이미
-          말하고 있다(교수자 최종 승인 · 학습 수행 로그). 순환은 맨 위 한 줄이 말한다. */}
+      <CycleReturn />
     </div>
   </div>
 );
