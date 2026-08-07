@@ -288,7 +288,9 @@ const AdminAssembly = () => {
     >
       {/* ── 변환 계기판 — 상호 배타 4상태 ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-5">
-        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+        {/* 숫자 하나 + 라벨 하나짜리 카드다 — 전폭 4열이면 카드당 300px가 되어
+            빈 면적만 커진다. 내용에 맞는 크기로 묶고 남는 가로는 여백으로. */}
+        <div className="grid max-w-[56rem] grid-cols-2 gap-2.5 md:grid-cols-4">
           {(Object.keys(STATE_KO) as AssemblyState[]).map((s) => (
             <button
               key={s}
@@ -305,7 +307,7 @@ const AdminAssembly = () => {
             </button>
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 max-w-[42rem] text-[11px] text-muted-foreground">
           네 상태는 서로 겹치지 않습니다. 카드를 누르면 해당 상태만 필터됩니다 · 「이번 조립 실패」는
           이 세션에서 시도한 결과이며 저장되지 않습니다.
         </p>
@@ -383,7 +385,10 @@ const AdminAssembly = () => {
                       {shortHash(r.prompt_snapshot_hash)}
                     </Badge>
                   </div>
-                  <p className="mt-1.5 line-clamp-2 text-[13px] font-medium">{r.core_content?.situation_ko ?? "—"}</p>
+                  {/* 상황 설명은 읽기 폭까지만 — 전폭이면 한 줄에 90자가 넘는다. */}
+                  <p className="mt-1.5 line-clamp-2 max-w-[46rem] text-[13px] font-medium">
+                    {r.core_content?.situation_ko ?? "—"}
+                  </p>
                   {failures[r.scenario_id] && st === "failed" && (
                     <p className="mt-1 rounded-md border border-[#FCA5A5] bg-[#FEE2E2] px-2.5 py-1.5 text-[12px] text-[#991B1B]">
                       {failures[r.scenario_id]}

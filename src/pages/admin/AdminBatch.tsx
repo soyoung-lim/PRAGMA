@@ -410,7 +410,7 @@ const AdminBatch = () => {
           </Button>
         </div>
 
-        <p className="mt-2.5 text-[12px] text-muted-foreground">
+        <p className="mt-2.5 max-w-[42rem] text-[12px] text-muted-foreground">
           상황·원문·태그만 생성해 코어 뱅크를 채웁니다(scenario_core_v1).{" "}
           {direction === "zh_ko"
             ? "중→한은 핵심 3화행 18셀과 확장 6화행 중급 12셀을 합친 30셀 혼합 파일럿을 우선 검증합니다."
@@ -615,8 +615,10 @@ const AdminBatch = () => {
             새 배치 ID
           </Button>
         </div>
+        {/* flex-1이면 배치 ID 입력이 1093px까지 늘어난다(실측 사용률 8%).
+            내용(core_ko_zh_1785458303114)에 맞춰 고정한다. */}
         <div className="mb-4 flex flex-wrap items-end gap-2">
-          <div className="min-w-[280px] flex-1">
+          <div className="w-[280px]">
             <Label htmlFor="resume-core-run-id" className="text-[11.5px] text-muted-foreground">
               기존 배치 ID 불러오기
             </Label>
@@ -668,7 +670,8 @@ const AdminBatch = () => {
 
         <div className="mt-4 border-t border-[#EAE4D2] pt-4">
           <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-[260px] flex-1">
+            {/* 「13, 14, 17」 정도를 넣는 칸이다 — flex-1이면 852px까지 늘어난다. */}
+            <div className="w-[260px]">
               <Label htmlFor="selected-core-cells" className="text-[11.5px] text-muted-foreground">
                 선택 셀 실행 · 현재 계획의 셀 번호
               </Label>
@@ -710,7 +713,7 @@ const AdminBatch = () => {
               선택 {selectedPlan.indexes.length}셀 · 새 ID로 생성
             </Button>
           </div>
-          <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+          <p className="mt-1.5 max-w-[42rem] text-[11.5px] text-muted-foreground">
             중단된 배치는 현재 ID로 미완료 셀만 재개합니다. 검수 탈락 셀을 교체할 때만 새 ID로
             생성합니다. 두 방식 모두 코어 생성 프롬프트와 해당 해시는 바뀌지 않습니다.
           </p>

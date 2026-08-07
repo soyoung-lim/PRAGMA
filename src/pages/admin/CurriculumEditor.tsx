@@ -285,11 +285,13 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
       {/* ── Outline fields ── */}
       <section className="space-y-4 rounded-lg border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-muted-foreground">기본 정보</h3>
-        <p className="text-[12.5px] text-muted-foreground">
+        <p className="max-w-[42rem] text-[12.5px] text-muted-foreground">
           제목·수준·언어 방향·프리셋만 정하면 저장됩니다. 15개 주차는 공통 표준 골격으로 자동 생성되며,
           주차별 상황·P·D·R은 편성기에서 배정하는 시나리오가 정본입니다.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2">
+        {/* 폼은 화면이 아니라 내용 폭에 맞춘다 — 전폭 2열이면 「중급 · HSK 5급」
+            하나를 고르는 선택지가 590px가 된다. */}
+        <div className="grid max-w-[46rem] gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label>제목</Label>
             <Input
@@ -356,7 +358,7 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
           <summary className="cursor-pointer text-[12.5px] font-medium text-muted-foreground">
             고급 설정 (상태·중간/기말 주차·학기 목표 — 기본값으로 저장 가능)
           </summary>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid max-w-[46rem] gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>상태</Label>
               <Select value={outline.status} onValueChange={(v) => patchOutline({ status: v as CurriculumStatus })}>

@@ -96,7 +96,7 @@ const AdminCurriculum = () => {
     >
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="rounded-lg border border-[#EAE4D2] bg-[#FAF7EE] p-3.5 text-[13px] leading-relaxed text-foreground">
+          <div className="max-w-[42rem] rounded-lg border border-[#EAE4D2] bg-[#FAF7EE] p-3.5 text-[13px] leading-relaxed text-foreground">
             커리큘럼은 주차별 화행·채널·P·D·R 셀을 배치하는 매크로 골격입니다. 실제
             시나리오 생성·검수는 기존 생성기·아카이브 흐름을 그대로 사용합니다.
           </div>
