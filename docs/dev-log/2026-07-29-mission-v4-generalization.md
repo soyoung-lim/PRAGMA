@@ -40,8 +40,8 @@
 - `src/lib/pragma/promptSnapshot.test.ts`
 - `src/lib/pragma/promptSnapshot.generated.ts`
 - `supabase/functions/generate-scenario/index.ts`
-- `docs/contracts/PRAGMA_생성계약_정본_2026-07-29.md`
-- `docs/product/PRAGMA_학습자구조_정본_2026-07-29.md`
+- `docs/contracts/history/legacy/PRAGMA_생성계약_정본_2026-07-29.md`
+- `docs/product/history/legacy/PRAGMA_학습자구조_정본_2026-07-29.md`
 
 ## 검증 결과
 

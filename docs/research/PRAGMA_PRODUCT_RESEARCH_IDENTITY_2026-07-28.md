@@ -117,6 +117,6 @@ PRAGMA는 교수자만 수업 자료를 갖고 학습자는 미션만 수행하�
 
 - 화용론적 구성개념과 생성 원칙: `docs/research/PRAGMA_PRAGMATICS_DESIGN_PRINCIPLES_2026-07-27.md`
 - Can-do 국제 기준 참고와 PRAGMA 재맥락화 원칙: `docs/research/PRAGMA_CAN_DO_ALIGNMENT_PRINCIPLES_2026-07-28.md`
-- 생성·평가·저장 계약: `docs/contracts/PRAGMA_생성계약_정본_2026-07-28.md`
-- 학습자 구조: `docs/product/PRAGMA_학습자구조_정본_2026-07-28.md`
-- 관리자 구조: `docs/product/PRAGMA_관리자구조_정본_2026-07-28.md`
+- 당시 생성·평가·저장 계약: `docs/contracts/history/legacy/PRAGMA_생성계약_정본_2026-07-28.md`
+- 당시 학습자 구조: `docs/product/history/legacy/PRAGMA_학습자구조_정본_2026-07-28.md`
+- 당시 관리자 구조: `docs/product/history/legacy/PRAGMA_관리자구조_정본_2026-07-28.md`

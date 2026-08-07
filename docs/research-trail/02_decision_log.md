@@ -322,7 +322,7 @@
   - 완료 단계 개인화를 위해 별도 AI 호출 추가: 기존 피드백 결과로 필요한 조언을 만들 수 있어 채택하지 않음.
 - 결정: 기존 handoff를 네 개의 한 줄 응답 SUMMARY로 구성한다. 각 줄은 문항 기능과 이번 장면에서 확인한 판단 기준을 연결하고, 참고 판정과 다른 행만 수업 비교를 안내한다. 별도의 일반 판단 흐름은 반복하지 않는다. 다듬기는 실제 판정에서 도출한 한 줄 수정 행동을, 완료는 실제 판정과 수정 여부에 맞춘 한 줄 조언을 보여 준다. 피드백이 없을 때만 일반 원칙 한 줄을 사용한다.
 - 근거: 2026-07-29 사용자 화면 검토에서 MPJ 뒤 체계화와 학습자별 조언의 필요성, SUMMARY가 네 개의 긴 성적표가 되어서는 안 된다는 조건이 확인됐다. 기존 응답·피드백 데이터만 재사용하므로 새로운 생성 호출이나 저장 구조가 필요하지 않다.
-- 관련 파일: `src/pages/learner/MissionRunV1.tsx`, `docs/contracts/PRAGMA_생성계약_정본_2026-07-29.md`, `docs/product/PRAGMA_학습자구조_정본_2026-07-29.md`
+- 관련 파일: `src/pages/learner/MissionRunV1.tsx`, `docs/contracts/history/legacy/PRAGMA_생성계약_정본_2026-07-29.md`, `docs/product/history/legacy/PRAGMA_학습자구조_정본_2026-07-29.md`
 - 관련 Iteration / Evidence: `ITER-20260729-03`, `EVD-20260729-04`
 - 관련 커밋: 없음
 
@@ -1019,8 +1019,8 @@
   줄이면서 PDR 통제와 3층 피드백은 그대로 유지할 수 있다.
 - 관련 파일: `src/pages/learner/MissionRunV1.tsx`,
   `supabase/functions/generate-scenario/index.ts`,
-  `docs/contracts/PRAGMA_생성계약_정본_2026-07-29.md`,
-  `docs/product/PRAGMA_학습자구조_정본_2026-07-29.md`
+  `docs/contracts/PRAGMA_생성계약_정본.md`,
+  `docs/product/PRAGMA_학습자구조_정본.md`
 - 관련 Iteration / Evidence: `ITER-20260804-02`, `EVD-20260804-02`
 - 관련 커밋: `6e3985e`
 
@@ -1258,7 +1258,7 @@
   실증 주력 수준인 중급에서 번역·통역 양쪽을 최소 1건씩 확인하게 한다. 방향을 기존 54셀
   구인 계산에 곱하지 않아 495 ko_zh 커버리지 주장도 바꾸지 않는다.
 - 관련 파일: `src/lib/pragma/batchPlan.ts`, `src/pages/admin/AdminBatch.tsx`,
-  `docs/contracts/PRAGMA_생성계약_v1_2026-07-23.md`
+  `docs/contracts/history/legacy/PRAGMA_생성계약_v1_2026-07-23.md`
 - 관련 Iteration / Trace: `ITER-20260805-01`, `TRC-20260805-01`
 - 관련 커밋: `1f10320`
 
@@ -1441,8 +1441,8 @@
   5. 통역 상황문은 C의 관점으로 서술하고 A의 1인칭 서술, 학습자의 화행 직접 수행·수신, 자기 통역을 실패로 다룬다. 정규식은 고정밀 차단·경고 보조이며 사람 카나리가 최종 판정한다.
   6. 기존 495와 현행 생성 콘텐츠는 수정하지 않고 개발·테스트 세대로 유지한다. 조건 LOCK 뒤 새 release/run으로 전량 재생산한다.
 - 근거: 정본 3종의 확정 문구와 Fable의 부분 블라인드 패킷 판정에서 A 1건 채택·B/C 2건 기각이 같은 역할 중첩 패턴으로 수렴했다. 자동 `participant_roles` 통과가 실질 역할 분리를 보증하지 못한 운영 반례도 확인됐다.
-- 관련 파일: `docs/contracts/PRAGMA_생성계약_v1_2026-07-23.md`,
-  `docs/product/PRAGMA_학습자구조_정본_2026-07-29.md`,
+- 관련 파일: `docs/contracts/PRAGMA_생성계약_정본.md`,
+  `docs/product/PRAGMA_학습자구조_정본.md`,
   `supabase/functions/generate-scenario/index.ts`, `supabase/functions/_shared/coreSourceRepair.ts`,
   `src/lib/pragma/coreSchema.ts`, `src/lib/pragma/missionRules.ts`
 - 관련 Iteration / Evidence / Trace: `ITER-20260806-01`, `EVD-20260806-02`, `TRC-20260806-01`
@@ -1601,3 +1601,35 @@
 - 관련 파일: `src/pages/learner/MissionRunV1.tsx`, `src/index.css`,
   `docs/dev-log/2026-08-06-cold-open-card-news-prototype.md`
 - 관련 Iteration / Evidence / Trace: `ITER-20260806-07`, `EVD-20260806-10`, `TRC-20260802-08`
+
+## DEC-20260807-01 · 현행 정본과 역사 스냅숏을 경로 수준에서 분리한다
+
+- 날짜: 2026-08-07
+- 상태: 채택·앱 저장소 전환 완료
+- 문제:
+  - 연구자는 주요 변경 때마다 날짜가 붙은 새 파일을 발행해 사람이 읽고 인용할 설계 이력을
+    보존했다. 그러나 같은 파일군이 현재 구현의 규범과 역사 기록 역할을 동시에 맡았다.
+  - 8월에 수동 발행 주기가 멈춘 뒤에도 7월 날짜 파일의 내용은 계속 갱신됐고, 파일명 날짜가
+    발행일인지 마지막 대조일인지 알 수 없었다. 검색으로 과거 7월 23일 계약을 고른 AI가
+    legacy MPJ5 문장을 현행으로 해석하는 사고가 발생했다.
+- 검토한 대안:
+  - 날짜 정본을 계속 새로 발행: 사람의 rename·참조 수정이 누락되면 같은 표류가 반복돼 기각.
+  - 날짜를 없애고 Git만 사용: 이정표를 사람이 바로 읽고 논문에서 인용하는 용도를 잃어 기각.
+  - 날짜 없는 현행본 + 불변 이정표 스냅숏 + Git 상세 이력: 채택.
+- 결정:
+  1. 현행 정본은 자료별로 날짜 없는 `_정본.md` 하나만 두고 제자리에서 수정한다.
+  2. 이정표 스냅숏은 `history/PRAGMA_자료명_YYYY-MM-DD.md`로 필요한 때만 발행하며, 발행
+     커밋 뒤에는 수정하지 않는다. 정정은 새 스냅숏으로 남긴다.
+  3. 전환 전 날짜 파일은 실제 동결본이라고 보장할 수 없으므로 `history/legacy/`에 원문 그대로
+     보존하고, 특정 시점의 전문은 Git 커밋으로 확인한다.
+  4. `docs/CANONICAL.md`가 앱 저장소의 정확한 현행 경로를 선언한다. `AGENTS.md`와
+     `CLAUDE.md`는 같은 세 경로를 가리키며 history를 구현 근거로 사용하지 않는다.
+  5. `fullworkflow01~10` 같은 다른 연속 판본도 삭제부터 하지 않고 현행 후보·역사·판정 필요로
+     목록화한 뒤 같은 규칙을 적용한다.
+- 근거: `missionSchema.ts`와 11개 스키마 회귀는 현행 `mission_v5=MPJ4+DCT1`을 확인했지만,
+  과거 7월 23일 계약 원장은 12개의 MPJ5 표현을 포함해 경로 오선택만으로 현행 오독이
+  가능했다. 날짜 없는 경로·history 격리·에이전트 경로 일치를 5개 자동검사로 고정했다.
+- 관련 파일: `docs/CANONICAL.md`, `docs/contracts/PRAGMA_생성계약_정본.md`,
+  `docs/product/PRAGMA_학습자구조_정본.md`, `docs/product/PRAGMA_관리자구조_정본.md`,
+  `src/lib/pragma/canonicalRouting.test.ts`
+- 관련 Iteration / Evidence: `ITER-20260807-01`, `EVD-20260807-01`
