@@ -257,13 +257,13 @@ const AdminDashboard = () => {
       description="콘텐츠 생성부터 검수·편성·학습자 실행까지, 지금 확인하고 처리할 운영 현황을 보여줍니다."
     >
       {/* Row 0: 분리 계수 — 단계별 수량을 한 숫자로 합치지 않는다 (0-g·46 → 0-q·101) */}
-      <SectionHeader title="콘텐츠 분리 계수" badge={<LiveBadge />} />
-      {/* 심사 관점: 다섯 숫자가 '단계별 게이트를 통과한 수량'으로 읽히게 흐름을 먼저 밝힌다.
-          ①은 코어, ②~⑤는 미션이라 단위가 다르고 ③은 ②의 부분집합이다 — 순차 감소로
-          오독되지 않도록 둘 다 명시한다. (라벨·문구만 변경, 질의·상태값은 불변) */}
+      <SectionHeader title="콘텐츠 단계별 현황" badge={<LiveBadge />} />
+      {/* 다섯 숫자가 같은 모집단의 순차 감소로 읽히면 안 된다 — ①은 코어, ②~⑤는
+          미션이라 집계 단위가 다르다. AI 점검을 최종 관문처럼 보이게 하지 않도록
+          교수자 검토를 별도 단계로 적는다. (문구만 변경, 질의·상태값은 불변) */}
       <p className="mb-3 text-xs text-muted-foreground">
-        ① 코어 생성 → ② 미션 생성 → ③ AI 품질 점검 통과 → ④ 교수자 검토 → ⑤ 수업 배치.
-        각 단계를 통과한 것만 다음 단계로 넘어갑니다.
+        ①은 시나리오 코어 수, ②~⑤는 학습 미션 수입니다. 생성된 미션은 AI 품질 점검과
+        교수자 검토를 거쳐 수업에 배치됩니다.
       </p>
       {/* 1024~1280에서 5열이면 카드가 140px까지 좁아져 라벨이 잘린다 — 그 구간은 3열로. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -280,20 +280,18 @@ const AdminDashboard = () => {
       <div className="mt-2 space-y-1 text-xs text-muted-foreground">
         <p>
           <span className="font-medium text-foreground">
-            대량 생성 수와 수업 배치 가능 수는 다릅니다.
+            수업 배치 가능 수는 교수자 검토를 마치고 실제 주차에 배정된 미션만 집계합니다.
           </span>{" "}
-          자동 규칙 검증 · AI 품질 점검 · 교수자 검토를 모두 통과하고 주차에 배정된 콘텐츠만
-          학습자가 실행합니다. ⑤가 작은 것은 게이트가 작동한 결과입니다.
+          ③은 ②의 부분집합입니다.
         </p>
         <p>
           <span className="font-medium text-foreground">
             &ldquo;500&rdquo;의 단위 = ① 시나리오 코어
           </span>{" "}
-          — 교강사가 15주를 편성할 때 고르는 검색 단위입니다. ②~⑤는 미션 수이므로 ①과 단위가
-          다르며, ③은 ②의 부분집합입니다.
+          — 교강사가 15주를 편성할 때 고르는 검색 단위입니다.
         </p>
         <p>
-          구버전 형식 시나리오 {legacyN.loading ? "…" : (legacyN.value ?? 0)}건은 위 계수에서
+          구버전 형식 시나리오 {legacyN.loading ? "…" : (legacyN.value ?? 0)}건은 위 집계에서
           제외 · 주차별 수업 패키지 = 0 (미구현).
         </p>
       </div>

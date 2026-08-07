@@ -142,7 +142,10 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
       </header>
 
       <div className="flex gap-6 pl-5 pr-8 py-6">
-        <aside className="hidden w-[245px] shrink-0 md:block">
+        {/* 폭은 가장 넓은 항목(「연구 데이터 관리」+준비 중 배지 = 139px)이 들어가는
+            선까지만 준다. 메뉴는 whitespace-nowrap이라 넘치면 줄바꿈이 아니라
+            본문 쪽으로 삐져나온다. 208px → 텍스트 가용폭 151px(여유 12px). */}
+        <aside className="hidden w-[208px] shrink-0 md:block">
           <nav className="flex flex-col px-1">
             <Link
               to={STANDALONE.to}
