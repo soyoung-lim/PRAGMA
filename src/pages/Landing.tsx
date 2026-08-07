@@ -54,13 +54,10 @@ const Landing = () => {
           <p className="mx-auto mt-5 max-w-[620px] break-keep text-[15.5px] leading-relaxed text-muted-foreground sm:text-[16.5px]">
             {/* 의미 단위 2행. 각 행이 max-w를 넘지 않아야 짧은 꼬리 줄이 생기지 않는다(2026-08-06 실측). */}
             <span className="block">
-              PRAGMA는 한·중 통번역에서 원문의 의미는 유지하면서
+              PRAGMA는 한·중 통번역에서 원문의 의미는 유지하면서 상황과 관계에 맞게
             </span>
             <span className="block">
-              상황과 관계에 맞게 판단하고, 직접 번역·통역한 뒤
-            </span>
-            <span className="block">
-              피드백을 보고 다듬는 수업 연계형 AI 플랫폼입니다.
+              판단·산출하고 피드백으로 다듬는 수업 연계형 AI 플랫폼입니다.
             </span>
           </p>
         </section>
