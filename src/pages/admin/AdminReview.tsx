@@ -498,7 +498,9 @@ const AdminReview = () => {
       title="통합 검수·승인"
       description="코어 상태와 학습 미션의 교수자 실행 게이트를 분리해 확인합니다."
     >
-      <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[12.5px] leading-relaxed text-amber-950">
+      {/* 경고문은 읽기 폭(≈672px)까지만 — 전폭으로 두면 한 줄에 한국어 100자가 넘어
+          눈이 다음 줄 시작점을 찾지 못한다. */}
+      <div className="max-w-[42rem] rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[12.5px] leading-relaxed text-amber-950">
         <div className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
@@ -572,8 +574,11 @@ const AdminReview = () => {
           </p>
         )}
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          <label className="text-[11.5px] text-muted-foreground">
+        {/* 필드는 칸이 아니라 내용에 맞춘다 — 균등 그리드에 w-full을 두면 「전체」
+            두 글자짜리 선택지가 391px가 된다(실측 사용률 6%). 폭을 내용에 맞추고
+            남는 가로는 여백으로 둔다. */}
+        <div className="mt-4 flex flex-wrap gap-3">
+          <label className="w-36 text-[11.5px] text-muted-foreground">
             상태
             <select
               value={statusFilter}
@@ -585,7 +590,7 @@ const AdminReview = () => {
               <option value="all">전체</option>
             </select>
           </label>
-          <label className="text-[11.5px] text-muted-foreground">
+          <label className="w-40 text-[11.5px] text-muted-foreground">
             {scope === "mission" ? "AI 품질점검" : "코어 규칙검사"}
             <select
               value={qualityFilter}
@@ -600,7 +605,7 @@ const AdminReview = () => {
               <option value="missing">미점검</option>
             </select>
           </label>
-          <label className="text-[11.5px] text-muted-foreground">
+          <label className="w-60 text-[11.5px] text-muted-foreground">
             run ID
             <select
               value={runFilter}
@@ -615,7 +620,7 @@ const AdminReview = () => {
               ))}
             </select>
           </label>
-          <label className="text-[11.5px] text-muted-foreground">
+          <label className="w-48 text-[11.5px] text-muted-foreground">
             콘텐츠 후보 상태
             <select
               value={releaseFilter}
@@ -629,7 +634,7 @@ const AdminReview = () => {
               <option value="missing">후보 표식 없음</option>
             </select>
           </label>
-          <label className="text-[11.5px] text-muted-foreground">
+          <label className="w-40 text-[11.5px] text-muted-foreground">
             코어 prompt 지문
             <select
               value={promptFilter}
@@ -642,7 +647,7 @@ const AdminReview = () => {
               <option value="missing">지문 없음</option>
             </select>
           </label>
-          <label className="text-[11.5px] text-muted-foreground">
+          <label className="w-60 text-[11.5px] text-muted-foreground">
             검색
             <Input
               value={search}
@@ -667,7 +672,7 @@ const AdminReview = () => {
 
       {scope === "mission" && (
         <div className="sticky top-[72px] z-20 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#D8D0BC] bg-[#FFFDF7]/95 px-4 py-3 shadow-sm backdrop-blur">
-          <div>
+          <div className="max-w-[42rem]">
             <div className="text-[13px] font-semibold">
               선택 {selectedIds.size}건 · 사람 검수 통과 {approvalReadyIds.length}건
             </div>

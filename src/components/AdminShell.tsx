@@ -229,8 +229,10 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
               <h1 className="text-2xl font-bold leading-tight text-foreground sm:text-3xl">
                 {title}
               </h1>
+              {/* 화면 설명은 읽기 폭(≈672px)까지만 — 전폭이면 한 줄에 한국어
+                  80자가 넘어 눈이 다음 줄 시작을 못 찾는다(최적 35~45자). */}
               {description && (
-                <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+                <p className="mt-2 max-w-[42rem] text-sm text-muted-foreground">{description}</p>
               )}
             </div>
           </div>
