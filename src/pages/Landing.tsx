@@ -54,10 +54,13 @@ const Landing = () => {
           <p className="mx-auto mt-5 max-w-[620px] break-keep text-[15.5px] leading-relaxed text-muted-foreground sm:text-[16.5px]">
             {/* 의미 단위 2행. 각 행이 max-w를 넘지 않아야 짧은 꼬리 줄이 생기지 않는다(2026-08-06 실측). */}
             <span className="block">
-              PRAGMA는 한·중 통번역에서 주어진 원문의 의미는 유지하면서
+              PRAGMA는 한·중 통번역에서 원문의 의미는 유지하면서
             </span>
             <span className="block">
-              상황과 관계에 맞게 판단하고 산출하는 수업 연계형 AI 플랫폼입니다.
+              상황과 관계에 맞게 판단하고, 직접 번역·통역한 뒤
+            </span>
+            <span className="block">
+              피드백을 보고 다듬는 수업 연계형 AI 플랫폼입니다.
             </span>
           </p>
         </section>
@@ -79,8 +82,8 @@ const Landing = () => {
               학습자 영역
             </span>
             <span className="mt-2.5 break-keep text-[14px] leading-relaxed text-muted-foreground">
-              주차별 학습을 따라 표현을 비교하고 직접 번역·통역합니다.
-              다듬은 과정은 학습 기록에 쌓입니다.
+              표현을 비교해 판단하고 직접 번역·통역한 뒤, 피드백을 보고 다듬습니다.
+              그 과정이 학습 기록에 쌓입니다.
             </span>
             {/* hover에서 어둡게 눌리면 '비활성'처럼 보인다 — 같은 색상을 한 단계
                 밝혀서 떠오르는 쪽으로 반응하게 한다. */}
@@ -99,8 +102,8 @@ const Landing = () => {
               교수자 영역
             </span>
             <span className="mt-2.5 break-keep text-[14px] leading-relaxed text-muted-foreground">
-              시나리오와 AI 학습 미션을 생성·검수해 15주 강좌에 편성하고,
-              게시와 학습 수행 기록까지 운영합니다.
+              AI 학습 미션을 생성·검수해 15주 강좌로 편성하고,
+              게시한 뒤 학습 수행 기록까지 관리합니다.
             </span>
             {/* 카드 제목이 이미 '교수자 영역'이라 버튼까지 같은 말이면 한 번 더 읽게 된다.
                 버튼은 무엇을 하러 가는지만 말한다 — 학습 시작하기 / 수업 운영하기.
@@ -128,7 +131,7 @@ const Landing = () => {
             >
               ◎
             </span>
-            PRAGMA 전체 구조 보기
+            PRAGMA 통합 워크플로우 보기
             <ArrowRight aria-hidden size={14} strokeWidth={2} className={`text-[#5C6A7A] ${arrow}`} />
           </Link>
         )}
