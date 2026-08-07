@@ -46,12 +46,15 @@ const flag = (name) => argv.includes(`--${name}`);
 const OPTS = {
   runId: arg("run"),
   limit: Number(arg("limit", "0")) || 0,
+  scenarioIds: (arg("scenario-ids", "") || "").split(",").map((s) => s.trim()).filter(Boolean),
   concurrency: Math.max(1, Math.min(Number(arg("concurrency", "3")) || 3, 8)),
   model: arg("model", "claude-opus-5"),
   effort: arg("effort", null), // 미지정 = API 기본값(high)
   outDir: arg("out", "cross-vendor-review-out"),
+  tag: arg("tag", null), // 같은 run을 조건 바꿔 여러 번 돌릴 때 결과를 가른다
   baseline: !flag("no-baseline"),
   dryRun: flag("dry-run"),
+  countOnly: flag("count-only"),
   resume: flag("resume"),
 };
 
@@ -62,15 +65,24 @@ if (!OPTS.runId) {
   node scripts/cross-vendor-review.mjs --run <generation_run_id> [옵션]
 
 옵션:
-  --run <id>          대상 생성 run ID (필수). 동결 연구 세트의 run을 지정한다.
-  --limit <n>         앞에서 n건만 (기본 0 = 전수)
-  --concurrency <n>   동시 호출 수 (기본 3, 최대 8)
-  --model <id>        교차 벤더 모델 (기본 claude-opus-5)
-  --effort <level>    low|medium|high|xhigh|max (미지정 시 API 기본값)
-  --out <dir>         결과 폴더 (기본 cross-vendor-review-out)
-  --no-baseline       OpenAI 기준선 재호출 생략 (교차 벤더 판정만 수집)
-  --resume            기존 results.jsonl에 있는 행은 건너뛴다
-  --dry-run           행 조회와 프롬프트 조립까지만. 모델 호출 안 함.
+  --run <id>            대상 생성 run ID (필수). 동결 연구 세트의 run을 지정한다.
+  --scenario-ids a,b,c  검토할 행을 명시적으로 지정한다. paired 비교용 —
+                        조건을 바꿔 두 번 돌릴 때는 이 옵션으로 동일 행을 고정한다.
+  --limit <n>           검토 가능한 행 중 앞 n건 (기본 0 = 전수).
+                        ⚠️ 대표 표본이 아니라 scenario_id 정렬 선두다. 비교 실측에는
+                        --scenario-ids를 쓴다.
+  --concurrency <n>     동시 호출 수 (기본 3, 최대 8)
+  --model <id>          교차 벤더 모델 (기본 claude-opus-5)
+  --effort <level>      low|medium|high|xhigh|max (미지정 시 API 기본값 = high)
+  --out <dir>           결과 폴더 (기본 cross-vendor-review-out)
+  --tag <name>          결과 하위 폴더 이름을 가른다 (예: --tag high / --tag medium)
+  --no-baseline         OpenAI 기준선 재호출 생략. effort 비교의 2회차에는 반드시 켠다 —
+                        기준선은 effort와 무관하므로 재호출하면 돈만 더 든다.
+  --resume              기존 results.jsonl에 있는 행은 건너뛴다
+  --dry-run             행 조회와 프롬프트 조립까지만. 모델 호출 없음, 비용 0.
+  --count-only          생성 없이 Anthropic token-count API로 **입력 토큰만** 잰다.
+                        무료지만 외부 API 호출이며 반환값은 계측치다.
+                        출력·thinking 토큰은 이 모드로 알 수 없다(실제 생성이 필요).
 `);
   process.exit(1);
 }
@@ -248,14 +260,19 @@ async function callAnthropic(sys, usr) {
   }
   const text = res.content.find((b) => b.type === "text")?.text;
   if (!text) throw new Error("텍스트 블록 없음");
-  return {
-    parsed: JSON.parse(text),
-    usage: {
-      input_tokens: res.usage?.input_tokens ?? 0,
-      output_tokens: res.usage?.output_tokens ?? 0,
-    },
-    model: res.model,
-  };
+  // usage는 통째로 남긴다 — 필드를 골라 담으면 캐시·thinking 세부값이 사라져
+  // 실제 비용과 effort 효과를 나중에 계산할 수 없다.
+  return { parsed: JSON.parse(text), usage: res.usage ?? null, model: res.model };
+}
+
+// 생성 없이 입력 토큰만 계측한다(무료 API지만 외부 호출이며 반환값은 계측치).
+async function countAnthropicInput(sys, usr) {
+  const res = await anthropic.messages.countTokens({
+    model: OPTS.model,
+    system: sys,
+    messages: [{ role: "user", content: usr }],
+  });
+  return res.input_tokens;
 }
 
 // 기준선: 같은 프롬프트를 같은 벤더(OpenAI)에 다시 물어 동일 행에 대한 비교축을 만든다.
@@ -280,12 +297,10 @@ async function callOpenAI(sys, usr, apiKey) {
   const raw = await res.text();
   if (!res.ok) throw new Error(`OpenAI ${res.status}: ${raw.slice(0, 200)}`);
   const json = JSON.parse(raw);
+  // 여기서도 usage를 통째로 남긴다 — cached input 토큰이 빠지면 실제 비용이 과대 계상된다.
   return {
     parsed: JSON.parse(json.choices[0].message.content),
-    usage: {
-      input_tokens: json.usage?.prompt_tokens ?? 0,
-      output_tokens: json.usage?.completion_tokens ?? 0,
-    },
+    usage: json.usage ?? null,
     model: json.model,
   };
 }
@@ -304,7 +319,7 @@ const supabase = createClient(need("SUPABASE_URL"), need("SUPABASE_SERVICE_ROLE_
   auth: { persistSession: false },
 });
 
-const outDir = resolve(ROOT, OPTS.outDir, OPTS.runId);
+const outDir = resolve(ROOT, OPTS.outDir, OPTS.tag ? `${OPTS.runId}__${OPTS.tag}` : OPTS.runId);
 mkdirSync(outDir, { recursive: true });
 const resultsPath = join(outDir, "results.jsonl");
 
@@ -342,10 +357,21 @@ if (OPTS.resume && existsSync(resultsPath)) {
 }
 
 let targets = rows.filter((r) => !done.has(r.scenario_id));
-if (OPTS.limit) targets = targets.slice(0, OPTS.limit);
+if (OPTS.scenarioIds.length) {
+  const want = new Set(OPTS.scenarioIds);
+  const found = new Set(targets.filter((r) => want.has(r.scenario_id)).map((r) => r.scenario_id));
+  const missing = OPTS.scenarioIds.filter((id) => !found.has(id));
+  if (missing.length) {
+    console.error(`--scenario-ids에 이 run에 없는(또는 이미 끝난) ID: ${missing.join(", ")}`);
+    process.exit(1);
+  }
+  targets = targets.filter((r) => want.has(r.scenario_id));
+}
 
+// 프롬프트를 먼저 조립하고, --limit은 **검토 가능한 행에만** 적용한다.
+// (제외 행보다 먼저 자르면 "3건 요청 → 실제 1건 호출"이 조용히 생긴다)
 const skipped = [];
-const jobs = [];
+let jobs = [];
 for (const row of targets) {
   const { body, skip } = bodyFromRow(row);
   if (skip) {
@@ -356,9 +382,11 @@ for (const row of targets) {
   const usr = EDGE_EXPORTS.buildCoreQualityUserPrompt(body);
   jobs.push({ row, sys, usr });
 }
+const jobsBeforeLimit = jobs.length;
+if (OPTS.limit) jobs = jobs.slice(0, OPTS.limit);
 
 console.log(
-  `전체 ${rows.length}건 · 이번 대상 ${jobs.length}건 · 제외 ${skipped.length}건` +
+  `전체 ${rows.length}건 · 검토 가능 ${jobsBeforeLimit}건 · 이번 대상 ${jobs.length}건 · 제외 ${skipped.length}건` +
     (OPTS.baseline ? " · 기준선 재호출 포함" : " · 교차 벤더만"),
 );
 if (skipped.length) {
@@ -374,7 +402,17 @@ const manifest = {
   started_at: startedAt,
   repo_commit: git("git rev-parse HEAD", "unknown"),
   repo_dirty: git("git status --porcelain", "") !== "",
-  cross_vendor: { provider: "anthropic", model: OPTS.model, effort: OPTS.effort ?? "(API 기본값)" },
+  cross_vendor: {
+    provider: "anthropic",
+    model: OPTS.model,
+    effort: OPTS.effort ?? "(미지정 = API 기본값 high)",
+    tag: OPTS.tag,
+  },
+  selection: OPTS.scenarioIds.length
+    ? { mode: "scenario-ids(고정)", ids: OPTS.scenarioIds }
+    : OPTS.limit
+      ? { mode: "limit(선두 N — 대표 표본 아님)", limit: OPTS.limit }
+      : { mode: "전수" },
   baseline: OPTS.baseline
     ? { provider: "openai", model: EDGE_EXPORTS.CRITIC_PRIMARY_MODEL, temperature: 0.1 }
     : null,
@@ -403,10 +441,57 @@ if (OPTS.dryRun) {
   process.exit(0);
 }
 
-const openaiKey = OPTS.baseline ? need("OPENAI_API_KEY") : null;
 need("ANTHROPIC_API_KEY");
 
-const totals = { ok: 0, failed: 0, cross_in: 0, cross_out: 0, base_in: 0, base_out: 0 };
+// ── --count-only: 생성 없이 입력 토큰만 전수 계측 ────────────────────────
+// 출력·thinking 토큰은 여기서 알 수 없다. 495건 비용을 말하려면 이 값 + 승인된
+// 소규모 실행에서 잰 출력 토큰을 곱해 **환산**해야 하며, 그것은 실제 지출액이 아니다.
+if (OPTS.countOnly) {
+  const counts = [];
+  let idx = 0;
+  const countWorker = async () => {
+    for (;;) {
+      const i = idx++;
+      if (i >= jobs.length) return;
+      const { row, sys, usr } = jobs[i];
+      try {
+        counts.push({ scenario_id: row.scenario_id, input_tokens: await countAnthropicInput(sys, usr) });
+      } catch (e) {
+        counts.push({ scenario_id: row.scenario_id, error: e.message });
+      }
+      if (counts.length % 25 === 0) console.log(`  ${counts.length}/${jobs.length}`);
+    }
+  };
+  await Promise.all(Array.from({ length: OPTS.concurrency }, () => countWorker()));
+
+  const ok = counts.filter((c) => typeof c.input_tokens === "number").map((c) => c.input_tokens);
+  ok.sort((a, b) => a - b);
+  const sum = ok.reduce((a, b) => a + b, 0);
+  const at = (q) => ok[Math.min(ok.length - 1, Math.floor(ok.length * q))] ?? 0;
+  const stats = {
+    measured_at: new Date().toISOString(),
+    model: OPTS.model,
+    method: "Anthropic token-count API (무료, 생성 없음, 반환값은 계측치)",
+    rows_counted: ok.length,
+    rows_failed: counts.length - ok.length,
+    input_tokens: { total: sum, mean: ok.length ? Math.round(sum / ok.length) : 0, min: ok[0] ?? 0, p50: at(0.5), p90: at(0.9), max: ok[ok.length - 1] ?? 0 },
+    note: "출력·thinking 토큰은 이 모드로 측정할 수 없다.",
+    per_row: counts,
+  };
+  writeFileSync(join(outDir, "input-token-count.json"), JSON.stringify(stats, null, 2), "utf8");
+  console.log(`\n입력 토큰 전수 계측 완료 — 합계 ${sum.toLocaleString()} · 평균 ${stats.input_tokens.mean} · p90 ${stats.input_tokens.p90}`);
+  console.log(`  낮은쪽/중간/높은쪽 대표 3건 (paired pilot용 --scenario-ids):`);
+  const byTok = counts.filter((c) => typeof c.input_tokens === "number").sort((a, b) => a.input_tokens - b.input_tokens);
+  const pick = [byTok[0], byTok[Math.floor(byTok.length / 2)], byTok[byTok.length - 1]].filter(Boolean);
+  console.log(`  ${pick.map((p) => p.scenario_id).join(",")}`);
+  console.log(`  (각각 ${pick.map((p) => p.input_tokens).join(" / ")} 토큰)`);
+  console.log(`결과: ${join(outDir, "input-token-count.json")}`);
+  process.exit(0);
+}
+
+const openaiKey = OPTS.baseline ? need("OPENAI_API_KEY") : null;
+
+const totals = { ok: 0, failed: 0, cross_in: 0, cross_out: 0, base_in: 0, base_out: 0, base_cached: 0 };
 let cursor = 0;
 
 async function worker() {
@@ -432,8 +517,9 @@ async function worker() {
         model: cross.model,
         ...normalize(cross.parsed),
       };
-      totals.cross_in += cross.usage.input_tokens;
-      totals.cross_out += cross.usage.output_tokens;
+      record.cross_vendor.usage = cross.usage; // 원본 그대로 (thinking·캐시 세부 포함)
+      totals.cross_in += cross.usage?.input_tokens ?? 0;
+      totals.cross_out += cross.usage?.output_tokens ?? 0;
 
       if (OPTS.baseline) {
         const base = await callOpenAI(sys, usr, openaiKey);
@@ -443,8 +529,10 @@ async function worker() {
           temperature: 0.1,
           ...normalize(base.parsed),
         };
-        totals.base_in += base.usage.input_tokens;
-        totals.base_out += base.usage.output_tokens;
+        record.baseline.usage = base.usage; // 원본 그대로 (cached input 포함)
+        totals.base_in += base.usage?.prompt_tokens ?? 0;
+        totals.base_out += base.usage?.completion_tokens ?? 0;
+        totals.base_cached += base.usage?.prompt_tokens_details?.cached_tokens ?? 0;
 
         record.disagreements = AXIS_CODES.filter(
           (c) => record.cross_vendor.axes[c].verdict !== record.baseline.axes[c].verdict,
@@ -537,12 +625,16 @@ ${AXIS_CODES.map((c) => `| \`${c}\` | ${axisDisagreement[c]} | ${pct(axisDisagre
 
 ${manifest.known_asymmetries.map((s) => `- ${s}`).join("\n")}
 
-## 토큰 사용량
+## 토큰 사용량 (이번 실행분 실측)
 
-| 구분 | 입력 | 출력 |
-|---|---:|---:|
-| 교차 벤더 | ${totals.cross_in.toLocaleString()} | ${totals.cross_out.toLocaleString()} |
-| 기준선 | ${totals.base_in.toLocaleString()} | ${totals.base_out.toLocaleString()} |
+| 구분 | 입력 | 그중 캐시 | 출력 |
+|---|---:|---:|---:|
+| 교차 벤더 | ${totals.cross_in.toLocaleString()} | — | ${totals.cross_out.toLocaleString()} |
+| 기준선 | ${totals.base_in.toLocaleString()} | ${totals.base_cached.toLocaleString()} | ${totals.base_out.toLocaleString()} |
+
+행별 원본 \`usage\` 객체는 \`results.jsonl\`에 그대로 들어 있다(캐시·thinking 세부 포함).
+**이 표는 실제로 돌린 ${records.length}건의 실측치다.** 전수 비용을 말하려면 여기서
+환산해야 하며, 환산치는 실제 지출액이 아니다.
 `;
 writeFileSync(join(outDir, "SUMMARY.md"), summary, "utf8");
 
