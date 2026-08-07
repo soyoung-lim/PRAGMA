@@ -12,16 +12,14 @@ const LANE = {
   res: { num: "bg-[#8A6A55]", node: "bg-[#F4EDE7] border-[#E3D5C8]" },
 } as const;
 
-// 배지 규칙 — 화면 전체에서 이 세 가지만 쓴다.
-//   배지 없음 = 구현 완료(지금 동작한다)
+// 배지 규칙 — 화면 전체에서 이 두 가지만 쓴다. 나머지(배지 없음)는 구현 완료다.
 //   초록 실선 = 수업에서 실제로 하고 있다
-//   회색 점선 = 아직 하지 않았다(연구 예정·준비 중)
-// 이전 판은 세 경우가 모두 같은 베이지 배지였다 — 「수업 운영」과 「연구 예정」이
-// 같은 색이면 심사에서 구현분과 계획분이 구분되지 않는다. 점선은 "미실행"의
-// 시각 관례이므로 색맹 조건에서도 형태만으로 갈린다.
+//   회색 점선 = 아직 하지 않았다 → 라벨은 「준비 중」 하나로 통일한다
+// 미실행 항목을 「연구 예정」·「구현 예정」처럼 여러 이름으로 부르면 심사에서
+// 그 차이가 무슨 뜻이냐는 질문만 늘어난다. 아직 안 한 것은 다 「준비 중」이다.
+// 점선은 미실행의 시각 관례라 색맹 조건에서도 형태만으로 갈린다.
 const STATUS_TONE: Record<string, string> = {
   "수업 운영": "border-[#B6D3C0] bg-[#EAF5EE] text-[#2C5F4F]",
-  "연구 예정": "border-dashed border-[#C3CAD3] bg-white text-[#6B7785]",
   "준비 중": "border-dashed border-[#C3CAD3] bg-white text-[#6B7785]",
 };
 
@@ -58,26 +56,6 @@ const Node = ({
     </div>
     <div className="mt-0.5 text-[11px] leading-[1.35] text-muted-foreground">{desc}</div>
   </div>
-);
-
-// 범례 — 세로 여유가 5px뿐이라(1920×1080 실측) 새 줄을 만들지 않고
-// 리드 문장과 같은 행의 오른쪽에 붙인다.
-const LegendChip = ({ label, tone }: { label: string; tone: string }) => (
-  <span className={`rounded-full border px-1.5 py-px text-[9.5px] font-semibold leading-none ${tone}`}>
-    {label}
-  </span>
-);
-const Legend = () => (
-  <p className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10.5px] text-muted-foreground">
-    <span className="font-bold text-[#4A5A66]">범례</span>
-    <span>배지 없음 = 구현 완료</span>
-    <span aria-hidden className="text-[#C3CAD3]">·</span>
-    <LegendChip label="수업 운영" tone={STATUS_TONE["수업 운영"]} />
-    <span>운영 중</span>
-    <span aria-hidden className="text-[#C3CAD3]">·</span>
-    <LegendChip label="연구 예정" tone={STATUS_TONE["연구 예정"]} />
-    <span>미실행</span>
-  </p>
 );
 
 const LaneHeader = ({
@@ -189,20 +167,12 @@ const Architecture = () => (
             </p>
           </div>
         </div>
-        <nav className="flex gap-1.5" aria-label="구조 화면">
-          <span
-            aria-current="page"
-            className="rounded-lg border border-[#FAD338] bg-[#FAD338] px-3 py-1.5 text-[12px] font-semibold text-[#15202B]"
-          >
-            전체 구조
-          </span>
-          <Link
-            to="/"
-            className="rounded-lg border border-[#2E3B49] px-3 py-1.5 text-[12px] font-semibold text-[#B7C1CC] transition-colors hover:border-[#4A5967] hover:text-white"
-          >
-            ← 처음으로
-          </Link>
-        </nav>
+        <Link
+          to="/"
+          className="rounded-lg border border-[#FAD338] bg-[#FAD338] px-3 py-1.5 text-[12px] font-semibold text-[#15202B] transition-colors hover:bg-[#F5C400]"
+        >
+          ← 처음으로
+        </Link>
       </div>
     </header>
 
@@ -210,13 +180,10 @@ const Architecture = () => (
       {/* 세 레인을 한 문장으로 — 강조한 세 마디가 그대로 ①②③ 제목이다.
           밑줄 2px 대신 글자 아래쪽을 덮는 반투명 형광펜을 쓴다(랜딩 후크와 같은 어법).
           문장 자체는 굵기를 낮춰, 강조가 세 마디에만 남게 한다. */}
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <p className="text-[14.5px] font-medium leading-relaxed text-[#4A5A66]">
-          <Mark>콘텐츠를 생성·검수</Mark>하고, <Mark>학습자가 수행</Mark>하며, 그 기록이{" "}
-          <Mark>평가와 설계</Mark>로 돌아옵니다.
-        </p>
-        <Legend />
-      </div>
+      <p className="mb-2 text-[14.5px] font-medium leading-relaxed text-[#4A5A66]">
+        <Mark>콘텐츠를 생성·검수</Mark>하고, <Mark>학습자가 수행</Mark>하며, 그 기록이{" "}
+        <Mark>평가와 설계</Mark>로 돌아옵니다.
+      </p>
 
       {/* 3레인 */}
       <div className="grid grid-cols-1 items-start lg:min-h-0 lg:flex-1 lg:grid-cols-[243px_44px_393px_44px_251px] lg:items-stretch">
@@ -245,7 +212,7 @@ const Architecture = () => (
             lane="supply"
             title="Claude 교차 검증"
             desc="다른 벤더 AI의 독립 검토 · 승인 권한 없음"
-            status="연구 예정"
+            status="준비 중"
           />
           <Down />
           <Node
@@ -364,7 +331,7 @@ const Architecture = () => (
             lane="res"
             title="전문가 형성 평가"
             desc="외부 전문가 3인 · 대표 미션 독립 평가"
-            status="연구 예정"
+            status="준비 중"
           />
           <Down />
           <Node
