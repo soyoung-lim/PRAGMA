@@ -25,6 +25,7 @@ const AdminBrowser = lazy(() => import("./pages/admin/AdminBrowser.tsx"));
 const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.tsx"));
 const AdminQuestionDesigner = lazy(() => import("./pages/admin/AdminQuestionDesigner.tsx"));
 const AdminReview = lazy(() => import("./pages/admin/AdminReview.tsx"));
+const AdminCrossVendor = lazy(() => import("./pages/admin/AdminCrossVendor.tsx"));
 const AdminCurriculum = lazy(() => import("./pages/admin/AdminCurriculum.tsx"));
 const AdminComposer = lazy(() => import("./pages/admin/AdminComposer.tsx"));
 const AdminLearners = lazy(() => import("./pages/admin/AdminLearners.tsx"));
@@ -201,6 +202,7 @@ const App = () => (
           <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
           <Route path="/admin/question-designer" element={<RequireAdmin><AdminQuestionDesigner /></RequireAdmin>} />
           <Route path="/admin/review" element={<RequireAdmin><AdminReview /></RequireAdmin>} />
+          <Route path="/admin/cross-vendor" element={<RequireAdmin><AdminCrossVendor /></RequireAdmin>} />
           <Route path="/admin/learners" element={<RequireAdmin><AdminLearners /></RequireAdmin>} />
           <Route path="/admin/decision-traces" element={<RequireAdmin><AdminDecisionTraces /></RequireAdmin>} />
           {/* 레거시 폐기(2026-07-30): /admin/reports — 미사용 화면 삭제(사용자 결정). */}

@@ -30,6 +30,25 @@ export const CORE_QUALITY_AXES = [
 ] as const;
 
 export type CoreQualityAxis = (typeof CORE_QUALITY_AXES)[number];
+
+/** 축 한국어 라벨 — 코어 비평과 교차 벤더 검토가 같은 축을 쓰므로 여기 한 곳에 둔다. */
+export const CORE_AXIS_LABEL: Record<CoreQualityAxis, string> = {
+  speech_act: "화행",
+  power: "P",
+  distance: "D",
+  burden: "R",
+  domain: "도메인",
+  industry: "산업",
+  mode: "모드",
+  context_spec: "역할·의무",
+  referents: "행위자·대상",
+  decision_authority: "결정 권한",
+  topic_seed: "시드",
+  adjacency: "인접쌍",
+  participant_roles: "통역 참여자",
+  scene_source_alignment: "상황·원문 대응",
+  learner_scene: "학생용 장면",
+};
 export type CoreQualityVerdict = "pass" | "warning" | "fail";
 
 export interface CoreQualityAxisResult {
