@@ -154,7 +154,9 @@ const CycleReturn = () => (
 const Architecture = () => (
   <div className="min-h-screen bg-background text-foreground">
     <header className="sticky top-0 z-40 bg-[#15202B]">
-      <div className="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-4 px-6 py-[11px]">
+      {/* 아래 도식과 같은 1024 격자를 쓴다 — 헤더만 1120이면 CTA가 3열 우측
+          테두리보다 49px 바깥에 떠서 액자가 그림보다 커 보인다(실측). */}
+      <div className="mx-auto flex max-w-[1024px] flex-wrap items-center justify-between gap-4 px-6 py-[11px]">
         <div className="flex items-center gap-2.5">
           <span aria-hidden className="h-[34px] w-[5px] rounded-sm bg-[#FAD338]" />
           <div>
@@ -176,7 +178,12 @@ const Architecture = () => (
       </div>
     </header>
 
-    <div className="mx-auto max-w-[1024px] px-6 pb-0 pt-3 lg:flex lg:h-[calc(100dvh-66px)] lg:flex-col lg:pt-4">
+    {/* 하단 여백: 레인은 flex-1이라 pb만큼 세 열이 함께 조금 줄고, 그만큼 환류
+        화살표가 화면 안쪽으로 들어온다. 다만 ①레인 자연 높이가 약 573px이라
+        세로가 짧은 화면에서는 이 압축분이 그대로 넘침이 된다(1280×720 실측 -13px).
+        그래서 세로 900px 이상일 때만 준다 — 1920×1080 캡처에서는 여백이 생기고
+        작은 노트북에서는 이전과 동일하다. */}
+    <div className="mx-auto max-w-[1024px] px-6 pb-0 pt-3 [@media(min-height:900px)]:pb-5 lg:flex lg:h-[calc(100dvh-66px)] lg:flex-col lg:pt-4">
       {/* 세 레인을 한 문장으로 — 강조한 세 마디가 그대로 ①②③ 제목이다.
           밑줄 2px 대신 글자 아래쪽을 덮는 반투명 형광펜을 쓴다(랜딩 후크와 같은 어법).
           문장 자체는 굵기를 낮춰, 강조가 세 마디에만 남게 한다. */}
