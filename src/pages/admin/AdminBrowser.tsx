@@ -242,10 +242,13 @@ const AdminBrowser = () => {
         <>
           {/* ── 27칸 그리드 ── */}
           <section className="mt-4 overflow-x-auto rounded-xl border border-[#EAE4D2] bg-white p-5">
-            <table className="w-full min-w-[520px] border-separate border-spacing-1 text-[13px]">
+            {/* 화행 × 수준이 이 화면의 본론이다. 전폭이면 칸 하나가 330px가 되어 숫자 사이가
+                  벌어지고 화행 라벨은 저 멀리 왼쪽에 남는다 — 표를 내용 폭까지만 넓히고
+                  라벨을 칸 쪽으로 붙인다. */}
+            <table className="w-full min-w-[520px] max-w-[900px] border-separate border-spacing-1 text-[13px]">
               <thead>
                 <tr>
-                  <th className="w-[104px] text-left font-semibold text-muted-foreground">
+                  <th className="w-[104px] pr-3 text-right font-semibold text-muted-foreground">
                     소통 행동(화행) \ 수준
                   </th>
                   {LEVELS.map((lv) => (
@@ -256,7 +259,9 @@ const AdminBrowser = () => {
               <tbody>
                 {ACTS.map((act) => (
                   <tr key={act}>
-                    <td className="py-1 font-medium">{SPEECH_ACT_UI[act]}</td>
+                    <td className="py-1 pr-3 text-right text-[13.5px] font-bold text-foreground">
+                      {SPEECH_ACT_UI[act]}
+                    </td>
                     {LEVELS.map((lv) => {
                       const c = counts[`${act}|${lv}`] ?? { total: 0, t: 0, i: 0 };
                       const n = c.total;
@@ -367,19 +372,22 @@ const AdminBrowser = () => {
                             : "코어(검수 대기)"}
                       </Badge>
                     </div>
-                    <p className="mt-1.5 text-[13px] font-medium">{r.core_content?.situation_ko ?? "—"}</p>
+                    {/* 상황·관계·발화·원문은 줄글이다 — 전폭이면 한 줄 90자가 넘는다. */}
+                    <p className="mt-1.5 max-w-[46rem] text-[13px] font-medium">
+                      {r.core_content?.situation_ko ?? "—"}
+                    </p>
                     {r.core_content?.relation_ko && (
-                      <p className="mt-1 text-[12px] text-muted-foreground">
+                      <p className="mt-1 max-w-[46rem] text-[12px] text-muted-foreground">
                         관계 · {r.core_content.relation_ko}
                       </p>
                     )}
                     {(r.core_content?.preceding_turn ?? r.core_content?.preceding_turn_zh) && (
-                      <p className="mt-1 whitespace-pre-wrap rounded-md border border-[#E5E0D5] bg-white px-2.5 py-2 text-[12.5px] text-foreground">
+                      <p className="mt-1 max-w-[46rem] whitespace-pre-wrap rounded-md border border-[#E5E0D5] bg-white px-2.5 py-2 text-[12.5px] text-foreground">
                         <span className="mr-1 font-medium text-muted-foreground">상대의 직전 발화 ·</span>
                         {r.core_content?.preceding_turn ?? r.core_content?.preceding_turn_zh}
                       </p>
                     )}
-                    <p className="mt-1 text-[12.5px] text-muted-foreground line-clamp-2">
+                    <p className="mt-1 max-w-[46rem] text-[12.5px] text-muted-foreground line-clamp-2">
                       원문 · {r.core_content?.source_text ?? r.core_content?.source_text_ko ?? ""}
                     </p>
                     {(r.generation_run_id || r.prompt_snapshot_hash) && (

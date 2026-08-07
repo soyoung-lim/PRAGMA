@@ -351,29 +351,34 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
               프리셋의 테마·통역 비율은 편성기 콘텐츠 채우기에서 적용됩니다(이 과정은 9화행을 모두 다룹니다).
             </p>
           </div>
+          {/* 상태는 「고급 설정」 안에 있었다 — 게시하려면 접힌 패널을 펼쳐서 초안을
+              게시로 바꿔야 했다. 저장 다음으로 자주 쓰는 조작이라 기본 정보로 올린다. */}
+          <div className="space-y-1.5">
+            <Label>상태</Label>
+            <Select value={outline.status} onValueChange={(v) => patchOutline({ status: v as CurriculumStatus })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(STATUS_LABEL) as CurriculumStatus[]).map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {STATUS_LABEL[k]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11.5px] text-muted-foreground">
+              「게시」로 바꿔야 편성기와 학습자 쪽에서 이 커리큘럼을 씁니다.
+            </p>
+          </div>
         </div>
 
         {/* 고급 설정 — 기본값으로 저장 가능. 필요 시에만 조정 */}
         <details className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
           <summary className="cursor-pointer text-[12.5px] font-medium text-muted-foreground">
-            고급 설정 (상태·중간/기말 주차·학기 목표 — 기본값으로 저장 가능)
+            고급 설정 (중간/기말 주차·학기 목표 — 기본값으로 저장 가능)
           </summary>
           <div className="mt-3 grid max-w-[46rem] gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>상태</Label>
-              <Select value={outline.status} onValueChange={(v) => patchOutline({ status: v as CurriculumStatus })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(STATUS_LABEL) as CurriculumStatus[]).map((k) => (
-                    <SelectItem key={k} value={k}>
-                      {STATUS_LABEL[k]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <div className="space-y-1.5">
               <Label>주차 수 (고정)</Label>
               <Input value={outline.week_count} disabled />
