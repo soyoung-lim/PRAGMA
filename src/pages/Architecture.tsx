@@ -192,12 +192,17 @@ const Architecture = () => (
           <Down />
           <Node lane="supply" title="GPT 품질 점검" desc="생성 결과 1차 점검" />
           <Down />
-          <Node lane="supply" title="Claude 교차 검증" desc="독립 비판 검토" />
+          <Node
+            lane="supply"
+            title="Claude 교차 검증"
+            desc="독립 비판 검토"
+            status="연구 예정"
+          />
           <Down />
           <Node lane="supply" title="교수자 최종 승인" desc="승인자 · 일시 · 모델 · 프롬프트 지문" />
         </section>
 
-        <Handoff label="교수자 승인" />
+        <Handoff label="승인 미션" />
 
         {/* ② 학습자 워크플로우 */}
         <section className="rounded-[13px] border border-[#D3D1C7] bg-card px-3.5 pb-4 pt-4 shadow-[0_8px_20px_-18px_rgba(21,32,43,.55)] lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:justify-between">
