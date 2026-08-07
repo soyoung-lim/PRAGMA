@@ -18,13 +18,17 @@ const Landing = () => {
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       {/* 브랜드는 앱 전체와 같은 고정 헤더로만 세운다 — hero 중앙에 다시 두면 같은
           문구가 두 번 나오고, 랜딩만 헤더가 없어 다른 화면과 골격이 어긋난다. */}
-      {/* 워드마크는 띠의 왼쪽 모서리에 붙인다. 본문 칼럼(396)에 맞춰 봤더니 오히려
-          어두운 띠 한가운데에 떠서 읽히지 않았다 — 로고의 존재감은 본문과의 정렬이
-          아니라 모서리 고정에서 나온다. 그래서 칼럼을 따르지 않고 화면 좌측 여백에
-          건다(대부분의 사이트가 로고를 뷰포트 거터에 다는 이유와 같다). */}
+      {/* 기준선은 워드마크의 **구분선**이다. 헤더를 본문과 같은 칼럼에 올린 뒤
+          구분선까지의 거리(112px)만큼 왼쪽으로 당기면, 「|」가 카드·푸터의 좌측 선에
+          정확히 서고 「PRAGMA」만 그 선 밖으로 돌출한다 — 정렬은 지키면서 워드마크만
+          눈에 띄게 하는 방법이다.
+          당기기는 lg 이상에서만 건다. 좁은 화면에서는 칼럼 여백이 112px보다 작아
+          워드마크가 화면 밖으로 밀려난다. */}
       <header className="sticky top-0 z-40 bg-[#15202B]">
-        <div className="flex items-center px-8 py-4">
-          <HomeBrand />
+        <div className="mx-auto flex max-w-3xl items-center px-6 py-4">
+          <span className="lg:-ml-[112px]">
+            <HomeBrand />
+          </span>
         </div>
       </header>
 
