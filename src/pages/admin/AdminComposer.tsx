@@ -546,12 +546,21 @@ function WeekRow({
       {items.length > 0 && (
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[640px] text-[13px]">
+            {/* 열 폭을 정하지 않으면 「상황」 줄글이 남은 열을 다 밀어내, 「모드」가
+                한 글자씩 세로로 쌓인다. 좁은 열은 폭을 고정하고 줄바꿈을 막는다. */}
+            <colgroup>
+              <col />
+              <col className="w-[76px]" />
+              <col className="w-[190px]" />
+              <col className="w-[104px]" />
+              <col className="w-[64px]" />
+            </colgroup>
             <thead>
               <tr className="text-left text-muted-foreground">
                 <th className="py-1 pr-3 font-medium">상황</th>
-                <th className="py-1 pr-3 font-medium">모드</th>
-                <th className="py-1 pr-3 font-medium">화용 초점</th>
-                <th className="py-1 pr-3 font-medium">검토상태</th>
+                <th className="whitespace-nowrap py-1 pr-3 font-medium">모드</th>
+                <th className="whitespace-nowrap py-1 pr-3 font-medium">화용 초점</th>
+                <th className="whitespace-nowrap py-1 pr-3 font-medium">검토상태</th>
                 <th className="py-1 font-medium"></th>
               </tr>
             </thead>
@@ -563,7 +572,7 @@ function WeekRow({
                 return (
                   <tr key={it.scenario_id} className="border-t border-[#F0EBDD]">
                     <td className="py-1.5 pr-3">{c?.situation_ko ?? "(누락된 시나리오)"}</td>
-                    <td className="py-1.5 pr-3 text-muted-foreground">
+                    <td className="whitespace-nowrap py-1.5 pr-3 text-muted-foreground">
                       {c ? (c.mode === "stt_interpreting" ? MODE_LABEL.stt_interpreting : MODE_LABEL.translation) : "—"}
                     </td>
                     <td className="py-1.5 pr-3">

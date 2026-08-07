@@ -175,7 +175,7 @@ function ProvenanceBanner({
           </Badge>
         )}
       </div>
-      <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">
+      <p className="mt-2 max-w-[42rem] text-[12.5px] leading-relaxed text-muted-foreground">
         아래 프롬프트는 <b>모델에 실제로 전송되는 문장</b>입니다. 빌드할 때마다 배포되는 edge
         소스에서 자동으로 다시 떠오므로 화면이 코드보다 낡을 수 없고, 이 화면에는 편집 경로가
         없습니다(고치려면 코드를 수정해야 합니다). <code>PROBE_*</code>는 호출마다 달라지는
@@ -222,7 +222,7 @@ function ProvenanceBanner({
 
       {/* 지문이 없는 과거 생성분 — 숨기지 않고 정직하게 표기(소급 기록 금지) */}
       {!loading && !error && legacyNull && (
-        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+        <p className="mt-2 max-w-[46rem] rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
           지문 기록 이전에 생성된 시나리오 <b>{legacyNull.count}건</b>은 프롬프트 지문이
           비어 있습니다({legacyNull.first.slice(0, 10)} ~ {legacyNull.last.slice(0, 10)}). 어떤
           프롬프트로 만들었는지 소급 확인이 불가능하므로 거짓으로 채우지 않았습니다.
@@ -232,7 +232,7 @@ function ProvenanceBanner({
       {/* 정본과 다른 지문이 섞여 있으면 = 동결이 깨졌다는 신호 */}
       {!loading && !error &&
         used.filter((u) => u.hash && u.hash !== snap.core_surface_hash).map((u) => (
-          <p key={u.hash} className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-900">
+          <p key={u.hash} className="mt-2 max-w-[46rem] rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-900">
             ⚠️ 다른 프롬프트 지문으로 생성된 시나리오 <b>{u.count}건</b> (
             <span className="font-mono">{u.hash?.slice(0, 12)}…</span>,{" "}
             {u.first.slice(0, 10)} ~ {u.last.slice(0, 10)}). 저장소 정본과 다릅니다 — 프롬프트가
