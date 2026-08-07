@@ -130,7 +130,10 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 bg-[#15202B]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        {/* 헤더와 아래 본문 행은 같은 1600 격자를 쓴다 — 예전에는 헤더만 중앙
+            1240이고 본문은 화면 끝까지 흘러, 사이드바는 로고보다 320px 왼쪽으로
+            콘텐츠는 헤더보다 308px 오른쪽으로 튀어나왔다(1920 실측). */}
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-4">
           <HomeBrand />
           <Link
             to="/"
@@ -141,7 +144,9 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
         </div>
       </header>
 
-      <div className="flex gap-6 pl-5 pr-8 py-6">
+      {/* 좌우 패딩도 헤더와 같은 px-6으로 맞춘다 — pl-5/pr-8이면 max-w를 맞춰도
+          사이드바 좌측과 콘텐츠 우측이 헤더 안쪽 선과 어긋난다. */}
+      <div className="mx-auto flex max-w-[1600px] gap-6 px-6 py-6">
         {/* 폭은 가장 넓은 항목(「연구 데이터 관리」+준비 중 배지 = 139px)이 들어가는
             선까지만 준다. 메뉴는 whitespace-nowrap이라 넘치면 줄바꿈이 아니라
             본문 쪽으로 삐져나온다. 208px → 텍스트 가용폭 151px(여유 12px). */}
