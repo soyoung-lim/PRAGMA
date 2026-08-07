@@ -12,28 +12,72 @@ const LANE = {
   res: { num: "bg-[#8A6A55]", node: "bg-[#F4EDE7] border-[#E3D5C8]" },
 } as const;
 
+// 배지 규칙 — 화면 전체에서 이 세 가지만 쓴다.
+//   배지 없음 = 구현 완료(지금 동작한다)
+//   초록 실선 = 수업에서 실제로 하고 있다
+//   회색 점선 = 아직 하지 않았다(연구 예정·준비 중)
+// 이전 판은 세 경우가 모두 같은 베이지 배지였다 — 「수업 운영」과 「연구 예정」이
+// 같은 색이면 심사에서 구현분과 계획분이 구분되지 않는다. 점선은 "미실행"의
+// 시각 관례이므로 색맹 조건에서도 형태만으로 갈린다.
+const STATUS_TONE: Record<string, string> = {
+  "수업 운영": "border-[#B6D3C0] bg-[#EAF5EE] text-[#2C5F4F]",
+  "연구 예정": "border-dashed border-[#C3CAD3] bg-white text-[#6B7785]",
+  "준비 중": "border-dashed border-[#C3CAD3] bg-white text-[#6B7785]",
+};
+
 const Node = ({
   lane,
   title,
   desc,
   status,
+  decision,
 }: {
   lane: Lane;
   title: string;
   desc: React.ReactNode;
   status?: string;
+  /** 사람이 결정하는 노드 — AI 점검 노드와 성격이 다르다는 것을 테두리로 보인다. */
+  decision?: boolean;
 }) => (
-  <div className={`rounded-[9px] border px-3 py-2.5 ${LANE[lane].node}`}>
+  <div
+    className={`rounded-[9px] border px-3 py-2.5 ${
+      decision ? "border-[1.5px] border-[#3A4A5F] bg-white" : LANE[lane].node
+    }`}
+  >
     <div className="flex items-start justify-between gap-2">
       <div className="text-[13px] font-bold leading-[1.3] text-[#15202B]">{title}</div>
       {status && (
-        <span className="shrink-0 rounded-full border border-[#D5C6B8] bg-white/70 px-1.5 py-0.5 text-[9.5px] font-semibold leading-none text-[#765D4C]">
+        <span
+          className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9.5px] font-semibold leading-none ${
+            STATUS_TONE[status] ?? "border-[#D5C6B8] bg-white/70 text-[#765D4C]"
+          }`}
+        >
           {status}
         </span>
       )}
     </div>
     <div className="mt-0.5 text-[11px] leading-[1.35] text-muted-foreground">{desc}</div>
   </div>
+);
+
+// 범례 — 세로 여유가 5px뿐이라(1920×1080 실측) 새 줄을 만들지 않고
+// 리드 문장과 같은 행의 오른쪽에 붙인다.
+const LegendChip = ({ label, tone }: { label: string; tone: string }) => (
+  <span className={`rounded-full border px-1.5 py-px text-[9.5px] font-semibold leading-none ${tone}`}>
+    {label}
+  </span>
+);
+const Legend = () => (
+  <p className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10.5px] text-muted-foreground">
+    <span className="font-bold text-[#4A5A66]">범례</span>
+    <span>배지 없음 = 구현 완료</span>
+    <span aria-hidden className="text-[#C3CAD3]">·</span>
+    <LegendChip label="수업 운영" tone={STATUS_TONE["수업 운영"]} />
+    <span>운영 중</span>
+    <span aria-hidden className="text-[#C3CAD3]">·</span>
+    <LegendChip label="연구 예정" tone={STATUS_TONE["연구 예정"]} />
+    <span>미실행</span>
+  </p>
 );
 
 const LaneHeader = ({
@@ -120,11 +164,11 @@ const CycleReturn = () => (
     </svg>
     <div className="absolute left-1/2 top-[10px] hidden -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#E3D08F] bg-[#FFF8E1] px-3 py-1 shadow-[0_2px_6px_-3px_rgba(21,32,43,.35)] lg:flex">
       <RotateCcw size={13} strokeWidth={2.5} className="text-[#A9761A]" aria-hidden />
-      <span className="text-[10.5px] font-bold text-[#6B5518]">개선안 반영</span>
+      <span className="text-[10.5px] font-bold text-[#6B5518]">③ 설계 개선 → ①·② 반영</span>
     </div>
     <div className="flex items-center justify-center gap-1.5 rounded-full border border-[#E3D08F] bg-[#FFF8E1] px-3 py-2 shadow-[0_2px_6px_-3px_rgba(21,32,43,.35)] lg:hidden">
       <RotateCcw size={14} strokeWidth={2.5} className="shrink-0 text-[#A9761A]" aria-hidden />
-      <span className="text-[11px] font-bold text-[#6B5518]">개선안 반영</span>
+      <span className="text-[11px] font-bold text-[#6B5518]">③ 설계 개선 → ①·② 반영</span>
     </div>
   </div>
 );
@@ -166,10 +210,13 @@ const Architecture = () => (
       {/* 세 레인을 한 문장으로 — 강조한 세 마디가 그대로 ①②③ 제목이다.
           밑줄 2px 대신 글자 아래쪽을 덮는 반투명 형광펜을 쓴다(랜딩 후크와 같은 어법).
           문장 자체는 굵기를 낮춰, 강조가 세 마디에만 남게 한다. */}
-      <p className="mb-2 text-[14.5px] font-medium leading-relaxed text-[#4A5A66]">
-        <Mark>콘텐츠를 생성·검수</Mark>하고, <Mark>학습자가 수행</Mark>하며, 그 기록이{" "}
-        <Mark>평가와 설계</Mark>로 돌아옵니다.
-      </p>
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <p className="text-[14.5px] font-medium leading-relaxed text-[#4A5A66]">
+          <Mark>콘텐츠를 생성·검수</Mark>하고, <Mark>학습자가 수행</Mark>하며, 그 기록이{" "}
+          <Mark>평가와 설계</Mark>로 돌아옵니다.
+        </p>
+        <Legend />
+      </div>
 
       {/* 3레인 */}
       <div className="grid grid-cols-1 items-start lg:min-h-0 lg:flex-1 lg:grid-cols-[243px_44px_393px_44px_251px] lg:items-stretch">
@@ -190,16 +237,23 @@ const Architecture = () => (
           <Down />
           <Node lane="supply" title="자동 규칙 검증" desc="사전 노출·선산출·대역 정합" />
           <Down />
-          <Node lane="supply" title="GPT 품질 점검" desc="생성 결과 1차 점검" />
+          {/* AI 두 층은 '점검', 사람 한 층은 '결정' — 승인 권한이 어디 있는지가
+              라벨만 읽어도 갈리게 한다. 사람 노드는 테두리로도 구분한다. */}
+          <Node lane="supply" title="GPT 품질 점검" desc="AI 1차 점검 · 승인 권한 없음" />
           <Down />
           <Node
             lane="supply"
             title="Claude 교차 검증"
-            desc="독립 비판 검토"
+            desc="다른 벤더 AI의 독립 검토 · 승인 권한 없음"
             status="연구 예정"
           />
           <Down />
-          <Node lane="supply" title="교수자 최종 승인" desc="승인자 · 일시 · 모델 · 프롬프트 지문" />
+          <Node
+            lane="supply"
+            title="교수자 최종 승인"
+            desc="승인·반려는 사람이 결정 · 승인자·일시·모델·프롬프트 지문 기록"
+            decision
+          />
         </section>
 
         <Handoff label="승인 미션" />
