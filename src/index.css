@@ -151,8 +151,18 @@
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
+  /* 카드뉴스 안에서는 장면을 밀어내지 않고 한 장씩 짧게 교체한다. */
+  .mission-card-in {
+    animation: missionCardIn 220ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+  }
+  @keyframes missionCardIn {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .mission-message-in {
+    .mission-message-in,
+    .mission-card-in {
       animation: none;
     }
   }

@@ -1179,14 +1179,16 @@ function MissionRunner({
                           아니라 과제량 고지로 읽힌다. 자리는 남겨 단계 전환 시 높이가
                           흔들리지 않게 하고, 화면 낭독기에는 그대로 남는다. */}
                       <span
-                        className={`mt-1 block px-0.5 text-center text-[9.5px] leading-tight transition-opacity ${
-                          phase === "intro" ? "opacity-0" : ""
-                        } ${
-                          active
-                            ? "font-bold text-[#15202B]"
-                            : done
-                              ? "text-[#5B6670]"
-                              : "text-[#A9B0BA]"
+                        className={`mt-1 block px-0.5 text-center text-[9.5px] leading-tight ${
+                          phase === "intro"
+                            ? active
+                              ? "font-semibold text-[#737B83]"
+                              : "text-[#B2B7BC]"
+                            : active
+                              ? "font-bold text-[#15202B]"
+                              : done
+                                ? "text-[#5B6670]"
+                                : "text-[#A9B0BA]"
                         }`}
                       >
                         {step.label}
@@ -1290,6 +1292,10 @@ function MissionRunner({
         {/* ── 2단계: 판단을 반복하지 않고 곧바로 번역/통역 산출 ── */}
         {phase === "produce" && (
           <div className="space-y-3">
+            <p className="flex items-center gap-2 text-[12.5px] font-semibold text-[#66727C]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#F5C842]" aria-hidden="true" />
+              처음 그 장면으로 돌아왔습니다.
+            </p>
             {isInterp ? (
               <AudioFrame
                 sourceText={pt.source_text}
@@ -1607,10 +1613,11 @@ type SpeechRecognitionWindow = Window & {
 };
 
 /**
- * 최종 DCT 장면 콜드 오픈 — **한 화면**이다.
- * 9개 화행 중 7개가 개시형이라 "상대 신호" 박자가 구조적으로 비므로 2단계를 두지 않는다.
- * 선행 발화(preceding_turn)도 여기서는 **보여 주지 않는다** — 장면을 흐리고, 어차피 DCT
- * 수행 화면에서 원문과 함께 제시된다. 콜드 오픈의 일은 장면 하나와 질문 하나뿐이다.
+ * 최종 DCT 장면 콜드 오픈 — 생성 데이터 한 건을 **3장 카드뉴스**로 편집해 보여 준다.
+ * 새 설명이나 평가 기준을 보태지 않고 situation_ko를 장면/단서로 나눈 뒤, 마지막 장에서
+ * 목표언어 질문을 건넨다. 번역의 실제 선행 발화는 사건을 시작시키는 말로 미리 보여 주고
+ * DCT에서 다시 회수한다. 통역은 수행 화면과 정렬되기 전까지 선행 발화를 여기서 추가 노출하지
+ * 않는다. 미션 내부 문항을 여러 장으로 쪼개는 것이 아니라 진입부에서만 짧은 서사를 만든다.
  *
  * 🔴 대역(band) 축은 이 화면에서 절대 노출하지 않는다. MPJ는 Scale4(첫인상) → FixChoice →
  * Reason → MultiJudge로 축을 단계적으로 공개하도록 설계돼 있고, 여기서 "밀어붙이면/돌려
@@ -1632,6 +1639,7 @@ function MissionColdOpen({
   onStart: () => void;
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const [cardIndex, setCardIndex] = useState(0);
   // 화면에는 안 쓰지만 분류는 유지한다 — QA·감사용 data 속성과 결측 경고의 근거다.
   const coldOpen = classifyColdOpen(speechAct, productionTask.preceding_turn);
   const isResponseFallback = coldOpen.kind === "response-fallback";
@@ -1655,6 +1663,15 @@ function MissionColdOpen({
   // 화행별 동사형이 없으면 문장을 깨뜨리는 대신 중립형으로 떨어뜨린다.
   const actVerb = (speechAct && (SPEECH_ACT_VERB_KO as Record<string, string>)[speechAct]) || "말하면";
   const targetLangKo = direction === "zh_ko" ? "한국어" : "중국어";
+  const clue =
+    sceneContext || "말뜻뿐 아니라 이 장면의 관계와 상황도 함께 살펴보세요.";
+  const closingQuestion =
+    productionTask.mode === "interpreting"
+      ? `${targetLangKo}로 어떻게 통역하면 좋을까?`
+      : `${targetLangKo}로는 어떻게 ${actVerb} 좋을까?`;
+  const closingLead = "먼저 네 장면을 살펴보고, 이 장면으로 돌아옵니다.";
+  const arrivingTurn = productionTask.mode === "translation" ? coldOpen.precedingTurn : null;
+  const isLastCard = cardIndex === 2;
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -1689,40 +1706,153 @@ function MissionColdOpen({
   }, [productionTask.situation_ko, sceneGoal]);
 
   return (
-    <div className="mx-auto w-full max-w-[600px] pt-1" data-cold-open-kind={coldOpen.kind}>
+    <div className="mx-auto w-full max-w-[720px] pt-1" data-cold-open-kind={coldOpen.kind}>
       <section
-        className="mission-message-in overflow-hidden rounded-[22px] bg-[#1B2733] px-6 py-7 shadow-[0_14px_34px_rgba(21,32,43,0.18)] sm:px-8 sm:py-8"
+        className="mission-message-in rounded-[28px] border border-[#DED8C8] bg-[#F9F6EC] p-2.5 shadow-[0_18px_48px_rgba(21,32,43,0.13)] sm:p-3"
         aria-label="오늘 수행할 장면"
       >
-        {/* 진입 시 낭독기가 장면부터 읽도록 포커스만 옮긴다. 표시용 링은 두지 않는다 —
-            제목은 조작 대상이 아니라서 테두리가 뜨면 입력란처럼 보인다.
-            break-keep은 한국어에 필수다. 없으면 balance가 "배송지/를"처럼 조사를 잘라
-            어절이 두 줄로 쪼개진다. keep-all + balance라야 어절 단위로 고르게 끊긴다. */}
-        <h2
-          ref={headingRef}
-          tabIndex={-1}
-          style={{ textWrap: "balance" }}
-          className={`break-keep ${sceneGoalSize} font-semibold leading-[1.4] tracking-[-0.028em] text-[#F5F2EA] outline-none`}
+        <div
+          key={cardIndex}
+          className={`mission-card-in relative flex min-h-[320px] flex-col overflow-hidden rounded-[21px] px-6 py-6 sm:min-h-[350px] sm:px-9 sm:py-8 ${
+            cardIndex === 0
+              ? "bg-[#1B2733] text-[#F7F3E8]"
+              : cardIndex === 1
+                ? "bg-[#F5C842] text-[#15202B]"
+                : "bg-[#E8EFE7] text-[#15202B]"
+          }`}
+          aria-live="polite"
         >
-          {sceneGoal}
-        </h2>
-        {sceneContext && (
-          <p className="mt-3 break-keep text-[13.5px] leading-[1.65] tracking-[-0.01em] text-[#8B99A7]">
-            {sceneContext}
-          </p>
-        )}
-
-        <p className="mt-7 text-[21px] font-semibold leading-[1.35] tracking-[-0.028em] text-[#F5C842] sm:text-[23px]">
-          {targetLangKo}로는 어떻게 {actVerb} 좋을까?
-        </p>
-
-        <div className="mt-6">
-          <Button
-            className="h-auto rounded-full bg-[#F5C842] px-7 py-3 text-[14.5px] font-semibold tracking-[-0.015em] text-[#15202B] shadow-none transition-transform hover:-translate-y-0.5 hover:bg-[#FCE07A] active:translate-y-0 motion-reduce:transform-none"
-            onClick={onStart}
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute -right-2 -top-10 select-none text-[136px] font-black leading-none tracking-[-0.08em] sm:text-[170px] ${
+              cardIndex === 0
+                ? "text-white/[0.045]"
+                : cardIndex === 1
+                  ? "text-[#15202B]/[0.055]"
+                  : "text-[#2E6C58]/[0.06]"
+            }`}
           >
-            {mpjCount}개 장면으로 감 잡기 <span aria-hidden="true">→</span>
-          </Button>
+            0{cardIndex + 1}
+          </span>
+
+          <div className="relative z-10 flex h-full flex-1 flex-col">
+            <p
+              className={`text-[11px] font-bold tracking-[0.16em] ${
+                cardIndex === 0 ? "text-[#F5C842]" : cardIndex === 1 ? "text-[#6B5500]" : "text-[#2E6C58]"
+              }`}
+            >
+              {cardIndex === 0 ? "01 · 오늘의 장면" : cardIndex === 1 ? "02 · 장면 속 단서" : "03 · 당신의 선택"}
+            </p>
+
+            {cardIndex === 0 && (
+              <>
+                {/* 진입 시 낭독기가 장면부터 읽도록 포커스만 옮긴다. 표시용 링은 두지 않는다.
+                    keep-all + balance로 한국어 조사가 줄 시작에서 떨어지지 않게 한다. */}
+                <h2
+                  ref={headingRef}
+                  tabIndex={-1}
+                  style={{ textWrap: "balance" }}
+                  className={`mt-auto break-keep pb-1 ${sceneGoalSize} max-w-[580px] font-semibold leading-[1.42] tracking-[-0.03em] text-[#F7F3E8] outline-none`}
+                >
+                  {sceneGoal}
+                </h2>
+              </>
+            )}
+
+            {cardIndex === 1 && (
+              <div className="my-auto max-w-[590px]">
+                <h2
+                  style={{ textWrap: "balance" }}
+                  className="break-keep text-[22px] font-bold leading-[1.35] tracking-[-0.03em] text-[#15202B] sm:text-[27px]"
+                >
+                  그런데, 이런 사정이 있습니다
+                </h2>
+                <p className="mt-5 break-keep text-[15px] font-medium leading-[1.75] tracking-[-0.012em] text-[#3E3A2D] sm:text-[16px]">
+                  {clue}
+                </p>
+              </div>
+            )}
+
+            {cardIndex === 2 && (
+              <div className="my-auto max-w-[590px]">
+                <h2
+                  style={{ textWrap: "balance" }}
+                  className="break-keep text-[25px] font-bold leading-[1.35] tracking-[-0.035em] text-[#15202B] sm:text-[31px]"
+                >
+                  {closingQuestion}
+                </h2>
+                {arrivingTurn && (
+                  <div className="mt-5 max-w-[520px]">
+                    <p className="mb-2 text-[10.5px] font-bold tracking-[0.08em] text-[#607069]">
+                      도착한 메시지
+                    </p>
+                    <ChatBubble side="them">{arrivingTurn}</ChatBubble>
+                  </div>
+                )}
+                <p className="mt-5 break-keep text-[14px] leading-[1.7] tracking-[-0.01em] text-[#53615A] sm:text-[15px]">
+                  {closingLead}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex min-h-[58px] items-center justify-between gap-3 px-2 pt-2.5 sm:px-3">
+          <div className="flex items-center gap-2" aria-label={`카드 ${cardIndex + 1} / 3`}>
+            {[0, 1, 2].map((index) => (
+              <button
+                key={index}
+                type="button"
+                aria-label={`${index + 1}번 카드 보기`}
+                aria-current={cardIndex === index ? "step" : undefined}
+                onClick={() => setCardIndex(index)}
+                className={`h-2 rounded-full transition-all ${
+                  cardIndex === index ? "w-7 bg-[#15202B]" : "w-2 bg-[#C9C1AD] hover:bg-[#8F8776]"
+                }`}
+              />
+            ))}
+            <span className="ml-1 hidden text-[11px] font-semibold tabular-nums text-[#777063] sm:inline">
+              {cardIndex + 1} / 3
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {cardIndex > 0 && (
+              <button
+                type="button"
+                aria-label="이전 카드"
+                onClick={() => setCardIndex((current) => Math.max(0, current - 1))}
+                className="whitespace-nowrap rounded-full px-2.5 py-2 text-[12px] font-semibold text-[#6D675C] hover:bg-[#EEE9DC] hover:text-[#15202B] sm:px-3 sm:text-[12.5px]"
+              >
+                <span aria-hidden="true" className="sm:hidden">←</span>
+                <span className="hidden sm:inline">이전</span>
+              </button>
+            )}
+            {!isLastCard && (
+              <button
+                type="button"
+                onClick={onStart}
+                className="whitespace-nowrap rounded-full px-2 py-2 text-[12px] font-semibold text-[#8A8272] hover:bg-[#EEE9DC] hover:text-[#15202B] sm:px-3 sm:text-[12.5px]"
+              >
+                바로 시작
+              </button>
+            )}
+            {isLastCard ? (
+              <Button
+                className="h-auto whitespace-nowrap rounded-full bg-[#15202B] px-4 py-2.5 text-[13px] font-semibold tracking-[-0.015em] text-white shadow-none transition-transform hover:-translate-y-0.5 hover:bg-[#273849] active:translate-y-0 motion-reduce:transform-none sm:px-6 sm:text-[13.5px]"
+                onClick={onStart}
+              >
+                {mpjCount}개 장면으로 감 잡기 <span aria-hidden="true">→</span>
+              </Button>
+            ) : (
+              <Button
+                className="h-auto whitespace-nowrap rounded-full bg-[#F5C842] px-4 py-2.5 text-[13px] font-semibold tracking-[-0.015em] text-[#15202B] shadow-none transition-transform hover:-translate-y-0.5 hover:bg-[#FCE07A] active:translate-y-0 motion-reduce:transform-none sm:px-6 sm:text-[13.5px]"
+                onClick={() => setCardIndex((current) => Math.min(2, current + 1))}
+              >
+                다음 카드 <span aria-hidden="true">→</span>
+              </Button>
+            )}
+          </div>
         </div>
       </section>
     </div>
