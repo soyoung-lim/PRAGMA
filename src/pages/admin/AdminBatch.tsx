@@ -39,6 +39,7 @@ import {
   isCoreRunIdForDirection,
 } from "@/lib/pragma/coreRunIdentity";
 import {
+  CORE_AXIS_LABEL,
   CORE_QUALITY_AXES,
   runCoreQualityPilot,
   type CoreQualityAxis,
@@ -58,24 +59,6 @@ import { toast } from "sonner";
 // 최종 접근 제어는 다른 /admin/* 화면과 동일하게 DB(RLS·is_admin)가 맡는다.
 
 const LEVEL_ORDER: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
-const CORE_AXIS_LABEL: Record<CoreQualityAxis, string> = {
-  speech_act: "화행",
-  power: "P",
-  distance: "D",
-  burden: "R",
-  domain: "도메인",
-  industry: "산업",
-  mode: "모드",
-  context_spec: "역할·의무",
-  referents: "행위자·대상",
-  decision_authority: "결정 권한",
-  topic_seed: "시드",
-  adjacency: "인접쌍",
-  participant_roles: "통역 참여자",
-  scene_source_alignment: "상황·원문 대응",
-  learner_scene: "학생용 장면",
-};
-
 const coreRunStorageKey = (direction: LanguageDirection) =>
   `pragma:admin-core-batch-run:${direction}`;
 
@@ -521,7 +504,10 @@ const AdminBatch = () => {
           </p>
         )}
 
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        {/* 2열이면 박스 하나가 600px가 되어 「입문 · HSK 4급」과 「18」 사이가
+            한참 벌어진다 — 눈이 라벨과 수치를 잇지 못한다. 4열로 좁혀 라벨과
+            수치를 붙인다. */}
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Dist title="수준별" rows={LEVEL_ORDER.map((l) => [LEVEL[l], summary.byLevel[l] ?? 0])} />
           <Dist
             title="주제 · 도메인별"

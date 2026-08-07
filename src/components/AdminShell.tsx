@@ -53,7 +53,10 @@ const GROUPS: NavGroup[] = [
     items: [
       { to: "/admin/library", label: "미션 재료 라이브러리" },
       { to: "/admin/assembly", label: "학습 미션 조립" },
-      { to: "/admin/review", label: "검수·승인" },
+      { to: "/admin/review", label: "통합 검수·승인" },
+      // 계약 §5.4(2026-08-07 2차 개정) — 열람 전용. 설계도가 공표하는 QA 층은
+      // 도구에서 확인 가능해야 한다. 실행 트리거는 두지 않는다.
+      { to: "/admin/cross-vendor", label: "교차 벤더 검토" },
     ],
   },
   {
@@ -130,10 +133,10 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 bg-[#15202B]">
-        {/* 헤더와 아래 본문 행은 같은 1600 격자를 쓴다 — 예전에는 헤더만 중앙
+        {/* 헤더와 아래 본문 행은 같은 1400 격자를 쓴다 — 예전에는 헤더만 중앙
             1240이고 본문은 화면 끝까지 흘러, 사이드바는 로고보다 320px 왼쪽으로
             콘텐츠는 헤더보다 308px 오른쪽으로 튀어나왔다(1920 실측). */}
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
           <HomeBrand />
           <Link
             to="/"
@@ -146,7 +149,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
 
       {/* 좌우 패딩도 헤더와 같은 px-6으로 맞춘다 — pl-5/pr-8이면 max-w를 맞춰도
           사이드바 좌측과 콘텐츠 우측이 헤더 안쪽 선과 어긋난다. */}
-      <div className="mx-auto flex max-w-[1600px] gap-6 px-6 py-6">
+      <div className="mx-auto flex max-w-[1400px] gap-6 px-6 py-6">
         {/* 폭은 가장 넓은 항목(「연구 데이터 관리」+준비 중 배지 = 139px)이 들어가는
             선까지만 준다. 메뉴는 whitespace-nowrap이라 넘치면 줄바꿈이 아니라
             본문 쪽으로 삐져나온다. 208px → 텍스트 가용폭 151px(여유 12px). */}
