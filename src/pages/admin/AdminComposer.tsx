@@ -556,17 +556,17 @@ const AdminComposer = () => {
                     </Badge>
                   )}
                 </div>
-                <h2 className="mt-0.5 text-[19px] font-semibold leading-tight">2 · AI 자동 편성</h2>
+                <h2 className="mt-0.5 text-[18px] font-semibold leading-tight">2 · AI 자동 편성</h2>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <label className="flex items-center gap-2">
-                  <span className="whitespace-nowrap text-[12px] font-semibold text-[#F1EFE8]">
+                  <span className="whitespace-nowrap text-[11.5px] font-semibold text-[#F1EFE8]">
                     프리셋 · 빠른 시작
                   </span>
                   <select
                     value={presetCode}
                     onChange={(event) => applyPreset(event.target.value)}
-                    className="h-9 min-w-[210px] rounded-md border border-white/20 bg-white px-2 text-[#15202B]"
+                    className="h-9 min-w-[210px] rounded-md border border-white/20 bg-white px-2 text-[15px] text-[#15202B]"
                   >
                     <option value="">— 직접 설정 —</option>
                     {COURSE_PRESETS.map((item) => (
@@ -577,7 +577,7 @@ const AdminComposer = () => {
                   </select>
                 </label>
                 <Button
-                  className="h-9 bg-[#FAD338] font-semibold text-[#15202B] hover:bg-[#EAC42E]"
+                  className="h-9 bg-[#FAD338] text-[14px] font-semibold text-[#15202B] hover:bg-[#EAC42E]"
                   onClick={() => (outline ? autoFill(false) : setStructureEditor("new"))}
                   disabled={loadingOutline}
                 >
@@ -588,7 +588,7 @@ const AdminComposer = () => {
 
             <div className="px-4 py-3.5 text-[13px]">
             <div className="grid max-w-[900px] gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(180px,210px)_minmax(180px,210px)_minmax(300px,420px)]">
-              <label className="rounded-lg border border-[#E2DED2] border-t-2 border-t-[#FAD338] bg-[#FAF9F5] p-3">
+              <label className="rounded-lg border border-[#E2DED2] bg-[#FAF9F5] p-3">
                 <span className="flex items-center gap-2 font-semibold text-[#15202B]">
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#E5E7E8] text-[11px]">1</span>
                   수준
@@ -603,7 +603,7 @@ const AdminComposer = () => {
                   ))}
                 </select>
               </label>
-              <label className="rounded-lg border border-[#E2DED2] border-t-2 border-t-[#FAD338] bg-[#FAF9F5] p-3">
+              <label className="rounded-lg border border-[#E2DED2] bg-[#FAF9F5] p-3">
                 <span className="flex items-center gap-2 font-semibold text-[#15202B]">
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#E5E7E8] text-[11px]">2</span>
                   언어방향
@@ -618,7 +618,7 @@ const AdminComposer = () => {
                   ))}
                 </select>
               </label>
-              <div className="rounded-lg border border-[#E2DED2] border-t-2 border-t-[#FAD338] bg-[#FAF9F5] p-3 sm:col-span-2 lg:col-span-1">
+              <div className="rounded-lg border border-[#E2DED2] bg-[#FAF9F5] p-3 sm:col-span-2 lg:col-span-1">
                 <span className="flex items-center gap-2 font-semibold text-[#15202B]">
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#E5E7E8] text-[11px]">3</span>
                   통번역 모드 비율
