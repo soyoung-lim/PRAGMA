@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react";
+import {
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronUp,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/AdminShell";
 import { MissionPreview } from "@/components/admin/MissionPreview";
@@ -24,11 +32,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
 import {
   contentReleaseMatchOf,
   coreContentReleaseIdOf,
-  CURRENT_CONTENT_RELEASE_ID,
   isRapidReviewCandidate,
   missionContentReleaseIdOf,
   missionQualityVerdict,
@@ -148,13 +164,6 @@ const RELEASE_LABEL: Record<ContentReleaseMatch, string> = {
   missing: "후보 표식 없음",
 };
 
-const RELEASE_CLASS: Record<ContentReleaseMatch, string> = {
-  current: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  previous: "border-slate-300 bg-slate-50 text-slate-700",
-  mixed: "border-amber-300 bg-amber-50 text-amber-900",
-  missing: "border-red-300 bg-red-50 text-red-900",
-};
-
 const BLOCKER_LABEL: Record<RapidReviewBlocker, string> = {
   not_generated: "미션 생성 대기",
   core_rule_not_pass: "코어 규칙 미통과",
@@ -169,11 +178,6 @@ const BLOCKER_LABEL: Record<RapidReviewBlocker, string> = {
   feature_missing: "학습 초점 버전 없음",
   mission_missing: "미션 없음",
 };
-
-const CURRENT_RELEASE_SHORT = CURRENT_CONTENT_RELEASE_ID.replace(
-  "pragma_content_candidate_",
-  "",
-);
 
 function selectLabel(map: Record<string, string>, value: string | null): string {
   return value ? map[value] ?? value : "—";
@@ -210,10 +214,92 @@ function Stat({
   note: string;
 }) {
   return (
-    <div className="rounded-xl border border-[#EAE4D2] bg-white px-4 py-3">
-      <div className="text-[12px] text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-bold">{value.toLocaleString()}</div>
-      <div className="mt-1 text-[11px] text-muted-foreground">{note}</div>
+    <div className="min-w-0 px-3 py-2.5">
+      <div className="flex items-baseline gap-2">
+        <div className="text-[18px] font-bold tabular-nums text-[#182229]">{value.toLocaleString()}</div>
+        <div className="truncate text-[11.5px] font-semibold text-[#4F5D65]">{label}</div>
+      </div>
+      <div className="truncate text-[10px] text-muted-foreground">{note}</div>
+    </div>
+  );
+}
+
+function RunPicker({
+  open,
+  onOpenChange,
+  value,
+  onChange,
+  runs,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  value: string;
+  onChange: (value: string) => void;
+  runs: Array<[string, number]>;
+}) {
+  const selectedCount = runs.find(([run]) => run === value)?.[1];
+
+  return (
+    <div className="min-w-0">
+      <div className="text-[11.5px] font-semibold text-[#35434B]">1 · 생성 묶음</div>
+      <Popover open={open} onOpenChange={onOpenChange}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            role="combobox"
+            aria-expanded={open}
+            className="mt-1 flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-white px-3 text-left text-[12px] text-foreground outline-none transition-colors hover:border-[#AEB8BD] focus-visible:ring-2 focus-visible:ring-[#B7C3C9]"
+          >
+            <span className="truncate">
+              {value ? `${value} (${selectedCount ?? 0})` : "전체 생성 묶음"}
+            </span>
+            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom"
+          align="start"
+          avoidCollisions={false}
+          className="w-[min(420px,calc(100vw-2rem))] p-0"
+        >
+          <Command>
+            <CommandInput placeholder="생성 묶음 검색" />
+            <CommandList className="max-h-[260px]">
+              <CommandEmpty>일치하는 run이 없습니다.</CommandEmpty>
+              <CommandGroup>
+                <CommandItem
+                  value="전체 run 탐색"
+                  onSelect={() => {
+                    onChange("");
+                    onOpenChange(false);
+                  }}
+                >
+                  <Check className={`mr-2 h-3.5 w-3.5 ${value ? "opacity-0" : "opacity-100"}`} />
+                  <span>전체 생성 묶음 · 탐색</span>
+                </CommandItem>
+                {runs.map(([run, count]) => (
+                  <CommandItem
+                    key={run}
+                    value={`${run} ${count}`}
+                    onSelect={() => {
+                      onChange(run);
+                      onOpenChange(false);
+                    }}
+                  >
+                    <Check
+                      className={`mr-2 h-3.5 w-3.5 ${value === run ? "opacity-100" : "opacity-0"}`}
+                    />
+                    <span className="min-w-0 flex-1 truncate" title={run}>
+                      {run}
+                    </span>
+                    <span className="ml-3 shrink-0 tabular-nums text-muted-foreground">{count}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
@@ -228,6 +314,7 @@ const AdminReview = () => {
   const [promptFilter, setPromptFilter] = useState<PromptFilter>("all");
   const [releaseFilter, setReleaseFilter] = useState<ReleaseFilter>("all");
   const [runFilter, setRunFilter] = useState("");
+  const [runOpen, setRunOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -283,9 +370,9 @@ const AdminReview = () => {
     ).length;
     return {
       cores: rows.length,
-      corePending: rows.filter((row) => row.review_status === "needs_review").length,
+      coreRulePass: rows.filter((row) => row.auto_check_result === "pass").length,
+      coreApproved: rows.filter((row) => row.review_status === "approved").length,
       missionPending: missionPending.length,
-      currentReleasePending,
       refreshTargetPending: missionPending.length - currentReleasePending,
       reviewed: rows.filter((row) => row.mission_status === "reviewed").length,
     };
@@ -394,8 +481,8 @@ const AdminReview = () => {
         .join(" · ");
       toast.warning(
         summary
-          ? `빠른 검수 후보가 없습니다: ${summary}`
-          : "현재 조건에서 안전한 빠른 검수 후보가 없습니다.",
+          ? `검수 후보가 없습니다: ${summary}`
+          : "현재 조건에서 일괄 선택할 검수 후보가 없습니다.",
       );
     } else {
       toast.success(`${ids.length}건을 선택했습니다. 사람 검수를 시작하십시오.`);
@@ -433,7 +520,7 @@ const AdminReview = () => {
       setRapidIndex((index) => index + 1);
     } else {
       setRapidOpen(false);
-      toast.success("빠른 사람 검수가 끝났습니다. 통과 표시된 항목만 승인할 수 있습니다.");
+      toast.success("선택 미션 검수가 끝났습니다. 검수 완료 항목만 승인할 수 있습니다.");
     }
   };
 
@@ -496,41 +583,50 @@ const AdminReview = () => {
   return (
     <AdminShell
       title="통합 검수·승인"
-      description="코어 상태와 학습 미션의 교수자 실행 게이트를 분리해 확인합니다."
+      description="AI 점검 결과를 참고하되, 교수자가 직접 확인한 미션만 수업 배치 가능 상태로 승인합니다."
     >
-      {/* 경고문은 읽기 폭(≈672px)까지만 — 전폭으로 두면 한 줄에 한국어 100자가 넘어
-          눈이 다음 줄 시작점을 찾지 못한다. */}
-      <div className="max-w-[42rem] rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[12.5px] leading-relaxed text-amber-950">
-        <div className="flex items-start gap-2">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            <b>현재 누적 자료는 테스트·회귀 생성물을 포함합니다.</b> 큐에 보인다는 이유만으로 본
-            콘텐츠가 아닙니다. 본배치에서는 반드시 해당 run ID를 하나 선택하고, 사람 미리보기를
-            통과한 미션만 승인하십시오. AI 품질점검은 승인자가 아니라 검수 순서를 돕는 보조 장치입니다.
-            빠른 검수는 코어와 미션이 모두 현재 후보 <code>{CURRENT_RELEASE_SHORT}</code>인 경우에만
-            허용됩니다.
+      <div className="max-w-[900px]">
+        <section className="overflow-hidden rounded-xl border border-[#D9DEE0] border-t-4 border-t-[#18232D] bg-white">
+          <div className="flex flex-col gap-2.5 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-[14px] font-bold text-[#18232D]">검수 절차</h2>
+              <p className="mt-0.5 text-[11px] text-[#657078]">같은 생성 묶음의 미션을 확인한 뒤 승인합니다.</p>
+              <details className="mt-1 text-[10px] text-[#6B757B]">
+                <summary className="cursor-pointer font-medium text-[#53656F] hover:text-[#233542]">데이터 범위</summary>
+                <p className="mt-1 max-w-[30rem] leading-relaxed">
+                  테스트·회귀 자료가 포함될 수 있으므로 승인 전 생성 묶음과 검수 결과를 확인합니다.
+                </p>
+              </details>
+            </div>
+            <ol className="grid min-w-0 flex-1 grid-cols-3 overflow-hidden rounded-lg border border-[#DDE1E2] lg:max-w-[540px]">
+              {["생성 묶음 선택", "미션 직접 검수", "교수자 승인"].map((label, index) => (
+                <li key={label} className="flex min-w-0 items-center gap-2 border-r border-[#DDE1E2] bg-[#FAFAF8] px-2.5 py-2 last:border-r-0">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#18232D] text-[10px] font-bold text-white">
+                    {index + 1}
+                  </span>
+                  <span className="truncate text-[11px] font-semibold text-[#2C3941]">{label}</span>
+                </li>
+              ))}
+            </ol>
           </div>
+
+        <div className="grid grid-cols-3 divide-x divide-[#E1E4E4] border-y border-[#DDE1E2] bg-[#FAFAF8]">
+          {scope === "mission" ? (
+            <>
+              <Stat label="검수 대기" value={stats.missionPending} note="교수자 확인 전" />
+              <Stat label="교체·재생성" value={stats.refreshTargetPending} note="현행 기준 불일치" />
+              <Stat label="승인 완료" value={stats.reviewed} note="수업 배치 가능" />
+            </>
+          ) : (
+            <>
+              <Stat label="코어 전체" value={stats.cores} note="시나리오 검색 단위" />
+              <Stat label="규칙검사 통과" value={stats.coreRulePass} note="결정론 검사" />
+              <Stat label="코어 승인" value={stats.coreApproved} note="보관·선별 상태" />
+            </>
+          )}
         </div>
-      </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <Stat label="코어 전체" value={stats.cores} note="scenario_core_v1" />
-        <Stat label="코어 상태·대기" value={stats.corePending} note="학습자 실행 게이트 아님" />
-        <Stat label="미션 검수 대기" value={stats.missionPending} note="mission_status=generated" />
-        <Stat
-          label="현재 후보·대기"
-          value={stats.currentReleasePending}
-          note={CURRENT_RELEASE_SHORT}
-        />
-        <Stat
-          label="refresh 대상·대기"
-          value={stats.refreshTargetPending}
-          note="이전·혼합·표식 없음"
-        />
-        <Stat label="교수자 검토 완료" value={stats.reviewed} note="mission_status=reviewed" />
-      </div>
-
-      <div className="mt-5 rounded-xl border border-[#EAE4D2] bg-white p-4">
+      <div className="p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex rounded-lg border border-[#D8D0BC] bg-[#F7F5EF] p-1">
             <button
@@ -567,124 +663,122 @@ const AdminReview = () => {
         </div>
 
         {scope === "core" && (
-          <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[12px] text-slate-700">
-            코어의 <code>review_status</code>는 보관·선별 메타데이터다. 실제 학습자 실행 여부는
-            미션의 <code>mission_status=reviewed</code>와 수업 편성이 함께 결정한다. 이 화면에서는
-            코어를 일괄 승인하지 않는다.
+          <p className="mt-3 rounded-lg bg-[#F3F5F5] px-3 py-2 text-[12px] text-[#53616A]">
+            코어 상태는 보관·선별용이며, 학습자 실행 승인은 학습 미션 검수에서 처리합니다.
           </p>
         )}
 
-        {/* 필드는 칸이 아니라 내용에 맞춘다 — 균등 그리드에 w-full을 두면 「전체」
-            두 글자짜리 선택지가 391px가 된다(실측 사용률 6%). 폭을 내용에 맞추고
-            남는 가로는 여백으로 둔다. */}
-        <div className="mt-4 flex flex-wrap gap-3">
-          <label className="w-36 text-[11.5px] text-muted-foreground">
-            상태
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as QueueStatus)}
-              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-[12.5px] text-foreground"
-            >
-              <option value="pending">{scope === "mission" ? "미션 검수 대기" : "코어 상태·대기"}</option>
-              <option value="reviewed">{scope === "mission" ? "교수자 검토 완료" : "코어 승인 상태"}</option>
-              <option value="all">전체</option>
-            </select>
-          </label>
-          <label className="w-40 text-[11.5px] text-muted-foreground">
-            {scope === "mission" ? "AI 품질점검" : "코어 규칙검사"}
-            <select
-              value={qualityFilter}
-              onChange={(event) => setQualityFilter(event.target.value as QualityFilter)}
-              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-[12.5px] text-foreground"
-            >
-              <option value="all">전체</option>
-              {scope === "mission" && <option value="candidate">안전한 빠른 검수 후보</option>}
-              <option value="pass">통과</option>
-              <option value="warning">주의</option>
-              <option value="fail">결함</option>
-              <option value="missing">미점검</option>
-            </select>
-          </label>
-          <label className="w-60 text-[11.5px] text-muted-foreground">
-            run ID
-            <select
+        <div className="mt-3 border-t border-[#E2E5E6] pt-2.5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <h3 className="text-[13px] font-bold text-[#18232D]">검수 대상</h3>
+              <p className="text-[10.5px] text-muted-foreground">
+                하나의 생성 묶음을 선택하면 미션 검수와 승인이 활성화됩니다.
+              </p>
+            </div>
+            <span className={`rounded-full px-2 py-1 text-[10.5px] font-semibold ${runFilter ? "bg-[#E8F1EC] text-[#466555]" : "bg-[#ECEFF0] text-[#68747A]"}`}>
+              {runFilter ? "묶음 선택 완료" : "전체 탐색"}
+            </span>
+          </div>
+          <div className="mt-2 grid gap-2.5 lg:grid-cols-[minmax(0,1.45fr)_155px_minmax(200px,.85fr)]">
+            <RunPicker
+              open={runOpen}
+              onOpenChange={setRunOpen}
               value={runFilter}
-              onChange={(event) => setRunFilter(event.target.value)}
-              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-[12px] text-foreground"
-            >
-              <option value="">전체 — 승인 전 단일 run 선택 필수</option>
-              {runs.map(([run, count]) => (
-                <option key={run} value={run}>
-                  {run} ({count})
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="w-48 text-[11.5px] text-muted-foreground">
-            콘텐츠 후보 상태
-            <select
-              value={releaseFilter}
-              onChange={(event) => setReleaseFilter(event.target.value as ReleaseFilter)}
-              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-[12.5px] text-foreground"
-            >
-              <option value="all">전체 — 코어·미션 한 쌍 기준</option>
-              <option value="current">현재 후보</option>
-              <option value="previous">이전 후보</option>
-              <option value="mixed">후보 혼합</option>
-              <option value="missing">후보 표식 없음</option>
-            </select>
-          </label>
-          <label className="w-40 text-[11.5px] text-muted-foreground">
-            코어 prompt 지문
-            <select
-              value={promptFilter}
-              onChange={(event) => setPromptFilter(event.target.value as PromptFilter)}
-              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-[12.5px] text-foreground"
-            >
-              <option value="all">전체</option>
-              <option value="current">현재 지문 일치</option>
-              <option value="different">다른 지문</option>
-              <option value="missing">지문 없음</option>
-            </select>
-          </label>
-          <label className="w-60 text-[11.5px] text-muted-foreground">
-            검색
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="제목·화행·item key"
-              className="mt-1 h-9 text-[12.5px]"
+              onChange={setRunFilter}
+              runs={runs}
             />
-          </label>
+            <label className="text-[11.5px] font-semibold text-[#35434B]">
+              2 · 상태
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as QueueStatus)}
+                className="mt-1 h-9 w-full rounded-md border border-input bg-white px-2 text-[12.5px] text-foreground"
+              >
+                <option value="pending">{scope === "mission" ? "검수 대기" : "상태 확인 대기"}</option>
+                <option value="reviewed">{scope === "mission" ? "교수자 승인 완료" : "코어 승인 상태"}</option>
+                <option value="all">전체</option>
+              </select>
+            </label>
+            <label className="text-[11.5px] font-semibold text-[#35434B]">
+              3 · 검색
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="제목·화행·item key"
+                className="mt-1 h-9 bg-white text-[12.5px]"
+              />
+            </label>
+          </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12px]">
-          <span className="text-muted-foreground">
-            조건 결과 {filtered.length.toLocaleString()}건
-            {filtered.length > visibleRows.length && ` · 화면에는 최근 ${visibleRows.length}건 표시`}
-          </span>
-          <span className="break-all font-mono text-[10.5px] text-muted-foreground">
-            current release {CURRENT_RELEASE_SHORT} · prompt{" "}
-            {PROMPT_SNAPSHOT.core_surface_hash.slice(0, 12)}…
-          </span>
-        </div>
-      </div>
+        <details className="mt-2 rounded-lg bg-[#F5F6F5] px-3 py-1.5">
+          <summary className="cursor-pointer text-[11.5px] font-semibold text-[#53616A]">
+            세부 필터
+          </summary>
+          <div className="mt-2 grid gap-2.5 border-t border-[#E1E5E5] pt-2.5 sm:grid-cols-3">
+              <label className="text-[11px] text-muted-foreground">
+                {scope === "mission" ? "AI 검사 결과" : "코어 규칙검사"}
+                <select
+                  value={qualityFilter}
+                  onChange={(event) => setQualityFilter(event.target.value as QualityFilter)}
+                  className="mt-1 h-9 w-full rounded-md border border-input bg-white px-2 text-[12px] text-foreground"
+                >
+                  <option value="all">전체</option>
+                  {scope === "mission" && <option value="candidate">검수 후보</option>}
+                  <option value="pass">통과</option>
+                  <option value="warning">주의</option>
+                  <option value="fail">결함</option>
+                  <option value="missing">미점검</option>
+                </select>
+              </label>
+              <label className="text-[11px] text-muted-foreground">
+                콘텐츠 후보 상태
+                <select
+                  value={releaseFilter}
+                  onChange={(event) => setReleaseFilter(event.target.value as ReleaseFilter)}
+                  className="mt-1 h-9 w-full rounded-md border border-input bg-white px-2 text-[12px] text-foreground"
+                >
+                  <option value="all">전체</option>
+                  <option value="current">현재 후보</option>
+                  <option value="previous">이전 후보</option>
+                  <option value="mixed">후보 혼합</option>
+                  <option value="missing">후보 표식 없음</option>
+                </select>
+              </label>
+              <label className="text-[11px] text-muted-foreground">
+                코어 prompt 지문
+                <select
+                  value={promptFilter}
+                  onChange={(event) => setPromptFilter(event.target.value as PromptFilter)}
+                  className="mt-1 h-9 w-full rounded-md border border-input bg-white px-2 text-[12px] text-foreground"
+                >
+                  <option value="all">전체</option>
+                  <option value="current">현재 지문 일치</option>
+                  <option value="different">다른 지문</option>
+                  <option value="missing">지문 없음</option>
+                </select>
+              </label>
+          </div>
+        </details>
 
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+          <span>조건 결과 {filtered.length.toLocaleString()}건</span>
+          {filtered.length > visibleRows.length && <span>· 최근 {visibleRows.length}건 표시</span>}
+          {runFilter && <span className="rounded-full bg-[#E8F1EC] px-2 py-1 font-medium text-[#466555]">생성 묶음 적용</span>}
+        </div>
       {scope === "mission" && (
-        <div className="sticky top-[72px] z-20 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#D8D0BC] bg-[#FFFDF7]/95 px-4 py-3 shadow-sm backdrop-blur">
-          <div className="max-w-[42rem]">
-            <div className="text-[13px] font-semibold">
-              선택 {selectedIds.size}건 · 사람 검수 통과 {approvalReadyIds.length}건
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-[#D9DEE0] bg-[#F8F9F8] px-3 py-2.5">
+          <div className="max-w-[31rem]">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <div className="text-[11px] font-bold text-[#33434C]">선택 미션 검수</div>
+              <div className="text-[12.5px] font-semibold text-[#18232D]">
+                선택 {selectedIds.size}건 · 검수 완료 {approvalReadyIds.length}건
+              </div>
             </div>
-            <div className="text-[11px] text-muted-foreground">
-              자동 선택은 최대 25건이며 <b>현재 화면 필터 안에서</b> 앞에서부터 고른다 — 수준·화행
-              분포를 맞추지 않으므로, 편성에 쓸 조건(예: 중급·한→중)을 먼저 걸어라. 현재 후보가
-              아니거나 구버전 미션 프롬프트로 만든 미션은 자동 선택에서 제외된다. 실제 승인 전 각
-              미션을 한 번씩 확인해야 한다.
-            </div>
-            <div className="text-[11px] text-muted-foreground">
-              사람 검수 통과 표시는 화면에만 남는다 — 새로고침하면 초기화되므로 한 묶음을 끝내고 승인하라.
-            </div>
+            <p className="mt-0.5 text-[10.5px] text-muted-foreground">
+              같은 생성 묶음의 후보를 직접 확인한 뒤 승인합니다.
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -693,7 +787,7 @@ const AdminReview = () => {
               onClick={chooseSafeCandidates}
               disabled={!runFilter || loading}
             >
-              안전 후보 최대 25건 선택
+              검수 후보 선택
             </Button>
             <Button
               variant="outline"
@@ -712,7 +806,7 @@ const AdminReview = () => {
               disabled={!runFilter || selectedIds.size === 0}
               className="bg-[#15202B] text-white hover:bg-[#15202B]/90"
             >
-              빠른 사람 검수 시작
+              선택 미션 검수
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -727,7 +821,7 @@ const AdminReview = () => {
                       승인 {approvalProgress}
                     </>
                   ) : (
-                    `검수 통과 ${approvalReadyIds.length}건 승인`
+                    `통과 ${approvalReadyIds.length}건 승인`
                   )}
                 </Button>
               </AlertDialogTrigger>
@@ -736,7 +830,7 @@ const AdminReview = () => {
                   <AlertDialogTitle>교수자 검토 완료로 승인할까요?</AlertDialogTitle>
                   <AlertDialogDescription className="space-y-2">
                     <span className="block">
-                      사람 미리보기에서 통과시킨 {approvalReadyIds.length}건만 승인한다.
+                      직접 검수를 완료한 {approvalReadyIds.length}건만 승인합니다.
                     </span>
                     <span className="block break-all font-mono text-[11px]">
                       run: {runFilter}
@@ -759,7 +853,10 @@ const AdminReview = () => {
         </div>
       )}
 
-      <div className="mt-4 space-y-3">
+      </div>
+    </section>
+
+      <div className="mt-3 space-y-2.5">
         {loading && (
           <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
             검수 큐를 불러오는 중…
@@ -812,8 +909,8 @@ const AdminReview = () => {
             return (
               <article
                 key={row.scenario_id}
-                className={`rounded-xl border bg-white p-4 ${
-                  selected ? "border-[#15202B] ring-1 ring-[#15202B]" : "border-[#EAE4D2]"
+                className={`rounded-xl border bg-white p-4 transition-colors ${
+                  selected ? "border-[#75848D] bg-[#FBFCFC]" : "border-[#E3E1D9]"
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -822,15 +919,15 @@ const AdminReview = () => {
                       type="checkbox"
                       checked={selected}
                       disabled={!candidate}
-                      aria-label={`${row.title} 빠른 검수 선택`}
+                      aria-label={`${row.title} 검수 선택`}
                       title={
                         candidate
-                          ? "빠른 사람 검수 후보로 선택"
+                          ? "직접 검수할 후보로 선택"
                           : !runFilter
                             ? "먼저 하나의 run ID를 선택하십시오"
                             : blockerSummary
-                              ? `빠른 검수 제외: ${blockerSummary}`
-                              : "현재 조건에서는 빠른 검수 후보가 아닙니다"
+                              ? `일괄 선택 제외: ${blockerSummary}`
+                              : "현재 조건에서는 검수 후보가 아닙니다"
                       }
                       onChange={(event) => {
                         setSelectedIds((previous) => {
@@ -868,19 +965,11 @@ const AdminReview = () => {
                           {QUALITY_LABEL[quality]}
                         </Badge>
                       )}
-                      <Badge
-                        variant="outline"
-                        className={
-                          promptMatch === "current"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                            : "border-amber-300 bg-amber-50 text-amber-900"
-                        }
-                      >
-                        {PROMPT_LABEL[promptMatch]}
-                      </Badge>
-                      <Badge variant="outline" className={RELEASE_CLASS[releaseMatch]}>
-                        {RELEASE_LABEL[releaseMatch]}
-                      </Badge>
+                      {candidate && (
+                        <Badge className="border-0 bg-[#E7F0EB] text-[#3F6652] hover:bg-[#E7F0EB]">
+                          검수 후보
+                        </Badge>
+                      )}
                       {humanPassed && (
                         <Badge className="bg-emerald-700 text-white">
                           <CheckCircle2 className="mr-1 h-3 w-3" />
@@ -889,41 +978,26 @@ const AdminReview = () => {
                       )}
                     </div>
 
-                    {situation && <p className="mt-2 text-[13px]">{situation}</p>}
+                    {situation && (
+                      <p className="mt-2 max-w-[52rem] text-[12.5px] leading-[1.6] text-[#26333B]">
+                        {situation}
+                      </p>
+                    )}
                     {source && (
-                      <p className="mt-1 line-clamp-2 text-[12px] text-muted-foreground">
+                      <p className="mt-1 max-w-[52rem] line-clamp-2 text-[11.5px] leading-relaxed text-muted-foreground">
                         원문 · {source}
                       </p>
                     )}
                     {scope === "mission" && qualitySummary(row.mission_content) && (
-                      <p className="mt-1 text-[12px] text-muted-foreground">
+                      <p className="mt-1.5 max-w-[52rem] border-l-2 border-[#C8D0D4] pl-2 text-[11px] leading-relaxed text-muted-foreground">
                         AI 점검 · {qualitySummary(row.mission_content)}
                       </p>
                     )}
                     {scope === "mission" && blockers.length > 0 && (
-                      <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11.5px] text-amber-950">
-                        빠른 검수 제외 · {blockerSummary}
+                      <p className="mt-2 text-[11px] text-[#7B6D4A]">
+                        일괄 선택 제외 · {blockerSummary}
                       </p>
                     )}
-
-                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10.5px] text-muted-foreground">
-                      <span>run {row.generation_run_id ?? "—"}</span>
-                      <span>item {row.generation_item_key ?? "—"}</span>
-                      <span>
-                        feature {row.target_feature ?? "—"} v{row.target_feature_version ?? "—"}
-                      </span>
-                      <span>
-                        core rule {row.auto_check_result ?? "—"} ·{" "}
-                        {scope === "mission"
-                          ? `mission ${row.mission_status ?? "없음"}`
-                          : `core ${row.review_status ?? "—"}`}
-                      </span>
-                      <span
-                        title={`core ${coreReleaseId ?? "—"} · mission ${missionReleaseId ?? "—"}`}
-                      >
-                        release core {coreReleaseId ?? "—"} · mission {missionReleaseId ?? "—"}
-                      </span>
-                    </div>
                   </div>
                   <Button
                     variant="ghost"
@@ -960,6 +1034,25 @@ const AdminReview = () => {
                         {JSON.stringify(row.core_content, null, 2)}
                       </pre>
                     )}
+                    <details className="mt-3 rounded-lg border border-[#E2E5E6] bg-[#FAFBFB] px-3 py-2">
+                      <summary className="cursor-pointer text-[11px] font-semibold text-[#5C6970]">
+                        생성·추적 정보
+                      </summary>
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-[#E5E8E8] pt-2 font-mono text-[10.5px] text-muted-foreground">
+                        <span>run {row.generation_run_id ?? "—"}</span>
+                        <span>item {row.generation_item_key ?? "—"}</span>
+                        <span>feature {row.target_feature ?? "—"} v{row.target_feature_version ?? "—"}</span>
+                        <span>
+                          core rule {row.auto_check_result ?? "—"} ·{" "}
+                          {scope === "mission" ? `mission ${row.mission_status ?? "없음"}` : `core ${row.review_status ?? "—"}`}
+                        </span>
+                        <span>prompt {PROMPT_LABEL[promptMatch]}</span>
+                        <span>release {RELEASE_LABEL[releaseMatch]}</span>
+                        <span title={`core ${coreReleaseId ?? "—"} · mission ${missionReleaseId ?? "—"}`}>
+                          core {coreReleaseId ?? "—"} · mission {missionReleaseId ?? "—"}
+                        </span>
+                      </div>
+                    </details>
                   </div>
                 )}
               </article>
@@ -971,7 +1064,7 @@ const AdminReview = () => {
         <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              빠른 사람 검수 {rapidIds.length ? rapidIndex + 1 : 0}/{rapidIds.length}
+              미션 직접 검수 {rapidIds.length ? rapidIndex + 1 : 0}/{rapidIds.length}
             </DialogTitle>
           </DialogHeader>
           {currentRapidRow && (
@@ -1031,6 +1124,7 @@ const AdminReview = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </AdminShell>
   );
 };

@@ -15,7 +15,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -34,7 +33,12 @@ import {
 import { coreDirection } from "@/lib/pragma/coreSchema";
 import { THEME_LABEL, type ThemeCode } from "@/lib/pragma/scenarioTopics";
 import { DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
-import { promoteCore, reviewMission, type PromotableCore } from "@/lib/pragma/promoteMission";
+import {
+  promoteCore,
+  reviewMission,
+  type PromotableCore,
+  type PromoteStage,
+} from "@/lib/pragma/promoteMission";
 import { fetchMissionForReview } from "@/lib/mission/missionDb";
 import { MissionPreview } from "@/components/admin/MissionPreview";
 import type { MissionRuntime } from "@/lib/pragma/missionSchema";
@@ -72,10 +76,16 @@ const STATE_KO: Record<AssemblyState, string> = {
   failed: "이번 조립 실패",
 };
 const STATE_TONE: Record<AssemblyState, string> = {
-  core_only: "border-[#EAE4D2] bg-[#FAF8F2] text-[#5B5446]",
-  generated: "border-[#FCD34D] bg-[#FEF3C7] text-[#92400E]",
-  reviewed: "border-[#6EE7B7] bg-[#D1FAE5] text-[#065F46]",
-  failed: "border-[#FCA5A5] bg-[#FEE2E2] text-[#991B1B]",
+  core_only: "border-[#DDE1E2] bg-[#F3F5F5] text-[#59656D]",
+  generated: "border-[#E7D9B8] bg-[#F8F3E8] text-[#765F1C]",
+  reviewed: "border-[#CEE0D4] bg-[#EDF5F0] text-[#38634B]",
+  failed: "border-[#E5CFCC] bg-[#F7EFEE] text-[#7B453F]",
+};
+const STATE_CARD_TONE: Record<AssemblyState, string> = {
+  core_only: "border-[#DDE1E2] bg-[#F5F6F6]",
+  generated: "border-[#D8E0E3] bg-[#EEF2F4]",
+  reviewed: "border-[#D0DDE1] bg-[#E7EEF0]",
+  failed: "border-[#E2D5D2] bg-[#F3ECEA]",
 };
 
 const ACTS = Object.keys(SPEECH_ACT_UI) as SpeechActUI[];
@@ -86,7 +96,22 @@ const LIST_CAP = 50;
 // (2026-07-31 실측 1299건) — 상한에 닿으면 화면에 알린다.
 const ROW_CAP = 4000;
 
-const shortHash = (h: string | null) => (h ? `${h.slice(0, 8)}…` : "legacy·없음");
+const PROGRESS_STEPS = ["미션 생성", "규칙 검사", "AI 품질 점검", "저장"] as const;
+
+const progressIndex = (stage: PromoteStage) => {
+  if (stage.phase === "generating" || stage.phase === "preparing") return 0;
+  if (stage.phase === "checking") return 1;
+  if (stage.phase === "quality") return 2;
+  return 3;
+};
+
+const progressLabel = (stage: PromoteStage) => {
+  if (stage.phase === "preparing") return "조립 조건 확인";
+  if (stage.phase === "generating") return `미션 생성 · ${stage.attempt}/${stage.maxAttempts}차`;
+  if (stage.phase === "checking") return `규칙 검사 · ${stage.attempt}/${stage.maxAttempts}차`;
+  if (stage.phase === "quality") return "AI 품질 점검";
+  return "미션 저장";
+};
 
 const AdminAssembly = () => {
   const [searchParams] = useSearchParams();
@@ -112,6 +137,10 @@ const AdminAssembly = () => {
   const [showAll, setShowAll] = useState(false);
 
   const [busy, setBusy] = useState<string | null>(null);
+  const [assemblyProgress, setAssemblyProgress] = useState<{
+    id: string;
+    stage: PromoteStage;
+  } | null>(null);
   // 이번 세션의 조립 실패: scenario_id → 실패 사유(R규칙 포함).
   const [failures, setFailures] = useState<Record<string, string>>({});
   const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
@@ -123,6 +152,8 @@ const AdminAssembly = () => {
     setError(null);
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     try {
+      // scenarios의 신규 조립 메타 컬럼이 생성 타입보다 앞서 배포돼 임시 query builder cast가 필요하다.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const request = (supabase as unknown as { from: (t: string) => any })
         .from("scenarios")
         .select(
@@ -193,19 +224,20 @@ const AdminAssembly = () => {
     return d;
   }, [filtered, stateOf]);
 
-  const mixedSeries = useMemo(
-    () => fHash === "all" && new Set(filtered.map((r) => r.prompt_snapshot_hash ?? "null")).size > 1,
-    [filtered, fHash],
-  );
-
   const setStatus = (id: string, status: string) =>
     setRows((prev) => prev.map((r) => (r.scenario_id === id ? { ...r, mission_status: status } : r)));
 
   const onAssemble = async (r: CoreRow) => {
     setBusy(r.scenario_id);
-    setRowMsg((m) => ({ ...m, [r.scenario_id]: "조립 중… (게이트1 프롬프트, 최대 3회)" }));
+    setAssemblyProgress({ id: r.scenario_id, stage: { phase: "preparing" } });
+    setRowMsg((m) => ({ ...m, [r.scenario_id]: "" }));
     try {
-      const res = await promoteCore(r as unknown as PromotableCore);
+      const res = await promoteCore(r as unknown as PromotableCore, {
+        onProgress: (stage) =>
+          setAssemblyProgress((current) =>
+            current?.id === r.scenario_id ? { ...current, stage } : current,
+          ),
+      });
       if (res.ok) {
         setStatus(r.scenario_id, "generated");
         setFailures((f) => {
@@ -245,6 +277,7 @@ const AdminAssembly = () => {
       setFailures((f) => ({ ...f, [r.scenario_id]: msg }));
     } finally {
       setBusy(null);
+      setAssemblyProgress(null);
     }
   };
 
@@ -284,32 +317,33 @@ const AdminAssembly = () => {
   return (
     <AdminShell
       title="학습 미션 조립"
-      description="저장된 미션 재료(코어)를 학습 콘텐츠(MPJ 4문항 + 직접 산출 1)로 완성하는 작업대입니다. 조립된 미션은 검수·승인을 거쳐야 학습자에게 노출됩니다."
+      description="코어를 MPJ 4문항과 직접 산출 과제로 완성하고, 검수 가능한 학습 미션으로 저장합니다."
     >
+      <div className="max-w-[1080px]">
       {/* ── 변환 계기판 — 상호 배타 4상태 ── */}
-      <section className="rounded-xl border border-[#EAE4D2] bg-white p-5">
-        {/* 숫자 하나 + 라벨 하나짜리 카드다 — 전폭 4열이면 카드당 300px가 되어
-            빈 면적만 커진다. 내용에 맞는 크기로 묶고 남는 가로는 여백으로. */}
-        <div className="grid max-w-[56rem] grid-cols-2 gap-2.5 md:grid-cols-4">
+      <section className="rounded-xl border border-[#E2DED2] bg-white p-5">
+        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           {(Object.keys(STATE_KO) as AssemblyState[]).map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setFState((prev) => (prev === s ? "all" : s))}
               className={[
-                "rounded-lg border px-3 py-2.5 text-left transition",
-                STATE_TONE[s],
-                fState === s ? "ring-2 ring-[#1d2336]" : "hover:brightness-95",
+                "relative overflow-hidden rounded-lg border px-4 pb-3 pt-4 text-left transition-colors",
+                STATE_CARD_TONE[s],
+                fState === s
+                  ? "ring-1 ring-[#233542]"
+                  : "hover:brightness-[0.985]",
               ].join(" ")}
             >
-              <div className="text-[20px] font-bold tabular-nums">{dash[s]}</div>
-              <div className="text-[11.5px]">{STATE_KO[s]}</div>
+              <span className="absolute inset-x-0 top-0 h-1 bg-[#18232D]" />
+              <div className="text-[22px] font-bold tabular-nums text-[#182229]">{dash[s]}</div>
+              <div className="mt-0.5 text-[12px] font-medium text-[#46515A]">{STATE_KO[s]}</div>
             </button>
           ))}
         </div>
-        <p className="mt-2 max-w-[42rem] text-[11px] text-muted-foreground">
-          네 상태는 서로 겹치지 않습니다. 카드를 누르면 해당 상태만 필터됩니다 · 「이번 조립 실패」는
-          이 세션에서 시도한 결과이며 저장되지 않습니다.
+        <p className="mt-2.5 text-[11px] text-muted-foreground">
+          카드를 선택하면 해당 상태만 표시합니다. 「이번 조립 실패」는 현재 작업 중 발생한 결과입니다.
         </p>
         {rows.length >= ROW_CAP && (
           <p className="mt-2 rounded-md border border-[#FCD34D] bg-[#FEF3C7] px-3 py-2 text-[12px] text-[#92400E]">
@@ -318,30 +352,41 @@ const AdminAssembly = () => {
           </p>
         )}
 
-        {/* ── 필터 ── */}
-        <div className="mt-4 flex flex-wrap gap-3 text-[12.5px]">
-          <Sel label="화행" value={fAct} onChange={(v) => setFAct(v as typeof fAct)}
-            opts={[["all", "전체"], ...ACTS.map((a) => [a, SPEECH_ACT_UI[a]] as [string, string])]} />
-          <Sel label="수준" value={fLevel} onChange={(v) => setFLevel(v as typeof fLevel)}
-            opts={[["all", "전체"], ...LEVELS.map((l) => [l, LEVEL[l]] as [string, string])]} />
-          <Sel label="모드" value={fMode} onChange={(v) => setFMode(v as typeof fMode)}
-            opts={[["all", "전체"], ["translation", MODE_LABEL.translation], ["stt_interpreting", MODE_LABEL.stt_interpreting]]} />
-          <Sel label="언어 방향" value={fDirection} onChange={(v) => setFDirection(v as typeof fDirection)}
-            opts={[["all", "전체"], ...Object.entries(DIRECTION_LABEL)]} />
-          <Sel label="생성 run" value={fRun} onChange={setFRun}
-            opts={[["all", "전체"], ...runIds.map((id) => [id, id.length > 22 ? `${id.slice(0, 22)}…` : id] as [string, string])]} />
-          <Sel label="프롬프트 계열" value={fHash} onChange={setFHash}
-            opts={[["all", "전체"], ...hashes.map((h) => [h, h === "null" ? "legacy·없음" : `${h.slice(0, 12)}…`] as [string, string])]} />
-        </div>
+        {/* ── 학습설계 축과 생성 기준은 역할이 다르므로 시각적으로 분리한다. ── */}
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1.45fr_1fr]">
+          <div className="rounded-lg border border-[#DDE2E4] border-t-4 border-t-[#18232D] bg-[#F8FAFA] p-3.5 pt-3">
+            <div className="mb-3 flex items-baseline justify-between gap-3">
+              <div>
+                <h3 className="text-[13px] font-bold text-[#233542]">학습설계 4축</h3>
+                <p className="mt-0.5 text-[11px] text-[#6B7780]">화행 · 수준 · 모드 · 언어방향</p>
+              </div>
+              <span className="rounded-full bg-[#E7ECEE] px-2 py-1 text-[10.5px] font-semibold text-[#53656F]">
+                PRAGMA 편성 기준
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <AxisSel index="1" label="화행" value={fAct} onChange={(v) => setFAct(v as typeof fAct)}
+                opts={[["all", "전체"], ...ACTS.map((a) => [a, SPEECH_ACT_UI[a]] as [string, string])]} />
+              <AxisSel index="2" label="수준" value={fLevel} onChange={(v) => setFLevel(v as typeof fLevel)}
+                opts={[["all", "전체"], ...LEVELS.map((l) => [l, LEVEL[l]] as [string, string])]} />
+              <AxisSel index="3" label="모드" value={fMode} onChange={(v) => setFMode(v as typeof fMode)}
+                opts={[["all", "전체"], ["translation", MODE_LABEL.translation], ["stt_interpreting", MODE_LABEL.stt_interpreting]]} />
+              <AxisSel index="4" label="언어방향" value={fDirection} onChange={(v) => setFDirection(v as typeof fDirection)}
+                opts={[["all", "전체"], ...Object.entries(DIRECTION_LABEL)]} />
+            </div>
+          </div>
 
-        {/* 계열 혼합 경고 — 금지사항의 UI 안전장치 */}
-        {mixedSeries && (
-          <p className="mt-3 rounded-md border border-[#FCD34D] bg-[#FEF3C7] px-3 py-2 text-[12px] text-[#92400E]">
-            ⚠️ 지금 목록에 <b>서로 다른 프롬프트 계열</b>이 섞여 있습니다. 서로 다른 계열의 생성물을
-            한 묶음으로 조립·편성하지 않기로 확정돼 있으니, 조립 전에 「프롬프트 계열」 필터로
-            한 계열을 선택하세요.
-          </p>
-        )}
+          <div className="rounded-lg border border-[#E6E1D5] border-t-4 border-t-[#18232D] bg-[#FBFAF6] p-3.5 pt-3">
+            <h3 className="text-[13px] font-bold text-[#3D464D]">생성 기준</h3>
+            <p className="mt-0.5 text-[11px] text-[#737069]">같은 생성 조건의 코어만 조립</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <CompactSel label="생성 run" value={fRun} onChange={setFRun}
+                opts={[["all", "전체"], ...runIds.map((id) => [id, id.length > 18 ? `${id.slice(0, 18)}…` : id] as [string, string])]} />
+              <CompactSel label="프롬프트 계열" value={fHash} onChange={setFHash}
+                opts={[["all", "전체"], ...hashes.map((h) => [h, h === "null" ? "legacy·없음" : `${h.slice(0, 10)}…`] as [string, string])]} />
+            </div>
+          </div>
+        </div>
       </section>
 
       {loading ? (
@@ -354,7 +399,10 @@ const AdminAssembly = () => {
       ) : (
         <section className="mt-4 space-y-2">
           <div className="flex items-baseline justify-between px-1">
-            <h3 className="text-[14px] font-bold">조립 큐 — {filtered.length}개</h3>
+            <div>
+              <h3 className="text-[15px] font-bold text-[#202B33]">조립 큐</h3>
+              <p className="mt-0.5 text-[11.5px] text-muted-foreground">선택한 조건의 코어 {filtered.length}개</p>
+            </div>
             {filtered.length > LIST_CAP && !showAll && (
               <span className="text-[12px] text-muted-foreground">처음 {LIST_CAP}개 표시</span>
             )}
@@ -362,59 +410,71 @@ const AdminAssembly = () => {
           <ul className="space-y-2">
             {visible.map((r) => {
               const st = stateOf(r);
+              const isAssembling = busy === r.scenario_id && assemblyProgress?.id === r.scenario_id;
+              const contextLabels = [
+                r.domain ? DOMAIN[r.domain] : null,
+                r.industry_sector
+                  ? (INDUSTRY[r.industry_sector as keyof typeof INDUSTRY] ?? r.industry_sector)
+                  : null,
+                r.theme_code ? THEME_LABEL[r.theme_code] : null,
+              ].filter(Boolean) as string[];
               return (
-                <li key={r.scenario_id} className="rounded-lg bg-[#FAF8F2] px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-1.5">
+                <li key={r.scenario_id} className="rounded-lg border border-[#E7E2D7] bg-[#FBFAF6] px-5 py-4">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className={["rounded-md border px-2 py-0.5 text-[11px]", STATE_TONE[st]].join(" ")}>
                       {STATE_KO[st]}
                     </span>
-                    <Badge variant="secondary" className="font-normal">{SPEECH_ACT_UI[r.speech_act]}</Badge>
-                    <Badge variant="secondary" className="font-normal">{LEVEL[r.learner_level]}</Badge>
-                    <Badge variant="secondary" className="font-normal">
-                      {r.mode === "stt_interpreting" ? MODE_LABEL.stt_interpreting : MODE_LABEL.translation}
-                    </Badge>
-                    <Badge variant="secondary" className="font-normal">{DIRECTION_LABEL[coreDirection(r.core_content)]}</Badge>
-                    {r.domain && <Badge variant="secondary" className="font-normal">{DOMAIN[r.domain]}</Badge>}
-                    {r.industry_sector && (
-                      <Badge variant="secondary" className="font-normal">
-                        {INDUSTRY[r.industry_sector as keyof typeof INDUSTRY] ?? r.industry_sector}
-                      </Badge>
-                    )}
-                    {r.theme_code && <Badge variant="secondary" className="font-normal">{THEME_LABEL[r.theme_code]}</Badge>}
-                    <Badge variant="outline" className="font-mono text-[10px] font-normal" title={r.prompt_snapshot_hash ?? "legacy"}>
-                      {shortHash(r.prompt_snapshot_hash)}
-                    </Badge>
+                    <AxisBadge label="화행" value={SPEECH_ACT_UI[r.speech_act]} />
+                    <AxisBadge label="수준" value={LEVEL[r.learner_level]} />
+                    <AxisBadge label="모드" value={r.mode === "stt_interpreting" ? MODE_LABEL.stt_interpreting : MODE_LABEL.translation} />
+                    <AxisBadge label="방향" value={DIRECTION_LABEL[coreDirection(r.core_content)]} />
                   </div>
-                  {/* 상황 설명은 읽기 폭까지만 — 전폭이면 한 줄에 90자가 넘는다. */}
-                  <p className="mt-1.5 line-clamp-2 max-w-[46rem] text-[13px] font-medium">
+                  {/* 읽기 폭과 행간을 확보해 태그와 본문이 한 덩어리로 붙어 보이지 않게 한다. */}
+                  <p className="mt-3 line-clamp-2 max-w-[54rem] text-[13.5px] font-medium leading-[1.75] text-[#202B33]">
                     {r.core_content?.situation_ko ?? "—"}
                   </p>
+                  {contextLabels.length > 0 && (
+                    <p className="mt-2 text-[11.5px] text-[#758087]">
+                      <span className="font-semibold text-[#5D6970]">맥락</span>
+                      <span className="mx-1.5 text-[#B2B8BB]">·</span>
+                      {contextLabels.join(" · ")}
+                    </p>
+                  )}
                   {failures[r.scenario_id] && st === "failed" && (
-                    <p className="mt-1 rounded-md border border-[#FCA5A5] bg-[#FEE2E2] px-2.5 py-1.5 text-[12px] text-[#991B1B]">
+                    <p className="mt-2.5 rounded-md border border-[#E5CFCC] bg-[#F7EFEE] px-3 py-2 text-[12px] leading-relaxed text-[#7B453F]">
                       {failures[r.scenario_id]}
                     </p>
                   )}
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    {(st === "core_only" || st === "failed") &&
-                      (DEFAULT_FEATURE_BY_ACT[r.speech_act] ? (
-                        <Button size="sm" disabled={busy === r.scenario_id} onClick={() => onAssemble(r)}>
-                          {busy === r.scenario_id ? "조립 중…" : st === "failed" ? "다시 조립" : "미션 조립"}
+                  <div className={[
+                    "mt-3 grid items-center gap-3 border-t border-[#ECE8DE] pt-3",
+                    isAssembling ? "sm:grid-cols-[auto_minmax(0,1fr)]" : "sm:grid-cols-1",
+                  ].join(" ")}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(st === "core_only" || st === "failed") &&
+                        (DEFAULT_FEATURE_BY_ACT[r.speech_act] ? (
+                          <Button size="sm" disabled={busy === r.scenario_id} onClick={() => onAssemble(r)}>
+                            {isAssembling && <span className="mr-1.5 size-3 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
+                            {isAssembling ? "조립 중" : st === "failed" ? "다시 조립" : "미션 조립"}
+                          </Button>
+                        ) : (
+                          <span className="text-[11.5px] text-muted-foreground">화용 초점 카탈로그 없음 — 조립 불가</span>
+                        ))}
+                      {st === "generated" && (
+                        <Button size="sm" variant="outline" disabled={busy === r.scenario_id} onClick={() => onReview(r)}>
+                          {busy === r.scenario_id ? "처리 중…" : "검토 완료(reviewed)"}
                         </Button>
-                      ) : (
-                        <span className="text-[11.5px] text-muted-foreground">화용 초점 카탈로그 없음 — 조립 불가</span>
-                      ))}
-                    {st === "generated" && (
-                      <Button size="sm" variant="outline" disabled={busy === r.scenario_id} onClick={() => onReview(r)}>
-                        {busy === r.scenario_id ? "처리 중…" : "검토 완료(reviewed)"}
-                      </Button>
-                    )}
-                    {(st === "generated" || st === "reviewed") && (
-                      <Button size="sm" variant="ghost" onClick={() => togglePreview(r)}>
-                        {openId === r.scenario_id ? "미션 접기 ▴" : "미션 보기 ▾"}
-                      </Button>
-                    )}
-                    {rowMsg[r.scenario_id] && (
-                      <span className="text-[11.5px] text-muted-foreground">{rowMsg[r.scenario_id]}</span>
+                      )}
+                      {(st === "generated" || st === "reviewed") && (
+                        <Button size="sm" variant="ghost" onClick={() => togglePreview(r)}>
+                          {openId === r.scenario_id ? "미션 접기 ▴" : "미션 보기 ▾"}
+                        </Button>
+                      )}
+                      {!isAssembling && rowMsg[r.scenario_id] && (
+                        <span className="text-[11.5px] text-muted-foreground">{rowMsg[r.scenario_id]}</span>
+                      )}
+                    </div>
+                    {isAssembling && assemblyProgress && (
+                      <AssemblyProgressView stage={assemblyProgress.stage} />
                     )}
                   </div>
                   {openId === r.scenario_id && preview[r.scenario_id] && (
@@ -439,11 +499,56 @@ const AdminAssembly = () => {
           )}
         </section>
       )}
+      </div>
     </AdminShell>
   );
 };
 
-const Sel = ({
+const SelectField = ({
+  value,
+  onChange,
+  opts,
+  className = "",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  opts: [string, string][];
+  className?: string;
+}) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    className={`h-8 w-full min-w-0 rounded-md border border-[#D9D7CF] bg-white px-2 text-[12px] text-[#26333B] focus:outline-none focus:ring-2 focus:ring-[#526B78]/20 ${className}`}
+  >
+    {opts.map(([v, l]) => (
+      <option key={v} value={v}>{l}</option>
+    ))}
+  </select>
+);
+
+const AxisSel = ({
+  index,
+  label,
+  value,
+  onChange,
+  opts,
+}: {
+  index: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  opts: [string, string][];
+}) => (
+  <label className="rounded-md border border-[#E1E5E6] bg-white p-2">
+    <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-[#34444D]">
+      <span className="flex size-4 items-center justify-center rounded-full bg-[#E7ECEE] text-[9px] text-[#53656F]">{index}</span>
+      {label}
+    </span>
+    <SelectField value={value} onChange={onChange} opts={opts} />
+  </label>
+);
+
+const CompactSel = ({
   label,
   value,
   onChange,
@@ -454,18 +559,52 @@ const Sel = ({
   onChange: (v: string) => void;
   opts: [string, string][];
 }) => (
-  <label className="flex items-center gap-1.5">
-    <span className="text-muted-foreground">{label}</span>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-8 max-w-[220px] rounded-md border border-[#EAE4D2] bg-white px-2 text-[12.5px] focus:outline-none focus:ring-2 focus:ring-[#1d2336]/30"
-    >
-      {opts.map(([v, l]) => (
-        <option key={v} value={v}>{l}</option>
-      ))}
-    </select>
+  <label>
+    <span className="mb-1 block text-[10.5px] font-medium text-[#696D6C]">{label}</span>
+    <SelectField value={value} onChange={onChange} opts={opts} />
   </label>
 );
+
+const AxisBadge = ({ label, value }: { label: string; value: string }) => (
+  <span className="inline-flex overflow-hidden rounded-md border border-[#D8E0E2] bg-white text-[10.5px]">
+    <span className="bg-[#E7ECEE] px-1.5 py-0.5 font-semibold text-[#53656F]">{label}</span>
+    <span className="px-1.5 py-0.5 font-medium text-[#26343C]">{value}</span>
+  </span>
+);
+
+const AssemblyProgressView = ({
+  stage,
+}: {
+  stage: PromoteStage;
+}) => {
+  const activeIndex = progressIndex(stage);
+  return (
+    <div className="min-w-0 rounded-md bg-[#F1F4F5] px-3 py-2" aria-live="polite">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[11.5px] font-semibold text-[#233542]">{progressLabel(stage)}</span>
+      </div>
+      <ol className="mt-1.5 grid grid-cols-4 gap-1.5">
+        {PROGRESS_STEPS.map((label, index) => {
+          const isActive = index === activeIndex;
+          const isDone = index < activeIndex;
+          return (
+            <li key={label} className="min-w-0">
+              <span
+                className={[
+                  "block h-1 rounded-full transition-colors",
+                  isActive ? "bg-[#233542]" : isDone ? "bg-[#6F8794]" : "bg-[#DDE4E6]",
+                ].join(" ")}
+              />
+              <span className={[
+                "mt-1 block truncate text-[10px]",
+                isActive ? "font-semibold text-[#233542]" : isDone ? "text-[#53656F]" : "text-[#98A1A6]",
+              ].join(" ")}>{label}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+};
 
 export default AdminAssembly;
