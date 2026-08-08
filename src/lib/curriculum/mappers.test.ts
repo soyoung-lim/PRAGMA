@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createEmptyOutlineDraft,
   createEmptyWeekDraft,
+  outlineDraftToInsert,
+  outlineDraftToStructureUpdate,
   weekDraftToInsert,
   weekRowToDraft,
 } from "@/lib/curriculum/mappers";
@@ -38,5 +41,33 @@ describe("커리큘럼 주차 복습 공개 매핑", () => {
     const draft = weekRowToDraft(row);
     expect(draft.review_released).toBe(true);
     expect(weekDraftToInsert(draft, row.outline_id).review_released).toBe(true);
+  });
+});
+
+describe("강좌 자동 편성 정책 매핑", () => {
+  it("새 강좌 생성은 migration 전 DB에도 호환되도록 정책 열에 의존하지 않는다", () => {
+    const draft = createEmptyOutlineDraft();
+    const insert = outlineDraftToInsert(draft);
+
+    expect(draft.composition_theme_codes).toEqual([]);
+    expect(draft.target_interpreting_ratio).toBe(0.3);
+    expect(insert).not.toHaveProperty("composition_theme_codes");
+    expect(insert).not.toHaveProperty("target_interpreting_ratio");
+  });
+
+  it("구조 전용 저장은 Composer가 소유한 네 축을 덮어쓰지 않는다", () => {
+    const draft = {
+      ...createEmptyOutlineDraft(),
+      level: "advanced" as const,
+      language_direction: "zh_ko" as const,
+      composition_theme_codes: ["career_workplace" as const],
+      target_interpreting_ratio: 0.65,
+    };
+    const update = outlineDraftToStructureUpdate(draft);
+
+    expect(update).not.toHaveProperty("level");
+    expect(update).not.toHaveProperty("language_direction");
+    expect(update).not.toHaveProperty("composition_theme_codes");
+    expect(update).not.toHaveProperty("target_interpreting_ratio");
   });
 });

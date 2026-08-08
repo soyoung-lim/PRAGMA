@@ -26,6 +26,7 @@ import type {
   LearnerLevel,
   LanguageDirection,
 } from "@/lib/pragma/enums";
+import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 import type {
   CurriculumOutlineRow,
   CurriculumOutlineInsert,
@@ -73,9 +74,16 @@ export function outlineRowToDraft(row: CurriculumOutlineRow): CurriculumOutlineD
     midterm_week: row.midterm_week,
     final_week: row.final_week,
     scenarios_per_week: row.scenarios_per_week,
+    composition_theme_codes: [...((row.composition_theme_codes ?? []) as ThemeCode[])],
+    target_interpreting_ratio: row.target_interpreting_ratio ?? 0.3,
   };
 }
 
+/**
+ * 새 강좌는 표준 정책(전체 주제·통역 30%)으로 시작한다. 정책 migration이 적용된
+ * DB는 열의 DEFAULT로 같은 값을 채우고, 적용 전 DB도 신규 강좌를 만들 수 있도록
+ * 두 신규 정책 열은 INSERT payload에 넣지 않는다. 이후 정책 변경은 Composer가 저장한다.
+ */
 export function outlineDraftToInsert(draft: CurriculumOutlineDraft): CurriculumOutlineInsert {
   return {
     title: draft.title,
@@ -108,6 +116,8 @@ export function outlineDraftToUpdate(draft: CurriculumOutlineDraft): CurriculumO
     midterm_week: draft.midterm_week,
     final_week: draft.final_week,
     scenarios_per_week: draft.scenarios_per_week,
+    composition_theme_codes: [...draft.composition_theme_codes],
+    target_interpreting_ratio: draft.target_interpreting_ratio,
   };
 }
 
@@ -211,6 +221,27 @@ export function createEmptyOutlineDraft(): CurriculumOutlineDraft {
     midterm_week: null,
     final_week: null,
     scenarios_per_week: 2,
+    composition_theme_codes: [],
+    target_interpreting_ratio: 0.3,
+  };
+}
+
+/**
+ * 기존 강좌의 구조 편집 전용 payload.
+ * 수준·방향·주제·모드 비율은 Composer의 한 편집 지점에서만 저장하므로 제외한다.
+ */
+export function outlineDraftToStructureUpdate(
+  draft: CurriculumOutlineDraft,
+): CurriculumOutlineUpdate {
+  return {
+    title: draft.title,
+    status: draft.status,
+    semester_goal: textToDb(draft.semester_goal),
+    target_speech_acts: [...draft.target_speech_acts],
+    week_count: draft.week_count,
+    midterm_week: draft.midterm_week,
+    final_week: draft.final_week,
+    scenarios_per_week: draft.scenarios_per_week,
   };
 }
 

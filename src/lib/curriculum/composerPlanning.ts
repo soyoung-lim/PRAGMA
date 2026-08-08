@@ -53,17 +53,22 @@ export interface AutoFillOptions {
   themes: ThemeCode[];
   interpretingRatio: number;
   defaultScenariosPerWeek: number;
+  /** 선택 주제가 부족할 때 다른 주제로 넓힐지 여부. 교수자의 명시 조작만 허용한다. */
+  allowThemeExpansion?: boolean;
 }
 
 export interface AutoFillResult {
   assignments: AssignMap;
   filledWeeks: number;
   totalAssigned: number;
+  shortages: Array<{ weekNo: number; missingSlots: number }>;
+  expandedThemeWeeks: number[];
 }
 
 /**
  * 15주 골격의 화행 주차를 검토 완료 미션으로 채운다.
- * 테마만 후보 부족 시 완화하며 검토상태·화행·수준·방향·강좌 내 중복 금지는 유지한다.
+ * 주제는 기본적으로 엄수한다. 다른 주제로 넓히는 것은 UI에서 교수가 명시적으로
+ * 승인해 allowThemeExpansion=true를 넘긴 경우에만 허용한다.
  */
 export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillResult {
   const {
@@ -74,9 +79,12 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
     themes,
     interpretingRatio,
     defaultScenariosPerWeek,
+    allowThemeExpansion = false,
   } = options;
   const assignments: AssignMap = {};
   const usedIds = new Set<string>();
+  const shortages: AutoFillResult["shortages"] = [];
+  const expandedThemeWeeks: number[] = [];
   let filledWeeks = 0;
 
   for (const week of weeks) {
@@ -96,11 +104,15 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
         (themes.length === 0 ||
           (core.theme_code != null && themes.includes(core.theme_code))),
     );
-    if (candidates.length < slots) {
+    if (themes.length > 0 && candidates.length < slots && allowThemeExpansion) {
       candidates = cores.filter(isBaseEligible);
+      expandedThemeWeeks.push(week.week_no);
     }
 
     const picked = pickByRatio(candidates, slots, interpretingRatio);
+    if (picked.length < slots) {
+      shortages.push({ weekNo: week.week_no, missingSlots: slots - picked.length });
+    }
     if (picked.length === 0) continue;
     picked.forEach((core) => usedIds.add(core.scenario_id));
     assignments[week.week_no] = picked.map((core) => ({
@@ -117,6 +129,8 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
       (sum, items) => sum + items.length,
       0,
     ),
+    shortages,
+    expandedThemeWeeks,
   };
 }
 
@@ -201,4 +215,86 @@ export function duplicateScenarioIds(assignments: AssignMap): string[] {
     }
   }
   return [...duplicates];
+}
+
+/** 선택한 수준·언어방향과 맞지 않는 기존 배정을 찾아 저장 전에 차단한다. */
+export function incompatibleAssignmentIds(
+  assignments: AssignMap,
+  coreById: Record<string, ComposerCore>,
+  level: LearnerLevel,
+  direction: LanguageDirection,
+): string[] {
+  return [...assignedScenarioIds(assignments)].filter((scenarioId) => {
+    const core = coreById[scenarioId];
+    return !core || core.learner_level !== level || core.direction !== direction;
+  });
+}
+
+export type AssignmentStructureIssueCode =
+  | "missing_core"
+  | "unreviewed"
+  | "level"
+  | "direction"
+  | "missing_week"
+  | "non_regular_week"
+  | "speech_act"
+  | "too_many_items";
+
+export interface AssignmentStructureIssue {
+  weekNo: number;
+  scenarioId?: string;
+  code: AssignmentStructureIssueCode;
+}
+
+/**
+ * 강좌 설정·주차 계획과 실제 미션 배정 사이의 공통 불변조건 검사.
+ * Composer 저장과 주차 계획 저장이 같은 검사를 사용해 한쪽 경로의 누수를 막는다.
+ */
+export function assignmentStructureIssues(
+  assignments: AssignMap,
+  coreById: Record<string, ComposerCore>,
+  weeks: PlanningWeek[],
+  level: LearnerLevel,
+  direction: LanguageDirection,
+  defaultScenariosPerWeek: number,
+): AssignmentStructureIssue[] {
+  const issues: AssignmentStructureIssue[] = [];
+  const weekByNo = new Map(weeks.map((week) => [week.week_no, week]));
+
+  for (const [weekNoText, items] of Object.entries(assignments)) {
+    const weekNo = Number(weekNoText);
+    const week = weekByNo.get(weekNo);
+    if (!week) {
+      issues.push({ weekNo, code: "missing_week" });
+      continue;
+    }
+    if (week.type !== "regular") {
+      if (items.length > 0) issues.push({ weekNo, code: "non_regular_week" });
+      continue;
+    }
+    const slots = week.scenario_slots ?? defaultScenariosPerWeek;
+    if (items.length > slots) issues.push({ weekNo, code: "too_many_items" });
+
+    for (const item of items) {
+      const core = coreById[item.scenario_id];
+      if (!core) {
+        issues.push({ weekNo, scenarioId: item.scenario_id, code: "missing_core" });
+        continue;
+      }
+      if (!isReviewedMission(core)) {
+        issues.push({ weekNo, scenarioId: item.scenario_id, code: "unreviewed" });
+      }
+      if (core.learner_level !== level) {
+        issues.push({ weekNo, scenarioId: item.scenario_id, code: "level" });
+      }
+      if (core.direction !== direction) {
+        issues.push({ weekNo, scenarioId: item.scenario_id, code: "direction" });
+      }
+      if (week.speech_act && core.speech_act !== week.speech_act) {
+        issues.push({ weekNo, scenarioId: item.scenario_id, code: "speech_act" });
+      }
+    }
+  }
+
+  return issues;
 }

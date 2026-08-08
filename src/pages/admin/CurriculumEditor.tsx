@@ -22,6 +22,7 @@ import {
   getCurriculumOutline,
   createCurriculumOutline,
   updateCurriculumOutline,
+  type CurriculumOutlineWithWeeks,
 } from "@/lib/curriculum/api";
 import {
   outlineRowToDraft,
@@ -37,7 +38,6 @@ import {
   STAGE_LABEL,
   weekRole,
 } from "@/lib/curriculum/template";
-import { COURSE_PRESETS } from "@/lib/pragma/scenarioTopics";
 import { validateCurriculum } from "@/lib/curriculum/validate";
 import type { CurriculumValidationResult } from "@/lib/curriculum/validate";
 import type {
@@ -47,35 +47,22 @@ import type {
   CurriculumWeekType,
 } from "@/lib/curriculum/types";
 import {
+  assignmentStructureIssues,
+  type AssignMap,
+} from "@/lib/curriculum/composerPlanning";
+import type { ComposerCore } from "@/lib/curriculum/composer";
+import {
   SPEECH_ACT_UI,
   LEVEL,
-  PDR_POWER,
-  PDR_DISTANCE,
-  PDR_BURDEN,
-  DOMAIN,
-  INDUSTRY,
 } from "@/lib/pragma/enums";
 import { buildCanDoSuggestions } from "@/lib/curriculum/canDoGuide";
 import type {
   SpeechActUI,
   LearnerLevel,
   LanguageDirection,
-  ChannelUI,
-  PdrPower,
-  PdrDistance,
-  PdrBurden,
-  Domain,
-  IndustrySector,
 } from "@/lib/pragma/enums";
+import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 
-// Editor-local labels (channel / language_direction have no shared label map in
-// enums.ts; kept local per task scope — no shared enum refactor).
-const CHANNEL_LABEL: Record<ChannelUI, string> = {
-  email: "이메일",
-  messenger: "메신저",
-  facetoface: "대면",
-  phone: "전화",
-};
 const LANGUAGE_DIRECTION_LABEL: Record<LanguageDirection, string> = {
   ko_zh: "한→중",
   zh_ko: "중→한",
@@ -101,10 +88,27 @@ interface CurriculumEditorProps {
   /** null = create a new outline; otherwise edit the existing one. */
   outlineId: string | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (saved: CurriculumOutlineWithWeeks) => void;
+  /** 현재 Composer 편성. 주차 계획 변경 전 공통 불변조건을 검사한다. */
+  assignments?: AssignMap;
+  coreById?: Record<string, ComposerCore>;
+  compositionLevel?: LearnerLevel;
+  compositionDirection?: LanguageDirection;
+  compositionThemes?: ThemeCode[];
+  compositionInterpretingRatio?: number;
 }
 
-export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEditorProps) => {
+export const CurriculumEditor = ({
+  outlineId,
+  onClose,
+  onSaved,
+  assignments = {},
+  coreById = {},
+  compositionLevel,
+  compositionDirection,
+  compositionThemes,
+  compositionInterpretingRatio,
+}: CurriculumEditorProps) => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [outline, setOutline] = useState<CurriculumOutlineDraft | null>(null);
@@ -112,8 +116,6 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
   const [saving, setSaving] = useState(false);
   // Validation is only surfaced after a save attempt (avoids nagging on load).
   const [issues, setIssues] = useState<CurriculumValidationResult | null>(null);
-  // 프리셋 = 생성 편의(수준 세팅 + 편성기 콘텐츠 채우기 파라미터). outline에 저장 안 됨(7월).
-  const [presetCode, setPresetCode] = useState<string>(COURSE_PRESETS[0]?.preset_code ?? "");
   // 주차별 상세 override 펼침 상태(기본 접힘 — 표준 골격은 수기 입력 불요).
   const [openWeek, setOpenWeek] = useState<number | null>(null);
 
@@ -127,8 +129,14 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
           if (!cancelled) {
             // 새 과정 = 공통 표준 골격 자동 생성. 중간=8·기말=15·목표화행 9종·15주
             // draft를 미리 채워, 제목·수준·방향·프리셋만 정하면 저장되게 한다.
+            const emptyOutline = createEmptyOutlineDraft();
             setOutline({
-              ...createEmptyOutlineDraft(),
+              ...emptyOutline,
+              level: compositionLevel ?? emptyOutline.level,
+              language_direction: compositionDirection ?? emptyOutline.language_direction,
+              composition_theme_codes: compositionThemes ?? emptyOutline.composition_theme_codes,
+              target_interpreting_ratio:
+                compositionInterpretingRatio ?? emptyOutline.target_interpreting_ratio,
               midterm_week: STANDARD_MIDTERM_WEEK,
               final_week: STANDARD_FINAL_WEEK,
               target_speech_acts: [...STANDARD_TARGET_ACTS],
@@ -144,7 +152,7 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
         }
       } catch (e) {
         if (!cancelled) {
-          setLoadError(e instanceof Error ? e.message : "커리큘럼을 불러오지 못했습니다.");
+          setLoadError(e instanceof Error ? e.message : "교과목을 불러오지 못했습니다.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -154,7 +162,13 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
     return () => {
       cancelled = true;
     };
-  }, [outlineId]);
+  }, [
+    compositionDirection,
+    compositionInterpretingRatio,
+    compositionLevel,
+    compositionThemes,
+    outlineId,
+  ]);
 
   const patchOutline = (patch: Partial<CurriculumOutlineDraft>) =>
     setOutline((prev) => (prev ? { ...prev, ...patch } : prev));
@@ -175,13 +189,6 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
     patchWeek(index, { can_do: [...current, suggestion] });
   };
 
-  // 프리셋 선택 = 수준을 프리셋 목표 수준으로 맞춘다(편의). 테마·콘텐츠 반영은 편성기.
-  const applyPreset = (code: string) => {
-    setPresetCode(code);
-    const p = COURSE_PRESETS.find((x) => x.preset_code === code);
-    if (p) patchOutline({ level: p.target_level });
-  };
-
   const handleSave = async () => {
     if (!outline) return;
     const result = validateCurriculum(outline, weeks);
@@ -190,15 +197,37 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
       toast.error(`저장할 수 없습니다. 오류 ${result.errors.length}건을 확인하세요.`);
       return;
     }
+    if (outlineId !== null) {
+      const assignmentIssues = assignmentStructureIssues(
+        assignments,
+        coreById,
+        weeks,
+        compositionLevel ?? outline.level,
+        compositionDirection ?? outline.language_direction,
+        outline.scenarios_per_week,
+      );
+      if (assignmentIssues.length > 0) {
+        const affectedWeeks = [...new Set(assignmentIssues.map((issue) => issue.weekNo))];
+        toast.error(
+          `현재 미션 배정과 충돌하는 주차가 있습니다 (${affectedWeeks.join(", ")}주차). 먼저 미션을 교체하거나 제거하세요.`,
+        );
+        return;
+      }
+    }
     setSaving(true);
     try {
+      let saved: CurriculumOutlineWithWeeks;
       if (outlineId === null) {
-        await createCurriculumOutline(outline, weeks);
+        saved = await createCurriculumOutline(outline, weeks);
       } else {
-        await updateCurriculumOutline(outlineId, outline, weeks);
+        saved = await updateCurriculumOutline(outlineId, outline, weeks);
       }
-      toast.success("커리큘럼을 저장했습니다.");
-      onSaved();
+      toast.success(
+        outlineId === null
+          ? "새 교과목과 표준 15주 강의 계획을 만들었습니다."
+          : "주차 계획을 저장했습니다.",
+      );
+      onSaved(saved);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "저장 중 오류가 발생했습니다.");
     } finally {
@@ -229,7 +258,7 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
     return (
       <div className="space-y-4">
         <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-[13px] text-destructive">
-          커리큘럼 조회 실패: {loadError}
+          교과목 조회 실패: {loadError}
         </div>
         <Button variant="outline" onClick={onClose}>
           ← 목록으로
@@ -239,12 +268,99 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
   }
   if (!outline) return null;
 
+  if (outlineId === null) {
+    return (
+      <div className="max-w-[58rem] space-y-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">새 교과목 빠르게 만들기</h2>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+              세 가지만 정하면 표준 15주 계획을 자동으로 준비하고 바로 미션 편성으로 이어집니다.
+            </p>
+          </div>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            취소
+          </Button>
+        </div>
+
+        {errors.length > 0 && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-[13px] text-destructive">
+            {errors.map((error) => (
+              <div key={`${error.code}-${error.week_no ?? "outline"}`}>{error.message}</div>
+            ))}
+          </div>
+        )}
+
+        <section className="rounded-xl border border-[#D7E3DC] bg-white p-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>교과목명</Label>
+              <Input
+                value={outline.title}
+                onChange={(event) => patchOutline({ title: event.target.value })}
+                placeholder="예: 2026-2 중급 한중 통번역"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>수준</Label>
+              <Select
+                value={outline.level}
+                onValueChange={(value) => patchOutline({ level: value as LearnerLevel })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(LEVEL) as LearnerLevel[]).map((key) => (
+                    <SelectItem key={key} value={key}>{LEVEL[key]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>언어방향</Label>
+              <Select
+                value={outline.language_direction}
+                onValueChange={(value) =>
+                  patchOutline({ language_direction: value as LanguageDirection })
+                }
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(LANGUAGE_DIRECTION_LABEL) as LanguageDirection[]).map((key) => (
+                    <SelectItem key={key} value={key}>{LANGUAGE_DIRECTION_LABEL[key]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-2 sm:grid-cols-3">
+            {[
+              ["15주 골격", "표준 수업 흐름을 자동 생성"],
+              ["평가 주차 보호", "8주차 중간·15주차 기말"],
+              ["AI 편성으로 이동", "주제·모드 비율은 다음 단계에서"],
+            ].map(([title, copy]) => (
+              <div key={title} className="rounded-lg bg-[#FAF7EE] px-3 py-3">
+                <p className="text-[12px] font-semibold text-[#6B5518]">{title}</p>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">{copy}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 flex justify-end">
+            <Button onClick={handleSave} disabled={saving || outline.title.trim() === ""}>
+              {saving ? "만드는 중…" : "교과목 만들고 편성 시작"}
+            </Button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">
-          {outlineId === null ? "새 커리큘럼" : "커리큘럼 편집"}
-        </h2>
+        <h2 className="text-lg font-semibold">주차 계획 수정</h2>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose} disabled={saving}>
             취소
@@ -284,10 +400,10 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
 
       {/* ── Outline fields ── */}
       <section className="space-y-4 rounded-lg border border-border bg-card p-4">
-        <h3 className="text-sm font-semibold text-muted-foreground">기본 정보</h3>
+        <h3 className="text-sm font-semibold text-muted-foreground">교과목 기본정보</h3>
         <p className="max-w-[42rem] text-[12.5px] text-muted-foreground">
-          제목·수준·언어 방향·프리셋만 정하면 저장됩니다. 15개 주차는 공통 표준 골격으로 자동 생성되며,
-          주차별 상황·P·D·R은 편성기에서 배정하는 시나리오가 정본입니다.
+          제목과 운영 상태를 정합니다. 수준·주제·모드·언어방향은 저장 후 돌아가는
+          AI 편성 화면 한 곳에서 조절합니다.
         </p>
         {/* 폼은 화면이 아니라 내용 폭에 맞춘다 — 전폭 2열이면 「중급 · HSK 5급」
             하나를 고르는 선택지가 590px가 된다. */}
@@ -299,57 +415,6 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
               onChange={(e) => patchOutline({ title: e.target.value })}
               placeholder="예: 2026-2 중급 통번역"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label>수준</Label>
-            <Select value={outline.level} onValueChange={(v) => patchOutline({ level: v as LearnerLevel })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(LEVEL) as LearnerLevel[]).map((k) => (
-                  <SelectItem key={k} value={k}>
-                    {LEVEL[k]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>언어 방향</Label>
-            <Select
-              value={outline.language_direction}
-              onValueChange={(v) => patchOutline({ language_direction: v as LanguageDirection })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(LANGUAGE_DIRECTION_LABEL) as LanguageDirection[]).map((k) => (
-                  <SelectItem key={k} value={k}>
-                    {LANGUAGE_DIRECTION_LABEL[k]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>강좌 프리셋</Label>
-            <Select value={presetCode} onValueChange={applyPreset}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {COURSE_PRESETS.map((p) => (
-                  <SelectItem key={p.preset_code} value={p.preset_code}>
-                    {p.label} · {LEVEL[p.target_level]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[11.5px] text-muted-foreground">
-              프리셋의 테마·통역 비율은 편성기 콘텐츠 채우기에서 적용됩니다(이 과정은 9화행을 모두 다룹니다).
-            </p>
           </div>
           {/* 상태는 「고급 설정」 안에 있었다 — 게시하려면 접힌 패널을 펼쳐서 초안을
               게시로 바꿔야 했다. 저장 다음으로 자주 쓰는 조작이라 기본 정보로 올린다. */}
@@ -368,21 +433,17 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
               </SelectContent>
             </Select>
             <p className="text-[11.5px] text-muted-foreground">
-              「게시」로 바꿔야 편성기와 학습자 쪽에서 이 커리큘럼을 씁니다.
+              「게시」로 바꿔야 학습자 쪽에서 이 교과목을 사용합니다.
             </p>
           </div>
         </div>
 
-        {/* 고급 설정 — 기본값으로 저장 가능. 필요 시에만 조정 */}
+        {/* 학기마다 달라질 수 있는 운영값만 남긴다. 주차 수와 미사용 학기 목표는 노출하지 않는다. */}
         <details className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
           <summary className="cursor-pointer text-[12.5px] font-medium text-muted-foreground">
-            고급 설정 (중간/기말 주차·학기 목표 — 기본값으로 저장 가능)
+            평가 주차와 기본 미션 수
           </summary>
-          <div className="mt-3 grid max-w-[46rem] gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>주차 수 (고정)</Label>
-              <Input value={outline.week_count} disabled />
-            </div>
+          <div className="mt-3 grid max-w-[46rem] gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label>중간고사 주차</Label>
               <Input
@@ -402,19 +463,11 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
               />
             </div>
             <div className="space-y-1.5">
-              <Label>주당 시나리오 수</Label>
+              <Label>주차당 기본 미션 수</Label>
               <Input
                 type="number"
                 value={String(outline.scenarios_per_week)}
                 onChange={(e) => patchOutline({ scenarios_per_week: inputToNullableNum(e.target.value) ?? 0 })}
-              />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>학기 목표 (선택)</Label>
-              <Textarea
-                value={outline.semester_goal}
-                onChange={(e) => patchOutline({ semester_goal: e.target.value })}
-                rows={2}
               />
             </div>
           </div>
@@ -424,8 +477,10 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
       {/* ── Weeks ── */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-muted-foreground">주차별 골격 (자동 생성)</h3>
-          <span className="text-[12px] text-muted-foreground">필요한 주차만 「수정」으로 조정</span>
+          <h3 className="text-sm font-semibold text-muted-foreground">15주 수업 계획</h3>
+          <span className="text-[12px] text-muted-foreground">
+            표준 계획이 자동으로 준비됩니다. 바꿀 주차만 「수정」하세요.
+          </span>
         </div>
         {weeks.map((w, i) => {
           const isRegular = w.type === REGULAR_WEEK;
@@ -494,165 +549,118 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
                     />
                   </div>
 
-              {isRegular && (
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <NullableSelect
-                    label="화행"
-                    value={w.speech_act}
-                    options={SPEECH_ACT_UI}
-                    onChange={(v) => patchWeek(i, { speech_act: v as SpeechActUI | null })}
-                  />
-                  <NullableSelect
-                    label="채널"
-                    value={w.channel}
-                    options={CHANNEL_LABEL}
-                    onChange={(v) => patchWeek(i, { channel: v as ChannelUI | null })}
-                  />
-                  <NullableSelect
-                    label="P (권력)"
-                    value={w.pdr_power}
-                    options={PDR_POWER}
-                    onChange={(v) => patchWeek(i, { pdr_power: v as PdrPower | null })}
-                  />
-                  <NullableSelect
-                    label="D (거리)"
-                    value={w.pdr_distance}
-                    options={PDR_DISTANCE}
-                    onChange={(v) => patchWeek(i, { pdr_distance: v as PdrDistance | null })}
-                  />
-                  <NullableSelect
-                    label="R (부담)"
-                    value={w.pdr_imposition}
-                    options={PDR_BURDEN}
-                    onChange={(v) => patchWeek(i, { pdr_imposition: v as PdrBurden | null })}
-                  />
-                  <NullableSelect
-                    label="도메인"
-                    value={w.domain}
-                    options={DOMAIN}
-                    onChange={(v) => patchWeek(i, { domain: v as Domain | null })}
-                  />
-                  <NullableSelect
-                    label="산업 분야"
-                    value={w.industry}
-                    options={INDUSTRY}
-                    onChange={(v) => patchWeek(i, { industry: v as IndustrySector | null })}
-                  />
-                  <div className="space-y-1.5">
-                    <Label className="text-[12px]">부하 밴드 (1–5)</Label>
-                    <Input
-                      type="number"
-                      className="h-8"
-                      value={numToInput(w.curriculum_load_band)}
-                      onChange={(e) =>
-                        patchWeek(i, { curriculum_load_band: inputToNullableNum(e.target.value) })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[12px]">시나리오 슬롯</Label>
-                    <Input
-                      type="number"
-                      className="h-8"
-                      value={numToInput(w.scenario_slots)}
-                      onChange={(e) =>
-                        patchWeek(i, { scenario_slots: inputToNullableNum(e.target.value) })
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-[12px]">역량 초점 (선택)</Label>
-                      <Input
-                        className="h-8"
-                        value={w.competency_focus}
-                        onChange={(e) => patchWeek(i, { competency_focus: e.target.value })}
+                  {isRegular && (
+                    <div className="grid max-w-2xl gap-3 sm:grid-cols-2">
+                      <NullableSelect
+                        label="수업 초점 · 화행"
+                        value={w.speech_act}
+                        options={SPEECH_ACT_UI}
+                        onChange={(v) => patchWeek(i, { speech_act: v as SpeechActUI | null })}
                       />
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <Label className="text-[12px]">Can-do 목표 (줄바꿈으로 구분)</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-[11.5px]"
-                            >
-                              <CircleHelp className="mr-1 h-3.5 w-3.5" />
-                              작성 가이드
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="end" className="w-[380px] space-y-3">
-                            <div>
-                              <p className="text-[13px] font-semibold">상황 중심 Can-do 작성 틀</p>
-                              <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                                [상황·관계]에서 [소통 행동]을 [맥락 조건]에 맞게 수행할 수 있다.
-                              </p>
-                              <p className="mt-1 text-[10.5px] leading-relaxed text-muted-foreground">
-                                행동 중심 원리를 반영한 PRAGMA 내부 가이드이며, CEFR·ACTFL의
-                                공식 표준 문구를 옮긴 것은 아닙니다.
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              {canDoSuggestions.map((suggestion) => (
-                                <button
-                                  key={suggestion}
-                                  type="button"
-                                  onClick={() => addCanDoSuggestion(i, suggestion)}
-                                  className="w-full rounded-md border border-[#EAE4D2] bg-[#FAF8F2] px-3 py-2 text-left text-[11.5px] leading-relaxed transition hover:bg-[#FFF7CC]"
-                                >
-                                  {suggestion}
-                                  <span className="mt-1 block font-semibold text-[#7A4A0A]">
-                                    이 목표 추가
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
+                      <div className="space-y-1.5">
+                        <Label className="text-[12px]">이 주차의 미션 수</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          className="h-8"
+                          value={numToInput(w.scenario_slots)}
+                          onChange={(e) =>
+                            patchWeek(i, { scenario_slots: inputToNullableNum(e.target.value) })
+                          }
+                          placeholder={`기본 ${outline.scenarios_per_week}개`}
+                        />
                       </div>
-                      <Textarea
-                        rows={2}
-                        value={w.can_do.join("\n")}
-                        onChange={(e) =>
-                          patchWeek(i, {
-                            can_do: e.target.value
-                              .split("\n")
-                              .map((s) => s.trim())
-                              .filter((s) => s !== ""),
-                          })
-                        }
-                      />
                     </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-start justify-between gap-4 rounded-lg border border-[#EAE4D2] bg-[#FAF8F2] px-4 py-3">
-                    <div>
-                      <Label
-                        htmlFor={`review-released-${w.week_no}`}
-                        className="text-[12.5px] font-semibold"
-                      >
-                        복습 자료 전체 공개
-                      </Label>
-                      <p className="mt-1 max-w-2xl text-[11.5px] leading-relaxed text-muted-foreground">
-                        켜면 미션을 아직 마치지 않은 학습자도 복습면을 볼 수 있습니다.
-                        끈 상태에서도 필수 미션을 모두 완료한 학습자에게는 자동으로 열립니다.
-                      </p>
+                  <details className="rounded-lg border border-[#EAE4D2] bg-[#FAF8F2] px-4 py-3">
+                    <summary className="cursor-pointer text-[12.5px] font-medium text-muted-foreground">
+                      학습자 화면 세부 설정 (선택)
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <Label className="text-[12px]">Can-do 학습목표 (선택)</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-[11.5px]"
+                              >
+                                <CircleHelp className="mr-1 h-3.5 w-3.5" />
+                                작성 가이드
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-[380px] space-y-3">
+                              <div>
+                                <p className="text-[13px] font-semibold">상황 중심 Can-do 작성 틀</p>
+                                <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+                                  [상황·관계]에서 [소통 행동]을 [맥락 조건]에 맞게 수행할 수 있다.
+                                </p>
+                                <p className="mt-1 text-[10.5px] leading-relaxed text-muted-foreground">
+                                  행동 중심 원리를 반영한 PRAGMA 내부 가이드이며, CEFR·ACTFL의
+                                  공식 표준 문구를 옮긴 것은 아닙니다.
+                                </p>
+                              </div>
+                              <div className="space-y-2">
+                                {canDoSuggestions.map((suggestion) => (
+                                  <button
+                                    key={suggestion}
+                                    type="button"
+                                    onClick={() => addCanDoSuggestion(i, suggestion)}
+                                    className="w-full rounded-md border border-[#EAE4D2] bg-[#FAF8F2] px-3 py-2 text-left text-[11.5px] leading-relaxed transition hover:bg-[#FFF7CC]"
+                                  >
+                                    {suggestion}
+                                    <span className="mt-1 block font-semibold text-[#7A4A0A]">
+                                      이 목표 추가
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <Textarea
+                          rows={2}
+                          value={w.can_do.join("\n")}
+                          onChange={(e) =>
+                            patchWeek(i, {
+                              can_do: e.target.value
+                                .split("\n")
+                                .map((s) => s.trim())
+                                .filter((s) => s !== ""),
+                            })
+                          }
+                          placeholder="비워두면 주차 화행과 언어방향을 바탕으로 기본 목표를 제공합니다."
+                        />
+                      </div>
+
+                      <div className="flex items-start justify-between gap-4 rounded-lg border border-[#EAE4D2] bg-white px-4 py-3">
+                        <div>
+                          <Label
+                            htmlFor={`review-released-${w.week_no}`}
+                            className="text-[12.5px] font-semibold"
+                          >
+                            복습 자료 전체 공개
+                          </Label>
+                          <p className="mt-1 max-w-2xl text-[11.5px] leading-relaxed text-muted-foreground">
+                            켜면 미션을 아직 마치지 않은 학습자도 복습면을 볼 수 있습니다.
+                            끈 상태에서도 필수 미션을 모두 완료한 학습자에게는 자동으로 열립니다.
+                          </p>
+                        </div>
+                        <Switch
+                          id={`review-released-${w.week_no}`}
+                          checked={w.review_released}
+                          onCheckedChange={(checked) =>
+                            patchWeek(i, { review_released: checked })
+                          }
+                          aria-label={`${w.week_no}주차 복습 자료 전체 공개`}
+                        />
+                      </div>
                     </div>
-                    <Switch
-                      id={`review-released-${w.week_no}`}
-                      checked={w.review_released}
-                      onCheckedChange={(checked) =>
-                        patchWeek(i, { review_released: checked })
-                      }
-                      aria-label={`${w.week_no}주차 복습 자료 전체 공개`}
-                    />
-                  </div>
+                  </details>
                 </>
               )}
             </div>

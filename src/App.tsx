@@ -26,7 +26,6 @@ const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.t
 const AdminQuestionDesigner = lazy(() => import("./pages/admin/AdminQuestionDesigner.tsx"));
 const AdminReview = lazy(() => import("./pages/admin/AdminReview.tsx"));
 const AdminCrossVendor = lazy(() => import("./pages/admin/AdminCrossVendor.tsx"));
-const AdminCurriculum = lazy(() => import("./pages/admin/AdminCurriculum.tsx"));
 const AdminComposer = lazy(() => import("./pages/admin/AdminComposer.tsx"));
 const AdminLearners = lazy(() => import("./pages/admin/AdminLearners.tsx"));
 const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics.tsx"));
@@ -197,7 +196,8 @@ const App = () => (
           <Route path="/admin/assembly" element={<RequireAdmin><AdminAssembly /></RequireAdmin>} />
           {/* 구 URL 호환 — 북마크·문서의 /admin/browser를 라이브러리로 보낸다. */}
           <Route path="/admin/browser" element={<Navigate to="/admin/library" replace />} />
-          <Route path="/admin/curriculum" element={<RequireAdmin><AdminCurriculum /></RequireAdmin>} />
+          {/* 15주 구조와 미션 편성을 한 화면으로 통합한다. 옛 북마크는 보존. */}
+          <Route path="/admin/curriculum" element={<Navigate to="/admin/composer" replace />} />
           <Route path="/admin/composer" element={<RequireAdmin><AdminComposer /></RequireAdmin>} />
           <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
           <Route path="/admin/question-designer" element={<RequireAdmin><AdminQuestionDesigner /></RequireAdmin>} />

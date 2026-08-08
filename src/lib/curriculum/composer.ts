@@ -5,20 +5,16 @@
 // published 강좌 편성 + reviewed 미션으로 제한된다
 // (20260727190000_learner_published_curriculum_read). 쓰기는 admin-only다.
 //
-// ⚠️ 타입 우회: supabase 생성 타입(types.ts)이 v1.4 신규 컬럼(core_content 등)과
-//    curriculum_week_scenarios 조인 테이블을 아직 모른다. AdminBrowser와 동일하게
-//    이 레이어만 캐스트로 우회한다. (백로그: `supabase gen types`로 재생성)
-//
-// ⚠️ 원자성 한계(updateCurriculumOutline과 동일): 저장은 outline 단위 replace-all
-//    (delete → insert)이며 두 요청은 하나의 트랜잭션이 아니다. 중간 실패 시 부분
-//    상태가 남을 수 있고, 모든 실패는 throw되며 성공으로 위장하지 않는다.
+// ⚠️ 원자성 한계(updateCurriculumOutline과 동일): 여러 PostgREST 요청은 하나의
+//    트랜잭션이 아니다. 다만 새 편성을 먼저 upsert한 뒤 사라진 행만 삭제해, 삽입
+//    실패 때문에 기존 편성 전체가 먼저 사라지는 경로는 두지 않는다.
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Domain, GenMode, LanguageDirection, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
 import { coreDirection } from "@/lib/pragma/coreSchema";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 
-const db = supabase as unknown as { from: (t: string) => any };
+const db = supabase;
 
 /** 편성 대상 = 시나리오 코어(scenario_core_v1) 한 행의 편성용 요약. */
 export interface ComposerCore {
@@ -66,20 +62,31 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
     .order("created_at", { ascending: false })
     .limit(CORE_ROW_CAP);
   if (error) throw new Error(`시나리오 코어 조회 실패: ${error.message}`);
-  return ((data ?? []) as any[]).map((r) => ({
-    scenario_id: r.scenario_id,
-    speech_act: r.speech_act,
-    learner_level: r.learner_level,
-    domain: r.domain ?? null,
-    mode: r.mode ?? null,
-    theme_code: r.theme_code ?? null,
-    topic_code: r.topic_code ?? null,
-    mission_status: r.mission_status ?? null,
-    target_feature: r.target_feature ?? null,
-    situation_ko: r.core_content?.situation_ko ?? "",
-    source_text_ko: r.core_content?.source_text_ko ?? r.core_content?.source_text ?? "",
-    direction: coreDirection(r.core_content),
-  }));
+  return (data ?? []).map((r) => {
+    const content =
+      r.core_content && typeof r.core_content === "object" && !Array.isArray(r.core_content)
+        ? (r.core_content as Record<string, unknown>)
+        : {};
+    return {
+      scenario_id: r.scenario_id,
+      speech_act: r.speech_act as SpeechActUI,
+      learner_level: r.learner_level as LearnerLevel,
+      domain: (r.domain as Domain | null) ?? null,
+      mode: (r.mode as GenMode | null) ?? null,
+      theme_code: (r.theme_code as ThemeCode | null) ?? null,
+      topic_code: r.topic_code ?? null,
+      mission_status: r.mission_status ?? null,
+      target_feature: r.target_feature ?? null,
+      situation_ko: typeof content.situation_ko === "string" ? content.situation_ko : "",
+      source_text_ko:
+        typeof content.source_text_ko === "string"
+          ? content.source_text_ko
+          : typeof content.source_text === "string"
+            ? content.source_text
+            : "",
+      direction: coreDirection(r.core_content),
+    };
+  });
 }
 
 /** 한 outline의 주차별 배정을 조회(week_no·position 오름차순). */
@@ -95,20 +102,27 @@ export async function listWeekAssignments(outlineId: string): Promise<WeekAssign
 }
 
 /**
- * outline 단위 replace-all 저장: 기존 배정 전체 삭제 → 현재 배정 삽입.
- * 원자성 한계는 파일 상단 주석 참조. 빈 배정이면 삭제만 하고 끝낸다.
+ * outline 단위 동기화: 현재 행 조회 → 새 편성 upsert → 빠진 기존 행만 삭제.
+ * 빈 편성은 명시적으로 전체 삭제한다. 원자성 한계는 파일 상단 주석 참조.
  */
 export async function saveWeekAssignments(
   outlineId: string,
   assignments: WeekAssignment[],
 ): Promise<void> {
-  const { error: delError } = await db
+  const { data: existing, error: readError } = await db
     .from("curriculum_week_scenarios")
-    .delete()
+    .select("id, week_no, scenario_id")
     .eq("outline_id", outlineId);
-  if (delError) throw new Error(`기존 편성 삭제 실패: ${delError.message}`);
+  if (readError) throw new Error(`기존 편성 조회 실패: ${readError.message}`);
 
-  if (assignments.length === 0) return;
+  if (assignments.length === 0) {
+    const { error: deleteAllError } = await db
+      .from("curriculum_week_scenarios")
+      .delete()
+      .eq("outline_id", outlineId);
+    if (deleteAllError) throw new Error(`기존 편성 삭제 실패: ${deleteAllError.message}`);
+    return;
+  }
 
   const rows = assignments.map((a) => ({
     outline_id: outlineId,
@@ -117,6 +131,22 @@ export async function saveWeekAssignments(
     position: a.position,
     slot_role: a.slot_role,
   }));
-  const { error: insError } = await db.from("curriculum_week_scenarios").insert(rows);
-  if (insError) throw new Error(`편성 저장 실패: ${insError.message}`);
+  const { error: upsertError } = await db
+    .from("curriculum_week_scenarios")
+    .upsert(rows, { onConflict: "outline_id,week_no,scenario_id" });
+  if (upsertError) throw new Error(`편성 저장 실패: ${upsertError.message}`);
+
+  const desiredKeys = new Set(assignments.map((item) => `${item.week_no}:${item.scenario_id}`));
+  const staleIds = ((existing ?? []) as Array<{ id: string; week_no: number; scenario_id: string }>)
+    .filter((item) => !desiredKeys.has(`${item.week_no}:${item.scenario_id}`))
+    .map((item) => item.id);
+  if (staleIds.length === 0) return;
+
+  const { error: staleDeleteError } = await db
+    .from("curriculum_week_scenarios")
+    .delete()
+    .in("id", staleIds);
+  if (staleDeleteError) {
+    throw new Error(`이전 편성 정리 실패: ${staleDeleteError.message}`);
+  }
 }
