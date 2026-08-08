@@ -675,6 +675,7 @@ interface CoreGenBody {
   domain?: string
   domain_ko: string
   industry?: string | null
+  func?: string | null
   topic_code?: string
   mode?: CoreLengthMode // 수행 방식(channel 폐기 2026-07-25)
   channel?: string // @deprecated legacy(무시)
@@ -1105,9 +1106,21 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
       '- 통역 P·D·R 준거: A↔B. 학습자 C와 A/B의 관계를 P·D·R 근거로 사용하지 마세요.',
     )
   }
+  if (b.func) {
+    parts.splice(
+      parts.findIndex((part) => part.startsWith('- 관계 P(지위)')),
+      0,
+      `- 직무 기능: ${FUNCTION_KO[b.func] ?? b.func} (${b.func})`,
+    )
+  }
   if (b.industry) {
     parts.push(
       `- 산업 실현: 산업 라벨을 보지 않고도 분야를 알아볼 수 있는 구체적 업무·대상·전문 어휘 중 서로 다른 종류의 단서 두 가지 이상을 situation_ko/source_text에 넣으세요. 범용어만 쓰면 실패입니다.`,
+    )
+  }
+  if (b.func) {
+    parts.push(
+      `- 직무 실현: 장면의 핵심 과업이 ${FUNCTION_KO[b.func] ?? b.func} 업무임을 역할·행동·산출물로 드러내세요. 산업 분야를 다른 업종으로 바꾸지 마세요.`,
     )
   }
   if (b.source_modality === 'spoken') {
@@ -1196,7 +1209,10 @@ async function corePromptSnapshotHash(): Promise<string> {
     for (const source_modality of ['written', 'spoken'] as const) {
       for (const level of ['beginner_intermediate', 'intermediate', 'advanced'] as const) {
         for (const is_response_act of [false, true]) {
-          for (const industry of [null, 'PROBE_INDUSTRY']) {
+          for (const workContext of [
+            { industry: null, func: null },
+            { industry: 'PROBE_INDUSTRY', func: 'PROBE_FUNCTION' },
+          ]) {
             user_prompt_templates.push(
               buildCoreUserPrompt({
                 ...CORE_PROBE_BASE,
@@ -1205,7 +1221,8 @@ async function corePromptSnapshotHash(): Promise<string> {
                 mode: source_modality === 'spoken' ? 'stt_interpreting' : 'translation',
                 level,
                 is_response_act,
-                industry,
+                industry: workContext.industry,
+                func: workContext.func,
               }),
             )
           }
@@ -1317,6 +1334,7 @@ async function corePromptSnapshotHash(): Promise<string> {
       pdr_d_ko: PDR_D_KO,
       pdr_r_ko: PDR_R_KO,
       industry_ko: INDUSTRY_KO,
+      function_ko: FUNCTION_KO,
       role_pairs: ROLE_PAIRS,
       topic_role_pairs: TOPIC_ROLE_PAIRS,
       speaker_entitlement: SPEAKER_ENTITLEMENT,

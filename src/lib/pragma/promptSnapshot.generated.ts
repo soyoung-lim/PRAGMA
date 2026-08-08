@@ -16,12 +16,12 @@ export type PromptSnapshot = {
   prompts: PromptSnapshotEntry[];
 };
 export const PROMPT_SNAPSHOT: PromptSnapshot = {
-  "generated_at": "2026-08-06T07:01:08.873Z",
-  "git_commit": "7c7246c",
-  "git_dirty": false,
+  "generated_at": "2026-08-08T11:42:01.023Z",
+  "git_commit": "d11b96a",
+  "git_dirty": true,
   "edge_source": "supabase/functions/generate-scenario/index.ts",
-  "edge_source_sha256": "3fee8aea29b4dae7faf55f43a90258f4c0af862767af874b2f681246974acdfb",
-  "core_surface_hash": "0f15492f114d61a9342957dae6bb21720a08648a0b09801d92441a1f2df56a85",
+  "edge_source_sha256": "dc2ac1c71d466c6f749a659ba22d99cd2d2d42dc925fe2fb021a40d90a6213d6",
+  "core_surface_hash": "4eb32e4fffae2368f9474e76ce8fbbc68c3a30192f4c727d573e1aa514f1c72e",
   "generation_config": {
     "model": "gpt-4.1-mini",
     "model_fallback": null,
@@ -84,8 +84,8 @@ export const PROMPT_SNAPSHOT: PromptSnapshot = {
       "label": "코어 생성 · 요청서 (번역)",
       "group": "core",
       "note": "직장·산업 셀 조건이 들어가는 자리. PROBE_* 는 호출마다 바뀌는 값.",
-      "sha256": "de7bfb1eb258ed4f5790920556d038f61ccf4cd61102c86e2e89e0c9edd60781",
-      "text": "[생성 요청]\n- 언어 방향: 한국어 → 중국어\n- 화행: PROBE_ACT\n- 학습자 수준: PROBE_LV\n- 도메인: PROBE_DOM\n- 산업 배경: PROBE_INDUSTRY (PROBE_INDUSTRY)\n- 관계 P(지위): PROBE_P\n- 관계 D(거리): PROBE_D\n- 관계 R(부담): PROBE_R\n- 장면 시드: PROBE_SEED\n- 원문 분량: 유효 글자 45~65자(공백·문장부호 제외), 종결부호 기준 2~4문장의 실무 메시지 담화\n- 문장 경계: 쉼표로 절을 길게 잇지 말고 한국어 종결부호(.?!)로 위 분량의 문장 수를 명시하세요.\n\n[context_spec — 서버 고정 조건]\n- 표준상황 코드: PROBE_STANDARD_SITUATION\n- 역할 쌍: 화자=PROBE_SPEAKER_ROLE / 상대=PROBE_ADDRESSEE_ROLE\n- 화자의 정당한 권리·책임: PROBE_SPEAKER_ENTITLEMENT\n- 상대의 의무·선택권: PROBE_ADDRESSEE_OBLIGATION\n- 결정 권한: PROBE_DECISION_AUTHORITY\n- 행위자 고정: A=화자(PROBE_SPEAKER_ROLE), B=상대(PROBE_ADDRESSEE_ROLE). 모든 필드에서 A/B, 문제 책임자, 요청받은 행위자를 바꾸지 마세요.\n- 산업 실현: 산업 라벨을 보지 않고도 분야를 알아볼 수 있는 구체적 업무·대상·전문 어휘 중 서로 다른 종류의 단서 두 가지 이상을 situation_ko/source_text에 넣으세요. 범용어만 쓰면 실패입니다.\n- 수행 모드: 번역 — source_text는 자연스러운 한국어 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정. situation_ko도 글을 작성해 전달하는 장면으로 서술하며, \"글로 남기지 않고 직접 말한다\"거나 대면·통화로만 수행하는 장면으로 만들지 마세요.\n\n위 조건에 맞는 상황·원문을 JSON으로만 반환하세요."
+      "sha256": "5ca7fbaa4457d56fb84d113d7eed334d0f1e04c0da7fd6ef20234ff91282722e",
+      "text": "[생성 요청]\n- 언어 방향: 한국어 → 중국어\n- 화행: PROBE_ACT\n- 학습자 수준: PROBE_LV\n- 도메인: PROBE_DOM\n- 산업 배경: PROBE_INDUSTRY (PROBE_INDUSTRY)\n- 직무 기능: PROBE_FUNCTION (PROBE_FUNCTION)\n- 관계 P(지위): PROBE_P\n- 관계 D(거리): PROBE_D\n- 관계 R(부담): PROBE_R\n- 장면 시드: PROBE_SEED\n- 원문 분량: 유효 글자 45~65자(공백·문장부호 제외), 종결부호 기준 2~4문장의 실무 메시지 담화\n- 문장 경계: 쉼표로 절을 길게 잇지 말고 한국어 종결부호(.?!)로 위 분량의 문장 수를 명시하세요.\n\n[context_spec — 서버 고정 조건]\n- 표준상황 코드: PROBE_STANDARD_SITUATION\n- 역할 쌍: 화자=PROBE_SPEAKER_ROLE / 상대=PROBE_ADDRESSEE_ROLE\n- 화자의 정당한 권리·책임: PROBE_SPEAKER_ENTITLEMENT\n- 상대의 의무·선택권: PROBE_ADDRESSEE_OBLIGATION\n- 결정 권한: PROBE_DECISION_AUTHORITY\n- 행위자 고정: A=화자(PROBE_SPEAKER_ROLE), B=상대(PROBE_ADDRESSEE_ROLE). 모든 필드에서 A/B, 문제 책임자, 요청받은 행위자를 바꾸지 마세요.\n- 산업 실현: 산업 라벨을 보지 않고도 분야를 알아볼 수 있는 구체적 업무·대상·전문 어휘 중 서로 다른 종류의 단서 두 가지 이상을 situation_ko/source_text에 넣으세요. 범용어만 쓰면 실패입니다.\n- 직무 실현: 장면의 핵심 과업이 PROBE_FUNCTION 업무임을 역할·행동·산출물로 드러내세요. 산업 분야를 다른 업종으로 바꾸지 마세요.\n- 수행 모드: 번역 — source_text는 자연스러운 한국어 서면 문어체. 말투·격식은 매체가 아니라 관계(P/D/R)와 상황이 결정. situation_ko도 글을 작성해 전달하는 장면으로 서술하며, \"글로 남기지 않고 직접 말한다\"거나 대면·통화로만 수행하는 장면으로 만들지 마세요.\n\n위 조건에 맞는 상황·원문을 JSON으로만 반환하세요."
     },
     {
       "key": "core.user.spoken",

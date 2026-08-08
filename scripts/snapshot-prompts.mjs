@@ -85,6 +85,7 @@ const prompts = [
       source_modality: "written",
       is_response_act: false,
       industry: "PROBE_INDUSTRY",
+      func: "PROBE_FUNCTION",
     })),
   entry("core.user.spoken", "코어 생성 · 요청서 (통역)", "core",
     "통역 셀은 구두 담화체 지시가 추가된다.",

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useSearchParams } from "react-router-dom";
 import { addDraftScenario } from "@/lib/scenarioDrafts";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { AUTHENTIC_HANDOFF_KEY, type AuthenticApply } from "./AuthenticImportPanel";
 import {
   Select,
@@ -26,6 +27,8 @@ import {
   DIRECTION_LABEL,
   DOMAIN,
   INDUSTRY,
+  BUSINESS_FUNCTION,
+  BUSINESS_FUNCTION_PRIMARY,
   CHANNEL_UI,
   CHANNEL_TO_GENRE,
   MODE_LABEL,
@@ -57,6 +60,7 @@ import type {
   PdrBurden,
   Domain,
   IndustrySector,
+  BusinessFunction,
   ComplexTaskUI,
 } from "@/lib/pragma/enums";
 import {
@@ -113,18 +117,6 @@ const CHALLENGE_KO: Record<string, string> = {
 type SpeechAct = "request" | "refusal";
 type Genre = "business_email" | "business_messenger" | "meeting_speech";
 type InteractionContext = "coordination" | "negotiation" | "follow_up";
-type BusinessFunction =
-  | "overseas_sales"
-  | "marketing_pr"
-  | "customer_partner_support"
-  | "SCM_logistics"
-  | "contract_terms"
-  | "project_coordination"
-  | "research_admin"
-  | "localization_translation"
-  | "event_operations"
-  | "international_collaboration";
-
 const SPEECH_ACT: Record<SpeechAct, string> = { request: "요청", refusal: "거절" };
 const GENRE: Record<Genre, string> = {
   business_email: "업무 이메일",
@@ -196,33 +188,6 @@ const COMPLEX_TASK_UI: Record<ComplexTaskUI, string> = {
   negotiate: "협상",
 };
 
-
-// UI display map for business functions. The DB enum keeps all 10 values,
-// but only 7 primary keys are surfaced in dropdowns. Orphan enums map to a
-// consolidated label so legacy data still displays a valid new label.
-const FUNCTION: Record<BusinessFunction, string> = {
-  overseas_sales: "해외영업·거래",
-  marketing_pr: "마케팅·홍보",
-  customer_partner_support: "고객·파트너 응대",
-  SCM_logistics: "구매·물류",
-  contract_terms: "해외영업·거래",
-  project_coordination: "프로젝트 운영",
-  research_admin: "대외협력·제휴",
-  localization_translation: "번역·로컬라이제이션",
-  event_operations: "프로젝트 운영",
-  international_collaboration: "대외협력·제휴",
-};
-
-// Primary 7 business-function enum values exposed in dropdowns.
-const FUNCTION_PRIMARY: BusinessFunction[] = [
-  "overseas_sales",
-  "marketing_pr",
-  "customer_partner_support",
-  "SCM_logistics",
-  "project_coordination",
-  "localization_translation",
-  "international_collaboration",
-];
 
 interface FormState {
   mode: "single" | "batch";
@@ -398,8 +363,8 @@ function buildScenario(f: FormState): Generated {
   const isRefusal = SPEECH_ACT_UI_TO_INTERNAL[f.speech_act_ui] === "refusal";
   return {
     title: isRefusal
-      ? `${INDUSTRY[f.industry]} — ${FUNCTION[f.func]} 협의에서의 정중한 거절`
-      : `${INDUSTRY[f.industry]} — ${FUNCTION[f.func]} 관련 협조 요청`,
+      ? `${INDUSTRY[f.industry]} — ${BUSINESS_FUNCTION[f.func]} 협의에서의 정중한 거절`
+      : `${INDUSTRY[f.industry]} — ${BUSINESS_FUNCTION[f.func]} 관련 협조 요청`,
     source_text: isRefusal
       ? "말씀 주신 제안은 내부에서 신중히 검토했습니다. 다만 현재 조건에서는 수용이 어렵다는 결론에 이르렀습니다. 가능하신 범위에서 일정·조건을 일부 조정해 주신다면, 다음 단계 협의를 이어갈 수 있을 것 같습니다."
       : "지난번 논의 이후 진행 상황을 공유드리며, 다음 단계 협조를 부탁드리고자 연락드립니다. 가능하신 일정과 범위를 알려주시면, 저희 측 내부 일정과 맞춰 조정해 회신드리겠습니다.",
@@ -623,7 +588,7 @@ const AdminGenerator = () => {
     context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
     domain: form.domain,
     industry: form.domain === "work" ? form.industry : null,
-    func: null,
+    func: form.domain === "work" ? form.func : null,
     pdr_power: form.pdr_power,
     pdr_distance: form.pdr_distance,
     pdr_burden: form.pdr_burden,
@@ -737,6 +702,7 @@ const AdminGenerator = () => {
               domain: form.domain,
               domain_ko: DOMAIN[form.domain],
               industry: form.domain === "work" ? form.industry : null,
+              func: form.domain === "work" ? form.func : null,
               topic_code: topicCode,
               mode,
               channel: legacyChannelOf(mode),
@@ -797,6 +763,7 @@ const AdminGenerator = () => {
           learner_level: form.level,
           domain: form.domain,
           industry_sector: form.domain === "work" ? form.industry : null,
+          business_function: form.domain === "work" ? form.func : null,
           mode,
           source_modality: modalityOf(mode),
           theme_code: themeCode,
@@ -811,8 +778,8 @@ const AdminGenerator = () => {
           // 배치와 같은 규칙 — 엣지가 계산한 프롬프트 지문을 그대로 저장(재계산 금지).
           prompt_snapshot_hash: (meta as { prompt_snapshot_hash?: string } | null)?.prompt_snapshot_hash ?? null,
         };
-        const { data: savedId, error: saveErr } = await (supabase.rpc as any)("save_generated_core", {
-          p_payload: payload,
+        const { data: savedId, error: saveErr } = await supabase.rpc("save_generated_core", {
+          p_payload: payload as unknown as Json,
         });
         if (saveErr) throw saveErr;
         results.push({
@@ -863,9 +830,7 @@ const AdminGenerator = () => {
           context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
           domain: form.domain,
           industry: form.domain === "work" ? form.industry : null,
-          // func는 UI에서 제거된 숨은 필드 — 프롬프트에 '마케팅·홍보' 편향이
-          // 주입되지 않도록 생성 요청에는 전달하지 않는다 (저장 payload는 유지).
-          func: null,
+          func: form.domain === "work" ? form.func : null,
           pdr_power: form.pdr_power,
           pdr_distance: form.pdr_distance,
           pdr_burden: form.pdr_burden,
@@ -917,7 +882,7 @@ const AdminGenerator = () => {
     setSaveError(null);
     setMetaWarning(null);
     try {
-      const { data, error } = await (supabase.rpc as any)("save_generated_scenario", {
+      const { data, error } = await supabase.rpc("save_generated_scenario", {
         p_payload: {
           scenario: aiResult,
           meta: aiMeta,
@@ -927,12 +892,12 @@ const AdminGenerator = () => {
             level: form.level,
             context: COMPLEX_TASK_TO_CONTEXT[form.complex_task],
             industry: form.domain === "work" ? form.industry : null,
-            func: form.func,
+            func: form.domain === "work" ? form.func : null,
             pdr_power: form.pdr_power,
             pdr_distance: form.pdr_distance,
             pdr_burden: form.pdr_burden,
           },
-        },
+        } as unknown as Json,
       });
       if (error) throw error;
       setSavedScenarioId(data as string);
@@ -957,7 +922,9 @@ const AdminGenerator = () => {
         CHANNEL_UI[form.channel],
         LEVEL[form.level],
         DOMAIN[form.domain],
-        ...(form.domain === "work" ? [INDUSTRY[form.industry]] : []),
+        ...(form.domain === "work"
+          ? [INDUSTRY[form.industry], BUSINESS_FUNCTION[form.func]]
+          : []),
         COMPLEX_TASK_UI[form.complex_task],
         `${PDR_POWER_SHORT[form.pdr_power]} / ${PDR_DISTANCE_SHORT[form.pdr_distance]} / ${PDR_BURDEN_SHORT[form.pdr_burden]}`,
       ]
@@ -1229,11 +1196,11 @@ const AdminGenerator = () => {
             </div>
           </div>
 
-          {/* 7. 도메인 · 산업 */}
+          {/* 7. 도메인 · 산업 · 직무 */}
           <div>
-            <SectionTitle n={7} label="도메인 · 산업" />
-            <div className="mt-2 grid grid-cols-[auto_1fr] gap-4 items-start">
-              <div>
+            <SectionTitle n={7} label="도메인 · 산업 · 직무" />
+            <div className="mt-2 grid items-start gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
                 <label className="text-[12px] text-muted-foreground">도메인</label>
                 <div className="mt-1.5 flex h-9 items-center gap-3">
                   {(Object.keys(DOMAIN) as Domain[]).map((d) => (
@@ -1279,6 +1246,27 @@ const AdminGenerator = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+              {form.domain === "work" && (
+                <div>
+                  <label className="text-[12px] text-muted-foreground">
+                    직무 기능 <span className="text-muted-foreground/70">· 직장만</span>
+                  </label>
+                  <Select
+                    value={form.func}
+                    onValueChange={(v) => update("func", v as BusinessFunction)}
+                  >
+                    <SelectTrigger className={`mt-1.5 ${formField}`}><SelectValue /></SelectTrigger>
+                    <SelectContent className="max-h-72 overflow-y-auto z-50">
+                      {BUSINESS_FUNCTION_PRIMARY.map((code) => (
+                        <SelectItem key={code} value={code}>{BUSINESS_FUNCTION[code]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-1 text-[10.5px] text-muted-foreground">
+                    산업 배경 안에서 학습자가 수행할 실제 업무를 구체화합니다.
+                  </p>
                 </div>
               )}
             </div>

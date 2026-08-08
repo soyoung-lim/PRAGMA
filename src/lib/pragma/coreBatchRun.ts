@@ -111,6 +111,7 @@ export function coreGenerationItemKey(cell: BatchCell, index: number): string {
     cell.theme_code,
     cell.topic_code,
     cell.industry ?? "-",
+    cell.business_function ?? "-",
     index,
   ].join("|");
 }
@@ -171,6 +172,7 @@ export async function runCoreCell(
           domain: cell.domain,
           domain_ko: DOMAIN[cell.domain],
           industry: cell.industry,
+          func: cell.business_function,
           topic_code: cell.topic_code,
           mode, // channel 폐기(2026-07-25) — 수행 방식이 1차 축(매체 관습 강제 제거)
           // 재배포 전 live 엣지 호환용 legacy channel(mode 파생). 재배포 후 엣지는 mode를 본다.
@@ -222,6 +224,7 @@ export async function runCoreCell(
       learner_level: cell.level,
       domain: cell.domain,
       industry_sector: cell.industry,
+      business_function: cell.business_function,
       mode,
       source_modality: sourceModality,
       theme_code: cell.theme_code,
