@@ -12,6 +12,7 @@
 
 import {
   type Domain,
+  type BusinessFunction,
   type GenMode,
   type IndustrySector,
   type LanguageDirection,
@@ -34,7 +35,7 @@ import {
  * 구인축: speech_act_ui + P·D·R
  * 과업 조건: mode
  * 편성층: level + domain
- * 사건 메타: theme/topic/industry
+ * 사건 메타: theme/topic/industry/business function
  *
  * 이 필드들은 모두 필요하지만 동등한 연구축은 아니다.
  */
@@ -46,6 +47,8 @@ export interface BatchCell {
   mode: GenMode;
   /** domain === "work" 일 때만 채운다 (스키마 제약과 동일) */
   industry: IndustrySector | null;
+  /** domain === "work" 일 때만 채우는 실제 업무 기능 메타 */
+  business_function: BusinessFunction | null;
   pdr_power: PdrPower;
   pdr_distance: PdrDistance;
   pdr_burden: PdrBurden;
@@ -259,6 +262,15 @@ const INDUSTRIES: IndustrySector[] = [
   "trade_distribution", "IT_platform", "manufacturing", "tourism_hospitality",
   "education_research", "public_international_affairs", "culture_content_media",
 ];
+const BUSINESS_FUNCTIONS: BusinessFunction[] = [
+  "overseas_sales",
+  "marketing_pr",
+  "customer_partner_support",
+  "SCM_logistics",
+  "project_coordination",
+  "localization_translation",
+  "international_collaboration",
+];
 
 // 연구 구인 행렬 = 화행9 × P3 × D3 × R3 = 243.
 // 앞 9개부터 P·D가 모두 나타나고 R도 균형을 이루도록 순서를 섞되,
@@ -327,8 +339,8 @@ export const ZH_KO_VALIDATION_DELIVERY_CELLS: DeliveryCoverageCell[] = [
 /**
  * 할당량으로부터 셀 목록을 만든다. 순수 함수 — 같은 입력이면 같은 계획.
  *
- * 도메인은 계획에 못박지만 산업은 work 도메인 안에서만 회전시킨다
- * (스키마 CHECK: industry는 domain='work'가 아니면 null).
+ * 도메인은 계획에 못박지만 산업·직무 기능은 work 도메인 안에서만 회전시킨다
+ * (스키마 CHECK: industry/business_function은 domain='work'가 아니면 null).
  *
  * direction(0-l·89) = 셀에 찍는 방향 태그(기본 ko_zh). acts = 화행 부분집합.
  * zh_ko 혼합 파일럿은 화행별 수준 범위가 다르므로 buildZhKoValidationPlan을 사용한다.
@@ -340,6 +352,7 @@ export function buildBatchPlan(
 ): BatchCell[] {
   const cells: BatchCell[] = [];
   let seq = 0; // 전역 순번 — topic·산업 tie-break용
+  let workOrdinal = 0; // 산업과 직무의 고정 1:1 짝을 피하는 독립 work 순번
   const actOrdinal: Record<string, number> = {};
   const themeCount: Record<string, number> = {}; // 테마 균형 커서(계약 §7-0)
   const topicCount: Record<string, number> = {}; // topic 반복 방지 커서(0-k·81⑥)
@@ -379,12 +392,17 @@ export function buildBatchPlan(
           themeCount[topic.themeCode] = (themeCount[topic.themeCode] ?? 0) + 1;
           topicCount[topic.code] = (topicCount[topic.code] ?? 0) + 1;
 
+          const industry = domain === "work" ? INDUSTRIES[workOrdinal % INDUSTRIES.length] : null;
+          const businessFunction = domain === "work"
+            ? BUSINESS_FUNCTIONS[(workOrdinal * 3 + Math.floor(workOrdinal / 7)) % BUSINESS_FUNCTIONS.length]
+            : null;
           cells.push({
             speech_act_ui,
             level,
             domain,
             mode: slot.mode,
-            industry: domain === "work" ? INDUSTRIES[seq % INDUSTRIES.length] : null,
+            industry,
+            business_function: businessFunction,
             pdr_power: pdr.p,
             pdr_distance: pdr.d,
             pdr_burden: pdr.r,
@@ -395,6 +413,7 @@ export function buildBatchPlan(
             count: 1,
           });
           actOrdinal[speech_act_ui] = ordinal + 1;
+          if (domain === "work") workOrdinal += 1;
           seq += 1;
         }
       }

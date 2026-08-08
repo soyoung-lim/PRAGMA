@@ -187,3 +187,41 @@ export const INDUSTRY: Record<IndustrySector, string> = {
   tourism_hospitality: "관광·MICE",
   education_research: "공공·교육·연구",
 };
+
+// ── Business function (work-domain task context) ──
+// DB에는 legacy 10개 값이 남아 있으나, 생성 UI는 취업·실무 활용성이 높은 대표 7개만
+// 노출한다. 합쳐진 legacy 값은 같은 표시 라벨로 읽을 수 있게 유지한다.
+export type BusinessFunction =
+  | "overseas_sales"
+  | "marketing_pr"
+  | "customer_partner_support"
+  | "SCM_logistics"
+  | "contract_terms"
+  | "project_coordination"
+  | "research_admin"
+  | "localization_translation"
+  | "event_operations"
+  | "international_collaboration";
+
+export const BUSINESS_FUNCTION: Record<BusinessFunction, string> = {
+  overseas_sales: "해외영업·거래",
+  marketing_pr: "마케팅·홍보",
+  customer_partner_support: "고객·파트너 응대",
+  SCM_logistics: "구매·물류",
+  contract_terms: "해외영업·거래",
+  project_coordination: "프로젝트 운영",
+  research_admin: "대외협력·제휴",
+  localization_translation: "번역·로컬라이제이션",
+  event_operations: "프로젝트 운영",
+  international_collaboration: "대외협력·제휴",
+};
+
+export const BUSINESS_FUNCTION_PRIMARY: BusinessFunction[] = [
+  "overseas_sales",
+  "marketing_pr",
+  "customer_partner_support",
+  "SCM_logistics",
+  "project_coordination",
+  "localization_translation",
+  "international_collaboration",
+];

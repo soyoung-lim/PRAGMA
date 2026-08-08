@@ -140,6 +140,8 @@ describe("prompt snapshot integrity", () => {
     expect(system.text).toContain("즉시 늘리기");
     expect(system.text).toContain("거절은 A가 자신의 수락 여부를 결정");
     expect(written.text).toContain("산업 배경");
+    expect(written.text).toContain("직무 기능: PROBE_FUNCTION");
+    expect(written.text).toContain("직무 실현:");
     expect(written.text).toContain("[context_spec — 서버 고정 조건]");
     expect(written.text).toContain("행위자 고정: A=화자");
     expect(critic.text).toContain("industry");

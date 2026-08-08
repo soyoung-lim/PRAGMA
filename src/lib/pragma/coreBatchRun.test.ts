@@ -11,6 +11,7 @@ const cell = (overrides: Partial<BatchCell> = {}): BatchCell => ({
   domain: "work",
   mode: "translation",
   industry: "trade_distribution",
+  business_function: "overseas_sales",
   pdr_power: "equal",
   pdr_distance: "acquaintance",
   pdr_burden: "mid",
@@ -34,6 +35,9 @@ describe("core batch resume", () => {
     );
     expect(coreGenerationItemKey(base, 0)).not.toBe(
       coreGenerationItemKey(cell({ pdr_power: "higher" }), 0),
+    );
+    expect(coreGenerationItemKey(base, 0)).not.toBe(
+      coreGenerationItemKey(cell({ business_function: "marketing_pr" }), 0),
     );
     expect(coreGenerationItemKey(base, 0)).not.toBe(
       coreGenerationItemKey(base, 1),

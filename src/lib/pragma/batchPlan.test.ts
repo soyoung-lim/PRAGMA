@@ -123,6 +123,38 @@ describe("construct matrix coverage", () => {
         .toEqual(new Set(["equal", "higher", "lower"]));
     }
   });
+
+  it("keeps daily·school·work at 1:1:1 inside every level of the 495 plan", () => {
+    const plan = buildBatchPlan(FULL_BATCH_QUOTA_495);
+
+    for (const level of ["beginner_intermediate", "intermediate", "advanced"] as const) {
+      const inLevel = plan.filter((cell) => cell.level === level);
+      const counts = ["daily", "school", "work"].map(
+        (domain) => inLevel.filter((cell) => cell.domain === domain).length,
+      );
+      expect(new Set(counts).size).toBe(1);
+    }
+  });
+
+  it("rotates all seven job functions only inside work cells", () => {
+    const plan = buildBatchPlan(FULL_BATCH_QUOTA_495);
+    const workFunctions = new Set(
+      plan.filter((cell) => cell.domain === "work").map((cell) => cell.business_function),
+    );
+
+    expect(workFunctions).toEqual(new Set([
+      "overseas_sales",
+      "marketing_pr",
+      "customer_partner_support",
+      "SCM_logistics",
+      "project_coordination",
+      "localization_translation",
+      "international_collaboration",
+    ]));
+    expect(plan.filter((cell) => cell.domain !== "work").every(
+      (cell) => cell.business_function === null,
+    )).toBe(true);
+  });
 });
 
 describe("zh_ko nine-act validation pilot", () => {
