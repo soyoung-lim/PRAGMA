@@ -90,20 +90,32 @@
   - 1,265×712 자동 브라우저에서 제목부터 미선택 핵심 자동화 패널 전체와 다음 결과 영역의 시작점까지
     스크롤 없이 표시되고, 밝아진 내부 헤더가 글로벌 네이비와 구분되는 것을 확인했다.
 
+## 운영 반영
+
+- 구현 커밋 `652bb57`, `0c0b074`, 연구 기록 커밋 `3afcf56`과 기존 미푸시 정본 커밋
+  `d11b96a`를 `origin/main`에 push했다.
+- 원격 migration 이력을 대조하고 오늘 추가한 두 건만 대기 중임을 dry-run으로 확인한 뒤
+  `20260808130000_business_function_core_generation.sql`,
+  `20260808150000_curriculum_composition_policy.sql`을 순서대로 적용했다.
+- `generate-scenario`를 Edge v57로 배포하고 `ACTIVE`, JWT 검증 활성 상태를 확인했다.
+- Railway production 배포 `dd9a5f00-a884-4e5f-b5de-e4abc0899aa5`가 `Online`으로 전환됐다.
+- 운영 `/admin/composer`에서 미선택 핵심 자동화 패널과 기존 교과목 15주 데이터 로드,
+  `/admin/generator`에서 직장 전용 직무 기능 축, `/admin/curriculum`에서 Composer 리다이렉트를
+  확인했다. 세 경로의 브라우저 콘솔 오류는 0건이었다.
+- 유료 생성 호출과 새 교과목·편성 저장은 실행하지 않아 운영 콘텐츠 행은 추가·수정하지 않았다.
+
 ## 연구 기록
 
 - `docs/research-trail/01_design_traceability.md`: `TRC-20260808-01~02`.
 - `docs/research-trail/02_decision_log.md`: `DEC-20260808-01~05`.
 - `docs/research-trail/03_iteration_log.md`: `ITER-20260808-01~04`.
-- `docs/research-trail/04_evidence_index.md`: `EVD-20260808-01~04`.
+- `docs/research-trail/04_evidence_index.md`: `EVD-20260808-01~05`.
 - 마지막 여백·높이·내부 헤더 명도 조정은 동작과 연구 구성개념을 바꾸지 않아 research-trail에는
   별도 항목을 추가하지 않았다.
 
 ## 미실행·확인 필요
 
 - 생성·편성 저장 버튼을 누르지 않아 운영 DB 콘텐츠와 기존 강좌는 변경하지 않았다.
-- migration, Supabase Edge, Railway, Git commit·push·배포를 실행하지 않았다.
-- `[확인 필요]` 편성 정책 migration을 적용하기 전에는 새 강좌 생성·편성 저장으로 새 정책 열을
-  쓸 수 없다. 운영 반영 순서와 배포 후 무비용 smoke 범위를 별도로 승인받아야 한다.
+- 유료 생성 호출을 하지 않았으므로 Edge v57의 직무 기능 포함 실제 생성·저장 종단은 미확인이다.
 - `[확인 필요]` 실제 배정 미션에서 계산하는 학기 P·D·R 고급 배치표는 이번 기본 UI 감량 범위에
   포함하지 않았고 후속 구현으로 남겼다.
