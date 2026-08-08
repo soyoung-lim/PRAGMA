@@ -60,18 +60,12 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    header: "3 · 커리큘럼·수업 준비",
-    // 둘 다 "15주"로 시작해 관계가 안 보였다(2026-07-26). ①은 빈 시간표를 만들고
-    // ②는 그 칸을 채운다 — 번호로 순서를, 이름으로 무엇이 다른지 드러낸다.
+    // 강좌 편성 이후의 실제 운영 흐름을 한 묶음으로 둔다. 편성 하나만 별도 단계로
+    // 떼면 사이드바 위계가 비고, 학습자 관리·수행 기록과의 연결도 약해진다.
+    header: "3 · 수업·학습 운영",
     items: [
-      { to: "/admin/curriculum", label: "커리큘럼 구조" },
-      { to: "/admin/composer", label: "주차별 시나리오 편성" },
+      { to: "/admin/composer", label: "AI 15주 교과목 설계" },
       { to: "/admin/package", label: "수업 자료 생성", pending: true },
-    ],
-  },
-  {
-    header: "4 · 학습자·학습 분석",
-    items: [
       { to: "/admin/learners", label: "학습자 관리" },
       { to: "/admin/decision-traces", label: "수행·의사결정 기록" },
       { to: "/admin/analytics", label: "학습 분석", pending: true },
@@ -103,9 +97,10 @@ interface AdminShellProps {
   title: string;
   description?: string;
   children?: ReactNode;
+  compact?: boolean;
 }
 
-export const AdminShell = ({ title, description, children }: AdminShellProps) => {
+export const AdminShell = ({ title, description, children, compact = false }: AdminShellProps) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const visibleNavPaths = new Set([
@@ -149,7 +144,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
 
       {/* 좌우 패딩도 헤더와 같은 px-6으로 맞춘다 — pl-5/pr-8이면 max-w를 맞춰도
           사이드바 좌측과 콘텐츠 우측이 헤더 안쪽 선과 어긋난다. */}
-      <div className="mx-auto flex max-w-[1400px] gap-6 px-6 py-6">
+      <div className={`mx-auto flex max-w-[1400px] gap-6 px-6 ${compact ? "py-5" : "py-6"}`}>
         {/* 폭은 가장 넓은 항목(「연구 데이터 관리」+준비 중 배지 = 139px)이 들어가는
             선까지만 준다. 메뉴는 whitespace-nowrap이라 넘치면 줄바꿈이 아니라
             본문 쪽으로 삐져나온다. 208px → 텍스트 가용폭 151px(여유 12px). */}
@@ -235,11 +230,13 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
               {/* 화면 설명은 읽기 폭(≈672px)까지만 — 전폭이면 한 줄에 한국어
                   80자가 넘어 눈이 다음 줄 시작을 못 찾는다(최적 35~45자). */}
               {description && (
-                <p className="mt-2 max-w-[42rem] text-sm text-muted-foreground">{description}</p>
+                <p className={`${compact ? "mt-1" : "mt-2"} max-w-[42rem] text-sm text-muted-foreground`}>
+                  {description}
+                </p>
               )}
             </div>
           </div>
-          <div className="mt-6">{children}</div>
+          <div className={compact ? "mt-5" : "mt-6"}>{children}</div>
         </main>
       </div>
     </div>

@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import type { ComposerCore } from "@/lib/curriculum/composer";
 import {
   addAssignment,
+  assignmentStructureIssues,
   buildAutomaticAssignments,
   duplicateScenarioIds,
   filterManualCandidates,
+  incompatibleAssignmentIds,
   removeAssignment,
   type AssignMap,
 } from "@/lib/curriculum/composerPlanning";
@@ -109,7 +111,7 @@ describe("프리셋 기반 15주 자동 편성", () => {
     },
   );
 
-  it("테마 후보가 부족하면 테마만 완화하고 검토상태·화행·수준·방향은 유지한다", () => {
+  it("테마 후보가 부족해도 교수자 승인 전에는 다른 테마로 조용히 완화하지 않는다", () => {
     const eligibleFallback = core({
       scenario_id: "eligible-fallback",
       theme_code: "career_workplace",
@@ -135,10 +137,36 @@ describe("프리셋 기반 15주 자동 편성", () => {
       defaultScenariosPerWeek: 2,
     });
 
+    expect(result.assignments[2].map((item) => item.scenario_id)).toEqual(["selected-theme"]);
+    expect(result.shortages).toEqual([{ weekNo: 2, missingSlots: 1 }]);
+    expect(result.expandedThemeWeeks).toEqual([]);
+  });
+
+  it("교수자가 명시적으로 승인하면 부족한 주차만 다른 테마로 확대한다", () => {
+    const cores = [
+      core({ scenario_id: "selected-theme", theme_code: "campus_study" }),
+      core({ scenario_id: "expanded-theme", theme_code: "career_workplace" }),
+    ];
+    const requestWeek = createStandard15WeekTemplate().filter(
+      (week) => week.speech_act === "request",
+    );
+    const result = buildAutomaticAssignments({
+      weeks: requestWeek,
+      cores,
+      level: "intermediate",
+      direction: "ko_zh",
+      themes: ["campus_study"],
+      interpretingRatio: 0,
+      defaultScenariosPerWeek: 2,
+      allowThemeExpansion: true,
+    });
+
     expect(result.assignments[2].map((item) => item.scenario_id)).toEqual([
       "selected-theme",
-      "eligible-fallback",
+      "expanded-theme",
     ]);
+    expect(result.shortages).toEqual([]);
+    expect(result.expandedThemeWeeks).toEqual([2]);
   });
 });
 
@@ -190,5 +218,54 @@ describe("주차 수동 교체", () => {
     expect(candidates.map((item) => item.scenario_id)).toEqual(["replacement"]);
     expect(addAssignment(assignments, 3, current)).toBe(assignments);
     expect(addAssignment(assignments, 3, generated)).toBe(assignments);
+  });
+
+  it("수준·언어방향 변경 뒤 새 조건과 맞지 않는 기존 배정을 찾는다", () => {
+    const assignments: AssignMap = {
+      2: [
+        { scenario_id: "current", slot_role: "primary" },
+        { scenario_id: "wrong-direction", slot_role: "primary" },
+      ],
+      3: [{ scenario_id: "missing", slot_role: "primary" }],
+    };
+    const byId = {
+      current,
+      "wrong-direction": core({ scenario_id: "wrong-direction", direction: "zh_ko" }),
+    };
+
+    expect(
+      incompatibleAssignmentIds(assignments, byId, "intermediate", "ko_zh"),
+    ).toEqual(["wrong-direction", "missing"]);
+  });
+
+  it("주차 유형·화행·미션 수와 실제 배정의 충돌을 공통 검사한다", () => {
+    const apology = core({ scenario_id: "apology", speech_act: "apology" });
+    const assignments: AssignMap = {
+      2: [
+        { scenario_id: "current", slot_role: "primary" },
+        { scenario_id: "apology", slot_role: "primary" },
+      ],
+      8: [{ scenario_id: "exam-item", slot_role: "primary" }],
+    };
+    const byId = {
+      current,
+      apology,
+      "exam-item": core({ scenario_id: "exam-item" }),
+    };
+    const weeks = [
+      { week_no: 2, type: "regular", speech_act: "request", scenario_slots: 1 },
+      { week_no: 8, type: "midterm", speech_act: null, scenario_slots: 0 },
+    ] as const;
+
+    expect(
+      assignmentStructureIssues(
+        assignments,
+        byId,
+        [...weeks],
+        "intermediate",
+        "ko_zh",
+        2,
+      ).map((issue) => issue.code),
+    ).toEqual(["too_many_items", "speech_act", "non_regular_week"]);
   });
 });

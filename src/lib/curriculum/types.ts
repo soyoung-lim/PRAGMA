@@ -20,6 +20,7 @@ import type {
   Domain,
   IndustrySector,
 } from "@/lib/pragma/enums";
+import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 
 // ── DB aliases (source of truth: Supabase generated types) ──
 export type CurriculumOutlineRow = Tables<"curriculum_outlines">;
@@ -62,6 +63,10 @@ export interface CurriculumOutlineDraft {
   midterm_week: number | null;
   final_week: number | null;
   scenarios_per_week: number;
+  /** 자동 편성에서 허용할 주제. 빈 배열은 전체 주제. */
+  composition_theme_codes: ThemeCode[];
+  /** 자동 편성의 목표 통역 비율(0~1). 실제 배정 비율과 구분해 저장한다. */
+  target_interpreting_ratio: number;
 }
 
 export interface CurriculumWeekDraft {
