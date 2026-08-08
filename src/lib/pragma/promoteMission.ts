@@ -88,6 +88,18 @@ export interface PromoteResult {
   error?: string;
 }
 
+/** 관리자 조립 UI에 노출하는 실제 처리 경계. 퍼센트 추정에는 쓰지 않는다. */
+export type PromoteStage =
+  | { phase: "preparing" }
+  | { phase: "generating"; attempt: number; maxAttempts: number }
+  | { phase: "checking"; attempt: number; maxAttempts: number }
+  | { phase: "quality" }
+  | { phase: "saving" };
+
+export interface PromoteOptions {
+  onProgress?: (stage: PromoteStage) => void;
+}
+
 /**
  * 검증② — 규칙검사 통과분을 **생성과 분리된 모델**로 비평(계약 0-n·94, 세칙 0-q·99).
  * 관리자 품질관리 장치이며 학습자에게 노출되지 않는다. 호출·스키마 검증이 실패하면
@@ -177,7 +189,11 @@ const rpc = (fn: string, args: Record<string, unknown>) =>
  * 코어 하나를 미션으로 승격 생성 → 검사 → save_generated_mission.
  * 계획 초점 = DEFAULT_FEATURE_BY_ACT[화행](R24). reviewed 승격은 별도(reviewMission).
  */
-export async function promoteCore(core: PromotableCore): Promise<PromoteResult> {
+export async function promoteCore(
+  core: PromotableCore,
+  options: PromoteOptions = {},
+): Promise<PromoteResult> {
+  options.onProgress?.({ phase: "preparing" });
   const featureCode = DEFAULT_FEATURE_BY_ACT[core.speech_act];
   const feature = featureCode ? getTargetFeature(featureCode) : undefined;
   if (!feature) {
@@ -233,6 +249,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
   let attempts = 0;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     attempts = attempt;
+    options.onProgress?.({ phase: "generating", attempt, maxAttempts: 3 });
     const { data, error } = await invokeMissionWithBackoff({
         action: "mission",
         telemetry: {
@@ -269,6 +286,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     }
     mission = parsed.data;
     // R23 계승 검사는 원본 core_content(v1/v2)를 넘긴다 — checkMission이 내부 정규화.
+    options.onProgress?.({ phase: "checking", attempt, maxAttempts: 3 });
     check = checkMission(rawContent, ctx, core.core_content ?? undefined);
     if (check.result !== "fail") break;
     previousMission = rawContent;
@@ -291,6 +309,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
   // 결과는 mission_content에 얹어 함께 저장한다. 별도 품질 컬럼은 만들지 않되,
   // save_generated_mission RPC가 이 객체의 존재와 최소 계약을 fail-closed로 강제한다.
   // ⚠️ content_hash는 이 필드를 포함하지 않는다(provenance와 마찬가지로 사후 주입).
+  options.onProgress?.({ phase: "quality" });
   const qualityResult = await runQualityCheck({
     missionContent: rawContent,
     feature,
@@ -315,6 +334,7 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     ? { ...(rawContent as Record<string, unknown>), quality_check: quality }
     : rawContent;
 
+  options.onProgress?.({ phase: "saving" });
   const { data: savedId, error: saveErr } = await rpc("save_generated_mission", {
     p_scenario_id: core.scenario_id,
     p_payload: { mission_content: contentToSave },
