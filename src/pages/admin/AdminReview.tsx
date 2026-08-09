@@ -204,6 +204,43 @@ function qualitySummary(missionContent: unknown): string {
   return typeof summary === "string" ? summary : "";
 }
 
+function hskAuditSummary(content: unknown): {
+  label: string;
+  className: string;
+  candidates: string[];
+} | null {
+  if (!content || typeof content !== "object" || Array.isArray(content)) return null;
+  const audit = (content as Record<string, unknown>).hsk_lexical_audit;
+  if (!audit || typeof audit !== "object" || Array.isArray(audit)) return null;
+  const record = audit as Record<string, unknown>;
+  const status = typeof record.status === "string" ? record.status : "unavailable";
+  const candidates = Array.isArray(record.out_of_reference_candidates)
+    ? record.out_of_reference_candidates.filter((item): item is string => typeof item === "string")
+    : [];
+  if (status === "complete") {
+    const ratio = typeof record.coverage_ratio === "number"
+      ? `${Math.round(record.coverage_ratio * 100)}%`
+      : "—";
+    return {
+      label: `HSK 참고 일치 ${ratio} · 검토 후보 ${candidates.length}`,
+      className: "border-sky-300 bg-sky-50 text-sky-900",
+      candidates,
+    };
+  }
+  if (status === "not_applicable") {
+    return {
+      label: "HSK 감사 대상 없음",
+      className: "border-slate-300 bg-slate-50 text-slate-700",
+      candidates: [],
+    };
+  }
+  return {
+    label: "HSK 감사 조회 불가",
+    className: "border-amber-300 bg-amber-50 text-amber-900",
+    candidates: [],
+  };
+}
+
 function Stat({
   label,
   value,
@@ -876,6 +913,9 @@ const AdminReview = () => {
           !loadError &&
           visibleRows.map((row) => {
             const quality = missionQualityVerdict(row.mission_content);
+            const hskAudit = hskAuditSummary(
+              scope === "mission" ? row.mission_content : row.core_content,
+            );
             const promptMatch = promptMatchOf(
               row.prompt_snapshot_hash,
               PROMPT_SNAPSHOT.core_surface_hash,
@@ -965,6 +1005,15 @@ const AdminReview = () => {
                           {QUALITY_LABEL[quality]}
                         </Badge>
                       )}
+                      {hskAudit && (
+                        <Badge
+                          variant="outline"
+                          className={hskAudit.className}
+                          title="비차단 참고 감사이며 숙달도 판정이나 승인 조건이 아닙니다."
+                        >
+                          {hskAudit.label}
+                        </Badge>
+                      )}
                       {candidate && (
                         <Badge className="border-0 bg-[#E7F0EB] text-[#3F6652] hover:bg-[#E7F0EB]">
                           검수 후보
@@ -991,6 +1040,12 @@ const AdminReview = () => {
                     {scope === "mission" && qualitySummary(row.mission_content) && (
                       <p className="mt-1.5 max-w-[52rem] border-l-2 border-[#C8D0D4] pl-2 text-[11px] leading-relaxed text-muted-foreground">
                         AI 점검 · {qualitySummary(row.mission_content)}
+                      </p>
+                    )}
+                    {hskAudit && hskAudit.candidates.length > 0 && (
+                      <p className="mt-1.5 max-w-[52rem] border-l-2 border-sky-200 pl-2 text-[11px] leading-relaxed text-muted-foreground">
+                        HSK 참고 범위 밖 검토 후보 · {hskAudit.candidates.slice(0, 12).join(" · ")}
+                        {hskAudit.candidates.length > 12 ? " …" : ""}
                       </p>
                     )}
                     {scope === "mission" && blockers.length > 0 && (

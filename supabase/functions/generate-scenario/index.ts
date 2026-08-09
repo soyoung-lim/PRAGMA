@@ -40,6 +40,13 @@ import {
   CURRENT_MISSION_QUALITY_PROMPT_VERSION,
   CURRENT_MISSION_PROMPT_VERSIONS,
 } from '../_shared/contentRelease.ts'
+import {
+  HSK3_REFERENCE_SOURCE_ID,
+  collectMissionChineseTexts,
+  createHskLexicalAudit,
+  hskReferenceCeiling,
+  type HskTokenMatch,
+} from '../_shared/hskLexicalAudit.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -80,9 +87,9 @@ const GENRE_KO: Record<string, string> = {
   meeting_speech: '업무 회의 발화',
 }
 const LEVEL_KO: Record<string, { label: string; candidateCount: number }> = {
-  beginner_intermediate: { label: '중급 (HSK 4급)', candidateCount: 3 },
-  intermediate: { label: '상급 (HSK 5급)', candidateCount: 5 },
-  advanced: { label: '고급 (HSK 6급)', candidateCount: 7 },
+  beginner_intermediate: { label: '입문', candidateCount: 3 },
+  intermediate: { label: '중급', candidateCount: 5 },
+  advanced: { label: '고급', candidateCount: 7 },
 }
 const CONTEXT_KO: Record<string, string> = {
   coordination: '일정 조정',
@@ -146,6 +153,7 @@ interface GenInput {
   multi?: boolean
   reasons?: string
   coordination?: boolean
+  /** @deprecated legacy request field; HSK is no longer injected into prompts. */
   hsk_level_min?: string | null
   language_direction?: string
   mode?: string
@@ -370,7 +378,7 @@ function buildOutlineSystemPrompt(count: number, domain?: string | null): string
 - 위 JSON 외 어떤 텍스트도 출력하지 마세요.`
 }
 
-function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[] = [], hskLevel = 0, variant: 'full' | 'outline' = 'full'): string {
+function buildUserPrompt(input: GenInput, candidateCount: number, variant: 'full' | 'outline' = 'full'): string {
   const isWork = !input.domain || input.domain === 'work'
   const GENRE_NEUTRAL_KO: Record<string, string> = {
     business_email: '이메일',
@@ -410,7 +418,6 @@ function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[
   if (input.multi) parts.push(`- 복잡도: 다중 이해관계자 포함`)
   if (input.reasons) parts.push(`- 근거 제시 수: ${input.reasons}개`)
   if (input.coordination) parts.push(`- 조율·대안 표현 포함`)
-  if (input.hsk_level_min) parts.push(`- 최소 HSK 수준: ${input.hsk_level_min}`)
   if (input.language_direction) parts.push(`- 언어 방향: ${LANG_DIR_KO[input.language_direction] ?? input.language_direction}`)
   if (input.mode) parts.push(`- 수행 모드: ${MODE_KO[input.mode] ?? input.mode}`)
 
@@ -437,48 +444,37 @@ function buildUserPrompt(input: GenInput, candidateCount: number, vocab: string[
     '위 조건에 정확히 부합하는 시나리오 1개를 스키마대로 JSON만 반환하세요.',
   )
 
-  if (vocab && vocab.length > 0) {
-    parts.push(
-      '',
-      `[참고 어휘] 아래는 이 학습자 수준(HSK ${hskLevel}급 이하)에서 사용 가능한 어휘 예시입니다. 가능한 한 이 수준의 어휘로 자연스럽게 작성하되, 통번역상 꼭 필요한 전문용어·고유명사·관용표현은 이 목록에 없어도 사용할 수 있습니다(강제 아님):`,
-      vocab.join(', '),
-    )
-  }
   return parts.join('\n')
 }
 
-function mapLevelToHsk(input: GenInput): number {
-  if (input.hsk_level_min) {
-    const n = parseInt(String(input.hsk_level_min).replace(/[^0-9]/g, ''), 10)
-    if (!isNaN(n) && n >= 1 && n <= 6) return n
+async function matchHskTokens(tokens: string[], referenceCeiling: number): Promise<HskTokenMatch[]> {
+  const url = Deno.env.get('SUPABASE_URL')
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!url || !key) throw new Error('Supabase reference lookup is not configured')
+  const response = await fetch(`${url}/rest/v1/rpc/hsk3_match_tokens`, {
+    method: 'POST',
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      p_source_id: HSK3_REFERENCE_SOURCE_ID,
+      p_max_intro_level: referenceCeiling,
+      p_tokens: tokens,
+    }),
+  })
+  if (!response.ok) {
+    throw new Error(`HSK reference lookup returned HTTP ${response.status}`)
   }
-  if (input.level === 'advanced') return 6
-  if (input.level === 'intermediate') return 5
-  return 4
-}
-
-async function fetchHskVocab(hskLevel: number): Promise<string[]> {
-  try {
-    const url = Deno.env.get('SUPABASE_URL')
-    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    if (!url || !key) return []
-    const res = await fetch(
-      `${url}/rest/v1/hsk_vocab?select=word&hsk_level=lte.${hskLevel}&limit=500`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
-    )
-    if (!res.ok) return []
-    const rows = (await res.json()) as Array<{ word: string }>
-    if (!Array.isArray(rows) || rows.length === 0) return []
-    // shuffle & take 50
-    for (let i = rows.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[rows[i], rows[j]] = [rows[j], rows[i]]
-    }
-    return rows.slice(0, 50).map((r) => r.word).filter(Boolean)
-  } catch (e) {
-    console.warn('fetchHskVocab failed', (e as Error).message)
-    return []
-  }
+  const rows = await response.json()
+  if (!Array.isArray(rows)) throw new Error('HSK reference lookup returned invalid JSON')
+  return rows
+    .map((row) => ({
+      headword: typeof row?.headword === 'string' ? row.headword : '',
+      intro_level: Number(row?.intro_level),
+    }))
+    .filter((row) => row.headword && Number.isInteger(row.intro_level))
 }
 
 
@@ -1361,6 +1357,7 @@ interface FeatureForGen {
 }
 interface MissionGenBody {
   direction?: string // 0-l·90 — 부재 시 ko_zh
+  learner_level?: CoreLengthLevel
   speech_act_ko: string
   level_ko: string
   level_policy_ko: string
@@ -2410,6 +2407,15 @@ Deno.serve(async (req) => {
         interpreterSceneRequired,
         gen.relation_ko,
       ))
+      const hskLexicalAudit = coreDir === 'zh_ko'
+        ? await createHskLexicalAudit({
+            texts: [sourceText],
+            direction: coreDir,
+            scope: 'zh_source_core',
+            referenceCeiling: hskReferenceCeiling(b.level),
+            matchTokens: matchHskTokens,
+          })
+        : undefined
       const core_content = {
         schema_version: 'scenario_core_v3',
         direction: coreDir,
@@ -2436,6 +2442,7 @@ Deno.serve(async (req) => {
           prompt_snapshot_hash: promptSnapshotHash,
           generated_at: generatedAt,
         },
+        ...(hskLexicalAudit ? { hsk_lexical_audit: hskLexicalAudit } : {}),
       }
       return new Response(
         JSON.stringify({
@@ -2551,6 +2558,14 @@ Deno.serve(async (req) => {
       // mission_content_hash = provenance 제외 본문의 SHA-256(멱등·재현 추적).
       const genAt = new Date().toISOString()
       const contentHash = await sha256Hex(JSON.stringify(mission_content))
+      const missionAuditInput = collectMissionChineseTexts(mission_content, missionDir)
+      const hskLexicalAudit = await createHskLexicalAudit({
+        texts: missionAuditInput.texts,
+        direction: missionDir,
+        scope: missionAuditInput.scope,
+        referenceCeiling: hskReferenceCeiling(b.learner_level, b.level_ko),
+        matchTokens: matchHskTokens,
+      })
       const missionWithProvenance = {
         ...mission_content,
         provenance: {
@@ -2568,6 +2583,7 @@ Deno.serve(async (req) => {
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
         },
+        hsk_lexical_audit: hskLexicalAudit,
       }
       return new Response(
         JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: missionPromptVersion, content_release_id: CURRENT_CONTENT_RELEASE_ID, generated_at: genAt } }),
@@ -2831,9 +2847,8 @@ Deno.serve(async (req) => {
     if (input.action === 'outline') {
       const raw = Number(input.outline_count ?? 3)
       const count = raw >= 1 && raw <= 5 ? Math.floor(raw) : 3
-      const hsk = mapLevelToHsk(input)
       const sys = buildOutlineSystemPrompt(count, input.domain)
-      const usr = buildUserPrompt(input, count, [], hsk, 'outline')
+      const usr = buildUserPrompt(input, count, 'outline')
       const outlineModel = PRIMARY_MODEL
       const oa = await callOpenAI(PRIMARY_MODEL, apiKey, sys, usr, 0.8, {
         telemetry: telemetryFor('legacy_outline', true, {
@@ -2882,10 +2897,8 @@ Deno.serve(async (req) => {
     }
 
     const candidateCount = LEVEL_KO[input.level]?.candidateCount ?? 3
-    const hskLevel = mapLevelToHsk(input)
-    const vocab = await fetchHskVocab(hskLevel)
     const system = buildSystemPrompt(candidateCount, input.domain)
-    let user = buildUserPrompt(input, candidateCount, vocab, hskLevel)
+    let user = buildUserPrompt(input, candidateCount)
     // Final action seeded by a chosen outline: keep the outline's situation and
     // expand it into the full scenario schema.
     if (input.selected_outline && (input.selected_outline.title || input.selected_outline.situation)) {
@@ -2895,8 +2908,6 @@ Deno.serve(async (req) => {
         `- 상황: ${input.selected_outline.situation ?? ''}\n` +
         `위 개요의 상황·인물·목적·관계를 유지하면서 위 스키마의 풀 시나리오로 구체화하세요.`
     }
-    console.log('hsk vocab injection', { hskLevel, vocabCount: vocab.length })
-
     console.log('generate-scenario request', {
       speech_act: input.speech_act,
       genre: input.genre,

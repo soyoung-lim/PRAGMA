@@ -10,6 +10,8 @@
 > (`08_작업관리\reviews\2026-08-07_관리자구조_델타재대조_변경안.md`, 박사님 승인)
 > 델타 재대조 `35f0129`→`b2fde89`: 관할 영역(`src/pages/admin`·`src/components/admin`)
 > 변경 0건으로 수정 사항 없음
+> 2026-08-09 로컬 개정: main `70d1eff` 기준 `/admin/corpus`를 HSK 3.0 참고 데이터의
+> 출처·실적재·감사 상태 화면으로 재정의했다. migration·seed·Edge·Railway는 미적용 상태다.
 > 적용 범위: 코어 생성, 배치, 라이브러리·조립, 검수, 프롬프트 provenance, 15주 편성, 학습 자료 공개
 > 이전 문서: 2026-07-21 관리자구조 문서는 결정 이력 보존용이며, 현재 동작과 충돌하면 이 문서가 우선한다.
 
@@ -35,6 +37,7 @@ AI는 초안을 만들고 관리자가 교육용 공개 여부를 결정한다. 
 | 기능 | 대표 경로·화면 | 현재 역할 |
 |---|---|---|
 | 대시보드 | `/admin/dashboard` | 운영 상태와 주요 작업 진입 (`/admin`은 여기로 리다이렉트) |
+| HSK 3.0 참고 데이터 | `/admin/corpus` | 공식 source/version/hash, 공식·파생 행 수, 실제 DB 적재와 생성 후 lexical audit 상태 구분 |
 | 원자료 분석 | `/admin/authentic` | 실제자료 분석과 콘텐츠 후보 추출 |
 | 개별 생성 | `/admin/generator` | 조건 지정 코어 생성·저장 (실제자료 가져오기 통합) |
 | 배치 | `/admin/batch` | 계획 감사, smoke, 승인된 배치 실행 |
@@ -52,8 +55,9 @@ AI는 초안을 만들고 관리자가 교육용 공개 여부를 결정한다. 
 한 흐름으로 묶는다. 편성 화면 하나만을 위한 단독 상위 그룹은 두지 않는다.
 
 폐기·통합된 화면: `/admin/youtube-sources`(생성기의 실제자료 가져오기로 통합),
-`/admin/reports`·`/admin/course-ops`(삭제), YouTube 자막 탭·Source Bank(2026-08-05 제거,
-`authentic_youtube` enum·라벨은 기존 행 보호를 위해 읽기 전용 유지).
+`/admin/reports`·`/admin/course-ops`(삭제), YouTube 자막 탭(2026-08-05 제거,
+`authentic_youtube` enum·라벨은 기존 행 보호를 위해 읽기 전용 유지). 구 범용 Source Bank
+설명은 폐기하고 `/admin/corpus`는 검증 가능한 HSK 3.0 참고 데이터 화면으로 한정한다.
 화면 이름과 실제 라우트는 코드가 정본이다. 이 문서는 기능 층위를 설명한다.
 
 ## 3. 코어 생성
@@ -101,6 +105,20 @@ strict 통과는 API·구조 호환성 확인이다. 중국어 자연성, 장면
 - 자동검사 결과
 
 Edge가 계산한 hash를 프론트가 다시 계산하거나 변형하지 않는다.
+
+### 3.4 HSK 3.0 참고 데이터 운영
+
+`/admin/corpus`는 자료가 있다는 선언이 아니라 다음 사실을 DB에서 읽어 보여 준다.
+
+- 공식 시험대강 title·publisher·발행/시행 version·URL·SHA-256
+- 공식 어휘 11,000항목과 공식 L3 주제 427행의 실제 적재 수
+- 결정론 topic derivation과 연구자 mapping의 실제 적재 수
+- 등급별 신규 도입 어휘 수와 PRAGMA 수준별 누적 참고 상한
+- 생성 결과 `hsk_lexical_audit.status`로 확인한 실제 감사 상태
+
+schema·seed가 없거나 일부만 적용된 경우 `적재 완료`·`활용 중`을 표시하지 않는다. 코드에
+audit 함수가 존재하는 것과 운영 Edge에서 실행되는 것도 구분한다. 검수 화면의 HSK 일치율과
+범위 밖 후보는 참고 표시이며 rapid-review·reviewed 게이트를 바꾸지 않는다.
 
 ## 4. 배치 운영
 

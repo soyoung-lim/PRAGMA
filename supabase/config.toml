@@ -1,5 +1,9 @@
 project_id = "tlnjxagqwvefeqdagtkq"
 
+[db.seed]
+enabled = true
+sql_paths = ["./seed/hsk3_reference_seed.sql"]
+
 [auth]
 # Site URL은 redirect_to가 허용목록에 없을 때의 폴백이다.
 site_url = "http://localhost:8080"

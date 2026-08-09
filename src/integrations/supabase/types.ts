@@ -591,6 +591,225 @@ export type Database = {
         }
         Relationships: []
       }
+      hsk_reference_sources: {
+        Row: {
+          created_at: string
+          effective_at: string | null
+          extraction_version: string
+          id: string
+          manifest_version: string
+          notes: string | null
+          official_url: string
+          publisher: string
+          released_at: string | null
+          sha256: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          effective_at?: string | null
+          extraction_version: string
+          id: string
+          manifest_version: string
+          notes?: string | null
+          official_url: string
+          publisher: string
+          released_at?: string | null
+          sha256: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          effective_at?: string | null
+          extraction_version?: string
+          id?: string
+          manifest_version?: string
+          notes?: string | null
+          official_url?: string
+          publisher?: string
+          released_at?: string | null
+          sha256?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      hsk3_topic_derivations: {
+        Row: {
+          appears_in_levels: number[]
+          created_at: string
+          derivation_version: string
+          has_explicit_open_marker: boolean
+          l3_terms: string[]
+          n_levels: number
+          n_terms: number
+          path: string
+          source_id: string
+          topic_seq: number
+        }
+        Insert: {
+          appears_in_levels: number[]
+          created_at?: string
+          derivation_version: string
+          has_explicit_open_marker: boolean
+          l3_terms: string[]
+          n_levels: number
+          n_terms: number
+          path: string
+          source_id: string
+          topic_seq: number
+        }
+        Update: {
+          appears_in_levels?: number[]
+          created_at?: string
+          derivation_version?: string
+          has_explicit_open_marker?: boolean
+          l3_terms?: string[]
+          n_levels?: number
+          n_terms?: number
+          path?: string
+          source_id?: string
+          topic_seq?: number
+        }
+        Relationships: []
+      }
+      hsk3_topics: {
+        Row: {
+          l1: string
+          l2: string
+          l3: string
+          level_band: string
+          level_int: number
+          source_id: string
+          topic_seq: number
+        }
+        Insert: {
+          l1: string
+          l2: string
+          l3: string
+          level_band: string
+          level_int: number
+          source_id: string
+          topic_seq: number
+        }
+        Update: {
+          l1?: string
+          l2?: string
+          l3?: string
+          level_band?: string
+          level_int?: number
+          source_id?: string
+          topic_seq?: number
+        }
+        Relationships: []
+      }
+      hsk3_vocab: {
+        Row: {
+          extra_levels: number[]
+          headword: string
+          intro_band: string
+          intro_level: number
+          is_multi_sense: boolean
+          is_phrase: boolean
+          is_polyphone: boolean
+          pinyin: string
+          pinyin_norm: string
+          pos: string | null
+          sense_no: number
+          seq: number
+          source_form: string
+          source_id: string
+          source_note: string | null
+        }
+        Insert: {
+          extra_levels?: number[]
+          headword: string
+          intro_band: string
+          intro_level: number
+          is_multi_sense?: boolean
+          is_phrase?: boolean
+          is_polyphone?: boolean
+          pinyin: string
+          pinyin_norm: string
+          pos?: string | null
+          sense_no?: number
+          seq: number
+          source_form: string
+          source_id: string
+          source_note?: string | null
+        }
+        Update: {
+          extra_levels?: number[]
+          headword?: string
+          intro_band?: string
+          intro_level?: number
+          is_multi_sense?: boolean
+          is_phrase?: boolean
+          is_polyphone?: boolean
+          pinyin?: string
+          pinyin_norm?: string
+          pos?: string | null
+          sense_no?: number
+          seq?: number
+          source_form?: string
+          source_id?: string
+          source_note?: string | null
+        }
+        Relationships: []
+      }
+      pragma_hsk_topic_mappings: {
+        Row: {
+          app_domain_code: string | null
+          axis_code: string
+          coded_at: string | null
+          coded_by: string | null
+          coding_status: string
+          created_at: string
+          exclusion_reason_code: string | null
+          has_state_administration_frame: boolean
+          mapping_version: string
+          notes: string | null
+          scope_code: string
+          selection_status: string
+          source_id: string
+          topic_seq: number
+          updated_at: string
+        }
+        Insert: {
+          app_domain_code?: string | null
+          axis_code: string
+          coded_at?: string | null
+          coded_by?: string | null
+          coding_status: string
+          created_at?: string
+          exclusion_reason_code?: string | null
+          has_state_administration_frame?: boolean
+          mapping_version: string
+          notes?: string | null
+          scope_code: string
+          selection_status?: string
+          source_id: string
+          topic_seq: number
+          updated_at?: string
+        }
+        Update: {
+          app_domain_code?: string | null
+          axis_code?: string
+          coded_at?: string | null
+          coded_by?: string | null
+          coding_status?: string
+          created_at?: string
+          exclusion_reason_code?: string | null
+          has_state_administration_frame?: boolean
+          mapping_version?: string
+          notes?: string | null
+          scope_code?: string
+          selection_status?: string
+          source_id?: string
+          topic_seq?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hsk_vocab: {
         Row: {
           created_at: string
@@ -1374,11 +1593,60 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      hsk3_reference_status: {
+        Row: {
+          derived_topic_rows: number | null
+          effective_at: string | null
+          extraction_version: string | null
+          manifest_version: string | null
+          official_topic_rows: number | null
+          official_url: string | null
+          publisher: string | null
+          released_at: string | null
+          researcher_mapping_rows: number | null
+          sha256: string | null
+          source_id: string | null
+          title: string | null
+          vocabulary_entries: number | null
+        }
+        Relationships: []
+      }
+      hsk3_vocab_cumulative: {
+        Row: {
+          extra_levels: number[] | null
+          headword: string | null
+          intro_band: string | null
+          intro_level: number | null
+          is_multi_sense: boolean | null
+          is_phrase: boolean | null
+          is_polyphone: boolean | null
+          pinyin: string | null
+          pinyin_norm: string | null
+          pos: string | null
+          reference_ceiling: number | null
+          sense_no: number | null
+          seq: number | null
+          source_form: string | null
+          source_id: string | null
+          source_note: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       ensure_test_dev_profile: { Args: never; Returns: undefined }
       has_completed_learner_profile: { Args: never; Returns: boolean }
+      hsk3_match_tokens: {
+        Args: {
+          p_max_intro_level: number
+          p_source_id: string
+          p_tokens: string[]
+        }
+        Returns: {
+          headword: string
+          intro_level: number
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       review_mission: { Args: { p_scenario_id: string }; Returns: string }
       save_generated_core: { Args: { p_payload: Json }; Returns: string }

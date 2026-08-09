@@ -141,7 +141,7 @@ const SCALE_3 = ["지나치게 직접적이다", "상황에 알맞다", "필요 
 export const PRESETS: Record<Level, LevelPreset> = {
   beginner: {
     level: "beginner",
-    label: "입문 · HSK 4",
+    label: "입문",
     candidateIds: ["cand_d", "cand_b", "cand_c"],
     judgmentAxis: "politeness",
     axisPrompt: "이 표현이 이 상황에 얼마나 알맞은지 고르세요.",
@@ -161,7 +161,7 @@ export const PRESETS: Record<Level, LevelPreset> = {
   },
   intermediate: {
     level: "intermediate",
-    label: "중급 · HSK 5",
+    label: "중급",
     candidateIds: ["cand_a", "cand_b", "cand_c", "cand_e", "cand_f"],
     judgmentAxis: "politeness",
     axisPrompt: "이 표현이 이 상황에 얼마나 알맞은지 고르세요. (이번 문항의 판단 초점: 공손성)",
@@ -188,7 +188,7 @@ export const PRESETS: Record<Level, LevelPreset> = {
   },
   advanced: {
     level: "advanced",
-    label: "고급 · HSK 6",
+    label: "고급",
     candidateIds: ["cand_b", "cand_c", "cand_f", "cand_g"],
     judgmentAxis: "politeness",
     axisPrompt:

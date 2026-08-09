@@ -504,7 +504,7 @@ const AdminBatch = () => {
           </p>
         )}
 
-        {/* 2열이면 박스 하나가 600px가 되어 「입문 · HSK 4급」과 「18」 사이가
+        {/* 2열이면 박스 하나가 600px가 되어 「입문」과 「18」 사이가
             한참 벌어진다 — 눈이 라벨과 수치를 잇지 못한다. 4열로 좁혀 라벨과
             수치를 붙인다. */}
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

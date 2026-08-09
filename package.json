@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "vite",
     "start": "serve -s dist",
+    "hsk3:build": "node scripts/build-hsk3-reference.mjs",
+    "hsk3:audit": "node scripts/audit-hsk3-reference.mjs",
     "prompts:snapshot": "node scripts/snapshot-prompts.mjs",
     "prebuild": "node scripts/snapshot-prompts.mjs",
     "build": "vite build",

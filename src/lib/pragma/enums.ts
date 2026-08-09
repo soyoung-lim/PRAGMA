@@ -59,9 +59,15 @@ export const SPEECH_ACT_UI_EN: Record<SpeechActUI, string> = {
 // ── Learner level (3-tier) ──
 export type LearnerLevel = "beginner_intermediate" | "intermediate" | "advanced";
 export const LEVEL: Record<LearnerLevel, string> = {
-  beginner_intermediate: "입문 · HSK 4급",
-  intermediate: "중급 · HSK 5급",
-  advanced: "고급 · HSK 6급",
+  beginner_intermediate: "입문",
+  intermediate: "중급",
+  advanced: "고급",
+};
+/** 중국어 누적 어휘 참고 상한. PRAGMA 수준과 HSK 숙달도의 등가 표가 아니다. */
+export const HSK_REFERENCE_CEILING: Record<LearnerLevel, 4 | 5 | 6> = {
+  beginner_intermediate: 4,
+  intermediate: 5,
+  advanced: 6,
 };
 
 // ── Language direction ──
