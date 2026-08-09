@@ -17,6 +17,7 @@ import {
   SPEECH_ACT_UI,
   SPEECH_ACT_UI_EN,
   LEVEL,
+  HSK_REFERENCE_CEILING,
   CHANNEL_TO_MODE,
   PDR_POWER,
   PDR_DISTANCE,
@@ -1186,12 +1187,13 @@ const AdminGenerator = () => {
               </Field>
             </div>
 
-            {/* HSK 배지 — 언어/학습/상황 조건 하단 */}
+            {/* HSK는 숙달도 등가가 아니라 중국어 생성물의 누적 어휘 참고 상한이다. */}
             <div className="mt-3 rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2 text-[11.5px] leading-relaxed text-[#5B5446]">
-              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-600 align-middle" />
-              <span className="font-medium text-foreground">HSK 3.0 Source Bank 활용 중</span>
+              <span className="font-medium text-foreground">
+                중국어 어휘 참고 상한 · HSK 1–{HSK_REFERENCE_CEILING[form.level]}급 누적
+              </span>
               <span className="ml-1 text-muted-foreground">
-                · 중국어 원문/산출물 난이도를 학습자 HSK 수준(입문4·중급5·고급6)에 맞춰 조정합니다.
+                · 숙달도 등가가 아니며, 생성 후 비차단 감사의 실제 실행 여부는 결과 provenance에서 확인합니다.
               </span>
             </div>
           </div>

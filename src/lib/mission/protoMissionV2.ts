@@ -15,7 +15,7 @@
 //   · 차이는 **목표 화용 요소(직접성·완화)에서만** 발생
 //
 // 목표 화용 요소: 요청의 직접성과 완화 (request_directness_mitigation)
-// 수준: 중급 · HSK5
+// 수준: 중급 (중국어 어휘 참고 상한은 별도 HSK policy로 관리)
 
 export type Judgment = "under" | "ok" | "over";
 

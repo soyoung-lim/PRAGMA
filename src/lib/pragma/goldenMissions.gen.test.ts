@@ -48,7 +48,7 @@ async function invoke(body: unknown): Promise<any> {
 }
 
 const LEVEL_POLICY_INTERMEDIATE =
-  "중급(HSK5): 복문 1~2개, 이유·조건 표현 사용. 자원 조합 2개. 원문 2~4문장.";
+  "중급: 복문 1~2개, 이유·조건 표현 사용. 자원 조합 2개. 원문 2~4문장.";
 
 interface GoldenCell {
   act: SpeechActUI;
@@ -162,7 +162,7 @@ describe.skipIf(!RUN_GOLDEN)("골든 미션 게이트 (요청·거절·감사 ×
           action: "core",
           core: {
             speech_act_ko: cell.act,
-            level_ko: "중급 (HSK 5급)",
+            level_ko: "중급",
             domain_ko: cell.domain,
             channel: cell.channel,
             channel_ko: cell.channel,
@@ -193,7 +193,7 @@ describe.skipIf(!RUN_GOLDEN)("골든 미션 게이트 (요청·거절·감사 ×
             action: "mission",
             mission: {
               speech_act_ko: cell.act,
-              level_ko: "중급 (HSK 5급)",
+              level_ko: "중급",
               level_policy_ko: LEVEL_POLICY_INTERMEDIATE,
               feature: featureForGen(feature),
               core: {

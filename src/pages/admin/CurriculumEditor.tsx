@@ -405,7 +405,7 @@ export const CurriculumEditor = ({
           제목과 운영 상태를 정합니다. 수준·주제·모드·언어방향은 저장 후 돌아가는
           AI 편성 화면 한 곳에서 조절합니다.
         </p>
-        {/* 폼은 화면이 아니라 내용 폭에 맞춘다 — 전폭 2열이면 「중급 · HSK 5급」
+        {/* 폼은 화면이 아니라 내용 폭에 맞춘다 — 전폭 2열이면 「중급」
             하나를 고르는 선택지가 590px가 된다. */}
         <div className="grid max-w-[46rem] gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">

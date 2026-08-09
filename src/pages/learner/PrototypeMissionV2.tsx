@@ -72,7 +72,7 @@ const PrototypeMissionV2 = () => {
 
   return (
     <LearnerJourneyShell
-      headerRight={<span className="text-[12px] text-[#8899A6]">요청 · 중급 HSK5</span>}
+      headerRight={<span className="text-[12px] text-[#8899A6]">요청 · 중급</span>}
     >
       <div className="pb-24">
         {/* 프로토타입 경고 — 이게 최종물이 아님을 화면에 명시 */}

@@ -17,6 +17,7 @@ import type {
   LanguageDirection,
 } from "@/lib/pragma/enums";
 import { DEFAULT_DIRECTION } from "@/lib/pragma/enums";
+import { HskLexicalAuditSchema } from "@/lib/pragma/hskReference";
 
 // ── PDR: 계약 JSON 이름 ↔ 행 enum 값 매핑 ─────────────────────────────
 export const PdrPowerJson = z.enum(["speaker_lower", "equal", "speaker_higher"]);
@@ -157,6 +158,8 @@ export const ScenarioCoreV1Schema = z.object({
   provenance: CoreProvenanceSchema.optional(),
   /** AI 생성분의 작업 후보·프롬프트 표식. legacy 코어는 부재 가능. */
   generation: CoreGenerationStampSchema.optional(),
+  /** HSK 어휘 참고 상한의 비차단 사후감사. 숙달도 판정이 아니다. */
+  hsk_lexical_audit: HskLexicalAuditSchema.optional(),
 });
 export type ScenarioCoreV1 = z.infer<typeof ScenarioCoreV1Schema>;
 
@@ -203,6 +206,8 @@ export const ScenarioCoreV2Schema = z.object({
   provenance: CoreProvenanceSchema.optional(),
   /** AI 생성분의 작업 후보·프롬프트 표식. legacy 코어는 부재 가능. */
   generation: CoreGenerationStampSchema.optional(),
+  /** 중국어 source일 때만 생성되는 비차단 어휘 참고 감사. */
+  hsk_lexical_audit: HskLexicalAuditSchema.optional(),
 });
 export type ScenarioCoreV2 = z.infer<typeof ScenarioCoreV2Schema>;
 
@@ -290,6 +295,7 @@ export function normalizeCore(input: unknown): {
       ...(c.usable_facts?.length ? { usable_facts: c.usable_facts } : {}),
       ...(c.provenance ? { provenance: c.provenance } : {}),
       ...(c.generation ? { generation: c.generation } : {}),
+      ...(c.hsk_lexical_audit ? { hsk_lexical_audit: c.hsk_lexical_audit } : {}),
     },
   };
 }
@@ -308,6 +314,7 @@ export function coreContentForHash(
     provenance: _provenance,
     generation: _generation,
     length_policy: _lengthPolicy,
+    hsk_lexical_audit: _hskLexicalAudit,
     ...content
   } = core;
   return content;

@@ -1,0 +1,121 @@
+{
+  "schema_version": "hsk3_reference_manifest_v1",
+  "reference_source_id": "hsk30_syllabus_2025_11_effective_2026_07",
+  "official_sources": [
+    {
+      "role": "primary_syllabus",
+      "title": "新版HSK考试大纲",
+      "publisher": "中外语言交流合作中心",
+      "released_at": "2025-11",
+      "effective_at": "2026-07",
+      "url": "https://hsk.cn-bj.ufileos.com/3.0/%E6%96%B0%E7%89%88HSK%E8%80%83%E8%AF%95%E5%A4%A7%E7%BA%B21219.pdf",
+      "sha256": "EC74CE0439E837BBB15154BE13E747AE798903B2FD3A331629DF6C3B45504941",
+      "stored_in_git": false,
+      "external_evidence_path": "C:/PRAGMA_THESIS_LOCAL/02_문헌/HSK자료/新版HSK考试大纲1219.pdf"
+    },
+    {
+      "role": "competency_description",
+      "title": "HSK3.0考试能力描述",
+      "publisher": "中外语言交流合作中心",
+      "url": "https://hsk.cn-bj.ufileos.com/3.0/HSK3.0%E8%80%83%E8%AF%95%E8%83%BD%E5%8A%9B%E6%8F%8F%E8%BF%B0.pdf",
+      "sha256": "2F9ECD7D0B9C08248BE3ED624D267BD94E131D61C44D9CBDCEC01739505B6427",
+      "stored_in_git": false,
+      "external_evidence_path": "C:/PRAGMA_THESIS_LOCAL/02_문헌/HSK자료/HSK3.0考试能力描述.pdf"
+    }
+  ],
+  "extracted_datasets": [
+    {
+      "path": "data/hsk3/source/hsk3_vocab_extracted.csv",
+      "sha256": "4B01EFEDE63CA55032AEFAFBB80C758D819915D016A7D03A13338E903C822097",
+      "row_count": 11000,
+      "printed_page_span": "76-351",
+      "content_role": "official transcription plus deterministic normalization fields"
+    },
+    {
+      "path": "data/hsk3/source/hsk3_topics_extracted.csv",
+      "sha256": "48B42B83A321C651FDF83D9BBB44CC9DF1CDE4E21B20F26A191FC18ACE6AEA1A",
+      "row_count": 427,
+      "printed_page_span": "55-75",
+      "content_role": "official transcription plus deterministic and legacy researcher-coded fields"
+    }
+  ],
+  "extraction_provenance": {
+    "legacy_extraction_script_available": false,
+    "limitation": "The original executable PDF extraction script was not preserved. The checked CSVs are retained as immutable extracted evidence; all subsequent transformations are reproducible from them.",
+    "independent_audit_date": "2026-08-09",
+    "independent_audit_result": "Full official PDF-to-CSV field comparison passed for 11,000 vocabulary entries and 427 official L3 topic rows."
+  },
+  "derived_outputs": [
+    {
+      "path": "data/hsk3/derived/hsk3_topics_raw.csv",
+      "role": "official_raw",
+      "sha256": "338CD40CAF1B3FF3635A77855EE452725BE369FA59F641A7D11B0BED69DB43CB"
+    },
+    {
+      "path": "data/hsk3/derived/hsk3_topic_derivations.csv",
+      "role": "deterministic_derived",
+      "sha256": "BDF417245E0E16AE01350F661680097CD52AD3BBBB37EC1AC64B87237DCE3E50"
+    },
+    {
+      "path": "data/hsk3/derived/pragma_hsk_topic_mappings.csv",
+      "role": "researcher_coded_legacy_import",
+      "sha256": "E9463A0D1D06C76A2E6E2CAF3C03E39D3C0D8ED662783A3F628CDDE3D99C689B"
+    },
+    {
+      "path": "supabase/seed/hsk3_reference_seed.sql",
+      "role": "generated_database_seed",
+      "sha256": "8F30D41E80F0204836EF34B92D8EB18CCB5B58CE02DFC9A084F54C4FE2790094"
+    }
+  ],
+  "field_roles": {
+    "vocabulary_official": [
+      "seq",
+      "source_form",
+      "pinyin",
+      "pos",
+      "intro_level",
+      "extra_levels"
+    ],
+    "vocabulary_deterministic": [
+      "headword",
+      "sense_no",
+      "pinyin_norm",
+      "intro_band",
+      "is_multi_sense",
+      "is_polyphone",
+      "is_phrase",
+      "source_note"
+    ],
+    "topic_official": [
+      "level_band",
+      "level_int",
+      "l1",
+      "l2",
+      "l3"
+    ],
+    "topic_deterministic": [
+      "l3_terms",
+      "n_terms",
+      "has_explicit_open_marker",
+      "path",
+      "appears_in_levels",
+      "n_levels"
+    ],
+    "topic_researcher_coded": [
+      "axis_code",
+      "scope_code",
+      "app_domain_code",
+      "has_state_administration_frame"
+    ]
+  },
+  "reference_policy": {
+    "policy_version": "hsk3_lexical_reference_v1",
+    "interpretation": "A cumulative Chinese lexical reference ceiling, not a proficiency equivalence or learner certification claim.",
+    "learner_level_ceiling": {
+      "beginner_intermediate": 4,
+      "intermediate": 5,
+      "advanced": 6
+    },
+    "generation_effect": "non_blocking_post_generation_audit_only"
+  }
+}

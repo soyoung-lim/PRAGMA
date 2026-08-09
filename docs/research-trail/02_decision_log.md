@@ -1797,3 +1797,35 @@
 - 관련 파일: `src/components/AdminShell.tsx`, `src/pages/admin/AdminComposer.tsx`,
   `src/pages/admin/CurriculumEditor.tsx`, `docs/product/PRAGMA_관리자구조_정본.md`
 - 관련 Iteration / Evidence: `ITER-20260808-04`, `EVD-20260808-04`
+
+## DEC-20260809-01 · HSK 3.0 자료의 계층 분리와 비차단 생성 후 감사
+
+- 날짜: 2026-08-09
+- 상태: 채택·로컬 구현 완료, 운영 반영 대기
+- 문제:
+  - 기존 운영 DB의 구 `hsk_vocab`은 공식 11,000항목 전체나 출처·추출 버전을 입증하지 못했고,
+    생성기는 일부 어휘를 무작위 prompt에 삽입해 실제 사용과 검증 가능성이 분리돼 있었다.
+  - 과거 자료에는 공식 전사와 규칙 파생, 연구자 mapping이 한 파일에 섞였으며 원 추출 실행
+    스크립트가 남아 있지 않았다.
+  - PRAGMA 수준과 HSK 급수를 압축 표기로 연결하면 숙달도 등치나 생성 승인 기준으로 오독될 수 있었다.
+- 검토한 대안:
+  - 구 DB와 무작위 prompt 삽입 유지: 출처·완전성·실제 사용을 검증할 수 없어 기각.
+  - 원 추출 스크립트가 발견될 때까지 모든 활용 중단: 감사된 자료와 후속 파생의 개선도 막아 기각.
+  - HSK 사전 밖 토큰을 생성 실패로 처리: 고유명사·전문용어·분절 오류를 실패로 오인해 기각.
+  - 감사된 extraction을 명시적 legacy 상태로 보존하고 이후 단계만 재현 가능하게 분리: 채택.
+- 결정:
+  1. 공식 PDF provenance와 source CSV hash를 manifest에 고정하고 원 추출 스크립트 부재를 명시한다.
+  2. 공식 전사, 결정론 파생, 연구자 코딩을 파일과 DB table에서 분리한다. 기존 mapping은
+     `legacy_imported_unverified`·`unreviewed`로 시작한다.
+  3. PRAGMA 입문·중급·고급은 중국어 어휘 참고 상한 HSK 1–4·1–5·1–6급 누적으로만 연결한다.
+     이는 숙달도 등가·급수 인증·자동 승인 조건이 아니다.
+  4. 무작위 HSK prompt 삽입을 제거하고 중국어 생성 결과에 방향별 사후 lexical audit를 수행한다.
+     DB 실패와 사전 밖 후보는 provenance에 남기되 content hash와 생성·승인을 자동 차단하지 않는다.
+  5. 운영 화면은 코드 존재, schema·seed 적재, 실제 audit complete를 구분해 표시한다.
+- 근거: 자료의 학술적 역할과 구현 역할을 분리해야 공식 자료가 연구자 해석처럼 보이지 않고,
+  HSK가 학습자 숙달도나 생성 품질의 단일 대리변수로 과대해석되는 것을 막을 수 있다.
+- 관련 파일: `data/hsk3/`, `scripts/build-hsk3-reference.mjs`,
+  `scripts/audit-hsk3-reference.mjs`, `supabase/migrations/20260809120000_hsk3_reference_system.sql`,
+  `supabase/functions/_shared/hskLexicalAudit.ts`, `supabase/functions/generate-scenario/index.ts`,
+  `src/pages/admin/AdminCorpus.tsx`, `src/pages/admin/AdminReview.tsx`
+- 관련 Iteration / Evidence: `ITER-20260809-01`, `EVD-20260809-01`

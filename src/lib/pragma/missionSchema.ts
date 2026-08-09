@@ -22,6 +22,7 @@ import {
   FocalSegmentSchema,
 } from "@/lib/pragma/coreSchema";
 import { DEFAULT_DIRECTION, type LanguageDirection } from "@/lib/pragma/enums";
+import { HskLexicalAuditSchema } from "@/lib/pragma/hskReference";
 
 // ── 공통 필드 ─────────────────────────────────────────────────────────
 const MpjCommon = {
@@ -189,6 +190,7 @@ export const MissionV1Schema = z.object({
   production_task: ProductionTaskSchema,
   provenance: MissionProvenanceSchema.optional(), // 존재·필수값 = R20(missionRules)
   quality_check: QualityCheckSchema.optional(),   // 검증②(0-q·99) — 승격 후 주입
+  hsk_lexical_audit: HskLexicalAuditSchema.optional(),
   // summary 없음 — 코드가 recommended_example_zh 5개를 모아 렌더(B13)
 });
 export type MissionV1 = z.infer<typeof MissionV1Schema>;
@@ -345,6 +347,7 @@ export const MissionV2Schema = z.object({
   production_task: ProductionTaskV2Schema,
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
+  hsk_lexical_audit: HskLexicalAuditSchema.optional(),
 });
 export type MissionV2 = z.infer<typeof MissionV2Schema>;
 
@@ -370,6 +373,7 @@ export const MissionV3Schema = z.object({
   production_task: ProductionTaskV2Schema,
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
+  hsk_lexical_audit: HskLexicalAuditSchema.optional(),
 });
 export type MissionV3 = z.infer<typeof MissionV3Schema>;
 
@@ -468,6 +472,7 @@ export const MissionV4Schema = z.object({
   production_task: ProductionTaskV2Schema,
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
+  hsk_lexical_audit: HskLexicalAuditSchema.optional(),
 });
 export type MissionV4 = z.infer<typeof MissionV4Schema>;
 
@@ -493,6 +498,7 @@ export const MissionV5Schema = z.object({
   production_task: ProductionTaskV3Schema,
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
+  hsk_lexical_audit: HskLexicalAuditSchema.optional(),
 });
 export type MissionV5 = z.infer<typeof MissionV5Schema>;
 
@@ -603,6 +609,7 @@ export function normalizeMission(input: unknown): {
       },
       ...(m.provenance ? { provenance: m.provenance } : {}),
       ...(m.quality_check ? { quality_check: m.quality_check } : {}),
+      ...(m.hsk_lexical_audit ? { hsk_lexical_audit: m.hsk_lexical_audit } : {}),
     },
   };
 }

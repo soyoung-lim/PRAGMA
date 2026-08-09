@@ -1774,3 +1774,36 @@
 - 관련 Decision / Evidence: `DEC-20260808-05`, `EVD-20260808-04`
 - 관련 증거: `docs/dev-log/2026-08-08-course-composition-and-job-function.md`;
   localhost `/admin/composer?outline=915fec24-cc38-4b00-a2a0-c3628abcd3f7`
+
+## ITER-20260809-01 · HSK 3.0 공식 자료에서 생성 감사까지의 추적 가능 체계
+
+- 날짜: 2026-08-09
+- 시작 문제:
+  - 공식 HSK 시험대강, 로컬 파생 CSV, 구 DB, 생성 prompt와 관리자 표시 사이의 계보가 끊겨
+    11,000항목 완전성·자료 역할·실제 사용 상태를 한 경로에서 확인할 수 없었다.
+- 변경과 실행:
+  - 감사한 vocab 11,000행·topic 427행을 source layer로 보존하고 SHA-256 manifest를 만들었다.
+  - 공식 주제·결정론 파생·기존 연구자 mapping 3층 CSV와 재생성·감사 스크립트, 별도 SQL seed를 만들었다.
+  - 신규 schema·status view·service-role match RPC와 core/mission provenance schema를 작성했다.
+  - 생성기의 무작위 구 HSK prompt 삽입을 제거하고 방향별 중국어 결과에 비차단 감사를 붙였다.
+  - 관리자 corpus·generator·review와 현행 정본 문서를 비등치·실제 적재 상태 중심으로 갱신했다.
+- 실제 검증:
+  - source/derived/seed hash, 11,000·427 행 수, 수준 분포, phrase·polyphone·sense 표지와 mapping 상태
+    audit가 통과했다. CSV 3종을 import·render하여 열 경계도 확인했다.
+  - lexical audit 회귀 6건, 전체 308 pass·8 skip, typecheck, production build 1,907 modules,
+    prompt snapshot 18종과 diff check가 통과했다.
+  - localhost 세 화면에서 운영 schema 미적용의 정직한 표시, 참고 상한 비등치 문구, 기존 승인 게이트와
+    콘솔 오류 0건을 확인했다.
+  - 원격 DB·seed·Edge·Railway·push는 실행하지 않았다. SQL 실행 환경 부재로 실제 transaction은 미검증이다.
+- 예상과 달랐던 점:
+  - 원 PDF 추출 실행 스크립트가 없어서 extraction을 완전 재현 단계로 승격할 수 없었다.
+  - topic `appears_in_levels` 구분자는 쉼표가 아니라 `|`였고, 공식 7–9 band는 DB 누적 비교용
+    `level_int=7`로 정규화하되 원 band는 별도 보존해야 했다.
+  - Edge 변경 뒤 prompt snapshot 해시가 의도대로 달라져 정식 snapshot 재생성이 필요했다.
+- 다음 설계에 반영할 교훈:
+  - source extraction, 결정론 파생, 연구자 코딩은 버전과 실패 상태까지 별도 provenance로 남긴다.
+  - 참고 사전 coverage는 후보 탐색 지표이며 품질·숙달도·승인의 단일 gate로 쓰지 않는다.
+  - 원격 반영 때 schema→seed→count/RPC→Edge→실제 provenance→Railway 순서를 지키고 단계별
+    실제 상태를 화면과 evidence에 갱신한다.
+- 관련 Decision / Evidence: `DEC-20260809-01`, `EVD-20260809-01`
+- 관련 증거: `docs/dev-log/2026-08-09-hsk3-reference-system.md`
