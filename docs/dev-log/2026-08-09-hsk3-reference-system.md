@@ -53,10 +53,18 @@
 
 ## 운영 반영·확인 필요
 
-- 원격 migration과 seed, Supabase Edge, Railway, Git push는 실행하지 않았다.
-- 따라서 운영 화면의 `운영 DB 미적용` 상태와 현재 Edge v57은 의도한 현 상태다.
-- `[확인 필요]` 원격 반영은 schema migration → seed → DB count/RPC audit → Edge 배포 →
-  실제 생성 provenance 확인 → Railway 배포 순으로 별도 승인을 받아 진행한다.
+- 구현 커밋 `3445b24`를 `origin/codex/hsk3-reference-system`에 push했다. `main`은 병합하지 않았다.
+- dry-run에서 신규 migration `20260809120000_hsk3_reference_system.sql`과
+  `supabase/seed/hsk3_reference_seed.sql`만 대상임을 확인한 뒤 production DB에 적용했다.
+  적용 후 migration local/remote 일치와 관리자 화면의 11,000/427/427/427 `적재 검산 완료`를 확인했다.
+- `generate-scenario`를 Edge v58로 배포했다. status `ACTIVE`, `verify_jwt=true`, bundle SHA-256
+  `2f1b27bea0030ee2838a0050cc05f8c9bab6c4b3600bed9e50fa3494ed2071d9`다.
+- DB 미저장 중→한 core 1건에서 `hsk3_lexical_reference_v1` audit가 `complete`, 참고 상한 5,
+  distinct 41·matched 36·coverage 0.878·후보 5·`non_blocking=true`로 반환됐다.
+- 전용 worktree를 `railway up . --path-as-root --detach`로 배포했다. deployment
+  `6bebe6ba-47ce-4b7d-8495-40b483f87a14`가 `SUCCESS`·`RUNNING`이고, 운영 `/admin/corpus`에서
+  11,000/427/427/427과 `적재 검산 완료`, 콘솔 오류 0건을 확인했다.
+- 생성한 core는 API 응답 확인만 했으며 scenarios·mission 콘텐츠 행은 저장하지 않았다.
 - `[확인 필요]` 원 추출 실행 스크립트가 발견되면 source extraction을 재실행 가능한 단계로 승격하고
   현재 `legacy_extraction_audited_v1`과 해시를 대조한다.
 

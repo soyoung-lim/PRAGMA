@@ -1794,7 +1794,10 @@
     prompt snapshot 18종과 diff check가 통과했다.
   - localhost 세 화면에서 운영 schema 미적용의 정직한 표시, 참고 상한 비등치 문구, 기존 승인 게이트와
     콘솔 오류 0건을 확인했다.
-  - 원격 DB·seed·Edge·Railway·push는 실행하지 않았다. SQL 실행 환경 부재로 실제 transaction은 미검증이다.
+  - 승인 후 migration·seed를 production DB에 적용하고 11,000/427/427/427을 확인했다. Edge v58의
+    DB 미저장 중→한 core는 audit `complete`·5급 상한·41개 중 36개 match·coverage 0.878을 반환했다.
+    Railway deployment `6bebe6ba…`는 SUCCESS/RUNNING이며 운영 화면과 콘솔 오류 0건을 확인했다.
+    구현 브랜치는 push했고 `main`은 병합하지 않았다.
 - 예상과 달랐던 점:
   - 원 PDF 추출 실행 스크립트가 없어서 extraction을 완전 재현 단계로 승격할 수 없었다.
   - topic `appears_in_levels` 구분자는 쉼표가 아니라 `|`였고, 공식 7–9 band는 DB 누적 비교용
