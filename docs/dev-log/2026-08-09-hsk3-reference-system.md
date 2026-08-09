@@ -158,3 +158,14 @@
   범위`로 낮췄다.
 - localhost 1280×720에서 네 구간·누적 적용·미적용 상태, PRAGMA 단일 주제목, 수준별 펼치기,
   가로 넘침 없음과 브라우저 콘솔 오류 0건을 확인했다. 기본 화면 높이는 1,317px였다.
+
+## 관리자 화면 재설계 운영 배포
+
+- 기능 브랜치 `codex/hsk3-reference-system`의 `bd7fb51`을 Railway production의 `PRAGMA`
+  서비스에 worktree 경로를 루트로 지정해 직접 배포했다. main 병합은 수행하지 않았다.
+- Railway deployment `ba3ead23-8e60-44ee-93d2-bf566894027b`가 `SUCCESS`가 되었고, 이미지
+  digest는 `sha256:986555037a4b43f96913ed5a846b0324f7d213657a81ea3954759b0237f60161`이다.
+- 운영 `/admin/corpus`에서 `HSK 3.0 어휘 DB 11,000개 탑재`, PRAGMA 입문·중급·고급의 누적
+  적용 2,000·3,600·5,400개, HSK 7–9급 5,600개의 현재 미적용 상태를 확인했다.
+- 1280px viewport에서 가로 넘침이 없었고 브라우저 오류 로그는 0건이었다. 이번 배포에서는
+  Supabase DB·migration·Edge Function·콘텐츠 데이터를 변경하지 않았다.
