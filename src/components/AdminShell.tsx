@@ -30,7 +30,7 @@ const GROUPS: NavGroup[] = [
   {
     header: "0 · 자원 관리",
     items: [
-      { to: "/admin/corpus", label: "HSK 3.0 참고 데이터" },
+      { to: "/admin/corpus", label: "HSK 3.0 데이터셋" },
       { to: "/admin/question-designer", label: "수준별 문항 설계" },
       // 생성 규칙은 화면이 무거워 맨 뒤로(자주 열지 않는다).
       { to: "/admin/prompt-harness", label: "생성 규칙·프롬프트" },
