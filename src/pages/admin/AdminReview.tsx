@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
+  ArrowRight,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -68,7 +70,15 @@ import {
   type LearnerLevel,
   type SpeechActUI,
 } from "@/lib/pragma/enums";
+import {
+  hskReferenceHref,
+  hskReviewSummary,
+  matchesHskReviewFilter,
+  parseHskReviewFilter,
+  type HskReviewFilter,
+} from "@/lib/pragma/adminReviewHsk";
 import { normalizeMission, type MissionRuntime } from "@/lib/pragma/missionSchema";
+import { fetchAllPages } from "@/lib/pragma/paginatedRows";
 import { PROMPT_SNAPSHOT } from "@/lib/pragma/promptSnapshot.generated";
 import { reviewMission } from "@/lib/pragma/promoteMission";
 
@@ -108,7 +118,7 @@ const db = supabase as unknown as {
           column: string,
           options: { ascending: boolean },
         ) => {
-          limit: (count: number) => Promise<{ data: unknown; error: { message?: string } | null }>;
+          range: (from: number, to: number) => Promise<{ data: unknown; error: { message?: string } | null }>;
         };
       };
     };
@@ -150,6 +160,42 @@ const QUALITY_CLASS: Record<ReviewVerdict, string> = {
   fail: "border-red-300 bg-red-50 text-red-900",
   missing: "border-slate-300 bg-slate-50 text-slate-700",
 };
+
+const HSK_FILTER_LABEL: Record<HskReviewFilter, string> = {
+  all: "전체",
+  candidates: "확인 후보 있음",
+  clear: "확인 후보 없음",
+  unavailable: "점검 불가",
+  missing: "미점검 구버전",
+};
+
+function hskBadge(audit: ReturnType<typeof hskReviewSummary>): {
+  label: string;
+  className: string;
+} | null {
+  if (!audit) return null;
+  if (audit.status === "complete") {
+    return audit.candidates.length > 0
+      ? {
+          label: `HSK 점검 완료 · 확인 후보 ${audit.candidates.length}`,
+          className: "border-amber-300 bg-amber-50 text-amber-900",
+        }
+      : {
+          label: "HSK 점검 완료 · 확인 후보 없음",
+          className: "border-emerald-300 bg-emerald-50 text-emerald-900",
+        };
+  }
+  if (audit.status === "not_applicable") {
+    return {
+      label: "HSK 점검 대상 없음",
+      className: "border-slate-300 bg-slate-50 text-slate-700",
+    };
+  }
+  return {
+    label: "HSK 점검 불가",
+    className: "border-amber-300 bg-amber-50 text-amber-900",
+  };
+}
 
 const PROMPT_LABEL: Record<PromptMatch, string> = {
   current: "현재 지문",
@@ -202,43 +248,6 @@ function qualitySummary(missionContent: unknown): string {
   if (!quality || typeof quality !== "object" || Array.isArray(quality)) return "";
   const summary = (quality as Record<string, unknown>).summary_ko;
   return typeof summary === "string" ? summary : "";
-}
-
-function hskAuditSummary(content: unknown): {
-  label: string;
-  className: string;
-  candidates: string[];
-} | null {
-  if (!content || typeof content !== "object" || Array.isArray(content)) return null;
-  const audit = (content as Record<string, unknown>).hsk_lexical_audit;
-  if (!audit || typeof audit !== "object" || Array.isArray(audit)) return null;
-  const record = audit as Record<string, unknown>;
-  const status = typeof record.status === "string" ? record.status : "unavailable";
-  const candidates = Array.isArray(record.out_of_reference_candidates)
-    ? record.out_of_reference_candidates.filter((item): item is string => typeof item === "string")
-    : [];
-  if (status === "complete") {
-    const ratio = typeof record.coverage_ratio === "number"
-      ? `${Math.round(record.coverage_ratio * 100)}%`
-      : "—";
-    return {
-      label: `HSK 참고 일치 ${ratio} · 검토 후보 ${candidates.length}`,
-      className: "border-sky-300 bg-sky-50 text-sky-900",
-      candidates,
-    };
-  }
-  if (status === "not_applicable") {
-    return {
-      label: "HSK 감사 대상 없음",
-      className: "border-slate-300 bg-slate-50 text-slate-700",
-      candidates: [],
-    };
-  }
-  return {
-    label: "HSK 감사 조회 불가",
-    className: "border-amber-300 bg-amber-50 text-amber-900",
-    candidates: [],
-  };
 }
 
 function Stat({
@@ -342,6 +351,8 @@ function RunPicker({
 }
 
 const AdminReview = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const hskFilter = parseHskReviewFilter(searchParams.get("hsk"));
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -362,21 +373,33 @@ const AdminReview = () => {
   const [approving, setApproving] = useState(false);
   const [approvalProgress, setApprovalProgress] = useState("");
 
+  const updateHskFilter = (nextFilter: HskReviewFilter) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextFilter === "all") nextParams.delete("hsk");
+    else nextParams.set("hsk", nextFilter);
+    setSearchParams(nextParams, { replace: true });
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await db
-      .from("scenarios")
-      .select(REVIEW_SELECT)
-      .eq("content_format", "scenario_core_v1")
-      .order("created_at", { ascending: false })
-      .limit(2000);
-
-    if (error) {
-      setLoadError(error.message ?? "검수 큐 조회 실패");
-      setRows([]);
-    } else {
+    try {
+      const data = await fetchAllPages<ReviewRow>(async (from, to) => {
+        const result = await db
+          .from("scenarios")
+          .select(REVIEW_SELECT)
+          .eq("content_format", "scenario_core_v1")
+          .order("created_at", { ascending: false })
+          .range(from, to);
+        return {
+          data: Array.isArray(result.data) ? result.data as ReviewRow[] : null,
+          error: result.error,
+        };
+      });
       setLoadError(null);
-      setRows((data ?? []) as ReviewRow[]);
+      setRows(data);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "검수 큐 조회 실패");
+      setRows([]);
     }
     setLoading(false);
   }, []);
@@ -428,6 +451,9 @@ const AdminReview = () => {
 
       if (runFilter && row.generation_run_id !== runFilter) return false;
 
+      const hskContent = scope === "mission" ? row.mission_content : row.core_content;
+      if (!matchesHskReviewFilter(hskContent, hskFilter)) return false;
+
       const promptMatch = promptMatchOf(
         row.prompt_snapshot_hash,
         PROMPT_SNAPSHOT.core_surface_hash,
@@ -475,6 +501,7 @@ const AdminReview = () => {
     promptFilter,
     releaseFilter,
     qualityFilter,
+    hskFilter,
     search,
   ]);
 
@@ -753,7 +780,7 @@ const AdminReview = () => {
           <summary className="cursor-pointer text-[11.5px] font-semibold text-[#53616A]">
             세부 필터
           </summary>
-          <div className="mt-2 grid gap-2.5 border-t border-[#E1E5E5] pt-2.5 sm:grid-cols-3">
+          <div className="mt-2 grid gap-2.5 border-t border-[#E1E5E5] pt-2.5 sm:grid-cols-2 lg:grid-cols-4">
               <label className="text-[11px] text-muted-foreground">
                 {scope === "mission" ? "AI 검사 결과" : "코어 규칙검사"}
                 <select
@@ -767,6 +794,20 @@ const AdminReview = () => {
                   <option value="warning">주의</option>
                   <option value="fail">결함</option>
                   <option value="missing">미점검</option>
+                </select>
+              </label>
+              <label className="text-[11px] text-muted-foreground">
+                HSK 어휘 점검
+                <select
+                  value={hskFilter}
+                  onChange={(event) => updateHskFilter(event.target.value as HskReviewFilter)}
+                  className="mt-1 h-9 w-full rounded-md border border-input bg-white px-2 text-[12px] text-foreground"
+                >
+                  <option value="all">전체</option>
+                  <option value="candidates">확인 후보 있음</option>
+                  <option value="clear">확인 후보 없음</option>
+                  <option value="unavailable">점검 불가</option>
+                  <option value="missing">미점검 구버전</option>
                 </select>
               </label>
               <label className="text-[11px] text-muted-foreground">
@@ -803,6 +844,11 @@ const AdminReview = () => {
           <span>조건 결과 {filtered.length.toLocaleString()}건</span>
           {filtered.length > visibleRows.length && <span>· 최근 {visibleRows.length}건 표시</span>}
           {runFilter && <span className="rounded-full bg-[#E8F1EC] px-2 py-1 font-medium text-[#466555]">생성 묶음 적용</span>}
+          {hskFilter !== "all" && (
+            <span className="rounded-full bg-[#FFF3D8] px-2 py-1 font-medium text-[#765B17]">
+              HSK · {HSK_FILTER_LABEL[hskFilter]}
+            </span>
+          )}
         </div>
       {scope === "mission" && (
         <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-[#D9DEE0] bg-[#F8F9F8] px-3 py-2.5">
@@ -913,9 +959,10 @@ const AdminReview = () => {
           !loadError &&
           visibleRows.map((row) => {
             const quality = missionQualityVerdict(row.mission_content);
-            const hskAudit = hskAuditSummary(
+            const hskAudit = hskReviewSummary(
               scope === "mission" ? row.mission_content : row.core_content,
             );
+            const hskStatusBadge = hskBadge(hskAudit);
             const promptMatch = promptMatchOf(
               row.prompt_snapshot_hash,
               PROMPT_SNAPSHOT.core_surface_hash,
@@ -1005,13 +1052,13 @@ const AdminReview = () => {
                           {QUALITY_LABEL[quality]}
                         </Badge>
                       )}
-                      {hskAudit && (
+                      {hskStatusBadge && (
                         <Badge
                           variant="outline"
-                          className={hskAudit.className}
-                          title="비차단 참고 감사이며 숙달도 판정이나 승인 조건이 아닙니다."
+                          className={hskStatusBadge.className}
+                          title="비차단 참고 점검이며 숙달도 판정이나 승인 조건이 아닙니다."
                         >
-                          {hskAudit.label}
+                          {hskStatusBadge.label}
                         </Badge>
                       )}
                       {candidate && (
@@ -1042,9 +1089,32 @@ const AdminReview = () => {
                         AI 점검 · {qualitySummary(row.mission_content)}
                       </p>
                     )}
+                    {hskAudit && (
+                      <div className="mt-1.5 flex max-w-[52rem] flex-wrap items-center gap-x-2 gap-y-1 border-l-2 border-[#D8C96A] pl-2 text-[11px] leading-relaxed text-muted-foreground">
+                        {hskAudit.status === "complete" ? (
+                          <>
+                            <span className="font-semibold text-[#26333B]">
+                              PRAGMA {selectLabel(LEVEL, row.learner_level)}
+                            </span>
+                            <span>HSK 1–{hskAudit.referenceCeiling ?? "—"}급 누적</span>
+                            <span>고유 어휘 {hskAudit.distinctTokenCount ?? "—"}개</span>
+                            <span>기준 내 {hskAudit.matchedTokenCount ?? "—"}개</span>
+                            <span>확인 후보 {hskAudit.candidates.length}개</span>
+                          </>
+                        ) : (
+                          <span>{hskStatusBadge?.label}</span>
+                        )}
+                        <Link
+                          to={hskReferenceHref(hskAudit.referenceCeiling)}
+                          className="inline-flex items-center gap-0.5 font-semibold text-[#6D5C1F] underline decoration-[#D6C65E] underline-offset-2 hover:text-[#15202B]"
+                        >
+                          적용 기준 보기 <ArrowRight className="h-3 w-3" aria-hidden />
+                        </Link>
+                      </div>
+                    )}
                     {hskAudit && hskAudit.candidates.length > 0 && (
-                      <p className="mt-1.5 max-w-[52rem] border-l-2 border-sky-200 pl-2 text-[11px] leading-relaxed text-muted-foreground">
-                        HSK 참고 범위 밖 검토 후보 · {hskAudit.candidates.slice(0, 12).join(" · ")}
+                      <p className="mt-1 max-w-[52rem] pl-2 text-[11px] leading-relaxed text-muted-foreground">
+                        확인 후보 · {hskAudit.candidates.slice(0, 12).join(" · ")}
                         {hskAudit.candidates.length > 12 ? " …" : ""}
                       </p>
                     )}

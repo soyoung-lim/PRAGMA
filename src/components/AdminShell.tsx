@@ -28,7 +28,7 @@ const STANDALONE: NavItem = { to: "/admin/dashboard", label: "운영 대시보�
 // 것을 아는 것보다 정직하고, 시연 중 사고도 막는다.
 const GROUPS: NavGroup[] = [
   {
-    header: "0 · 자원 관리",
+    header: "0 · 설계 기준",
     items: [
       { to: "/admin/corpus", label: "HSK 3.0 데이터셋" },
       { to: "/admin/question-designer", label: "수준별 문항 설계" },
@@ -49,14 +49,14 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    header: "2 · 콘텐츠 완성·관리",
+    header: "2 · 품질 검수·승인",
     items: [
       { to: "/admin/library", label: "미션 재료 라이브러리" },
       { to: "/admin/assembly", label: "학습 미션 조립" },
-      { to: "/admin/review", label: "통합 검수·승인" },
       // 계약 §5.4(2026-08-07 2차 개정) — 열람 전용. 설계도가 공표하는 QA 층은
       // 도구에서 확인 가능해야 한다. 실행 트리거는 두지 않는다.
-      { to: "/admin/cross-vendor", label: "교차 벤더 검토" },
+      { to: "/admin/cross-vendor", label: "AI 독립 검토" },
+      { to: "/admin/review", label: "통합 검수·승인" },
     ],
   },
   {

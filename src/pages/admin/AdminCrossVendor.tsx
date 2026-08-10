@@ -1,7 +1,8 @@
 import { AdminShell } from "@/components/AdminShell";
 import { CORE_AXIS_LABEL, CORE_QUALITY_AXES } from "@/lib/pragma/coreQualityAudit";
 
-// 교차 벤더 검토 — 생성계약 §5.4 (2026-08-07 신설 → 같은 날 실행/노출 분리로 2차 개정).
+// AI 모델 간 독립 검토(교차 벤더 방식) — 생성계약 §5.4
+// (2026-08-07 신설 → 같은 날 실행/노출 분리로 2차 개정).
 //
 // 이 화면이 하는 일: **읽기 전용 열람**뿐이다.
 //   - 실행 트리거를 두지 않는다. 배치는 오프라인 스크립트로만 돌리며 §10 승인 게이트를 따른다.
@@ -19,15 +20,15 @@ const Card = ({ title, children }: { title: string; children: React.ReactNode })
 );
 
 const HUMAN_VERDICTS: [string, string][] = [
-  ["결함 확정", "교차 벤더 쪽이 옳았다 — 콘텐츠를 고치거나 내린다"],
-  ["기존 검사가 옳았음", "교차 벤더 쪽이 틀렸다 — 그대로 둔다"],
+  ["결함 확정", "독립 검토의 지적이 타당했다 — 콘텐츠를 고치거나 내린다"],
+  ["기존 검사가 옳았음", "독립 검토의 지적이 타당하지 않았다 — 그대로 둔다"],
   ["판단 유보", "둘 다로 결론 내리기 어렵다 — 사유를 남긴다"],
 ];
 
 const AdminCrossVendor = () => (
   <AdminShell
-    title="교차 벤더 검토"
-    description="생성·비평을 같은 벤더가 맡는 구조를 보완하기 위해, 다른 벤더의 모델이 같은 15축으로 한 번 더 판정합니다. 이 화면은 열람 전용입니다."
+    title="AI 모델 간 독립 검토"
+    description="다른 모델이 동일한 15개 기준으로 독립 판정하며, 불일치는 교수자가 확인합니다. 이 화면은 열람 전용입니다."
   >
     {/* 상태 — 실행 전이라는 사실을 가장 먼저, 가장 분명하게 */}
     <div className="max-w-[42rem] rounded-xl border border-dashed border-[#C3CAD3] bg-white px-4 py-3">
@@ -47,7 +48,7 @@ const AdminCrossVendor = () => (
       <h2 className="text-base font-semibold">이 단계의 지위</h2>
       <div className="mt-2 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Card title="검증이 아니라 결함 탐지">
-          단일 벤더 구조에서는 원리적으로 얻을 수 없는 <b>독립 편향 프로파일</b>을 하나 더 대는
+          단일 모델 계열에서는 원리적으로 얻을 수 없는 <b>독립 편향 프로파일</b>을 하나 더 대는
           절차입니다. 두 판정이 일치한다고 해서 내용이 타당함을 뜻하지 않습니다.
         </Card>
         <Card title="승인 권한 없음">
@@ -115,7 +116,7 @@ node scripts/cross-vendor-review.mjs --run <run_id>`}
     </section>
 
     <p className="mt-6 max-w-[42rem] text-[11px] text-muted-foreground">
-      근거: 생성계약 §5.4(교차 벤더 검토) · §8(provenance) · §10(운영 금지와 승인 게이트).
+      근거: 생성계약 §5.4(AI 모델 간 독립 검토) · §8(provenance) · §10(운영 금지와 승인 게이트).
     </p>
   </AdminShell>
 );

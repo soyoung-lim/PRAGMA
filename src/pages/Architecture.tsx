@@ -217,8 +217,8 @@ const Architecture = () => (
           <Down />
           <Node
             lane="supply"
-            title="Claude 교차 검증"
-            desc="다른 벤더 AI의 독립 검토 · 승인 권한 없음"
+            title="AI 독립 검토"
+            desc="Claude · 동일 15축 독립 판정 · 승인 권한 없음"
             status="준비 중"
           />
           <Down />

@@ -31,7 +31,7 @@ export const CORE_QUALITY_AXES = [
 
 export type CoreQualityAxis = (typeof CORE_QUALITY_AXES)[number];
 
-/** 축 한국어 라벨 — 코어 비평과 교차 벤더 검토가 같은 축을 쓰므로 여기 한 곳에 둔다. */
+/** 축 한국어 라벨 — 코어 비평과 AI 모델 간 독립 검토가 같은 축을 쓰므로 여기 한 곳에 둔다. */
 export const CORE_AXIS_LABEL: Record<CoreQualityAxis, string> = {
   speech_act: "화행",
   power: "P",

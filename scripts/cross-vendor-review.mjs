@@ -1,4 +1,4 @@
-// 교차 벤더 검토 배치 — 생성계약 §5.4 (2026-08-07 확정)
+// AI 모델 간 독립 검토 배치(교차 벤더 방식) — 생성계약 §5.4 (2026-08-07 확정)
 //
 // 무엇을 하는가:
 //   이미 저장된 코어 행을 읽어, 같은 15축·같은 프롬프트로 **다른 벤더의 모델**이
@@ -60,7 +60,7 @@ const OPTS = {
 
 if (!OPTS.runId) {
   console.error(`
-교차 벤더 검토 배치 (생성계약 §5.4)
+AI 모델 간 독립 검토 배치 (교차 벤더 방식 · 생성계약 §5.4)
 
   node scripts/cross-vendor-review.mjs --run <generation_run_id> [옵션]
 
@@ -240,17 +240,22 @@ function bodyFromRow(row) {
 // ── 모델 호출 ───────────────────────────────────────────────────────────
 const anthropic = new Anthropic({ maxRetries: 4 });
 
+function anthropicOutputConfig() {
+  const outputConfig = { format: { type: "json_schema", schema: REVIEW_SCHEMA } };
+  if (OPTS.effort) outputConfig.effort = OPTS.effort;
+  return outputConfig;
+}
+
 async function callAnthropic(sys, usr) {
   const req = {
     model: OPTS.model,
     max_tokens: 16000,
     system: sys,
     messages: [{ role: "user", content: usr }],
-    output_config: { format: { type: "json_schema", schema: REVIEW_SCHEMA } },
+    output_config: anthropicOutputConfig(),
   };
   // temperature는 Claude Opus 5에서 제거된 파라미터라 보낼 수 없다(400).
   // OpenAI 쪽 0.1과 대칭을 맞출 수 없다는 뜻이며, 이 비대칭은 결과에 기록된다.
-  if (OPTS.effort) req.output_config.effort = OPTS.effort;
 
   const res = await anthropic.messages.create(req);
   if (res.stop_reason === "refusal") {
@@ -271,6 +276,9 @@ async function countAnthropicInput(sys, usr) {
     model: OPTS.model,
     system: sys,
     messages: [{ role: "user", content: usr }],
+    // 구조화 출력 스키마도 실제 요청의 입력 토큰으로 청구된다. 이를 빼면
+    // 이번 15축 스키마에서는 사전 계측치가 실제 사용량보다 크게 낮아진다.
+    output_config: anthropicOutputConfig(),
   });
   return res.input_tokens;
 }
@@ -396,7 +404,7 @@ if (skipped.length) {
 
 const startedAt = new Date().toISOString();
 const manifest = {
-  contract_clause: "PRAGMA_생성계약_정본.md §5.4 교차 벤더 검토",
+  contract_clause: "PRAGMA_생성계약_정본.md §5.4 AI 모델 간 독립 검토",
   purpose: "결함 탐지(독립 편향 프로파일 추가). 검증 아님. 상태 변경 없음.",
   generation_run_id: OPTS.runId,
   started_at: startedAt,
@@ -568,6 +576,17 @@ const records = readFileSync(resultsPath, "utf8")
   .filter((l) => l.trim())
   .map((l) => JSON.parse(l));
 
+const crossRecords = records.filter((r) => r.cross_vendor);
+const crossVerdicts = Object.fromEntries(VERDICTS.map((v) => [v, 0]));
+const axisFindings = Object.fromEntries(AXIS_CODES.map((c) => [c, { warning: 0, fail: 0 }]));
+for (const r of crossRecords) {
+  crossVerdicts[r.cross_vendor.verdict] = (crossVerdicts[r.cross_vendor.verdict] ?? 0) + 1;
+  for (const code of AXIS_CODES) {
+    const verdict = r.cross_vendor.axes?.[code]?.verdict;
+    if (verdict === "warning" || verdict === "fail") axisFindings[code][verdict] += 1;
+  }
+}
+
 const withBoth = records.filter((r) => r.cross_vendor && r.baseline);
 const axisDisagreement = Object.fromEntries(AXIS_CODES.map((c) => [c, 0]));
 let rowsWithAnyDisagreement = 0;
@@ -576,6 +595,20 @@ for (const r of withBoth) {
   for (const d of r.disagreements ?? []) axisDisagreement[d.axis] += 1;
 }
 
+// --resume이나 보고서 재생성에서도 누적 results.jsonl과 사용량이 일치하도록,
+// 이번 프로세스의 증분 카운터가 아니라 저장된 레코드에서 다시 합산한다.
+const recordedUsage = records.reduce(
+  (sum, r) => {
+    sum.cross_in += r.cross_vendor?.usage?.input_tokens ?? 0;
+    sum.cross_out += r.cross_vendor?.usage?.output_tokens ?? 0;
+    sum.base_in += r.baseline?.usage?.prompt_tokens ?? 0;
+    sum.base_out += r.baseline?.usage?.completion_tokens ?? 0;
+    sum.base_cached += r.baseline?.usage?.prompt_tokens_details?.cached_tokens ?? 0;
+    return sum;
+  },
+  { cross_in: 0, cross_out: 0, base_in: 0, base_out: 0, base_cached: 0 },
+);
+
 manifest.finished_at = new Date().toISOString();
 manifest.totals = {
   reviewed: records.length,
@@ -583,26 +616,16 @@ manifest.totals = {
   failed: records.filter((r) => r.error).length,
   rows_with_disagreement: rowsWithAnyDisagreement,
   axis_disagreement: axisDisagreement,
-  token_usage: totals,
+  cross_vendor_verdicts: crossVerdicts,
+  cross_vendor_axis_findings: axisFindings,
+  token_usage: recordedUsage,
 };
 writeFileSync(join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2), "utf8");
 
 const pct = (n, d) => (d ? ((n / d) * 100).toFixed(1) : "0.0");
-const summary = `# 교차 벤더 검토 결과 — ${OPTS.runId}
-
-> 생성계약 §5.4에 따른 결함 탐지 절차다. **검증이 아니다.**
-> 두 판정의 일치는 내용 타당성의 증거와 유사 편향 공유를 구분하지 못하므로,
-> 일치율을 품질의 증거로 해석하지 않는다. 이 절의 분석 단위는 **불일치**이며,
-> 불일치 항목이 사람 판정으로 어떻게 귀결됐는지가 보고 대상이다.
-
-- 대상 run: \`${OPTS.runId}\` (전체 ${manifest.rows_total}건 중 검토 ${records.length}건, 제외 ${skipped.length}건)
-- 교차 벤더: ${manifest.cross_vendor.provider} \`${manifest.cross_vendor.model}\` (effort ${manifest.cross_vendor.effort})
-- 기준선: ${OPTS.baseline ? `${manifest.baseline.provider} \`${manifest.baseline.model}\` (temperature 0.1)` : "생략"}
-- 프롬프트 판본: \`${manifest.prompt_version}\` · 저장소 커밋 \`${manifest.repo_commit.slice(0, 7)}\`${manifest.repo_dirty ? " (미커밋 변경 있음)" : ""}
-- 실행: ${manifest.started_at} → ${manifest.finished_at}
-- 성공 ${manifest.totals.ok} · 실패 ${manifest.totals.failed}
-
-## 불일치 요약
+const findingRows = AXIS_CODES.filter((c) => axisFindings[c].warning || axisFindings[c].fail);
+const comparisonSection = OPTS.baseline
+  ? `## 불일치 요약
 
 - 축이 하나라도 갈린 행: **${rowsWithAnyDisagreement} / ${withBoth.length}건** (${pct(rowsWithAnyDisagreement, withBoth.length)}%)
 
@@ -614,9 +637,35 @@ ${AXIS_CODES.map((c) => `| \`${c}\` | ${axisDisagreement[c]} | ${pct(axisDisagre
 
 \`results.jsonl\`의 각 \`disagreements[].human_verdict\`를 채운다. 값은 셋 중 하나다.
 
-- \`defect\` — 결함이 실재한다(교차 벤더가 옳았다)
+- \`defect\` — 결함이 실재한다(독립 검토의 지적이 타당했다)
 - \`baseline_correct\` — 기존 검사가 옳았다
-- \`undecided\` — 판단 유보
+- \`undecided\` — 판단 유보`
+  : `## 기준선 비교
+
+기준선 재호출을 생략했으므로 **불일치 건수·비율은 계산하지 않는다.** 위 비통과 축은
+독립 검토 모델의 결함 후보이며, 사람이 원문·생성계약과 대조해 \`defect\`·\`not_defect\`·\`undecided\`로 판정한다.`;
+const summary = `# AI 모델 간 독립 검토 결과 — ${OPTS.runId}
+
+> 생성계약 §5.4에 따른 결함 탐지 절차다. **검증이 아니다.**
+> 모델 판정은 자동 채택하지 않으며, 사람이 생성계약과 원문에 대조한 결함 후보만
+> 연구·운영 근거로 사용한다.
+
+- 대상 run: \`${OPTS.runId}\` (전체 ${manifest.rows_total}건 중 검토 ${records.length}건, 제외 ${skipped.length}건)
+- 독립 검토 모델: ${manifest.cross_vendor.provider} \`${manifest.cross_vendor.model}\` (effort ${manifest.cross_vendor.effort})
+- 기준선: ${OPTS.baseline ? `${manifest.baseline.provider} \`${manifest.baseline.model}\` (temperature 0.1)` : "생략"}
+- 프롬프트 판본: \`${manifest.prompt_version}\` · 저장소 커밋 \`${manifest.repo_commit.slice(0, 7)}\`${manifest.repo_dirty ? " (미커밋 변경 있음)" : ""}
+- 실행: ${manifest.started_at} → ${manifest.finished_at}
+- 성공 ${manifest.totals.ok} · 실패 ${manifest.totals.failed}
+
+## 독립 검토 판정
+
+- 전체: 통과 ${crossVerdicts.pass} · 주의 ${crossVerdicts.warning} · 실패 ${crossVerdicts.fail}
+${findingRows.length ? `
+| 비통과 축 | 주의 | 실패 |
+|---|---:|---:|
+${findingRows.map((c) => `| \`${c}\` | ${axisFindings[c].warning} | ${axisFindings[c].fail} |`).join("\n")}` : "- 비통과 축 없음"}
+
+${comparisonSection}
 
 **자동 조정하지 않는다.** 다수결·평균·자동 채택을 두지 않으며, 이 검토는
 \`generated\`를 \`reviewed\`로 올리지도 내리지도 않는다(계약 §5.4·§7.2).
@@ -629,8 +678,8 @@ ${manifest.known_asymmetries.map((s) => `- ${s}`).join("\n")}
 
 | 구분 | 입력 | 그중 캐시 | 출력 |
 |---|---:|---:|---:|
-| 교차 벤더 | ${totals.cross_in.toLocaleString()} | — | ${totals.cross_out.toLocaleString()} |
-| 기준선 | ${totals.base_in.toLocaleString()} | ${totals.base_cached.toLocaleString()} | ${totals.base_out.toLocaleString()} |
+| 독립 검토 모델 | ${recordedUsage.cross_in.toLocaleString()} | — | ${recordedUsage.cross_out.toLocaleString()} |
+| 기준선 | ${recordedUsage.base_in.toLocaleString()} | ${recordedUsage.base_cached.toLocaleString()} | ${recordedUsage.base_out.toLocaleString()} |
 
 행별 원본 \`usage\` 객체는 \`results.jsonl\`에 그대로 들어 있다(캐시·thinking 세부 포함).
 **이 표는 실제로 돌린 ${records.length}건의 실측치다.** 전수 비용을 말하려면 여기서
