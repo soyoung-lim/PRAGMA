@@ -118,6 +118,10 @@ export const SAMPLE_MISSION_V1: MissionV1 = {
     pdr: { p: "speaker_lower", d: "acquaintance", r: "mid" },
     source_text_ko: "다음 주 미팅 장소를 저희 쪽 근처로 바꿔 주실 수 있을까요?",
     preceding_turn_zh: "下周的会议地点还是老地方吗？",
+    vocabulary_hints: [
+      { source: "저희 쪽", target: "我们这边" },
+      { source: "근처", target: "附近" },
+    ],
     reference_alternatives: [
       { zh: "麻烦您看看下周的会议地点方便改到我们这边附近吗？", note_ko: "완화 표지 + 선택권을 남기는 종결." },
       { zh: "如果方便的话，下周会议能不能改到我们公司附近？", note_ko: "조건절 포석으로 거절할 여지를 남김." },

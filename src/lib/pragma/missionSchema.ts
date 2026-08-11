@@ -113,6 +113,14 @@ const UnitSchema = z.object({
   closing_ko: z.string().min(1), // 카탈로그 복사값(R14)
 });
 
+export const VocabularyHintSchema = z.object({
+  /** 학습자가 옮길 원문의 내용 어휘·구. */
+  source: z.string().min(1),
+  /** 목표 언어의 짧은 대응 표현. 완성 문장·화용 전략은 넣지 않는다. */
+  target: z.string().min(1),
+});
+export type VocabularyHint = z.infer<typeof VocabularyHintSchema>;
+
 // ── production_task (DCT) — 번역·통역 ─────────────────────────────────
 const ProductionTaskSchema = z.object({
   mode: z.enum(["translation", "interpreting"]),
@@ -125,6 +133,8 @@ const ProductionTaskSchema = z.object({
   source_text_ko: z.string().min(1), // 코어 계승(R23)
   preceding_turn_zh: z.string().nullable(),
   replay_limit: z.number().int().positive().optional(), // interpreting만
+  /** 번역 산출용 내용 어휘 힌트 2개. legacy 미션 읽기 호환을 위해 optional. */
+  vocabulary_hints: z.array(VocabularyHintSchema).length(2).optional(),
   reference_alternatives: z
     .array(z.object({ zh: z.string().min(1), note_ko: z.string().min(1) }))
     .min(1)
@@ -289,6 +299,8 @@ const ProductionTaskV2Schema = z.object({
   source_text: z.string().min(1),
   preceding_turn: z.string().nullable(),
   replay_limit: z.number().int().positive().optional(),
+  /** 번역 산출용 내용 어휘 힌트 2개. 통역에는 제공하지 않는다. */
+  vocabulary_hints: z.array(VocabularyHintSchema).length(2).optional(),
   reference_alternatives: z
     .array(z.object({ text: z.string().min(1), note_ko: z.string().min(1) }))
     .min(1)
@@ -390,6 +402,7 @@ export function normalizeMission(input: unknown): {
         source_text: pt.source_text_ko,
         preceding_turn: pt.preceding_turn_zh,
         ...(pt.replay_limit ? { replay_limit: pt.replay_limit } : {}),
+        ...(pt.vocabulary_hints ? { vocabulary_hints: pt.vocabulary_hints } : {}),
         reference_alternatives: pt.reference_alternatives.map((a) => ({ text: a.zh, note_ko: a.note_ko })),
       },
       ...(m.provenance ? { provenance: m.provenance } : {}),

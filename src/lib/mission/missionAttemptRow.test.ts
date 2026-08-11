@@ -100,4 +100,49 @@ describe("mission attempt row", () => {
       provenance: { model: "test-model" },
     });
   });
+
+  it("stores unscored MPJ best/worst choices in a versioned context envelope", () => {
+    const row = buildMissionAttemptRow({
+      mission: sampleMissionV2(),
+      scenarioId: "11111111-1111-1111-1111-111111111111",
+      speechAct: "request",
+      level: "intermediate",
+      firstResponse: "처음 답",
+      revisedResponse: "고친 답",
+      startedAtIso: "2026-07-29T01:00:00.000Z",
+      mpjResponses: [
+        {
+          item_id: 5,
+          item_type: "multi_judge",
+          best_candidate_indexes: [1, 2],
+          most_inappropriate_candidate_index: 4,
+          completed_at: "2026-07-29T01:02:00.000Z",
+        },
+      ],
+      productionSupport: {
+        kind: "translation_vocabulary_hints",
+        available: true,
+        opened: true,
+        opened_at: "2026-07-29T01:03:00.000Z",
+      },
+    }, "profile-1", "user-1");
+
+    expect(row.context_judgment).toMatchObject({
+      schema_version: "mpj_response_v1",
+      mission_schema_version: "mission_v2",
+      learner_dissent: null,
+      responses: [
+        {
+          item_type: "multi_judge",
+          best_candidate_indexes: [1, 2],
+          most_inappropriate_candidate_index: 4,
+        },
+      ],
+      production_support: {
+        kind: "translation_vocabulary_hints",
+        available: true,
+        opened: true,
+      },
+    });
+  });
 });
