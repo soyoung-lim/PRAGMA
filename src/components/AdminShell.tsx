@@ -21,7 +21,7 @@ const STANDALONE: NavItem = { to: "/admin/dashboard", label: "운영 대시보�
 //   pending 배지. 교과목 운영은 9월 실증 사안이라 메뉴에서 제외(백로그),
 //   학습자 개별 리포트는 학습자 관리 상세와 중복이라 흡수
 // - 「콘텐츠 보관함」은 이름·헤드라인("시나리오 아카이브")·소속이 모두 어긋나 있었다
-//   → 이름 통일 + 생성물이 쌓이는 곳이므로 파이프라인으로 이동
+//   → 이름 통일 + 생성 결과가 쌓이는 곳이므로 파이프라인으로 이동
 // - 파이프라인의 "1단계·1단계·2단계…" 번호는 1단계가 두 번 나와 헷갈려서 제거
 //
 // pending = 화면은 있으나 내용이 후속. 배지를 미리 보여 준다 — 눌러 봐야 비어 있는
@@ -33,7 +33,7 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/corpus", label: "HSK 3.0 데이터셋" },
       { to: "/admin/question-designer", label: "수준별 문항 설계" },
       // 생성 규칙은 화면이 무거워 맨 뒤로(자주 열지 않는다).
-      { to: "/admin/prompt-harness", label: "생성 규칙·프롬프트" },
+      { to: "/admin/prompt-harness", label: "AI 생성 콘텐츠 품질관리" },
     ],
   },
   // 2026-07-30 IA 재편(사용자·Codex·Claude 수렴안): 생성 화면들의 산출물은 학습
@@ -55,7 +55,7 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/assembly", label: "학습 미션 조립" },
       // 계약 §5.4(2026-08-07 2차 개정) — 열람 전용. 설계도가 공표하는 QA 층은
       // 도구에서 확인 가능해야 한다. 실행 트리거는 두지 않는다.
-      { to: "/admin/cross-vendor", label: "AI 독립 검토" },
+      { to: "/admin/cross-vendor", label: "AI 모델 간 독립 검토" },
       { to: "/admin/review", label: "통합 검수·승인" },
     ],
   },
