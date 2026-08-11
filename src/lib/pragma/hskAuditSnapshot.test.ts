@@ -47,4 +47,28 @@ describe("HSK audit snapshots", () => {
     expect(selectRecentAudit([older, newer].filter(Boolean)))
       .toMatchObject({ createdAt: "2026-08-10T09:00:00.000Z", matchedTokenCount: 9 });
   });
+
+  it("keeps the stored content axes needed to explain the audited case", () => {
+    const snapshot = auditSnapshotFromContent({
+      hsk_lexical_audit: completeAudit,
+    }, "2026-08-10T08:30:00.000Z", {
+      contentKind: "mission",
+      title: "처음 만난 조원에게 감사 인사 전하는 글",
+      learnerLevel: "beginner_intermediate",
+      mode: "translation",
+      speechAct: "thanks",
+      speechActText: "감사",
+      languageDirection: "ko_zh",
+    });
+
+    expect(snapshot).toMatchObject({
+      contentKind: "mission",
+      title: "처음 만난 조원에게 감사 인사 전하는 글",
+      learnerLevel: "beginner_intermediate",
+      mode: "translation",
+      speechAct: "thanks",
+      speechActText: "감사",
+      direction: "ko_zh",
+    });
+  });
 });

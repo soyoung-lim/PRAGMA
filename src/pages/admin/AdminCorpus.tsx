@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  CheckCircle2,
   Database,
   ExternalLink,
 } from "lucide-react";
@@ -14,11 +13,13 @@ import {
   selectRecentAudit,
   type AuditSnapshot,
 } from "@/lib/pragma/hskAuditSnapshot";
-import { HSK3_REFERENCE_SOURCE_ID } from "@/lib/pragma/hskReference";
+import {
+  HSK3_LEXICAL_AUDIT_POLICY_VERSION,
+  HSK3_REFERENCE_SOURCE_ID,
+} from "@/lib/pragma/hskReference";
 
 const EXPECTED_VOCABULARY_ENTRIES = 11_000;
 const EXPECTED_TOPIC_ROWS = 427;
-const PRELOCK_VALIDATION_COUNT = 30;
 
 type ReferenceStatus = {
   source_id: string | null;
@@ -41,6 +42,30 @@ const PRAGMA_RANGES = [
   { id: "intermediate", level: "PRAGMA 중급", ceiling: "HSK 1–5급", entries: 3_600, addition: "이 단계에서 HSK 5급 1,600개 추가" },
   { id: "advanced", level: "PRAGMA 고급", ceiling: "HSK 1–6급", entries: 5_400, addition: "이 단계에서 HSK 6급 1,800개 추가" },
 ] as const;
+
+const LEVEL_LABEL: Record<string, string> = {
+  beginner_intermediate: "PRAGMA 입문",
+  intermediate: "PRAGMA 중급",
+  advanced: "PRAGMA 고급",
+};
+
+const MODE_LABEL: Record<string, string> = {
+  translation: "번역",
+  stt_interpreting: "통역",
+  interpreting: "통역",
+};
+
+const SPEECH_ACT_LABEL: Record<string, string> = {
+  request: "요청",
+  refusal: "거절",
+  apology: "사과",
+  thanks: "감사",
+  proposal: "제안",
+  agreement: "초대",
+  opposition: "반대",
+  compliment: "칭찬",
+  complaint: "불만",
+};
 
 function fmt(value: number) {
   return value.toLocaleString();
@@ -104,11 +129,11 @@ const AdminCorpus = () => {
           .maybeSingle(),
         supabase
           .from("scenarios")
-          .select("created_at, mission_content")
+          .select("created_at, title, learner_level, mode, language_direction, speech_act, speech_act_text, mission_content")
           .not("mission_content", "is", null),
         supabase
           .from("scenarios")
-          .select("created_at, core_content")
+          .select("created_at, title, learner_level, mode, language_direction, speech_act, speech_act_text, core_content")
           .order("created_at", { ascending: false })
           .limit(40),
       ]);
@@ -129,9 +154,25 @@ const AdminCorpus = () => {
       } else {
         const snapshots = [
           ...(missionResult.data ?? []).map((row) =>
-            auditSnapshotFromContent(row.mission_content, row.created_at)),
+            auditSnapshotFromContent(row.mission_content, row.created_at, {
+              contentKind: "mission",
+              title: row.title,
+              learnerLevel: row.learner_level,
+              mode: row.mode,
+              languageDirection: row.language_direction,
+              speechAct: row.speech_act,
+              speechActText: row.speech_act_text,
+            })),
           ...(coreResult.data ?? []).map((row) =>
-            auditSnapshotFromContent(row.core_content, row.created_at)),
+            auditSnapshotFromContent(row.core_content, row.created_at, {
+              contentKind: "core",
+              title: row.title,
+              learnerLevel: row.learner_level,
+              mode: row.mode,
+              languageDirection: row.language_direction,
+              speechAct: row.speech_act,
+              speechActText: row.speech_act_text,
+            })),
         ].filter((item): item is AuditSnapshot => Boolean(item));
         setRecentAudit(selectRecentAudit(snapshots));
         setAuditLookupFailed(false);
@@ -174,7 +215,7 @@ const AdminCorpus = () => {
           </div>
         )}
 
-        <ValidationEvidence />
+        <AuditMethodSection />
 
         <OperationsSection
           loading={loading}
@@ -208,15 +249,28 @@ function OperationsSection({
   );
   const checkedAt = formatAuditDate(audit?.createdAt ?? null);
   const pragmaLevel = pragmaLevelForCeiling(audit?.referenceCeiling ?? null);
+  const level = audit?.learnerLevel
+    ? LEVEL_LABEL[audit.learnerLevel] ?? audit.learnerLevel
+    : pragmaLevel
+      ? `PRAGMA ${pragmaLevel}`
+      : null;
+  const mode = audit?.mode ? MODE_LABEL[audit.mode] ?? audit.mode : null;
+  const speechAct = audit?.speechAct
+    ? SPEECH_ACT_LABEL[audit.speechAct] ?? audit.speechActText ?? audit.speechAct
+    : audit?.speechActText ?? null;
   const direction = audit?.direction === "ko_zh" ? "한→중" : audit?.direction === "zh_ko" ? "중→한" : null;
+  const contentKind = audit?.contentKind === "mission"
+    ? "학습 미션 1건"
+    : audit?.contentKind === "core"
+      ? "미션 재료 1건"
+      : "콘텐츠 1건";
+  const caseTitle = audit?.title ?? null;
+  const caseAxes = [speechAct, level, mode, direction].filter((item): item is string => Boolean(item));
   const referenceEntries = referenceEntriesForCeiling(audit?.referenceCeiling ?? null);
-  const coveragePercent = complete && audit?.distinctTokenCount
-    ? Math.round(((audit.matchedTokenCount ?? 0) / audit.distinctTokenCount) * 100)
-    : null;
   const emptyTitle = lookupFailed || audit?.status === "unavailable"
     ? "최근 점검 기록을 확인할 수 없습니다."
     : audit?.status === "not_applicable"
-      ? "최근 콘텐츠에는 점검할 중국어가 없습니다."
+      ? "최신 점검 대상에는 점검할 중국어가 없습니다."
       : "아직 표시할 최근 점검이 없습니다.";
   const emptyDescription = lookupFailed || audit?.status === "unavailable"
     ? "통합 검수 화면에서 상태를 다시 확인할 수 있습니다."
@@ -225,30 +279,35 @@ function OperationsSection({
     ? `/admin/review?hsk=${audit.candidates.length > 0 ? "candidates" : "clear"}`
     : "/admin/review";
   const reviewLabel = audit?.status === "complete" && audit.candidates.length > 0
-    ? `${audit.candidates.length}개 확인하기`
+    ? `${audit.candidates.length}개 검수 후보 보기`
     : "통합 검수 열기";
 
   return (
     <section className="overflow-hidden rounded-xl border border-[#CFC9BC] bg-white shadow-[0_10px_30px_rgba(21,32,43,0.05)]" aria-labelledby="lexical-audit-title">
       <div className="border-b border-[#E4DED1] px-4 py-4 sm:px-5">
         <div>
-          <p className="text-[12px] font-semibold tracking-[0.11em] text-[#8A7423]">최근 점검</p>
+          <p className="text-[12px] font-semibold tracking-[0.11em] text-[#8A7423]">가장 최근 점검 기록</p>
+          <h2 id="lexical-audit-title" className="mt-1 text-[21px] font-semibold tracking-[-0.025em] text-[#15202B]">
+            {complete && audit
+              ? caseTitle ? `“${caseTitle}”` : `${caseAxes.join(" · ")} · ${contentKind}`
+              : "AI 생성 중국어를 수준별 기준으로 점검합니다"}
+          </h2>
           {complete && audit && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px] text-[#625D54]">
-              <strong className="font-semibold text-[#15202B]">{pragmaLevel ? `PRAGMA ${pragmaLevel}` : "PRAGMA 수준"}</strong>
-              <span>{direction ?? "중국어 콘텐츠"}</span>
-              <span>HSK 1–{audit.referenceCeiling}급 누적{referenceEntries != null && ` · ${fmt(referenceEntries)}개`}</span>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-[#625D54]">
+              {caseAxes.map((axis) => (
+                <span key={axis} className="rounded-full border border-[#DDD6C8] bg-[#FBFAF6] px-2 py-0.5">
+                  {axis}
+                </span>
+              ))}
+              <strong className="rounded-full bg-[#ECE8DE] px-2 py-0.5 font-semibold text-[#3F3A32]">
+                {contentKind}
+              </strong>
               {checkedAt && <span className="text-[#8A847A]">{checkedAt}</span>}
             </div>
           )}
-          <h2 id="lexical-audit-title" className="mt-1 text-[21px] font-semibold tracking-[-0.025em] text-[#15202B]">
-            {complete && audit
-              ? `${fmt(audit.distinctTokenCount ?? 0)}개 중 ${fmt(audit.matchedTokenCount ?? 0)}개를 HSK 참고 범위에서 확인했습니다`
-              : "AI 생성 중국어를 수준별 기준으로 점검합니다"}
-          </h2>
           <p className="mt-1 text-[12px] leading-5 text-[#716B61]">
             {complete && audit
-              ? `나머지 ${fmt(audit.candidates.length)}개는 오류로 처리하지 않고 교수자 확인 목록으로 보냈습니다.`
+              ? `이 ${contentKind}에서 중국어 단어 단위를 추출한 뒤, PRAGMA ${pragmaLevel ?? "수준"}의 HSK 1–${audit.referenceCeiling}급 누적 목록과 대조했습니다.`
               : "생성 결과를 HSK 누적 어휘 범위와 대조하고, 확인이 필요한 단어는 교수자에게 연결합니다."}
           </p>
         </div>
@@ -259,55 +318,58 @@ function OperationsSection({
           <Skeleton className="h-52 lg:col-span-2" />
           <Skeleton className="h-52 lg:col-span-3" />
         </div>
-      ) : complete && audit && coveragePercent != null ? (
-        <>
-          <div className="px-4 py-4 sm:px-5">
-            <div className="flex h-3 overflow-hidden rounded-full bg-[#F1D45A]" aria-label={`HSK 참고 범위에서 확인 ${coveragePercent}%, 교수자 확인 ${100 - coveragePercent}%`}>
-              <span className="bg-emerald-600" style={{ width: `${coveragePercent}%` }} />
-              <span className="flex-1 bg-[#F1D45A]" />
-            </div>
-
-            <dl className="mt-3 grid overflow-hidden rounded-lg border border-[#DED8CB] sm:grid-cols-3 sm:divide-x sm:divide-[#DED8CB]">
-              <ResultMetric
-                label="전체 점검"
-                value={audit.distinctTokenCount ?? 0}
-                description="생성된 중국어의 고유 어휘"
-              />
-              <ResultMetric
-                label="HSK 참고 범위에서 확인"
-                value={audit.matchedTokenCount ?? 0}
-                description={`전체 ${fmt(audit.distinctTokenCount ?? 0)}개 중 ${coveragePercent}%`}
-                tone="confirmed"
-              />
-              <ResultMetric
-                label="교수자 확인"
-                value={audit.candidates.length}
-                description="자동 오류·탈락으로 처리하지 않음"
-                tone="review"
-              />
-            </dl>
-
-            <div className="mt-3 flex flex-col gap-3 rounded-lg bg-[#FFF8D8] px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-[12px] leading-5 text-[#5F5A50]">
-                확인 대상은 고유명사·전문용어일 수 있으므로 교수자가 문맥을 보고 판단합니다.
+      ) : complete && audit ? (
+        <div className="px-4 py-4 sm:px-5">
+          <ol className="grid overflow-hidden rounded-lg border border-[#DED8CB] sm:grid-cols-[0.9fr_1fr_1.45fr] sm:divide-x sm:divide-[#DED8CB]">
+            <li className="border-b border-[#DED8CB] bg-white px-4 py-3 sm:border-b-0">
+              <p className="text-[11px] font-semibold tracking-[0.06em] text-[#8A7423]">01 · 점검 대상</p>
+              <p className="mt-1.5 text-[26px] font-semibold leading-none text-[#15202B]">1건</p>
+              <p className="mt-1.5 text-[12px] leading-5 text-[#716B61]">{contentKind.replace(" 1건", "")}</p>
+            </li>
+            <li className="border-b border-[#DED8CB] bg-white px-4 py-3 sm:border-b-0">
+              <p className="text-[11px] font-semibold tracking-[0.06em] text-[#8A7423]">02 · 중국어 단어 추출</p>
+              <p className="mt-1.5 text-[26px] font-semibold leading-none tabular-nums text-[#15202B]">
+                {fmt(audit.distinctTokenCount ?? 0)}<span className="ml-0.5 text-[12px] font-normal text-[#777168]">개</span>
               </p>
-              <Link
-                to={reviewHref}
-                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-[#FAD338] px-3.5 py-2.5 text-[12px] font-semibold text-[#15202B] transition-colors hover:bg-[#F3C91D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6B900] focus-visible:ring-offset-2"
-              >
-                {reviewLabel}
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-              </Link>
-            </div>
-          </div>
+              <p className="mt-1.5 text-[12px] leading-5 text-[#716B61]">문장부호·공백 제외, 중복 제거</p>
+            </li>
+            <li className="bg-[#FBFAF6] px-4 py-3">
+              <p className="text-[11px] font-semibold tracking-[0.06em] text-[#8A7423]">03 · HSK 데이터셋 대조</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="rounded-md bg-emerald-50 px-3 py-2.5 text-emerald-950">
+                  <p className="text-[24px] font-semibold leading-none tabular-nums">
+                    {fmt(audit.matchedTokenCount ?? 0)}<span className="ml-0.5 text-[11px] font-normal">개</span>
+                  </p>
+                  <p className="mt-1.5 text-[11.5px] font-medium leading-4">목록에서 정확히 확인</p>
+                </div>
+                <div className="rounded-md bg-[#FFF4BE] px-3 py-2.5 text-[#5B4B0C]">
+                  <p className="text-[24px] font-semibold leading-none tabular-nums">
+                    {fmt(audit.candidates.length)}<span className="ml-0.5 text-[11px] font-normal">개</span>
+                  </p>
+                  <p className="mt-1.5 text-[11.5px] font-medium leading-4">교수자 검수 후보</p>
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] leading-4 text-[#716B61]">
+                HSK 1–{audit.referenceCeiling}급 누적{referenceEntries != null && ` · ${fmt(referenceEntries)}개`}
+              </p>
+            </li>
+          </ol>
 
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[#E8E2D6] bg-[#FBFAF6] px-4 py-3 text-[12px] text-[#625D54] sm:px-5">
-            <strong className="font-semibold text-[#15202B]">작동 방식</strong>
-            <span>PRAGMA 수준 선택</span><ArrowRight className="h-3 w-3 text-[#9B8737]" aria-hidden />
-            <span>HSK 누적 범위 대조</span><ArrowRight className="h-3 w-3 text-[#9B8737]" aria-hidden />
-            <span>확인 항목을 교수자에게 전달</span>
+          <div className="mt-3 flex flex-col gap-3 rounded-lg bg-[#FFF8D8] px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[12px] leading-5 text-[#5F5A50]">
+              <strong className="font-semibold text-[#3F3A32]">{fmt(audit.matchedTokenCount ?? 0)}개는 목록 조회에서 확인된 단어입니다.</strong>{" "}
+              나머지 {fmt(audit.candidates.length)}개는 실패가 아니라 교수자 검수 후보입니다. 고유명사·전문용어·분절 결과일 수
+              있어 문맥과 학습 목적을 함께 검수합니다.
+            </p>
+            <Link
+              to={reviewHref}
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-[#FAD338] px-3.5 py-2.5 text-[12px] font-semibold text-[#15202B] transition-colors hover:bg-[#F3C91D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6B900] focus-visible:ring-offset-2"
+            >
+              {reviewLabel}
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
           </div>
-        </>
+        </div>
       ) : (
         <div className="px-4 py-5 sm:px-5">
           <p className="text-[15px] font-medium text-[#15202B]">{emptyTitle}</p>
@@ -327,48 +389,96 @@ function OperationsSection({
   );
 }
 
-function ValidationEvidence() {
+function AuditMethodSection() {
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-[#F2F8F4] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5" aria-label="점검 장치 작동 검증">
-      <div className="flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-emerald-700" aria-hidden>
-          <CheckCircle2 className="h-4 w-4" />
-        </span>
-        <div>
-          <p className="text-[12px] font-semibold tracking-[0.08em] text-emerald-800">점검 장치 작동 확인</p>
-          <h2 className="mt-0.5 text-[15px] font-semibold text-[#173C2A]">
-            12개 조건에서 시험 콘텐츠 {PRELOCK_VALIDATION_COUNT}건의 점검 결과를 모두 저장했습니다.
-          </h2>
+    <section
+      className="overflow-hidden rounded-xl border border-[#D9D2BF] bg-[#FFFDF7]"
+      aria-labelledby="audit-method-title"
+    >
+      <div className="border-b border-[#E5DEC9] px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#8A7621]">
+            규칙 기반 검사
+          </p>
+          <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-900">
+            실제 콘텐츠·검수 연동
+          </span>
+          <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+            비차단
+          </span>
+        </div>
+        <h2 id="audit-method-title" className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-[#15202B]">
+          HSK 어휘 참고 범위 점검
+        </h2>
+        <p className="mt-1 max-w-[50rem] text-[12.5px] leading-5 text-[#716B61]">
+          중국어 어휘 단위를 추출해 PRAGMA 수준별 HSK 누적 범위의 DB 표제어와 정확히 일치하는
+          항목을 집계합니다. 정확 일치는 재현 가능한 계산 방식이며, 목록 밖 어휘의 사용을 금지하는
+          허용 목록 규칙이 아닙니다.
+        </p>
+      </div>
+
+      <div className="space-y-3 px-4 py-4 sm:px-5">
+        <ol className="grid gap-2 text-[12px] sm:grid-cols-3">
+          <li className="rounded-lg border border-[#E5DEC9] bg-white p-3">
+            <span className="text-[10.5px] font-semibold text-[#8A7621]">01 · 입력</span>
+            <p className="mt-1 font-semibold text-[#26333B]">중국어 콘텐츠 + PRAGMA 수준</p>
+            <p className="mt-1 leading-relaxed text-[#716B61]">
+              입문 HSK 1–4급 · 중급 1–5급 · 고급 1–6급 누적 범위를 사용합니다.
+            </p>
+          </li>
+          <li className="rounded-lg border border-[#E5DEC9] bg-white p-3">
+            <span className="text-[10.5px] font-semibold text-[#8A7621]">02 · 계산</span>
+            <p className="mt-1 font-semibold text-[#26333B]">어휘 단위 추출 → DB 표제어 정확 일치</p>
+            <p className="mt-1 leading-relaxed text-[#716B61]">
+              선택한 누적 상한 안에서 같은 표제어를 확인하고 나머지는 후보로 분리합니다.
+            </p>
+          </li>
+          <li className="rounded-lg border border-[#E5DEC9] bg-white p-3">
+            <span className="text-[10.5px] font-semibold text-[#8A7621]">03 · 기록·연결</span>
+            <p className="mt-1 font-semibold text-[#26333B]">확인 수 + 교수자 검수 후보</p>
+            <p className="mt-1 leading-relaxed text-[#716B61]">
+              결과와 정책 버전을 콘텐츠에 저장하고 통합 검수·승인 화면으로 연결합니다.
+            </p>
+          </li>
+        </ol>
+
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="rounded-lg bg-emerald-50 px-3 py-3 text-[12px] text-emerald-950">
+            <p className="font-semibold">이 검사가 확인하는 것</p>
+            <p className="mt-1 leading-relaxed">
+              추출 어휘 수, HSK 누적 참고 범위에서 확인된 수, 교수자 검수 후보 수를 같은 규칙으로
+              계산합니다.
+            </p>
+          </div>
+          <div className="rounded-lg bg-amber-50 px-3 py-3 text-[12px] text-amber-950">
+            <p className="font-semibold">이 검사가 판정하지 않는 것</p>
+            <p className="mt-1 leading-relaxed">
+              콘텐츠 전체가 수준에 비해 너무 쉽거나 어려운지, 목록 밖 어휘가 부적절한지,
+              교체·재생성이 필요한지는 판정하지 않습니다.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E5DEC9] bg-white px-3 py-3">
+          <div className="min-w-0 text-[11px] text-[#716B61]">
+            <p>
+              내부 기록 <code>hsk_lexical_audit</code> · 정책 <code>{HSK3_LEXICAL_AUDIT_POLICY_VERSION}</code>
+            </p>
+            <p className="mt-0.5 break-all">
+              출처 <code>{HSK3_REFERENCE_SOURCE_ID}</code>
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-[12px] font-semibold">
+            <Link to="/admin/prompt-harness" className="inline-flex items-center gap-1 text-[#6D5C1F] hover:text-[#15202B]">
+              전체 품질관리 구조 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+            <Link to="/admin/review?hsk=candidates" className="inline-flex items-center gap-1 text-[#6D5C1F] hover:text-[#15202B]">
+              교수자 검수 후보 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          </div>
         </div>
       </div>
-      <div className="shrink-0 rounded-md border border-emerald-200 bg-white px-3 py-2 text-right">
-        <p className="text-[12px] text-emerald-800">점검 결과 저장</p>
-        <p className="text-[18px] font-semibold tabular-nums text-emerald-900">{PRELOCK_VALIDATION_COUNT}/{PRELOCK_VALIDATION_COUNT}</p>
-      </div>
     </section>
-  );
-}
-
-function ResultMetric({
-  label,
-  value,
-  description,
-  tone = "default",
-}: {
-  label: string;
-  value: number;
-  description: string;
-  tone?: "default" | "confirmed" | "review";
-}) {
-  const background = tone === "confirmed" ? "bg-[#F2F8F4]" : tone === "review" ? "bg-[#FFF9E0]" : "bg-white";
-  return (
-    <div className={`border-b border-[#DED8CB] px-4 py-3 last:border-b-0 sm:border-b-0 ${background}`}>
-      <dt className="text-[13px] font-medium text-[#514C43]">{label}</dt>
-      <dd className="mt-1 text-[30px] font-semibold leading-none tabular-nums text-[#15202B]">
-        {fmt(value)}<span className="ml-0.5 text-[12px] font-normal text-[#777168]">개</span>
-      </dd>
-      <p className="mt-1.5 text-[12px] text-[#716B61]">{description}</p>
-    </div>
   );
 }
 

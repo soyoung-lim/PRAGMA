@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +27,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { PROMPT_SNAPSHOT, type PromptSnapshotEntry } from "@/lib/pragma/promptSnapshot.generated";
 
 type PromptTemplate = {
@@ -140,14 +141,77 @@ const CARD_DISPLAY: Record<
 const SNAPSHOT_GROUP_LABEL: Record<string, string> = {
   core: "코어 생성 (500개 뱅크)",
   mission: "미션 승격 (MPJ + 산출 과제)",
-  review: "검증② 품질점검",
+  review: "프롬프트 통제 기반 검토",
   runtime: "학습자 실행 중 피드백",
   authoring: "실제 자료 활용",
 };
-const SNAPSHOT_GROUP_ORDER = ["core", "mission", "review", "runtime", "authoring"];
+const HARNESS_SECTION_ORDER = ["core", "mission", "review", "runtime", "authoring"];
 
 /** 배치가 실제로 사용한 지문 — scenarios 행에서 집계(계약 provenance). */
 type UsedHashRow = { hash: string | null; count: number; first: string; last: string };
+
+function HarnessOverview() {
+  return (
+    <section
+      aria-labelledby="harness-overview-title"
+      className="rounded-xl border border-[#D9D2BF] bg-white p-4 sm:p-5"
+    >
+      <div className="max-w-[48rem]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8A7621]">
+          품질관리 구조
+        </p>
+        <h2 id="harness-overview-title" className="mt-1 text-[18px] font-bold text-[#26333B]">
+          자동 점검은 두 방식으로, 최종 권한은 교수자에게 둡니다
+        </h2>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+          품질 점검 자동화는 규칙 기반 검사와 프롬프트 통제 기반 검토를 함께 사용합니다. 두 방식은
+          조정 후보와 근거를 제공하며, 콘텐츠 공개 여부는 교수자가 검수·승인합니다.
+        </p>
+      </div>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-3">
+        <div className="rounded-lg border border-[#E5DEC9] bg-[#FBFAF6] p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold text-[#6D5C1F]">자동 점검 ①</span>
+            <Badge variant="outline" className="bg-white font-normal">재현 가능</Badge>
+          </div>
+          <h3 className="mt-2 text-[14px] font-bold">규칙 기반 검사</h3>
+          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+            같은 입력에는 같은 결과를 냅니다. HSK 어휘 참고 범위 점검과 R1–R29 규칙이
+            여기에 속합니다.
+          </p>
+          <Link to="/admin/corpus" className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-[#6D5C1F] hover:text-[#15202B]">
+            HSK 기준·최근 결과 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        </div>
+        <div className="rounded-lg border border-[#D8E0E5] bg-[#F7FAFB] p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold text-[#3F6172]">자동 점검 ②</span>
+            <Badge variant="outline" className="bg-white font-normal">문맥 검토</Badge>
+          </div>
+          <h3 className="mt-2 text-[14px] font-bold">프롬프트 통제 기반 검토</h3>
+          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+            생성과 분리된 AI가 버전이 관리되는 지시문에 따라 의미·자연성·후보 자격을 검토합니다.
+          </p>
+        </div>
+        <div className="rounded-lg border border-[#E1DDD4] bg-[#FAF9F7] p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold text-[#6D675D]">운영 결정</span>
+            <Badge variant="outline" className="bg-white font-normal">최종 권한</Badge>
+          </div>
+          <h3 className="mt-2 text-[14px] font-bold">교수자 검수·승인</h3>
+          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+            자동 검사 근거를 보고 더 쉽게 또는 더 도전적으로 조정할지와 학습자 공개 여부를
+            결정합니다.
+          </p>
+          <Link to="/admin/review" className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-[#5F5A50] hover:text-[#15202B]">
+            통합 검수·승인 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function ProvenanceBanner({
   used,
@@ -161,11 +225,14 @@ function ProvenanceBanner({
   const snap = PROMPT_SNAPSHOT;
   const matched = used.find((u) => u.hash === snap.core_surface_hash);
   const legacyNull = used.find((u) => u.hash === null);
+  const mismatched = used.filter((u) => u.hash && u.hash !== snap.core_surface_hash);
+  const mismatchTotal = mismatched.reduce((sum, row) => sum + row.count, 0);
+  const [historyOpen, setHistoryOpen] = useState(false);
   return (
     <section className="rounded-xl border border-[#EAE4D2] bg-[#FBFAF7] p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Lock className="h-4 w-4 text-[#8a857c]" />
-        <h2 className="text-[15px] font-bold">저장소 정본 · 읽기 전용</h2>
+        <h2 className="text-[15px] font-bold">프롬프트·지문 관리 · 읽기 전용</h2>
         <Badge variant="outline" className="font-normal">
           커밋 {snap.git_commit}
         </Badge>
@@ -176,10 +243,10 @@ function ProvenanceBanner({
         )}
       </div>
       <p className="mt-2 max-w-[42rem] text-[12.5px] leading-relaxed text-muted-foreground">
-        아래 프롬프트는 <b>모델에 실제로 전송되는 문장</b>입니다. 빌드할 때마다 배포되는 edge
-        소스에서 자동으로 다시 떠오므로 화면이 코드보다 낡을 수 없고, 이 화면에는 편집 경로가
-        없습니다(고치려면 코드를 수정해야 합니다). <code>PROBE_*</code>는 호출마다 달라지는
-        입력값 자리입니다 — 그 값은 시나리오 행에 따로 저장됩니다.
+        아래에는 모델에 실제로 전송되는 지시문과 모델 설정, 출력 형식, 버전·지문을 함께 표시합니다.
+        빌드할 때마다 배포되는 edge 소스에서 다시 읽어 오며 이 화면에는 편집 경로가 없습니다.
+        <code>PROBE_*</code>는 호출마다 달라지는 입력값 자리이고, 실제 값은 시나리오 행에 따로
+        저장됩니다.
       </p>
 
       <div className="mt-3 grid gap-2 text-[12.5px] sm:grid-cols-2">
@@ -229,16 +296,34 @@ function ProvenanceBanner({
         </p>
       )}
 
-      {/* 정본과 다른 지문이 섞여 있으면 = 동결이 깨졌다는 신호 */}
-      {!loading && !error &&
-        used.filter((u) => u.hash && u.hash !== snap.core_surface_hash).map((u) => (
-          <p key={u.hash} className="mt-2 max-w-[46rem] rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-900">
-            ⚠️ 다른 프롬프트 지문으로 생성된 시나리오 <b>{u.count}건</b> (
-            <span className="font-mono">{u.hash?.slice(0, 12)}…</span>,{" "}
-            {u.first.slice(0, 10)} ~ {u.last.slice(0, 10)}). 저장소 정본과 다릅니다 — 프롬프트가
-            중간에 바뀌었는지 확인하세요.
-          </p>
-        ))}
+      {/* 과거 지문을 한 줄씩 늘어놓으면 현재 하네스가 화면 아래로 밀린다. 증거는 접어서 보존한다. */}
+      {!loading && !error && mismatched.length > 0 && (
+        <div className="mt-2 max-w-[46rem] rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-900">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p>
+              ⚠️ 현재 정본과 다른 과거 지문 <b>{mismatched.length}종 · 시나리오 {mismatchTotal}건</b>
+            </p>
+            <button
+              type="button"
+              onClick={() => setHistoryOpen((open) => !open)}
+              className="inline-flex items-center gap-1 font-semibold underline decoration-red-300 underline-offset-2"
+            >
+              {historyOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              {historyOpen ? "이력 닫기" : "이력 보기"}
+            </button>
+          </div>
+          {historyOpen && (
+            <ul className="mt-2 space-y-1 border-t border-red-200 pt-2">
+              {mismatched.map((row) => (
+                <li key={row.hash}>
+                  <span className="font-mono">{row.hash?.slice(0, 12)}…</span> · {row.count}건 ·{" "}
+                  {row.first.slice(0, 10)} ~ {row.last.slice(0, 10)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <p className="mt-2 text-[11.5px] text-muted-foreground">
         스냅샷 캡처: {new Date(snap.generated_at).toLocaleString()} · 출처 {snap.edge_source}
@@ -467,13 +552,17 @@ const AdminPromptHarness = () => {
 
   return (
     <AdminShell
-      title="생성 규칙·프롬프트"
-      description="AI가 학습 자료를 생성·검수·분석할 때 실제로 받는 지시문입니다. 정본은 코드이며 이 화면은 읽기 전용으로 보여줍니다."
+      title="AI 생성 콘텐츠 품질관리"
+      description="버전이 관리되는 프롬프트와 규칙 기반 검사가 무엇을 점검하고, 어떤 권한을 교수자에게 남기는지 보여줍니다."
     >
-      <ProvenanceBanner used={usedHashes} loading={usedLoading} error={usedError} />
+      <HarnessOverview />
+
+      <div className="mt-6">
+        <ProvenanceBanner used={usedHashes} loading={usedLoading} error={usedError} />
+      </div>
 
       <div className="mt-6 space-y-6">
-        {SNAPSHOT_GROUP_ORDER.map((g) => {
+        {HARNESS_SECTION_ORDER.map((g) => {
           const items = PROMPT_SNAPSHOT.prompts.filter((p) => p.group === g);
           if (items.length === 0) return null;
           return (
@@ -515,7 +604,7 @@ const AdminPromptHarness = () => {
         </div>
         <p className="mt-1 text-[12.5px] text-muted-foreground">
           별도 DB 테이블(<code>prompt_templates</code>)입니다. <b>생성·검수 파이프라인은 이 테이블을
-          조회하지 않습니다</b> — 위 「저장소 정본」이 실제로 쓰이는 지시문입니다. 아래 항목은
+          조회하지 않습니다</b> — 위 「프롬프트·지문 관리」가 실제로 쓰이는 지시문입니다. 아래 항목은
           2026-07-06에 만든 문서 틀이며 마감 후 정리 후보입니다. 코드 프롬프트의 DB 이관
           계획이나 v2 구현 상태를 뜻하지 않습니다.
         </p>
