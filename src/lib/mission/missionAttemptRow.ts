@@ -19,10 +19,40 @@ export interface SaveAttemptInput {
   /** 컴포넌트 마운트 시각(ISO) */
   startedAtIso: string;
   /**
+   * MPJ에서 학습자가 실제로 고른 응답. 점수로 환산하지 않고
+   * 수업 토론과 문항 검토를 위한 비채점 trace로 저장한다.
+   */
+  mpjResponses?: MpjResponseTrace[];
+  /** 번역 산출에서 내용 어휘 힌트를 열람했는지 남기는 비채점 수행 trace. */
+  productionSupport?: ProductionSupportTrace;
+  /**
    * 학습자 이견 기록(0-r·104). 판정을 바꾸지 않는다 — 결함 문항 발견과
    * 채점키 캘리브레이션 보조 자료로만 쓴다. 남기지 않으면 undefined.
    */
   contextJudgment?: LearnerDissent;
+}
+
+/** context_judgment의 mpj_response_v1.responses에 저장되는 문항별 비채점 응답. */
+export interface MpjResponseTrace extends Record<string, Json | undefined> {
+  item_id: number;
+  item_type: string;
+  completed_at: string;
+  scale_code?: string;
+  band_code?: string;
+  correction_indexes?: number[];
+  reason_ids?: string[];
+  confidence?: string;
+  /** multi_judge에서 가장 잘 맞는다고 고른 두 후보와 가장 부적절하다고 고른 후보의 0-based 위치. */
+  best_candidate_indexes?: number[];
+  most_inappropriate_candidate_index?: number;
+}
+
+/** 번역 DCT의 화용 판단을 돕지 않는 내용 어휘 지원 열람 기록. */
+export interface ProductionSupportTrace extends Record<string, Json | undefined> {
+  kind: "translation_vocabulary_hints";
+  available: boolean;
+  opened: boolean;
+  opened_at: string | null;
 }
 
 /** 이견 채널 저장 형태 — context_judgment jsonb에 그대로 들어간다. */
@@ -59,6 +89,17 @@ export function buildMissionAttemptRow(
         distorted: "fail",
       }[feedback.verdicts.semantic_fidelity]
     : null;
+  const hasMpjResponses = !!input.mpjResponses?.length;
+  const contextJudgment =
+    hasMpjResponses || input.productionSupport
+      ? ({
+          schema_version: "mpj_response_v1",
+          mission_schema_version: input.mission.schema_version,
+          responses: input.mpjResponses ?? [],
+          production_support: input.productionSupport ?? null,
+          learner_dissent: input.contextJudgment ?? null,
+        } as unknown as Json)
+      : input.contextJudgment ?? null;
 
   return {
     profile_id: profileId,
@@ -93,7 +134,7 @@ export function buildMissionAttemptRow(
     mission_completed: true,
     content_ver: input.mission.unit.target_feature_version ?? null,
     policy_ver: POLICY_VERSION,
-    context_judgment: input.contextJudgment ?? null,
+    context_judgment: contextJudgment,
     started_at: input.startedAtIso,
     completed_at: completedAtIso,
   };

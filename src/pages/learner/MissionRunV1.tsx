@@ -7,21 +7,21 @@ import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import { SPEECH_ACT_UI, LEVEL, DIRECTION_LANGS, type LanguageDirection } from "@/lib/pragma/enums";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import { SCALE4_CODES, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targetFeatures";
-import { normalizeMission, type MissionV2, type MpjItemV2 } from "@/lib/pragma/missionSchema";
+import {
+  normalizeMission,
+  type MissionV2,
+  type MpjItemV2,
+  type VocabularyHint,
+} from "@/lib/pragma/missionSchema";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
-import { saveMissionAttempt, type LearnerDissent } from "@/lib/mission/missionLog";
-import { ChatScene, ChatBubble, ChatCaption, ChatAvatar, highlightZh } from "@/components/mission/ChatScene";
 import {
-  slotsForAct,
-  hintForSlot,
-  supportTier,
-  toneLeaning,
-  SLOT_NUMERALS,
-  type DiscourseSlot,
-  type SupportTier,
-  type ToneLeaning,
-} from "@/lib/pragma/discourseSlots";
+  saveMissionAttempt,
+  type LearnerDissent,
+  type MpjResponseTrace,
+} from "@/lib/mission/missionLog";
+import { ChatScene, ChatBubble, ChatCaption, ChatAvatar, highlightZh } from "@/components/mission/ChatScene";
+import { toneLeaning } from "@/lib/pragma/discourseSlots";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { requestSttTranscript } from "@/lib/mission/missionStt";
 import { requestTtsAudio } from "@/lib/tts";
@@ -47,11 +47,6 @@ const tgtLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].t
 // 의미·문법·화용을 진단하며, 실패 시 참고 표현·핵심 원칙으로 안전하게 폴백한다.
 
 const CONFIDENCE = ["매우 확신", "꽤 확신", "확신 없음"] as const;
-
-// B1(계약 0-g·44·0-e·⑨): 판정 대역은 proposed(확정 정답 아님). 프로토타입 v2 기준 —
-// 매 문항 반복 대신 1부 시작에 1회만 지위를 정직하게 고지한다.
-const JUDGMENT_STATUS_CAPTION =
-  "판정은 현재 강의 기준 · AI 제안(검증 예정)입니다 — 유일한 정답이 아니며, 상황에 따라 다른 적절한 표현도 존재할 수 있습니다.";
 
 // PDR 학습자 라벨(근거 서랍용 — 내부 코드 노출 금지)
 const PDR_R_LABEL: Record<string, string> = { low: "가벼운 부탁", mid: "보통", high: "부담이 큼" };
@@ -208,79 +203,35 @@ const MissionRunV1 = () => {
 
 // ── 러너 본체 ───────────────────────────────────────────────────────────
 /**
- * 담화 슬롯 골격 — ko_zh(L2 산출) 전용 지원 (계약 0-q·97).
- * 빈 입력창 앞에서 학습자가 어휘·문법이 아니라 **담화 조직**에 주의를 쓰도록 돕는다.
- * 읽기 전용 안내이며 입력은 그대로 자유 텍스트 하나다 — 저장 형태·제출 조건 무변경.
- * ⚠️ 예문(완성 문장)을 넣지 않는다. 참고 표현은 제출 후 공개가 원칙.
+ * ko_zh 번역 산출용 어휘 힌트.
+ * 수업·MPJ에서 다룬 화용 전략을 다시 주지 않고, 문장 작성을 막는 내용 어휘 두 개만
+ * 한 줄로 보여 준다. 통역과 zh_ko에는 이 컴포넌트를 렌더하지 않는다.
  */
-function ProductionGuide({
-  slots,
-  resources,
-  tier,
-  leaning,
-}: {
-  slots: DiscourseSlot[];
-  resources: string[];
-  tier: SupportTier;
-  leaning: ToneLeaning;
-}) {
-  const [expanded, setExpanded] = useState(tier === "guided");
-  // 고급(open)은 접혀 있을 때 슬롯도 감춘다 — 기본은 지금까지와 같은 자유 산출.
-  const showSlotRow = tier !== "open" && !expanded;
-
+function ProductionGuide({ hints, onOpen }: { hints: VocabularyHint[]; onOpen: () => void }) {
+  const [expanded, setExpanded] = useState(false);
   return (
-    <div className="mb-3 rounded-lg border border-[#EAE4D2] bg-[#FBFAF6] px-3 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[11.5px] font-semibold text-[#5A6B7A]">
-          {tier === "open" ? "필요할 때 참고" : "표현 구성 순서"}
-        </span>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="rounded px-1.5 py-0.5 text-[11.5px] font-medium text-[#2B5B7A] hover:bg-[#EEF3F7]"
-          aria-expanded={expanded}
-        >
-          {expanded ? "도움말 닫기 ▴" : "도움말 열기 ▾"}
-        </button>
-      </div>
-
-      {/* 완화 편향 시정(0-r·106①) — 슬롯·힌트가 늘 완화 자원이라 "넣으면 된다"로
-          오학습될 수 있다. 직접형이 자연스러운 상황에서는 먼저 그 사실을 말한다. */}
-      {leaning === "direct" && (
-        <p className="mt-1.5 rounded bg-[#F3F6EE] px-2 py-1 text-[12px] leading-[1.45] text-[#4A5A3E]">
-          이 상황에서는 짧고 직접적인 표현이 더 자연스러울 수 있습니다 — <strong className="font-semibold">덜어내는 것도 조절입니다.</strong>
-        </p>
-      )}
-
-      {showSlotRow && (
-        <ol className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12.5px] text-[#3B4A57]">
-          {slots.map((s, i) => (
-            <li key={s.label}>
-              {SLOT_NUMERALS[i]} {s.label}
-            </li>
-          ))}
-        </ol>
-      )}
-
+    <div className="mb-2.5 flex flex-col items-end">
+      <button
+        type="button"
+        onClick={() => {
+          if (!expanded) onOpen();
+          setExpanded((value) => !value);
+        }}
+        className="rounded-full border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-1.5 text-[12px] font-bold text-[#4A5560] hover:bg-[#FFF9DD]"
+        aria-expanded={expanded}
+      >
+        막히면 어휘 힌트 {expanded ? "닫기 ▴" : "2개 보기 ▾"}
+      </button>
       {expanded && (
-        <>
-          <ul className="mt-1.5 space-y-1 text-[12.5px] text-[#3B4A57]">
-            {slots.map((s, i) => {
-              const hint = hintForSlot(s, resources);
-              return (
-                <li key={s.label}>
-                  <span className="font-medium">
-                    {SLOT_NUMERALS[i]} {s.label}
-                  </span>
-                  {hint && <span className="text-muted-foreground"> — {hint}</span>}
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-            ※ 범주만 참고합니다. 모두 사용할 필요는 없습니다 — 이 상대·이 부담에 맞는 만큼만 선택합니다.
-          </p>
-        </>
+        <div className="mt-1.5 flex w-full flex-wrap justify-end gap-x-4 gap-y-1 rounded-lg border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-2 text-[12.5px] sm:w-[78%]">
+          {hints.slice(0, 2).map((hint) => (
+            <span key={`${hint.source}:${hint.target}`}>
+              <span className="text-muted-foreground">{hint.source}</span>
+              <span className="mx-1 text-[#B4A36A]">→</span>
+              <strong className="font-semibold text-[#1F4F37]">{hint.target}</strong>
+            </span>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -429,12 +380,22 @@ function MissionRunner({
 }) {
   const [phase, setPhase] = useState<Phase>(startAtPart2 ? "ctx" : "mpj");
   const [mpjIdx, setMpjIdx] = useState(0);
+  const [mpjResponses, setMpjResponses] = useState<MpjResponseTrace[]>([]);
+  const [vocabularyHintOpenedAt, setVocabularyHintOpenedAt] = useState<string | null>(null);
   const [ctxPick, setCtxPick] = useState<number | null>(null);
   const [ctxDone, setCtxDone] = useState(false);
   const [draft, setDraft] = useState("");
   const [revised, setRevised] = useState("");
   const [savedLater, setSavedLater] = useState(false);
-  const [resume, setResume] = useState<{ phase: Phase; draft: string; revised: string; ctxPick: number | null; ctxDone: boolean } | null>(null);
+  const [resume, setResume] = useState<{
+    phase: Phase;
+    draft: string;
+    revised: string;
+    ctxPick: number | null;
+    ctxDone: boolean;
+    mpjResponses?: MpjResponseTrace[];
+    vocabularyHintOpenedAt?: string | null;
+  } | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "demo" | "error">("idle");
   // feedback-lite(계약 §4) — 제출 후 3층 진단. 실패하면 기존 정직 표기로 되돌아간다.
   const [fb, setFb] = useState<RuntimeFeedback | null>(null);
@@ -471,13 +432,8 @@ function MissionRunner({
     ? feedbackHeadline(fb)
     : { title: mission.unit.learner_label, body: mission.unit.closing_ko };
 
-  // 담화 슬롯 골격(0-q·97) — **ko_zh 번역 산출에만**. 중→한은 모국어 산출이라
-  // 어휘·문법 부하가 없어 지원 대상이 아니다(지원량 차등의 근거 = L2 산출 부하).
-  const guideSlots = slotsForAct(feat?.speech_act);
-  const guideResources = feat?.relevant_resources ?? [];
-  const guideTier = supportTier(level);
-  // 이 미션의 조절 방향 — 「상황 확인」과 같은 규칙(0-r·106).
-  const guideLeaning = toneLeaning(pt.pdr);
+  // 번역 산출 힌트는 화용 전략이 아니라 내용 어휘 두 개만 사용한다.
+  const vocabularyHints = pt.vocabulary_hints ?? [];
 
   // 피드백 단계 진입 시 1회 호출. 실패해도 미션을 막지 않는다(정직 표기로 폴백).
   // ⚠️ cleanup으로 취소하지 않는다 — 이 이펙트가 setFbState를 부르므로 의존성이 바뀌어
@@ -512,7 +468,15 @@ function MissionRunner({
       try {
         localStorage.setItem(
           storageKey,
-          JSON.stringify({ phase: "ctx", draft: "", revised: "", ctxPick: null, ctxDone: false }),
+          JSON.stringify({
+            phase: "ctx",
+            draft: "",
+            revised: "",
+            ctxPick: null,
+            ctxDone: false,
+            mpjResponses: [],
+            vocabularyHintOpenedAt: null,
+          }),
         );
       } catch {
         /* 무시 */
@@ -532,11 +496,22 @@ function MissionRunner({
   useEffect(() => {
     if (part !== 2) return;
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ phase, draft, revised, ctxPick, ctxDone }));
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          phase,
+          draft,
+          revised,
+          ctxPick,
+          ctxDone,
+          mpjResponses,
+          vocabularyHintOpenedAt,
+        }),
+      );
     } catch {
       /* 무시 */
     }
-  }, [part, phase, draft, revised, ctxPick, ctxDone, storageKey]);
+  }, [part, phase, draft, revised, ctxPick, ctxDone, mpjResponses, vocabularyHintOpenedAt, storageKey]);
   const clearSaved = () => {
     try {
       localStorage.removeItem(storageKey);
@@ -550,6 +525,8 @@ function MissionRunner({
     setRevised(resume.revised || "");
     setCtxPick(resume.ctxPick ?? null);
     setCtxDone(!!resume.ctxDone);
+    setMpjResponses(Array.isArray(resume.mpjResponses) ? resume.mpjResponses : []);
+    setVocabularyHintOpenedAt(resume.vocabularyHintOpenedAt ?? null);
     setPhase(resume.phase);
     setResume(null);
     window.scrollTo(0, 0);
@@ -569,6 +546,17 @@ function MissionRunner({
       revisedResponse: revised || draft,
       ...(fb ? { feedback: fb } : {}),
       startedAtIso: startedAtRef.current,
+      mpjResponses,
+      ...(!isInterp && dir === "ko_zh"
+        ? {
+            productionSupport: {
+              kind: "translation_vocabulary_hints" as const,
+              available: vocabularyHints.length === 2,
+              opened: vocabularyHintOpenedAt !== null,
+              opened_at: vocabularyHintOpenedAt,
+            },
+          }
+        : {}),
       ...(dissent ? { contextJudgment: dissent } : {}),
     });
     if (res.ok) {
@@ -580,7 +568,11 @@ function MissionRunner({
     }
   };
 
-  const nextMpj = () => {
+  const nextMpj = (response: MpjResponseTrace) => {
+    setMpjResponses((current) => [
+      ...current.filter((itemResponse) => itemResponse.item_id !== response.item_id),
+      response,
+    ]);
     if (mpjIdx < items.length - 1) {
       setMpjIdx((i) => i + 1);
       // 문항 전환도 단계 전환과 같게 최상단으로 — 없으면 이전 문항의 스크롤 위치가
@@ -601,6 +593,8 @@ function MissionRunner({
     clearSaved();
     setPhase("mpj");
     setMpjIdx(0);
+    setMpjResponses([]);
+    setVocabularyHintOpenedAt(null);
     setCtxPick(null);
     setCtxDone(false);
     setDraft("");
@@ -721,7 +715,18 @@ function MissionRunner({
             onContinue={() => goto("ctx")}
             onSaveLater={() => {
               try {
-                localStorage.setItem(storageKey, JSON.stringify({ phase: "ctx", draft: "", revised: "", ctxPick: null, ctxDone: false }));
+                localStorage.setItem(
+                  storageKey,
+                  JSON.stringify({
+                    phase: "ctx",
+                    draft: "",
+                    revised: "",
+                    ctxPick: null,
+                    ctxDone: false,
+                    mpjResponses,
+                    vocabularyHintOpenedAt: null,
+                  }),
+                );
               } catch {
                 /* 무시 */
               }
@@ -773,12 +778,12 @@ function MissionRunner({
                 <ChatScene situation={pt.situation_ko} relation={pt.relation_ko} eyebrow="직접 옮길 요청">
                   {pt.preceding_turn && <ChatBubble side="them">{pt.preceding_turn}</ChatBubble>}
                   <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
-                  {dir === "ko_zh" && (
+                  {dir === "ko_zh" && vocabularyHints.length === 2 && (
                     <ProductionGuide
-                      slots={guideSlots}
-                      resources={guideResources}
-                      tier={guideTier}
-                      leaning={guideLeaning}
+                      hints={vocabularyHints}
+                      onOpen={() =>
+                        setVocabularyHintOpenedAt((openedAt) => openedAt ?? new Date().toISOString())
+                      }
                     />
                   )}
                   <div className="mb-3 flex items-end justify-end gap-2">
@@ -1484,37 +1489,21 @@ function CtxStage({
   );
 }
 
-// ── 평가 계약(0-i·65) + 판정 지위 고지(B1 · 0-g·44) — 첫 문항 아래 접기 하나로 ──
-// 종전엔 이 둘이 첫 문항 **위**에서 약 200px을 차지해, 학생이 상황보다 완료 조건을
-// 먼저 읽는 화면이 됐다. 고지 자체는 계약 사항이라 삭제하지 않고 위치만 내린다.
-// ⚠️ 접힌 제목에 "다른 적절한 표현도 존재할 수 있습니다"를 남긴다 — 전부 감추면 B1
-//    (판정=AI 제안이지 유일한 정답이 아님)의 고지 효과가 사라진다.
+// ── 판정 지위 고지(B1 · 0-g·44) — 첫 문항 아래 짧은 접기 하나로 ──
+// 긴 완료 조건·평가 세칙은 학습자가 읽지 않고 계약서처럼 느낀다는 사용자 피드백에 따라
+// 제거했다. 학습자에게 필요한 것은 "정답은 하나가 아님"과 확인 범위 두 줄뿐이다.
 function MissionBriefDrawer({ mission }: { mission: MissionV2 }) {
-  const feat = getTargetFeature(mission.unit.target_feature);
-  const estMin = mission.production_task.mode === "interpreting" ? 15 : 12;
-  const tgtName = tgtLangName(mission.direction);
-  const isInterp = mission.production_task.mode === "interpreting";
   return (
-    <details className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-3 text-[12.5px]">
+    <details className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-2.5 text-[12.5px]">
       <summary className="cursor-pointer text-[#6B5518]">
-        판정 기준 보기 · <b>다른 적절한 표현도 존재할 수 있습니다</b>
+        판정 기준 보기 · <b>정답은 하나가 아니에요</b>
       </summary>
-      <div className="mt-2.5 space-y-1.5 text-muted-foreground">
-        {/* 1부 문항마다 상황이 따로 있으므로, 여기 상황은 "2부에서 직접 할 일"임을 밝힌다. */}
-        <p className="text-foreground">
-          <span className="text-muted-foreground">마지막에 직접 {isInterp ? "통역할" : "옮길"} 상황 · </span>
-          {mission.production_task.situation_ko}
-          <span className="text-muted-foreground"> · 약 {estMin}분</span>
-        </p>
-        <p>{JUDGMENT_STATUS_CAPTION}</p>
+      <div className="mt-2 space-y-1 text-muted-foreground">
+        <p>현재 강의안과 AI 제안을 바탕으로 한 참고 판정입니다. 상황에 따라 다른 표현도 적절할 수 있어요.</p>
         <p>
-          완료 조건 — 판단 {mission.mpj_items.length}문항 → {isInterp ? `${tgtName}로 통역` : `${tgtName}로 옮기기`} 1회 → 피드백 확인 → 다듬기 1회.
-          <b className="text-foreground"> 정답·참고 표현은 제출한 뒤에 공개됩니다.</b>
+          뜻 전달 · 이해를 막는 문법 · 이 상황에 맞는 「{mission.unit.learner_label}」을 봅니다.
+          <b className="text-foreground"> 참고 표현은 제출 뒤에 공개됩니다.</b>
         </p>
-        <p>확인하는 것 — ① 원문의 의미·의도가 유지됐는가 ② 의미를 방해하는 문법 오류가 있는가 ③ 이 관계·상황에서 「{mission.unit.learner_label}」이 적절한가</p>
-        {feat && feat.excluded_confounds.length > 0 && (
-          <p>확인하지 않는 것 — {feat.excluded_confounds.join(" · ")}</p>
-        )}
       </div>
     </details>
   );
@@ -1666,14 +1655,23 @@ function SituationCard({ situation, relation }: { situation: string; relation: s
 }
 
 // ── MPJ 한 문항 ─────────────────────────────────────────────────────────
-function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
+function MpjStage({
+  item,
+  onDone,
+}: {
+  item: MpjItemV2;
+  onDone: (response: MpjResponseTrace) => void;
+}) {
   const [answered, setAnswered] = useState(false);
   const [scalePick, setScalePick] = useState<string | null>(null);
   const [bandPick, setBandPick] = useState<string | null>(null);
   const [reasonPicks, setReasonPicks] = useState<Set<string>>(new Set());
   const [confidence, setConfidence] = useState<string | null>(null);
+  const [fixJudgeSubmitted, setFixJudgeSubmitted] = useState(false);
   const [fixPicks, setFixPicks] = useState<Set<number>>(new Set());
-  const [multiPicks, setMultiPicks] = useState<Record<number, string>>({});
+  const [multiStep, setMultiStep] = useState<"best" | "worst">("best");
+  const [multiBestPicks, setMultiBestPicks] = useState<Set<number>>(new Set());
+  const [multiWorstPick, setMultiWorstPick] = useState<number | null>(null);
 
   // 대화창 끝 지점이 헤더 위로 올라갔는지 — 올라갔을 때만 맥락 바를 띄운다.
   // IntersectionObserver 대신 스크롤 리스너를 쓴다: 같은 값이면 React가 리렌더를
@@ -1695,10 +1693,12 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
   }, []);
 
   const feature = item.axis_feature;
-  const bands =
-    item.type === "multi_judge"
-      ? bandOptions(feature, item.candidates.flatMap((c) => c.accepted_band_codes))
-      : bandOptions(feature, item.type === "judge3" || item.type === "fix_choice" || item.type === "reason_conf" ? item.accepted_band_codes : []);
+  const bands = bandOptions(
+    feature,
+    item.type === "judge3" || item.type === "fix_choice" || item.type === "reason_conf"
+      ? item.accepted_band_codes
+      : [],
+  );
 
   const canReveal = (() => {
     switch (item.type) {
@@ -1707,11 +1707,15 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
       case "judge3":
         return !!bandPick;
       case "fix_choice":
-        return !!bandPick && fixPicks.size > 0;
+        return fixJudgeSubmitted && !!bandPick && fixPicks.size > 0;
       case "reason_conf":
         return !!bandPick && reasonPicks.size > 0 && !!confidence;
       case "multi_judge":
-        return Object.keys(multiPicks).length === item.candidates.length;
+        return (
+          multiBestPicks.size === 2 &&
+          multiWorstPick !== null &&
+          !multiBestPicks.has(multiWorstPick)
+        );
       default:
         return false;
     }
@@ -1736,6 +1740,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
         break;
       case "fix_choice":
         setBandPick(item.accepted_band_codes[0]);
+        setFixJudgeSubmitted(true);
         setFixPicks(new Set(item.corrections.map((c, i) => (c.is_valid ? i : -1)).filter((i) => i >= 0)));
         break;
       case "reason_conf":
@@ -1744,10 +1749,70 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
         setConfidence("꽤 확신");
         break;
       case "multi_judge":
-        setMultiPicks(Object.fromEntries(item.candidates.map((c, i) => [i, c.accepted_band_codes[0]])));
+        {
+          const withinBand = getTargetFeature(feature)?.within_band_code;
+          const preferredIndexes = item.candidates
+            .map((candidate, index) =>
+              withinBand && candidate.accepted_band_codes.includes(withinBand) ? index : -1,
+            )
+            .filter((index) => index >= 0);
+          const bestIndexes = [...preferredIndexes];
+          for (let index = 0; bestIndexes.length < 2 && index < item.candidates.length; index += 1) {
+            if (!bestIndexes.includes(index)) bestIndexes.push(index);
+          }
+          const worstIndex = item.candidates.findIndex((candidate, index) =>
+            !bestIndexes.slice(0, 2).includes(index) &&
+            (withinBand ? !candidate.accepted_band_codes.includes(withinBand) : true),
+          );
+          const selectedBest = bestIndexes.slice(0, 2);
+          setMultiBestPicks(new Set(selectedBest));
+          setMultiWorstPick(
+            worstIndex >= 0
+              ? worstIndex
+              : item.candidates.findIndex((_, index) => !selectedBest.includes(index)),
+          );
+          setMultiStep("worst");
+        }
         break;
     }
     setAnswered(true);
+  };
+
+  const responseTrace = (): MpjResponseTrace => {
+    const base = {
+      item_id: item.id,
+      item_type: item.type,
+      completed_at: new Date().toISOString(),
+    };
+    switch (item.type) {
+      case "scale4":
+        return { ...base, ...(scalePick ? { scale_code: scalePick } : {}) };
+      case "judge3":
+        return { ...base, ...(bandPick ? { band_code: bandPick } : {}) };
+      case "fix_choice":
+        return {
+          ...base,
+          ...(bandPick ? { band_code: bandPick } : {}),
+          correction_indexes: [...fixPicks].sort((a, b) => a - b),
+        };
+      case "reason_conf":
+        return {
+          ...base,
+          ...(bandPick ? { band_code: bandPick } : {}),
+          reason_ids: [...reasonPicks],
+          ...(confidence ? { confidence } : {}),
+        };
+      case "multi_judge":
+        return {
+          ...base,
+          ...(multiBestPicks.size === 2
+            ? { best_candidate_indexes: [...multiBestPicks].sort((a, b) => a - b) }
+            : {}),
+          ...(multiWorstPick !== null
+            ? { most_inappropriate_candidate_index: multiWorstPick }
+            : {}),
+        };
+    }
   };
 
   return (
@@ -1795,7 +1860,7 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
           {/* scale4 */}
           {item.type === "scale4" && (
             <>
-              <div className="mt-3.5 text-[13px] font-semibold">이 상황에서의 번역안 적절성</div>
+              <div className="mt-3.5 text-[13px] font-semibold">이 번역안은 이 상황에 얼마나 적절한가요?</div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {SCALE4_CODES.map((code) => (
                   <Choice key={code} label={SCALE4_LABELS[code as Scale4Code]} selected={scalePick === code} disabled={answered} onClick={() => setScalePick(code)} />
@@ -1807,19 +1872,28 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
           {/* judge3 / fix_choice / reason_conf 공통: band 판정 */}
           {item.type !== "scale4" && (
             <>
-              <div className="mt-3.5 text-[13px] font-semibold">이 상황에서의 번역안 적절성</div>
+              <div className="mt-3.5 text-[13px] font-semibold">이 번역안은 이 상황에 얼마나 적절한가요?</div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {bands.map((b) => (
-                  <Choice key={b.code} label={b.label} selected={bandPick === b.code} disabled={answered} onClick={() => setBandPick(b.code)} />
+                  <Choice
+                    key={b.code}
+                    label={b.label}
+                    selected={bandPick === b.code}
+                    disabled={answered || (item.type === "fix_choice" && fixJudgeSubmitted)}
+                    onClick={() => setBandPick(b.code)}
+                  />
                 ))}
               </div>
             </>
           )}
 
           {/* fix_choice: 교정 복수 선택 */}
-          {item.type === "fix_choice" && (
+          {item.type === "fix_choice" && fixJudgeSubmitted && (
             <>
-              <div className="mt-4 text-[13px] font-semibold">알맞은 수정안 선택 <span className="font-normal">· 맞는 것을 모두 선택</span></div>
+              <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">
+                이제 더 나은 번역안을 골라 보세요{" "}
+                <span className="font-normal">· 알맞은 것을 모두 선택</span>
+              </div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {item.corrections.map((o, i) => (
                   <button
@@ -1903,29 +1977,68 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
       {/* multi_judge: 한 상황 다중 발화 */}
       {item.type === "multi_judge" && (
         <div className={card}>
-          <div className="text-[13px] font-semibold">AI가 만든 여러 번역 초안 · 각 초안의 적절성 판단</div>
+          <div className="text-[13px] font-semibold">AI가 만든 번역 초안 5개 비교하기</div>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
+            {multiStep === "best"
+              ? `먼저, 이 상황에 가장 잘 맞는 안 2개를 고르세요. (${multiBestPicks.size}/2)`
+              : "이번에는 가장 부적절한 안 1개를 고르세요."}
+          </p>
           <ul className="mt-3 space-y-2.5">
             {item.candidates.map((c, i) => (
-              <li key={c.text} className="rounded-lg border border-[#EAE4D2] px-3.5 py-3">
+              <li
+                key={c.text}
+                className={[
+                  "rounded-lg border px-3.5 py-3",
+                  multiBestPicks.has(i) ? "border-[#2E7D5B] bg-[#F2FAF6]" : "",
+                  multiWorstPick === i ? "border-[#B85C4B] bg-[#FFF6F2]" : "",
+                  !multiBestPicks.has(i) && multiWorstPick !== i ? "border-[#EAE4D2]" : "",
+                ].join(" ")}
+              >
                 <div className="text-[14.5px]">{c.text}</div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {bands.map((b) => (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  {!answered && (
                     <button
-                      key={b.code}
                       type="button"
-                      disabled={answered}
-                      onClick={() => setMultiPicks((p) => ({ ...p, [i]: b.code }))}
+                      disabled={multiStep === "worst" && multiBestPicks.has(i)}
+                      onClick={() => {
+                        if (multiStep === "best") {
+                          setMultiBestPicks((current) => {
+                            const next = new Set(current);
+                            if (next.has(i)) next.delete(i);
+                            else if (next.size < 2) next.add(i);
+                            return next;
+                          });
+                        }
+                        else setMultiWorstPick(i);
+                      }}
                       className={[
                         "rounded-md border px-2.5 py-1 text-[12px]",
-                        multiPicks[i] === b.code ? "border-[1.5px] border-[#15202B] bg-[#FAFAF7] font-semibold" : "border-[#EAE4D2] bg-white text-muted-foreground",
-                        answered && c.accepted_band_codes.includes(b.code) ? "border-[#2E7D5B] bg-[#F2FAF6]" : "",
+                        (multiStep === "best" && multiBestPicks.has(i)) ||
+                        (multiStep === "worst" && multiWorstPick === i)
+                          ? "border-[#15202B] bg-[#15202B] font-semibold text-white"
+                          : "border-[#D8D0BC] bg-white text-[#4A5560]",
+                        multiStep === "worst" && multiBestPicks.has(i) ? "cursor-not-allowed opacity-45" : "",
                       ].join(" ")}
                     >
-                      {b.label}
+                      {multiStep === "best" ? "가장 잘 맞는 안으로 선택" : "가장 부적절한 안으로 선택"}
                     </button>
-                  ))}
+                  )}
+                  {multiBestPicks.has(i) && (
+                    <span className="rounded-full bg-[#DDF2E7] px-2 py-0.5 text-[11.5px] font-semibold text-[#246044]">
+                      내가 고른 가장 잘 맞는 안
+                    </span>
+                  )}
+                  {multiWorstPick === i && (
+                    <span className="rounded-full bg-[#F8DDD5] px-2 py-0.5 text-[11.5px] font-semibold text-[#8A3E31]">
+                      내가 고른 가장 부적절한 안
+                    </span>
+                  )}
                 </div>
-                {answered && <div className="mt-2 text-[12.5px] text-muted-foreground">{c.note_ko}</div>}
+                {answered && (
+                  <div className="mt-2 text-[12.5px] text-muted-foreground">
+                    참고 판정 · {c.accepted_band_codes.map((code) => bandLabel(feature, code)).join(" / ")} · {c.note_ko}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -1939,13 +2052,31 @@ function MpjStage({ item, onDone }: { item: MpjItemV2; onDone: () => void }) {
 
       {!answered ? (
         <>
-          <Button className="w-full" disabled={!canReveal} onClick={() => setAnswered(true)}>확인하기</Button>
+          {item.type === "fix_choice" && !fixJudgeSubmitted ? (
+            <Button
+              className="w-full"
+              disabled={!bandPick}
+              onClick={() => setFixJudgeSubmitted(true)}
+            >
+              판단 제출 · 이어서 수정안 보기 →
+            </Button>
+          ) : item.type === "multi_judge" && multiStep === "best" ? (
+            <Button
+              className="w-full"
+              disabled={multiBestPicks.size !== 2}
+              onClick={() => setMultiStep("worst")}
+            >
+              다음 · 가장 부적절한 안 고르기 →
+            </Button>
+          ) : (
+            <Button className="w-full" disabled={!canReveal} onClick={() => setAnswered(true)}>확인하기</Button>
+          )}
           {IS_DEMO && (
             <button type="button" className={demoBtn} onClick={demoFill}>데모 채우기 — 이 문항 자동 응답</button>
           )}
         </>
       ) : (
-        <Button className="w-full" onClick={onDone}>다음 →</Button>
+        <Button className="w-full" onClick={() => onDone(responseTrace())}>다음 →</Button>
       )}
     </div>
   );

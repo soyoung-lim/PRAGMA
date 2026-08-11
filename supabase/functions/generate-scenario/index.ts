@@ -1072,7 +1072,7 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(sourc
   pdr.r: "low" | "mid" | "high"
   band: 위 판정 대역 코드 (예: 적정 = "${f.within_band_code}")
 
-언어 규칙(방향 ${LANG_DIR_KO[direction]}): source·source_ko 위치의 원문 = **${srcL}** / target·corrections.text·candidates.text·recommended_example·reference_alternatives.text = **${tgtL}**. situation_ko·relation_ko·explanation_ko·note_ko·reasons.text_ko = 방향과 무관하게 **항상 한국어**(학습자 UI 언어).
+언어 규칙(방향 ${LANG_DIR_KO[direction]}): source·source_ko·vocabulary_hints.source 위치의 원문 = **${srcL}** / target·corrections.text·candidates.text·recommended_example·reference_alternatives.text·vocabulary_hints.target = **${tgtL}**. situation_ko·relation_ko·explanation_ko·note_ko·reasons.text_ko = 방향과 무관하게 **항상 한국어**(학습자 UI 언어).
 
 아래 5문항을 모두, 축약 없이, 모든 필드를 채워 출력합니다:
 {
@@ -1133,7 +1133,10 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(sourc
       "explanation_ko": "…", "recommended_example": "…"
     }
   ],
-  "reference_alternatives": [ {"text":"…(${tgtL})","note_ko":"…"} ]
+  "reference_alternatives": [ {"text":"…(${tgtL})","note_ko":"…"} ],
+  "vocabulary_hints": ${isSpoken
+    ? "[]"
+    : `[{"source":"원문에서 실제로 쓰인 내용 어휘·구(${srcL})","target":"짧은 대응 표현(${tgtL})"},{"source":"서로 다른 내용 어휘·구(${srcL})","target":"짧은 대응 표현(${tgtL})"}]`}
 }
 (reference_alternatives는 1~2개, 서로 다른 전략. multi_judge만 target·highlights가 없고 나머지 공통 필드는 모두 있음.)
 
@@ -1158,6 +1161,13 @@ MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(sourc
 - 모든 후보는 원문과 핵심 명제·발화 의도·화행 목적이 동일. 새 사실·이유·약속 추가 금지(정형 표현 ${formulaic}는 예외).
 - 차이는 오직 이 화용 초점에서만. 문법·의미·길이가 정답 단서가 되면 안 됨.
 - **pdr 값은 반드시 위 '공통 코드값'만 사용**(한국어 라벨 "동등" 등 절대 금지).
+- vocabulary_hints는 ${isSpoken
+    ? "**빈 배열**. 통역은 어휘 힌트를 제공하지 않습니다."
+    : `**정확히 2개**. production source_text의 산출을 막을 수 있는 내용 어휘·짧은 구만 고릅니다.
+  · 완화·공손·선택권·호칭·종결형 등 target feature를 직접 실현하는 화용 표현은 금지합니다.
+  · 완성 문장과 문법 설명은 금지합니다.
+  · preceding_turn에 목표어가 이미 그대로 보이는 항목은 힌트로 다시 주지 않습니다.
+  · 두 source는 production source_text에 실제로 존재해야 하고, 서로 다른 어휘여야 합니다.`}
 - multi_judge 후보 5개 구성: **부적절 계열 2개 + 적정(${f.within_band_code}) 2개 + 과잉 1개**.
   · 🔴 **부적절·과잉은 '강도/방향'의 문제이지 '길이'의 문제가 아닙니다.** 짧아도 과할 수 있고(예: ${shortOverEx}),
     길어도 부족할 수 있습니다(예: 형식적 감사에 군말을 붙였지만 정작 성의가 약한 긴 문장).
@@ -1795,6 +1805,9 @@ Deno.serve(async (req) => {
           source_text: b.core.source_text_ko,          // 코어 계승(R23) — 입력 body는 v1 이름
           preceding_turn: b.core.preceding_turn_zh ?? null,
           ...(productionMode === 'interpreting' ? { replay_limit: 2 } : {}),
+          ...(productionMode === 'translation'
+            ? { vocabulary_hints: Array.isArray(gen.vocabulary_hints) ? gen.vocabulary_hints : [] }
+            : {}),
           reference_alternatives: Array.isArray(gen.reference_alternatives) ? gen.reference_alternatives : [],
         },
       }
@@ -1806,14 +1819,14 @@ Deno.serve(async (req) => {
         ...mission_content,
         provenance: {
           model,
-          prompt_version: 'mission_v2',
+          prompt_version: 'mission_v2_lexical_hints',
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: b.failure_notes ? 2 : 1,
         },
       }
       return new Response(
-        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v2', generated_at: genAt } }),
+        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v2_lexical_hints', generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }

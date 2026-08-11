@@ -17,6 +17,8 @@ import {
 
 export type {
   LearnerDissent,
+  MpjResponseTrace,
+  ProductionSupportTrace,
   SaveAttemptInput,
 } from "@/lib/mission/missionAttemptRow";
 
