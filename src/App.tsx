@@ -48,6 +48,7 @@ const LearnerRecords = lazy(() => import("./pages/learner/LearnerRecords.tsx"));
 const StrategyMap = lazy(() => import("./pages/learner/StrategyMap.tsx"));
 const PrototypeMissionV2 = lazy(() => import("./pages/learner/PrototypeMissionV2.tsx"));
 const MissionRunV1 = lazy(() => import("./pages/learner/MissionRunV1.tsx"));
+const PilotShellPreview = lazy(() => import("./pages/pilot/PilotShellPreview.tsx"));
 const LearnerCourseLive = lazy(() => import("./pages/learner/LearnerCourseLive.tsx"));
 const EntryTaskMode = lazy(() => import("./pages/EntryTaskMode.tsx"));
 const EntryLanguageDirection = lazy(() => import("./pages/EntryLanguageDirection.tsx"));
@@ -111,6 +112,15 @@ const App = () => (
             element={
               import.meta.env.DEV
                 ? <RequireApproved><PrototypeMissionV2 /></RequireApproved>
+                : <Navigate to="/learner/practice" replace />
+              }
+          />
+          {/* 단회 사용자 실증용 얇은 shell의 정적 검토본. 데이터 저장 전 UI 동선을 먼저 검증한다. */}
+          <Route
+            path="/prototype/pilot-shell"
+            element={
+              import.meta.env.DEV
+                ? <PilotShellPreview />
                 : <Navigate to="/learner/practice" replace />
             }
           />
