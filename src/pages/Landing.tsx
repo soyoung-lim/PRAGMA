@@ -91,24 +91,52 @@ const Landing = () => {
           </Link>
         </section>
 
-        {/* 전체 구조 보기 — 디펜스 시연 진입점. 두 갈래보다는 작지만 '눌러야 할 것'
-            으로 보이도록 테두리·아이콘을 준다. 실증 시작 전에는 VITE_ENABLE_DEMO로 감춘다. */}
-        {IS_DEMO && (
-          <Link
-            to="/architecture"
-            className="mt-6 inline-flex items-center gap-2.5 rounded-lg border-[1.5px] border-[#15202B] bg-white px-5 py-2.5 text-[14px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+        {/* 보조 진입점 — 디펜스용 전체 구조는 데모에서, 실증 shell은 개발 환경에서만
+            보인다. pilot 링크는 production 빌드에서 제거해 미완성 흐름의 공개를 막는다. */}
+        {(IS_DEMO || import.meta.env.DEV) && (
+          <section
+            aria-label="개발 및 시연 화면"
+            className="mt-6 flex w-full flex-col items-stretch justify-center gap-2.5 sm:flex-row sm:items-center"
           >
-            <span
-              aria-hidden
-              className="grid h-[24px] w-[24px] place-items-center rounded-[7px] bg-[#FAD338] text-[13px]"
-            >
-              ◎
-            </span>
-            PRAGMA 전체 구조 보기
-            <span aria-hidden className="text-[#5C6A7A]">
-              →
-            </span>
-          </Link>
+            {IS_DEMO && (
+              <Link
+                to="/architecture"
+                className="inline-flex items-center justify-center gap-2.5 rounded-lg border-[1.5px] border-[#15202B] bg-white px-5 py-2.5 text-[14px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+              >
+                <span
+                  aria-hidden
+                  className="grid h-[24px] w-[24px] place-items-center rounded-[7px] bg-[#FAD338] text-[13px]"
+                >
+                  ◎
+                </span>
+                PRAGMA 전체 구조 보기
+                <span aria-hidden className="text-[#5C6A7A]">
+                  →
+                </span>
+              </Link>
+            )}
+
+            {import.meta.env.DEV && (
+              <Link
+                to="/prototype/pilot-shell"
+                className="inline-flex items-center justify-center gap-2.5 rounded-lg border-[1.5px] border-[#15202B] bg-white px-5 py-2.5 text-[14px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+              >
+                <span
+                  aria-hidden
+                  className="grid h-[24px] w-[24px] place-items-center rounded-[7px] bg-[#FAD338] text-[13px]"
+                >
+                  ◇
+                </span>
+                학습 미션 사용성 평가 화면
+                <span className="rounded-full bg-[#15202B] px-2 py-0.5 text-[10px] font-bold tracking-wide text-white">
+                  DEV
+                </span>
+                <span aria-hidden className="text-[#5C6A7A]">
+                  →
+                </span>
+              </Link>
+            )}
+          </section>
         )}
       </main>
 

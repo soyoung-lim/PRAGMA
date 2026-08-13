@@ -55,3 +55,16 @@
 - 파일럿 참여자는 학습자이지만 이 화면은 정규 15주 학습 여정이 아니라 연구 운영 흐름이므로 `src/pages/learner`에 두지 않기로 했다.
 - 파일을 `src/pages/pilot/PilotShellPreview.tsx`로 옮기고, 일반 학습자 메뉴에는 링크를 추가하지 않았다.
 - 개발 전용 `/prototype/pilot-shell` 경로는 그대로 유지했다.
+
+## 2026-08-13 localhost 랜딩 진입점 추가
+
+- 정적 pilot shell이 개발 경로에만 있어 후속 검토에서 잊히기 쉬운 문제를 줄이기 위해 localhost 랜딩에 `학습 미션 사용성 평가 화면` 링크를 추가했다.
+- 링크는 기존 `PRAGMA 전체 구조 보기`와 같은 보조 배너 스타일을 사용하고 `DEV` 표지를 붙였다.
+- `import.meta.env.DEV` 조건 안에서만 렌더링하므로 production 랜딩에는 노출되지 않는다. 실제 미션, 저장, 인증과 버전 고정이 연결되기 전에는 Railway에 파일럿 진입점을 공개하지 않기로 했다.
+- 검증:
+  - `npm.cmd run typecheck`: PASS
+  - Vitest: PASS, 22개 파일 93개 테스트 통과. `.env` 파일을 직접 읽는 생성형 golden suite는 기존 운영 방식대로 제외
+  - `npm.cmd run build`: PASS. production 번들에 랜딩의 `학습 미션 사용성 평가 화면` 문구가 없음을 확인
+  - localhost 실제 클릭: 랜딩 배너에서 `/prototype/pilot-shell`로 이동하고 안내 화면이 열림
+  - 390×844 viewport: 배너 좌우 24px 여백, 가로 넘침 없음
+  - 새 화면 관련 browser console error 0건. React Router 기존 future flag warning만 존재
