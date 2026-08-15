@@ -17,7 +17,7 @@ import { SPEECH_ACT_UI } from "@/lib/pragma/enums";
 import { RESEARCH_QA_SUMMARY } from "@/lib/pragma/researchQaSummary";
 import type { FinalCorpusReadiness } from "@/lib/pragma/finalCorpusGeneration";
 
-type LiveMetricKey = "lineage" | "expertReviews" | "events" | "improvements" | "calibrationReviews" | "calibrationResolutions" | "goldExpertReviews" | "goldExpertResolutions" | "goldRegressionRuns" | "finalLocks" | "finalRuns" | "finalReleases";
+type LiveMetricKey = "lineage" | "expertReviews" | "events" | "improvements" | "calibrationReviews" | "calibrationResolutions" | "goldExpertReviews" | "goldExpertResolutions" | "goldRegressionRuns" | "finalLocks" | "finalRuns" | "finalMissionBatches" | "finalReleases";
 type LiveMetric = { value: number | null; error: string | null };
 type ExpansionRequirement = { passed: boolean; [key: string]: unknown };
 type ExpansionReadiness = {
@@ -40,6 +40,7 @@ const LIVE_TABLES: Array<{ key: LiveMetricKey; label: string; table: string }> =
   { key: "goldRegressionRuns", label: "Gold release 회귀", table: "pragma_gold_regression_runs" },
   { key: "finalLocks", label: "최종 코퍼스 lock", table: "pragma_final_corpus_generation_locks" },
   { key: "finalRuns", label: "최종 504 생성 run", table: "pragma_final_corpus_generation_runs" },
+  { key: "finalMissionBatches", label: "최종 504 mission batch", table: "pragma_final_corpus_mission_batches" },
   { key: "finalReleases", label: "최종 504 corpus release", table: "pragma_final_corpus_releases" },
 ];
 
