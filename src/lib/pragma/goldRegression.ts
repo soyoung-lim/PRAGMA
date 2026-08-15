@@ -10,7 +10,7 @@ export interface CandidateEvaluationObservation {
 }
 
 export interface GoldRegressionOptions {
-  /** Seed is allowed for engineering calibration only; release gates should use expert_approved. */
+  /** Seed is allowed for engineering calibration only. Authoritative release uses the server-side researcher Gold gate. */
   eligible_statuses: GoldReviewStatus[];
   minimum_band_accuracy: number;
   minimum_semantic_accuracy: number;
@@ -52,7 +52,7 @@ export interface GoldRegressionReport {
 }
 
 export const GOLD_GATE_INTERPRETATION_KO =
-  "외부 전문가가 확인한 9화행 층화표본으로 품질 점검 자동화 장치의 작동 여부를 확인하는 운영 게이트입니다. 전체 시스템의 정확도나 일반화된 품질 측정치로 해석하거나 보고하지 않습니다.";
+  "제한된 기준답안 집합으로 품질 점검 자동화 장치의 작동 여부를 확인하는 내부 운영 게이트입니다. 전체 시스템의 정확도나 일반화된 품질 측정치로 해석하거나 보고하지 않습니다.";
 
 const keyOf = (caseId: string, candidateId: string) => `${caseId}::${candidateId}`;
 
