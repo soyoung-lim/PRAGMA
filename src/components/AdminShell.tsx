@@ -76,12 +76,6 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/export", label: "5. 학습 수행기록 내려받기" },
     ],
   },
-  {
-    header: "설정",
-    items: [
-      { to: "/admin/users", label: "사용자·권한", pending: true },
-    ],
-  },
 ];
 
 interface AdminShellProps {

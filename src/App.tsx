@@ -306,7 +306,6 @@ const App = () => (
           <Route path="/admin/package" element={<RequireAdmin><AdminPlaceholder title="수업 자료 생성" description="주차별 수업 패키지 = 교수자용 교안(이론·예상 Q&A) + 학습자용 도입 화면(도입 장면·화용 설명·원리)" /></RequireAdmin>} />
           {/* /admin/course-ops 제거(2026-08-05) — 메뉴에 없고 어디서도 링크되지 않는 고아
               라우트였다. 교과목 운영은 9월 실증 사안으로 백로그에 있다(AdminShell 주석 참조). */}
-          <Route path="/admin/users" element={<RequireAdmin><AdminPlaceholder title="사용자·권한" description="관리자·교수자·학습자 계정 및 권한" /></RequireAdmin>} />
           <Route path="/admin-login" element={<AdminLogin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

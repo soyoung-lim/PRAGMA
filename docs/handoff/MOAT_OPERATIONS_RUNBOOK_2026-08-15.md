@@ -38,6 +38,8 @@ Baseline이나 후속 release를 raw table INSERT로 만들지 않는다. `recor
 
 실제 제출·resolution·release INSERT까지 검증하는 vertical smoke는 테스트 계정과 전용 실제 fixture 범위가 합의된 뒤 별도로 수행한다. append-only table에 임시 행을 넣었다가 삭제하는 방식은 사용하지 않는다.
 
+별도의 사용자·권한 관리 화면은 두지 않는다. 학습자 약 40명의 운영은 `학습자 관리`에서 담당하고, 소수의 교수자·외부 전문가 계정과 자격 등록은 기존 인증·전문가 등록 절차를 사용한다. 대신 `/admin/research-qa`의 `세 사용자 역할의 실제 권한 검사`에서 최신 검사 시각·규약·코드 버전·세 계정 분리·접근 차단·데이터 무변경 결과를 펼쳐 확인한다.
+
 ## 4. 실제 calibration과 첫 closed loop
 
 1. 연구 책임자가 Seed Gold 30건을 blind calibration하고 resolution을 남긴다.
