@@ -366,3 +366,27 @@
   - corpus release 무결성과 504개 미션 생성 운영은 분리해야 한다. 다음 구현은 closed run의 미생성 item만 안전하게 가져와 비용·재시도·중단을 추적하는 mission batch다.
   - 실제 release 전에는 504개의 인간 검토 workload와 sampling/검토 전략을 운영 계획으로 확정해야 한다.
 - 관련 Decision / Evidence: `DEC-20260815-05`, `EVD-20260815-05`
+
+## ITER-20260815-06 · 중단·재시도 가능한 504 mission lease batch
+
+- 날짜: 2026-08-15
+- 시작 문제:
+  - 기존 `promoteCore`는 한 행 수동 처리에는 적합하지만 504건의 비용·중복·중단·재개 상태를 서버에서 소유하지 않았다.
+  - mission 저장 성공 뒤 result 기록 응답만 유실되면 이미 저장된 행을 재claim할 수 없어 batch 완료가 고립될 수 있었다.
+- 변경:
+  - batch/event/claim/result append-only 스키마와 prepare·pause·claim·record·state·complete RPC를 추가했다.
+  - final candidate 저장 trigger를 live lease와 current pack에 연결하고 generated lineage의 pack/hash/item-lineage를 검증했다.
+  - strict AI QA 옵션을 `promoteCore`에 추가하고 final worker만 required non-fail로 실행했다.
+  - 저장-응답 단절을 generated lineage에서 복구하는 reconciliation RPC를 별도 follow-up migration으로 추가했다.
+  - 관리자 화면에 동시 2 worker, 정리 후 pause, 상태·실패·소진 count와 완료 action을 연결했다.
+- 검증 결과:
+  - 두 migration을 원격 DB에 적용하고 타입을 재생성했으며 migration dry-run은 up-to-date였다.
+  - 원격 DB lint에서 신규 경고 0건, typecheck, targeted 17개·전체 168개 테스트와 1,915-module build가 통과했다.
+  - 실제 batch/claim/result/LLM 호출은 0건이다.
+- 예상과 달랐던 점:
+  - 최초 설계는 mission 저장 성공 후 result RPC가 실패하는 반쪽 성공을 고려하지 못했다. 이미 mission이 채워진 행은 다시 claim되지 않으므로 lineage 기반 reconciliation을 추가했다.
+  - reconciliation을 이미 원격 적용한 migration 파일에 뒤늦게 넣으면 local/remote migration 이력이 달라진다. 적용된 파일은 원상 유지하고 follow-up migration으로 분리했다.
+- 다음 설계에 반영할 교훈:
+  - 유료 외부 호출과 DB 기록 사이에는 언제나 단절이 생길 수 있으므로 idempotency뿐 아니라 authoritative reconciliation 경로가 필요하다.
+  - 다음 운영 단계는 구현 추가가 아니라 실제 기준 충족 순서에 따른 clean CI attestation·Gold·전문가·RLS 증거 수집이다.
+- 관련 Decision / Evidence: `DEC-20260815-06`, `EVD-20260815-06`

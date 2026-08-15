@@ -397,3 +397,25 @@
 - 관련 Trace / Iteration / Evidence: `TRC-20260815-05`, `ITER-20260815-05`, `EVD-20260815-05`
 - 관련 기록: `docs/dev-log/2026-08-15-authoritative-final-corpus-release.md`
 - 관련 커밋: `d1a43d9`
+
+## DEC-20260815-06 · 최종 mission 생성은 locked plan의 서버 lease와 append-only 시도 이력으로 운영
+
+- 날짜: 2026-08-15
+- 상태: 채택, 원격 DB·관리자 화면·자동 검증 완료; 실제 mission batch 전
+- 문제: 504 core를 기존 브라우저에서 수동 반복 승격하면 중복 유료 호출, 창 종료 후 재개 위치, 실패 재시도, 같은 pack 사용 여부를 권위 있게 복원할 수 없었다.
+- 검토한 대안:
+  - 브라우저가 `mission_content IS NULL` 목록을 받아 단순 반복: 동시 관리자·재접속·응답 유실에서 중복 비용과 이력 공백이 생겨 기각.
+  - service worker가 504건을 무중단 일괄 생성: 운영 복잡성과 비용 폭주 위험이 커 현재 범위에서 기각.
+  - 서버 시한부 lease + client 소수 worker + append-only result + lineage reconciliation: 채택.
+- 결정:
+  - closed/current/unreleased final run에 batch 하나를 만들고 locked plan 순서의 미생성 item만 20분 lease한다. 동시 worker는 2, 최대 3으로 제한한다.
+  - final candidate의 mission 저장은 claim actor가 가진 active lease가 없으면 DB가 거부한다. 성공 result는 exact covered lineage와 locked pack/hash/item-lineage를 요구한다.
+  - 최종 batch에서는 별도 AI QA가 없거나 fail이면 저장하지 않는다. 인간 검토를 대체하지 않으며 pass·warning도 후속 내부/전문가 검토 대상이다.
+  - 모든 claim/result/event는 append-only다. 저장은 성공했지만 result 응답이 유실되면 같은 관리자와 immutable generated lineage를 근거로 reconciliation한다.
+  - batch 완료는 504개의 distinct succeeded claim과 mission 저장을 모두 요구하며 corpus release를 자동 실행하지 않는다.
+- 주장 경계:
+  - 운영 계약·UI·원격 함수가 검증된 것이며 실제 504개 생성 성공률·비용·품질 자료는 아직 없다.
+  - 실제 LLM 호출이나 batch row는 만들지 않았다.
+- 관련 Trace / Iteration / Evidence: `TRC-20260815-06`, `ITER-20260815-06`, `EVD-20260815-06`
+- 관련 기록: `docs/dev-log/2026-08-15-final-corpus-mission-batch.md`
+- 관련 커밋: `316e70f`

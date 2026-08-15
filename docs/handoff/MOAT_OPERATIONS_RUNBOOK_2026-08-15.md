@@ -73,9 +73,11 @@ Baseline이나 후속 release를 raw table INSERT로 만들지 않는다. `recor
 3. 판단 근거를 기록하고 `현재 정본 lock + 504 run 시작`을 실행한다.
 4. 같은 server run ID로만 생성·미저장 실패 셀 재시도를 수행한다. 기존 test row나 저장된 final candidate를 재사용·덮어쓰기하지 않는다.
 5. 504개의 fresh unique passing core가 모두 저장된 뒤 core run을 닫는다.
-6. 이 시점의 자료는 `final_candidate`이다. 각 core를 미션으로 생성하고 내부 검수한 뒤, 서로 다른 외부 전문가 2인의 latest approve resolution과 같은 pack의 passing Gold regression으로 개별 `release_mission`을 수행한다.
-7. Batch 화면의 release readiness에서 미션 생성, 개별 전문가 release, authoritative lineage bundle이 각각 504/504인지 확인한다.
-8. 판단 근거를 기록하고 `504 전체 최종 release`를 실행한다. 서버가 plan 순서·pack·commit·core/mission/prompt hash·resolution·regression을 하나의 append-only manifest로 만들고 504행을 한 트랜잭션에서만 `final_release`로 승격한다.
+6. 이 시점의 자료는 `final_candidate`이다. `mission batch 준비`로 server batch를 만들고 `미생성 mission 실행`을 수행한다. 서버가 plan 순서대로 20분 lease를 발급하며 동시 2건, item당 최대 3회만 실행한다. 창을 닫기 전에는 `현재 호출 후 일시정지`를 사용하고, 재접속 후 같은 batch를 재개한다.
+7. 504/504 생성과 succeeded claim을 확인해 `504 mission batch 완료`를 실행한다. AI QA fail·누락은 저장되지 않으며 실패 3회 소진 item은 원인을 검토하기 전 완료할 수 없다.
+8. 각 mission을 내부 검수한 뒤, 서로 다른 외부 전문가 2인의 latest approve resolution과 같은 pack의 passing Gold regression으로 개별 `release_mission`을 수행한다.
+9. Batch 화면의 release readiness에서 미션 생성, 개별 전문가 release, authoritative lineage bundle이 각각 504/504인지 확인한다.
+10. 판단 근거를 기록하고 `504 전체 최종 release`를 실행한다. 서버가 plan 순서·pack·commit·core/mission/prompt hash·resolution·regression을 하나의 append-only manifest로 만들고 504행을 한 트랜잭션에서만 `final_release`로 승격한다.
 
 일부 행만 승인됐거나 하나라도 pack/hash/lineage가 다르면 corpus release는 실패해야 정상이다. release table이나 scenario dataset class를 raw INSERT/UPDATE로 조작하지 않는다.
 
