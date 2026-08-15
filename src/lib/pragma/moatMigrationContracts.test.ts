@@ -23,6 +23,7 @@ const FINAL_CORPUS_SQL = read("supabase/migrations/20260815040000_authoritative_
 const FINAL_CORPUS_RELEASE_SQL = read("supabase/migrations/20260815043000_authoritative_final_corpus_release.sql");
 const FINAL_MISSION_BATCH_SQL = read("supabase/migrations/20260815050000_final_corpus_mission_batch.sql");
 const FINAL_MISSION_RECONCILIATION_SQL = read("supabase/migrations/20260815051000_final_corpus_mission_batch_reconciliation.sql");
+const GATE_LINT_HYGIENE_SQL = read("supabase/migrations/20260815052000_authoritative_gate_lint_hygiene.sql");
 const PROMOTE_TS = read("src/lib/pragma/promoteMission.ts");
 const EVENTS_TS = read("src/lib/mission/missionEvents.ts");
 const EXPORT_TS = read("src/lib/mission/missionEventExport.ts");
@@ -33,7 +34,7 @@ describe("moat migration/runtime contracts", () => {
     expect(PROMOTE_TS).toContain('rpc("review_mission"');
     expect(EVENTS_TS).toContain('rpc("append_learner_mission_event"');
     expect(EXPORT_TS).toContain('rpc("export_learner_mission_events"');
-    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL]) {
+    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL]) {
       expect((sql.match(/\$\$/g) ?? []).length % 2).toBe(0);
     }
   });
@@ -201,5 +202,14 @@ describe("moat migration/runtime contracts", () => {
     expect(FINAL_MISSION_RECONCILIATION_SQL).toContain("The immutable generated lineage is the authority");
     expect(FINAL_MISSION_RECONCILIATION_SQL).toContain("PERFORM public.reconcile_pragma_final_corpus_mission_batch");
     expect(PROMOTE_TS).toContain('qualityGate === "required_non_fail"');
+  });
+
+  it("keeps authoritative gate functions lint-clean without changing historical migrations", () => {
+    expect(GATE_LINT_HYGIENE_SQL).toContain("ARRAY[]::uuid[]");
+    expect(GATE_LINT_HYGIENE_SQL).toContain("ARRAY[]::text[]");
+    expect(GATE_LINT_HYGIENE_SQL).toContain("ALTER FUNCTION public.validate_pragma_final_corpus_plan(jsonb) STABLE");
+    expect(GATE_LINT_HYGIENE_SQL).toContain("Unexpected materialize_pragma_improvement_candidates definition");
+    expect(GATE_LINT_HYGIENE_SQL).toContain("Unexpected get_pragma_moat_expansion_readiness definition");
+    expect(GATE_LINT_HYGIENE_SQL).toContain("Unexpected get_pragma_final_corpus_generation_readiness definition");
   });
 });
