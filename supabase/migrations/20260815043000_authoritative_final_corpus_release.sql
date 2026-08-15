@@ -428,4 +428,3 @@ $$;
 REVOKE ALL ON FUNCTION public.release_pragma_final_corpus(uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.release_pragma_final_corpus(uuid, text)
   TO authenticated, service_role;
-

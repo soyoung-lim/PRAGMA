@@ -375,4 +375,25 @@
   - 실제 lock/run/final candidate는 만들지 않았다. 현재 3화행 pack으로는 9화행 readiness가 통과하지 않는 것이 정상이다.
 - 관련 Trace / Iteration / Evidence: `TRC-20260815-04`, `ITER-20260815-04`, `EVD-20260815-04`
 - 관련 기록: `docs/dev-log/2026-08-15-authoritative-final-corpus-generation.md`
-- 관련 커밋: 확인 필요
+- 관련 커밋: `06605a3`
+
+## DEC-20260815-05 · 최종 corpus release는 504개 개별 release를 하나의 불변 manifest로 묶는 원자적 결정
+
+- 날짜: 2026-08-15
+- 상태: 채택, 원격 DB·관리자 화면·자동 검증 완료; 실제 corpus release 전
+- 문제: 504 core run을 닫아도 각 row는 `final_candidate`이고, 일부 미션만 전문가 승인을 받은 상태를 전체 최종 bank로 오인하거나 행별로 `final_release`를 붙일 위험이 남아 있었다.
+- 검토한 대안:
+  - core run 종료 시 즉시 final release: 학습 미션·item lineage·전문가 타당화가 없어 기각.
+  - 개별 mission release와 동시에 각 row를 final release: 504 전체의 완전성·동일 pack·누락 여부를 보장하지 못해 기각.
+  - 504개 개별 authoritative release를 모두 확인한 뒤 corpus manifest와 membership을 한 트랜잭션에서 생성하고 전량 승격: 채택.
+- 결정:
+  - release readiness는 closed core run, current pack lock, 504 unique core, 504 mission, 504 released pointer와 exact lineage/resolution/passing regression bundle을 모두 다시 계산한다.
+  - manifest는 plan·pack·commit과 item 순서를 고정하고 각 item의 core/mission/prompt hash, released lineage, expert resolution, Gold regression ID를 보존한다.
+  - release·membership은 append-only이고 일반 인증 사용자의 direct write를 금지한다. 단일 관리자 RPC만 504 membership 생성과 `final_candidate`→`final_release` 전량 승격을 수행한다.
+  - pack이 supersede되면 기존 lock으로 corpus를 release하지 않는다. 이전 candidate는 연구 이력으로 보존한다.
+- 주장 경계:
+  - 구현은 release 절차의 무결성 증거이며 504개 콘텐츠의 실제 생성·전문가 타당화 결과가 아니다.
+  - 실제 final release 행은 만들지 않았다. 504개 미션 운영 batch와 실제 인간 검토가 후속 단계다.
+- 관련 Trace / Iteration / Evidence: `TRC-20260815-05`, `ITER-20260815-05`, `EVD-20260815-05`
+- 관련 기록: `docs/dev-log/2026-08-15-authoritative-final-corpus-release.md`
+- 관련 커밋: `d1a43d9`

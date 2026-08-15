@@ -343,3 +343,26 @@
   - 최종 504 core 완료와 최종 504 learning mission release는 같은 상태가 아니다. 다음 구현은 closed core run을 입력으로 미션 생성·lineage·전문가 검토를 거쳐 corpus-level release를 원자적으로 만드는 gate다.
   - 참고문헌이나 규칙이 바뀌면 새 pack release가 기존 lock을 stale로 만들어야 하며, 이전 candidate는 삭제하지 않고 이력으로 보존한다.
 - 관련 Decision / Evidence: `DEC-20260815-04`, `EVD-20260815-04`
+
+## ITER-20260815-05 · 개별 미션 승인에서 504 전체 corpus release로
+
+- 날짜: 2026-08-15
+- 시작 문제:
+  - core run 종료 뒤에도 final candidate와 최종 학습 bank 사이를 권위 있게 연결하는 전체 단위가 없었다.
+  - 행별 상태 변경은 누락된 미션·혼합된 pack·일부 전문가 승인만으로도 최종 corpus처럼 보일 수 있었다.
+- 변경:
+  - locked run 기준으로 core·mission·released lineage·expert resolution·Gold regression 504건을 재검증하는 readiness를 추가했다.
+  - plan 순서와 모든 근거 ID/hash를 보존하는 append-only corpus manifest·membership을 추가했다.
+  - 일반 direct write를 차단하고, 서버 RPC가 manifest/membership 생성과 504행 승격을 한 트랜잭션에서 수행하도록 했다.
+  - 관리자 Batch에 3개 진행률과 최종 release action을, QA Console에 corpus release 원격 계수를 연결했다.
+- 검증 결과:
+  - migration을 원격 Supabase에 적용하고 생성 타입을 갱신했으며 최종 dry-run은 최신 상태를 반환했다.
+  - 원격 DB lint에서 이번 migration 함수 경고는 없었다. typecheck, 전체 167개 테스트와 1,914-module production build가 통과했다.
+  - 실제 corpus release나 콘텐츠 row는 생성하지 않았다.
+- 예상과 달랐던 점:
+  - sandbox 안의 `npx` type generation과 Vitest가 npm registry/상위 디렉터리 접근 오류를 냈다. 동일 명령을 승인된 정상 권한에서 재실행해 통과했고 기존 타입 파일은 실패 중 덮어쓰지 않았다.
+  - 원격 type generation을 public schema만 대상으로 하면 기존 `graphql_public` 타입이 사라졌다. 두 schema를 함께 지정해 기존 표면을 보존했다.
+- 다음 설계에 반영할 교훈:
+  - corpus release 무결성과 504개 미션 생성 운영은 분리해야 한다. 다음 구현은 closed run의 미생성 item만 안전하게 가져와 비용·재시도·중단을 추적하는 mission batch다.
+  - 실제 release 전에는 504개의 인간 검토 workload와 sampling/검토 전략을 운영 계획으로 확정해야 한다.
+- 관련 Decision / Evidence: `DEC-20260815-05`, `EVD-20260815-05`

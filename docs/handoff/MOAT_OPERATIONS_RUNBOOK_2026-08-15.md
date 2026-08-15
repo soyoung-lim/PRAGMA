@@ -73,6 +73,10 @@ Baseline이나 후속 release를 raw table INSERT로 만들지 않는다. `recor
 3. 판단 근거를 기록하고 `현재 정본 lock + 504 run 시작`을 실행한다.
 4. 같은 server run ID로만 생성·미저장 실패 셀 재시도를 수행한다. 기존 test row나 저장된 final candidate를 재사용·덮어쓰기하지 않는다.
 5. 504개의 fresh unique passing core가 모두 저장된 뒤 core run을 닫는다.
-6. 이 시점의 자료는 `final_candidate`이다. 미션 생성·item lineage·전문가 검토·corpus-level release 전에는 `final_release`로 보고하지 않는다.
+6. 이 시점의 자료는 `final_candidate`이다. 각 core를 미션으로 생성하고 내부 검수한 뒤, 서로 다른 외부 전문가 2인의 latest approve resolution과 같은 pack의 passing Gold regression으로 개별 `release_mission`을 수행한다.
+7. Batch 화면의 release readiness에서 미션 생성, 개별 전문가 release, authoritative lineage bundle이 각각 504/504인지 확인한다.
+8. 판단 근거를 기록하고 `504 전체 최종 release`를 실행한다. 서버가 plan 순서·pack·commit·core/mission/prompt hash·resolution·regression을 하나의 append-only manifest로 만들고 504행을 한 트랜잭션에서만 `final_release`로 승격한다.
+
+일부 행만 승인됐거나 하나라도 pack/hash/lineage가 다르면 corpus release는 실패해야 정상이다. release table이나 scenario dataset class를 raw INSERT/UPDATE로 조작하지 않는다.
 
 문헌·규칙·prompt가 바뀌어 새 pack release가 생기면 이전 lock은 자동으로 stale이 된다. 이전 candidate는 삭제하지 않고 중단 근거와 함께 보존하며, 새 정본에서 lock과 run을 다시 만든다.
