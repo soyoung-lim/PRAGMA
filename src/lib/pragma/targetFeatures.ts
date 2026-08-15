@@ -11,6 +11,7 @@
 // v1.4 = 나머지 6화행 7종(칭찬하기·칭찬 대응 분리)을 사람 작성 정본으로 추가.
 
 import type { SpeechActUI } from "@/lib/pragma/enums";
+import { realizationResourceLabelsForFeature } from "@/lib/pragma/realizationPack";
 
 /** 판정 대역 하나. 배열 순서 = 척도 순서(과소→적정→과잉). */
 export interface BandDef {
@@ -75,12 +76,7 @@ const REQUEST_MITIGATION_OPTIONALITY: TargetFeature = {
     { code: "too_indirect", label_ko: "지나치게 우회적 (요청이 흐려짐)" },
   ],
   within_band_code: "within_band",
-  relevant_resources: [
-    "능원동사 완화 (能不能·可以…吗)",
-    "조건절 포석 (如果方便的话·要是可以的话)",
-    "선택권을 남기는 종결 (…行吗·您看方便吗)",
-    "부담 예고 (麻烦您·想请您帮个忙)",
-  ],
+  relevant_resources: realizationResourceLabelsForFeature("request_mitigation_optionality"),
   excluded_confounds: [
     "격식체 어휘 선택 (尊敬的·恳请) — 공손성 축",
     "호칭 (您 vs 你) — 공손성 축",
@@ -130,13 +126,7 @@ const REFUSAL_SOFTENING: TargetFeature = {
     { code: "over_elaborate", label_ko: "지나치게 장황 (거절이 흐려짐)" },
   ],
   within_band_code: "within_band",
-  relevant_resources: [
-    "완화 표지 (恐怕·可能)",
-    "이유 제시 (因为…)",
-    "사과·유감 (不好意思·抱歉)",
-    "대안·미래 약속 (下次·改天·要不…)",
-    "부분 수용 후 전환 (可以…但是)",
-  ],
+  relevant_resources: realizationResourceLabelsForFeature("refusal_softening"),
   excluded_confounds: [
     "격식체 어휘 선택 — 공손성 축",
     "거절의 명제 자체(무엇을 거절하는가)는 불변항",
@@ -187,12 +177,7 @@ const GRATITUDE_CALIBRATION: TargetFeature = {
     { code: "excessive", label_ko: "과함 (거리감을 만듦)" },
   ],
   within_band_code: "within_band",
-  relevant_resources: [
-    "강도 부사 (太·真·非常)",
-    "부연·구체화 (帮了我大忙·解决了我的难题)",
-    "정도에 맞는 반복 절제",
-    "가벼운 호의엔 간단한 감사 (谢谢·麻烦你了)",
-  ],
+  relevant_resources: realizationResourceLabelsForFeature("gratitude_calibration"),
   excluded_confounds: [
     "호칭·격식 — 공손성 축",
     "감사의 대상(무엇에 감사하는가)은 불변항",

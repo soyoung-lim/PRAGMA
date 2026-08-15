@@ -14,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
 import { toast } from "sonner";
 import { missionQualityVerdict } from "@/lib/pragma/adminReviewQueue";
 
@@ -196,11 +197,11 @@ const AdminDashboard = () => {
       "scenarios.mission_reviewed",
     );
 
-    // 실행 가능 = reviewed 미션 ∩ 주차 배정 (0-m·93 — 배정되고 reviewed인 것만 학습자가 실행).
+    // 실행 가능 = authoritative released 또는 legacy reviewed ∩ 주차 배정.
     (async () => {
       try {
         const [rev, asg] = await Promise.all([
-          db.from("scenarios").select("scenario_id").eq("mission_status", "reviewed"),
+          db.from("scenarios").select("scenario_id,mission_status,release_gate_mode").in("mission_status", ["reviewed", "released"]),
           db.from("curriculum_week_scenarios").select("scenario_id"),
         ]);
         if (rev.error) throw rev.error;
@@ -208,8 +209,8 @@ const AdminDashboard = () => {
         const assigned = new Set(
           ((asg.data ?? []) as { scenario_id: string }[]).map((r) => r.scenario_id),
         );
-        const n = ((rev.data ?? []) as { scenario_id: string }[]).filter((r) =>
-          assigned.has(r.scenario_id),
+        const n = ((rev.data ?? []) as { scenario_id: string; mission_status: string; release_gate_mode: string | null }[]).filter((r) =>
+          assigned.has(r.scenario_id) && isMissionReleasedForLearner(r),
         ).length;
         setRunnableN({ value: n, error: null, loading: false });
       } catch (e) {
