@@ -286,7 +286,8 @@ const App = () => (
           <Route path="/admin/composer" element={<RequireAdmin><AdminComposer /></RequireAdmin>} />
           <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
           <Route path="/admin/question-designer" element={<RequireAdmin><AdminQuestionDesigner /></RequireAdmin>} />
-          <Route path="/admin/review" element={<RequireAdmin><Navigate to="/admin/browser" replace /></RequireAdmin>} />
+          {/* 이전 통합 검수 URL은 현행 3단계 통합 검수·승인 화면으로 보낸다. */}
+          <Route path="/admin/review" element={<RequireAdmin><Navigate to="/admin/research-qa/final-review" replace /></RequireAdmin>} />
           <Route path="/admin/cross-vendor" element={<RequireAdmin><Navigate to="/admin/research-qa" replace /></RequireAdmin>} />
           <Route path="/admin/learners" element={<RequireAdmin><AdminLearners /></RequireAdmin>} />
           <Route path="/admin/decision-traces" element={<RequireAdmin><AdminDecisionTraces /></RequireAdmin>} />

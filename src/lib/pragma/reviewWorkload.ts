@@ -1,6 +1,12 @@
+import {
+  EXTERNAL_GOLD_SAMPLE_COUNT,
+  EXTERNAL_GOLD_SAMPLE_PER_SPEECH_ACT,
+  FINAL_GOLD_POPULATION_COUNT,
+} from "@/lib/pragma/goldProtocol";
+
 export const REVIEW_WORKLOAD_ASSUMPTIONS = {
-  goldCaseCount: 30,
-  externalGoldSampleCount: 18,
+  goldCaseCount: FINAL_GOLD_POPULATION_COUNT,
+  externalGoldSampleCount: EXTERNAL_GOLD_SAMPLE_COUNT,
   finalMissionCount: 504,
   externalReviewMinutes: [45, 60] as const,
   researcherFinalReviewHours: [3, 5] as const,
@@ -28,7 +34,7 @@ export function buildReviewWorkload() {
     },
     goldExpertPerPerson: {
       caseCount: externalGoldSampleCount,
-      minimumPerSpeechAct: 2,
+      minimumPerSpeechAct: EXTERNAL_GOLD_SAMPLE_PER_SPEECH_ACT,
       requiredInputCount: externalGoldSampleCount * expertInputsPerGoldCase,
       estimatedMinutes: externalReviewMinutes,
     },

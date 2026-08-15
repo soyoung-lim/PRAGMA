@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown, ChevronRight, RotateCcw } from "lucide-react";
+import { MPJ_ITEM_COUNT } from "@/lib/curriculum/learnerWorkflow";
+import { FINAL_GOLD_POPULATION_COUNT } from "@/lib/pragma/goldProtocol";
 
 // 심사 설명용 read-only 화면. 현재 런타임 흐름과 연구자료 처리 경계를 요약한다.
 
@@ -206,7 +208,7 @@ const Architecture = () => (
           <Down />
           <Node lane="supply" title="AI 학습 콘텐츠 신규 생성" desc="확정 규칙으로 정식 문항 504개 생성" />
           <Down />
-          <Node lane="supply" title="1. 기준답안 연구 책임자 판정" desc="기준답안 30개 · 시스템 운영 게이트 설정" />
+          <Node lane="supply" title="1. 기준답안 연구 책임자 판정" desc={`9화행 × 5개 = ${FINAL_GOLD_POPULATION_COUNT}개 · 시스템 운영 게이트 설정`} />
           <Down />
           <Node lane="supply" title="2. 기준답안 외부 전문가 확인" desc="9개 화행 × 2개 층화표본 · 전문가 2인 독립 확인" />
           <Down />
@@ -252,7 +254,7 @@ const Architecture = () => (
               한 미션의 흐름 · 매 미션 반복
             </span>
             <div className="mt-2 flex flex-wrap items-center gap-[5px] lg:flex-nowrap lg:justify-center lg:gap-0.5 xl:gap-1">
-              {["감각 익히기(MPJ 5)", "직접 표현하기", "피드백 확인", "한 곳 다듬기"].map((step, i) => (
+              {[`감각 익히기(MPJ ${MPJ_ITEM_COUNT})`, "직접 표현하기", "피드백 확인", "한 곳 다듬기"].map((step, i) => (
                 <span key={step} className="contents">
                   {i > 0 && <ChevronRight size={9} strokeWidth={2.25} className="shrink-0 text-[#D6B84A]" />}
                   <span className="whitespace-nowrap rounded-md border border-[#EADFAF] bg-white px-2 py-1 text-[11px] font-semibold lg:px-[5px] lg:text-[9.5px] xl:px-1.5 xl:text-[10px]">

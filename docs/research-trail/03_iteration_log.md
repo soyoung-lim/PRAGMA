@@ -2163,3 +2163,21 @@
 - 원격 확인: main fast-forward push, 단일 Supabase migration 적용 후 dry-run 최신, Edge v63 ACTIVE 유지, Railway의 HSK·품질 검증 화면과 DB 연결을 확인했다.
 - 다음 반영: `mission_v5`용 문항 단위 근거 귀속 생성 경로와 hard gate는 별도 반복으로 구현한다.
 - 관련 Decision / Evidence: `DEC-20260815-01`, `EVD-20260815-01`
+
+## ITER-20260815-02 · mission_v5 문항별 근거 귀속 생성·자동 gate
+
+- 시작 문제: 안전 통합된 main은 문항 lineage의 저장·검토 기반만 보존했고, 현행 `mission_v5` 생성·자동검사·저장 경로는 이를 필수 산출하지 않았다.
+- 변경: 검증 범위 mission_v5의 목표어 문장을 최대 5개씩 별도 저온 호출로 귀속하고, 서버 allowlist·evidence 재계산·20% 미귀속 상한을 적용했다. 클라이언트 R31/R32와 current-prompt 전용 DB trigger, 호출 장부 operation, prompt/pack snapshot을 연결했다.
+- 검증 결과: 표적 37개와 SQL 보강 후 25개, 전체 68파일 401개 테스트가 통과했고 9개 유료·원격 테스트는 기존 설정대로 skip했다. typecheck, production build 1,934 modules, diff check가 통과했다.
+- 예상과 달랐던 점: 기존 `mission_v5` 샘플까지 무조건 lineage를 요구하면 생성 당시 없던 계약을 소급 적용하게 됐다. exact current mission prompt version에만 hard gate를 적용해 legacy 읽기와 신규 fail-closed 저장을 분리했다.
+- 다음 반영: migration과 Edge를 같은 release로 적용한 뒤 요청·거절·감사 각 1건의 실제 생성→R31→저장→전문가 큐 연결을 확인한다. 실제 전문가 판정 전에는 귀속 정확도나 타당화 완료로 보고하지 않는다.
+- 관련 Decision / Evidence: `DEC-20260815-02`, `EVD-20260815-02`
+
+## ITER-20260815-03 · 운영 전수 검토 잔여 4건과 Gold45 불합의 프로토콜
+
+- 시작 문제: 운영 검토에서 8개 관리자 화면의 진입 경로 누락, 최종 9화행 Gold와 기존 3화행 Seed30의 혼동, 공개 설명의 MPJ5 하드코딩, 두 전문가 최종 불합의 경로 부재가 확인됐다.
+- 변경: 관리자 경로를 공통 설정으로 복구해 사이드바·모바일·대시보드가 같은 8개 링크를 사용하게 했다. 공개 MPJ 수를 계약 상수로 바꾸고 회귀 검사를 넓혔다. 최종 Gold를 9×5=45, 최초 표본을 9×2=18, 예비를 9×3=27로 고정했으며, 최종 불합의는 append-only 사례 제외·해당 화행 예비 전수 개방·현재 팩 공개 보류로 구현했다.
+- 검증 결과: 표적 31개와 전체 69파일 406개 테스트가 통과했고 9개 유료·원격 테스트는 기존 설정대로 skip했다. typecheck, 변경 파일 ESLint, production build 1,936 modules, diff check가 통과했다.
+- 예상과 달랐던 점: 빠진 라우트 중 아카이브의 구 화면은 폐기된 schema를 사용하므로 그대로 부활시키는 대신 유지되는 라이브러리로 연결해야 했다. 또한 기존 30건을 최종 Gold45로 단순 증원하면 승인되지 않은 사례를 만들어내므로, Seed30의 초기 3화행 용도와 최종 9화행 gate를 명시적으로 분리했다.
+- 다음 반영: migration 원격 dry-run·적용, Edge·웹 배포 뒤 관리자 8개 경로와 Gold45 차단 상태를 운영에서 확인한다. 실제 9화행×5 기준답안을 연구자·전문가가 구축하기 전에는 최종 회귀나 공개 gate를 통과로 보고하지 않는다.
+- 관련 Decision / Evidence: `DEC-20260815-03~04`, `EVD-20260815-03`

@@ -12,6 +12,10 @@ import { checkMission, type CheckContext } from "@/lib/pragma/missionRules";
 import { getTargetFeature, DEFAULT_FEATURE_BY_ACT, type TargetFeature } from "@/lib/pragma/targetFeatures";
 import { errorPatternsForAct } from "@/lib/pragma/errorPatterns";
 import {
+  buildMissionLineageScope,
+  type MissionLineagePromptScope,
+} from "@/lib/pragma/missionLineage";
+import {
   normalizeMission,
   QualityCheckSchema,
   type MissionRuntime,
@@ -40,7 +44,15 @@ const isResponseAct = (act: SpeechActUI) => act === "refusal" || act === "opposi
 
 // 방향에 맞는 카탈로그 변형을 골라 엣지에 보낸다(0-l·86). zh_ko는 _zh_ko 필드,
 // 없으면 ko_zh 기본값(하지만 승격 전 가드가 zh_ko 변형 부재를 막는다).
-export function featureForGen(f: TargetFeature, dir: LanguageDirection) {
+export function featureForGen(
+  f: TargetFeature,
+  dir: LanguageDirection,
+  lineageScope: MissionLineagePromptScope = buildMissionLineageScope({
+    direction: dir,
+    speechAct: f.speech_act,
+    targetFeature: f.code,
+  }),
+) {
   const zhko = dir === "zh_ko";
   return {
     code: f.code,
@@ -54,6 +66,7 @@ export function featureForGen(f: TargetFeature, dir: LanguageDirection) {
     excluded_confounds: zhko && f.excluded_confounds_zh_ko ? f.excluded_confounds_zh_ko : f.excluded_confounds,
     closing_principle_ko: f.closing_principle_ko,
     counter_rule_note: zhko && f.counter_rule_note_zh_ko ? f.counter_rule_note_zh_ko : f.counter_rule_note,
+    ...(lineageScope.coverage_status === "covered" ? { lineage_scope: lineageScope } : {}),
   };
 }
 
@@ -230,6 +243,11 @@ export async function promoteCore(
       ? { focal_segments: normCore.focal_segments }
       : {}),
   };
+  const lineageScope = buildMissionLineageScope({
+    direction,
+    speechAct: core.speech_act,
+    targetFeature: feature.code,
+  });
   const ctx: CheckContext = {
     speech_act: core.speech_act,
     level: core.learner_level,
@@ -266,7 +284,7 @@ export async function promoteCore(
           speech_act_ko: SPEECH_ACT_UI[core.speech_act],
           level_ko: LEVEL[core.learner_level],
           level_policy_ko: LEVEL_POLICY[core.learner_level],
-          feature: featureForGen(feature, direction),
+          feature: featureForGen(feature, direction, lineageScope),
           core: missionCore,
           error_pattern_hints_ko: errorPatternsForAct(core.speech_act, direction).map(
             (p) => `${p.description} (예: ${p.approvedExample})`,
@@ -351,7 +369,15 @@ export async function promoteCore(
   options.onProgress?.({ phase: "saving" });
   const { data: savedId, error: saveErr } = await rpc("save_generated_mission", {
     p_scenario_id: core.scenario_id,
-    p_payload: { mission_content: contentToSave },
+    p_payload: {
+      mission_content: contentToSave,
+      validation_result: {
+        result: check.result,
+        violations,
+        generation_attempts: attempts,
+      },
+      lineage_meta: lineageScope,
+    },
   });
   if (saveErr) {
     return { ok: false, mission, ruleResult: check.result as "pass" | "warning", violations, attempts, quality, error: `저장 실패: ${(saveErr as { message?: string }).message ?? saveErr}` };

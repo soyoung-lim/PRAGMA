@@ -27,6 +27,8 @@ const GATE_LINT_HYGIENE_SQL = read("supabase/migrations/20260815052000_authorita
 const QUALITY_GATE_BOUNDARIES_SQL = read("supabase/migrations/20260815053000_quality_gate_boundaries.sql");
 const BOUNDED_EXTERNAL_VALIDATION_SQL = read("supabase/migrations/20260815054000_bounded_external_validation.sql");
 const PREREGISTERED_EXTERNAL_SAMPLING_SQL = read("supabase/migrations/20260815055000_preregistered_external_sampling.sql");
+const MISSION_V5_LINEAGE_GATE_SQL = read("supabase/migrations/20260815190000_mission_v5_item_lineage_hard_gate.sql");
+const GOLD45_NONCONSENSUS_SQL = read("supabase/migrations/20260815193000_gold45_nonconsensus_protocol.sql");
 const PROMOTE_TS = read("src/lib/pragma/promoteMission.ts");
 const EVENTS_TS = read("src/lib/mission/missionEvents.ts");
 const EXPORT_TS = read("src/lib/mission/missionEventExport.ts");
@@ -37,7 +39,7 @@ describe("moat migration/runtime contracts", () => {
     expect(PROMOTE_TS).toContain('rpc("review_mission"');
     expect(EVENTS_TS).toContain('rpc("append_learner_mission_event"');
     expect(EXPORT_TS).toContain('rpc("export_learner_mission_events"');
-    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL, QUALITY_GATE_BOUNDARIES_SQL, BOUNDED_EXTERNAL_VALIDATION_SQL, PREREGISTERED_EXTERNAL_SAMPLING_SQL]) {
+    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL, QUALITY_GATE_BOUNDARIES_SQL, BOUNDED_EXTERNAL_VALIDATION_SQL, PREREGISTERED_EXTERNAL_SAMPLING_SQL, MISSION_V5_LINEAGE_GATE_SQL, GOLD45_NONCONSENSUS_SQL]) {
       expect((sql.match(/\$\$/g) ?? []).length % 2).toBe(0);
     }
   });
@@ -51,6 +53,18 @@ describe("moat migration/runtime contracts", () => {
     expect(LINEAGE_SQL).toMatch(/REVOKE UPDATE, DELETE ON public\.mission_lineage_versions/);
     expect(PROMOTE_TS).toContain('qualityGate?: "standard" | "required_non_fail"');
     expect(PROMOTE_TS).toContain('qualityGate === "required_non_fail"');
+  });
+
+  it("fails current covered mission_v5 closed at both invocation logging and DB save", () => {
+    expect(MISSION_V5_LINEAGE_GATE_SQL).toContain("'item_lineage_attribution'");
+    expect(MISSION_V5_LINEAGE_GATE_SQL).toContain("mission_v5_mpj4_minidiscourse_v6_interpreter_roles");
+    expect(MISSION_V5_LINEAGE_GATE_SQL).toContain("item_lineage_attribution_v3_mission_v5");
+    expect(MISSION_V5_LINEAGE_GATE_SQL).toContain("model_attribution_pending_review");
+    expect(MISSION_V5_LINEAGE_GATE_SQL).toContain("v_unattributed_count::numeric / NULLIF(v_claim_count, 0)::numeric > 0.2");
+    expect(MISSION_V5_LINEAGE_GATE_SQL).toContain("target paths do not match mission content");
+    expect(MISSION_V5_LINEAGE_GATE_SQL).toContain("BEFORE INSERT OR UPDATE OF mission_content ON public.scenarios");
+    expect(PROMOTE_TS).toContain("validation_result");
+    expect(PROMOTE_TS).toContain("lineage_meta: lineageScope");
   });
 
   it("requires two independent expert reviewers and preserves their rows", () => {
@@ -251,5 +265,17 @@ describe("moat migration/runtime contracts", () => {
     expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("warning_focused_review");
     expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("pragma_final_corpus_generation_readiness_v4");
     expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("pragma_final_corpus_release_readiness_v3");
+  });
+
+  it("requires Gold45 and records terminal two-expert nonconsensus before final judging", () => {
+    expect(GOLD45_NONCONSENSUS_SQL).toContain("exactly 45 current cases and exactly five per speech act");
+    expect(GOLD45_NONCONSENSUS_SQL).toContain("reserve_cases_per_speech_act', 3");
+    expect(GOLD45_NONCONSENSUS_SQL).toContain("CREATE TABLE public.pragma_gold_nonconsensus_terminals");
+    expect(GOLD45_NONCONSENSUS_SQL).toContain("Identical expert judgments cannot be recorded as nonconsensus");
+    expect(GOLD45_NONCONSENSUS_SQL).toContain("exclude_case_open_all_reserves_and_hold_release");
+    expect(GOLD45_NONCONSENSUS_SQL).toContain("researcher_override_allowed', false");
+    expect(GOLD45_NONCONSENSUS_SQL).toContain("automated_majority_vote_allowed', false");
+    expect(GOLD45_NONCONSENSUS_SQL).toContain("Final-corpus generation lock requires Gold45 with 18 initial and 27 frozen reserve cases");
+    expect(GOLD45_NONCONSENSUS_SQL).toContain("cardinality(run.gold_resolution_ids) = 45");
   });
 });

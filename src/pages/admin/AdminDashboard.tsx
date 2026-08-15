@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
 import { toast } from "sonner";
 import { missionQualityVerdict } from "@/lib/pragma/adminReviewQueue";
+import { ADMIN_PRIORITY_LINKS } from "@/lib/admin/adminNavigation";
 
 type CountState = { value: number | null; error: string | null; loading: boolean };
 const initial: CountState = { value: null, error: null, loading: true };
@@ -309,6 +311,22 @@ const AdminDashboard = () => {
         코어 승인 상태 {approvedN}건 · 현재 누적 테스트·회귀 자료를 본 콘텐츠 수로 해석하지
         마세요. 학습자 실행 게이트는 위의 「④ 교수자 검토 완료」와 「⑤ 수업 배치 가능」입니다.
       </p>
+
+      <SectionHeader title="주요 화면 바로가기" badge={<Badge variant="outline">운영·연구</Badge>} />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {ADMIN_PRIORITY_LINKS.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-[#D6B84A] hover:bg-[#FFFDF4]"
+          >
+            <p className="text-sm font-semibold">{item.label.replace(/^3\.\s*/, "")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {item.pending ? "준비 중인 화면 열기" : "화면 열기"}
+            </p>
+          </Link>
+        ))}
+      </div>
 
       {/* Bottom: dev/test tools */}
       {isAdmin && (

@@ -21,6 +21,16 @@ import {
   MPJ_TYPE_ORDER_V4,
 } from "@/lib/pragma/missionSchema";
 import {
+  ITEM_LINEAGE_MAX_BATCH_SIZE,
+  ITEM_LINEAGE_MAX_UNATTRIBUTED_RATIO,
+  validateItemLineage,
+} from "@/lib/pragma/itemLineage";
+import { buildMissionLineageScope } from "@/lib/pragma/missionLineage";
+import {
+  CURRENT_ITEM_LINEAGE_PROMPT_VERSION,
+  CURRENT_MISSION_PROMPT_VERSIONS,
+} from "../../../supabase/functions/_shared/contentRelease";
+import {
   normalizeCore,
   type ScenarioCoreRuntime,
   type FocalSegment,
@@ -695,6 +705,55 @@ export function checkMission(
           "warning",
           `reference_alternatives가 담화 전체를 옮기지 않은 것으로 보임(원문 ${srcLen}자 대비 ${altLen}자): "${alt.text.slice(0, 24)}"`,
         );
+      }
+    }
+  }
+
+  // R31 — 검증 범위의 mission_v5는 문항별 모델 귀속을 완전하게 생성해야 저장할 수 있다.
+  // 귀속은 전문가 승인 전 pending claim이며, 구조·scope·근거 합집합만 자동 판정한다.
+  if (
+    m.schema_version === "mission_v5" &&
+    m.provenance?.prompt_version === CURRENT_MISSION_PROMPT_VERSIONS[0]
+  ) {
+    const lineageScope = buildMissionLineageScope({
+      direction: m.direction,
+      speechAct: ctx.speech_act,
+      targetFeature: m.unit.target_feature,
+    });
+    for (const issue of validateItemLineage(m, lineageScope)) {
+      add(v, "R31", "fail", `${issue.target_path ? `${issue.target_path}: ` : ""}${issue.message}`);
+    }
+    if (lineageScope.coverage_status === "covered" && m.item_lineage) {
+      const lineage = m.item_lineage;
+      const attribution = lineage.attribution_provenance;
+      const coverage = lineage.coverage_summary;
+      if (lineage.claim_status !== "model_attribution_pending_review") {
+        add(v, "R31", "fail", "mission_v5 item_lineage는 전문가 검토 전 pending 상태여야 함");
+      }
+      if (!coverage) {
+        add(v, "R31", "fail", "item_lineage.coverage_summary 누락");
+      } else if (coverage.unattributed_count / coverage.total_count > ITEM_LINEAGE_MAX_UNATTRIBUTED_RATIO) {
+        add(v, "R31", "fail", `model_unattributed 비율 20% 초과 (${coverage.unattributed_count}/${coverage.total_count})`);
+      } else if (coverage.unattributed_count > 0) {
+        add(v, "R32", "warning", `전문가가 우선 확인할 model_unattributed claim ${coverage.unattributed_count}개`);
+      }
+      if (
+        !attribution ||
+        attribution.prompt_version !== CURRENT_ITEM_LINEAGE_PROMPT_VERSION ||
+        !attribution.provider ||
+        !attribution.prompt_instance_hash ||
+        !attribution.batch_count ||
+        !attribution.calls ||
+        attribution.calls.length !== attribution.batch_count ||
+        attribution.calls.some((call, index) =>
+          call.batch_index !== index + 1 ||
+          call.target_count < 1 ||
+          call.target_count > ITEM_LINEAGE_MAX_BATCH_SIZE ||
+          call.attempts < 1
+        ) ||
+        (coverage && attribution.calls.reduce((sum, call) => sum + call.target_count, 0) !== coverage.total_count)
+      ) {
+        add(v, "R31", "fail", "item_lineage attribution provenance가 mission_v5 생성계약과 다름");
       }
     }
   }
