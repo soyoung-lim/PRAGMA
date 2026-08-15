@@ -1,8 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown, ChevronRight, RotateCcw } from "lucide-react";
 
-// 심사 설명용 read-only 화면. 새 데이터·API 없이 설계 문서를 코드 상수로 표현한다.
-// 학습자 메뉴에는 노출하지 않는다(랜딩 진입점은 VITE_ENABLE_DEMO로 통제).
+// 심사 설명용 read-only 화면. 현재 런타임 흐름과 연구자료 처리 경계를 요약한다.
 
 type Lane = "supply" | "learn" | "res";
 
@@ -188,49 +187,40 @@ const Architecture = () => (
           밑줄 2px 대신 글자 아래쪽을 덮는 반투명 형광펜을 쓴다(랜딩 후크와 같은 어법).
           문장 자체는 굵기를 낮춰, 강조가 세 마디에만 남게 한다. */}
       <p className="mb-2 text-[14.5px] font-medium leading-relaxed text-[#4A5A66]">
-        <Mark>콘텐츠를 생성·검수</Mark>하고, <Mark>학습자가 수행</Mark>하며, 그 기록이{" "}
-        <Mark>평가와 설계</Mark>로 돌아옵니다.
+        <Mark>콘텐츠를 생성·품질 검증</Mark>하고, <Mark>학습자가 수행</Mark>하며, 그 기록이{" "}
+        <Mark>연구자료와 설계 개선</Mark>으로 돌아옵니다.
       </p>
 
       {/* 3레인 */}
       <div className="grid grid-cols-1 items-start lg:min-h-0 lg:flex-1 lg:grid-cols-[243px_44px_393px_44px_251px] lg:items-stretch">
-        {/* ① 콘텐츠 생성·검수 */}
+        {/* ① 콘텐츠 생성·품질 검증 */}
         <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:justify-between">
           <LaneHeader
             lane="supply"
             num="1"
-            title="콘텐츠 생성·검수"
-            desc="화행 9종 × 입문·중급·고급 × 주제"
+            title="콘텐츠 생성·품질 검증"
+            desc="규칙 확정 → 정식 문항 504개 생성 → 4단계 승인"
           />
 
-          <Node lane="supply" title="목표 화용 요소 카탈로그" desc="화행별 대역·제외 혼입변인 정의" />
+          <Node lane="supply" title="표현 규칙·생성계약 확정" desc="9개 화행의 목표 요소·판정 대역·근거 고정" />
           <Down />
-          <Node lane="supply" title="시나리오 코어 대량 생성" desc="수준 × 관계·부담 × 매체 × 주제 조합" />
+          <Node lane="supply" title="AI 학습 콘텐츠 신규 생성" desc="확정 규칙으로 정식 문항 504개 생성" />
           <Down />
-          <Node lane="supply" title="학습 미션 조립" desc="코어 → 판단 4문항 + 산출 과제" />
+          <Node lane="supply" title="1. 기준답안 연구 책임자 판정" desc="기준답안 30개 · 시스템 운영 게이트 설정" />
           <Down />
-          <Node lane="supply" title="자동 규칙 검증" desc="사전 노출·선산출·대역 정합" />
+          <Node lane="supply" title="2. 기준답안 외부 전문가 확인" desc="9개 화행 × 2개 층화표본 · 전문가 2인 독립 확인" />
           <Down />
-          {/* AI 두 층은 '점검', 사람 한 층은 '결정' — 승인 권한이 어디 있는지가
-              라벨만 읽어도 갈리게 한다. 사람 노드는 테두리로도 구분한다. */}
-          <Node lane="supply" title="GPT 품질 점검" desc="AI 1차 점검 · 승인 권한 없음" />
+          <Node lane="supply" title="3. 자동 점검·경고 집중 검토" desc="504개 전량 자동 점검 · 연구 책임자는 경고 문항 집중 확인" />
           <Down />
           <Node
             lane="supply"
-            title="AI 독립 검토"
-            desc="Claude · 동일 15축 독립 판정 · 승인 권한 없음"
-            status="준비 중"
-          />
-          <Down />
-          <Node
-            lane="supply"
-            title="교수자 최종 승인"
-            desc="승인·반려는 사람이 결정 · 승인자·일시·모델·프롬프트 지문 기록"
+            title="4. 교수자의 학습자 사용 승인"
+            desc="시스템이 필수 조건 확인 · 교수자가 최종 사용 여부 결정 · 이력 저장"
             decision
           />
         </section>
 
-        <Handoff label="승인 미션" />
+        <Handoff label="교수자 승인분" />
 
         {/* ② 학습자 워크플로우 */}
         <section className="rounded-[13px] border border-[#D3D1C7] bg-card px-3.5 pb-4 pt-4 shadow-[0_8px_20px_-18px_rgba(21,32,43,.55)] lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:justify-between">
@@ -238,13 +228,13 @@ const Architecture = () => (
             lane="learn"
             num="2"
             title="학습자 워크플로우"
-            desc="수준·주제에 맞는 강좌 · 한 주차에 목표 화용 요소 하나"
+            desc="15주 동안 승인된 콘텐츠로 판단·산출·수정을 반복"
           />
 
           <Node
             lane="learn"
             title="15주 강좌 편성"
-            desc="9개 화행을 순환 배치 · 승인 미션만 주차에 배정"
+            desc="9개 화행과 목표 요소를 순환 배치 · 승인 미션만 사용"
           />
           <Down />
           <Node lane="learn" title="주차 학습 노트" desc="예습·복습용 · 주차 목표와 상황 판단 기준" />
@@ -252,7 +242,7 @@ const Architecture = () => (
           <Node
             lane="learn"
             title="주차 도입 활동"
-            desc="장면 제시 → 차이 인식 → 원리 이해 → 적절성 판단"
+            desc="장면 제시 → 차이 인식 → 원리 이해"
           />
           <Down />
 
@@ -262,7 +252,7 @@ const Architecture = () => (
               한 미션의 흐름 · 매 미션 반복
             </span>
             <div className="mt-2 flex flex-wrap items-center gap-[5px] lg:flex-nowrap lg:justify-center lg:gap-0.5 xl:gap-1">
-              {["상황 이해", "표현 비교", "번역·통역", "피드백 검토", "다듬기"].map((step, i) => (
+              {["감각 익히기(MPJ 5)", "직접 표현하기", "피드백 확인", "한 곳 다듬기"].map((step, i) => (
                 <span key={step} className="contents">
                   {i > 0 && <ChevronRight size={9} strokeWidth={2.25} className="shrink-0 text-[#D6B84A]" />}
                   <span className="whitespace-nowrap rounded-md border border-[#EADFAF] bg-white px-2 py-1 text-[11px] font-semibold lg:px-[5px] lg:text-[9.5px] xl:px-1.5 xl:text-[10px]">
@@ -272,38 +262,38 @@ const Architecture = () => (
               ))}
             </div>
             <p className="mt-2 text-[11px] leading-[1.4] text-muted-foreground">
-              의미 전달·문법은 통과 조건, 상황 적절성이 평가 대상 · 판단이 산출보다 먼저
+              번역·통역 수행에서 의미·문법·화용 피드백을 확인하고 핵심 한 곳을 수정
             </p>
           </div>
 
           <Down />
-          <Node lane="learn" title="학습 기록" desc="최초안 · 최종안 · 수정 초점 누적" />
+          <Node lane="learn" title="상황 바꿔보기" desc="한 조건이 달라진 상황에 같은 원리를 다시 적용" />
           <Down />
           <Node
             lane="learn"
-            title="결과 비교·수업 토론"
-            desc="수행 결과·이견·수정 사례를 함께 비교"
+            title="수행·의사결정 기록"
+            desc="판단·선택·근거·최초안·수정안을 맥락·버전과 함께 저장"
             status="수업 운영"
           />
         </section>
 
-        <Handoff label="학습 데이터" />
+        <Handoff label="동의한 수행기록" />
 
-        {/* ③ 연구·평가·설계 */}
+        {/* ③ 학습 기록·연구자료 */}
         <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:justify-between">
           <LaneHeader
             lane="res"
             num="3"
-            title="연구·평가·설계"
-            desc="교수·학습 운영과 연구 분석을 분리"
+            title="학습 기록·연구자료"
+            desc="학습 운영과 연구자료 포함 여부를 분리"
           />
 
           <Node
             lane="res"
-            title="학습 수행 기록"
+            title="수행·의사결정 기록"
             desc={
               <>
-                판단·선택·수정·최종 산출을
+                판단·선택·근거·수정·최종 산출을
                 <br />
                 맥락·버전과 함께 저장
               </>
@@ -312,50 +302,39 @@ const Architecture = () => (
           <Down />
           <Node
             lane="res"
-            title="학습자 이견 기록"
+            title="연구자료 포함 여부 확인"
             desc={
               <>
-                AI 판정 이견·선택적 근거를
-                <br />
-                수행 로그에 연결
+                참여 동의·과제 완료·필수 응답의
+                <br />포함·제외 조건 확인
               </>
             }
           />
           <Down />
           <Node
             lane="res"
-            title="설계 추적 기록"
+            title="가명 처리"
             desc={
               <>
-                설계 결정·변경·근거·관련 데이터를
-                <br />
-                ID로 연결
+                직접 식별자를 제외하고 안정된
+                <br />가명 식별자로 연결
               </>
             }
           />
           <Down />
           <Node
             lane="res"
-            title="전문가 형성 평가"
-            desc="외부 전문가 3인 · 대표 미션 독립 평가"
-            status="준비 중"
+            title="수행기록 내려받기"
+            desc="포함 기준을 통과한 가명 연구자료만 버전과 함께 추출"
           />
           <Down />
           <Node
             lane="res"
-            title="연구 데이터 내보내기"
-            desc="가명 처리 · 대응표 분리 보관"
-            status="준비 중"
-          />
-          <Down />
-          <Node
-            lane="res"
-            title="교수·학습 설계 개선"
+            title="학습 콘텐츠 개선"
             desc={
               <>
-                수행 데이터·전문가 의견을 근거로
-                <br />
-                설계를 개선
+                반복되는 학습자 반응·품질 신호를 모으고
+                <br />연구 책임자가 반영 여부 결정
               </>
             }
           />
