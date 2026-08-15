@@ -46,7 +46,13 @@ export interface GoldRegressionReport {
     GoldRegressionOptions,
     "minimum_band_accuracy" | "minimum_semantic_accuracy" | "require_complete_coverage" | "require_semantic_labels"
   >;
+  evaluation_purpose: "operational_gate_check";
+  is_quality_measurement: false;
+  interpretation_note_ko: string;
 }
+
+export const GOLD_GATE_INTERPRETATION_KO =
+  "외부 전문가가 확인한 9화행 층화표본으로 품질 점검 자동화 장치의 작동 여부를 확인하는 운영 게이트입니다. 전체 시스템의 정확도나 일반화된 품질 측정치로 해석하거나 보고하지 않습니다.";
 
 const keyOf = (caseId: string, candidateId: string) => `${caseId}::${candidateId}`;
 
@@ -182,6 +188,9 @@ export function runGoldRegression(
       require_complete_coverage: options.require_complete_coverage,
       require_semantic_labels: options.require_semantic_labels,
     },
+    evaluation_purpose: "operational_gate_check",
+    is_quality_measurement: false,
+    interpretation_note_ko: GOLD_GATE_INTERPRETATION_KO,
   };
 }
 

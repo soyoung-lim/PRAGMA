@@ -37,6 +37,7 @@ const AdminGoldCalibration = lazy(() => import("./pages/admin/AdminGoldCalibrati
 const AdminExpertReviewOps = lazy(() => import("./pages/admin/AdminExpertReviewOps.tsx"));
 const AdminGoldExpertOps = lazy(() => import("./pages/admin/AdminGoldExpertOps.tsx"));
 const AdminMissionRelease = lazy(() => import("./pages/admin/AdminMissionRelease.tsx"));
+const AdminFinalCorpusReview = lazy(() => import("./pages/admin/AdminFinalCorpusReview.tsx"));
 const AdminImprovementFlywheel = lazy(() => import("./pages/admin/AdminImprovementFlywheel.tsx"));
 const AdminDecisionTraces = lazy(() => import("./pages/admin/AdminDecisionTraces.tsx"));
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin.tsx"));
@@ -195,6 +196,14 @@ const App = () => (
             }
           />
           <Route
+            path="/prototype/final-review"
+            element={
+              import.meta.env.DEV
+                ? <AdminFinalCorpusReview preview />
+                : <Navigate to="/admin/research-qa/final-review" replace />
+            }
+          />
+          <Route
             path="/prototype/improvement-flywheel"
             element={
               import.meta.env.DEV
@@ -224,6 +233,7 @@ const App = () => (
           <Route path="/admin/research-qa/calibration" element={<RequireAdmin><AdminGoldCalibration /></RequireAdmin>} />
           <Route path="/admin/research-qa/expert-reviews" element={<RequireAdmin><AdminExpertReviewOps /></RequireAdmin>} />
           <Route path="/admin/research-qa/gold-experts" element={<RequireAdmin><AdminGoldExpertOps /></RequireAdmin>} />
+          <Route path="/admin/research-qa/final-review" element={<RequireAdmin><AdminFinalCorpusReview /></RequireAdmin>} />
           <Route path="/admin/research-qa/releases" element={<RequireAdmin><AdminMissionRelease /></RequireAdmin>} />
           <Route path="/admin/research-qa/improvements" element={<RequireAdmin><AdminImprovementFlywheel /></RequireAdmin>} />
           {/* 워크플로 골격 — 후속 구현 화면(준비중). AdminPlaceholder가 "이 화면은 후속 단계에서 구현됩니다" 렌더 */}

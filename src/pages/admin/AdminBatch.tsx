@@ -909,8 +909,8 @@ const AdminBatch = () => {
               {finalReleaseReadiness && (
                 <div className="mt-2 grid gap-1 text-muted-foreground sm:grid-cols-3">
                   <span>미션 생성 {finalReleaseReadiness.requirements.missions_generated.count}/504</span>
-                  <span>개별 전문가 release {finalReleaseReadiness.requirements.missions_individually_released.count}/504</span>
-                  <span>권위 lineage bundle {finalReleaseReadiness.requirements.authoritative_lineage_bundle.count}/504</span>
+                  <span>자동 점검·연구자 승인 {finalReleaseReadiness.requirements.automated_and_researcher_full_review.count}/504</span>
+                  <span>외부 전문가 표본 {finalReleaseReadiness.requirements.bounded_external_gold_gate.sample_size}/18</span>
                   <span className="sm:col-span-3 font-medium text-foreground">
                     {finalReleaseReadiness.existing_release_id
                       ? `최종 corpus release 완료 · ${finalReleaseReadiness.existing_release_id}`

@@ -2443,11 +2443,14 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          evaluation_purpose: string
           evaluator_version: string
           gate_status: string
           gold_case_snapshots: Json
           gold_resolution_ids: string[]
           id: string
+          interpretation_note_ko: string
+          is_quality_measurement: boolean
           observations: Json
           prompt_snapshot_hash: string
           realization_pack_id: string
@@ -2458,11 +2461,14 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          evaluation_purpose?: string
           evaluator_version: string
           gate_status: string
           gold_case_snapshots: Json
           gold_resolution_ids: string[]
           id?: string
+          interpretation_note_ko?: string
+          is_quality_measurement?: boolean
           observations: Json
           prompt_snapshot_hash: string
           realization_pack_id: string
@@ -2473,11 +2479,14 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          evaluation_purpose?: string
           evaluator_version?: string
           gate_status?: string
           gold_case_snapshots?: Json
           gold_resolution_ids?: string[]
           id?: string
+          interpretation_note_ko?: string
+          is_quality_measurement?: boolean
           observations?: Json
           prompt_snapshot_hash?: string
           realization_pack_id?: string

@@ -106,11 +106,11 @@ const AdminBrowser = () => {
       const res = await promoteCore(r as unknown as PromotableCore);
       if (res.ok) {
         setStatus(r.scenario_id, "generated");
-        // 검증②(0-n·94) 결과가 있으면 함께 알린다 — 없으면(호출 실패) 침묵하지 않고 표기.
+        // 품질 점검 자동화 결과가 있으면 함께 알린다 — 없으면(호출 실패) 침묵하지 않고 표기.
         const qLabel = res.quality
-          ? { pass: "AI점검 통과", warning: "AI점검 주의", fail: "AI점검 결함" }[res.quality.verdict]
-          : "AI점검 미실행";
-        setRowMsg((m) => ({ ...m, [r.scenario_id]: `생성됨(${res.ruleResult}, 시도 ${res.attempts}회) · ${qLabel} — 눈검사 후 검토 완료 처리` }));
+          ? { pass: "품질 점검 자동화 통과", warning: "품질 점검 자동화 주의", fail: "품질 점검 자동화 결함" }[res.quality.verdict]
+          : "품질 점검 자동화 미실행";
+        setRowMsg((m) => ({ ...m, [r.scenario_id]: `생성됨(${res.ruleResult}, 시도 ${res.attempts}회) · ${qLabel} — 교수자 확인 후 승인 처리` }));
         if (res.mission) {
           const warnings = (res.violations ?? []).filter((v) => v.level === "warning").map((v) => `${v.id}: ${v.message}`);
           // 품질점검은 저장 직전에 붙으므로 엣지 응답 미션에는 없다 — 미리보기용으로 합친다.
@@ -119,7 +119,7 @@ const AdminBrowser = () => {
           setOpenId(r.scenario_id); // 생성 직후 바로 눈검사 뷰 펼침
         }
         if (res.quality?.verdict === "fail") {
-          toast.warning("미션 생성됨 — AI 품질점검에서 결함이 보고되었습니다. 눈검사 필요");
+          toast.warning("AI 학습문항 생성 완료 — 품질 점검 자동화에서 결함이 보고되어 교수자 확인이 필요합니다.");
         } else {
           toast.success("미션 생성됨 — 검토 대기");
         }
@@ -140,8 +140,12 @@ const AdminBrowser = () => {
       const res = await reviewMission(r.scenario_id);
       if (res.ok) {
         setStatus(r.scenario_id, "reviewed");
-        setRowMsg((m) => ({ ...m, [r.scenario_id]: "검토 완료 — 학습자 실행 가능" }));
-        toast.success("검토 완료(reviewed) — 학습자 실행 가능");
+        const covered = r.release_gate_mode === "expert_v1";
+        const next = covered
+          ? "교수자 승인 완료 — 외부 전문가 확인 대기"
+          : "교수자 승인 완료 — 학습자 실행 가능";
+        setRowMsg((m) => ({ ...m, [r.scenario_id]: next }));
+        toast.success(next);
       } else {
         toast.error(res.error ?? "검토 처리 실패");
       }

@@ -21,7 +21,7 @@ const STANDALONE: NavItem = { to: "/admin/dashboard", label: "운영 대시보�
 //   pending 배지. 교과목 운영은 9월 실증 사안이라 메뉴에서 제외(백로그),
 //   학습자 개별 리포트는 학습자 관리 상세와 중복이라 흡수
 // - 「콘텐츠 보관함」은 이름·헤드라인("시나리오 아카이브")·소속이 모두 어긋나 있었다
-//   → 이름 통일 + 생성물이 쌓이는 곳이므로 파이프라인으로 이동
+//   → 이름 통일 + AI 생성 콘텐츠가 쌓이는 곳이므로 파이프라인으로 이동
 // - 파이프라인의 "1단계·1단계·2단계…" 번호는 1단계가 두 번 나와 헷갈려서 제거
 //
 // pending = 화면은 있으나 내용이 후속. 배지를 미리 보여 준다 — 눌러 봐야 비어 있는
@@ -42,7 +42,7 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/generator", label: "개별 생성" },
       { to: "/admin/batch", label: "배치 생성" },
       { to: "/admin/browser", label: "학습 미션 조립" },
-      { to: "/admin/review", label: "AI 생성물 확인·승인" },
+      { to: "/admin/review", label: "AI 생성 콘텐츠 교수자 승인" },
       { to: "/admin/archive", label: "시나리오 아카이브" },
     ],
   },
@@ -69,9 +69,9 @@ const GROUPS: NavGroup[] = [
     header: "4 · 문항 품질·연구자료",
     items: [
       { to: "/admin/research-qa", label: "전체 현황" },
-      { to: "/admin/research-qa/calibration", label: "1. 품질검사 기준답안 작성" },
+      { to: "/admin/research-qa/calibration", label: "1. 품질검사 기준답안 연구자 판정" },
       { to: "/admin/research-qa/gold-experts", label: "2. 기준답안 외부 전문가 확인" },
-      { to: "/admin/research-qa/expert-reviews", label: "3. AI 학습문항 외부 전문가 확인" },
+      { to: "/admin/research-qa/final-review", label: "3. 정식 학습문항 연구자 검토" },
       { to: "/admin/research-qa/releases", label: "4. 통과 문항 학습자 공개" },
       { to: "/admin/export", label: "5. 학습 수행기록 내려받기" },
     ],
