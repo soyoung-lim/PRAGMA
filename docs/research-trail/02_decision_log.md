@@ -2102,3 +2102,16 @@
   `src/pages/admin/AdminPromptHarness.tsx`, `src/pages/admin/AdminReview.tsx`,
   `docs/contracts/PRAGMA_생성계약_정본.md`
 - 관련 Iteration / Evidence: `ITER-20260811-01`, `EVD-20260811-02`
+
+## DEC-20260815-01 · 최신 mission_v5를 보존하며 HSK와 품질 검증 moat를 선별 통합한다
+
+- 날짜: 2026-08-15
+- 상태: 로컬 통합·검증 완료, 원격 적용 전
+- 문제: HSK 개선, 최신 `main`, 기술적 moat 브랜치의 출발점이 달라 전체 병합 시 미션 스키마와 생성 흐름이 퇴행할 수 있었다.
+- 결정:
+  1. `origin/main` 기반의 격리 작업폴더에서만 통합하고 기존 dirty 작업폴더를 건드리지 않는다.
+  2. 충돌 시 현행 `mission_v5`를 우선하며, 독립적인 품질 검증 UI·DB 계약과 필요한 어댑터만 선별 이식한다.
+  3. 기존 자료의 `reviewed` 호환은 유지하되 새 품질 게이트 자료는 `released` 뒤에만 편성·학습자 노출을 허용한다.
+  4. `item_lineage` 저장 기반과 실제 생성·hard gate를 구분한다. 현행 생성기가 산출하지 않는 기능을 완료로 표시하지 않는다.
+- 근거: 전체 병합본은 구형 미션 계보를 포함했으나, main 기반 선별 통합본은 로컬 회귀 397건·타입 검사·프로덕션 빌드와 실화면 확인을 통과했다.
+- 관련 Iteration / Evidence: `ITER-20260815-01`, `EVD-20260815-01`

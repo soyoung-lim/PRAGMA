@@ -22,6 +22,7 @@ import type {
   PdrPower,
   SpeechActUI,
 } from "@/lib/pragma/enums";
+import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
 
 export interface LearnerWeekScenario {
   scenario_id: string;
@@ -98,7 +99,7 @@ export function assembleLearnerCourse({
       domain: (week.domain as Domain | null) ?? null,
       scenarios: (byWeek.get(week.week_no) ?? []).flatMap((assignment) => {
         const core = coreById.get(assignment.scenario_id);
-        if (!core || core.mission_status !== "reviewed") return [];
+        if (!core || !isMissionReleasedForLearner(core)) return [];
         return [
           {
             scenario_id: assignment.scenario_id,

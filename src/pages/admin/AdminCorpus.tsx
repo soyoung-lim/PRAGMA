@@ -273,14 +273,12 @@ function OperationsSection({
       ? "최신 점검 대상에는 점검할 중국어가 없습니다."
       : "아직 표시할 최근 점검이 없습니다.";
   const emptyDescription = lookupFailed || audit?.status === "unavailable"
-    ? "통합 검수 화면에서 상태를 다시 확인할 수 있습니다."
+    ? "3단계 자동 점검·경고 검토에서 상태를 다시 확인할 수 있습니다."
     : "다음 콘텐츠 생성부터 수준·점검 단어·확인 대상이 이곳에 기록됩니다.";
-  const reviewHref = audit?.status === "complete"
-    ? `/admin/review?hsk=${audit.candidates.length > 0 ? "candidates" : "clear"}`
-    : "/admin/review";
+  const reviewHref = "/admin/research-qa/final-review?focus=hsk";
   const reviewLabel = audit?.status === "complete" && audit.candidates.length > 0
-    ? `${audit.candidates.length}개 검수 후보 보기`
-    : "통합 검수 열기";
+    ? `${audit.candidates.length}개 HSK 검토 후보 보기`
+    : "3단계 경고 검토 열기";
 
   return (
     <section className="overflow-hidden rounded-xl border border-[#CFC9BC] bg-white shadow-[0_10px_30px_rgba(21,32,43,0.05)]" aria-labelledby="lexical-audit-title">
@@ -437,7 +435,7 @@ function AuditMethodSection() {
             <span className="text-[10.5px] font-semibold text-[#8A7621]">03 · 기록·연결</span>
             <p className="mt-1 font-semibold text-[#26333B]">확인 수 + 교수자 검수 후보</p>
             <p className="mt-1 leading-relaxed text-[#716B61]">
-              결과와 정책 버전을 콘텐츠에 저장하고 통합 검수·승인 화면으로 연결합니다.
+              결과와 정책 버전을 콘텐츠에 저장하고 3단계 자동 점검·경고 검토로 연결합니다.
             </p>
           </li>
         </ol>
@@ -472,8 +470,8 @@ function AuditMethodSection() {
             <Link to="/admin/prompt-harness" className="inline-flex items-center gap-1 text-[#6D5C1F] hover:text-[#15202B]">
               전체 품질관리 구조 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
-            <Link to="/admin/review?hsk=candidates" className="inline-flex items-center gap-1 text-[#6D5C1F] hover:text-[#15202B]">
-              교수자 검수 후보 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            <Link to="/admin/research-qa/final-review?focus=hsk" className="inline-flex items-center gap-1 text-[#6D5C1F] hover:text-[#15202B]">
+              HSK 후보 검토 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           </div>
         </div>

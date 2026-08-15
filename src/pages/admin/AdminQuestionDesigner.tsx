@@ -3,15 +3,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MISSION_LEVEL_ORDER, MISSION_LEVEL_POLICIES } from "@/lib/pragma/levelPolicy";
-import { MPJ_TYPE_ORDER } from "@/lib/pragma/missionSchema";
+import { MPJ_TYPE_ORDER_V4 } from "@/lib/pragma/missionSchema";
 import { DEFAULT_FEATURE_BY_ACT, getTargetFeature } from "@/lib/pragma/targetFeatures";
 import { Info } from "lucide-react";
 
-const MPJ_LABELS: Record<(typeof MPJ_TYPE_ORDER)[number], { title: string; desc: string }> = {
+const MPJ_LABELS: Record<(typeof MPJ_TYPE_ORDER_V4)[number], { title: string; desc: string }> = {
   scale4: { title: "전체 적절성 평가", desc: "표현 전체가 상황에 얼마나 알맞은지 4단계로 판단" },
-  judge3: { title: "세 표현 비교", desc: "과소·적정·과잉 실현을 비교해 가장 알맞은 표현 판단" },
   fix_choice: { title: "수정안 선택", desc: "문제가 있는 표현을 더 알맞게 고친 안 선택" },
-  reason_conf: { title: "판단 근거 확인", desc: "판단 이유와 확신 정도 확인" },
+  reason: { title: "판단 근거 확인", desc: "판단의 주된 이유를 확인" },
   multi_judge: { title: "복수 표현 점검", desc: "여러 표현을 같은 상황 기준으로 함께 판정" },
 };
 
@@ -40,7 +39,7 @@ const Page = () => (
         <CardContent className="space-y-4 py-5">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Badge className="bg-accent text-accent-foreground hover:bg-accent">감각 익히기</Badge>
-            <strong>적절성 판단 문항 5개</strong>
+            <strong>적절성 판단 문항 4개</strong>
             <span className="text-muted-foreground">+</span>
             <Badge variant="outline">직접 표현하기</Badge>
             <strong>번역 또는 통역 산출 1개</strong>
@@ -50,8 +49,8 @@ const Page = () => (
           </p>
         </CardContent>
       </Card>
-      <div className="grid gap-3 md:grid-cols-5">
-        {MPJ_TYPE_ORDER.map((type, index) => (
+      <div className="grid gap-3 md:grid-cols-4">
+        {MPJ_TYPE_ORDER_V4.map((type, index) => (
           <Card key={type}>
             <CardHeader className="pb-2 pt-4">
               <Badge variant="secondary" className="w-fit">판단 {index + 1}</Badge>
@@ -137,7 +136,7 @@ const Page = () => (
             <strong>기준답안 문항</strong>은 시스템 판정 장치가 제대로 작동하는지 확인하는 교정용 사례이며, A·B·C 세 후보가 목표 대역을 한 번씩 대표합니다.
           </p>
           <p className="text-muted-foreground">
-            A·B·C의 위치는 사례마다 고정된 ‘정답 자리’가 아닙니다. 실제 학습 미션은 다섯 가지 판단 형식과 산출 과제로 구성되므로, 기준답안의 후보 3개를 수준별 후보 수 정책으로 해석해서는 안 됩니다.
+            A·B·C의 위치는 사례마다 고정된 ‘정답 자리’가 아닙니다. 실제 학습 미션은 네 가지 판단 형식과 산출 과제로 구성되므로, 기준답안의 후보 3개를 수준별 후보 수 정책으로 해석해서는 안 됩니다.
           </p>
         </CardContent>
       </Card>

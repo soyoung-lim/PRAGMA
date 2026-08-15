@@ -47,6 +47,7 @@ function core(
   scenarioId: string,
   missionStatus: string | null,
   situation = `${scenarioId} 상황`,
+  releaseGateMode: "legacy_reviewed" | "expert_v1" = "legacy_reviewed",
 ): ComposerCore {
   return {
     scenario_id: scenarioId,
@@ -57,6 +58,7 @@ function core(
     theme_code: "campus_study",
     topic_code: "test_topic",
     mission_status: missionStatus,
+    release_gate_mode: releaseGateMode,
     target_feature:
       missionStatus === null ? null : "request_mitigation_optionality",
     situation_ko: situation,
@@ -111,6 +113,20 @@ describe("학습자 편성 강좌 조립", () => {
       true,
     );
     expect(course.weeks[1].scenarios).toEqual([]);
+  });
+
+  it("새 품질 게이트 자료는 내부 reviewed가 아니라 released 뒤에만 노출한다", () => {
+    const course = assembleLearnerCourse(
+      source(
+        [assignment(2, "waiting", 0), assignment(2, "released", 1)],
+        [
+          core("waiting", "reviewed", "대기 상황", "expert_v1"),
+          core("released", "released", "승인 상황", "expert_v1"),
+        ],
+      ),
+    );
+
+    expect(course.weeks[0].scenarios.map((scenario) => scenario.scenario_id)).toEqual(["released"]);
   });
 
   it("편성에는 있으나 조회되지 않은 코어를 학습자에게 누락 문구로 노출하지 않는다", () => {

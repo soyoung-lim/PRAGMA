@@ -49,8 +49,8 @@ describe("moat migration/runtime contracts", () => {
     expect(LINEAGE_SQL).toContain("v_mission->'item_lineage'");
     expect(LINEAGE_SQL).toContain("stage IN ('generated', 'reviewed', 'released', 'superseded')");
     expect(LINEAGE_SQL).toMatch(/REVOKE UPDATE, DELETE ON public\.mission_lineage_versions/);
-    expect(PROMOTE_TS).toContain("generation_attempt: attempt");
-    expect(PROMOTE_TS).toContain("lineage_scope:");
+    expect(PROMOTE_TS).toContain('qualityGate?: "standard" | "required_non_fail"');
+    expect(PROMOTE_TS).toContain('qualityGate === "required_non_fail"');
   });
 
   it("requires two independent expert reviewers and preserves their rows", () => {

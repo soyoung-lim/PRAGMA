@@ -111,7 +111,7 @@ const AdminComposer = () => {
         (core) =>
           core.direction === direction &&
           core.learner_level === level &&
-          core.mission_status === "reviewed" &&
+          isReviewedMission(core) &&
           (themes.length === 0 || themes.includes(core.theme_code as ThemeCode)),
       ).length,
     [cores, direction, level, themes],

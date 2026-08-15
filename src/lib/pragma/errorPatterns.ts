@@ -99,7 +99,10 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
  * 방향을 거르지 않으면 목표어가 다른 시드가 섞인다. 시드가 비면 프롬프트에서 해당
  * 절이 통째로 빠질 뿐이라(의무 아님), **틀린 언어의 시드를 주는 것보다 낫다.**
  */
-export function errorPatternsForAct(act: SpeechActUI, direction: LanguageDirection): ErrorPattern[] {
+export function errorPatternsForAct(
+  act: SpeechActUI,
+  direction: LanguageDirection = "ko_zh",
+): ErrorPattern[] {
   return ERROR_PATTERNS.filter(
     (p) =>
       (!p.applicableSpeechActs || p.applicableSpeechActs.includes(act)) &&
