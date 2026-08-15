@@ -71,9 +71,9 @@ const READINESS_LABELS: Record<string, string> = {
 const FINAL_READINESS_LABELS: Record<string, string> = {
   attested_release: "코드로 확인된 현재 규칙집",
   nine_act_scope: "승인된 9화행 범위",
-  researcher_gold: "현재 9화행의 연구자 기준답안 30개·화행별 3개",
-  expert_gold: "외부 전문가 확인 기준답안 18개·화행별 2개",
-  gold_regression: "9화행 기준답안 품질 점검 자동화 통과·화행별 2개 포함",
+  researcher_gold_population: "시스템 판단용 연구자 기준답안 30개·화행별 3개",
+  external_content_validity: "고정 시드 층화표본 18개 외부 내용타당성 확인",
+  system_judgment_gate: "기준답안 30개 기반 시스템 판단 게이트",
   live_rls_smoke: "세 사용자 역할의 실제 권한 검사",
 };
 const EVIDENCE_SOURCE_LABELS: Record<string, string> = {
@@ -233,8 +233,8 @@ const AdminResearchQa = () => {
           <div>
             <h2 className="text-lg font-semibold">9월 수업 전 연구자·외부 전문가 판정 업무량</h2>
             <p className="mt-1 max-w-4xl text-sm leading-6 text-amber-950/80">
-              504개 전체는 시스템과 연구 책임자가 확인합니다. 외부 전문가 2명은 9화행별 2개씩 뽑은 18개만 독립적으로 판정합니다.
-              전문가는 평균 45분, 최대 60분 안에 끝내는 것을 운영 상한으로 둡니다.
+              시스템은 504개 전량을 점검하고 연구 책임자는 자동 통과 결과를 전부 확인하되 경고 문항에 시간을 집중합니다.
+              외부 전문가 2명은 서버가 사전 추출한 18개만 독립 확인합니다.
             </p>
           </div>
           <Badge variant="outline" className="border-amber-400 bg-white text-amber-900">전문가 전수 검토 없음</Badge>
@@ -248,12 +248,12 @@ const AdminResearchQa = () => {
           <div className="rounded-lg border border-amber-200 bg-white p-4">
             <p className="text-xs font-semibold text-amber-800">외부 전문가 1인 · 9화행 층화표본 18개</p>
             <p className="mt-2 text-2xl font-semibold">필수 입력 {REVIEW_WORKLOAD.goldExpertPerPerson.requiredInputCount.toLocaleString()}개</p>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">화행별 2개 · 목표 {REVIEW_WORKLOAD.goldExpertPerPerson.estimatedMinutes[0]}분, 최대 {REVIEW_WORKLOAD.goldExpertPerPerson.estimatedMinutes[1]}분</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">최초 화행별 2개 · 목표 {REVIEW_WORKLOAD.goldExpertPerPerson.estimatedMinutes[0]}분, 최대 {REVIEW_WORKLOAD.goldExpertPerPerson.estimatedMinutes[1]}분 · 지적 화행만 예비 사례 추가</p>
           </div>
           <div className="rounded-lg border border-amber-200 bg-white p-4">
-            <p className="text-xs font-semibold text-amber-800">연구 책임자 · 정식 AI 학습문항 504개</p>
+            <p className="text-xs font-semibold text-amber-800">연구 책임자 · 504개 자동 결과 확인</p>
             <p className="mt-2 text-2xl font-semibold">약 {REVIEW_WORKLOAD.researcherFinalCorpus.estimatedHours[0]}~{REVIEW_WORKLOAD.researcherFinalCorpus.estimatedHours[1]}시간</p>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">전체 빠른 선별 + 자동 경고·의심 문항 집중 검토</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">자동 통과 여부 전수 확인 + 경고·의심 문항 집중 검토. 전량 정밀검토 주장이 아님</p>
           </div>
         </div>
         <p className="mt-4 text-xs leading-5 text-amber-950/75">
@@ -341,8 +341,8 @@ const AdminResearchQa = () => {
           <ol className="mt-3">
             <Gate index={1} title="문헌과 중국어 규칙 연결 확인" state="ok" detail={`규칙집 ${summary.pack.version} · 원문 확인 문헌 ${summary.evidence.source_verified_count}건 · 기본 검사 통과`} />
             <Gate index={2} title="품질검사 기준답안 30개 연구자 판정" state="pending" detail={`대표 상황 30개 · 중국어 후보 90개 · 아직 확인할 의미 판단 ${summary.calibration.pending_semantic_count}건`} />
-            <Gate index={3} title="외부 전문가 2인의 9화행 층화표본 18개 확인" state="pending" detail="전문가 1인당 목표 45분·최대 60분입니다. 504개 전수 검토는 요구하지 않습니다." />
-            <Gate index={4} title="504개 전체 자동 점검·연구자 검토" state="blocked" detail="시스템이 전체를 점검하고 연구 책임자가 3~5시간 동안 전수 선별한 뒤 경고 문항을 집중 검토합니다." />
+            <Gate index={3} title="사전 추출 18개 외부 내용타당성 확인" state="pending" detail="서버 고정 시드로 화행별 2개를 먼저 추출합니다. 지적 화행은 사전 등록 규칙대로 예비 사례를 추가 확인합니다." />
+            <Gate index={4} title="504개 자동 점검 확인·경고 집중 검토" state="blocked" detail="자동 점검 결과는 전부 확인하지만 모든 문항을 수동으로 정밀 판정했다는 의미는 아닙니다." />
             <Gate index={5} title="교수자가 정식 학습자료 504개 공개 승인" state="blocked" detail="앞의 모든 조건을 통과한 뒤 PRAGMA 학습자 화면에서 사용할 수 있게 최종 승인합니다." />
           </ol>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -362,7 +362,7 @@ const AdminResearchQa = () => {
               to={pathname.startsWith("/prototype/") ? "/prototype/final-review" : "/admin/research-qa/final-review"}
               className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold transition hover:bg-muted"
             >
-              3. 정식 학습문항 연구자 검토
+              3. 504개 자동 결과 확인·경고 검토
             </Link>
             <Link
               to={pathname.startsWith("/prototype/") ? "/prototype/mission-release" : "/admin/research-qa/releases"}

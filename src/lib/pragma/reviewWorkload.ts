@@ -35,7 +35,7 @@ export function buildReviewWorkload() {
     researcherFinalCorpus: {
       missionCount: finalMissionCount,
       estimatedHours: researcherFinalReviewHours,
-      reviewMode: "all_items_fast_triage_plus_flagged_deep_review" as const,
+      reviewMode: "all_automated_results_confirmed_plus_warning_focused_review" as const,
     },
     automatedFinalCorpus: { missionCount: finalMissionCount },
   };

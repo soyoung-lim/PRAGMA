@@ -20,7 +20,7 @@ describe("review workload", () => {
     expect(workload.researcherFinalCorpus).toEqual({
       missionCount: 504,
       estimatedHours: [3, 5],
-      reviewMode: "all_items_fast_triage_plus_flagged_deep_review",
+      reviewMode: "all_automated_results_confirmed_plus_warning_focused_review",
     });
   });
 });

@@ -334,7 +334,7 @@ const AdminBatch = () => {
 
   const releaseFinalRunCorpus = async () => {
     if (!finalRunId || !finalRationale.trim() || !finalReleaseReadiness?.release_allowed) return;
-    if (!window.confirm("504개 모두의 개별 전문가 release를 불변 manifest로 묶고 최종 corpus로 확정할까요?")) return;
+    if (!window.confirm("504개 자동 결과 확인·경고 집중 검토와 두 독립 게이트를 불변 manifest로 묶고 최종 corpus로 확정할까요?")) return;
     try {
       const releaseId = await releaseFinalCorpus(finalRunId, finalRationale.trim());
       await refreshFinalRunState();
@@ -409,7 +409,7 @@ const AdminBatch = () => {
       await completeFinalCorpusMissionBatch(finalMissionBatchId, finalRationale.trim());
       setFinalMissionBatchState(await getFinalCorpusMissionBatchState(finalMissionBatchId));
       await refreshFinalRunState();
-      toast.success("504개 mission 생성 batch를 완료했습니다. 이제 내부·전문가 검토 단계입니다.");
+      toast.success("504개 mission 생성 batch를 완료했습니다. 이제 자동 결과 확인과 경고 집중 검토 단계입니다.");
     } catch (error) {
       toast.error((error as Error).message);
     }
@@ -909,8 +909,8 @@ const AdminBatch = () => {
               {finalReleaseReadiness && (
                 <div className="mt-2 grid gap-1 text-muted-foreground sm:grid-cols-3">
                   <span>미션 생성 {finalReleaseReadiness.requirements.missions_generated.count}/504</span>
-                  <span>자동 점검·연구자 승인 {finalReleaseReadiness.requirements.automated_and_researcher_full_review.count}/504</span>
-                  <span>외부 전문가 표본 {finalReleaseReadiness.requirements.bounded_external_gold_gate.sample_size}/18</span>
+                  <span>자동 결과 확인·경고 검토 {finalReleaseReadiness.requirements.automated_pass_confirmation_and_warning_review.count}/504</span>
+                  <span>외부 내용타당성 표본 {finalReleaseReadiness.requirements.external_content_validity.initial_sample_count}/18</span>
                   <span className="sm:col-span-3 font-medium text-foreground">
                     {finalReleaseReadiness.existing_release_id
                       ? `최종 corpus release 완료 · ${finalReleaseReadiness.existing_release_id}`

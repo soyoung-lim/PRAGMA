@@ -26,6 +26,7 @@ const FINAL_MISSION_RECONCILIATION_SQL = read("supabase/migrations/2026081505100
 const GATE_LINT_HYGIENE_SQL = read("supabase/migrations/20260815052000_authoritative_gate_lint_hygiene.sql");
 const QUALITY_GATE_BOUNDARIES_SQL = read("supabase/migrations/20260815053000_quality_gate_boundaries.sql");
 const BOUNDED_EXTERNAL_VALIDATION_SQL = read("supabase/migrations/20260815054000_bounded_external_validation.sql");
+const PREREGISTERED_EXTERNAL_SAMPLING_SQL = read("supabase/migrations/20260815055000_preregistered_external_sampling.sql");
 const PROMOTE_TS = read("src/lib/pragma/promoteMission.ts");
 const EVENTS_TS = read("src/lib/mission/missionEvents.ts");
 const EXPORT_TS = read("src/lib/mission/missionEventExport.ts");
@@ -36,7 +37,7 @@ describe("moat migration/runtime contracts", () => {
     expect(PROMOTE_TS).toContain('rpc("review_mission"');
     expect(EVENTS_TS).toContain('rpc("append_learner_mission_event"');
     expect(EXPORT_TS).toContain('rpc("export_learner_mission_events"');
-    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL, QUALITY_GATE_BOUNDARIES_SQL, BOUNDED_EXTERNAL_VALIDATION_SQL]) {
+    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL, QUALITY_GATE_BOUNDARIES_SQL, BOUNDED_EXTERNAL_VALIDATION_SQL, PREREGISTERED_EXTERNAL_SAMPLING_SQL]) {
       expect((sql.match(/\$\$/g) ?? []).length % 2).toBe(0);
     }
   });
@@ -235,5 +236,20 @@ describe("moat migration/runtime contracts", () => {
     expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("pragma_final_corpus_generation_readiness_v3");
     expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("pragma_final_corpus_release_readiness_v2");
     expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("Final release must create exactly 504 researcher-authorized lineage snapshots");
+  });
+
+  it("preregisters a seeded external sample and separates all three evidence claims", () => {
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("CREATE TABLE public.pragma_gold_external_sampling_plans");
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("seeded_stratified_18_escalate_all_reserve_v1");
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("External sample must be preregistered before final-corpus generation is locked");
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("any_initial_reviewer_non_approve_or_latest_resolution_not_expert_approved");
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("review_all_frozen_reserve_cases_for_flagged_speech_act");
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("hold_speech_act_and_atomic_final_corpus_release");
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("performance_statistics_allowed', false");
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("System gate must use the entire frozen researcher Gold population, not a selected subset");
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("review_duration_seconds");
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("warning_focused_review");
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("pragma_final_corpus_generation_readiness_v4");
+    expect(PREREGISTERED_EXTERNAL_SAMPLING_SQL).toContain("pragma_final_corpus_release_readiness_v3");
   });
 });

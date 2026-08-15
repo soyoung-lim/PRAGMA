@@ -71,7 +71,7 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/research-qa", label: "전체 현황" },
       { to: "/admin/research-qa/calibration", label: "1. 품질검사 기준답안 연구자 판정" },
       { to: "/admin/research-qa/gold-experts", label: "2. 기준답안 외부 전문가 확인" },
-      { to: "/admin/research-qa/final-review", label: "3. 정식 학습문항 연구자 검토" },
+      { to: "/admin/research-qa/final-review", label: "3. 504개 자동 결과 확인·경고 검토" },
       { to: "/admin/research-qa/releases", label: "4. 통과 문항 학습자 공개" },
       { to: "/admin/export", label: "5. 학습 수행기록 내려받기" },
     ],
