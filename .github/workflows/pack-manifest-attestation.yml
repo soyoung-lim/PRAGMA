@@ -41,6 +41,11 @@ jobs:
 
       - name: Verify moat contracts
         run: npm run typecheck && npm run test:moat && npm run build
+        env:
+          # Static tests only need a syntactically valid client configuration.
+          # No remote test is enabled in this workflow and no secret is bundled.
+          VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-static-placeholder
 
       - name: Attest exact manifest through service role
         run: npm run pack:attest
