@@ -1788,6 +1788,184 @@ export type Database = {
           },
         ]
       }
+      pragma_final_corpus_mission_batch_events: {
+        Row: {
+          actor_id: string
+          batch_id: string
+          event_type: string
+          id: string
+          occurred_at: string
+          rationale_ko: string
+        }
+        Insert: {
+          actor_id: string
+          batch_id: string
+          event_type: string
+          id?: string
+          occurred_at?: string
+          rationale_ko: string
+        }
+        Update: {
+          actor_id?: string
+          batch_id?: string
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          rationale_ko?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_final_corpus_mission_batch_events_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_final_corpus_mission_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_final_corpus_mission_batches: {
+        Row: {
+          created_at: string
+          created_by: string
+          generation_run_id: string
+          id: string
+          lease_minutes: number
+          max_item_attempts: number
+          schema_version: string
+          target_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          generation_run_id: string
+          id?: string
+          lease_minutes?: number
+          max_item_attempts?: number
+          schema_version?: string
+          target_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          generation_run_id?: string
+          id?: string
+          lease_minutes?: number
+          max_item_attempts?: number
+          schema_version?: string
+          target_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_final_corpus_mission_batches_generation_run_id_fkey"
+            columns: ["generation_run_id"]
+            isOneToOne: true
+            referencedRelation: "pragma_final_corpus_generation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_final_corpus_mission_item_claims: {
+        Row: {
+          attempt_no: number
+          batch_id: string
+          claimed_at: string
+          claimed_by: string
+          id: string
+          lease_expires_at: string
+          plan_ordinal: number
+          scenario_id: string
+        }
+        Insert: {
+          attempt_no: number
+          batch_id: string
+          claimed_at?: string
+          claimed_by: string
+          id?: string
+          lease_expires_at: string
+          plan_ordinal: number
+          scenario_id: string
+        }
+        Update: {
+          attempt_no?: number
+          batch_id?: string
+          claimed_at?: string
+          claimed_by?: string
+          id?: string
+          lease_expires_at?: string
+          plan_ordinal?: number
+          scenario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_final_corpus_mission_item_claims_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_final_corpus_mission_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_final_corpus_mission_item_claims_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["scenario_id"]
+          },
+        ]
+      }
+      pragma_final_corpus_mission_item_results: {
+        Row: {
+          actor_id: string
+          claim_id: string
+          error_message: string | null
+          generation_attempt_count: number | null
+          id: string
+          lineage_version_id: string | null
+          occurred_at: string
+          quality_verdict: string | null
+          result: string
+          rule_result: string | null
+        }
+        Insert: {
+          actor_id: string
+          claim_id: string
+          error_message?: string | null
+          generation_attempt_count?: number | null
+          id?: string
+          lineage_version_id?: string | null
+          occurred_at?: string
+          quality_verdict?: string | null
+          result: string
+          rule_result?: string | null
+        }
+        Update: {
+          actor_id?: string
+          claim_id?: string
+          error_message?: string | null
+          generation_attempt_count?: number | null
+          id?: string
+          lineage_version_id?: string | null
+          occurred_at?: string
+          quality_verdict?: string | null
+          result?: string
+          rule_result?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_final_corpus_mission_item_result_lineage_version_id_fkey"
+            columns: ["lineage_version_id"]
+            isOneToOne: true
+            referencedRelation: "mission_lineage_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_final_corpus_mission_item_results_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: true
+            referencedRelation: "pragma_final_corpus_mission_item_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pragma_final_corpus_release_items: {
         Row: {
           core_snapshot_hash: string
@@ -3431,8 +3609,16 @@ export type Database = {
         }
         Returns: string
       }
+      claim_pragma_final_corpus_mission_item: {
+        Args: { p_batch_id: string }
+        Returns: Json
+      }
       close_pragma_final_corpus_generation_run: {
         Args: { p_rationale_ko: string; p_run_id: string }
+        Returns: string
+      }
+      complete_pragma_final_corpus_mission_batch: {
+        Args: { p_batch_id: string; p_rationale_ko: string }
         Returns: string
       }
       create_pragma_final_corpus_generation_run: {
@@ -3446,6 +3632,10 @@ export type Database = {
       }
       get_pragma_final_corpus_generation_readiness: {
         Args: { p_pack_id: string }
+        Returns: Json
+      }
+      get_pragma_final_corpus_mission_batch_state: {
+        Args: { p_batch_id: string }
         Returns: Json
       }
       get_pragma_final_corpus_release_readiness: {
@@ -3487,9 +3677,17 @@ export type Database = {
         }
         Returns: string
       }
+      pause_pragma_final_corpus_mission_batch: {
+        Args: { p_batch_id: string; p_rationale_ko: string }
+        Returns: string
+      }
       pragma_semver_is_greater: {
         Args: { p_new: string; p_old: string }
         Returns: boolean
+      }
+      prepare_pragma_final_corpus_mission_batch: {
+        Args: { p_generation_run_id: string; p_rationale_ko: string }
+        Returns: string
       }
       propose_gold_expert_resolution: {
         Args: { p_payload: Json }
@@ -3499,12 +3697,27 @@ export type Database = {
         Args: { p_payload: Json }
         Returns: string
       }
+      reconcile_pragma_final_corpus_mission_batch: {
+        Args: { p_batch_id: string }
+        Returns: number
+      }
       record_gold_regression_run: {
         Args: {
           p_evaluator_version: string
           p_gold_resolution_ids: string[]
           p_observations: Json
           p_prompt_snapshot_hash: string
+        }
+        Returns: string
+      }
+      record_pragma_final_corpus_mission_item_result: {
+        Args: {
+          p_claim_id: string
+          p_error_message?: string
+          p_generation_attempt_count?: number
+          p_quality_verdict?: string
+          p_result: string
+          p_rule_result?: string
         }
         Returns: string
       }

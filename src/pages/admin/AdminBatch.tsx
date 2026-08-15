@@ -46,6 +46,14 @@ import {
   type FinalCorpusRunState,
 } from "@/lib/pragma/finalCorpusGeneration";
 import {
+  completeFinalCorpusMissionBatch,
+  getFinalCorpusMissionBatchState,
+  pauseFinalCorpusMissionBatch,
+  prepareFinalCorpusMissionBatch,
+  runFinalCorpusMissionBatch,
+  type FinalCorpusMissionBatchState,
+} from "@/lib/pragma/finalCorpusMissionBatch";
+import {
   CORE_QUALITY_AXES,
   runCoreQualityPilot,
   type CoreQualityAxis,
@@ -103,6 +111,7 @@ const persistCoreRunId = (direction: LanguageDirection, runId: string) => {
 };
 
 const FINAL_CORPUS_RUN_STORAGE_KEY = "pragma:admin-final-corpus-run:ko_zh";
+const FINAL_MISSION_BATCH_STORAGE_KEY = "pragma:admin-final-corpus-mission-batch:ko_zh";
 
 const getStoredFinalCorpusRunId = () =>
   typeof window === "undefined" ? "" : window.localStorage.getItem(FINAL_CORPUS_RUN_STORAGE_KEY) ?? "";
@@ -111,6 +120,15 @@ const persistFinalCorpusRunId = (runId: string) => {
   if (typeof window === "undefined") return;
   if (runId) window.localStorage.setItem(FINAL_CORPUS_RUN_STORAGE_KEY, runId);
   else window.localStorage.removeItem(FINAL_CORPUS_RUN_STORAGE_KEY);
+};
+
+const getStoredFinalMissionBatchId = () =>
+  typeof window === "undefined" ? "" : window.localStorage.getItem(FINAL_MISSION_BATCH_STORAGE_KEY) ?? "";
+
+const persistFinalMissionBatchId = (batchId: string) => {
+  if (typeof window === "undefined") return;
+  if (batchId) window.localStorage.setItem(FINAL_MISSION_BATCH_STORAGE_KEY, batchId);
+  else window.localStorage.removeItem(FINAL_MISSION_BATCH_STORAGE_KEY);
 };
 
 const parseSelectedPlanIndexes = (raw: string, total: number) => {
@@ -150,7 +168,13 @@ const AdminBatch = () => {
   const [finalRunState, setFinalRunState] = useState<FinalCorpusRunState | null>(null);
   const [finalReleaseReadiness, setFinalReleaseReadiness] = useState<FinalCorpusReleaseReadiness | null>(null);
   const [finalPreparing, setFinalPreparing] = useState(false);
+  const [finalMissionBatchId, setFinalMissionBatchId] = useState(getStoredFinalMissionBatchId);
+  const [finalMissionBatchState, setFinalMissionBatchState] = useState<FinalCorpusMissionBatchState | null>(null);
+  const [finalMissionRunning, setFinalMissionRunning] = useState(false);
+  const [finalMissionLastMessage, setFinalMissionLastMessage] = useState("");
   const abortRef = useRef<AbortController | null>(null);
+  const missionAbortRef = useRef<AbortController | null>(null);
+  const missionPauseRequestedRef = useRef(false);
 
   const switchDirection = (d: LanguageDirection) => {
     if (running) return;
@@ -256,6 +280,9 @@ const AdminBatch = () => {
       });
       setFinalRunId(runId);
       persistFinalCorpusRunId(runId);
+      setFinalMissionBatchId("");
+      persistFinalMissionBatchId("");
+      setFinalMissionBatchState(null);
       setCoreRunId(runId);
       persistCoreRunId("ko_zh", runId);
       setFinalRunState(await getFinalCorpusRunState(runId));
@@ -312,6 +339,77 @@ const AdminBatch = () => {
       const releaseId = await releaseFinalCorpus(finalRunId, finalRationale.trim());
       await refreshFinalRunState();
       toast.success(`최종 504 corpus를 release했습니다: ${releaseId}`);
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  };
+
+  const prepareOrResumeFinalMissionBatch = async () => {
+    if (!finalRunId || !finalRationale.trim()) return;
+    try {
+      const batchId = await prepareFinalCorpusMissionBatch(finalRunId, finalRationale.trim());
+      setFinalMissionBatchId(batchId);
+      persistFinalMissionBatchId(batchId);
+      setFinalMissionBatchState(await getFinalCorpusMissionBatchState(batchId));
+      toast.success("최종 mission batch를 준비했습니다. 아직 AI 호출은 시작하지 않았습니다.");
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  };
+
+  const refreshFinalMissionBatch = async () => {
+    if (!finalMissionBatchId) return;
+    try {
+      setFinalMissionBatchState(await getFinalCorpusMissionBatchState(finalMissionBatchId));
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  };
+
+  const runFinalMissionBatch = async () => {
+    if (!finalMissionBatchId) return;
+    const controller = new AbortController();
+    missionAbortRef.current = controller;
+    missionPauseRequestedRef.current = false;
+    setFinalMissionRunning(true);
+    try {
+      const state = await runFinalCorpusMissionBatch({
+        batchId: finalMissionBatchId,
+        signal: controller.signal,
+        concurrency: 2,
+        onProgress: ({ claim, result, processed }) => {
+          setFinalMissionLastMessage(
+            `이번 실행 ${processed}건 · plan #${(claim.plan_ordinal ?? 0) + 1} · ${result.ok ? "저장 성공" : `실패: ${result.error ?? "확인 필요"}`}`,
+          );
+        },
+      });
+      setFinalMissionBatchState(state);
+      if (missionPauseRequestedRef.current && state.status !== "completed") {
+        await pauseFinalCorpusMissionBatch(finalMissionBatchId, finalRationale.trim() || "관리자 요청으로 일시정지");
+        setFinalMissionBatchState(await getFinalCorpusMissionBatchState(finalMissionBatchId));
+        toast.success("진행 중 호출을 정리한 뒤 mission batch를 일시정지했습니다.");
+      }
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      missionAbortRef.current = null;
+      setFinalMissionRunning(false);
+    }
+  };
+
+  const requestPauseFinalMissionBatch = () => {
+    missionPauseRequestedRef.current = true;
+    missionAbortRef.current?.abort();
+    toast.info("새 item claim을 중단했습니다. 진행 중인 최대 2건을 기록한 뒤 일시정지합니다.");
+  };
+
+  const completeFinalMissionBatch = async () => {
+    if (!finalMissionBatchId || !finalRationale.trim()) return;
+    try {
+      await completeFinalCorpusMissionBatch(finalMissionBatchId, finalRationale.trim());
+      setFinalMissionBatchState(await getFinalCorpusMissionBatchState(finalMissionBatchId));
+      await refreshFinalRunState();
+      toast.success("504개 mission 생성 batch를 완료했습니다. 이제 내부·전문가 검토 단계입니다.");
     } catch (error) {
       toast.error((error as Error).message);
     }
@@ -822,6 +920,73 @@ const AdminBatch = () => {
                   </span>
                 </div>
               )}
+            </div>
+          )}
+          {finalRunId && (
+            <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-3 text-[11.5px]">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-sky-950">2단계 · 504 mission lease batch</p>
+                  <p className="mt-1 text-sky-900/80">
+                    closed core만 대상으로 서버가 미생성 item을 claim합니다. 동시 2건, item당 최대 3회이며 AI QA fail은 저장하지 않습니다.
+                  </p>
+                </div>
+                <Badge variant="outline">{finalMissionBatchState?.status ?? (finalMissionBatchId ? "상태 확인 필요" : "미준비")}</Badge>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={prepareOrResumeFinalMissionBatch}
+                  disabled={running || finalMissionRunning || finalRunState?.status !== "closed" || !finalRationale.trim()}
+                >
+                  {finalMissionBatchState?.status === "paused" ? "mission batch 재개" : "mission batch 준비"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={runFinalMissionBatch}
+                  disabled={!finalMissionBatchId || finalMissionRunning || finalMissionBatchState?.status === "paused" || finalMissionBatchState?.status === "completed"}
+                >
+                  {finalMissionRunning ? "mission 생성 중…" : "미생성 mission 실행"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={requestPauseFinalMissionBatch}
+                  disabled={!finalMissionRunning}
+                >
+                  현재 호출 후 일시정지
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={refreshFinalMissionBatch}
+                  disabled={!finalMissionBatchId || finalMissionRunning}
+                >
+                  mission 상태 확인
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={completeFinalMissionBatch}
+                  disabled={finalMissionRunning || finalMissionBatchState?.generated_count !== 504 || finalMissionBatchState?.succeeded_claim_count !== 504 || !finalRationale.trim()}
+                >
+                  504 mission batch 완료
+                </Button>
+              </div>
+              {finalMissionBatchState && (
+                <div className="mt-2 grid gap-1 text-sky-950 sm:grid-cols-3">
+                  <span>생성 {finalMissionBatchState.generated_count}/504</span>
+                  <span>실패 시도 {finalMissionBatchState.failed_attempt_count}</span>
+                  <span>재시도 소진 item {finalMissionBatchState.exhausted_item_count}</span>
+                </div>
+              )}
+              {finalMissionBatchId && <p className="mt-1 break-all text-sky-900/70">batch · {finalMissionBatchId}</p>}
+              {finalMissionLastMessage && <p className="mt-1 text-sky-900/80">{finalMissionLastMessage}</p>}
             </div>
           )}
         </section>

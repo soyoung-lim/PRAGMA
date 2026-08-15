@@ -21,6 +21,8 @@ const MANIFEST_ATTESTATION_SQL = read("supabase/migrations/20260815030000_truste
 const EXPANSION_READINESS_SQL = read("supabase/migrations/20260815033000_moat_expansion_readiness.sql");
 const FINAL_CORPUS_SQL = read("supabase/migrations/20260815040000_authoritative_final_corpus_generation.sql");
 const FINAL_CORPUS_RELEASE_SQL = read("supabase/migrations/20260815043000_authoritative_final_corpus_release.sql");
+const FINAL_MISSION_BATCH_SQL = read("supabase/migrations/20260815050000_final_corpus_mission_batch.sql");
+const FINAL_MISSION_RECONCILIATION_SQL = read("supabase/migrations/20260815051000_final_corpus_mission_batch_reconciliation.sql");
 const PROMOTE_TS = read("src/lib/pragma/promoteMission.ts");
 const EVENTS_TS = read("src/lib/mission/missionEvents.ts");
 const EXPORT_TS = read("src/lib/mission/missionEventExport.ts");
@@ -31,7 +33,7 @@ describe("moat migration/runtime contracts", () => {
     expect(PROMOTE_TS).toContain('rpc("review_mission"');
     expect(EVENTS_TS).toContain('rpc("append_learner_mission_event"');
     expect(EXPORT_TS).toContain('rpc("export_learner_mission_events"');
-    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL]) {
+    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL]) {
       expect((sql.match(/\$\$/g) ?? []).length % 2).toBe(0);
     }
   });
@@ -184,5 +186,20 @@ describe("moat migration/runtime contracts", () => {
     expect(FINAL_CORPUS_RELEASE_SQL).toContain("Final-corpus release must atomically promote all 504 scenarios");
     expect(FINAL_CORPUS_RELEASE_SQL).toContain("Final release requires exact immutable corpus membership");
     expect(FINAL_CORPUS_RELEASE_SQL).toMatch(/REVOKE INSERT, UPDATE, DELETE ON public\.pragma_final_corpus_releases,[\s\S]*public\.pragma_final_corpus_release_items FROM authenticated, anon/);
+  });
+
+  it("leases only missing final missions and preserves every retry result before completion", () => {
+    expect(FINAL_MISSION_BATCH_SQL).toContain("CREATE TABLE public.pragma_final_corpus_mission_batches");
+    expect(FINAL_MISSION_BATCH_SQL).toContain("CREATE TABLE public.pragma_final_corpus_mission_item_claims");
+    expect(FINAL_MISSION_BATCH_SQL).toContain("CREATE TABLE public.pragma_final_corpus_mission_item_results");
+    expect(FINAL_MISSION_BATCH_SQL).toContain("FOR UPDATE OF scenario SKIP LOCKED");
+    expect(FINAL_MISSION_BATCH_SQL).toContain("Mission batch cannot complete until all 504 claimed items succeed");
+    expect(FINAL_MISSION_BATCH_SQL).toContain("Final-corpus mission promotion requires a live server lease owned by the caller");
+    expect(FINAL_MISSION_BATCH_SQL).toContain("exact locked pack, hashes, and item lineage");
+    expect(FINAL_MISSION_BATCH_SQL).toMatch(/REVOKE INSERT, UPDATE, DELETE ON public\.pragma_final_corpus_mission_batches,[\s\S]*public\.pragma_final_corpus_mission_item_results FROM authenticated, anon/);
+    expect(FINAL_MISSION_RECONCILIATION_SQL).toContain("CREATE OR REPLACE FUNCTION public.reconcile_pragma_final_corpus_mission_batch");
+    expect(FINAL_MISSION_RECONCILIATION_SQL).toContain("The immutable generated lineage is the authority");
+    expect(FINAL_MISSION_RECONCILIATION_SQL).toContain("PERFORM public.reconcile_pragma_final_corpus_mission_batch");
+    expect(PROMOTE_TS).toContain('qualityGate === "required_non_fail"');
   });
 });

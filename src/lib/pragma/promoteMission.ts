@@ -82,6 +82,11 @@ export interface PromoteResult {
   error?: string;
 }
 
+export interface PromoteOptions {
+  /** Final-corpus batches require the separate AI QA call and reject its fail verdict before DB save. */
+  qualityGate?: "advisory" | "required_non_fail";
+}
+
 /**
  * 검증② — 규칙검사 통과분을 **생성과 분리된 모델**로 비평(계약 0-n·94, 세칙 0-q·99).
  * 관리자 품질관리 장치이며 학습자에게 노출되지 않는다. 호출이 실패해도 undefined를
@@ -140,7 +145,7 @@ const rpc = (fn: string, args: Record<string, unknown>) =>
  * 코어 하나를 미션으로 승격 생성 → 검사 → save_generated_mission.
  * 계획 초점 = DEFAULT_FEATURE_BY_ACT[화행](R24). reviewed 승격은 별도(reviewMission).
  */
-export async function promoteCore(core: PromotableCore): Promise<PromoteResult> {
+export async function promoteCore(core: PromotableCore, options: PromoteOptions = {}): Promise<PromoteResult> {
   const featureCode = DEFAULT_FEATURE_BY_ACT[core.speech_act];
   const feature = featureCode ? getTargetFeature(featureCode) : undefined;
   if (!feature) {
@@ -250,6 +255,17 @@ export async function promoteCore(core: PromotableCore): Promise<PromoteResult> 
     direction,
     speechAct: core.speech_act,
   });
+  if (options.qualityGate === "required_non_fail" && (!quality || quality.verdict === "fail")) {
+    return {
+      ok: false,
+      mission,
+      ruleResult: check.result as "pass" | "warning",
+      violations,
+      attempts,
+      quality,
+      error: quality ? "최종 corpus AI 품질점검이 fail이라 저장하지 않았습니다." : "최종 corpus AI 품질점검을 완료하지 못해 저장하지 않았습니다.",
+    };
+  }
   const contentToSave =
     quality && rawContent && typeof rawContent === "object"
       ? { ...(rawContent as Record<string, unknown>), quality_check: quality }
