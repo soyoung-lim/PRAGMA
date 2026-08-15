@@ -33,6 +33,7 @@
 - 최종 `npx.cmd supabase db push --linked --dry-run`: `Remote database is up to date`.
 - 원본 mixed worktree를 수정·정리하지 않고 `origin/codex/code-hygiene-2026-07-28` 최신점에서 별도 `codex/pragma-moat-release-2026-08-15` worktree를 만들었다. 검토한 PRAGMA/moat 100개 파일만 분리해 typecheck, 전체 163개 테스트, production build, snapshot 결정성, remote dry-run을 다시 통과시켰다.
 - 격리 release commit `6edce91`에서 `CI=true npm.cmd run prompts:verify`가 `source clean`으로 통과했다. 실제 GitHub environment의 service attestation은 아직 실행하지 않았다.
+- attestation workflow의 `test:moat`가 `.env` 없는 runner에서도 Supabase client import 단계에서 멈추지 않도록 검증 step에 비밀이 아닌 정적 placeholder URL/key를 한정했다. remote test는 이 workflow에서 활성화하지 않으며 service key는 마지막 attestation step에만 주입된다.
 - localhost preview: claim 이견, pack scope, evidence fingerprint, 판정·manifest·Gold 폐쇄 흐름 렌더 확인. 1280px에서 `scrollWidth 1265 <= innerWidth 1280`, 집계·판정·manifest·applied 여섯 쓰기 버튼 disabled 확인.
 
 ## 시행착오와 경계
