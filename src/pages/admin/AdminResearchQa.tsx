@@ -29,6 +29,22 @@ type ExpansionReadiness = {
   missing_requirements: string[];
   requirements: Record<string, ExpansionRequirement>;
 };
+type PermissionVerification = {
+  id: string;
+  contract_version: string;
+  status: "pass";
+  source_commit_ref: string;
+  run_ref: string;
+  result: {
+    status?: string;
+    research_rows_created?: number;
+    role_accounts_distinct?: boolean;
+    expert_visible_assignment_count?: number;
+    learner_event_count_unchanged?: boolean;
+    learner_visible_event_count?: number;
+  };
+  verified_at: string;
+};
 
 const LIVE_TABLES: Array<{ key: LiveMetricKey; label: string; table: string }> = [
   { key: "lineage", label: "저장된 문항 버전", table: "mission_lineage_versions" },
@@ -155,6 +171,8 @@ const AdminResearchQa = () => {
   const [readinessError, setReadinessError] = useState<string | null>(null);
   const [finalReadiness, setFinalReadiness] = useState<FinalCorpusReadiness | null>(null);
   const [finalReadinessError, setFinalReadinessError] = useState<string | null>(null);
+  const [permissionVerification, setPermissionVerification] = useState<PermissionVerification | null>(null);
+  const [permissionVerificationError, setPermissionVerificationError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -185,14 +203,26 @@ const AdminResearchQa = () => {
       const finalReadinessResult = await db.rpc("get_pragma_final_corpus_generation_readiness", {
         p_pack_id: summary.pack.id,
       });
+      const parsedFinal = asFinalReadiness(finalReadinessResult.data);
+      const permissionRequirement = parsedFinal?.requirements.live_rls_smoke as { verification_id?: unknown } | undefined;
+      const verificationId = typeof permissionRequirement?.verification_id === "string"
+        ? permissionRequirement.verification_id
+        : null;
+      const permissionResult = verificationId
+        ? await db.from("pragma_operational_verifications")
+          .select("id,contract_version,status,source_commit_ref,run_ref,result,verified_at")
+          .eq("id", verificationId)
+          .limit(1)
+        : { data: [], error: null };
       if (active) {
         setLive(Object.fromEntries(entries) as Record<LiveMetricKey, LiveMetric>);
         const parsed = asExpansionReadiness(readinessResult.data);
         setReadiness(parsed);
         setReadinessError(readinessResult.error?.message ?? (parsed ? null : "readiness 응답 형식 확인 필요"));
-        const parsedFinal = asFinalReadiness(finalReadinessResult.data);
         setFinalReadiness(parsedFinal);
         setFinalReadinessError(finalReadinessResult.error?.message ?? (parsedFinal ? null : "최종 코퍼스 readiness 응답 확인 필요"));
+        setPermissionVerification(((permissionResult.data ?? [])[0] as PermissionVerification | undefined) ?? null);
+        setPermissionVerificationError(permissionResult.error?.message ?? null);
         setLoadingLive(false);
       }
     })();
@@ -313,9 +343,44 @@ const AdminResearchQa = () => {
               const requirement = finalReadiness?.requirements[key] as { passed?: boolean } | undefined;
               const passed = requirement?.passed === true;
               return (
-                <div key={key} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3">
-                  <span className="text-sm">{label}</span>
-                  <StatusBadge tone={passed ? "ok" : "blocked"}>{passed ? "충족" : "미충족"}</StatusBadge>
+                <div key={key} className="rounded-lg border border-border bg-background px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm">{label}</span>
+                    <StatusBadge tone={passed ? "ok" : "blocked"}>{passed ? "충족" : "미충족"}</StatusBadge>
+                  </div>
+                  {key === "live_rls_smoke" && (
+                    <details className="mt-3 border-t border-border pt-3 text-xs leading-5 text-muted-foreground">
+                      <summary className="cursor-pointer font-medium text-foreground">권한 검사 결과 자세히 보기</summary>
+                      {permissionVerificationError ? (
+                        <p className="mt-2">검사 기록 조회 실패: {permissionVerificationError}</p>
+                      ) : permissionVerification ? (
+                        <div className="mt-3 space-y-3">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <p><strong className="text-foreground">검사 결과:</strong> 통과</p>
+                            <p><strong className="text-foreground">검사 시각:</strong> {new Date(permissionVerification.verified_at).toLocaleString("ko-KR")}</p>
+                            <p><strong className="text-foreground">검사 규약:</strong> {permissionVerification.contract_version}</p>
+                            <p><strong className="text-foreground">코드 버전:</strong> {permissionVerification.source_commit_ref.slice(0, 12)}</p>
+                            <p><strong className="text-foreground">서로 다른 3계정:</strong> {permissionVerification.result.role_accounts_distinct ? "확인" : "확인 필요"}</p>
+                            <p><strong className="text-foreground">검사 중 연구자료 생성:</strong> {permissionVerification.result.research_rows_created ?? "—"}건</p>
+                            <p><strong className="text-foreground">전문가 본인 배정 조회:</strong> {permissionVerification.result.expert_visible_assignment_count ?? "—"}건</p>
+                            <p><strong className="text-foreground">학습자 기록 수 불변:</strong> {permissionVerification.result.learner_event_count_unchanged ? "확인" : "확인 필요"}</p>
+                          </div>
+                          <div className="rounded-md bg-muted/50 p-3">
+                            <p className="font-medium text-foreground">이 검사에서 확인한 접근 경계</p>
+                            <ul className="mt-1 list-disc space-y-1 pl-5">
+                              <li>관리자만 공개·전문가 등록·개선 판정 기능을 실행할 수 있음</li>
+                              <li>외부 전문가는 본인에게 배정된 검토만 볼 수 있음</li>
+                              <li>학습자는 전문가 배정과 관리자 기능에 접근할 수 없음</li>
+                              <li>실패 경로 검사 중 학습자 수행기록과 연구자료가 추가되지 않음</li>
+                            </ul>
+                          </div>
+                          <p>실행 기록: {permissionVerification.run_ref}</p>
+                        </div>
+                      ) : (
+                        <p className="mt-2">아직 실제 관리자·외부 전문가·학습자 계정으로 권한검사를 실행하지 않았습니다.</p>
+                      )}
+                    </details>
+                  )}
                 </div>
               );
             })}
