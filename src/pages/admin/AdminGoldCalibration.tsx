@@ -76,7 +76,7 @@ const BAND_OPTIONS = {
 const ACT_LABEL = { request: "요청", refusal: "거절", thanks: "감사" } as const;
 const MODE_LABEL = { translation: "번역", stt_interpreting: "통역" } as const;
 const STATUS_LABEL: Record<CalibrationStatus, string> = {
-  researcher_approved: "논문 저자 확정",
+  researcher_approved: "연구자 판정 확정",
   revise_required: "수정 필요",
   rejected: "기각",
 };
@@ -175,7 +175,7 @@ const AdminGoldCalibration = () => {
       db.from("pragma_gold_calibration_resolutions").select("*").order("resolved_at", { ascending: false }),
     ]);
     if (reviewResult.error || resolutionResult.error) {
-      setMessage(reviewResult.error?.message ?? resolutionResult.error?.message ?? "기준답안 작성 기록을 불러오지 못했습니다.");
+      setMessage(reviewResult.error?.message ?? resolutionResult.error?.message ?? "기준답안 연구자 판정 기록을 불러오지 못했습니다.");
     } else {
       try {
         setReviews((reviewResult.data ?? []).map(parseStoredReview));
@@ -296,8 +296,8 @@ const AdminGoldCalibration = () => {
 
   return (
     <AdminShell
-      title="1단계 · 품질검사 기준답안 30개 작성"
-      description="논문 저자가 대표 상황 30개에 대해 중국어 후보의 적절성, 반드시 유지할 의미와 판단 근거를 먼저 기록합니다."
+      title="1단계 · 품질검사 기준답안 30개 연구자 판정"
+      description="연구 책임자가 대표 상황 30개에 대해 중국어 후보의 적절성, 반드시 유지할 의미와 판단 근거를 기록합니다."
     >
       <ResearchWorkflowGuide current="calibration" />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -430,7 +430,7 @@ const AdminGoldCalibration = () => {
           </section>
 
           <section className="rounded-xl border border-border bg-card p-5">
-            <h2 className="text-lg font-semibold">3. 논문 저자의 종합 판단</h2>
+            <h2 className="text-lg font-semibold">3. 연구자 종합판정</h2>
             <div className="mt-4 grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
               <label className="text-sm font-medium">판정
                 <Select value={draft.overall_verdict} onValueChange={(value) => setDraft((current) => ({ ...current, overall_verdict: value as Verdict }))}>
@@ -457,7 +457,7 @@ const AdminGoldCalibration = () => {
           <section className="rounded-xl border border-border bg-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-emerald-700" /><h2 className="text-lg font-semibold">4. 연구 책임자 확정본 저장</h2></div>
+                <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-emerald-700" /><h2 className="text-lg font-semibold">4. 연구자 판정 확정본 저장</h2></div>
                 <p className="mt-1 text-sm text-muted-foreground">원래 판정은 그대로 보존하고, 최종 결론을 별도로 저장합니다. 확정 전에는 다음 차수 판정을 시작하지 않습니다.</p>
               </div>
               <Button variant="outline" onClick={resolveLatestReview} disabled={!isAdmin || !latestUnresolvedReview || saving}>

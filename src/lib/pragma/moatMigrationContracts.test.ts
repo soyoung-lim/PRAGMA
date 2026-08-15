@@ -24,6 +24,8 @@ const FINAL_CORPUS_RELEASE_SQL = read("supabase/migrations/20260815043000_author
 const FINAL_MISSION_BATCH_SQL = read("supabase/migrations/20260815050000_final_corpus_mission_batch.sql");
 const FINAL_MISSION_RECONCILIATION_SQL = read("supabase/migrations/20260815051000_final_corpus_mission_batch_reconciliation.sql");
 const GATE_LINT_HYGIENE_SQL = read("supabase/migrations/20260815052000_authoritative_gate_lint_hygiene.sql");
+const QUALITY_GATE_BOUNDARIES_SQL = read("supabase/migrations/20260815053000_quality_gate_boundaries.sql");
+const BOUNDED_EXTERNAL_VALIDATION_SQL = read("supabase/migrations/20260815054000_bounded_external_validation.sql");
 const PROMOTE_TS = read("src/lib/pragma/promoteMission.ts");
 const EVENTS_TS = read("src/lib/mission/missionEvents.ts");
 const EXPORT_TS = read("src/lib/mission/missionEventExport.ts");
@@ -34,7 +36,7 @@ describe("moat migration/runtime contracts", () => {
     expect(PROMOTE_TS).toContain('rpc("review_mission"');
     expect(EVENTS_TS).toContain('rpc("append_learner_mission_event"');
     expect(EXPORT_TS).toContain('rpc("export_learner_mission_events"');
-    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL]) {
+    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL, QUALITY_GATE_BOUNDARIES_SQL, BOUNDED_EXTERNAL_VALIDATION_SQL]) {
       expect((sql.match(/\$\$/g) ?? []).length % 2).toBe(0);
     }
   });
@@ -211,5 +213,27 @@ describe("moat migration/runtime contracts", () => {
     expect(GATE_LINT_HYGIENE_SQL).toContain("Unexpected materialize_pragma_improvement_candidates definition");
     expect(GATE_LINT_HYGIENE_SQL).toContain("Unexpected get_pragma_moat_expansion_readiness definition");
     expect(GATE_LINT_HYGIENE_SQL).toContain("Unexpected get_pragma_final_corpus_generation_readiness definition");
+  });
+
+  it("stores Gold thresholds as operational gates and covers every final speech act", () => {
+    expect(QUALITY_GATE_BOUNDARIES_SQL).toContain("evaluation_purpose = 'operational_gate_check'");
+    expect(QUALITY_GATE_BOUNDARIES_SQL).toContain("is_quality_measurement = false");
+    expect(QUALITY_GATE_BOUNDARIES_SQL).toContain("전체 시스템의 정확도나 일반화된 품질 측정치로 해석하거나 보고하지 않습니다");
+    expect(QUALITY_GATE_BOUNDARIES_SQL).toContain("researcher_gold_30_and_three_per_act_current_pack");
+    expect(QUALITY_GATE_BOUNDARIES_SQL).toContain("passing_gold_gate_three_per_act_current_pack");
+    expect(QUALITY_GATE_BOUNDARIES_SQL).toContain("coverage.minimum_per_speech_act >= 3");
+    expect(QUALITY_GATE_BOUNDARIES_SQL).toContain("pragma_final_corpus_generation_readiness_v2");
+  });
+
+  it("bounds external validation while preserving full automation and research-lead review", () => {
+    expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("cardinality(gold_resolution_ids) >= 18");
+    expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("at least two cases for every one of nine speech acts");
+    expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("External experts validate the bounded Gold sample, not all 504 final missions");
+    expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("CREATE TABLE public.pragma_final_corpus_researcher_item_reviews");
+    expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("automated_and_researcher_full_review");
+    expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("target_minutes_per_reviewer', jsonb_build_array(45, 60)");
+    expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("pragma_final_corpus_generation_readiness_v3");
+    expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("pragma_final_corpus_release_readiness_v2");
+    expect(BOUNDED_EXTERNAL_VALIDATION_SQL).toContain("Final release must create exactly 504 researcher-authorized lineage snapshots");
   });
 });

@@ -14,40 +14,40 @@ const STEPS: Array<{
 }> = [
   {
     id: "calibration",
-    short: "기준답안 작성",
-    title: "품질검사 기준답안 30개 작성",
-    purpose: "논문 저자가 대표 상황 30개에 대해 중국어 후보의 적절성, 유지해야 할 의미와 판단 근거를 기록합니다.",
-    owner: "연구 책임자(논문 저자)",
-    done: "품질검사에 사용할 기준답안 30개",
+    short: "연구자 판정",
+    title: "품질검사 기준답안 30개 연구자 판정",
+    purpose: "연구 책임자가 대표 상황 30개에 대해 중국어 후보의 적절성, 유지해야 할 의미와 판단 근거를 기록합니다.",
+    owner: "연구 책임자",
+    done: "연구자 판정을 마친 기준답안 30개",
     adminPath: "/admin/research-qa/calibration",
     previewPath: "/prototype/research-qa-calibration",
   },
   {
     id: "gold",
-    short: "기준답안 확인",
-    title: "기준답안 30개 외부 전문가 확인",
-    purpose: "외부 전문가 2명이 논문 저자의 답을 보지 않고 같은 30개를 판단하여 기준답안의 타당성을 확인합니다.",
+    short: "외부 표본 확인",
+    title: "9화행 층화표본 18개 외부 전문가 확인",
+    purpose: "외부 전문가 2명이 연구 책임자의 판정을 보지 않고 9개 화행에서 2개씩 뽑은 18개를 독립적으로 판단합니다.",
     owner: "선정된 외부 전문가 2명",
-    done: "외부 전문가가 확인한 기준답안 30개",
+    done: "화행별 2개씩 외부 확인을 마친 기준답안 18개",
     adminPath: "/admin/research-qa/gold-experts",
     previewPath: "/prototype/gold-expert-ops",
   },
   {
     id: "missions",
-    short: "AI 문항 확인",
-    title: "AI 학습문항 외부 전문가 확인",
-    purpose: "같은 외부 전문가 2명이 AI가 만든 수업용 문장의 중국어 자연성, 상황 적절성, 의미와 규칙 연결을 확인합니다.",
-    owner: "선정된 외부 전문가 2명",
-    done: "사용 가능 여부가 확인된 AI 학습문항",
-    adminPath: "/admin/research-qa/expert-reviews",
-    previewPath: "/prototype/expert-review-ops",
+    short: "정식 문항 검토",
+    title: "정식 AI 학습문항 504개 자동 점검·연구자 검토",
+    purpose: "시스템이 504개 전체를 먼저 점검하고, 연구 책임자가 전 항목을 빠르게 선별한 뒤 경고 문항을 집중 검토합니다.",
+    owner: "연구 책임자 · 시스템(전체 자동 점검)",
+    done: "연구자 승인을 마친 정식 학습문항 504개",
+    adminPath: "/admin/research-qa/final-review",
+    previewPath: "/prototype/final-review",
   },
   {
     id: "release",
     short: "학습자 공개",
     title: "통과한 학습문항을 학습자에게 공개",
-    purpose: "외부 전문가 확인과 기준답안 자동 재시험을 모두 통과한 문항만 PRAGMA 수업 화면에서 학습자가 사용할 수 있게 합니다.",
-    owner: "시스템 + 연구 책임자(논문 저자)",
+    purpose: "연구자 전수 검토, 외부 전문가 층화표본 확인과 품질 점검 자동화를 모두 통과한 문항을 교수자가 PRAGMA 수업 화면에 공개합니다.",
+    owner: "교수자(공개 결정) · 시스템(통과 조건 확인)",
     done: "PRAGMA 학습자 화면에서 사용할 확정 문항",
     adminPath: "/admin/research-qa/releases",
     previewPath: "/prototype/mission-release",
@@ -57,7 +57,7 @@ const STEPS: Array<{
     short: "수행기록 내려받기",
     title: "학습 수행기록 연구용 내려받기",
     purpose: "연구자료 사용에 동의한 학습자의 판단·수정·산출 기록만 연구용 번호로 바꾸어 내려받습니다.",
-    owner: "연구 책임자(논문 저자)",
+    owner: "연구 책임자",
     done: "통계·질적 분석에 사용할 가명 처리 파일",
     adminPath: "/admin/export",
   },
@@ -114,17 +114,16 @@ export const ResearchWorkflowGuide = ({ current }: { current: ResearchStep | "ov
 
       {current === "overview" && (
         <div className="mt-5 grid gap-3 border-t pt-4 text-sm leading-6 md:grid-cols-2">
-          <p><strong>품질검사 기준답안:</strong> 시스템 판정이 맞는지 시험하기 위해 논문 저자와 외부 전문가가 정답·근거를 확정한 대표 문항 30개입니다.</p>
-          <p><strong>연구 책임자:</strong> 이 박사논문을 수행하고 PRAGMA를 운영하는 논문 저자입니다.</p>
+          <p><strong>품질검사 기준답안:</strong> 연구 책임자가 판정한 대표 문항 30개입니다. 외부 전문가는 이 가운데 9화행별 2개씩 총 18개만 확인합니다.</p>
+          <p><strong>연구 책임자:</strong> 이 박사논문을 수행하고 PRAGMA를 운영하며 연구 절차를 책임지는 사람입니다.</p>
           <p><strong>외부 전문가:</strong> 중국어 화용과 한중 통번역을 판단할 자격·경력이 확인된 독립 검토자 2명입니다.</p>
           <p><strong>AI 학습문항:</strong> 확정한 규칙에 따라 AI가 생성하여 실제 PRAGMA 수업에서 사용할 후보 문항입니다.</p>
         </div>
       )}
 
-      {(current === "gold" || current === "missions") && (
+      {current === "gold" && (
         <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-950">
-          <strong>전문가 인원:</strong> 4명이 필수는 아닙니다. 같은 전문가 2명이 2단계와 3단계를 각각 독립적으로 수행할 수 있습니다.
-          두 단계의 검토 기록과 판정 회차는 서로 분리하여 저장됩니다.
+          <strong>전문가 부담 상한:</strong> 같은 전문가 2명이 각자 18개를 독립적으로 확인합니다. 목표 시간은 평균 45분, 최대 60분이며 504개 전수 검토는 요구하지 않습니다.
         </div>
       )}
     </section>

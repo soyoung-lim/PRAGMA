@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SPEECH_ACT_UI } from "@/lib/pragma/enums";
 import { RESEARCH_QA_SUMMARY } from "@/lib/pragma/researchQaSummary";
 import type { FinalCorpusReadiness } from "@/lib/pragma/finalCorpusGeneration";
+import { REVIEW_WORKLOAD } from "@/lib/pragma/reviewWorkload";
 
 type LiveMetricKey = "lineage" | "expertReviews" | "events" | "improvements" | "calibrationReviews" | "calibrationResolutions" | "goldExpertReviews" | "goldExpertResolutions" | "goldRegressionRuns" | "finalLocks" | "finalRuns" | "finalMissionBatches" | "finalReleases";
 type LiveMetric = { value: number | null; error: string | null };
@@ -34,11 +35,11 @@ const LIVE_TABLES: Array<{ key: LiveMetricKey; label: string; table: string }> =
   { key: "expertReviews", label: "AI 학습문항 외부 전문가 판단", table: "mission_expert_reviews" },
   { key: "events", label: "학습자 수행 기록", table: "learner_mission_events" },
   { key: "improvements", label: "개선 후보", table: "pragma_improvement_candidates" },
-  { key: "calibrationReviews", label: "논문 저자의 기준답안 초안", table: "pragma_gold_calibration_reviews" },
-  { key: "calibrationResolutions", label: "논문 저자가 확정한 기준답안", table: "pragma_gold_calibration_resolutions" },
+  { key: "calibrationReviews", label: "기준답안 연구자 판정 초안", table: "pragma_gold_calibration_reviews" },
+  { key: "calibrationResolutions", label: "기준답안 연구자 판정 확정본", table: "pragma_gold_calibration_resolutions" },
   { key: "goldExpertReviews", label: "기준답안 외부 전문가 판단", table: "pragma_gold_expert_reviews" },
   { key: "goldExpertResolutions", label: "외부 전문가가 확인한 기준답안", table: "pragma_gold_expert_resolutions" },
-  { key: "goldRegressionRuns", label: "기준답안 자동 재시험", table: "pragma_gold_regression_runs" },
+  { key: "goldRegressionRuns", label: "기준답안 기반 품질 점검 자동화", table: "pragma_gold_regression_runs" },
   { key: "finalLocks", label: "최종 자료 생성 잠금", table: "pragma_final_corpus_generation_locks" },
   { key: "finalRuns", label: "최종 504개 생성 작업", table: "pragma_final_corpus_generation_runs" },
   { key: "finalMissionBatches", label: "최종 504개 문항 생성 작업", table: "pragma_final_corpus_mission_batches" },
@@ -58,9 +59,9 @@ const db = supabase as unknown as {
 
 const READINESS_LABELS: Record<string, string> = {
   attested_pack_release: "코드와 규칙집 버전 확인",
-  researcher_gold: "논문 저자가 작성한 기준답안 30개",
-  expert_gold: "외부 전문가가 확인한 기준답안 30개",
-  gold_regression: "기준답안 자동 재시험 통과",
+  researcher_gold: "연구자 판정 기준답안 30개",
+  expert_gold: "외부 전문가가 확인한 9화행 층화표본 18개",
+  gold_regression: "기준답안 기반 품질 점검 자동화 통과",
   released_vertical_slice: "요청·거절·감사 공개 표본",
   consented_completion_sample: "화행별 동의 참여자 3명 이상",
   flywheel_refresh: "표본 사용 후 개선 신호 점검",
@@ -70,14 +71,14 @@ const READINESS_LABELS: Record<string, string> = {
 const FINAL_READINESS_LABELS: Record<string, string> = {
   attested_release: "코드로 확인된 현재 규칙집",
   nine_act_scope: "승인된 9화행 범위",
-  researcher_gold: "현재 규칙집의 기준답안 초안 30개",
-  expert_gold: "외부 전문가 확인 기준답안 30개·화행별 3개",
-  gold_regression: "현재 규칙집의 기준답안 자동 재시험 통과",
+  researcher_gold: "현재 9화행의 연구자 기준답안 30개·화행별 3개",
+  expert_gold: "외부 전문가 확인 기준답안 18개·화행별 2개",
+  gold_regression: "9화행 기준답안 품질 점검 자동화 통과·화행별 2개 포함",
   live_rls_smoke: "세 사용자 역할의 실제 권한 검사",
 };
 const EVIDENCE_SOURCE_LABELS: Record<string, string> = {
   literature: "학술문헌",
-  researcher_observation: "논문 저자의 관찰",
+  researcher_observation: "연구 책임자의 관찰",
   design_rationale: "설계 근거",
 };
 const EVIDENCE_VERIFICATION_LABELS: Record<string, string> = {
@@ -203,7 +204,7 @@ const AdminResearchQa = () => {
   return (
     <AdminShell
       title="문항 품질·연구자료 전체 현황"
-      description="품질검사 기준답안 작성부터 AI 학습문항의 외부 확인, 학습자 화면 공개와 수행기록 내려받기까지 진행 상태를 확인합니다."
+      description="품질검사 기준답안 연구자 판정부터 AI 학습문항의 외부 확인, 학습자 화면 공개와 수행기록 내려받기까지 진행 상태를 확인합니다."
     >
       <ResearchWorkflowGuide current="overview" />
       <section className="rounded-xl border border-[#E5CF72] bg-[#FFF9DF] p-5">
@@ -225,6 +226,39 @@ const AdminResearchQa = () => {
         <Stat label="표현 규칙 / 주의사항" value={`${summary.pack.rule_count} / ${summary.pack.risk_count}`} note="각 문항에 연결해 확인 가능" />
         <Stat label="등록 근거 / 원문 확인" value={`${summary.evidence.total_count} / ${summary.evidence.source_verified_count}`} note="변경·삭제 이력까지 보존" />
         <Stat label="정식 학습자료" value={`0 / ${summary.final_corpus.planned_item_count}`} note={`최소 ${summary.final_corpus.target_minimum}개 · 확정 후 전량 신규 생성`} />
+      </section>
+
+      <section className="mt-6 rounded-xl border border-amber-300 bg-amber-50/60 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">9월 수업 전 연구자·외부 전문가 판정 업무량</h2>
+            <p className="mt-1 max-w-4xl text-sm leading-6 text-amber-950/80">
+              504개 전체는 시스템과 연구 책임자가 확인합니다. 외부 전문가 2명은 9화행별 2개씩 뽑은 18개만 독립적으로 판정합니다.
+              전문가는 평균 45분, 최대 60분 안에 끝내는 것을 운영 상한으로 둡니다.
+            </p>
+          </div>
+          <Badge variant="outline" className="border-amber-400 bg-white text-amber-900">전문가 전수 검토 없음</Badge>
+        </div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          <div className="rounded-lg border border-amber-200 bg-white p-4">
+            <p className="text-xs font-semibold text-amber-800">연구 책임자 · 기준답안 30개</p>
+            <p className="mt-2 text-2xl font-semibold">필수 입력 {REVIEW_WORKLOAD.researcher.requiredInputCount.toLocaleString()}개</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">선택 판정 300개 + 서술 근거 120개, 이후 확정 동작 30회</p>
+          </div>
+          <div className="rounded-lg border border-amber-200 bg-white p-4">
+            <p className="text-xs font-semibold text-amber-800">외부 전문가 1인 · 9화행 층화표본 18개</p>
+            <p className="mt-2 text-2xl font-semibold">필수 입력 {REVIEW_WORKLOAD.goldExpertPerPerson.requiredInputCount.toLocaleString()}개</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">화행별 2개 · 목표 {REVIEW_WORKLOAD.goldExpertPerPerson.estimatedMinutes[0]}분, 최대 {REVIEW_WORKLOAD.goldExpertPerPerson.estimatedMinutes[1]}분</p>
+          </div>
+          <div className="rounded-lg border border-amber-200 bg-white p-4">
+            <p className="text-xs font-semibold text-amber-800">연구 책임자 · 정식 AI 학습문항 504개</p>
+            <p className="mt-2 text-2xl font-semibold">약 {REVIEW_WORKLOAD.researcherFinalCorpus.estimatedHours[0]}~{REVIEW_WORKLOAD.researcherFinalCorpus.estimatedHours[1]}시간</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">전체 빠른 선별 + 자동 경고·의심 문항 집중 검토</p>
+          </div>
+        </div>
+        <p className="mt-4 text-xs leading-5 text-amber-950/75">
+          45~60분은 아직 실제 측정값이 아닙니다. 먼저 5개 표본으로 예비검토를 하고, 60분을 넘으면 화행 수를 줄이지 않고 반복 입력과 서술 항목을 간소화합니다.
+        </p>
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-card p-5">
@@ -306,17 +340,17 @@ const AdminResearchQa = () => {
           </div>
           <ol className="mt-3">
             <Gate index={1} title="문헌과 중국어 규칙 연결 확인" state="ok" detail={`규칙집 ${summary.pack.version} · 원문 확인 문헌 ${summary.evidence.source_verified_count}건 · 기본 검사 통과`} />
-            <Gate index={2} title="논문 저자의 품질검사 기준답안 30개 작성" state="pending" detail={`대표 상황 30개 · 중국어 후보 90개 · 아직 확인할 의미 판단 ${summary.calibration.pending_semantic_count}건`} />
-            <Gate index={3} title="외부 전문가 2인의 기준답안·AI 학습문항 확인" state="pending" detail="두 외부 전문가는 각자 판단하며, 의견이 다르면 근거와 최종 해결 결과를 함께 남깁니다." />
-            <Gate index={4} title="기준답안으로 시스템 판단 정확도 재시험" state="blocked" detail="외부 전문가가 확인한 기준답안 30개가 준비되면 시스템의 판단 정확도를 다시 시험합니다." />
-            <Gate index={5} title="정식 학습자료 504개를 PRAGMA 학습자 화면에 공개" state="blocked" detail="앞의 모든 조건을 통과한 뒤 시험용 자료와 분리하여 504개를 새로 만들고 학습자가 사용하게 합니다." />
+            <Gate index={2} title="품질검사 기준답안 30개 연구자 판정" state="pending" detail={`대표 상황 30개 · 중국어 후보 90개 · 아직 확인할 의미 판단 ${summary.calibration.pending_semantic_count}건`} />
+            <Gate index={3} title="외부 전문가 2인의 9화행 층화표본 18개 확인" state="pending" detail="전문가 1인당 목표 45분·최대 60분입니다. 504개 전수 검토는 요구하지 않습니다." />
+            <Gate index={4} title="504개 전체 자동 점검·연구자 검토" state="blocked" detail="시스템이 전체를 점검하고 연구 책임자가 3~5시간 동안 전수 선별한 뒤 경고 문항을 집중 검토합니다." />
+            <Gate index={5} title="교수자가 정식 학습자료 504개 공개 승인" state="blocked" detail="앞의 모든 조건을 통과한 뒤 PRAGMA 학습자 화면에서 사용할 수 있게 최종 승인합니다." />
           </ol>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
               to={pathname.startsWith("/prototype/") ? "/prototype/research-qa-calibration" : "/admin/research-qa/calibration"}
               className="inline-flex rounded-md bg-[#15202B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#263747]"
             >
-              1. 품질검사 기준답안 작성
+              1. 품질검사 기준답안 연구자 판정
             </Link>
             <Link
               to={pathname.startsWith("/prototype/") ? "/prototype/gold-expert-ops" : "/admin/research-qa/gold-experts"}
@@ -325,10 +359,10 @@ const AdminResearchQa = () => {
               2. 기준답안 외부 전문가 확인
             </Link>
             <Link
-              to={pathname.startsWith("/prototype/") ? "/prototype/expert-review-ops" : "/admin/research-qa/expert-reviews"}
+              to={pathname.startsWith("/prototype/") ? "/prototype/final-review" : "/admin/research-qa/final-review"}
               className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold transition hover:bg-muted"
             >
-              3. AI 학습문항 외부 전문가 확인
+              3. 정식 학습문항 연구자 검토
             </Link>
             <Link
               to={pathname.startsWith("/prototype/") ? "/prototype/mission-release" : "/admin/research-qa/releases"}
