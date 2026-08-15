@@ -41,7 +41,7 @@ const SPEECH_ACT_LABELS: Record<string, string> = { request: "요청", refusal: 
 const POWER_LABELS: Record<string, string> = { higher: "상대방의 지위가 더 높음", equal: "지위가 비슷함", lower: "상대방의 지위가 더 낮음" };
 const DISTANCE_LABELS: Record<string, string> = { close: "가까운 사이", acquaintance: "아는 사이", stranger: "낯선 사이" };
 const BURDEN_LABELS: Record<string, string> = { low: "부담이 작음", medium: "부담이 보통", high: "부담이 큼" };
-const RESOLUTION_METHOD_LABELS: Record<string, string> = { unanimous: "두 판단이 처음부터 일치", consensus_after_discussion: "의견을 나눈 뒤 합의", researcher_decision: "논문 저자 결정", unresolved: "아직 미해결" };
+const RESOLUTION_METHOD_LABELS: Record<string, string> = { unanimous: "두 판단이 처음부터 일치", consensus_after_discussion: "의견을 나눈 뒤 합의", researcher_decision: "연구 책임자 단독 결정", unresolved: "아직 미해결" };
 const FINAL_STATUS_LABELS: Record<string, string> = { approved: "승인", revise: "수정 후 재검토", revised: "수정 후 재검토", rejected: "제외", unresolved: "미해결" };
 const emptyCandidate = (): CandidateDraft => ({ assessed_band_code: "", semantic_fidelity: "", rationale_ko: "" });
 const emptyCandidates = (): Record<CandidateId, CandidateDraft> => ({ A: emptyCandidate(), B: emptyCandidate(), C: emptyCandidate() });
@@ -202,7 +202,7 @@ const ExpertGoldReviewQueue = ({ preview = false }: { preview?: boolean }) => {
       <main className="mx-auto max-w-5xl space-y-5 px-4 py-7 sm:px-6">
         <section className="rounded-2xl border bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><p className="text-xs font-semibold text-amber-700">첫 번째 전문가 과제</p><h1 className="mt-1 text-2xl font-semibold">품질검사 기준답안 외부 확인</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">논문 저자가 작성한 대표 사례의 답과 근거가 타당한지 확인하는 단계입니다. 논문 저자의 답과 다른 전문가의 판단은 제출 전까지 보이지 않습니다.</p></div>
+            <div><p className="text-xs font-semibold text-amber-700">첫 번째 전문가 과제</p><h1 className="mt-1 text-2xl font-semibold">품질검사 기준답안 외부 확인</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">연구 책임자가 판정한 대표 사례의 답과 근거가 타당한지 확인하는 단계입니다. 연구 책임자의 판정과 다른 전문가의 판단은 제출 전까지 보이지 않습니다.</p></div>
             <Badge className="gap-1 bg-slate-900 text-white"><EyeOff className="h-3.5 w-3.5" />독립·비공개 검토</Badge>
           </div>
         </section>

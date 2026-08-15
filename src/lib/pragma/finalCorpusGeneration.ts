@@ -31,7 +31,7 @@ export interface FinalCorpusPlanSnapshot {
 }
 
 export interface FinalCorpusReadiness {
-  schema_version: "pragma_final_corpus_generation_readiness_v1";
+  schema_version: "pragma_final_corpus_generation_readiness_v3";
   pack_id: string;
   pack_version: string | null;
   generation_allowed: boolean;
@@ -52,7 +52,7 @@ export interface FinalCorpusRunState {
 }
 
 export interface FinalCorpusReleaseReadiness {
-  schema_version: "pragma_final_corpus_release_readiness_v1";
+  schema_version: "pragma_final_corpus_release_readiness_v2";
   run_id: string;
   pack_id: string;
   pack_version: string;
@@ -64,8 +64,8 @@ export interface FinalCorpusReleaseReadiness {
     pack_lock_current: { passed: boolean };
     exact_locked_cores: { passed: boolean; count: number };
     missions_generated: { passed: boolean; count: number };
-    missions_individually_released: { passed: boolean; count: number };
-    authoritative_lineage_bundle: { passed: boolean; count: number };
+    automated_and_researcher_full_review: { passed: boolean; count: number; required: number };
+    bounded_external_gold_gate: { passed: boolean; regression_id: string | null; sample_size: number; minimum_per_speech_act: number; is_quality_measurement: false };
     not_previously_released: { passed: boolean };
   };
 }
@@ -190,7 +190,7 @@ export async function abortFinalCorpusRun(runId: string, rationaleKo: string): P
   return unwrapString(data, error, "최종 코퍼스 run 중단");
 }
 
-/** Atomically labels all 504 locked scenarios only after every mission has authoritative release evidence. */
+/** Atomically releases all 504 after full automation + research-lead review and bounded external Gold validation. */
 export async function releaseFinalCorpus(runId: string, rationaleKo: string): Promise<string> {
   const { data, error } = await rpc("release_pragma_final_corpus", {
     p_run_id: runId,

@@ -1,0 +1,155 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, Clock3, ShieldAlert } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+
+import AdminShell from "@/components/AdminShell";
+import ResearchWorkflowGuide from "@/components/research/ResearchWorkflowGuide";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+
+type RunRow = { id: string; target_count: number; created_at: string };
+type LineageRow = {
+  id: string;
+  version_no: number;
+  scenario_id: string;
+  mission_content: Record<string, unknown>;
+  validation_result: Record<string, unknown>;
+  ai_quality_result: Record<string, unknown>;
+};
+type ScenarioRow = { scenario_id: string; speech_act: string; generation_item_key: string; mission_status: string };
+type ReviewRow = { id: string; lineage_version_id: string; verdict: "approve" | "revise" | "reject"; reviewed_at: string };
+type ReviewItem = ScenarioRow & { lineage: LineageRow | null; review: ReviewRow | null; warning: boolean };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as unknown as { from: (table: string) => any; rpc: (name: string, args?: Record<string, unknown>) => any };
+
+const PREVIEW_ITEMS: ReviewItem[] = [
+  { scenario_id: "10000000-0000-4000-8000-000000000081", speech_act: "request", generation_item_key: "request-001", mission_status: "reviewed", warning: false, review: { id: "r1", lineage_version_id: "l1", verdict: "approve", reviewed_at: "2026-08-15T00:00:00Z" }, lineage: { id: "l1", version_no: 2, scenario_id: "10000000-0000-4000-8000-000000000081", mission_content: { title: "업무 일정 조정 요청" }, validation_result: { result: "pass" }, ai_quality_result: { verdict: "pass" } } },
+  { scenario_id: "10000000-0000-4000-8000-000000000082", speech_act: "refusal", generation_item_key: "refusal-001", mission_status: "reviewed", warning: true, review: null, lineage: { id: "l2", version_no: 2, scenario_id: "10000000-0000-4000-8000-000000000082", mission_content: { title: "공식 초대 거절" }, validation_result: { result: "warning" }, ai_quality_result: { verdict: "warning" } } },
+  { scenario_id: "10000000-0000-4000-8000-000000000083", speech_act: "thanks", generation_item_key: "thanks-001", mission_status: "reviewed", warning: false, review: null, lineage: { id: "l3", version_no: 2, scenario_id: "10000000-0000-4000-8000-000000000083", mission_content: { title: "협조에 대한 감사" }, validation_result: { result: "pass" }, ai_quality_result: { verdict: "pass" } } },
+];
+
+const stringify = (value: unknown) => JSON.stringify(value, null, 2);
+
+const AdminFinalCorpusReview = ({ preview = false }: { preview?: boolean }) => {
+  const { pathname } = useLocation();
+  const [runs, setRuns] = useState<RunRow[]>(preview ? [{ id: "preview-run", target_count: 504, created_at: "2026-08-15T00:00:00Z" }] : []);
+  const [runId, setRunId] = useState(preview ? "preview-run" : "");
+  const [items, setItems] = useState<ReviewItem[]>(preview ? PREVIEW_ITEMS : []);
+  const [filter, setFilter] = useState<"pending" | "warning" | "all">("pending");
+  const [selectedId, setSelectedId] = useState(preview ? PREVIEW_ITEMS[1].scenario_id : "");
+  const [rationale, setRationale] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!preview);
+  const [saving, setSaving] = useState(false);
+
+  const loadRuns = useCallback(async () => {
+    if (preview) return;
+    const { data, error } = await db.from("pragma_final_corpus_generation_runs").select("id,target_count,created_at").order("created_at", { ascending: false });
+    if (error) { setMessage(error.message); return; }
+    const rows = (data ?? []) as RunRow[];
+    setRuns(rows);
+    setRunId((current) => current || rows[0]?.id || "");
+  }, [preview]);
+
+  const loadItems = useCallback(async () => {
+    if (preview || !runId) { setLoading(false); return; }
+    setLoading(true);
+    const scenarioResult = await db.from("scenarios").select("scenario_id,speech_act,generation_item_key,mission_status").eq("final_corpus_generation_run_id", runId).order("generation_item_key");
+    if (scenarioResult.error) { setMessage(scenarioResult.error.message); setLoading(false); return; }
+    const scenarios = (scenarioResult.data ?? []) as ScenarioRow[];
+    const ids = scenarios.map((item) => item.scenario_id);
+    if (!ids.length) { setItems([]); setLoading(false); return; }
+    const [lineageResult, reviewResult] = await Promise.all([
+      db.from("mission_lineage_versions").select("id,version_no,scenario_id,mission_content,validation_result,ai_quality_result").in("scenario_id", ids).in("stage", ["generated", "reviewed"]),
+      db.from("pragma_final_corpus_researcher_item_reviews").select("id,lineage_version_id,verdict,reviewed_at").eq("generation_run_id", runId).order("reviewed_at", { ascending: false }),
+    ]);
+    const error = lineageResult.error ?? reviewResult.error;
+    if (error) { setMessage(error.message); setLoading(false); return; }
+    const lineageByScenario = new Map<string, LineageRow>();
+    for (const row of (lineageResult.data ?? []) as LineageRow[]) {
+      const current = lineageByScenario.get(row.scenario_id);
+      if (!current || row.version_no > current.version_no) lineageByScenario.set(row.scenario_id, row);
+    }
+    const reviewByLineage = new Map<string, ReviewRow>();
+    for (const row of (reviewResult.data ?? []) as ReviewRow[]) if (!reviewByLineage.has(row.lineage_version_id)) reviewByLineage.set(row.lineage_version_id, row);
+    const next = scenarios.map((scenario) => {
+      const lineage = lineageByScenario.get(scenario.scenario_id) ?? null;
+      const validation = stringify(lineage?.validation_result ?? {}).toLowerCase();
+      const quality = stringify(lineage?.ai_quality_result ?? {}).toLowerCase();
+      return { ...scenario, lineage, review: lineage ? reviewByLineage.get(lineage.id) ?? null : null, warning: validation.includes("warning") || quality.includes("warning") };
+    });
+    setItems(next);
+    setSelectedId((current) => current || next.find((item) => !item.review)?.scenario_id || next[0]?.scenario_id || "");
+    setLoading(false);
+  }, [preview, runId]);
+
+  useEffect(() => { void loadRuns(); }, [loadRuns]);
+  useEffect(() => { void loadItems(); }, [loadItems]);
+
+  const visible = useMemo(() => items.filter((item) => filter === "all" || (filter === "pending" ? !item.review : item.warning && !item.review)), [filter, items]);
+  const selected = items.find((item) => item.scenario_id === selectedId) ?? visible[0] ?? null;
+  const selectedIndex = visible.findIndex((item) => item.scenario_id === selected?.scenario_id);
+  const approved = items.filter((item) => item.review?.verdict === "approve").length;
+  const warningCount = items.filter((item) => item.warning && !item.review).length;
+
+  const move = (offset: number) => {
+    if (!visible.length) return;
+    const index = Math.min(Math.max(selectedIndex + offset, 0), visible.length - 1);
+    setSelectedId(visible[index].scenario_id);
+    setRationale("");
+  };
+
+  const submit = async (verdict: "approve" | "revise" | "reject") => {
+    if (preview || !selected?.lineage || saving) return;
+    if (verdict !== "approve" && !rationale.trim()) { setMessage("수정 또는 제외 이유를 입력하세요."); return; }
+    setSaving(true); setMessage(null);
+    const nextId = visible[selectedIndex + 1]?.scenario_id ?? "";
+    const { error } = await db.rpc("record_pragma_final_corpus_researcher_item_review", {
+      p_lineage_version_id: selected.lineage.id,
+      p_verdict: verdict,
+      p_rationale_ko: rationale.trim() || "자동 점검 결과와 연구자 화면 확인 후 승인",
+    });
+    if (error) setMessage(error.message);
+    else { setMessage("연구자 판정을 불변 이력으로 저장했습니다."); await loadItems(); if (nextId) setSelectedId(nextId); }
+    setSaving(false);
+  };
+
+  return <AdminShell title="3단계 · 정식 AI 학습문항 504개 연구자 검토" description="품질 점검 자동화가 504개 전체를 먼저 확인하고, 연구 책임자가 전 항목을 빠르게 선별한 뒤 경고 문항을 집중 검토합니다.">
+    <div className="space-y-5">
+      <ResearchWorkflowGuide current="missions" />
+      <div className="flex flex-wrap items-center justify-between gap-3"><Button asChild variant="ghost" size="sm"><Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"}><ArrowLeft className="mr-1 h-4 w-4" />문항 품질관리 전체 현황</Link></Button><Badge className="bg-slate-900 text-white">목표 3~5시간 · 전문가 전수 검토 없음</Badge></div>
+
+      <section className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-950">
+        <strong>검토 순서:</strong> 자동 경고 문항을 먼저 자세히 보고, 나머지는 핵심 상황·중국어 표현·의미 보존을 빠르게 확인합니다. 자동 점검은 연구자 판단을 대신하지 않으며, 외부 전문가는 이 504개를 전수 검토하지 않습니다.
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">정식 문항</p><p className="mt-1 text-2xl font-semibold">{items.length}/504</p></div>
+        <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">연구자 승인</p><p className="mt-1 text-2xl font-semibold">{approved}</p></div>
+        <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">먼저 볼 자동 경고</p><p className="mt-1 text-2xl font-semibold">{warningCount}</p></div>
+        <div className="rounded-xl border bg-white p-4"><p className="flex items-center gap-1 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" />운영 목표</p><p className="mt-1 text-2xl font-semibold">3~5시간</p></div>
+      </section>
+
+      <section className="rounded-xl border bg-white p-5">
+        <div className="grid gap-3 md:grid-cols-[1fr_190px]">
+          <Select value={runId} onValueChange={setRunId}><SelectTrigger><SelectValue placeholder={loading ? "정식 생성 작업을 불러오는 중…" : "정식 생성 작업 선택"} /></SelectTrigger><SelectContent>{runs.map((run) => <SelectItem key={run.id} value={run.id}>정식 504개 생성 작업 · {run.id.slice(0, 8)}</SelectItem>)}</SelectContent></Select>
+          <Select value={filter} onValueChange={(value: typeof filter) => setFilter(value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="pending">아직 보지 않은 문항</SelectItem><SelectItem value="warning">자동 경고 먼저</SelectItem><SelectItem value="all">전체 문항</SelectItem></SelectContent></Select>
+        </div>
+      </section>
+
+      {selected ? <section className="rounded-xl border bg-white p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs text-slate-500">{selected.generation_item_key} · {selected.speech_act}</p><h2 className="mt-1 text-lg font-semibold">{String(selected.lineage?.mission_content?.title ?? "AI 학습문항")}</h2></div><Badge variant={selected.warning ? "destructive" : "secondary"}>{selected.warning ? "자동 경고 · 집중 검토" : "자동 점검 통과"}</Badge></div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2"><div className="rounded-lg bg-slate-50 p-4"><p className="text-xs font-semibold">AI 생성 콘텐츠</p><pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap text-xs leading-5">{stringify(selected.lineage?.mission_content ?? {})}</pre></div><div className="space-y-3"><div className="rounded-lg border p-4"><p className="text-xs font-semibold">품질 점검 자동화 결과</p><pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap text-xs">{stringify({ validation: selected.lineage?.validation_result, quality: selected.lineage?.ai_quality_result })}</pre></div><Textarea value={rationale} onChange={(event) => setRationale(event.target.value)} placeholder="수정 필요 또는 제외 시 이유를 입력하세요. 승인에는 선택 입력입니다." /></div></div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><div className="flex gap-2"><Button variant="outline" onClick={() => move(-1)} disabled={selectedIndex <= 0}><ChevronLeft className="h-4 w-4" />이전</Button><Button variant="outline" onClick={() => move(1)} disabled={selectedIndex < 0 || selectedIndex >= visible.length - 1}>다음<ChevronRight className="h-4 w-4" /></Button></div><div className="flex flex-wrap gap-2"><Button variant="destructive" onClick={() => submit("reject")} disabled={preview || saving}><ShieldAlert className="mr-1 h-4 w-4" />제외</Button><Button variant="outline" onClick={() => submit("revise")} disabled={preview || saving}>수정 필요</Button><Button onClick={() => submit("approve")} disabled={preview || saving || Boolean(selected.review)}><CheckCircle2 className="mr-1 h-4 w-4" />확인·승인 후 다음</Button></div></div>
+      </section> : <section className="rounded-xl border bg-white p-8 text-center text-sm text-slate-500">{loading ? "문항을 불러오는 중입니다." : "선택한 조건에 해당하는 문항이 없습니다."}</section>}
+      {message && <p className="rounded-lg border bg-white p-3 text-sm">{message}</p>}
+      {preview && <p className="text-xs text-slate-500">미리보기 화면에서는 연구자 판정을 저장하지 않습니다.</p>}
+    </div>
+  </AdminShell>;
+};
+
+export default AdminFinalCorpusReview;

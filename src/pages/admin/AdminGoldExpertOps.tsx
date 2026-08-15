@@ -51,7 +51,7 @@ const PREVIEW_CASE = SeedGoldCaseSchema.parse({
     status: "researcher_approved",
     researcher_reviewer_id: "40000000-0000-4000-8000-000000000061",
     expert_reviews: [],
-    note_ko: "미리보기용 논문 저자 확정본",
+    note_ko: "미리보기용 연구자 판정 확정본",
   },
   provenance: { ...previewSeed.provenance, supersedes_case_id: previewSeed.case_id },
 });
@@ -154,7 +154,7 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
     setMessage(error ? error.message : "두 전문가의 최종 결론을 새 이력으로 저장했습니다."); setSaving(false); if (!error) await load();
   };
 
-  return <AdminShell title="2단계 · 기준답안 30개 외부 전문가 확인" description="외부 전문가 2명이 논문 저자의 답을 보지 않고 같은 30개를 판단하여 품질검사 기준답안의 타당성을 확인합니다.">
+  return <AdminShell title="2단계 · 9화행 층화표본 18개 외부 전문가 확인" description="외부 전문가 2명이 연구 책임자의 판정을 보지 않고 9개 화행에서 2개씩 뽑은 18개를 독립적으로 판단합니다.">
     <div className="space-y-5">
       <ResearchWorkflowGuide current="gold" />
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -164,12 +164,16 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
 
       <section className="rounded-xl border border-sky-200 bg-sky-50 p-5">
         <h2 className="font-semibold text-sky-950">권장 전문가 조합</h2>
-        <p className="mt-2 text-sm leading-6 text-sky-950">중국어 모어 화자 1명과, 한국어 모어이면서 중국어·한중 통번역에 능숙한 전문가 1명을 권장합니다. 같은 두 사람이 다음 단계의 AI 학습문항 확인도 맡을 수 있으므로 총 4명이 필수는 아닙니다.</p>
+        <p className="mt-2 text-sm leading-6 text-sky-950">중국어 모어 화자 1명과, 한국어 모어이면서 중국어·한중 통번역에 능숙한 전문가 1명을 권장합니다. 두 사람이 같은 18개를 각각 독립적으로 확인하므로 총 2명이면 됩니다.</p>
+      </section>
+
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+        <strong>시간 상한:</strong> 각 전문가는 화행별 2개씩 총 18개만 확인합니다. 목표 45분·최대 60분이며, 정식 AI 학습문항 504개 전수 검토는 연구 책임자와 품질 점검 자동화가 담당합니다.
       </section>
 
       <section className="rounded-xl border bg-white p-5">
         <h2 className="font-semibold">1. 외부 확인을 받을 품질검사 사례 선택</h2>
-        <p className="mt-1 text-sm text-slate-600">1단계에서 논문 저자가 작성·확정한 품질검사 사례만 선택할 수 있습니다.</p>
+        <p className="mt-1 text-sm text-slate-600">1단계에서 연구 책임자가 판정·확정한 품질검사 사례만 선택할 수 있습니다.</p>
         <Select value={selectedCalibrationId} onValueChange={setSelectedCalibrationId}><SelectTrigger className="mt-3"><SelectValue placeholder={loading ? "문항을 불러오는 중…" : "선택할 승인 문항이 없습니다"} /></SelectTrigger><SelectContent>{calibrations.map((item) => <SelectItem key={item.id} value={item.id}>{item.case_id} · 버전 {item.case_version}</SelectItem>)}</SelectContent></Select>
         {selected && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700"><strong>상황:</strong> {selected.resolved_case_snapshot.scenario_ko}</p>}
       </section>
@@ -189,13 +193,13 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
       <section className="rounded-xl border bg-white p-5">
         <h2 className="font-semibold">4. 최종 결론 저장</h2>
         <p className="mt-1 text-sm text-slate-600">원래 판정은 수정하거나 지우지 않습니다. 두 판정을 비교해 최종 결론을 새 이력으로 저장합니다.</p>
-        <div className="mt-3 grid gap-3 md:grid-cols-2"><Select value={method} onValueChange={(value: typeof method) => setMethod(value)}><SelectTrigger><SelectValue placeholder="결론을 정한 방식" /></SelectTrigger><SelectContent><SelectItem value="unanimous">처음부터 두 판정이 일치함</SelectItem><SelectItem value="consensus_after_discussion">의견을 나눈 뒤 합의함</SelectItem><SelectItem value="researcher_decision">논문 저자가 결정함 — 외부 확인 완료로 사용 불가</SelectItem><SelectItem value="unresolved">아직 결론을 내리지 못함</SelectItem></SelectContent></Select><Select value={finalStatus} onValueChange={(value: typeof finalStatus) => setFinalStatus(value)}><SelectTrigger><SelectValue placeholder="최종 결과" /></SelectTrigger><SelectContent><SelectItem value="expert_approved">기준답안으로 사용 가능</SelectItem><SelectItem value="revise_required">수정 후 다시 확인</SelectItem><SelectItem value="rejected">품질검사 사례에서 제외</SelectItem><SelectItem value="unresolved">결론 미정</SelectItem></SelectContent></Select></div>
+        <div className="mt-3 grid gap-3 md:grid-cols-2"><Select value={method} onValueChange={(value: typeof method) => setMethod(value)}><SelectTrigger><SelectValue placeholder="결론을 정한 방식" /></SelectTrigger><SelectContent><SelectItem value="unanimous">처음부터 두 판정이 일치함</SelectItem><SelectItem value="consensus_after_discussion">의견을 나눈 뒤 합의함</SelectItem><SelectItem value="researcher_decision">연구 책임자가 단독 결정함 — 외부 확인 완료로 사용 불가</SelectItem><SelectItem value="unresolved">아직 결론을 내리지 못함</SelectItem></SelectContent></Select><Select value={finalStatus} onValueChange={(value: typeof finalStatus) => setFinalStatus(value)}><SelectTrigger><SelectValue placeholder="최종 결과" /></SelectTrigger><SelectContent><SelectItem value="expert_approved">기준답안으로 사용 가능</SelectItem><SelectItem value="revise_required">수정 후 다시 확인</SelectItem><SelectItem value="rejected">품질검사 사례에서 제외</SelectItem><SelectItem value="unresolved">결론 미정</SelectItem></SelectContent></Select></div>
         {finalStatus !== "unresolved" && <><div className="mt-4 grid gap-2 sm:grid-cols-3">{(["scenario_valid","pdr_valid","semantic_invariant_valid"] as const).map((key) => <label key={key} className="flex gap-2 text-sm"><Checkbox checked={context[key]} onCheckedChange={(checked) => setContext((current) => ({ ...current, [key]: checked === true }))}/><span>{{ scenario_valid: "상황이 타당함", pdr_valid: "관계·부담 설정이 타당함", semantic_invariant_valid: "원문의 의미가 보존됨" }[key]}</span></label>)}</div><div className="mt-4 grid gap-3 lg:grid-cols-3">{(["A","B","C"] as const).map((id) => <div key={id} className="rounded-lg border p-3"><b>후보 {id}</b><Select value={candidates[id].assessed_band_code} onValueChange={(value) => setCandidates((current) => ({ ...current, [id]: { ...current[id], assessed_band_code: value } }))}><SelectTrigger className="mt-2"><SelectValue placeholder="최종 적절성" /></SelectTrigger><SelectContent>{BANDS.map((band) => <SelectItem key={band} value={band}>{BAND_LABELS[band] ?? band}</SelectItem>)}</SelectContent></Select><Select value={candidates[id].semantic_fidelity} onValueChange={(value: "pass" | "fail") => setCandidates((current) => ({ ...current, [id]: { ...current[id], semantic_fidelity: value } }))}><SelectTrigger className="mt-2"><SelectValue placeholder="의미 보존 여부" /></SelectTrigger><SelectContent><SelectItem value="pass">의미 보존</SelectItem><SelectItem value="fail">의미 문제</SelectItem></SelectContent></Select><Textarea className="mt-2" value={candidates[id].rationale_ko} onChange={(event) => setCandidates((current) => ({ ...current, [id]: { ...current[id], rationale_ko: event.target.value } }))} placeholder="이 결론을 선택한 이유" /></div>)}</div></>}
         <Textarea className="mt-4" value={rationale} onChange={(event) => setRationale(event.target.value)} placeholder="두 전문가의 판정을 어떻게 종합했는지 기록" />
         <Button className="mt-4" onClick={resolve} disabled={preview || saving || !allSubmitted || !method || !finalStatus || !rationale.trim()}><Save className="mr-1 h-4 w-4" />최종 결론 저장</Button>
         <p className="mt-2 text-xs text-slate-500">토론 후 합의한 경우 두 전문가가 해결안에 각각 동의해야 다음 품질검사에 사용할 수 있습니다.</p>
       </section>
-      <section className="rounded-xl border bg-white p-5"><h2 className="font-semibold">전체 진행 건수</h2><p className="mt-2 text-sm">논문 저자 확정 사례 {calibrations.length}건 · 외부 전문가 배정 {assignments.length}건 · 제출된 판단 {reviews.length}건 · 최종 결론 {resolutions.length}건</p></section>
+      <section className="rounded-xl border bg-white p-5"><h2 className="font-semibold">전체 진행 건수</h2><p className="mt-2 text-sm">연구자 판정 확정 사례 {calibrations.length}건 · 외부 전문가 배정 {assignments.length}건 · 제출된 판단 {reviews.length}건 · 최종 결론 {resolutions.length}건</p></section>
       {message && <p className="rounded-lg border bg-white p-3 text-sm">{message}</p>}{preview && <p className="text-xs text-slate-500">미리보기 화면에서는 내용을 저장할 수 없습니다.</p>}
     </div>
   </AdminShell>;
