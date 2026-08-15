@@ -318,3 +318,28 @@
   - 운영 순서와 secret 경계는 `MOAT_OPERATIONS_RUNBOOK_2026-08-15.md`를 정본으로 사용한다.
   - 확장 readiness의 미충족 상태는 실패가 아니라 현재 증거 상태의 정직한 표현이다. 실제 데이터를 만들기 전에는 authorization을 생성하지 않는다.
 - 관련 Decision / Evidence: `DEC-20260815-03`, `EVD-20260815-03`
+
+## ITER-20260815-04 · test-only 자산과 최종 504 신규 생성 경계
+
+- 날짜: 2026-08-15
+- 시작 문제:
+  - `dataset_class`와 final generation run이 DB에 없어 “기존 자료는 테스트용, lock 뒤 전량 신규 생성”이 화면 문구에 머물렀다.
+  - 승인된 대규모 계획이 실제로 495건이라 500+ 원칙과 모순됐다.
+  - 일반 core save RPC가 대규모 실행에도 그대로 사용돼 규칙·문헌·Gold version과 생성 batch를 권위 있게 묶지 못했다.
+- 변경:
+  - 계획을 504건으로 조정하고 exact item identity와 243·54셀 coverage를 plan snapshot·DB validator에 고정했다.
+  - 기존 행을 `test_only`로 backfill하고 class/run/core identity 변경과 final 행 삭제를 막았다.
+  - current 9화행 pack·Gold·회귀·RLS readiness, append-only generation lock/run event, 전용 final save·close/abort RPC를 추가했다.
+  - 기존 전 행과 core SHA-256이 같으면 final 저장을 거부하고, 504개 unique passing item을 모두 채운 경우에만 core run을 닫도록 했다.
+  - Batch와 QA Console에 lock·readiness·run 상태를 연결하고 원격 타입을 갱신했다.
+- 검증 결과:
+  - migration을 원격 Supabase에 적용했고 최종 dry-run은 최신 상태를 반환했다.
+  - typecheck, moat 17파일 77개, 전체 38파일 166개 테스트와 1,914-module production build가 통과했다. 기존 remote/generation 4개는 skip했다.
+  - 실제 lock/run/final row는 생성하지 않았다.
+- 예상과 달랐던 점:
+  - 첫 migration은 composite row 두 개를 한 INTO 목록에 받는 PL/pgSQL 문법 오류로 전체 롤백됐다. 조회를 분리해 재적용했다.
+  - 새 UUID만 확인하면 동일 콘텐츠 재사용을 막지 못한다. 서버 canonical JSON SHA-256을 기존 test row까지 포함해 비교해야 했다.
+- 다음 설계에 반영할 교훈:
+  - 최종 504 core 완료와 최종 504 learning mission release는 같은 상태가 아니다. 다음 구현은 closed core run을 입력으로 미션 생성·lineage·전문가 검토를 거쳐 corpus-level release를 원자적으로 만드는 gate다.
+  - 참고문헌이나 규칙이 바뀌면 새 pack release가 기존 lock을 stale로 만들어야 하며, 이전 candidate는 삭제하지 않고 이력으로 보존한다.
+- 관련 Decision / Evidence: `DEC-20260815-04`, `EVD-20260815-04`

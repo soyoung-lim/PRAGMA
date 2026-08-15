@@ -65,3 +65,14 @@ Baseline이나 후속 release를 raw table INSERT로 만들지 않는다. `recor
 - 현재 pack release와 동일 commit의 live 3-role RLS smoke
 
 관리자는 충족 시 `authorize_pragma_speech_act_expansion`으로 대상 화행 범위와 연구 근거를 append한다. 이후 확장 manifest CI 실행에는 반환된 authorization ID를 `expansion_authorization_id` 입력으로 제공한다. 이 ID 없이 4개 이상 화행 scope를 가진 manifest는 DB trigger에서 거부된다.
+
+확장된 9화행 pack도 같은 방식으로 CI attestation·pack release를 완료하고, 그 version에서 연구자 Gold 30건, 외부 전문가 Gold 30건과 화행별 최소 3건, passing 회귀, 동일 commit RLS smoke를 다시 갖춰야 한다. 그런 뒤 관리자 `배치 생성` 화면에서 다음 순서로 진행한다.
+
+1. `최종 504 본배치 프리셋`을 불러온다.
+2. 확장·승인된 9화행 pack ID로 final readiness를 확인한다.
+3. 판단 근거를 기록하고 `현재 정본 lock + 504 run 시작`을 실행한다.
+4. 같은 server run ID로만 생성·미저장 실패 셀 재시도를 수행한다. 기존 test row나 저장된 final candidate를 재사용·덮어쓰기하지 않는다.
+5. 504개의 fresh unique passing core가 모두 저장된 뒤 core run을 닫는다.
+6. 이 시점의 자료는 `final_candidate`이다. 미션 생성·item lineage·전문가 검토·corpus-level release 전에는 `final_release`로 보고하지 않는다.
+
+문헌·규칙·prompt가 바뀌어 새 pack release가 생기면 이전 lock은 자동으로 stale이 된다. 이전 candidate는 삭제하지 않고 중단 근거와 함께 보존하며, 새 정본에서 lock과 run을 다시 만든다.

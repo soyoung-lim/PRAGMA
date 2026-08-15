@@ -24,7 +24,7 @@
   - `docs/research-trail/02_decision_log.md`
   - `docs/research-trail/03_iteration_log.md`
   - `docs/research-trail/04_evidence_index.md`
-- 관련 커밋: 확인 필요
+- 관련 커밋: `06605a3`
 
 ## DEC-20260729-02 · MPJ 판단과 후속 correction을 순차 공개
 
@@ -354,3 +354,25 @@
 - 관련 Trace / Iteration / Evidence: `TRC-20260815-03`, `ITER-20260815-03`, `EVD-20260815-03`
 - 관련 기록: `docs/dev-log/2026-08-15-operational-improvement-flywheel.md`
 - 관련 커밋: `6edce91`
+
+## DEC-20260815-04 · 최종 corpus는 기존 자료 승격이 아니라 정본 lock 이후 504개 신규 INSERT로 생성
+
+- 날짜: 2026-08-15
+- 상태: 채택, 원격 DB·관리자 화면·자동 검증 완료; 실제 lock·생성 전
+- 문제: Seed·smoke가 테스트용이라는 문구는 있었지만 `scenarios`에는 dataset class가 없었고, 500+ 본배치도 일반 `save_generated_core`를 사용했다. 기존 행을 최종 자료라고 다시 이름 붙이거나 규칙·문헌 변경 뒤에도 이전 run을 계속할 수 있었다. 승인 프리셋도 500+가 아니라 495건이었다.
+- 검토한 대안:
+  - 기존 495행을 검수 후 최종 corpus로 승격: 전량 신규 생성 원칙과 생성 시점 provenance를 입증하지 못해 기각.
+  - 새 run ID만 발급: 동일 테스트 콘텐츠를 복사해도 새 ID가 되므로 기각.
+  - exact pack/evidence/prompt/Gold/회귀/운영 증거 lock, 504 immutable plan, 서버 SHA-256 신규성 검사와 별도 final candidate 상태: 채택.
+- 결정:
+  - 기존과 일반 생성 행은 `test_only`이고 dataset class·final run 소속은 불변이다. 최종 행은 기존 row UPDATE가 아니라 lock 이후 새 INSERT여야 한다.
+  - 최종 lock은 CI-attested 9화행 pack과 expansion authorization, 현재 pack의 연구자 Gold 30, 외부 전문가 Gold 30 및 화행별 3건, passing 회귀, 같은 commit RLS smoke를 요구한다.
+  - 생성 계획은 504건으로 고정한다. 각 화행 56건, 화행×P×D×R 243셀은 최소 2건, 화행×수준×모드 54셀은 최소 3건이어야 한다.
+  - `save_final_corpus_core`는 current started run, exact plan axes, 규칙검사 pass, generation provenance와 기존 전 행에 없는 core SHA-256을 요구한다. final core identity와 run event는 append-only이다.
+  - 504 core가 완성돼도 상태는 `final_candidate`이다. 미션·item lineage·전문가 release가 끝나기 전에는 `final_release`나 학습자 bank로 주장하지 않는다.
+- 주장 경계:
+  - migration·화면·테스트는 최종 생성을 통제하는 절차의 구현 증거이며 504개 콘텐츠의 생성·타당화 결과가 아니다.
+  - 실제 lock/run/final candidate는 만들지 않았다. 현재 3화행 pack으로는 9화행 readiness가 통과하지 않는 것이 정상이다.
+- 관련 Trace / Iteration / Evidence: `TRC-20260815-04`, `ITER-20260815-04`, `EVD-20260815-04`
+- 관련 기록: `docs/dev-log/2026-08-15-authoritative-final-corpus-generation.md`
+- 관련 커밋: 확인 필요
