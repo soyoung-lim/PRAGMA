@@ -74,6 +74,11 @@ const GROUPS: NavGroup[] = [
   {
     header: "5 · 연구",
     items: [
+      { to: "/admin/research-qa", label: "Research & QA Console" },
+      { to: "/admin/research-qa/gold-experts", label: "Gold 외부 전문가 운영" },
+      { to: "/admin/research-qa/expert-reviews", label: "전문가 검토 운영" },
+      { to: "/admin/research-qa/releases", label: "Gold 회귀·미션 공개" },
+      { to: "/admin/research-qa/improvements", label: "데이터 개선 Flywheel" },
       { to: "/admin/export", label: "연구 데이터 관리", pending: true },
     ],
   },
