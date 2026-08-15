@@ -72,10 +72,24 @@ const PREVIEW_ATTESTATION: ManifestAttestationRow = {
 };
 
 const LABELS: Record<CandidateRow["signal_type"], string> = {
-  learner_dissent_cluster: "학습자 이견 cluster",
-  expert_disagreement: "전문가 경계 이견",
-  gold_regression_drift: "Gold 회귀 drift",
+  learner_dissent_cluster: "여러 학습자가 같은 답에 제기한 이견",
+  expert_disagreement: "전문가가 반복해서 다르게 판단한 항목",
+  gold_regression_drift: "품질검사 기준답안 자동 재시험의 성능 저하",
 };
+
+const DECISION_LABELS: Record<string, string> = {
+  open: "검토 대기",
+  triage: "확인 중",
+  approve: "개선 승인",
+  reject: "반영하지 않음",
+  applied: "반영 완료",
+};
+const FEATURE_LABELS: Record<string, string> = {
+  request_mitigation_optionality: "요청할 때 상대방의 선택권을 남기는 표현",
+  refusal_softening: "거절을 부드럽게 만드는 표현",
+  gratitude_calibration: "상황에 맞는 감사 강도",
+};
+const featureLabel = (value: string | null | undefined) => value ? FEATURE_LABELS[value] ?? value : "관련 표현 미지정";
 
 const short = (value: string | null | undefined, size = 10) => value ? `${value.slice(0, size)}${value.length > size ? "…" : ""}` : "—";
 const latestDecision = (candidateId: string, decisions: DecisionRow[]) => decisions
@@ -218,30 +232,35 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
   );
   const manifestReady = draftMatchesReleaseScope && !PACK_RELEASE_MANIFEST_DRAFT.git_dirty && !!exactManifestAttestation;
 
-  return <AdminShell title="Data Improvement Flywheel" description="학습자 이견·전문가 경계 이견·Gold drift를 서버가 근거 후보로 묶고, 연구자가 새 pack·Gold 영향·회귀를 확인한 뒤에만 반영합니다.">
+  return <AdminShell title="학습 콘텐츠 개선" description="학습자 반응, 외부 전문가 판단 차이와 품질검사 결과를 모아 중국어 표현 규칙과 학습 문항을 근거 있게 개선합니다.">
     <div className="space-y-5">
+      <section className="rounded-xl border border-[#D9D4C8] bg-white p-5">
+        <p className="text-xs font-semibold text-[#756F64]">학습자·학습 분석</p>
+        <h2 className="mt-1 text-lg font-semibold">관찰된 문제를 다음 콘텐츠 버전의 개선으로 연결</h2>
+        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">반복되는 문제만 개선 후보로 모으고, 논문 저자가 근거를 확인해 승인한 뒤 다시 품질을 확인해야 새 버전에 반영합니다.</p>
+      </section>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm"><Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"}><ArrowLeft className="mr-1 h-4 w-4" />QA Console</Link></Button>
-        <Badge className="gap-1 bg-slate-900 text-white"><LockKeyhole className="h-3.5 w-3.5" />human decision only · no auto-apply</Badge>
+        <Button asChild variant="ghost" size="sm"><Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"}><ArrowLeft className="mr-1 h-4 w-4" />문항 품질·연구자료 전체 현황</Link></Button>
+        <Badge className="gap-1 bg-slate-900 text-white"><LockKeyhole className="h-3.5 w-3.5" />자동 반영 없음 · 논문 저자가 최종 결정</Badge>
       </div>
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">불변 후보</p><p className="mt-1 text-2xl font-semibold">{candidates.length}</p></div>
-        <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">검토 중</p><p className="mt-1 text-2xl font-semibold">{counts.open}</p></div>
-        <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">폐쇄 loop</p><p className="mt-1 text-2xl font-semibold">{counts.applied}</p></div>
+        <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">수집된 개선 후보</p><p className="mt-1 text-2xl font-semibold">{candidates.length}</p></div>
+        <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">논문 저자 확인 대기</p><p className="mt-1 text-2xl font-semibold">{counts.open}</p></div>
+        <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">새 버전에 반영 완료</p><p className="mt-1 text-2xl font-semibold">{counts.applied}</p></div>
       </section>
 
       <section className="rounded-xl border bg-white p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold"><DatabaseZap className="h-5 w-5" />서버 신호 집계</h2><p className="mt-1 text-sm text-slate-600">최근 180일, 서로 다른 학습자 3명·attempt 3개, 현재 동의, exact released lineage를 요구합니다. 사용한 source UUID는 다시 소비하지 않습니다.</p></div><Button onClick={materialize} disabled={preview || saving}><RefreshCw className="mr-1 h-4 w-4" />신규 근거만 집계</Button></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold"><DatabaseZap className="h-5 w-5" />반복되는 문제 신호 찾기</h2><p className="mt-1 text-sm leading-6 text-slate-600">최근 180일 동안 서로 다른 학습자 3명 이상이 같은 문항에 이의를 제기하거나, 전문가 판정이 반복해서 갈리는 경우만 후보로 만듭니다. 이미 사용한 기록은 다시 세지 않습니다.</p></div><Button onClick={materialize} disabled={preview || saving}><RefreshCw className="mr-1 h-4 w-4" />새로운 문제 신호 찾기</Button></div>
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
         <section className="rounded-xl border bg-white p-4">
-          <h2 className="font-semibold">Candidate queue</h2>
+          <h2 className="font-semibold">개선 후보 목록</h2>
           <div className="mt-3 space-y-2">
             {candidates.map((item) => {
               const state = latestDecision(item.id, decisions)?.decision ?? "open";
-              return <button key={item.id} type="button" onClick={() => { setCandidateId(item.id); setPackReleaseId(""); setRegressionId(""); }} className={`w-full rounded-lg border p-3 text-left ${candidateId === item.id ? "border-amber-400 bg-amber-50" : "hover:bg-slate-50"}`}><div className="flex items-center justify-between gap-2"><span className="text-sm font-medium">{LABELS[item.signal_type]}</span><Badge variant={state === "applied" ? "default" : state === "reject" ? "destructive" : "secondary"}>{state}</Badge></div><p className="mt-1 truncate font-mono text-xs text-slate-500">{item.target_feature ?? item.candidate_key}</p><p className="mt-1 text-xs text-slate-500">pack {item.realization_pack_version ?? "—"} · {item.source_refs.length} refs</p></button>;
+              return <button key={item.id} type="button" onClick={() => { setCandidateId(item.id); setPackReleaseId(""); setRegressionId(""); }} className={`w-full rounded-lg border p-3 text-left ${candidateId === item.id ? "border-amber-400 bg-amber-50" : "hover:bg-slate-50"}`}><div className="flex items-center justify-between gap-2"><span className="text-sm font-medium">{LABELS[item.signal_type]}</span><Badge variant={state === "applied" ? "default" : state === "reject" ? "destructive" : "secondary"}>{DECISION_LABELS[state] ?? state}</Badge></div><p className="mt-1 text-xs text-slate-600">{featureLabel(item.target_feature)}</p><p className="mt-1 text-xs text-slate-500">규칙집 {item.realization_pack_version ?? "—"} · 근거 {item.source_refs.length}건</p></button>;
             })}
             {!loading && candidates.length === 0 && <p className="rounded-lg border border-dashed p-5 text-center text-sm text-slate-500">집계된 후보가 없습니다.</p>}
           </div>
@@ -249,31 +268,31 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
 
         <div className="space-y-5">
           <section className="rounded-xl border bg-white p-5">
-            <h2 className="flex items-center gap-2 font-semibold"><GitBranch className="h-5 w-5" />Evidence snapshot</h2>
-            {selected ? <><div className="mt-4 grid gap-3 sm:grid-cols-2"><div><p className="text-xs text-slate-500">scope</p><p className="mt-1 text-sm">{selected.realization_pack_id}@{selected.realization_pack_version}</p></div><div><p className="text-xs text-slate-500">fingerprint</p><p className="mt-1 font-mono text-xs">{short(selected.evidence_fingerprint, 18)}</p></div><div><p className="text-xs text-slate-500">feature / content</p><p className="mt-1 font-mono text-xs">{selected.target_feature ?? "—"} · {short(selected.content_hash, 14)}</p></div><div><p className="text-xs text-slate-500">source window</p><p className="mt-1 text-xs">{selected.source_window_start?.slice(0, 16) ?? "—"} → {selected.source_window_end?.slice(0, 16) ?? "—"}</p></div></div><pre className="mt-4 max-h-56 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">{JSON.stringify(selected.metrics, null, 2)}</pre><div className="mt-3 flex flex-wrap gap-2">{selectedSources.map((source) => <Badge key={source.id} variant="outline">{source.source_type} · {source.source_field || short(source.source_id, 8)}</Badge>)}</div></> : <p className="mt-3 text-sm text-slate-500">후보를 선택하세요.</p>}
+            <h2 className="flex items-center gap-2 font-semibold"><GitBranch className="h-5 w-5" />이 후보가 만들어진 근거</h2>
+            {selected ? <><div className="mt-4 grid gap-3 sm:grid-cols-2"><div><p className="text-xs text-slate-500">관련 규칙집</p><p className="mt-1 text-sm">{selected.realization_pack_id}@{selected.realization_pack_version}</p></div><div><p className="text-xs text-slate-500">근거 묶음 확인값</p><p className="mt-1 font-mono text-xs">{short(selected.evidence_fingerprint, 18)}</p></div><div><p className="text-xs text-slate-500">관련 표현·문항</p><p className="mt-1 text-xs">{featureLabel(selected.target_feature)} · {short(selected.content_hash, 14)}</p></div><div><p className="text-xs text-slate-500">문제가 관찰된 기간</p><p className="mt-1 text-xs">{selected.source_window_start?.slice(0, 16) ?? "—"} → {selected.source_window_end?.slice(0, 16) ?? "—"}</p></div></div><details className="mt-4 rounded-lg border p-3"><summary className="cursor-pointer text-sm font-medium">고급 집계 정보 보기</summary><pre className="mt-3 max-h-56 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">{JSON.stringify(selected.metrics, null, 2)}</pre></details><div className="mt-3 flex flex-wrap gap-2">{selectedSources.map((source) => <Badge key={source.id} variant="outline">근거 {source.source_field || short(source.source_id, 8)}</Badge>)}</div></> : <p className="mt-3 text-sm text-slate-500">왼쪽에서 개선 후보를 선택하세요.</p>}
           </section>
 
           <section className="rounded-xl border bg-white p-5">
-            <h2 className="font-semibold">연구자 판정</h2><p className="mt-1 text-sm text-slate-600">상태는 open/triage → approve 또는 reject로만 진행합니다. approve 뒤에는 새 manifest와 검증 근거 없이는 applied가 될 수 없습니다.</p>
+            <h2 className="font-semibold">논문 저자가 반영 여부 결정</h2><p className="mt-1 text-sm text-slate-600">먼저 내용을 확인한 뒤 개선을 승인하거나 반영하지 않기로 결정합니다. 승인해도 새 규칙집과 품질검사 결과가 준비되기 전에는 실제 자료에 반영되지 않습니다.</p>
             <Textarea className="mt-3" value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} placeholder="판정 근거를 한국어로 기록" />
-            <div className="mt-3 flex flex-wrap gap-2"><Button variant="outline" onClick={() => decide("triage")} disabled={preview || saving || !selected || !decisionNote.trim() || !canDecide}>triage</Button><Button onClick={() => decide("approve")} disabled={preview || saving || !selected || !decisionNote.trim() || !canDecide}>approve</Button><Button variant="destructive" onClick={() => decide("reject")} disabled={preview || saving || !selected || !decisionNote.trim() || !canDecide}>reject</Button></div>
-            <div className="mt-4 space-y-2">{selectedDecisions.map((item) => <div key={item.id} className="rounded-lg border p-3 text-sm"><div className="flex justify-between gap-2"><Badge variant="secondary">{item.decision}</Badge><span className="text-xs text-slate-500">{item.decided_at.slice(0, 16)}</span></div><p className="mt-2">{item.note_ko}</p></div>)}</div>
+            <div className="mt-3 flex flex-wrap gap-2"><Button variant="outline" onClick={() => decide("triage")} disabled={preview || saving || !selected || !decisionNote.trim() || !canDecide}>내용 확인 중</Button><Button onClick={() => decide("approve")} disabled={preview || saving || !selected || !decisionNote.trim() || !canDecide}>개선 승인</Button><Button variant="destructive" onClick={() => decide("reject")} disabled={preview || saving || !selected || !decisionNote.trim() || !canDecide}>반영하지 않음</Button></div>
+            <div className="mt-4 space-y-2">{selectedDecisions.map((item) => <div key={item.id} className="rounded-lg border p-3 text-sm"><div className="flex justify-between gap-2"><Badge variant="secondary">{DECISION_LABELS[item.decision] ?? item.decision}</Badge><span className="text-xs text-slate-500">{item.decided_at.slice(0, 16)}</span></div><p className="mt-2">{item.note_ko}</p></div>)}</div>
           </section>
 
           <section className="rounded-xl border bg-white p-5">
-            <h2 className="flex items-center gap-2 font-semibold"><PackageCheck className="h-5 w-5" />Realization Pack release manifest</h2><p className="mt-1 text-sm text-slate-600">첫 행은 현재 pack의 baseline manifest입니다. 그다음부터는 approve 후보와 strictly greater semver가 강제됩니다.</p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2"><Input value={PACK_RELEASE_MANIFEST_DRAFT.pack_id} readOnly aria-label="자동 계산 pack id" /><Input value={PACK_RELEASE_MANIFEST_DRAFT.pack_version} readOnly aria-label="자동 계산 pack semver" /><Input value={PACK_RELEASE_MANIFEST_DRAFT.artifact_hash} readOnly aria-label="자동 계산 pack artifact SHA-256" /><Input value={PACK_RELEASE_MANIFEST_DRAFT.prompt_snapshot_hash} readOnly aria-label="자동 계산 pack prompt surface SHA-256" /><Input value={PACK_RELEASE_MANIFEST_DRAFT.evidence_snapshot_hash} readOnly aria-label="자동 계산 evidence snapshot SHA-256" /><Input value={PACK_RELEASE_MANIFEST_DRAFT.source_commit_ref} readOnly aria-label="자동 계산 full git commit" /></div><Textarea className="mt-3" value={releaseNote} onChange={(event) => setReleaseNote(event.target.value)} placeholder="무엇이 왜 바뀌었는지" /><div className="mt-3 flex flex-wrap items-center gap-2"><Button onClick={recordRelease} disabled={preview || saving || !manifestReady || !releaseNote.trim() || (!isBaselineRelease && (!selected || currentDecision?.decision !== "approve"))}><PackageCheck className="mr-1 h-4 w-4" />{latestPackRelease ? "candidate-linked manifest append" : "baseline manifest append"}</Button><Badge variant={manifestReady ? "secondary" : "destructive"}>{PACK_RELEASE_MANIFEST_DRAFT.git_dirty ? "source dirty · commit 후 재생성 필요" : !draftMatchesReleaseScope ? "현재 pack의 approve candidate 선택 필요" : !exactManifestAttestation ? "CI/service attestation 대기" : `attested · ${short(exactManifestAttestation.build_run_ref, 18)}`}</Badge></div>
+            <h2 className="flex items-center gap-2 font-semibold"><PackageCheck className="h-5 w-5" />새 중국어 표현 규칙집 버전 저장</h2><p className="mt-1 text-sm text-slate-600">개선을 승인한 뒤, 어떤 규칙과 근거가 바뀌었는지 새 버전으로 남깁니다. 시스템이 변조 여부와 버전 증가를 자동으로 확인합니다.</p>
+            <details className="mt-3 rounded-lg border p-3"><summary className="cursor-pointer text-sm font-medium">고급 버전·변조 확인값 보기</summary><div className="mt-3 grid gap-3 sm:grid-cols-2"><Input value={PACK_RELEASE_MANIFEST_DRAFT.pack_id} readOnly aria-label="자동 계산 규칙집 ID" /><Input value={PACK_RELEASE_MANIFEST_DRAFT.pack_version} readOnly aria-label="자동 계산 규칙집 버전" /><Input value={PACK_RELEASE_MANIFEST_DRAFT.artifact_hash} readOnly aria-label="자동 계산 규칙집 확인값" /><Input value={PACK_RELEASE_MANIFEST_DRAFT.prompt_snapshot_hash} readOnly aria-label="자동 계산 생성 지시 확인값" /><Input value={PACK_RELEASE_MANIFEST_DRAFT.evidence_snapshot_hash} readOnly aria-label="자동 계산 문헌 근거 확인값" /><Input value={PACK_RELEASE_MANIFEST_DRAFT.source_commit_ref} readOnly aria-label="자동 계산 소스 버전" /></div></details><Textarea className="mt-3" value={releaseNote} onChange={(event) => setReleaseNote(event.target.value)} placeholder="무엇을 왜 바꾸었는지 기록" /><div className="mt-3 flex flex-wrap items-center gap-2"><Button onClick={recordRelease} disabled={preview || saving || !manifestReady || !releaseNote.trim() || (!isBaselineRelease && (!selected || currentDecision?.decision !== "approve"))}><PackageCheck className="mr-1 h-4 w-4" />{latestPackRelease ? "개선된 규칙집 버전 저장" : "현재 규칙집 기준본 저장"}</Button><Badge variant={manifestReady ? "secondary" : "destructive"}>{PACK_RELEASE_MANIFEST_DRAFT.git_dirty ? "소스 변경사항을 먼저 확정해야 함" : !draftMatchesReleaseScope ? "승인된 개선 후보를 먼저 선택해야 함" : !exactManifestAttestation ? "자동 확인 결과를 기다리는 중" : `자동 확인 완료 · ${short(exactManifestAttestation.build_run_ref, 18)}`}</Badge></div>
           </section>
 
           <section className="rounded-xl border bg-white p-5">
-            <h2 className="font-semibold">Gold impact + passing regression으로 폐쇄</h2><p className="mt-1 text-sm text-slate-600">이 후보로 만든 새 pack manifest, 그 pack에서 외부 승인된 영향 Gold case, 같은 pack의 passing 30+ regression이 모두 있어야 합니다.</p>
-            <div className="mt-3 grid gap-3"><Select value={packReleaseId} onValueChange={(value) => { setPackReleaseId(value); setRegressionId(""); }}><SelectTrigger><SelectValue placeholder="이 후보의 새 pack manifest" /></SelectTrigger><SelectContent>{candidateReleases.map((item) => <SelectItem key={item.id} value={item.id}>{item.pack_id}@{item.pack_version} · {short(item.source_commit_ref, 12)}</SelectItem>)}</SelectContent></Select><Select value={regressionId} onValueChange={setRegressionId}><SelectTrigger><SelectValue placeholder="같은 pack의 passing Gold regression" /></SelectTrigger><SelectContent>{compatibleRegressions.map((item) => <SelectItem key={item.id} value={item.id}>{item.evaluator_version} · band {String(item.report.band_accuracy ?? "—")} / semantic {String(item.report.semantic_accuracy ?? "—")}</SelectItem>)}</SelectContent></Select><Textarea value={goldCaseIds} onChange={(event) => setGoldCaseIds(event.target.value)} placeholder="실제 영향 Gold case ID (쉼표 또는 줄바꿈)" /><Textarea value={applyNote} onChange={(event) => setApplyNote(event.target.value)} placeholder="반영 결과와 검증 요약" /></div><Button className="mt-3" onClick={apply} disabled={preview || saving || currentDecision?.decision !== "approve" || !packReleaseId || !regressionId || !goldCaseIds.trim() || !applyNote.trim()}>applied evidence bundle append</Button>
+            <h2 className="font-semibold">새 버전의 품질을 다시 확인하고 반영 완료</h2><p className="mt-1 text-sm text-slate-600">새 규칙집이 영향을 준 품질검사 사례를 외부 전문가가 다시 확인하고, 기준답안 30개 이상의 자동 재시험도 통과해야 실제 개선 완료로 기록됩니다.</p>
+            <div className="mt-3 grid gap-3"><Select value={packReleaseId} onValueChange={(value) => { setPackReleaseId(value); setRegressionId(""); }}><SelectTrigger><SelectValue placeholder="이 개선으로 만든 새 규칙집 선택" /></SelectTrigger><SelectContent>{candidateReleases.map((item) => <SelectItem key={item.id} value={item.id}>{item.pack_id}@{item.pack_version} · {short(item.source_commit_ref, 12)}</SelectItem>)}</SelectContent></Select><Select value={regressionId} onValueChange={setRegressionId}><SelectTrigger><SelectValue placeholder="통과한 기준답안 자동 재시험 선택" /></SelectTrigger><SelectContent>{compatibleRegressions.map((item) => <SelectItem key={item.id} value={item.id}>{item.evaluator_version} · 적절성 {String(item.report.band_accuracy ?? "—")} / 의미 {String(item.report.semantic_accuracy ?? "—")}</SelectItem>)}</SelectContent></Select><Textarea value={goldCaseIds} onChange={(event) => setGoldCaseIds(event.target.value)} placeholder="다시 확인한 품질검사 사례 ID (쉼표 또는 줄바꿈)" /><Textarea value={applyNote} onChange={(event) => setApplyNote(event.target.value)} placeholder="어떻게 개선했고 무엇으로 확인했는지 요약" /></div><Button className="mt-3" onClick={apply} disabled={preview || saving || currentDecision?.decision !== "approve" || !packReleaseId || !regressionId || !goldCaseIds.trim() || !applyNote.trim()}>품질 확인 근거와 함께 반영 완료</Button>
           </section>
         </div>
       </div>
 
       {message && <p className="rounded-lg border bg-white p-3 text-sm">{message}</p>}
-      {preview && <p className="text-xs text-slate-500">preview는 실데이터 대신 계약 예시를 보여주며 모든 쓰기를 잠급니다.</p>}
+      {preview && <p className="text-xs text-slate-500">미리보기 화면은 예시 자료만 보여주며 저장 기능은 잠겨 있습니다.</p>}
     </div>
   </AdminShell>;
 };
