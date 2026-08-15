@@ -2160,5 +2160,6 @@
 - 변경: main 기반 격리 브랜치에 HSK 변경과 4단계 품질 검증 모듈을 선별 이식했다. HSK 후보를 3단계 경고 검토에 연결하고 `legacy reviewed / expert released` 공개 의미를 편성·학습자 조립에 반영했다.
 - 검증 결과: 로컬 회귀 397건, 공개 상태 표적 6건, typecheck, production build 1,933 modules가 통과했다. 별도 8100 서버에서 아키텍처·HSK·품질 검증 전체 현황의 DOM과 흐름을 확인했다.
 - 예상과 달랐던 점: DB 공개 상태만 이식하면 기존 학습자 조립층이 `released`를 제외해 승인된 새 자료가 보이지 않는 역호환 문제가 생겼다. DB·편성·학습자 조회의 상태 의미를 함께 맞췄다.
-- 다음 반영: `mission_v5`용 문항 단위 근거 귀속 생성 경로와 hard gate는 별도 반복으로 구현한다. 원격 migration·Edge·Railway 적용 전 dry-run을 수행한다.
+- 원격 확인: main fast-forward push, 단일 Supabase migration 적용 후 dry-run 최신, Edge v63 ACTIVE 유지, Railway의 HSK·품질 검증 화면과 DB 연결을 확인했다.
+- 다음 반영: `mission_v5`용 문항 단위 근거 귀속 생성 경로와 hard gate는 별도 반복으로 구현한다.
 - 관련 Decision / Evidence: `DEC-20260815-01`, `EVD-20260815-01`
