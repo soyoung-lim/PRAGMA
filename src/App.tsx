@@ -25,8 +25,6 @@ const AdminBatch = lazy(() => import("./pages/admin/AdminBatch.tsx"));
 const AdminBrowser = lazy(() => import("./pages/admin/AdminBrowser.tsx"));
 const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.tsx"));
 const AdminQuestionDesigner = lazy(() => import("./pages/admin/AdminQuestionDesigner.tsx"));
-const AdminReview = lazy(() => import("./pages/admin/AdminReview.tsx"));
-const AdminCrossVendor = lazy(() => import("./pages/admin/AdminCrossVendor.tsx"));
 const AdminComposer = lazy(() => import("./pages/admin/AdminComposer.tsx"));
 const AdminLearners = lazy(() => import("./pages/admin/AdminLearners.tsx"));
 const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics.tsx"));
@@ -273,7 +271,7 @@ const App = () => (
           <Route path="/admin/youtube-sources" element={<Navigate to="/admin/generator" replace />} />
           {/* 레거시 정리(2026-07-30): /admin/archive 화면은 계약 이전 세대 컬럼
               (speech_act_text·ko-zh 하이픈 방향 등)을 읽던 화면이라 삭제. 조회·검수는
-              라이브러리(/admin/library)·통합 검수(/admin/review)로 일원화한다. */}
+              라이브러리(/admin/library)·학습 미션 조립(/admin/browser)으로 일원화한다. */}
           <Route path="/admin/archive" element={<Navigate to="/admin/library" replace />} />
           <Route path="/admin/generator" element={<RequireAdmin><AdminGenerator /></RequireAdmin>} />
           <Route path="/admin/authentic" element={<RequireAdmin><AdminAuthentic /></RequireAdmin>} />
@@ -288,8 +286,8 @@ const App = () => (
           <Route path="/admin/composer" element={<RequireAdmin><AdminComposer /></RequireAdmin>} />
           <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
           <Route path="/admin/question-designer" element={<RequireAdmin><AdminQuestionDesigner /></RequireAdmin>} />
-          <Route path="/admin/review" element={<RequireAdmin><AdminReview /></RequireAdmin>} />
-          <Route path="/admin/cross-vendor" element={<RequireAdmin><AdminCrossVendor /></RequireAdmin>} />
+          <Route path="/admin/review" element={<RequireAdmin><Navigate to="/admin/browser" replace /></RequireAdmin>} />
+          <Route path="/admin/cross-vendor" element={<RequireAdmin><Navigate to="/admin/research-qa" replace /></RequireAdmin>} />
           <Route path="/admin/learners" element={<RequireAdmin><AdminLearners /></RequireAdmin>} />
           <Route path="/admin/decision-traces" element={<RequireAdmin><AdminDecisionTraces /></RequireAdmin>} />
           {/* 레거시 폐기(2026-07-30): /admin/reports — 미사용 화면 삭제(사용자 결정). */}
