@@ -26,7 +26,8 @@
 ## 경계와 확인 필요
 
 - 최종 Gold45의 45개 사례를 새로 만들어 승인한 것이 아니다. 현행 Seed30은 초기 3화행 자산으로 보존되며, 최종 gate는 별도 9화행×5 사례가 준비되기 전까지 닫혀 있다.
-- SQL migration 원격 dry-run·적용과 Edge·웹 배포 상태는 이 기록 작성 시점에 확인 중이다.
+- PR #18과 lint 보정 PR #19를 main에 병합했다. migration `20260815190000`, `20260815193000`, `20260815194000`을 운영 DB에 적용했고 재 dry-run은 최신이었다. 새 배열 타입 경고는 제거됐으며 기존 확장 준비도 함수의 미사용 변수 경고만 남았다.
+- `generate-scenario` Edge v64는 ACTIVE이고 Railway deployment `ca2657be-a136-4788-bb4a-cb139ca5bfd3`는 SUCCESS다. 운영 홈·`/architecture`·`/admin`·`/admin/export`는 HTTP 200을 반환했다.
 - `/admin/archive`는 폐기된 구 schema 화면 대신 유지되는 `/admin/library`로 연결한다. `/admin/package`와 `/admin/analytics`는 진입 경로를 복구했지만 화면 자체의 준비 중 상태는 유지한다.
 
 ## 관련 연구 기록
