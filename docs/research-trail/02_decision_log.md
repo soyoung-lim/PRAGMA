@@ -353,4 +353,4 @@
   - 확장 readiness·authorization은 원격 적용됐지만 증거 조건은 아직 충족되지 않았다. 실제 authorization이나 expanded manifest attestation을 만들지 않았다.
 - 관련 Trace / Iteration / Evidence: `TRC-20260815-03`, `ITER-20260815-03`, `EVD-20260815-03`
 - 관련 기록: `docs/dev-log/2026-08-15-operational-improvement-flywheel.md`
-- 관련 커밋: 없음
+- 관련 커밋: `6edce91`

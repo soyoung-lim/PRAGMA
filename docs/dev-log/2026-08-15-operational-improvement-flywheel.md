@@ -31,6 +31,8 @@
 - `npm.cmd run test:moat`: 16파일 72개 통과. baseline-without-candidate와 후속 current-pack candidate scope 회귀 테스트를 포함한다.
 - 두 GitHub workflow YAML parse와 세 운영 script의 Node syntax check가 통과했다. `rls:smoke`는 자격정보가 없을 때 로그인·DB 호출 전에 중단됨을 확인했다.
 - 최종 `npx.cmd supabase db push --linked --dry-run`: `Remote database is up to date`.
+- 원본 mixed worktree를 수정·정리하지 않고 `origin/codex/code-hygiene-2026-07-28` 최신점에서 별도 `codex/pragma-moat-release-2026-08-15` worktree를 만들었다. 검토한 PRAGMA/moat 100개 파일만 분리해 typecheck, 전체 163개 테스트, production build, snapshot 결정성, remote dry-run을 다시 통과시켰다.
+- 격리 release commit `6edce91`에서 `CI=true npm.cmd run prompts:verify`가 `source clean`으로 통과했다. 실제 GitHub environment의 service attestation은 아직 실행하지 않았다.
 - localhost preview: claim 이견, pack scope, evidence fingerprint, 판정·manifest·Gold 폐쇄 흐름 렌더 확인. 1280px에서 `scrollWidth 1265 <= innerWidth 1280`, 집계·판정·manifest·applied 여섯 쓰기 버튼 disabled 확인.
 
 ## 시행착오와 경계
@@ -43,6 +45,7 @@
 - clean commit의 실제 CI/service attestation과 baseline release도 남아 있다. 현재 화면은 이 attestation이 없으면 release를 잠근다.
 - 실제 secret·세 계정이 없으므로 두 manual workflow는 아직 원격 실행하지 않았다. 실행 순서는 `docs/handoff/MOAT_OPERATIONS_RUNBOOK_2026-08-15.md`에 기록했다.
 - 3→9화행 readiness는 구현·원격 적용됐지만, 실제 Gold/전문가/학습자/RLS 증거가 없으므로 현재 `expansion_allowed=false`가 정상이다. authorization이나 expanded attestation은 생성하지 않았다.
+- 격리 브랜치의 `.env`, `node_modules`, `dist`, `supabase/.temp`는 모두 ignore 상태이며 commit에 포함하지 않았다. 원본 작업트리의 `outputs`, `tmp`, 다른 worktree와 이상 파일도 분리 commit에 포함하지 않았다.
 
 ## 관련 연구 기록
 

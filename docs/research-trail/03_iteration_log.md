@@ -304,6 +304,7 @@
   - operational flywheel, trusted manifest attestation, moat expansion readiness migration을 연결된 Supabase에 적용했고 원격 생성 타입을 갱신했다.
   - `pack:attest`가 현재 dirty draft를 DB 호출 전에 의도대로 거부함을 확인했다.
   - snapshot 두 파일이 연속 두 번 생성에서 같은 SHA-256을 냈고, verifier의 일반 모드는 통과했으며 `CI=true`에서는 dirty source를 의도대로 거부했다. 두 workflow YAML과 세 운영 script syntax를 확인했고 moat 16파일 72개 테스트가 통과했다.
+  - 이후 원격 최신점을 기반으로 별도 release worktree에 PRAGMA/moat 100개 파일만 분리했다. 같은 163개 테스트·build·remote dry-run을 다시 통과했고 commit `6edce91`에서 CI mode snapshot이 `source clean`을 확인했다.
   - preview DOM에서 claim 이견·pack scope·근거 fingerprint·네 단계 작업을 확인했다. 1280px에서 가로 넘침이 없고 집계·판정 3개·manifest·applied의 여섯 쓰기 버튼이 모두 잠겼다.
 - 예상과 달랐던 점:
   - 첫 원격 migration 적용에서 Supabase의 `pgcrypto`가 public이 아닌 `extensions.digest`에 있어 해시 함수 해석이 실패했다. 기존 calibration 계약과 같은 qualified 호출로 수정한 뒤 트랜잭션 적용에 성공했다.
