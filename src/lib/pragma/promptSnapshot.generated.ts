@@ -15,8 +15,8 @@ export type PromptSnapshot = {
   prompts: PromptSnapshotEntry[];
 };
 export const PROMPT_SNAPSHOT: PromptSnapshot = {
-  "generated_at": "2026-08-15T10:39:23+09:00",
-  "git_commit": "6edce91",
+  "generated_at": "2026-08-15T11:33:23+09:00",
+  "git_commit": "1c9ac2a",
   "git_dirty": false,
   "edge_source": "supabase/functions/generate-scenario/index.ts",
   "edge_source_sha256": "2cdf879fbe8bdc8d47fe4064db886e56aff6825269d91eb8dfedcdb0266dceae",

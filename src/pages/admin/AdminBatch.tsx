@@ -37,9 +37,12 @@ import {
   abortFinalCorpusRun,
   closeFinalCorpusRun,
   getFinalCorpusReadiness,
+  getFinalCorpusReleaseReadiness,
   getFinalCorpusRunState,
   prepareFinalCorpusRun,
+  releaseFinalCorpus,
   type FinalCorpusReadiness,
+  type FinalCorpusReleaseReadiness,
   type FinalCorpusRunState,
 } from "@/lib/pragma/finalCorpusGeneration";
 import {
@@ -145,6 +148,7 @@ const AdminBatch = () => {
   const [finalRunId, setFinalRunId] = useState(getStoredFinalCorpusRunId);
   const [finalReadiness, setFinalReadiness] = useState<FinalCorpusReadiness | null>(null);
   const [finalRunState, setFinalRunState] = useState<FinalCorpusRunState | null>(null);
+  const [finalReleaseReadiness, setFinalReleaseReadiness] = useState<FinalCorpusReleaseReadiness | null>(null);
   const [finalPreparing, setFinalPreparing] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -266,7 +270,12 @@ const AdminBatch = () => {
   const refreshFinalRunState = async () => {
     if (!finalRunId) return;
     try {
-      setFinalRunState(await getFinalCorpusRunState(finalRunId));
+      const [runState, releaseState] = await Promise.all([
+        getFinalCorpusRunState(finalRunId),
+        getFinalCorpusReleaseReadiness(finalRunId),
+      ]);
+      setFinalRunState(runState);
+      setFinalReleaseReadiness(releaseState);
     } catch (error) {
       toast.error((error as Error).message);
     }
@@ -291,6 +300,18 @@ const AdminBatch = () => {
       await refreshFinalRunState();
       persistFinalCorpusRunId("");
       toast.success("run을 중단했고 기존 candidate는 변경 없이 보존했습니다.");
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  };
+
+  const releaseFinalRunCorpus = async () => {
+    if (!finalRunId || !finalRationale.trim() || !finalReleaseReadiness?.release_allowed) return;
+    if (!window.confirm("504개 모두의 개별 전문가 release를 불변 manifest로 묶고 최종 corpus로 확정할까요?")) return;
+    try {
+      const releaseId = await releaseFinalCorpus(finalRunId, finalRationale.trim());
+      await refreshFinalRunState();
+      toast.success(`최종 504 corpus를 release했습니다: ${releaseId}`);
     } catch (error) {
       toast.error((error as Error).message);
     }
@@ -757,6 +778,14 @@ const AdminBatch = () => {
                 >
                   run 중단
                 </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={releaseFinalRunCorpus}
+                  disabled={running || !finalReleaseReadiness?.release_allowed || !finalRationale.trim()}
+                >
+                  504 전체 최종 release
+                </Button>
               </>
             )}
           </div>
@@ -777,6 +806,20 @@ const AdminBatch = () => {
               {finalRunState && (
                 <div className="mt-1 text-muted-foreground">
                   {finalRunState.current_item_count}/{finalRunState.target_count} 신규 코어 · 남음 {finalRunState.remaining_item_count}
+                </div>
+              )}
+              {finalReleaseReadiness && (
+                <div className="mt-2 grid gap-1 text-muted-foreground sm:grid-cols-3">
+                  <span>미션 생성 {finalReleaseReadiness.requirements.missions_generated.count}/504</span>
+                  <span>개별 전문가 release {finalReleaseReadiness.requirements.missions_individually_released.count}/504</span>
+                  <span>권위 lineage bundle {finalReleaseReadiness.requirements.authoritative_lineage_bundle.count}/504</span>
+                  <span className="sm:col-span-3 font-medium text-foreground">
+                    {finalReleaseReadiness.existing_release_id
+                      ? `최종 corpus release 완료 · ${finalReleaseReadiness.existing_release_id}`
+                      : finalReleaseReadiness.release_allowed
+                        ? "504개 전체 조건 충족 · 불변 corpus manifest 생성 가능"
+                        : "일부 승인으로는 final_release 불가"}
+                  </span>
                 </div>
               )}
             </div>

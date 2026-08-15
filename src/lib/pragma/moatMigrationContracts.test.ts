@@ -20,6 +20,7 @@ const OPERATIONAL_FLYWHEEL_SQL = read("supabase/migrations/20260815023000_operat
 const MANIFEST_ATTESTATION_SQL = read("supabase/migrations/20260815030000_trusted_pack_manifest_attestation.sql");
 const EXPANSION_READINESS_SQL = read("supabase/migrations/20260815033000_moat_expansion_readiness.sql");
 const FINAL_CORPUS_SQL = read("supabase/migrations/20260815040000_authoritative_final_corpus_generation.sql");
+const FINAL_CORPUS_RELEASE_SQL = read("supabase/migrations/20260815043000_authoritative_final_corpus_release.sql");
 const PROMOTE_TS = read("src/lib/pragma/promoteMission.ts");
 const EVENTS_TS = read("src/lib/mission/missionEvents.ts");
 const EXPORT_TS = read("src/lib/mission/missionEventExport.ts");
@@ -30,7 +31,7 @@ describe("moat migration/runtime contracts", () => {
     expect(PROMOTE_TS).toContain('rpc("review_mission"');
     expect(EVENTS_TS).toContain('rpc("append_learner_mission_event"');
     expect(EXPORT_TS).toContain('rpc("export_learner_mission_events"');
-    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL]) {
+    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL]) {
       expect((sql.match(/\$\$/g) ?? []).length % 2).toBe(0);
     }
   });
@@ -171,5 +172,17 @@ describe("moat migration/runtime contracts", () => {
     expect(FINAL_CORPUS_SQL).toContain("CREATE OR REPLACE FUNCTION public.save_final_corpus_core");
     expect(FINAL_CORPUS_SQL).toContain("all 504 fresh, unique, passing plan items");
     expect(FINAL_CORPUS_SQL).toMatch(/REVOKE INSERT, UPDATE, DELETE ON public\.pragma_final_corpus_generation_locks FROM authenticated, anon/);
+  });
+
+  it("promotes the 504-item bank only as one immutable corpus after every mission release", () => {
+    expect(FINAL_CORPUS_RELEASE_SQL).toContain("CREATE TABLE public.pragma_final_corpus_releases");
+    expect(FINAL_CORPUS_RELEASE_SQL).toContain("CREATE TABLE public.pragma_final_corpus_release_items");
+    expect(FINAL_CORPUS_RELEASE_SQL).toContain("CREATE OR REPLACE FUNCTION public.get_pragma_final_corpus_release_readiness");
+    expect(FINAL_CORPUS_RELEASE_SQL).toContain("missions_individually_released");
+    expect(FINAL_CORPUS_RELEASE_SQL).toContain("authoritative_lineage_bundle");
+    expect(FINAL_CORPUS_RELEASE_SQL).toContain("CREATE OR REPLACE FUNCTION public.release_pragma_final_corpus");
+    expect(FINAL_CORPUS_RELEASE_SQL).toContain("Final-corpus release must atomically promote all 504 scenarios");
+    expect(FINAL_CORPUS_RELEASE_SQL).toContain("Final release requires exact immutable corpus membership");
+    expect(FINAL_CORPUS_RELEASE_SQL).toMatch(/REVOKE INSERT, UPDATE, DELETE ON public\.pragma_final_corpus_releases,[\s\S]*public\.pragma_final_corpus_release_items FROM authenticated, anon/);
   });
 });

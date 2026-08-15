@@ -1788,6 +1788,145 @@ export type Database = {
           },
         ]
       }
+      pragma_final_corpus_release_items: {
+        Row: {
+          core_snapshot_hash: string
+          generation_item_key: string
+          gold_regression_run_id: string
+          mission_content_hash: string
+          mission_prompt_snapshot_hash: string
+          ordinal: number
+          release_id: string
+          release_resolution_id: string
+          released_lineage_version_id: string
+          scenario_id: string
+        }
+        Insert: {
+          core_snapshot_hash: string
+          generation_item_key: string
+          gold_regression_run_id: string
+          mission_content_hash: string
+          mission_prompt_snapshot_hash: string
+          ordinal: number
+          release_id: string
+          release_resolution_id: string
+          released_lineage_version_id: string
+          scenario_id: string
+        }
+        Update: {
+          core_snapshot_hash?: string
+          generation_item_key?: string
+          gold_regression_run_id?: string
+          mission_content_hash?: string
+          mission_prompt_snapshot_hash?: string
+          ordinal?: number
+          release_id?: string
+          release_resolution_id?: string
+          released_lineage_version_id?: string
+          scenario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_final_corpus_release_it_released_lineage_version_id_fkey"
+            columns: ["released_lineage_version_id"]
+            isOneToOne: true
+            referencedRelation: "mission_lineage_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_final_corpus_release_items_gold_regression_run_id_fkey"
+            columns: ["gold_regression_run_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_gold_regression_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_final_corpus_release_items_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_final_corpus_releases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_final_corpus_release_items_release_resolution_id_fkey"
+            columns: ["release_resolution_id"]
+            isOneToOne: true
+            referencedRelation: "mission_review_resolutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_final_corpus_release_items_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: true
+            referencedRelation: "scenarios"
+            referencedColumns: ["scenario_id"]
+          },
+        ]
+      }
+      pragma_final_corpus_releases: {
+        Row: {
+          generation_lock_id: string
+          generation_run_id: string
+          id: string
+          item_count: number
+          manifest_snapshot: Json
+          manifest_snapshot_hash: string
+          pack_release_id: string
+          rationale_ko: string
+          released_at: string
+          released_by: string
+          schema_version: string
+        }
+        Insert: {
+          generation_lock_id: string
+          generation_run_id: string
+          id?: string
+          item_count: number
+          manifest_snapshot: Json
+          manifest_snapshot_hash: string
+          pack_release_id: string
+          rationale_ko: string
+          released_at?: string
+          released_by: string
+          schema_version?: string
+        }
+        Update: {
+          generation_lock_id?: string
+          generation_run_id?: string
+          id?: string
+          item_count?: number
+          manifest_snapshot?: Json
+          manifest_snapshot_hash?: string
+          pack_release_id?: string
+          rationale_ko?: string
+          released_at?: string
+          released_by?: string
+          schema_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_final_corpus_releases_generation_lock_id_fkey"
+            columns: ["generation_lock_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_final_corpus_generation_locks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_final_corpus_releases_generation_run_id_fkey"
+            columns: ["generation_run_id"]
+            isOneToOne: true
+            referencedRelation: "pragma_final_corpus_generation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_final_corpus_releases_pack_release_id_fkey"
+            columns: ["pack_release_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_realization_pack_releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pragma_gold_calibration_resolutions: {
         Row: {
           case_id: string
@@ -2941,6 +3080,7 @@ export type Database = {
           dataset_class: string
           domain: string | null
           final_corpus_generation_run_id: string | null
+          final_corpus_release_id: string | null
           generation_item_key: string | null
           generation_prompt_version: string | null
           generation_provider: string | null
@@ -2996,6 +3136,7 @@ export type Database = {
           dataset_class?: string
           domain?: string | null
           final_corpus_generation_run_id?: string | null
+          final_corpus_release_id?: string | null
           generation_item_key?: string | null
           generation_prompt_version?: string | null
           generation_provider?: string | null
@@ -3051,6 +3192,7 @@ export type Database = {
           dataset_class?: string
           domain?: string | null
           final_corpus_generation_run_id?: string | null
+          final_corpus_release_id?: string | null
           generation_item_key?: string | null
           generation_prompt_version?: string | null
           generation_provider?: string | null
@@ -3097,6 +3239,13 @@ export type Database = {
             columns: ["final_corpus_generation_run_id"]
             isOneToOne: false
             referencedRelation: "pragma_final_corpus_generation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scenarios_final_corpus_release_id_fkey"
+            columns: ["final_corpus_release_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_final_corpus_releases"
             referencedColumns: ["id"]
           },
           {
@@ -3299,6 +3448,10 @@ export type Database = {
         Args: { p_pack_id: string }
         Returns: Json
       }
+      get_pragma_final_corpus_release_readiness: {
+        Args: { p_run_id: string }
+        Returns: Json
+      }
       get_pragma_final_corpus_run_state: {
         Args: { p_run_id: string }
         Returns: Json
@@ -3390,6 +3543,10 @@ export type Database = {
           p_reviewed_lineage_id: string
           p_scenario_id: string
         }
+        Returns: string
+      }
+      release_pragma_final_corpus: {
+        Args: { p_rationale_ko: string; p_run_id: string }
         Returns: string
       }
       review_mission: { Args: { p_scenario_id: string }; Returns: string }
