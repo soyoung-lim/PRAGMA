@@ -16,6 +16,7 @@ export const CURRENT_CONTENT_RELEASE = {
     "mission_v5_mpj4_minidiscourse_v6_interpreter_roles",
     "mission_v4_mpj4_dct1_context_v9_interpreter_roles",
   ],
+  itemLineagePromptVersion: "item_lineage_attribution_v3_mission_v5",
   feedbackPromptVersions: [
     "feedback_v1_minidiscourse_v3",
     "feedback_v1_feature_general_v2",
@@ -29,6 +30,7 @@ export const CURRENT_CONTENT_RELEASE = {
 export const CURRENT_CONTENT_RELEASE_ID = CURRENT_CONTENT_RELEASE.id;
 export const CURRENT_CORE_PROMPT_VERSIONS = CURRENT_CONTENT_RELEASE.corePromptVersions;
 export const CURRENT_MISSION_PROMPT_VERSIONS = CURRENT_CONTENT_RELEASE.missionPromptVersions;
+export const CURRENT_ITEM_LINEAGE_PROMPT_VERSION = CURRENT_CONTENT_RELEASE.itemLineagePromptVersion;
 export const CURRENT_FEEDBACK_PROMPT_VERSIONS = CURRENT_CONTENT_RELEASE.feedbackPromptVersions;
 export const CURRENT_CORE_QUALITY_PROMPT_VERSION = CURRENT_CONTENT_RELEASE.qualityPromptVersions.core;
 export const CURRENT_MISSION_QUALITY_PROMPT_VERSION = CURRENT_CONTENT_RELEASE.qualityPromptVersions.mission;

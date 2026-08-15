@@ -18,6 +18,12 @@ import {
   type GoldCalibrationReview,
 } from "@/lib/pragma/goldCalibration";
 import { SEED_GOLD_CASES, type SeedGoldCase } from "@/lib/pragma/seedGoldSet";
+import {
+  BOOTSTRAP_SEED_GOLD_CASE_COUNT,
+  BOOTSTRAP_SEED_GOLD_SPEECH_ACT_COUNT,
+  FINAL_GOLD_CASES_PER_SPEECH_ACT,
+  FINAL_GOLD_POPULATION_COUNT,
+} from "@/lib/pragma/goldProtocol";
 
 type CandidateId = "A" | "B" | "C";
 type Verdict = "approve" | "revise" | "reject";
@@ -290,14 +296,15 @@ const AdminGoldCalibration = () => {
     }
   };
 
-  const approvedCount = resolutions.filter((item) => item.resolution_status === "researcher_approved").length;
+  const approvedCount = [...resolutionByCase.values()]
+    .filter((item) => item.resolution_status === "researcher_approved").length;
   const resolvedCount = new Set(resolutions.map((item) => item.case_id)).size;
   const selectedResolution = resolutionByCase.get(selectedCase.case_id);
 
   return (
     <AdminShell
-      title="1단계 · 품질검사 기준답안 30개 연구자 판정"
-      description="연구 책임자가 대표 상황 30개에 대해 중국어 후보의 적절성, 반드시 유지할 의미와 판단 근거를 기록합니다."
+      title="1단계 · 기준답안 연구자 판정"
+      description={`현재 ${BOOTSTRAP_SEED_GOLD_SPEECH_ACT_COUNT}화행 Seed ${BOOTSTRAP_SEED_GOLD_CASE_COUNT}개를 점검합니다. 최종 9화행 pack은 화행별 ${FINAL_GOLD_CASES_PER_SPEECH_ACT}개, 총 ${FINAL_GOLD_POPULATION_COUNT}개를 별도로 확정해야 합니다.`}
     >
       <ResearchWorkflowGuide current="calibration" />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -305,8 +312,8 @@ const AdminGoldCalibration = () => {
           <ArrowLeft className="h-4 w-4" /> 문항 품질관리 전체 현황
         </Link>
         <div className="flex flex-wrap gap-2">
-          <Badge variant="outline">해결 {resolvedCount}/30</Badge>
-          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">승인 {approvedCount}/30</Badge>
+          <Badge variant="outline">현재 Seed 해결 {resolvedCount}/{BOOTSTRAP_SEED_GOLD_CASE_COUNT}</Badge>
+          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">현재 승인 해결본 {approvedCount} · 최종 gate {FINAL_GOLD_POPULATION_COUNT} 필요</Badge>
           <Badge variant="outline" className={isAdmin ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600"}>
             {loading ? "권한 확인 중" : isAdmin ? "관리자 저장 가능" : "미리보기 · 저장 잠김"}
           </Badge>
@@ -316,7 +323,7 @@ const AdminGoldCalibration = () => {
       <section className="mb-5 rounded-xl border border-[#E5CF72] bg-[#FFF9DF] p-4 text-sm leading-6 text-[#665515]">
         <div className="flex gap-3">
           <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0" />
-          <p><strong>선입견 없는 판단:</strong> 판단을 제출하기 전에는 미리 정한 답과 해설을 보여주지 않습니다. 처음 예상한 답과 다르면 숨기지 말고 ‘수정 필요’로 남깁니다. 이 30개는 정식 학습자료가 아니라 시스템 품질을 시험할 기준답안입니다.</p>
+          <p><strong>Seed와 최종 Gold를 구분합니다:</strong> 판단을 제출하기 전에는 미리 정한 답과 해설을 보여주지 않습니다. 현재 {BOOTSTRAP_SEED_GOLD_CASE_COUNT}개는 요청·거절·감사 수직 표본의 초기 규칙 점검 자산이며, 9화행 최종 gate를 열지 않습니다. 최종 Gold는 확장 pack에서 9화행×{FINAL_GOLD_CASES_PER_SPEECH_ACT}개로 새로 고정합니다.</p>
         </div>
       </section>
 

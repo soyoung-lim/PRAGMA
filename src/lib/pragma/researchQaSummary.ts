@@ -7,6 +7,10 @@ import {
 } from "@/lib/pragma/goldRegression";
 import { ITEM_LINEAGE_SCHEMA_VERSION } from "@/lib/pragma/itemLineage";
 import { PROMPT_SNAPSHOT } from "@/lib/pragma/promptSnapshot.generated";
+import {
+  CURRENT_ITEM_LINEAGE_PROMPT_VERSION,
+  CURRENT_MISSION_PROMPT_VERSIONS,
+} from "../../../supabase/functions/_shared/contentRelease";
 import { KO_ZH_CORE_REALIZATION_PACK } from "@/lib/pragma/realizationPack";
 import { SEED_GOLD_CASES } from "@/lib/pragma/seedGoldSet";
 
@@ -75,8 +79,8 @@ export function buildResearchQaSummary() {
     },
     lineage: {
       schema_version: ITEM_LINEAGE_SCHEMA_VERSION,
-      mission_prompt_version: "mission_v4_separate_item_lineage",
-      attribution_prompt_version: "item_lineage_attribution_v2",
+      mission_prompt_version: CURRENT_MISSION_PROMPT_VERSIONS[0],
+      attribution_prompt_version: CURRENT_ITEM_LINEAGE_PROMPT_VERSION,
       maximum_batch_size: 5,
       warning_unattributed_ratio: 0.2,
       prompt_count: PROMPT_SNAPSHOT.prompts.length,
