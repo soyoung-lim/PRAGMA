@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
+import { GenerationModeTabs } from "@/components/admin/GenerationModeTabs";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { addDraftScenario } from "@/lib/scenarioDrafts";
@@ -914,15 +915,16 @@ const AdminGenerator = () => {
 
   return (
     <AdminShell
-      title="AI 시나리오 생성"
-      description="한·중 통번역 학습 시나리오 자동 생성 및 검수 대기 저장"
+      title="문항 생성"
+      description="한 건씩 조건을 정해 AI 학습문항을 만들고 내부 확인 대기 상태로 저장합니다."
     >
+      <GenerationModeTabs />
       {/* Helper note */}
       <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-3">
         <p className="text-[11px] leading-relaxed text-[#5B5446]">
           AI가 생성한 시나리오는 학생에게 바로 공개되지 않습니다.
           <br />
-          연구자 검수 후 승인된 자료만 수업용 공개 또는 본실험 locked로 지정할 수 있습니다.
+          미션 조립 내부 확인과 품질 검증 4단계를 마친 자료만 PRAGMA 학습자 화면에서 사용할 수 있습니다.
         </p>
       </div>
 

@@ -142,16 +142,13 @@ const Stat = ({ label, value, note }: { label: string; value: string; note: stri
   </div>
 );
 
-const Gate = ({ index, title, state, detail }: {
-  index: number;
+const Gate = ({ title, state, detail }: {
   title: string;
   state: "ok" | "pending" | "blocked";
   detail: string;
 }) => (
   <li className="flex gap-3 border-b border-border py-4 last:border-0">
-    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#15202B] text-xs font-semibold text-white">
-      {index}
-    </span>
+    <span aria-hidden className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-[#15202B]" />
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-semibold">{title}</p>
@@ -233,8 +230,8 @@ const AdminResearchQa = () => {
 
   return (
     <AdminShell
-      title="문항 품질·연구자료 전체 현황"
-      description="품질검사 기준답안 연구자 판정부터 AI 학습문항의 외부 확인, 학습자 화면 공개와 수행기록 내려받기까지 진행 상태를 확인합니다."
+      title="품질 검증과 공개 전체 현황"
+      description="기준답안 판정부터 AI 학습문항 자동 점검과 학습자 공개까지, 수업 전에 마쳐야 할 네 단계의 진행 상태를 확인합니다."
     >
       <ResearchWorkflowGuide current="overview" />
       <section className="rounded-xl border border-[#E5CF72] bg-[#FFF9DF] p-5">
@@ -398,17 +395,17 @@ const AdminResearchQa = () => {
         <section className="rounded-xl border border-border bg-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">정식 자료가 되기 위한 5가지 통과 조건</h2>
-              <p className="mt-1 text-sm text-muted-foreground">시험용 자료를 정식 자료로 오인하지 않도록 단계별로 확인합니다.</p>
+              <h2 className="text-lg font-semibold">학습자 공개 전 확인 항목</h2>
+              <p className="mt-1 text-sm text-muted-foreground">네 단계 안에서 확인해야 할 근거와 시스템 조건입니다. 별도의 단계 번호가 아닙니다.</p>
             </div>
             <Badge variant="outline">시험용 → 학습자 공개용</Badge>
           </div>
           <ol className="mt-3">
-            <Gate index={1} title="문헌과 중국어 규칙 연결 확인" state="ok" detail={`규칙집 ${summary.pack.version} · 원문 확인 문헌 ${summary.evidence.source_verified_count}건 · 기본 검사 통과`} />
-            <Gate index={2} title="품질검사 기준답안 30개 연구자 판정" state="pending" detail={`대표 상황 30개 · 중국어 후보 90개 · 아직 확인할 의미 판단 ${summary.calibration.pending_semantic_count}건`} />
-            <Gate index={3} title="사전 추출 18개 외부 내용타당성 확인" state="pending" detail="서버 고정 시드로 화행별 2개를 먼저 추출합니다. 지적 화행은 사전 등록 규칙대로 예비 사례를 추가 확인합니다." />
-            <Gate index={4} title="504개 자동 점검 확인·경고 집중 검토" state="blocked" detail="자동 점검 결과는 전부 확인하지만 모든 문항을 수동으로 정밀 판정했다는 의미는 아닙니다." />
-            <Gate index={5} title="교수자가 정식 학습자료 504개 공개 승인" state="blocked" detail="앞의 모든 조건을 통과한 뒤 PRAGMA 학습자 화면에서 사용할 수 있게 최종 승인합니다." />
+            <Gate title="문헌과 중국어 규칙 연결 확인" state="ok" detail={`규칙집 ${summary.pack.version} · 원문 확인 문헌 ${summary.evidence.source_verified_count}건 · 기본 검사 통과`} />
+            <Gate title="품질검사 기준답안 30개 연구자 판정" state="pending" detail={`대표 상황 30개 · 중국어 후보 90개 · 아직 확인할 의미 판단 ${summary.calibration.pending_semantic_count}건`} />
+            <Gate title="사전 추출 18개 외부 내용타당성 확인" state="pending" detail="서버 고정 시드로 화행별 2개를 먼저 추출합니다. 지적 화행은 사전 등록 규칙대로 예비 사례를 추가 확인합니다." />
+            <Gate title="504개 자동 점검 확인·경고 집중 검토" state="blocked" detail="자동 점검 결과는 전부 확인하지만 모든 문항을 수동으로 정밀 판정했다는 의미는 아닙니다." />
+            <Gate title="교수자가 정식 학습자료 504개 공개 승인" state="blocked" detail="앞의 모든 조건을 통과한 뒤 PRAGMA 학습자 화면에서 사용할 수 있게 최종 승인합니다." />
           </ol>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
@@ -441,7 +438,7 @@ const AdminResearchQa = () => {
         <section className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">지금까지 쌓인 검토·학습 기록</h2>
+              <h2 className="text-lg font-semibold">품질 검증에 연결된 운영 기록</h2>
               <p className="mt-1 text-sm text-muted-foreground">실제 관리자 로그인 후 서버에 저장된 건수를 확인할 수 있습니다.</p>
             </div>
             <StatusBadge tone={loadingLive ? "pending" : liveHasError ? "blocked" : "ok"}>
@@ -463,8 +460,7 @@ const AdminResearchQa = () => {
             })}
           </div>
           <div className="mt-4 rounded-lg bg-muted/50 p-4 text-xs leading-5 text-muted-foreground">
-            원본 음성과 단순 클릭은 연구자료에 넣지 않습니다. 현재 동의 조건을 충족하고 정확한 문항 버전과
-            연결된 학습 수행 기록만 연구용 파일로 내려받습니다.
+            이 건수는 절차가 실제 데이터베이스와 연결되었는지 확인하는 운영 기록이며, 문항 품질을 대표하는 성능 수치가 아닙니다.
           </div>
         </section>
       </div>
@@ -477,7 +473,7 @@ const AdminResearchQa = () => {
           </div>
           <div className="flex gap-2">
             <Link to="/admin/prompt-harness" className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted">생성 규칙 확인</Link>
-            <Link to="/admin/export" className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted">학습 수행기록 내려받기</Link>
+            <Link to="/admin/generator" className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted">문항 생성 화면</Link>
           </div>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-4">

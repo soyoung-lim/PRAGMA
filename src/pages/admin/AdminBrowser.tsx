@@ -142,8 +142,8 @@ const AdminBrowser = () => {
         setStatus(r.scenario_id, "reviewed");
         const covered = r.release_gate_mode === "expert_v1";
         const next = covered
-          ? "교수자 승인 완료 — 외부 전문가 확인 대기"
-          : "교수자 승인 완료 — 학습자 실행 가능";
+          ? "미션 조립 내부 확인 완료 — 외부 전문가 확인 대기"
+          : "미션 조립 내부 확인 완료 — 학습자 실행 가능";
         setRowMsg((m) => ({ ...m, [r.scenario_id]: next }));
         toast.success(next);
       } else {
@@ -402,7 +402,7 @@ const AdminBrowser = () => {
                       )}
                       {r.mission_status === "generated" && (
                         <Button size="sm" disabled={busy === r.scenario_id} onClick={() => onReview(r)}>
-                          {busy === r.scenario_id ? "처리 중…" : "검토 완료(reviewed)"}
+                          {busy === r.scenario_id ? "처리 중…" : "내부 확인 완료"}
                         </Button>
                       )}
                       {(r.mission_status === "generated" || r.mission_status === "reviewed" || r.mission_status === "released") && (

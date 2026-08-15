@@ -25,7 +25,6 @@ const AdminBrowser = lazy(() => import("./pages/admin/AdminBrowser.tsx"));
 const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.tsx"));
 const AdminQuestionDesigner = lazy(() => import("./pages/admin/AdminQuestionDesigner.tsx"));
 const AdminYoutubeSources = lazy(() => import("./pages/admin/AdminYoutubeSources.tsx"));
-const AdminReview = lazy(() => import("./pages/admin/AdminReview.tsx"));
 const AdminCurriculum = lazy(() => import("./pages/admin/AdminCurriculum.tsx"));
 const AdminComposer = lazy(() => import("./pages/admin/AdminComposer.tsx"));
 const AdminLearners = lazy(() => import("./pages/admin/AdminLearners.tsx"));
@@ -223,7 +222,7 @@ const App = () => (
           <Route path="/admin/composer" element={<RequireAdmin><AdminComposer /></RequireAdmin>} />
           <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
           <Route path="/admin/question-designer" element={<RequireAdmin><AdminQuestionDesigner /></RequireAdmin>} />
-          <Route path="/admin/review" element={<RequireAdmin><AdminReview /></RequireAdmin>} />
+          <Route path="/admin/review" element={<RequireAdmin><Navigate to="/admin/browser" replace /></RequireAdmin>} />
           <Route path="/admin/learners" element={<RequireAdmin><AdminLearners /></RequireAdmin>} />
           <Route path="/admin/decision-traces" element={<RequireAdmin><AdminDecisionTraces /></RequireAdmin>} />
           <Route path="/admin/reports" element={<RequireAdmin><AdminReports /></RequireAdmin>} />

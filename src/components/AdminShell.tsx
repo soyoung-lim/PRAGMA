@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { HomeBrand } from "@/components/HomeBrand";
 
 /** pending = 라우트는 있으나 내용이 후속 단계. 메뉴에 「준비 중」 배지를 단다. */
-type NavItem = { to?: string; label: string; pending?: boolean };
+type NavItem = { to?: string; label: string; pending?: boolean; activePaths?: string[] };
 type NavGroup = {
   header: string;
   items: NavItem[];
@@ -11,24 +11,12 @@ type NavGroup = {
 
 const STANDALONE: NavItem = { to: "/admin/dashboard", label: "운영 대시보드" };
 
-// 워크플로 정합 사이드바 (2026-07-26 재편) — "자원 준비 → 생성 → 조립 → 검수 →
-// 편성 → 학습자·학습 분석 → 연구" 한 줄 논리.
-//
-// 2026-07-26에 고친 것:
-// - 실제로 구현된 화면 2개(학습자 관리 458줄·의사결정 기록 229줄)가 메뉴에 없어
-//   주소를 직접 쳐야 들어갈 수 있었다 → 노출
-// - 「수업 운영·연구」 4개가 전부 빈 껍데기였다 → 실체 있는 것 위로, 나머지는
-//   pending 배지. 교과목 운영은 9월 실증 사안이라 메뉴에서 제외(백로그),
-//   학습자 개별 리포트는 학습자 관리 상세와 중복이라 흡수
-// - 「콘텐츠 보관함」은 이름·헤드라인("시나리오 아카이브")·소속이 모두 어긋나 있었다
-//   → 이름 통일 + AI 생성 콘텐츠가 쌓이는 곳이므로 파이프라인으로 이동
-// - 파이프라인의 "1단계·1단계·2단계…" 번호는 1단계가 두 번 나와 헷갈려서 제거
-//
-// pending = 화면은 있으나 내용이 후속. 배지를 미리 보여 준다 — 눌러 봐야 비어 있는
-// 것을 아는 것보다 정직하고, 시연 중 사고도 막는다.
+// 관리자 사이드바는 위에서 아래로 읽으면 실제 작업 순서가 되도록 구성한다.
+// 그룹 번호는 없애고, 수업 전 필수 절차인 「품질 검증과 공개」에만 1~4단계를 쓴다.
+// 수행기록 내려받기는 학기 후 연구자료 처리이므로 공개 게이트에서 분리한다.
 const GROUPS: NavGroup[] = [
   {
-    header: "0 · 자원 관리",
+    header: "재료와 규칙",
     items: [
       { to: "/admin/corpus", label: "소스 뱅크 (HSK 어휘)" },
       { to: "/admin/question-designer", label: "수준별 문항 설계" },
@@ -37,19 +25,28 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    header: "1 · 콘텐츠 파이프라인",
+    header: "문항 생성",
     items: [
-      { to: "/admin/generator", label: "개별 생성" },
-      { to: "/admin/batch", label: "배치 생성" },
+      {
+        to: "/admin/generator",
+        label: "문항 생성",
+        activePaths: ["/admin/generator", "/admin/batch"],
+      },
       { to: "/admin/browser", label: "학습 미션 조립" },
-      { to: "/admin/review", label: "AI 생성 콘텐츠 교수자 승인" },
-      { to: "/admin/archive", label: "시나리오 아카이브" },
     ],
   },
   {
-    header: "2 · 커리큘럼·수업 준비",
-    // 둘 다 "15주"로 시작해 관계가 안 보였다(2026-07-26). ①은 빈 시간표를 만들고
-    // ②는 그 칸을 채운다 — 번호로 순서를, 이름으로 무엇이 다른지 드러낸다.
+    header: "품질 검증과 공개",
+    items: [
+      { to: "/admin/research-qa", label: "전체 현황" },
+      { to: "/admin/research-qa/calibration", label: "1. 기준답안 연구자 판정" },
+      { to: "/admin/research-qa/gold-experts", label: "2. 기준답안 외부 전문가 확인" },
+      { to: "/admin/research-qa/final-review", label: "3. 504개 자동 점검·경고 검토" },
+      { to: "/admin/research-qa/releases", label: "4. 학습자 공개" },
+    ],
+  },
+  {
+    header: "수업 편성",
     items: [
       { to: "/admin/curriculum", label: "커리큘럼 구조" },
       { to: "/admin/composer", label: "주차별 시나리오 편성" },
@@ -57,23 +54,19 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    header: "3 · 학습자·학습 분석",
+    header: "학습자와 연구자료",
     items: [
       { to: "/admin/learners", label: "학습자 관리" },
       { to: "/admin/decision-traces", label: "수행·의사결정 기록" },
       { to: "/admin/analytics", label: "학습 분석", pending: true },
       { to: "/admin/research-qa/improvements", label: "학습 콘텐츠 개선" },
+      { to: "/admin/export", label: "수행기록 내려받기" },
     ],
   },
   {
-    header: "4 · 문항 품질·연구자료",
+    header: "흐름 밖 참조",
     items: [
-      { to: "/admin/research-qa", label: "전체 현황" },
-      { to: "/admin/research-qa/calibration", label: "1. 품질검사 기준답안 연구자 판정" },
-      { to: "/admin/research-qa/gold-experts", label: "2. 기준답안 외부 전문가 확인" },
-      { to: "/admin/research-qa/final-review", label: "3. 504개 자동 결과 확인·경고 검토" },
-      { to: "/admin/research-qa/releases", label: "4. 통과 문항 학습자 공개" },
-      { to: "/admin/export", label: "5. 학습 수행기록 내려받기" },
+      { to: "/admin/archive", label: "시나리오 아카이브" },
     ],
   },
 ];
@@ -139,7 +132,9 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
                     <Link
                       key={item.to}
                       to={item.to ?? "#"}
-                      className={itemClasses(pathname === item.to)}
+                      className={itemClasses(
+                        pathname === item.to || item.activePaths?.includes(pathname) === true,
+                      )}
                     >
                       {item.label}
                       {item.pending && (

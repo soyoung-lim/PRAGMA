@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
-import { ResearchWorkflowGuide } from "@/components/research/ResearchWorkflowGuide";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,10 +43,12 @@ const Page = () => {
 
   return (
   <AdminShell
-    title="5단계 · 학습 수행기록 연구용 내려받기"
-    description="동의한 학습자의 수행 기록만 확인하고, 직접 식별정보를 제외한 연구용 파일로 내려받습니다."
+    title="수행기록 내려받기"
+    description="수업이 끝난 뒤, 동의한 학습자의 수행 기록만 직접 식별정보를 제외한 연구용 파일로 내려받습니다."
   >
-    <ResearchWorkflowGuide current="data" />
+    <div className="mb-5 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-950">
+      이 화면은 수업 전 문항 품질 검증 4단계에 포함되지 않습니다. 학기 중 쌓인 수행기록을 학기 종료 후 연구자료로 준비할 때 사용합니다.
+    </div>
     <div className="mb-3 flex items-center gap-3">
       <h2 className="text-base font-semibold">현재 데이터 수집 준비 상태</h2>
       <PendingBadge />
