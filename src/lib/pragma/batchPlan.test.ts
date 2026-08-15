@@ -3,7 +3,7 @@ import {
   auditTopicCompatibility,
   auditTopicCoverage,
   buildBatchPlan,
-  FULL_BATCH_QUOTA_495,
+  FINAL_CORPUS_QUOTA_504,
   PDR_CONSTRUCT_CELLS,
   summarizePlan,
 } from "@/lib/pragma/batchPlan";
@@ -101,17 +101,17 @@ describe("construct matrix coverage", () => {
     expect(unique.size).toBe(27);
   });
 
-  it("covers all 243 speech-act × P × D × R cells in the 495 plan", () => {
-    const plan = buildBatchPlan(FULL_BATCH_QUOTA_495);
+  it("covers all 243 speech-act × P × D × R cells in the 504 final plan", () => {
+    const plan = buildBatchPlan(FINAL_CORPUS_QUOTA_504);
     const summary = summarizePlan(plan);
 
-    expect(summary.total).toBe(495);
+    expect(summary.total).toBe(504);
     expect(summary.emptyActPdrCells).toEqual([]);
     expect(summary.minActPdrCount).toBeGreaterThanOrEqual(2);
   });
 
   it("does not lock each domain to one power value", () => {
-    const plan = buildBatchPlan(FULL_BATCH_QUOTA_495);
+    const plan = buildBatchPlan(FINAL_CORPUS_QUOTA_504);
 
     for (const domain of ["daily", "school", "work"] as const) {
       expect(new Set(plan.filter((cell) => cell.domain === domain).map((cell) => cell.pdr_power)))

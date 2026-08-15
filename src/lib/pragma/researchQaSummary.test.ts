@@ -12,6 +12,8 @@ describe("research QA summary", () => {
     expect(summary.final_corpus.status).toBe("not_generated");
     expect(summary.final_corpus.current_item_count).toBe(0);
     expect(summary.final_corpus.target_minimum).toBe(FINAL_CORPUS_TARGET_MINIMUM);
+    expect(summary.final_corpus.planned_item_count).toBe(504);
+    expect(summary.final_corpus.plan_version).toContain("504");
   });
 
   it("reports current evidence lifecycle, regression, and lineage contracts", () => {

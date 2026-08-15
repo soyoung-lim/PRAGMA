@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -1625,6 +1625,169 @@ export type Database = {
         }
         Relationships: []
       }
+      pragma_final_corpus_generation_locks: {
+        Row: {
+          artifact_hash: string
+          direction: string
+          evidence_snapshot_hash: string
+          id: string
+          locked_at: string
+          locked_by: string
+          manifest_attestation_id: string
+          pack_id: string
+          pack_release_id: string
+          pack_version: string
+          prompt_snapshot_hash: string
+          rationale_ko: string
+          readiness_snapshot: Json
+          readiness_snapshot_hash: string
+          schema_version: string
+          scope_speech_acts: string[]
+          source_commit_ref: string
+          target_minimum: number
+        }
+        Insert: {
+          artifact_hash: string
+          direction?: string
+          evidence_snapshot_hash: string
+          id?: string
+          locked_at?: string
+          locked_by: string
+          manifest_attestation_id: string
+          pack_id: string
+          pack_release_id: string
+          pack_version: string
+          prompt_snapshot_hash: string
+          rationale_ko: string
+          readiness_snapshot: Json
+          readiness_snapshot_hash: string
+          schema_version?: string
+          scope_speech_acts: string[]
+          source_commit_ref: string
+          target_minimum?: number
+        }
+        Update: {
+          artifact_hash?: string
+          direction?: string
+          evidence_snapshot_hash?: string
+          id?: string
+          locked_at?: string
+          locked_by?: string
+          manifest_attestation_id?: string
+          pack_id?: string
+          pack_release_id?: string
+          pack_version?: string
+          prompt_snapshot_hash?: string
+          rationale_ko?: string
+          readiness_snapshot?: Json
+          readiness_snapshot_hash?: string
+          schema_version?: string
+          scope_speech_acts?: string[]
+          source_commit_ref?: string
+          target_minimum?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_final_corpus_generation_loc_manifest_attestation_id_fkey"
+            columns: ["manifest_attestation_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_pack_manifest_attestations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_final_corpus_generation_locks_pack_release_id_fkey"
+            columns: ["pack_release_id"]
+            isOneToOne: true
+            referencedRelation: "pragma_realization_pack_releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_final_corpus_generation_run_events: {
+        Row: {
+          actor_id: string
+          event_type: string
+          id: string
+          occurred_at: string
+          rationale_ko: string
+          result: Json
+          run_id: string
+        }
+        Insert: {
+          actor_id: string
+          event_type: string
+          id?: string
+          occurred_at?: string
+          rationale_ko: string
+          result?: Json
+          run_id: string
+        }
+        Update: {
+          actor_id?: string
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          rationale_ko?: string
+          result?: Json
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_final_corpus_generation_run_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_final_corpus_generation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_final_corpus_generation_runs: {
+        Row: {
+          created_at: string
+          created_by: string
+          generation_lock_id: string
+          id: string
+          plan_snapshot: Json
+          plan_snapshot_hash: string
+          plan_version: string
+          run_sequence: number
+          schema_version: string
+          target_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          generation_lock_id: string
+          id?: string
+          plan_snapshot: Json
+          plan_snapshot_hash: string
+          plan_version: string
+          run_sequence: number
+          schema_version?: string
+          target_count: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          generation_lock_id?: string
+          id?: string
+          plan_snapshot?: Json
+          plan_snapshot_hash?: string
+          plan_version?: string
+          run_sequence?: number
+          schema_version?: string
+          target_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_final_corpus_generation_runs_generation_lock_id_fkey"
+            columns: ["generation_lock_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_final_corpus_generation_locks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pragma_gold_calibration_resolutions: {
         Row: {
           case_id: string
@@ -2773,8 +2936,11 @@ export type Database = {
           content_format: string
           content_hash: string | null
           core_content: Json | null
+          core_snapshot_hash: string | null
           created_at: string | null
+          dataset_class: string
           domain: string | null
+          final_corpus_generation_run_id: string | null
           generation_item_key: string | null
           generation_prompt_version: string | null
           generation_provider: string | null
@@ -2825,8 +2991,11 @@ export type Database = {
           content_format?: string
           content_hash?: string | null
           core_content?: Json | null
+          core_snapshot_hash?: string | null
           created_at?: string | null
+          dataset_class?: string
           domain?: string | null
+          final_corpus_generation_run_id?: string | null
           generation_item_key?: string | null
           generation_prompt_version?: string | null
           generation_provider?: string | null
@@ -2877,8 +3046,11 @@ export type Database = {
           content_format?: string
           content_hash?: string | null
           core_content?: Json | null
+          core_snapshot_hash?: string | null
           created_at?: string | null
+          dataset_class?: string
           domain?: string | null
+          final_corpus_generation_run_id?: string | null
           generation_item_key?: string | null
           generation_prompt_version?: string | null
           generation_provider?: string | null
@@ -2920,6 +3092,13 @@ export type Database = {
           week_no?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "scenarios_final_corpus_generation_run_id_fkey"
+            columns: ["final_corpus_generation_run_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_final_corpus_generation_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "scenarios_released_lineage_version_id_fkey"
             columns: ["released_lineage_version_id"]
@@ -3060,6 +3239,10 @@ export type Database = {
       }
     }
     Functions: {
+      abort_pragma_final_corpus_generation_run: {
+        Args: { p_rationale_ko: string; p_run_id: string }
+        Returns: string
+      }
       append_learner_mission_event: {
         Args: { p_payload: Json }
         Returns: string
@@ -3099,9 +3282,25 @@ export type Database = {
         }
         Returns: string
       }
+      close_pragma_final_corpus_generation_run: {
+        Args: { p_rationale_ko: string; p_run_id: string }
+        Returns: string
+      }
+      create_pragma_final_corpus_generation_run: {
+        Args: { p_generation_lock_id: string; p_plan_snapshot: Json }
+        Returns: string
+      }
       ensure_test_dev_profile: { Args: never; Returns: undefined }
       export_learner_mission_events: {
         Args: { p_from?: string; p_to?: string }
+        Returns: Json
+      }
+      get_pragma_final_corpus_generation_readiness: {
+        Args: { p_pack_id: string }
+        Returns: Json
+      }
+      get_pragma_final_corpus_run_state: {
+        Args: { p_run_id: string }
         Returns: Json
       }
       get_pragma_moat_expansion_readiness: {
@@ -3121,6 +3320,10 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      lock_pragma_final_corpus_generation: {
+        Args: { p_pack_id: string; p_rationale_ko: string }
+        Returns: string
+      }
       make_gold_expert_blind_snapshot: { Args: { p_case: Json }; Returns: Json }
       materialize_pragma_improvement_candidates: {
         Args: {
@@ -3190,12 +3393,24 @@ export type Database = {
         Returns: string
       }
       review_mission: { Args: { p_scenario_id: string }; Returns: string }
+      save_final_corpus_core: {
+        Args: { p_payload: Json; p_run_id: string }
+        Returns: string
+      }
       save_generated_core: { Args: { p_payload: Json }; Returns: string }
       save_generated_mission: {
         Args: { p_payload: Json; p_scenario_id: string }
         Returns: string
       }
       save_generated_scenario: { Args: { p_payload: Json }; Returns: string }
+      start_pragma_final_corpus_generation_run: {
+        Args: { p_rationale_ko: string; p_run_id: string }
+        Returns: string
+      }
+      validate_pragma_final_corpus_plan: {
+        Args: { p_plan: Json }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "learner" | "admin"

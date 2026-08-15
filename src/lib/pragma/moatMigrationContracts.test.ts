@@ -19,6 +19,7 @@ const RELEASE_SQL = read("supabase/migrations/20260815010000_authoritative_missi
 const OPERATIONAL_FLYWHEEL_SQL = read("supabase/migrations/20260815023000_operational_improvement_flywheel.sql");
 const MANIFEST_ATTESTATION_SQL = read("supabase/migrations/20260815030000_trusted_pack_manifest_attestation.sql");
 const EXPANSION_READINESS_SQL = read("supabase/migrations/20260815033000_moat_expansion_readiness.sql");
+const FINAL_CORPUS_SQL = read("supabase/migrations/20260815040000_authoritative_final_corpus_generation.sql");
 const PROMOTE_TS = read("src/lib/pragma/promoteMission.ts");
 const EVENTS_TS = read("src/lib/mission/missionEvents.ts");
 const EXPORT_TS = read("src/lib/mission/missionEventExport.ts");
@@ -29,7 +30,7 @@ describe("moat migration/runtime contracts", () => {
     expect(PROMOTE_TS).toContain('rpc("review_mission"');
     expect(EVENTS_TS).toContain('rpc("append_learner_mission_event"');
     expect(EXPORT_TS).toContain('rpc("export_learner_mission_events"');
-    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL]) {
+    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL]) {
       expect((sql.match(/\$\$/g) ?? []).length % 2).toBe(0);
     }
   });
@@ -157,5 +158,18 @@ describe("moat migration/runtime contracts", () => {
     expect(EXPANSION_READINESS_SQL).toContain("Expanded manifest requires an exact passing speech-act expansion authorization");
     expect(EXPANSION_READINESS_SQL).toMatch(/GRANT INSERT ON public\.pragma_operational_verifications TO service_role/);
     expect(EXPANSION_READINESS_SQL).toMatch(/REVOKE INSERT, UPDATE, DELETE ON public\.pragma_operational_verifications FROM authenticated, anon/);
+  });
+
+  it("keeps all pre-lock data test-only and accepts only 504 fresh cores under a current lock", () => {
+    expect(FINAL_CORPUS_SQL).toContain("dataset_class text NOT NULL DEFAULT 'test_only'");
+    expect(FINAL_CORPUS_SQL).toContain("Existing test data can never be relabelled as final corpus data");
+    expect(FINAL_CORPUS_SQL).toContain("Final corpus must be newly generated; an identical pre-lock/test core already exists");
+    expect(FINAL_CORPUS_SQL).toContain("pragma_final_corpus_9act_kozh_v1_504");
+    expect(FINAL_CORPUS_SQL).toContain("exactly 56 items per speech act");
+    expect(FINAL_CORPUS_SQL).toContain("Every speech-act by P/D/R construct cell requires at least two items");
+    expect(FINAL_CORPUS_SQL).toContain("expert_gold_30_and_three_per_act_current_pack");
+    expect(FINAL_CORPUS_SQL).toContain("CREATE OR REPLACE FUNCTION public.save_final_corpus_core");
+    expect(FINAL_CORPUS_SQL).toContain("all 504 fresh, unique, passing plan items");
+    expect(FINAL_CORPUS_SQL).toMatch(/REVOKE INSERT, UPDATE, DELETE ON public\.pragma_final_corpus_generation_locks FROM authenticated, anon/);
   });
 });

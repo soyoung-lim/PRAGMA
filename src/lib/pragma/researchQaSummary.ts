@@ -11,6 +11,7 @@ import { KO_ZH_CORE_REALIZATION_PACK } from "@/lib/pragma/realizationPack";
 import { SEED_GOLD_CASES } from "@/lib/pragma/seedGoldSet";
 
 export const FINAL_CORPUS_TARGET_MINIMUM = 500;
+export const FINAL_CORPUS_PLANNED_COUNT = 504;
 
 export function buildResearchQaSummary() {
   const pack = KO_ZH_CORE_REALIZATION_PACK;
@@ -67,8 +68,10 @@ export function buildResearchQaSummary() {
       status: "not_generated" as const,
       current_item_count: 0,
       target_minimum: FINAL_CORPUS_TARGET_MINIMUM,
+      planned_item_count: FINAL_CORPUS_PLANNED_COUNT,
+      plan_version: "pragma_final_corpus_9act_kozh_v1_504",
       generation_gate:
-        "규칙·문헌·전문가 기준·생성계약 lock과 calibration 승인 뒤 새 release로 전량 신규 생성",
+        "기존 행은 test_only로 고정. 9화행 규칙·문헌·전문가 Gold·생성계약 lock 뒤 전용 서버 run에서 504건을 새 INSERT",
     },
     lineage: {
       schema_version: ITEM_LINEAGE_SCHEMA_VERSION,
@@ -83,4 +86,3 @@ export function buildResearchQaSummary() {
 }
 
 export const RESEARCH_QA_SUMMARY = buildResearchQaSummary();
-

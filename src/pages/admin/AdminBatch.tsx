@@ -17,7 +17,7 @@ import {
 } from "@/lib/pragma/enums";
 import {
   DEFAULT_QUOTA,
-  FULL_BATCH_QUOTA_495,
+  FINAL_CORPUS_QUOTA_504,
   ZH_KO_VALIDATION_ACTS,
   ZH_KO_VALIDATION_QUOTA,
   auditTopicCompatibility,
@@ -33,6 +33,15 @@ import {
   runCoreBatch,
   type CoreCellResult,
 } from "@/lib/pragma/coreBatchRun";
+import {
+  abortFinalCorpusRun,
+  closeFinalCorpusRun,
+  getFinalCorpusReadiness,
+  getFinalCorpusRunState,
+  prepareFinalCorpusRun,
+  type FinalCorpusReadiness,
+  type FinalCorpusRunState,
+} from "@/lib/pragma/finalCorpusGeneration";
 import {
   CORE_QUALITY_AXES,
   runCoreQualityPilot,
@@ -90,6 +99,17 @@ const persistCoreRunId = (direction: LanguageDirection, runId: string) => {
   }
 };
 
+const FINAL_CORPUS_RUN_STORAGE_KEY = "pragma:admin-final-corpus-run:ko_zh";
+
+const getStoredFinalCorpusRunId = () =>
+  typeof window === "undefined" ? "" : window.localStorage.getItem(FINAL_CORPUS_RUN_STORAGE_KEY) ?? "";
+
+const persistFinalCorpusRunId = (runId: string) => {
+  if (typeof window === "undefined") return;
+  if (runId) window.localStorage.setItem(FINAL_CORPUS_RUN_STORAGE_KEY, runId);
+  else window.localStorage.removeItem(FINAL_CORPUS_RUN_STORAGE_KEY);
+};
+
 const parseSelectedPlanIndexes = (raw: string, total: number) => {
   const tokens = raw.split(/[\s,]+/).filter(Boolean);
   const invalid = tokens.some((token) => {
@@ -120,6 +140,12 @@ const AdminBatch = () => {
   const [coreRunId, setCoreRunId] = useState(() => getOrCreateCoreRunId("ko_zh"));
   const [selectedCellNumbers, setSelectedCellNumbers] = useState("");
   const [activeTotal, setActiveTotal] = useState(0);
+  const [finalPackId, setFinalPackId] = useState("");
+  const [finalRationale, setFinalRationale] = useState("");
+  const [finalRunId, setFinalRunId] = useState(getStoredFinalCorpusRunId);
+  const [finalReadiness, setFinalReadiness] = useState<FinalCorpusReadiness | null>(null);
+  const [finalRunState, setFinalRunState] = useState<FinalCorpusRunState | null>(null);
+  const [finalPreparing, setFinalPreparing] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const switchDirection = (d: LanguageDirection) => {
@@ -127,6 +153,7 @@ const AdminBatch = () => {
     setDirection(d);
     setQuota(d === "zh_ko" ? ZH_KO_VALIDATION_QUOTA : DEFAULT_QUOTA);
     setCoreRunId(getOrCreateCoreRunId(d));
+    if (d !== "ko_zh") setFinalRunState(null);
   };
 
   const targetActs = direction === "zh_ko" ? ZH_KO_VALIDATION_ACTS : undefined;
@@ -159,7 +186,7 @@ const AdminBatch = () => {
   const isLargeKoZhBatch = direction === "ko_zh" && summary.total >= 400;
   const isApprovedFullBatch =
     direction === "ko_zh" &&
-    summary.total === 495 &&
+    summary.total === 504 &&
     summary.emptyActPdrCells.length === 0 &&
     summary.minActPdrCount >= 2 &&
     summary.emptyActLevelModeCells.length === 0 &&
@@ -172,15 +199,110 @@ const AdminBatch = () => {
   const loadFullBatchPreset = () => {
     if (running) return;
     setDirection("ko_zh");
-    setQuota(FULL_BATCH_QUOTA_495);
-    const next = createCoreRunId("ko_zh");
-    persistCoreRunId("ko_zh", next);
-    setCoreRunId(next);
+    setQuota(FINAL_CORPUS_QUOTA_504);
+    const storedFinalRun = getStoredFinalCorpusRunId();
+    if (storedFinalRun) {
+      setFinalRunId(storedFinalRun);
+      setCoreRunId(storedFinalRun);
+    } else {
+      const next = createCoreRunId("ko_zh");
+      persistCoreRunId("ko_zh", next);
+      setCoreRunId(next);
+    }
+  };
+
+  const refreshFinalReadiness = async () => {
+    if (!finalPackId.trim()) {
+      toast.error("9화행으로 확장·승인된 realization pack ID를 입력해 주세요.");
+      return null;
+    }
+    try {
+      const readiness = await getFinalCorpusReadiness(finalPackId.trim());
+      setFinalReadiness(readiness);
+      if (!readiness.generation_allowed) {
+        toast.info(`아직 lock 불가: ${readiness.missing_requirements.join(", ")}`);
+      }
+      return readiness;
+    } catch (error) {
+      toast.error((error as Error).message);
+      return null;
+    }
+  };
+
+  const prepareFinalRun = async () => {
+    if (!isApprovedFullBatch || !finalRationale.trim()) {
+      toast.error("승인된 504 계획과 lock 근거를 먼저 준비해 주세요.");
+      return;
+    }
+    const preflight = await preflightAdminBatch();
+    if ("message" in preflight) {
+      toast.error(preflight.message);
+      return;
+    }
+    const readiness = await refreshFinalReadiness();
+    if (!readiness?.generation_allowed) return;
+    if (!window.confirm("현재 규칙·문헌·Gold·prompt hash를 고정하고 최종 504 신규 생성 run을 시작할까요?")) return;
+
+    setFinalPreparing(true);
+    try {
+      const runId = await prepareFinalCorpusRun({
+        packId: finalPackId.trim(),
+        rationaleKo: finalRationale.trim(),
+        cells: plan,
+      });
+      setFinalRunId(runId);
+      persistFinalCorpusRunId(runId);
+      setCoreRunId(runId);
+      persistCoreRunId("ko_zh", runId);
+      setFinalRunState(await getFinalCorpusRunState(runId));
+      toast.success("최종 코퍼스 lock과 504 run이 시작됐습니다.");
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setFinalPreparing(false);
+    }
+  };
+
+  const refreshFinalRunState = async () => {
+    if (!finalRunId) return;
+    try {
+      setFinalRunState(await getFinalCorpusRunState(finalRunId));
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  };
+
+  const closeFinalRun = async () => {
+    if (!finalRunId || !finalRationale.trim()) return;
+    try {
+      await closeFinalCorpusRun(finalRunId, finalRationale.trim());
+      await refreshFinalRunState();
+      toast.success("504개 신규 코어 run을 닫았습니다. 미션 생성·검수·release는 다음 게이트입니다.");
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  };
+
+  const abortFinalRun = async () => {
+    if (!finalRunId || !finalRationale.trim()) return;
+    if (!window.confirm("이 최종 코퍼스 run을 중단할까요? 저장된 candidate는 증거로 보존됩니다.")) return;
+    try {
+      await abortFinalCorpusRun(finalRunId, finalRationale.trim());
+      await refreshFinalRunState();
+      persistFinalCorpusRunId("");
+      toast.success("run을 중단했고 기존 candidate는 변경 없이 보존했습니다.");
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
   };
 
   const start = async () => {
     if (fullBatchBlocked) {
-      toast.error("400건 이상 본배치는 승인된 495 프리셋과 243·54셀 게이트를 모두 충족해야 합니다.");
+      toast.error("400건 이상 본배치는 승인된 504 프리셋과 243·54셀 게이트를 모두 충족해야 합니다.");
+      return;
+    }
+    if (isApprovedFullBatch && !finalRunId) {
+      toast.error("최종 504는 먼저 규칙·문헌·Gold를 lock한 서버 run이 있어야 합니다.");
       return;
     }
     const preflight = await preflightAdminBatch();
@@ -212,8 +334,10 @@ const AdminBatch = () => {
       setDone(d);
       setResults((prev) => [...prev, last]);
     };
+    const activeRunId = isApprovedFullBatch ? finalRunId : coreRunId;
     const out = await runCoreBatch(plan, {
-      runId: coreRunId,
+      runId: activeRunId,
+      finalCorpusRunId: isApprovedFullBatch ? finalRunId : undefined,
       existingItems,
       concurrency: 3,
       signal: ctrl.signal,
@@ -229,6 +353,10 @@ const AdminBatch = () => {
       toast.error("현재 계획 안의 셀 번호를 쉼표로 입력해 주세요.");
       return;
     }
+    if (isApprovedFullBatch && !finalRunId) {
+      toast.error("최종 504의 선택 재시도도 같은 lock된 서버 run 안에서만 가능합니다.");
+      return;
+    }
     const preflight = await preflightAdminBatch();
     if ("message" in preflight) {
       toast.error(preflight.message);
@@ -236,9 +364,14 @@ const AdminBatch = () => {
     }
 
     const selectedCells = selectedPlan.indexes.map((index) => plan[index]);
-    const nextRunId = createCoreRunId(direction);
-    persistCoreRunId(direction, nextRunId);
-    setCoreRunId(nextRunId);
+    const nextRunId = isApprovedFullBatch ? finalRunId : createCoreRunId(direction);
+    if (!isApprovedFullBatch) {
+      persistCoreRunId(direction, nextRunId);
+      setCoreRunId(nextRunId);
+    }
+    const existingItems = isApprovedFullBatch
+      ? await loadExistingCoreRunItems(nextRunId)
+      : undefined;
     setRunning(true);
     setResults([]);
     setDone(0);
@@ -249,6 +382,8 @@ const AdminBatch = () => {
     abortRef.current = ctrl;
     const out = await runCoreBatch(selectedCells, {
       runId: nextRunId,
+      finalCorpusRunId: isApprovedFullBatch ? finalRunId : undefined,
+      existingItems,
       itemIndexes: selectedPlan.indexes,
       concurrency: 3,
       signal: ctrl.signal,
@@ -273,6 +408,11 @@ const AdminBatch = () => {
       return;
     }
     const next = createCoreRunId(direction);
+    if (isApprovedFullBatch) {
+      setFinalRunId("");
+      setFinalRunState(null);
+      persistFinalCorpusRunId("");
+    }
     persistCoreRunId(direction, next);
     setCoreRunId(next);
     setResults([]);
@@ -363,7 +503,7 @@ const AdminBatch = () => {
             onClick={loadFullBatchPreset}
             disabled={running}
           >
-            495 본배치 프리셋
+            최종 504 본배치 프리셋
           </Button>
         </div>
 
@@ -448,13 +588,13 @@ const AdminBatch = () => {
         )}
         {fullBatchBlocked && (
           <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[12.5px] text-red-900">
-            ⛔ 400건 이상 실행은 승인된 495건 계획만 허용합니다. 495 프리셋을 불러오고
+            ⛔ 400건 이상 실행은 승인된 504건 계획만 허용합니다. 504 프리셋을 불러오고
             243 구인셀과 54 전달셀이 모두 채워지는지 확인하십시오.
           </p>
         )}
         {isApprovedFullBatch && (
           <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-[12.5px] text-emerald-900">
-            ✅ 승인된 495 본배치 계획입니다. 243 구인셀과 54 전달셀 게이트를 모두 충족합니다.
+            ✅ 승인된 최종 504 본배치 계획입니다. 243 구인셀과 54 전달셀 게이트를 모두 충족합니다.
           </p>
         )}
 
@@ -522,7 +662,7 @@ const AdminBatch = () => {
           <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-[12.5px] text-amber-900">
             ⚠️ 연구 구인 행렬 {targetActCount * 27}셀(화행 × P × D × R) 중{" "}
             <b>{summary.emptyActPdrCells.length}셀이 빕니다.</b>{" "}
-            소규모 스모크에서는 허용되지만 495건 본 배치에서는 0이어야 합니다.
+            소규모 스모크에서는 허용되지만 504건 최종 본배치에서는 0이어야 합니다.
           </p>
         ) : (
           <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-[12.5px] text-emerald-900">
@@ -531,6 +671,118 @@ const AdminBatch = () => {
           </p>
         )}
       </section>
+
+      {isApprovedFullBatch && (
+        <section className="mt-4 rounded-xl border border-violet-200 bg-violet-50/50 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-[15px] font-bold">최종 코퍼스 lock · 신규 504 전용</h3>
+              <p className="mt-1 max-w-3xl text-[12px] text-muted-foreground">
+                기존 시나리오는 모두 <code>test_only</code>입니다. 9화행 pack·문헌 evidence·prompt·Gold·회귀·RLS가
+                같은 버전으로 승인된 뒤 발급된 run만 <code>final_candidate</code>를 새 INSERT할 수 있습니다.
+              </p>
+            </div>
+            <Badge variant={finalRunState?.status === "generating" ? "default" : "secondary"}>
+              {finalRunState?.status ?? (finalRunId ? "run 확인 필요" : "lock 전")}
+            </Badge>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div>
+              <Label htmlFor="final-pack-id" className="text-[11.5px] text-muted-foreground">
+                승인된 9화행 realization pack ID
+              </Label>
+              <Input
+                id="final-pack-id"
+                value={finalPackId}
+                onChange={(event) => setFinalPackId(event.target.value)}
+                placeholder="예: pragma_ko_zh_nine_act_v1"
+                disabled={running || finalPreparing || Boolean(finalRunId)}
+                className="mt-1 h-8 font-mono text-[12px]"
+              />
+            </div>
+            <div>
+              <Label htmlFor="final-lock-rationale" className="text-[11.5px] text-muted-foreground">
+                lock / 종료 판단 근거
+              </Label>
+              <Input
+                id="final-lock-rationale"
+                value={finalRationale}
+                onChange={(event) => setFinalRationale(event.target.value)}
+                placeholder="규칙·문헌·Gold·생성계약 최종 승인 근거"
+                disabled={running || finalPreparing}
+                className="mt-1 h-8 text-[12px]"
+              />
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={refreshFinalReadiness}
+              disabled={running || finalPreparing || !finalPackId.trim()}
+            >
+              readiness 확인
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={prepareFinalRun}
+              disabled={running || finalPreparing || Boolean(finalRunId) || !finalRationale.trim()}
+            >
+              {finalPreparing ? "lock 중…" : "현재 정본 lock + 504 run 시작"}
+            </Button>
+            {finalRunId && (
+              <>
+                <Button type="button" size="sm" variant="outline" onClick={refreshFinalRunState} disabled={running}>
+                  run 상태 새로고침
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={closeFinalRun}
+                  disabled={running || finalRunState?.status !== "generating" || !finalRationale.trim()}
+                >
+                  504 코어 run 닫기
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  onClick={abortFinalRun}
+                  disabled={running || finalRunState?.status === "closed" || finalRunState?.status === "aborted" || !finalRationale.trim()}
+                >
+                  run 중단
+                </Button>
+              </>
+            )}
+          </div>
+
+          {finalReadiness && !finalReadiness.generation_allowed && (
+            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-900">
+              아직 lock 불가 · {finalReadiness.missing_requirements.join(" · ")}
+            </p>
+          )}
+          {finalReadiness?.generation_allowed && (
+            <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-900">
+              readiness 통과 · pack {finalReadiness.pack_version} · lock 실행 가능
+            </p>
+          )}
+          {finalRunId && (
+            <div className="mt-3 rounded-lg bg-white px-3 py-2 text-[11.5px]">
+              <div>서버 run · <code className="break-all">{finalRunId}</code></div>
+              {finalRunState && (
+                <div className="mt-1 text-muted-foreground">
+                  {finalRunState.current_item_count}/{finalRunState.target_count} 신규 코어 · 남음 {finalRunState.remaining_item_count}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ── 실행 ── */}
       <section className="mt-4 rounded-xl border border-[#EAE4D2] bg-white p-5">
@@ -560,7 +812,8 @@ const AdminBatch = () => {
               summary.total === 0 ||
               topicCoverage.missing.length > 0 ||
               topicCompatibility.length > 0 ||
-              fullBatchBlocked
+              fullBatchBlocked ||
+              (isApprovedFullBatch && !finalRunId)
             }
           >
             {running ? "생성 중…" : `${summary.total}개 생성 시작`}
@@ -606,12 +859,13 @@ const AdminBatch = () => {
                 plan.length === 0
               }
             >
-              선택 {selectedPlan.indexes.length}셀 · 새 ID로 생성
+              선택 {selectedPlan.indexes.length}셀 · {isApprovedFullBatch ? "미저장 셀 재시도" : "새 ID로 생성"}
             </Button>
           </div>
           <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-            전체 재실행 없이 사람 검수에서 탈락한 셀만 교체합니다. 실행할 때마다 새 배치 ID를
-            발급하며, 코어 생성 프롬프트와 해당 해시는 바뀌지 않습니다.
+            {isApprovedFullBatch
+              ? "최종 run에서는 아직 저장되지 않은 실패 셀만 같은 plan identity로 재시도합니다. 이미 저장된 final candidate는 덮어쓰지 않습니다."
+              : "전체 재실행 없이 사람 검수에서 탈락한 셀만 교체합니다. 실행할 때마다 새 배치 ID를 발급하며, 코어 생성 프롬프트와 해당 해시는 바뀌지 않습니다."}
           </p>
           {selectedPlan.indexes.length > 0 && !selectedPlan.invalid && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -638,8 +892,10 @@ const AdminBatch = () => {
         )}
 
         <p className="mt-4 text-[12.5px] text-muted-foreground">
-          생성물은 <b>검수 대기</b>(needs_review · archived_only)로 저장됩니다. 승인 화면을 거쳐야
-          학습자에게 노출됩니다.
+          생성물은 <b>검수 대기</b>(needs_review · archived_only)로 저장됩니다.
+          {isApprovedFullBatch
+            ? " 최종 504는 먼저 final_candidate이며, 미션 생성·검수·release 게이트 전에는 final_release나 학습자 자료가 아닙니다."
+            : " 승인 화면을 거쳐야 학습자에게 노출됩니다."}
         </p>
 
         {failures.length > 0 && (
