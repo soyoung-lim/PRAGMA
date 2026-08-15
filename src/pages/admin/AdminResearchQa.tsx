@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import { AdminShell } from "@/components/AdminShell";
+import { ResearchWorkflowGuide } from "@/components/research/ResearchWorkflowGuide";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -29,19 +30,19 @@ type ExpansionReadiness = {
 };
 
 const LIVE_TABLES: Array<{ key: LiveMetricKey; label: string; table: string }> = [
-  { key: "lineage", label: "미션 lineage 버전", table: "mission_lineage_versions" },
-  { key: "expertReviews", label: "독립 전문가 검토", table: "mission_expert_reviews" },
-  { key: "events", label: "학습 수행 event", table: "learner_mission_events" },
+  { key: "lineage", label: "저장된 문항 버전", table: "mission_lineage_versions" },
+  { key: "expertReviews", label: "AI 학습문항 외부 전문가 판단", table: "mission_expert_reviews" },
+  { key: "events", label: "학습자 수행 기록", table: "learner_mission_events" },
   { key: "improvements", label: "개선 후보", table: "pragma_improvement_candidates" },
-  { key: "calibrationReviews", label: "Seed 연구자 판정", table: "pragma_gold_calibration_reviews" },
-  { key: "calibrationResolutions", label: "Seed 해결본", table: "pragma_gold_calibration_resolutions" },
-  { key: "goldExpertReviews", label: "Gold 외부 전문가 검토", table: "pragma_gold_expert_reviews" },
-  { key: "goldExpertResolutions", label: "Gold 외부 전문가 해결본", table: "pragma_gold_expert_resolutions" },
-  { key: "goldRegressionRuns", label: "Gold release 회귀", table: "pragma_gold_regression_runs" },
-  { key: "finalLocks", label: "최종 코퍼스 lock", table: "pragma_final_corpus_generation_locks" },
-  { key: "finalRuns", label: "최종 504 생성 run", table: "pragma_final_corpus_generation_runs" },
-  { key: "finalMissionBatches", label: "최종 504 mission batch", table: "pragma_final_corpus_mission_batches" },
-  { key: "finalReleases", label: "최종 504 corpus release", table: "pragma_final_corpus_releases" },
+  { key: "calibrationReviews", label: "논문 저자의 기준답안 초안", table: "pragma_gold_calibration_reviews" },
+  { key: "calibrationResolutions", label: "논문 저자가 확정한 기준답안", table: "pragma_gold_calibration_resolutions" },
+  { key: "goldExpertReviews", label: "기준답안 외부 전문가 판단", table: "pragma_gold_expert_reviews" },
+  { key: "goldExpertResolutions", label: "외부 전문가가 확인한 기준답안", table: "pragma_gold_expert_resolutions" },
+  { key: "goldRegressionRuns", label: "기준답안 자동 재시험", table: "pragma_gold_regression_runs" },
+  { key: "finalLocks", label: "최종 자료 생성 잠금", table: "pragma_final_corpus_generation_locks" },
+  { key: "finalRuns", label: "최종 504개 생성 작업", table: "pragma_final_corpus_generation_runs" },
+  { key: "finalMissionBatches", label: "최종 504개 문항 생성 작업", table: "pragma_final_corpus_mission_batches" },
+  { key: "finalReleases", label: "학습자 공개용 자료 묶음", table: "pragma_final_corpus_releases" },
 ];
 
 const initialLive = Object.fromEntries(
@@ -56,23 +57,39 @@ const db = supabase as unknown as {
 };
 
 const READINESS_LABELS: Record<string, string> = {
-  attested_pack_release: "CI가 증명한 pack release",
-  researcher_gold: "연구자 승인 Gold 30건",
-  expert_gold: "외부 전문가 승인 Gold 30건",
-  gold_regression: "passing Gold 회귀",
-  released_vertical_slice: "요청·거절·감사 released 표본",
+  attested_pack_release: "코드와 규칙집 버전 확인",
+  researcher_gold: "논문 저자가 작성한 기준답안 30개",
+  expert_gold: "외부 전문가가 확인한 기준답안 30개",
+  gold_regression: "기준답안 자동 재시험 통과",
+  released_vertical_slice: "요청·거절·감사 공개 표본",
   consented_completion_sample: "화행별 동의 참여자 3명 이상",
-  flywheel_refresh: "표본 이후 개선 flywheel 집계",
-  live_rls_smoke: "동일 커밋 3역할 RLS smoke",
+  flywheel_refresh: "표본 사용 후 개선 신호 점검",
+  live_rls_smoke: "관리자·전문가·학습자 권한 검사",
 };
 
 const FINAL_READINESS_LABELS: Record<string, string> = {
-  attested_release: "현재 CI-attested pack release",
+  attested_release: "코드로 확인된 현재 규칙집",
   nine_act_scope: "승인된 9화행 범위",
-  researcher_gold: "현재 pack 연구자 Gold 30건",
-  expert_gold: "현재 pack 전문가 Gold 30건·화행별 3건",
-  gold_regression: "현재 pack passing 회귀",
-  live_rls_smoke: "동일 커밋 3역할 RLS smoke",
+  researcher_gold: "현재 규칙집의 기준답안 초안 30개",
+  expert_gold: "외부 전문가 확인 기준답안 30개·화행별 3개",
+  gold_regression: "현재 규칙집의 기준답안 자동 재시험 통과",
+  live_rls_smoke: "세 사용자 역할의 실제 권한 검사",
+};
+const EVIDENCE_SOURCE_LABELS: Record<string, string> = {
+  literature: "학술문헌",
+  researcher_observation: "논문 저자의 관찰",
+  design_rationale: "설계 근거",
+};
+const EVIDENCE_VERIFICATION_LABELS: Record<string, string> = {
+  source_verified: "원문 대조 완료",
+  researcher_observation: "관찰 기록",
+  design_rationale: "설계 근거 기록",
+  pending: "확인 대기",
+};
+const EVIDENCE_LIFECYCLE_LABELS: Record<string, string> = {
+  active: "현재 사용",
+  superseded: "새 근거로 교체",
+  retired: "사용 중단",
 };
 
 const asExpansionReadiness = (value: unknown): ExpansionReadiness | null => {
@@ -121,7 +138,7 @@ const Gate = ({ index, title, state, detail }: {
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-semibold">{title}</p>
-        <StatusBadge tone={state}>{state === "ok" ? "계약 확인" : state === "pending" ? "인간 검토 대기" : "선행 gate 필요"}</StatusBadge>
+        <StatusBadge tone={state}>{state === "ok" ? "완료" : state === "pending" ? "검토 대기" : "앞 단계 필요"}</StatusBadge>
       </div>
       <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p>
     </div>
@@ -185,36 +202,37 @@ const AdminResearchQa = () => {
 
   return (
     <AdminShell
-      title="Research & QA Console"
-      description="문헌 근거에서 중국어 실현 규칙, 생성 문항, 전문가 판정과 dataset release까지 이어지는 연구 계보를 확인합니다."
+      title="문항 품질·연구자료 전체 현황"
+      description="품질검사 기준답안 작성부터 AI 학습문항의 외부 확인, 학습자 화면 공개와 수행기록 내려받기까지 진행 상태를 확인합니다."
     >
+      <ResearchWorkflowGuide current="overview" />
       <section className="rounded-xl border border-[#E5CF72] bg-[#FFF9DF] p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-bold text-[#5E4B00]">현재 자산은 calibration 전용입니다</p>
+            <p className="text-sm font-bold text-[#5E4B00]">현재 자료는 품질확인용 시험 자료이며 정식 학습자료가 아닙니다</p>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#74611A]">
-              Seed Gold 30건과 smoke 미션은 최종 학습 bank가 아닙니다. 규칙·문헌·전문가 기준·생성계약을
-              lock한 뒤 새 release에서 500개 이상을 전부 새로 생성합니다.
+              품질검사 기준답안 30개와 시험용 AI 학습문항으로 규칙을 먼저 확인합니다. 규칙·문헌·외부 전문가 판단기준을 확정한 뒤
+              정식 학습자료 504개를 모두 새로 생성합니다.
             </p>
           </div>
-          <StatusBadge tone="blocked">최종 corpus 미생성</StatusBadge>
+          <StatusBadge tone="blocked">정식 자료 생성 전</StatusBadge>
         </div>
       </section>
 
       <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Stat label="Realization Pack" value={`v${summary.pack.version}`} note={`${summary.pack.status} · 한→중`} />
-        <Stat label="화행 수직 표본" value={`${summary.pack.covered_speech_act_count}/${summary.pack.total_speech_act_count}`} note={summary.pack.covered_speech_acts.map((act) => SPEECH_ACT_UI[act]).join(" · ")} />
-        <Stat label="규칙 / 위험" value={`${summary.pack.rule_count} / ${summary.pack.risk_count}`} note="문항 귀속 가능한 ID" />
-        <Stat label="근거 / 원문 확인" value={`${summary.evidence.total_count} / ${summary.evidence.source_verified_count}`} note="모든 근거 lifecycle active" />
-        <Stat label="최종 콘텐츠" value={`0 / ${summary.final_corpus.planned_item_count}`} note={`최소 ${summary.final_corpus.target_minimum} · lock 후 전량 신규 생성`} />
+        <Stat label="중국어 표현 규칙집" value={`v${summary.pack.version}`} note={`${summary.pack.status === "seed" ? "초기 시험본" : summary.pack.status} · 한→중`} />
+        <Stat label="준비된 화행" value={`${summary.pack.covered_speech_act_count}/${summary.pack.total_speech_act_count}`} note={summary.pack.covered_speech_acts.map((act) => SPEECH_ACT_UI[act]).join(" · ")} />
+        <Stat label="표현 규칙 / 주의사항" value={`${summary.pack.rule_count} / ${summary.pack.risk_count}`} note="각 문항에 연결해 확인 가능" />
+        <Stat label="등록 근거 / 원문 확인" value={`${summary.evidence.total_count} / ${summary.evidence.source_verified_count}`} note="변경·삭제 이력까지 보존" />
+        <Stat label="정식 학습자료" value={`0 / ${summary.final_corpus.planned_item_count}`} note={`최소 ${summary.final_corpus.target_minimum}개 · 확정 후 전량 신규 생성`} />
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">3화행 → 9화행 확장 readiness</h2>
+            <h2 className="text-lg font-semibold">나머지 6개 화행으로 확장할 준비</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              서버가 현재 pack의 인간 검토·회귀·release·학습자 표본·운영 검증을 다시 계산합니다.
+              요청·거절·감사 3개 화행의 품질을 충분히 확인해야 나머지 6개 화행의 규칙을 추가할 수 있습니다.
             </p>
           </div>
           <StatusBadge tone={readiness?.expansion_allowed ? "ok" : readinessError ? "blocked" : "pending"}>
@@ -237,20 +255,20 @@ const AdminResearchQa = () => {
           </div>
         )}
         <p className="mt-4 text-xs leading-5 text-muted-foreground">
-          상태가 모두 충족돼 관리자가 확장 근거를 append하기 전에는 CI도 4개 이상 화행을 포함한 manifest를 attestation할 수 없습니다.
+          모든 항목이 충족되기 전에는 시스템이 4개 이상의 화행을 정식 규칙집으로 승인하지 않습니다.
         </p>
       </section>
 
       <section className="mt-6 rounded-xl border border-violet-200 bg-violet-50/40 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">최종 504 신규 생성 readiness</h2>
+            <h2 className="text-lg font-semibold">정식 학습자료 504개를 새로 만들 준비</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              기존 행의 이름만 바꾸는 승격은 금지됩니다. 이 여섯 조건을 같은 pack version으로 만족해야 lock/run을 발급합니다.
+              시험용 자료의 이름만 바꿔 재사용하지 않습니다. 아래 여섯 조건을 같은 규칙집 버전으로 충족한 뒤 새로 생성합니다.
             </p>
           </div>
           <StatusBadge tone={finalReadiness?.generation_allowed ? "ok" : finalReadinessError ? "blocked" : "pending"}>
-            {finalReadiness?.generation_allowed ? "생성 허용" : finalReadinessError ? "조회 필요" : "최종 생성 잠금"}
+            {finalReadiness?.generation_allowed ? "생성 가능" : finalReadinessError ? "확인 필요" : "아직 생성 불가"}
           </StatusBadge>
         </div>
         {finalReadinessError ? (
@@ -272,7 +290,7 @@ const AdminResearchQa = () => {
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
           <span>504 = 9화행 × 56 · 243 P/D/R 셀 ≥2 · 54 화행/수준/모드 셀 ≥3</span>
           <Link to="/admin/batch" className="rounded-md border border-border bg-background px-3 py-1.5 font-medium text-foreground hover:bg-muted">
-            최종 504 lock 화면
+            504개 생성 화면
           </Link>
         </div>
       </section>
@@ -281,48 +299,42 @@ const AdminResearchQa = () => {
         <section className="rounded-xl border border-border bg-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">Release gate</h2>
-              <p className="mt-1 text-sm text-muted-foreground">폭을 넓히기 전에 3화행 수직 표본을 끝까지 검증합니다.</p>
+              <h2 className="text-lg font-semibold">정식 자료가 되기 위한 5가지 통과 조건</h2>
+              <p className="mt-1 text-sm text-muted-foreground">시험용 자료를 정식 자료로 오인하지 않도록 단계별로 확인합니다.</p>
             </div>
-            <Badge variant="outline">test_only → final_release</Badge>
+            <Badge variant="outline">시험용 → 학습자 공개용</Badge>
           </div>
           <ol className="mt-3">
-            <Gate index={1} title="근거와 규칙의 기계적 계약" state="ok" detail={`pack ${summary.pack.version} · 문헌 locator ${summary.evidence.source_verified_count}건 · engineering self-consistency ${summary.calibration.engineering_regression.gate_status}`} />
-            <Gate index={2} title="연구자 calibration 검토" state="pending" detail={`30 cases · 90 candidates · 의미 충실성 ${summary.calibration.pending_semantic_count}건이 아직 pending`} />
-            <Gate index={3} title="2인 독립 전문가 검토와 이견 해결" state="pending" detail="모든 item-lineage claim을 support/revise/reject/uncertain으로 판정하고 누락을 합의로 세지 않습니다." />
-            <Gate index={4} title="Expert release regression" state="blocked" detail={`현재 ${summary.calibration.expert_release_regression.gate_status}. 승인 Gold가 생기기 전에는 실행 가능한 평가로 표시하지 않습니다.`} />
-            <Gate index={5} title="최종 500+ corpus release" state="blocked" detail={summary.final_corpus.generation_gate} />
+            <Gate index={1} title="문헌과 중국어 규칙 연결 확인" state="ok" detail={`규칙집 ${summary.pack.version} · 원문 확인 문헌 ${summary.evidence.source_verified_count}건 · 기본 검사 통과`} />
+            <Gate index={2} title="논문 저자의 품질검사 기준답안 30개 작성" state="pending" detail={`대표 상황 30개 · 중국어 후보 90개 · 아직 확인할 의미 판단 ${summary.calibration.pending_semantic_count}건`} />
+            <Gate index={3} title="외부 전문가 2인의 기준답안·AI 학습문항 확인" state="pending" detail="두 외부 전문가는 각자 판단하며, 의견이 다르면 근거와 최종 해결 결과를 함께 남깁니다." />
+            <Gate index={4} title="기준답안으로 시스템 판단 정확도 재시험" state="blocked" detail="외부 전문가가 확인한 기준답안 30개가 준비되면 시스템의 판단 정확도를 다시 시험합니다." />
+            <Gate index={5} title="정식 학습자료 504개를 PRAGMA 학습자 화면에 공개" state="blocked" detail="앞의 모든 조건을 통과한 뒤 시험용 자료와 분리하여 504개를 새로 만들고 학습자가 사용하게 합니다." />
           </ol>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
               to={pathname.startsWith("/prototype/") ? "/prototype/research-qa-calibration" : "/admin/research-qa/calibration"}
               className="inline-flex rounded-md bg-[#15202B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#263747]"
             >
-              Seed Gold 30건 독립 판정
-            </Link>
-            <Link
-              to={pathname.startsWith("/prototype/") ? "/prototype/expert-review-ops" : "/admin/research-qa/expert-reviews"}
-              className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold transition hover:bg-muted"
-            >
-              전문가 배정·이견 해결
+              1. 품질검사 기준답안 작성
             </Link>
             <Link
               to={pathname.startsWith("/prototype/") ? "/prototype/gold-expert-ops" : "/admin/research-qa/gold-experts"}
               className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold transition hover:bg-muted"
             >
-              Gold 외부 전문가 2인 검토
+              2. 기준답안 외부 전문가 확인
+            </Link>
+            <Link
+              to={pathname.startsWith("/prototype/") ? "/prototype/expert-review-ops" : "/admin/research-qa/expert-reviews"}
+              className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold transition hover:bg-muted"
+            >
+              3. AI 학습문항 외부 전문가 확인
             </Link>
             <Link
               to={pathname.startsWith("/prototype/") ? "/prototype/mission-release" : "/admin/research-qa/releases"}
               className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold transition hover:bg-muted"
             >
-              Gold 회귀·covered 공개
-            </Link>
-            <Link
-              to={pathname.startsWith("/prototype/") ? "/prototype/improvement-flywheel" : "/admin/research-qa/improvements"}
-              className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold transition hover:bg-muted"
-            >
-              데이터 개선 Flywheel
+              4. 통과 문항을 학습자에게 공개
             </Link>
           </div>
         </section>
@@ -330,8 +342,8 @@ const AdminResearchQa = () => {
         <section className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">운영 누적 현황</h2>
-              <p className="mt-1 text-sm text-muted-foreground">로그인한 관리자에게만 보이는 원격 DB 계수입니다.</p>
+              <h2 className="text-lg font-semibold">지금까지 쌓인 검토·학습 기록</h2>
+              <p className="mt-1 text-sm text-muted-foreground">실제 관리자 로그인 후 서버에 저장된 건수를 확인할 수 있습니다.</p>
             </div>
             <StatusBadge tone={loadingLive ? "pending" : liveHasError ? "blocked" : "ok"}>
               {loadingLive ? "조회 중" : liveHasError ? "관리자 인증 필요" : "DB 연결"}
@@ -352,8 +364,8 @@ const AdminResearchQa = () => {
             })}
           </div>
           <div className="mt-4 rounded-lg bg-muted/50 p-4 text-xs leading-5 text-muted-foreground">
-            원본 오디오와 불필요한 클릭은 계수 대상이 아닙니다. 연구 export는 현재 동의·정책 버전과 정확한
-            mission lineage를 서버가 확인한 event만 포함합니다.
+            원본 음성과 단순 클릭은 연구자료에 넣지 않습니다. 현재 동의 조건을 충족하고 정확한 문항 버전과
+            연결된 학습 수행 기록만 연구용 파일로 내려받습니다.
           </div>
         </section>
       </div>
@@ -361,41 +373,41 @@ const AdminResearchQa = () => {
       <section className="mt-6 rounded-xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">문헌 → 규칙 → 문항 추적 계약</h2>
-            <p className="mt-1 text-sm text-muted-foreground">비밀 prompt 원문 대신 버전·해시·검증 상태만 공개합니다.</p>
+            <h2 className="text-lg font-semibold">이 문항이 왜 이렇게 만들어졌는지 추적</h2>
+            <p className="mt-1 text-sm text-muted-foreground">각 문항을 문헌 근거, 중국어 규칙, 생성 버전까지 거슬러 확인할 수 있습니다.</p>
           </div>
           <div className="flex gap-2">
-            <Link to="/admin/prompt-harness" className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted">프롬프트 정본</Link>
-            <Link to="/admin/export" className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted">연구 export</Link>
+            <Link to="/admin/prompt-harness" className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted">생성 규칙 확인</Link>
+            <Link to="/admin/export" className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted">학습 수행기록 내려받기</Link>
           </div>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <Stat label="Item lineage schema" value={summary.lineage.schema_version.replace("mission_", "")} note="모든 학습자 노출 목표문장" />
-          <Stat label="Mission contract" value="v4" note={summary.lineage.mission_prompt_version} />
-          <Stat label="Attribution" value="≤ 5" note={`${summary.lineage.attribution_prompt_version} · batch`} />
-          <Stat label="Prompt snapshot" value={`${summary.lineage.prompt_count}종`} note={`${summary.lineage.prompt_surface_hash.slice(0, 12)}…`} />
+          <Stat label="문항별 생성근거 기록" value="1판" note="모든 중국어 목표문장에 적용" />
+          <Stat label="AI 생성 규칙" value="4판" note="같은 버전으로 재현 가능" />
+          <Stat label="문항당 연결 근거" value="최대 5개" note="규칙·위험·문헌 연결" />
+          <Stat label="저장된 생성 지시" value={`${summary.lineage.prompt_count}종`} note="원문 대신 변조 확인값 보존" />
         </div>
         <div className="mt-4">
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>model_unattributed 경고 허용선</span>
+            <span>근거가 자동 연결되지 않은 문항의 경고선</span>
             <span>{summary.lineage.warning_unattributed_ratio * 100}%</span>
           </div>
           <Progress value={summary.lineage.warning_unattributed_ratio * 100} className="mt-2 h-2" />
-          <p className="mt-2 text-xs leading-5 text-muted-foreground">0을 억지로 목표로 삼지 않습니다. 1~20%는 전문가 보완 경고, 초과하면 저장을 차단합니다.</p>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">20% 이하는 전문가가 근거를 보완할 수 있지만, 20%를 넘으면 저장을 막습니다.</p>
         </div>
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="text-lg font-semibold">근거 lifecycle</h2>
-        <p className="mt-1 text-sm text-muted-foreground">문헌이 바뀌어도 기존 ID를 지우지 않고 superseded·retired 이력으로 보존합니다.</p>
+        <h2 className="text-lg font-semibold">문헌·설계 근거의 변경 이력</h2>
+        <p className="mt-1 text-sm text-muted-foreground">문헌이 추가·교체·삭제되어도 과거 근거를 지우지 않고 변경 이유와 함께 보존합니다.</p>
         <div className="mt-4 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Evidence ID</TableHead>
+                <TableHead>내부 근거번호</TableHead>
                 <TableHead>유형</TableHead>
-                <TableHead>검증 상태</TableHead>
-                <TableHead>Lifecycle</TableHead>
+                <TableHead>근거 확인 상태</TableHead>
+                <TableHead>현재 상태</TableHead>
                 <TableHead>출처</TableHead>
               </TableRow>
             </TableHeader>
@@ -403,9 +415,9 @@ const AdminResearchQa = () => {
               {summary.evidence.items.map((item) => (
                 <TableRow key={item.evidence_id}>
                   <TableCell className="font-mono text-xs">{item.evidence_id}</TableCell>
-                  <TableCell>{item.source_kind}</TableCell>
-                  <TableCell>{item.verification_status}</TableCell>
-                  <TableCell><StatusBadge tone="ok">{item.lifecycle_status}</StatusBadge></TableCell>
+                  <TableCell>{EVIDENCE_SOURCE_LABELS[item.source_kind] ?? item.source_kind}</TableCell>
+                  <TableCell>{EVIDENCE_VERIFICATION_LABELS[item.verification_status] ?? item.verification_status}</TableCell>
+                  <TableCell><StatusBadge tone="ok">{EVIDENCE_LIFECYCLE_LABELS[item.lifecycle_status] ?? item.lifecycle_status}</StatusBadge></TableCell>
                   <TableCell className="max-w-[260px] truncate">{item.citation_key ?? "내부 관찰·설계 근거"}</TableCell>
                 </TableRow>
               ))}

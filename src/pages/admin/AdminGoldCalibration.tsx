@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle2, LockKeyhole, Save, ShieldCheck } from "lucide-
 import { Link, useLocation } from "react-router-dom";
 
 import { AdminShell } from "@/components/AdminShell";
+import { ResearchWorkflowGuide } from "@/components/research/ResearchWorkflowGuide";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -75,7 +76,7 @@ const BAND_OPTIONS = {
 const ACT_LABEL = { request: "요청", refusal: "거절", thanks: "감사" } as const;
 const MODE_LABEL = { translation: "번역", stt_interpreting: "통역" } as const;
 const STATUS_LABEL: Record<CalibrationStatus, string> = {
-  researcher_approved: "연구자 승인",
+  researcher_approved: "논문 저자 확정",
   revise_required: "수정 필요",
   rejected: "기각",
 };
@@ -174,7 +175,7 @@ const AdminGoldCalibration = () => {
       db.from("pragma_gold_calibration_resolutions").select("*").order("resolved_at", { ascending: false }),
     ]);
     if (reviewResult.error || resolutionResult.error) {
-      setMessage(reviewResult.error?.message ?? resolutionResult.error?.message ?? "calibration 기록을 불러오지 못했습니다.");
+      setMessage(reviewResult.error?.message ?? resolutionResult.error?.message ?? "기준답안 작성 기록을 불러오지 못했습니다.");
     } else {
       try {
         setReviews((reviewResult.data ?? []).map(parseStoredReview));
@@ -250,7 +251,7 @@ const AdminGoldCalibration = () => {
       }).select("*").single();
       if (error) throw error;
       setReviews((current) => [parseStoredReview(data), ...current]);
-      setMessage(`판정 round ${review.review_round}을 append-only 기록했습니다. 이제 해결본을 별도로 확정하세요.`);
+      setMessage(`${review.review_round}차 판단을 원본 그대로 저장했습니다. 이제 이 판단을 기준답안으로 확정하세요.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "판정 저장에 실패했습니다.");
     } finally {
@@ -295,12 +296,13 @@ const AdminGoldCalibration = () => {
 
   return (
     <AdminShell
-      title="Seed Gold Calibration"
-      description="30개 시드의 원문 snapshot, 독립 연구자 판정, 해결본을 서로 다른 append-only 레코드로 보존합니다."
+      title="1단계 · 품질검사 기준답안 30개 작성"
+      description="논문 저자가 대표 상황 30개에 대해 중국어 후보의 적절성, 반드시 유지할 의미와 판단 근거를 먼저 기록합니다."
     >
+      <ResearchWorkflowGuide current="calibration" />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Research & QA Console
+          <ArrowLeft className="h-4 w-4" /> 문항 품질관리 전체 현황
         </Link>
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">해결 {resolvedCount}/30</Badge>
@@ -314,7 +316,7 @@ const AdminGoldCalibration = () => {
       <section className="mb-5 rounded-xl border border-[#E5CF72] bg-[#FFF9DF] p-4 text-sm leading-6 text-[#665515]">
         <div className="flex gap-3">
           <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0" />
-          <p><strong>Blind calibration:</strong> 제출 전에는 시드 정답 대역·근거·해설을 보여주지 않습니다. 이견은 실패가 아니라 <code>revise</code> 판정으로 보존하며, 승인 해결본도 최종 500+ 학습 bank와 분리합니다.</p>
+          <p><strong>선입견 없는 판단:</strong> 판단을 제출하기 전에는 미리 정한 답과 해설을 보여주지 않습니다. 처음 예상한 답과 다르면 숨기지 말고 ‘수정 필요’로 남깁니다. 이 30개는 정식 학습자료가 아니라 시스템 품질을 시험할 기준답안입니다.</p>
         </div>
       </section>
 
@@ -356,10 +358,10 @@ const AdminGoldCalibration = () => {
           <section className="rounded-xl border border-border bg-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="font-mono text-xs text-muted-foreground">{selectedCase.case_id} · case v{selectedCase.version} · pack v{selectedCase.realization_pack_version}</p>
+                <p className="font-mono text-xs text-muted-foreground">품질검사 사례 {selectedCase.case_id} · 문항 버전 {selectedCase.version} · 규칙집 {selectedCase.realization_pack_version}</p>
                 <h2 className="mt-1 text-xl font-semibold">{ACT_LABEL[selectedCase.speech_act]} · {selectedCase.target_feature}</h2>
               </div>
-              <Badge variant="outline">판정 round {nextRound}</Badge>
+              <Badge variant="outline">{nextRound}차 판정</Badge>
             </div>
             <dl className="mt-5 grid gap-4 text-sm md:grid-cols-3">
               <div><dt className="text-xs font-medium text-muted-foreground">P / D / R</dt><dd className="mt-1">{selectedCase.pdr.power} / {selectedCase.pdr.distance} / {selectedCase.pdr.burden}</dd></div>
@@ -374,7 +376,7 @@ const AdminGoldCalibration = () => {
           </section>
 
           <section className="rounded-xl border border-border bg-card p-5">
-            <h2 className="text-lg font-semibold">1. 맥락 계약 판정</h2>
+            <h2 className="text-lg font-semibold">1. 상황과 원문의 의미 확인</h2>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               {([
                 ["scenario_valid", "상황이 실제적·해석 가능함"],
@@ -393,8 +395,8 @@ const AdminGoldCalibration = () => {
           </section>
 
           <section className="rounded-xl border border-border bg-card p-5">
-            <h2 className="text-lg font-semibold">2. 중국어 후보 독립 판정</h2>
-            <p className="mt-1 text-sm text-muted-foreground">표시 순서는 고정 A/B/C이며 seed의 기대 대역과 해설은 숨겨져 있습니다.</p>
+            <h2 className="text-lg font-semibold">2. 중국어 후보 A·B·C 확인</h2>
+            <p className="mt-1 text-sm text-muted-foreground">미리 정한 답을 보지 않고 각 문장의 적절성과 의미 보존 여부를 판단합니다.</p>
             <div className="mt-4 space-y-4">
               {selectedCase.candidates.map((candidate) => {
                 const candidateId = candidate.candidate_id;
@@ -428,7 +430,7 @@ const AdminGoldCalibration = () => {
           </section>
 
           <section className="rounded-xl border border-border bg-card p-5">
-            <h2 className="text-lg font-semibold">3. 연구자 종합 판정</h2>
+            <h2 className="text-lg font-semibold">3. 논문 저자의 종합 판단</h2>
             <div className="mt-4 grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
               <label className="text-sm font-medium">판정
                 <Select value={draft.overall_verdict} onValueChange={(value) => setDraft((current) => ({ ...current, overall_verdict: value as Verdict }))}>
@@ -436,7 +438,7 @@ const AdminGoldCalibration = () => {
                   <SelectContent>
                     <SelectItem value="approve">승인 — 이견 없음</SelectItem>
                     <SelectItem value="revise">수정 — 판정 이견 있음</SelectItem>
-                    <SelectItem value="reject">기각 — calibration 부적합</SelectItem>
+                    <SelectItem value="reject">제외 — 품질검사 기준답안으로 부적합</SelectItem>
                   </SelectContent>
                 </Select>
               </label>
@@ -445,9 +447,9 @@ const AdminGoldCalibration = () => {
               </label>
             </div>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
-              <p className="max-w-xl text-xs leading-5 text-muted-foreground">‘승인’은 맥락 3항목, 의미 충실성, 독립 대역 판정이 모두 seed 계약과 일치할 때만 허용됩니다. 이견은 ‘수정’으로 그대로 남기세요.</p>
+              <p className="max-w-xl text-xs leading-5 text-muted-foreground">상황, P/D/R, 원문의 의미와 중국어 후보가 모두 타당할 때만 승인합니다. 하나라도 다르게 판단했다면 ‘수정 필요’로 남기세요.</p>
               <Button onClick={submitReview} disabled={!isAdmin || !draftComplete || saving || Boolean(latestUnresolvedReview)}>
-                <Save className="mr-2 h-4 w-4" /> {saving ? "저장 중…" : `판정 round ${nextRound} 저장`}
+                <Save className="mr-2 h-4 w-4" /> {saving ? "저장 중…" : `${nextRound}차 판정 저장`}
               </Button>
             </div>
           </section>
@@ -455,15 +457,15 @@ const AdminGoldCalibration = () => {
           <section className="rounded-xl border border-border bg-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-emerald-700" /><h2 className="text-lg font-semibold">4. 해결본 확정</h2></div>
-                <p className="mt-1 text-sm text-muted-foreground">판정과 별도 레코드입니다. 해결 전에는 다음 round 판정을 저장하지 않습니다.</p>
+                <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-emerald-700" /><h2 className="text-lg font-semibold">4. 연구 책임자 확정본 저장</h2></div>
+                <p className="mt-1 text-sm text-muted-foreground">원래 판정은 그대로 보존하고, 최종 결론을 별도로 저장합니다. 확정 전에는 다음 차수 판정을 시작하지 않습니다.</p>
               </div>
               <Button variant="outline" onClick={resolveLatestReview} disabled={!isAdmin || !latestUnresolvedReview || saving}>
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 {latestUnresolvedReview ? `${STATUS_LABEL[calibrationResolutionStatus(latestUnresolvedReview)]} 해결본 기록` : selectedResolution ? "해결 완료" : "저장된 판정 없음"}
               </Button>
             </div>
-            {latestUnresolvedReview && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">미해결 판정: round {latestUnresolvedReview.review_round} · {latestUnresolvedReview.overall_verdict}. 해결본 확정 후 다음 round를 시작할 수 있습니다.</p>}
+            {latestUnresolvedReview && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">아직 확정하지 않은 {latestUnresolvedReview.review_round}차 판정이 있습니다. 확정본을 저장한 뒤 다음 판정을 시작할 수 있습니다.</p>}
             {message && <p role="status" className="mt-3 rounded-lg bg-muted p-3 text-sm leading-6">{message}</p>}
           </section>
         </main>

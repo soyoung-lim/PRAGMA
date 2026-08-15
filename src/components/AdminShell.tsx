@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { HomeBrand } from "@/components/HomeBrand";
 
 /** pending = 라우트는 있으나 내용이 후속 단계. 메뉴에 「준비 중」 배지를 단다. */
@@ -21,65 +21,59 @@ const STANDALONE: NavItem = { to: "/admin/dashboard", label: "운영 대시보�
 //   pending 배지. 교과목 운영은 9월 실증 사안이라 메뉴에서 제외(백로그),
 //   학습자 개별 리포트는 학습자 관리 상세와 중복이라 흡수
 // - 「콘텐츠 보관함」은 이름·헤드라인("시나리오 아카이브")·소속이 모두 어긋나 있었다
-//   → 이름 통일 + 생성 결과가 쌓이는 곳이므로 파이프라인으로 이동
+//   → 이름 통일 + 생성물이 쌓이는 곳이므로 파이프라인으로 이동
 // - 파이프라인의 "1단계·1단계·2단계…" 번호는 1단계가 두 번 나와 헷갈려서 제거
 //
 // pending = 화면은 있으나 내용이 후속. 배지를 미리 보여 준다 — 눌러 봐야 비어 있는
 // 것을 아는 것보다 정직하고, 시연 중 사고도 막는다.
 const GROUPS: NavGroup[] = [
   {
-    header: "0 · 설계 기준",
+    header: "0 · 자원 관리",
     items: [
-      { to: "/admin/corpus", label: "HSK 3.0 데이터셋" },
+      { to: "/admin/corpus", label: "소스 뱅크 (HSK 어휘)" },
       { to: "/admin/question-designer", label: "수준별 문항 설계" },
       // 생성 규칙은 화면이 무거워 맨 뒤로(자주 열지 않는다).
-      { to: "/admin/prompt-harness", label: "AI 생성 콘텐츠 품질관리" },
-    ],
-  },
-  // 2026-07-30 IA 재편(사용자·Codex·Claude 수렴안): 생성 화면들의 산출물은 학습
-  // 콘텐츠가 아니라 "미션 재료(코어)"다. 재료가 학습 콘텐츠(MPJ4+DCT1)가 되는
-  // 결정적 변환 = 미션 조립이 라이브러리 행 안 버튼으로 숨어 있어, 제작(재료)과
-  // 완성·관리(조립·검수)를 2층으로 분리하고 조립을 독립 화면으로 승격했다.
-  {
-    header: "1 · 콘텐츠 제작",
-    items: [
-      { to: "/admin/authentic", label: "원자료 분석" },
-      { to: "/admin/generator", label: "미션 재료 생성 · 단일" },
-      { to: "/admin/batch", label: "미션 재료 생성 · 대량" },
+      { to: "/admin/prompt-harness", label: "생성 규칙·프롬프트" },
     ],
   },
   {
-    header: "2 · 품질 검수·승인",
+    header: "1 · 콘텐츠 파이프라인",
     items: [
-      { to: "/admin/library", label: "미션 재료 라이브러리" },
-      { to: "/admin/assembly", label: "학습 미션 조립" },
-      // 계약 §5.4(2026-08-07 2차 개정) — 열람 전용. 설계도가 공표하는 QA 층은
-      // 도구에서 확인 가능해야 한다. 실행 트리거는 두지 않는다.
-      { to: "/admin/cross-vendor", label: "AI 모델 간 독립 검토" },
-      { to: "/admin/review", label: "통합 검수·승인" },
+      { to: "/admin/generator", label: "개별 생성" },
+      { to: "/admin/batch", label: "배치 생성" },
+      { to: "/admin/browser", label: "학습 미션 조립" },
+      { to: "/admin/review", label: "AI 생성물 확인·승인" },
+      { to: "/admin/archive", label: "시나리오 아카이브" },
     ],
   },
   {
-    // 강좌 편성 이후의 실제 운영 흐름을 한 묶음으로 둔다. 편성 하나만 별도 단계로
-    // 떼면 사이드바 위계가 비고, 학습자 관리·수행 기록과의 연결도 약해진다.
-    header: "3 · 수업·학습 운영",
+    header: "2 · 커리큘럼·수업 준비",
+    // 둘 다 "15주"로 시작해 관계가 안 보였다(2026-07-26). ①은 빈 시간표를 만들고
+    // ②는 그 칸을 채운다 — 번호로 순서를, 이름으로 무엇이 다른지 드러낸다.
     items: [
-      { to: "/admin/composer", label: "AI 15주 교과목 설계" },
+      { to: "/admin/curriculum", label: "커리큘럼 구조" },
+      { to: "/admin/composer", label: "주차별 시나리오 편성" },
       { to: "/admin/package", label: "수업 자료 생성", pending: true },
+    ],
+  },
+  {
+    header: "3 · 학습자·학습 분석",
+    items: [
       { to: "/admin/learners", label: "학습자 관리" },
       { to: "/admin/decision-traces", label: "수행·의사결정 기록" },
       { to: "/admin/analytics", label: "학습 분석", pending: true },
+      { to: "/admin/research-qa/improvements", label: "학습 콘텐츠 개선" },
     ],
   },
   {
-    header: "5 · 연구",
+    header: "4 · 문항 품질·연구자료",
     items: [
-      { to: "/admin/research-qa", label: "Research & QA Console" },
-      { to: "/admin/research-qa/gold-experts", label: "Gold 외부 전문가 운영" },
-      { to: "/admin/research-qa/expert-reviews", label: "전문가 검토 운영" },
-      { to: "/admin/research-qa/releases", label: "Gold 회귀·미션 공개" },
-      { to: "/admin/research-qa/improvements", label: "데이터 개선 Flywheel" },
-      { to: "/admin/export", label: "연구 데이터 관리", pending: true },
+      { to: "/admin/research-qa", label: "전체 현황" },
+      { to: "/admin/research-qa/calibration", label: "1. 품질검사 기준답안 작성" },
+      { to: "/admin/research-qa/gold-experts", label: "2. 기준답안 외부 전문가 확인" },
+      { to: "/admin/research-qa/expert-reviews", label: "3. AI 학습문항 외부 전문가 확인" },
+      { to: "/admin/research-qa/releases", label: "4. 통과 문항 학습자 공개" },
+      { to: "/admin/export", label: "5. 학습 수행기록 내려받기" },
     ],
   },
   {
@@ -90,29 +84,14 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
-// 2026-08-01 — 「준비 중」 항목은 메뉴에서 감춘다. 빈 껍데기를 미리 보여 주는 것이
-// 정직하다고 보았으나, 지도교수 점검에서는 완성 보고와 정면으로 경쟁했다. 라우트와
-// pending 표기는 그대로 두어(주소로는 접근 가능), 내용이 차면 이 필터만 풀면 된다.
-const VISIBLE_GROUPS: NavGroup[] = GROUPS.map((group) => ({
-  ...group,
-  items: group.items.filter((item) => !item.pending),
-})).filter((group) => group.items.length > 0);
-
 interface AdminShellProps {
   title: string;
   description?: string;
   children?: ReactNode;
-  compact?: boolean;
 }
 
-export const AdminShell = ({ title, description, children, compact = false }: AdminShellProps) => {
+export const AdminShell = ({ title, description, children }: AdminShellProps) => {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const visibleNavPaths = new Set([
-    STANDALONE.to,
-    ...GROUPS.flatMap((group) => group.items.map((item) => item.to)),
-  ]);
-  const mobileNavValue = visibleNavPaths.has(pathname) ? pathname : "";
 
   const standaloneClasses = (active: boolean) =>
     [
@@ -133,10 +112,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 bg-[#15202B]">
-        {/* 헤더와 아래 본문 행은 같은 1400 격자를 쓴다 — 예전에는 헤더만 중앙
-            1240이고 본문은 화면 끝까지 흘러, 사이드바는 로고보다 320px 왼쪽으로
-            콘텐츠는 헤더보다 308px 오른쪽으로 튀어나왔다(1920 실측). */}
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <HomeBrand />
           <Link
             to="/"
@@ -147,13 +123,8 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
         </div>
       </header>
 
-      {/* 좌우 패딩도 헤더와 같은 px-6으로 맞춘다 — pl-5/pr-8이면 max-w를 맞춰도
-          사이드바 좌측과 콘텐츠 우측이 헤더 안쪽 선과 어긋난다. */}
-      <div className={`mx-auto flex max-w-[1400px] gap-6 px-6 ${compact ? "py-5" : "py-6"}`}>
-        {/* 폭은 가장 넓은 항목(「연구 데이터 관리」+준비 중 배지 = 139px)이 들어가는
-            선까지만 준다. 메뉴는 whitespace-nowrap이라 넘치면 줄바꿈이 아니라
-            본문 쪽으로 삐져나온다. 208px → 텍스트 가용폭 151px(여유 12px). */}
-        <aside className="hidden w-[208px] shrink-0 md:block">
+      <div className="flex gap-6 pl-5 pr-8 py-6">
+        <aside className="hidden w-[285px] shrink-0 md:block">
           <nav className="flex flex-col px-1">
             <Link
               to={STANDALONE.to}
@@ -162,7 +133,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
               {STANDALONE.label}
             </Link>
 
-            {VISIBLE_GROUPS.map((group) => (
+            {GROUPS.map((group) => (
               <div key={group.header} className="flex flex-col">
                 <span
                   className="mt-5 mb-1.5 px-3 text-[12px] font-medium uppercase tracking-[0.08em] text-[#8a857c] whitespace-nowrap cursor-default select-none"
@@ -191,38 +162,6 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
         </aside>
 
         <main className="min-w-0 flex-1">
-          <div className="mb-5 md:hidden">
-            <label
-              htmlFor="admin-mobile-navigation"
-              className="mb-1.5 block text-[12px] font-medium text-muted-foreground"
-            >
-              관리자 메뉴
-            </label>
-            <select
-              id="admin-mobile-navigation"
-              value={mobileNavValue}
-              onChange={(event) => {
-                if (event.target.value) navigate(event.target.value);
-              }}
-              className="w-full rounded-md border border-border bg-white px-3 py-2.5 text-[14px] text-foreground"
-            >
-              <option value="" disabled>
-                이동할 화면 선택
-              </option>
-              <option value={STANDALONE.to}>{STANDALONE.label}</option>
-              {VISIBLE_GROUPS.map((group) => (
-                <optgroup key={group.header} label={group.header}>
-                  {group.items.map((item) => (
-                    <option key={item.to} value={item.to}>
-                      {item.label}
-                      {item.pending ? " · 준비 중" : ""}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
-
           <div className="flex items-stretch gap-3">
             <span
               aria-hidden
@@ -232,16 +171,12 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
               <h1 className="text-2xl font-bold leading-tight text-foreground sm:text-3xl">
                 {title}
               </h1>
-              {/* 화면 설명은 읽기 폭(≈672px)까지만 — 전폭이면 한 줄에 한국어
-                  80자가 넘어 눈이 다음 줄 시작을 못 찾는다(최적 35~45자). */}
               {description && (
-                <p className={`${compact ? "mt-1" : "mt-2"} max-w-[42rem] text-sm text-muted-foreground`}>
-                  {description}
-                </p>
+                <p className="mt-2 text-sm text-muted-foreground">{description}</p>
               )}
             </div>
           </div>
-          <div className={compact ? "mt-5" : "mt-6"}>{children}</div>
+          <div className="mt-6">{children}</div>
         </main>
       </div>
     </div>

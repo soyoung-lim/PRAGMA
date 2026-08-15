@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
+import { ResearchWorkflowGuide } from "@/components/research/ResearchWorkflowGuide";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,25 +44,26 @@ const Page = () => {
 
   return (
   <AdminShell
-    title="연구 데이터 관리"
-    description="연구 참여 동의, 가명화, 데이터 완전성과 내보내기 이력을 한곳에서 관리합니다."
+    title="5단계 · 학습 수행기록 연구용 내려받기"
+    description="동의한 학습자의 수행 기록만 확인하고, 직접 식별정보를 제외한 연구용 파일로 내려받습니다."
   >
+    <ResearchWorkflowGuide current="data" />
     <div className="mb-3 flex items-center gap-3">
-      <h2 className="text-base font-semibold">연구 진행 상태</h2>
+      <h2 className="text-base font-semibold">현재 데이터 수집 준비 상태</h2>
       <PendingBadge />
     </div>
 
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="mb-3 text-sm font-semibold">실증 데이터 준비 상태</h3>
+        <h3 className="mb-3 text-sm font-semibold">어떤 기록을 모을 수 있나</h3>
         <table className="w-full text-sm">
           <tbody>
             {[
-              ["수행 기록 저장", "구현됨"],
-              ["관리자 개별 기록 조회", "구현됨"],
-              ["학습자 미션 수행 기록", "구현됨"],
-              ["집단 분석", "로그 축적 후 활성화"],
-              ["실증 대상 규모", "9월 학부 수업 40명 내외"],
+              ["학습자의 판단·수정 과정 저장", "가능"],
+              ["관리자가 개인별 기록 확인", "가능"],
+              ["미션 수행 과정 저장", "가능"],
+              ["여러 학습자 결과 비교", "자료가 쌓이면 시작"],
+              ["예정 참여자", "9월 학부 수업 약 40명"],
             ].map(([label, value]) => (
               <tr key={label} className="border-b border-border/50 last:border-0">
                 <td className="py-2 pr-4 text-muted-foreground">{label}</td>
@@ -73,13 +75,13 @@ const Page = () => {
       </div>
 
       <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="mb-3 text-sm font-semibold">연구 데이터 적격성</h3>
+        <h3 className="mb-3 text-sm font-semibold">어떤 학습자 기록을 연구에 포함하나</h3>
         <p className="text-sm leading-6 text-muted-foreground">
-          참여 동의, 익명 식별자, 완료 여부, 필수 응답과 결측 상태를 점검한 뒤 연구 포함·제외
-          대상을 확정하는 영역입니다.
+          학습 수행기록을 연구자료로 사용하는 데 동의했고 필수 활동을 완료했으며, 분석에 필요한 응답이 남아 있는지 확인한 뒤
+          포함 대상을 정합니다.
         </p>
         <div className="mt-4 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-5 text-center text-xs text-muted-foreground">
-          적격성 규칙과 데이터 완전성 집계는 후속 단계에서 연결됩니다.
+          실제 수업이 시작되면 포함·제외 기준과 빠진 응답 현황이 여기에 표시됩니다.
         </div>
       </div>
     </div>
@@ -87,14 +89,14 @@ const Page = () => {
     <div className="mt-6 rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">연구용 데이터 내보내기</h2>
+          <h2 className="text-base font-semibold">분석할 기간을 정해 파일로 내려받기</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            포함 기준과 익명화 점검을 통과한 학습·시나리오 데이터만 버전과 생성 이력을 남겨
-            내보냅니다.
+            선택한 기간의 학습 수행 기록을 연구용 파일로 만듭니다. 누가 언제 어떤 기준으로
+            내려받았는지도 기록됩니다.
           </p>
         </div>
         <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-          event export v1
+          내보내기 형식 1판
         </Badge>
       </div>
       <div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
@@ -107,12 +109,13 @@ const Page = () => {
           <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
         </label>
         <div className="flex gap-2">
-          <Button variant="outline" disabled={!!exporting} onClick={() => void runExport("json")}>JSON</Button>
-          <Button disabled={!!exporting} onClick={() => void runExport("jsonl")}>JSONL</Button>
+          <Button variant="outline" disabled={!!exporting} onClick={() => void runExport("json")}>한 파일로 받기 (JSON)</Button>
+          <Button disabled={!!exporting} onClick={() => void runExport("jsonl")}>줄 단위로 받기 (JSONL)</Button>
         </div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        직접 사용자 ID는 제외하고 동의 버전별 안정 가명키를 사용합니다. 이는 익명화가 아니라 가명화입니다.
+        이름·이메일·직접 사용자 ID는 제외하고 연구용 번호로 바꿉니다. 원자료와 연결 가능성이 남는
+        ‘가명화’이므로 연구자료 보안 기준에 따라 관리해야 합니다.
       </p>
       {message && <p className="mt-3 text-sm font-medium">{message}</p>}
     </div>
