@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 
-// 심사 설명용 read-only 화면. 새 데이터·API 없이 설계 문서를 코드 상수로 표현한다.
-// 학습자 메뉴에는 노출하지 않는다(랜딩 진입점은 VITE_ENABLE_DEMO로 통제).
+// 심사 설명용 read-only 화면. 현재 런타임 흐름과 연구자료 처리 경계를 요약한다.
 
 type Status = "done" | "dev" | "next";
 
@@ -79,7 +78,7 @@ const Architecture = () => (
     </header>
 
     <div className="mx-auto max-w-[1120px] px-6 pb-3.5 pt-3">
-      {/* 한 줄 정의 + 구현 상태 총계 */}
+      {/* 한 줄 정의 + 구현 상태 범례 */}
       <div className="mb-4 mt-1.5 flex flex-wrap items-baseline justify-between gap-4">
         <p className="text-[14px] font-semibold">
           <b className="border-b-2 border-[#FAD338] pb-px">콘텐츠를 생성·검수</b>하고,{" "}
@@ -89,40 +88,40 @@ const Architecture = () => (
         <div className="flex gap-3 text-[11.5px] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <i className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT.done}`} />
-            구현 6
+            구현됨
           </span>
           <span className="inline-flex items-center gap-1.5">
             <i className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT.dev}`} />
-            개발 중 5
+            개발 중
           </span>
           <span className="inline-flex items-center gap-1.5">
             <i className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT.next}`} />
-            후속 3
+            후속 작업
           </span>
         </div>
       </div>
 
       {/* 3레인 */}
       <div className="grid grid-cols-1 items-stretch lg:grid-cols-[.86fr_52px_1.85fr_52px_.86fr]">
-        {/* ① 콘텐츠 생성·검수 */}
+        {/* ① 콘텐츠 생성·품질 검증 */}
         <section className="rounded-[13px] border border-border bg-card px-3 pb-3 pt-3.5">
           <div className="mb-0.5 flex items-center gap-2">
             <span className={`grid h-[18px] w-[18px] place-items-center rounded-full text-[10.5px] font-bold text-white ${LANE.supply.num}`}>
               1
             </span>
-            <h2 className="text-[14px] font-bold tracking-tight">콘텐츠 생성·검수</h2>
+            <h2 className="text-[14px] font-bold tracking-tight">콘텐츠 생성·품질 검증</h2>
           </div>
-          <p className="mb-2.5 text-[11.5px] text-muted-foreground">최종 공개 여부는 교수자가 결정</p>
+          <p className="mb-2.5 text-[11.5px] text-muted-foreground">시스템은 조건을 확인하고, 교수자가 학습자 사용을 최종 승인</p>
 
-          <Node lane="supply" status="dev" title="목표 화용 요소 패키지" desc="화행 × 목표 화용 요소 단위" />
+          <Node lane="supply" status="dev" title="표현 규칙·생성계약 확정" desc="화행 × 목표 화용 요소 단위" />
           <Down />
-          <Node lane="supply" status="done" title="AI 기반 자동 생성" desc="시나리오 · 문항" />
+          <Node lane="supply" status="done" title="AI 학습 콘텐츠 생성" desc="확정 규칙으로 정식 문항 504개 신규 생성" />
           <Down />
-          <Node lane="supply" status="dev" title="자동 규칙 검증" desc="사전 노출·선산출 위반 확인" />
+          <Node lane="supply" status="dev" title="1·2. 기준답안 판정" desc="연구 책임자 30개 · 외부 전문가 층화표본 18개" />
           <Down />
-          <Node lane="supply" status="next" title="독립 AI 모델 검증" desc="판정이 아니라 경고" />
+          <Node lane="supply" status="dev" title="3. 504개 자동 점검·경고 검토" desc="전량 자동 점검 · 연구 책임자는 경고 문항 집중 확인" />
           <Down />
-          <Node lane="supply" status="dev" title="교수자 최종 승인" desc="승인자 · 일시 · 모델 기록" />
+          <Node lane="supply" status="dev" title="4. 학습자 사용 승인" desc="시스템 조건 확인 · 교수자 최종 결정 · 이력 저장" />
         </section>
 
         <Handoff label="승인분만" />
@@ -139,13 +138,13 @@ const Architecture = () => (
             한 단원에 목표 화용 요소 하나 · 승인된 콘텐츠만
           </p>
 
-          <Node lane="learn" status="done" title="15주 과정 내 화행·화용 요소 배치" desc="9개 화행을 순환 배치" />
+          <Node lane="learn" status="done" title="15주 과정 내 화행·화용 요소 배치" desc="9개 화행과 목표 요소를 주차별로 배치" />
           <Down />
           <Node
             lane="learn"
             status="done"
             title="주차 도입 활동"
-            desc="장면 제시 → 차이 인식 → 원리 이해 → 적절성 판단"
+            desc="장면 제시 → 차이 인식 → 원리 이해"
           />
           <Down />
 
@@ -155,7 +154,7 @@ const Architecture = () => (
               반복 학습 사이클
             </span>
             <div className="mt-2 flex flex-wrap items-center gap-[5px]">
-              {["초안 산출", "수신자 관점 비교·진단", "목표 화용 요소 중심 수정", "맥락 전이"].map((step, i) => (
+              {["감각 익히기(MPJ 5)", "직접 표현하기", "피드백 확인", "한 곳 다듬기"].map((step, i) => (
                 <span key={step} className="contents">
                   {i > 0 && <span className="text-[10px] text-[#C9A93A]">→</span>}
                   <span className="whitespace-nowrap rounded-md border border-[#EADFAF] bg-white px-2 py-[5px] text-[11.5px] font-semibold">
@@ -165,51 +164,51 @@ const Architecture = () => (
               ))}
             </div>
             <p className="mt-2 text-[11px] leading-[1.4] text-muted-foreground">
-              의미 충실성은 통과 조건, 화용 적절성이 평가 대상 · 번역 과제 필수 포함
+              번역·통역 수행에서 의미·문법·화용 피드백을 확인하고 핵심 한 곳을 수정
             </p>
           </div>
 
           <Down />
-          <Node lane="learn" status="next" title="형성 평가" desc="학습용 문항 · 제출 후 피드백 제공" />
+          <Node lane="learn" status="dev" title="상황 바꿔보기" desc="한 조건이 달라진 상황에 같은 원리를 다시 적용" />
           <Down />
           <Node
             lane="learn"
             status="dev"
-            title="음성 · 순차통역 적용"
-            desc="같은 화용 요소를 통역 수행 조건으로 재적용"
+            title="번역·순차통역 수행"
+            desc="같은 화용 요소를 글과 짧은 구두 담화에 적용"
           />
         </section>
 
         <Handoff label="수행 로그" />
 
-        {/* ③ 연구·평가·설계 */}
+        {/* ③ 학습 기록·연구자료 */}
         <section className="rounded-[13px] border border-border bg-card px-3 pb-3 pt-3.5">
           <div className="mb-0.5 flex items-center gap-2">
             <span className={`grid h-[18px] w-[18px] place-items-center rounded-full text-[10.5px] font-bold text-white ${LANE.res.num}`}>
               3
             </span>
-            <h2 className="text-[14px] font-bold tracking-tight">연구·평가·설계</h2>
+            <h2 className="text-[14px] font-bold tracking-tight">학습 기록·연구자료</h2>
           </div>
-          <p className="mb-2.5 text-[11.5px] text-muted-foreground">학습과 연구를 분리</p>
+          <p className="mb-2.5 text-[11.5px] text-muted-foreground">학습 운영과 연구자료 포함 여부를 구분</p>
 
-          <Node lane="res" status="dev" title="학습 수행 로그" desc="콘텐츠·정책 버전과 함께 저장" />
+          <Node lane="res" status="dev" title="수행·의사결정 기록" desc="콘텐츠·정책 버전과 함께 저장" />
           <Down />
-          <Node lane="res" status="dev" title="연구용 기준 평가" desc="사전 · 중간 · 사후" />
+          <Node lane="res" status="dev" title="연구자료 포함 여부 확인" desc="참여 동의 · 과제 완료 · 필수 응답 확인" />
           <Down />
-          <Node lane="res" status="next" title="평가자 채점" desc="승인 루브릭 · 이중 평정" />
+          <Node lane="res" status="dev" title="가명 처리" desc="직접 식별자 제외 · 안정 가명 식별자 사용" />
           <Down />
-          <Node lane="res" status="done" title="연구 데이터 내보내기" desc="가명 처리 · 대응표 분리 보관" />
+          <Node lane="res" status="done" title="수행기록 내려받기" desc="포함 기준을 통과한 연구자료만 버전과 함께 추출" />
           <Down />
-          <Node lane="res" status="next" title="교수·학습 설계 개선" desc="사람이 결정" />
+          <Node lane="res" status="dev" title="학습 콘텐츠 개선" desc="반복 신호를 모으고 연구 책임자가 반영 여부 결정" />
         </section>
       </div>
 
       <p className="mt-2 text-center text-[11.5px] text-muted-foreground">
-        <b className="font-semibold text-foreground">승인된 콘텐츠만</b> 학습자에게 공개
-        <span className="mx-[7px] text-[#D3D1C7]">·</span>연구용{" "}
-        <b className="font-semibold text-foreground">기준 평가 문항은 학습 중 비노출</b>
+        <b className="font-semibold text-foreground">교수자가 승인한 콘텐츠만</b> 학습자가 사용
         <span className="mx-[7px] text-[#D3D1C7]">·</span>
-        <b className="font-semibold text-foreground">모든 수행 로그가 자동 저장</b>(콘텐츠·정책 버전 포함)
+        <b className="font-semibold text-foreground">동의와 포함 기준을 충족한 기록만</b> 연구자료로 추출
+        <span className="mx-[7px] text-[#D3D1C7]">·</span>
+        <b className="font-semibold text-foreground">음성 원본은 저장하지 않고 확인된 전사만 저장</b>
       </p>
 
       {/* 두 개의 사이클 */}
@@ -264,9 +263,9 @@ const Architecture = () => (
         <div className="flex flex-wrap gap-1.5">
           {[
             "수준 정책 (입문·중급·고급)",
-            "모드 정책 (학습·전이·숙달·기준 평가)",
+            "수행 방식 (번역·통역)",
             "콘텐츠·정책 버전",
-            "검수 이력",
+            "판정·승인 이력",
           ].map((c) => (
             <span key={c} className="rounded-full border border-[#D3D1C7] bg-background px-[11px] py-1 text-[11.5px] font-semibold">
               {c}
@@ -276,7 +275,7 @@ const Architecture = () => (
       </div>
 
       <p className="mt-2 text-[10.5px] text-muted-foreground">
-        <b className="font-semibold text-foreground">설명 전용 화면.</b> 새 기능 없이 설계 문서를 그대로 옮겼습니다.
+        <b className="font-semibold text-foreground">설명 전용 화면.</b> 현재 구현과 확정된 운영 경계를 한눈에 정리합니다.
         카드 오른쪽 위 점은 구현 상태입니다(채움 = 구현됨, 흐림 = 개발 중, 점선 = 후속).
       </p>
     </div>

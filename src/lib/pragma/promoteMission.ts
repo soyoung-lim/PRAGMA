@@ -24,12 +24,7 @@ import {
   type SpeechActUI,
 } from "@/lib/pragma/enums";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
-
-const LEVEL_POLICY: Record<LearnerLevel, string> = {
-  beginner_intermediate: "입문(HSK4): 단문 중심, 종속절 제한. 자원 조합 1개. 원문 1~2문장.",
-  intermediate: "중급(HSK5): 복문 1~2개, 이유·조건 표현 사용. 자원 조합 2개. 원문 2~4문장.",
-  advanced: "고급(HSK6): 담화 조직·복합 전략. 자원 선택 배열. 원문 3~5문장(통역은 짧은 구두 담화).",
-};
+import { missionLevelPolicyPrompt } from "@/lib/pragma/levelPolicy";
 
 const isResponseAct = (act: SpeechActUI) => act === "refusal" || act === "opposition";
 
@@ -206,7 +201,7 @@ export async function promoteCore(core: PromotableCore, options: PromoteOptions 
           direction, // 0-l·89 — 엣지가 방향별 원문·산출 언어 결정(라운드2 배포 후 활성)
           speech_act_ko: SPEECH_ACT_UI[core.speech_act],
           level_ko: LEVEL[core.learner_level],
-          level_policy_ko: LEVEL_POLICY[core.learner_level],
+          level_policy_ko: missionLevelPolicyPrompt(core.learner_level),
           feature: featureForGen(feature, direction, lineageScope),
           core: missionCore,
           error_pattern_hints_ko: errorPatternsForAct(core.speech_act).map(
