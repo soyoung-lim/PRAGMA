@@ -75,9 +75,10 @@ interface AdminShellProps {
   title: string;
   description?: string;
   children?: ReactNode;
+  compact?: boolean;
 }
 
-export const AdminShell = ({ title, description, children }: AdminShellProps) => {
+export const AdminShell = ({ title, description, children, compact = false }: AdminShellProps) => {
   const { pathname } = useLocation();
 
   const standaloneClasses = (active: boolean) =>
@@ -110,7 +111,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
         </div>
       </header>
 
-      <div className="flex gap-6 pl-5 pr-8 py-6">
+      <div className={`flex gap-6 pl-5 pr-8 ${compact ? "py-5" : "py-6"}`}>
         <aside className="hidden w-[285px] shrink-0 md:block">
           <nav className="flex flex-col px-1">
             <Link

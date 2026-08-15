@@ -98,6 +98,8 @@ export type PromoteStage =
 
 export interface PromoteOptions {
   onProgress?: (stage: PromoteStage) => void;
+  /** 정식 corpus 배치는 품질 점검 fail을 저장 전에 차단한다. */
+  qualityGate?: "standard" | "required_non_fail";
 }
 
 /**
@@ -331,6 +333,17 @@ export async function promoteCore(
     };
   }
   const quality = qualityResult.quality;
+  if (options.qualityGate === "required_non_fail" && quality.verdict === "fail") {
+    return {
+      ok: false,
+      mission,
+      ruleResult: check.result as "pass" | "warning",
+      violations,
+      attempts,
+      quality,
+      error: "정식 corpus 품질 점검에서 결함이 확인되어 저장하지 않았습니다.",
+    };
+  }
   const contentToSave = rawContent && typeof rawContent === "object"
     ? { ...(rawContent as Record<string, unknown>), quality_check: quality }
     : rawContent;

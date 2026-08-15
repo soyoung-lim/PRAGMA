@@ -23,6 +23,6 @@ describe("research QA summary", () => {
     expect(summary.calibration.engineering_regression.gate_status).toBe("pass");
     expect(summary.calibration.expert_release_regression.gate_status).toBe("not_runnable");
     expect(summary.lineage.maximum_batch_size).toBe(5);
-    expect(summary.lineage.prompt_count).toBe(13);
+    expect(summary.lineage.prompt_count).toBe(18);
   });
 });

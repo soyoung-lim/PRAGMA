@@ -23,6 +23,7 @@ import {
 } from "@/lib/pragma/coreSchema";
 import { DEFAULT_DIRECTION, type LanguageDirection } from "@/lib/pragma/enums";
 import { HskLexicalAuditSchema } from "@/lib/pragma/hskReference";
+import { ItemLineageSchema } from "@/lib/pragma/itemLineage";
 
 // ── 공통 필드 ─────────────────────────────────────────────────────────
 const MpjCommon = {
@@ -150,8 +151,10 @@ export type ProductionTask = z.infer<typeof ProductionTaskSchema>;
 // 스키마는 관대(선택)하게 두고, 존재·필수값 검사는 R20이 담당한다.
 // 이유: 모델 응답이 아니라 승격 edge function이 채우므로 zod hard-fail이 부적절.
 export const MissionProvenanceSchema = z.object({
+  provider: z.string().min(1).optional(),
   model: z.string().min(1),
   prompt_version: z.string().min(1),
+  prompt_instance_hash: z.string().min(1).optional(),
   /** 같은 후보 계약으로 생성된 코어·미션·피드백을 묶는 표식. legacy는 부재 가능. */
   content_release_id: z.string().min(1).optional(),
   prompt_snapshot_hash: z.string().optional(),
@@ -191,6 +194,7 @@ export const MissionV1Schema = z.object({
   provenance: MissionProvenanceSchema.optional(), // 존재·필수값 = R20(missionRules)
   quality_check: QualityCheckSchema.optional(),   // 검증②(0-q·99) — 승격 후 주입
   hsk_lexical_audit: HskLexicalAuditSchema.optional(),
+  item_lineage: ItemLineageSchema.optional(),
   // summary 없음 — 코드가 recommended_example_zh 5개를 모아 렌더(B13)
 });
 export type MissionV1 = z.infer<typeof MissionV1Schema>;
@@ -348,6 +352,7 @@ export const MissionV2Schema = z.object({
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
   hsk_lexical_audit: HskLexicalAuditSchema.optional(),
+  item_lineage: ItemLineageSchema.optional(),
 });
 export type MissionV2 = z.infer<typeof MissionV2Schema>;
 
@@ -374,6 +379,7 @@ export const MissionV3Schema = z.object({
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
   hsk_lexical_audit: HskLexicalAuditSchema.optional(),
+  item_lineage: ItemLineageSchema.optional(),
 });
 export type MissionV3 = z.infer<typeof MissionV3Schema>;
 
@@ -473,6 +479,7 @@ export const MissionV4Schema = z.object({
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
   hsk_lexical_audit: HskLexicalAuditSchema.optional(),
+  item_lineage: ItemLineageSchema.optional(),
 });
 export type MissionV4 = z.infer<typeof MissionV4Schema>;
 
@@ -499,6 +506,7 @@ export const MissionV5Schema = z.object({
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
   hsk_lexical_audit: HskLexicalAuditSchema.optional(),
+  item_lineage: ItemLineageSchema.optional(),
 });
 export type MissionV5 = z.infer<typeof MissionV5Schema>;
 
@@ -610,6 +618,7 @@ export function normalizeMission(input: unknown): {
       ...(m.provenance ? { provenance: m.provenance } : {}),
       ...(m.quality_check ? { quality_check: m.quality_check } : {}),
       ...(m.hsk_lexical_audit ? { hsk_lexical_audit: m.hsk_lexical_audit } : {}),
+      ...(m.item_lineage ? { item_lineage: m.item_lineage } : {}),
     },
   };
 }

@@ -15,6 +15,9 @@ import { coreDirection } from "@/lib/pragma/coreSchema";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 
 const db = supabase;
+// release_gate_mode는 신규 migration 컬럼이라 생성 타입 갱신 전까지 이 조회만 좁게 우회한다.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const releaseDb = supabase as unknown as { from: (table: string) => any };
 
 /** 편성 대상 = 시나리오 코어(scenario_core_v1) 한 행의 편성용 요약. */
 export interface ComposerCore {
@@ -25,8 +28,10 @@ export interface ComposerCore {
   mode: GenMode | null;
   theme_code: ThemeCode | null;
   topic_code: string | null;
-  /** NULL(코어만) | generated | reviewed */
+  /** NULL(코어만) | generated | reviewed(내부 확인) | released(학습자 사용 승인) */
   mission_status: string | null;
+  /** 기존 자료는 reviewed, 새 품질 게이트 자료는 released가 학습자 사용 가능 상태다. */
+  release_gate_mode?: "legacy_reviewed" | "expert_v1" | null;
   /** 미션 승격 시에만 채워짐. 코어만 있으면 null → 편성표 "미지정" */
   target_feature: string | null;
   situation_ko: string;
@@ -53,16 +58,17 @@ export interface WeekAssignment {
 export const CORE_ROW_CAP = 4000;
 
 export async function listCoreScenarios(): Promise<ComposerCore[]> {
-  const { data, error } = await db
+  const { data, error } = await releaseDb
     .from("scenarios")
     .select(
-      "scenario_id, speech_act, learner_level, domain, mode, theme_code, topic_code, mission_status, target_feature, core_content",
+      "scenario_id, speech_act, learner_level, domain, mode, theme_code, topic_code, mission_status, release_gate_mode, target_feature, core_content",
     )
     .eq("content_format", "scenario_core_v1")
     .order("created_at", { ascending: false })
     .limit(CORE_ROW_CAP);
   if (error) throw new Error(`시나리오 코어 조회 실패: ${error.message}`);
-  return (data ?? []).map((r) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data ?? []).map((r: Record<string, any>) => {
     const content =
       r.core_content && typeof r.core_content === "object" && !Array.isArray(r.core_content)
         ? (r.core_content as Record<string, unknown>)
@@ -76,6 +82,7 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
       theme_code: (r.theme_code as ThemeCode | null) ?? null,
       topic_code: r.topic_code ?? null,
       mission_status: r.mission_status ?? null,
+      release_gate_mode: r.release_gate_mode ?? "legacy_reviewed",
       target_feature: r.target_feature ?? null,
       situation_ko: typeof content.situation_ko === "string" ? content.situation_ko : "",
       source_text_ko:

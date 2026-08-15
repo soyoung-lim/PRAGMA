@@ -164,6 +164,16 @@ export const FINAL_CORPUS_QUOTA_504: BatchQuota = {
   interpretingRatio: 0.3,
 };
 
+/** 기존 495건 배치 화면의 재현·재개 호환용. 정식 신규 corpus는 504 상수를 사용한다. */
+export const FULL_BATCH_QUOTA_495: BatchQuota = {
+  perLevel: {
+    beginner_intermediate: 13,
+    intermediate: 15,
+    advanced: 14,
+  },
+  interpretingRatio: 0.3,
+};
+
 /** 통역 개수 = 번역개수 기준 비율, 단 셀 공백 방지를 위해 최소 1(0-h·57). */
 export function interpretingCount(translationCount: number, ratio: number): number {
   if (translationCount <= 0) return 0;

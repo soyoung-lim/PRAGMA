@@ -98,17 +98,8 @@ describe("item-level realization lineage", () => {
     expect(validateItemLineage(coveredMission(), uncoveredScope)[0]?.code).toBe("unexpected_lineage");
   });
 
-  it("makes complete pending lineage a hard gate only for the current prompt version", () => {
+  it("preserves pending lineage without claiming that mission v5 already hard-gates attribution", () => {
     const mission = normalizeMission(SAMPLE_MISSION_V1).data!;
-    mission.provenance = {
-      provider: "openai",
-      model: "test-model",
-      prompt_version: "mission_v4_separate_item_lineage",
-      prompt_instance_hash: "prompt-instance",
-      mission_content_hash: "mission-content",
-      generated_at: "2026-08-14T00:00:00Z",
-      generation_attempt: 1,
-    };
     const context: CheckContext = {
       speech_act: "request",
       level: "intermediate",
@@ -119,8 +110,6 @@ describe("item-level realization lineage", () => {
       source_modality: "written",
       direction: "ko_zh",
     };
-    expect(checkMission(mission, context).violations.some((violation) => violation.id === "R27")).toBe(true);
-
     const rule = scope.rules[0];
     const targetPaths = expectedItemLineageTargetPaths(mission);
     mission.item_lineage = {
@@ -159,36 +148,9 @@ describe("item-level realization lineage", () => {
         note_ko: "테스트용 모델 주장",
       })),
     };
-    expect(checkMission(mission, context).violations.filter((violation) => violation.id === "R27")).toEqual([]);
-
-    const warningCount = Math.max(1, Math.floor(targetPaths.length * 0.2));
-    for (const claim of mission.item_lineage.claims.slice(0, warningCount)) {
-      claim.attribution_status = "model_unattributed";
-      claim.rule_ids = [];
-      claim.risk_ids = [];
-      claim.evidence_ids = [];
-      claim.note_ko = "현행 pack에서 방어 가능한 rule/risk 귀속을 찾지 못함";
-    }
-    mission.item_lineage.coverage_summary = {
-      total_count: targetPaths.length,
-      claimed_count: targetPaths.length - warningCount,
-      unattributed_count: warningCount,
-    };
-    const warningResult = checkMission(mission, context).violations;
-    expect(warningResult.filter((violation) => violation.id === "R27")).toEqual([]);
-    expect(warningResult.filter((violation) => violation.id === "R28")).toHaveLength(1);
-
-    const firstClaimed = mission.item_lineage.claims[warningCount];
-    firstClaimed.attribution_status = "model_unattributed";
-    firstClaimed.rule_ids = [];
-    firstClaimed.risk_ids = [];
-    firstClaimed.evidence_ids = [];
-    firstClaimed.note_ko = "현행 pack에서 방어 가능한 rule/risk 귀속을 찾지 못함";
-    mission.item_lineage.coverage_summary = {
-      total_count: targetPaths.length,
-      claimed_count: targetPaths.length - warningCount - 1,
-      unattributed_count: warningCount + 1,
-    };
-    expect(checkMission(mission, context).violations.some((violation) => violation.id === "R27")).toBe(true);
+    const reparsed = normalizeMission(mission);
+    expect(reparsed.ok).toBe(true);
+    expect(reparsed.data?.item_lineage).toEqual(mission.item_lineage);
+    expect(checkMission(mission, context).violations.some((violation) => violation.id === "R27")).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, Clock3, ShieldAlert } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import AdminShell from "@/components/AdminShell";
 import ResearchWorkflowGuide from "@/components/research/ResearchWorkflowGuide";
@@ -21,25 +21,28 @@ type LineageRow = {
 };
 type ScenarioRow = { scenario_id: string; speech_act: string; generation_item_key: string; mission_status: string };
 type ReviewRow = { id: string; lineage_version_id: string; verdict: "approve" | "revise" | "reject"; automated_warning: boolean; attention_mode: string; review_duration_seconds: number; reviewed_at: string };
-type ReviewItem = ScenarioRow & { lineage: LineageRow | null; review: ReviewRow | null; warning: boolean };
+type ReviewItem = ScenarioRow & { lineage: LineageRow | null; review: ReviewRow | null; warning: boolean; hskCandidateCount: number };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as unknown as { from: (table: string) => any; rpc: (name: string, args?: Record<string, unknown>) => any };
 
 const PREVIEW_ITEMS: ReviewItem[] = [
-  { scenario_id: "10000000-0000-4000-8000-000000000081", speech_act: "request", generation_item_key: "request-001", mission_status: "reviewed", warning: false, review: { id: "r1", lineage_version_id: "l1", verdict: "approve", automated_warning: false, attention_mode: "automated_pass_confirmation", review_duration_seconds: 22, reviewed_at: "2026-08-15T00:00:00Z" }, lineage: { id: "l1", version_no: 2, scenario_id: "10000000-0000-4000-8000-000000000081", mission_content: { title: "업무 일정 조정 요청" }, validation_result: { result: "pass" }, ai_quality_result: { verdict: "pass" } } },
-  { scenario_id: "10000000-0000-4000-8000-000000000082", speech_act: "refusal", generation_item_key: "refusal-001", mission_status: "reviewed", warning: true, review: null, lineage: { id: "l2", version_no: 2, scenario_id: "10000000-0000-4000-8000-000000000082", mission_content: { title: "공식 초대 거절" }, validation_result: { result: "warning" }, ai_quality_result: { verdict: "warning" } } },
-  { scenario_id: "10000000-0000-4000-8000-000000000083", speech_act: "thanks", generation_item_key: "thanks-001", mission_status: "reviewed", warning: false, review: null, lineage: { id: "l3", version_no: 2, scenario_id: "10000000-0000-4000-8000-000000000083", mission_content: { title: "협조에 대한 감사" }, validation_result: { result: "pass" }, ai_quality_result: { verdict: "pass" } } },
+  { scenario_id: "10000000-0000-4000-8000-000000000081", speech_act: "request", generation_item_key: "request-001", mission_status: "reviewed", warning: false, hskCandidateCount: 0, review: { id: "r1", lineage_version_id: "l1", verdict: "approve", automated_warning: false, attention_mode: "automated_pass_confirmation", review_duration_seconds: 22, reviewed_at: "2026-08-15T00:00:00Z" }, lineage: { id: "l1", version_no: 2, scenario_id: "10000000-0000-4000-8000-000000000081", mission_content: { title: "업무 일정 조정 요청" }, validation_result: { result: "pass" }, ai_quality_result: { verdict: "pass" } } },
+  { scenario_id: "10000000-0000-4000-8000-000000000082", speech_act: "refusal", generation_item_key: "refusal-001", mission_status: "reviewed", warning: true, hskCandidateCount: 2, review: null, lineage: { id: "l2", version_no: 2, scenario_id: "10000000-0000-4000-8000-000000000082", mission_content: { title: "공식 초대 거절", hsk_lexical_audit: { out_of_reference_candidates: ["协商", "改期"] } }, validation_result: { result: "warning" }, ai_quality_result: { verdict: "warning" } } },
+  { scenario_id: "10000000-0000-4000-8000-000000000083", speech_act: "thanks", generation_item_key: "thanks-001", mission_status: "reviewed", warning: false, hskCandidateCount: 0, review: null, lineage: { id: "l3", version_no: 2, scenario_id: "10000000-0000-4000-8000-000000000083", mission_content: { title: "협조에 대한 감사" }, validation_result: { result: "pass" }, ai_quality_result: { verdict: "pass" } } },
 ];
 
 const stringify = (value: unknown) => JSON.stringify(value, null, 2);
 
 const AdminFinalCorpusReview = ({ preview = false }: { preview?: boolean }) => {
   const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
   const [runs, setRuns] = useState<RunRow[]>(preview ? [{ id: "preview-run", target_count: 504, created_at: "2026-08-15T00:00:00Z" }] : []);
   const [runId, setRunId] = useState(preview ? "preview-run" : "");
   const [items, setItems] = useState<ReviewItem[]>(preview ? PREVIEW_ITEMS : []);
-  const [filter, setFilter] = useState<"pending" | "warning" | "all">("pending");
+  const [filter, setFilter] = useState<"pending" | "warning" | "all">(
+    searchParams.get("focus") === "hsk" ? "warning" : "pending",
+  );
   const [selectedId, setSelectedId] = useState(preview ? PREVIEW_ITEMS[1].scenario_id : "");
   const [rationale, setRationale] = useState("");
   const [reviewStartedAt, setReviewStartedAt] = useState(() => new Date().toISOString());
@@ -81,7 +84,17 @@ const AdminFinalCorpusReview = ({ preview = false }: { preview?: boolean }) => {
       const lineage = lineageByScenario.get(scenario.scenario_id) ?? null;
       const validation = stringify(lineage?.validation_result ?? {}).toLowerCase();
       const quality = stringify(lineage?.ai_quality_result ?? {}).toLowerCase();
-      return { ...scenario, lineage, review: lineage ? reviewByLineage.get(lineage.id) ?? null : null, warning: validation.includes("warning") || quality.includes("warning") };
+      const audit = lineage?.mission_content?.hsk_lexical_audit as { out_of_reference_candidates?: unknown } | undefined;
+      const hskCandidateCount = Array.isArray(audit?.out_of_reference_candidates)
+        ? audit.out_of_reference_candidates.length
+        : 0;
+      return {
+        ...scenario,
+        lineage,
+        review: lineage ? reviewByLineage.get(lineage.id) ?? null : null,
+        warning: validation.includes("warning") || quality.includes("warning") || hskCandidateCount > 0,
+        hskCandidateCount,
+      };
     });
     setItems(next);
     setSelectedId((current) => current || next.find((item) => !item.review)?.scenario_id || next[0]?.scenario_id || "");
@@ -148,8 +161,8 @@ const AdminFinalCorpusReview = ({ preview = false }: { preview?: boolean }) => {
       </section>
 
       {selected ? <section className="rounded-xl border bg-white p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs text-slate-500">{selected.generation_item_key} · {selected.speech_act}</p><h2 className="mt-1 text-lg font-semibold">{String(selected.lineage?.mission_content?.title ?? "AI 학습문항")}</h2></div><Badge variant={selected.warning ? "destructive" : "secondary"}>{selected.warning ? "자동 경고 · 집중 검토" : "자동 점검 통과"}</Badge></div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-2"><div className="rounded-lg bg-slate-50 p-4"><p className="text-xs font-semibold">AI 생성 콘텐츠</p><pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap text-xs leading-5">{stringify(selected.lineage?.mission_content ?? {})}</pre></div><div className="space-y-3"><div className="rounded-lg border p-4"><p className="text-xs font-semibold">품질 점검 자동화 결과</p><pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap text-xs">{stringify({ validation: selected.lineage?.validation_result, quality: selected.lineage?.ai_quality_result })}</pre></div><Textarea value={rationale} onChange={(event) => setRationale(event.target.value)} placeholder="수정 필요 또는 제외 시 이유를 입력하세요. 승인에는 선택 입력입니다." /></div></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs text-slate-500">{selected.generation_item_key} · {selected.speech_act}</p><h2 className="mt-1 text-lg font-semibold">{String(selected.lineage?.mission_content?.title ?? "AI 학습문항")}</h2></div><Badge variant={selected.warning ? "destructive" : "secondary"}>{selected.hskCandidateCount > 0 ? `HSK 후보 ${selected.hskCandidateCount}개 · 집중 검토` : selected.warning ? "자동 경고 · 집중 검토" : "자동 점검 통과"}</Badge></div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2"><div className="rounded-lg bg-slate-50 p-4"><p className="text-xs font-semibold">AI 생성 콘텐츠</p><pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap text-xs leading-5">{stringify(selected.lineage?.mission_content ?? {})}</pre></div><div className="space-y-3"><div className="rounded-lg border p-4"><p className="text-xs font-semibold">품질 점검 자동화 결과</p><pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap text-xs">{stringify({ validation: selected.lineage?.validation_result, quality: selected.lineage?.ai_quality_result, hsk_reference: selected.lineage?.mission_content?.hsk_lexical_audit })}</pre></div><Textarea value={rationale} onChange={(event) => setRationale(event.target.value)} placeholder="수정 필요 또는 제외 시 이유를 입력하세요. 승인에는 선택 입력입니다." /></div></div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><div className="flex gap-2"><Button variant="outline" onClick={() => move(-1)} disabled={selectedIndex <= 0}><ChevronLeft className="h-4 w-4" />이전</Button><Button variant="outline" onClick={() => move(1)} disabled={selectedIndex < 0 || selectedIndex >= visible.length - 1}>다음<ChevronRight className="h-4 w-4" /></Button></div><div className="flex flex-wrap gap-2"><Button variant="destructive" onClick={() => submit("reject")} disabled={preview || saving}><ShieldAlert className="mr-1 h-4 w-4" />제외</Button><Button variant="outline" onClick={() => submit("revise")} disabled={preview || saving}>수정 필요</Button><Button onClick={() => submit("approve")} disabled={preview || saving || Boolean(selected.review)}><CheckCircle2 className="mr-1 h-4 w-4" />{selected.warning ? "경고 확인·승인" : "자동 통과·이상 없음 확인"}</Button></div></div>
       </section> : <section className="rounded-xl border bg-white p-8 text-center text-sm text-slate-500">{loading ? "문항을 불러오는 중입니다." : "선택한 조건에 해당하는 문항이 없습니다."}</section>}
       {message && <p className="rounded-lg border bg-white p-3 text-sm">{message}</p>}

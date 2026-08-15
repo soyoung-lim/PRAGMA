@@ -12,6 +12,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { PACK_RELEASE_MANIFEST_DRAFT } from "@/lib/pragma/packReleaseManifest.generated";
 import { packManifestReleaseScopeMatches } from "@/lib/pragma/packReleaseManifest";
 
+// 신규 moat migration의 생성 타입은 원격 반영 후 재생성한다. 그 전까지 이 화면만
+// 명시적으로 동적 DB 표면을 사용해 기존 main 타입을 오염시키지 않는다.
+const db = supabase as any;
+
 type CandidateRow = {
   id: string;
   candidate_key: string;
@@ -119,12 +123,12 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
     if (preview) { setLoading(false); return; }
     setLoading(true);
     const [candidateResult, sourceResult, decisionResult, releaseResult, attestationResult, regressionResult] = await Promise.all([
-      supabase.from("pragma_improvement_candidates").select("id,candidate_key,signal_type,target_feature,content_hash,realization_pack_id,realization_pack_version,source_refs,metrics,suggested_action,proposed_change,evidence_fingerprint,source_window_start,source_window_end,created_at").order("created_at", { ascending: false }),
-      supabase.from("pragma_improvement_candidate_sources").select("id,candidate_id,source_type,source_id,source_field,source_snapshot,added_at").order("added_at", { ascending: false }),
-      supabase.from("pragma_improvement_decisions").select("id,candidate_id,decision,note_ko,resulting_pack_id,resulting_pack_version,resulting_gold_case_ids,resulting_pack_release_id,gold_regression_run_id,decided_at").order("decided_at", { ascending: false }),
-      supabase.from("pragma_realization_pack_releases").select("id,pack_id,pack_version,artifact_hash,prompt_snapshot_hash,evidence_snapshot_hash,source_commit_ref,release_note_ko,source_candidate_id,manifest_attestation_id,created_at").order("created_at", { ascending: false }),
-      supabase.from("pragma_pack_manifest_attestations").select("id,canonicalization_version,pack_id,pack_version,scope_speech_acts,artifact_hash,prompt_snapshot_hash,evidence_snapshot_hash,source_commit_ref,build_run_ref,attested_at").order("attested_at", { ascending: false }),
-      supabase.from("pragma_gold_regression_runs").select("id,realization_pack_id,realization_pack_version,gate_status,evaluator_version,report,created_at").eq("gate_status", "pass").order("created_at", { ascending: false }),
+      db.from("pragma_improvement_candidates").select("id,candidate_key,signal_type,target_feature,content_hash,realization_pack_id,realization_pack_version,source_refs,metrics,suggested_action,proposed_change,evidence_fingerprint,source_window_start,source_window_end,created_at").order("created_at", { ascending: false }),
+      db.from("pragma_improvement_candidate_sources").select("id,candidate_id,source_type,source_id,source_field,source_snapshot,added_at").order("added_at", { ascending: false }),
+      db.from("pragma_improvement_decisions").select("id,candidate_id,decision,note_ko,resulting_pack_id,resulting_pack_version,resulting_gold_case_ids,resulting_pack_release_id,gold_regression_run_id,decided_at").order("decided_at", { ascending: false }),
+      db.from("pragma_realization_pack_releases").select("id,pack_id,pack_version,artifact_hash,prompt_snapshot_hash,evidence_snapshot_hash,source_commit_ref,release_note_ko,source_candidate_id,manifest_attestation_id,created_at").order("created_at", { ascending: false }),
+      db.from("pragma_pack_manifest_attestations").select("id,canonicalization_version,pack_id,pack_version,scope_speech_acts,artifact_hash,prompt_snapshot_hash,evidence_snapshot_hash,source_commit_ref,build_run_ref,attested_at").order("attested_at", { ascending: false }),
+      db.from("pragma_gold_regression_runs").select("id,realization_pack_id,realization_pack_version,gate_status,evaluator_version,report,created_at").eq("gate_status", "pass").order("created_at", { ascending: false }),
     ]);
     const error = candidateResult.error ?? sourceResult.error ?? decisionResult.error ?? releaseResult.error ?? attestationResult.error ?? regressionResult.error;
     if (error) setMessage(error.message);
@@ -171,7 +175,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
   const materialize = async () => {
     if (preview) return;
     setSaving(true); setMessage(null);
-    const { data, error } = await supabase.rpc("materialize_pragma_improvement_candidates", {
+    const { data, error } = await db.rpc("materialize_pragma_improvement_candidates", {
       p_window_start: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString(),
       p_window_end: new Date().toISOString(),
       p_min_distinct_attempts: 3,
@@ -184,7 +188,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
   const decide = async (decision: "triage" | "approve" | "reject") => {
     if (preview || !selected || !decisionNote.trim()) return;
     setSaving(true); setMessage(null);
-    const { error } = await supabase.rpc("record_pragma_improvement_decision", { p_candidate_id: selected.id, p_decision: decision, p_note_ko: decisionNote.trim() });
+    const { error } = await db.rpc("record_pragma_improvement_decision", { p_candidate_id: selected.id, p_decision: decision, p_note_ko: decisionNote.trim() });
     setMessage(error ? error.message : `${decision} 판정을 append했습니다.`);
     setSaving(false); if (!error) { setDecisionNote(""); await load(); }
   };
@@ -193,7 +197,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
     const isBaseline = !latestPackRelease;
     if (preview || !exactManifestAttestation || (!isBaseline && !selected)) return;
     setSaving(true); setMessage(null);
-    const { data, error } = await supabase.rpc("record_pragma_realization_pack_release", {
+    const { data, error } = await db.rpc("record_pragma_realization_pack_release", {
       p_pack_id: PACK_RELEASE_MANIFEST_DRAFT.pack_id,
       p_pack_version: PACK_RELEASE_MANIFEST_DRAFT.pack_version,
       p_artifact_hash: PACK_RELEASE_MANIFEST_DRAFT.artifact_hash,
@@ -212,7 +216,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
     const ids = [...new Set(goldCaseIds.split(/[\s,]+/).map((item) => item.trim()).filter(Boolean))];
     if (preview || !selected || !packReleaseId || !regressionId || !applyNote.trim() || ids.length === 0) return;
     setSaving(true); setMessage(null);
-    const { error } = await supabase.rpc("apply_pragma_improvement_candidate", {
+    const { error } = await db.rpc("apply_pragma_improvement_candidate", {
       p_candidate_id: selected.id,
       p_note_ko: applyNote.trim(),
       p_pack_release_id: packReleaseId,
