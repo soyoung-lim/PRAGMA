@@ -11,6 +11,11 @@ import { buildMissionLineageScope } from "./missionLineage";
 import { normalizeMission } from "./missionSchema";
 import { checkMission, type CheckContext } from "./missionRules";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
+import { SAMPLE_MISSION_V5 } from "@/lib/mission/missionV4Sample";
+import {
+  CURRENT_ITEM_LINEAGE_PROMPT_VERSION,
+  CURRENT_MISSION_PROMPT_VERSIONS,
+} from "../../../supabase/functions/_shared/contentRelease";
 
 function baseMission(): ItemLineageMissionShape {
   return {
@@ -152,5 +157,63 @@ describe("item-level realization lineage", () => {
     expect(reparsed.ok).toBe(true);
     expect(reparsed.data?.item_lineage).toEqual(mission.item_lineage);
     expect(checkMission(mission, context).violations.some((violation) => violation.id === "R27")).toBe(false);
+  });
+
+  it("hard-gates current covered mission_v5 while preserving legacy v5 readability", () => {
+    const context: CheckContext = {
+      speech_act: "request",
+      level: "intermediate",
+      domain: "work",
+      theme_code: "career_workplace",
+      topic_code: "work_delivery_address_change",
+      mode: "translation",
+      source_modality: "written",
+      direction: "ko_zh",
+    };
+    expect(checkMission(SAMPLE_MISSION_V5, context).violations.some((violation) => violation.id === "R31")).toBe(false);
+
+    const current = structuredClone(SAMPLE_MISSION_V5);
+    current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
+    expect(checkMission(current, context).violations.some((violation) => violation.id === "R31" && violation.level === "fail")).toBe(true);
+
+    const paths = expectedItemLineageTargetPaths(current);
+    const rule = scope.rules[0];
+    current.item_lineage = {
+      schema_version: ITEM_LINEAGE_SCHEMA_VERSION,
+      claim_status: "model_attribution_pending_review",
+      realization_pack_id: scope.realization_pack_id!,
+      realization_pack_version: scope.realization_pack_version!,
+      attribution_provenance: {
+        provider: "openai",
+        model: "test-attributor",
+        prompt_version: CURRENT_ITEM_LINEAGE_PROMPT_VERSION,
+        prompt_instance_hash: "a".repeat(64),
+        attribution_attempts: 4,
+        batch_count: 4,
+        calls: [5, 5, 5, paths.length - 15].map((targetCount, index) => ({
+          batch_index: index + 1,
+          target_count: targetCount,
+          model: "test-attributor",
+          prompt_instance_hash: String(index + 1).repeat(64),
+          attempts: 1,
+        })),
+        attributed_at: "2026-08-15T00:00:01Z",
+      },
+      coverage_summary: {
+        total_count: paths.length,
+        claimed_count: paths.length,
+        unattributed_count: 0,
+      },
+      claims: paths.map((targetPath, index) => ({
+        claim_id: `ILC-${String(index + 1).padStart(3, "0")}`,
+        target_path: targetPath,
+        attribution_status: "model_claimed",
+        rule_ids: [rule.rule_id],
+        risk_ids: [],
+        evidence_ids: [...rule.evidence_ids].sort(),
+        note_ko: "테스트용 모델 귀속 주장",
+      })),
+    };
+    expect(checkMission(current, context).violations.filter((violation) => violation.id === "R31")).toEqual([]);
   });
 });

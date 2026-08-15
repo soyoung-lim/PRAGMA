@@ -9,6 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  FINAL_GOLD_CASES_PER_SPEECH_ACT,
+  FINAL_GOLD_POPULATION_COUNT,
+  GOLD_SPEECH_ACTS,
+} from "@/lib/pragma/goldProtocol";
 import { PACK_RELEASE_MANIFEST_DRAFT } from "@/lib/pragma/packReleaseManifest.generated";
 import { packManifestReleaseScopeMatches } from "@/lib/pragma/packReleaseManifest";
 
@@ -289,7 +294,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
           </section>
 
           <section className="rounded-xl border bg-white p-5">
-            <h2 className="font-semibold">새 버전의 품질을 다시 확인하고 반영 완료</h2><p className="mt-1 text-sm text-slate-600">새 규칙집이 영향을 준 품질검사 사례를 외부 전문가가 다시 확인하고, 기준답안 30개 이상의 자동 재시험도 통과해야 실제 개선 완료로 기록됩니다.</p>
+            <h2 className="font-semibold">새 버전의 품질을 다시 확인하고 반영 완료</h2><p className="mt-1 text-sm text-slate-600">새 규칙집이 영향을 준 품질검사 사례를 외부 전문가가 다시 확인하고, {GOLD_SPEECH_ACTS.length}화행×{FINAL_GOLD_CASES_PER_SPEECH_ACT}개 기준답안 {FINAL_GOLD_POPULATION_COUNT}개의 자동 재시험도 통과해야 실제 개선 완료로 기록됩니다.</p>
             <div className="mt-3 grid gap-3"><Select value={packReleaseId} onValueChange={(value) => { setPackReleaseId(value); setRegressionId(""); }}><SelectTrigger><SelectValue placeholder="이 개선으로 만든 새 규칙집 선택" /></SelectTrigger><SelectContent>{candidateReleases.map((item) => <SelectItem key={item.id} value={item.id}>{item.pack_id}@{item.pack_version} · {short(item.source_commit_ref, 12)}</SelectItem>)}</SelectContent></Select><Select value={regressionId} onValueChange={setRegressionId}><SelectTrigger><SelectValue placeholder="통과한 기준답안 자동 재시험 선택" /></SelectTrigger><SelectContent>{compatibleRegressions.map((item) => <SelectItem key={item.id} value={item.id}>{item.evaluator_version} · 적절성 {String(item.report.band_accuracy ?? "—")} / 의미 {String(item.report.semantic_accuracy ?? "—")}</SelectItem>)}</SelectContent></Select><Textarea value={goldCaseIds} onChange={(event) => setGoldCaseIds(event.target.value)} placeholder="다시 확인한 품질검사 사례 ID (쉼표 또는 줄바꿈)" /><Textarea value={applyNote} onChange={(event) => setApplyNote(event.target.value)} placeholder="어떻게 개선했고 무엇으로 확인했는지 요약" /></div><Button className="mt-3" onClick={apply} disabled={preview || saving || currentDecision?.decision !== "approve" || !packReleaseId || !regressionId || !goldCaseIds.trim() || !applyNote.trim()}>품질 확인 근거와 함께 반영 완료</Button>
           </section>
         </div>

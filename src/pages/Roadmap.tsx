@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { setTaskMode, setLanguageDirection } from "@/lib/entryGate";
 import { DEFAULT_LEARNING_CONTEXT } from "@/lib/learningContext";
 import { useProfile } from "@/lib/auth/useProfile";
+import { MPJ_ITEM_COUNT } from "@/lib/curriculum/learnerWorkflow";
 
 /**
  * 학습자의 현재 주차.
@@ -52,10 +53,10 @@ const ROADMAP: RoadmapItem[] = [
 ];
 
 const TODAY = {
-  intro: "다섯 가지 예시에서 표현의 차이를 판단한 뒤, 새로운 상황을 직접 번역·통역하고 AI 피드백을 바탕으로 다듬습니다.",
+  intro: `${MPJ_ITEM_COUNT}개 판단 문항에서 표현의 차이를 살핀 뒤, 새로운 상황을 직접 번역·통역하고 AI 피드백을 바탕으로 다듬습니다.`,
   steps: [
     "오늘의 화용 초점 확인",
-    "다섯 가지 예시로 표현 감각 익히기",
+    `${MPJ_ITEM_COUNT}개 판단 문항으로 표현 감각 익히기`,
     "새 상황의 상대와 부담 확인",
     "직접 번역·통역하기",
     "AI 피드백으로 의미·문법·화용 확인",

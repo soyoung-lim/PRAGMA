@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const ITEM_LINEAGE_SCHEMA_VERSION = "mission_item_lineage_v1" as const;
 export const ITEM_LINEAGE_PENDING_STATUS = "model_claimed_pending_review" as const;
+export const ITEM_LINEAGE_MAX_BATCH_SIZE = 5;
+export const ITEM_LINEAGE_MAX_UNATTRIBUTED_RATIO = 0.2;
 
 export const ItemLineageClaimSchema = z.object({
   /** 서버가 부여하는 미션 내부 고유 ID. */

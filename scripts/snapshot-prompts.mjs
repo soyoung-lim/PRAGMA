@@ -32,7 +32,7 @@ const EXPOSE = `
 ;globalThis.__S = {
   buildCoreSystemPrompt, buildCoreUserPrompt, corePromptSnapshotHash, CORE_PROBE_BASE,
   buildCoreSourceRepairPrompt, buildCoreOutputRepairPrompt,
-  buildMissionSystemPrompt, buildMissionUserPrompt, buildFeedbackSystemPrompt, buildQualitySystemPrompt,
+  buildMissionSystemPrompt, buildMissionUserPrompt, buildItemLineageSystemPrompt, buildFeedbackSystemPrompt, buildQualitySystemPrompt,
   buildCoreQualitySystemPrompt,
   buildAuthenticSystemPrompt,
   PRIMARY_MODEL, FALLBACK_MODEL, CORE_TEMPERATURE, CORE_RESPONSE_FORMAT,
@@ -42,6 +42,7 @@ const EXPOSE = `
   MISSION_DEFAULT_TEMPERATURE: 0.3,
   MISSION_RETRY_TEMPERATURE: 0.5,
   MISSION_PROMPT_VERSION: CURRENT_MISSION_PROMPT_VERSIONS.join("|"),
+  ITEM_LINEAGE_PROMPT_VERSION: CURRENT_ITEM_LINEAGE_PROMPT_VERSION,
 };`;
 // Edge가 _shared 모듈을 import해도 실행 가능하도록 로컬 의존성까지 한 번에 묶는다.
 // EXPOSE를 진입 소스 안에 붙여야 번들 IIFE 내부 심볼을 안전하게 꺼낼 수 있다.
@@ -196,6 +197,9 @@ const prompts = [
         production_task: { reference_alternatives: [{ text: "PROBE_REFERENCE" }], vocabulary_hints: [] },
       },
     })),
+  entry("mission.item_lineage.system", "미션 문항별 근거 귀속 · 지시문", "review",
+    "생성이 끝난 mission_v5 목표어 문장을 pack rule/risk에 귀속하되 승인 상태로 승격하지 않는다.",
+    S.buildItemLineageSystemPrompt(PROBE_FEATURE.lineage_scope)),
   entry("core.user.learner_scene_repair", "코어 생성 · 학생용 평가 기준 노출 1회 교정", "core",
     "상황 사실은 보존하고 정중성·완화·선택권 같은 답 방향 단서만 제거한다.",
     S.buildCoreOutputRepairPrompt({
@@ -304,7 +308,7 @@ for (const direction of ["ko_zh", "zh_ko"]) {
 }
 const packPromptSurface = {
   canonicalization_version: H.PACK_CANONICALIZATION_VERSION,
-  surface_schema_version: "pragma_pack_prompt_surface_v1",
+  surface_schema_version: "pragma_pack_prompt_surface_v2",
   mission: {
     provider: S.PROVIDER,
     primary_model: S.MISSION_PRIMARY,
@@ -315,6 +319,15 @@ const packPromptSurface = {
     response_format: { type: "json_object" },
     system_variants: missionSystemVariants,
     user_variants: missionUserVariants,
+  },
+  item_lineage: {
+    provider: S.PROVIDER,
+    primary_model: S.PRIMARY_MODEL,
+    fallback_model: S.FALLBACK_MODEL,
+    prompt_version: S.ITEM_LINEAGE_PROMPT_VERSION,
+    temperature: 0,
+    maximum_batch_size: 5,
+    system_prompt: S.buildItemLineageSystemPrompt(PROBE_FEATURE.lineage_scope),
   },
 };
 const packPromptSurfaceHash = sha(H.canonicalJson(packPromptSurface));

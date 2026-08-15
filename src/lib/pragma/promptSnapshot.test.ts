@@ -9,6 +9,7 @@ import {
   CURRENT_CORE_PROMPT_VERSIONS,
   CURRENT_CORE_QUALITY_PROMPT_VERSION,
   CURRENT_FEEDBACK_PROMPT_VERSIONS,
+  CURRENT_ITEM_LINEAGE_PROMPT_VERSION,
   CURRENT_MISSION_QUALITY_PROMPT_VERSION,
   CURRENT_MISSION_PROMPT_VERSIONS,
 } from "../../../supabase/functions/_shared/contentRelease";
@@ -20,6 +21,14 @@ function prompt(key: string) {
 }
 
 describe("prompt snapshot integrity", () => {
+  it("captures the separate mission_v5 item-lineage attribution contract", () => {
+    const lineage = prompt("mission.item_lineage.system");
+    expect(lineage.text).toContain("provenance 분류자");
+    expect(lineage.text).toContain("검증 완료가 아니라 모델의 pending claim");
+    expect(lineage.text).toContain("evidence ID, pack/version, 검토 상태, claim_id는 생성하지 않습니다");
+    expect(CURRENT_ITEM_LINEAGE_PROMPT_VERSION).toBe("item_lineage_attribution_v3_mission_v5");
+  });
+
   it("records the versioned effective-character pilot policy", () => {
     expect(PROMPT_SNAPSHOT.source_length_policy.version).toBe("effective_chars_v1");
     expect(PROMPT_SNAPSHOT.source_length_policy.ranges.stt_interpreting.intermediate).toEqual({

@@ -11,6 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { SEED_GOLD_CASES, SeedGoldCaseSchema, type SeedGoldCase } from "@/lib/pragma/seedGoldSet";
+import {
+  EXTERNAL_GOLD_RESERVE_PER_SPEECH_ACT,
+  EXTERNAL_GOLD_SAMPLE_COUNT,
+  FINAL_GOLD_POPULATION_COUNT,
+} from "@/lib/pragma/goldProtocol";
 
 type ProfileRow = { user_id: string; email: string | null; full_name: string | null };
 type RegistryRow = { id: string; expert_user_id: string; status: string; registry_version: number };
@@ -104,7 +109,7 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
   const [selectedCalibrationId, setSelectedCalibrationId] = useState(preview ? PREVIEW_CALIBRATION_ID : "");
   const [selectedExpertId, setSelectedExpertId] = useState("");
   const [round, setRound] = useState("1");
-  const [method, setMethod] = useState<"" | "unanimous" | "consensus_after_discussion" | "researcher_decision" | "unresolved">("");
+  const [method, setMethod] = useState<"" | "unanimous" | "consensus_after_discussion" | "researcher_decision" | "unresolved" | "terminal_nonconsensus">("");
   const [finalStatus, setFinalStatus] = useState<"" | "expert_approved" | "revise_required" | "rejected" | "unresolved">("");
   const [context, setContext] = useState({ scenario_valid: false, pdr_valid: false, semantic_invariant_valid: false });
   const [candidates, setCandidates] = useState(emptyCandidates);
@@ -178,7 +183,7 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
     if (!packId || preview || saving) return;
     setSaving(true); setMessage(null);
     const { error } = await db.rpc("create_pragma_gold_external_sampling_plan", { p_pack_id: packId });
-    setMessage(error ? error.message : "서버가 9개 화행에서 2개씩 무작위 추출해 18개 표본을 확정했습니다.");
+    setMessage(error ? error.message : `서버가 ${FINAL_GOLD_POPULATION_COUNT}개 모집단에서 화행별 2개씩 무작위 추출해 ${EXTERNAL_GOLD_SAMPLE_COUNT}개 표본을 확정했습니다.`);
     setSaving(false); if (!error) await load();
   };
   const fillFromReview = (review: ReviewRow) => {
@@ -190,6 +195,19 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
   };
   const resolve = async () => {
     if (!selected || !method || !finalStatus || !rationale.trim() || !allSubmitted || preview) return;
+    if (method === "terminal_nonconsensus") {
+      if (!disagreement) return;
+      setSaving(true);
+      const { error } = await db.rpc("record_gold_nonconsensus_terminal", {
+        p_calibration_resolution_id: selected.id,
+        p_review_round: roundNumber,
+        p_review_ids: selectedReviews.map((review) => review.id),
+        p_rationale_ko: rationale,
+      });
+      setMessage(error ? error.message : "최종 불합의로 사례를 승인 대상에서 제외하고, 해당 화행의 예비 사례 전수 확인과 공개 보류를 기록했습니다.");
+      setSaving(false); if (!error) await load();
+      return;
+    }
     const unresolved = finalStatus === "unresolved";
     if (!unresolved && (!Object.values(context).every((value) => typeof value === "boolean") || !Object.values(candidates).every((item) => item.assessed_band_code && item.semantic_fidelity && item.rationale_ko.trim()))) return;
     setSaving(true);
@@ -203,7 +221,7 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
     setMessage(error ? error.message : "두 전문가의 최종 결론을 새 이력으로 저장했습니다."); setSaving(false); if (!error) await load();
   };
 
-  return <AdminShell title="2단계 · 9화행 층화표본 18개 외부 전문가 확인" description="외부 전문가 2명이 연구 책임자의 판정을 보지 않고 9개 화행에서 2개씩 뽑은 18개를 독립적으로 판단합니다.">
+  return <AdminShell title={`2단계 · 9화행 층화표본 ${EXTERNAL_GOLD_SAMPLE_COUNT}개 외부 전문가 확인`} description={`외부 전문가 2명이 연구 책임자의 판정을 보지 않고 ${FINAL_GOLD_POPULATION_COUNT}개 모집단에서 9개 화행별 2개씩 뽑은 ${EXTERNAL_GOLD_SAMPLE_COUNT}개를 독립적으로 판단합니다.`}>
     <div className="space-y-5">
       <ResearchWorkflowGuide current="gold" />
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -213,18 +231,18 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
 
       <section className="rounded-xl border border-sky-200 bg-sky-50 p-5">
         <h2 className="font-semibold text-sky-950">권장 전문가 조합</h2>
-        <p className="mt-2 text-sm leading-6 text-sky-950">중국어 모어 화자 1명과, 한국어 모어이면서 중국어·한중 통번역에 능숙한 전문가 1명을 권장합니다. 두 사람이 같은 18개를 각각 독립적으로 확인하므로 총 2명이면 됩니다.</p>
+        <p className="mt-2 text-sm leading-6 text-sky-950">중국어 모어 화자 1명과, 한국어 모어이면서 중국어·한중 통번역에 능숙한 전문가 1명을 권장합니다. 두 사람이 같은 {EXTERNAL_GOLD_SAMPLE_COUNT}개를 각각 독립적으로 확인하므로 총 2명이면 됩니다.</p>
       </section>
 
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-        <strong>시간 상한:</strong> 최초 확인은 각 전문가당 18개, 목표 45분·최대 60분입니다. 문제가 지적된 화행만 사전에 고정한 예비 사례를 추가 확인하며, 정식 AI 학습문항 504개는 전문가에게 배정하지 않습니다.
+        <strong>시간 상한:</strong> 최초 확인은 각 전문가당 {EXTERNAL_GOLD_SAMPLE_COUNT}개, 목표 45분·최대 60분입니다. 문제 지적 또는 최종 불합의가 생긴 화행은 사전에 고정한 예비 {EXTERNAL_GOLD_RESERVE_PER_SPEECH_ACT}개를 모두 추가 확인하며, 정식 AI 학습문항 504개는 전문가에게 배정하지 않습니다.
       </section>
 
       <section className="rounded-xl border bg-white p-5">
         <h2 className="font-semibold">1. 서버가 외부 확인 표본을 먼저 확정</h2>
         <p className="mt-1 text-sm leading-6 text-slate-600">연구 책임자가 504개 결과를 보기 전에, 서버가 확정된 기준답안 모집단에서 화행별 2개를 고정 시드로 추출합니다. 관리자는 사례를 임의로 고를 수 없습니다.</p>
-        {!currentPlan ? <Button className="mt-3" onClick={createSamplingPlan} disabled={preview || saving || calibrations.length < 30}>층화 무작위 표본 18개 확정</Button> : <div className="mt-3 grid gap-2 rounded-lg bg-slate-50 p-4 text-xs leading-5 text-slate-700 sm:grid-cols-2"><p><strong>표본 확정:</strong> {new Date(currentPlan.created_at).toLocaleString("ko-KR")}</p><p><strong>모집단:</strong> {currentPlan.population_snapshot.length}개</p><p><strong>추출:</strong> 9화행 × 2개 = 18개</p><p className="truncate"><strong>고정 시드:</strong> {currentPlan.sampling_seed}</p></div>}
-        <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm leading-6 text-rose-950"><strong>사전 확전 규칙:</strong> 최초 표본에서 전문가 한 명이라도 수정·제외를 선택하면 그 화행의 고정 예비 사례를 모두 추가 확인합니다. 추가 사례에서도 문제가 나오면 해당 화행과 이를 포함한 최종 504개 공개를 보류합니다.</div>
+        {!currentPlan ? <Button className="mt-3" onClick={createSamplingPlan} disabled={preview || saving || calibrations.length < FINAL_GOLD_POPULATION_COUNT}>층화 무작위 표본 {EXTERNAL_GOLD_SAMPLE_COUNT}개 확정</Button> : <div className="mt-3 grid gap-2 rounded-lg bg-slate-50 p-4 text-xs leading-5 text-slate-700 sm:grid-cols-2"><p><strong>표본 확정:</strong> {new Date(currentPlan.created_at).toLocaleString("ko-KR")}</p><p><strong>모집단:</strong> {currentPlan.population_snapshot.length}개</p><p><strong>추출:</strong> 9화행 × 2개 = {EXTERNAL_GOLD_SAMPLE_COUNT}개</p><p><strong>예비:</strong> 화행별 {EXTERNAL_GOLD_RESERVE_PER_SPEECH_ACT}개</p><p className="truncate sm:col-span-2"><strong>고정 시드:</strong> {currentPlan.sampling_seed}</p></div>}
+        <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm leading-6 text-rose-950"><strong>사전 확전·불합의 규칙:</strong> 최초 표본에서 전문가 한 명이라도 수정·제외를 선택하거나 토론 후에도 두 판단이 합의되지 않으면 그 화행의 고정 예비 {EXTERNAL_GOLD_RESERVE_PER_SPEECH_ACT}개를 모두 추가 확인합니다. 최종 불합의 사례는 Gold로 승인하지 않으며 현재 pack의 최종 504개 공개를 보류합니다. 연구 책임자 단독 결정과 자동 다수결로 해제할 수 없습니다.</div>
         <Select value={selectedCalibrationId} onValueChange={setSelectedCalibrationId}><SelectTrigger className="mt-3"><SelectValue placeholder={loading ? "표본을 불러오는 중…" : "서버가 확정한 표본이 없습니다"} /></SelectTrigger><SelectContent>{sampledCalibrations.map((item) => <SelectItem key={item.id} value={item.id}>{item.case_id} · {item.resolved_case_snapshot.speech_act} · 버전 {item.case_version}</SelectItem>)}</SelectContent></Select>
         {selected && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700"><strong>상황:</strong> {selected.resolved_case_snapshot.scenario_ko}</p>}
         {samplingStatus && <p className="mt-3 text-sm text-slate-700"><strong>현재 상태:</strong> {samplingStatus.completed_case_count}/{samplingStatus.required_case_count} 완료 · {samplingStatus.conclusion_ko}</p>}
@@ -245,11 +263,11 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
       <section className="rounded-xl border bg-white p-5">
         <h2 className="font-semibold">4. 최종 결론 저장</h2>
         <p className="mt-1 text-sm text-slate-600">원래 판정은 수정하거나 지우지 않습니다. 두 판정을 비교해 최종 결론을 새 이력으로 저장합니다.</p>
-        <div className="mt-3 grid gap-3 md:grid-cols-2"><Select value={method} onValueChange={(value: typeof method) => setMethod(value)}><SelectTrigger><SelectValue placeholder="결론을 정한 방식" /></SelectTrigger><SelectContent><SelectItem value="unanimous">처음부터 두 판정이 일치함</SelectItem><SelectItem value="consensus_after_discussion">의견을 나눈 뒤 합의함</SelectItem><SelectItem value="researcher_decision">연구 책임자가 단독 결정함 — 외부 확인 완료로 사용 불가</SelectItem><SelectItem value="unresolved">아직 결론을 내리지 못함</SelectItem></SelectContent></Select><Select value={finalStatus} onValueChange={(value: typeof finalStatus) => setFinalStatus(value)}><SelectTrigger><SelectValue placeholder="최종 결과" /></SelectTrigger><SelectContent><SelectItem value="expert_approved">기준답안으로 사용 가능</SelectItem><SelectItem value="revise_required">수정 후 다시 확인</SelectItem><SelectItem value="rejected">품질검사 사례에서 제외</SelectItem><SelectItem value="unresolved">결론 미정</SelectItem></SelectContent></Select></div>
-        {finalStatus !== "unresolved" && <><div className="mt-4 grid gap-2 sm:grid-cols-3">{(["scenario_valid","pdr_valid","semantic_invariant_valid"] as const).map((key) => <label key={key} className="flex gap-2 text-sm"><Checkbox checked={context[key]} onCheckedChange={(checked) => setContext((current) => ({ ...current, [key]: checked === true }))}/><span>{{ scenario_valid: "상황이 타당함", pdr_valid: "관계·부담 설정이 타당함", semantic_invariant_valid: "원문의 의미가 보존됨" }[key]}</span></label>)}</div><div className="mt-4 grid gap-3 lg:grid-cols-3">{(["A","B","C"] as const).map((id) => <div key={id} className="rounded-lg border p-3"><b>후보 {id}</b><Select value={candidates[id].assessed_band_code} onValueChange={(value) => setCandidates((current) => ({ ...current, [id]: { ...current[id], assessed_band_code: value } }))}><SelectTrigger className="mt-2"><SelectValue placeholder="최종 적절성" /></SelectTrigger><SelectContent>{BANDS.map((band) => <SelectItem key={band} value={band}>{BAND_LABELS[band] ?? band}</SelectItem>)}</SelectContent></Select><Select value={candidates[id].semantic_fidelity} onValueChange={(value: "pass" | "fail") => setCandidates((current) => ({ ...current, [id]: { ...current[id], semantic_fidelity: value } }))}><SelectTrigger className="mt-2"><SelectValue placeholder="의미 보존 여부" /></SelectTrigger><SelectContent><SelectItem value="pass">의미 보존</SelectItem><SelectItem value="fail">의미 문제</SelectItem></SelectContent></Select><Textarea className="mt-2" value={candidates[id].rationale_ko} onChange={(event) => setCandidates((current) => ({ ...current, [id]: { ...current[id], rationale_ko: event.target.value } }))} placeholder="이 결론을 선택한 이유" /></div>)}</div></>}
+        <div className="mt-3 grid gap-3 md:grid-cols-2"><Select value={method} onValueChange={(value: typeof method) => { setMethod(value); if (value === "terminal_nonconsensus") { setFinalStatus("rejected"); setRationale("토론 후에도 두 외부 전문가가 합의하지 못해 사례를 Gold에서 제외하고 해당 화행 예비 사례 전수를 개방함"); } }}><SelectTrigger><SelectValue placeholder="결론을 정한 방식" /></SelectTrigger><SelectContent><SelectItem value="unanimous">처음부터 두 판정이 일치함</SelectItem><SelectItem value="consensus_after_discussion">의견을 나눈 뒤 합의함</SelectItem><SelectItem value="terminal_nonconsensus" disabled={!disagreement}>토론 후에도 합의 실패 · 최종 불합의</SelectItem><SelectItem value="researcher_decision">연구 책임자가 단독 결정함 — 외부 확인 완료로 사용 불가</SelectItem><SelectItem value="unresolved">판정 진행 중 · 임시 미결</SelectItem></SelectContent></Select><Select value={finalStatus} onValueChange={(value: typeof finalStatus) => setFinalStatus(value)} disabled={method === "terminal_nonconsensus"}><SelectTrigger><SelectValue placeholder="최종 결과" /></SelectTrigger><SelectContent><SelectItem value="expert_approved">기준답안으로 사용 가능</SelectItem><SelectItem value="revise_required">수정 후 다시 확인</SelectItem><SelectItem value="rejected">품질검사 사례에서 제외</SelectItem><SelectItem value="unresolved">결론 미정</SelectItem></SelectContent></Select></div>
+        {finalStatus !== "unresolved" && method !== "terminal_nonconsensus" && <><div className="mt-4 grid gap-2 sm:grid-cols-3">{(["scenario_valid","pdr_valid","semantic_invariant_valid"] as const).map((key) => <label key={key} className="flex gap-2 text-sm"><Checkbox checked={context[key]} onCheckedChange={(checked) => setContext((current) => ({ ...current, [key]: checked === true }))}/><span>{{ scenario_valid: "상황이 타당함", pdr_valid: "관계·부담 설정이 타당함", semantic_invariant_valid: "원문의 의미가 보존됨" }[key]}</span></label>)}</div><div className="mt-4 grid gap-3 lg:grid-cols-3">{(["A","B","C"] as const).map((id) => <div key={id} className="rounded-lg border p-3"><b>후보 {id}</b><Select value={candidates[id].assessed_band_code} onValueChange={(value) => setCandidates((current) => ({ ...current, [id]: { ...current[id], assessed_band_code: value } }))}><SelectTrigger className="mt-2"><SelectValue placeholder="최종 적절성" /></SelectTrigger><SelectContent>{BANDS.map((band) => <SelectItem key={band} value={band}>{BAND_LABELS[band] ?? band}</SelectItem>)}</SelectContent></Select><Select value={candidates[id].semantic_fidelity} onValueChange={(value: "pass" | "fail") => setCandidates((current) => ({ ...current, [id]: { ...current[id], semantic_fidelity: value } }))}><SelectTrigger className="mt-2"><SelectValue placeholder="의미 보존 여부" /></SelectTrigger><SelectContent><SelectItem value="pass">의미 보존</SelectItem><SelectItem value="fail">의미 문제</SelectItem></SelectContent></Select><Textarea className="mt-2" value={candidates[id].rationale_ko} onChange={(event) => setCandidates((current) => ({ ...current, [id]: { ...current[id], rationale_ko: event.target.value } }))} placeholder="이 결론을 선택한 이유" /></div>)}</div></>}
         <Textarea className="mt-4" value={rationale} onChange={(event) => setRationale(event.target.value)} placeholder="두 전문가의 판정을 어떻게 종합했는지 기록" />
         <Button className="mt-4" onClick={resolve} disabled={preview || saving || !allSubmitted || !method || !finalStatus || !rationale.trim()}><Save className="mr-1 h-4 w-4" />최종 결론 저장</Button>
-        <p className="mt-2 text-xs text-slate-500">토론 후 합의한 경우 두 전문가가 해결안에 각각 동의해야 다음 품질검사에 사용할 수 있습니다.</p>
+        <p className="mt-2 text-xs text-slate-500">토론 후 합의한 경우 두 전문가가 해결안에 각각 동의해야 합니다. 최종 불합의는 별도 불변 이력으로 저장되며 해당 사례 승인과 현재 pack 공개를 차단합니다.</p>
       </section>
       <section className="rounded-xl border bg-white p-5"><h2 className="font-semibold">전체 진행 건수</h2><p className="mt-2 text-sm">연구자 판정 확정 사례 {calibrations.length}건 · 외부 전문가 배정 {assignments.length}건 · 제출된 판단 {reviews.length}건 · 최종 결론 {resolutions.length}건</p></section>
       {message && <p className="rounded-lg border bg-white p-3 text-sm">{message}</p>}{preview && <p className="text-xs text-slate-500">미리보기 화면에서는 내용을 저장할 수 없습니다.</p>}

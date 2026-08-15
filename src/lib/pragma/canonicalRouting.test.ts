@@ -10,6 +10,11 @@ const CURRENT_CANONICALS = [
   "docs/product/PRAGMA_관리자구조_정본.md",
 ] as const;
 
+const PUBLIC_MISSION_EXPLANATION_SCREENS = [
+  "src/pages/Architecture.tsx",
+  "src/pages/Roadmap.tsx",
+] as const;
+
 function topLevelMarkdown(directory: string) {
   return readdirSync(join(ROOT, directory), { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
@@ -88,5 +93,15 @@ describe("canonical document routing", () => {
     expect(manifest).toContain("MPJ4 + DCT1");
     expect(contract).toContain("mission_v5` = **MPJ4 + DCT1**");
     expect(contract).not.toMatch(/현행[^\n]*MPJ5|MPJ5\s*\+\s*DCT1[^\n]*(유지|변경 금지|바뀌지 않았다)/);
+  });
+
+  it("makes public mission explanations consume the MPJ item-count constant", () => {
+    for (const relativePath of PUBLIC_MISSION_EXPLANATION_SCREENS) {
+      const content = readFileSync(join(ROOT, relativePath), "utf8");
+      expect(content, `${relativePath} must import the canonical count`).toContain("MPJ_ITEM_COUNT");
+      expect(content, `${relativePath} must not hardcode current MPJ5 copy`).not.toMatch(
+        /MPJ\s*5|다섯\s*(가지\s*)?(예시|문항)|5개\s*(예시|문항)/,
+      );
+    }
   });
 });
