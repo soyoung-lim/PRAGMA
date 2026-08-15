@@ -40,6 +40,8 @@ export interface CoreCellResult {
 export interface CoreRunOptions {
   languageDirection?: LanguageDirection;
   runId: string;
+  /** 있으면 test-only 저장 RPC가 아니라 lock된 최종 코퍼스 전용 RPC를 사용한다. */
+  finalCorpusRunId?: string;
   /**
    * cells가 전체 계획의 부분집합일 때 각 항목의 원래 0-based 계획 index.
    * 검수에서 특정 셀만 새 run ID로 재생성해도 generation_item_key와 화면 번호를
@@ -240,12 +242,16 @@ export async function runCoreCell(
       // 여기서 재계산하면 로컬 코드 기준이 되어 배포본과 어긋날 수 있다(=거짓 기록).
       prompt_snapshot_hash: meta?.prompt_snapshot_hash ?? null,
     };
+    const saveFunction = opts.finalCorpusRunId ? "save_final_corpus_core" : "save_generated_core";
+    const saveArgs = opts.finalCorpusRunId
+      ? { p_run_id: opts.finalCorpusRunId, p_payload: payload }
+      : { p_payload: payload };
     const { data: savedId, error: saveErr } = await (
       supabase.rpc as unknown as (
         fn: string,
         args: Record<string, unknown>,
       ) => Promise<{ data: unknown; error: unknown }>
-    )("save_generated_core", { p_payload: payload });
+    )(saveFunction, saveArgs);
     if (saveErr) throw saveErr;
 
     return {
@@ -266,6 +272,9 @@ export async function runCoreBatch(
   cells: BatchCell[],
   opts: CoreRunOptions,
 ): Promise<CoreCellResult[]> {
+  if (opts.finalCorpusRunId && opts.finalCorpusRunId !== opts.runId) {
+    throw new Error("최종 코퍼스 run ID와 생성 run ID가 일치해야 합니다.");
+  }
   if (opts.itemIndexes && opts.itemIndexes.length !== cells.length) {
     throw new Error("선택 셀 index 수가 실행 셀 수와 일치하지 않습니다.");
   }

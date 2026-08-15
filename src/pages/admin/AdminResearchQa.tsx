@@ -15,8 +15,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { SPEECH_ACT_UI } from "@/lib/pragma/enums";
 import { RESEARCH_QA_SUMMARY } from "@/lib/pragma/researchQaSummary";
+import type { FinalCorpusReadiness } from "@/lib/pragma/finalCorpusGeneration";
 
-type LiveMetricKey = "lineage" | "expertReviews" | "events" | "improvements" | "calibrationReviews" | "calibrationResolutions" | "goldExpertReviews" | "goldExpertResolutions" | "goldRegressionRuns";
+type LiveMetricKey = "lineage" | "expertReviews" | "events" | "improvements" | "calibrationReviews" | "calibrationResolutions" | "goldExpertReviews" | "goldExpertResolutions" | "goldRegressionRuns" | "finalLocks" | "finalRuns";
 type LiveMetric = { value: number | null; error: string | null };
 type ExpansionRequirement = { passed: boolean; [key: string]: unknown };
 type ExpansionReadiness = {
@@ -37,6 +38,8 @@ const LIVE_TABLES: Array<{ key: LiveMetricKey; label: string; table: string }> =
   { key: "goldExpertReviews", label: "Gold 외부 전문가 검토", table: "pragma_gold_expert_reviews" },
   { key: "goldExpertResolutions", label: "Gold 외부 전문가 해결본", table: "pragma_gold_expert_resolutions" },
   { key: "goldRegressionRuns", label: "Gold release 회귀", table: "pragma_gold_regression_runs" },
+  { key: "finalLocks", label: "최종 코퍼스 lock", table: "pragma_final_corpus_generation_locks" },
+  { key: "finalRuns", label: "최종 504 생성 run", table: "pragma_final_corpus_generation_runs" },
 ];
 
 const initialLive = Object.fromEntries(
@@ -61,12 +64,29 @@ const READINESS_LABELS: Record<string, string> = {
   live_rls_smoke: "동일 커밋 3역할 RLS smoke",
 };
 
+const FINAL_READINESS_LABELS: Record<string, string> = {
+  attested_release: "현재 CI-attested pack release",
+  nine_act_scope: "승인된 9화행 범위",
+  researcher_gold: "현재 pack 연구자 Gold 30건",
+  expert_gold: "현재 pack 전문가 Gold 30건·화행별 3건",
+  gold_regression: "현재 pack passing 회귀",
+  live_rls_smoke: "동일 커밋 3역할 RLS smoke",
+};
+
 const asExpansionReadiness = (value: unknown): ExpansionReadiness | null => {
   if (!value || typeof value !== "object") return null;
   const item = value as Partial<ExpansionReadiness>;
   if (typeof item.expansion_allowed !== "boolean" || typeof item.pack_id !== "string"
     || !Array.isArray(item.missing_requirements) || !item.requirements || typeof item.requirements !== "object") return null;
   return item as ExpansionReadiness;
+};
+
+const asFinalReadiness = (value: unknown): FinalCorpusReadiness | null => {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Partial<FinalCorpusReadiness>;
+  if (typeof item.generation_allowed !== "boolean" || typeof item.pack_id !== "string"
+    || !Array.isArray(item.missing_requirements) || !item.requirements || typeof item.requirements !== "object") return null;
+  return item as FinalCorpusReadiness;
 };
 
 const StatusBadge = ({ tone, children }: { tone: "ok" | "pending" | "blocked"; children: string }) => {
@@ -113,6 +133,8 @@ const AdminResearchQa = () => {
   const [loadingLive, setLoadingLive] = useState(true);
   const [readiness, setReadiness] = useState<ExpansionReadiness | null>(null);
   const [readinessError, setReadinessError] = useState<string | null>(null);
+  const [finalReadiness, setFinalReadiness] = useState<FinalCorpusReadiness | null>(null);
+  const [finalReadinessError, setFinalReadinessError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -140,11 +162,17 @@ const AdminResearchQa = () => {
       const readinessResult = await db.rpc("get_pragma_moat_expansion_readiness", {
         p_pack_id: summary.pack.id,
       });
+      const finalReadinessResult = await db.rpc("get_pragma_final_corpus_generation_readiness", {
+        p_pack_id: summary.pack.id,
+      });
       if (active) {
         setLive(Object.fromEntries(entries) as Record<LiveMetricKey, LiveMetric>);
         const parsed = asExpansionReadiness(readinessResult.data);
         setReadiness(parsed);
         setReadinessError(readinessResult.error?.message ?? (parsed ? null : "readiness 응답 형식 확인 필요"));
+        const parsedFinal = asFinalReadiness(finalReadinessResult.data);
+        setFinalReadiness(parsedFinal);
+        setFinalReadinessError(finalReadinessResult.error?.message ?? (parsedFinal ? null : "최종 코퍼스 readiness 응답 확인 필요"));
         setLoadingLive(false);
       }
     })();
@@ -176,7 +204,7 @@ const AdminResearchQa = () => {
         <Stat label="화행 수직 표본" value={`${summary.pack.covered_speech_act_count}/${summary.pack.total_speech_act_count}`} note={summary.pack.covered_speech_acts.map((act) => SPEECH_ACT_UI[act]).join(" · ")} />
         <Stat label="규칙 / 위험" value={`${summary.pack.rule_count} / ${summary.pack.risk_count}`} note="문항 귀속 가능한 ID" />
         <Stat label="근거 / 원문 확인" value={`${summary.evidence.total_count} / ${summary.evidence.source_verified_count}`} note="모든 근거 lifecycle active" />
-        <Stat label="최종 콘텐츠" value={`0 / ${summary.final_corpus.target_minimum}+`} note="lock 후 전량 신규 생성" />
+        <Stat label="최종 콘텐츠" value={`0 / ${summary.final_corpus.planned_item_count}`} note={`최소 ${summary.final_corpus.target_minimum} · lock 후 전량 신규 생성`} />
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-card p-5">
@@ -209,6 +237,42 @@ const AdminResearchQa = () => {
         <p className="mt-4 text-xs leading-5 text-muted-foreground">
           상태가 모두 충족돼 관리자가 확장 근거를 append하기 전에는 CI도 4개 이상 화행을 포함한 manifest를 attestation할 수 없습니다.
         </p>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-violet-200 bg-violet-50/40 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">최종 504 신규 생성 readiness</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              기존 행의 이름만 바꾸는 승격은 금지됩니다. 이 여섯 조건을 같은 pack version으로 만족해야 lock/run을 발급합니다.
+            </p>
+          </div>
+          <StatusBadge tone={finalReadiness?.generation_allowed ? "ok" : finalReadinessError ? "blocked" : "pending"}>
+            {finalReadiness?.generation_allowed ? "생성 허용" : finalReadinessError ? "조회 필요" : "최종 생성 잠금"}
+          </StatusBadge>
+        </div>
+        {finalReadinessError ? (
+          <p className="mt-4 rounded-lg bg-background p-4 text-sm text-muted-foreground">{finalReadinessError}</p>
+        ) : (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {Object.entries(FINAL_READINESS_LABELS).map(([key, label]) => {
+              const requirement = finalReadiness?.requirements[key] as { passed?: boolean } | undefined;
+              const passed = requirement?.passed === true;
+              return (
+                <div key={key} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3">
+                  <span className="text-sm">{label}</span>
+                  <StatusBadge tone={passed ? "ok" : "blocked"}>{passed ? "충족" : "미충족"}</StatusBadge>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>504 = 9화행 × 56 · 243 P/D/R 셀 ≥2 · 54 화행/수준/모드 셀 ≥3</span>
+          <Link to="/admin/batch" className="rounded-md border border-border bg-background px-3 py-1.5 font-medium text-foreground hover:bg-muted">
+            최종 504 lock 화면
+          </Link>
+        </div>
       </section>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.08fr_.92fr]">

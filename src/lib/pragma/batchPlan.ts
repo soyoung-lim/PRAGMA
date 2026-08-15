@@ -149,15 +149,15 @@ export const DEFAULT_QUOTA: BatchQuota = {
 };
 
 /**
- * 500 본배치 승인안 = 정확히 495건.
+ * 최종 500+ 본배치 승인안 = 정확히 504건.
  *
- * 화행당 번역 42건(13+15+14) + 통역 13건(4+5+4) = 55건,
- * 9화행 × 55 = 495건. 각 화행의 P3×D3×R3 27셀을 두 차례 가까이
+ * 화행당 번역 43건(14+15+14) + 통역 13건(4+5+4) = 56건,
+ * 9화행 × 56 = 504건. 각 화행의 P3×D3×R3 27셀을 두 차례 이상
  * 순회하므로 243 구인셀을 전부 채우고, 54 전달셀도 셀당 ≥3을 충족한다.
  */
-export const FULL_BATCH_QUOTA_495: BatchQuota = {
+export const FINAL_CORPUS_QUOTA_504: BatchQuota = {
   perLevel: {
-    beginner_intermediate: 13,
+    beginner_intermediate: 14,
     intermediate: 15,
     advanced: 14,
   },
