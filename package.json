@@ -22,7 +22,7 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:moat": "vitest run src/lib/pragma/realizationPack.test.ts src/lib/pragma/packReleaseManifest.test.ts src/lib/pragma/seedGoldSet.test.ts src/lib/pragma/goldCalibration.test.ts src/lib/pragma/goldExpertReview.test.ts src/lib/pragma/goldRegression.test.ts src/lib/pragma/missionLineage.test.ts src/lib/pragma/itemLineage.test.ts src/lib/pragma/expertReviewConsensus.test.ts src/lib/pragma/expertReviewProtocol.test.ts src/lib/pragma/moatFlywheel.test.ts src/lib/pragma/moatMigrationContracts.test.ts src/lib/pragma/researchQaSummary.test.ts src/lib/mission/missionEventExport.test.ts src/lib/mission/missionRelease.test.ts src/lib/pragma/targetFeatures.test.ts",
+    "test:moat": "vitest run src/lib/pragma/realizationPack.test.ts src/lib/pragma/packReleaseManifest.test.ts src/lib/pragma/seedGoldSet.test.ts src/lib/pragma/goldCalibration.test.ts src/lib/pragma/goldExpertReview.test.ts src/lib/pragma/goldRegression.test.ts src/lib/pragma/missionLineage.test.ts src/lib/pragma/itemLineage.test.ts src/lib/pragma/expertReviewConsensus.test.ts src/lib/pragma/expertReviewProtocol.test.ts src/lib/pragma/moatFlywheel.test.ts src/lib/pragma/moatMigrationContracts.test.ts src/lib/pragma/researchQaSummary.test.ts src/lib/pragma/finalCorpusGeneration.test.ts src/lib/mission/missionEventExport.test.ts src/lib/mission/missionRelease.test.ts src/lib/pragma/targetFeatures.test.ts",
     "test:watch": "vitest"
   },
   "dependencies": {
