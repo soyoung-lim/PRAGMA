@@ -18,6 +18,14 @@ import { SPEECH_ACT_UI } from "@/lib/pragma/enums";
 import { RESEARCH_QA_SUMMARY } from "@/lib/pragma/researchQaSummary";
 import type { FinalCorpusReadiness } from "@/lib/pragma/finalCorpusGeneration";
 import { REVIEW_WORKLOAD } from "@/lib/pragma/reviewWorkload";
+import {
+  BOOTSTRAP_SEED_GOLD_CASE_COUNT,
+  BOOTSTRAP_SEED_GOLD_SPEECH_ACT_COUNT,
+  EXTERNAL_GOLD_RESERVE_PER_SPEECH_ACT,
+  EXTERNAL_GOLD_SAMPLE_COUNT,
+  FINAL_GOLD_CASES_PER_SPEECH_ACT,
+  FINAL_GOLD_POPULATION_COUNT,
+} from "@/lib/pragma/goldProtocol";
 
 type LiveMetricKey = "lineage" | "expertReviews" | "events" | "improvements" | "calibrationReviews" | "calibrationResolutions" | "goldExpertReviews" | "goldExpertResolutions" | "goldRegressionRuns" | "finalLocks" | "finalRuns" | "finalMissionBatches" | "finalReleases";
 type LiveMetric = { value: number | null; error: string | null };
@@ -75,8 +83,8 @@ const db = supabase as unknown as {
 
 const READINESS_LABELS: Record<string, string> = {
   attested_pack_release: "코드와 규칙집 버전 확인",
-  researcher_gold: "연구자 판정 기준답안 30개",
-  expert_gold: "외부 전문가가 확인한 9화행 층화표본 18개",
+  researcher_gold: "초기 3화행 연구자 승인 Gold 30개",
+  expert_gold: "초기 3화행 외부 전문가 승인 Gold 30개",
   gold_regression: "기준답안 기반 품질 점검 자동화 통과",
   released_vertical_slice: "요청·거절·감사 공개 표본",
   consented_completion_sample: "화행별 동의 참여자 3명 이상",
@@ -87,9 +95,9 @@ const READINESS_LABELS: Record<string, string> = {
 const FINAL_READINESS_LABELS: Record<string, string> = {
   attested_release: "코드로 확인된 현재 규칙집",
   nine_act_scope: "승인된 9화행 범위",
-  researcher_gold_population: "시스템 판단용 연구자 기준답안 30개·화행별 3개",
-  external_content_validity: "고정 시드 층화표본 18개 외부 내용타당성 확인",
-  system_judgment_gate: "기준답안 30개 기반 시스템 판단 게이트",
+  researcher_gold_population: `시스템 판단용 연구자 기준답안 ${FINAL_GOLD_POPULATION_COUNT}개·화행별 ${FINAL_GOLD_CASES_PER_SPEECH_ACT}개`,
+  external_content_validity: `고정 시드 층화표본 ${EXTERNAL_GOLD_SAMPLE_COUNT}개 외부 내용타당성 확인`,
+  system_judgment_gate: `기준답안 ${FINAL_GOLD_POPULATION_COUNT}개 기반 시스템 판단 게이트`,
   live_rls_smoke: "세 사용자 역할의 실제 권한 검사",
 };
 const EVIDENCE_SOURCE_LABELS: Record<string, string> = {
@@ -239,7 +247,7 @@ const AdminResearchQa = () => {
           <div>
             <p className="text-sm font-bold text-[#5E4B00]">현재 자료는 품질확인용 시험 자료이며 정식 학습자료가 아닙니다</p>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#74611A]">
-              품질검사 기준답안 30개와 시험용 AI 학습문항으로 규칙을 먼저 확인합니다. 규칙·문헌·외부 전문가 판단기준을 확정한 뒤
+              현재 {BOOTSTRAP_SEED_GOLD_SPEECH_ACT_COUNT}화행 Seed {BOOTSTRAP_SEED_GOLD_CASE_COUNT}개는 초기 규칙 점검용입니다. 최종 게이트에는 9화행×{FINAL_GOLD_CASES_PER_SPEECH_ACT}개 = {FINAL_GOLD_POPULATION_COUNT}개를 새 pack 기준으로 확정해야 합니다. 규칙·문헌·외부 전문가 판단기준을 확정한 뒤
               정식 학습자료 504개를 모두 새로 생성합니다.
             </p>
           </div>
@@ -261,21 +269,21 @@ const AdminResearchQa = () => {
             <h2 className="text-lg font-semibold">9월 수업 전 연구자·외부 전문가 판정 업무량</h2>
             <p className="mt-1 max-w-4xl text-sm leading-6 text-amber-950/80">
               시스템은 504개 전량을 점검하고 연구 책임자는 자동 통과 결과를 전부 확인하되 경고 문항에 시간을 집중합니다.
-              외부 전문가 2명은 서버가 사전 추출한 18개만 독립 확인합니다.
+              외부 전문가 2명은 서버가 사전 추출한 {EXTERNAL_GOLD_SAMPLE_COUNT}개만 독립 확인합니다.
             </p>
           </div>
           <Badge variant="outline" className="border-amber-400 bg-white text-amber-900">전문가 전수 검토 없음</Badge>
         </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           <div className="rounded-lg border border-amber-200 bg-white p-4">
-            <p className="text-xs font-semibold text-amber-800">연구 책임자 · 기준답안 30개</p>
+            <p className="text-xs font-semibold text-amber-800">연구 책임자 · 기준답안 {FINAL_GOLD_POPULATION_COUNT}개</p>
             <p className="mt-2 text-2xl font-semibold">필수 입력 {REVIEW_WORKLOAD.researcher.requiredInputCount.toLocaleString()}개</p>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">선택 판정 300개 + 서술 근거 120개, 이후 확정 동작 30회</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">화행별 {FINAL_GOLD_CASES_PER_SPEECH_ACT}개 · 후보 135개, 이후 확정 동작 {FINAL_GOLD_POPULATION_COUNT}회</p>
           </div>
           <div className="rounded-lg border border-amber-200 bg-white p-4">
-            <p className="text-xs font-semibold text-amber-800">외부 전문가 1인 · 9화행 층화표본 18개</p>
+            <p className="text-xs font-semibold text-amber-800">외부 전문가 1인 · 9화행 층화표본 {EXTERNAL_GOLD_SAMPLE_COUNT}개</p>
             <p className="mt-2 text-2xl font-semibold">필수 입력 {REVIEW_WORKLOAD.goldExpertPerPerson.requiredInputCount.toLocaleString()}개</p>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">최초 화행별 2개 · 목표 {REVIEW_WORKLOAD.goldExpertPerPerson.estimatedMinutes[0]}분, 최대 {REVIEW_WORKLOAD.goldExpertPerPerson.estimatedMinutes[1]}분 · 지적 화행만 예비 사례 추가</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">최초 화행별 2개 · 목표 {REVIEW_WORKLOAD.goldExpertPerPerson.estimatedMinutes[0]}분, 최대 {REVIEW_WORKLOAD.goldExpertPerPerson.estimatedMinutes[1]}분 · 지적·최종 불일치 화행은 예비 {EXTERNAL_GOLD_RESERVE_PER_SPEECH_ACT}개 전수 추가</p>
           </div>
           <div className="rounded-lg border border-amber-200 bg-white p-4">
             <p className="text-xs font-semibold text-amber-800">연구 책임자 · 504개 자동 결과 확인</p>
@@ -402,8 +410,8 @@ const AdminResearchQa = () => {
           </div>
           <ol className="mt-3">
             <Gate title="문헌과 중국어 규칙 연결 확인" state="ok" detail={`규칙집 ${summary.pack.version} · 원문 확인 문헌 ${summary.evidence.source_verified_count}건 · 기본 검사 통과`} />
-            <Gate title="품질검사 기준답안 30개 연구자 판정" state="pending" detail={`대표 상황 30개 · 중국어 후보 90개 · 아직 확인할 의미 판단 ${summary.calibration.pending_semantic_count}건`} />
-            <Gate title="사전 추출 18개 외부 내용타당성 확인" state="pending" detail="서버 고정 시드로 화행별 2개를 먼저 추출합니다. 지적 화행은 사전 등록 규칙대로 예비 사례를 추가 확인합니다." />
+            <Gate title={`9화행 기준답안 ${FINAL_GOLD_POPULATION_COUNT}개 연구자 판정`} state="pending" detail={`화행별 ${FINAL_GOLD_CASES_PER_SPEECH_ACT}개 · 중국어 후보 135개 · 현재 3화행 Seed의 미확인 의미 판단 ${summary.calibration.pending_semantic_count}건`} />
+            <Gate title={`사전 추출 ${EXTERNAL_GOLD_SAMPLE_COUNT}개 외부 내용타당성 확인`} state="pending" detail={`서버 고정 시드로 화행별 2개를 먼저 추출합니다. 지적·최종 불일치 화행은 사전 등록한 예비 ${EXTERNAL_GOLD_RESERVE_PER_SPEECH_ACT}개를 모두 추가 확인하며 합의 실패 사례는 승인하지 않습니다.`} />
             <Gate title="504개 자동 점검 확인·경고 집중 검토" state="blocked" detail="자동 점검 결과는 전부 확인하지만 모든 문항을 수동으로 정밀 판정했다는 의미는 아닙니다." />
             <Gate title="교수자가 정식 학습자료 504개 공개 승인" state="blocked" detail="앞의 모든 조건을 통과한 뒤 PRAGMA 학습자 화면에서 사용할 수 있게 최종 승인합니다." />
           </ol>
@@ -424,7 +432,7 @@ const AdminResearchQa = () => {
               to={pathname.startsWith("/prototype/") ? "/prototype/final-review" : "/admin/research-qa/final-review"}
               className="inline-flex rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold transition hover:bg-muted"
             >
-              3. 504개 자동 결과 확인·경고 검토
+              3. 통합 검수·승인
             </Link>
             <Link
               to={pathname.startsWith("/prototype/") ? "/prototype/mission-release" : "/admin/research-qa/releases"}
