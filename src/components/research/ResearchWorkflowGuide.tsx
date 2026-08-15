@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 
-type ResearchStep = "calibration" | "gold" | "missions" | "release" | "data";
+type ResearchStep = "calibration" | "gold" | "missions" | "release";
 
 const STEPS: Array<{
   id: ResearchStep;
@@ -52,15 +52,6 @@ const STEPS: Array<{
     adminPath: "/admin/research-qa/releases",
     previewPath: "/prototype/mission-release",
   },
-  {
-    id: "data",
-    short: "수행기록 내려받기",
-    title: "학습 수행기록 연구용 내려받기",
-    purpose: "연구자료 사용에 동의한 학습자의 판단·수정·산출 기록만 연구용 번호로 바꾸어 내려받습니다.",
-    owner: "연구 책임자",
-    done: "통계·질적 분석에 사용할 가명 처리 파일",
-    adminPath: "/admin/export",
-  },
 ];
 
 export const ResearchWorkflowGuide = ({ current }: { current: ResearchStep | "overview" }) => {
@@ -73,10 +64,10 @@ export const ResearchWorkflowGuide = ({ current }: { current: ResearchStep | "ov
     <section className="mb-6 rounded-xl border border-[#D9D4C8] bg-white p-5" aria-label="학습문항 품질관리 진행 순서">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold tracking-wide text-[#756F64]">학습문항 품질관리 5단계</p>
+          <p className="text-xs font-semibold tracking-wide text-[#756F64]">학습문항 품질 검증과 공개 4단계</p>
           <h2 className="mt-1 text-lg font-semibold">{active ? `현재 ${activeIndex + 1}단계 · ${active.title}` : "전체 진행 순서"}</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-            {active?.purpose ?? "아래 다섯 단계를 순서대로 완료하면 품질을 확인한 학습자료를 학생에게 제공하고 수행기록을 연구에 활용할 수 있습니다."}
+            {active?.purpose ?? "아래 네 단계를 순서대로 완료하면 품질을 확인한 학습자료를 PRAGMA 학습자 화면에서 사용할 수 있습니다."}
           </p>
         </div>
         {active && (
@@ -87,7 +78,7 @@ export const ResearchWorkflowGuide = ({ current }: { current: ResearchStep | "ov
         )}
       </div>
 
-      <ol className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+      <ol className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {STEPS.map((step, index) => {
           const isActive = step.id === current;
           const path = preview && step.previewPath ? step.previewPath : step.adminPath;

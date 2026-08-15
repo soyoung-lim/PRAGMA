@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
+import { GenerationModeTabs } from "@/components/admin/GenerationModeTabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -342,9 +343,10 @@ const AdminBatch = () => {
 
   return (
     <AdminShell
-      title="미션 재료 생성 · 대량"
-      description="셀 목록을 순회해 미션 재료(코어)를 일괄 생성합니다. 생성물은 검수 대기 상태로 저장되며, 학습 미션으로의 완성은 「학습 미션 조립」에서 합니다."
+      title="문항 생성"
+      description="정해진 조건 조합에 따라 AI 학습문항의 상황과 원문을 여러 건 만들고 내부 확인 대기 상태로 저장합니다."
     >
+      <GenerationModeTabs />
       {/* ── 생성 설정 (코어·방향·할당량 압축) ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-4">
         <div className="flex flex-wrap items-start gap-x-8 gap-y-3">

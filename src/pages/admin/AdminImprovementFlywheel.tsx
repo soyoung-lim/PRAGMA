@@ -240,7 +240,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">반복되는 문제만 개선 후보로 모으고, 논문 저자가 근거를 확인해 승인한 뒤 다시 품질을 확인해야 새 버전에 반영합니다.</p>
       </section>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm"><Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"}><ArrowLeft className="mr-1 h-4 w-4" />문항 품질·연구자료 전체 현황</Link></Button>
+        <Button asChild variant="ghost" size="sm"><Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"}><ArrowLeft className="mr-1 h-4 w-4" />품질 검증과 공개 전체 현황</Link></Button>
         <Badge className="gap-1 bg-slate-900 text-white"><LockKeyhole className="h-3.5 w-3.5" />자동 반영 없음 · 논문 저자가 최종 결정</Badge>
       </div>
 
