@@ -25,7 +25,7 @@
 ## 경계와 확인 필요
 
 - 모델 귀속은 `model_attribution_pending_review`이며 전문가 승인 결과가 아니다.
-- 유료 실생성, 새 migration 원격 적용, Edge 재배포, 실제 DB 저장 smoke는 수행하지 않았다.
+- migration `20260815190000`은 운영 DB에 적용됐고 `generate-scenario` Edge v64가 ACTIVE다. 유료 실생성과 실제 DB 저장 smoke는 수행하지 않았다.
 - 배포 후 한→중 요청·거절·감사 각 1건의 `mission_v5`를 생성해 target coverage·R31·lineage version 저장과 전문가 큐 연결을 확인해야 한다.
 
 ## 관련 연구 기록
