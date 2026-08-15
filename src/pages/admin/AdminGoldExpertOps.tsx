@@ -19,6 +19,19 @@ type AssignmentRow = { id: string; calibration_resolution_id: string; reviewer_u
 type CandidateAssessment = { assessed_band_code: string; semantic_fidelity: "pass" | "fail"; rationale_ko: string };
 type ReviewRow = { id: string; calibration_resolution_id: string; reviewer_user_id: string; review_round: number; context_assessment: Record<string, boolean>; candidate_assessments: Record<"A" | "B" | "C", CandidateAssessment>; overall_verdict: string; rationale_ko: string; submitted_at: string };
 type ResolutionRow = { id: string; calibration_resolution_id: string; review_round: number; resolution_revision: number; resolution_method: string; final_status: string; resolved_at: string };
+type SamplingPlanRow = {
+  id: string;
+  realization_pack_id: string;
+  realization_pack_version: string;
+  population_snapshot: Array<{ calibration_resolution_id: string; case_id: string; speech_act: string }>;
+  sampling_seed: string;
+  selection_snapshot: Array<{ calibration_resolution_id: string; case_id: string; speech_act: string; selection_role: "initial" | "reserve"; rank_in_speech_act: number }>;
+  initial_resolution_ids: string[];
+  reserve_resolution_ids: string[];
+  escalation_rule: Record<string, unknown>;
+  created_at: string;
+};
+type SamplingStatus = { status: string; passed: boolean; required_case_count: number; completed_case_count: number; flagged_speech_acts: string[]; blocking_speech_acts: string[]; required_calibration_resolution_ids: string[]; conclusion_ko: string };
 type CandidateDraft = { assessed_band_code: string; semantic_fidelity: "" | "pass" | "fail"; rationale_ko: string };
 type CandidateId = "A" | "B" | "C";
 
@@ -66,6 +79,17 @@ const PREVIEW_REVIEWS: ReviewRow[] = [
   { id: "60000000-0000-4000-8000-000000000061", calibration_resolution_id: PREVIEW_CALIBRATION_ID, reviewer_user_id: PREVIEW_EXPERTS[0].user_id, review_round: 1, context_assessment: { scenario_valid: true, pdr_valid: true, semantic_invariant_valid: true }, candidate_assessments: baseCandidateAssessments, overall_verdict: "approve", rationale_ko: "전문가 A 승인", submitted_at: "2026-08-15T00:10:00.000Z" },
   { id: "60000000-0000-4000-8000-000000000062", calibration_resolution_id: PREVIEW_CALIBRATION_ID, reviewer_user_id: PREVIEW_EXPERTS[1].user_id, review_round: 1, context_assessment: { scenario_valid: true, pdr_valid: true, semantic_invariant_valid: true }, candidate_assessments: { ...baseCandidateAssessments, C: { ...baseCandidateAssessments.C, assessed_band_code: "within_band", rationale_ko: "격식 이메일에서는 허용 가능" } }, overall_verdict: "revise", rationale_ko: "후보 C 대역 이견", submitted_at: "2026-08-15T00:12:00.000Z" },
 ];
+const PREVIEW_PLAN: SamplingPlanRow = {
+  id: "80000000-0000-4000-8000-000000000061",
+  realization_pack_id: PREVIEW_CASE.realization_pack_id,
+  realization_pack_version: PREVIEW_CASE.realization_pack_version,
+  population_snapshot: [{ calibration_resolution_id: PREVIEW_CALIBRATION_ID, case_id: PREVIEW_CASE.case_id, speech_act: PREVIEW_CASE.speech_act }],
+  sampling_seed: "a".repeat(64),
+  selection_snapshot: [{ calibration_resolution_id: PREVIEW_CALIBRATION_ID, case_id: PREVIEW_CASE.case_id, speech_act: PREVIEW_CASE.speech_act, selection_role: "initial", rank_in_speech_act: 1 }],
+  initial_resolution_ids: [PREVIEW_CALIBRATION_ID], reserve_resolution_ids: [],
+  escalation_rule: { trigger_case_count: 1, action: "review_all_frozen_reserve_cases_for_flagged_speech_act" },
+  created_at: "2026-08-15T00:00:00.000Z",
+};
 
 const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
   const { pathname } = useLocation();
@@ -75,6 +99,8 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
   const [assignments, setAssignments] = useState<AssignmentRow[]>(preview ? PREVIEW_ASSIGNMENTS : []);
   const [reviews, setReviews] = useState<ReviewRow[]>(preview ? PREVIEW_REVIEWS : []);
   const [resolutions, setResolutions] = useState<ResolutionRow[]>([]);
+  const [samplingPlans, setSamplingPlans] = useState<SamplingPlanRow[]>(preview ? [PREVIEW_PLAN] : []);
+  const [samplingStatus, setSamplingStatus] = useState<SamplingStatus | null>(preview ? { status: "expansion_required", passed: false, required_case_count: 19, completed_case_count: 1, flagged_speech_acts: [PREVIEW_CASE.speech_act], blocking_speech_acts: [], required_calibration_resolution_ids: [PREVIEW_CALIBRATION_ID], conclusion_ko: "외부 내용타당성 확인이 아직 완료되지 않았습니다." } : null);
   const [selectedCalibrationId, setSelectedCalibrationId] = useState(preview ? PREVIEW_CALIBRATION_ID : "");
   const [selectedExpertId, setSelectedExpertId] = useState("");
   const [round, setRound] = useState("1");
@@ -90,28 +116,43 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
   const load = useCallback(async () => {
     if (preview) { setLoading(false); return; }
     setLoading(true);
-    const [profileResult, registryResult, calibrationResult, assignmentResult, reviewResult, resolutionResult] = await Promise.all([
+    const [profileResult, registryResult, calibrationResult, assignmentResult, reviewResult, resolutionResult, planResult] = await Promise.all([
       db.from("profiles").select("user_id,email,full_name"),
       db.from("pragma_expert_registry_versions").select("id,expert_user_id,status,registry_version").eq("status", "active"),
       db.from("pragma_gold_calibration_resolutions").select("id,case_id,case_version,resolution_status,resolved_case_snapshot,resolved_at").eq("resolution_status", "researcher_approved").order("resolved_at", { ascending: false }),
       db.from("pragma_gold_expert_review_assignments").select("id,calibration_resolution_id,reviewer_user_id,review_round,assigned_at").order("assigned_at", { ascending: false }),
       db.from("pragma_gold_expert_reviews").select("id,calibration_resolution_id,reviewer_user_id,review_round,context_assessment,candidate_assessments,overall_verdict,rationale_ko,submitted_at").order("submitted_at", { ascending: false }),
       db.from("pragma_gold_expert_resolutions").select("id,calibration_resolution_id,review_round,resolution_revision,resolution_method,final_status,resolved_at").order("resolved_at", { ascending: false }),
+      db.from("pragma_gold_external_sampling_plans").select("id,realization_pack_id,realization_pack_version,population_snapshot,sampling_seed,selection_snapshot,initial_resolution_ids,reserve_resolution_ids,escalation_rule,created_at").order("created_at", { ascending: false }),
     ]);
-    const error = profileResult.error ?? registryResult.error ?? calibrationResult.error ?? assignmentResult.error ?? reviewResult.error ?? resolutionResult.error;
+    const error = profileResult.error ?? registryResult.error ?? calibrationResult.error ?? assignmentResult.error ?? reviewResult.error ?? resolutionResult.error ?? planResult.error;
     if (error) setMessage(error.message);
     else {
       setProfiles((profileResult.data ?? []) as ProfileRow[]);
       setRegistry((registryResult.data ?? []) as RegistryRow[]);
       const parsed = (calibrationResult.data ?? []).map((row: Record<string, unknown>) => ({ ...row, resolved_case_snapshot: SeedGoldCaseSchema.parse(row.resolved_case_snapshot) })) as CalibrationRow[];
-      setCalibrations(parsed); setAssignments((assignmentResult.data ?? []) as AssignmentRow[]); setReviews((reviewResult.data ?? []) as ReviewRow[]); setResolutions((resolutionResult.data ?? []) as ResolutionRow[]);
-      setSelectedCalibrationId((current) => current || parsed[0]?.id || "");
+      const plans = (planResult.data ?? []) as SamplingPlanRow[];
+      setCalibrations(parsed); setAssignments((assignmentResult.data ?? []) as AssignmentRow[]); setReviews((reviewResult.data ?? []) as ReviewRow[]); setResolutions((resolutionResult.data ?? []) as ResolutionRow[]); setSamplingPlans(plans);
+      if (plans[0]) {
+        const statusResult = await db.rpc("get_pragma_gold_external_validation_status", { p_plan_id: plans[0].id });
+        if (statusResult.error) setMessage(statusResult.error.message);
+        else setSamplingStatus(statusResult.data as SamplingStatus);
+        const eligible = new Set((statusResult.data as SamplingStatus | null)?.required_calibration_resolution_ids ?? plans[0].initial_resolution_ids);
+        setSelectedCalibrationId((current) => current && eligible.has(current) ? current : parsed.find((item) => eligible.has(item.id))?.id || "");
+      } else {
+        setSamplingStatus(null); setSelectedCalibrationId("");
+      }
     }
     setLoading(false);
   }, [preview]);
   useEffect(() => { void load(); }, [load]);
 
-  const selected = calibrations.find((item) => item.id === selectedCalibrationId) ?? null;
+  const currentPlan = samplingPlans[0] ?? null;
+  const eligibleCalibrationIds = useMemo(() => new Set(
+    samplingStatus?.required_calibration_resolution_ids ?? currentPlan?.initial_resolution_ids ?? [],
+  ), [currentPlan, samplingStatus]);
+  const sampledCalibrations = calibrations.filter((item) => eligibleCalibrationIds.has(item.id));
+  const selected = sampledCalibrations.find((item) => item.id === selectedCalibrationId) ?? null;
   const roundNumber = Number(round) || 1;
   const selectedAssignments = assignments.filter((item) => item.calibration_resolution_id === selectedCalibrationId && item.review_round === roundNumber);
   const selectedReviews = reviews.filter((item) => item.calibration_resolution_id === selectedCalibrationId && item.review_round === roundNumber);
@@ -131,6 +172,14 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
     if (!selectedCalibrationId || !selectedExpertId || preview) return;
     setSaving(true); const { error } = await db.rpc("assign_gold_expert_review", { p_calibration_resolution_id: selectedCalibrationId, p_reviewer_user_id: selectedExpertId, p_review_round: roundNumber });
     setMessage(error ? error.message : "품질검사 사례를 외부 전문가에게 비공개로 배정했습니다."); setSaving(false); if (!error) await load();
+  };
+  const createSamplingPlan = async () => {
+    const packId = calibrations[0]?.resolved_case_snapshot.realization_pack_id;
+    if (!packId || preview || saving) return;
+    setSaving(true); setMessage(null);
+    const { error } = await db.rpc("create_pragma_gold_external_sampling_plan", { p_pack_id: packId });
+    setMessage(error ? error.message : "서버가 9개 화행에서 2개씩 무작위 추출해 18개 표본을 확정했습니다.");
+    setSaving(false); if (!error) await load();
   };
   const fillFromReview = (review: ReviewRow) => {
     setContext({ ...review.context_assessment } as typeof context);
@@ -168,14 +217,17 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
       </section>
 
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-        <strong>시간 상한:</strong> 각 전문가는 화행별 2개씩 총 18개만 확인합니다. 목표 45분·최대 60분이며, 정식 AI 학습문항 504개 전수 검토는 연구 책임자와 품질 점검 자동화가 담당합니다.
+        <strong>시간 상한:</strong> 최초 확인은 각 전문가당 18개, 목표 45분·최대 60분입니다. 문제가 지적된 화행만 사전에 고정한 예비 사례를 추가 확인하며, 정식 AI 학습문항 504개는 전문가에게 배정하지 않습니다.
       </section>
 
       <section className="rounded-xl border bg-white p-5">
-        <h2 className="font-semibold">1. 외부 확인을 받을 품질검사 사례 선택</h2>
-        <p className="mt-1 text-sm text-slate-600">1단계에서 연구 책임자가 판정·확정한 품질검사 사례만 선택할 수 있습니다.</p>
-        <Select value={selectedCalibrationId} onValueChange={setSelectedCalibrationId}><SelectTrigger className="mt-3"><SelectValue placeholder={loading ? "문항을 불러오는 중…" : "선택할 승인 문항이 없습니다"} /></SelectTrigger><SelectContent>{calibrations.map((item) => <SelectItem key={item.id} value={item.id}>{item.case_id} · 버전 {item.case_version}</SelectItem>)}</SelectContent></Select>
+        <h2 className="font-semibold">1. 서버가 외부 확인 표본을 먼저 확정</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-600">연구 책임자가 504개 결과를 보기 전에, 서버가 확정된 기준답안 모집단에서 화행별 2개를 고정 시드로 추출합니다. 관리자는 사례를 임의로 고를 수 없습니다.</p>
+        {!currentPlan ? <Button className="mt-3" onClick={createSamplingPlan} disabled={preview || saving || calibrations.length < 30}>층화 무작위 표본 18개 확정</Button> : <div className="mt-3 grid gap-2 rounded-lg bg-slate-50 p-4 text-xs leading-5 text-slate-700 sm:grid-cols-2"><p><strong>표본 확정:</strong> {new Date(currentPlan.created_at).toLocaleString("ko-KR")}</p><p><strong>모집단:</strong> {currentPlan.population_snapshot.length}개</p><p><strong>추출:</strong> 9화행 × 2개 = 18개</p><p className="truncate"><strong>고정 시드:</strong> {currentPlan.sampling_seed}</p></div>}
+        <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm leading-6 text-rose-950"><strong>사전 확전 규칙:</strong> 최초 표본에서 전문가 한 명이라도 수정·제외를 선택하면 그 화행의 고정 예비 사례를 모두 추가 확인합니다. 추가 사례에서도 문제가 나오면 해당 화행과 이를 포함한 최종 504개 공개를 보류합니다.</div>
+        <Select value={selectedCalibrationId} onValueChange={setSelectedCalibrationId}><SelectTrigger className="mt-3"><SelectValue placeholder={loading ? "표본을 불러오는 중…" : "서버가 확정한 표본이 없습니다"} /></SelectTrigger><SelectContent>{sampledCalibrations.map((item) => <SelectItem key={item.id} value={item.id}>{item.case_id} · {item.resolved_case_snapshot.speech_act} · 버전 {item.case_version}</SelectItem>)}</SelectContent></Select>
         {selected && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700"><strong>상황:</strong> {selected.resolved_case_snapshot.scenario_ko}</p>}
+        {samplingStatus && <p className="mt-3 text-sm text-slate-700"><strong>현재 상태:</strong> {samplingStatus.completed_case_count}/{samplingStatus.required_case_count} 완료 · {samplingStatus.conclusion_ko}</p>}
       </section>
 
       <section className="rounded-xl border bg-white p-5">

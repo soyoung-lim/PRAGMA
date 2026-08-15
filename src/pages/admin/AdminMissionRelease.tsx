@@ -13,22 +13,20 @@ import { supabase } from "@/integrations/supabase/client";
 
 type LineageRow = { id: string; scenario_id: string; version_no: number; stage: string; realization_pack_id: string; realization_pack_version: string; mission_content_hash: string; created_at: string };
 type MissionResolutionRow = { id: string; lineage_version_id: string; review_round: number; resolution_revision: number; resolution_status: string; final_verdict: string; resolved_at: string };
-type GoldResolutionRow = { id: string; calibration_resolution_id: string; review_round: number; resolution_revision: number; resolution_method: string; final_status: string; resolved_case_snapshot: { case_id?: string; realization_pack_id?: string; realization_pack_version?: string }; resolved_at: string };
-type RegressionRow = { id: string; realization_pack_id: string; realization_pack_version: string; gate_status: string; evaluator_version: string; report: Record<string, unknown>; evaluation_purpose: string; is_quality_measurement: boolean; interpretation_note_ko: string; created_at: string };
+type GoldCalibrationRow = { id: string; case_id: string; resolution_round: number; resolution_status: string; resolved_case_snapshot: { case_id?: string; realization_pack_id?: string; realization_pack_version?: string }; resolved_at: string };
+type RegressionRow = { id: string; realization_pack_id: string; realization_pack_version: string; gate_status: string; evaluator_version: string; report: Record<string, unknown>; evaluation_purpose: string; is_quality_measurement: boolean; source_authority: string; interpretation_note_ko: string; created_at: string };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as unknown as { from: (table: string) => any; rpc: (name: string, args?: Record<string, unknown>) => any };
 
 const PREVIEW_LINEAGE: LineageRow = { id: "10000000-0000-4000-8000-000000000051", scenario_id: "20000000-0000-4000-8000-000000000051", version_no: 3, stage: "reviewed", realization_pack_id: "pragma_ko_zh_core", realization_pack_version: "1.2.0", mission_content_hash: "preview-hash", created_at: "2026-08-15T00:00:00.000Z" };
 const PREVIEW_RESOLUTION: MissionResolutionRow = { id: "30000000-0000-4000-8000-000000000051", lineage_version_id: PREVIEW_LINEAGE.id, review_round: 1, resolution_revision: 1, resolution_status: "unanimous", final_verdict: "approve", resolved_at: "2026-08-15T00:10:00.000Z" };
-const PREVIEW_REGRESSION: RegressionRow = { id: "40000000-0000-4000-8000-000000000051", realization_pack_id: "pragma_ko_zh_core", realization_pack_version: "1.2.0", gate_status: "pass", evaluator_version: "preview-evaluator-v1", report: { mode: "expert_release_gate", case_count: 18, band_accuracy: 0.93, semantic_accuracy: 0.97, gate_status: "pass" }, evaluation_purpose: "operational_gate_check", is_quality_measurement: false, interpretation_note_ko: "외부 전문가가 확인한 9화행 층화표본으로 품질 점검 자동화 장치의 작동 여부를 확인하는 운영 게이트입니다. 전체 시스템의 정확도나 일반화된 품질 측정치가 아닙니다.", created_at: "2026-08-15T00:20:00.000Z" };
-
-const formatGateRate = (value: unknown) => typeof value === "number" ? `${Math.round(value * 100)}% 일치` : "확인값 없음";
+const PREVIEW_REGRESSION: RegressionRow = { id: "40000000-0000-4000-8000-000000000051", realization_pack_id: "pragma_ko_zh_core", realization_pack_version: "1.2.0", gate_status: "pass", evaluator_version: "preview-evaluator-v1", report: { mode: "researcher_gold_operational_gate", reference_case_count: 30, gate_status: "pass" }, evaluation_purpose: "operational_gate_check", is_quality_measurement: false, source_authority: "researcher_calibration", interpretation_note_ko: "연구 책임자가 확정한 기준답안 30건으로 품질 점검 자동화의 작동 조건만 확인합니다. 외부 전문가 18건의 내용타당성 확인과 별개입니다.", created_at: "2026-08-15T00:20:00.000Z" };
 
 const AdminMissionRelease = ({ preview = false }: { preview?: boolean }) => {
   const { pathname } = useLocation();
   const [lineages, setLineages] = useState<LineageRow[]>(preview ? [PREVIEW_LINEAGE] : []);
   const [missionResolutions, setMissionResolutions] = useState<MissionResolutionRow[]>(preview ? [PREVIEW_RESOLUTION] : []);
-  const [goldResolutions, setGoldResolutions] = useState<GoldResolutionRow[]>([]);
+  const [goldCalibrations, setGoldCalibrations] = useState<GoldCalibrationRow[]>([]);
   const [regressions, setRegressions] = useState<RegressionRow[]>(preview ? [PREVIEW_REGRESSION] : []);
   const [lineageId, setLineageId] = useState(preview ? PREVIEW_LINEAGE.id : "");
   const [missionResolutionId, setMissionResolutionId] = useState(preview ? PREVIEW_RESOLUTION.id : "");
@@ -46,14 +44,14 @@ const AdminMissionRelease = ({ preview = false }: { preview?: boolean }) => {
     const [lineageResult, resolutionResult, goldResult, regressionResult] = await Promise.all([
       db.from("mission_lineage_versions").select("id,scenario_id,version_no,stage,realization_pack_id,realization_pack_version,mission_content_hash,created_at").eq("stage", "reviewed").eq("coverage_status", "covered").order("created_at", { ascending: false }),
       db.from("mission_review_resolutions").select("id,lineage_version_id,review_round,resolution_revision,resolution_status,final_verdict,resolved_at").eq("final_verdict", "approve").in("resolution_status", ["unanimous", "consensus_after_discussion"]).order("resolved_at", { ascending: false }),
-      db.from("pragma_gold_expert_resolutions").select("id,calibration_resolution_id,review_round,resolution_revision,resolution_method,final_status,resolved_case_snapshot,resolved_at").eq("final_status", "expert_approved").in("resolution_method", ["unanimous", "consensus_after_discussion"]).order("resolved_at", { ascending: false }),
-      db.from("pragma_gold_regression_runs").select("id,realization_pack_id,realization_pack_version,gate_status,evaluator_version,report,evaluation_purpose,is_quality_measurement,interpretation_note_ko,created_at").order("created_at", { ascending: false }),
+      db.from("pragma_gold_calibration_resolutions").select("id,case_id,resolution_round,resolution_status,resolved_case_snapshot,resolved_at").eq("resolution_status", "researcher_approved").order("resolved_at", { ascending: false }),
+      db.from("pragma_gold_regression_runs").select("id,realization_pack_id,realization_pack_version,gate_status,evaluator_version,report,evaluation_purpose,is_quality_measurement,source_authority,interpretation_note_ko,created_at").order("created_at", { ascending: false }),
     ]);
     const error = lineageResult.error ?? resolutionResult.error ?? goldResult.error ?? regressionResult.error;
     if (error) setMessage(error.message);
     else {
       const loadedLineages = (lineageResult.data ?? []) as LineageRow[];
-      setLineages(loadedLineages); setMissionResolutions((resolutionResult.data ?? []) as MissionResolutionRow[]); setGoldResolutions((goldResult.data ?? []) as GoldResolutionRow[]); setRegressions((regressionResult.data ?? []) as RegressionRow[]);
+      setLineages(loadedLineages); setMissionResolutions((resolutionResult.data ?? []) as MissionResolutionRow[]); setGoldCalibrations((goldResult.data ?? []) as GoldCalibrationRow[]); setRegressions((regressionResult.data ?? []) as RegressionRow[]);
       setLineageId((current) => current || loadedLineages[0]?.id || "");
     }
     setLoading(false);
@@ -62,15 +60,15 @@ const AdminMissionRelease = ({ preview = false }: { preview?: boolean }) => {
 
   const selectedLineage = lineages.find((item) => item.id === lineageId) ?? null;
   const compatibleMissionResolutions = useMemo(() => missionResolutions.filter((item) => item.lineage_version_id === lineageId), [missionResolutions, lineageId]);
-  const compatibleRegressions = useMemo(() => regressions.filter((item) => item.gate_status === "pass" && selectedLineage && item.realization_pack_id === selectedLineage.realization_pack_id && item.realization_pack_version === selectedLineage.realization_pack_version), [regressions, selectedLineage]);
+  const compatibleRegressions = useMemo(() => regressions.filter((item) => item.gate_status === "pass" && item.source_authority === "researcher_calibration" && selectedLineage && item.realization_pack_id === selectedLineage.realization_pack_id && item.realization_pack_version === selectedLineage.realization_pack_version), [regressions, selectedLineage]);
   const authoritativeGold = useMemo(() => {
-    const latest = new Map<string, GoldResolutionRow>();
-    for (const item of goldResolutions) {
-      const current = latest.get(item.calibration_resolution_id);
-      if (!current || item.review_round > current.review_round || (item.review_round === current.review_round && item.resolution_revision > current.resolution_revision)) latest.set(item.calibration_resolution_id, item);
+    const latest = new Map<string, GoldCalibrationRow>();
+    for (const item of goldCalibrations) {
+      const current = latest.get(item.case_id);
+      if (!current || item.resolution_round > current.resolution_round) latest.set(item.case_id, item);
     }
     return [...latest.values()];
-  }, [goldResolutions]);
+  }, [goldCalibrations]);
   const goldForPack = authoritativeGold.filter((item) => {
     const snapshot = item.resolved_case_snapshot;
     return snapshot?.realization_pack_id && snapshot.realization_pack_version
@@ -109,24 +107,32 @@ const AdminMissionRelease = ({ preview = false }: { preview?: boolean }) => {
     setSaving(false); if (!error) await load();
   };
 
-  return <AdminShell title="4단계 · 통과한 학습문항을 학습자에게 공개" description="교수자가 승인하고 외부 전문가 확인과 기준답안 기반 품질 점검 자동화를 모두 통과한 문항만 PRAGMA 수업 화면에서 사용할 수 있게 합니다.">
+  return <AdminShell title="4단계 · 정식 학습자료의 학습자 사용 승인" description="기준답안 30개 시스템 게이트, 외부 전문가 18개 내용타당성 확인, 504개 자동 점검 확인·경고 집중 검토를 서로 다른 근거로 확인한 뒤 교수자가 사용을 승인합니다.">
     <div className="space-y-5">
       <ResearchWorkflowGuide current="release" />
       <div className="flex flex-wrap items-center justify-between gap-3"><Button asChild variant="ghost" size="sm"><Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"}><ArrowLeft className="mr-1 h-4 w-4" />문항 품질관리 전체 현황</Link></Button><Badge className="gap-1 bg-slate-900 text-white"><LockKeyhole className="h-3.5 w-3.5" />필수 조건을 모두 통과해야 공개</Badge></div>
 
+      <section className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-xl border bg-white p-4"><p className="text-xs font-semibold text-slate-500">시스템 판단 게이트</p><p className="mt-2 text-sm leading-6">연구 책임자가 확정한 기준답안 30개로 자동 판정 장치의 작동 조건을 확인합니다.</p></div>
+        <div className="rounded-xl border bg-white p-4"><p className="text-xs font-semibold text-slate-500">외부 내용타당성 확인</p><p className="mt-2 text-sm leading-6">전문가 2인이 사전 추출한 18개를 독립 확인합니다. 504개의 전문가 검증으로 표현하지 않습니다.</p></div>
+        <div className="rounded-xl border bg-white p-4"><p className="text-xs font-semibold text-slate-500">정식 문항 504개</p><p className="mt-2 text-sm leading-6">전량 자동 점검 결과를 확인하고 경고 문항을 집중 검토합니다. 전량 정밀검토 주장이 아닙니다.</p></div>
+      </section>
+
       <section className="rounded-xl border bg-white p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold"><PlayCircle className="h-5 w-5" />1. 기준답안 기반 품질 점검 자동화</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">외부 전문가가 확인한 9화행 층화표본을 시스템이 다시 판정합니다. 상황 적절성 판정 일치 90% 이상, 의미 보존 판정 일치 95% 이상을 장치 작동의 통과 조건으로 사용합니다.</p></div><Badge variant="outline">준비된 층화표본 {goldForPack.length}/18</Badge></div>
-        <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-950"><strong>해석 경계:</strong> 이 수치는 외부 전문가가 확인한 18개 층화표본에서 품질 점검 자동화 장치가 정한 조건대로 작동하는지 확인하는 운영 게이트입니다. 전체 시스템의 정확도나 일반화된 품질 측정치가 아니며 논문의 성능 수치로 보고하지 않습니다.</p>
-        {goldForPack.length < 18 && <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">2단계에서 화행별 2개씩 외부 전문가가 확인한 층화표본 18개를 먼저 준비하세요.</p>}
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold"><PlayCircle className="h-5 w-5" />1. 기준답안 30개 기반 시스템 판단 게이트</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">연구 책임자가 확정한 기준답안 모집단 전체로 품질 점검 자동화가 정해진 조건대로 작동하는지 확인합니다. 외부 전문가 18개 내용타당성 확인과는 별도 단계입니다.</p></div><Badge variant="outline">준비된 기준답안 {preview ? 30 : goldForPack.length}/30</Badge></div>
+        <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-950"><strong>해석 경계:</strong> 90%·95%는 기준답안 30개에서 사용하는 내부 운영 통과 조건입니다. 전체 시스템 정확도나 일반화된 품질 측정치로 보고하지 않습니다. 외부 전문가 18개에서는 일치율·카파를 대표 결과로 제시하지 않습니다.</p>
+        {goldForPack.length < 30 && <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">1단계에서 9개 화행을 포함한 기준답안 30개를 먼저 확정하세요.</p>}
         <details className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
           <summary className="cursor-pointer text-sm font-medium">고급 실행 정보 입력 · 일반적으로 시스템 관리자가 사용</summary>
           <p className="mt-2 text-xs leading-5 text-slate-500">평가 프로그램 버전과 생성 지시의 변조 확인값, 문항별 예측 결과를 기록합니다.</p>
           <div className="mt-4 grid gap-3 md:grid-cols-2"><Input value={evaluatorVersion} onChange={(event) => setEvaluatorVersion(event.target.value)} placeholder="평가 프로그램 버전" /><Input value={promptHash} onChange={(event) => setPromptHash(event.target.value)} placeholder="생성 지시 변조 확인값" /></div><Textarea className="mt-3 min-h-40 font-mono text-xs" value={observationsText} onChange={(event) => setObservationsText(event.target.value)} placeholder="문항별 시스템 판정 결과(JSON)" />
         </details>
-        <Button className="mt-3" onClick={recordRegression} disabled={preview || saving || goldForPack.length < 18 || !evaluatorVersion.trim() || !promptHash.trim()}><Save className="mr-1 h-4 w-4" />품질 점검 자동화 기록 저장</Button>
+        <Button className="mt-3" onClick={recordRegression} disabled={preview || saving || goldForPack.length < 30 || !evaluatorVersion.trim() || !promptHash.trim()}><Save className="mr-1 h-4 w-4" />시스템 판단 게이트 기록 저장</Button>
       </section>
 
-      <section className="rounded-xl border bg-white p-5"><h2 className="flex items-center gap-2 font-semibold"><Rocket className="h-5 w-5" />2. 교수자가 통과 문항의 학습자 공개를 최종 승인</h2><p className="mt-2 text-sm leading-6 text-slate-600">교수자가 학습자가 실제 수업에서 사용할 문항, 그 문항에 대한 외부 전문가의 최종 확인, 같은 규칙집의 품질 점검 자동화 기록을 차례로 선택합니다. 시스템은 필수 조건을 확인하지만 공개 여부를 대신 결정하지 않습니다.</p><div className="mt-4 grid gap-3"><Select value={lineageId} onValueChange={(value) => { setLineageId(value); setMissionResolutionId(""); setRegressionId(""); }}><SelectTrigger><SelectValue placeholder={loading ? "문항을 불러오는 중…" : "학습자에게 공개할 AI 학습문항 선택"} /></SelectTrigger><SelectContent>{lineages.map((item) => <SelectItem key={item.id} value={item.id}>문항 {item.scenario_id.slice(0, 8)} · 버전 {item.version_no} · 규칙집 {item.realization_pack_version}</SelectItem>)}</SelectContent></Select><Select value={missionResolutionId} onValueChange={setMissionResolutionId}><SelectTrigger><SelectValue placeholder="이 문항의 최신 외부 전문가 확인 결과 선택" /></SelectTrigger><SelectContent>{compatibleMissionResolutions.map((item) => <SelectItem key={item.id} value={item.id}>{item.review_round}차 확인 · 결론 버전 {item.resolution_revision} · 사용 가능</SelectItem>)}</SelectContent></Select><Select value={regressionId} onValueChange={setRegressionId}><SelectTrigger><SelectValue placeholder="같은 규칙집의 품질 점검 자동화 통과 기록 선택" /></SelectTrigger><SelectContent>{compatibleRegressions.map((item) => <SelectItem key={item.id} value={item.id}>{item.evaluator_version} · 적절성 {formatGateRate(item.report.band_accuracy)} / 의미 {formatGateRate(item.report.semantic_accuracy)} · 운영 게이트</SelectItem>)}</SelectContent></Select></div><Button className="mt-4" onClick={release} disabled={preview || saving || !selectedLineage || !missionResolutionId || !regressionId}><Rocket className="mr-1 h-4 w-4" />교수자 최종 공개 승인</Button><p className="mt-2 text-xs leading-5 text-slate-500">판단 유보·수정 필요·제외 판정, 오래된 결론, 두 전문가의 동의가 끝나지 않은 해결안, 다른 규칙집의 품질 점검 기록이 하나라도 있으면 서버가 공개를 거부합니다.</p></section>
+      <section className="rounded-xl border bg-white p-5"><h2 className="flex items-center gap-2 font-semibold"><Rocket className="h-5 w-5" />2. 정식 504개는 전체 단위로 교수자가 최종 승인</h2><p className="mt-2 text-sm leading-6 text-slate-600">정식 corpus는 이 화면에서 문항별로 공개하지 않습니다. 504개 자동 결과 확인·경고 집중 검토와 두 독립 게이트가 모두 끝난 뒤 배치 화면에서 전체를 한 번에 승인합니다.</p><Button asChild className="mt-4"><Link to="/admin/batch">정식 504개 최종 승인 화면</Link></Button></section>
+
+      <details className="rounded-xl border bg-white p-5"><summary className="cursor-pointer font-semibold">개별 시험문항 공개 도구 · 정식 504개와 별도</summary><p className="mt-2 text-sm leading-6 text-slate-600">아래 기능은 정식 corpus 밖의 개별 연구용 문항에만 사용합니다.</p><div className="mt-4 grid gap-3"><Select value={lineageId} onValueChange={(value) => { setLineageId(value); setMissionResolutionId(""); setRegressionId(""); }}><SelectTrigger><SelectValue placeholder={loading ? "문항을 불러오는 중…" : "개별 시험문항 선택"} /></SelectTrigger><SelectContent>{lineages.map((item) => <SelectItem key={item.id} value={item.id}>문항 {item.scenario_id.slice(0, 8)} · 버전 {item.version_no}</SelectItem>)}</SelectContent></Select><Select value={missionResolutionId} onValueChange={setMissionResolutionId}><SelectTrigger><SelectValue placeholder="이 문항의 외부 확인 결과" /></SelectTrigger><SelectContent>{compatibleMissionResolutions.map((item) => <SelectItem key={item.id} value={item.id}>{item.review_round}차 확인 · 결론 버전 {item.resolution_revision}</SelectItem>)}</SelectContent></Select><Select value={regressionId} onValueChange={setRegressionId}><SelectTrigger><SelectValue placeholder="시스템 판단 게이트 통과 기록" /></SelectTrigger><SelectContent>{compatibleRegressions.map((item) => <SelectItem key={item.id} value={item.id}>{item.evaluator_version} · 운영 게이트 통과</SelectItem>)}</SelectContent></Select></div><Button className="mt-4" onClick={release} disabled={preview || saving || !selectedLineage || !missionResolutionId || !regressionId}><Rocket className="mr-1 h-4 w-4" />개별 시험문항 사용 승인</Button></details>
       {message && <p className="rounded-lg border bg-white p-3 text-sm">{message}</p>}{preview && <p className="text-xs text-slate-500">미리보기 화면에서는 내용을 저장하거나 공개할 수 없습니다.</p>}
     </div>
   </AdminShell>;
