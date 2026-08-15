@@ -2170,7 +2170,8 @@
 - 변경: 검증 범위 mission_v5의 목표어 문장을 최대 5개씩 별도 저온 호출로 귀속하고, 서버 allowlist·evidence 재계산·20% 미귀속 상한을 적용했다. 클라이언트 R31/R32와 current-prompt 전용 DB trigger, 호출 장부 operation, prompt/pack snapshot을 연결했다.
 - 검증 결과: 표적 37개와 SQL 보강 후 25개, 전체 68파일 401개 테스트가 통과했고 9개 유료·원격 테스트는 기존 설정대로 skip했다. typecheck, production build 1,934 modules, diff check가 통과했다.
 - 예상과 달랐던 점: 기존 `mission_v5` 샘플까지 무조건 lineage를 요구하면 생성 당시 없던 계약을 소급 적용하게 됐다. exact current mission prompt version에만 hard gate를 적용해 legacy 읽기와 신규 fail-closed 저장을 분리했다.
-- 다음 반영: migration과 Edge를 같은 release로 적용한 뒤 요청·거절·감사 각 1건의 실제 생성→R31→저장→전문가 큐 연결을 확인한다. 실제 전문가 판정 전에는 귀속 정확도나 타당화 완료로 보고하지 않는다.
+- 운영 반영: migration `20260815190000`을 적용하고 `generate-scenario` Edge v64 ACTIVE를 확인했다.
+- 다음 반영: 요청·거절·감사 각 1건의 실제 생성→R31→저장→전문가 큐 연결을 확인한다. 실제 전문가 판정 전에는 귀속 정확도나 타당화 완료로 보고하지 않는다.
 - 관련 Decision / Evidence: `DEC-20260815-02`, `EVD-20260815-02`
 
 ## ITER-20260815-03 · 운영 전수 검토 잔여 4건과 Gold45 불합의 프로토콜
