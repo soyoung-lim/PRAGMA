@@ -42,7 +42,7 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/generator", label: "개별 생성" },
       { to: "/admin/batch", label: "배치 생성" },
       { to: "/admin/browser", label: "학습 미션 조립" },
-      { to: "/admin/review", label: "통합 검수·승인" },
+      { to: "/admin/review", label: "AI 생성물 확인·승인" },
       { to: "/admin/archive", label: "시나리오 아카이브" },
     ],
   },
@@ -62,17 +62,18 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/learners", label: "학습자 관리" },
       { to: "/admin/decision-traces", label: "수행·의사결정 기록" },
       { to: "/admin/analytics", label: "학습 분석", pending: true },
+      { to: "/admin/research-qa/improvements", label: "학습 콘텐츠 개선" },
     ],
   },
   {
-    header: "4 · 연구",
+    header: "4 · 문항 품질·연구자료",
     items: [
-      { to: "/admin/research-qa", label: "Research & QA Console" },
-      { to: "/admin/research-qa/gold-experts", label: "Gold 외부 전문가 운영" },
-      { to: "/admin/research-qa/expert-reviews", label: "전문가 검토 운영" },
-      { to: "/admin/research-qa/releases", label: "Gold 회귀·미션 공개" },
-      { to: "/admin/research-qa/improvements", label: "데이터 개선 Flywheel" },
-      { to: "/admin/export", label: "연구 데이터 관리", pending: true },
+      { to: "/admin/research-qa", label: "전체 현황" },
+      { to: "/admin/research-qa/calibration", label: "1. 품질검사 기준답안 작성" },
+      { to: "/admin/research-qa/gold-experts", label: "2. 기준답안 외부 전문가 확인" },
+      { to: "/admin/research-qa/expert-reviews", label: "3. AI 학습문항 외부 전문가 확인" },
+      { to: "/admin/research-qa/releases", label: "4. 통과 문항 학습자 공개" },
+      { to: "/admin/export", label: "5. 학습 수행기록 내려받기" },
     ],
   },
   {
@@ -123,7 +124,7 @@ export const AdminShell = ({ title, description, children }: AdminShellProps) =>
       </header>
 
       <div className="flex gap-6 pl-5 pr-8 py-6">
-        <aside className="hidden w-[245px] shrink-0 md:block">
+        <aside className="hidden w-[285px] shrink-0 md:block">
           <nav className="flex flex-col px-1">
             <Link
               to={STANDALONE.to}

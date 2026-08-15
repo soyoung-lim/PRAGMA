@@ -17,6 +17,7 @@ import {
   type MissionExpertLineageSnapshot,
 } from "@/lib/pragma/expertReviewProtocol";
 import { ItemLineageSchema, type ItemLineageClaim } from "@/lib/pragma/itemLineage";
+import { KO_ZH_CORE_REALIZATION_PACK } from "@/lib/pragma/realizationPack";
 
 type CandidateDraft = { band_code: string; rationale_ko: string };
 type ClaimDraft = {
@@ -31,16 +32,23 @@ type ResolutionRow = { id: string; lineage_version_id: string; review_ids: strin
 type SignoffRow = { id: string; resolution_id: string; decision: "agree" | "disagree"; signed_at: string };
 
 const BAND_OPTIONS = [
-  ["too_direct", "과도하게 직접적"], ["within_band", "목표 적절성 대역"],
+  ["too_direct", "과도하게 직접적"], ["within_band", "이 상황에 적절함"],
   ["too_indirect", "과도하게 간접적"], ["too_blunt", "과도하게 단정적"],
   ["over_elaborate", "과도하게 장황함"], ["insufficient", "강도 부족"],
   ["excessive", "강도 과도"], ["uncertain", "판정 유보"],
 ] as const;
 
 const CLAIM_VERDICTS = [
-  ["support", "연결 지지"], ["revise", "연결 수정"],
-  ["reject", "연결 기각"], ["uncertain", "판정 유보"],
+  ["support", "현재 연결이 타당함"], ["revise", "연결할 규칙·주의사항 수정"],
+  ["reject", "현재 연결이 타당하지 않음"], ["uncertain", "근거 부족으로 판단 유보"],
 ] as const;
+
+const OVERALL_LABELS: Record<string, string> = { approve: "그대로 사용 가능", revise: "수정 후 다시 검토", reject: "학습 문항에서 제외" };
+const SIGNOFF_LABELS: Record<string, string> = { agree: "해결안에 동의", disagree: "해결안에 동의하지 않음" };
+const PREVIEW_RULE_LABELS: Record<string, string> = { "RR-KOZH-REQ-HEDGE": "요청을 부드럽게 만드는 완화 표현", "RR-KOZH-REQ-OPTIONALITY": "상대방에게 선택권을 남기는 표현" };
+const PREVIEW_RISK_LABELS: Record<string, string> = { imperative_pressure: "명령처럼 들릴 수 있는 압박 위험" };
+const ruleLabel = (id: string) => KO_ZH_CORE_REALIZATION_PACK.resources.find((item) => item.rule_id === id)?.prompt_label_ko ?? PREVIEW_RULE_LABELS[id] ?? id;
+const riskLabel = (id: string) => KO_ZH_CORE_REALIZATION_PACK.risks.find((item) => item.risk_id === id)?.description_ko ?? PREVIEW_RISK_LABELS[id] ?? id;
 
 // 신규 moat tables는 타입 재생성 전까지 동적 table adapter를 사용한다.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -238,7 +246,7 @@ const ExpertReviewQueue = ({ preview = false }: { preview?: boolean }) => {
     if (error) setMessage(error.message);
     else {
       setSignoffs((current) => [data as SignoffRow, ...current]);
-      setMessage("resolution sign-off를 append-only로 제출했습니다.");
+      setMessage("최종 해결안에 대한 의견을 제출했습니다. 제출 기록은 덮어쓰지 않습니다.");
     }
   };
 
@@ -246,15 +254,15 @@ const ExpertReviewQueue = ({ preview = false }: { preview?: boolean }) => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 bg-[#15202B]"><div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4"><HomeBrand /><div className="flex items-center gap-4"><Link to={preview ? "/prototype/expert-gold-reviews" : "/expert/gold-reviews"} className="text-sm text-[#AAB8C2] hover:text-white">Gold 검토</Link><button onClick={signOut} className="flex items-center gap-2 text-sm text-[#AAB8C2]"><LogOut className="h-4 w-4" /> 나가기</button></div></div></header>
+      <header className="sticky top-0 z-40 bg-[#15202B]"><div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4"><HomeBrand /><div className="flex items-center gap-4"><Link to={preview ? "/prototype/expert-gold-reviews" : "/expert/gold-reviews"} className="text-sm text-[#AAB8C2] hover:text-white">품질검사 기준답안 확인</Link><button onClick={signOut} className="flex items-center gap-2 text-sm text-[#AAB8C2]"><LogOut className="h-4 w-4" /> 나가기</button></div></div></header>
       <main className="mx-auto max-w-7xl px-6 py-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex gap-3"><span className="w-[5px] rounded bg-[#FAD338]" /><div><h1 className="text-3xl font-bold">Blind Expert Review</h1><p className="mt-1 text-sm text-muted-foreground">중국어 문장 대역과 AI provenance claim을 서로 독립적으로 판정합니다.</p></div></div>
-          <Badge variant="outline" className="border-indigo-200 bg-indigo-50 text-indigo-700"><EyeOff className="mr-1 h-3.5 w-3.5" /> peer review 비공개</Badge>
+          <div className="flex gap-3"><span className="w-[5px] rounded bg-[#FAD338]" /><div><p className="text-xs font-semibold text-amber-700">두 번째 전문가 과제</p><h1 className="mt-1 text-3xl font-bold">AI 학습문항 외부 전문가 확인</h1><p className="mt-1 text-sm text-muted-foreground">AI가 만든 실제 수업용 문장의 상황 적절성, 의미와 규칙 연결을 하나씩 확인합니다.</p></div></div>
+          <Badge variant="outline" className="border-indigo-200 bg-indigo-50 text-indigo-700"><EyeOff className="mr-1 h-3.5 w-3.5" />다른 전문가의 답은 비공개</Badge>
         </div>
 
         <section className="mt-5 rounded-xl border border-[#E5CF72] bg-[#FFF9DF] p-4 text-sm leading-6 text-[#665515]">
-          제출 전에는 다른 검토자의 결과를 볼 수 없습니다. `uncertain`도 유효한 판정이며, 불확실성을 억지 합의로 바꾸지 않습니다. 제출된 행은 수정·삭제하지 않습니다.
+          <strong>확인 순서:</strong> ① 문장 적절성 판단 → ② 시스템이 연결한 규칙·주의사항 확인 → ③ 문항 전체 종합판정. 판단이 어려우면 ‘판단 유보’를 선택해도 됩니다. 제출한 결과는 수정·삭제하지 않습니다.
         </section>
 
         {loading ? <p className="mt-8 text-sm text-muted-foreground">배정 목록을 불러오는 중…</p> : assignments.length === 0 ? (
@@ -262,51 +270,51 @@ const ExpertReviewQueue = ({ preview = false }: { preview?: boolean }) => {
         ) : (
           <div className="mt-6 grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
             <aside className="rounded-xl border border-border bg-card p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">My queue</p>
+              <p className="text-sm font-semibold">내가 확인할 AI 학습문항</p>
               <div className="mt-3 space-y-2">
                 {assignments.map((item, index) => {
                   const done = reviews.some((review) => review.assignment_id === item.id);
-                  return <button key={item.id} onClick={() => setSelectedId(item.id)} className={`w-full rounded-lg border p-3 text-left ${selectedId === item.id ? "border-[#D6AD00] bg-[#FFF8D1]" : "border-border"}`}><div className="flex justify-between"><span className="font-mono text-xs">MISSION-{String(index + 1).padStart(2, "0")}</span><Badge variant="outline" className={done ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}>{done ? "제출 완료" : "대기"}</Badge></div><p className="mt-2 text-xs text-muted-foreground">round {item.review_round} · {item.protocol_version}</p></button>;
+                  return <button key={item.id} onClick={() => setSelectedId(item.id)} className={`w-full rounded-lg border p-3 text-left ${selectedId === item.id ? "border-[#D6AD00] bg-[#FFF8D1]" : "border-border"}`}><div className="flex justify-between"><span className="text-xs font-semibold">학습 문항 {String(index + 1).padStart(2, "0")}</span><Badge variant="outline" className={done ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}>{done ? "제출 완료" : "확인 대기"}</Badge></div><p className="mt-2 text-xs text-muted-foreground">{item.review_round}차 확인</p></button>;
                 })}
               </div>
             </aside>
 
             {assignment && lineage && <div className="space-y-5">
               <section className="rounded-xl border border-border bg-card p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-mono text-xs text-muted-foreground">lineage {lineage.id.slice(0, 8)}… · round {assignment.review_round}</p><h2 className="mt-1 text-xl font-semibold">목표어 문장 {lineage.item_lineage.claims.length}개 전수 판정</h2></div><Badge variant="outline">pack v{lineage.item_lineage.realization_pack_version}</Badge></div>
-                {submitted && <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800"><CheckCircle2 className="mr-2 inline h-4 w-4" />{new Date(submitted.submitted_at).toLocaleString("ko-KR")} 제출 완료 · {submitted.overall_verdict}</p>}
+                <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs text-muted-foreground">{assignment.review_round}차 검토</p><h2 className="mt-1 text-xl font-semibold">중국어 문장 {lineage.item_lineage.claims.length}개 모두 확인</h2></div><Badge variant="outline">표현 규칙집 {lineage.item_lineage.realization_pack_version}판</Badge></div>
+                {submitted && <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800"><CheckCircle2 className="mr-2 inline h-4 w-4" />{new Date(submitted.submitted_at).toLocaleString("ko-KR")} 제출 완료 · {OVERALL_LABELS[submitted.overall_verdict] ?? submitted.overall_verdict}</p>}
               </section>
 
               {!submitted && lineage.item_lineage.claims.map((claim: ItemLineageClaim, index) => {
                 const text = resolveExpertReviewTargetText(lineage.mission_content, claim.target_path);
                 const claimDraft = claims[claim.claim_id];
                 return <article key={claim.claim_id} className="rounded-xl border border-border bg-card p-5">
-                  <div className="flex gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#15202B] text-xs font-semibold text-white">{index + 1}</span><div className="min-w-0"><p className="font-mono text-xs text-muted-foreground">{claim.claim_id} · {claim.target_path}</p><p className="mt-2 text-lg leading-8" lang="zh">{text ?? "대상 문장을 찾을 수 없음"}</p></div></div>
-                  <div className="mt-4 rounded-lg bg-muted/50 p-3 text-xs leading-5"><p><strong>모델 주장:</strong> rule [{claim.rule_ids.join(", ") || "없음"}] · risk [{claim.risk_ids.join(", ") || "없음"}]</p><p className="mt-1 text-muted-foreground">{claim.note_ko}</p></div>
+                  <div className="flex gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#15202B] text-xs font-semibold text-white">{index + 1}</span><div className="min-w-0"><p className="text-xs text-muted-foreground">확인 문장 {index + 1}</p><p className="mt-2 text-lg leading-8" lang="zh">{text ?? "대상 문장을 찾을 수 없음"}</p></div></div>
+                  <div className="mt-4 rounded-lg bg-muted/50 p-3 text-sm leading-6"><p><strong>시스템이 연결한 표현 규칙:</strong> {claim.rule_ids.map(ruleLabel).join(", ") || "없음"}</p><p><strong>시스템이 표시한 주의사항:</strong> {claim.risk_ids.map(riskLabel).join(", ") || "없음"}</p><p className="mt-1 text-muted-foreground">{claim.note_ko}</p><details className="mt-2 text-xs"><summary className="cursor-pointer">내부 코드 보기</summary><p className="mt-1 font-mono">{claim.claim_id} · {claim.target_path}</p></details></div>
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <label className="text-sm font-medium">독립 band 판정<Select value={bands[claim.claim_id]?.band_code ?? ""} onValueChange={(value) => setBands((current) => ({ ...current, [claim.claim_id]: { ...current[claim.claim_id], band_code: value } }))}><SelectTrigger className="mt-2"><SelectValue placeholder="대역 선택" /></SelectTrigger><SelectContent>{BAND_OPTIONS.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></label>
-                    <label className="text-sm font-medium">band 판정 근거<Textarea className="mt-2 min-h-[76px]" value={bands[claim.claim_id]?.rationale_ko ?? ""} onChange={(event) => setBands((current) => ({ ...current, [claim.claim_id]: { ...current[claim.claim_id], rationale_ko: event.target.value } }))} /></label>
-                    <label className="text-sm font-medium">provenance 판정<Select value={claimDraft?.verdict ?? ""} onValueChange={(value) => setClaims((current) => ({ ...current, [claim.claim_id]: { ...current[claim.claim_id], verdict: value as ClaimDraft["verdict"], proposed_rule_ids: [], proposed_risk_ids: [] } }))}><SelectTrigger className="mt-2"><SelectValue placeholder="claim 판정" /></SelectTrigger><SelectContent>{CLAIM_VERDICTS.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></label>
-                    <label className="text-sm font-medium">provenance 판정 근거<Textarea className="mt-2 min-h-[76px]" value={claimDraft?.rationale_ko ?? ""} onChange={(event) => setClaims((current) => ({ ...current, [claim.claim_id]: { ...current[claim.claim_id], rationale_ko: event.target.value } }))} /></label>
+                    <label className="text-sm font-medium">1) 이 상황에서 문장이 얼마나 적절한가<Select value={bands[claim.claim_id]?.band_code ?? ""} onValueChange={(value) => setBands((current) => ({ ...current, [claim.claim_id]: { ...current[claim.claim_id], band_code: value } }))}><SelectTrigger className="mt-2"><SelectValue placeholder="적절성 선택" /></SelectTrigger><SelectContent>{BAND_OPTIONS.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></label>
+                    <label className="text-sm font-medium">그렇게 판단한 이유<Textarea className="mt-2 min-h-[76px]" value={bands[claim.claim_id]?.rationale_ko ?? ""} onChange={(event) => setBands((current) => ({ ...current, [claim.claim_id]: { ...current[claim.claim_id], rationale_ko: event.target.value } }))} placeholder="관계, 부담, 직접성, 중국어 자연성 등을 근거로 적어 주세요" /></label>
+                    <label className="text-sm font-medium">2) 시스템이 연결한 규칙·주의사항이 타당한가<Select value={claimDraft?.verdict ?? ""} onValueChange={(value) => setClaims((current) => ({ ...current, [claim.claim_id]: { ...current[claim.claim_id], verdict: value as ClaimDraft["verdict"], proposed_rule_ids: [], proposed_risk_ids: [] } }))}><SelectTrigger className="mt-2"><SelectValue placeholder="규칙 연결 판단" /></SelectTrigger><SelectContent>{CLAIM_VERDICTS.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></label>
+                    <label className="text-sm font-medium">그렇게 판단한 이유<Textarea className="mt-2 min-h-[76px]" value={claimDraft?.rationale_ko ?? ""} onChange={(event) => setClaims((current) => ({ ...current, [claim.claim_id]: { ...current[claim.claim_id], rationale_ko: event.target.value } }))} placeholder="연결이 맞거나 틀린 이유를 적어 주세요" /></label>
                   </div>
-                  {claimDraft?.verdict === "revise" && <div className="mt-4 grid gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 md:grid-cols-2"><div><p className="text-xs font-semibold text-amber-900">대체 rule</p>{lineage.rule_scope_ids.map((id) => <label key={id} className="mt-2 flex items-center gap-2 text-xs"><Checkbox checked={claimDraft.proposed_rule_ids.includes(id)} onCheckedChange={(checked) => toggleId(claim.claim_id, "proposed_rule_ids", id, checked === true)} />{id}</label>)}</div><div><p className="text-xs font-semibold text-amber-900">대체 risk</p>{lineage.risk_scope_ids.map((id) => <label key={id} className="mt-2 flex items-center gap-2 text-xs"><Checkbox checked={claimDraft.proposed_risk_ids.includes(id)} onCheckedChange={(checked) => toggleId(claim.claim_id, "proposed_risk_ids", id, checked === true)} />{id}</label>)}</div></div>}
+                  {claimDraft?.verdict === "revise" && <div className="mt-4 grid gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 md:grid-cols-2"><div><p className="text-xs font-semibold text-amber-900">대신 연결할 표현 규칙</p>{lineage.rule_scope_ids.map((id) => <label key={id} className="mt-2 flex items-center gap-2 text-xs"><Checkbox checked={claimDraft.proposed_rule_ids.includes(id)} onCheckedChange={(checked) => toggleId(claim.claim_id, "proposed_rule_ids", id, checked === true)} />{ruleLabel(id)}</label>)}</div><div><p className="text-xs font-semibold text-amber-900">대신 연결할 주의사항</p>{lineage.risk_scope_ids.map((id) => <label key={id} className="mt-2 flex items-center gap-2 text-xs"><Checkbox checked={claimDraft.proposed_risk_ids.includes(id)} onCheckedChange={(checked) => toggleId(claim.claim_id, "proposed_risk_ids", id, checked === true)} />{riskLabel(id)}</label>)}</div></div>}
                 </article>;
               })}
 
               {!submitted && <section className="rounded-xl border border-border bg-card p-5">
-                <h2 className="text-lg font-semibold">종합 판정과 독립성 선언</h2>
-                <div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-medium">미션 종합 판정<Select value={overallVerdict} onValueChange={(value) => setOverallVerdict(value as typeof overallVerdict)}><SelectTrigger className="mt-2"><SelectValue placeholder="판정 선택" /></SelectTrigger><SelectContent><SelectItem value="approve">콘텐츠 승인</SelectItem><SelectItem value="revise">수정 필요</SelectItem><SelectItem value="reject">기각</SelectItem></SelectContent></Select></label><label className="text-sm font-medium">확신도<Select value={confidence} onValueChange={setConfidence}><SelectTrigger className="mt-2"><SelectValue placeholder="1~5" /></SelectTrigger><SelectContent>{[1,2,3,4,5].map((value) => <SelectItem key={value} value={String(value)}>{value}</SelectItem>)}</SelectContent></Select></label></div>
+                <h2 className="text-lg font-semibold">3) 학습 문항 전체에 대한 종합판정</h2>
+                <div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-medium">문항 전체 결과<Select value={overallVerdict} onValueChange={(value) => setOverallVerdict(value as typeof overallVerdict)}><SelectTrigger className="mt-2"><SelectValue placeholder="결과 선택" /></SelectTrigger><SelectContent><SelectItem value="approve">그대로 사용 가능</SelectItem><SelectItem value="revise">수정 후 다시 검토</SelectItem><SelectItem value="reject">학습 문항에서 제외</SelectItem></SelectContent></Select></label><label className="text-sm font-medium">내 판단의 확신도<Select value={confidence} onValueChange={setConfidence}><SelectTrigger className="mt-2"><SelectValue placeholder="1(낮음)~5(높음)" /></SelectTrigger><SelectContent>{[1,2,3,4,5].map((value) => <SelectItem key={value} value={String(value)}>{value}</SelectItem>)}</SelectContent></Select></label></div>
                 <label className="mt-4 block text-sm font-medium">종합 근거<Textarea className="mt-2 min-h-[90px]" value={rationale} onChange={(event) => setRationale(event.target.value)} /></label>
-                <div className="mt-4 space-y-3 rounded-lg bg-muted/50 p-4 text-sm"><label className="flex items-start gap-3"><Checkbox checked={independent} onCheckedChange={(checked) => setIndependent(checked === true)} /><span>다른 검토자의 판정을 보지 않고 독립적으로 검토했습니다.</span></label><label className="flex items-start gap-3"><Checkbox checked={noConflict} onCheckedChange={(checked) => setNoConflict(checked === true)} /><span>이 미션·연구와 관련된 이해상충이 없습니다.</span></label><label className="flex items-start gap-3"><Checkbox checked={proficiency} onCheckedChange={(checked) => setProficiency(checked === true)} /><span>중국어 표현의 자연성과 화용 대역을 판정할 전문성을 확인합니다.</span></label></div>
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3"><p className="max-w-xl text-xs leading-5 text-muted-foreground"><ShieldCheck className="mr-1 inline h-4 w-4" />모든 claim의 band와 provenance 판정이 완전해야 제출할 수 있습니다.</p><Button onClick={submit} disabled={!complete || saving || preview}><Save className="mr-2 h-4 w-4" />{preview ? "미리보기 · 저장 잠김" : saving ? "제출 중…" : "독립 판정 제출"}</Button></div>
+                <div className="mt-4 space-y-3 rounded-lg bg-muted/50 p-4 text-sm"><label className="flex items-start gap-3"><Checkbox checked={independent} onCheckedChange={(checked) => setIndependent(checked === true)} /><span>다른 외부 전문가의 판단을 보지 않고 독립적으로 확인했습니다.</span></label><label className="flex items-start gap-3"><Checkbox checked={noConflict} onCheckedChange={(checked) => setNoConflict(checked === true)} /><span>이 학습문항·연구와 관련된 이해상충이 없습니다.</span></label><label className="flex items-start gap-3"><Checkbox checked={proficiency} onCheckedChange={(checked) => setProficiency(checked === true)} /><span>중국어 표현의 자연성과 상황 적절성을 판단할 전문성이 있습니다.</span></label></div>
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3"><p className="max-w-xl text-xs leading-5 text-muted-foreground"><ShieldCheck className="mr-1 inline h-4 w-4" />모든 문장의 적절성과 규칙 연결을 판단하고 이유를 적어야 제출할 수 있습니다.</p><Button onClick={submit} disabled={!complete || saving || preview}><Save className="mr-2 h-4 w-4" />{preview ? "미리보기 · 제출 잠김" : saving ? "제출 중…" : "내 독립판정 제출"}</Button></div>
                 {message && <p role="status" className="mt-3 rounded-lg bg-muted p-3 text-sm">{message}</p>}
               </section>}
 
               {submitted && latestResolution?.resolution_status === "consensus_after_discussion" && <section className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-5">
-                <h2 className="text-lg font-semibold">Discussion resolution sign-off</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">revision {latestResolution.resolution_revision} · 최종 판정 {latestResolution.final_verdict}. 다른 전문가의 원 판정은 공개하지 않고, 해결안 자체에 동의하는지만 별도로 기록합니다.</p>
+                <h2 className="text-lg font-semibold">두 전문가의 최종 해결안 확인</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{latestResolution.resolution_revision}번째 해결안 · {OVERALL_LABELS[latestResolution.final_verdict ?? ""] ?? latestResolution.final_verdict}. 다른 전문가의 원래 답은 공개하지 않고, 최종 해결안에 동의하는지만 기록합니다.</p>
                 <p className="mt-3 rounded-lg bg-white/70 p-3 text-sm leading-6">{latestResolution.rationale_ko}</p>
-                {existingSignoff ? <p className="mt-4 text-sm font-medium text-emerald-700"><CheckCircle2 className="mr-2 inline h-4 w-4" />{existingSignoff.decision} sign-off 제출 완료</p> : <div className="mt-4 grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]"><Select value={signoffDecision} onValueChange={(value) => setSignoffDecision(value as typeof signoffDecision)}><SelectTrigger><SelectValue placeholder="해결안 동의 여부" /></SelectTrigger><SelectContent><SelectItem value="agree">동의</SelectItem><SelectItem value="disagree">동의하지 않음</SelectItem></SelectContent></Select><Textarea value={signoffRationale} onChange={(event) => setSignoffRationale(event.target.value)} placeholder="동의·이견 근거" /><div className="md:col-span-2 flex justify-end"><Button onClick={submitSignoff} disabled={!signoffDecision || !signoffRationale.trim() || saving || preview}>sign-off 제출</Button></div></div>}
+                {existingSignoff ? <p className="mt-4 text-sm font-medium text-emerald-700"><CheckCircle2 className="mr-2 inline h-4 w-4" />{SIGNOFF_LABELS[existingSignoff.decision] ?? existingSignoff.decision} 제출 완료</p> : <div className="mt-4 grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]"><Select value={signoffDecision} onValueChange={(value) => setSignoffDecision(value as typeof signoffDecision)}><SelectTrigger><SelectValue placeholder="해결안 동의 여부" /></SelectTrigger><SelectContent><SelectItem value="agree">동의</SelectItem><SelectItem value="disagree">동의하지 않음</SelectItem></SelectContent></Select><Textarea value={signoffRationale} onChange={(event) => setSignoffRationale(event.target.value)} placeholder="동의하거나 반대하는 이유" /><div className="md:col-span-2 flex justify-end"><Button onClick={submitSignoff} disabled={!signoffDecision || !signoffRationale.trim() || saving || preview}>해결안 의견 제출</Button></div></div>}
               </section>}
             </div>}
           </div>
