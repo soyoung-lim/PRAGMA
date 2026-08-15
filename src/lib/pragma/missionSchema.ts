@@ -11,6 +11,7 @@ import {
   SourceModalitySchema,
 } from "@/lib/pragma/coreSchema";
 import { DEFAULT_DIRECTION, type LanguageDirection } from "@/lib/pragma/enums";
+import { ItemLineageSchema } from "@/lib/pragma/itemLineage";
 
 // ── 공통 필드 ─────────────────────────────────────────────────────────
 const MpjCommon = {
@@ -146,9 +147,12 @@ export type ProductionTask = z.infer<typeof ProductionTaskSchema>;
 // 스키마는 관대(선택)하게 두고, 존재·필수값 검사는 R20이 담당한다.
 // 이유: 모델 응답이 아니라 승격 edge function이 채우므로 zod hard-fail이 부적절.
 export const MissionProvenanceSchema = z.object({
+  provider: z.string().min(1).optional(),
   model: z.string().min(1),
   prompt_version: z.string().min(1),
   prompt_snapshot_hash: z.string().optional(),
+  /** 실제 system+user+model+temperature+response_format 요청의 canonical hash. */
+  prompt_instance_hash: z.string().min(1).optional(),
   mission_content_hash: z.string().min(1),
   generated_at: z.string().min(1),
   generation_attempt: z.number().int().positive(),
@@ -182,6 +186,7 @@ export const MissionV1Schema = z.object({
   unit: UnitSchema,
   mpj_items: z.array(MpjItemSchema).length(5),
   production_task: ProductionTaskSchema,
+  item_lineage: ItemLineageSchema.optional(),
   provenance: MissionProvenanceSchema.optional(), // 존재·필수값 = R20(missionRules)
   quality_check: QualityCheckSchema.optional(),   // 검증②(0-q·99) — 승격 후 주입
   // summary 없음 — 코드가 recommended_example_zh 5개를 모아 렌더(B13)
@@ -314,6 +319,7 @@ export const MissionV2Schema = z.object({
   unit: UnitSchema,
   mpj_items: z.array(MpjItemV2Schema).length(5),
   production_task: ProductionTaskV2Schema,
+  item_lineage: ItemLineageSchema.optional(),
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
 });
@@ -405,6 +411,7 @@ export function normalizeMission(input: unknown): {
         ...(pt.vocabulary_hints ? { vocabulary_hints: pt.vocabulary_hints } : {}),
         reference_alternatives: pt.reference_alternatives.map((a) => ({ text: a.zh, note_ko: a.note_ko })),
       },
+      ...(m.item_lineage ? { item_lineage: m.item_lineage } : {}),
       ...(m.provenance ? { provenance: m.provenance } : {}),
       ...(m.quality_check ? { quality_check: m.quality_check } : {}),
     },

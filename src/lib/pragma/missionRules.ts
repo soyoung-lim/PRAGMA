@@ -1,4 +1,4 @@
-// 규칙검사 R1~R24 — 결정론·API 0회. 생성계약 v1.5 §8 + 양방향(0-l·85).
+// 규칙검사 R1~R27 — 결정론·API 0회. 생성계약 v1.5 §8 + 양방향(0-l·85).
 //
 // 순수 함수. 코드가 검사할 수 있는 것은 필드·선택지 수·중복·길이 편차·형식·
 // 코드값 정합뿐이다(관리자구조md §3-①). 의미 보존·자연성·화행 구현은 검사 불가 →
@@ -12,6 +12,8 @@
 
 import { getTargetFeature, TARGET_FEATURES } from "@/lib/pragma/targetFeatures";
 import { normalizeMission, type MissionV2, MPJ_TYPE_ORDER } from "@/lib/pragma/missionSchema";
+import { validateItemLineage } from "@/lib/pragma/itemLineage";
+import { buildMissionLineageScope } from "@/lib/pragma/missionLineage";
 import { normalizeCore, type ScenarioCoreV2 } from "@/lib/pragma/coreSchema";
 import {
   isThemeDomainValid,
@@ -444,6 +446,50 @@ export function checkMission(
   // ── R20 mission_content.provenance 존재·필수값(v1.5 0-h·56) ──
   checkProvenance(v, m);
 
+  // ── R27 현행 생성기의 문항·후보 lineage 완전성·scope 정합 ──
+  if (["mission_v3_item_lineage", "mission_v4_separate_item_lineage"].includes(m.provenance?.prompt_version ?? "")) {
+    const lineageScope = buildMissionLineageScope({
+      direction: m.direction,
+      speechAct: ctx.speech_act,
+      targetFeature: m.unit.target_feature,
+    });
+    for (const issue of validateItemLineage(m, lineageScope)) {
+      add(
+        v,
+        "R27",
+        "fail",
+        `${issue.target_path ? `${issue.target_path}: ` : ""}${issue.message}`,
+      );
+    }
+    if (m.provenance?.prompt_version === "mission_v4_separate_item_lineage") {
+      const attribution = m.item_lineage?.attribution_provenance;
+      const coverage = m.item_lineage?.coverage_summary;
+      if (m.item_lineage?.claim_status !== "model_attribution_pending_review") {
+        add(v, "R27", "fail", "현행 item lineage가 pending attribution 상태가 아님");
+      }
+      if (!coverage) {
+        add(v, "R27", "fail", "item_lineage.coverage_summary 누락");
+      } else if (coverage.unattributed_count / coverage.total_count > 0.2) {
+        add(v, "R27", "fail", `model_unattributed 비율이 20% 초과 (${coverage.unattributed_count}/${coverage.total_count})`);
+      } else if (coverage.unattributed_count > 0) {
+        add(v, "R28", "warning", `전문가 보완이 필요한 model_unattributed claim ${coverage.unattributed_count}개`);
+      }
+      if (!attribution) {
+        add(v, "R27", "fail", "item_lineage.attribution_provenance 누락");
+      } else if (
+        attribution.prompt_version !== "item_lineage_attribution_v2" ||
+        !attribution.provider ||
+        !attribution.prompt_instance_hash ||
+        attribution.attribution_attempts < 1 ||
+        !attribution.batch_count ||
+        !attribution.calls ||
+        attribution.calls.length !== attribution.batch_count
+      ) {
+        add(v, "R27", "fail", "item lineage 별도 분류 provenance가 현행 계약과 다름");
+      }
+    }
+  }
+
   // ── R23 미션 production_task가 코어 계승 ──
   if (coreInput != null) {
     const nc = normalizeCore(coreInput);
@@ -478,6 +524,12 @@ function checkProvenance(v: RuleViolation[], m: MissionV2) {
   ];
   for (const [key, label] of required) {
     if (!p[key]) add(v, "R20", "fail", `provenance.${label} 누락`);
+  }
+  if (["mission_v2_lexical_hints", "mission_v3_item_lineage", "mission_v4_separate_item_lineage"].includes(p.prompt_version)) {
+    if (!p.provider) add(v, "R20", "fail", "현행 미션 provenance.provider 누락");
+    if (!p.prompt_instance_hash) {
+      add(v, "R20", "fail", "현행 미션 provenance.prompt_instance_hash 누락");
+    }
   }
   if (!(typeof p.generation_attempt === "number" && p.generation_attempt >= 1)) {
     add(v, "R20", "fail", "provenance.generation_attempt는 1 이상 정수");

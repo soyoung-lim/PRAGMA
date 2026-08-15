@@ -8,6 +8,10 @@
 //   한국어 원문·조건에 맞게 재설계한다(§7-1).
 
 import type { SpeechActUI } from "@/lib/pragma/enums";
+import {
+  KO_ZH_CORE_REALIZATION_PACK,
+  evidenceById,
+} from "@/lib/pragma/realizationPack";
 
 export type EvidenceSource = "literature" | "observation" | "design";
 
@@ -24,59 +28,27 @@ export interface ErrorPattern {
   approvedExample: string;
 }
 
-export const ERROR_PATTERNS: ErrorPattern[] = [
-  {
-    patternId: "direct_negation_fronting",
-    description:
-      "거절에서 직접 부정(不行·不可以)을 완충 없이 앞세워 무뚝뚝하게 들림",
-    evidenceSource: "literature",
-    evidenceNote: "Wu & Roever 2021 (중국어 거절 장치 수준 사다리 — 입문 학습자의 直接 부정 전면 배치)",
-    applicableSpeechActs: ["refusal"],
-    approvedExample: "不行。(완충·이유·대안 없이)",
-  },
-  {
-    patternId: "learner_verbosity",
-    description:
-      "L2 학습자가 모어 화자보다 장황해지는 경향 — 완화·부연을 과잉 적재",
-    evidenceSource: "literature",
-    evidenceNote: "Blum-Kulka via Taguchi & Li 2021 (L2 장황성 실증)",
-    applicableSpeechActs: ["request", "refusal", "apology"],
-    approvedExample: "완화 표현 6겹을 겹쳐 요청의 핵심이 흐려지는 후보",
-  },
-  {
-    patternId: "weak_internal_mitigation",
-    description: "내적 완화(능원동사·조건절) 없이 요청 명제만 직진",
-    evidenceSource: "literature",
-    evidenceNote: "Taguchi 2018 (L2 중국어 내적 완화 빈약)",
-    applicableSpeechActs: ["request"],
-    approvedExample: "把上周的报告发给我。(能不能·可以…吗 없이)",
-  },
-  {
-    patternId: "hanja_interference",
-    description:
-      "한국어 한자어를 중국어로 직역해 어색·오용 (발표→发表 등 간섭)",
-    evidenceSource: "observation",
-    evidenceNote: "강의 관찰 — 한국 학부생의 한자어 간섭",
-    approvedExample: "发表(보고·발언 맥락에 부적합) → 报告/发言",
-  },
-  {
-    patternId: "ba_imperative_overuse",
-    description: "把 명령형을 과도하게 써서 요청이 명령처럼 들림",
-    evidenceSource: "observation",
-    evidenceNote: "강의 관찰",
-    applicableSpeechActs: ["request"],
-    approvedExample: "把这个改一下。(중립 요청 맥락에 과한 명령성)",
-  },
-  {
-    patternId: "excessive_gratitude",
-    description:
-      "작은 호의에 과장된 감사를 쏟아 오히려 거리감을 만듦",
-    evidenceSource: "literature",
-    evidenceNote: "Dai 2023 요구분석 (\"Thanking too much can be alienating\")",
-    applicableSpeechActs: ["thanks"],
-    approvedExample: "真是太感谢您了，不知道该怎么感谢您才好。(가벼운 호의에)",
-  },
-];
+export const ERROR_PATTERNS: ErrorPattern[] = KO_ZH_CORE_REALIZATION_PACK.risks.map((risk) => {
+  const evidence = evidenceById(risk.evidence_ids[0]);
+  const evidenceSource: EvidenceSource =
+    evidence?.source_kind === "literature"
+      ? "literature"
+      : evidence?.source_kind === "researcher_observation"
+        ? "observation"
+        : "design";
+  const evidenceNote = evidence
+    ? [evidence.citation_key, evidence.claim_scope_ko].filter(Boolean).join(" — ")
+    : `근거 ID 확인 필요: ${risk.evidence_ids[0]}`;
+
+  return {
+    patternId: risk.risk_id,
+    description: risk.description_ko,
+    evidenceSource,
+    evidenceNote,
+    applicableSpeechActs: risk.legacy_prompt_speech_acts as SpeechActUI[] | null ?? undefined,
+    approvedExample: risk.approved_example,
+  };
+});
 
 /** 화행에 적용 가능한 패턴만 (프롬프트 주입용). */
 export function errorPatternsForAct(act: SpeechActUI): ErrorPattern[] {

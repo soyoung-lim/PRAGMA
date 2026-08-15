@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,14 @@ import {
   type RuntimeFeedback,
 } from "@/lib/pragma/feedbackSchema";
 import { IS_DEMO } from "@/lib/auth/useProfile";
+import {
+  appendMissionEvent,
+  clearMissionAttemptId,
+  getOrCreateMissionAttemptId,
+  rotateMissionAttemptId,
+  type MissionEventType,
+} from "@/lib/mission/missionEvents";
+import { CONSENT_VERSION, POLICY_VERSION } from "@/lib/research/versions";
 
 // 샘플은 v1 → 정규화해 v2로 구동(러너는 정규화 형태만 본다, 0-l·84).
 const SAMPLE_MISSION_V2 = normalizeMission(SAMPLE_MISSION_V1).data as MissionV2;
@@ -378,6 +386,11 @@ function MissionRunner({
   speechAct: string | null;
   level: string | null;
 }) {
+  const storageKey = `pragma:mrun:${scenarioId ?? "sample"}`;
+  const attemptStorageKey = `${storageKey}:attempt-id`;
+  const [attemptId, setAttemptId] = useState(() =>
+    getOrCreateMissionAttemptId(attemptStorageKey),
+  );
   const [phase, setPhase] = useState<Phase>(startAtPart2 ? "ctx" : "mpj");
   const [mpjIdx, setMpjIdx] = useState(0);
   const [mpjResponses, setMpjResponses] = useState<MpjResponseTrace[]>([]);
@@ -435,6 +448,37 @@ function MissionRunner({
   // 번역 산출 힌트는 화용 전략이 아니라 내용 어휘 두 개만 사용한다.
   const vocabularyHints = pt.vocabulary_hints ?? [];
 
+  const emitEvent = useCallback(
+    (eventType: MissionEventType, payload: Record<string, unknown> = {}) => {
+      void appendMissionEvent({
+        attemptId,
+        scenarioId,
+        missionId: scenarioId ?? `sample:${mission.unit.target_feature}`,
+        eventType,
+        contentVersion: mission.unit.target_feature_version ?? null,
+        contentHash: mission.provenance?.mission_content_hash ?? null,
+        policyVersion: POLICY_VERSION,
+        consentVersion: CONSENT_VERSION,
+        featureId: mission.unit.target_feature,
+        speechAct,
+        direction: dir,
+        taskMode: isInterp ? "interpreting" : "translation",
+        payload,
+      }).then((result) => {
+        if ("reason" in result && result.reason === "error") {
+          console.warn(`[mission-event] ${eventType} 저장 실패:`, result.message);
+        }
+      });
+    }, [attemptId, scenarioId, mission, speechAct, dir, isInterp],
+  );
+
+  useEffect(() => {
+    emitEvent("mission_session_opened", {
+      entry_phase: startAtPart2 ? "ctx" : "mpj",
+      sample: isSample,
+    });
+  }, [emitEvent, isSample, startAtPart2]);
+
   // 피드백 단계 진입 시 1회 호출. 실패해도 미션을 막지 않는다(정직 표기로 폴백).
   // ⚠️ cleanup으로 취소하지 않는다 — 이 이펙트가 setFbState를 부르므로 의존성이 바뀌어
   //    첫 요청이 곧바로 cleanup되고 결과가 버려진다(로딩에서 멈춤). 대신 ref에 요청 키
@@ -451,16 +495,21 @@ function MissionRunner({
       if (r.ok && r.feedback) {
         setFb(r.feedback);
         setFbState("ready");
+        emitEvent("feedback_received", {
+          status: "ready",
+          schema_version: r.feedback.schema_version,
+          rubric_version: r.feedback.rubric_version,
+        });
         if (r.issues?.length) console.warn("[feedback] 정리된 모순:", r.issues);
       } else {
         console.warn("[feedback] 실패:", r.error);
         setFbState("error");
+        emitEvent("feedback_received", { status: "error" });
       }
     });
-  }, [phase, draft, mission, fbRetryNonce]);
+  }, [phase, draft, mission, fbRetryNonce, emitEvent]);
 
   // 중단 후 재개(프로토타입 v2 ②) — 2부 진행분만 미션별 localStorage에 보존. 실패해도 흐름 무해.
-  const storageKey = `pragma:mrun:${scenarioId ?? "sample"}`;
   useEffect(() => {
     // 수행 방식 전환으로 들어온 경우엔 재개 대상이 아니다 — 방금 끝낸 다른 방식의
     // 진행분(같은 sample 키를 쓴다)이 새어 들어와 착지 지점이 달라지면 안 된다.
@@ -515,6 +564,7 @@ function MissionRunner({
   const clearSaved = () => {
     try {
       localStorage.removeItem(storageKey);
+      clearMissionAttemptId(attemptStorageKey);
     } catch {
       /* 무시 */
     }
@@ -529,6 +579,7 @@ function MissionRunner({
     setVocabularyHintOpenedAt(resume.vocabularyHintOpenedAt ?? null);
     setPhase(resume.phase);
     setResume(null);
+    emitEvent("mission_resumed", { resume_phase: resume.phase });
     window.scrollTo(0, 0);
   };
 
@@ -537,6 +588,10 @@ function MissionRunner({
     setPhase("done");
     if (saveState === "saving" || saveState === "saved") return;
     setSaveState("saving");
+    emitEvent("revision_submitted", {
+      first_response: draft,
+      revised_response: revised || draft,
+    });
     const res = await saveMissionAttempt({
       mission,
       scenarioId,
@@ -560,15 +615,20 @@ function MissionRunner({
       ...(dissent ? { contextJudgment: dissent } : {}),
     });
     if (res.ok) {
+      emitEvent("mission_completed", { mission_log_id: res.id, save_status: "saved" });
       setSaveState("saved");
       clearSaved();
     } else {
+      emitEvent("mission_completed", {
+        save_status: (res as { reason: "no_auth" | "error" }).reason,
+      });
       setSaveState((res as { reason?: string }).reason === "no_auth" ? "demo" : "error");
       clearSaved();
     }
   };
 
   const nextMpj = (response: MpjResponseTrace) => {
+    emitEvent("mpj_response_submitted", { response });
     setMpjResponses((current) => [
       ...current.filter((itemResponse) => itemResponse.item_id !== response.item_id),
       response,
@@ -602,6 +662,7 @@ function MissionRunner({
     setSavedLater(false);
     setResume(null);
     setSaveState("idle");
+    setAttemptId(rotateMissionAttemptId(attemptStorageKey));
     startedAtRef.current = new Date().toISOString();
     window.scrollTo(0, 0);
   };
@@ -744,6 +805,7 @@ function MissionRunner({
             onPick={(i) => {
               setCtxPick(i);
               setCtxDone(true); // 재개 저장 형태는 그대로 둔다(기존 저장분 호환).
+              emitEvent("context_judgment_submitted", { selected_index: i });
             }}
             onNext={() => goto("produce")}
           />
@@ -770,6 +832,7 @@ function MissionRunner({
                 demoText={demoDraft}
                 onSubmit={(t) => {
                   setDraft(t);
+                  emitEvent("first_response_submitted", { response: t, input_mode: "stt_confirmed" });
                   goto("feedback");
                 }}
               />
@@ -800,7 +863,14 @@ function MissionRunner({
                 <p className="px-0.5 text-[12px] text-muted-foreground">
                   먼저 상대에게 답장하듯 직접 옮깁니다. 참고 표현은 제출한 뒤에 확인합니다.
                 </p>
-                <Button className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" disabled={!draft.trim()} onClick={() => goto("feedback")}>번역 제출 →</Button>
+                <Button
+                  className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]"
+                  disabled={!draft.trim()}
+                  onClick={() => {
+                    emitEvent("first_response_submitted", { response: draft, input_mode: "typed" });
+                    goto("feedback");
+                  }}
+                >번역 제출 →</Button>
                 {IS_DEMO && (
                   <button type="button" className={demoBtn} onClick={() => setDraft(demoDraft)}>데모 채우기 — 예시 답안 입력</button>
                 )}
@@ -863,15 +933,17 @@ function MissionRunner({
 
             {/* 이견 채널 — 판정을 바꾸지 않는 별도 통로(0-r·104) */}
             <DissentPanel
-              onSubmit={(d) =>
-                setDissent({
+              onSubmit={(d) => {
+                const submitted = {
                   kind: "learner_dissent",
                   at: "feedback",
                   conditions: d.conditions,
                   reason_ko: d.reason,
                   created_at: new Date().toISOString(),
-                })
-              }
+                } as const;
+                setDissent(submitted);
+                emitEvent("learner_dissent_submitted", { dissent: submitted });
+              }}
             />
 
             {/* 「한 가지만 고치기」로 읽히지 않게 — 여러 곳을 함께 다듬어도 된다. */}

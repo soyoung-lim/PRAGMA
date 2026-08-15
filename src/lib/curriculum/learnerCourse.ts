@@ -2,7 +2,7 @@
 //
 // 편성기(관리자)가 curriculum_week_scenarios에 저장한 것을 학습자 화면이 소비한다.
 // 기존 조회 함수(curriculum/api·composer)를 재사용하므로 새 쿼리는 없다.
-// 조회 결과에 legacy 편성이 섞여 있어도 학습자 조립층에서 reviewed 미션만 남긴다.
+// 조회 결과에 legacy 편성이 섞여 있어도 학습자 조립층에서 공개 가능한 미션만 남긴다.
 //
 // RLS 공개 경계(20260727190000): 프로필 작성을 마친 learner는 published 강좌와
 // 그 편성 중 reviewed 미션만 읽는다. admin은 검수·시연을 위해 전체를 읽는다.
@@ -14,6 +14,7 @@ import {
 import type { CurriculumOutlineRow, CurriculumWeekRow } from "@/lib/curriculum/types";
 import { listCoreScenarios, listWeekAssignments } from "@/lib/curriculum/composer";
 import type { ComposerCore } from "@/lib/curriculum/composer";
+import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
 
 export interface LearnerWeekScenario {
   scenario_id: string;
@@ -74,7 +75,7 @@ export function assembleLearnerCourse({
       speech_act: week.speech_act ?? null,
       scenarios: (byWeek.get(week.week_no) ?? []).flatMap((assignment) => {
         const core = coreById.get(assignment.scenario_id);
-        if (!core || core.mission_status !== "reviewed") return [];
+        if (!core || !isMissionReleasedForLearner(core)) return [];
         return [
           {
             scenario_id: assignment.scenario_id,

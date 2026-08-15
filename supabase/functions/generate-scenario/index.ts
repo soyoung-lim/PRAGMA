@@ -1000,6 +1000,14 @@ async function corePromptSnapshotHash(): Promise<string> {
 }
 
 interface BandDef { code: string; label_ko: string }
+interface MissionLineageScope {
+  coverage_status: 'covered'
+  realization_pack_id: string
+  realization_pack_version: string
+  rules: Array<{ rule_id: string; label_ko: string; evidence_ids: string[] }>
+  risks: Array<{ risk_id: string; description_ko: string; evidence_ids: string[] }>
+  evidence: Array<{ evidence_id: string; claim_scope_ko: string }>
+}
 interface FeatureForGen {
   code: string
   version: string
@@ -1011,6 +1019,7 @@ interface FeatureForGen {
   excluded_confounds: string[]
   closing_principle_ko: string
   counter_rule_note: string
+  lineage_scope?: MissionLineageScope
 }
 interface MissionGenBody {
   direction?: string // 0-l·90 — 부재 시 ko_zh
@@ -1031,7 +1040,293 @@ interface MissionGenBody {
   }
   error_pattern_hints_ko: string[]
   is_response_act: boolean
+  /** 클라이언트 재생성 루프의 실제 1-based 시도 번호. provenance에만 사용. */
+  generation_attempt?: number
   failure_notes?: string
+}
+
+const MISSION_PROMPT_VERSION = 'mission_v4_separate_item_lineage'
+const ITEM_LINEAGE_PROMPT_VERSION = 'item_lineage_attribution_v2'
+const ITEM_LINEAGE_MAX_COMPLETION_TOKENS = 5000
+const MISSION_PRIMARY = 'gpt-4o'
+const MISSION_DEFAULT_TEMPERATURE = 0.3
+const MISSION_RETRY_TEMPERATURE = 0.5
+
+function uniqueStrings(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0))]
+}
+
+/**
+ * 모델은 어떤 rule/risk가 쓰였는지만 주장한다. pack/version/status/claim ID와
+ * evidence 합집합은 서버가 고정해 모델이 검증 상태를 위조하지 못하게 한다.
+ */
+function buildPendingItemLineage(
+  rawClaims: unknown,
+  scope: MissionLineageScope,
+  targetPaths: string[],
+  attribution: Record<string, unknown>,
+): Record<string, unknown> {
+  const ruleEvidence = new Map(scope.rules.map((rule) => [rule.rule_id, rule.evidence_ids]))
+  const riskEvidence = new Map(scope.risks.map((risk) => [risk.risk_id, risk.evidence_ids]))
+  const rawByPath = new Map(
+    (Array.isArray(rawClaims) ? rawClaims : []).flatMap((raw) => {
+      const claim = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
+      return typeof claim.target_path === 'string' ? [[claim.target_path, claim] as const] : []
+    }),
+  )
+  const claims = targetPaths.map((targetPath, index) => {
+    const claim = rawByPath.get(targetPath) ?? {}
+    const ruleIds = uniqueStrings(claim.rule_ids)
+    const riskIds = uniqueStrings(claim.risk_ids)
+    const evidenceIds = new Set<string>()
+    ruleIds.forEach((id) => ruleEvidence.get(id)?.forEach((evidenceId) => evidenceIds.add(evidenceId)))
+    riskIds.forEach((id) => riskEvidence.get(id)?.forEach((evidenceId) => evidenceIds.add(evidenceId)))
+    return {
+      claim_id: `ILC-${String(index + 1).padStart(3, '0')}`,
+      target_path: targetPath,
+      attribution_status: ruleIds.length + riskIds.length > 0 ? 'model_claimed' : 'model_unattributed',
+      rule_ids: ruleIds,
+      risk_ids: riskIds,
+      evidence_ids: [...evidenceIds].sort(),
+      note_ko: typeof claim.note_ko === 'string' ? claim.note_ko : '',
+    }
+  })
+  const claimedCount = claims.filter((claim) => claim.attribution_status === 'model_claimed').length
+  return {
+    schema_version: 'mission_item_lineage_v1',
+    claim_status: 'model_attribution_pending_review',
+    realization_pack_id: scope.realization_pack_id,
+    realization_pack_version: scope.realization_pack_version,
+    attribution_provenance: attribution,
+    coverage_summary: {
+      total_count: claims.length,
+      claimed_count: claimedCount,
+      unattributed_count: claims.length - claimedCount,
+    },
+    claims,
+  }
+}
+
+interface MissionLineageTarget {
+  target_path: string
+  text: string
+  context_ko: string
+}
+
+function collectMissionLineageTargets(mission: Record<string, unknown>): MissionLineageTarget[] {
+  const targets: MissionLineageTarget[] = []
+  const items = Array.isArray(mission.mpj_items) ? mission.mpj_items : []
+  items.forEach((raw, itemIndex) => {
+    const item = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
+    if (typeof item.target === 'string') {
+      targets.push({
+        target_path: `mpj_items[${itemIndex}].target`,
+        text: item.target,
+        context_ko: `유형=${String(item.type ?? '')}; band=${JSON.stringify(item.accepted_band_codes ?? item.accepted_scale_codes ?? [])}`,
+      })
+    }
+    if (Array.isArray(item.corrections)) {
+      item.corrections.forEach((rawCorrection, correctionIndex) => {
+        const correction = rawCorrection && typeof rawCorrection === 'object' ? rawCorrection as Record<string, unknown> : {}
+        targets.push({
+          target_path: `mpj_items[${itemIndex}].corrections[${correctionIndex}]`,
+          text: typeof correction.text === 'string' ? correction.text : '',
+          context_ko: `교정안; is_valid=${String(correction.is_valid)}; ${String(correction.note_ko ?? '')}`,
+        })
+      })
+    }
+    if (Array.isArray(item.candidates)) {
+      item.candidates.forEach((rawCandidate, candidateIndex) => {
+        const candidate = rawCandidate && typeof rawCandidate === 'object' ? rawCandidate as Record<string, unknown> : {}
+        targets.push({
+          target_path: `mpj_items[${itemIndex}].candidates[${candidateIndex}]`,
+          text: typeof candidate.text === 'string' ? candidate.text : '',
+          context_ko: `다중판정 후보; band=${JSON.stringify(candidate.accepted_band_codes ?? [])}; ${String(candidate.note_ko ?? '')}`,
+        })
+      })
+    }
+    if (typeof item.recommended_example === 'string') {
+      targets.push({
+        target_path: `mpj_items[${itemIndex}].recommended_example`,
+        text: item.recommended_example,
+        context_ko: '해당 상황의 권장 적절안',
+      })
+    }
+  })
+  const production = mission.production_task && typeof mission.production_task === 'object'
+    ? mission.production_task as Record<string, unknown>
+    : {}
+  const alternatives = Array.isArray(production.reference_alternatives) ? production.reference_alternatives : []
+  alternatives.forEach((rawAlternative, index) => {
+    const alternative = rawAlternative && typeof rawAlternative === 'object' ? rawAlternative as Record<string, unknown> : {}
+    targets.push({
+      target_path: `production_task.reference_alternatives[${index}]`,
+      text: typeof alternative.text === 'string' ? alternative.text : '',
+      context_ko: `산출 참고안; ${String(alternative.note_ko ?? '')}`,
+    })
+  })
+  return targets
+}
+
+function itemLineageClaimIssues(
+  rawClaims: unknown,
+  targets: MissionLineageTarget[],
+  scope: MissionLineageScope,
+): string[] {
+  if (!Array.isArray(rawClaims)) return ['claims 배열 없음']
+  const expectedPaths = targets.map((target) => target.target_path)
+  const expectedSet = new Set(expectedPaths)
+  const ruleSet = new Set(scope.rules.map((rule) => rule.rule_id))
+  const riskSet = new Set(scope.risks.map((risk) => risk.risk_id))
+  const seen = new Set<string>()
+  const issues: string[] = []
+  rawClaims.forEach((raw, index) => {
+    const claim = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
+    const path = typeof claim.target_path === 'string' ? claim.target_path : ''
+    if (!expectedSet.has(path)) issues.push(`claims[${index}] scope 밖 target_path=${path}`)
+    if (seen.has(path)) issues.push(`중복 target_path=${path}`)
+    seen.add(path)
+    const ruleIds = uniqueStrings(claim.rule_ids)
+    const riskIds = uniqueStrings(claim.risk_ids)
+    ruleIds.filter((id) => !ruleSet.has(id)).forEach((id) => issues.push(`${path}: scope 밖 rule_id=${id}`))
+    riskIds.filter((id) => !riskSet.has(id)).forEach((id) => issues.push(`${path}: scope 밖 risk_id=${id}`))
+    if (typeof claim.note_ko !== 'string' || claim.note_ko.trim().length === 0) issues.push(`${path}: note_ko 없음`)
+  })
+  expectedPaths.filter((path) => !seen.has(path)).forEach((path) => issues.push(`누락 target_path=${path}`))
+  if (rawClaims.length !== expectedPaths.length) issues.push(`claim 수=${rawClaims.length}, 목표 수=${expectedPaths.length}`)
+  return issues
+}
+
+function buildItemLineageSystemPrompt(scope: MissionLineageScope): string {
+  return `당신은 생성이 끝난 중국어 화용 학습 문장의 provenance 분류자입니다.
+문장을 수정하거나 품질을 승인하지 말고, 각 문장에 실제로 드러난 realization rule과 risk ID를 분류하세요.
+허용 rule: ${JSON.stringify(scope.rules.map((rule) => ({ id: rule.rule_id, label_ko: rule.label_ko })))}
+허용 risk: ${JSON.stringify(scope.risks.map((risk) => ({ id: risk.risk_id, description_ko: risk.description_ko })))}
+
+절대 규칙:
+- 입력 targets의 순서·target_path·개수를 그대로 유지해 claims를 정확히 1개씩 반환합니다.
+- 실제로 방어 가능한 연결이 있으면 rule_ids 또는 risk_ids를 선택합니다. 허용 목록 밖 ID를 만들지 않습니다.
+- 허용 목록 중 어느 것도 해당 문장을 방어하지 못하면 두 배열을 비우고 note_ko에 미귀속 이유를 적습니다. 맞지 않는 ID를 억지로 붙이지 않습니다.
+- 적절안은 실제 실현된 rule을, 부적절안은 실제 표현과 판정 맥락에 해당하는 rule/risk를 연결합니다.
+- note_ko는 관찰된 표현과 연결 이유만 1문장으로 씁니다. 이것은 검증 완료가 아니라 모델의 pending claim입니다.
+- evidence ID, pack/version, 검토 상태, claim_id는 생성하지 않습니다.
+
+출력은 오직 {"claims":[{"target_path":"입력과 동일","rule_ids":[],"risk_ids":[],"note_ko":"한국어 1문장"}]} JSON입니다.`
+}
+
+async function attributeItemLineageBatch(
+  targets: MissionLineageTarget[],
+  scope: MissionLineageScope,
+  apiKey: string,
+  batchIndex: number,
+): Promise<
+  | { ok: true; claims: unknown[]; model: string; promptInstanceHash: string; attempts: number }
+  | { ok: false; detail: string }
+> {
+  const system = buildItemLineageSystemPrompt(scope)
+  let failureNotes = ''
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const user = JSON.stringify({
+      batch_index: batchIndex,
+      expected_claim_count: targets.length,
+      targets,
+      ...(failureNotes ? { previous_issues: failureNotes } : {}),
+    })
+    let model = PRIMARY_MODEL
+    let response = await callOpenAI(model, apiKey, system, user, 0, ITEM_LINEAGE_MAX_COMPLETION_TOKENS)
+    if (!response.ok && (response.status === 404 || response.status === 400)) {
+      model = FALLBACK_MODEL
+      response = await callOpenAI(model, apiKey, system, user, 0, ITEM_LINEAGE_MAX_COMPLETION_TOKENS)
+    }
+    if (!response.ok) {
+      failureNotes = `OpenAI ${response.status}: ${response.raw.slice(0, 240)}`
+      continue
+    }
+    let parsed: Record<string, unknown>
+    try {
+      parsed = parseOpenAIContent(response.raw) as Record<string, unknown>
+    } catch (error) {
+      failureNotes = `JSON 파싱 실패: ${(error as Error).message}`
+      continue
+    }
+    const issues = itemLineageClaimIssues(parsed.claims, targets, scope)
+    if (issues.length > 0) {
+      failureNotes = issues.join('; ')
+      continue
+    }
+    const promptInstanceHash = await sha256Hex(canonicalJson({
+      action: 'item_lineage_attribution',
+      provider: PROVIDER,
+      model,
+      temperature: 0,
+      response_format: { type: 'json_object' },
+      system,
+      user,
+    }))
+    return {
+      ok: true,
+      claims: parsed.claims as unknown[],
+      model,
+      promptInstanceHash,
+      attempts: attempt,
+    }
+  }
+  return { ok: false, detail: `batch ${batchIndex}: ${failureNotes || 'item lineage attribution 실패'}` }
+}
+
+async function attributeMissionItemLineage(
+  mission: Record<string, unknown>,
+  scope: MissionLineageScope,
+  apiKey: string,
+): Promise<{ ok: true; itemLineage: Record<string, unknown> } | { ok: false; detail: string }> {
+  const targets = collectMissionLineageTargets(mission)
+  if (targets.length === 0) return { ok: false, detail: 'lineage target 없음' }
+  const batches = Array.from(
+    { length: Math.ceil(targets.length / 5) },
+    (_, index) => targets.slice(index * 5, index * 5 + 5),
+  )
+  const results = await Promise.all(
+    batches.map((batch, index) => attributeItemLineageBatch(batch, scope, apiKey, index + 1)),
+  )
+  const failures = results.filter((result): result is { ok: false; detail: string } => !result.ok)
+  if (failures.length > 0) return { ok: false, detail: failures.map((failure) => failure.detail).join(' | ') }
+  const completed = results as Array<{
+    ok: true
+    claims: unknown[]
+    model: string
+    promptInstanceHash: string
+    attempts: number
+  }>
+  const calls = completed.map((result, index) => ({
+    batch_index: index + 1,
+    target_count: batches[index].length,
+    model: result.model,
+    prompt_instance_hash: result.promptInstanceHash,
+    attempts: result.attempts,
+  }))
+  const aggregateHash = await sha256Hex(canonicalJson({
+    prompt_version: ITEM_LINEAGE_PROMPT_VERSION,
+    calls,
+  }))
+  return {
+    ok: true,
+    itemLineage: buildPendingItemLineage(
+      completed.flatMap((result) => result.claims),
+      scope,
+      targets.map((target) => target.target_path),
+      {
+        provider: PROVIDER,
+        model: [...new Set(completed.map((result) => result.model))].join(','),
+        prompt_version: ITEM_LINEAGE_PROMPT_VERSION,
+        prompt_instance_hash: aggregateHash,
+        attribution_attempts: completed.reduce((sum, result) => sum + result.attempts, 0),
+        batch_count: batches.length,
+        calls,
+        attributed_at: new Date().toISOString(),
+      },
+    ),
+  }
 }
 
 function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken = false, direction: Direction = 'ko_zh'): string {
@@ -1052,6 +1347,12 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken
   const spokenRule = isSpoken
     ? `\n🔴 이 미션은 통역(구두 담화)입니다. source·target·모든 후보는 **실제 말로 주고받을 법한 구두체**로 작성하세요(이메일 문어체·서면 격식 표현 금지).`
     : ''
+  const lineageRule = f.lineage_scope
+    ? `\n\n[버전 고정 중국어 실현 scope — 생성 후 별도 provenance 분류에 사용]\n` +
+      `허용 rule: ${JSON.stringify(f.lineage_scope.rules.map((rule) => ({ id: rule.rule_id, label_ko: rule.label_ko })))}\n` +
+      `허용 risk: ${JSON.stringify(f.lineage_scope.risks.map((risk) => ({ id: risk.risk_id, description_ko: risk.description_ko })))}\n` +
+      `- 목표어 표현은 위 자원과 위험 범위 안에서 설계하세요. lineage ID 출력은 요구하지 않으며, 생성 후 별도 저온 분류 단계가 각 문장을 추적합니다.`
+    : ''
   return `당신은 ${LANG_DIR_KO[direction]} 통번역 교육용 '메타화용 판단 미션'을 설계하는 전문가입니다.
 이번 단원의 화용 초점은 「${f.learner_label}」입니다.
 초점 정의: ${f.operational_definition}
@@ -1060,7 +1361,7 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken
 이 초점이 아닌 것(혼입 금지): ${f.excluded_confounds.join(', ')}
 깨야 할 소박한 규칙: ${f.counter_rule_note}
 
-${gate1}${spokenRule}
+${gate1}${spokenRule}${lineageRule}
 
 MPJ 5문항을 만듭니다. 각 문항은 학습자가 '${tgtL} 산출안(source=${srcL} 원문 → target=${tgtL})'을 이 초점 대역으로 판단하게 합니다.
 모든 문항의 판정 축은 위 band뿐입니다(다른 축 혼입 금지).
@@ -1751,10 +2052,9 @@ Deno.serve(async (req) => {
       if (!b?.feature || !b?.core) {
         return new Response(JSON.stringify({ error: 'mission body required' }), { status: 400, headers: jsonHeaders })
       }
-      const temp = b.failure_notes ? 0.5 : 0.3 // 재시도는 온도 상향(0-d·31)
+      const temp = b.failure_notes ? MISSION_RETRY_TEMPERATURE : MISSION_DEFAULT_TEMPERATURE // 재시도는 온도 상향(0-d·31)
       // 미션은 복잡한 5유형 union이라 필드 누락이 잦다 → 저volume(승격분만)이므로
       // 강한 모델을 쓴다. 코어(고volume·단순)는 mini 유지.
-      const MISSION_PRIMARY = 'gpt-4o'
       const isSpoken = b.core.source_modality === 'spoken'
       const missionDir = normDir(b.direction)
       const sys = buildMissionSystemPrompt(b.feature, b.is_response_act, isSpoken, missionDir)
@@ -1768,6 +2068,15 @@ Deno.serve(async (req) => {
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
       }
+      const promptInstanceHash = await sha256Hex(canonicalJson({
+        action: 'mission',
+        provider: PROVIDER,
+        model,
+        temperature: temp,
+        response_format: { type: 'json_object' },
+        system: sys,
+        user: usr,
+      }))
       let gen: Record<string, unknown>
       try {
         gen = parseOpenAIContent(att.raw) as Record<string, unknown>
@@ -1785,7 +2094,7 @@ Deno.serve(async (req) => {
       // v2 중립 스키마(계약 0-l·83) — mpj_items는 모델이 중립 키(source/target/
       // corrections.text/candidates.text/recommended_example/preceding_turn)로 답한다.
       // production_task는 코어를 계승하되 중립 키(source_text/preceding_turn)로 조립.
-      const mission_content = {
+      const missionBase: Record<string, unknown> = {
         schema_version: 'mission_v2',
         direction: missionDir,
         unit: {
@@ -1811,6 +2120,17 @@ Deno.serve(async (req) => {
           reference_alternatives: Array.isArray(gen.reference_alternatives) ? gen.reference_alternatives : [],
         },
       }
+      let mission_content = missionBase
+      if (b.feature.lineage_scope) {
+        const attribution = await attributeMissionItemLineage(missionBase, b.feature.lineage_scope, apiKey)
+        if (!attribution.ok) {
+          return new Response(
+            JSON.stringify({ error: '문항 lineage 분류 실패', detail: attribution.detail }),
+            { status: 502, headers: jsonHeaders },
+          )
+        }
+        mission_content = { ...missionBase, item_lineage: attribution.itemLineage }
+      }
       // provenance 서버 주입(계약 v1.5 0-h·56) — 모델 응답이 아니라 서버가 채운다.
       // mission_content_hash = provenance 제외 본문의 SHA-256(멱등·재현 추적).
       const genAt = new Date().toISOString()
@@ -1818,15 +2138,19 @@ Deno.serve(async (req) => {
       const missionWithProvenance = {
         ...mission_content,
         provenance: {
+          provider: PROVIDER,
           model,
-          prompt_version: 'mission_v2_lexical_hints',
+          prompt_version: MISSION_PROMPT_VERSION,
+          prompt_instance_hash: promptInstanceHash,
           mission_content_hash: contentHash,
           generated_at: genAt,
-          generation_attempt: b.failure_notes ? 2 : 1,
+          generation_attempt: Number.isInteger(b.generation_attempt) && Number(b.generation_attempt) > 0
+            ? Number(b.generation_attempt)
+            : b.failure_notes ? 2 : 1,
         },
       }
       return new Response(
-        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: 'mission_v2_lexical_hints', generated_at: genAt } }),
+        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: MISSION_PROMPT_VERSION, prompt_instance_hash: promptInstanceHash, generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }

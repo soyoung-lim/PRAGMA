@@ -10,6 +10,9 @@
     "dev": "vite",
     "start": "serve -s dist",
     "prompts:snapshot": "node scripts/snapshot-prompts.mjs",
+    "prompts:verify": "node scripts/verify-deterministic-snapshots.mjs",
+    "pack:attest": "node scripts/register-pack-manifest-attestation.mjs",
+    "rls:smoke": "node scripts/rls-role-smoke.mjs",
     "prebuild": "node scripts/snapshot-prompts.mjs",
     "build": "vite build",
     "build:dev": "vite build --mode development",
@@ -17,6 +20,7 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:moat": "vitest run src/lib/pragma/realizationPack.test.ts src/lib/pragma/packReleaseManifest.test.ts src/lib/pragma/seedGoldSet.test.ts src/lib/pragma/goldCalibration.test.ts src/lib/pragma/goldExpertReview.test.ts src/lib/pragma/goldRegression.test.ts src/lib/pragma/missionLineage.test.ts src/lib/pragma/itemLineage.test.ts src/lib/pragma/expertReviewConsensus.test.ts src/lib/pragma/expertReviewProtocol.test.ts src/lib/pragma/moatFlywheel.test.ts src/lib/pragma/moatMigrationContracts.test.ts src/lib/pragma/researchQaSummary.test.ts src/lib/mission/missionEventExport.test.ts src/lib/mission/missionRelease.test.ts src/lib/pragma/targetFeatures.test.ts",
     "test:watch": "vitest"
   },
   "dependencies": {

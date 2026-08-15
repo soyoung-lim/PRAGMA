@@ -247,6 +247,7 @@ export type Database = {
       }
       curriculum_outlines: {
         Row: {
+          composition_theme_codes: string[]
           created_at: string
           domain: string
           final_week: number | null
@@ -258,12 +259,14 @@ export type Database = {
           scenarios_per_week: number
           semester_goal: string | null
           status: string
+          target_interpreting_ratio: number
           target_speech_acts: string[]
           title: string
           updated_at: string
           week_count: number
         }
         Insert: {
+          composition_theme_codes?: string[]
           created_at?: string
           domain: string
           final_week?: number | null
@@ -275,12 +278,14 @@ export type Database = {
           scenarios_per_week?: number
           semester_goal?: string | null
           status?: string
+          target_interpreting_ratio?: number
           target_speech_acts?: string[]
           title: string
           updated_at?: string
           week_count?: number
         }
         Update: {
+          composition_theme_codes?: string[]
           created_at?: string
           domain?: string
           final_week?: number | null
@@ -292,6 +297,7 @@ export type Database = {
           scenarios_per_week?: number
           semester_goal?: string | null
           status?: string
+          target_interpreting_ratio?: number
           target_speech_acts?: string[]
           title?: string
           updated_at?: string
@@ -361,6 +367,7 @@ export type Database = {
           pdr_distance: string | null
           pdr_imposition: string | null
           pdr_power: string | null
+          review_released: boolean
           scenario_slots: number | null
           speech_act: string | null
           title: string | null
@@ -381,6 +388,7 @@ export type Database = {
           pdr_distance?: string | null
           pdr_imposition?: string | null
           pdr_power?: string | null
+          review_released?: boolean
           scenario_slots?: number | null
           speech_act?: string | null
           title?: string | null
@@ -401,6 +409,7 @@ export type Database = {
           pdr_distance?: string | null
           pdr_imposition?: string | null
           pdr_power?: string | null
+          review_released?: boolean
           scenario_slots?: number | null
           speech_act?: string | null
           title?: string | null
@@ -582,6 +591,48 @@ export type Database = {
         }
         Relationships: []
       }
+      hsk_reference_sources: {
+        Row: {
+          created_at: string
+          effective_at: string | null
+          extraction_version: string
+          id: string
+          manifest_version: string
+          notes: string | null
+          official_url: string
+          publisher: string
+          released_at: string | null
+          sha256: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          effective_at?: string | null
+          extraction_version: string
+          id: string
+          manifest_version: string
+          notes?: string | null
+          official_url: string
+          publisher: string
+          released_at?: string | null
+          sha256: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          effective_at?: string | null
+          extraction_version?: string
+          id?: string
+          manifest_version?: string
+          notes?: string | null
+          official_url?: string
+          publisher?: string
+          released_at?: string | null
+          sha256?: string
+          title?: string
+        }
+        Relationships: []
+      }
       hsk_vocab: {
         Row: {
           created_at: string
@@ -611,6 +662,258 @@ export type Database = {
           word?: string
         }
         Relationships: []
+      }
+      hsk3_topic_derivations: {
+        Row: {
+          appears_in_levels: number[]
+          created_at: string
+          derivation_version: string
+          has_explicit_open_marker: boolean
+          l3_terms: string[]
+          n_levels: number
+          n_terms: number
+          path: string
+          source_id: string
+          topic_seq: number
+        }
+        Insert: {
+          appears_in_levels: number[]
+          created_at?: string
+          derivation_version: string
+          has_explicit_open_marker: boolean
+          l3_terms: string[]
+          n_levels: number
+          n_terms: number
+          path: string
+          source_id: string
+          topic_seq: number
+        }
+        Update: {
+          appears_in_levels?: number[]
+          created_at?: string
+          derivation_version?: string
+          has_explicit_open_marker?: boolean
+          l3_terms?: string[]
+          n_levels?: number
+          n_terms?: number
+          path?: string
+          source_id?: string
+          topic_seq?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hsk3_topic_derivations_source_id_topic_seq_fkey"
+            columns: ["source_id", "topic_seq"]
+            isOneToOne: false
+            referencedRelation: "hsk3_topics"
+            referencedColumns: ["source_id", "topic_seq"]
+          },
+        ]
+      }
+      hsk3_topics: {
+        Row: {
+          l1: string
+          l2: string
+          l3: string
+          level_band: string
+          level_int: number
+          source_id: string
+          topic_seq: number
+        }
+        Insert: {
+          l1: string
+          l2: string
+          l3: string
+          level_band: string
+          level_int: number
+          source_id: string
+          topic_seq: number
+        }
+        Update: {
+          l1?: string
+          l2?: string
+          l3?: string
+          level_band?: string
+          level_int?: number
+          source_id?: string
+          topic_seq?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hsk3_topics_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "hsk_reference_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hsk3_topics_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "hsk3_reference_status"
+            referencedColumns: ["source_id"]
+          },
+        ]
+      }
+      hsk3_vocab: {
+        Row: {
+          extra_levels: number[]
+          headword: string
+          intro_band: string
+          intro_level: number
+          is_multi_sense: boolean
+          is_phrase: boolean
+          is_polyphone: boolean
+          pinyin: string
+          pinyin_norm: string
+          pos: string | null
+          sense_no: number
+          seq: number
+          source_form: string
+          source_id: string
+          source_note: string | null
+        }
+        Insert: {
+          extra_levels?: number[]
+          headword: string
+          intro_band: string
+          intro_level: number
+          is_multi_sense?: boolean
+          is_phrase?: boolean
+          is_polyphone?: boolean
+          pinyin: string
+          pinyin_norm: string
+          pos?: string | null
+          sense_no?: number
+          seq: number
+          source_form: string
+          source_id: string
+          source_note?: string | null
+        }
+        Update: {
+          extra_levels?: number[]
+          headword?: string
+          intro_band?: string
+          intro_level?: number
+          is_multi_sense?: boolean
+          is_phrase?: boolean
+          is_polyphone?: boolean
+          pinyin?: string
+          pinyin_norm?: string
+          pos?: string | null
+          sense_no?: number
+          seq?: number
+          source_form?: string
+          source_id?: string
+          source_note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hsk3_vocab_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "hsk_reference_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hsk3_vocab_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "hsk3_reference_status"
+            referencedColumns: ["source_id"]
+          },
+        ]
+      }
+      learner_mission_events: {
+        Row: {
+          attempt_id: string
+          auth_user_id: string
+          consent_version: string
+          content_hash: string | null
+          content_version: string | null
+          direction: string | null
+          event_payload: Json
+          event_seq: number
+          event_type: string
+          feature_id: string | null
+          id: string
+          lineage_version_id: string | null
+          mission_id: string
+          occurred_at: string
+          policy_version: string
+          profile_id: string
+          recorded_at: string
+          scenario_id: string | null
+          speech_act: string | null
+          task_mode: string | null
+        }
+        Insert: {
+          attempt_id: string
+          auth_user_id: string
+          consent_version: string
+          content_hash?: string | null
+          content_version?: string | null
+          direction?: string | null
+          event_payload?: Json
+          event_seq: number
+          event_type: string
+          feature_id?: string | null
+          id?: string
+          lineage_version_id?: string | null
+          mission_id: string
+          occurred_at: string
+          policy_version: string
+          profile_id: string
+          recorded_at?: string
+          scenario_id?: string | null
+          speech_act?: string | null
+          task_mode?: string | null
+        }
+        Update: {
+          attempt_id?: string
+          auth_user_id?: string
+          consent_version?: string
+          content_hash?: string | null
+          content_version?: string | null
+          direction?: string | null
+          event_payload?: Json
+          event_seq?: number
+          event_type?: string
+          feature_id?: string | null
+          id?: string
+          lineage_version_id?: string | null
+          mission_id?: string
+          occurred_at?: string
+          policy_version?: string
+          profile_id?: string
+          recorded_at?: string
+          scenario_id?: string | null
+          speech_act?: string | null
+          task_mode?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learner_mission_events_lineage_version_id_fkey"
+            columns: ["lineage_version_id"]
+            isOneToOne: false
+            referencedRelation: "mission_lineage_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learner_mission_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learner_mission_events_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["scenario_id"]
+          },
+        ]
       }
       learner_mission_logs: {
         Row: {
@@ -743,6 +1046,445 @@ export type Database = {
           },
         ]
       }
+      llm_invocation_events: {
+        Row: {
+          cached_tokens: number | null
+          completion_tokens: number | null
+          content_release_id: string | null
+          created_at: string
+          duration_ms: number
+          fallback_from: string | null
+          finish_reason: string | null
+          generation_item_key: string | null
+          generation_run_id: string | null
+          id: string
+          invocation_attempt: number
+          is_model_fallback: boolean
+          model_requested: string
+          model_returned: string | null
+          operation: string
+          prompt_snapshot_hash: string | null
+          prompt_tokens: number | null
+          prompt_version: string | null
+          provider: string
+          provider_request_id: string | null
+          provider_response_id: string | null
+          reasoning_tokens: number | null
+          request_group_id: string
+          scenario_id: string | null
+          status_code: number
+          success: boolean
+          total_tokens: number | null
+        }
+        Insert: {
+          cached_tokens?: number | null
+          completion_tokens?: number | null
+          content_release_id?: string | null
+          created_at?: string
+          duration_ms: number
+          fallback_from?: string | null
+          finish_reason?: string | null
+          generation_item_key?: string | null
+          generation_run_id?: string | null
+          id?: string
+          invocation_attempt?: number
+          is_model_fallback?: boolean
+          model_requested: string
+          model_returned?: string | null
+          operation: string
+          prompt_snapshot_hash?: string | null
+          prompt_tokens?: number | null
+          prompt_version?: string | null
+          provider: string
+          provider_request_id?: string | null
+          provider_response_id?: string | null
+          reasoning_tokens?: number | null
+          request_group_id: string
+          scenario_id?: string | null
+          status_code: number
+          success: boolean
+          total_tokens?: number | null
+        }
+        Update: {
+          cached_tokens?: number | null
+          completion_tokens?: number | null
+          content_release_id?: string | null
+          created_at?: string
+          duration_ms?: number
+          fallback_from?: string | null
+          finish_reason?: string | null
+          generation_item_key?: string | null
+          generation_run_id?: string | null
+          id?: string
+          invocation_attempt?: number
+          is_model_fallback?: boolean
+          model_requested?: string
+          model_returned?: string | null
+          operation?: string
+          prompt_snapshot_hash?: string | null
+          prompt_tokens?: number | null
+          prompt_version?: string | null
+          provider?: string
+          provider_request_id?: string | null
+          provider_response_id?: string | null
+          reasoning_tokens?: number | null
+          request_group_id?: string
+          scenario_id?: string | null
+          status_code?: number
+          success?: boolean
+          total_tokens?: number | null
+        }
+        Relationships: []
+      }
+      mission_expert_review_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          blind_review: boolean
+          expert_registry_version_id: string | null
+          id: string
+          lineage_version_id: string
+          protocol_version: string
+          review_round: number
+          reviewer_user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          blind_review?: boolean
+          expert_registry_version_id?: string | null
+          id?: string
+          lineage_version_id: string
+          protocol_version?: string
+          review_round?: number
+          reviewer_user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          blind_review?: boolean
+          expert_registry_version_id?: string | null
+          id?: string
+          lineage_version_id?: string
+          protocol_version?: string
+          review_round?: number
+          reviewer_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_expert_review_assignmen_expert_registry_version_id_fkey"
+            columns: ["expert_registry_version_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_expert_registry_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_expert_review_assignments_lineage_version_id_fkey"
+            columns: ["lineage_version_id"]
+            isOneToOne: false
+            referencedRelation: "mission_lineage_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_expert_reviews: {
+        Row: {
+          assignment_id: string
+          candidate_band_assessments: Json
+          confidence: number
+          id: string
+          independence_declaration: Json | null
+          lineage_claim_assessments: Json
+          lineage_version_id: string
+          overall_verdict: string
+          protocol_version: string
+          rationale_ko: string
+          review_round: number
+          reviewer_user_id: string
+          rule_findings: Json
+          schema_version: string
+          submitted_at: string
+        }
+        Insert: {
+          assignment_id: string
+          candidate_band_assessments?: Json
+          confidence: number
+          id?: string
+          independence_declaration?: Json | null
+          lineage_claim_assessments?: Json
+          lineage_version_id: string
+          overall_verdict: string
+          protocol_version?: string
+          rationale_ko: string
+          review_round?: number
+          reviewer_user_id: string
+          rule_findings?: Json
+          schema_version?: string
+          submitted_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          candidate_band_assessments?: Json
+          confidence?: number
+          id?: string
+          independence_declaration?: Json | null
+          lineage_claim_assessments?: Json
+          lineage_version_id?: string
+          overall_verdict?: string
+          protocol_version?: string
+          rationale_ko?: string
+          review_round?: number
+          reviewer_user_id?: string
+          rule_findings?: Json
+          schema_version?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_expert_reviews_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: true
+            referencedRelation: "mission_expert_review_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_expert_reviews_lineage_version_id_fkey"
+            columns: ["lineage_version_id"]
+            isOneToOne: false
+            referencedRelation: "mission_lineage_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_lineage_versions: {
+        Row: {
+          actor_id: string | null
+          ai_quality_result: Json | null
+          coverage_status: string
+          created_at: string
+          evidence_scope_ids: string[]
+          generation_attempt: number | null
+          generation_model: string | null
+          generation_provider: string | null
+          gold_regression_run_id: string | null
+          id: string
+          item_lineage: Json | null
+          mission_content: Json
+          mission_content_hash: string | null
+          parent_version_id: string | null
+          prompt_instance_hash: string | null
+          prompt_snapshot_hash: string | null
+          prompt_version: string | null
+          realization_pack_id: string | null
+          realization_pack_version: string | null
+          release_resolution_id: string | null
+          released_at: string | null
+          released_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          risk_scope_ids: string[]
+          rule_scope_ids: string[]
+          scenario_id: string
+          stage: string
+          validation_result: Json | null
+          version_no: number
+        }
+        Insert: {
+          actor_id?: string | null
+          ai_quality_result?: Json | null
+          coverage_status?: string
+          created_at?: string
+          evidence_scope_ids?: string[]
+          generation_attempt?: number | null
+          generation_model?: string | null
+          generation_provider?: string | null
+          gold_regression_run_id?: string | null
+          id?: string
+          item_lineage?: Json | null
+          mission_content: Json
+          mission_content_hash?: string | null
+          parent_version_id?: string | null
+          prompt_instance_hash?: string | null
+          prompt_snapshot_hash?: string | null
+          prompt_version?: string | null
+          realization_pack_id?: string | null
+          realization_pack_version?: string | null
+          release_resolution_id?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_scope_ids?: string[]
+          rule_scope_ids?: string[]
+          scenario_id: string
+          stage: string
+          validation_result?: Json | null
+          version_no: number
+        }
+        Update: {
+          actor_id?: string | null
+          ai_quality_result?: Json | null
+          coverage_status?: string
+          created_at?: string
+          evidence_scope_ids?: string[]
+          generation_attempt?: number | null
+          generation_model?: string | null
+          generation_provider?: string | null
+          gold_regression_run_id?: string | null
+          id?: string
+          item_lineage?: Json | null
+          mission_content?: Json
+          mission_content_hash?: string | null
+          parent_version_id?: string | null
+          prompt_instance_hash?: string | null
+          prompt_snapshot_hash?: string | null
+          prompt_version?: string | null
+          realization_pack_id?: string | null
+          realization_pack_version?: string | null
+          release_resolution_id?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_scope_ids?: string[]
+          rule_scope_ids?: string[]
+          scenario_id?: string
+          stage?: string
+          validation_result?: Json | null
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_lineage_versions_gold_regression_run_id_fkey"
+            columns: ["gold_regression_run_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_gold_regression_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_lineage_versions_parent_version_id_fkey"
+            columns: ["parent_version_id"]
+            isOneToOne: false
+            referencedRelation: "mission_lineage_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_lineage_versions_release_resolution_id_fkey"
+            columns: ["release_resolution_id"]
+            isOneToOne: false
+            referencedRelation: "mission_review_resolutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_lineage_versions_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["scenario_id"]
+          },
+        ]
+      }
+      mission_review_resolution_signoffs: {
+        Row: {
+          decision: string
+          id: string
+          rationale_ko: string
+          resolution_id: string
+          reviewer_user_id: string
+          signed_at: string
+        }
+        Insert: {
+          decision: string
+          id?: string
+          rationale_ko: string
+          resolution_id: string
+          reviewer_user_id: string
+          signed_at?: string
+        }
+        Update: {
+          decision?: string
+          id?: string
+          rationale_ko?: string
+          resolution_id?: string
+          reviewer_user_id?: string
+          signed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_review_resolution_signoffs_resolution_id_fkey"
+            columns: ["resolution_id"]
+            isOneToOne: false
+            referencedRelation: "mission_review_resolutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_review_resolutions: {
+        Row: {
+          final_verdict: string | null
+          id: string
+          lineage_version_id: string
+          protocol_version: string
+          rationale_ko: string
+          resolution_revision: number
+          resolution_status: string
+          resolved_at: string
+          resolved_by: string
+          resolved_candidate_bands: Json | null
+          resolved_lineage_claims: Json | null
+          review_ids: string[]
+          review_round: number
+          supersedes_resolution_id: string | null
+        }
+        Insert: {
+          final_verdict?: string | null
+          id?: string
+          lineage_version_id: string
+          protocol_version?: string
+          rationale_ko: string
+          resolution_revision?: number
+          resolution_status: string
+          resolved_at?: string
+          resolved_by: string
+          resolved_candidate_bands?: Json | null
+          resolved_lineage_claims?: Json | null
+          review_ids: string[]
+          review_round?: number
+          supersedes_resolution_id?: string | null
+        }
+        Update: {
+          final_verdict?: string | null
+          id?: string
+          lineage_version_id?: string
+          protocol_version?: string
+          rationale_ko?: string
+          resolution_revision?: number
+          resolution_status?: string
+          resolved_at?: string
+          resolved_by?: string
+          resolved_candidate_bands?: Json | null
+          resolved_lineage_claims?: Json | null
+          review_ids?: string[]
+          review_round?: number
+          supersedes_resolution_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_review_resolutions_lineage_version_id_fkey"
+            columns: ["lineage_version_id"]
+            isOneToOne: false
+            referencedRelation: "mission_lineage_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_review_resolutions_supersedes_resolution_id_fkey"
+            columns: ["supersedes_resolution_id"]
+            isOneToOne: false
+            referencedRelation: "mission_review_resolutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       package_items: {
         Row: {
           activity_type: string | null
@@ -844,6 +1586,917 @@ export type Database = {
           },
         ]
       }
+      pragma_expert_registry_versions: {
+        Row: {
+          created_at: string
+          expert_user_id: string
+          expertise_areas: string[]
+          id: string
+          language_pairs: string[]
+          protocol_version: string
+          qualification_note: string
+          registered_by: string
+          registry_version: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          expert_user_id: string
+          expertise_areas: string[]
+          id?: string
+          language_pairs: string[]
+          protocol_version: string
+          qualification_note: string
+          registered_by: string
+          registry_version: number
+          status: string
+        }
+        Update: {
+          created_at?: string
+          expert_user_id?: string
+          expertise_areas?: string[]
+          id?: string
+          language_pairs?: string[]
+          protocol_version?: string
+          qualification_note?: string
+          registered_by?: string
+          registry_version?: number
+          status?: string
+        }
+        Relationships: []
+      }
+      pragma_gold_calibration_resolutions: {
+        Row: {
+          case_id: string
+          case_version: string
+          id: string
+          rationale_ko: string
+          resolution_round: number
+          resolution_status: string
+          resolved_at: string
+          resolved_by: string
+          resolved_case_snapshot: Json | null
+          source_review_id: string
+        }
+        Insert: {
+          case_id: string
+          case_version: string
+          id?: string
+          rationale_ko: string
+          resolution_round: number
+          resolution_status: string
+          resolved_at?: string
+          resolved_by: string
+          resolved_case_snapshot?: Json | null
+          source_review_id: string
+        }
+        Update: {
+          case_id?: string
+          case_version?: string
+          id?: string
+          rationale_ko?: string
+          resolution_round?: number
+          resolution_status?: string
+          resolved_at?: string
+          resolved_by?: string
+          resolved_case_snapshot?: Json | null
+          source_review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_gold_calibration_resolutions_source_review_id_fkey"
+            columns: ["source_review_id"]
+            isOneToOne: true
+            referencedRelation: "pragma_gold_calibration_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_gold_calibration_reviews: {
+        Row: {
+          candidate_assessments: Json
+          case_content_hash: string
+          case_id: string
+          case_snapshot: Json
+          case_version: string
+          context_assessment: Json
+          id: string
+          overall_verdict: string
+          rationale_ko: string
+          realization_pack_id: string
+          realization_pack_version: string
+          review_round: number
+          reviewer_user_id: string
+          schema_version: string
+          submitted_at: string
+        }
+        Insert: {
+          candidate_assessments: Json
+          case_content_hash: string
+          case_id: string
+          case_snapshot: Json
+          case_version: string
+          context_assessment: Json
+          id?: string
+          overall_verdict: string
+          rationale_ko: string
+          realization_pack_id: string
+          realization_pack_version: string
+          review_round?: number
+          reviewer_user_id: string
+          schema_version: string
+          submitted_at?: string
+        }
+        Update: {
+          candidate_assessments?: Json
+          case_content_hash?: string
+          case_id?: string
+          case_snapshot?: Json
+          case_version?: string
+          context_assessment?: Json
+          id?: string
+          overall_verdict?: string
+          rationale_ko?: string
+          realization_pack_id?: string
+          realization_pack_version?: string
+          review_round?: number
+          reviewer_user_id?: string
+          schema_version?: string
+          submitted_at?: string
+        }
+        Relationships: []
+      }
+      pragma_gold_expert_resolution_signoffs: {
+        Row: {
+          decision: string
+          id: string
+          rationale_ko: string
+          resolution_id: string
+          reviewer_user_id: string
+          signed_at: string
+        }
+        Insert: {
+          decision: string
+          id?: string
+          rationale_ko: string
+          resolution_id: string
+          reviewer_user_id: string
+          signed_at?: string
+        }
+        Update: {
+          decision?: string
+          id?: string
+          rationale_ko?: string
+          resolution_id?: string
+          reviewer_user_id?: string
+          signed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_gold_expert_resolution_signoffs_resolution_id_fkey"
+            columns: ["resolution_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_gold_expert_resolutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_gold_expert_resolutions: {
+        Row: {
+          calibration_resolution_id: string
+          final_status: string
+          id: string
+          protocol_version: string
+          rationale_ko: string
+          resolution_method: string
+          resolution_revision: number
+          resolved_at: string
+          resolved_by: string
+          resolved_candidate_assessments: Json | null
+          resolved_case_snapshot: Json | null
+          resolved_context_assessment: Json | null
+          review_ids: string[]
+          review_round: number
+          schema_version: string
+          supersedes_resolution_id: string | null
+        }
+        Insert: {
+          calibration_resolution_id: string
+          final_status: string
+          id?: string
+          protocol_version?: string
+          rationale_ko: string
+          resolution_method: string
+          resolution_revision: number
+          resolved_at?: string
+          resolved_by: string
+          resolved_candidate_assessments?: Json | null
+          resolved_case_snapshot?: Json | null
+          resolved_context_assessment?: Json | null
+          review_ids: string[]
+          review_round: number
+          schema_version?: string
+          supersedes_resolution_id?: string | null
+        }
+        Update: {
+          calibration_resolution_id?: string
+          final_status?: string
+          id?: string
+          protocol_version?: string
+          rationale_ko?: string
+          resolution_method?: string
+          resolution_revision?: number
+          resolved_at?: string
+          resolved_by?: string
+          resolved_candidate_assessments?: Json | null
+          resolved_case_snapshot?: Json | null
+          resolved_context_assessment?: Json | null
+          review_ids?: string[]
+          review_round?: number
+          schema_version?: string
+          supersedes_resolution_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_gold_expert_resolutions_calibration_resolution_id_fkey"
+            columns: ["calibration_resolution_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_gold_calibration_resolutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_gold_expert_resolutions_supersedes_resolution_id_fkey"
+            columns: ["supersedes_resolution_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_gold_expert_resolutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_gold_expert_review_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          blind_case_snapshot: Json
+          blind_review: boolean
+          calibration_resolution_id: string
+          case_content_hash: string
+          case_id: string
+          case_version: string
+          expert_registry_version_id: string
+          id: string
+          protocol_version: string
+          review_round: number
+          reviewer_user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          blind_case_snapshot: Json
+          blind_review?: boolean
+          calibration_resolution_id: string
+          case_content_hash: string
+          case_id: string
+          case_version: string
+          expert_registry_version_id: string
+          id?: string
+          protocol_version?: string
+          review_round: number
+          reviewer_user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          blind_case_snapshot?: Json
+          blind_review?: boolean
+          calibration_resolution_id?: string
+          case_content_hash?: string
+          case_id?: string
+          case_version?: string
+          expert_registry_version_id?: string
+          id?: string
+          protocol_version?: string
+          review_round?: number
+          reviewer_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_gold_expert_review_assig_expert_registry_version_id_fkey"
+            columns: ["expert_registry_version_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_expert_registry_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_gold_expert_review_assign_calibration_resolution_id_fkey"
+            columns: ["calibration_resolution_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_gold_calibration_resolutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_gold_expert_reviews: {
+        Row: {
+          assignment_id: string
+          calibration_resolution_id: string
+          candidate_assessments: Json
+          context_assessment: Json
+          id: string
+          independence_declaration: Json
+          overall_verdict: string
+          protocol_version: string
+          rationale_ko: string
+          review_round: number
+          reviewer_user_id: string
+          schema_version: string
+          submitted_at: string
+        }
+        Insert: {
+          assignment_id: string
+          calibration_resolution_id: string
+          candidate_assessments: Json
+          context_assessment: Json
+          id?: string
+          independence_declaration: Json
+          overall_verdict: string
+          protocol_version: string
+          rationale_ko: string
+          review_round: number
+          reviewer_user_id: string
+          schema_version: string
+          submitted_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          calibration_resolution_id?: string
+          candidate_assessments?: Json
+          context_assessment?: Json
+          id?: string
+          independence_declaration?: Json
+          overall_verdict?: string
+          protocol_version?: string
+          rationale_ko?: string
+          review_round?: number
+          reviewer_user_id?: string
+          schema_version?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_gold_expert_reviews_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: true
+            referencedRelation: "pragma_gold_expert_review_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_gold_expert_reviews_calibration_resolution_id_fkey"
+            columns: ["calibration_resolution_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_gold_calibration_resolutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_gold_regression_runs: {
+        Row: {
+          created_at: string
+          created_by: string
+          evaluator_version: string
+          gate_status: string
+          gold_case_snapshots: Json
+          gold_resolution_ids: string[]
+          id: string
+          observations: Json
+          prompt_snapshot_hash: string
+          realization_pack_id: string
+          realization_pack_version: string
+          report: Json
+          schema_version: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          evaluator_version: string
+          gate_status: string
+          gold_case_snapshots: Json
+          gold_resolution_ids: string[]
+          id?: string
+          observations: Json
+          prompt_snapshot_hash: string
+          realization_pack_id: string
+          realization_pack_version: string
+          report: Json
+          schema_version: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          evaluator_version?: string
+          gate_status?: string
+          gold_case_snapshots?: Json
+          gold_resolution_ids?: string[]
+          id?: string
+          observations?: Json
+          prompt_snapshot_hash?: string
+          realization_pack_id?: string
+          realization_pack_version?: string
+          report?: Json
+          schema_version?: string
+        }
+        Relationships: []
+      }
+      pragma_hsk_topic_mappings: {
+        Row: {
+          app_domain_code: string | null
+          axis_code: string
+          coded_at: string | null
+          coded_by: string | null
+          coding_status: string
+          created_at: string
+          exclusion_reason_code: string | null
+          has_state_administration_frame: boolean
+          mapping_version: string
+          notes: string | null
+          scope_code: string
+          selection_status: string
+          source_id: string
+          topic_seq: number
+          updated_at: string
+        }
+        Insert: {
+          app_domain_code?: string | null
+          axis_code: string
+          coded_at?: string | null
+          coded_by?: string | null
+          coding_status: string
+          created_at?: string
+          exclusion_reason_code?: string | null
+          has_state_administration_frame?: boolean
+          mapping_version: string
+          notes?: string | null
+          scope_code: string
+          selection_status?: string
+          source_id: string
+          topic_seq: number
+          updated_at?: string
+        }
+        Update: {
+          app_domain_code?: string | null
+          axis_code?: string
+          coded_at?: string | null
+          coded_by?: string | null
+          coding_status?: string
+          created_at?: string
+          exclusion_reason_code?: string | null
+          has_state_administration_frame?: boolean
+          mapping_version?: string
+          notes?: string | null
+          scope_code?: string
+          selection_status?: string
+          source_id?: string
+          topic_seq?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_hsk_topic_mappings_source_id_topic_seq_fkey"
+            columns: ["source_id", "topic_seq"]
+            isOneToOne: false
+            referencedRelation: "hsk3_topics"
+            referencedColumns: ["source_id", "topic_seq"]
+          },
+        ]
+      }
+      pragma_improvement_candidate_sources: {
+        Row: {
+          added_at: string
+          candidate_id: string
+          id: string
+          source_field: string
+          source_id: string
+          source_snapshot: Json
+          source_type: string
+        }
+        Insert: {
+          added_at?: string
+          candidate_id: string
+          id?: string
+          source_field?: string
+          source_id: string
+          source_snapshot?: Json
+          source_type: string
+        }
+        Update: {
+          added_at?: string
+          candidate_id?: string
+          id?: string
+          source_field?: string
+          source_id?: string
+          source_snapshot?: Json
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_improvement_candidate_sources_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_improvement_candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_improvement_candidates: {
+        Row: {
+          analysis_contract_version: string
+          candidate_key: string
+          content_hash: string | null
+          created_at: string
+          created_by: string
+          evidence_fingerprint: string
+          id: string
+          metrics: Json
+          proposed_change: Json | null
+          realization_pack_id: string | null
+          realization_pack_version: string | null
+          signal_type: string
+          source_refs: Json
+          source_window_end: string | null
+          source_window_start: string | null
+          suggested_action: string
+          target_feature: string | null
+        }
+        Insert: {
+          analysis_contract_version?: string
+          candidate_key: string
+          content_hash?: string | null
+          created_at?: string
+          created_by: string
+          evidence_fingerprint: string
+          id?: string
+          metrics?: Json
+          proposed_change?: Json | null
+          realization_pack_id?: string | null
+          realization_pack_version?: string | null
+          signal_type: string
+          source_refs?: Json
+          source_window_end?: string | null
+          source_window_start?: string | null
+          suggested_action: string
+          target_feature?: string | null
+        }
+        Update: {
+          analysis_contract_version?: string
+          candidate_key?: string
+          content_hash?: string | null
+          created_at?: string
+          created_by?: string
+          evidence_fingerprint?: string
+          id?: string
+          metrics?: Json
+          proposed_change?: Json | null
+          realization_pack_id?: string | null
+          realization_pack_version?: string | null
+          signal_type?: string
+          source_refs?: Json
+          source_window_end?: string | null
+          source_window_start?: string | null
+          suggested_action?: string
+          target_feature?: string | null
+        }
+        Relationships: []
+      }
+      pragma_improvement_decisions: {
+        Row: {
+          candidate_evidence_fingerprint: string | null
+          candidate_id: string
+          decided_at: string
+          decided_by: string
+          decision: string
+          decision_contract_version: string
+          gold_regression_run_id: string | null
+          id: string
+          note_ko: string
+          resulting_gold_case_ids: string[]
+          resulting_gold_resolution_ids: string[]
+          resulting_pack_id: string | null
+          resulting_pack_release_id: string | null
+          resulting_pack_version: string | null
+        }
+        Insert: {
+          candidate_evidence_fingerprint?: string | null
+          candidate_id: string
+          decided_at?: string
+          decided_by: string
+          decision: string
+          decision_contract_version?: string
+          gold_regression_run_id?: string | null
+          id?: string
+          note_ko: string
+          resulting_gold_case_ids?: string[]
+          resulting_gold_resolution_ids?: string[]
+          resulting_pack_id?: string | null
+          resulting_pack_release_id?: string | null
+          resulting_pack_version?: string | null
+        }
+        Update: {
+          candidate_evidence_fingerprint?: string | null
+          candidate_id?: string
+          decided_at?: string
+          decided_by?: string
+          decision?: string
+          decision_contract_version?: string
+          gold_regression_run_id?: string | null
+          id?: string
+          note_ko?: string
+          resulting_gold_case_ids?: string[]
+          resulting_gold_resolution_ids?: string[]
+          resulting_pack_id?: string | null
+          resulting_pack_release_id?: string | null
+          resulting_pack_version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_improvement_decisions_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_improvement_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_improvement_decisions_gold_regression_run_id_fkey"
+            columns: ["gold_regression_run_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_gold_regression_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_improvement_decisions_resulting_pack_release_id_fkey"
+            columns: ["resulting_pack_release_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_realization_pack_releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_improvement_refresh_runs: {
+        Row: {
+          contract_version: string
+          created_at: string
+          created_by: string
+          created_candidate_ids: string[]
+          created_counts: Json
+          id: string
+          thresholds: Json
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          contract_version: string
+          created_at?: string
+          created_by: string
+          created_candidate_ids?: string[]
+          created_counts: Json
+          id?: string
+          thresholds: Json
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          contract_version?: string
+          created_at?: string
+          created_by?: string
+          created_candidate_ids?: string[]
+          created_counts?: Json
+          id?: string
+          thresholds?: Json
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      pragma_operational_verifications: {
+        Row: {
+          contract_version: string
+          id: string
+          result: Json
+          result_hash: string
+          run_ref: string
+          schema_version: string
+          source_commit_ref: string
+          status: string
+          verification_type: string
+          verified_at: string
+        }
+        Insert: {
+          contract_version: string
+          id?: string
+          result: Json
+          result_hash: string
+          run_ref: string
+          schema_version?: string
+          source_commit_ref: string
+          status: string
+          verification_type: string
+          verified_at?: string
+        }
+        Update: {
+          contract_version?: string
+          id?: string
+          result?: Json
+          result_hash?: string
+          run_ref?: string
+          schema_version?: string
+          source_commit_ref?: string
+          status?: string
+          verification_type?: string
+          verified_at?: string
+        }
+        Relationships: []
+      }
+      pragma_pack_manifest_attestations: {
+        Row: {
+          artifact_hash: string
+          attestation_method: string
+          attested_at: string
+          build_run_ref: string
+          canonicalization_version: string
+          evidence_snapshot_hash: string
+          expansion_authorization_id: string | null
+          id: string
+          pack_id: string
+          pack_version: string
+          prompt_snapshot_hash: string
+          schema_version: string
+          scope_speech_acts: string[]
+          source_commit_ref: string
+        }
+        Insert: {
+          artifact_hash: string
+          attestation_method?: string
+          attested_at?: string
+          build_run_ref: string
+          canonicalization_version: string
+          evidence_snapshot_hash: string
+          expansion_authorization_id?: string | null
+          id?: string
+          pack_id: string
+          pack_version: string
+          prompt_snapshot_hash: string
+          schema_version?: string
+          scope_speech_acts?: string[]
+          source_commit_ref: string
+        }
+        Update: {
+          artifact_hash?: string
+          attestation_method?: string
+          attested_at?: string
+          build_run_ref?: string
+          canonicalization_version?: string
+          evidence_snapshot_hash?: string
+          expansion_authorization_id?: string | null
+          id?: string
+          pack_id?: string
+          pack_version?: string
+          prompt_snapshot_hash?: string
+          schema_version?: string
+          scope_speech_acts?: string[]
+          source_commit_ref?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_pack_manifest_attestatio_expansion_authorization_id_fkey"
+            columns: ["expansion_authorization_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_speech_act_expansion_authorizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_realization_pack_releases: {
+        Row: {
+          artifact_hash: string
+          created_at: string
+          created_by: string
+          evidence_snapshot_hash: string
+          id: string
+          manifest_attestation_id: string | null
+          pack_id: string
+          pack_version: string
+          prompt_snapshot_hash: string
+          release_note_ko: string
+          source_candidate_id: string | null
+          source_commit_ref: string
+          supersedes_release_id: string | null
+        }
+        Insert: {
+          artifact_hash: string
+          created_at?: string
+          created_by: string
+          evidence_snapshot_hash: string
+          id?: string
+          manifest_attestation_id?: string | null
+          pack_id: string
+          pack_version: string
+          prompt_snapshot_hash: string
+          release_note_ko: string
+          source_candidate_id?: string | null
+          source_commit_ref: string
+          supersedes_release_id?: string | null
+        }
+        Update: {
+          artifact_hash?: string
+          created_at?: string
+          created_by?: string
+          evidence_snapshot_hash?: string
+          id?: string
+          manifest_attestation_id?: string | null
+          pack_id?: string
+          pack_version?: string
+          prompt_snapshot_hash?: string
+          release_note_ko?: string
+          source_candidate_id?: string | null
+          source_commit_ref?: string
+          supersedes_release_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_realization_pack_releases_manifest_attestation_id_fkey"
+            columns: ["manifest_attestation_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_pack_manifest_attestations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_realization_pack_releases_source_candidate_id_fkey"
+            columns: ["source_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_improvement_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pragma_realization_pack_releases_supersedes_release_id_fkey"
+            columns: ["supersedes_release_id"]
+            isOneToOne: true
+            referencedRelation: "pragma_realization_pack_releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pragma_speech_act_expansion_authorizations: {
+        Row: {
+          authorized_at: string
+          authorized_by: string
+          basis_pack_id: string
+          basis_pack_release_id: string
+          basis_pack_version: string
+          id: string
+          rationale_ko: string
+          readiness_snapshot: Json
+          readiness_snapshot_hash: string
+          schema_version: string
+          target_pack_id: string
+          target_scope_speech_acts: string[]
+        }
+        Insert: {
+          authorized_at?: string
+          authorized_by: string
+          basis_pack_id: string
+          basis_pack_release_id: string
+          basis_pack_version: string
+          id?: string
+          rationale_ko: string
+          readiness_snapshot: Json
+          readiness_snapshot_hash: string
+          schema_version?: string
+          target_pack_id: string
+          target_scope_speech_acts: string[]
+        }
+        Update: {
+          authorized_at?: string
+          authorized_by?: string
+          basis_pack_id?: string
+          basis_pack_release_id?: string
+          basis_pack_version?: string
+          id?: string
+          rationale_ko?: string
+          readiness_snapshot?: Json
+          readiness_snapshot_hash?: string
+          schema_version?: string
+          target_pack_id?: string
+          target_scope_speech_acts?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pragma_speech_act_expansion_authoriz_basis_pack_release_id_fkey"
+            columns: ["basis_pack_release_id"]
+            isOneToOne: false
+            referencedRelation: "pragma_realization_pack_releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           academic_year_or_program: string | null
@@ -873,6 +2526,7 @@ export type Database = {
           perceived_business_chinese_ti_risk: string | null
           profile_completed: boolean
           report_email_consent: boolean | null
+          research_consent_version: string | null
           research_use_consent: boolean
           role: Database["public"]["Enums"]["app_role"]
           ti_experience_level: string | null
@@ -909,6 +2563,7 @@ export type Database = {
           perceived_business_chinese_ti_risk?: string | null
           profile_completed?: boolean
           report_email_consent?: boolean | null
+          research_consent_version?: string | null
           research_use_consent?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           ti_experience_level?: string | null
@@ -945,6 +2600,7 @@ export type Database = {
           perceived_business_chinese_ti_risk?: string | null
           profile_completed?: boolean
           report_email_consent?: boolean | null
+          research_consent_version?: string | null
           research_use_consent?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           ti_experience_level?: string | null
@@ -994,6 +2650,36 @@ export type Database = {
           title?: string | null
           updated_at?: string
           version?: number
+        }
+        Relationships: []
+      }
+      research_data_exports: {
+        Row: {
+          created_at: string
+          dataset_type: string
+          export_schema_version: string
+          filter_spec: Json
+          id: string
+          requested_by: string
+          row_count: number
+        }
+        Insert: {
+          created_at?: string
+          dataset_type: string
+          export_schema_version: string
+          filter_spec?: Json
+          id?: string
+          requested_by: string
+          row_count: number
+        }
+        Update: {
+          created_at?: string
+          dataset_type?: string
+          export_schema_version?: string
+          filter_spec?: Json
+          id?: string
+          requested_by?: string
+          row_count?: number
         }
         Relationships: []
       }
@@ -1107,6 +2793,8 @@ export type Database = {
           mode: string | null
           pragmatic_challenge: string[] | null
           prompt_snapshot_hash: string | null
+          release_gate_mode: string
+          released_lineage_version_id: string | null
           review_status: Database["public"]["Enums"]["review_status"]
           scenario_d: string | null
           scenario_id: string
@@ -1157,6 +2845,8 @@ export type Database = {
           mode?: string | null
           pragmatic_challenge?: string[] | null
           prompt_snapshot_hash?: string | null
+          release_gate_mode?: string
+          released_lineage_version_id?: string | null
           review_status?: Database["public"]["Enums"]["review_status"]
           scenario_d?: string | null
           scenario_id?: string
@@ -1207,6 +2897,8 @@ export type Database = {
           mode?: string | null
           pragmatic_challenge?: string[] | null
           prompt_snapshot_hash?: string | null
+          release_gate_mode?: string
+          released_lineage_version_id?: string | null
           review_status?: Database["public"]["Enums"]["review_status"]
           scenario_d?: string | null
           scenario_id?: string
@@ -1228,6 +2920,13 @@ export type Database = {
           week_no?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "scenarios_released_lineage_version_id_fkey"
+            columns: ["released_lineage_version_id"]
+            isOneToOne: false
+            referencedRelation: "mission_lineage_versions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "scenarios_supersedes_scenario_id_fkey"
             columns: ["supersedes_scenario_id"]
@@ -1275,11 +2974,221 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      hsk3_reference_status: {
+        Row: {
+          derived_topic_rows: number | null
+          effective_at: string | null
+          extraction_version: string | null
+          manifest_version: string | null
+          official_topic_rows: number | null
+          official_url: string | null
+          publisher: string | null
+          released_at: string | null
+          researcher_mapping_rows: number | null
+          sha256: string | null
+          source_id: string | null
+          title: string | null
+          vocabulary_entries: number | null
+        }
+        Insert: {
+          derived_topic_rows?: never
+          effective_at?: string | null
+          extraction_version?: string | null
+          manifest_version?: string | null
+          official_topic_rows?: never
+          official_url?: string | null
+          publisher?: string | null
+          released_at?: string | null
+          researcher_mapping_rows?: never
+          sha256?: string | null
+          source_id?: string | null
+          title?: string | null
+          vocabulary_entries?: never
+        }
+        Update: {
+          derived_topic_rows?: never
+          effective_at?: string | null
+          extraction_version?: string | null
+          manifest_version?: string | null
+          official_topic_rows?: never
+          official_url?: string | null
+          publisher?: string | null
+          released_at?: string | null
+          researcher_mapping_rows?: never
+          sha256?: string | null
+          source_id?: string | null
+          title?: string | null
+          vocabulary_entries?: never
+        }
+        Relationships: []
+      }
+      hsk3_vocab_cumulative: {
+        Row: {
+          extra_levels: number[] | null
+          headword: string | null
+          intro_band: string | null
+          intro_level: number | null
+          is_multi_sense: boolean | null
+          is_phrase: boolean | null
+          is_polyphone: boolean | null
+          pinyin: string | null
+          pinyin_norm: string | null
+          pos: string | null
+          reference_ceiling: number | null
+          sense_no: number | null
+          seq: number | null
+          source_form: string | null
+          source_id: string | null
+          source_note: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hsk3_vocab_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "hsk_reference_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hsk3_vocab_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "hsk3_reference_status"
+            referencedColumns: ["source_id"]
+          },
+        ]
+      }
     }
     Functions: {
+      append_learner_mission_event: {
+        Args: { p_payload: Json }
+        Returns: string
+      }
+      apply_pragma_improvement_candidate: {
+        Args: {
+          p_candidate_id: string
+          p_gold_regression_run_id: string
+          p_note_ko: string
+          p_pack_release_id: string
+          p_resulting_gold_case_ids: string[]
+        }
+        Returns: string
+      }
+      assign_gold_expert_review: {
+        Args: {
+          p_calibration_resolution_id: string
+          p_review_round: number
+          p_reviewer_user_id: string
+        }
+        Returns: string
+      }
+      assign_mission_expert_review: {
+        Args: {
+          p_lineage_version_id: string
+          p_review_round: number
+          p_reviewer_user_id: string
+        }
+        Returns: string
+      }
+      authorize_pragma_speech_act_expansion: {
+        Args: {
+          p_basis_pack_id: string
+          p_rationale_ko: string
+          p_target_pack_id: string
+          p_target_scope_speech_acts: string[]
+        }
+        Returns: string
+      }
       ensure_test_dev_profile: { Args: never; Returns: undefined }
+      export_learner_mission_events: {
+        Args: { p_from?: string; p_to?: string }
+        Returns: Json
+      }
+      get_pragma_moat_expansion_readiness: {
+        Args: { p_pack_id?: string }
+        Returns: Json
+      }
+      has_completed_learner_profile: { Args: never; Returns: boolean }
+      hsk3_match_tokens: {
+        Args: {
+          p_max_intro_level: number
+          p_source_id: string
+          p_tokens: string[]
+        }
+        Returns: {
+          headword: string
+          intro_level: number
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
+      make_gold_expert_blind_snapshot: { Args: { p_case: Json }; Returns: Json }
+      materialize_pragma_improvement_candidates: {
+        Args: {
+          p_min_distinct_attempts?: number
+          p_min_distinct_participants?: number
+          p_window_end?: string
+          p_window_start?: string
+        }
+        Returns: string
+      }
+      pragma_semver_is_greater: {
+        Args: { p_new: string; p_old: string }
+        Returns: boolean
+      }
+      propose_gold_expert_resolution: {
+        Args: { p_payload: Json }
+        Returns: string
+      }
+      propose_mission_review_resolution: {
+        Args: { p_payload: Json }
+        Returns: string
+      }
+      record_gold_regression_run: {
+        Args: {
+          p_evaluator_version: string
+          p_gold_resolution_ids: string[]
+          p_observations: Json
+          p_prompt_snapshot_hash: string
+        }
+        Returns: string
+      }
+      record_pragma_improvement_decision: {
+        Args: { p_candidate_id: string; p_decision: string; p_note_ko: string }
+        Returns: string
+      }
+      record_pragma_realization_pack_release: {
+        Args: {
+          p_artifact_hash: string
+          p_evidence_snapshot_hash: string
+          p_manifest_attestation_id: string
+          p_pack_id: string
+          p_pack_version: string
+          p_prompt_snapshot_hash: string
+          p_release_note_ko: string
+          p_source_candidate_id?: string
+          p_source_commit_ref: string
+        }
+        Returns: string
+      }
+      register_pragma_expert: {
+        Args: {
+          p_expert_user_id: string
+          p_expertise_areas: string[]
+          p_language_pairs: string[]
+          p_qualification_note: string
+          p_status: string
+        }
+        Returns: string
+      }
+      release_mission: {
+        Args: {
+          p_gold_regression_run_id: string
+          p_resolution_id: string
+          p_reviewed_lineage_id: string
+          p_scenario_id: string
+        }
+        Returns: string
+      }
       review_mission: { Args: { p_scenario_id: string }; Returns: string }
       save_generated_core: { Args: { p_payload: Json }; Returns: string }
       save_generated_mission: {

@@ -1,0 +1,161 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+import { MISSION_EVENT_TYPES } from "@/lib/mission/missionEvents";
+import { POLICY_VERSION } from "@/lib/research/versions";
+
+const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
+
+const LINEAGE_SQL = read("supabase/migrations/20260814205000_mission_lineage_versions.sql");
+const EXPERT_SQL = read("supabase/migrations/20260814211000_expert_review_disagreement.sql");
+const EVENT_SQL = read("supabase/migrations/20260814214000_learner_mission_events.sql");
+const FLYWHEEL_SQL = read("supabase/migrations/20260814221000_moat_improvement_queue.sql");
+const CALIBRATION_SQL = read("supabase/migrations/20260814230000_gold_calibration_reviews.sql");
+const EXPERT_V2_SQL = read("supabase/migrations/20260814234000_expert_review_protocol_v2.sql");
+const GOLD_EXPERT_SQL = read("supabase/migrations/20260815003000_gold_expert_review_protocol.sql");
+const RELEASE_SQL = read("supabase/migrations/20260815010000_authoritative_mission_release.sql");
+const OPERATIONAL_FLYWHEEL_SQL = read("supabase/migrations/20260815023000_operational_improvement_flywheel.sql");
+const MANIFEST_ATTESTATION_SQL = read("supabase/migrations/20260815030000_trusted_pack_manifest_attestation.sql");
+const EXPANSION_READINESS_SQL = read("supabase/migrations/20260815033000_moat_expansion_readiness.sql");
+const PROMOTE_TS = read("src/lib/pragma/promoteMission.ts");
+const EVENTS_TS = read("src/lib/mission/missionEvents.ts");
+const EXPORT_TS = read("src/lib/mission/missionEventExport.ts");
+
+describe("moat migration/runtime contracts", () => {
+  it("keeps RPC names wired and every PL/pgSQL body delimiter paired", () => {
+    expect(PROMOTE_TS).toContain('rpc("save_generated_mission"');
+    expect(PROMOTE_TS).toContain('rpc("review_mission"');
+    expect(EVENTS_TS).toContain('rpc("append_learner_mission_event"');
+    expect(EXPORT_TS).toContain('rpc("export_learner_mission_events"');
+    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL]) {
+      expect((sql.match(/\$\$/g) ?? []).length % 2).toBe(0);
+    }
+  });
+
+  it("serializes lineage versions and stores exact prompt-instance provenance", () => {
+    expect(LINEAGE_SQL).toContain("pg_advisory_xact_lock");
+    expect(LINEAGE_SQL).toContain("prompt_instance_hash text");
+    expect(LINEAGE_SQL).toContain("item_lineage jsonb");
+    expect(LINEAGE_SQL).toContain("v_mission->'item_lineage'");
+    expect(LINEAGE_SQL).toContain("stage IN ('generated', 'reviewed', 'released', 'superseded')");
+    expect(LINEAGE_SQL).toMatch(/REVOKE UPDATE, DELETE ON public\.mission_lineage_versions/);
+    expect(PROMOTE_TS).toContain("generation_attempt: attempt");
+    expect(PROMOTE_TS).toContain("lineage_scope:");
+  });
+
+  it("requires two independent expert reviewers and preserves their rows", () => {
+    expect(EXPERT_SQL).toContain("count(DISTINCT reviewer_user_id)");
+    expect(EXPERT_SQL).toContain("v_distinct_reviewers < 2");
+    expect(EXPERT_SQL).toContain("lineage_claim_assessments jsonb");
+    expect(EXPERT_SQL).toContain("every item lineage claim must have exactly one expert assessment");
+    expect(EXPERT_SQL).toContain("resolved_lineage_claims jsonb");
+    expect(EXPERT_SQL).toContain("resolution must cover every item lineage claim exactly once");
+    expect(EXPERT_SQL).toMatch(/REVOKE UPDATE, DELETE ON public\.mission_expert_reviews/);
+  });
+
+  it("keeps event vocabulary synchronized and enforces server-side consent plus lineage", () => {
+    for (const eventType of MISSION_EVENT_TYPES) expect(EVENT_SQL).toContain(`'${eventType}'`);
+    expect(EVENT_SQL).toContain("v_profile_consent_version <> p_payload->>'consent_version'");
+    expect(EVENT_SQL).toContain(`p_payload->>'policy_version' <> '${POLICY_VERSION}'`);
+    expect(EVENT_SQL).toContain("p.consent_data_use = true");
+    expect(EVENT_SQL).toContain("p.consent_anonymous_analysis = true");
+    expect(EVENT_SQL).toContain("lineage_version_id uuid REFERENCES public.mission_lineage_versions");
+    expect(EVENT_SQL).not.toMatch(/raw_audio|audio_blob|audio_url/i);
+  });
+
+  it("cannot auto-apply a data signal or apply it twice without a new versioned Gold impact", () => {
+    expect(FLYWHEEL_SQL).toContain("an approved decision is required before applied");
+    expect(FLYWHEEL_SQL).toContain("pragma_improvement_one_applied_idx");
+    expect(FLYWHEEL_SQL).toContain("cardinality(resulting_gold_case_ids) > 0");
+    expect(FLYWHEEL_SQL).toContain("applied decision must reference a new realization pack version");
+  });
+
+  it("keeps Seed Gold reviews and their resolutions separate and append-only", () => {
+    expect(CALIBRATION_SQL).toContain("CREATE TABLE public.pragma_gold_calibration_reviews");
+    expect(CALIBRATION_SQL).toContain("CREATE TABLE public.pragma_gold_calibration_resolutions");
+    expect(CALIBRATION_SQL).toContain("case_snapshot jsonb NOT NULL");
+    expect(CALIBRATION_SQL).toContain("case_content_hash text NOT NULL");
+    expect(CALIBRATION_SQL).toContain("NEW.case_content_hash := encode(");
+    expect(CALIBRATION_SQL).toContain("candidate assessments require complete A/B/C band, semantic, and rationale judgments");
+    expect(CALIBRATION_SQL).toContain("approve requires all context gates, semantic fidelity, and seed bands to agree");
+    expect(CALIBRATION_SQL).toContain("resolution identity must match its source review");
+    expect(CALIBRATION_SQL).toContain("resolution status must preserve the researcher review verdict");
+    expect(CALIBRATION_SQL).toMatch(/REVOKE UPDATE, DELETE ON public\.pragma_gold_calibration_reviews/);
+    expect(CALIBRATION_SQL).toMatch(/REVOKE UPDATE, DELETE ON public\.pragma_gold_calibration_resolutions/);
+  });
+
+  it("operationalizes blind expert eligibility, same-round completeness, and honest resolution", () => {
+    expect(EXPERT_V2_SQL).toContain("CREATE TABLE public.pragma_expert_registry_versions");
+    expect(EXPERT_V2_SQL).toContain("administrators cannot serve as blind expert reviewers");
+    expect(EXPERT_V2_SQL).toContain("reviewed_independently");
+    expect(EXPERT_V2_SQL).toContain("every item lineage claim must have exactly one candidate band assessment");
+    expect(EXPERT_V2_SQL).toContain("resolution requires every same-round blind assignment and at least two independent reviewers");
+    expect(EXPERT_V2_SQL).toContain("unanimous status requires actually identical, non-uncertain reviews");
+    expect(EXPERT_V2_SQL).toContain("resolution revisions must form a contiguous same-round chain");
+    expect(EXPERT_V2_SQL).toContain("only included reviewers may sign a discussion resolution");
+    expect(EXPERT_V2_SQL).toMatch(/REVOKE INSERT ON public\.mission_expert_review_assignments/);
+    expect(EXPERT_V2_SQL).toMatch(/REVOKE INSERT ON public\.mission_review_resolutions/);
+  });
+
+  it("keeps Gold labels blind until a two-expert append-only resolution", () => {
+    expect(GOLD_EXPERT_SQL).toContain("make_gold_expert_blind_snapshot");
+    expect(GOLD_EXPERT_SQL).not.toMatch(/blind_case_snapshot[^\n]*expected_band_code/);
+    expect(GOLD_EXPERT_SQL).toContain("administrators cannot serve as blind Gold expert reviewers");
+    expect(GOLD_EXPERT_SQL).toContain("Gold resolution requires every same-round blind assignment and two distinct experts");
+    expect(GOLD_EXPERT_SQL).toContain("unanimous Gold resolution requires actually identical expert judgments");
+    expect(GOLD_EXPERT_SQL).toContain("only included Gold reviewers may sign a discussion resolution");
+    expect(GOLD_EXPERT_SQL).toMatch(/REVOKE INSERT ON public\.pragma_gold_expert_review_assignments/);
+    expect(GOLD_EXPERT_SQL).toMatch(/REVOKE INSERT ON public\.pragma_gold_expert_resolutions/);
+  });
+
+  it("requires expert-approved Gold regression and authoritative release for covered missions", () => {
+    expect(RELEASE_SQL).toContain("expert release regression requires at least 30 distinct Gold resolutions");
+    expect(RELEASE_SQL).toContain("minimum_band_accuracy', 0.90");
+    expect(RELEASE_SQL).toContain("minimum_semantic_accuracy', 0.95");
+    expect(RELEASE_SQL).toContain("CREATE OR REPLACE FUNCTION public.release_mission");
+    expect(RELEASE_SQL).toContain("released mission cannot contain uncertain, revised, rejected, or unattributed claims");
+    expect(RELEASE_SQL).toContain("release_gate_mode = 'legacy_reviewed' AND mission_status = 'reviewed'");
+    expect(RELEASE_SQL).toContain("release_gate_mode = 'expert_v1' AND mission_status = 'released'");
+    expect(RELEASE_SQL).toContain("covered learner events require the exact released lineage");
+    expect(RELEASE_SQL).toMatch(/REVOKE INSERT, UPDATE, DELETE ON public\.pragma_gold_regression_runs/);
+  });
+
+  it("materializes real evidence and closes improvements only through a versioned authority bundle", () => {
+    expect(OPERATIONAL_FLYWHEEL_SQL).toContain("CREATE TABLE public.pragma_improvement_candidate_sources");
+    expect(OPERATIONAL_FLYWHEEL_SQL).toContain("UNIQUE (source_type, source_id, source_field)");
+    expect(OPERATIONAL_FLYWHEEL_SQL).toContain("count(DISTINCT profile_id) >= p_min_distinct_participants");
+    expect(OPERATIONAL_FLYWHEEL_SQL).toContain("lineage.stage = 'released'");
+    expect(OPERATIONAL_FLYWHEEL_SQL).toContain("profile.research_consent_version = event.consent_version");
+    expect(OPERATIONAL_FLYWHEEL_SQL).toContain("lineage_claim_disagreement_keys");
+    expect(OPERATIONAL_FLYWHEEL_SQL).toContain("CREATE TABLE public.pragma_realization_pack_releases");
+    expect(OPERATIONAL_FLYWHEEL_SQL).toContain("strictly increasing candidate-linked chain");
+    expect(OPERATIONAL_FLYWHEEL_SQL).toContain("The latest decision must be approve before applied");
+    expect(OPERATIONAL_FLYWHEEL_SQL).toContain("Every impacted Gold case must be latest expert-approved and included in the passing run");
+    expect(OPERATIONAL_FLYWHEEL_SQL).toMatch(/REVOKE INSERT ON public\.pragma_improvement_candidates,[\s\S]*public\.pragma_improvement_decisions FROM authenticated, anon/);
+  });
+
+  it("accepts pack releases only through an exact CI/service manifest attestation", () => {
+    expect(MANIFEST_ATTESTATION_SQL).toContain("CREATE TABLE public.pragma_pack_manifest_attestations");
+    expect(MANIFEST_ATTESTATION_SQL).toContain("canonicalization_version = 'pragma_canonical_json_v1'");
+    expect(MANIFEST_ATTESTATION_SQL).toContain("source_commit_ref ~ '^[0-9a-f]{40}$'");
+    expect(MANIFEST_ATTESTATION_SQL).toContain("Pack release must exactly match a CI/service manifest attestation");
+    expect(MANIFEST_ATTESTATION_SQL).toContain("Applied requires an exactly attested CI/service pack manifest");
+    expect(MANIFEST_ATTESTATION_SQL).toMatch(/REVOKE INSERT, UPDATE, DELETE ON public\.pragma_pack_manifest_attestations FROM authenticated, anon/);
+  });
+
+  it("blocks speech-act expansion until the initial three-act moat has operational evidence", () => {
+    expect(EXPANSION_READINESS_SQL).toContain("researcher_approved_gold_30");
+    expect(EXPANSION_READINESS_SQL).toContain("expert_approved_gold_30");
+    expect(EXPANSION_READINESS_SQL).toContain("released_vertical_slice_all_three_acts");
+    expect(EXPANSION_READINESS_SQL).toContain("three_consented_completers_per_initial_act");
+    expect(EXPANSION_READINESS_SQL).toContain("post_sample_flywheel_refresh");
+    expect(EXPANSION_READINESS_SQL).toContain("live_three_role_rls_smoke");
+    expect(EXPANSION_READINESS_SQL).toContain("verification.source_commit_ref = v_release.source_commit_ref");
+    expect(EXPANSION_READINESS_SQL).toContain("CREATE OR REPLACE FUNCTION public.authorize_pragma_speech_act_expansion");
+    expect(EXPANSION_READINESS_SQL).toContain("Expanded manifest requires an exact passing speech-act expansion authorization");
+    expect(EXPANSION_READINESS_SQL).toMatch(/GRANT INSERT ON public\.pragma_operational_verifications TO service_role/);
+    expect(EXPANSION_READINESS_SQL).toMatch(/REVOKE INSERT, UPDATE, DELETE ON public\.pragma_operational_verifications FROM authenticated, anon/);
+  });
+});
