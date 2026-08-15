@@ -51,6 +51,25 @@ export interface FinalCorpusRunState {
   terminal_at: string | null;
 }
 
+export interface FinalCorpusReleaseReadiness {
+  schema_version: "pragma_final_corpus_release_readiness_v1";
+  run_id: string;
+  pack_id: string;
+  pack_version: string;
+  target_count: number;
+  release_allowed: boolean;
+  existing_release_id: string | null;
+  requirements: {
+    core_run_closed: { passed: boolean };
+    pack_lock_current: { passed: boolean };
+    exact_locked_cores: { passed: boolean; count: number };
+    missions_generated: { passed: boolean; count: number };
+    missions_individually_released: { passed: boolean; count: number };
+    authoritative_lineage_bundle: { passed: boolean; count: number };
+    not_previously_released: { passed: boolean };
+  };
+}
+
 const rpc = (
   fn: string,
   args: Record<string, unknown>,
@@ -149,6 +168,12 @@ export async function getFinalCorpusRunState(runId: string): Promise<FinalCorpus
   return data as FinalCorpusRunState;
 }
 
+export async function getFinalCorpusReleaseReadiness(runId: string): Promise<FinalCorpusReleaseReadiness> {
+  const { data, error } = await rpc("get_pragma_final_corpus_release_readiness", { p_run_id: runId });
+  if (error) throw new Error(error.message ?? "최종 코퍼스 release readiness 조회 실패");
+  return data as FinalCorpusReleaseReadiness;
+}
+
 export async function closeFinalCorpusRun(runId: string, rationaleKo: string): Promise<string> {
   const { data, error } = await rpc("close_pragma_final_corpus_generation_run", {
     p_run_id: runId,
@@ -163,4 +188,13 @@ export async function abortFinalCorpusRun(runId: string, rationaleKo: string): P
     p_rationale_ko: rationaleKo,
   });
   return unwrapString(data, error, "최종 코퍼스 run 중단");
+}
+
+/** Atomically labels all 504 locked scenarios only after every mission has authoritative release evidence. */
+export async function releaseFinalCorpus(runId: string, rationaleKo: string): Promise<string> {
+  const { data, error } = await rpc("release_pragma_final_corpus", {
+    p_run_id: runId,
+    p_rationale_ko: rationaleKo,
+  });
+  return unwrapString(data, error, "최종 코퍼스 release");
 }
