@@ -239,7 +239,6 @@ const App = () => (
           {/* 워크플로 골격 — 후속 구현 화면(준비중). AdminPlaceholder가 "이 화면은 후속 단계에서 구현됩니다" 렌더 */}
           <Route path="/admin/package" element={<RequireAdmin><AdminPlaceholder title="수업 자료 생성" description="주차별 수업 패키지 = 교수자용 교안(이론·예상 Q&A) + 학습자용 도입 화면(도입 장면·화용 설명·원리)" /></RequireAdmin>} />
           <Route path="/admin/course-ops" element={<RequireAdmin><AdminPlaceholder title="교과목 운영" description="개설 교과목·수강 코호트 운영" /></RequireAdmin>} />
-          <Route path="/admin/users" element={<RequireAdmin><AdminPlaceholder title="사용자·권한" description="관리자·교수자·학습자 계정 및 권한" /></RequireAdmin>} />
           <Route path="/admin-login" element={<AdminLogin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
