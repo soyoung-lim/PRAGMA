@@ -119,7 +119,7 @@ const Page = () => {
 
   return (
     <AdminShell
-      title="수행·의사결정 기록"
+      title="학습자 수행 기록"
       description="학습자별 화행 판단, 번역·통역, 피드백, 수정에 이르는 개별 수행 기록을 조회합니다."
     >
       <div className="mb-4 flex items-center justify-between">

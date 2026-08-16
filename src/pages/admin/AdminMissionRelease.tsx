@@ -112,7 +112,7 @@ const AdminMissionRelease = ({ preview = false }: { preview?: boolean }) => {
     setSaving(false); if (!error) await load();
   };
 
-  return <AdminShell title="4단계 · 정식 학습자료의 학습자 사용 승인" description={`기준답안 ${FINAL_GOLD_POPULATION_COUNT}개 시스템 게이트, 외부 전문가 ${EXTERNAL_GOLD_SAMPLE_COUNT}개 내용타당성 확인, 504개 통합 검수·승인을 서로 다른 근거로 확인한 뒤 교수자가 사용을 승인합니다.`}>
+  return <AdminShell title="4단계 · 교수자 검수·승인" description={`판정 기준 ${FINAL_GOLD_POPULATION_COUNT}개, 외부 전문가 확인 ${EXTERNAL_GOLD_SAMPLE_COUNT}개, AI 생성 학습 콘텐츠 504개의 자동 점검 결과를 구분해 확인한 뒤 교수자가 학습자 공개를 승인합니다.`}>
     <div className="space-y-5">
       <ResearchWorkflowGuide current="release" />
       <div className="flex flex-wrap items-center justify-between gap-3"><Button asChild variant="ghost" size="sm"><Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"}><ArrowLeft className="mr-1 h-4 w-4" />문항 품질관리 전체 현황</Link></Button><Badge className="gap-1 bg-slate-900 text-white"><LockKeyhole className="h-3.5 w-3.5" />필수 조건을 모두 통과해야 공개</Badge></div>

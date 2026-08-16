@@ -18,71 +18,71 @@ export const ADMIN_DASHBOARD_ITEM: AdminNavItem = {
 // 관리자 메뉴·모바일 선택기·대시보드 바로가기가 함께 쓰는 단일 정본이다.
 export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
-    header: "재료와 규칙",
+    header: "학습 콘텐츠 설계",
     items: [
-      { to: "/admin/corpus", label: "소스 뱅크 (HSK 어휘)" },
-      { to: "/admin/question-designer", label: "수준별 문항 정책" },
-      { to: "/admin/prompt-harness", label: "생성 규칙·프롬프트" },
+      { to: "/admin/corpus", label: "HSK 3.0 어휘 기준" },
+      { to: "/admin/question-designer", label: "수준별 설계 기준" },
+      { to: "/admin/prompt-harness", label: "생성 계약·프롬프트" },
     ],
   },
   {
-    header: "문항 생성",
+    header: "학습 콘텐츠 제작",
     items: [
       {
         to: "/admin/generator",
-        label: "문항 생성",
+        label: "AI 학습 콘텐츠 생성",
         activePaths: ["/admin/generator", "/admin/batch"],
       },
-      { to: "/admin/browser", label: "학습 미션 조립" },
+      { to: "/admin/library", label: "코어 라이브러리" },
+      { to: "/admin/assembly", label: "학습 미션 조립" },
     ],
   },
   {
-    header: "품질 검증과 공개",
+    header: "품질 검증·공개",
     items: [
       { to: "/admin/research-qa", label: "전체 현황" },
-      { to: "/admin/research-qa/calibration", label: "1. 기준답안 연구자 판정" },
-      { to: "/admin/research-qa/gold-experts", label: "2. 기준답안 외부 전문가 확인" },
+      { to: "/admin/research-qa/calibration", label: "1. 판정 기준 확정" },
+      { to: "/admin/research-qa/gold-experts", label: "2. 외부 전문가 확인" },
       {
         to: "/admin/research-qa/final-review",
-        label: "3. 통합 검수·승인",
+        label: "3. 전체 자동 점검",
         activePaths: ["/admin/research-qa/final-review", "/admin/review"],
       },
-      { to: "/admin/research-qa/releases", label: "4. 학습자 공개" },
+      { to: "/admin/research-qa/releases", label: "4. 교수자 검수·승인" },
     ],
   },
   {
     header: "수업 편성",
     items: [
-      { to: "/admin/curriculum", label: "커리큘럼 구조" },
-      { to: "/admin/composer", label: "주차별 시나리오 편성" },
+      { to: "/admin/composer", label: "15주 교과목·학습 미션 편성" },
       { to: "/admin/package", label: "수업 자료 생성", pending: true },
     ],
   },
   {
-    header: "학습자와 연구자료",
+    header: "학습자와 연구 자료",
     items: [
       { to: "/admin/learners", label: "학습자 관리" },
-      { to: "/admin/decision-traces", label: "수행·의사결정 기록" },
+      { to: "/admin/decision-traces", label: "학습자 수행 기록" },
       { to: "/admin/analytics", label: "학습 분석", pending: true },
       { to: "/admin/research-qa/improvements", label: "학습 콘텐츠 개선" },
-      { to: "/admin/export", label: "수행기록 내려받기" },
+      { to: "/admin/export", label: "수행 기록 내려받기" },
     ],
   },
   {
-    header: "흐름 밖 참조",
+    header: "기록과 보존",
     items: [{ to: "/admin/archive", label: "시나리오 아카이브" }],
   },
 ] as const;
 
 const PRIORITY_LABELS = [
-  "3. 통합 검수·승인",
+  "3. 전체 자동 점검",
   "시나리오 아카이브",
   "수업 자료 생성",
   "학습자 관리",
-  "수행·의사결정 기록",
+  "학습자 수행 기록",
   "학습 분석",
   "학습 콘텐츠 개선",
-  "수행기록 내려받기",
+  "수행 기록 내려받기",
 ] as const;
 
 const ALL_ADMIN_NAV_ITEMS = ADMIN_NAV_GROUPS.flatMap((group) => group.items);

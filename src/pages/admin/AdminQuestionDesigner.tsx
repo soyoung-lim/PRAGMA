@@ -22,7 +22,7 @@ const ACTIVE_FEATURES = ["request", "refusal", "thanks"]
 
 const Page = () => (
   <AdminShell
-    title="수준별 문항 정책"
+    title="수준별 학습 콘텐츠 설계 기준"
     description="같은 학습 구조 안에서 문장 복잡도·표현 자원·원문 길이를 수준별로 조절합니다."
   >
     <Alert className="mb-6 border-accent/50 bg-accent/10">

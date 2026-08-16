@@ -221,7 +221,7 @@ const AdminGoldExpertOps = ({ preview = false }: { preview?: boolean }) => {
     setMessage(error ? error.message : "두 전문가의 최종 결론을 새 이력으로 저장했습니다."); setSaving(false); if (!error) await load();
   };
 
-  return <AdminShell title={`2단계 · 9화행 층화표본 ${EXTERNAL_GOLD_SAMPLE_COUNT}개 외부 전문가 확인`} description={`외부 전문가 2명이 연구 책임자의 판정을 보지 않고 ${FINAL_GOLD_POPULATION_COUNT}개 모집단에서 9개 화행별 2개씩 뽑은 ${EXTERNAL_GOLD_SAMPLE_COUNT}개를 독립적으로 판단합니다.`}>
+  return <AdminShell title="2단계 · 외부 전문가 확인" description={`외부 전문가 2명이 연구 책임자의 판정을 보지 않고 ${FINAL_GOLD_POPULATION_COUNT}개 모집단에서 9개 화행별 2개씩 뽑은 ${EXTERNAL_GOLD_SAMPLE_COUNT}개를 독립적으로 판단합니다.`}>
     <div className="space-y-5">
       <ResearchWorkflowGuide current="gold" />
       <div className="flex flex-wrap items-center justify-between gap-3">

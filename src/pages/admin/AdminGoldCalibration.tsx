@@ -303,7 +303,7 @@ const AdminGoldCalibration = () => {
 
   return (
     <AdminShell
-      title="1단계 · 기준답안 연구자 판정"
+      title="1단계 · 판정 기준 확정"
       description={`현재 ${BOOTSTRAP_SEED_GOLD_SPEECH_ACT_COUNT}화행 Seed ${BOOTSTRAP_SEED_GOLD_CASE_COUNT}개를 점검합니다. 최종 9화행 pack은 화행별 ${FINAL_GOLD_CASES_PER_SPEECH_ACT}개, 총 ${FINAL_GOLD_POPULATION_COUNT}개를 별도로 확정해야 합니다.`}
     >
       <ResearchWorkflowGuide current="calibration" />
