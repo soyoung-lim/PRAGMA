@@ -23,6 +23,7 @@ const AdminAuthentic = lazy(() => import("./pages/admin/AdminAuthentic.tsx"));
 const AdminAssembly = lazy(() => import("./pages/admin/AdminAssembly.tsx"));
 const AdminBatch = lazy(() => import("./pages/admin/AdminBatch.tsx"));
 const AdminBrowser = lazy(() => import("./pages/admin/AdminBrowser.tsx"));
+const AdminArchive = lazy(() => import("./pages/admin/AdminArchive.tsx"));
 const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.tsx"));
 const AdminQuestionDesigner = lazy(() => import("./pages/admin/AdminQuestionDesigner.tsx"));
 const AdminComposer = lazy(() => import("./pages/admin/AdminComposer.tsx"));
@@ -269,10 +270,7 @@ const App = () => (
           {/* 레거시 폐기(2026-07-30): /admin/youtube-sources — 유튜브 자막 기반 생성은
               개별 생성(/admin/generator)의 실제자료 가져오기에 통합돼 있어 중복 화면 삭제. */}
           <Route path="/admin/youtube-sources" element={<Navigate to="/admin/generator" replace />} />
-          {/* 레거시 정리(2026-07-30): /admin/archive 화면은 계약 이전 세대 컬럼
-              (speech_act_text·ko-zh 하이픈 방향 등)을 읽던 화면이라 삭제. 조회·검수는
-              라이브러리(/admin/library)·학습 미션 조립(/admin/browser)으로 일원화한다. */}
-          <Route path="/admin/archive" element={<Navigate to="/admin/library" replace />} />
+          <Route path="/admin/archive" element={<RequireAdmin><AdminArchive /></RequireAdmin>} />
           <Route path="/admin/generator" element={<RequireAdmin><AdminGenerator /></RequireAdmin>} />
           <Route path="/admin/authentic" element={<RequireAdmin><AdminAuthentic /></RequireAdmin>} />
           <Route path="/admin/batch" element={<RequireAdmin><AdminBatch /></RequireAdmin>} />

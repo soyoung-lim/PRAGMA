@@ -203,8 +203,8 @@ const AdminBrowser = () => {
     // 이 화면은 조회·필터(라이브러리)가 절반, 코어→미션 승격이 절반이다 —
     // promoteCore·reviewMission이 여기서 실행된다. 승격 기능은 이름 대신 설명이 말한다.
     <AdminShell
-      title="화행·수준별 코어 라이브러리"
-      description="화행·수준·모드로 코어를 찾고, 선택한 재료를 「학습 미션 조립」에서 완성합니다."
+      title="학습 콘텐츠 코어 라이브러리"
+      description="화행·수준·통번역 모드에 따라 코어를 조회하고, 선택한 코어를 학습 미션으로 조립합니다."
     >
       <div className="max-w-[1080px]">
         {/* ── 요약 ── */}

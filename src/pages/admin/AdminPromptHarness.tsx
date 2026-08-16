@@ -552,8 +552,8 @@ const AdminPromptHarness = () => {
 
   return (
     <AdminShell
-      title="AI 생성 콘텐츠 품질관리"
-      description="버전이 관리되는 프롬프트와 규칙 기반 검사가 무엇을 점검하고, 어떤 권한을 교수자에게 남기는지 보여줍니다."
+      title="AI 생성 콘텐츠 품질 관리"
+      description="생성 계약과 버전이 관리되는 프롬프트, 자동 점검 규칙, 교수자 검수·승인의 관계를 확인합니다."
     >
       <HarnessOverview />
 

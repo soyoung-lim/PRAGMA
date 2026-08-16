@@ -343,8 +343,8 @@ const AdminBatch = () => {
 
   return (
     <AdminShell
-      title="문항 생성"
-      description="정해진 조건 조합에 따라 AI 학습문항의 상황과 원문을 여러 건 만들고 내부 확인 대기 상태로 저장합니다."
+      title="AI 학습 콘텐츠 생성"
+      description="정해진 조건 조합에 따라 AI 생성 학습 콘텐츠의 상황과 원문을 여러 건 만들고 내부 확인 대기 상태로 저장합니다."
     >
       <GenerationModeTabs />
       {/* ── 생성 설정 (코어·방향·할당량 압축) ── */}

@@ -137,7 +137,7 @@ const AdminFinalCorpusReview = ({ preview = false }: { preview?: boolean }) => {
     setSaving(false);
   };
 
-  return <AdminShell title="3단계 · 통합 검수·승인" description="연구 책임자는 정식 AI 학습문항 504개의 자동 점검 결과를 전부 확인하고, 경고 문항에 검토 시간을 집중해 승인·수정·제외를 기록합니다. 504개를 모두 정밀 판정했다는 뜻은 아닙니다.">
+  return <AdminShell title="3단계 · 전체 자동 점검" description="정식 AI 생성 학습 콘텐츠 504개의 자동 점검 결과를 전체 확인하고, 경고가 있는 콘텐츠에 검토를 집중합니다. 자동 점검은 교수자의 최종 판정을 대신하지 않습니다.">
     <div className="space-y-5">
       <ResearchWorkflowGuide current="missions" />
       <div className="flex flex-wrap items-center justify-between gap-3"><Button asChild variant="ghost" size="sm"><Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"}><ArrowLeft className="mr-1 h-4 w-4" />문항 품질관리 전체 현황</Link></Button><Badge className="bg-slate-900 text-white">자동 통과 확인 + 경고 집중 검토</Badge></div>

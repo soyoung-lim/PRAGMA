@@ -427,7 +427,7 @@ const AdminComposer = () => {
   if (structureEditor) {
     return (
       <AdminShell
-        title="AI 15주 교과목 설계"
+        title="15주 교과목·학습 미션 편성"
         compact
         description={
           structureEditor === "new"
@@ -454,8 +454,8 @@ const AdminComposer = () => {
 
   return (
     <AdminShell
-      title="AI 15주 교과목 설계"
-      description="수준·주제·통번역 모드·언어방향별로 15주 강의 계획을 AI가 편성합니다."
+      title="15주 교과목·학습 미션 편성"
+      description="수준·주제·통번역 모드·언어 방향에 따라 15주 교과목과 주차별 학습 미션을 편성합니다."
       compact
     >
       <div className="w-full max-w-[960px]">

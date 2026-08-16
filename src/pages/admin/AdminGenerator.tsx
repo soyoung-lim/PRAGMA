@@ -935,8 +935,8 @@ const AdminGenerator = () => {
 
   return (
     <AdminShell
-      title="문항 생성"
-      description="한 건씩 조건을 정해 AI 학습문항의 상황과 원문을 만들고 내부 확인 대기 상태로 저장합니다."
+      title="AI 학습 콘텐츠 생성"
+      description="한 건씩 조건을 정해 AI 생성 학습 콘텐츠의 상황과 원문을 만들고 내부 확인 대기 상태로 저장합니다."
     >
       <GenerationModeTabs />
       {/* Helper note */}

@@ -238,7 +238,7 @@ const AdminResearchQa = () => {
 
   return (
     <AdminShell
-      title="품질 검증과 공개 전체 현황"
+      title="품질 검증·공개 현황"
       description="기준답안 판정부터 AI 학습문항 자동 점검과 학습자 공개까지, 수업 전에 마쳐야 할 네 단계의 진행 상태를 확인합니다."
     >
       <ResearchWorkflowGuide current="overview" />
