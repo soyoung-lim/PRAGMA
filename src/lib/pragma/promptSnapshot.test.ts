@@ -21,12 +21,12 @@ function prompt(key: string) {
 }
 
 describe("prompt snapshot integrity", () => {
-  it("captures the separate mission_v5 item-lineage attribution contract", () => {
+  it("captures the current mission_v6 item-lineage attribution contract", () => {
     const lineage = prompt("mission.item_lineage.system");
     expect(lineage.text).toContain("provenance 분류자");
     expect(lineage.text).toContain("검증 완료가 아니라 모델의 pending claim");
     expect(lineage.text).toContain("evidence ID, pack/version, 검토 상태, claim_id는 생성하지 않습니다");
-    expect(CURRENT_ITEM_LINEAGE_PROMPT_VERSION).toBe("item_lineage_attribution_v3_mission_v5");
+    expect(CURRENT_ITEM_LINEAGE_PROMPT_VERSION).toBe("item_lineage_attribution_v4_mission_v6");
   });
 
   it("records the versioned effective-character pilot policy", () => {
@@ -80,7 +80,7 @@ describe("prompt snapshot integrity", () => {
 
     expect(PROMPT_SNAPSHOT.edge_source_sha256).toBe(sourceHash);
     expect(canonicalSource).toContain(
-      "'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch'",
+      "'scene_underspecified', 'fix_review_ambiguity', 'pdr_contrast_invalid'",
     );
     expect(canonicalSource).toContain("CURRENT_MISSION_QUALITY_PROMPT_VERSION");
     expect(canonicalSource).toContain("corePrecedingTurnIssue(");
@@ -177,43 +177,41 @@ describe("prompt snapshot integrity", () => {
     expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v11_interpreter_scene_canonical_v1");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {
-    const mission = prompt("mission.system");
+    const missionRequest = prompt("mission.user.retry");
     const feedback = prompt("feedback.system");
     const quality = prompt("quality.system");
 
-    expect(mission.text).toContain("[사용 가능한 추가 사실]");
-    expect(mission.text).toContain("사실 유무를 정답 단서로 만들지 마세요");
+    expect(missionRequest.text).toContain("[사용 가능한 추가 사실 — 명제적 Supportive Move 폐쇄 목록]");
+    expect(prompt("mission.system").text).toContain("사실 유무를 정답 단서로 만들지 마세요");
     expect(feedback.text).toContain("[허용된 추가 사실]");
     expect(quality.text).toContain("production_task.usable_facts");
   });
 
-  it("locks new Full Missions to Scale4 → Judge+Fix → Reason → MultiJudge → DCT", () => {
+  it("locks new Full Missions to Scale4 → FixChoice → FixReview → MultiJudge → DCT1", () => {
     const mission = prompt("mission.system");
     const spoken = prompt("mission.system.spoken");
     const quality = prompt("quality.system");
 
     for (const entry of [mission, spoken]) {
-      expect(entry.text).toContain("MPJ 4문항");
-      expect(entry.text).toContain("첫인상 판단 → 판단하고 고쳐보기 → 왜 문제일까 → 여러 초안 비교");
-      expect(entry.text).toContain("scale4 → fix_choice → reason → multi_judge");
-      expect(entry.text).toContain("Judge3는 교정 문항에서 딱 한 번만");
-      expect(entry.text).toContain("reason에는 accepted_band_codes·confidence를 만들지 마세요");
-      expect(entry.text).toContain("과소 2·적정 2·과잉 1");
-      expect(entry.text).toContain("primary의 위치와 id를 고정하지 말고");
-      expect(entry.text).toContain("잠시 고민할 만큼 그럴듯해야 합니다");
-      expect(entry.text).toContain("황당한 문법 금지 주장");
-      expect(entry.text).toContain('위에 주입된 "깨야 할 소박한 규칙"');
-      expect(entry.text).toContain("target feature의 정의와 관계·부담(P·D·R)에 상대적");
-      expect(entry.text).not.toContain("직접형·간결형·강한 표현은 항상 나쁘다");
-      expect(entry.text).not.toContain("감사의 경우 호의가 클수록");
+      expect(entry.text).toContain("MPJ는 정확히 4문항");
+      expect(entry.text).toContain("scale4 → fix_choice → fix_review → multi_judge");
+      expect(entry.text).toContain("MPJ3 FixReview는 자연스러운 교정본 3개 중 pass 2·reject 1");
+      expect(entry.text).toContain("failure_reasons는 상황 결부형 3개");
+      expect(entry.text).toContain("과소 1·적정 1·과잉 1");
+      expect(entry.text).toContain("BEST/WORST·순위 필드는 만들지 않습니다");
+      expect(entry.text).toContain("판정 대역은 표현 형식이 아니라 관계·부담(P·D·R)에 상대적");
+      expect(entry.text).toContain("직접형·간결형도 적절할 수 있으며");
       expect(entry.text).toContain('"type": "scale4"');
       expect(entry.text).toContain('"reference_scale_code"');
-      expect(entry.text).not.toContain('"type": "reason_conf"');
+      expect(entry.text).toContain('"type": "fix_review"');
+      expect(entry.text).toContain('judgment_frame="reference_non_scored"');
+      expect(entry.text).not.toContain('"type": "reason"');
     }
+    expect(prompt("mission.user.retry").text).toContain("MultiJudge 후보 3개");
     expect(quality.text).toContain("MPJ 4문항");
-    expect(quality.text).toContain("primary_reason_ambiguity");
-    expect(quality.text).toContain("context_plan_mismatch");
-    expect(quality.text).toContain("결정론적 규칙검사(R1~R29)");
+    expect(quality.text).toContain("fix_review_ambiguity");
+    expect(quality.text).toContain("pdr_contrast_invalid");
+    expect(quality.text).toContain("결정론적 규칙검사(R1~R32)");
     expect(quality.text).toContain("fix_choice의 is_valid 의미");
     expect(quality.text).toContain("false는 \"문법적으로 틀림\"이나 \"완전히 부적절함\"이라는 뜻이 아니다");
     expect(quality.text).toContain("note_ko 문장을 중국어 correction 자체로 오인하지 마라");
@@ -239,13 +237,13 @@ describe("prompt snapshot integrity", () => {
     const written = prompt("mission.system");
     const spoken = prompt("mission.system.spoken");
 
-    expect(written.text).toContain("학습자 1인칭의 현재 장면");
+    expect(written.text).toContain("학습자가 지금 누구에게 무엇을 하려는지");
     expect(written.text).toContain("학습자가 마주한 상대의 역할·관계만 한 줄");
-    expect(written.text).toContain('화자(나)의 역할, "A → B" 구조');
-    expect(spoken.text).not.toContain("학습자 1인칭의 현재 장면");
+    expect(written.text).toContain("pdr.p는 화자(학습자) 기준");
+    expect(spoken.text).not.toContain("pdr.p는 화자(학습자) 기준");
     expect(spoken.text).toContain("학습자 통역사 C의 현재 장면");
     expect(spoken.text).toContain("P·D·R은 A↔B 관계");
-    expect(spoken.text).toContain("A의 1인칭(저는·나는)");
+    expect(spoken.text).toContain("A를 ‘저는’·‘나는’으로 서술하지 마세요");
     expect(spoken.text).toContain("원발화자 A와 청자 B의 역할·관계만 한 줄");
     expect(spoken.text).toContain("목표어 형식 조정은 허용");
 

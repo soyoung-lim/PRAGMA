@@ -18,6 +18,7 @@ const TYPE_LABEL: Record<string, string> = {
   fix_choice: "판단하고 고쳐보기",
   reason_conf: "판정+이유+확신(legacy)",
   reason: "왜 문제일까",
+  fix_review: "교정본 검수",
   multi_judge: "여러 초안 비교",
 };
 
@@ -37,6 +38,8 @@ const QUALITY_CODE_KO: Record<string, string> = {
   scene_underspecified: "장면 미명세(상상이 갈림)",
   primary_reason_ambiguity: "주원인 복수 해석",
   context_plan_mismatch: "앵커·대비 맥락 불일치",
+  fix_review_ambiguity: "FixReview 탈락본·핵심 실패 모호",
+  pdr_contrast_invalid: "P·D·R 기준/대비 구성 불일치",
 };
 
 export function MissionPreview({
@@ -135,7 +138,7 @@ function MpjReview({ item, featureCode }: { item: MpjItemRuntime; featureCode: s
   const accepted =
     item.type === "scale4"
       ? item.accepted_scale_codes.map((c) => SCALE4_LABELS[c as Scale4Code] ?? c)
-      : item.type === "multi_judge"
+      : item.type === "multi_judge" || item.type === "fix_review"
         ? []
         : item.type === "reason"
           ? [bandLabel(featureCode, item.problem_band_code)]
@@ -190,6 +193,26 @@ function MpjReview({ item, featureCode }: { item: MpjItemRuntime; featureCode: s
             </li>
           ))}
         </ul>
+      )}
+      {item.type === "fix_review" && (
+        <div className="mt-1 space-y-2">
+          <ul className="space-y-0.5">
+            {item.corrections.map((correction) => (
+              <li key={correction.id} className={correction.verdict === "pass" ? "text-[#2E7D5B]" : "text-red-800"}>
+                {correction.verdict === "pass" ? "✓ 통과" : "✗ 탈락"} {correction.text}{" "}
+                <span className="text-[11.5px] text-muted-foreground">— {correction.note_ko}</span>
+              </li>
+            ))}
+          </ul>
+          <ul className="space-y-0.5">
+            {item.failure_reasons.map((reason) => (
+              <li key={reason.id} className={item.accepted_failure_reason_id === reason.id ? "text-[#2E7D5B]" : "text-muted-foreground"}>
+                {item.accepted_failure_reason_id === reason.id ? "✓ 핵심 실패" : "·"} {reason.text_ko}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[12px]">새 문제 방지 원칙: {item.repair_principle_ko}</p>
+        </div>
       )}
       {item.type === "multi_judge" && (
         <ul className="mt-1 space-y-0.5">

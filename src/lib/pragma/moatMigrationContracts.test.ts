@@ -30,6 +30,7 @@ const PREREGISTERED_EXTERNAL_SAMPLING_SQL = read("supabase/migrations/2026081505
 const MISSION_V5_LINEAGE_GATE_SQL = read("supabase/migrations/20260815190000_mission_v5_item_lineage_hard_gate.sql");
 const GOLD45_NONCONSENSUS_SQL = read("supabase/migrations/20260815193000_gold45_nonconsensus_protocol.sql");
 const READINESS_ARRAY_INITIALIZER_FIX_SQL = read("supabase/migrations/20260815194000_fix_readiness_array_initializers.sql");
+const MISSION_V6_SQL = read("supabase/migrations/20260817120000_mission_v6_fix_review_mpj4_dct1.sql");
 const PROMOTE_TS = read("src/lib/pragma/promoteMission.ts");
 const EVENTS_TS = read("src/lib/mission/missionEvents.ts");
 const EXPORT_TS = read("src/lib/mission/missionEventExport.ts");
@@ -40,7 +41,7 @@ describe("moat migration/runtime contracts", () => {
     expect(PROMOTE_TS).toContain('rpc("review_mission"');
     expect(EVENTS_TS).toContain('rpc("append_learner_mission_event"');
     expect(EXPORT_TS).toContain('rpc("export_learner_mission_events"');
-    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL, QUALITY_GATE_BOUNDARIES_SQL, BOUNDED_EXTERNAL_VALIDATION_SQL, PREREGISTERED_EXTERNAL_SAMPLING_SQL, MISSION_V5_LINEAGE_GATE_SQL, GOLD45_NONCONSENSUS_SQL, READINESS_ARRAY_INITIALIZER_FIX_SQL]) {
+    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL, QUALITY_GATE_BOUNDARIES_SQL, BOUNDED_EXTERNAL_VALIDATION_SQL, PREREGISTERED_EXTERNAL_SAMPLING_SQL, MISSION_V5_LINEAGE_GATE_SQL, GOLD45_NONCONSENSUS_SQL, READINESS_ARRAY_INITIALIZER_FIX_SQL, MISSION_V6_SQL]) {
       expect((sql.match(/\$\$/g) ?? []).length % 2).toBe(0);
     }
   });
@@ -68,6 +69,15 @@ describe("moat migration/runtime contracts", () => {
     expect(PROMOTE_TS).toContain("lineage_meta: lineageScope");
   });
 
+  it("extends the item-lineage hard gate to the current mission_v6 contract", () => {
+    expect(MISSION_V6_SQL).toContain("validate_current_mission_v6_item_lineage");
+    expect(MISSION_V6_SQL).toContain("mission_v6_fix_review_mpj4_dct1_v2");
+    expect(MISSION_V6_SQL).toContain("item_lineage_attribution_v4_mission_v6");
+    expect(MISSION_V6_SQL).toContain("model_attribution_pending_review");
+    expect(MISSION_V6_SQL).toContain("target paths do not match mission content");
+    expect(MISSION_V6_SQL).toContain("BEFORE INSERT OR UPDATE OF mission_content ON public.scenarios");
+  });
+
   it("requires two independent expert reviewers and preserves their rows", () => {
     expect(EXPERT_SQL).toContain("count(DISTINCT reviewer_user_id)");
     expect(EXPERT_SQL).toContain("v_distinct_reviewers < 2");
@@ -79,7 +89,8 @@ describe("moat migration/runtime contracts", () => {
   });
 
   it("keeps event vocabulary synchronized and enforces server-side consent plus lineage", () => {
-    for (const eventType of MISSION_EVENT_TYPES) expect(EVENT_SQL).toContain(`'${eventType}'`);
+    const cumulativeEventSql = `${EVENT_SQL}\n${MISSION_V6_SQL}`;
+    for (const eventType of MISSION_EVENT_TYPES) expect(cumulativeEventSql).toContain(`'${eventType}'`);
     expect(EVENT_SQL).toContain("v_profile_consent_version <> p_payload->>'consent_version'");
     expect(EVENT_SQL).toContain(`p_payload->>'policy_version' <> '${POLICY_VERSION}'`);
     expect(EVENT_SQL).toContain("p.consent_data_use = true");

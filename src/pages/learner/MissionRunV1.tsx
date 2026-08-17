@@ -23,6 +23,8 @@ import {
 } from "@/lib/pragma/missionSchema";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { SAMPLE_MISSION_V4, SAMPLE_MISSION_V5 } from "@/lib/mission/missionV4Sample";
+import { SAMPLE_MISSION_V6 } from "@/lib/mission/missionV6Sample";
+import { MissionV6Runner } from "@/pages/learner/MissionRunV6";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
 import {
   saveMissionAttempt,
@@ -225,6 +227,7 @@ const MissionRunV1 = () => {
   const previewParam = import.meta.env.DEV && !scenarioId ? searchParams.get("preview") : null;
   const previewV5 = previewParam === "v5";
   const previewV4 = previewParam === "v4" || previewV5;
+  const previewV6 = previewParam === "v6";
   // 데모/검증 토글 — 샘플 경로에서만 통역 흐름을 켠다(실제 DB 미션에는 영향 없음).
   const forceInterp = !scenarioId && searchParams.get("mode") === "interpreting";
   // 수행 방식 전환(번역 ↔ 통역)으로 넘어온 경우 1부를 건너뛰고 2부부터 시작한다.
@@ -273,10 +276,19 @@ const MissionRunV1 = () => {
 
   const baseMission =
     loaded?.mission ??
-    (previewV5 ? SAMPLE_MISSION_V5 : previewV4 ? SAMPLE_MISSION_V4 : SAMPLE_MISSION_V2);
-  const mission =
+    (previewV5 ? SAMPLE_MISSION_V5 : previewV4 ? SAMPLE_MISSION_V4 : SAMPLE_MISSION_V6);
+  const mission: MissionRuntime =
     forceInterp
-      ? { ...baseMission, production_task: { ...baseMission.production_task, mode: "interpreting" as const } }
+      ? ({
+          ...baseMission,
+          production_task: {
+            ...baseMission.production_task,
+            mode: "interpreting" as const,
+            source_modality: "spoken" as const,
+            replay_limit: 2 as const,
+            vocabulary_hints: undefined,
+          },
+        } as MissionRuntime)
       : baseMission;
   const isSample = !loaded;
   // 방향·수행 방식은 학습자가 지금 무엇을 산출하는지 말해 준다 — 급수 표기보다 유용하다.
@@ -294,7 +306,23 @@ const MissionRunV1 = () => {
     // 큰 배너를 걷어내는 대신 헤더가 지위를 말한다 — "원어민 검토 전"은 헤더에 없던 정보다.
     : previewV4
       ? `${previewV5 ? "mission_v5(미니 담화형 DCT)" : "mission_v4"} 미리보기 · 예문 검토 전`
-      : "샘플 · 예문 검토 전";
+      : `${previewV6 ? "mission_v6 미리보기" : "mission_v6 샘플"} · 예문 검토 전`;
+
+  if (mission.schema_version === "mission_v6") {
+    return (
+      <MissionV6Runner
+        key={`${loaded?.scenario_id ?? "sample-v6"}:${mission.production_task.mode}`}
+        mission={mission}
+        isSample={isSample}
+        startAtPart2={startAtPart2}
+        headerRight={headerRight}
+        status={loaded?.mission_status ?? null}
+        scenarioId={loaded?.scenario_id ?? null}
+        speechAct={loaded?.speech_act ?? null}
+        level={loaded?.learner_level ?? null}
+      />
+    );
+  }
 
   return (
     <MissionRunner
@@ -2474,7 +2502,7 @@ function Handoff({
   );
 }
 
-// 학습자가 실제로 읽을 수 있도록 참고 판정의 지위와 확인 범위만 두 문장으로 남긴다.
+// 학습자에게는 연구 용어 없이 실제 판단에 필요한 기준만 보여 준다.
 // Scale4 일반 앵커 — 목표 축을 드러내지 않고 '얼마나 적절한가'의 기준만 준다.
 // 축별 문구를 쓰면 첫 판단 전에 판정 방향이 새므로, 장면 무관 일반 서술로 고정한다.
 const SCALE4_ANCHORS: { label: string; note: string }[] = [
@@ -2497,7 +2525,7 @@ function MissionBriefDrawer({
         판정 기준 보기 · <b>정답은 하나가 아니에요</b>
       </summary>
       <div className="mt-2 space-y-2 text-muted-foreground">
-        <p>현재 강의안과 AI 제안을 바탕으로 한 참고 판정입니다. 상황에 따라 다른 표현도 적절할 수 있어요.</p>
+        <p>상황에 따라 알맞은 표현은 여럿일 수 있어요.</p>
         <p>
           {/* 첫 판단 전에는 초점명(「완화와 선택권」 등)을 쓰지 않는다 — 그 자체가 판정 방향이다. */}
           뜻 전달 · 이해를 막는 문법 ·{" "}
@@ -3288,7 +3316,7 @@ function MpjStage({
                   <div className="text-[15px] font-medium leading-relaxed">{c.text}</div>
                   {answered && (
                     <div className="mt-1.5 text-[12.5px] text-muted-foreground">
-                      참고 판정 ·{" "}
+                      이 상황에서의 판단 ·{" "}
                       {c.accepted_band_codes
                         .map((code) => learnerBandLabel(feature, code, bandLabel(feature, code)))
                         .join(" / ")}

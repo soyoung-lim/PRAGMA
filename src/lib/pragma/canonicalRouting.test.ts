@@ -86,12 +86,12 @@ describe("canonical document routing", () => {
     }
   });
 
-  it("keeps the current mission contract explicit about MPJ4 + DCT1", () => {
+  it("keeps the current mission contract explicit about mission_v6 MPJ4 + DCT1", () => {
     const manifest = readFileSync(join(ROOT, "docs/CANONICAL.md"), "utf8");
     const contract = readFileSync(join(ROOT, CURRENT_CANONICALS[0]), "utf8");
 
-    expect(manifest).toContain("MPJ4 + DCT1");
-    expect(contract).toContain("mission_v5` = **MPJ4 + DCT1**");
+    expect(manifest).toContain("MPJ4 + DCT1 + 수정 재확인");
+    expect(contract).toContain("mission_v6` = **MPJ4 + DCT1 + 수정 재확인**");
     expect(contract).not.toMatch(/현행[^\n]*MPJ5|MPJ5\s*\+\s*DCT1[^\n]*(유지|변경 금지|바뀌지 않았다)/);
   });
 

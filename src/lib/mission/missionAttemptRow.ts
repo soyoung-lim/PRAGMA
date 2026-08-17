@@ -1,6 +1,7 @@
 import type { Json } from "@/integrations/supabase/types";
 import { DIRECTION_LANGS, type LanguageDirection } from "@/lib/pragma/enums";
 import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
+import type { RevisionDecision, RevisionRecheckResult } from "@/lib/mission/missionFlow";
 import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import { POLICY_VERSION } from "@/lib/research/versions";
 
@@ -25,6 +26,12 @@ export interface SaveAttemptInput {
   mpjResponses?: MpjResponseTrace[];
   /** 번역 산출에서 내용 어휘 힌트를 열람했는지 남기는 비채점 수행 trace. */
   productionSupport?: ProductionSupportTrace;
+  /** 수정/유지 결정과 수정 후 단 한 번 수행한 경량 재확인. */
+  revisionDecision?: RevisionDecision;
+  retentionReason?: string;
+  recheckedResponse?: string;
+  revisionRecheck?: RevisionRecheckResult;
+  additionalRevisionUsed?: boolean;
   /**
    * 학습자 이견 기록(0-r·104). 판정을 바꾸지 않는다 — 결함 문항 발견과
    * 채점키 캘리브레이션 보조 자료로만 쓴다. 남기지 않으면 undefined.
@@ -37,6 +44,13 @@ export interface MpjResponseTrace extends Record<string, Json | undefined> {
   item_id: number;
   item_type: string;
   completed_at: string;
+  /** 참고 판정·비점수 수행임을 분석 단계에서도 잃지 않는다. */
+  judgment_frame?: "reference_non_scored";
+  scored?: false;
+  /** 문항 진입부터 응답 확정 후 다음으로 이동할 때까지의 체류시간. */
+  elapsed_ms?: number;
+  /** Scale4=1, FixChoice=3, FixReview=2, MultiJudge=4. */
+  judgment_response_count?: number;
   /** legacy scale4 */
   scale_code?: string;
   /** judge3 또는 fix_choice의 최초 조절 정도 판단 */
@@ -47,6 +61,9 @@ export interface MpjResponseTrace extends Record<string, Json | undefined> {
   reason_ids?: string[];
   /** mission_v4 reason의 단일 주원인 선택 */
   reason_id?: string;
+  /** mission_v6 FixReview의 탈락 교정본과 단일 핵심 실패 선택. */
+  rejected_correction_id?: string;
+  failure_reason_id?: string;
   /** legacy reason_conf에만 존재한다. mission_v4에는 기록하지 않는다. */
   confidence?: string;
   /** multi_judge 후보 순서와 같은 band code 배열 */
@@ -54,6 +71,9 @@ export interface MpjResponseTrace extends Record<string, Json | undefined> {
   /** v4 multi_judge에서 고른 BEST 1개와 WORST 1개의 0-based 위치. */
   best_candidate_index?: number;
   worst_candidate_index?: number;
+  /** 과거 BEST2/WORST1 trace 읽기 호환. 신규 mission_v6는 사용하지 않는다. */
+  best_candidate_indexes?: number[];
+  most_inappropriate_candidate_index?: number;
 }
 
 export interface ProductionSupportTrace extends Record<string, Json | undefined> {
@@ -107,13 +127,31 @@ export function buildMissionAttemptRow(
     const { confidence: _legacyConfidence, ...withoutConfidence } = response;
     return withoutConfidence;
   });
+  const hasMpjResponses = !!mpjResponses?.length;
+  const hasRevisionTrace = Boolean(
+    input.revisionDecision ||
+    input.retentionReason ||
+    input.recheckedResponse ||
+    input.revisionRecheck,
+  );
   const contextJudgment =
-    (mpjResponses && mpjResponses.length > 0) || input.productionSupport
+    hasMpjResponses || input.productionSupport || hasRevisionTrace
       ? ({
-          schema_version: "mpj_response_v1",
+          schema_version: input.mission.schema_version === "mission_v6"
+            ? "mission_response_v2"
+            : "mpj_response_v1",
           mission_schema_version: input.mission.schema_version,
           responses: mpjResponses ?? [],
           production_support: input.productionSupport ?? null,
+          revision: hasRevisionTrace
+            ? {
+                decision: input.revisionDecision ?? null,
+                retention_reason: input.retentionReason?.trim() || null,
+                rechecked_response: input.recheckedResponse ?? null,
+                recheck: input.revisionRecheck ?? null,
+                additional_revision_used: input.additionalRevisionUsed ?? false,
+              }
+            : null,
           learner_dissent: input.contextJudgment ?? null,
         } as unknown as Json)
       : input.contextJudgment ?? null;
@@ -147,6 +185,7 @@ export function buildMissionAttemptRow(
         } as unknown as Json)
       : null,
     semantic_fidelity_status: semanticStatus,
+    hint_used: input.productionSupport?.opened ?? false,
     example_shown: true,
     mission_completed: true,
     content_ver: input.mission.unit.target_feature_version ?? null,

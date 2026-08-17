@@ -10,6 +10,7 @@ export const MISSION_EVENT_TYPES = [
   "feedback_received",
   "learner_dissent_submitted",
   "revision_submitted",
+  "revision_rechecked",
   "mission_completed",
 ] as const;
 
