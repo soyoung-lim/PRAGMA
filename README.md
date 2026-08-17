@@ -7,10 +7,10 @@
 ![Stack](https://img.shields.io/badge/React_18-TypeScript-3178c6?style=flat-square)
 ![Backend](https://img.shields.io/badge/Supabase-PostgreSQL-3ecf8e?style=flat-square)
 
-PRAGMA는 동일한 의미가 상황과 대인 관계에 따라 다르게 표현되어야 한다는
-화용적 적절성의 문제를 한·중 통번역 학습의 중심 과제로 다룹니다.
-학습자는 여러 표현 후보의 맥락 적절성을 판단한 뒤 직접 번역·통역을 수행하고,
-피드백을 검토하여 자신의 산출을 수정합니다.
+**같은 뜻이라도 상황과 관계에 따라 적절한 표현은 달라집니다.**
+
+PRAGMA는 이 **화용적 적절성**을 한·중 통번역 학습의 중심 과제로 다룹니다.
+학습자는 표현 후보를 비교해 판단하고, 직접 번역·통역한 뒤, 피드백을 검토해 수정합니다.
 
 | 메인 화면 — 학습자·교수자 진입 | 통합 워크플로우 개요 |
 |---|---|
