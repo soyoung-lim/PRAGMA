@@ -23,6 +23,8 @@ import {
   type LearnerDissent,
   type MpjResponseTrace,
 } from "@/lib/mission/missionLog";
+import { buildMpjSummaryRows } from "@/lib/mission/mpjSummary";
+import { buildMissionLearningTrace } from "@/lib/mission/missionLearningTrace";
 import { ChatScene, ChatBubble, ChatCaption, ChatAvatar, highlightZh } from "@/components/mission/ChatScene";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { requestSttTranscript } from "@/lib/mission/missionStt";
@@ -264,7 +266,12 @@ function feedbackHeadline(fb: RuntimeFeedback): { title: string; body: string } 
         : scope === "feature"
           ? fb.blocks.feature_ko
           : fb.blocks.feature_ko || "이 상황에 충분히 적절합니다.";
-  return { title: scope === "clear" ? "지금 표현에서 잘 된 점" : "먼저 살펴볼 점", body };
+  const title = scope === "clear"
+    ? "지금 표현에서 잘 된 점"
+    : scope === "feature"
+      ? "상대에게 들릴 수 있는 인상"
+      : "먼저 살펴볼 점";
+  return { title, body };
 }
 
 /**
@@ -305,6 +312,19 @@ function FeedbackPanel({
       <div className="rounded-xl border border-[#FAD338] bg-[#FFFBEA] p-4">
         <div className="text-[11.5px] font-bold text-[#6B5518]">{head.title}</div>
         <p className="mt-1.5 text-[14px] leading-relaxed">{head.body}</p>
+
+        {scope !== "feature" && scope !== "clear" && fb.blocks.feature_ko && (
+          <div className="mt-2.5 border-t border-[#E8DFAF] pt-2.5">
+            <div className="text-[11.5px] font-semibold text-[#6B5518]">상대에게 들릴 수 있는 인상</div>
+            <p className="mt-0.5 text-[13px] leading-relaxed">{fb.blocks.feature_ko}</p>
+          </div>
+        )}
+        <div className="mt-2.5 border-t border-[#E8DFAF] pt-2.5">
+          <div className="text-[11.5px] font-semibold text-[#6B5518]">표현을 바꿀 때 지킬 것</div>
+          <p className="mt-0.5 text-[13px] leading-relaxed">
+            원문의 핵심 사실·의도·화행 목적은 그대로 둡니다.
+          </p>
+        </div>
 
         {scope === "grammar" && g?.suggested_correction && (
           <p className="mt-2 rounded-lg bg-white/70 px-3 py-2 text-[13.5px]">
@@ -454,6 +474,13 @@ export function MissionV6Runner({
   const reviseHint = fb
     ? feedbackHeadline(fb)
     : { title: mission.unit.learner_label, body: mission.unit.closing_ko };
+  const learningTraceRows = buildMissionLearningTrace({
+    feedback: fb,
+    revisionDecision,
+    revisionRecheck,
+    additionalRevisionUsed,
+    dissent,
+  });
   const revisionScope = fb?.revision_scope ?? null;
   const revisionRequired = revisionScope !== "clear";
   const revisionCanSubmit = canSubmitRevision({
@@ -868,8 +895,8 @@ export function MissionV6Runner({
         {phase === "handoff" && (
           <Handoff
             mission={mission}
-            dir={dir}
             isInterp={isInterp}
+            responses={mpjResponses}
             saved={savedLater}
             onContinue={() => goto("ctx")}
             onSaveLater={() => {
@@ -1217,6 +1244,20 @@ export function MissionV6Runner({
               <div className="text-[11.5px] font-bold text-[#FAD338]">오늘 익힌 원리</div>
               <p className="mt-1.5 text-[14.5px] leading-relaxed">{mission.unit.closing_ko}</p>
             </div>
+
+            {learningTraceRows.length > 0 && (
+              <div className={card}>
+                <div className="text-[11.5px] font-bold text-[#2E7D5B]">이번 미션의 학습 흔적</div>
+                <ul className="mt-2.5 space-y-2.5">
+                  {learningTraceRows.map((row) => (
+                    <li key={row.label} className="grid gap-0.5 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-3">
+                      <span className="text-[12px] font-semibold text-[#273642]">{row.label}</span>
+                      <span className="text-[13px] leading-relaxed text-[#5B6872]">{row.body}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* 감량(0-r·103): 완료 화면에서 펼쳐 두는 것은 핵심 1줄과 최초→최종뿐이다.
                 참고 표현 목록은 접는다 — 정답 카드처럼 읽히는 것을 막는 효과도 있다. */}
@@ -1677,34 +1718,40 @@ function AudioFrame({
 // ── 1부 → 2부 인계(프로토타입 v2 ②) — "1부 완료 ≠ 미션 완료" ────────────
 function Handoff({
   mission,
-  dir,
   isInterp,
+  responses,
   saved,
   onContinue,
   onSaveLater,
 }: {
   mission: MissionRuntime;
-  dir: LanguageDirection;
   isInterp: boolean;
+  responses: MpjResponseTrace[];
   saved: boolean;
   onContinue: () => void;
   onSaveLater: () => void;
 }) {
-  const feat = getTargetFeature(mission.unit.target_feature);
-  const tools =
-    (dir === "zh_ko" && feat?.relevant_resources_zh_ko?.length ? feat.relevant_resources_zh_ko : feat?.relevant_resources) ?? [];
+  const summaryRows = buildMpjSummaryRows(mission, responses);
   return (
     <div className="rounded-xl border border-[#FAD338] bg-white p-5">
-      <div className="text-[11px] font-bold text-[#2E7D5B]">감각 익히기 완료</div>
-      <h2 className="mt-0.5 text-[16px] font-bold">이제 직접 표현할 차례입니다</h2>
-      <p className="mt-0.5 text-[12.5px] text-muted-foreground">방금 확인한 도구 — 문장 전체보다 <b>범주</b>에 주목합니다.</p>
-      {tools.length > 0 && (
-        <ul className="mt-2 flex flex-wrap gap-1.5">
-          {tools.map((t) => (
-            <li key={t} className="rounded-md border border-[#EAE4D2] bg-[#F5F5F2] px-2.5 py-1 text-[12.5px]">{t}</li>
-          ))}
-        </ul>
-      )}
+      <div className="text-[11px] font-bold text-[#2E7D5B]">표현 감각 익히기 완료</div>
+      <h2 className="mt-0.5 text-[16px] font-bold">방금 익힌 판단 흐름</h2>
+      <ol className="mt-3 overflow-hidden rounded-xl border border-[#E5E0D2] bg-[#FCFBF7]">
+        {summaryRows.map((row, index) => (
+          <li
+            key={`${row.label}-${index}`}
+            className="grid grid-cols-[24px_minmax(0,1fr)] items-center gap-x-2.5 gap-y-0.5 border-b border-[#ECE8DD] px-3 py-2.5 last:border-b-0 sm:grid-cols-[24px_150px_minmax(0,1fr)]"
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#FAD338] text-[10.5px] font-extrabold text-[#15202B]">
+              {index + 1}
+            </span>
+            <span className="text-[12.5px] font-bold text-[#273642]">{row.label}</span>
+            <span className="col-start-2 text-[12.5px] leading-snug text-[#5B6872] sm:col-start-3">
+              {row.comment}
+            </span>
+          </li>
+        ))}
+      </ol>
       <p className="mt-3 text-[12.5px] text-muted-foreground">
         이제 <b>새로운 상황</b>에서 직접 {isInterp ? "통역" : "옮겨"} 봅니다. 많이 얹을수록 좋은 것이 아니라, 이 상대·이 부담에 맞는 만큼만.
       </p>

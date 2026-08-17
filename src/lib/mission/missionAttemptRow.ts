@@ -49,7 +49,7 @@ export interface MpjResponseTrace extends Record<string, Json | undefined> {
   scored?: false;
   /** 문항 진입부터 응답 확정 후 다음으로 이동할 때까지의 체류시간. */
   elapsed_ms?: number;
-  /** Scale4=1, FixChoice=3, FixReview=2, MultiJudge=4. */
+  /** Scale4=1, FixChoice=3, FixReview=2, MultiJudge=3. */
   judgment_response_count?: number;
   /** legacy scale4 */
   scale_code?: string;
@@ -66,7 +66,10 @@ export interface MpjResponseTrace extends Record<string, Json | undefined> {
   failure_reason_id?: string;
   /** legacy reason_conf에만 존재한다. mission_v4에는 기록하지 않는다. */
   confidence?: string;
-  /** multi_judge 후보 순서와 같은 band code 배열 */
+  /**
+   * multi_judge 원본 후보 순서와 같은 최종 band code 배열.
+   * 최초 선택 순서·변경·소거법 사용 여부는 이 값만으로 추론하지 않는다.
+   */
   candidate_band_codes?: string[];
   /** v4 multi_judge에서 고른 BEST 1개와 WORST 1개의 0-based 위치. */
   best_candidate_index?: number;

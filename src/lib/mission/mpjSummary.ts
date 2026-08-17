@@ -100,7 +100,37 @@ export function buildMpjSummaryRows(
             : MPJ_SUMMARY_DIVERGENCE_COPY,
         };
       }
+      case "fix_review": {
+        const rejected = item.corrections.find((correction) => correction.verdict === "reject");
+        const sameCorrection = response?.rejected_correction_id === rejected?.id;
+        const sameReason = response?.failure_reason_id === item.accepted_failure_reason_id;
+        return {
+          label: "교정본 검수",
+          comment:
+            sameCorrection && sameReason
+              ? "고친 뒤에도 남은 문제와 수정하면서 새로 생긴 문제를 다시 확인했습니다."
+              : MPJ_SUMMARY_DIVERGENCE_COPY,
+        };
+      }
       case "multi_judge": {
+        if (mission.schema_version === "mission_v6") {
+          const selected = response?.candidate_band_codes ?? [];
+          const sameDirection =
+            selected.length === item.candidates.length &&
+            item.candidates.every((candidate, index) =>
+              candidate.accepted_band_codes.includes(selected[index]),
+            );
+          const bandLabels = feature?.band_schema
+            .map((band) => band.label_ko.replace(/\s*\([^()]*\)\s*$/u, "").trim())
+            .filter(Boolean)
+            .join(" · ");
+          return {
+            label: "여러 표현 분류",
+            comment: sameDirection
+              ? `이 상황에서 ${bandLabels || "서로 다른 세 방향"}의 표현을 구분했습니다.`
+              : MPJ_SUMMARY_DIVERGENCE_COPY,
+          };
+        }
         const bestIndex = response?.best_candidate_index;
         const worstIndex = response?.worst_candidate_index;
         const bestBands =

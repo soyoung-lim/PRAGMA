@@ -6,6 +6,7 @@ import {
 } from "@/lib/mission/mpjSummary";
 import type { MpjResponseTrace } from "@/lib/mission/missionAttemptRow";
 import { SAMPLE_MISSION_V4 } from "@/lib/mission/missionV4Sample";
+import { SAMPLE_MISSION_V6 } from "@/lib/mission/missionV6Sample";
 import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import {
   FEATURE_CODES_BY_ACT,
@@ -182,5 +183,66 @@ describe("MPJ handoff summary generalization", () => {
         featureCode,
       ).toEqual(buildMpjSummaryRows(interpreting, correctResponses(interpreting, "low")));
     }
+  });
+
+  it("summarizes mission_v6 FixReview and all-candidate classification without treating them as scores", () => {
+    const responses: MpjResponseTrace[] = SAMPLE_MISSION_V6.mpj_items.map((item) => {
+      const base = { item_id: item.id, item_type: item.type, completed_at: NOW };
+      switch (item.type) {
+        case "scale4":
+          return { ...base, scale_code: item.accepted_scale_codes[0] };
+        case "fix_choice":
+          return {
+            ...base,
+            band_code: item.accepted_band_codes[0],
+            correction_indexes: item.corrections
+              .map((correction, index) => correction.is_valid ? index : -1)
+              .filter((index) => index >= 0),
+          };
+        case "fix_review":
+          return {
+            ...base,
+            rejected_correction_id: item.corrections.find((correction) => correction.verdict === "reject")?.id,
+            failure_reason_id: item.accepted_failure_reason_id,
+          };
+        case "multi_judge":
+          return {
+            ...base,
+            candidate_band_codes: item.candidates.map((candidate) => candidate.accepted_band_codes[0]),
+          };
+      }
+    });
+
+    const rows = buildMpjSummaryRows(SAMPLE_MISSION_V6, responses);
+    expect(rows.map((row) => row.label)).toEqual([
+      "첫인상 판단",
+      "판단하고 고쳐보기",
+      "교정본 검수",
+      "여러 표현 분류",
+    ]);
+    expect(rows[2].comment).toContain("새로 생긴 문제");
+    expect(rows[3].comment).not.toBe(MPJ_SUMMARY_DIVERGENCE_COPY);
+  });
+
+  it("does not infer successful mission_v6 review or classification from incomplete final responses", () => {
+    const responses: MpjResponseTrace[] = [
+      {
+        item_id: 3,
+        item_type: "fix_review",
+        completed_at: NOW,
+        rejected_correction_id: "fr-a",
+        failure_reason_id: "why-new",
+      },
+      {
+        item_id: 4,
+        item_type: "multi_judge",
+        completed_at: NOW,
+        candidate_band_codes: ["too_direct", "within_band"],
+      },
+    ];
+
+    const rows = buildMpjSummaryRows(SAMPLE_MISSION_V6, responses);
+    expect(rows[2].comment).toBe(MPJ_SUMMARY_DIVERGENCE_COPY);
+    expect(rows[3].comment).toBe(MPJ_SUMMARY_DIVERGENCE_COPY);
   });
 });
