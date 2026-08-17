@@ -1,6 +1,37 @@
 # PRAGMA
 
-> AI 기반 한·중 통번역 학습 워크플로우 개발 연구
+> **AI 기반 한·중 통번역 학습 워크플로우 개발 연구**
+> 화용적 적절성을 판단하고 산출하는 과정을 설계·구현한 수업 연계형 연구 플랫폼
+
+[![Live](https://img.shields.io/badge/live-pragma.up.railway.app-2ea44f?style=flat-square)](https://pragma.up.railway.app)
+![Status](https://img.shields.io/badge/status-research_in_progress-blue?style=flat-square)
+![Stack](https://img.shields.io/badge/React_18-TypeScript-3178c6?style=flat-square)
+![Backend](https://img.shields.io/badge/Supabase-PostgreSQL-3ecf8e?style=flat-square)
+
+| 랜딩 — 학습자·교수자 진입 | 통합 워크플로우 |
+|---|---|
+| ![PRAGMA 랜딩 화면](docs/screenshots/01-landing.png) | ![PRAGMA 통합 워크플로우](docs/screenshots/02-architecture.png) |
+
+### 설계 원리와 구현
+
+| 설계 원리 | 구현 |
+|---|---|
+| **판단이 산출보다 먼저다** | 감각 익히기(MPJ 4) → 직접 표현하기 → 피드백 확인 → 한 곳 다듬기 |
+| **생성은 자동, 승인은 교수자** | 규칙 검사·AI 검토에 승인 권한이 없다. 교수자 승인분만 주차에 배치된다 |
+| **판단 근거를 남긴다** | 판단·선택·근거·최초안·수정안을 맥락·버전과 함께 저장 |
+| **생성 조건을 추적한다** | 프롬프트 스냅샷·해시 고정, 결정론을 CI에서 검증 |
+
+### 개발 현황 (2026-08 기준)
+
+- ✅ 학습자·교수자 워크플로우 구현 · 15주 편성 · 수행 기록 저장
+- ✅ 규칙 검사 + 교차 벤더 AI 검토 + 교수자 승인 게이트
+- 🔄 정식 문항 대량 생성 · 외부 전문가 확인 진행 중
+- 📋 예정: 운영 데이터 수집과 조건별 품질 분석
+
+> 본 저장소는 **박사학위논문(2026) 진행과 함께 계속 갱신됩니다.**
+> 화면과 용어는 연구 진행에 따라 변경될 수 있습니다.
+
+---
 
 PRAGMA는 같은 의미도 상황과 관계에 따라 다르게 표현될 수 있다는 화용적 문제를 다루는 수업 연계형 한·중 통번역 학습 웹앱입니다. 학습자는 여러 표현을 비교해 상황 적절성을 판단하고, 직접 번역하거나 통역한 뒤, AI의 참고 피드백을 검토해 필요한 경우 표현을 수정합니다.
 
