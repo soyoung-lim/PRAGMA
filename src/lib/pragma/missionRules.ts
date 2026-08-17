@@ -1,4 +1,4 @@
-// 규칙검사 R1~R24 — 결정론·API 0회. 생성계약 v1.5 §8 + 양방향(0-l·85).
+// 규칙검사 R1~R32 — 결정론·API 0회. 생성계약 v1.5 §8 + 양방향(0-l·85).
 //
 // 순수 함수. 코드가 검사할 수 있는 것은 필드·선택지 수·중복·길이 편차·형식·
 // 코드값 정합뿐이다(관리자구조md §3-①). 의미 보존·자연성·화행 구현은 검사 불가 →
@@ -19,6 +19,7 @@ import {
   MPJ_TYPE_ORDER_V2,
   MPJ_TYPE_ORDER_V3,
   MPJ_TYPE_ORDER_V4,
+  MPJ_TYPE_ORDER_V6,
 } from "@/lib/pragma/missionSchema";
 import {
   ITEM_LINEAGE_MAX_BATCH_SIZE,
@@ -439,11 +440,13 @@ export function checkMission(
 
   // ── R1 유형 순서·axis_feature·band code 존재 ──
   const typesInOrder = m.mpj_items.map((it) => it.type);
-  const expectedTypeOrder = isV4Contract
-    ? MPJ_TYPE_ORDER_V4
-    : m.schema_version === "mission_v3"
-      ? MPJ_TYPE_ORDER_V3
-      : MPJ_TYPE_ORDER_V2;
+  const expectedTypeOrder = m.schema_version === "mission_v6"
+    ? MPJ_TYPE_ORDER_V6
+    : isV4Contract
+      ? MPJ_TYPE_ORDER_V4
+      : m.schema_version === "mission_v3"
+        ? MPJ_TYPE_ORDER_V3
+        : MPJ_TYPE_ORDER_V2;
   if (typesInOrder.join(",") !== expectedTypeOrder.join(",")) {
     add(v, "R1", "fail", `유형 순서 위반: ${typesInOrder.join("→")}`);
   }
@@ -477,7 +480,7 @@ export function checkMission(
         if (!isContiguousScale(it.accepted_scale_codes)) {
           add(v, "R7", "fail", `문항 ${it.id}: scale4 accepted가 연속 구간이 아님 (${it.accepted_scale_codes.join(",")})`);
         }
-        if (isV4Contract && "reference_scale_code" in it) {
+        if ((isV4Contract || m.schema_version === "mission_v6") && "reference_scale_code" in it) {
           const accepted = new Set(it.accepted_scale_codes);
           const isAppropriatePair =
             accepted.has("very_appropriate") &&
@@ -489,7 +492,7 @@ export function checkMission(
             it.accepted_scale_codes.length !== 2 ||
             (!isAppropriatePair && !isInappropriatePair)
           ) {
-            add(v, "R7", "fail", `문항 ${it.id}: v4 Scale4 accepted는 같은 적절성 방향의 정확히 두 응답이어야 함`);
+            add(v, "R7", "fail", `문항 ${it.id}: Scale4 accepted는 같은 적절성 방향의 정확히 두 응답이어야 함`);
           }
           if (!accepted.has(it.reference_scale_code)) {
             add(v, "R7", "fail", `문항 ${it.id}: reference_scale_code가 accepted 방향에 포함되지 않음`);
@@ -519,8 +522,8 @@ export function checkMission(
         if (it.accepted_band_codes.some((c) => !inappropriate(c))) {
           add(v, "R18", "fail", `문항 ${it.id}: fix_choice accepted에 적정 대역 포함 — 부적절 계열이어야 함`);
         }
-        if (isV4Contract && !samePdrBand(it.pdr, m.production_task.pdr)) {
-          add(v, "R3", "fail", `문항 ${it.id}: v4 판단+교정은 DCT와 같은 앵커 PDR이어야 함`);
+        if ((isV4Contract || m.schema_version === "mission_v6") && !samePdrBand(it.pdr, m.production_task.pdr)) {
+          add(v, "R3", "fail", `문항 ${it.id}: 판단+교정은 DCT와 같은 앵커 PDR이어야 함`);
         }
         checkTargetLangSoft(v, dir, it.id, it.corrections.map((c) => c.text));
         checkTargetHighlights(v, it.id, it.target, it.highlights);
@@ -566,10 +569,81 @@ export function checkMission(
         checkTargetHighlights(v, it.id, it.target, it.highlights);
         break;
       }
+      case "fix_review": {
+        const passing = it.corrections.filter((correction) => correction.verdict === "pass");
+        const rejected = it.corrections.filter((correction) => correction.verdict === "reject");
+        const correctionIds = new Set(it.corrections.map((correction) => correction.id));
+        const reasonIds = new Set(it.failure_reasons.map((reason) => reason.id));
+        const acceptedReason = it.failure_reasons.find((reason) => reason.id === it.accepted_failure_reason_id);
+        const failureTypes = new Set(it.failure_reasons.map((reason) => reason.failure_type));
+        if (passing.length !== 2 || rejected.length !== 1 || correctionIds.size !== 3) {
+          add(v, "R4", "fail", `문항 ${it.id}: FixReview는 통과 2개·탈락 1개여야 함`);
+        }
+        if (new Set(passing.map((correction) => correction.strategy_code)).size !== 2) {
+          add(v, "R4", "fail", `문항 ${it.id}: 통과 교정본 두 개의 전략이 서로 다르지 않음`);
+        }
+        if (
+          !acceptedReason ||
+          !reasonIds.has(it.accepted_failure_reason_id) ||
+          failureTypes.size !== 3 ||
+          !rejected[0]?.failure_type ||
+          acceptedReason.failure_type !== rejected[0].failure_type
+        ) {
+          add(v, "R4", "fail", `문항 ${it.id}: FixReview의 단일 핵심 실패 원인이 명확하지 않음`);
+        }
+        if (!samePdrBand(it.pdr, m.production_task.pdr)) {
+          add(v, "R4", "fail", `문항 ${it.id}: FixReview PDR이 DCT 기준 PDR과 다름`);
+        }
+        checkTargetLangSoft(v, dir, it.id, it.corrections.map((correction) => correction.text));
+        checkTargetHighlights(v, it.id, it.target, it.highlights);
+        checkRoleLengthCue(
+          v,
+          "R4",
+          it.id,
+          it.corrections.map((correction) => ({ text: correction.text, role: correction.verdict })),
+          "FixReview",
+        );
+        break;
+      }
       case "multi_judge": {
         // R5 길이 통제 강화판
         checkMultiJudgeLength(v, it.id, it.candidates, withinCode);
-        if (isV4Contract) {
+        if (m.schema_version === "mission_v6") {
+          const current = it as typeof it & {
+            pdr_contrast_axis: "p" | "d" | "r";
+            candidates: Array<{
+              text: string;
+              band_role: "under" | "within" | "over";
+              accepted_band_codes: string[];
+            }>;
+          };
+          const roles = current.candidates.map((candidate) => candidate.band_role);
+          const counts = {
+            under: roles.filter((role) => role === "under").length,
+            within: roles.filter((role) => role === "within").length,
+            over: roles.filter((role) => role === "over").length,
+          };
+          if (counts.under !== 1 || counts.within !== 1 || counts.over !== 1) {
+            add(v, "R5", "fail", `문항 ${it.id}: MultiJudge 역할 분포가 과소1·적정1·과잉1이 아님`);
+          }
+          const featureCodes = feature?.band_schema.map((band) => band.code) ?? [];
+          const expectedByRole = {
+            under: featureCodes[0],
+            within: withinCode,
+            over: featureCodes[featureCodes.length - 1],
+          };
+          for (const candidate of current.candidates) {
+            if (candidate.accepted_band_codes[0] !== expectedByRole[candidate.band_role]) {
+              add(v, "R5", "fail", `문항 ${it.id}: ${candidate.band_role} 후보의 band code가 역할과 불일치`);
+            }
+          }
+          const changedAxes = (["p", "d", "r"] as const).filter(
+            (axis) => current.pdr[axis] !== m.production_task.pdr[axis],
+          );
+          if (changedAxes.length !== 1 || changedAxes[0] !== current.pdr_contrast_axis) {
+            add(v, "R5", "fail", `문항 ${it.id}: 기준 PDR에서 정확히 한 축만 바뀌지 않음`);
+          }
+        } else if (isV4Contract) {
           const lowCode = feature?.band_schema[0]?.code;
           const highCode = feature?.band_schema[feature.band_schema.length - 1]?.code;
           const counts = new Map<string, number>();
@@ -677,6 +751,76 @@ export function checkMission(
   // ── R20 mission_content.provenance 존재·필수값(v1.5 0-h·56) ──
   checkProvenance(v, m);
 
+  // ── mission_v6 최종 계약: P·D·R 계획, 후보 역할, DCT 지원 정책 ──
+  if (m.schema_version === "mission_v6") {
+    const [scale, fixChoice, fixReview] = m.mpj_items;
+    if (samePdrBand(scale.pdr, m.production_task.pdr)) {
+      add(v, "R25", "fail", "MPJ1은 단순 규칙을 깨는 대조 상황이어야 하므로 기준 PDR과 같을 수 없음");
+    }
+    if (
+      fixChoice.situation_ko === m.production_task.situation_ko ||
+      fixChoice.source === m.production_task.source_text ||
+      fixReview.situation_ko === m.production_task.situation_ko ||
+      fixReview.source === m.production_task.source_text
+    ) {
+      add(v, "R25", "fail", "MPJ2·MPJ3와 DCT는 같은 PDR의 서로 다른 사건이어야 함");
+    }
+
+    if (fixChoice.type === "fix_choice") {
+      const roles = new Set(fixChoice.corrections.map((correction) => correction.role));
+      const valid = fixChoice.corrections.filter((correction) => correction.is_valid);
+      const validStrategies = new Set(valid.map((correction) => correction.strategy_code));
+      if (
+        roles.size !== 4 ||
+        valid.length !== 2 ||
+        validStrategies.size !== 2 ||
+        valid.some((correction) => !["valid_a", "valid_b"].includes(correction.role)) ||
+        fixChoice.corrections.some((correction) =>
+          ["valid_a", "valid_b"].includes(correction.role) !== correction.is_valid
+        )
+      ) {
+        add(v, "R3", "fail", "FixChoice는 서로 다른 적절 전략 2개·미수리 1개·과잉수리 1개여야 함");
+      }
+      checkRoleLengthCue(
+        v,
+        "R3",
+        fixChoice.id,
+        fixChoice.corrections.map((correction) => ({
+          text: correction.text,
+          role: correction.is_valid ? "valid" : "invalid",
+        })),
+        "FixChoice",
+      );
+    }
+
+    if (fixChoice.type === "fix_choice" && fixReview.type === "fix_review") {
+      const rejectedFailureType = fixReview.corrections.find(
+        (correction) => correction.verdict === "reject",
+      )?.failure_type;
+      if (rejectedFailureType === "under_repair" || rejectedFailureType === "over_repair") {
+        add(
+          v,
+          "R30",
+          "fail",
+          "MPJ3 탈락본은 MPJ2 오답의 미수리·과잉수리 실패 유형을 반복하지 않아야 함",
+        );
+      }
+    }
+
+    const pt = m.production_task;
+    if (pt.mode === "translation" && (pt.vocabulary_hints?.length ?? 0) > 2) {
+      add(v, "R16", "fail", "번역 DCT의 내용 어휘 힌트는 최대 2개");
+    }
+    if (pt.mode === "interpreting") {
+      if ((pt.vocabulary_hints?.length ?? 0) > 0) {
+        add(v, "R16", "fail", "통역 DCT에는 어휘 힌트를 제공하지 않음");
+      }
+      if (pt.replay_limit !== 2) {
+        add(v, "R16", "fail", "통역 DCT replay_limit는 정확히 2여야 함");
+      }
+    }
+  }
+
   // ── R23 미션 production_task가 코어 계승 ──
   if (coreInput != null) {
     const nc = normalizeCore(coreInput);
@@ -709,10 +853,10 @@ export function checkMission(
     }
   }
 
-  // R31 — 검증 범위의 mission_v5는 문항별 모델 귀속을 완전하게 생성해야 저장할 수 있다.
+  // R31 — 현재 생성 계약의 mission_v6는 문항별 모델 귀속을 완전하게 생성해야 저장할 수 있다.
   // 귀속은 전문가 승인 전 pending claim이며, 구조·scope·근거 합집합만 자동 판정한다.
   if (
-    m.schema_version === "mission_v5" &&
+    m.schema_version === "mission_v6" &&
     m.provenance?.prompt_version === CURRENT_MISSION_PROMPT_VERSIONS[0]
   ) {
     const lineageScope = buildMissionLineageScope({
@@ -728,7 +872,7 @@ export function checkMission(
       const attribution = lineage.attribution_provenance;
       const coverage = lineage.coverage_summary;
       if (lineage.claim_status !== "model_attribution_pending_review") {
-        add(v, "R31", "fail", "mission_v5 item_lineage는 전문가 검토 전 pending 상태여야 함");
+        add(v, "R31", "fail", "현재 mission_v6 item_lineage는 전문가 검토 전 pending 상태여야 함");
       }
       if (!coverage) {
         add(v, "R31", "fail", "item_lineage.coverage_summary 누락");
@@ -753,7 +897,7 @@ export function checkMission(
         ) ||
         (coverage && attribution.calls.reduce((sum, call) => sum + call.target_count, 0) !== coverage.total_count)
       ) {
-        add(v, "R31", "fail", "item_lineage attribution provenance가 mission_v5 생성계약과 다름");
+        add(v, "R31", "fail", "item_lineage attribution provenance가 현재 mission_v6 생성계약과 다름");
       }
     }
   }
@@ -790,6 +934,10 @@ function checkProvenance(v: RuleViolation[], m: MissionRuntime) {
   if (!(typeof p.generation_attempt === "number" && p.generation_attempt >= 1)) {
     add(v, "R20", "fail", "provenance.generation_attempt는 1 이상 정수");
   }
+  if (m.schema_version === "mission_v6" && p.prompt_version === CURRENT_MISSION_PROMPT_VERSIONS[0]) {
+    if (!p.provider) add(v, "R20", "fail", "현재 mission_v6 provenance.provider 누락");
+    if (!p.prompt_instance_hash) add(v, "R20", "fail", "현재 mission_v6 provenance.prompt_instance_hash 누락");
+  }
 }
 
 // ── 헬퍼 ──────────────────────────────────────────────────────────────
@@ -805,10 +953,39 @@ function collectBandCodes(it: MissionRuntime["mpj_items"][number]): string[] {
       return it.accepted_band_codes;
     case "reason":
       return [it.problem_band_code];
+    case "fix_review":
+      return [];
     case "multi_judge":
       return it.candidates.flatMap((c) => c.accepted_band_codes);
     default:
       return []; // scale4는 scale code (band 아님)
+  }
+}
+
+function checkRoleLengthCue(
+  v: RuleViolation[],
+  ruleId: "R3" | "R4" | "R5",
+  id: number,
+  options: Array<{ text: string; role: string }>,
+  label: string,
+) {
+  if (options.length < 3) return;
+  const rows = options.map((option) => ({ ...option, length: [...option.text].length }));
+  const roles = [...new Set(rows.map((row) => row.role))];
+  const min = Math.min(...rows.map((row) => row.length));
+  const max = Math.max(...rows.map((row) => row.length));
+  for (const role of roles) {
+    const current = rows.filter((row) => row.role === role);
+    const other = rows.filter((row) => row.role !== role);
+    if (!current.length || !other.length) continue;
+    const uniquelyExtreme =
+      (current.length === 1 && (current[0].length === min || current[0].length === max)) ||
+      current.every((row) => row.length < Math.min(...other.map((entry) => entry.length))) ||
+      current.every((row) => row.length > Math.max(...other.map((entry) => entry.length)));
+    if (uniquelyExtreme) {
+      add(v, ruleId, "fail", `문항 ${id}: ${label} 선택지 길이가 '${role}' 역할의 정답 단서가 됨`);
+      return;
+    }
   }
 }
 
@@ -1006,6 +1183,11 @@ function checkNationalization(v: RuleViolation[], m: MissionRuntime) {
     fields.push(it.explanation_ko);
     if (it.type === "fix_choice") fields.push(...it.corrections.map((c) => c.note_ko));
     if (it.type === "reason") fields.push(...it.reasons.map((r) => r.text_ko));
+    if (it.type === "fix_review") {
+      fields.push(...it.corrections.map((c) => c.note_ko));
+      fields.push(...it.failure_reasons.map((reason) => reason.text_ko));
+      fields.push(it.repair_principle_ko);
+    }
     if (it.type === "multi_judge") fields.push(...it.candidates.map((c) => c.note_ko));
   }
   for (const f of fields) {

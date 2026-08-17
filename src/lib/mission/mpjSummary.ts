@@ -8,7 +8,7 @@ export interface MpjSummaryRow {
 }
 
 export const MPJ_SUMMARY_DIVERGENCE_COPY =
-  "내 선택은 참고 판정과 달랐습니다. 왜 다르게 느꼈는지 수업에서 비교해 보세요.";
+  "이 상황을 다르게 판단했습니다. 왜 그렇게 느꼈는지 수업에서 비교해 보세요.";
 
 function sameNumberSet(left: number[], right: number[]): boolean {
   if (left.length !== right.length) return false;
@@ -72,9 +72,9 @@ export function buildMpjSummaryRows(
             sameJudgment && sameCorrections
               ? summary?.correction ?? "관계와 부담에 맞게 표현을 조절했습니다."
               : sameCorrections
-                ? "고친 방향은 알맞았지만, 첫 판단은 참고 판정과 달랐습니다."
+                ? "고친 문장은 알맞았지만, 처음에는 이 상황을 다르게 판단했습니다."
                 : sameJudgment
-                  ? "조절이 필요하다는 점은 찾았지만, 고친 방향은 참고안과 달랐습니다."
+                  ? "고칠 필요는 찾았지만, 어떤 문장으로 고칠지는 다르게 판단했습니다."
                   : MPJ_SUMMARY_DIVERGENCE_COPY,
         };
       }

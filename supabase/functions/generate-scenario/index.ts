@@ -1404,6 +1404,15 @@ function uniqueStrings(value: unknown): string[] {
   return [...new Set(value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0))]
 }
 
+function shuffledCopy<T>(items: T[]): T[] {
+  const copy = [...items]
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
+
 interface MissionLineageTarget {
   target_path: string
   text: string
@@ -1431,7 +1440,7 @@ function collectMissionLineageTargets(mission: Record<string, unknown>): Mission
         targets.push({
           target_path: `mpj_items[${itemIndex}].corrections[${correctionIndex}]`,
           text: typeof correction.text === 'string' ? correction.text : '',
-          context_ko: `교정안; is_valid=${String(correction.is_valid)}; ${String(correction.note_ko ?? '')}`,
+          context_ko: `교정안; is_valid=${String(correction.is_valid)}; verdict=${String(correction.verdict ?? '')}; failure_type=${String(correction.failure_type ?? '')}; ${String(correction.note_ko ?? '')}`,
         })
       })
     }
@@ -1717,7 +1726,7 @@ async function attributeMissionItemLineage(
   return { ok: true, itemLineage }
 }
 
-function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken = false, direction: Direction = 'ko_zh'): string {
+function buildLegacyMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken = false, direction: Direction = 'ko_zh'): string {
   const { src, tgt } = DIR_LANGS[direction]
   const srcL = LANG_KO[src]
   const tgtL = LANG_KO[tgt]
@@ -1935,6 +1944,184 @@ ${vocabularyHintsRule}
 - 완료 화면 원리는 시스템이 넣으므로 생성 금지.`
 }
 
+function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken = false, direction: Direction = 'ko_zh'): string {
+  const { src, tgt } = DIR_LANGS[direction]
+  const srcL = LANG_KO[src] // 원문(판단 대상 source) 언어
+  const tgtL = LANG_KO[tgt] // 산출(판단 대상 target·후보) 언어
+  // 방향별 정형 표현 예외(게이트1 예외 목록) + 길이 관계 예시.
+  const formulaic = tgt === 'zh' ? '您好·不好意思 등' : '안녕하세요·죄송하지만 등'
+  const precedingRule = isResponse
+    ? `\n- 🔴 이 화행은 인접쌍의 둘째 짝(응답류)입니다. **4문항 전부와 DCT**에
+    "preceding_turn"(상대(${tgtL} 화자)의 ${tgtL} 선행 발화)를 문항별 상황에 맞게 반드시 채우세요(각 item 객체에 "preceding_turn":"…" 필드 추가).`
+    : ''
+  const bands = f.band_schema.map((b) => `"${b.code}"(${b.label_ko})`).join(' / ')
+  // FixReview 탈락본 하나만 명시된 단일 실패를 가질 수 있다. 나머지는 불변항을 지킨다.
+  const gate1 = `🔴 게이트1(불변항 — 절대 규칙): target·FixChoice의 모든 corrections.text·MultiJudge의 모든 candidates.text·FixReview의 pass 교정본·recommended_example·reference_alternatives.text는 **먼저 원문의 명제·의도·화행 목적을 유지**해야 합니다. FixReview의 reject 교정본 하나만 failure_type으로 명시한 단일 실패를 의도적으로 가질 수 있으며, 그 밖의 새 사실·의도 변화는 금지합니다. 부적절성은 원칙적으로 「${f.learner_label}」 초점의 **과소·적정·과잉 차이**로 실현합니다.`
+  // 통역 승격 = MPJ 후보도 구두체 강제(계약 0-g·52).
+  const spokenRule = isSpoken
+    ? `\n🔴 이 미션은 통역(구두 담화)입니다. source·target·모든 후보는 **실제 말로 주고받을 법한 구두체**로 작성하세요(이메일 문어체·서면 격식 표현 금지).
+- 모든 장면은 A=${srcL} 원발화자, B=${tgtL} 청자, C=학습자 통역사의 서로 다른 세 참여자로 구성합니다. P·D·R은 A↔B 관계입니다.
+- C는 A의 의미·의도·화용적 힘을 B에게 기능적으로 등가 재현합니다. 목표어 형식 조정은 허용하지만 A의 힘·태도·화행 목적을 자의적으로 개선하지 마세요.
+- situation_ko는 C의 관점으로 쓰고 A를 ‘저는’·‘나는’으로 서술하지 마세요. A/B를 학습자라고 부르거나 C를 화행 수행자·수신자로 만들면 실패입니다.`
+    : ''
+  const sceneRules = isSpoken
+    ? `- 통역 situation_ko는 학습자 통역사 C의 현재 장면으로 이어지는 2~3문장입니다. A와 B의 구체 역할·접촉 이력과 B가 감수할 부담이 자연스럽게 보여야 합니다.
+- relation_ko는 원발화자 A와 청자 B의 역할·관계만 한 줄로 쓰고, 학습자 C와 A/B의 관계를 P·D·R 근거로 쓰지 마세요.
+- pdr.p는 원발화자 A 기준입니다.`
+    : `- 번역 situation_ko는 학습자가 지금 누구에게 무엇을 하려는지와 D(접촉 이력·친밀도), R(상대가 감수할 비용·부담)이 자연스럽게 보이는 2~3문장입니다.
+- relation_ko는 학습자가 마주한 상대의 역할·관계만 한 줄로 쓰고 P/D/R 코드·라벨을 넣지 마세요.
+- pdr.p는 화자(학습자) 기준입니다.`
+  const lineageRule = f.lineage_scope
+    ? `\n\n[버전 고정 중국어 실현 scope — 생성 후 별도 provenance 분류에 사용]\n` +
+      `허용 rule: ${JSON.stringify(f.lineage_scope.rules.map((rule) => ({ id: rule.rule_id, label_ko: rule.label_ko })))}\n` +
+      `허용 risk: ${JSON.stringify(f.lineage_scope.risks.map((risk) => ({ id: risk.risk_id, description_ko: risk.description_ko })))}\n` +
+      `- 목표어 표현은 위 자원과 위험 범위 안에서 설계하세요. lineage ID 출력은 요구하지 않으며, 생성 후 별도 저온 분류 단계가 각 문장을 추적합니다.`
+    : ''
+  return `당신은 ${LANG_DIR_KO[direction]} 통번역 교육용 '메타화용 판단 미션'을 설계하는 전문가입니다.
+이번 단원의 화용 초점은 「${f.learner_label}」입니다.
+초점 정의: ${f.operational_definition}
+판정 대역(band): ${bands}  (적정 대역 = "${f.within_band_code}")
+이 초점을 실현하는 장치: ${f.relevant_resources.join(', ')}
+이 초점이 아닌 것(혼입 금지): ${f.excluded_confounds.join(', ')}
+깨야 할 소박한 규칙: ${f.counter_rule_note}
+
+${gate1}${spokenRule}${lineageRule}
+
+MPJ는 정확히 4문항입니다. 각 문항은 학습자가 '${tgtL} 산출안(source=${srcL} 원문 → target=${tgtL})'을 이 초점 대역으로 판단·교정·검수하게 합니다.
+모든 문항의 판정 축은 위 band뿐입니다(다른 축 혼입 금지).
+출력은 아래 JSON만, 마크다운·설명 없이 반환합니다.
+
+공통 코드값(모든 문항 — 한국어 라벨 금지, 반드시 아래 코드로):
+  pdr.p: "speaker_lower" | "equal" | "speaker_higher"
+  pdr.d: "close" | "acquaintance" | "distant"
+  pdr.r: "low" | "mid" | "high"
+  band: 위 판정 대역 코드 (예: 적정 = "${f.within_band_code}")
+
+언어 규칙(방향 ${LANG_DIR_KO[direction]}): source·vocabulary_hints.source 위치의 원문 = **${srcL}** / target·corrections.text·candidates.text·recommended_example·reference_alternatives.text·vocabulary_hints.target = **${tgtL}**. situation_ko·relation_ko·explanation_ko·note_ko·failure_reasons.text_ko·repair_principle_ko = 방향과 무관하게 **항상 한국어**(학습자 UI 언어).
+
+모든 문항에 아래 generation_checks를 그대로 채웁니다. 하나라도 사실이라고 확인할 수 없으면 해당 문항을 다시 설계하세요:
+{"meaning_intent_preserved":true,"natural_and_plausible":true,"no_length_or_surface_cue":true,"single_key_or_role_clear":true,"review_note_ko":"어떤 점을 검수했는지 한국어로 구체적으로 기록"}
+
+아래 4문항을 축약 없이 출력합니다:
+{
+  "mpj_items": [
+    {
+      "type": "scale4",
+      "judgment_frame": "reference_non_scored",
+      "situation_ko": "…", "relation_ko": "…", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "source": "판단 대상의 ${srcL} 원문",
+      "target": "판단 대상 ${tgtL} 산출안",
+      "highlights": ["target의 실제 부분문자열"],
+      "accepted_scale_codes": ["같은 방향의 두 코드: very_appropriate+somewhat_appropriate 또는 somewhat_inappropriate+very_inappropriate"],
+      "reference_scale_code": "accepted_scale_codes 안의 참고 정도 1개",
+      "explanation_ko": "기준 판정 해설(상황 결부형, 한국어)",
+      "recommended_example": "이 상황의 적절안 1개 (${tgtL})",
+      "generation_checks": {"meaning_intent_preserved":true,"natural_and_plausible":true,"no_length_or_surface_cue":true,"single_key_or_role_clear":true,"review_note_ko":"…"}
+    },
+    {
+      "type": "fix_choice",
+      "judgment_frame": "reference_non_scored",
+      "situation_ko": "…", "relation_ko": "…", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "source": "…", "target": "부적절한 ${tgtL} 산출안", "highlights": ["…"],
+      "accepted_band_codes": ["과소|적정|과잉 중 정확히 1개 band code"],
+      "corrections": [
+        {"id":"고유ID","text":"서로 다른 적절 전략 A","role":"valid_a","strategy_code":"구체 전략 코드","is_valid":true,"note_ko":"…"},
+        {"id":"고유ID","text":"원래 문제를 충분히 고치지 못한 표현","role":"under_repair","strategy_code":"구체 전략 코드","is_valid":false,"note_ko":"…"},
+        {"id":"고유ID","text":"완화를 불필요하게 겹친 과잉 교정 표현","role":"over_repair","strategy_code":"구체 전략 코드","is_valid":false,"note_ko":"…"},
+        {"id":"고유ID","text":"서로 다른 적절 전략 B","role":"valid_b","strategy_code":"구체 전략 코드","is_valid":true,"note_ko":"…"}
+      ],
+      "explanation_ko": "…", "recommended_example": "…",
+      "generation_checks": {"meaning_intent_preserved":true,"natural_and_plausible":true,"no_length_or_surface_cue":true,"single_key_or_role_clear":true,"review_note_ko":"…"}
+    },
+    {
+      "type": "fix_review",
+      "judgment_frame": "reference_non_scored",
+      "situation_ko": "…", "relation_ko": "…", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "source": "…", "target": "수정 전 ${tgtL} 산출안", "highlights": ["…"],
+      "corrections": [
+        {"id":"고유ID","text":"검수 통과 가능 교정본 A","verdict":"pass","strategy_code":"전략A","note_ko":"통과 가능한 구체적 이유"},
+        {"id":"고유ID","text":"검수 탈락 교정본 C","verdict":"reject","strategy_code":"수정 전략","failure_type":"under_repair|over_repair|meaning_shift|relation_mismatch|new_language_or_pragmatic_problem","note_ko":"핵심 실패"},
+        {"id":"고유ID","text":"다른 전략의 검수 통과 가능 교정본 B","verdict":"pass","strategy_code":"전략B","note_ko":"통과 가능한 구체적 이유"}
+      ],
+      "failure_reasons": [
+        {"id":"고유ID","failure_type":"서로 다른 실패 유형","text_ko":"이 상황과 선택한 표현에 맞는 구체적 설명"},
+        {"id":"고유ID","failure_type":"서로 다른 실패 유형","text_ko":"…"},
+        {"id":"고유ID","failure_type":"서로 다른 실패 유형","text_ko":"…"}
+      ],
+      "accepted_failure_reason_id": "탈락본 failure_type과 일치하는 이유 ID 정확히 1개",
+      "repair_principle_ko": "수정 중 새 문제를 피하는 원칙",
+      "explanation_ko": "통과 2개 이유와 탈락본 핵심 실패를 함께 요약", "recommended_example": "…",
+      "generation_checks": {"meaning_intent_preserved":true,"natural_and_plausible":true,"no_length_or_surface_cue":true,"single_key_or_role_clear":true,"review_note_ko":"…"}
+    },
+    {
+      "type": "multi_judge",
+      "judgment_frame": "reference_non_scored",
+      "situation_ko": "…", "relation_ko": "…", "pdr": {"p":"코드","d":"코드","r":"코드"},
+      "pdr_contrast_axis": "p|d|r 중 기준 PDR에서 실제로 바꾼 정확히 한 축",
+      "source": "…",
+      "candidates": [
+        {"id":"고유ID","text":"…(${tgtL})","band_role":"under","accepted_band_codes":["과소 band 1개"],"note_ko":"…"},
+        {"id":"고유ID","text":"…","band_role":"within","accepted_band_codes":["${f.within_band_code}"],"note_ko":"이 상황에 알맞은 이유"},
+        {"id":"고유ID","text":"…","band_role":"over","accepted_band_codes":["과잉 band 1개"],"note_ko":"…"}
+      ],
+      "explanation_ko": "과소·적정·과잉의 차이를 이 상황에 결부해 설명", "recommended_example": "…",
+      "generation_checks": {"meaning_intent_preserved":true,"natural_and_plausible":true,"no_length_or_surface_cue":true,"single_key_or_role_clear":true,"review_note_ko":"…"}
+    }
+  ],
+  "reference_alternatives": [ {"text":"…(${tgtL})","note_ko":"…"} ],
+  "vocabulary_hints": ${isSpoken
+    ? "[]"
+    : `[{"source":"원문에서 실제로 쓰인 비화용적 내용 어휘·구(${srcL})","target":"짧은 대응 표현(${tgtL})"}]`}
+}
+(reference_alternatives는 1~2개, 서로 다른 전략. vocabulary_hints는 번역일 때 0~2개.)
+
+핵심 규칙:
+- mpj_items는 **정확히 4개**, 순서는 scale4 → fix_choice → fix_review → multi_judge.
+- **모든 문항은 예외 없이 공통 필드 전부 포함**: judgment_frame="reference_non_scored", situation_ko, relation_ko, pdr{p,d,r}, source, explanation_ko, recommended_example. 위 스키마의 "..."는 이 공통 필드 전부를 뜻합니다(multi_judge 포함 — target만 없음).
+- 🔴 **판정 대역은 표현 형식이 아니라 관계·부담(P·D·R)에 상대적입니다.** 친밀·동등·저부담 상황에서는
+  직접형·간결형도 적절할 수 있으며, **완화 표현이 없다는 이유만으로 과소 대역으로 판정하지 마세요.**
+  같은 문장이 초면·고부담이면 과소, 친밀·저부담이면 적정일 수 있습니다.
+  감사의 경우 호의가 클수록 강한 감사가 적정입니다 — 강한 표현을 기계적으로 과잉으로 판정하지 마세요.
+- PDR 구성: MPJ1은 단순 규칙을 깨는 대조 상황, MPJ2·MPJ3·DCT는 같은 기준 PDR의 서로 다른 사건,
+  MPJ4는 기준 PDR에서 p/d/r 중 정확히 한 축만 바꾼 대비 사건입니다.
+- MPJ1 Scale4는 같은 적절성 방향의 두 4점 응답을 모두 수용하고 reference_scale_code는 그 둘 중 하나입니다.
+  매우/다소 차이를 오답으로 만들지 않습니다. highlights는 제출 뒤 설명용일 뿐 사전 노출하지 않습니다.
+- MPJ2 FixChoice는 판단 확정 뒤에만 수정안 4개를 공개합니다. valid_a와 valid_b는 서로 다른 전략이고,
+  under_repair는 원래 문제가 남으며 over_repair는 완화를 불필요하게 겹친 과잉 교정입니다. 정확히 두 개만 valid입니다.
+- MPJ3 FixReview는 자연스러운 교정본 3개 중 pass 2·reject 1입니다. pass 전략은 서로 다르고 reject의
+  핵심 failure_type은 하나만 성립해야 합니다. failure_reasons는 상황 결부형 3개, 서로 다른 failure_type이며
+  accepted_failure_reason_id는 reject.failure_type과 일치하는 정확히 한 개입니다. 두 교정본이 동등하게 탈락 가능하면 생성 실패입니다.
+- 한 미션 안에서 MPJ3 reject.failure_type은 MPJ2 오답의 under_repair·over_repair와 겹치면 생성 실패입니다.
+  MPJ3는 meaning_shift·relation_mismatch·new_language_or_pragmatic_problem 중 하나를 핵심 실패로 사용하세요.
+- 실패 유형은 under_repair, over_repair, meaning_shift, relation_mismatch,
+  new_language_or_pragmatic_problem에서 문항에 맞는 세 개를 고르고 미션마다 순환합니다.
+- MPJ4 MultiJudge는 후보 정확히 3개: 과소 1·적정 1·과잉 1. BEST/WORST·순위 필드는 만들지 않습니다.
+  배열 순서는 역할 순서와 다르게 섞고, 1·1·1 분포를 학습자에게 알리는 문구를 만들지 않습니다.
+- 모든 문항의 source는 **실제 ${srcL} 발화**(학습자가 옮길 원문 문장)여야 합니다 —
+  "~에 대한 감사 인사" 같은 설명문 금지.
+${sceneRules}
+- relation_ko의 관계 서술과 pdr 값이 반드시 일치해야 합니다.
+- 모든 후보는 원문과 핵심 명제·발화 의도·화행 목적이 동일. 새 사실·이유·약속 추가 금지(정형 표현 ${formulaic}는 예외).
+- DCT reference_alternatives만 사용자 요청서의 usable_facts에 든 추가 사실을 사용할 수 있으며, 사실 유무를 정답 단서로 만들지 마세요.
+- 모든 교정본·후보는 문법적으로 자연스럽고 실제 발화로 가능하며, 원문의 명제 내용과 발화 의도를 보존합니다.
+  차이는 오직 이 화용 초점에서만. 문법·의미·길이·경어 표지 개수·노골적인 어휘가 정답 단서가 되면 생성 실패입니다.
+- **pdr 값은 반드시 위 '공통 코드값'만 사용**(한국어 라벨 "동등" 등 절대 금지).
+- vocabulary_hints는 ${isSpoken
+    ? "**빈 배열**. 통역은 어휘 힌트를 제공하지 않습니다."
+    : `**0~2개**. production source_text의 산출을 막을 수 있는 내용 어휘·짧은 구만 고릅니다.
+  · 완화·공손·선택권·호칭·종결형 등 target feature를 직접 실현하는 화용 표현은 금지합니다.
+  · 완성 문장과 문법 설명은 금지합니다.
+  · preceding_turn에 목표어가 이미 그대로 보이는 항목은 힌트로 다시 주지 않습니다.
+  · 두 source는 production source_text에 실제로 존재해야 하고, 서로 다른 어휘여야 합니다.`}
+- 선택지 길이만으로 역할을 가를 수 없게 문장 길이를 대역의 강도 순서와 기계적으로 일치시키지 마세요.
+  교정본·후보가 같은 문장의 단순 치환이거나 길이만으로 역할을 고를 수 있으면 생성 실패입니다.
+- 각 note_ko와 generation_checks.review_note_ko에는 실제 검수 근거를 남깁니다. 자동으로 판단하기 어려운
+  자연성·의미 보존도 빈 칭찬이 아니라 확인한 차이와 단일 실패 근거를 기록합니다.
+- 🔴 highlights의 각 항목은 **target 안에 글자 그대로 존재하는 부분문자열**이어야 합니다(target에서 잘라낸 조각). 바꿔 쓰거나 요약하지 마세요.
+- source=${srcL}, 모든 target·후보=${tgtL}. "중국인은/중국에서는/한국인은/한국에서는" 표현 금지.${precedingRule}
+- 완료 화면 원리는 시스템이 넣으므로 생성 금지.`
+}
+
 function buildMissionUserPrompt(b: MissionGenBody): string {
   const dir = normDir(b.direction)
   const { src, tgt } = DIR_LANGS[dir]
@@ -1950,7 +2137,7 @@ function buildMissionUserPrompt(b: MissionGenBody): string {
     `- 학습자 수준: ${b.level_ko}`,
     `- 수준 정책: ${b.level_policy_ko}`,
     '',
-    '[앵커 PDR 및 산출 과제(DCT) — DCT는 같은 PDR의 새 장면을 쓰는 근접 전이]',
+    '[산출 과제(DCT1) 기준 상황 — 최초 산출은 MPJ 예문과 독립적으로 수행]',
     `- 상황: ${b.core.situation_ko}`,
     `- 관계: ${b.core.relation_ko}`,
     `- 원문(${srcL}): ${b.core.source_text_ko}`,
@@ -1967,11 +2154,12 @@ function buildMissionUserPrompt(b: MissionGenBody): string {
   }
   parts.push(
     '',
-    '[산출 정합] reference_alternatives(적절 산출안)가 쓰는 완화·전략은, MPJ 세트가 최소 1회 사전 노출해야 합니다.',
+    '[독립 산출] reference_alternatives와 목표 화용 표현을 DCT 제출 전에 힌트로 노출하지 않습니다.',
     `🔴 [참고안] reference_alternatives는 반드시 위 [산출 과제]의 "원문"(${srcL})을 ${tgtL}로 옮긴 것이어야 합니다 — MPJ 문항의 예문을 복사하거나 다른 상황의 문장을 넣지 마세요.`,
-    '[앵커+대비] 1번 fix_choice와 2번 reason은 위 P/D/R을 그대로 사용하되 서로 다른 사건으로 만드세요.',
-    '[앵커+대비] 3번 multi_judge는 위 P/D/R 중 정확히 한 축만 바꾼 대비 상황으로 만드세요.',
-    '[수준 정책] 수정안·이유·후보 수는 모든 수준에서 4/3/5로 고정합니다. 난이도는 장면과 표현의 미묘함으로만 조절하세요.',
+    '[앵커+대비] MPJ2 FixChoice와 MPJ3 FixReview는 위 P/D/R을 그대로 사용하되 DCT 및 서로와 다른 사건으로 만드세요.',
+    '[앵커+대비] MPJ4 MultiJudge는 위 P/D/R 중 정확히 한 축만 바꾼 대비 상황으로 만드세요.',
+    '[FixReview] 두 통과 교정본은 전략이 다르고, 탈락본의 핵심 실패 원인은 정확히 하나여야 합니다.',
+    '[수준 정책] FixChoice 수정안 4개·FixReview 교정본 3개/실패 원인 3개·MultiJudge 후보 3개를 모든 수준에서 고정합니다. 난이도는 장면과 표현의 미묘함으로만 조절하세요.',
   )
   if (b.error_pattern_hints_ko.length) {
     parts.push(
@@ -2142,8 +2330,8 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
 
 [전제]
 - 이 미션은 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 과제이며 화행은 「${speechActKo}」다.
-- 학습자는 **첫인상 판단 → 판단+교정 → 주원인 선택 → 여러 초안 비교**(MPJ 4문항) 뒤 스스로 산출한다.
-- 형식·필드·개수·코드값·중복·길이 편차는 **이미 결정론적 규칙검사(R1~R29)가 통과시켰다.**
+- 학습자는 MPJ 4문항에서 판단·교정·검수를 한 뒤, 새 사건을 독립적으로 산출한다.
+- 형식·필드·개수·코드값·중복·길이 편차는 **이미 결정론적 규칙검사(R1~R32)가 통과시켰다.**
   너는 그것을 다시 세지 마라. 너의 몫은 **의미·자연성·후보 자격**이다.
 
 [반드시 지킬 판정 원칙]
@@ -2167,6 +2355,8 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
    한다. 의도가 사라졌거나 사실이 추가/삭제된 문장을 "부적절 대역"으로 붙였으면 위반이다.
    단, mission_content.production_task.usable_facts에 든 사실은 허용된 명제적
    Supportive Move다. 목록 안 사실을 사용했다는 이유만으로 gate1 위반으로 세지 않는다.
+   FixReview의 reject 교정본은 명시된 failure_type 하나를 의도적으로 포함할 수 있다.
+   그 단일 실패 자체를 gate1 위반으로 중복 보고하지 말고, 다른 추가 변질이 있을 때만 보고한다.
 ② implausible_distractor — 오답 후보가 실제로 쓸 법하지 않고 우스울 만큼 빗나갔는가.
    **판별 기준(0-r·105): 중국어 초급자가 화용 지식 없이도 "이건 너무 세다/이상하다"고
    소거할 수 있으면 결함이다.** 후보는 실제로 헷갈릴 만한 **경계 사례**여야 하며,
@@ -2191,12 +2381,10 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
    확인하라. 이 핵심 사실이 빠져 학습자마다 P·D·R을 다르게 추론하게 되면 지적하라.
    ※ 기록 목적·즉시 반응 여부·권리/선택권/완화 전략 같은 내부 평가 기준을 학생용 장면에
    설명하라고 요구하지 마라. 매체 이름 라벨도 필수 조건이 아니다.
-⑨ primary_reason_ambiguity — reason의 accepted_reason_id가 실제로 유일한 **가장 큰 이유**인가.
-   다른 선택지도 같은 정도로 방어 가능하거나, primary가 target feature가 아닌 의미·문법 문제라면 fail이다.
-⑩ context_plan_mismatch — scale4는 소박한 규칙을 깨는 적절한 대비 장면이고,
-   fix_choice·reason은 DCT와 같은 앵커 PDR의 다른 사건이며 multi_judge는 P/D/R 한 축만
-   바꾼 대비 사건인가. 코드만 맞고 상황문의 구체적 단서가 그 PDR을 뒷받침하지 못하거나,
-   사건이 사실상 복제되면 지적하라.
+⑨ fix_review_ambiguity — FixReview에서 탈락 교정본이 정확히 하나가 아니거나, 핵심 실패
+   원인 두 개가 동등하게 성립하거나, 통과 교정본 두 개가 서로 다른 전략이 아닌가.
+⑩ pdr_contrast_invalid — MPJ2·3이 DCT 기준 PDR과 다르거나 MPJ4가 P·D·R 중 한 축보다
+   많이 바뀌었거나, P·D·R 단서가 자연스러운 상황문에서 추론되지 않는가.
 
 [필수 확인 절차 — 건너뛰지 마라]
 ①~⑩을 **하나씩 명시적으로 점검한 뒤** 판정하라. "전반적으로 괜찮아 보인다"로
@@ -2221,7 +2409,7 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
   "summary_ko": "한 문장 요약(검토자가 먼저 읽는다)",
   "findings": [
     {
-      "code": "gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch",
+      "code": "gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | fix_review_ambiguity | pdr_contrast_invalid",
       "severity": "warning" | "fail",
       "where": "위치 경로 (예: mpj_items[2].corrections[1])",
       "note_ko": "무엇이 왜 문제인지 1~2문장. 대안 문장을 쓰지 말 것."
@@ -2802,7 +2990,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // ── mission action: mission_v4(MPJ4) 승격 생성 (structured 1회, temp 0.3) ──
+    // ── mission action: mission_v6(MPJ4 + FixReview + DCT1) 승격 생성 ──
     if (input.action === 'mission') {
       const b = input.mission
       if (!b?.feature || !b?.core) {
@@ -2813,22 +3001,10 @@ Deno.serve(async (req) => {
       // 강한 모델을 쓴다. 코어(고volume·단순)는 mini 유지.
       const isSpoken = b.core.source_modality === 'spoken'
       const missionDir = normDir(b.direction)
-      const inheritedFocal = Array.isArray(b.core.focal_segments)
-        ? b.core.focal_segments
-            .map((seg) => ({
-              text: typeof seg?.text === 'string' ? seg.text.trim() : '',
-              role: seg?.role === 'support' ? ('support' as const) : ('head' as const),
-            }))
-            .filter((seg) => seg.text.length > 0 && b.core.source_text_ko.includes(seg.text))
-            .slice(0, 3)
-        : []
-      const isMiniDiscourse = inheritedFocal.some((seg) => seg.role === 'head')
       const sys = buildMissionSystemPrompt(b.feature, b.is_response_act, isSpoken, missionDir)
       const usr = buildMissionUserPrompt(b)
       const model = MISSION_PRIMARY_MODEL
-      const missionPromptVersion = isMiniDiscourse
-        ? CURRENT_MISSION_PROMPT_VERSIONS[0]
-        : CURRENT_MISSION_PROMPT_VERSIONS[1]
+      const missionPromptVersion = CURRENT_MISSION_PROMPT_VERSIONS[0]
       const att = await callOpenAI(MISSION_PRIMARY_MODEL, apiKey, sys, usr, temp, {
         telemetry: telemetryFor('mission_generate', true, {
           promptVersion: missionPromptVersion,
@@ -2837,6 +3013,15 @@ Deno.serve(async (req) => {
       if (!att.ok) {
         return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
       }
+      const promptInstanceHash = await sha256Hex(canonicalJson({
+        action: 'mission',
+        provider: PROVIDER,
+        model,
+        temperature: temp,
+        response_format: { type: 'json_object' },
+        system: sys,
+        user: usr,
+      }))
       let gen: Record<string, unknown>
       try {
         gen = parseOpenAIContent(att.raw) as Record<string, unknown>
@@ -2845,19 +3030,25 @@ Deno.serve(async (req) => {
       }
       const rawItems = Array.isArray(gen.mpj_items) ? gen.mpj_items : []
       // 위치·복사 필드는 서버가 강제: id=순번(R1), axis_feature=target_feature(R1)
-      const mpj_items = rawItems.map((it: Record<string, unknown>, i: number) => ({
-        ...it,
-        id: i + 1,
-        axis_feature: b.feature.code,
-      }))
+      const mpj_items = rawItems.map((it: Record<string, unknown>, i: number) => {
+        const corrections = Array.isArray(it.corrections) ? shuffledCopy(it.corrections) : undefined
+        const failureReasons = Array.isArray(it.failure_reasons) ? shuffledCopy(it.failure_reasons) : undefined
+        const candidates = Array.isArray(it.candidates) ? shuffledCopy(it.candidates) : undefined
+        return {
+          ...it,
+          ...(corrections ? { corrections } : {}),
+          ...(failureReasons ? { failure_reasons: failureReasons } : {}),
+          ...(candidates ? { candidates } : {}),
+          id: i + 1,
+          axis_feature: b.feature.code,
+        }
+      })
       const productionMode = b.core.source_modality === 'spoken' ? 'interpreting' : 'translation'
-      // v4 중립 스키마(MPJ4) — mpj_items는 모델이 중립 키(source/target/
+      // mission_v6 중립 스키마 — 신규 생성은 MPJ4+FixReview+DCT1만 쓴다.
       // corrections.text/candidates.text/recommended_example/preceding_turn)로 답한다.
       // production_task는 코어를 계승하되 중립 키(source_text/preceding_turn)로 조립.
-      // focal_segments를 계승할 수 있으면 mission_v5(미니 담화형 DCT), 없으면 v4.
-      // legacy 단문 코어(scenario_core_v1·v2)의 승격 경로를 막지 않는다.
       const missionBase = {
-        schema_version: isMiniDiscourse ? 'mission_v5' : 'mission_v4',
+        schema_version: 'mission_v6',
         direction: missionDir,
         unit: {
           target_feature: b.feature.code,
@@ -2877,20 +3068,18 @@ Deno.serve(async (req) => {
           source_text: b.core.source_text_ko,          // 코어 계승(R23) — 입력 body는 v1 이름
           preceding_turn: b.core.preceding_turn_zh ?? null,
           ...(productionMode === 'translation'
-            ? { vocabulary_hints: Array.isArray(gen.vocabulary_hints) ? gen.vocabulary_hints : [] }
+            ? { vocabulary_hints: Array.isArray(gen.vocabulary_hints) ? gen.vocabulary_hints.slice(0, 2) : [] }
             : {}),
           ...(Array.isArray(b.core.usable_facts) && b.core.usable_facts.length
             ? { usable_facts: [...new Set(b.core.usable_facts.map((x) => x.trim()).filter(Boolean))].slice(0, 8) }
             : {}),
           ...(productionMode === 'interpreting' ? { replay_limit: 2 } : {}),
           reference_alternatives: Array.isArray(gen.reference_alternatives) ? gen.reference_alternatives : [],
-          ...(isMiniDiscourse ? { focal_segments: inheritedFocal } : {}),
         },
       }
       let mission_content: Record<string, unknown> = missionBase
-      // 한→중 요청·거절·감사의 mission_v5만 현재 realization pack 검증 범위다.
-      // 별도 저온 호출이 실패하거나 미귀속 비율이 20%를 넘으면 생성 응답 자체를 막는다.
-      if (isMiniDiscourse && b.feature.lineage_scope) {
+      // lineage 범위가 있는 초점은 mission_v6에서도 별도 저온 귀속 hard gate를 유지한다.
+      if (b.feature.lineage_scope) {
         const attribution = await attributeMissionItemLineage(
           missionBase,
           b.feature.lineage_scope,
@@ -2920,15 +3109,10 @@ Deno.serve(async (req) => {
       const missionWithProvenance = {
         ...mission_content,
         provenance: {
+          provider: PROVIDER,
           model,
-          // _v2/_v5 = multi_judge 길이 통제(대역·길이 독립) 보강판(2026-07-31, B2).
-          // _v3/_v6 = 대역–근거 정합 + fix_choice 경계 오답 보강판(2026-07-31).
-          //   조립 표본에서 실제로 존재하는 완화·인정·완충 자원을 "없다"고 설명하며 하위 대역을
-          //   부여하는 사례가 요청·거절에서 확인됐다. buildMissionSystemPrompt는 v4·v5 공용이므로
-          //   두 버전 문자열을 함께 올린다.
-          // _v4/_v7 = R5·R27 재시도에 후보별 대역·길이와 중복 문항을 구조화해 되먹이는 판(2026-08-02).
-          // _v5/_v8 = 직전 실패 문장까지 함께 전달해 재생성이 아니라 직접 편집하게 하는 판(2026-08-04).
-            prompt_version: missionPromptVersion,
+          prompt_version: missionPromptVersion,
+          prompt_instance_hash: promptInstanceHash,
           content_release_id: CURRENT_CONTENT_RELEASE_ID,
           mission_content_hash: contentHash,
           generated_at: genAt,
@@ -2937,7 +3121,7 @@ Deno.serve(async (req) => {
         hsk_lexical_audit: hskLexicalAudit,
       }
       return new Response(
-        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: missionPromptVersion, content_release_id: CURRENT_CONTENT_RELEASE_ID, generated_at: genAt } }),
+        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: missionPromptVersion, prompt_instance_hash: promptInstanceHash, content_release_id: CURRENT_CONTENT_RELEASE_ID, generated_at: genAt } }),
         { status: 200, headers: jsonHeaders },
       )
     }
@@ -3116,7 +3300,7 @@ Deno.serve(async (req) => {
       const CODES = [
         'gate1_violation', 'implausible_distractor', 'answer_cue', 'band_mismatch',
         'focus_contamination', 'unnatural_language', 'internal_inconsistency',
-        'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch',
+        'scene_underspecified', 'fix_review_ambiguity', 'pdr_contrast_invalid',
       ]
       const rawFindings = Array.isArray(parsed.findings) ? parsed.findings : []
       const findings = rawFindings.slice(0, 20).map((raw) => {

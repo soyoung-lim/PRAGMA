@@ -198,7 +198,7 @@ const prompts = [
       },
     })),
   entry("mission.item_lineage.system", "미션 문항별 근거 귀속 · 지시문", "review",
-    "생성이 끝난 mission_v5 목표어 문장을 pack rule/risk에 귀속하되 승인 상태로 승격하지 않는다.",
+    "생성이 끝난 현재 mission_v6 목표어 문장을 pack rule/risk에 귀속하되 승인 상태로 승격하지 않는다.",
     S.buildItemLineageSystemPrompt(PROBE_FEATURE.lineage_scope)),
   entry("core.user.learner_scene_repair", "코어 생성 · 학생용 평가 기준 노출 1회 교정", "core",
     "상황 사실은 보존하고 정중성·완화·선택권 같은 답 방향 단서만 제거한다.",

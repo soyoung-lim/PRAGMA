@@ -1,7 +1,8 @@
-// mission_v1/v2 — 기존 완전 미션(MPJ 5 + DCT) 읽기 호환.
-// mission_v3 — 2026-07-28 MPJ4 + DCT 기준선 읽기 호환.
-// mission_v4 — 2026-07-29 현행 완전 미션(MPJ 4 + DCT):
-//   scale4 → judge3+fix_choice → reason → multi_judge.
+// mission_v1/v2 — legacy MPJ5 + DCT 읽기 호환.
+// mission_v3/v4 — historical MPJ4 계약 읽기 호환.
+// mission_v5 — historical 미니 담화 DCT 계약 읽기 호환.
+// mission_v6 — 현행 MPJ4 + DCT1:
+//   scale4 → fix_choice → fix_review → multi_judge.
 //
 // 편성·데모 선별분만 코어에서 승격 생성한다. legacy MPJ 5유형:
 //   scale4 → judge3 → fix_choice → reason_conf → multi_judge (순서 고정, R1).
@@ -233,6 +234,14 @@ export const MPJ_TYPE_ORDER_V4 = [
   "scale4",
   "fix_choice",
   "reason",
+  "multi_judge",
+] as const;
+
+/** 현행 mission_v6: Reason을 2단계 FixReview로 교체한 최종 MPJ4 계약. */
+export const MPJ_TYPE_ORDER_V6 = [
+  "scale4",
+  "fix_choice",
+  "fix_review",
   "multi_judge",
 ] as const;
 
@@ -509,9 +518,130 @@ export const MissionV5Schema = z.object({
   item_lineage: ItemLineageSchema.optional(),
 });
 export type MissionV5 = z.infer<typeof MissionV5Schema>;
+/** mission_v5의 MPJ 계약은 v4와 동일하다. */
+export type MpjItemV5 = MpjItemV4;
 
-export type MissionRuntime = MissionV2 | MissionV3 | MissionV4 | MissionV5;
+// ══════════════════════════════════════════════════════════════════════
+// mission_v6 — 최종 MPJ4 + 독립 DCT1
+// ══════════════════════════════════════════════════════════════════════
+const GenerationChecksV6 = z.object({
+  meaning_intent_preserved: z.literal(true),
+  natural_and_plausible: z.literal(true),
+  no_length_or_surface_cue: z.literal(true),
+  single_key_or_role_clear: z.literal(true),
+  review_note_ko: z.string().min(1),
+});
+
+const MpjCommonV6 = {
+  ...MpjCommonV2,
+  id: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  /** 모든 MPJ 응답은 성적 산출이 아닌 참고 판정·비점수 수행 trace다. */
+  judgment_frame: z.literal("reference_non_scored"),
+  generation_checks: GenerationChecksV6,
+};
+
+const Scale4ItemV6 = z.object({
+  ...MpjCommonV6,
+  type: z.literal("scale4"),
+  target: z.string().min(1),
+  /** 제출 전 UI는 강조하지 않으며, 제출 뒤 설명용으로만 사용한다. */
+  highlights: z.array(z.string()),
+  accepted_scale_codes: z.array(ScaleCodeV4).length(2),
+  reference_scale_code: ScaleCodeV4,
+});
+
+const FixChoiceRole = z.enum(["valid_a", "valid_b", "under_repair", "over_repair"]);
+const FixChoiceItemV6 = z.object({
+  ...MpjCommonV6,
+  type: z.literal("fix_choice"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  accepted_band_codes: z.array(z.string()).length(1),
+  corrections: z.array(z.object({
+    id: z.string().min(1),
+    text: z.string().min(1),
+    role: FixChoiceRole,
+    strategy_code: z.string().min(1),
+    is_valid: z.boolean(),
+    note_ko: z.string().min(1),
+  })).length(4),
+});
+
+export const FixReviewFailureTypeSchema = z.enum([
+  "under_repair",
+  "over_repair",
+  "meaning_shift",
+  "relation_mismatch",
+  "new_language_or_pragmatic_problem",
+]);
+export type FixReviewFailureType = z.infer<typeof FixReviewFailureTypeSchema>;
+
+const FixReviewItemV6 = z.object({
+  ...MpjCommonV6,
+  type: z.literal("fix_review"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  corrections: z.array(z.object({
+    id: z.string().min(1),
+    text: z.string().min(1),
+    verdict: z.enum(["pass", "reject"]),
+    strategy_code: z.string().min(1),
+    failure_type: FixReviewFailureTypeSchema.optional(),
+    note_ko: z.string().min(1),
+  })).length(3),
+  failure_reasons: z.array(z.object({
+    id: z.string().min(1),
+    failure_type: FixReviewFailureTypeSchema,
+    /** 고정 추상 라벨이 아니라 해당 표현에 결부된 구체적 설명. */
+    text_ko: z.string().min(1),
+  })).length(3),
+  accepted_failure_reason_id: z.string().min(1),
+  repair_principle_ko: z.string().min(1),
+});
+
+const MultiJudgeItemV6 = z.object({
+  ...MpjCommonV6,
+  type: z.literal("multi_judge"),
+  /** 기준 PDR에서 정확히 하나만 바뀐 축. */
+  pdr_contrast_axis: z.enum(["p", "d", "r"]),
+  candidates: z.array(z.object({
+    id: z.string().min(1),
+    text: z.string().min(1),
+    band_role: z.enum(["under", "within", "over"]),
+    accepted_band_codes: z.array(z.string()).length(1),
+    note_ko: z.string().min(1),
+  })).length(3),
+});
+
+export const MpjItemV6Schema = z.discriminatedUnion("type", [
+  Scale4ItemV6,
+  FixChoiceItemV6,
+  FixReviewItemV6,
+  MultiJudgeItemV6,
+]);
+export type MpjItemV6 = z.infer<typeof MpjItemV6Schema>;
+
+const ProductionTaskV6Schema = ProductionTaskV2Schema.extend({
+  replay_limit: z.literal(2).optional(),
+  vocabulary_hints: z.array(VocabularyHintSchema).max(2).optional(),
+});
+
+export const MissionV6Schema = z.object({
+  schema_version: z.literal("mission_v6"),
+  direction: z.enum(["ko_zh", "zh_ko"]),
+  unit: UnitSchema,
+  mpj_items: z.array(MpjItemV6Schema).length(4),
+  production_task: ProductionTaskV6Schema,
+  provenance: MissionProvenanceSchema.optional(),
+  quality_check: QualityCheckSchema.optional(),
+  hsk_lexical_audit: HskLexicalAuditSchema.optional(),
+  item_lineage: ItemLineageSchema.optional(),
+});
+export type MissionV6 = z.infer<typeof MissionV6Schema>;
+
+export type MissionRuntime = MissionV2 | MissionV3 | MissionV4 | MissionV5 | MissionV6;
 export type MpjItemRuntime = MissionRuntime["mpj_items"][number];
+export type ProductionTaskRuntime = MissionRuntime["production_task"];
 
 // ── v1 → v2 항목 매핑(정규화용) ───────────────────────────────────────
 function v1ItemToV2(it: MpjItem): MpjItemV2 {
@@ -571,6 +701,11 @@ export function normalizeMission(input: unknown): {
   error?: z.ZodError;
 } {
   const sv = (input as { schema_version?: string } | null)?.schema_version;
+  if (sv === "mission_v6") {
+    const r = MissionV6Schema.safeParse(input);
+    if (r.success) return { ok: true, data: r.data };
+    return { ok: false, error: r.error };
+  }
   if (sv === "mission_v5") {
     const r = MissionV5Schema.safeParse(input);
     if (r.success) return { ok: true, data: r.data };

@@ -12,6 +12,7 @@ import { normalizeMission } from "./missionSchema";
 import { checkMission, type CheckContext } from "./missionRules";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
 import { SAMPLE_MISSION_V5 } from "@/lib/mission/missionV4Sample";
+import { SAMPLE_MISSION_V6 } from "@/lib/mission/missionV6Sample";
 import {
   CURRENT_ITEM_LINEAGE_PROMPT_VERSION,
   CURRENT_MISSION_PROMPT_VERSIONS,
@@ -159,7 +160,7 @@ describe("item-level realization lineage", () => {
     expect(checkMission(mission, context).violations.some((violation) => violation.id === "R27")).toBe(false);
   });
 
-  it("hard-gates current covered mission_v5 while preserving legacy v5 readability", () => {
+  it("hard-gates current covered mission_v6 while preserving legacy v5 readability", () => {
     const context: CheckContext = {
       speech_act: "request",
       level: "intermediate",
@@ -172,8 +173,10 @@ describe("item-level realization lineage", () => {
     };
     expect(checkMission(SAMPLE_MISSION_V5, context).violations.some((violation) => violation.id === "R31")).toBe(false);
 
-    const current = structuredClone(SAMPLE_MISSION_V5);
+    const current = structuredClone(SAMPLE_MISSION_V6);
     current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
+    current.provenance!.provider = "openai";
+    current.provenance!.prompt_instance_hash = "mission-prompt-instance";
     expect(checkMission(current, context).violations.some((violation) => violation.id === "R31" && violation.level === "fail")).toBe(true);
 
     const paths = expectedItemLineageTargetPaths(current);
