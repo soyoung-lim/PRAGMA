@@ -2098,7 +2098,10 @@ function MpjStageCurrent({
           <div className="mt-2 flex flex-col gap-1.5">
             {SCALE4_CODES.map((code) => {
               const accepted = item.accepted_scale_codes.includes(code as Scale4Code);
+              const isReference = code === item.reference_scale_code;
               const mine = scalePick === code;
+              // 기준은 하나지만 허용 범위는 둘이다. 둘을 같은 초록으로 칠하면 그 차이가
+              // 사라지고, 기준만 칠하면 "정도 차이는 판단"이라는 원칙이 사라진다.
               return (
                 <Choice
                   key={code}
@@ -2106,8 +2109,19 @@ function MpjStageCurrent({
                   selected={mine}
                   disabled={answered}
                   onClick={() => setScalePick(code)}
-                  verdict={!answered ? null : accepted ? "correct" : mine ? "wrong" : null}
+                  verdict={
+                    !answered
+                      ? null
+                      : isReference
+                        ? "correct"
+                        : accepted
+                          ? "accepted"
+                          : mine
+                            ? "wrong"
+                            : null
+                  }
                   mine={answered && mine}
+                  tier
                 />
               );
             })}
@@ -2130,8 +2144,9 @@ function MpjStageCurrent({
             {classificationOptions.map((option) => {
               const accepted = item.accepted_band_codes.includes(option.code);
               const mine = bandPick === option.code;
-              // 인상 판정의 정오는 교정안까지 고른 뒤(answered)에 공개한다 —
-              // 중간 단계에서 알려주면 뒤이은 교정안 선택이 정답 맞히기가 된다.
+              // 인상 판정의 정오는 **교정 단계에 들어가는 순간** 공개한다.
+              // 진단이 틀린 채로 교정안을 고르면 그 선택은 학생의 교정 능력이 아니라
+              // 앞선 오진의 그림자가 된다(오류 전파). 진단 방향만 알려주고 답은 주지 않는다.
               return (
                 <Choice
                   key={option.code}
@@ -2139,8 +2154,8 @@ function MpjStageCurrent({
                   selected={mine}
                   disabled={answered || fixJudgeSubmitted}
                   onClick={() => setBandPick(option.code)}
-                  verdict={!answered ? null : accepted ? "correct" : mine ? "wrong" : null}
-                  mine={answered && mine}
+                  verdict={!fixJudgeSubmitted ? null : accepted ? "correct" : mine ? "wrong" : null}
+                  mine={fixJudgeSubmitted && mine}
                 />
               );
             })}
@@ -2236,8 +2251,8 @@ function MpjStageCurrent({
                   selected={mine}
                   disabled={answered || reviewStep === "reason"}
                   onClick={() => setRejectedCorrectionId(correction.id)}
-                  verdict={!answered ? null : isAnswer ? "correct" : mine ? "wrong" : null}
-                  mine={answered && mine}
+                  verdict={reviewStep !== "reason" ? null : isAnswer ? "correct" : mine ? "wrong" : null}
+                  mine={reviewStep === "reason" && mine}
                 />
               );
             })}
@@ -2307,15 +2322,16 @@ function MpjStageCurrent({
                         {classificationOptions.map((option) => {
                           const accepted = candidate.accepted_band_codes.includes(option.code);
                           const mine = pick === option.code;
+                          // 한 행에 색이 둘이면 색 표가 된다. 색은 **내가 고른 칩에만** 쓴다.
                           const tone = !answered
                             ? mine
                               ? "border-[#15202B] bg-[#15202B] font-semibold text-white"
                               : "border-[#D8D0BC] bg-white"
-                            : accepted
-                              ? "border-[#2E7D5B] bg-[#F2FAF6] font-semibold text-[#246044]"
-                              : mine
-                                ? "border-[#C0453B] bg-[#FDF3F2] font-semibold text-[#A33B32]"
-                                : "border-[#D8D0BC] bg-white text-muted-foreground";
+                            : mine
+                              ? accepted
+                                ? "border-[#2E7D5B] bg-[#F2FAF6] font-semibold text-[#246044]"
+                                : "border-[#C0453B] bg-[#FDF3F2] font-semibold text-[#A33B32]"
+                              : "border-[#D8D0BC] bg-white text-muted-foreground";
                           return (
                             <button
                               key={option.code}
@@ -2325,12 +2341,22 @@ function MpjStageCurrent({
                               className={["rounded-md border px-2.5 py-1 text-[12px]", tone].join(" ")}
                             >
                               {option.label}
-                              {answered && accepted ? " ✓" : ""}
-                              {answered && !accepted && mine ? " ✗" : ""}
+                              {answered && mine ? (accepted ? " ✓" : " ✗") : ""}
                             </button>
                           );
                         })}
                       </div>
+                      {answered && !rowRight && (
+                        <div className="mt-1.5 text-[12px] text-muted-foreground">
+                          이 상황에서는 ·{" "}
+                          <b className="text-[#2E7D5B]">
+                            {classificationOptions
+                              .filter((option) => candidate.accepted_band_codes.includes(option.code))
+                              .map((option) => option.label)
+                              .join(" / ")}
+                          </b>
+                        </div>
+                      )}
                       {answered && <div className="mt-2 text-[12.5px] text-muted-foreground">{candidate.note_ko}</div>}
                     </li>
               );
@@ -2793,12 +2819,42 @@ function MpjStage({
 // 제출 후 선택지 상태 — 문장이 아니라 색과 기호로 알린다(2026-08-18 판정).
 //   verdict "correct" = 이 상황의 기준에 맞는 선택지 / "wrong" = 내가 고른 오답
 //   mine = 내가 고른 것. 색만 쓰지 않고 ✓·✗를 함께 둔다(색약 대응).
-export type ChoiceVerdict = "correct" | "wrong" | null;
+export type ChoiceVerdict = "correct" | "accepted" | "wrong" | null;
 
-const VERDICT_MARK: Record<"correct" | "wrong", { mark: string; tone: string; box: string }> = {
-  correct: { mark: "✓", tone: "text-[#2E7D5B]", box: "border-[1.5px] border-[#2E7D5B] bg-[#F2FAF6]" },
-  wrong: { mark: "✗", tone: "text-[#C0453B]", box: "border-[1.5px] border-[#C0453B] bg-[#FDF3F2]" },
+// 세 단계. correct = 이 상황의 기준 / accepted = 기준은 아니지만 자연스러운 판단 /
+// wrong = 내가 고른 오답. 「가능」은 점선·옅은 바탕으로 한 급 낮춰 위계를 만든다.
+const VERDICT_MARK: Record<
+  "correct" | "accepted" | "wrong",
+  { mark: string; tone: string; box: string; chip: string; chipCls: string }
+> = {
+  correct: {
+    mark: "✓",
+    tone: "text-[#2E7D5B]",
+    box: "border-[1.5px] border-[#2E7D5B] bg-[#F2FAF6]",
+    chip: "기준",
+    chipCls: "bg-[#2E7D5B] text-white",
+  },
+  accepted: {
+    mark: "",
+    tone: "text-[#2E7D5B]",
+    box: "border-[1.5px] border-dashed border-[#8FC3AC] bg-[#F8FCFA]",
+    chip: "가능",
+    chipCls: "border border-[#8FC3AC] bg-white text-[#2E7D5B]",
+  },
+  wrong: {
+    mark: "✗",
+    tone: "text-[#C0453B]",
+    box: "border-[1.5px] border-[#C0453B] bg-[#FDF3F2]",
+    chip: "",
+    chipCls: "",
+  },
 };
+
+const StateChip = ({ verdict }: { verdict: "correct" | "accepted" }) => (
+  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${VERDICT_MARK[verdict].chipCls}`}>
+    {VERDICT_MARK[verdict].chip}
+  </span>
+);
 
 const MyPickChip = () => (
   <span className="shrink-0 rounded-full bg-[#15202B] px-2 py-0.5 text-[11px] font-semibold text-white">
@@ -2806,7 +2862,7 @@ const MyPickChip = () => (
   </span>
 );
 
-const VerdictMark = ({ verdict }: { verdict: "correct" | "wrong" }) => (
+const VerdictMark = ({ verdict }: { verdict: "correct" | "accepted" | "wrong" }) => (
   <span className={`shrink-0 text-[16px] font-bold leading-none ${VERDICT_MARK[verdict].tone}`}>
     {VERDICT_MARK[verdict].mark}
   </span>
@@ -2819,6 +2875,7 @@ const Choice = ({
   onClick,
   verdict = null,
   mine = false,
+  tier = false,
 }: {
   label: string;
   selected: boolean;
@@ -2826,6 +2883,8 @@ const Choice = ({
   onClick: () => void;
   verdict?: ChoiceVerdict;
   mine?: boolean;
+  /** 「기준」·「가능」 칩을 붙일지. 허용 범위가 둘 이상인 문항(MPJ1)에서만 참. */
+  tier?: boolean;
 }) => (
   <button
     type="button"
@@ -2844,7 +2903,8 @@ const Choice = ({
     <span>{label}</span>
     <span className="flex items-center gap-1.5">
       {mine && <MyPickChip />}
-      {verdict && <VerdictMark verdict={verdict} />}
+      {tier && (verdict === "correct" || verdict === "accepted") && <StateChip verdict={verdict} />}
+      {verdict && VERDICT_MARK[verdict].mark && <VerdictMark verdict={verdict} />}
     </span>
   </button>
 );
