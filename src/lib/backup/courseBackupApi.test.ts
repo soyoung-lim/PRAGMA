@@ -179,10 +179,19 @@ describe("backup → 변경 → restore 왕복", () => {
     ]);
   });
 
-  it("관계없는 데이터를 지우지 않는다", async () => {
+  it("[T3] 관계없는 데이터를 지우지 않는다", async () => {
     const db = createFakeBackupDb(tables);
     const backup = await fetchCourseBackup(OUTLINE_ID, { db });
 
+    // 정리 단계가 실제로 도는 상황(현재에만 있는 배정)에서 확인한다.
+    tables.curriculum_week_scenarios.push({
+      id: "assign-extra",
+      outline_id: OUTLINE_ID,
+      week_no: 7,
+      scenario_id: "scenario-2",
+      position: 0,
+      slot_role: "primary",
+    });
     await restoreCourseBackup(backup, { db });
 
     expect(findOutline(OTHER_OUTLINE_ID).title).toBe("다른 교강사 교과목");
@@ -235,10 +244,11 @@ describe("backup → 변경 → restore 왕복", () => {
     expect(outcome.safetyBackup?.data.curriculum_outlines[0].title).toBe("복원 직전 이름");
   });
 
-  it("백업 이후 추가된 배정은 복원이 지우지 않는다(문서화된 한계)", async () => {
+  it("[T1] 백업 이후 추가된 배정은 복원이 정리한다(exact snapshot)", async () => {
     const db = createFakeBackupDb(tables);
     const backup = await fetchCourseBackup(OUTLINE_ID, { db });
 
+    // 백업 = A,B / 현재 = A,B,C
     tables.curriculum_week_scenarios.push({
       id: "assign-3",
       outline_id: OUTLINE_ID,
@@ -247,8 +257,71 @@ describe("backup → 변경 → restore 왕복", () => {
       position: 0,
       slot_role: "primary",
     });
+
+    const outcome = await restoreCourseBackup(backup, { db });
+
+    // 복원 후 = A,B
+    expect(tables.curriculum_week_scenarios.some((row) => row.id === "assign-3")).toBe(false);
+    expect(outcome.assignmentsRemoved).toBe(1);
+    expect(
+      tables.curriculum_week_scenarios
+        .filter((row) => row.outline_id === OUTLINE_ID)
+        .map((row) => `${row.week_no}:${row.scenario_id}`)
+        .sort(),
+    ).toEqual(["2:scenario-1", "3:scenario-2"]);
+  });
+
+  it("[T4] 배정이 정리돼도 공유 시나리오 본문은 남는다", async () => {
+    const db = createFakeBackupDb(tables);
+    const backup = await fetchCourseBackup(OUTLINE_ID, { db });
+
+    tables.curriculum_week_scenarios.push({
+      id: "assign-3",
+      outline_id: OUTLINE_ID,
+      week_no: 5,
+      scenario_id: "scenario-3",
+      position: 0,
+      slot_role: "primary",
+    });
     await restoreCourseBackup(backup, { db });
 
-    expect(tables.curriculum_week_scenarios.some((row) => row.id === "assign-3")).toBe(true);
+    // 배정만 사라지고 scenarios 3건은 그대로다.
+    expect(tables.curriculum_week_scenarios.some((row) => row.id === "assign-3")).toBe(false);
+    expect(tables.scenarios.map((row) => row.scenario_id).sort()).toEqual([
+      "scenario-1",
+      "scenario-2",
+      "scenario-3",
+    ]);
+  });
+
+  it("[T5] 배정이 정리돼도 학습자 수행기록은 그대로다", async () => {
+    const db = createFakeBackupDb(tables);
+    const backup = await fetchCourseBackup(OUTLINE_ID, { db });
+    const before = JSON.stringify(tables.learner_mission_logs);
+
+    tables.curriculum_week_scenarios.push({
+      id: "assign-3",
+      outline_id: OUTLINE_ID,
+      week_no: 6,
+      scenario_id: "scenario-1",
+      position: 0,
+      slot_role: "primary",
+    });
+    await restoreCourseBackup(backup, { db });
+
+    expect(JSON.stringify(tables.learner_mission_logs)).toBe(before);
+  });
+
+  it("백업에 없는 주차도 이 교과목 안에서만 정리한다", async () => {
+    const db = createFakeBackupDb(tables);
+    const backup = await fetchCourseBackup(OUTLINE_ID, { db });
+
+    tables.curriculum_weeks.push({ id: "week-16", outline_id: OUTLINE_ID, week_no: 16, type: "regular", title: "덧붙은 16주차" });
+    const outcome = await restoreCourseBackup(backup, { db });
+
+    expect(outcome.weeksRemoved).toBe(1);
+    expect(tables.curriculum_weeks.filter((row) => row.outline_id === OUTLINE_ID)).toHaveLength(15);
+    // 다른 교과목 주차는 건드리지 않는다.
+    expect(tables.curriculum_weeks.some((row) => row.id === "other-week-1")).toBe(true);
   });
 });

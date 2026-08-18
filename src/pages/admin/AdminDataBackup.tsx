@@ -135,7 +135,7 @@ const Page = () => {
 
   const preview = useMemo(() => (pendingFile ? summarizeCourseBackup(pendingFile) : null), [pendingFile]);
 
-  // 복원이 실제로 하는 일만 센다: 배정 추가(복원은 삭제하지 않으므로 「제거」는 세지 않는다).
+  // 복원이 실제로 하는 일만 센다: 추가될 배정과 정리될 배정(둘 다 키 비교로 정확히 나온다).
   const impact = useMemo(() => {
     if (!pendingFile || !compareBasis) return null;
     const fileKeys = new Set(
@@ -287,10 +287,13 @@ const Page = () => {
       }
       const scenarioNote = outcome.scenariosInserted > 0
         ? ` 없던 학습 미션 ${outcome.scenariosInserted}건을 새로 넣었습니다.`
-        : " 학습 미션은 모두 이미 있어 건드리지 않았습니다.";
+        : " 학습 미션 본문은 그대로 두었습니다.";
+      const cleanupNote = outcome.assignmentsRemoved > 0
+        ? ` 백업 시점에 없던 배정 ${outcome.assignmentsRemoved}건을 정리했습니다.`
+        : "";
       setRestoreNotice({
         tone: "ok",
-        text: `복원했습니다 — 주차 ${outcome.weeksRestored}개 · 미션 배정 ${outcome.assignmentsRestored}건.${scenarioNote}${outcome.safetyBackup ? " 복원 직전 상태도 파일로 내려받았습니다." : ""}`,
+        text: `복원했습니다 — 주차 ${outcome.weeksRestored}개 · 미션 배정 ${outcome.assignmentsRestored}건.${cleanupNote}${scenarioNote}${outcome.safetyBackup ? " 복원 직전 상태도 파일로 내려받았습니다." : ""}`,
       });
       setPendingFile(null);
       setPendingFileName(null);
@@ -470,7 +473,7 @@ const Page = () => {
                         </li>
                         <li>미션 배정 {impact.added > 0 ? `${impact.added}건 추가` : "추가 없음"}</li>
                         {impact.keptOnly > 0 && (
-                          <li>지금만 있는 배정 {impact.keptOnly}건은 지우지 않고 그대로 둡니다</li>
+                          <li>백업 시점에 없던 배정 {impact.keptOnly}건이 정리됩니다</li>
                         )}
                       </ul>
                     ) : (
