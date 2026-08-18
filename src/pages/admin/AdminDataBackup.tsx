@@ -72,6 +72,11 @@ const ScopeDetails = () => (
   </details>
 );
 
+/** 카드 제목 앞의 조용한 역할 라벨 — 위계를 배경색이 아니라 구조로 준다. */
+const RoleBadge = ({ children }: { children: string }) => (
+  <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{children}</span>
+);
+
 const PreviewRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex justify-between gap-3 py-1">
     <dt className="shrink-0 text-muted-foreground">{label}</dt>
@@ -88,6 +93,8 @@ const Page = () => {
   const [backupNotice, setBackupNotice] = useState<Notice | null>(null);
   const [restoreNotice, setRestoreNotice] = useState<Notice | null>(null);
   const [pendingFile, setPendingFile] = useState<CourseBackupFile | null>(null);
+  const [pendingFileName, setPendingFileName] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedCourse = useMemo(
@@ -144,19 +151,31 @@ const Page = () => {
     }
   };
 
-  const onFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  // 파일 선택과 끌어다 놓기가 같은 경로를 탄다 — 검증·복원 로직은 그대로다.
+  const acceptFile = async (file: File | undefined) => {
     setPendingFile(null);
+    setPendingFileName(null);
     setRestoreNotice(null);
     if (!file) return;
     try {
       setPendingFile(parseCourseBackup(await file.text()));
+      setPendingFileName(file.name);
     } catch (error) {
       setRestoreNotice({
         tone: "error",
         text: error instanceof Error ? error.message : "백업 파일을 읽지 못했습니다.",
       });
     }
+  };
+
+  const onFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    void acceptFile(event.target.files?.[0]);
+  };
+
+  const onDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    setDragActive(false);
+    void acceptFile(event.dataTransfer.files?.[0]);
   };
 
   const runRestore = async () => {
@@ -180,6 +199,7 @@ const Page = () => {
         text: `복원했습니다 — 주차 ${outcome.weeksRestored}개 · 미션 배정 ${outcome.assignmentsRestored}건.${scenarioNote}${outcome.safetyBackup ? " 복원 직전 상태도 파일로 내려받았습니다." : ""}`,
       });
       setPendingFile(null);
+      setPendingFileName(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       const rows = await listBackupCourses();
       setCourses(rows);
@@ -201,7 +221,10 @@ const Page = () => {
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         {/* 기본 흐름 = 교과목 선택 → 백업. 그래서 이쪽이 주(主)다. */}
         <section className="rounded-xl border-2 border-primary/30 bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">데이터 백업</h2>
+          <div className="flex items-center gap-2">
+            <RoleBadge>내려받기</RoleBadge>
+            <h2 className="text-lg font-semibold">데이터 백업</h2>
+          </div>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             {COURSE_BACKUP_SUMMARY.included}
             <br />
@@ -247,15 +270,34 @@ const Page = () => {
           <ScopeDetails />
         </section>
 
-        {/* 복원은 필요할 때만 쓰는 보조 동작 — 한 단계 낮은 위계로 둔다. */}
-        <section className="rounded-xl border border-border bg-muted/20 p-5">
-          <h2 className="text-base font-semibold">데이터 복원</h2>
+        {/* 복원은 보조 동작이지만 배경을 죽이지 않는다 — 위계는 라벨과 테두리로만 준다. */}
+        <section className="rounded-xl border border-border bg-card p-6">
+          <div className="flex items-center gap-2">
+            <RoleBadge>되돌리기</RoleBadge>
+            <h2 className="text-base font-semibold">데이터 복원</h2>
+          </div>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             내려받은 백업 파일로 이 수업 구성을 다시 되살립니다.
           </p>
 
-          <label className="mb-1.5 mt-4 block text-sm font-medium" htmlFor="restore-file">
-            백업 파일
+          <label
+            htmlFor="restore-file"
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragActive(true);
+            }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={onDrop}
+            className={`mt-4 flex cursor-pointer flex-col items-center rounded-lg border border-dashed px-4 py-6 text-center transition-colors ${
+              dragActive ? "border-primary bg-primary/5" : "border-input hover:border-primary/50 hover:bg-muted/40"
+            }`}
+          >
+            <span className="text-sm font-medium">
+              {pendingFileName ?? "백업 파일 올리기"}
+            </span>
+            <span className="mt-1 text-xs text-muted-foreground">
+              {pendingFileName ? "다른 파일을 올리려면 다시 선택하세요" : ".json 파일을 끌어다 놓아도 됩니다"}
+            </span>
           </label>
           <input
             id="restore-file"
@@ -263,7 +305,7 @@ const Page = () => {
             type="file"
             accept="application/json,.json"
             onChange={onFileSelected}
-            className="block w-full text-sm file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm"
+            className="sr-only"
           />
 
           {preview && (
