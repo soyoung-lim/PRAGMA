@@ -81,20 +81,32 @@ describe("교과목 백업 파일 만들기", () => {
     expect(Object.keys(redactScenarioRow(scenarios[0]))).not.toContain("mission_reviewed_by");
   });
 
-  it("파일명에 교과목 이름과 초 단위 시각이 들어간다", () => {
-    // exported_at은 UTC지만 파일명은 사용자가 보는 로컬 시각을 쓴다.
-    const name = courseBackupFilename(buildSample());
-    expect(name).toMatch(/^pragma-course-backup_비즈니스-중국어-통번역_\d{4}-\d{2}-\d{2}_\d{6}\.json$/);
+  it("일반 백업 파일명 = PRAGMA_학기_핵심과목명_YYYYMMDD_HHMMSS", () => {
+    const file = buildSample();
+    file.manifest.outline_title = "2026-2 중급 통번역 (캠퍼스, 유학)";
+    expect(courseBackupFilename(file)).toMatch(/^PRAGMA_2026-2_중급통번역_\d{8}_\d{6}\.json$/);
   });
 
-  it("복원 직전 자동 백업은 일반 백업과 이름이 구분된다", () => {
+  it("복원 직전 자동 백업 파일명 = PRAGMA_복원전_...", () => {
     const file = buildSample();
-    expect(preRestoreBackupFilename(file)).toContain("복원직전_");
+    file.manifest.outline_title = "2026-2 중급 통번역 (캠퍼스, 유학)";
+    expect(preRestoreBackupFilename(file)).toMatch(/^PRAGMA_복원전_2026-2_중급통번역_\d{8}_\d{6}\.json$/);
     expect(preRestoreBackupFilename(file)).not.toBe(courseBackupFilename(file));
   });
 
+  it("「2026-2학기」 표기도 학기로 읽는다", () => {
+    const file = buildSample();
+    file.manifest.outline_title = "2026-2학기 중한 통번역 연습";
+    expect(courseBackupFilename(file)).toMatch(/^PRAGMA_2026-2_중한통번역연습_\d{8}_\d{6}\.json$/);
+  });
+
+  it("학기 표기가 없으면 학기 칸을 비우고 제목만 줄여 쓴다", () => {
+    const file = buildSample();
+    file.manifest.outline_title = "화행 기반 15주 커리큘럼";
+    expect(courseBackupFilename(file)).toMatch(/^PRAGMA_화행기반15주커리큘럼_\d{8}_\d{6}\.json$/);
+  });
+
   it("같은 날 반복 백업·자동 백업이 서로 덮어쓰지 않는다", () => {
-    // 같은 날 3회 백업 + 복원 직전 자동 백업 2회 = 5개 파일명이 모두 달라야 한다.
     const at = (iso: string) => {
       const file = buildSample();
       file.manifest.exported_at = iso;
@@ -117,17 +129,21 @@ describe("교과목 백업 파일 만들기", () => {
     expect(courseBackupFilename(a)).not.toBe(courseBackupFilename(b));
   });
 
-  it("파일명에 경로 구분자·금지 문자가 남지 않는다", () => {
+  it("금지 문자·군더더기 기호가 남지 않고 길이가 과하지 않다", () => {
     const file = buildSample();
-    file.manifest.outline_title = 'a/b\c:d*e?f"g<h>i|j 통번역';
+    file.manifest.outline_title = 'a/b\c:d*e?f"g<h>i|j, (부가 설명) 통번역';
     const name = courseBackupFilename(file);
-    expect(name).not.toMatch(/[\/:*?"<>|]/);
-    expect(name.endsWith(".json")).toBe(true);
+    expect(name).not.toMatch(/[\/:*?"<>|(),]/);
+    expect(name.length).toBeLessThanOrEqual(60);
+    expect(name.startsWith("PRAGMA_")).toBe(true);
   });
 
   it("미리보기 파일명도 같은 규칙을 쓴다", () => {
-    const preview = courseBackupFilenamePreview("비즈니스 중국어 통번역", new Date("2026-08-18T09:30:00.000Z"));
-    expect(preview).toMatch(/^pragma-course-backup_비즈니스-중국어-통번역_\d{4}-\d{2}-\d{2}_\d{6}\.json$/);
+    const preview = courseBackupFilenamePreview(
+      "2026-2 중급 통번역 (캠퍼스, 유학)",
+      new Date("2026-08-18T09:30:00.000Z"),
+    );
+    expect(preview).toMatch(/^PRAGMA_2026-2_중급통번역_\d{8}_\d{6}\.json$/);
   });
 });
 
