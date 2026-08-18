@@ -132,6 +132,11 @@ export function courseBackupFilename(file: CourseBackupFile): string {
   return `pragma-course-backup-${day}.json`;
 }
 
+/** 아직 만들지 않은 백업의 파일명 미리보기(화면 표시용). */
+export function courseBackupFilenameForDate(date: Date = new Date()): string {
+  return `pragma-course-backup-${date.toISOString().slice(0, 10)}.json`;
+}
+
 // ── 시크릿 검사 ────────────────────────────────────────────────
 // 내보내기 직전과 검증 테스트가 같은 함수를 쓴다. 하나라도 걸리면 내보내지 않는다.
 
