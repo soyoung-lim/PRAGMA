@@ -887,7 +887,6 @@ export function MissionV6Runner({
             ) : (
               <MpjStage key={item.id} item={item as MpjItemV2} onDone={nextMpj} />
             )}
-            {mpjIdx === 0 && <MissionBriefDrawer mission={mission} />}
           </div>
         )}
 
@@ -2097,31 +2096,28 @@ function MpjStageCurrent({
         <div className={card}>
           <div className="text-[15px] font-bold text-foreground">이 상황에서 이 표현은 얼마나 적절한가요?</div>
           <div className="mt-2 flex flex-col gap-1.5">
-            {SCALE4_CODES.map((code) => (
-              <Choice
-                key={code}
-                label={SCALE4_LABELS[code as Scale4Code]}
-                selected={scalePick === code}
-                disabled={answered}
-                onClick={() => setScalePick(code)}
-              />
-            ))}
+            {SCALE4_CODES.map((code) => {
+              const accepted = item.accepted_scale_codes.includes(code as Scale4Code);
+              const mine = scalePick === code;
+              return (
+                <Choice
+                  key={code}
+                  label={SCALE4_LABELS[code as Scale4Code]}
+                  selected={mine}
+                  disabled={answered}
+                  onClick={() => setScalePick(code)}
+                  verdict={!answered ? null : accepted ? "correct" : mine ? "wrong" : null}
+                  mine={answered && mine}
+                />
+              );
+            })}
           </div>
           {answered && (
-            <div className={[
-              "mt-4 rounded-lg px-3.5 py-3",
-              scaleDirectionMatched ? "bg-[#F2FAF6]" : "bg-[#FFF8DE]",
-            ].join(" ")}>
+            <div className="mt-4 rounded-lg bg-[#FAF8F2] px-3.5 py-3">
               <p className="text-[13px] leading-relaxed">{item.explanation_ko}</p>
-              <div className="mt-2 text-[11.5px] font-semibold">
-                {scaleDirectionMatched ? "✓ 이 상황에서 보는 방향과 같습니다." : "이 상황에서 보는 방향과 다릅니다."}
-              </div>
-              <div className="mt-1 text-[11.5px] text-muted-foreground">
-                이 상황에서의 기준 · {SCALE4_LABELS[item.reference_scale_code as Scale4Code]}
-              </div>
-              {scalePick && scaleDirectionMatched && scalePick !== item.reference_scale_code && (
-                <div className="mt-1 text-[11.5px] text-[#496B5B]">강도 차이는 오답이 아닙니다.</div>
-              )}
+              <p className="mt-2 text-[12px] text-muted-foreground">
+                왜 그렇게 판단했는지는 수업에서 서로 비교해 보세요.
+              </p>
             </div>
           )}
         </div>
@@ -2131,15 +2127,23 @@ function MpjStageCurrent({
         <div className={card}>
           <div className="text-[15px] font-bold text-foreground">이 상황과 상대를 생각할 때, 이 표현은 어떻게 들리나요?</div>
           <div className="mt-2 flex flex-col gap-1.5">
-            {classificationOptions.map((option) => (
-              <Choice
-                key={option.code}
-                label={option.label}
-                selected={bandPick === option.code}
-                disabled={answered || fixJudgeSubmitted}
-                onClick={() => setBandPick(option.code)}
-              />
-            ))}
+            {classificationOptions.map((option) => {
+              const accepted = item.accepted_band_codes.includes(option.code);
+              const mine = bandPick === option.code;
+              // 인상 판정의 정오는 교정안까지 고른 뒤(answered)에 공개한다 —
+              // 중간 단계에서 알려주면 뒤이은 교정안 선택이 정답 맞히기가 된다.
+              return (
+                <Choice
+                  key={option.code}
+                  label={option.label}
+                  selected={mine}
+                  disabled={answered || fixJudgeSubmitted}
+                  onClick={() => setBandPick(option.code)}
+                  verdict={!answered ? null : accepted ? "correct" : mine ? "wrong" : null}
+                  mine={answered && mine}
+                />
+              );
+            })}
           </div>
           {fixJudgeSubmitted && (
             <>
@@ -2164,11 +2168,30 @@ function MpjStageCurrent({
                       })}
                       className={[
                         "rounded-[10px] border px-3.5 py-2.5 text-left text-[14px] disabled:opacity-50",
-                        selected ? "border-[1.5px] border-[#15202B] bg-[#FAFAF7]" : "border-[#EAE4D2] bg-white",
-                        answered && correction.is_valid ? "border-[#2E7D5B] bg-[#F2FAF6]" : "",
+                        answered
+                          ? correction.is_valid
+                            ? VERDICT_MARK.correct.box
+                            : selected
+                              ? VERDICT_MARK.wrong.box
+                              : "border-[#EAE4D2] bg-white"
+                          : selected
+                            ? "border-[1.5px] border-[#15202B] bg-[#FAFAF7]"
+                            : "border-[#EAE4D2] bg-white",
                       ].join(" ")}
                     >
-                      <div>{correction.text}</div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span>{correction.text}</span>
+                        {answered && (
+                          <span className="flex items-center gap-1.5">
+                            {selected && <MyPickChip />}
+                            {correction.is_valid ? (
+                              <VerdictMark verdict="correct" />
+                            ) : selected ? (
+                              <VerdictMark verdict="wrong" />
+                            ) : null}
+                          </span>
+                        )}
+                      </div>
                       {answered && <div className="mt-1 text-[12px] text-muted-foreground">{correction.note_ko}</div>}
                     </button>
                   );
@@ -2203,13 +2226,18 @@ function MpjStageCurrent({
           <div className="mt-2 flex flex-col gap-1.5">
             {reviewOrder.map((sourceIndex) => {
               const correction = item.corrections[sourceIndex];
+              const mine = rejectedCorrectionId === correction.id;
+              // 이 문항에서 고를 것은 "어울리지 않는 문장" = verdict "reject"다.
+              const isAnswer = correction.verdict === "reject";
               return (
                 <Choice
                   key={correction.id}
                   label={correction.text}
-                  selected={rejectedCorrectionId === correction.id}
+                  selected={mine}
                   disabled={answered || reviewStep === "reason"}
                   onClick={() => setRejectedCorrectionId(correction.id)}
+                  verdict={!answered ? null : isAnswer ? "correct" : mine ? "wrong" : null}
+                  mine={answered && mine}
                 />
               );
             })}
@@ -2218,15 +2246,21 @@ function MpjStageCurrent({
             <>
               <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">이 문장이 상황에 어울리지 않는다고 판단한 이유를 고르세요.</div>
               <div className="mt-2 flex flex-col gap-1.5">
-                {item.failure_reasons.map((reason) => (
-                  <Choice
-                    key={reason.id}
-                    label={reason.text_ko}
-                    selected={failureReasonId === reason.id}
-                    disabled={answered}
-                    onClick={() => setFailureReasonId(reason.id)}
-                  />
-                ))}
+                {item.failure_reasons.map((reason) => {
+                  const mine = failureReasonId === reason.id;
+                  const isAnswer = reason.id === item.accepted_failure_reason_id;
+                  return (
+                    <Choice
+                      key={reason.id}
+                      label={reason.text_ko}
+                      selected={mine}
+                      disabled={answered}
+                      onClick={() => setFailureReasonId(reason.id)}
+                      verdict={!answered ? null : isAnswer ? "correct" : mine ? "wrong" : null}
+                      mine={answered && mine}
+                    />
+                  );
+                })}
               </div>
             </>
           )}
@@ -2248,35 +2282,57 @@ function MpjStageCurrent({
 
       {item.type === "multi_judge" && (
         <div className={card}>
-          <div className="text-[15px] font-bold text-foreground">각 표현이 이 상황과 상대에게 어떻게 들리는지 하나씩 골라 보세요.</div>
+          <div className="text-[15px] font-bold text-foreground">각 표현이 상대에게 어떻게 들리는지 고르세요.</div>
           <p className="mt-1 text-[12.5px] text-muted-foreground">
             선택 기준 · {classificationOptions.map((option) => option.label).join(" / ")}
           </p>
           <ul className="mt-3 space-y-2.5">
             {multiOrder.map((sourceIndex) => {
               const candidate = item.candidates[sourceIndex];
+              const pick = multiPicks[sourceIndex];
+              const rowRight = Boolean(pick && candidate.accepted_band_codes.includes(pick));
               return (
-                <li key={"id" in candidate ? candidate.id : candidate.text} className="rounded-lg border border-[#EAE4D2] px-3.5 py-3">
-                  <div className="text-[14.5px]">{candidate.text}</div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {classificationOptions.map((option) => (
-                      <button
-                        key={option.code}
-                        type="button"
-                        disabled={answered}
-                        onClick={() => setMultiPicks((current) => ({ ...current, [sourceIndex]: option.code }))}
-                        className={[
-                          "rounded-md border px-2.5 py-1 text-[12px]",
-                          multiPicks[sourceIndex] === option.code ? "border-[#15202B] bg-[#15202B] font-semibold text-white" : "border-[#D8D0BC] bg-white",
-                          answered && candidate.accepted_band_codes.includes(option.code) ? "border-[#2E7D5B] bg-[#F2FAF6] text-[#246044]" : "",
-                        ].join(" ")}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  {answered && <div className="mt-2 text-[12.5px] text-muted-foreground">{candidate.note_ko}</div>}
-                </li>
+                    <li
+                      key={"id" in candidate ? candidate.id : candidate.text}
+                      className={[
+                        "rounded-lg border px-3.5 py-3",
+                        answered ? (rowRight ? VERDICT_MARK.correct.box : VERDICT_MARK.wrong.box) : "border-[#EAE4D2]",
+                      ].join(" ")}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[14.5px]">{candidate.text}</span>
+                        {answered && <VerdictMark verdict={rowRight ? "correct" : "wrong"} />}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        {classificationOptions.map((option) => {
+                          const accepted = candidate.accepted_band_codes.includes(option.code);
+                          const mine = pick === option.code;
+                          const tone = !answered
+                            ? mine
+                              ? "border-[#15202B] bg-[#15202B] font-semibold text-white"
+                              : "border-[#D8D0BC] bg-white"
+                            : accepted
+                              ? "border-[#2E7D5B] bg-[#F2FAF6] font-semibold text-[#246044]"
+                              : mine
+                                ? "border-[#C0453B] bg-[#FDF3F2] font-semibold text-[#A33B32]"
+                                : "border-[#D8D0BC] bg-white text-muted-foreground";
+                          return (
+                            <button
+                              key={option.code}
+                              type="button"
+                              disabled={answered}
+                              onClick={() => setMultiPicks((current) => ({ ...current, [sourceIndex]: option.code }))}
+                              className={["rounded-md border px-2.5 py-1 text-[12px]", tone].join(" ")}
+                            >
+                              {option.label}
+                              {answered && accepted ? " ✓" : ""}
+                              {answered && !accepted && mine ? " ✗" : ""}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {answered && <div className="mt-2 text-[12.5px] text-muted-foreground">{candidate.note_ko}</div>}
+                    </li>
               );
             })}
           </ul>
@@ -2734,17 +2790,62 @@ function MpjStage({
   );
 }
 
-const Choice = ({ label, selected, disabled, onClick }: { label: string; selected: boolean; disabled: boolean; onClick: () => void }) => (
+// 제출 후 선택지 상태 — 문장이 아니라 색과 기호로 알린다(2026-08-18 판정).
+//   verdict "correct" = 이 상황의 기준에 맞는 선택지 / "wrong" = 내가 고른 오답
+//   mine = 내가 고른 것. 색만 쓰지 않고 ✓·✗를 함께 둔다(색약 대응).
+export type ChoiceVerdict = "correct" | "wrong" | null;
+
+const VERDICT_MARK: Record<"correct" | "wrong", { mark: string; tone: string; box: string }> = {
+  correct: { mark: "✓", tone: "text-[#2E7D5B]", box: "border-[1.5px] border-[#2E7D5B] bg-[#F2FAF6]" },
+  wrong: { mark: "✗", tone: "text-[#C0453B]", box: "border-[1.5px] border-[#C0453B] bg-[#FDF3F2]" },
+};
+
+const MyPickChip = () => (
+  <span className="shrink-0 rounded-full bg-[#15202B] px-2 py-0.5 text-[11px] font-semibold text-white">
+    내 선택
+  </span>
+);
+
+const VerdictMark = ({ verdict }: { verdict: "correct" | "wrong" }) => (
+  <span className={`shrink-0 text-[16px] font-bold leading-none ${VERDICT_MARK[verdict].tone}`}>
+    {VERDICT_MARK[verdict].mark}
+  </span>
+);
+
+const Choice = ({
+  label,
+  selected,
+  disabled,
+  onClick,
+  verdict = null,
+  mine = false,
+}: {
+  label: string;
+  selected: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  verdict?: ChoiceVerdict;
+  mine?: boolean;
+}) => (
   <button
     type="button"
     disabled={disabled}
     onClick={onClick}
     className={[
-      "rounded-[10px] border px-3.5 py-2.5 text-left text-[14px] transition-colors",
-      selected ? "border-[1.5px] border-[#15202B] bg-[#FAFAF7] font-semibold" : "border-[#EAE4D2] bg-white hover:bg-[#FAFAF7]",
+      "flex items-center justify-between gap-2 rounded-[10px] border px-3.5 py-2.5 text-left text-[14px] transition-colors",
+      verdict
+        ? VERDICT_MARK[verdict].box
+        : selected
+          ? "border-[1.5px] border-[#15202B] bg-[#FAFAF7] font-semibold"
+          : "border-[#EAE4D2] bg-white hover:bg-[#FAFAF7]",
+      mine ? "font-semibold" : "",
     ].join(" ")}
   >
-    {label}
+    <span>{label}</span>
+    <span className="flex items-center gap-1.5">
+      {mine && <MyPickChip />}
+      {verdict && <VerdictMark verdict={verdict} />}
+    </span>
   </button>
 );
 
