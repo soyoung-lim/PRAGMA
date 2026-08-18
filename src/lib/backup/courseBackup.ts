@@ -53,7 +53,7 @@ export const COURSE_BACKUP_TABLES = [
 
 /** 첫 화면용 한 줄 요약 — 자세한 목록은 접어 두고 이것만 먼저 보인다. */
 export const COURSE_BACKUP_SUMMARY = {
-  included: "15주 수업 편성·미션·시나리오·검수 상태를 백업합니다.",
+  included: "현재 교과목의 15주 수업 구성을 백업 파일로 저장합니다.",
   excluded: "학습자 수행기록과 인증정보는 포함하지 않습니다.",
 } as const;
 
