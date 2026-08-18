@@ -231,10 +231,10 @@ function ProductionGuide({ hints, onOpen }: { hints: VocabularyHint[]; onOpen: (
         className="rounded-full border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-1.5 text-[12px] font-bold text-[#4A5560] hover:bg-[#FFF9DD]"
         aria-expanded={expanded}
       >
-        막히면 내용 어휘 {expanded ? "닫기 ▴" : `${Math.min(2, hints.length)}개 보기 ▾`}
+        단어 힌트 {expanded ? "닫기 ▴" : "보기 ▾"}
       </button>
       {expanded && (
-        <div className="mt-1.5 flex w-full flex-wrap justify-end gap-x-4 gap-y-1 rounded-lg border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-2 text-[12.5px] sm:w-[78%]">
+        <div className="mt-1.5 flex w-fit max-w-full flex-wrap justify-end gap-x-4 gap-y-1 rounded-lg border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-2 text-[12.5px]">
           {hints.slice(0, 2).map((hint) => (
             <span key={`${hint.source}:${hint.target}`}>
               <span className="text-muted-foreground">{hint.source}</span>
@@ -1038,7 +1038,6 @@ export function MissionV6Runner({
                 피드백·다듬기·완료에 같은 문장이 세 번 연속 나오던 것이 피로의 큰 몫이었다.
                 근거 서랍은 남긴다(접혀 있어 시각 무게가 없다). */}
             <div className={card}>
-              <FeedbackReasonDrawer mission={mission} />
             </div>
 
             {fbState === "error" && (
@@ -1263,17 +1262,9 @@ export function MissionV6Runner({
                 참고 표현 목록은 접는다 — 정답 카드처럼 읽히는 것을 막는 효과도 있다. */}
             <RevisionMap first={draft} final={revised || draft} featureLabel={mission.unit.learner_label} interp={isInterp} />
 
-            {/* 상대에게 줄 수 있는 인상 — **새로 만들지 않는다**. 피드백에서 이미 본
-                화용층 문구를 접힌 형태로 이월한다. 전체 문단을 다시 펼쳐 두어 완료 화면이
-                피드백 화면처럼 보이던 반복은 줄이고, 필요할 때만 다시 확인할 수 있게 한다. */}
-            {fb?.blocks.feature_ko && (
-              <details className="rounded-lg border border-[#EAE4D2] bg-white px-3.5 py-2.5">
-                <summary className="cursor-pointer text-[12.5px] font-semibold text-muted-foreground">
-                  피드백에서 확인한 인상 다시 보기
-                </summary>
-                <p className="mt-2 text-[13.5px] leading-relaxed">{fb.blocks.feature_ko}</p>
-              </details>
-            )}
+            {/* 「피드백에서 확인한 인상 다시 보기」는 2026-08-18 판정(§1-16)으로 삭제했다.
+                피드백 화면에서 이미 본 문장을 완료 화면에서 다시 접어 두는 것은
+                정보 위계만 흐렸다. */}
 
             {/* B2: 예외 반례 — "직접형=무조건 나쁨"이 아님을 완료 시 상기(counter_rule).
                 오학습 방지 장치이므로 접지 않고 가볍게 펼쳐 둔다. */}
@@ -1802,19 +1793,29 @@ function CtxStage({
 }
 
 // ── 판정 지위 고지(B1 · 0-g·44) — 첫 문항 아래 짧은 접기 하나로 ──
-// 긴 완료 조건·평가 세칙은 학습자가 읽지 않고 계약서처럼 느낀다는 사용자 피드백에 따라
-// 제거했다. 학습자에게 필요한 것은 "정답은 하나가 아님"과 확인 범위 두 줄뿐이다.
+// 2026-08-18 판정 §1-2: 「정답은 하나가 아니에요」라는 막연한 상대주의 대신, 이 문항이
+// 실제로 허용하는 판정 범위를 그대로 알려준다. 허용 범위는 문항 데이터에서 읽는다 —
+// 문구를 박아 두면 생성 문항의 허용 범위가 달라졌을 때 화면이 거짓말을 한다.
 function MissionBriefDrawer({ mission }: { mission: MissionRuntime }) {
+  const first = mission.mpj_items[0];
+  const accepted =
+    first?.type === "scale4"
+      ? (first.accepted_scale_codes ?? []).map((code) => SCALE4_LABELS[code as Scale4Code])
+      : [];
+  if (accepted.length < 2) return null;
+  const quoted = accepted.map((label) => `‘${label}’`);
   return (
     <details className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-2.5 text-[12.5px]">
-      <summary className="cursor-pointer text-[#6B5518]">
-        판정 기준 보기 · <b>정답은 하나가 아니에요</b>
-      </summary>
+      <summary className="cursor-pointer text-[#6B5518]">이 문항을 보는 방법</summary>
       <div className="mt-2 space-y-1 text-muted-foreground">
-        <p>상황과 관계에 따라 어울리는 표현은 여럿일 수 있어요.</p>
         <p>
-          뜻 전달 · 이해를 막는 문법 · 이 상황에 맞는 「{mission.unit.learner_label}」을 봅니다.
-          <b className="text-foreground"> 참고 표현은 제출 뒤에 공개됩니다.</b>
+          이 장면에서는 {quoted.slice(0, -1).join(", ")}과 {quoted[quoted.length - 1]}을 모두
+          자연스러운 판단으로 봅니다. 두 사람이 얼마나 친하다고 보았는지에 따라 적절한 정도를
+          다르게 판단할 수 있습니다.
+        </p>
+        <p>
+          왜 {quoted.slice(0, -1).join(", ")} 또는 {quoted[quoted.length - 1]}이라고 판단했는지는
+          수업에서 서로 비교해 보세요.
         </p>
       </div>
     </details>
@@ -1910,23 +1911,8 @@ function DissentPanel({ onSubmit }: { onSubmit: (d: { conditions: string[]; reas
   );
 }
 
-// ── 피드백 근거 서랍(의견4 ③) — 판정↔상황 조건 연결. 카탈로그·상황 데이터만(AI 0회) ──
-function FeedbackReasonDrawer({ mission }: { mission: MissionRuntime }) {
-  const feat = getTargetFeature(mission.unit.target_feature);
-  const pt = mission.production_task;
-  return (
-    <details className="mt-2.5 text-[12.5px]">
-      <summary className="cursor-pointer text-[#6B5518]">이 초점을 판단한 근거</summary>
-      <div className="mt-2 space-y-1.5">
-        <div className="rounded-lg bg-[#FAF8F2] px-3 py-2 text-muted-foreground">
-          <div>상황 · {pt.relation_ko}</div>
-          <div className="mt-0.5">부담 · {PDR_R_LABEL[pt.pdr.r] ?? pt.pdr.r} / 관계 거리 · {PDR_D_LABEL[pt.pdr.d] ?? pt.pdr.d}</div>
-        </div>
-        {feat && <p className="text-foreground">{feat.operational_definition.split(".")[0]}.</p>}
-      </div>
-    </details>
-  );
-}
+// 「이 초점을 판단한 근거」 서랍은 2026-08-18 판정(§1-14)으로 학습자 화면에서 제거했다.
+// 같은 정보는 학습 trace·관리자 데이터에 남는다 — 학생에게는 중복된 메타 설명이었다.
 
 // ── 수정 지도(0-i) — 최초↔최종 + 수정 성격. 클라이언트만(AI·DB 0회) ──
 function RevisionMap({ first, final, featureLabel, interp }: { first: string; final: string; featureLabel: string; interp: boolean }) {
@@ -2109,7 +2095,7 @@ function MpjStageCurrent({
 
       {item.type === "scale4" && (
         <div className={card}>
-          <div className="text-[13px] font-semibold">이 상황에서 이 표현은 얼마나 적절한가요?</div>
+          <div className="text-[15px] font-bold text-foreground">이 상황에서 이 표현은 얼마나 적절한가요?</div>
           <div className="mt-2 flex flex-col gap-1.5">
             {SCALE4_CODES.map((code) => (
               <Choice
@@ -2143,7 +2129,7 @@ function MpjStageCurrent({
 
       {item.type === "fix_choice" && (
         <div className={card}>
-          <div className="text-[13px] font-semibold">이 상황과 상대를 생각할 때, 이 표현은 어떻게 들리나요?</div>
+          <div className="text-[15px] font-bold text-foreground">이 상황과 상대를 생각할 때, 이 표현은 어떻게 들리나요?</div>
           <div className="mt-2 flex flex-col gap-1.5">
             {classificationOptions.map((option) => (
               <Choice
@@ -2230,7 +2216,7 @@ function MpjStageCurrent({
           </div>
           {reviewStep === "reason" && (
             <>
-              <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">선택한 문장에 남은 가장 큰 문제를 고르세요.</div>
+              <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">이 문장이 상황에 어울리지 않는다고 판단한 이유를 고르세요.</div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {item.failure_reasons.map((reason) => (
                   <Choice
@@ -2262,7 +2248,7 @@ function MpjStageCurrent({
 
       {item.type === "multi_judge" && (
         <div className={card}>
-          <div className="text-[13px] font-semibold">각 표현이 이 상황과 상대에게 어떻게 들리는지 하나씩 골라 보세요.</div>
+          <div className="text-[15px] font-bold text-foreground">각 표현이 이 상황과 상대에게 어떻게 들리는지 하나씩 골라 보세요.</div>
           <p className="mt-1 text-[12.5px] text-muted-foreground">
             선택 기준 · {classificationOptions.map((option) => option.label).join(" / ")}
           </p>
