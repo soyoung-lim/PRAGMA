@@ -324,10 +324,9 @@ const Page = () => {
               <RoleBadge tone="brand">수업 백업</RoleBadge>
               <h2 className="text-lg font-semibold">데이터 백업</h2>
             </div>
+            {/* 제외 항목은 「백업 범위 자세히 보기」에만 둔다 — 첫 화면에서 굳이 앞세우지 않는다. */}
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               {COURSE_BACKUP_SUMMARY.included}
-              <br />
-              {COURSE_BACKUP_SUMMARY.excluded}
             </p>
 
             <label className="mb-1.5 mt-5 block text-sm font-medium" htmlFor="backup-course">

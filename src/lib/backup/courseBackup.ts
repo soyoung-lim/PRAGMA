@@ -51,10 +51,12 @@ export const COURSE_BACKUP_TABLES = [
   "scenarios",
 ] as const satisfies readonly (keyof CourseBackupData)[];
 
-/** 첫 화면용 한 줄 요약 — 자세한 목록은 접어 두고 이것만 먼저 보인다. */
+/**
+ * 첫 화면용 한 줄 요약. 제외 항목은 여기 두지 않는다 —
+ * 「백업 범위 자세히 보기」(COURSE_BACKUP_SCOPE.excluded)가 담당한다.
+ */
 export const COURSE_BACKUP_SUMMARY = {
   included: "현재 교과목의 15주 수업 구성을 백업 파일로 저장합니다.",
-  excluded: "학습자 수행기록과 인증정보는 포함하지 않습니다.",
 } as const;
 
 /** 백업이 담는 것 / 담지 않는 것 — UI 문구와 보고서가 같은 정본을 쓴다. */
