@@ -106,9 +106,9 @@ const STAGE_OF: Record<Phase, Stage> = {
 const STAGE_TITLES = ["감각 익히기", "직접 표현하기", "돌아보고 다듬기"] as const;
 // 단계 안의 잔걸음. MPJ 유형명(scale4·reason_conf…)은 더 이상 노출하지 않는다 —
 // 기술 용어가 진행바에 있으면 그 자체로 시험지처럼 읽힌다.
-const STEP_INDEX: Partial<Record<Phase, number>> = { ctx: 0, produce: 1, feedback: 0, revise: 1, recheck: 2, done: 2 };
+const STEP_INDEX: Partial<Record<Phase, number>> = { produce: 0, feedback: 0, revise: 1, recheck: 2, done: 2 };
 const stageSteps = (stage: Stage, interp: boolean) =>
-  stage === 1 ? ["상황 확인", interp ? "통역하기" : "옮겨 쓰기"] : ["피드백 보기", "다듬기", "재확인·완료"];
+  stage === 1 ? [interp ? "통역하기" : "옮겨 쓰기"] : ["피드백 보기", "다듬기", "재확인·완료"];
 
 // ── band 라벨 헬퍼 ──────────────────────────────────────────────────────
 function bandLabel(featureCode: string, code: string): string {
@@ -413,7 +413,7 @@ export function MissionV6Runner({
   const [attemptId, setAttemptId] = useState(() =>
     getOrCreateMissionAttemptId(attemptStorageKey),
   );
-  const [phase, setPhase] = useState<Phase>(startAtPart2 ? "ctx" : "mpj");
+  const [phase, setPhase] = useState<Phase>(startAtPart2 ? "produce" : "mpj");
   const [mpjIdx, setMpjIdx] = useState(0);
   const [mpjResponses, setMpjResponses] = useState<MpjResponseTrace[]>([]);
   const [vocabularyHintOpenedAt, setVocabularyHintOpenedAt] = useState<string | null>(null);
@@ -428,16 +428,6 @@ export function MissionV6Runner({
   const [recheckState, setRecheckState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [additionalRevisionUsed, setAdditionalRevisionUsed] = useState(false);
   const recheckRequestedRef = useRef(false);
-  const [savedLater, setSavedLater] = useState(false);
-  const [resume, setResume] = useState<{
-    phase: Phase;
-    draft: string;
-    revised: string;
-    ctxPick: number | null;
-    ctxDone: boolean;
-    mpjResponses?: MpjResponseTrace[];
-    vocabularyHintOpenedAt?: string | null;
-  } | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "demo" | "error">("idle");
   // feedback-lite(계약 §4) — 제출 후 3층 진단. 실패하면 기존 정직 표기로 되돌아간다.
   const [fb, setFb] = useState<RuntimeFeedback | null>(null);
@@ -521,7 +511,7 @@ export function MissionV6Runner({
 
   useEffect(() => {
     emitEvent("mission_session_opened", {
-      entry_phase: startAtPart2 ? "ctx" : "mpj",
+      entry_phase: startAtPart2 ? "produce" : "mpj",
       sample: isSample,
       judgment_frame: mission.schema_version === "mission_v6" ? "reference_non_scored" : "legacy_non_scored",
       planned_judgment_response_count: mission.schema_version === "mission_v6" ? 9 : null,
@@ -587,57 +577,10 @@ export function MissionV6Runner({
   }, [phase, recheckedResponse, mission, fb, emitEvent]);
 
   // 중단 후 재개(프로토타입 v2 ②) — 2부 진행분만 미션별 localStorage에 보존. 실패해도 흐름 무해.
-  useEffect(() => {
-    // 수행 방식 전환으로 들어온 경우엔 재개 대상이 아니다 — 방금 끝낸 다른 방식의
-    // 진행분(같은 sample 키를 쓴다)이 새어 들어와 착지 지점이 달라지면 안 된다.
-    if (startAtPart2) {
-      try {
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify({
-            phase: "ctx",
-            draft: "",
-            revised: "",
-            ctxPick: null,
-            ctxDone: false,
-            mpjResponses: [],
-            vocabularyHintOpenedAt: null,
-          }),
-        );
-      } catch {
-        /* 무시 */
-      }
-      return;
-    }
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (s && typeof s.phase === "string" && s.phase !== "mpj" && s.phase !== "handoff") setResume(s);
-      }
-    } catch {
-      /* localStorage 미지원 — 재개 없이 정상 진행 */
-    }
-  }, [storageKey, startAtPart2]);
-  useEffect(() => {
-    if (part !== 2) return;
-    try {
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          phase,
-          draft,
-          revised,
-          ctxPick,
-          ctxDone,
-          mpjResponses,
-          vocabularyHintOpenedAt,
-        }),
-      );
-    } catch {
-      /* 무시 */
-    }
-  }, [part, phase, draft, revised, ctxPick, ctxDone, mpjResponses, vocabularyHintOpenedAt, storageKey]);
+  // 2026-08-18: 진행분 저장·재개를 폐지했다. 재개로 완료하면 elapsed_ms는 재개 시점
+  // 기준이고 mpj_elapsed_ms는 복원값의 합이라, 둘이 서로 모순된 수행 기록이 남는다.
+  // 미션은 한 자리에서 끝내는 단위로 못 박는다(미완료 시도는 어차피 DB에 남지 않는다).
+
   const clearSaved = () => {
     try {
       localStorage.removeItem(storageKey);
@@ -646,20 +589,6 @@ export function MissionV6Runner({
       /* 무시 */
     }
   };
-  const applyResume = () => {
-    if (!resume) return;
-    setDraft(resume.draft || "");
-    setRevised(resume.revised || "");
-    setCtxPick(resume.ctxPick ?? null);
-    setCtxDone(!!resume.ctxDone);
-    setMpjResponses(Array.isArray(resume.mpjResponses) ? resume.mpjResponses : []);
-    setVocabularyHintOpenedAt(resume.vocabularyHintOpenedAt ?? null);
-    setPhase(resume.phase);
-    setResume(null);
-    emitEvent("mission_resumed", { resume_phase: resume.phase });
-    window.scrollTo(0, 0);
-  };
-
   // 미션 완료 = 수행 로그 저장(루프 마지막 노드). 데모 스텁은 저장 불가 → 안내만.
   const finish = async () => {
     setPhase("done");
@@ -775,8 +704,6 @@ export function MissionV6Runner({
     setRecheckState("idle");
     setAdditionalRevisionUsed(false);
     recheckRequestedRef.current = false;
-    setSavedLater(false);
-    setResume(null);
     setSaveState("idle");
     setAttemptId(rotateMissionAttemptId(attemptStorageKey));
     startedAtRef.current = new Date().toISOString();
@@ -795,20 +722,6 @@ export function MissionV6Runner({
           </div>
         )}
 
-        {/* 중단 후 재개 배너 — 2부 진행분이 남아 있을 때만 */}
-        {resume && phase === "mpj" && mpjIdx === 0 && (
-          <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-[#FAD338] bg-[#FFF8DE] px-3.5 py-2.5 text-[12.5px] text-[#6B5518]">
-            <span>이전에 진행하던 <b>미션</b>이 있습니다.</span>
-            <button
-              type="button"
-              onClick={applyResume}
-              className="shrink-0 rounded-md bg-[#15202B] px-3 py-1.5 text-[12px] font-semibold text-white"
-            >
-              이어서 하기 →
-            </button>
-          </div>
-        )}
-
         {/* ── 오늘 보는 감각 — 전 단계 공통 맥락 띠 ──
             상황은 문항마다 다르지만 보는 축은 하나다. 이 줄이 없으면 서로 다른 문제
             여섯 개로 읽힌다. 같은 라벨을 시작 카드·1부 배지에 중복 노출하던 것은 걷어냈다. */}
@@ -823,7 +736,7 @@ export function MissionV6Runner({
             const done = stage > i;
             const active = stage === i;
             // devGo 착지점 — 3단계는 다듬기로 보낸다(피드백은 제출한 답이 있어야 뜬다).
-            const target: Phase = i === 0 ? "mpj" : i === 1 ? "ctx" : "revise";
+            const target: Phase = i === 0 ? "mpj" : i === 1 ? "produce" : "revise";
             const cls = [
               "flex-1 rounded-[10px] border px-3 py-2 text-left text-[12.5px]",
               done
@@ -896,51 +809,13 @@ export function MissionV6Runner({
             mission={mission}
             isInterp={isInterp}
             responses={mpjResponses}
-            saved={savedLater}
-            onContinue={() => goto("ctx")}
-            onSaveLater={() => {
-              try {
-                localStorage.setItem(
-                  storageKey,
-                  JSON.stringify({
-                    phase: "ctx",
-                    draft: "",
-                    revised: "",
-                    ctxPick: null,
-                    ctxDone: false,
-                    mpjResponses,
-                    vocabularyHintOpenedAt: null,
-                  }),
-                );
-              } catch {
-                /* 무시 */
-              }
-              setSavedLater(true);
-            }}
-          />
-        )}
-
-        {/* ── 2부 ①: 상황 확인(판단형) ── */}
-        {phase === "ctx" && (
-          <CtxStage
-            pt={pt}
-            isInterp={isInterp}
-            onNext={() => {
-              setCtxDone(true); // legacy local resume 필드만 보존하며 완료 조건에는 사용하지 않는다.
-              goto("produce");
-            }}
+            onContinue={() => goto("produce")}
           />
         )}
 
         {/* ── 2부 ②: 실전 산출 — 번역(입력) / 통역(오디오) ── */}
         {phase === "produce" && (
           <div className="space-y-3">
-            <div className="rounded-xl bg-[#15202B] p-4 text-white">
-              <div className="text-[11px] font-bold text-[#FAD338]">감각 익히기에서 본 것</div>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed">
-                이 상대·이 부담에 맞는 만큼만 선택합니다 — 표현을 많이 더한다고 더 나아지는 것은 아닙니다.
-              </p>
-            </div>
             {isInterp ? (
               <AudioFrame
                 sourceText={pt.source_text}
@@ -1314,15 +1189,6 @@ export function MissionV6Runner({
               <button
                 type="button"
                 onClick={() => {
-                  // 방금 끝낸 방식의 진행분을 2부 시작 상태로 덮어쓴다. 단순 삭제만 하면
-                  // 이동 직전 저장 이펙트가 현재 상태를 되써서 다음 화면이 산출 단계로
-                  // 튈 수 있다(같은 sample 키를 공유).
-                  try {
-                    localStorage.setItem(
-                      storageKey,
-                      JSON.stringify({ phase: "ctx", draft: "", revised: "", ctxPick: null, ctxDone: false }),
-                    );
-                  } catch { /* ignore */ }
                   // part=2 — 1부(판단 연습)는 방금 마쳤으므로 건너뛰고 바로 2부로.
                   window.location.href = isInterp
                     ? "/learner/practice?part=2"
@@ -1710,16 +1576,12 @@ function Handoff({
   mission,
   isInterp,
   responses,
-  saved,
   onContinue,
-  onSaveLater,
 }: {
   mission: MissionRuntime;
   isInterp: boolean;
   responses: MpjResponseTrace[];
-  saved: boolean;
   onContinue: () => void;
-  onSaveLater: () => void;
 }) {
   const summaryRows = buildMpjSummaryRows(mission, responses);
   return (
@@ -1745,51 +1607,22 @@ function Handoff({
       <p className="mt-3 text-[12.5px] text-muted-foreground">
         이제 <b>새로운 상황</b>에서 직접 {isInterp ? "통역" : "옮겨"} 봅니다. 많이 얹을수록 좋은 것이 아니라, 이 상대·이 부담에 맞는 만큼만.
       </p>
-      {saved ? (
-        <div className="mt-3.5 rounded-lg bg-[#F2FAF6] px-3.5 py-2.5 text-[12.5px] text-[#2E7D5B]">
-          저장했습니다 — 다음에 들어오면 2부부터 이어집니다.
-          <button type="button" onClick={onContinue} className="ml-2 underline">지금 계속하기 →</button>
-        </div>
-      ) : (
-        <div className="mt-3.5 flex gap-2.5">
-          <Button className="flex-1 bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" onClick={onContinue}>직접 표현하러 가기 →</Button>
-          <Button variant="outline" className="flex-1" onClick={onSaveLater}>저장하고 나중에</Button>
-        </div>
-      )}
+      {/* 「저장하고 나중에」는 2026-08-18에 없앴다 — 재개로 완료하면 elapsed_ms(재개 시점
+          기준)와 mpj_elapsed_ms(복원값 합)가 서로 모순된 기록이 된다. 미션은 한 자리에서
+          끝내는 단위다. */}
+      <Button className="mt-3.5 w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" onClick={onContinue}>
+        직접 표현하러 가기 →
+      </Button>
       {/* 「1부 완료 ≠ 미션 완료」 경고는 걷어냈다 — 남은 분량을 강조해 피로만 키웠다.
           남은 단계는 위 진행 3단계가 이미 보여 준다. */}
     </div>
   );
 }
 
-// ── 2부 상황 확인(판단형) — 산출 전 필요한 조절 수준 1문항. 점수 없음 ──
-function CtxStage({
-  pt,
-  isInterp,
-  onNext,
-}: {
-  pt: ProductionTaskRuntime;
-  isInterp: boolean;
-  onNext: () => void;
-}) {
-  return (
-    <div className="space-y-3">
-      <SituationCard situation={pt.situation_ko} relation={pt.relation_ko} />
-      <div className="rounded-xl border border-dashed border-[#D8D0BC] bg-[#FBFAF5] p-4">
-        <div className="text-[11px] font-bold text-[#6B5518]">산출 전 잠깐 확인</div>
-        <p className="mt-1 text-[13.5px] leading-relaxed">
-          산출하기 전에 상대와의 관계 및 행위 부담을 잠시 확인하세요.
-        </p>
-        <p className="mt-1 text-[12px] text-muted-foreground">
-          정답을 고르는 추가 문항이 아니며 미션 응답 수와 완료 조건에 포함되지 않습니다.
-        </p>
-      </div>
-      <Button className="w-full" onClick={onNext}>
-        {isInterp ? "통역하러" : "표현하러"} 가기 →
-      </Button>
-    </div>
-  );
-}
+// 2026-08-18: 「상황 확인」 단계(CtxStage)를 없앴다. 원래 있던 '조절 수준 1문항'이
+// 사라진 뒤로 상황 카드와 안내문·버튼만 남아 학생이 하는 일이 없었고, 상황·상대는
+// 바로 다음 화면(ChatScene)이 그대로 보여 준다. 2부는 곧장 산출로 들어간다.
+// ctxPick·ctxDone 필드는 기록 스키마 호환을 위해 남겨 둔다.
 
 // ── 판정 지위 고지(B1 · 0-g·44) — 첫 문항 아래 짧은 접기 하나로 ──
 // 2026-08-18 판정 §1-2: 「정답은 하나가 아니에요」라는 막연한 상대주의 대신, 이 문항이
@@ -2121,7 +1954,6 @@ function MpjStageCurrent({
                             : null
                   }
                   mine={answered && mine}
-                  tier
                 />
               );
             })}
@@ -2163,7 +1995,16 @@ function MpjStageCurrent({
           {fixJudgeSubmitted && (
             <>
               <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">
-                상황에 알맞게 고친 문장 2개를 고르세요 · {fixPicks.size}/2
+                {(() => {
+                  // 1단계에서 진단을 이미 공개했으므로, 2단계 지시문도 그 진단을 이어받는다.
+                  // "무엇이 문제였고 어느 쪽으로 고치는가"가 지시문 안에 들어온다.
+                  const code = item.accepted_band_codes[0];
+                  const label = classificationOptions.find((option) => option.code === code)?.label;
+                  const direction = REPAIR_DIRECTION[code];
+                  return label && direction
+                    ? `위 표현은 이 상황에서 ‘${label}’입니다. ${direction} 고친 문장 2개를 고르세요 · ${fixPicks.size}/2`
+                    : `상황에 알맞게 고친 문장 2개를 고르세요 · ${fixPicks.size}/2`;
+                })()}
               </div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {fixOrder.map((sourceIndex) => {
@@ -2182,7 +2023,10 @@ function MpjStageCurrent({
                         return next;
                       })}
                       className={[
-                        "rounded-[10px] border px-3.5 py-2.5 text-left text-[14px] disabled:opacity-50",
+                        "rounded-[10px] border px-3.5 py-2.5 text-left text-[14px]",
+                        // 흐리게는 "2개를 이미 골라 더 못 고름"일 때만. 제출 뒤에는
+                        // 판정과 해설을 읽는 화면이므로 절대 흐리지 않는다.
+                        !answered && blocked ? "opacity-50" : "",
                         answered
                           ? correction.is_valid
                             ? VERDICT_MARK.correct.box
@@ -2199,6 +2043,7 @@ function MpjStageCurrent({
                         {answered && (
                           <span className="flex items-center gap-1.5">
                             {selected && <MyPickChip />}
+                            {correction.is_valid && <StateChip verdict="correct" />}
                             {correction.is_valid ? (
                               <VerdictMark verdict="correct" />
                             ) : selected ? (
@@ -2237,7 +2082,11 @@ function MpjStageCurrent({
 
       {item.type === "fix_review" && (
         <div className={card}>
-          <div className="text-[13px] font-semibold">고친 문장 3개 중, 이 상황에 여전히 어울리지 않는 문장을 고르세요.</div>
+          <div className="text-[15px] font-bold text-foreground">
+            위 문장은 이 상황에 맞지 않아 아래와 같이 수정했습니다.
+            <br />
+            수정 후에도 여전히 부적절한 문장을 고르세요.
+          </div>
           <div className="mt-2 flex flex-col gap-1.5">
             {reviewOrder.map((sourceIndex) => {
               const correction = item.corrections[sourceIndex];
@@ -2259,7 +2108,7 @@ function MpjStageCurrent({
           </div>
           {reviewStep === "reason" && (
             <>
-              <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">이 문장이 상황에 어울리지 않는다고 판단한 이유를 고르세요.</div>
+              <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[15px] font-bold text-foreground">이 문장이 상황에 어울리지 않는다고 판단한 이유를 고르세요.</div>
               <div className="mt-2 flex flex-col gap-1.5">
                 {item.failure_reasons.map((reason) => {
                   const mine = failureReasonId === reason.id;
@@ -2299,10 +2148,20 @@ function MpjStageCurrent({
         <div className={card}>
           <div className="text-[15px] font-bold text-foreground">각 표현이 상대에게 어떻게 들리는지 고르세요.</div>
           <p className="mt-1 text-[12.5px] text-muted-foreground">
-            선택 기준 · {classificationOptions.map((option) => option.label).join(" / ")}
+            세 표현은 조절 정도가 서로 다릅니다. 하나씩 골라 보세요 ·{" "}
+            {Object.keys(multiPicks).length}/{item.candidates.length}
           </p>
           <ul className="mt-3 space-y-2.5">
-            {multiOrder.map((sourceIndex) => {
+            {(answered
+              ? [...multiOrder].sort((a, b) => {
+                  const rank = (index: number) =>
+                    classificationOptions.findIndex((option) =>
+                      item.candidates[index].accepted_band_codes.includes(option.code),
+                    );
+                  return rank(a) - rank(b);
+                })
+              : multiOrder
+            ).map((sourceIndex) => {
               const candidate = item.candidates[sourceIndex];
               const pick = multiPicks[sourceIndex];
               const rowRight = Boolean(pick && candidate.accepted_band_codes.includes(pick));
@@ -2370,11 +2229,11 @@ function MpjStageCurrent({
         <>
           {item.type === "fix_choice" && !fixJudgeSubmitted ? (
             <Button className="w-full" disabled={!bandPick} onClick={() => setFixJudgeSubmitted(true)}>
-              판단 확정 · 수정안 4개 보기 →
+              이 판단으로 정하기 →
             </Button>
           ) : item.type === "fix_review" && reviewStep === "correction" ? (
             <Button className="w-full" disabled={!rejectedCorrectionId} onClick={() => setReviewStep("reason")}>
-              검수 판단 확정 · 실패 원인 보기 →
+              이 문장으로 정하기 →
             </Button>
           ) : (
             <Button className="w-full" disabled={!canReveal} onClick={() => setAnswered(true)}>응답 확정·피드백 보기</Button>
@@ -2831,14 +2690,14 @@ const VERDICT_MARK: Record<
     mark: "✓",
     tone: "text-[#2E7D5B]",
     box: "border-[1.5px] border-[#2E7D5B] bg-[#F2FAF6]",
-    chip: "기준",
+    chip: "권장안",
     chipCls: "bg-[#2E7D5B] text-white",
   },
   accepted: {
-    mark: "",
+    mark: "✓",
     tone: "text-[#2E7D5B]",
     box: "border-[1.5px] border-dashed border-[#8FC3AC] bg-[#F8FCFA]",
-    chip: "가능",
+    chip: "가능안",
     chipCls: "border border-[#8FC3AC] bg-white text-[#2E7D5B]",
   },
   wrong: {
@@ -2848,6 +2707,17 @@ const VERDICT_MARK: Record<
     chip: "",
     chipCls: "",
   },
+};
+
+// 진단 대역 → 고칠 방향. 2단계 지시문을 "무엇을 어느 쪽으로"까지 말해 주기 위한 것.
+// 목록에 없는 대역이면 방향을 지어내지 않고 기본 지시문으로 돌아간다.
+const REPAIR_DIRECTION: Record<string, string> = {
+  too_direct: "좀 더 부드럽게",
+  too_blunt: "좀 더 완곡하게",
+  insufficient: "좀 더 충분하게",
+  too_indirect: "좀 더 분명하게",
+  over_elaborate: "좀 더 간결하게",
+  excessive: "좀 더 담백하게",
 };
 
 const StateChip = ({ verdict }: { verdict: "correct" | "accepted" }) => (
@@ -2875,7 +2745,6 @@ const Choice = ({
   onClick,
   verdict = null,
   mine = false,
-  tier = false,
 }: {
   label: string;
   selected: boolean;
@@ -2883,8 +2752,6 @@ const Choice = ({
   onClick: () => void;
   verdict?: ChoiceVerdict;
   mine?: boolean;
-  /** 「기준」·「가능」 칩을 붙일지. 허용 범위가 둘 이상인 문항(MPJ1)에서만 참. */
-  tier?: boolean;
 }) => (
   <button
     type="button"
@@ -2903,7 +2770,7 @@ const Choice = ({
     <span>{label}</span>
     <span className="flex items-center gap-1.5">
       {mine && <MyPickChip />}
-      {tier && (verdict === "correct" || verdict === "accepted") && <StateChip verdict={verdict} />}
+      {(verdict === "correct" || verdict === "accepted") && <StateChip verdict={verdict} />}
       {verdict && VERDICT_MARK[verdict].mark && <VerdictMark verdict={verdict} />}
     </span>
   </button>
