@@ -8,6 +8,7 @@ import {
   COURSE_BACKUP_SCOPE,
   COURSE_BACKUP_SUMMARY,
   courseBackupFilename,
+  courseBackupFilenameForDate,
   parseCourseBackup,
   summarizeCourseBackup,
   type CourseBackupFile,
@@ -15,8 +16,10 @@ import {
 import {
   downloadCourseBackup,
   fetchCourseBackup,
+  fetchCourseBackupCounts,
   listBackupCourses,
   restoreCourseBackup,
+  type CourseBackupCounts,
   type CourseSummary,
 } from "@/lib/backup/courseBackupApi";
 
@@ -87,6 +90,14 @@ const RoleBadge = ({ children, tone }: { children: string; tone: keyof typeof BA
   <span className={`rounded border px-2 py-0.5 text-[11px] font-medium ${BADGE_TONE[tone]}`}>{children}</span>
 );
 
+/** 백업 전 「무엇이 담기는지」를 보여 주는 작은 수치 칸 — 오른쪽 미리보기와 같은 리듬. */
+const StatTile = ({ label, value }: { label: string; value: string }) => (
+  <div className="rounded-lg bg-muted/50 px-3 py-2 text-center">
+    <p className="text-[11px] text-muted-foreground">{label}</p>
+    <p className="mt-0.5 text-base font-semibold">{value}</p>
+  </div>
+);
+
 const PreviewRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex justify-between gap-3 py-1">
     <dt className="shrink-0 text-muted-foreground">{label}</dt>
@@ -105,6 +116,7 @@ const Page = () => {
   const [pendingFile, setPendingFile] = useState<CourseBackupFile | null>(null);
   const [pendingFileName, setPendingFileName] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [counts, setCounts] = useState<CourseBackupCounts | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedCourse = useMemo(
@@ -136,6 +148,27 @@ const Page = () => {
       cancelled = true;
     };
   }, []);
+
+  // 선택한 교과목에 무엇이 담길지 미리 센다(개수만 — 본문은 가져오지 않는다).
+  useEffect(() => {
+    if (!selectedId) {
+      setCounts(null);
+      return;
+    }
+    let cancelled = false;
+    setCounts(null);
+    fetchCourseBackupCounts(selectedId)
+      .then((result) => {
+        if (!cancelled) setCounts(result);
+      })
+      .catch(() => {
+        // 개수는 보조 정보다 — 실패해도 백업 자체를 막지 않는다.
+        if (!cancelled) setCounts(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
 
   const runBackup = async () => {
     if (!selectedId) return;
@@ -264,8 +297,9 @@ const Page = () => {
             </select>
 
             {selectedCourse && (
-              <div className="mt-3 rounded-r-lg border-y border-r border-border border-l-2 border-l-accent bg-card px-4 py-3">
-                <p className="text-sm font-semibold">{selectedCourse.title}</p>
+              <div className="mt-3 border-l-[3px] border-accent bg-accent/10 px-4 py-3">
+                <p className="text-[11px] font-medium text-muted-foreground">선택됨</p>
+                <p className="mt-0.5 text-sm font-semibold">{selectedCourse.title}</p>
                 <p className="mt-0.5 text-sm text-muted-foreground">{courseTraits(selectedCourse).join(" · ")}</p>
               </div>
             )}
@@ -278,6 +312,20 @@ const Page = () => {
               <p className={`mt-4 rounded-lg border px-4 py-3 text-sm leading-6 ${NOTICE_STYLE[backupNotice.tone]}`}>
                 {backupNotice.text}
               </p>
+            )}
+
+            {counts && (
+              <div className="mt-5">
+                <p className="mb-2 text-sm font-medium">이번 백업에 담길 내용</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <StatTile label="주차 편성" value={`${counts.weeks}주`} />
+                  <StatTile label="미션 배정" value={`${counts.assignments}건`} />
+                  <StatTile label="학습 미션" value={`${counts.scenarios}건`} />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  저장될 파일 이름 · {courseBackupFilenameForDate()}
+                </p>
+              </div>
             )}
 
             <div className="mt-auto">
@@ -354,7 +402,13 @@ const Page = () => {
               </p>
             )}
 
-            <Button className="mt-4 w-full sm:w-auto" onClick={runRestore} disabled={!pendingFile || restoring}>
+            {/* 파일이 준비되기 전에는 테두리만 — 준비되면 solid로 승격해 상태를 무게로 알린다. */}
+            <Button
+              className="mt-4 w-full sm:w-auto"
+              variant={pendingFile ? "default" : "outline"}
+              onClick={runRestore}
+              disabled={!pendingFile || restoring}
+            >
               {restoring ? "복원하는 중…" : "복원하기"}
             </Button>
 

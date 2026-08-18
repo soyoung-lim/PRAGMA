@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { parseCourseBackup, serializeCourseBackup, type BackupRow } from "@/lib/backup/courseBackup";
-import { fetchCourseBackup, listBackupCourses, restoreCourseBackup } from "@/lib/backup/courseBackupApi";
+import {
+  fetchCourseBackup,
+  fetchCourseBackupCounts,
+  listBackupCourses,
+  restoreCourseBackup,
+} from "@/lib/backup/courseBackupApi";
 import { createFakeBackupDb, type FakeTables } from "@/lib/backup/fakeBackupDb";
 
 const OUTLINE_ID = "11111111-0000-0000-0000-000000000001";
@@ -97,6 +102,12 @@ describe("교과목 백업 조회", () => {
   it("없는 교과목은 명확히 실패한다", async () => {
     const db = createFakeBackupDb(tables);
     await expect(fetchCourseBackup("no-such-id", { db })).rejects.toThrow(/교과목을 찾을 수 없습니다/);
+  });
+
+  it("백업 전 개수 미리보기는 선택한 교과목만 센다", async () => {
+    const db = createFakeBackupDb(tables);
+    // scenario-1·2는 각각 한 번씩 배정돼 있고, scenario-3은 다른 교과목 것이다.
+    expect(await fetchCourseBackupCounts(OUTLINE_ID, db)).toEqual({ weeks: 15, assignments: 2, scenarios: 2 });
   });
 
   it("교과목 목록은 최근 수정 순이다", async () => {

@@ -76,6 +76,42 @@ export async function listBackupCourses(client?: BackupDbClient): Promise<Course
   return (data ?? []) as unknown as CourseSummary[];
 }
 
+export type CourseBackupCounts = {
+  weeks: number;
+  assignments: number;
+  scenarios: number;
+};
+
+/**
+ * 백업 버튼을 누르기 전 「무엇이 담기는지」를 보여 주기 위한 가벼운 집계.
+ * 백업 파일을 만들지 않고 개수만 센다(본문은 가져오지 않는다).
+ */
+export async function fetchCourseBackupCounts(
+  outlineId: string,
+  client?: BackupDbClient,
+): Promise<CourseBackupCounts> {
+  const db = await resolveDb(client);
+
+  const { data: weeks, error: weeksError } = await db
+    .from("curriculum_weeks")
+    .select("week_no")
+    .eq("outline_id", outlineId);
+  if (weeksError) fail("주차 편성 수 조회 실패", weeksError);
+
+  const { data: assignments, error: assignmentsError } = await db
+    .from("curriculum_week_scenarios")
+    .select("scenario_id")
+    .eq("outline_id", outlineId);
+  if (assignmentsError) fail("미션 배정 수 조회 실패", assignmentsError);
+
+  const assignmentRows = assignments ?? [];
+  return {
+    weeks: (weeks ?? []).length,
+    assignments: assignmentRows.length,
+    scenarios: new Set(assignmentRows.map((row) => String(row.scenario_id))).size,
+  };
+}
+
 export type FetchCourseBackupOptions = {
   db?: BackupDbClient;
   exportedAt?: Date;
