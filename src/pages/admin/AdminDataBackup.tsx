@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ShieldCheck, Upload } from "lucide-react";
+import { Check, ShieldCheck, Upload } from "lucide-react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import { DIRECTION_LABEL, DOMAIN, INDUSTRY, LEVEL } from "@/lib/pragma/enums";
@@ -17,9 +17,11 @@ import {
   downloadCourseBackup,
   fetchCourseBackup,
   fetchCourseBackupCounts,
+  fetchCourseCompareBasis,
   listBackupCourses,
   restoreCourseBackup,
   type CourseBackupCounts,
+  type CourseCompareBasis,
   type CourseSummary,
 } from "@/lib/backup/courseBackupApi";
 
@@ -49,7 +51,10 @@ const courseTraits = (course: CourseSummary) =>
 const formatStamp = (iso: string) => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}. ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  const hour = date.getHours();
+  const meridiem = hour < 12 ? "오전" : "오후";
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}. ${meridiem} ${hour12}:${String(date.getMinutes()).padStart(2, "0")}`;
 };
 
 const ScopeDetails = () => (
@@ -117,6 +122,10 @@ const Page = () => {
   const [pendingFileName, setPendingFileName] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [counts, setCounts] = useState<CourseBackupCounts | null>(null);
+  const [lastBackup, setLastBackup] = useState<
+    { title: string; weeks: number; assignments: number; scenarios: number; filename: string } | null
+  >(null);
+  const [compareBasis, setCompareBasis] = useState<CourseCompareBasis | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedCourse = useMemo(
@@ -125,6 +134,22 @@ const Page = () => {
   );
 
   const preview = useMemo(() => (pendingFile ? summarizeCourseBackup(pendingFile) : null), [pendingFile]);
+
+  // 복원이 실제로 하는 일만 센다: 배정 추가(복원은 삭제하지 않으므로 「제거」는 세지 않는다).
+  const impact = useMemo(() => {
+    if (!pendingFile || !compareBasis) return null;
+    const fileKeys = new Set(
+      pendingFile.data.curriculum_week_scenarios.map((row) => `${String(row.week_no)}:${String(row.scenario_id)}`),
+    );
+    const currentKeys = new Set(compareBasis.assignmentKeys);
+    return {
+      exists: compareBasis.exists,
+      currentWeeks: compareBasis.weeks,
+      fileWeeks: pendingFile.data.curriculum_weeks.length,
+      added: [...fileKeys].filter((key) => !currentKeys.has(key)).length,
+      keptOnly: [...currentKeys].filter((key) => !fileKeys.has(key)).length,
+    };
+  }, [pendingFile, compareBasis]);
 
   useEffect(() => {
     let cancelled = false;
@@ -170,19 +195,44 @@ const Page = () => {
     };
   }, [selectedId]);
 
+  // 올린 파일의 교과목이 지금 어떤 상태인지 확인한다(개수·키만 읽는다).
+  useEffect(() => {
+    const outlineId = pendingFile?.data.curriculum_outlines[0]?.id;
+    if (typeof outlineId !== "string") {
+      setCompareBasis(null);
+      return;
+    }
+    let cancelled = false;
+    fetchCourseCompareBasis(outlineId)
+      .then((basis) => {
+        if (!cancelled) setCompareBasis(basis);
+      })
+      .catch(() => {
+        // 비교는 보조 정보다 — 실패하면 아예 보여 주지 않는다(추정하지 않는다).
+        if (!cancelled) setCompareBasis(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingFile]);
+
   const runBackup = async () => {
     if (!selectedId) return;
     setBackingUp(true);
     setBackupNotice(null);
+    setLastBackup(null);
     try {
       const file = await fetchCourseBackup(selectedId, {
         projectRef: import.meta.env.VITE_SUPABASE_PROJECT_ID ?? null,
       });
       downloadCourseBackup(file);
       const summary = summarizeCourseBackup(file);
-      setBackupNotice({
-        tone: "ok",
-        text: `${courseBackupFilename(file)} 파일을 내려받았습니다. 주차 ${summary.weekCount}개 · 미션 배정 ${summary.assignmentCount}건 · 학습 미션 ${summary.scenarioCount}건.`,
+      setLastBackup({
+        title: summary.title,
+        weeks: summary.weekCount,
+        assignments: summary.assignmentCount,
+        scenarios: summary.scenarioCount,
+        filename: courseBackupFilename(file),
       });
     } catch (error) {
       setBackupNotice({
@@ -198,6 +248,7 @@ const Page = () => {
   const acceptFile = async (file: File | undefined) => {
     setPendingFile(null);
     setPendingFileName(null);
+    setCompareBasis(null);
     setRestoreNotice(null);
     if (!file) return;
     try {
@@ -243,6 +294,7 @@ const Page = () => {
       });
       setPendingFile(null);
       setPendingFileName(null);
+      setCompareBasis(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       const rows = await listBackupCourses();
       setCourses(rows);
@@ -314,6 +366,20 @@ const Page = () => {
               </p>
             )}
 
+            {lastBackup && (
+              <div className="mt-4 flex gap-3 rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-emerald-900">백업 완료</p>
+                  <p className="mt-0.5 text-sm text-emerald-900">{lastBackup.title}</p>
+                  <p className="text-sm text-emerald-900/80">
+                    {lastBackup.weeks}주 · 미션 배정 {lastBackup.assignments}건 · 학습 미션 {lastBackup.scenarios}건
+                  </p>
+                  <p className="mt-1 break-all text-xs text-emerald-900/70">{lastBackup.filename}</p>
+                </div>
+              </div>
+            )}
+
             {counts && (
               <div className="mt-5">
                 <p className="mb-2 text-sm font-medium">이번 백업에 담길 내용</p>
@@ -377,6 +443,7 @@ const Page = () => {
               <div className="mt-4 rounded-lg border border-border bg-background px-4 py-3">
                 <p className="mb-2 text-sm font-semibold">이 파일의 내용</p>
                 <dl className="divide-y divide-border text-sm">
+                  <PreviewRow label="백업 시점" value={formatStamp(preview.exportedAt)} />
                   <PreviewRow label="교과목" value={preview.title} />
                   <PreviewRow
                     label="구성"
@@ -389,8 +456,31 @@ const Page = () => {
                   <PreviewRow label="주차 편성" value={`${preview.weekCount}주`} />
                   <PreviewRow label="미션 배정" value={`${preview.assignmentCount}건`} />
                   <PreviewRow label="학습 미션" value={`${preview.scenarioCount}건`} />
-                  <PreviewRow label="백업 시각" value={formatStamp(preview.exportedAt)} />
                 </dl>
+                {impact && (
+                  <div className="mt-3 border-t border-border pt-3">
+                    <p className="text-sm font-medium">복원하면</p>
+                    {impact.exists ? (
+                      <ul className="mt-1 space-y-0.5 text-sm text-muted-foreground">
+                        <li>
+                          주차 편성{" "}
+                          {impact.currentWeeks === impact.fileWeeks
+                            ? `${impact.fileWeeks}주 유지`
+                            : `${impact.currentWeeks}주 → ${impact.fileWeeks}주`}
+                        </li>
+                        <li>미션 배정 {impact.added > 0 ? `${impact.added}건 추가` : "추가 없음"}</li>
+                        {impact.keptOnly > 0 && (
+                          <li>지금만 있는 배정 {impact.keptOnly}건은 지우지 않고 그대로 둡니다</li>
+                        )}
+                      </ul>
+                    ) : (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        이 교과목은 지금 없습니다 — 복원하면 새로 만들어집니다.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">
                   다른 교과목과 학습자 수행기록은 변경하지 않습니다.
                 </p>

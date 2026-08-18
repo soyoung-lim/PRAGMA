@@ -4,6 +4,7 @@ import { parseCourseBackup, serializeCourseBackup, type BackupRow } from "@/lib/
 import {
   fetchCourseBackup,
   fetchCourseBackupCounts,
+  fetchCourseCompareBasis,
   listBackupCourses,
   restoreCourseBackup,
 } from "@/lib/backup/courseBackupApi";
@@ -108,6 +109,23 @@ describe("교과목 백업 조회", () => {
     const db = createFakeBackupDb(tables);
     // scenario-1·2는 각각 한 번씩 배정돼 있고, scenario-3은 다른 교과목 것이다.
     expect(await fetchCourseBackupCounts(OUTLINE_ID, db)).toEqual({ weeks: 15, assignments: 2, scenarios: 2 });
+  });
+
+  it("복원 전 비교 기준은 현재 주차 수와 배정 키만 읽는다", async () => {
+    const db = createFakeBackupDb(tables);
+    const basis = await fetchCourseCompareBasis(OUTLINE_ID, db);
+    expect(basis.exists).toBe(true);
+    expect(basis.weeks).toBe(15);
+    expect(basis.assignmentKeys.sort()).toEqual(["2:scenario-1", "3:scenario-2"]);
+  });
+
+  it("없는 교과목의 비교 기준은 exists=false로 돌려준다", async () => {
+    const db = createFakeBackupDb(tables);
+    expect(await fetchCourseCompareBasis("no-such-id", db)).toEqual({
+      exists: false,
+      weeks: 0,
+      assignmentKeys: [],
+    });
   });
 
   it("교과목 목록은 최근 수정 순이다", async () => {

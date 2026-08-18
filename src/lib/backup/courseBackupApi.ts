@@ -112,6 +112,51 @@ export async function fetchCourseBackupCounts(
   };
 }
 
+export type CourseCompareBasis = {
+  /** 이 교과목이 지금 이 환경에 있는가(없으면 복원이 새로 만든다). */
+  exists: boolean;
+  weeks: number;
+  /** `주차:시나리오` 키 목록 — 복원이 추가할 배정을 정확히 세기 위한 것. */
+  assignmentKeys: string[];
+};
+
+/**
+ * 복원 직전 비교용 현재 상태. **개수와 키만** 읽는다(본문·필드 비교는 하지 않는다).
+ * 복원은 삭제를 하지 않으므로 「추가될 것」만 셀 수 있고, 그것만 화면에 쓴다.
+ */
+export async function fetchCourseCompareBasis(
+  outlineId: string,
+  client?: BackupDbClient,
+): Promise<CourseCompareBasis> {
+  const db = await resolveDb(client);
+
+  const { data: outline, error: outlineError } = await db
+    .from("curriculum_outlines")
+    .select("id")
+    .eq("id", outlineId)
+    .maybeSingle();
+  if (outlineError) fail("현재 교과목 확인 실패", outlineError);
+  if (!outline) return { exists: false, weeks: 0, assignmentKeys: [] };
+
+  const { data: weeks, error: weeksError } = await db
+    .from("curriculum_weeks")
+    .select("week_no")
+    .eq("outline_id", outlineId);
+  if (weeksError) fail("현재 주차 편성 확인 실패", weeksError);
+
+  const { data: assignments, error: assignmentsError } = await db
+    .from("curriculum_week_scenarios")
+    .select("week_no, scenario_id")
+    .eq("outline_id", outlineId);
+  if (assignmentsError) fail("현재 미션 배정 확인 실패", assignmentsError);
+
+  return {
+    exists: true,
+    weeks: (weeks ?? []).length,
+    assignmentKeys: (assignments ?? []).map((row) => `${String(row.week_no)}:${String(row.scenario_id)}`),
+  };
+}
+
 export type FetchCourseBackupOptions = {
   db?: BackupDbClient;
   exportedAt?: Date;
