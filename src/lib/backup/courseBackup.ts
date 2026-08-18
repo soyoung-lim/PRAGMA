@@ -127,14 +127,50 @@ export function serializeCourseBackup(file: CourseBackupFile): string {
   return `${JSON.stringify(file, null, 2)}\n`;
 }
 
-export function courseBackupFilename(file: CourseBackupFile): string {
-  const day = file.manifest.exported_at.slice(0, 10);
-  return `pragma-course-backup-${day}.json`;
+// ── 파일명 ────────────────────────────────────────────────────
+// 파일명은 **이 한 곳에서만** 만든다. 같은 날 여러 번 백업해도 서로 덮어쓰지 않도록
+// 교과목 이름과 초 단위 시각을 함께 넣는다(2026-08-18 결함 수정: 날짜만 넣어
+// 같은 이름이 반복 생성되고 복원 직전 자동 백업까지 덮어써졌다).
+
+const FILENAME_PREFIX = "pragma-course-backup";
+
+/** 파일 시스템에서 문제되는 문자를 걷어내고 길이를 제한한다. 한글은 그대로 둔다. */
+function slugifyCourseTitle(title: string): string {
+  const cleaned = title
+    .replace(/[\\/:*?"<>|]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  return cleaned.length > 0 ? cleaned : "교과목";
 }
 
-/** 아직 만들지 않은 백업의 파일명 미리보기(화면 표시용). */
-export function courseBackupFilenameForDate(date: Date = new Date()): string {
-  return `pragma-course-backup-${date.toISOString().slice(0, 10)}.json`;
+/** 로컬 시각 기준 `2026-08-18_2021 56` → `2026-08-18_202156`. 초까지 넣는다. */
+function filenameStamp(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const time = `${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+  return `${day}_${time}`;
+}
+
+function buildBackupFilename(title: string, date: Date, kind: "backup" | "pre-restore"): string {
+  const marker = kind === "pre-restore" ? "복원직전_" : "";
+  return `${FILENAME_PREFIX}_${marker}${slugifyCourseTitle(title)}_${filenameStamp(date)}.json`;
+}
+
+/** 내려받는 백업 파일 이름. 시각은 manifest의 백업 시점을 그대로 쓴다. */
+export function courseBackupFilename(file: CourseBackupFile): string {
+  return buildBackupFilename(file.manifest.outline_title, new Date(file.manifest.exported_at), "backup");
+}
+
+/** 복원 직전 자동 백업 파일 이름 — 일반 백업과 구분되고 서로도 충돌하지 않는다. */
+export function preRestoreBackupFilename(file: CourseBackupFile): string {
+  return buildBackupFilename(file.manifest.outline_title, new Date(file.manifest.exported_at), "pre-restore");
+}
+
+/** 아직 만들지 않은 백업의 파일명 미리보기(화면 표시용). 실제 저장 이름과 같은 규칙이다. */
+export function courseBackupFilenamePreview(title: string, date: Date = new Date()): string {
+  return buildBackupFilename(title, date, "backup");
 }
 
 // ── 시크릿 검사 ────────────────────────────────────────────────

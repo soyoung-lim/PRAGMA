@@ -8,7 +8,8 @@ import {
   COURSE_BACKUP_SCOPE,
   COURSE_BACKUP_SUMMARY,
   courseBackupFilename,
-  courseBackupFilenameForDate,
+  courseBackupFilenamePreview,
+  preRestoreBackupFilename,
   parseCourseBackup,
   summarizeCourseBackup,
   type CourseBackupFile,
@@ -280,10 +281,7 @@ const Page = () => {
       const outcome = await restoreCourseBackup(pendingFile);
       if (outcome.safetyBackup) {
         // 복원 직전 상태를 먼저 파일로 남긴다(되돌릴 수 있게).
-        downloadCourseBackup(
-          outcome.safetyBackup,
-          `pragma-course-backup-복원직전-${outcome.safetyBackup.manifest.exported_at.slice(0, 10)}.json`,
-        );
+        downloadCourseBackup(outcome.safetyBackup, preRestoreBackupFilename(outcome.safetyBackup));
       }
       const scenarioNote = outcome.scenariosInserted > 0
         ? ` 없던 학습 미션 ${outcome.scenariosInserted}건을 새로 넣었습니다.`
@@ -391,8 +389,8 @@ const Page = () => {
                   <StatTile label="미션 배정" value={`${counts.assignments}건`} />
                   <StatTile label="학습 미션" value={`${counts.scenarios}건`} />
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  저장될 파일 이름 · {courseBackupFilenameForDate()}
+                <p className="mt-2 break-all text-xs text-muted-foreground">
+                  저장될 파일 이름 · {courseBackupFilenamePreview(selectedCourse?.title ?? "교과목")}
                 </p>
               </div>
             )}
