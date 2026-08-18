@@ -59,6 +59,9 @@ export type CourseSummary = {
   level: string | null;
   language_direction: string | null;
   domain: string | null;
+  /** 화면 요약 표시용(선택한 교과목이 무엇인지 확인시키는 용도). */
+  industry: string | null;
+  week_count: number | null;
   updated_at: string | null;
 };
 
@@ -67,7 +70,7 @@ export async function listBackupCourses(client?: BackupDbClient): Promise<Course
   const db = await resolveDb(client);
   const { data, error } = await db
     .from("curriculum_outlines")
-    .select("id, title, level, language_direction, domain, updated_at")
+    .select("id, title, level, language_direction, domain, industry, week_count, updated_at")
     .order("updated_at", { ascending: false });
   if (error) fail("교과목 목록 조회 실패", error);
   return (data ?? []) as unknown as CourseSummary[];

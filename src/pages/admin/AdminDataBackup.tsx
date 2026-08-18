@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
+import { DIRECTION_LABEL, DOMAIN, INDUSTRY, LEVEL } from "@/lib/pragma/enums";
+import type { Domain, IndustrySector, LanguageDirection, LearnerLevel } from "@/lib/pragma/enums";
 import {
   COURSE_BACKUP_SCOPE,
+  COURSE_BACKUP_SUMMARY,
   courseBackupFilename,
   parseCourseBackup,
   summarizeCourseBackup,
@@ -24,23 +27,57 @@ const NOTICE_STYLE: Record<Notice["tone"], string> = {
   info: "border-sky-200 bg-sky-50 text-sky-950",
 };
 
-const LEVEL_LABEL: Record<string, string> = {
-  beginner_intermediate: "입문·중급",
-  intermediate: "중급",
-  advanced: "고급",
-};
-const DIRECTION_LABEL: Record<string, string> = { ko_zh: "한→중", zh_ko: "중→한" };
-const DOMAIN_LABEL: Record<string, string> = { daily: "일상", school: "학업", work: "직무" };
+const levelLabel = (value: string | null) => LEVEL[value as LearnerLevel] ?? value ?? null;
+const directionLabel = (value: string | null) => DIRECTION_LABEL[value as LanguageDirection] ?? value ?? null;
+const domainLabel = (value: string | null) => DOMAIN[value as Domain] ?? value ?? null;
+const industryLabel = (value: string | null) => INDUSTRY[value as IndustrySector] ?? value ?? null;
 
-const describeCourse = (course: CourseSummary) =>
+/** 「고급 · 중→한 · 직무 · 15주」 형태의 한 줄 요약. */
+const courseTraits = (course: CourseSummary) =>
   [
-    course.title,
-    LEVEL_LABEL[course.level ?? ""] ?? course.level,
-    DIRECTION_LABEL[course.language_direction ?? ""] ?? course.language_direction,
-    DOMAIN_LABEL[course.domain ?? ""] ?? course.domain,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+    levelLabel(course.level),
+    directionLabel(course.language_direction),
+    domainLabel(course.domain),
+    industryLabel(course.industry),
+    course.week_count ? `${course.week_count}주` : null,
+  ].filter(Boolean) as string[];
+
+const formatStamp = (iso: string) => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}. ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+};
+
+const ScopeDetails = () => (
+  <details className="mt-4 border-t border-border pt-3 text-sm leading-6 text-muted-foreground">
+    <summary className="cursor-pointer font-medium text-foreground">백업 범위 자세히 보기</summary>
+    <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div>
+        <h4 className="mb-1.5 font-semibold text-foreground">파일에 담기는 것</h4>
+        <ul className="list-disc space-y-1 pl-4">
+          {COURSE_BACKUP_SCOPE.included.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h4 className="mb-1.5 font-semibold text-foreground">담기지 않는 것</h4>
+        <ul className="list-disc space-y-1 pl-4">
+          {COURSE_BACKUP_SCOPE.excluded.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </details>
+);
+
+const PreviewRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex justify-between gap-3 py-1">
+    <dt className="shrink-0 text-muted-foreground">{label}</dt>
+    <dd className="text-right font-medium">{value}</dd>
+  </div>
+);
 
 const Page = () => {
   const [courses, setCourses] = useState<CourseSummary[]>([]);
@@ -52,6 +89,13 @@ const Page = () => {
   const [restoreNotice, setRestoreNotice] = useState<Notice | null>(null);
   const [pendingFile, setPendingFile] = useState<CourseBackupFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedCourse = useMemo(
+    () => courses.find((course) => course.id === selectedId) ?? null,
+    [courses, selectedId],
+  );
+
+  const preview = useMemo(() => (pendingFile ? summarizeCourseBackup(pendingFile) : null), [pendingFile]);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,13 +150,7 @@ const Page = () => {
     setRestoreNotice(null);
     if (!file) return;
     try {
-      const parsed = parseCourseBackup(await file.text());
-      const summary = summarizeCourseBackup(parsed);
-      setPendingFile(parsed);
-      setRestoreNotice({
-        tone: "info",
-        text: `확인했습니다 — 「${summary.title}」 · 주차 ${summary.weekCount}개 · 미션 배정 ${summary.assignmentCount}건 · 백업 시각 ${summary.exportedAt.slice(0, 16).replace("T", " ")}. 복원하려면 아래 버튼을 누르세요.`,
-      });
+      setPendingFile(parseCourseBackup(await file.text()));
     } catch (error) {
       setRestoreNotice({
         tone: "error",
@@ -160,20 +198,22 @@ const Page = () => {
       title="수업 데이터 백업·복원"
       description="내가 편성한 교과목의 15주 수업 구성을 파일로 내려받고, 그 파일로 다시 되돌립니다."
     >
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-1 text-base font-semibold">데이터 백업</h2>
-          <p className="mb-4 text-sm leading-6 text-muted-foreground">
-            이 교과목에 편성된 15주 수업 구성, 시나리오·미션, 검수·승인 상태를 백업합니다.
-            인증정보와 API key는 포함하지 않습니다.
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        {/* 기본 흐름 = 교과목 선택 → 백업. 그래서 이쪽이 주(主)다. */}
+        <section className="rounded-xl border-2 border-primary/30 bg-card p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">데이터 백업</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {COURSE_BACKUP_SUMMARY.included}
+            <br />
+            {COURSE_BACKUP_SUMMARY.excluded}
           </p>
 
-          <label className="mb-1.5 block text-sm font-medium" htmlFor="backup-course">
+          <label className="mb-1.5 mt-5 block text-sm font-medium" htmlFor="backup-course">
             백업할 교과목
           </label>
           <select
             id="backup-course"
-            className="mb-4 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={selectedId}
             onChange={(event) => setSelectedId(event.target.value)}
             disabled={loadingCourses || courses.length === 0}
@@ -182,12 +222,19 @@ const Page = () => {
             {!loadingCourses && courses.length === 0 && <option value="">편성된 교과목이 없습니다</option>}
             {courses.map((course) => (
               <option key={course.id} value={course.id}>
-                {describeCourse(course)}
+                {course.title}
               </option>
             ))}
           </select>
 
-          <Button onClick={runBackup} disabled={!selectedId || backingUp}>
+          {selectedCourse && (
+            <div className="mt-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
+              <p className="text-sm font-semibold">{selectedCourse.title}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">{courseTraits(selectedCourse).join(" · ")}</p>
+            </div>
+          )}
+
+          <Button className="mt-5 w-full sm:w-auto" size="lg" onClick={runBackup} disabled={!selectedId || backingUp}>
             {backingUp ? "백업하는 중…" : "백업하기"}
           </Button>
 
@@ -197,34 +244,17 @@ const Page = () => {
             </p>
           )}
 
-          <div className="mt-5 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-            <div>
-              <h3 className="mb-1.5 font-semibold">파일에 담기는 것</h3>
-              <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-                {COURSE_BACKUP_SCOPE.included.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="mb-1.5 font-semibold">담기지 않는 것</h3>
-              <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-                {COURSE_BACKUP_SCOPE.excluded.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          <ScopeDetails />
         </section>
 
-        <section className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-1 text-base font-semibold">데이터 복원</h2>
-          <p className="mb-4 text-sm leading-6 text-muted-foreground">
-            백업 파일을 올리면 형식을 먼저 확인합니다. 복원은 백업 시점의 편성을 되살리며,
-            다른 교과목이나 학습자 기록은 지우지 않습니다.
+        {/* 복원은 필요할 때만 쓰는 보조 동작 — 한 단계 낮은 위계로 둔다. */}
+        <section className="rounded-xl border border-border bg-muted/20 p-5">
+          <h2 className="text-base font-semibold">데이터 복원</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            내려받은 백업 파일로 이 수업 구성을 다시 되살립니다.
           </p>
 
-          <label className="mb-1.5 block text-sm font-medium" htmlFor="restore-file">
+          <label className="mb-1.5 mt-4 block text-sm font-medium" htmlFor="restore-file">
             백업 파일
           </label>
           <input
@@ -233,10 +263,39 @@ const Page = () => {
             type="file"
             accept="application/json,.json"
             onChange={onFileSelected}
-            className="mb-4 block w-full text-sm file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm"
+            className="block w-full text-sm file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm"
           />
 
-          <Button onClick={runRestore} disabled={!pendingFile || restoring} variant="secondary">
+          {preview && (
+            <div className="mt-4 rounded-lg border border-border bg-card px-4 py-3">
+              <p className="mb-2 text-sm font-semibold">이 파일의 내용</p>
+              <dl className="divide-y divide-border text-sm">
+                <PreviewRow label="교과목" value={preview.title} />
+                <PreviewRow
+                  label="구성"
+                  value={
+                    [levelLabel(preview.level), directionLabel(preview.languageDirection), domainLabel(preview.domain)]
+                      .filter(Boolean)
+                      .join(" · ") || "정보 없음"
+                  }
+                />
+                <PreviewRow label="주차 편성" value={`${preview.weekCount}주`} />
+                <PreviewRow label="미션 배정" value={`${preview.assignmentCount}건`} />
+                <PreviewRow label="학습 미션" value={`${preview.scenarioCount}건`} />
+                <PreviewRow label="백업 시각" value={formatStamp(preview.exportedAt)} />
+              </dl>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                다른 교과목과 학습자 수행기록은 변경하지 않습니다.
+              </p>
+            </div>
+          )}
+
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={runRestore}
+            disabled={!pendingFile || restoring}
+          >
             {restoring ? "복원하는 중…" : "복원하기"}
           </Button>
 
@@ -246,10 +305,13 @@ const Page = () => {
             </p>
           )}
 
-          <p className="mt-5 text-sm leading-6 text-muted-foreground">
-            복원하기를 누르면 <strong>복원 직전 상태</strong>가 자동으로 한 번 더 파일로 저장됩니다.
-            되돌리고 싶으면 그 파일을 다시 복원하면 됩니다.
-          </p>
+          <div className="mt-5 rounded-lg border border-border bg-background px-4 py-3">
+            <p className="text-sm font-semibold">복원 전 자동 백업</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              현재 수업 구성을 파일로 먼저 저장한 뒤 복원합니다.
+              필요하면 그 파일로 이전 상태로 되돌릴 수 있습니다.
+            </p>
+          </div>
         </section>
       </div>
     </AdminShell>
