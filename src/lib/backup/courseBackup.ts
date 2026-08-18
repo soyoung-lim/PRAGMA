@@ -128,34 +128,61 @@ export function serializeCourseBackup(file: CourseBackupFile): string {
 }
 
 // ── 파일명 ────────────────────────────────────────────────────
-// 파일명은 **이 한 곳에서만** 만든다. 같은 날 여러 번 백업해도 서로 덮어쓰지 않도록
-// 교과목 이름과 초 단위 시각을 함께 넣는다(2026-08-18 결함 수정: 날짜만 넣어
-// 같은 이름이 반복 생성되고 복원 직전 자동 백업까지 덮어써졌다).
+// 확정 규칙(2026-08-18):
+//   일반   PRAGMA_2026-2_중급통번역_20260818_203241.json
+//   복원전 PRAGMA_복원전_2026-2_중급통번역_20260818_203241.json
+// 파일명은 **이 한 곳에서만** 만든다 — 화면 표시·미리보기·실제 다운로드가 같은 값을 쓴다.
+// 초 단위 시각을 넣는 이유: 날짜만 쓰던 판이 같은 날 두 번째 백업을 덮어썼고,
+// 복원 직전 자동 백업까지 지워 되돌릴 근거가 사라졌다.
 
-const FILENAME_PREFIX = "pragma-course-backup";
+const FILENAME_PREFIX = "PRAGMA";
+const MAX_SUBJECT_LENGTH = 20;
 
-/** 파일 시스템에서 문제되는 문자를 걷어내고 길이를 제한한다. 한글은 그대로 둔다. */
-function slugifyCourseTitle(title: string): string {
-  const cleaned = title
+/** 파일 시스템 금지 문자와 군더더기 기호를 걷어낸다. 한글은 그대로 둔다. */
+function stripUnsafe(value: string): string {
+  return value
     .replace(/[\\/:*?"<>|]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 40);
-  return cleaned.length > 0 ? cleaned : "교과목";
+    .replace(/[(){}[\],]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-/** 로컬 시각 기준 `2026-08-18_2021 56` → `2026-08-18_202156`. 초까지 넣는다. */
+/**
+ * 제목에서 학기와 핵심 과목명을 뽑는다. 자연어 파서가 아니라 두 가지 규칙만 본다.
+ *  - 앞머리의 `2026-2` 또는 `2026-2학기` = 학기
+ *  - 괄호 안 부가 설명은 버린다
+ * 규칙에 맞지 않으면 학기를 비우고 제목 전체를 짧게 줄여 쓴다(무리한 파싱 금지).
+ */
+function splitCourseTitle(title: string): { term: string; subject: string } {
+  const withoutParens = title.replace(/\([^)]*\)/g, " ");
+  const cleaned = stripUnsafe(withoutParens);
+  const termMatch = cleaned.match(/^(\d{4})[-–](\d)\s*(?:학기)?/);
+  const term = termMatch ? `${termMatch[1]}-${termMatch[2]}` : "";
+  const rest = termMatch ? cleaned.slice(termMatch[0].length) : cleaned;
+  const subject = rest.replace(/\s+/g, "").slice(0, MAX_SUBJECT_LENGTH);
+  return { term, subject: subject.length > 0 ? subject : "교과목" };
+}
+
+/** `20260818_203241` — 사용자가 보는 로컬 시각, 초까지(밀리초는 쓰지 않는다). */
 function filenameStamp(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, "0");
-  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const day = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
   const time = `${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
   return `${day}_${time}`;
 }
 
+/**
+ * 파일명은 **여기서만** 만든다.
+ *   일반   PRAGMA_2026-2_중급통번역_20260818_203241.json
+ *   복원전 PRAGMA_복원전_2026-2_중급통번역_20260818_203241.json
+ */
 function buildBackupFilename(title: string, date: Date, kind: "backup" | "pre-restore"): string {
-  const marker = kind === "pre-restore" ? "복원직전_" : "";
-  return `${FILENAME_PREFIX}_${marker}${slugifyCourseTitle(title)}_${filenameStamp(date)}.json`;
+  const { term, subject } = splitCourseTitle(title);
+  const parts = [FILENAME_PREFIX];
+  if (kind === "pre-restore") parts.push("복원전");
+  if (term) parts.push(term);
+  parts.push(subject, filenameStamp(date));
+  return `${parts.join("_")}.json`;
 }
 
 /** 내려받는 백업 파일 이름. 시각은 manifest의 백업 시점을 그대로 쓴다. */
