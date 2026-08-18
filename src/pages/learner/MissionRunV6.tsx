@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -107,8 +107,9 @@ const STAGE_TITLES = ["감각 익히기", "직접 표현하기", "돌아보고 �
 // 단계 안의 잔걸음. MPJ 유형명(scale4·reason_conf…)은 더 이상 노출하지 않는다 —
 // 기술 용어가 진행바에 있으면 그 자체로 시험지처럼 읽힌다.
 const STEP_INDEX: Partial<Record<Phase, number>> = { produce: 0, feedback: 0, revise: 1, recheck: 2, done: 2 };
+// 2단계는 잔걸음이 하나뿐이라 「직접 표현하기」와 같은 말이 두 번 나온다 → 비운다.
 const stageSteps = (stage: Stage, interp: boolean) =>
-  stage === 1 ? [interp ? "통역하기" : "옮겨 쓰기"] : ["피드백 보기", "다듬기", "재확인·완료"];
+  stage === 1 ? [] : ["피드백 보기", "다듬기", "재확인·완료"];
 
 // ── band 라벨 헬퍼 ──────────────────────────────────────────────────────
 function bandLabel(featureCode: string, code: string): string {
@@ -221,20 +222,22 @@ const MissionRunV1 = () => {
 function ProductionGuide({ hints, onOpen }: { hints: VocabularyHint[]; onOpen: () => void }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="mb-2.5 flex flex-col items-end">
+    // 대화 상자 밖에 두는 도구다. 아래로 펼치면 대화창이 밀려 커지므로 버튼 오른쪽으로
+    // 펼친다 — 화면 높이가 그대로 유지된다.
+    <div className="mt-2 flex flex-wrap items-center gap-2">
       <button
         type="button"
         onClick={() => {
           if (!expanded) onOpen();
           setExpanded((value) => !value);
         }}
-        className="rounded-full border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-1.5 text-[12px] font-bold text-[#4A5560] hover:bg-[#FFF9DD]"
+        className="flex items-center gap-1 rounded-full border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-1.5 text-[12px] font-bold text-[#4A5560] hover:bg-[#FFF9DD]"
         aria-expanded={expanded}
       >
-        단어 힌트 {expanded ? "닫기 ▴" : "보기 ▾"}
+        <span aria-hidden>💡</span> 단어 힌트 {expanded ? "닫기 ▴" : "보기 ▾"}
       </button>
       {expanded && (
-        <div className="mt-1.5 flex w-fit max-w-full flex-wrap justify-end gap-x-4 gap-y-1 rounded-lg border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-2 text-[12.5px]">
+        <div className="flex w-fit max-w-full flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-1.5 text-[12.5px]">
           {hints.slice(0, 2).map((hint) => (
             <span key={`${hint.source}:${hint.target}`}>
               <span className="text-muted-foreground">{hint.source}</span>
@@ -429,6 +432,10 @@ export function MissionV6Runner({
   const [additionalRevisionUsed, setAdditionalRevisionUsed] = useState(false);
   const recheckRequestedRef = useRef(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "demo" | "error">("idle");
+  // 말풍선 폭 — 글자 수로 계산하면 공백·숫자·문장부호 폭이 달라 빗나간다. 원문이 실제로
+  // 그려진 폭을 재서 여유분을 곱한다(중국어가 한국어보다 길어질 수 있다).
+  const srcTextRef = useRef<HTMLSpanElement | null>(null);
+  const [srcTextWidth, setSrcTextWidth] = useState<number | null>(null);
   // feedback-lite(계약 §4) — 제출 후 3층 진단. 실패하면 기존 정직 표기로 되돌아간다.
   const [fb, setFb] = useState<RuntimeFeedback | null>(null);
   const [fbState, setFbState] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -682,6 +689,13 @@ export function MissionV6Runner({
     }
   };
 
+  useLayoutEffect(() => {
+    const el = srcTextRef.current;
+    if (!el) return;
+    setSrcTextWidth(el.getBoundingClientRect().width);
+    // 원문이 바뀔 때만 다시 잰다 — 폭을 넓힌 뒤 다시 재면 계속 자란다.
+  }, [phase, mission.production_task?.source_text]);
+
   const goto = (p: Phase) => {
     setPhase(p);
     window.scrollTo(0, 0);
@@ -837,31 +851,61 @@ export function MissionV6Runner({
               <>
                 <ChatScene situation={pt.situation_ko} relation={pt.relation_ko} eyebrow="직접 옮길 요청">
                   {pt.preceding_turn && <ChatBubble side="them">{pt.preceding_turn}</ChatBubble>}
-                  <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
-                  {dir === "ko_zh" && vocabularyHints.length > 0 && (
-                    <ProductionGuide
-                      hints={vocabularyHints}
-                      onOpen={() =>
-                        setVocabularyHintOpenedAt((openedAt) => openedAt ?? new Date().toISOString())
-                      }
-                    />
-                  )}
                   <div className="mb-3 flex items-end justify-end gap-2">
-                    <Textarea
-                      className="w-[78%] resize-y rounded-[19px] rounded-br-[6px] border border-[#7ED158] bg-gradient-to-b from-[#9EED7C] to-[#8CE768] px-3 py-2 text-[14.5px] leading-[1.46] text-[#0c3300] placeholder:text-[#4a7a4a]"
-                      rows={3}
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      placeholder={`여기에 ${tgtName}로 답장 입력…`}
-                    />
+                    {/* 한 말풍선 안에서 위=옮길 원문, 아래=내가 쓰는 번역. 둘을 점선으로만
+                        가르면 시선을 크게 옮기지 않고 위아래를 대조하며 옮길 수 있다.
+                        폭은 원문 길이만큼만 늘고(w-fit), 입력 칸은 내용만큼만 자라서
+                        처음에는 원문과 같은 한 줄 — 위아래가 대칭이 된다. */}
+                    <div
+                      className="w-fit min-w-[240px] max-w-[86%] rounded-[19px] rounded-br-[6px] bg-[#0A84FF] px-3.5 py-3"
+                      style={
+                        srcTextWidth
+                          ? { minWidth: `${Math.round(srcTextWidth * 1.35 + 28)}px` }
+                          : undefined
+                      }
+                    >
+                      <p className="text-[14.5px] font-semibold leading-[1.5] text-white/90">
+                        <span ref={srcTextRef}>{pt.source_text}</span>
+                      </p>
+                      <div className="my-2 border-t border-dashed border-white/45" />
+                      <Textarea
+                        autoFocus
+                        rows={1}
+                        className={[
+                          "min-h-0 w-full resize-none overflow-hidden border-0 bg-transparent p-0 shadow-none",
+                          "text-[14.5px] leading-[1.5] text-white caret-white placeholder:text-white/70",
+                          "focus-visible:ring-0 focus-visible:ring-offset-0",
+                        ].join(" ")}
+                        value={draft}
+                        onChange={(e) => {
+                          setDraft(e.target.value);
+                          // 내용만큼만 자란다 — 빈 칸이 원문보다 커 보이는 비대칭을 없앤다.
+                          e.target.style.height = "auto";
+                          e.target.style.height = `${e.target.scrollHeight}px`;
+                        }}
+                        placeholder={`여기에 ${tgtName}로 옮겨 쓰세요…`}
+                      />
+                    </div>
                     <ChatAvatar />
                   </div>
                 </ChatScene>
-                <p className="px-0.5 text-[12px] text-muted-foreground">
-                  먼저 상대에게 답장하듯 직접 옮깁니다. 참고 표현은 제출한 뒤에 확인합니다.
-                </p>
+                {/* 단어 힌트는 대화의 일부가 아니라 학생이 쓰는 도구다. 대화 상자 안에
+                    두면 "누가 한 말"처럼 읽히고, 펼칠 때 대화창까지 커진다. */}
+                {dir === "ko_zh" && vocabularyHints.length > 0 && (
+                  <ProductionGuide
+                    hints={vocabularyHints}
+                    onOpen={() =>
+                      setVocabularyHintOpenedAt((openedAt) => openedAt ?? new Date().toISOString())
+                    }
+                  />
+                )}
                 <Button
-                  className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]"
+                  className={[
+                    "w-full",
+                    draft.trim()
+                      ? "bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]"
+                      : "bg-[#E8E6DE] text-[#A9B0BA] hover:bg-[#E8E6DE]",
+                  ].join(" ")}
                   disabled={!draft.trim()}
                   onClick={() => {
                     emitEvent("first_response_submitted", { response: draft, input_mode: "typed" });
@@ -2039,7 +2083,7 @@ function MpjStageCurrent({
                       ].join(" ")}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span>{correction.text}</span>
+                        <span className="zh-sentence">{correction.text}</span>
                         {answered && (
                           <span className="flex items-center gap-1.5">
                             {selected && <MyPickChip />}
@@ -2102,6 +2146,7 @@ function MpjStageCurrent({
                   onClick={() => setRejectedCorrectionId(correction.id)}
                   verdict={reviewStep !== "reason" ? null : isAnswer ? "correct" : mine ? "wrong" : null}
                   mine={reviewStep === "reason" && mine}
+                  zh
                 />
               );
             })}
@@ -2174,7 +2219,7 @@ function MpjStageCurrent({
                       ].join(" ")}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[14.5px]">{candidate.text}</span>
+                        <span className="zh-sentence">{candidate.text}</span>
                         {answered && <VerdictMark verdict={rowRight ? "correct" : "wrong"} />}
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -2745,6 +2790,7 @@ const Choice = ({
   onClick,
   verdict = null,
   mine = false,
+  zh = false,
 }: {
   label: string;
   selected: boolean;
@@ -2752,6 +2798,8 @@ const Choice = ({
   onClick: () => void;
   verdict?: ChoiceVerdict;
   mine?: boolean;
+  /** 선택지가 중국어 문장인가 — 명조 가독성 보정을 건다. */
+  zh?: boolean;
 }) => (
   <button
     type="button"
@@ -2759,6 +2807,7 @@ const Choice = ({
     onClick={onClick}
     className={[
       "flex items-center justify-between gap-2 rounded-[10px] border px-3.5 py-2.5 text-left text-[14px] transition-colors",
+      zh ? "zh-sentence" : "",
       verdict
         ? VERDICT_MARK[verdict].box
         : selected

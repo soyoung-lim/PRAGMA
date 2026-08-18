@@ -115,7 +115,9 @@
   }
 
   html {
-    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    /* 한글·라틴 = Pretendard. 한자는 Pretendard에 글리프가 없어 다음 순서인
+       Noto Serif SC로 넘어간다 — 중국어 예문만 자동으로 명조(宋体 아님)가 된다. */
+    font-family: "Pretendard Variable", Pretendard, "Noto Serif SC", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   }
 
   body {
@@ -123,6 +125,15 @@
     font-size: 16px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* 중국어 예문 — Noto Serif SC 400은 화면에서 획이 가늘어 흐려 보인다.
+     학생이 읽고 고르는 문장에만 굵기·크기를 올린다(주변 UI는 그대로). */
+  .zh-sentence {
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #15202B;
   }
 
   h1, h2, h3, h4 {
