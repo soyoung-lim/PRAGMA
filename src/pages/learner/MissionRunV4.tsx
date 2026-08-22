@@ -1,0 +1,1505 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Check,
+  ChevronRight,
+  Eye,
+  LoaderCircle,
+  RotateCcw,
+  Sparkles,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
+import {
+  REQUEST_MISSION_V4_PREVIEW,
+  type BestWorstQuest,
+  type ChoiceOption,
+  type DctFeedbackQuest,
+  type DctQuest,
+  type FixChoiceQuest,
+  type MissionContext,
+  type MissionQuest,
+  type ReasonQuest,
+  type ScaleQuest,
+} from "@/lib/mission/missionV4Preview";
+
+type QuestResponse = Record<string, unknown>;
+type FeedbackLevel = "very_good" | "recommend" | "required";
+type FeedbackCriterion = {
+  key: "meaning" | "language" | "pragmatics";
+  label: string;
+  question: string;
+  level: FeedbackLevel;
+  body: string;
+};
+type DctEvaluation = {
+  criteria: FeedbackCriterion[];
+  headline: string;
+  body: string;
+  highlights: string[];
+  feedback: string;
+  action?: string;
+  example: string;
+  takeaway: string;
+};
+type DctResponse = {
+  first: string;
+  revised: string;
+  reflected: boolean;
+  evaluation?: DctEvaluation;
+};
+type DevPreviewPreset = "all_good" | "direct" | "over_mitigated" | "mixed";
+
+const panel = "rounded-2xl border border-[#DDD8CB] bg-white";
+const taskPanel = "rounded-2xl border-2 border-[#C9D0DA] bg-white shadow-[0_8px_24px_rgba(21,32,43,0.05)]";
+const optionBase = "w-full rounded-xl border px-4 py-3 text-left text-[15px] transition-colors";
+
+function shuffle<T>(values: readonly T[]): T[] {
+  const copy = [...values];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const target = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[target]] = [copy[target], copy[index]];
+  }
+  return copy;
+}
+
+function normalize(value: string) {
+  return value.normalize("NFKC").replace(/[\p{P}\p{S}\p{Z}\s]+/gu, "").toLowerCase();
+}
+
+type DraftValidation = {
+  valid: boolean;
+  hint?: string;
+};
+
+function validateDraft(value: string): DraftValidation {
+  const compact = normalize(value);
+  if (compact.length === 0 || compact.startsWith(normalize("중국어 번역을 작성"))) {
+    return { valid: false, hint: "중국어 번역안을 작성해 주세요." };
+  }
+  const hanCount = value.match(/\p{Script=Han}/gu)?.length ?? 0;
+  if (hanCount === 0) {
+    return { valid: false, hint: "중국어 문장으로 작성해 주세요." };
+  }
+  if (hanCount < 4) {
+    return { valid: false, hint: "조금 더 완전한 중국어 문장으로 작성해 주세요." };
+  }
+  return { valid: true };
+}
+
+function validateReason(value: string): DraftValidation {
+  if (value.trim().length === 0) {
+    return { valid: false, hint: "판단의 근거를 짧게 적어 주세요." };
+  }
+  const syllables = value.match(/[가-힣]/g) ?? [];
+  const uniqueSyllables = new Set(syllables);
+  if (syllables.length < 4 || uniqueSyllables.size < 2) {
+    return { valid: false, hint: "완성된 한국어 문장으로 이유를 적어 주세요." };
+  }
+  return { valid: true };
+}
+
+function isMeaningfulDraft(value: string) {
+  return validateDraft(value).valid;
+}
+
+const NEXT_ACTION_LABEL: Record<string, string> = {
+  A1: "다음: 상황에 맞는지 판단하기",
+  A2: "다음: 판단하고 고쳐 보기",
+  A3: "다음: 부적절한 이유 찾기",
+  A4: "다음: BEST·WORST 고르기",
+};
+
+function nextActionLabel(quest: MissionQuest) {
+  return NEXT_ACTION_LABEL[quest.id] ?? "다음 문항으로";
+}
+
+function ActionBar({ hint, children }: { hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="sticky bottom-3 z-20 rounded-2xl border border-[#D8D4C8] bg-white/95 p-2.5 shadow-[0_12px_30px_rgba(21,32,43,0.14)] backdrop-blur">
+      {hint && <p className="mb-2 px-2 text-xs font-bold text-[#647084]" aria-live="polite">{hint}</p>}
+      {children}
+    </div>
+  );
+}
+
+function escaped(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function HighlightedText({ text, highlights = [], target = false }: {
+  text: string;
+  highlights?: string[];
+  target?: boolean;
+}) {
+  if (highlights.length === 0) return <>{text}</>;
+  const ordered = [...highlights].sort((a, b) => b.length - a.length);
+  const expression = new RegExp(`(${ordered.map(escaped).join("|")})`, "g");
+  const highlightSet = new Set(highlights);
+  return (
+    <>
+      {text.split(expression).map((part, index) => highlightSet.has(part) ? (
+        <mark
+          key={`${part}-${index}`}
+          className={target
+            ? part.trim().length >= text.trim().length * 0.7
+              ? "bg-transparent font-normal text-inherit underline decoration-[#C9A90E] decoration-2 underline-offset-4"
+              : "rounded-sm bg-[#FFF5C8] px-0.5 font-normal text-inherit underline decoration-[#C9A90E] decoration-2 underline-offset-4"
+            : "bg-transparent font-normal text-inherit underline decoration-[#E8C62F] decoration-2 underline-offset-4"
+          }
+        >
+          {part}
+        </mark>
+      ) : <span key={`${part}-${index}`}>{part}</span>)}
+    </>
+  );
+}
+
+function RichLine({ text, highlights = [] }: { text: string; highlights?: string[] }) {
+  return (
+    <>
+      {text.split(/(`[^`]+`)/g).map((part, index) => part.startsWith("`") && part.endsWith("`") ? (
+        <span key={index} className="font-zh rounded bg-white/75 px-1.5 py-0.5 font-semibold text-[#183E2E]">
+          <HighlightedText text={part.slice(1, -1)} highlights={highlights} target />
+        </span>
+      ) : <span key={index}><HighlightedText text={part} highlights={highlights} target /></span>)}
+    </>
+  );
+}
+
+function SentenceLines({ text, highlights = [] }: { text: string; highlights?: string[] }) {
+  const lines = text.split(/\n|(?<=[.!?。！？])\s+/).filter(Boolean);
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, index) => <p key={`${line}-${index}`}><RichLine text={line} highlights={highlights} /></p>)}
+    </div>
+  );
+}
+
+function ContextCard({ context, changedDimensions = [], headerRight }: {
+  context: MissionContext;
+  changedDimensions?: string[];
+  headerRight?: React.ReactNode;
+}) {
+  const changed = new Set(changedDimensions.map((item) => item.trim().charAt(0).toUpperCase()));
+  return (
+    <section className="rounded-xl border border-[#E2DED4] bg-[#F4F2EC] px-4 py-3 sm:px-5">
+      <div className="flex min-h-6 items-center justify-between gap-3">
+        <p className="text-xs font-bold text-[#5D6980]">상황</p>
+        {headerRight}
+      </div>
+      <h2 className="mt-1.5 text-[17px] font-bold leading-7 text-[#101B2B]">
+        {context.situation}
+      </h2>
+      {context.precedingTurn && (
+        <div className="mt-3 rounded-xl border-l-4 border-[#F0D34F] bg-[#F7F5EF] px-4 py-2.5">
+          <p className="text-[11px] font-bold text-[#697386]">상대의 말</p>
+          <p className="mt-1 text-[15px] leading-6">{context.precedingTurn}</p>
+        </div>
+      )}
+      <div className="mt-2.5 flex flex-wrap gap-1.5 text-xs text-[#566176]">
+        {([
+          ["P", context.pdr.p],
+          ["D", context.pdr.d],
+          ["R", context.pdr.r],
+        ] as const).map(([key, value]) => (
+          <span
+            key={key}
+            className={`rounded-full border px-2.5 py-1 font-bold ${changed.has(key) ? "border-[#E2C337] bg-[#FFF4B8] text-[#5F5014]" : "border-[#D9DEE7] bg-white/70 text-[#46546A]"}`}
+          >
+            {key} · {value}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LanguagePair({ source, target, targetHighlights = [] }: {
+  source: string;
+  target?: string;
+  targetHighlights?: string[];
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#C9D0DA] bg-white shadow-sm">
+      <div className="flex items-start gap-4 bg-[#FBF8EE] px-4 py-3 sm:px-5">
+        <span className="mt-0.5 inline-flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg border border-[#E4CB50] bg-[#FFF7D1] px-3 text-sm font-black text-[#142033]">KO</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold text-[#697386]">내가 전하려는 말</p>
+          <p className="mt-0.5 text-[17px] font-normal leading-8 text-[#101B2B]">{source}</p>
+        </div>
+      </div>
+      {target && (
+        <div className="flex items-start gap-4 border-t border-dashed border-[#D8D4C8] px-4 py-3 sm:px-5">
+          <span className="mt-0.5 inline-flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg bg-[#15202B] px-3 text-sm font-black text-white">ZH</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold text-[#697386]">중국어 번역안</p>
+            <p className="font-zh mt-0.5 text-[16.5px] font-normal leading-8 text-[#101B2B]">
+              <HighlightedText text={target} highlights={targetHighlights} target />
+            </p>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function optionState(answered: boolean, picked: boolean, correct: boolean) {
+  if (!answered) {
+    return picked
+      ? "border-[#15202B] bg-[#F8F7F2] font-bold text-[#15202B] ring-1 ring-[#15202B]"
+      : "border-[#D8D4C8] bg-white hover:bg-[#FAF8F2]";
+  }
+  if (correct) return "border-[#4D8568] bg-white text-[#245E44]";
+  if (picked) return "border-[#C86E68] bg-[#FFF3F1] font-bold text-[#8B3531]";
+  return "border-[#E0DDD5] bg-[#FAF9F6] text-[#8A92A0]";
+}
+
+function OptionButton({ option, value, disabled, answered = false, acceptedIds = [], compact = false, onSelect }: {
+  option: ChoiceOption;
+  value: string | null;
+  disabled?: boolean;
+  answered?: boolean;
+  acceptedIds?: string[];
+  compact?: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const picked = value === option.id;
+  const accepted = acceptedIds.includes(option.id);
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onSelect(option.id)}
+      className={`${optionBase} ${compact ? "!py-2" : ""} ${optionState(answered, picked, accepted)} disabled:cursor-default`}
+    >
+      <span className="flex items-center justify-between gap-3">
+        <span>{option.label}</span>
+        {answered && (
+          <span className="flex shrink-0 items-center gap-1.5">
+            {picked && <span className={`inline-flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-[10px] font-black ${accepted ? "border-[#15202B] text-[#15202B]" : "border-[#C86E68] text-[#8B3531]"}`}>{accepted ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}내 선택</span>}
+            {accepted && <span className="inline-flex items-center gap-1 rounded-full border border-[#80AB94] bg-white px-2 py-0.5 text-[10px] font-black text-[#245E44]"><Check className="h-3 w-3" />권장 답안</span>}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+function FeedbackBox({ verdict, feedback, action, highlights = [] }: {
+  verdict?: string;
+  feedback: string;
+  action?: string;
+  highlights?: string[];
+}) {
+  return (
+    <div className="rounded-xl border border-[#DDD8CB] border-l-4 border-l-[#E0C43C] bg-[#FAF9F5] px-4 py-3.5 text-[14px] leading-7 text-[#3F4A59]">
+      {verdict && <p className="mb-2 font-black text-[#4A5568]">{verdict}</p>}
+      <SentenceLines text={feedback} highlights={highlights} />
+      {action && (
+        <div className="mt-3 rounded-lg border border-[#E5E1D8] bg-white px-3 py-2.5 font-semibold text-[#3F4A59]">
+          <RichLine text={action} highlights={highlights} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScaleView({ quest, onDone }: { quest: ScaleQuest; onDone: (response: QuestResponse) => void }) {
+  const [pick, setPick] = useState<string | null>(null);
+  const [answered, setAnswered] = useState(false);
+  const compact = quest.id === "A1";
+  const acceptedIds = quest.acceptedAnswers ?? [quest.referenceAnswer];
+  const acceptedLabel = quest.options
+    .filter((option) => acceptedIds.includes(option.id))
+    .map((option) => option.label)
+    .join(" ~ ");
+  return (
+    <QuestScaffold quest={quest} target={quest.target} targetHighlights={answered ? quest.targetHighlights : undefined}>
+      <section className={`${taskPanel} px-4 ${compact ? "py-3 sm:px-5 sm:py-3" : "py-3.5 sm:px-5 sm:py-4"}`}>
+        <p className="mb-1 text-[11px] font-black text-[#6B7280]">지금 할 일</p>
+        <h3 className="text-base font-bold">{quest.prompt}</h3>
+        <div className={`${compact ? "mt-3 gap-1.5" : "mt-4 gap-2"} grid`}>
+          {quest.options.map((option) => (
+            <OptionButton key={option.id} option={option} value={pick} disabled={answered} answered={answered} acceptedIds={acceptedIds} compact={compact} onSelect={setPick} />
+          ))}
+        </div>
+        {answered && <div className="mt-4"><FeedbackBox verdict={`권장 답안 · 이 상황에서는 ${acceptedLabel}`} feedback={quest.feedback} highlights={quest.targetHighlights} /></div>}
+      </section>
+      <ActionBar hint={!answered && !pick ? "가장 알맞은 답을 하나 선택해 주세요." : undefined}>
+        {!answered ? (
+          <Button className={`${compact ? "h-11" : "h-12"} w-full`} disabled={!pick} onClick={() => setAnswered(true)}>{pick ? "답안 확인하기" : "답을 선택해 주세요"}</Button>
+        ) : (
+          <Button className="h-12 w-full" onClick={() => onDone({ pick })}>{nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+        )}
+      </ActionBar>
+    </QuestScaffold>
+  );
+}
+
+function FixChoiceView({ quest, onDone }: { quest: FixChoiceQuest; onDone: (response: QuestResponse) => void }) {
+  const [judgment, setJudgment] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
+  const [corrections, setCorrections] = useState<Set<string>>(new Set());
+  const [answered, setAnswered] = useState(false);
+  const order = useMemo(() => shuffle(quest.corrections), [quest.corrections]);
+  const toggleCorrection = (id: string) => {
+    setCorrections((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < 2) next.add(id);
+      return next;
+    });
+  };
+  const referenceLabel = quest.judgmentOptions.find((option) => option.id === quest.referenceJudgment)?.label;
+  const judgmentLabel = quest.judgmentOptions.find((option) => option.id === judgment)?.label;
+  const judgmentMatched = judgment === quest.referenceJudgment;
+  return (
+    <QuestScaffold quest={quest} target={quest.target} targetHighlights={answered ? quest.targetHighlights : undefined}>
+      <section className={`${taskPanel} px-4 py-3.5 sm:px-5 sm:py-4`}>
+        <p className="mb-1 text-[11px] font-black text-[#6B7280]">지금 할 일</p>
+        <h3 className="text-base font-bold">{quest.prompt}</h3>
+        <div className="mt-4 grid gap-2">
+          {quest.judgmentOptions.map((option) => (
+            <OptionButton key={option.id} option={option} value={judgment} disabled={locked} answered={locked} acceptedIds={[quest.referenceJudgment]} onSelect={setJudgment} />
+          ))}
+        </div>
+        {locked && (
+          <div className="mt-5 border-t border-[#E4E0D5] pt-4">
+            <div className={`rounded-xl border px-4 py-3 text-sm leading-6 ${judgmentMatched ? "border-[#BFD9CC] bg-[#F2F8F4] text-[#245E44]" : "border-[#E2AAA5] bg-[#FFF3F1] text-[#713E3A]"}`}>
+              <p className="flex items-center gap-2 font-black">
+                <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${judgmentMatched ? "bg-[#DCEFE4] text-[#245E44]" : "bg-[#F4D8D5] text-[#8B3531]"}`}>
+                  {judgmentMatched ? <Check className="h-4 w-4" strokeWidth={3} /> : <X className="h-4 w-4" strokeWidth={3} />}
+                </span>
+                {judgmentMatched ? "권장 답안과 같아요" : "권장 답안과 달라요"}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs font-black">
+                <span className="mt-2 rounded-full border border-current bg-white px-2 py-0.5">내 답안 · {judgmentLabel}</span>
+                <span className="mt-2 rounded-full border border-[#80AB94] bg-white px-2 py-0.5 text-[#245E44]">권장 답안 · {referenceLabel}</span>
+              </div>
+              <p className="mt-2">
+                {judgmentMatched
+                  ? "이 장면을 읽은 방향이 같습니다. 이제 같은 뜻을 더 자연스럽게 옮긴 안을 찾아보세요."
+                  : "관계와 채널 단서를 다시 보고 수정안을 골라보세요."}
+              </p>
+            </div>
+            <div className="mt-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h4 className="font-bold">이제 어떻게 고치면 좋을까요?</h4>
+                <span className={`text-xs font-black ${corrections.size === 2 ? "text-[#245E44]" : "text-[#687387]"}`} aria-live="polite">{corrections.size} / 2 선택됨{corrections.size === 2 ? " · 확인할 수 있어요" : ""}</span>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {order.map((correction) => {
+                  const picked = corrections.has(correction.id);
+                  const state = answered
+                    ? correction.valid
+                      ? "border-[#4D8568] bg-white text-[#245E44]"
+                      : picked
+                        ? "border-[#15202B] bg-[#F3F4F5] text-[#15202B]"
+                        : "border-[#E0DDD5] bg-[#FAF9F6] text-[#8A92A0]"
+                    : picked
+                      ? "border-[#15202B] bg-[#F8F7F2] text-[#15202B] ring-1 ring-[#15202B]"
+                      : "border-[#D8D4C8] bg-white";
+                  return (
+                    <button key={correction.id} type="button" disabled={answered || (!picked && corrections.size >= 2)} onClick={() => toggleCorrection(correction.id)} className={`${optionBase} ${state} disabled:cursor-default`}>
+                      <span className="flex items-start justify-between gap-3">
+                        <span className="font-zh text-[16.5px] font-normal leading-7">{correction.text}</span>
+                        {answered && (
+                          <span className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                            {picked && <span className="rounded-full border border-[#15202B] bg-white px-2 py-0.5 text-[10px] font-black text-[#15202B]">내 선택</span>}
+                            {correction.valid && <span className="rounded-full border border-[#80AB94] bg-white px-2 py-0.5 text-[10px] font-black text-[#245E44]">권장 수정안</span>}
+                          </span>
+                        )}
+                      </span>
+                      {answered && <span className="mt-1 block text-xs font-normal leading-5">{correction.note}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+        {answered && <div className="mt-4"><FeedbackBox verdict={`권장 답안 · 이 상황에서는 ${referenceLabel}`} feedback={quest.feedback} highlights={quest.targetHighlights} /></div>}
+      </section>
+      <ActionBar hint={!locked && !judgment ? "이 상황에서의 적절성을 먼저 판단해 주세요." : locked && !answered ? `${corrections.size} / 2 선택됨${corrections.size === 2 ? " · 확인할 수 있어요" : ""}` : undefined}>
+        {!locked ? (
+          <Button className="h-12 w-full" disabled={!judgment} onClick={() => setLocked(true)}>{judgment ? "판단 확인하기" : "답을 선택해 주세요"}</Button>
+        ) : !answered ? (
+          <Button className="h-12 w-full" disabled={corrections.size !== 2} onClick={() => setAnswered(true)}>교정안 확인하기</Button>
+        ) : (
+          <Button className="h-12 w-full" onClick={() => onDone({ judgment, correctionIds: [...corrections] })}>{nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+        )}
+      </ActionBar>
+    </QuestScaffold>
+  );
+}
+
+function ReasonView({ quest, onDone }: { quest: ReasonQuest; onDone: (response: QuestResponse) => void }) {
+  const [judgment, setJudgment] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
+  const [reason, setReason] = useState("");
+  const [answered, setAnswered] = useState(false);
+  const referenceLabel = quest.judgmentOptions.find((option) => option.id === quest.referenceJudgment)?.label;
+  const reasonValidation = validateReason(reason);
+  return (
+    <QuestScaffold quest={quest} target={quest.target} targetHighlights={answered ? quest.targetHighlights : undefined}>
+      <section className={`${taskPanel} px-4 py-3.5 sm:px-5 sm:py-4`}>
+        <p className="mb-1 text-[11px] font-black text-[#6B7280]">지금 할 일</p>
+        <h3 className="text-base font-bold">{quest.prompt}</h3>
+        <div className="mt-4 grid gap-2">
+          {quest.judgmentOptions.map((option) => (
+            <OptionButton key={option.id} option={option} value={judgment} disabled={locked} answered={answered} acceptedIds={[quest.referenceJudgment]} onSelect={setJudgment} />
+          ))}
+        </div>
+        {locked && (
+          <div className="mt-6 border-t border-[#E4E0D5] pt-5">
+            <h4 className="font-bold">왜 그렇게 판단했나요?</h4>
+            <input
+              type="text"
+              value={reason}
+              maxLength={50}
+              disabled={answered}
+              onChange={(event) => setReason(event.target.value)}
+              aria-invalid={reason.length > 0 && !reasonValidation.valid}
+              aria-describedby={`${quest.id}-reason-help`}
+              className="mt-3 h-11 w-full rounded-xl border border-[#D8D4C8] bg-white px-4 text-[15px] outline-none transition focus:border-[#15202B] focus:ring-1 focus:ring-[#15202B] disabled:bg-[#F3F4F5]"
+              placeholder="이 표현은 … 때문에 …라고 판단했습니다."
+            />
+            {!answered && <p id={`${quest.id}-reason-help`} className="mt-2 text-xs leading-5 text-[#687387]">문장 시작 도움 · “이 표현은 … 때문에 …라고 판단했습니다.” 아직 권장 답안은 보여 주지 않습니다.</p>}
+          </div>
+        )}
+        {answered && <div className="mt-4"><FeedbackBox verdict={`권장 답안 · 이 상황에서는 ${referenceLabel}`} feedback={quest.feedback} highlights={quest.targetHighlights} /></div>}
+      </section>
+      <ActionBar hint={!locked && !judgment ? "가장 가까운 판단을 하나 선택해 주세요." : locked && !answered ? reasonValidation.hint : undefined}>
+        {!locked ? (
+          <Button className="h-12 w-full" disabled={!judgment} onClick={() => setLocked(true)}>{judgment ? "판단 확인하기" : "답을 선택해 주세요"}</Button>
+        ) : !answered ? (
+          <Button className="h-12 w-full" disabled={!reasonValidation.valid} onClick={() => setAnswered(true)}>이유 확인하기</Button>
+        ) : (
+          <Button className="h-12 w-full" onClick={() => onDone({ judgment, reasonNote: reason.trim() })}>{nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+        )}
+      </ActionBar>
+    </QuestScaffold>
+  );
+}
+
+function BestWorstView({ quest, onDone }: { quest: BestWorstQuest; onDone: (response: QuestResponse) => void }) {
+  const [best, setBest] = useState<string | null>(null);
+  const [worst, setWorst] = useState<string | null>(null);
+  const [answered, setAnswered] = useState(false);
+  const order = useMemo(() => shuffle(quest.candidates), [quest.candidates]);
+  return (
+    <QuestScaffold quest={quest}>
+      <section className={`${taskPanel} px-4 py-3.5 sm:px-5 sm:py-4`}>
+        <p className="mb-1 text-[11px] font-black text-[#6B7280]">지금 할 일</p>
+        <h3 className="text-base font-bold">{quest.prompt}</h3>
+        {!answered && (
+          <p className="mt-2 text-xs font-black text-[#687387]" aria-live="polite">
+            {best && worst ? "BEST·WORST 선택 완료 · 확인할 수 있어요" : best ? "BEST 선택 완료 · WORST를 골라주세요" : worst ? "WORST 선택 완료 · BEST를 골라주세요" : "BEST와 WORST를 하나씩 골라주세요"}
+          </p>
+        )}
+        <div className="mt-4 flex items-center gap-3">
+          <span className="inline-flex h-8 min-w-11 items-center justify-center rounded-lg bg-[#15202B] px-2.5 text-xs font-black text-white">ZH</span>
+          <span className="text-sm font-bold text-[#5D6980]">번역 후보</span>
+        </div>
+        <div className="mt-3 grid gap-3">
+          {order.map((candidate) => {
+            const bestPicked = best === candidate.id;
+            const worstPicked = worst === candidate.id;
+            const role = candidate.id === quest.bestId ? "BEST" : candidate.id === quest.worstId ? "WORST" : "가능한 표현";
+            const answeredStyle = role === "BEST"
+              ? "border-[#4D8568] bg-[#EEF7F2]"
+              : role === "WORST"
+                ? "border-[#B96B67] bg-[#FFF1EF]"
+                : "border-[#D8D4C8] bg-[#FAF9F6]";
+            return (
+              <div key={candidate.id} className={`rounded-xl border p-4 ${answered ? answeredStyle : "border-[#D8D4C8] bg-white"}`}>
+                {answered ? (
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_max-content] sm:items-start sm:gap-4">
+                    <div className="min-w-0">
+                      <p className="font-zh text-[18px] leading-8">{candidate.text}</p>
+                      <p className="mt-2 text-sm leading-6 text-[#536075]">{candidate.note}</p>
+                    </div>
+                    <div className="flex flex-nowrap gap-1.5 whitespace-nowrap sm:justify-end">
+                      <span className={`rounded px-2 py-1 text-[11px] font-black ${role === "BEST" ? "bg-[#DCEFE4] text-[#245E44]" : role === "WORST" ? "bg-[#F4D8D5] text-[#8B3531]" : "bg-[#EEECE6]"}`}>{role}</span>
+                      {bestPicked && <span className="rounded bg-[#15202B] px-2 py-1 text-[11px] font-black text-white">내 BEST</span>}
+                      {worstPicked && <span className="rounded bg-[#15202B] px-2 py-1 text-[11px] font-black text-white">내 WORST</span>}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                    <p className="min-w-0 font-zh text-[18px] leading-8">{candidate.text}</p>
+                    <div className="flex shrink-0 gap-2">
+                    <button type="button" disabled={worstPicked} onClick={() => setBest(candidate.id)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${bestPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8]"}`}>BEST</button>
+                    <button type="button" disabled={bestPicked} onClick={() => setWorst(candidate.id)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${worstPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8]"}`}>WORST</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      <ActionBar hint={!answered ? (best && worst ? "BEST·WORST 선택 완료 · 확인할 수 있어요" : best ? "BEST 선택 완료 · WORST를 골라주세요" : worst ? "WORST 선택 완료 · BEST를 골라주세요" : "BEST와 WORST를 하나씩 골라주세요") : undefined}>
+        {!answered ? (
+          <Button className="h-12 w-full" disabled={!best || !worst || best === worst} onClick={() => setAnswered(true)}>BEST·WORST 확인하기</Button>
+        ) : (
+          <Button className="h-12 w-full" onClick={() => onDone({ best, worst })}>다음: 번역 실습 <ChevronRight className="ml-1 h-4 w-4" /></Button>
+        )}
+      </ActionBar>
+    </QuestScaffold>
+  );
+}
+
+function hasMitigation(text: string) {
+  return /能否|能不能|可以|方便|麻烦|请问|是否|好吗|吗/.test(text);
+}
+
+function isOverMitigated(text: string) {
+  const matches = text.match(/方便|麻烦|抱歉|不好意思|打扰|添麻烦|不知/g) ?? [];
+  return matches.length >= 3 || text.length > 72;
+}
+
+function VocabularyHints({ quest }: { quest: DctQuest }) {
+  const supportLevel = REQUEST_MISSION_V4_PREVIEW.supportLevel;
+  if (supportLevel === "advanced" || quest.vocabularyHints.length === 0) return null;
+  const chips = (
+    <div className="flex flex-wrap gap-2">
+      {quest.vocabularyHints.map((hint) => (
+        <span key={hint.source} className="rounded-full border border-[#D8D4C8] bg-[#FAF8F2] px-3 py-1.5 text-xs">
+          <b>{hint.source}</b> · <span className="font-zh">{hint.target}</span>
+        </span>
+      ))}
+    </div>
+  );
+  if (supportLevel === "beginner") return <div className="mt-3">{chips}</div>;
+  return (
+    <details className="mt-3 rounded-lg border border-dashed border-[#D8D4C8] bg-[#FCFBF7] px-3 py-2.5">
+      <summary className="cursor-pointer text-xs font-bold text-[#5D6980]">단어 힌트 보기</summary>
+      <div className="mt-3">{chips}</div>
+    </details>
+  );
+}
+
+function sourceAlignedRows(source: string) {
+  const estimatedLines = source
+    .split("\n")
+    .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / 34)), 0);
+  return Math.min(7, Math.max(3, Math.ceil(estimatedLines * 1.2)));
+}
+
+function DctDraftCard({ quest, value, onChange }: { quest: DctQuest; value: string; onChange: (value: string) => void }) {
+  return (
+    <section className={`${panel} overflow-hidden`}>
+      <div className="flex items-start gap-4 bg-[#FBF8EE] px-4 py-3 sm:px-5">
+        <span className="mt-0.5 inline-flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg border border-[#E4CB50] bg-[#FFF7D1] px-3 text-sm font-black text-[#142033]">KO</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold text-[#697386]">내가 전하려는 말</p>
+          <p className="mt-0.5 text-[17px] leading-8">{quest.source}</p>
+        </div>
+      </div>
+      <div className="border-t border-dashed border-[#D8D4C8] px-4 py-3 sm:px-5">
+        <div className="flex items-center gap-4">
+          <span className="inline-flex h-9 min-w-12 items-center justify-center rounded-lg bg-[#15202B] px-3 text-sm font-black text-white">ZH</span>
+          <div>
+            <p className="text-[11px] font-bold text-[#697386]">중국어 번역안</p>
+            <p className="mt-0.5 text-sm font-bold">{quest.prompt}</p>
+          </div>
+        </div>
+        <Textarea
+          id={`${quest.id}-draft`}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          rows={sourceAlignedRows(quest.source)}
+          className="font-zh mt-3 resize-y bg-white text-[16.5px] leading-8"
+          placeholder="중국어 번역을 작성하세요."
+        />
+        <VocabularyHints quest={quest} />
+      </div>
+    </section>
+  );
+}
+
+const FEEDBACK_LEVEL_LABEL: Record<FeedbackLevel, string> = {
+  very_good: "안정",
+  recommend: "보완 권장",
+  required: "수정 필요",
+};
+
+const FEEDBACK_LEVEL_STYLE: Record<FeedbackLevel, string> = {
+  very_good: "bg-[#EAF4ED] text-[#286247]",
+  recommend: "bg-[#FFF2B8] text-[#725B12]",
+  required: "bg-[#FCE7E4] text-[#8D3B36]",
+};
+
+const FEEDBACK_LEVEL_CARD_STYLE: Record<FeedbackLevel, string> = {
+  very_good: "border-[#C6DDCE] bg-[#F4FAF6]",
+  recommend: "border-[#E2C84F] bg-[#FFFAE8]",
+  required: "border-[#D79A94] bg-[#FFF7F5]",
+};
+
+const FEEDBACK_LEVEL_PRIORITY: Record<FeedbackLevel, number> = {
+  very_good: 0,
+  recommend: 1,
+  required: 2,
+};
+
+function primaryFeedbackCriterion(criteria: FeedbackCriterion[]) {
+  return criteria.reduce((primary, criterion) => (
+    FEEDBACK_LEVEL_PRIORITY[criterion.level] > FEEDBACK_LEVEL_PRIORITY[primary.level]
+      ? criterion
+      : primary
+  ));
+}
+
+function collectHighlights(text: string, expressions: string[]) {
+  return expressions.filter((expression) => text.includes(expression));
+}
+
+function findRequestClause(text: string, pattern: RegExp) {
+  return text
+    .split(/(?<=[。！？!?])/)
+    .map((part) => part.trim())
+    .find((part) => pattern.test(part));
+}
+
+function evaluateDct(quest: DctFeedbackQuest, text: string): DctEvaluation {
+  const compact = text.replace(/\s+/g, "");
+  const isFirst = quest.dctId === "A-DCT";
+  const meaningOk = isFirst
+    ? /面试/.test(compact) && /(周二|星期二)/.test(compact) && /(调整|改|其他日期|其他时间)/.test(compact)
+    : /(文件|资料)/.test(compact) && /(打不开|无法打开|不能打开)/.test(compact) && /(再发|重新发|再发送|重新发送)/.test(compact);
+  const hanCount = text.match(/\p{Script=Han}/gu)?.length ?? 0;
+  const languageLevel: FeedbackLevel = hanCount < 8 ? "required" : "very_good";
+  const harsh = /必须|务必|立刻|赶紧|给我/.test(text);
+  const pragmaticIssue = quest.feedback.mode === "needs_mitigation" ? !hasMitigation(text) : isOverMitigated(text);
+  const pragmaticLevel: FeedbackLevel = harsh ? "required" : pragmaticIssue ? "recommend" : "very_good";
+  const detectedHighlights = collectHighlights(text, isFirst
+    ? ["请给我", "给我", "必须", "务必", "立刻", "赶紧"]
+    : ["如果您方便的话", "不知道能不能麻烦您", "给您添麻烦了", "非常抱歉", "不好意思", "打扰您了"]
+  );
+  const requestClause = findRequestClause(text, isFirst
+    ? /(调整|改到|改成|其他日期|其他时间)/
+    : /(再发|重新发|再发送|重新发送)/
+  );
+  const highlights = detectedHighlights.length > 0
+    ? detectedHighlights
+    : pragmaticIssue && requestClause
+      ? [requestClause]
+      : languageLevel === "required" && text.trim()
+        ? [text.trim()]
+        : [];
+  const criteria: FeedbackCriterion[] = [
+    {
+      key: "meaning",
+      label: "의미 전달",
+      question: "뜻이 제대로 전달됐나요?",
+      level: meaningOk ? "very_good" : "required",
+      body: meaningOk
+        ? "원문의 핵심 요청과 조건을 빠뜨리지 않고 옮겼습니다."
+        : "누가 무엇을 요청하는지와 핵심 조건을 다시 확인해 주세요.",
+    },
+    {
+      key: "language",
+      label: "문법 정확성",
+      question: "중국어 표현이 자연스러운가요?",
+      level: languageLevel,
+      body: languageLevel === "very_good"
+        ? "의미를 이해하는 데 방해가 되는 표현 문제는 없습니다."
+        : "문장이 너무 짧거나 불완전합니다. 중국어 문장으로 다시 작성해 주세요.",
+    },
+    {
+      key: "pragmatics",
+      label: "화용 적절성",
+      question: "이 관계와 상황에 잘 맞나요?",
+      level: pragmaticLevel,
+      body: pragmaticLevel === "very_good"
+        ? "상대와 요청 부담에 맞는 말투를 사용했습니다."
+        : harsh
+          ? "상대에게 지시하는 듯한 표현을 요청의 형태로 바꾸는 것이 좋습니다."
+          : isFirst
+            ? "상대가 거절하거나 다른 일정을 제안할 여지를 조금 더 남겨 보세요."
+            : "부담이 작은 요청에 완화 표현이 겹쳐 다소 무겁게 들릴 수 있습니다.",
+    },
+  ];
+  const levels = criteria.map((criterion) => criterion.level);
+  const overall: FeedbackLevel = levels.includes("required") ? "required" : levels.includes("recommend") ? "recommend" : "very_good";
+  return {
+    criteria,
+    headline: overall === "very_good"
+      ? "아주 좋습니다. 이 번역으로 충분합니다."
+      : overall === "recommend"
+        ? "뜻은 잘 전달됐습니다. 한 곳만 보완하면 더 좋아집니다."
+        : "핵심 의미나 표현을 다시 확인해 주세요.",
+    body: overall === "very_good" ? quest.feedback.success : quest.feedback.issue,
+    highlights,
+    feedback: overall === "very_good" ? quest.feedback.success : quest.feedback.issue,
+    action: overall === "very_good" ? undefined : quest.feedback.action,
+    example: quest.referenceAnswer,
+    takeaway: !meaningOk
+      ? "번역을 마치기 전에 원문의 요청과 조건이 모두 들어갔는지 확인하세요."
+      : languageLevel !== "very_good"
+        ? "뜻을 옮긴 뒤 중국어 문장이 완결되었는지 한 번 더 읽어 보세요."
+        : isFirst
+          ? "부담이 큰 요청에서는 상대가 결정할 여지를 표현했는지 확인하세요."
+          : "부담이 작은 요청에서는 완화 표현을 여러 겹 겹치지 않았는지 확인하세요.",
+  };
+}
+
+const DEV_PREVIEW_COPY: Record<DevPreviewPreset, { label: string; a: string }> = {
+  all_good: {
+    label: "수정 없이 확정",
+    a: "您好，下周二的面试我可能无法参加，非常抱歉。请问能否调整到同一周的其他日期？",
+  },
+  direct: {
+    label: "화용 보완 · 직접적",
+    a: "您好，下周二的面试我无法参加，请把面试改到周三。",
+  },
+  over_mitigated: {
+    label: "수정 없이 확정 · 완화형",
+    a: "您好，下周二的面试我可能无法参加，非常抱歉。请问能否调整到同一周的其他日期？",
+  },
+  mixed: {
+    label: "화용 보완 · 기본",
+    a: "您好，下周二的面试我无法参加，请把面试改到周三。",
+  },
+};
+
+function readDevPreviewPreset(): DevPreviewPreset {
+  if (typeof window === "undefined") return "mixed";
+  const value = new URLSearchParams(window.location.search).get("preset") as DevPreviewPreset | null;
+  return value && value in DEV_PREVIEW_COPY ? value : "mixed";
+}
+
+function buildDevPreviewResponses(preset: DevPreviewPreset, finalized: boolean) {
+  const mission = REQUEST_MISSION_V4_PREVIEW;
+  const copy = DEV_PREVIEW_COPY[preset];
+  const dctResponses = ["A-DCT"].reduce<Record<string, DctResponse>>((result, dctId) => {
+    const feedbackQuest = mission.quests.find(
+      (quest): quest is DctFeedbackQuest => quest.kind === "dct_feedback" && quest.dctId === dctId,
+    );
+    if (!feedbackQuest) return result;
+    const first = copy.a;
+    const evaluation = evaluateDct(feedbackQuest, first);
+    const needsChange = evaluation.criteria.some((criterion) => criterion.level !== "very_good");
+    result[dctId] = {
+      first,
+      revised: finalized && needsChange ? feedbackQuest.referenceAnswer : first,
+      reflected: finalized && needsChange,
+      evaluation,
+    };
+    return result;
+  }, {});
+
+  return mission.quests.reduce<Record<string, QuestResponse | DctResponse>>((result, quest) => {
+    if (quest.kind === "scale") result[quest.id] = { pick: quest.referenceAnswer };
+    if (quest.kind === "fix_choice") result[quest.id] = {
+      judgment: quest.referenceJudgment,
+      correctionIds: quest.corrections.filter((option) => option.valid).map((option) => option.id),
+    };
+    if (quest.kind === "reason") result[quest.id] = { judgment: quest.referenceJudgment, reasonNote: "개발 미리보기용 응답" };
+    if (quest.kind === "best_worst") result[quest.id] = { best: quest.bestId, worst: quest.worstId };
+    if (quest.kind === "dct") result[quest.id] = dctResponses[quest.id];
+    if (quest.kind === "dct_feedback") result[quest.id] = dctResponses[quest.dctId];
+    return result;
+  }, {});
+}
+
+function DctDraftView({ quest, onDone }: {
+  quest: DctQuest;
+  onDone: (response: DctResponse) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const validation = validateDraft(draft);
+  return (
+    <QuestScaffold quest={quest}>
+      <DctDraftCard quest={quest} value={draft} onChange={setDraft} />
+      <ActionBar hint={validation.hint}>
+        <Button className="h-12 w-full" disabled={!validation.valid} onClick={() => onDone({ first: draft.trim(), revised: draft.trim(), reflected: false })}>{validation.valid ? "번역 제출하기" : "번역안을 작성해 주세요"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+      </ActionBar>
+    </QuestScaffold>
+  );
+}
+
+function FeedbackLoading() {
+  return (
+    <section className={`${panel} overflow-hidden`} aria-live="polite">
+      <div className="flex items-center justify-between bg-[#F8F7F2] px-5 py-4">
+        <div>
+          <p className="text-xs font-black text-[#596579]">AI 피드백 준비 중</p>
+          <p className="mt-1 text-base font-black">답안을 세 기준으로 살펴보고 있습니다</p>
+        </div>
+        <LoaderCircle className="h-6 w-6 animate-spin text-[#C6A521]" />
+      </div>
+      <div className="grid gap-3 p-5 sm:grid-cols-3">
+        {["의미 전달", "문법 정확성", "화용 적절성"].map((label, index) => (
+          <div key={label} className="rounded-xl border border-[#E2DED3] bg-[#FAF9F5] p-4">
+            <span className="text-xs font-black text-[#7B8493]">{index + 1}</span>
+            <p className="mt-2 text-sm font-black">{label}</p>
+            <span className="mt-3 inline-flex gap-1" aria-hidden="true"><i className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#C9A62E]" /><i className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#C9A62E] [animation-delay:150ms]" /><i className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#C9A62E] [animation-delay:300ms]" /></span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function StudentAnswerCard({ text, highlights = [] }: { text: string; highlights?: string[] }) {
+  return (
+    <section className="rounded-2xl bg-[#15202B] p-5 text-white shadow-[0_12px_28px_rgba(21,32,43,0.12)] sm:p-6">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-black text-[#F0D44F]">내 번역</p>
+        <span className="inline-flex h-8 min-w-11 items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 text-xs font-black text-white/90">ZH</span>
+      </div>
+      <p className="font-zh mt-4 whitespace-pre-wrap text-[17px] leading-8 text-white sm:text-[18px]">
+        <HighlightedText text={text} highlights={highlights} target />
+      </p>
+    </section>
+  );
+}
+
+function DctContextReview({ quest, first }: { quest: DctFeedbackQuest; first: string }) {
+  return (
+    <details className="group rounded-xl border border-[#DDD8CB] bg-[#FAF9F5]">
+      <summary className="cursor-pointer list-none px-4 py-3 sm:px-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="flex items-center gap-1.5 text-xs font-black text-[#4F5B6F]"><Eye className="h-3.5 w-3.5" /> 원문·상황 다시 보기</p>
+            <p className="mt-1 text-xs leading-5 text-[#707A8B]">{quest.context.relation} · {quest.context.channel}</p>
+          </div>
+          <span className="shrink-0 text-xs font-bold text-[#6A7485]"><span className="group-open:hidden">펼치기</span><span className="hidden group-open:inline">접기</span></span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <span className="rounded-full border border-[#D9DEE7] bg-white px-2.5 py-1 text-[11px] font-bold text-[#536075]">P · {quest.context.pdr.p}</span>
+          <span className="rounded-full border border-[#D9DEE7] bg-white px-2.5 py-1 text-[11px] font-bold text-[#536075]">D · {quest.context.pdr.d}</span>
+          <span className="rounded-full border border-[#D9DEE7] bg-white px-2.5 py-1 text-[11px] font-bold text-[#536075]">R · {quest.context.pdr.r}</span>
+        </div>
+      </summary>
+      <div className="space-y-3 border-t border-[#E2DED4] px-4 py-4 sm:px-5">
+        <div>
+          <p className="text-[11px] font-black text-[#707A8B]">상황</p>
+          <p className="mt-1 text-sm leading-6">{quest.context.situation}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-black text-[#707A8B]">한국어 원문</p>
+          <p className="mt-1 text-sm font-bold leading-6">{quest.source}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-black text-[#707A8B]">내 첫 번역</p>
+          <p className="font-zh mt-1 text-[15px] leading-7">{first}</p>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function DctFeedbackView({ quest, response, onDone }: {
+  quest: DctFeedbackQuest;
+  response?: DctResponse;
+  onDone: (response: DctResponse) => void;
+}) {
+  const first = response?.first ?? "";
+  const [ready, setReady] = useState(false);
+  const [revised, setRevised] = useState(first);
+  const [revisionOpen, setRevisionOpen] = useState(false);
+  const revisionRef = useRef<HTMLElement>(null);
+  const evaluation = useMemo(() => evaluateDct(quest, first), [first, quest]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setReady(true), 1250);
+    return () => window.clearTimeout(timer);
+  }, [quest.id]);
+  useEffect(() => {
+    if (!revisionOpen) return;
+    const timer = window.setTimeout(() => revisionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+    return () => window.clearTimeout(timer);
+  }, [revisionOpen]);
+  const reflected = normalize(first) !== normalize(revised);
+  const needsChange = evaluation.criteria.some((criterion) => criterion.level !== "very_good");
+  const primaryCriterion = primaryFeedbackCriterion(evaluation.criteria);
+  const stableCount = evaluation.criteria.filter((criterion) => criterion.level === "very_good").length;
+  const recommendCount = evaluation.criteria.filter((criterion) => criterion.level === "recommend").length;
+  const requiredCount = evaluation.criteria.filter((criterion) => criterion.level === "required").length;
+  const overallHeadline = requiredCount > 0
+    ? "다시 살펴봐야 합니다."
+    : recommendCount > 0
+      ? "한 가지만 고치면 됩니다."
+      : "이대로 확정해도 좋습니다.";
+  const overallBadge = requiredCount > 0
+    ? `${requiredCount}개 수정 필요${recommendCount > 0 ? ` · ${recommendCount}개 보완` : ""}`
+    : recommendCount > 0
+      ? `${stableCount}개 안정 · ${recommendCount}개 보완`
+      : "세 기준 안정";
+  const overallBody = needsChange
+    ? evaluation.feedback
+    : "원문의 의미와 의도를 유지하면서, 관계와 상황에도 맞는 표현을 사용했습니다.";
+  const revisionValidation = validateDraft(revised);
+  const canConfirm = revisionValidation.valid && (!needsChange || reflected);
+  const actionHint = revisionValidation.hint ?? (needsChange && !reflected ? "피드백을 반영해 한 곳 이상 수정해 주세요." : undefined);
+  if (!isMeaningfulDraft(first)) {
+    return (
+      <section className={`${panel} p-5 sm:p-6`}>
+        <h2 className="text-lg font-black">분석할 번역이 없습니다.</h2>
+        <p className="mt-2 text-sm leading-6 text-[#5B6678]">번역 실습 단계에서 중국어 답안을 먼저 작성해 주세요.</p>
+      </section>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      <div className="px-1">
+        <p className="text-xs font-bold text-[#776727]">{progressLabel(quest)}</p>
+        <h1 className="mt-1 text-xl font-black">번역 피드백</h1>
+      </div>
+      <StudentAnswerCard text={first} highlights={ready ? evaluation.highlights : []} />
+      {!ready ? <FeedbackLoading /> : (
+        <>
+          <section className={`${panel} overflow-hidden border ${needsChange ? "border-[#E0CB72]" : "border-[#B8D4C2]"}`}>
+            <div className={`p-5 sm:p-6 ${needsChange ? "bg-[#FFFCF0]" : "bg-[#F7FBF8]"}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F0D44F] text-[#15202B]"><Sparkles className="h-5 w-5" /></span>
+                  <div>
+                    <p className="text-xs font-black text-[#596579]">답안 피드백</p>
+                    <h2 className="mt-1 text-lg font-black leading-7">{overallHeadline}</h2>
+                  </div>
+                </div>
+                <span className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black ${needsChange ? FEEDBACK_LEVEL_STYLE[primaryCriterion.level] : FEEDBACK_LEVEL_STYLE.very_good}`}>{overallBadge}</span>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-[#4F5B6E]">{overallBody}</p>
+            </div>
+
+            <div className="grid gap-3 border-t border-[#E6E1D6] p-4 sm:grid-cols-3 sm:p-5">
+              {evaluation.criteria.map((criterion) => (
+                <article key={criterion.key} className={`rounded-xl border p-4 ${FEEDBACK_LEVEL_CARD_STYLE[criterion.level]}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-xs font-black text-[#4F5B6E]">{criterion.label}</h3>
+                    <span className={`rounded-full px-2 py-1 text-[10px] font-black ${FEEDBACK_LEVEL_STYLE[criterion.level]}`}>{FEEDBACK_LEVEL_LABEL[criterion.level]}</span>
+                  </div>
+                  <p className="mt-4 text-sm font-black leading-6">{criterion.body}</p>
+                </article>
+              ))}
+            </div>
+
+            <p className="border-t border-[#EEEAE1] px-5 py-3 text-[11px] leading-5 text-[#6D7788]">AI가 생성한 참고 피드백입니다. 상황에 따라 다른 판단도 가능합니다.</p>
+          </section>
+
+          <details className={`${panel} group overflow-hidden`}>
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-black">
+              <span>다른 표현도 보고 싶다면</span>
+              <span className="text-xs text-[#697386]"><span className="group-open:hidden">펼치기</span><span className="hidden group-open:inline">접기</span></span>
+            </summary>
+            <div className="space-y-3 border-t border-[#EEEAE1] p-5">
+              {quest.feedback.alternatives.map((alternative) => (
+                <div key={alternative.text} className="rounded-xl bg-[#F8F7F2] p-4">
+                  <p className="font-zh text-[16px] leading-7">{alternative.text}</p>
+                  <p className="mt-1.5 text-xs leading-5 text-[#667185]">{alternative.note}</p>
+                </div>
+              ))}
+            </div>
+          </details>
+
+          {revisionOpen ? (
+            <>
+              <section ref={revisionRef} className={`${panel} scroll-mt-24 p-5 sm:p-6`}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black text-[#776727]">다시 다듬기</p>
+                    <h2 className="mt-1 text-lg font-black">피드백을 반영해 다시 써보세요.</h2>
+                  </div>
+                  {needsChange && <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${FEEDBACK_LEVEL_STYLE[primaryCriterion.level]}`}>{primaryCriterion.label} · {FEEDBACK_LEVEL_LABEL[primaryCriterion.level]}</span>}
+                </div>
+                {needsChange && (
+                  <div className="mt-4 rounded-xl border-l-4 border-[#E0C247] bg-[#FFFBEC] px-4 py-3">
+                    <p className="text-sm font-black leading-6">{primaryCriterion.body}</p>
+                    {evaluation.action && <p className="mt-1 text-sm leading-6 text-[#566175]"><RichLine text={evaluation.action} /></p>}
+                  </div>
+                )}
+                <Textarea id={`${quest.id}-revise`} value={revised} onChange={(event) => setRevised(event.target.value)} rows={sourceAlignedRows(quest.source)} className="font-zh mt-4 resize-y bg-white text-[16.5px] leading-8" />
+                <div className="mt-3"><DctContextReview quest={quest} first={first} /></div>
+              </section>
+              <ActionBar hint={actionHint}>
+                <Button className="h-12 w-full" disabled={!canConfirm} onClick={() => onDone({ first, revised: revised.trim(), reflected, evaluation })}>{reflected ? "수정안 확정하기" : needsChange ? "피드백을 반영해 수정해 주세요" : "이 번역으로 확정하기"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+              </ActionBar>
+            </>
+          ) : (
+            <ActionBar>
+              {needsChange ? (
+                <Button className="h-12 w-full" onClick={() => setRevisionOpen(true)}>한 번 다듬어보기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
+              ) : (
+                <div className="grid gap-2">
+                  <Button className="h-12 w-full" onClick={() => onDone({ first, revised: first.trim(), reflected: false, evaluation })}>이 번역으로 확정하기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                  <Button variant="outline" className="h-11 w-full" onClick={() => setRevisionOpen(true)}>다른 표현도 시도해보기</Button>
+                </div>
+              )}
+            </ActionBar>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function QuestScaffold({ quest, target, targetHighlights, children }: {
+  quest: MissionQuest;
+  target?: string;
+  targetHighlights?: string[];
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={quest.id === "A1" ? "space-y-2.5" : "space-y-3"}>
+      {quest.id === "A1" && (
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-1">
+          <h1 className="text-lg font-black tracking-[-0.02em] text-[#15202B]">상황에 맞게 부탁하기</h1>
+          <p className="text-xs font-bold text-[#776727]">
+            {REQUEST_MISSION_V4_PREVIEW.weekNo}주차 · {REQUEST_MISSION_V4_PREVIEW.speechAct}
+          </p>
+        </div>
+      )}
+      <ContextCard context={quest.context} />
+      {quest.kind !== "dct" && <LanguagePair source={quest.source} target={target} targetHighlights={targetHighlights} />}
+      {children}
+    </div>
+  );
+}
+
+const PROGRESS_LABELS: Record<string, string> = {
+  A1: "판단하기",
+  A2: "상황 비교",
+  A3: "고쳐 보기",
+  A4: "이유 찾기",
+  A5: "BEST·WORST",
+  "A-DCT": "번역 실습",
+  "A-FEEDBACK": "피드백·수정",
+};
+
+function progressLabel(quest: MissionQuest) {
+  return PROGRESS_LABELS[quest.id] ?? quest.shortLabel;
+}
+
+function Progress({ activeIndex, completed, reviewIndex = null, responses, onReview }: {
+  activeIndex: number;
+  completed?: boolean;
+  reviewIndex?: number | null;
+  responses: Record<string, QuestResponse | DctResponse>;
+  onReview: (index: number) => void;
+}) {
+  const quests = REQUEST_MISSION_V4_PREVIEW.quests;
+  const displayIndex = completed ? quests.length : Math.min(activeIndex + 1, quests.length);
+  const activeQuest = completed ? undefined : quests[Math.min(activeIndex, quests.length - 1)];
+  return (
+    <>
+      <aside
+        className="fixed bottom-6 top-24 z-30 hidden w-44 flex-col overflow-y-auto rounded-2xl border border-[#E2DED3] bg-[#FBFAF6]/95 px-4 py-5 shadow-sm backdrop-blur xl:flex"
+        style={{ left: "max(1rem, calc(50% - 37rem))" }}
+        aria-label="미션 학습 단계"
+      >
+        <p className="mb-2 px-1 text-xs font-black text-[#687387]">{reviewIndex === null ? `${displayIndex} / ${quests.length} 학습 단계` : `${reviewIndex + 1} / ${quests.length} 단계 기록 검토`}</p>
+        <div className="flex min-h-[32rem] flex-1 flex-col">
+          {quests.map((quest, index) => {
+            const done = Boolean(completed) || index < activeIndex;
+            const active = !completed && index === activeIndex;
+            const reviewing = reviewIndex === index;
+            const canReview = Boolean(responses[quest.id]);
+            const canNavigate = canReview || active;
+            const sectionBreak = index === 5;
+            return (
+                <div key={quest.id} className={`relative flex min-h-11 flex-1 items-center ${sectionBreak ? "mt-1.5" : ""}`}>
+                  {index < quests.length - 1 && <span className={`absolute -bottom-1/2 left-[15px] top-1/2 w-px ${done ? "bg-[#9AA4B0]" : "bg-[#DDDAD2]"}`} />}
+                  <button
+                    type="button"
+                    disabled={!canNavigate}
+                    onClick={() => onReview(index)}
+                    aria-label={`${index + 1}. ${progressLabel(quest)}${reviewing ? " 기록 검토 중" : canReview ? " 다시 보기" : active ? " 현재 단계" : ""}`}
+                    className={`relative z-10 flex w-full items-center gap-3 rounded-lg px-1 py-1.5 text-left ${reviewing || active ? "bg-[#EEF1F5]" : ""} ${canNavigate ? "cursor-pointer hover:bg-white/80" : "cursor-default"}`}
+                  >
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-black ${done ? "border-[#E1C536] bg-[#F3D248] text-[#15202B]" : active ? "border-[#15202B] bg-[#15202B] text-white ring-2 ring-[#E7CE4A]" : "border-[#DCD9D0] bg-white text-[#9AA2AF]"} ${reviewing ? "ring-2 ring-[#15202B] ring-offset-2" : ""}`}>
+                      {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : index + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className={`block truncate text-[13px] font-black leading-5 ${reviewing || active ? "text-[#15202B]" : done ? "text-[#68707D]" : "text-[#A3A9B2]"}`}>{progressLabel(quest)}</span>
+                    </span>
+                  </button>
+                </div>
+            );
+          })}
+        </div>
+      </aside>
+
+      <section className="sticky top-16 z-30 rounded-xl border border-[#E2DED3] bg-[#FBFAF6]/95 px-3 py-2 shadow-sm backdrop-blur xl:hidden">
+        <div className="flex h-8 items-center gap-3">
+          <p className="shrink-0 whitespace-nowrap text-xs font-black text-[#15202B]">
+            {reviewIndex === null ? `${displayIndex} / ${quests.length} · ${completed ? "완료" : activeQuest ? progressLabel(activeQuest) : ""}` : `${reviewIndex + 1} / ${quests.length} · 기록 검토`}
+          </p>
+          <div className="flex min-w-0 flex-1 items-center" aria-label="미션 학습 단계">
+            {quests.map((quest, index) => {
+              const done = Boolean(completed) || index < activeIndex;
+              const active = !completed && index === activeIndex;
+              const reviewing = reviewIndex === index;
+              const canReview = Boolean(responses[quest.id]);
+              const canNavigate = canReview || active;
+              return (
+                <div key={quest.id} className="flex min-w-0 flex-1 items-center">
+                  {index > 0 && <span className={`h-0.5 min-w-1 flex-1 ${done || active ? "bg-[#9AA4B0]" : "bg-[#E1DED5]"}`} />}
+                  <button
+                    type="button"
+                    disabled={!canNavigate}
+                    onClick={() => onReview(index)}
+                    aria-label={`${index + 1}. ${progressLabel(quest)}${reviewing ? " 기록 검토 중" : canReview ? " 다시 보기" : active ? " 현재 단계" : ""}`}
+                    className={`relative z-10 h-3 w-3 shrink-0 rounded-full border ${done ? "border-[#E1C536] bg-[#F3D248]" : active ? "border-[#15202B] bg-[#15202B] ring-2 ring-[#E7CE4A]" : "border-[#CFCBC0] bg-white"} ${reviewing ? "ring-2 ring-[#15202B] ring-offset-2" : ""} ${canNavigate ? "cursor-pointer" : "cursor-default"}`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function QuestRenderer({ quest, responses, onDone }: {
+  quest: MissionQuest;
+  responses: Record<string, QuestResponse | DctResponse>;
+  onDone: (response: QuestResponse | DctResponse) => void;
+}) {
+  if (quest.kind === "scale") return <ScaleView quest={quest} onDone={onDone} />;
+  if (quest.kind === "fix_choice") return <FixChoiceView quest={quest} onDone={onDone} />;
+  if (quest.kind === "reason") return <ReasonView quest={quest} onDone={onDone} />;
+  if (quest.kind === "best_worst") return <BestWorstView quest={quest} onDone={onDone} />;
+  if (quest.kind === "dct_feedback") return <DctFeedbackView quest={quest} response={responses[quest.dctId] as DctResponse | undefined} onDone={onDone} />;
+  return <DctDraftView quest={quest} onDone={onDone} />;
+}
+
+function responseLabel(quest: MissionQuest, response: QuestResponse) {
+  if (quest.kind === "scale") return quest.options.find((item) => item.id === response.pick)?.label ?? "선택 기록";
+  if (quest.kind === "fix_choice") {
+    const judgment = quest.judgmentOptions.find((item) => item.id === response.judgment)?.label;
+    const ids = new Set((response.correctionIds as string[] | undefined) ?? []);
+    const corrections = quest.corrections.filter((item) => ids.has(item.id)).map((item) => item.text);
+    return `${judgment ?? "판정"} · ${corrections.join(" / ")}`;
+  }
+  if (quest.kind === "reason") {
+    const judgment = quest.judgmentOptions.find((item) => item.id === response.judgment)?.label;
+    return `${judgment ?? "판정"} · ${(response.reasonNote as string | undefined) ?? "이유 기록"}`;
+  }
+  if (quest.kind === "best_worst") {
+    const best = quest.candidates.find((item) => item.id === response.best)?.text;
+    const worst = quest.candidates.find((item) => item.id === response.worst)?.text;
+    return `내 BEST · ${best ?? "-"}\n내 WORST · ${worst ?? "-"}`;
+  }
+  return "";
+}
+
+function questFeedback(quest: MissionQuest) {
+  if (quest.kind === "scale" || quest.kind === "fix_choice" || quest.kind === "reason") return quest.feedback;
+  if (quest.kind === "best_worst") return quest.candidates.map((item) => `${item.role === "best" ? "BEST" : item.role === "worst" ? "WORST" : "가능한 표현"} · ${item.note}`).join("\n");
+  return "";
+}
+
+function ReviewModeBanner({ index, completed, onExit }: { index: number; completed: boolean; onExit: () => void }) {
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border border-[#C9D0DA] bg-[#F2F4F7] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div>
+        <p className="text-xs font-black text-[#526075]">{index + 1}단계 기록을 다시 보는 중</p>
+        <p className="mt-1 text-xs leading-5 text-[#6A7485]">완료한 답과 피드백을 확인하고 있습니다. 새로운 문제를 푸는 화면이 아닙니다.</p>
+      </div>
+      <Button variant="outline" className="h-9 shrink-0 bg-white px-4 text-xs" onClick={onExit}>
+        {completed ? "미션 완료 화면으로 돌아가기" : "현재 학습 단계로 돌아가기"}
+      </Button>
+    </section>
+  );
+}
+
+function CompletedQuestReview({ quest, response }: {
+  quest: MissionQuest;
+  response: QuestResponse | DctResponse;
+}) {
+  const dct = quest.kind === "dct" ? response as DctResponse : undefined;
+  const feedbackResponse = quest.kind === "dct_feedback" ? response as DctResponse : undefined;
+  return (
+    <div className="space-y-4">
+      <div className="px-1">
+        <div>
+          <p className="flex items-center gap-1.5 text-xs font-bold text-[#776727]"><Eye className="h-3.5 w-3.5" /> {progressLabel(quest)} · 학습 기록</p>
+          <h1 className="mt-1 text-xl font-black">{quest.title}</h1>
+        </div>
+      </div>
+      <ContextCard context={quest.context} />
+      <LanguagePair
+        source={quest.source}
+        target={feedbackResponse ? feedbackResponse.revised : "target" in quest ? quest.target : undefined}
+        targetHighlights={feedbackResponse?.evaluation?.highlights ?? quest.targetHighlights}
+      />
+      <section className={`${panel} p-4 sm:p-5`}>
+        {feedbackResponse ? (
+          <div className="space-y-4">
+            <p className="text-xs font-bold text-[#677287]">세 기준 결과</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {feedbackResponse.evaluation?.criteria.map((criterion) => (
+                <div key={criterion.key} className="rounded-xl border border-[#E2DED3] p-3">
+                  <p className="text-xs font-black">{criterion.label}</p>
+                  <span className={`mt-2 inline-block rounded-full px-2 py-1 text-[10px] font-black ${FEEDBACK_LEVEL_STYLE[criterion.level]}`}>{FEEDBACK_LEVEL_LABEL[criterion.level]}</span>
+                </div>
+              ))}
+            </div>
+            <div><p className="text-xs font-bold text-[#677287]">최종 번역</p><p className="font-zh mt-1 text-[17px] leading-8">{feedbackResponse.revised}</p></div>
+          </div>
+        ) : dct ? (
+          <div><p className="text-xs font-bold text-[#677287]">내 첫 번역</p><p className="font-zh mt-1 text-[17px] leading-8">{dct.first}</p></div>
+        ) : (
+          <>
+            <p className="text-xs font-bold text-[#677287]">내가 고른 답</p>
+            <div className="mt-2 whitespace-pre-line rounded-xl bg-[#F6F4EE] p-4 text-sm leading-7"><RichLine text={responseLabel(quest, response)} /></div>
+            <div className="mt-4"><FeedbackBox feedback={questFeedback(quest)} highlights={quest.targetHighlights} /></div>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function CompletionRecord({ label, response }: { label: string; response?: DctResponse }) {
+  if (!response || !isMeaningfulDraft(response.first)) return null;
+  const evaluation = response.evaluation;
+  const needsAttention = evaluation?.criteria.filter((criterion) => criterion.level !== "very_good") ?? [];
+  return (
+    <article className={`${panel} overflow-hidden`}>
+      <div className="border-b border-[#E3DFD4] bg-[#F8F6EF] px-5 py-4">
+        <p className="text-xs font-black text-[#6B5518]">{label}</p>
+      </div>
+      <div className="space-y-5 p-5">
+        <div>
+          <p className="text-[11px] font-bold text-[#7A8495]">내가 실제로 쓴 중국어</p>
+          <p className="font-zh mt-2 text-[17px] leading-8"><HighlightedText text={response.first} highlights={evaluation?.highlights} target /></p>
+        </div>
+        {evaluation && needsAttention.length > 0 ? (
+          <div className="rounded-xl border border-[#DDD8CB] border-l-4 border-l-[#E0C43C] bg-[#FAF9F5] p-4">
+            <p className="text-xs font-black text-[#725B12]">수정이 필요했던 부분</p>
+            {evaluation.highlights.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {evaluation.highlights.map((highlight) => <span key={highlight} className="font-zh rounded-md bg-[#FFF5C8] px-2.5 py-1.5 text-[15px] underline decoration-[#C9A90E] decoration-2 underline-offset-4">{highlight}</span>)}
+              </div>
+            ) : <p className="mt-2 text-sm">표현의 문제가 아니라 원문의 핵심 내용이 빠졌습니다.</p>}
+            <p className="mt-3 text-xs font-black text-[#725B12]">왜 고쳤나요?</p>
+            <p className="mt-1 text-sm leading-6 text-[#4F5A6B]">{evaluation.feedback}</p>
+          </div>
+        ) : evaluation ? (
+          <div className="rounded-xl border border-[#BFD9CC] bg-[#F2F8F4] p-4">
+            <p className="text-xs font-black text-[#286247]">잘한 점</p>
+            <p className="mt-2 text-sm leading-6">{evaluation.feedback}</p>
+          </div>
+        ) : null}
+        {response.reflected ? (
+          <div className="rounded-xl border border-[#BFD9CC] bg-white p-4">
+            <p className="flex items-center gap-1.5 text-xs font-black text-[#245E44]"><Check className="h-3.5 w-3.5" />피드백을 반영한 최종 번역</p>
+            <p className="font-zh mt-2 text-[17px] leading-8">{response.revised}</p>
+          </div>
+        ) : (
+          <p className="flex items-center gap-1.5 text-xs font-bold text-[#286247]"><Check className="h-3.5 w-3.5" />첫 번역을 최종안으로 확정했습니다.</p>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function SessionPatternSummary({ responses }: { responses: Array<DctResponse | undefined> }) {
+  const evaluations = responses
+    .filter((response): response is DctResponse => Boolean(response?.evaluation && isMeaningfulDraft(response.first)))
+    .map((response) => response.evaluation as DctEvaluation);
+  if (evaluations.length === 0) return null;
+  const observations = [
+    { key: "meaning", label: "의미 전달", good: "핵심 의미를 빠뜨리지 않은 답안", next: "원문의 요청과 조건을 빠뜨리지 않았는지 확인해 보세요." },
+    { key: "language", label: "문법 정확성", good: "문법상 큰 문제가 없었던 답안", next: "중국어 문장이 완결되었는지 다시 읽어 보세요." },
+    { key: "pragmatics", label: "화용 적절성", good: "관계와 상황에 맞는 표현을 사용한 답안", next: "요청의 부담에 맞게 표현의 무게를 조절했는지 확인해 보세요." },
+  ] as const;
+  return (
+    <section className={`${panel} p-5 sm:p-6`}>
+      <h2 className="text-base font-black">이번 미션에서 확인한 점</h2>
+      <p className="mt-1 text-xs leading-5 text-[#6A7485]">이번 번역에서 실제로 확인된 결과만 정리했습니다.</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {observations.map((observation) => {
+          const strongCount = evaluations.filter((evaluation) => evaluation.criteria.find((criterion) => criterion.key === observation.key)?.level === "very_good").length;
+          return (
+            <article key={observation.key} className="rounded-xl bg-[#F7F6F1] p-4">
+              <p className="text-xs font-black text-[#596579]">{observation.label}</p>
+              <p className="mt-2 text-sm font-black">{strongCount === evaluations.length ? observation.good : observation.next}</p>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function DevPreviewToolbar({
+  preset,
+  onPresetChange,
+  onJump,
+  onReset,
+}: {
+  preset: DevPreviewPreset;
+  onPresetChange: (preset: DevPreviewPreset) => void;
+  onJump: (step: string) => void;
+  onReset: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="fixed bottom-4 right-4 z-[70] text-xs">
+      {open && (
+        <div className="mb-2 w-72 rounded-2xl border border-[#334155] bg-[#15202B] p-4 text-white shadow-2xl">
+          <div className="flex items-center justify-between">
+            <p className="font-black tracking-[0.12em] text-[#F3D248]">DEV PREVIEW</p>
+            <button type="button" onClick={() => setOpen(false)} aria-label="개발자 메뉴 닫기" className="rounded-md p-1 text-white/70 hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></button>
+          </div>
+          <label className="mt-4 block font-bold text-white/70" htmlFor="dev-preview-preset">답안 유형</label>
+          <select
+            id="dev-preview-preset"
+            value={preset}
+            onChange={(event) => onPresetChange(event.target.value as DevPreviewPreset)}
+            className="mt-1 h-9 w-full rounded-lg border border-white/20 bg-white px-3 font-bold text-[#15202B]"
+          >
+            {Object.entries(DEV_PREVIEW_COPY).map(([value, item]) => <option key={value} value={value}>{item.label}</option>)}
+          </select>
+          <label className="mt-3 block font-bold text-white/70" htmlFor="dev-preview-step">바로 이동</label>
+          <select
+            id="dev-preview-step"
+            defaultValue=""
+            onChange={(event) => {
+              if (event.target.value) onJump(event.target.value);
+              event.target.value = "";
+            }}
+            className="mt-1 h-9 w-full rounded-lg border border-white/20 bg-white px-3 font-bold text-[#15202B]"
+          >
+            <option value="" disabled>화면 선택</option>
+            {REQUEST_MISSION_V4_PREVIEW.quests.map((quest, index) => <option key={quest.id} value={quest.id}>{index + 1}. {progressLabel(quest)}</option>)}
+            <option value="summary">최종 summary</option>
+          </select>
+          <button type="button" onClick={onReset} className="mt-3 w-full rounded-lg border border-white/20 px-3 py-2 font-bold text-white/80 hover:bg-white/10">첫 단계로 초기화</button>
+          <p className="mt-3 leading-5 text-white/50">프로토타입 전용 · 저장되지 않음</p>
+        </div>
+      )}
+      <button type="button" onClick={() => setOpen((current) => !current)} className="rounded-full border border-[#F3D248] bg-[#15202B] px-4 py-2.5 font-black tracking-[0.08em] text-[#F3D248] shadow-xl">DEV PREVIEW</button>
+    </div>
+  );
+}
+
+const MissionRunV4 = () => {
+  const mission = REQUEST_MISSION_V4_PREVIEW;
+  const [questIndex, setQuestIndex] = useState(0);
+  const [completed, setCompleted] = useState(false);
+  const [reviewIndex, setReviewIndex] = useState<number | null>(null);
+  const [responses, setResponses] = useState<Record<string, QuestResponse | DctResponse>>({});
+  const [devPreset, setDevPreset] = useState<DevPreviewPreset>(readDevPreviewPreset);
+  const [renderNonce, setRenderNonce] = useState(0);
+  const quest = mission.quests[questIndex];
+  const isDevPreview = typeof window !== "undefined" && window.location.pathname.startsWith("/prototype/mission-v4");
+
+  const updateDevPreviewUrl = (step?: string, preset = devPreset) => {
+    const url = new URL(window.location.href);
+    if (step) url.searchParams.set("step", step);
+    else url.searchParams.delete("step");
+    url.searchParams.set("preset", preset);
+    window.history.replaceState({}, "", url);
+  };
+
+  const jumpToDevPreview = (step: string, preset = devPreset) => {
+    const targetIndex = mission.quests.findIndex((item) => item.id === step);
+    if (step !== "summary" && targetIndex < 0) return;
+    setResponses(buildDevPreviewResponses(preset, step === "summary"));
+    setReviewIndex(null);
+    setCompleted(step === "summary");
+    setQuestIndex(step === "summary" ? mission.quests.length - 1 : targetIndex);
+    setRenderNonce((current) => current + 1);
+    updateDevPreviewUrl(step, preset);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (!isDevPreview) return;
+    const params = new URLSearchParams(window.location.search);
+    const step = params.get("step");
+    const preset = readDevPreviewPreset();
+    if (step) jumpToDevPreview(step, preset);
+  }, []);
+
+  const finishQuest = (response: QuestResponse | DctResponse) => {
+    setResponses((current) => quest.kind === "dct_feedback"
+      ? { ...current, [quest.id]: response, [quest.dctId]: response }
+      : { ...current, [quest.id]: response }
+    );
+    if (questIndex === mission.quests.length - 1) {
+      setCompleted(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setQuestIndex((current) => current + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const restart = () => {
+    setQuestIndex(0);
+    setCompleted(false);
+    setReviewIndex(null);
+    setResponses({});
+    setRenderNonce((current) => current + 1);
+    if (isDevPreview) updateDevPreviewUrl(undefined);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const aDct = responses["A-DCT"] as DctResponse | undefined;
+  const reviewedQuest = reviewIndex === null ? undefined : mission.quests[reviewIndex];
+  const reviewedResponse = reviewedQuest ? responses[reviewedQuest.id] : undefined;
+  const currentProgressIndex = completed ? mission.quests.length : questIndex;
+  const navigateProgress = (index: number) => {
+    if (index === currentProgressIndex || !responses[mission.quests[index].id]) {
+      setReviewIndex(null);
+      return;
+    }
+    setReviewIndex(index);
+  };
+
+  return (
+    <LearnerJourneyShell missionLayout headerRight={<span className="hidden text-xs font-semibold text-white/75 sm:block">요청 표현 · {mission.direction}</span>}>
+      {isDevPreview && (
+        <DevPreviewToolbar
+          preset={devPreset}
+          onPresetChange={(preset) => {
+            setDevPreset(preset);
+            updateDevPreviewUrl(new URLSearchParams(window.location.search).get("step") ?? undefined, preset);
+          }}
+          onJump={jumpToDevPreview}
+          onReset={restart}
+        />
+      )}
+      <div className="mx-auto max-w-3xl">
+      {reviewedQuest && reviewedResponse ? (
+        <div className="space-y-5">
+          <Progress activeIndex={currentProgressIndex} completed={completed} reviewIndex={reviewIndex} responses={responses} onReview={navigateProgress} />
+          <ReviewModeBanner index={reviewIndex ?? 0} completed={completed} onExit={() => setReviewIndex(null)} />
+          <CompletedQuestReview quest={reviewedQuest} response={reviewedResponse} />
+        </div>
+      ) : completed ? (
+        <div className="space-y-5">
+          <Progress activeIndex={currentProgressIndex} completed responses={responses} onReview={navigateProgress} />
+          <section className="rounded-2xl bg-[#15202B] px-6 py-7 text-white sm:px-8">
+            <p className="text-xs font-bold text-[#F3D248]">미션 완료</p>
+            <h1 className="mt-2 text-2xl font-black">이번 미션에서 완성한 내 번역</h1>
+          </section>
+          <div className="space-y-4">
+            <CompletionRecord label="번역 실습 · 면접 일정 조정" response={aDct} />
+          </div>
+          <SessionPatternSummary responses={[aDct]} />
+          <Button variant="outline" className="h-12 w-full" onClick={restart}><RotateCcw className="mr-2 h-4 w-4" />처음부터 다시 보기</Button>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <Progress activeIndex={currentProgressIndex} responses={responses} onReview={navigateProgress} />
+          <QuestRenderer key={`${quest.id}-${renderNonce}`} quest={quest} responses={responses} onDone={finishQuest} />
+        </div>
+      )}
+      </div>
+    </LearnerJourneyShell>
+  );
+};
+
+export default MissionRunV4;
