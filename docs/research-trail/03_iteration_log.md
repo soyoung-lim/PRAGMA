@@ -2183,3 +2183,15 @@
 - 운영 반영: PR #18·#19를 main에 병합하고 migration 3건, Edge v64, Railway `ca2657be-a136-4788-bb4a-cb139ca5bfd3`를 적용했다. DB 재 dry-run 최신, 새 타입 경고 제거, 운영 홈·공개 구조·관리자·수행기록 내려받기 경로 HTTP 200을 확인했다.
 - 다음 반영: 실제 9화행×5 기준답안을 연구자·전문가가 구축하기 전에는 최종 회귀나 공개 gate를 통과로 보고하지 않는다. 로그인 관리자 실화면에서 나머지 바로가기와 최초 최종 불합의 기록은 실제 운영 시점에 확인한다.
 - 관련 Decision / Evidence: `DEC-20260815-03~04`, `EVD-20260815-03`
+
+## ITER-20260822-08 · 저장소 archaeology와 저위험 gold 회수
+
+- 시작 문제: 브랜치·worktree가 누적되어 이미 main에 흡수된 기능, 미통합 기능, dirty 실험과 연구 기록을 구별하기 어려웠다. 루트 작업공간은 여러 세대의 변경이 섞여 그대로 배포할 수 없었다.
+- 조사: 로컬 브랜치 23개, 원격 브랜치 27개, worktree 20개, dirty worktree 5개와 stash 0개를 확인하고 patch-equivalence와 현재 main의 실제 파일을 대조했다.
+- 보존: 코드·문서·연구 산출물 127개를 `codex/archive/mixed-workspace-2026-08-22`의 `25f7051`에 저장했다. nested worktree와 임시 렌더·PDF 캐시는 제외했고 원본 dirty 작업공간은 건드리지 않았다.
+- 이식:
+  - `a30a6f7`: DEV 전용 7단계 직접 이동·현재 답안 채우기·개발 검증 우회.
+  - `a5042c8`: 관리자 아카이브 exact count·100행 페이지네이션·공통 enum 라벨.
+- 검증: 최신 운영 기준 `63faa89`에서 `npm.cmd run typecheck`가 통과했다. Vitest와 production build는 격리 경로에서 esbuild의 상위 경로 읽기가 차단되어 시작하지 못했으며, 이를 코드 실패나 통과로 해석하지 않는다.
+- 다음 반영: 정상 Node 22 clean checkout에서 표적 테스트·build를 재실행하고, archive를 원격에 보존한 뒤 병합 완료·중복 branch/worktree를 제거한다. Mission V6는 별도 계약 판단 전까지 archive로 유지한다.
+- 관련 Decision / Evidence: `DEC-20260817-03`, `DEC-20260822-08`, `EVD-20260822-08`
