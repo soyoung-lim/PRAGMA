@@ -12,6 +12,7 @@ import {
   type TargetFeature,
 } from "@/lib/pragma/targetFeatures";
 import { errorPatternsForAct } from "@/lib/pragma/errorPatterns";
+import { buildMissionLineageScope } from "@/lib/pragma/missionLineage";
 import { getScenarioTopic } from "@/lib/pragma/scenarioTopics";
 import {
   PDR_POWER_ENUM_TO_JSON,
@@ -87,7 +88,7 @@ const GOLDEN_CELLS: GoldenCell[] = [
   },
 ];
 
-function featureForGen(f: TargetFeature) {
+function featureForGen(f: TargetFeature, act: SpeechActUI) {
   return {
     code: f.code,
     version: f.version,
@@ -99,6 +100,11 @@ function featureForGen(f: TargetFeature) {
     excluded_confounds: f.excluded_confounds,
     closing_principle_ko: f.closing_principle_ko,
     counter_rule_note: f.counter_rule_note,
+    lineage_scope: buildMissionLineageScope({
+      direction: "ko_zh",
+      speechAct: act,
+      targetFeature: f.code,
+    }),
   };
 }
 
@@ -191,7 +197,7 @@ describe.skipIf(!process.env.RUN_GOLDEN)("골든 미션 게이트 (요청·거�
               speech_act_ko: cell.act,
               level_ko: "중급 (HSK 5급)",
               level_policy_ko: LEVEL_POLICY_INTERMEDIATE,
-              feature: featureForGen(feature),
+              feature: featureForGen(feature, cell.act),
               core: {
                 situation_ko: core.situation_ko,
                 relation_ko: core.relation_ko,
@@ -205,6 +211,7 @@ describe.skipIf(!process.env.RUN_GOLDEN)("골든 미션 게이트 (요청·거�
                 (p) => `${p.description} (예: ${p.approvedExample})`,
               ),
               is_response_act: isResponse,
+              generation_attempt: attempt,
               failure_notes: failureNotes,
             },
           });

@@ -1015,7 +1015,7 @@ const AdminGenerator = () => {
           <div className="rounded-md bg-[#FBEFD9]/40 border border-[#EAE4D2] p-3.5">
             <SectionTitle n={4} label="P · D · R 관계 조건" accent="핵심 변수" tone="accent" />
             <div className="mt-2 grid grid-cols-3 gap-3">
-              <Field label="Power (P) · 지위" tone="accent">
+              <Field label="상대적 권력(P)" tone="accent">
                 <Select
                   value={form.pdr_power}
                   onValueChange={(v) => update("pdr_power", v as PdrPower)}
@@ -1028,7 +1028,7 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Distance (D) · 거리" tone="accent">
+              <Field label="사회적 거리(D)" tone="accent">
                 <Select
                   value={form.pdr_distance}
                   onValueChange={(v) => update("pdr_distance", v as PdrDistance)}
@@ -1041,7 +1041,7 @@ const AdminGenerator = () => {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Imposition (R) · 부담" tone="accent">
+              <Field label="행위 부담도(R)" tone="accent">
                 <Select
                   value={form.pdr_burden}
                   onValueChange={(v) => update("pdr_burden", v as PdrBurden)}

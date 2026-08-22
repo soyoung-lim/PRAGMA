@@ -1,0 +1,35 @@
+name: PRAGMA live RLS role smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Read-only and negative-path role boundaries
+    runs-on: ubuntu-latest
+    environment: pragma-live-smoke
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run rls:smoke
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_SHA: ${{ github.sha }}
+          CI_RUN_REF: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PRAGMA_ADMIN_EMAIL: ${{ secrets.PRAGMA_ADMIN_EMAIL }}
+          PRAGMA_ADMIN_PASSWORD: ${{ secrets.PRAGMA_ADMIN_PASSWORD }}
+          PRAGMA_EXPERT_EMAIL: ${{ secrets.PRAGMA_EXPERT_EMAIL }}
+          PRAGMA_EXPERT_PASSWORD: ${{ secrets.PRAGMA_EXPERT_PASSWORD }}
+          PRAGMA_LEARNER_EMAIL: ${{ secrets.PRAGMA_LEARNER_EMAIL }}
+          PRAGMA_LEARNER_PASSWORD: ${{ secrets.PRAGMA_LEARNER_PASSWORD }}

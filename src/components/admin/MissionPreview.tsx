@@ -1,5 +1,5 @@
 import { getTargetFeature, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targetFeatures";
-import type { MissionV2, MpjItemV2 } from "@/lib/pragma/missionSchema";
+import type { MissionRuntime, MpjItemRuntime } from "@/lib/pragma/missionSchema";
 import { DIRECTION_LABEL } from "@/lib/pragma/enums";
 
 // 관리자 눈검사 뷰 — 생성된 mission_v1을 읽기 전용으로 전개한다.
@@ -13,11 +13,13 @@ function bandLabel(featureCode: string, code: string): string {
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  scale4: "① 적절성 4점",
-  judge3: "② 3분류 판정",
-  fix_choice: "③ 판정+교정",
-  reason_conf: "④ 판정+이유+확신",
-  multi_judge: "⑤ 다중 발화",
+  scale4: "적절성 4점",
+  judge3: "3분류 판정(과거 MPJ5)",
+  fix_choice: "판단+교정",
+  reason_conf: "판단+이유+확신(과거 MPJ5)",
+  reason: "주원인 판단(과거 v4/v5)",
+  fix_review: "교정본 검수",
+  multi_judge: "다중 발화",
 };
 
 const QUALITY_LABEL: Record<string, string> = {
@@ -34,13 +36,15 @@ const QUALITY_CODE_KO: Record<string, string> = {
   unnatural_language: "부자연스러운 문장",
   internal_inconsistency: "내부 불일치",
   scene_underspecified: "장면 미명세(상상이 갈림)",
+  fix_review_ambiguity: "FixReview 탈락본·핵심 실패 모호",
+  pdr_contrast_invalid: "P·D·R 기준/대비 구성 불일치",
 };
 
 export function MissionPreview({
   mission,
   warnings,
 }: {
-  mission: MissionV2;
+  mission: MissionRuntime;
   warnings?: string[];
 }) {
   const feat = mission.unit.target_feature;
@@ -103,7 +107,7 @@ export function MissionPreview({
         </div>
       )}
 
-      {/* MPJ 5문항 */}
+      {/* 계약 버전에 따른 MPJ 문항 */}
       {mission.mpj_items.map((it) => (
         <MpjReview key={it.id} item={it} featureCode={feat} />
       ))}
@@ -118,7 +122,7 @@ export function MissionPreview({
         <div className="mt-1.5">
           {mission.production_task.reference_alternatives.map((r, i) => (
             <p key={i} className="text-[12.5px]">
-              <span className="text-[#2E7D5B]">참고안{i + 1}</span> {r.text}{" "}
+              <span className="text-[#2E7D5B]">참고 표현 {i + 1}</span> {r.text}{" "}
               <span className="text-muted-foreground">— {r.note_ko}</span>
             </p>
           ))}
@@ -128,20 +132,22 @@ export function MissionPreview({
   );
 }
 
-function MpjReview({ item, featureCode }: { item: MpjItemV2; featureCode: string }) {
+function MpjReview({ item, featureCode }: { item: MpjItemRuntime; featureCode: string }) {
   const accepted =
     item.type === "scale4"
       ? item.accepted_scale_codes.map((c) => SCALE4_LABELS[c as Scale4Code] ?? c)
-      : item.type === "multi_judge"
+      : item.type === "multi_judge" || item.type === "fix_review"
         ? []
-        : item.accepted_band_codes.map((c) => bandLabel(featureCode, c));
+        : item.type === "reason"
+          ? [bandLabel(featureCode, item.problem_band_code)]
+          : item.accepted_band_codes.map((c) => bandLabel(featureCode, c));
   return (
     <div className={box}>
       <div className="flex items-center justify-between">
         <span className="text-[11.5px] font-semibold text-muted-foreground">{TYPE_LABEL[item.type] ?? item.type}</span>
         {accepted.length > 0 && (
           <span className="rounded bg-[#E7F5EE] px-1.5 py-0.5 text-[11px] font-semibold text-[#2E7D5B]">
-            정답 대역: {accepted.join(" / ")}
+            참고 대역: {accepted.join(" / ")}
           </span>
         )}
       </div>
@@ -169,6 +175,35 @@ function MpjReview({ item, featureCode }: { item: MpjItemV2; featureCode: string
             </li>
           ))}
         </ul>
+      )}
+      {item.type === "reason" && (
+        <ul className="mt-1 space-y-0.5">
+          {item.reasons.map((reason) => (
+            <li key={reason.id} className={item.accepted_reason_id === reason.id ? "text-[#2E7D5B]" : "text-muted-foreground"}>
+              {item.accepted_reason_id === reason.id ? "✓" : "·"} {reason.text_ko}
+            </li>
+          ))}
+        </ul>
+      )}
+      {item.type === "fix_review" && (
+        <div className="mt-1 space-y-2">
+          <ul className="space-y-0.5">
+            {item.corrections.map((correction) => (
+              <li key={correction.id} className={correction.verdict === "pass" ? "text-[#2E7D5B]" : "text-red-800"}>
+                {correction.verdict === "pass" ? "✓ 통과" : "✗ 탈락"} {correction.text}{" "}
+                <span className="text-[11.5px] text-muted-foreground">— {correction.note_ko}</span>
+              </li>
+            ))}
+          </ul>
+          <ul className="space-y-0.5">
+            {item.failure_reasons.map((reason) => (
+              <li key={reason.id} className={item.accepted_failure_reason_id === reason.id ? "text-[#2E7D5B]" : "text-muted-foreground"}>
+                {item.accepted_failure_reason_id === reason.id ? "✓ 핵심 실패" : "·"} {reason.text_ko}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[12px]">새 문제 방지 원칙: {item.repair_principle_ko}</p>
+        </div>
       )}
       {item.type === "multi_judge" && (
         <ul className="mt-1 space-y-0.5">

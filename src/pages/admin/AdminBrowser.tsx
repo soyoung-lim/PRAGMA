@@ -20,8 +20,9 @@ import { THEME_LABEL, type ThemeCode } from "@/lib/pragma/scenarioTopics";
 import { DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
 import { promoteCore, reviewMission, type PromotableCore } from "@/lib/pragma/promoteMission";
 import { fetchMissionForReview } from "@/lib/mission/missionDb";
+import { missionReleaseLabel } from "@/lib/mission/missionRelease";
 import { MissionPreview } from "@/components/admin/MissionPreview";
-import type { MissionV2 } from "@/lib/pragma/missionSchema";
+import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -44,6 +45,7 @@ interface CoreRow {
   scenario_r: string | null;
   review_status: string | null;
   mission_status: string | null;
+  release_gate_mode: "legacy_reviewed" | "expert_v1" | null;
   generation_run_id: string | null;
   generation_item_key: string | null;
   prompt_snapshot_hash: string | null;
@@ -75,7 +77,7 @@ const AdminBrowser = () => {
   const [busy, setBusy] = useState<string | null>(null); // 승격 중인 scenario_id
   const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
   // 눈검사 미리보기 — scenario_id → {mission, warnings}. openId = 펼친 행.
-  const [preview, setPreview] = useState<Record<string, { mission: MissionV2; warnings: string[] }>>({});
+  const [preview, setPreview] = useState<Record<string, { mission: MissionRuntime; warnings: string[] }>>({});
   const [openId, setOpenId] = useState<string | null>(null);
 
   const togglePreview = async (r: CoreRow) => {
@@ -160,7 +162,7 @@ const AdminBrowser = () => {
       })
         .from("scenarios")
         .select(
-          "scenario_id, speech_act, learner_level, domain, industry_sector, mode, source_modality, theme_code, topic_code, scenario_p, scenario_d, scenario_r, review_status, mission_status, generation_run_id, generation_item_key, prompt_snapshot_hash, core_content",
+          "scenario_id, speech_act, learner_level, domain, industry_sector, mode, source_modality, theme_code, topic_code, scenario_p, scenario_d, scenario_r, review_status, mission_status, release_gate_mode, generation_run_id, generation_item_key, prompt_snapshot_hash, core_content",
         )
         .eq("content_format", "scenario_core_v1")
         .order("created_at", { ascending: false })
@@ -355,13 +357,9 @@ const AdminBrowser = () => {
                       <Badge variant="secondary" className="font-normal">{DIRECTION_LABEL[coreDirection(r.core_content)]}</Badge>
                       <Badge
                         variant="secondary"
-                        className={`font-normal ${r.mission_status === "reviewed" ? "bg-emerald-100 text-emerald-900" : ""}`}
+                        className={`font-normal ${r.mission_status === "released" ? "bg-emerald-100 text-emerald-900" : r.mission_status === "reviewed" && r.release_gate_mode === "expert_v1" ? "bg-amber-100 text-amber-900" : ""}`}
                       >
-                        {r.mission_status === "reviewed"
-                          ? "미션 검토완료"
-                          : r.mission_status === "generated"
-                            ? "미션 생성됨"
-                            : "코어(검수 대기)"}
+                        {missionReleaseLabel(r)}
                       </Badge>
                     </div>
                     <p className="mt-1.5 text-[13px] font-medium">{r.core_content?.situation_ko ?? "—"}</p>
@@ -403,7 +401,7 @@ const AdminBrowser = () => {
                           {busy === r.scenario_id ? "처리 중…" : "검토 완료(reviewed)"}
                         </Button>
                       )}
-                      {(r.mission_status === "generated" || r.mission_status === "reviewed") && (
+                      {(r.mission_status === "generated" || r.mission_status === "reviewed" || r.mission_status === "released") && (
                         <Button size="sm" variant="ghost" onClick={() => togglePreview(r)}>
                           {openId === r.scenario_id ? "미션 접기 ▴" : "미션 보기 ▾"}
                         </Button>

@@ -46,6 +46,20 @@ describe("prompt snapshot integrity", () => {
     }
   });
 
+  it("pins the final MPJ4 + FixReview + independent DCT1 contract", () => {
+    const mission = prompt("mission.system");
+    expect(mission.text).toContain("MPJ는 정확히 4문항");
+    expect(mission.text).toContain("scale4 → fix_choice → fix_review → multi_judge");
+    expect(mission.text).toContain('"type": "fix_review"');
+    expect(mission.text).toContain("pass 2·reject 1");
+    expect(mission.text).toContain("과소 1·적정 2(서로 다른 전략)·과잉 1");
+    expect(mission.text).toContain("BEST/WORST·순위 필드는 만들지 않습니다");
+    expect(mission.text).toContain('judgment_frame="reference_non_scored"');
+    expect(mission.text).toContain("MPJ3 reject.failure_type은 MPJ2 오답");
+    expect(mission.text).toContain("번역일 때 0~2개");
+    expect(mission.text).not.toContain("MPJ 5문항");
+  });
+
   it("binds the five hardened quality checks into generator and critic prompts", () => {
     const system = prompt("core.system.ko_zh");
     const written = prompt("core.user.written");

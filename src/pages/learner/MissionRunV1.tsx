@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,15 @@ import { SPEECH_ACT_UI, LEVEL, DIRECTION_LANGS, type LanguageDirection } from "@
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import { SCALE4_CODES, SCALE4_LABELS, type Scale4Code } from "@/lib/pragma/targetFeatures";
 import {
-  normalizeMission,
-  type MissionV2,
+  type MissionRuntime,
   type MpjItemV2,
+  type MpjItemV4,
+  type MpjItemV5,
+  type MpjItemV6,
+  type ProductionTaskRuntime,
   type VocabularyHint,
 } from "@/lib/pragma/missionSchema";
-import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
+import { SAMPLE_MISSION_V6 } from "@/lib/mission/missionV6Sample";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
 import {
   saveMissionAttempt,
@@ -21,7 +24,6 @@ import {
   type MpjResponseTrace,
 } from "@/lib/mission/missionLog";
 import { ChatScene, ChatBubble, ChatCaption, ChatAvatar, highlightZh } from "@/components/mission/ChatScene";
-import { toneLeaning } from "@/lib/pragma/discourseSlots";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { requestSttTranscript } from "@/lib/mission/missionStt";
 import { requestTtsAudio } from "@/lib/tts";
@@ -31,18 +33,34 @@ import {
   type RuntimeFeedback,
 } from "@/lib/pragma/feedbackSchema";
 import { IS_DEMO } from "@/lib/auth/useProfile";
+import {
+  appendMissionEvent,
+  clearMissionAttemptId,
+  getOrCreateMissionAttemptId,
+  rotateMissionAttemptId,
+  type MissionEventType,
+} from "@/lib/mission/missionEvents";
+import { CONSENT_VERSION, POLICY_VERSION } from "@/lib/research/versions";
+import {
+  canRevealFixReview,
+  canSubmitFixChoice,
+  canSubmitMultiJudge,
+  canSubmitRevision,
+  deriveRevisionRecheck,
+  type RevisionDecision,
+  type RevisionRecheckResult,
+} from "@/lib/mission/missionFlow";
 
 // 샘플은 v1 → 정규화해 v2로 구동(러너는 정규화 형태만 본다, 0-l·84).
-const SAMPLE_MISSION_V2 = normalizeMission(SAMPLE_MISSION_V1).data as MissionV2;
+const SAMPLE_MISSION_RUNTIME = SAMPLE_MISSION_V6;
 
 // 방향별 언어 이름 라벨(0-l·85).
 const LANG_NAME: Record<"ko" | "zh", string> = { ko: "한국어", zh: "중국어" };
 const srcLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].source];
 const tgtLangName = (dir: LanguageDirection) => LANG_NAME[DIRECTION_LANGS[dir].target];
 
-// 학습자 미션 실행 — 계약 스키마 mission_v1을 직접 구동한다(프로토타입 v2 이식).
-//   감각 익히기(MPJ 5 → 인계) → 직접 표현하기(상황 살피기 → 산출/통역) → 돌아보고 다듬기(피드백 → 다듬기 → 완료)
-//   ※ 3단계는 **표시 서사**일 뿐 화면 순서·문항 수·판정 기준·저장 계약은 종전과 같다.
+// 학습자 미션 실행 — legacy mission_v1..v5와 현행 mission_v6를 읽는다.
+//   감각 익히기(MPJ4) → 비채점 맥락 안내 → 독립 DCT1 → 3층 피드백 → 실질 수정 → 1회 재확인.
 // 판정은 초점별 band 카탈로그(targetFeatures) 기준. 자유 산출 뒤에는 feedback-lite가
 // 의미·문법·화용을 진단하며, 실패 시 참고 표현·핵심 원칙으로 안전하게 폴백한다.
 
@@ -67,7 +85,7 @@ const demoBtn =
 // 자리표시자인데도 완료 화면에서 시각 무게가 가장 컸다. 콘텐츠가 생기면 true로.
 const LIVING_EXPRESSION_READY = false;
 
-type Phase = "mpj" | "handoff" | "ctx" | "produce" | "feedback" | "revise" | "done";
+type Phase = "mpj" | "handoff" | "ctx" | "produce" | "feedback" | "revise" | "recheck" | "done";
 
 // 서사 3단계 — 화면 순서·문항 수·판정 기준·저장 계약은 모두 그대로이고 표시만 묶는다.
 // 「1부 판단 연습 / 2부 실전 적용」은 시험 2부작으로 읽혀, 미션을 마쳐도 "문항을
@@ -80,14 +98,15 @@ const STAGE_OF: Record<Phase, Stage> = {
   produce: 1,
   feedback: 2,
   revise: 2,
+  recheck: 2,
   done: 2,
 };
 const STAGE_TITLES = ["감각 익히기", "직접 표현하기", "돌아보고 다듬기"] as const;
 // 단계 안의 잔걸음. MPJ 유형명(scale4·reason_conf…)은 더 이상 노출하지 않는다 —
 // 기술 용어가 진행바에 있으면 그 자체로 시험지처럼 읽힌다.
-const STEP_INDEX: Partial<Record<Phase, number>> = { ctx: 0, produce: 1, feedback: 0, revise: 1, done: 2 };
+const STEP_INDEX: Partial<Record<Phase, number>> = { ctx: 0, produce: 1, feedback: 0, revise: 1, recheck: 2, done: 2 };
 const stageSteps = (stage: Stage, interp: boolean) =>
-  stage === 1 ? ["상황 살피기", interp ? "통역하기" : "옮겨 쓰기"] : ["피드백 보기", "다듬기", "완료"];
+  stage === 1 ? ["상황 확인", interp ? "통역하기" : "옮겨 쓰기"] : ["피드백 보기", "다듬기", "재확인·완료"];
 
 // ── band 라벨 헬퍼 ──────────────────────────────────────────────────────
 function bandLabel(featureCode: string, code: string): string {
@@ -99,30 +118,6 @@ function bandOptions(featureCode: string, fallback: string[]): { code: string; l
   const feat = getTargetFeature(featureCode);
   if (feat) return feat.band_schema.map((b) => ({ code: b.code, label: b.label_ko }));
   return [...new Set(fallback)].map((c) => ({ code: c, label: c }));
-}
-
-// ── 상황 확인(판단형) — PDR에서 규칙적으로 파생. 데이터·AI 0회, 점수 없음 ──
-// 프로토타입 v2 "필요한 화용 조절점" 판단. 요청·완화 계열 기준(현행 DB 범위).
-function deriveCtx(pdr: { d?: string; r?: string }) {
-  const opts = [
-    "친한 사이라 간결·직접적으로 말해도 괜찮다",
-    "아직 친하지 않으니 상대가 선택할 여지를 남기는 완화가 필요하다",
-    "겹겹의 격식과 존대를 최대한 갖춰야 한다",
-  ];
-  // 판정 규칙은 산출 안내(ProductionGuide)와 공유한다 — 두 화면이 어긋나면
-  // 그 자체가 완화 편향을 만든다(0-r·106 3면 정렬).
-  const right = { direct: 0, mitigated: 1, formal: 2 }[toneLeaning(pdr)];
-  const okRight = [
-    "친하고 부담이 낮아 간결·직접적인 표현이 자연스럽습니다. 완화를 겹겹이 쌓으면 오히려 어색합니다.",
-    "아직 친하지 않고 상대가 결정할 여지가 있는 상황이라, 부담을 낮추는 완화와 선택권이 적절합니다. 과한 격식은 오히려 거리감을 줍니다.",
-    "부담이 크고 관계가 먼 상황이라, 격식과 존대를 충분히 갖추는 편이 안전합니다.",
-  ][right];
-  const okWrong = [
-    "이번 상대는 편한 사이입니다. 완화를 과하게 쌓기보다 간결·직접적인 표현이 더 자연스럽습니다.",
-    "이번 상대는 아직 친하지 않습니다. 간결한 직접형은 부담스럽고 과한 격식은 거리감을 줍니다 — 거절할 여지를 남기는 완화가 이 관계에 맞습니다.",
-    "이번 상대는 부담이 크고 먼 관계입니다. 간결한 직접형보다 격식을 갖추는 편이 적절합니다.",
-  ][right];
-  return { q: "이 상대·이 부담에 알맞은 요청 조절 수준", opts, right, okRight, okWrong };
 }
 
 // ── 페이지: 라우트 파라미터로 DB 조회, 없으면 샘플 ──────────────────────
@@ -175,10 +170,19 @@ const MissionRunV1 = () => {
     );
   }
 
-  const baseMission = loaded?.mission ?? SAMPLE_MISSION_V2;
-  const mission =
+  const baseMission = loaded?.mission ?? SAMPLE_MISSION_RUNTIME;
+  const mission: MissionRuntime =
     forceInterp
-      ? { ...baseMission, production_task: { ...baseMission.production_task, mode: "interpreting" as const } }
+      ? ({
+          ...baseMission,
+          production_task: {
+            ...baseMission.production_task,
+            mode: "interpreting" as const,
+            source_modality: "spoken" as const,
+            replay_limit: 2 as const,
+            vocabulary_hints: undefined,
+          },
+        } as MissionRuntime)
       : baseMission;
   const isSample = !loaded;
   const headerRight = loaded
@@ -220,7 +224,7 @@ function ProductionGuide({ hints, onOpen }: { hints: VocabularyHint[]; onOpen: (
         className="rounded-full border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-1.5 text-[12px] font-bold text-[#4A5560] hover:bg-[#FFF9DD]"
         aria-expanded={expanded}
       >
-        막히면 어휘 힌트 {expanded ? "닫기 ▴" : "2개 보기 ▾"}
+        막히면 내용 어휘 {expanded ? "닫기 ▴" : `${Math.min(2, hints.length)}개 보기 ▾`}
       </button>
       {expanded && (
         <div className="mt-1.5 flex w-full flex-wrap justify-end gap-x-4 gap-y-1 rounded-lg border border-[#E5DDAF] bg-[#FFFDF4] px-3 py-2 text-[12.5px] sm:w-[78%]">
@@ -305,20 +309,22 @@ function FeedbackPanel({
 
         {alt && (
           <div className="mt-2.5 rounded-lg bg-white/70 px-3 py-2">
-            <div className="text-[11.5px] font-semibold text-[#6B5518]">다듬은 표현 예시</div>
+            <div className="text-[11.5px] font-semibold text-[#6B5518]">최소한으로 고친 참고 표현</div>
             <div className="mt-0.5 text-[14px]">{alt.text}</div>
             {alt.note_ko && <div className="mt-0.5 text-[12px] text-muted-foreground">{alt.note_ko}</div>}
           </div>
         )}
+
       </div>
 
-      {/* 나머지 층 — 칩 */}
+      {/* 세 층의 상태는 항상 한 줄 이상 노출한다. */}
       <div className={card}>
-        <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-[12.5px]">
-          {others.map((l) => (
+        <ul className="grid gap-1.5 text-[12.5px] sm:grid-cols-3">
+          {layers.map((l) => (
             <li key={l.key}>
               <span className="text-muted-foreground">{l.label} · </span>
               <span className="font-medium">{l.short}</span>
+              {l.key === scope && scope !== "clear" && <span className="ml-1 text-[10.5px] text-[#6B5518]">우선 수정</span>}
             </li>
           ))}
         </ul>
@@ -342,7 +348,7 @@ function FeedbackPanel({
               ))}
             {alt2 && (
               <div>
-                <div className="text-[11.5px] font-semibold text-muted-foreground">다른 전략</div>
+                <div className="text-[11.5px] font-semibold text-muted-foreground">다른 전략의 가능한 대안</div>
                 <div className="mt-0.5 text-[13.5px]">{alt2.text}</div>
                 {alt2.note_ko && <div className="text-[12px] text-muted-foreground">{alt2.note_ko}</div>}
               </div>
@@ -368,7 +374,7 @@ function MissionRunner({
   speechAct,
   level,
 }: {
-  mission: MissionV2;
+  mission: MissionRuntime;
   isSample: boolean;
   /** 수행 방식 전환으로 넘어온 경우 1부(판단 연습)를 건너뛴다 — 샘플·데모 전용 */
   startAtPart2?: boolean;
@@ -378,6 +384,11 @@ function MissionRunner({
   speechAct: string | null;
   level: string | null;
 }) {
+  const storageKey = `pragma:mrun:${scenarioId ?? "sample"}`;
+  const attemptStorageKey = `${storageKey}:attempt-id`;
+  const [attemptId, setAttemptId] = useState(() =>
+    getOrCreateMissionAttemptId(attemptStorageKey),
+  );
   const [phase, setPhase] = useState<Phase>(startAtPart2 ? "ctx" : "mpj");
   const [mpjIdx, setMpjIdx] = useState(0);
   const [mpjResponses, setMpjResponses] = useState<MpjResponseTrace[]>([]);
@@ -386,6 +397,13 @@ function MissionRunner({
   const [ctxDone, setCtxDone] = useState(false);
   const [draft, setDraft] = useState("");
   const [revised, setRevised] = useState("");
+  const [revisionDecision, setRevisionDecision] = useState<RevisionDecision | null>(null);
+  const [retentionReason, setRetentionReason] = useState("");
+  const [recheckedResponse, setRecheckedResponse] = useState("");
+  const [revisionRecheck, setRevisionRecheck] = useState<RevisionRecheckResult | null>(null);
+  const [recheckState, setRecheckState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [additionalRevisionUsed, setAdditionalRevisionUsed] = useState(false);
+  const recheckRequestedRef = useRef(false);
   const [savedLater, setSavedLater] = useState(false);
   const [resume, setResume] = useState<{
     phase: Phase;
@@ -405,6 +423,7 @@ function MissionRunner({
   // 이견 채널(0-r·104) — 완료 시 수행 로그의 context_judgment로 함께 저장한다.
   const [dissent, setDissent] = useState<LearnerDissent | null>(null);
   const startedAtRef = useRef<string>(new Date().toISOString());
+  const mpjItemStartedAtMsRef = useRef<number>(Date.now());
 
   const items = mission.mpj_items;
   const item = items[mpjIdx];
@@ -431,9 +450,52 @@ function MissionRunner({
   const reviseHint = fb
     ? feedbackHeadline(fb)
     : { title: mission.unit.learner_label, body: mission.unit.closing_ko };
+  const revisionScope = fb?.revision_scope ?? null;
+  const revisionRequired = revisionScope !== "clear";
+  const revisionCanSubmit = canSubmitRevision({
+    scope: revisionScope,
+    decision: revisionDecision,
+    first: draft,
+    revised,
+    retentionReason,
+    hasDissent: Boolean(dissent),
+  });
 
   // 번역 산출 힌트는 화용 전략이 아니라 내용 어휘 두 개만 사용한다.
   const vocabularyHints = pt.vocabulary_hints ?? [];
+
+  const emitEvent = useCallback(
+    (eventType: MissionEventType, payload: Record<string, unknown> = {}) => {
+      void appendMissionEvent({
+        attemptId,
+        scenarioId,
+        missionId: scenarioId ?? `sample:${mission.unit.target_feature}`,
+        eventType,
+        contentVersion: mission.unit.target_feature_version ?? null,
+        contentHash: mission.provenance?.mission_content_hash ?? null,
+        policyVersion: POLICY_VERSION,
+        consentVersion: CONSENT_VERSION,
+        featureId: mission.unit.target_feature,
+        speechAct,
+        direction: dir,
+        taskMode: isInterp ? "interpreting" : "translation",
+        payload,
+      }).then((result) => {
+        if ("reason" in result && result.reason === "error") {
+          console.warn(`[mission-event] ${eventType} 저장 실패:`, result.message);
+        }
+      });
+    }, [attemptId, scenarioId, mission, speechAct, dir, isInterp],
+  );
+
+  useEffect(() => {
+    emitEvent("mission_session_opened", {
+      entry_phase: startAtPart2 ? "ctx" : "mpj",
+      sample: isSample,
+      judgment_frame: mission.schema_version === "mission_v6" ? "reference_non_scored" : "legacy_non_scored",
+      planned_judgment_response_count: mission.schema_version === "mission_v6" ? 10 : null,
+    });
+  }, [emitEvent, isSample, startAtPart2]);
 
   // 피드백 단계 진입 시 1회 호출. 실패해도 미션을 막지 않는다(정직 표기로 폴백).
   // ⚠️ cleanup으로 취소하지 않는다 — 이 이펙트가 setFbState를 부르므로 의존성이 바뀌어
@@ -451,16 +513,49 @@ function MissionRunner({
       if (r.ok && r.feedback) {
         setFb(r.feedback);
         setFbState("ready");
+        emitEvent("feedback_received", {
+          status: "ready",
+          schema_version: r.feedback.schema_version,
+          rubric_version: r.feedback.rubric_version,
+        });
         if (r.issues?.length) console.warn("[feedback] 정리된 모순:", r.issues);
       } else {
         console.warn("[feedback] 실패:", r.error);
         setFbState("error");
+        emitEvent("feedback_received", { status: "error" });
       }
     });
-  }, [phase, draft, mission, fbRetryNonce]);
+  }, [phase, draft, mission, fbRetryNonce, emitEvent]);
+
+  // 수정본 재확인은 한 번만 실행한다. 결과 뒤 추가 수정은 한 번 허용하지만 재스캔하지 않는다.
+  useEffect(() => {
+    if (phase !== "recheck" || !recheckedResponse.trim() || recheckRequestedRef.current) return;
+    recheckRequestedRef.current = true;
+    setRecheckState("loading");
+    requestFeedback(mission, recheckedResponse).then((result) => {
+      if (result.ok && result.feedback) {
+        const withinBand = getTargetFeature(mission.unit.target_feature)?.within_band_code ?? "within_band";
+        const recheck = deriveRevisionRecheck(
+          fb?.revision_scope ?? "feature",
+          result.feedback,
+          withinBand,
+        );
+        setRevisionRecheck(recheck);
+        setRecheckState("ready");
+        emitEvent("revision_rechecked", {
+          status: recheck.status,
+          priority_target: recheck.priority_target,
+          new_problem_dimensions: recheck.new_problem_dimensions,
+          scan_count: 1,
+        });
+      } else {
+        setRecheckState("error");
+        emitEvent("revision_rechecked", { status: "error", scan_count: 1 });
+      }
+    });
+  }, [phase, recheckedResponse, mission, fb, emitEvent]);
 
   // 중단 후 재개(프로토타입 v2 ②) — 2부 진행분만 미션별 localStorage에 보존. 실패해도 흐름 무해.
-  const storageKey = `pragma:mrun:${scenarioId ?? "sample"}`;
   useEffect(() => {
     // 수행 방식 전환으로 들어온 경우엔 재개 대상이 아니다 — 방금 끝낸 다른 방식의
     // 진행분(같은 sample 키를 쓴다)이 새어 들어와 착지 지점이 달라지면 안 된다.
@@ -515,6 +610,7 @@ function MissionRunner({
   const clearSaved = () => {
     try {
       localStorage.removeItem(storageKey);
+      clearMissionAttemptId(attemptStorageKey);
     } catch {
       /* 무시 */
     }
@@ -529,6 +625,7 @@ function MissionRunner({
     setVocabularyHintOpenedAt(resume.vocabularyHintOpenedAt ?? null);
     setPhase(resume.phase);
     setResume(null);
+    emitEvent("mission_resumed", { resume_phase: resume.phase });
     window.scrollTo(0, 0);
   };
 
@@ -537,21 +634,39 @@ function MissionRunner({
     setPhase("done");
     if (saveState === "saving" || saveState === "saved") return;
     setSaveState("saving");
+    const finalResponse = revisionDecision === "keep" ? draft : revised.trim() || draft;
+    const missionElapsedMs = Math.max(0, Date.now() - Date.parse(startedAtRef.current));
+    const mpjElapsedMs = mpjResponses.reduce((sum, response) => sum + (response.elapsed_ms ?? 0), 0);
+    const judgmentResponseCount = mpjResponses.reduce(
+      (sum, response) => sum + (response.judgment_response_count ?? 0),
+      0,
+    );
+    emitEvent("revision_submitted", {
+      first_response: draft,
+      revised_response: finalResponse,
+      decision: revisionDecision,
+      additional_revision_used: additionalRevisionUsed,
+    });
     const res = await saveMissionAttempt({
       mission,
       scenarioId,
       speechAct,
       level,
       firstResponse: draft,
-      revisedResponse: revised || draft,
+      revisedResponse: finalResponse,
       ...(fb ? { feedback: fb } : {}),
       startedAtIso: startedAtRef.current,
       mpjResponses,
+      ...(revisionDecision ? { revisionDecision } : {}),
+      ...(retentionReason.trim() ? { retentionReason: retentionReason.trim() } : {}),
+      ...(recheckedResponse ? { recheckedResponse } : {}),
+      ...(revisionRecheck ? { revisionRecheck } : {}),
+      additionalRevisionUsed,
       ...(!isInterp && dir === "ko_zh"
         ? {
             productionSupport: {
               kind: "translation_vocabulary_hints" as const,
-              available: vocabularyHints.length === 2,
+              available: vocabularyHints.length > 0,
               opened: vocabularyHintOpenedAt !== null,
               opened_at: vocabularyHintOpenedAt,
             },
@@ -560,18 +675,41 @@ function MissionRunner({
       ...(dissent ? { contextJudgment: dissent } : {}),
     });
     if (res.ok) {
+      emitEvent("mission_completed", {
+        mission_log_id: res.id,
+        save_status: "saved",
+        elapsed_ms: missionElapsedMs,
+        mpj_elapsed_ms: mpjElapsedMs,
+        judgment_response_count: judgmentResponseCount,
+      });
       setSaveState("saved");
       clearSaved();
     } else {
+      emitEvent("mission_completed", {
+        save_status: (res as { reason: "no_auth" | "error" }).reason,
+        elapsed_ms: missionElapsedMs,
+        mpj_elapsed_ms: mpjElapsedMs,
+        judgment_response_count: judgmentResponseCount,
+      });
       setSaveState((res as { reason?: string }).reason === "no_auth" ? "demo" : "error");
       clearSaved();
     }
   };
 
   const nextMpj = (response: MpjResponseTrace) => {
+    const completedAtMs = Date.now();
+    const timedResponse: MpjResponseTrace = {
+      ...response,
+      judgment_frame: "reference_non_scored",
+      scored: false,
+      elapsed_ms: Math.max(0, completedAtMs - mpjItemStartedAtMsRef.current),
+      judgment_response_count: judgmentResponseCountFor(response.item_type),
+    };
+    mpjItemStartedAtMsRef.current = completedAtMs;
+    emitEvent("mpj_response_submitted", { response: timedResponse });
     setMpjResponses((current) => [
-      ...current.filter((itemResponse) => itemResponse.item_id !== response.item_id),
-      response,
+      ...current.filter((itemResponse) => itemResponse.item_id !== timedResponse.item_id),
+      timedResponse,
     ]);
     if (mpjIdx < items.length - 1) {
       setMpjIdx((i) => i + 1);
@@ -599,10 +737,19 @@ function MissionRunner({
     setCtxDone(false);
     setDraft("");
     setRevised("");
+    setRevisionDecision(null);
+    setRetentionReason("");
+    setRecheckedResponse("");
+    setRevisionRecheck(null);
+    setRecheckState("idle");
+    setAdditionalRevisionUsed(false);
+    recheckRequestedRef.current = false;
     setSavedLater(false);
     setResume(null);
     setSaveState("idle");
+    setAttemptId(rotateMissionAttemptId(attemptStorageKey));
     startedAtRef.current = new Date().toISOString();
+    mpjItemStartedAtMsRef.current = Date.now();
     window.scrollTo(0, 0);
   };
 
@@ -700,7 +847,15 @@ function MissionRunner({
           <div className="space-y-3">
             {/* 문항이 첫 화면을 차지한다 — 학생이 처음 봐야 할 것은 상황이지 완료 조건이 아니다.
                 초점 라벨·문항 수는 위쪽 맥락 띠와 진행바가 이미 말한다(삼중 노출 제거). */}
-            <MpjStage key={item.id} item={item} onDone={nextMpj} />
+            {["mission_v4", "mission_v5", "mission_v6"].includes(mission.schema_version) ? (
+              <MpjStageCurrent
+                key={item.id}
+                item={item as MpjItemV4 | MpjItemV5 | MpjItemV6}
+                onDone={nextMpj}
+              />
+            ) : (
+              <MpjStage key={item.id} item={item as MpjItemV2} onDone={nextMpj} />
+            )}
             {mpjIdx === 0 && <MissionBriefDrawer mission={mission} />}
           </div>
         )}
@@ -740,12 +895,10 @@ function MissionRunner({
           <CtxStage
             pt={pt}
             isInterp={isInterp}
-            pick={ctxPick}
-            onPick={(i) => {
-              setCtxPick(i);
-              setCtxDone(true); // 재개 저장 형태는 그대로 둔다(기존 저장분 호환).
+            onNext={() => {
+              setCtxDone(true); // legacy local resume 필드만 보존하며 완료 조건에는 사용하지 않는다.
+              goto("produce");
             }}
-            onNext={() => goto("produce")}
           />
         )}
 
@@ -767,9 +920,11 @@ function MissionRunner({
                 sttLang={langs.stt}
                 situation={pt.situation_ko}
                 relation={pt.relation_ko}
+                replayLimit={Math.min(2, pt.replay_limit ?? 2)}
                 demoText={demoDraft}
                 onSubmit={(t) => {
                   setDraft(t);
+                  emitEvent("first_response_submitted", { response: t, input_mode: "stt_confirmed" });
                   goto("feedback");
                 }}
               />
@@ -778,7 +933,7 @@ function MissionRunner({
                 <ChatScene situation={pt.situation_ko} relation={pt.relation_ko} eyebrow="직접 옮길 요청">
                   {pt.preceding_turn && <ChatBubble side="them">{pt.preceding_turn}</ChatBubble>}
                   <ChatCaption>내가 전할 말 ({srcName}) · {pt.source_text}</ChatCaption>
-                  {dir === "ko_zh" && vocabularyHints.length === 2 && (
+                  {dir === "ko_zh" && vocabularyHints.length > 0 && (
                     <ProductionGuide
                       hints={vocabularyHints}
                       onOpen={() =>
@@ -800,7 +955,14 @@ function MissionRunner({
                 <p className="px-0.5 text-[12px] text-muted-foreground">
                   먼저 상대에게 답장하듯 직접 옮깁니다. 참고 표현은 제출한 뒤에 확인합니다.
                 </p>
-                <Button className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]" disabled={!draft.trim()} onClick={() => goto("feedback")}>번역 제출 →</Button>
+                <Button
+                  className="w-full bg-[#FAD338] text-[#15202B] hover:bg-[#F0C800]"
+                  disabled={!draft.trim()}
+                  onClick={() => {
+                    emitEvent("first_response_submitted", { response: draft, input_mode: "typed" });
+                    goto("feedback");
+                  }}
+                >번역 제출 →</Button>
                 {IS_DEMO && (
                   <button type="button" className={demoBtn} onClick={() => setDraft(demoDraft)}>데모 채우기 — 예시 답안 입력</button>
                 )}
@@ -848,30 +1010,34 @@ function MissionRunner({
               <FeedbackReasonDrawer mission={mission} />
             </div>
 
-            <details className={card}>
-              <summary className="cursor-pointer text-[13px] font-semibold">참고 표현 보기</summary>
-              <p className="mt-1 text-[12px] text-muted-foreground">정답이 아니라 비교용입니다. 상황에 따라 어울리는 범위가 달라집니다.</p>
-              <ul className="mt-2.5 space-y-2">
-                {mission.production_task.reference_alternatives.map((a) => (
-                  <li key={a.text} className="rounded-lg bg-[#FAF8F2] px-3.5 py-2.5">
-                    <div className="text-[14px]">{a.text}</div>
-                    <div className="mt-0.5 text-[12px] text-muted-foreground">{a.note_ko}</div>
-                  </li>
-                ))}
-              </ul>
-            </details>
+            {fbState === "error" && (
+              <details className={card}>
+                <summary className="cursor-pointer text-[13px] font-semibold">진단 실패 시 참고 표현 보기</summary>
+                <p className="mt-1 text-[12px] text-muted-foreground">정답이 아니라 비교용이며, 총 2개를 넘기지 않습니다.</p>
+                <ul className="mt-2.5 space-y-2">
+                  {mission.production_task.reference_alternatives.slice(0, 2).map((a) => (
+                    <li key={a.text} className="rounded-lg bg-[#FAF8F2] px-3.5 py-2.5">
+                      <div className="text-[14px]">{a.text}</div>
+                      <div className="mt-0.5 text-[12px] text-muted-foreground">{a.note_ko}</div>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
 
             {/* 이견 채널 — 판정을 바꾸지 않는 별도 통로(0-r·104) */}
             <DissentPanel
-              onSubmit={(d) =>
-                setDissent({
+              onSubmit={(d) => {
+                const submitted = {
                   kind: "learner_dissent",
                   at: "feedback",
                   conditions: d.conditions,
                   reason_ko: d.reason,
                   created_at: new Date().toISOString(),
-                })
-              }
+                } as const;
+                setDissent(submitted);
+                emitEvent("learner_dissent_submitted", { dissent: submitted });
+              }}
             />
 
             {/* 「한 가지만 고치기」로 읽히지 않게 — 여러 곳을 함께 다듬어도 된다. */}
@@ -898,14 +1064,141 @@ function MissionRunner({
                 <Textarea
                   className="mt-1"
                   rows={5}
-                  value={revised || draft}
-                  onChange={(e) => setRevised(e.target.value)}
+                  value={revisionDecision === null && !revised ? draft : revised}
+                  onFocus={() => {
+                    setRevisionDecision("revise");
+                    setRevised((current) => current || draft);
+                  }}
+                  onChange={(e) => {
+                    setRevisionDecision("revise");
+                    setRevised(e.target.value);
+                  }}
                 />
               </div>
             </div>
-            <Button className="w-full" onClick={finish}>마치기</Button>
+            <div className={card}>
+              <div className="text-[12.5px] font-semibold">수정 결정</div>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setRevisionDecision("revise")}
+                  className={[
+                    "rounded-lg border px-3 py-2 text-left text-[12.5px]",
+                    revisionDecision === "revise" ? "border-[#15202B] bg-[#FAFAF7] font-semibold" : "border-[#EAE4D2]",
+                  ].join(" ")}
+                >
+                  실질적으로 고쳐 제출
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRevisionDecision("keep")}
+                  className={[
+                    "rounded-lg border px-3 py-2 text-left text-[12.5px]",
+                    revisionDecision === "keep" ? "border-[#15202B] bg-[#FAFAF7] font-semibold" : "border-[#EAE4D2]",
+                  ].join(" ")}
+                >
+                  {revisionRequired ? "원문 유지·이유 남기기" : "그대로 유지"}
+                </button>
+              </div>
+              {revisionDecision === "keep" && revisionRequired && (
+                <Textarea
+                  className="mt-2"
+                  rows={2}
+                  value={retentionReason}
+                  onChange={(event) => setRetentionReason(event.target.value)}
+                  placeholder="원문을 유지하는 이유 (이견을 이미 남겼다면 생략 가능)"
+                />
+              )}
+              {revisionDecision === "revise" && !revisionCanSubmit && (
+                <p className="mt-2 text-[11.5px] text-[#8A5A17]">
+                  공백·문장부호만 바꾼 수정은 완료로 인정되지 않습니다.
+                </p>
+              )}
+            </div>
+            <Button
+              className="w-full"
+              disabled={!revisionCanSubmit}
+              onClick={() => {
+                const submitted = revisionDecision === "keep" ? draft : revised.trim();
+                if (revisionDecision === "keep" || additionalRevisionUsed) {
+                  void finish();
+                  return;
+                }
+                setRecheckedResponse(submitted);
+                goto("recheck");
+              }}
+            >
+              {revisionDecision === "keep"
+                ? "유지 결정으로 마치기"
+                : additionalRevisionUsed
+                  ? "추가 수정 제출하고 마치기"
+                  : "수정 제출·한 번 재확인 →"}
+            </Button>
             {IS_DEMO && (
-              <button type="button" className={demoBtn} onClick={() => setRevised(demoRevised)}>데모 채우기 — 다듬은 안 적용</button>
+              <button type="button" className={demoBtn} onClick={() => {
+                setRevisionDecision("revise");
+                setRevised(demoRevised);
+              }}>데모 채우기 — 다듬은 안 적용</button>
+            )}
+          </div>
+        )}
+
+        {/* 수정 후 경량 재확인 — 전체 피드백 루프가 아니라 지정 목표·의미·새 문제 1회 스캔. */}
+        {phase === "recheck" && (
+          <div className="space-y-3">
+            <div className={card}>
+              <div className="text-[11.5px] font-semibold text-muted-foreground">재확인할 수정본</div>
+              <p className="mt-1 whitespace-pre-wrap text-[14.5px]">{recheckedResponse}</p>
+            </div>
+            {recheckState === "loading" && <div className={card}>수정 목표 반영과 새 문제를 한 번 확인하는 중…</div>}
+            {recheckState === "ready" && revisionRecheck && (
+              <div className="rounded-xl border border-[#FAD338] bg-[#FFFBEA] p-4">
+                <div className="text-[12px] font-bold text-[#6B5518]">
+                  {revisionRecheck.status === "reflected"
+                    ? "반영됨"
+                    : revisionRecheck.status === "partial"
+                      ? "부분 반영"
+                      : "새 문제 발생"}
+                </div>
+                <ul className="mt-2 space-y-1 text-[13px]">
+                  <li>지정 수정 목표 · {revisionRecheck.target_reflected ? "반영됨" : "아직 일부 남음"}</li>
+                  <li>
+                    원래 의미 · {revisionRecheck.meaning_status === "preserved"
+                      ? "보존됨"
+                      : revisionRecheck.meaning_status === "target_not_yet_reflected"
+                        ? "기존 의미 목표가 아직 일부 남음"
+                        : "수정 중 새 의미 문제 발생"}
+                  </li>
+                  <li>
+                    새 문제 · {revisionRecheck.new_problem_dimensions.length === 0
+                      ? "발견되지 않음"
+                      : revisionRecheck.new_problem_dimensions.join(" · ")}
+                  </li>
+                </ul>
+              </div>
+            )}
+            {recheckState === "error" && (
+              <div className="rounded-lg border border-dashed border-[#B9C4CE] bg-[#F7F9FA] p-3 text-[12.5px]">
+                재확인을 불러오지 못했습니다. 수정본은 그대로 제출할 수 있으며, 재확인 실패 사실은 이벤트에 남습니다.
+              </div>
+            )}
+            {(recheckState === "ready" || recheckState === "error") && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button onClick={finish}>이 수정본으로 마치기</Button>
+                {!additionalRevisionUsed && revisionRecheck?.status !== "reflected" && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setAdditionalRevisionUsed(true);
+                      setRevised(recheckedResponse);
+                      setRevisionDecision("revise");
+                      goto("revise");
+                    }}
+                  >
+                    한 번 더 수정하기
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -959,17 +1252,6 @@ function MissionRunner({
               {saveState === "error" && "수행 기록 저장에 실패했습니다. 네트워크 상태를 확인한 뒤 다시 시도하십시오."}
               {saveState === "idle" && "수행 기록을 준비 중입니다."}
             </div>
-            <details className={card}>
-              <summary className="cursor-pointer text-[13px] font-semibold">이번에 본 알맞은 표현들 다시 보기</summary>
-              <ul className="mt-2 space-y-1.5">
-                {items.map((it) => (
-                  <li key={it.id} className="rounded-lg bg-[#FAF8F2] px-3.5 py-2 text-[13.5px]">
-                    {it.recommended_example}
-                  </li>
-                ))}
-              </ul>
-            </details>
-
             {/* 보상·환기 구역 — 학습 코어와 물리적 분리. 생생 중국어(쇼츠 발췌)는 완료 후 보상 슬롯에만(UX 분리 원칙)
                 ⚠️ 콘텐츠가 생길 때까지 렌더하지 않는다(LIVING_EXPRESSION_READY=false).
                 빈 자리표시자인데도 완료 화면에서 시각 무게가 가장 컸고, 개발 메모
@@ -1071,6 +1353,7 @@ function AudioFrame({
   sttLang,
   situation,
   relation,
+  replayLimit,
   demoText,
   onSubmit,
 }: {
@@ -1081,10 +1364,11 @@ function AudioFrame({
   sttLang: string;
   situation: string;
   relation: string;
+  replayLimit: number;
   demoText: string;
   onSubmit: (transcript: string) => void;
 }) {
-  const MAX_PLAYS = 2;
+  const MAX_PLAYS = Math.min(2, Math.max(1, replayLimit));
   const [plays, setPlays] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -1395,7 +1679,7 @@ function Handoff({
   onContinue,
   onSaveLater,
 }: {
-  mission: MissionV2;
+  mission: MissionRuntime;
   dir: LanguageDirection;
   isInterp: boolean;
   saved: boolean;
@@ -1441,50 +1725,27 @@ function Handoff({
 function CtxStage({
   pt,
   isInterp,
-  pick,
-  onPick,
   onNext,
 }: {
-  pt: MissionV2["production_task"];
+  pt: ProductionTaskRuntime;
   isInterp: boolean;
-  pick: number | null;
-  onPick: (i: number) => void;
   onNext: () => void;
 }) {
-  const ctx = useMemo(() => deriveCtx(pt.pdr), [pt.pdr]);
-  const answered = pick !== null;
-  const wrong = answered && pick !== ctx.right;
   return (
     <div className="space-y-3">
       <SituationCard situation={pt.situation_ko} relation={pt.relation_ko} />
-      {/* 문제 카드가 아니라 상황 메모다 — 여섯 번째 문항처럼 보이면 안 된다.
-          선택은 남긴다(2부에서 관계·부담을 스스로 읽는 유일한 지점이라, 자동 판단으로
-          대체하면 "판단 → 산출"의 연결이 끊긴다). 다만 확인 버튼을 없애 한 번에 끝내고,
-          결과를 본 뒤에도 다시 고를 수 있게 둔다 — 오터치가 그대로 잠기지 않도록. */}
       <div className="rounded-xl border border-dashed border-[#D8D0BC] bg-[#FBFAF5] p-4">
-        <div className="text-[11px] font-bold text-[#6B5518]">새 상황에서 먼저 볼 것</div>
-        <p className="mt-1 text-[12.5px] text-muted-foreground">
-          직접 {isInterp ? "통역하기" : "옮기기"} 전에 상대와 부담을 먼저 확인합니다.
+        <div className="text-[11px] font-bold text-[#6B5518]">산출 전 잠깐 확인</div>
+        <p className="mt-1 text-[13.5px] leading-relaxed">
+          산출하기 전에 상대와의 관계 및 행위 부담을 잠시 확인하세요.
         </p>
-        <div className="mt-2.5 text-[13px] font-semibold">{ctx.q}</div>
-        <div className="mt-2 flex flex-col gap-1.5">
-          {ctx.opts.map((o, i) => (
-            <Choice key={i} label={o} selected={pick === i} disabled={false} onClick={() => onPick(i)} />
-          ))}
-        </div>
-        {answered && (
-          <div className="mt-3 rounded-lg bg-[#F2FAF6] px-3.5 py-3">
-            <div className="text-[12px] font-bold text-[#2E7D5B]">{wrong ? "다시 짚어 보면" : "상황 핵심"}</div>
-            <p className="mt-1 text-[13px] leading-relaxed">{wrong ? ctx.okWrong : ctx.okRight}</p>
-          </div>
-        )}
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          정답을 고르는 추가 문항이 아니며 미션 응답 수와 완료 조건에 포함되지 않습니다.
+        </p>
       </div>
-      <Button className="w-full" disabled={!answered} onClick={onNext}>
+      <Button className="w-full" onClick={onNext}>
         {isInterp ? "통역하러" : "표현하러"} 가기 →
       </Button>
-      {IS_DEMO && !answered && (
-        <button type="button" className={demoBtn} onClick={() => onPick(ctx.right)}>데모 채우기</button>
-      )}
     </div>
   );
 }
@@ -1492,7 +1753,7 @@ function CtxStage({
 // ── 판정 지위 고지(B1 · 0-g·44) — 첫 문항 아래 짧은 접기 하나로 ──
 // 긴 완료 조건·평가 세칙은 학습자가 읽지 않고 계약서처럼 느낀다는 사용자 피드백에 따라
 // 제거했다. 학습자에게 필요한 것은 "정답은 하나가 아님"과 확인 범위 두 줄뿐이다.
-function MissionBriefDrawer({ mission }: { mission: MissionV2 }) {
+function MissionBriefDrawer({ mission }: { mission: MissionRuntime }) {
   return (
     <details className="rounded-xl border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-2.5 text-[12.5px]">
       <summary className="cursor-pointer text-[#6B5518]">
@@ -1599,7 +1860,7 @@ function DissentPanel({ onSubmit }: { onSubmit: (d: { conditions: string[]; reas
 }
 
 // ── 피드백 근거 서랍(의견4 ③) — 판정↔상황 조건 연결. 카탈로그·상황 데이터만(AI 0회) ──
-function FeedbackReasonDrawer({ mission }: { mission: MissionV2 }) {
+function FeedbackReasonDrawer({ mission }: { mission: MissionRuntime }) {
   const feat = getTargetFeature(mission.unit.target_feature);
   const pt = mission.production_task;
   return (
@@ -1650,6 +1911,362 @@ function SituationCard({ situation, relation }: { situation: string; relation: s
       <div className="mt-2 flex flex-wrap gap-1.5">
         <Badge variant="secondary" className="font-normal">{relation}</Badge>
       </div>
+    </div>
+  );
+}
+
+function shuffledIndexes(length: number): number[] {
+  const indexes = Array.from({ length }, (_, index) => index);
+  for (let index = indexes.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(Math.random() * (index + 1));
+    [indexes[index], indexes[swap]] = [indexes[swap], indexes[index]];
+  }
+  return indexes;
+}
+
+function judgmentResponseCountFor(itemType: string): number {
+  return ({ scale4: 1, fix_choice: 3, fix_review: 2, multi_judge: 4 } as Record<string, number>)[itemType] ?? 1;
+}
+
+/** historical mission_v4/v5와 현행 mission_v6의 후보 전수분류 UI. */
+function MpjStageCurrent({
+  item,
+  onDone,
+}: {
+  item: MpjItemV4 | MpjItemV5 | MpjItemV6;
+  onDone: (response: MpjResponseTrace) => void;
+}) {
+  const [answered, setAnswered] = useState(false);
+  const [scalePick, setScalePick] = useState<string | null>(null);
+  const [bandPick, setBandPick] = useState<string | null>(null);
+  const [fixJudgeSubmitted, setFixJudgeSubmitted] = useState(false);
+  const [fixPicks, setFixPicks] = useState<Set<number>>(new Set());
+  const [reasonPick, setReasonPick] = useState<string | null>(null);
+  const [reviewStep, setReviewStep] = useState<"correction" | "reason">("correction");
+  const [rejectedCorrectionId, setRejectedCorrectionId] = useState<string | null>(null);
+  const [failureReasonId, setFailureReasonId] = useState<string | null>(null);
+  const [multiPicks, setMultiPicks] = useState<Record<number, string>>({});
+  const [fixOrder] = useState(() => item.type === "fix_choice"
+    ? shuffledIndexes(item.corrections.length)
+    : []);
+  const [reviewOrder] = useState(() => item.type === "fix_review"
+    ? shuffledIndexes(item.corrections.length)
+    : []);
+  const [multiOrder] = useState(() => item.type === "multi_judge"
+    ? shuffledIndexes(item.candidates.length)
+    : []);
+
+  const feature = getTargetFeature(item.axis_feature);
+  const featureBands = feature?.band_schema ?? [];
+  const classificationOptions = featureBands.map((band, index) => ({
+    code: band.code,
+    label: index === 0 ? "과소" : band.code === feature?.within_band_code ? "적정 범위" : "과잉",
+  }));
+  const scaleDirectionMatched = item.type === "scale4" && Boolean(
+    scalePick && item.accepted_scale_codes.includes(scalePick as Scale4Code),
+  );
+
+  const canReveal = item.type === "scale4"
+    ? Boolean(scalePick)
+    : item.type === "fix_choice"
+      ? Boolean(bandPick) && fixJudgeSubmitted && canSubmitFixChoice(fixPicks)
+      : item.type === "reason"
+        ? Boolean(reasonPick)
+        : item.type === "fix_review"
+          ? canRevealFixReview(rejectedCorrectionId, failureReasonId)
+          : canSubmitMultiJudge(item.candidates.length, multiPicks);
+
+  const demoFill = () => {
+    switch (item.type) {
+      case "scale4":
+        setScalePick(item.accepted_scale_codes[0]);
+        break;
+      case "fix_choice":
+        setBandPick(item.accepted_band_codes[0]);
+        setFixJudgeSubmitted(true);
+        setFixPicks(new Set(item.corrections.flatMap((correction, index) => correction.is_valid ? [index] : [])));
+        break;
+      case "reason":
+        setReasonPick(item.accepted_reason_id);
+        break;
+      case "fix_review": {
+        const rejected = item.corrections.find((correction) => correction.verdict === "reject");
+        setRejectedCorrectionId(rejected?.id ?? null);
+        setFailureReasonId(item.accepted_failure_reason_id);
+        setReviewStep("reason");
+        break;
+      }
+      case "multi_judge":
+        setMultiPicks(Object.fromEntries(item.candidates.map((candidate, index) => [index, candidate.accepted_band_codes[0]])));
+        break;
+    }
+    setAnswered(true);
+  };
+
+  const responseTrace = (): MpjResponseTrace => {
+    const base = { item_id: item.id, item_type: item.type, completed_at: new Date().toISOString() };
+    switch (item.type) {
+      case "scale4":
+        return { ...base, ...(scalePick ? { scale_code: scalePick } : {}) };
+      case "fix_choice":
+        return {
+          ...base,
+          ...(bandPick ? { band_code: bandPick } : {}),
+          correction_indexes: [...fixPicks].sort((a, b) => a - b),
+        };
+      case "reason":
+        return { ...base, ...(reasonPick ? { reason_id: reasonPick } : {}) };
+      case "fix_review":
+        return {
+          ...base,
+          ...(rejectedCorrectionId ? { rejected_correction_id: rejectedCorrectionId } : {}),
+          ...(failureReasonId ? { failure_reason_id: failureReasonId } : {}),
+        };
+      case "multi_judge":
+        return {
+          ...base,
+          candidate_band_codes: item.candidates.map((_, index) => multiPicks[index]),
+        };
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="px-1 text-[11.5px] text-muted-foreground">
+        참고 판정 · 비점수 활동 · 응답은 수행 trace로만 남고 성적으로 환산되지 않습니다.
+      </p>
+      <ChatScene situation={item.situation_ko} relation={item.relation_ko}>
+        {item.preceding_turn && <ChatBubble side="them">{item.preceding_turn}</ChatBubble>}
+        <ChatCaption>전하려는 뜻 · {item.source}</ChatCaption>
+        {item.type !== "multi_judge" && (
+          <>
+            <ChatCaption tone="draft">↓ 검토할 초안 · 아직 안 보냄</ChatCaption>
+            <ChatBubble side="me" variant="draft">
+              {answered ? highlightZh(item.target, item.highlights) : item.target}
+            </ChatBubble>
+          </>
+        )}
+      </ChatScene>
+
+      {answered && item.type !== "multi_judge" && item.highlights.length > 0 && (
+        <p className="px-1 text-[11.5px] text-muted-foreground">
+          <span className="mr-1 rounded bg-[#FFE9A8] px-1.5 py-0.5 font-semibold text-[#6B5518]">제출 뒤 표현 단서</span>
+          밑줄은 검토할 부분이며 제출 전에는 공개되지 않습니다.
+        </p>
+      )}
+
+      {item.type === "scale4" && (
+        <div className={card}>
+          <div className="text-[13px] font-semibold">첫인상으로 이 표현은 얼마나 적절한가요?</div>
+          <div className="mt-2 flex flex-col gap-1.5">
+            {SCALE4_CODES.map((code) => (
+              <Choice
+                key={code}
+                label={SCALE4_LABELS[code as Scale4Code]}
+                selected={scalePick === code}
+                disabled={answered}
+                onClick={() => setScalePick(code)}
+              />
+            ))}
+          </div>
+          {answered && (
+            <div className={[
+              "mt-4 rounded-lg px-3.5 py-3",
+              scaleDirectionMatched ? "bg-[#F2FAF6]" : "bg-[#FFF8DE]",
+            ].join(" ")}>
+              <p className="text-[13px] leading-relaxed">{item.explanation_ko}</p>
+              <div className="mt-2 text-[11.5px] font-semibold">
+                {scaleDirectionMatched ? "✓ 참고 판정과 적절성 방향이 같습니다." : "참고 판정과 적절성 방향이 다릅니다."}
+              </div>
+              <div className="mt-1 text-[11.5px] text-muted-foreground">
+                참고 판정 · {SCALE4_LABELS[item.reference_scale_code as Scale4Code]}
+              </div>
+              {scalePick && scaleDirectionMatched && scalePick !== item.reference_scale_code && (
+                <div className="mt-1 text-[11.5px] text-[#496B5B]">강도 차이는 오답이 아닙니다.</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {item.type === "fix_choice" && (
+        <div className={card}>
+          <div className="text-[13px] font-semibold">제시 표현의 조절 정도를 판단하세요.</div>
+          <div className="mt-2 flex flex-col gap-1.5">
+            {classificationOptions.map((option) => (
+              <Choice
+                key={option.code}
+                label={option.label}
+                selected={bandPick === option.code}
+                disabled={answered || fixJudgeSubmitted}
+                onClick={() => setBandPick(option.code)}
+              />
+            ))}
+          </div>
+          {fixJudgeSubmitted && (
+            <>
+              <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">
+                서로 다른 적절한 수정 전략을 정확히 2개 선택하세요 · {fixPicks.size}/2
+              </div>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {fixOrder.map((sourceIndex) => {
+                  const correction = item.corrections[sourceIndex];
+                  const selected = fixPicks.has(sourceIndex);
+                  const blocked = !selected && fixPicks.size >= 2;
+                  return (
+                    <button
+                      key={"id" in correction ? correction.id : correction.text}
+                      type="button"
+                      disabled={answered || blocked}
+                      onClick={() => setFixPicks((current) => {
+                        const next = new Set(current);
+                        if (next.has(sourceIndex)) next.delete(sourceIndex);
+                        else if (next.size < 2) next.add(sourceIndex);
+                        return next;
+                      })}
+                      className={[
+                        "rounded-[10px] border px-3.5 py-2.5 text-left text-[14px] disabled:opacity-50",
+                        selected ? "border-[1.5px] border-[#15202B] bg-[#FAFAF7]" : "border-[#EAE4D2] bg-white",
+                        answered && correction.is_valid ? "border-[#2E7D5B] bg-[#F2FAF6]" : "",
+                      ].join(" ")}
+                    >
+                      <div>{correction.text}</div>
+                      {answered && <div className="mt-1 text-[12px] text-muted-foreground">{correction.note_ko}</div>}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+          {answered && (
+            <div className="mt-3 rounded-lg bg-[#F2FAF6] px-3.5 py-3 text-[13px] leading-relaxed">
+              {item.explanation_ko}
+            </div>
+          )}
+        </div>
+      )}
+
+      {item.type === "reason" && (
+        <div className={card}>
+          <div className="text-[13px] font-semibold">가장 큰 이유는 무엇인가요?</div>
+          <div className="mt-2 flex flex-col gap-1.5">
+            {item.reasons.map((reason) => (
+              <Choice
+                key={reason.id}
+                label={reason.text_ko}
+                selected={reasonPick === reason.id}
+                disabled={answered}
+                onClick={() => setReasonPick(reason.id)}
+              />
+            ))}
+          </div>
+          {answered && <div className="mt-3 rounded-lg bg-[#F2FAF6] px-3.5 py-3 text-[13px]">{item.explanation_ko}</div>}
+        </div>
+      )}
+
+      {item.type === "fix_review" && (
+        <div className={card}>
+          <div className="text-[13px] font-semibold">참고 검수에서 탈락시킬 교정본 1개를 고르세요.</div>
+          <div className="mt-2 flex flex-col gap-1.5">
+            {reviewOrder.map((sourceIndex) => {
+              const correction = item.corrections[sourceIndex];
+              return (
+                <Choice
+                  key={correction.id}
+                  label={correction.text}
+                  selected={rejectedCorrectionId === correction.id}
+                  disabled={answered || reviewStep === "reason"}
+                  onClick={() => setRejectedCorrectionId(correction.id)}
+                />
+              );
+            })}
+          </div>
+          {reviewStep === "reason" && (
+            <>
+              <div className="mt-4 border-t border-[#EAE4D2] pt-4 text-[13px] font-semibold">그 교정본의 핵심 실패 원인 1개를 고르세요.</div>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {item.failure_reasons.map((reason) => (
+                  <Choice
+                    key={reason.id}
+                    label={reason.text_ko}
+                    selected={failureReasonId === reason.id}
+                    disabled={answered}
+                    onClick={() => setFailureReasonId(reason.id)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+          {answered && (
+            <div className="mt-4 space-y-2 rounded-lg bg-[#F2FAF6] px-3.5 py-3">
+              {item.corrections.map((correction) => (
+                <div key={correction.id} className="text-[12.5px]">
+                  <b>{correction.verdict === "pass" ? "통과 가능" : "탈락"}</b> · {correction.note_ko}
+                </div>
+              ))}
+              <div className="border-t border-[#CFE8DA] pt-2 text-[12.5px]">
+                <b>핵심 실패</b> · {item.failure_reasons.find((reason) => reason.id === item.accepted_failure_reason_id)?.text_ko}
+              </div>
+              <div className="text-[12.5px]"><b>새 문제 방지 원칙</b> · {item.repair_principle_ko}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {item.type === "multi_judge" && (
+        <div className={card}>
+          <div className="text-[13px] font-semibold">후보 4개를 참고 대역으로 각각 분류하세요.</div>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">정답 점수는 없으며, 네 후보를 모두 판단한 뒤 참고 판정을 비교합니다.</p>
+          <ul className="mt-3 space-y-2.5">
+            {multiOrder.map((sourceIndex) => {
+              const candidate = item.candidates[sourceIndex];
+              return (
+                <li key={"id" in candidate ? candidate.id : candidate.text} className="rounded-lg border border-[#EAE4D2] px-3.5 py-3">
+                  <div className="text-[14.5px]">{candidate.text}</div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {classificationOptions.map((option) => (
+                      <button
+                        key={option.code}
+                        type="button"
+                        disabled={answered}
+                        onClick={() => setMultiPicks((current) => ({ ...current, [sourceIndex]: option.code }))}
+                        className={[
+                          "rounded-md border px-2.5 py-1 text-[12px]",
+                          multiPicks[sourceIndex] === option.code ? "border-[#15202B] bg-[#15202B] font-semibold text-white" : "border-[#D8D0BC] bg-white",
+                          answered && candidate.accepted_band_codes.includes(option.code) ? "border-[#2E7D5B] bg-[#F2FAF6] text-[#246044]" : "",
+                        ].join(" ")}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  {answered && <div className="mt-2 text-[12.5px] text-muted-foreground">{candidate.note_ko}</div>}
+                </li>
+              );
+            })}
+          </ul>
+          {answered && <div className="mt-3 rounded-lg bg-[#F2FAF6] px-3.5 py-3 text-[13px]">{item.explanation_ko}</div>}
+        </div>
+      )}
+
+      {!answered ? (
+        <>
+          {item.type === "fix_choice" && !fixJudgeSubmitted ? (
+            <Button className="w-full" disabled={!bandPick} onClick={() => setFixJudgeSubmitted(true)}>
+              판단 확정 · 수정안 4개 보기 →
+            </Button>
+          ) : item.type === "fix_review" && reviewStep === "correction" ? (
+            <Button className="w-full" disabled={!rejectedCorrectionId} onClick={() => setReviewStep("reason")}>
+              검수 판단 확정 · 실패 원인 보기 →
+            </Button>
+          ) : (
+            <Button className="w-full" disabled={!canReveal} onClick={() => setAnswered(true)}>응답 확정·피드백 보기</Button>
+          )}
+          {IS_DEMO && <button type="button" className={demoBtn} onClick={demoFill}>데모 채우기 — 자동 응답</button>}
+        </>
+      ) : (
+        <Button className="w-full" onClick={() => onDone(responseTrace())}>다음 →</Button>
+      )}
     </div>
   );
 }

@@ -1,5 +1,13 @@
+import { useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  downloadMissionEventExport,
+  fetchMissionEventExport,
+  type MissionEventExportFormat,
+} from "@/lib/mission/missionEventExport";
 
 const PendingBadge = () => (
   <Badge
@@ -10,10 +18,33 @@ const PendingBadge = () => (
   </Badge>
 );
 
-const Page = () => (
+const Page = () => {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [exporting, setExporting] = useState<MissionEventExportFormat | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const runExport = async (format: MissionEventExportFormat) => {
+    setExporting(format);
+    setMessage(null);
+    try {
+      const rows = await fetchMissionEventExport({
+        from: from ? `${from}T00:00:00+09:00` : null,
+        to: to ? `${to}T23:59:59+09:00` : null,
+      });
+      downloadMissionEventExport(rows, format);
+      setMessage(`${rows.length}개 이벤트를 ${format.toUpperCase()}로 내보냈습니다.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "내보내기에 실패했습니다.");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  return (
   <AdminShell
     title="연구 데이터 관리"
-    description="연구 참여 동의, 익명화, 데이터 완전성과 내보내기 이력을 한곳에서 관리합니다."
+    description="연구 참여 동의, 가명화, 데이터 완전성과 내보내기 이력을 한곳에서 관리합니다."
   >
     <div className="mb-3 flex items-center gap-3">
       <h2 className="text-base font-semibold">연구 진행 상태</h2>
@@ -62,10 +93,31 @@ const Page = () => (
             내보냅니다.
           </p>
         </div>
-        <PendingBadge />
+        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+          event export v1
+        </Badge>
       </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium">시작일</span>
+          <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+        </label>
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium">종료일</span>
+          <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+        </label>
+        <div className="flex gap-2">
+          <Button variant="outline" disabled={!!exporting} onClick={() => void runExport("json")}>JSON</Button>
+          <Button disabled={!!exporting} onClick={() => void runExport("jsonl")}>JSONL</Button>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        직접 사용자 ID는 제외하고 동의 버전별 안정 가명키를 사용합니다. 이는 익명화가 아니라 가명화입니다.
+      </p>
+      {message && <p className="mt-3 text-sm font-medium">{message}</p>}
     </div>
   </AdminShell>
-);
+  );
+};
 
 export default Page;

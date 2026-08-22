@@ -12,6 +12,7 @@ import {
   type CodedOption,
 } from "@/lib/auth/profileOptions";
 import { toast } from "sonner";
+import { CONSENT_VERSION } from "@/lib/research/versions";
 
 type Step = 1 | 2 | 3;
 
@@ -265,6 +266,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
           consent_data_use: researchConsent,
           consent_anonymous_analysis: anonConfirmed,
           consent_email_report: reportConsent,
+          research_consent_version: CONSENT_VERSION,
           // Keep full_name in sync (used by other screens)
           full_name: trimmedName,
           profile_completed: true,

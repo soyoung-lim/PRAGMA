@@ -88,7 +88,7 @@ export const XRAY_SEGMENTS: { label: string; present: boolean; note: string }[] 
   { label: "선택권·거절 여지", present: false, note: "상대가 거절할 수 있다는 신호가 아직 안 보여요." },
 ];
 
-/** ⑦ 한 곳 수정 — 위치·이유만 제시, 모범답안은 주지 않음. */
+/** ⑦ 한 곳 수정 — 위치·이유만 제시, 완성된 정답 표현은 주지 않음. */
 export const ONE_SPOT_FIX = {
   location: "부탁을 여는 첫 부분",
   hint: "완충 표현이 하나 있으면 훨씬 편하게 읽혀요 (예: 不好意思 / …可以吗). 한 곳만 고쳐보세요.",

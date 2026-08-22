@@ -29,8 +29,10 @@ export interface ComposerCore {
   mode: GenMode | null;
   theme_code: ThemeCode | null;
   topic_code: string | null;
-  /** NULL(코어만) | generated | reviewed */
+  /** NULL(코어만) | generated | reviewed(내부 검수) | released(covered 공개) */
   mission_status: string | null;
+  /** legacy는 reviewed 실행 유지, expert_v1은 released만 학습자 실행 가능. */
+  release_gate_mode?: "legacy_reviewed" | "expert_v1" | null;
   /** 미션 승격 시에만 채워짐. 코어만 있으면 null → 편성표 "미지정" */
   target_feature: string | null;
   situation_ko: string;
@@ -51,7 +53,7 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
   const { data, error } = await db
     .from("scenarios")
     .select(
-      "scenario_id, speech_act, learner_level, domain, mode, theme_code, topic_code, mission_status, target_feature, core_content",
+      "scenario_id, speech_act, learner_level, domain, mode, theme_code, topic_code, mission_status, release_gate_mode, target_feature, core_content",
     )
     .eq("content_format", "scenario_core_v1")
     .order("created_at", { ascending: false });
@@ -65,6 +67,7 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
     theme_code: r.theme_code ?? null,
     topic_code: r.topic_code ?? null,
     mission_status: r.mission_status ?? null,
+    release_gate_mode: r.release_gate_mode ?? "legacy_reviewed",
     target_feature: r.target_feature ?? null,
     situation_ko: r.core_content?.situation_ko ?? "",
     source_text_ko: r.core_content?.source_text_ko ?? r.core_content?.source_text ?? "",

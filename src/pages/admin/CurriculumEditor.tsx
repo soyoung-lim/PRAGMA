@@ -472,19 +472,19 @@ export const CurriculumEditor = ({ outlineId, onClose, onSaved }: CurriculumEdit
                     onChange={(v) => patchWeek(i, { channel: v as ChannelUI | null })}
                   />
                   <NullableSelect
-                    label="P (권력)"
+                    label="P (상대적 권력)"
                     value={w.pdr_power}
                     options={PDR_POWER}
                     onChange={(v) => patchWeek(i, { pdr_power: v as PdrPower | null })}
                   />
                   <NullableSelect
-                    label="D (거리)"
+                    label="D (사회적 거리)"
                     value={w.pdr_distance}
                     options={PDR_DISTANCE}
                     onChange={(v) => patchWeek(i, { pdr_distance: v as PdrDistance | null })}
                   />
                   <NullableSelect
-                    label="R (부담)"
+                    label="R (행위 부담도)"
                     value={w.pdr_imposition}
                     options={PDR_BURDEN}
                     onChange={(v) => patchWeek(i, { pdr_imposition: v as PdrBurden | null })}

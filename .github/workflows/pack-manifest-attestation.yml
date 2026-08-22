@@ -1,0 +1,51 @@
+name: PRAGMA pack manifest attestation
+
+on:
+  workflow_dispatch:
+    inputs:
+      expansion_authorization_id:
+        description: Required only when the generated manifest covers more than request/refusal/thanks
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pragma-pack-manifest-attestation
+  cancel-in-progress: false
+
+jobs:
+  attest:
+    name: Verify and attest code-derived pack manifest
+    runs-on: ubuntu-latest
+    environment: pragma-pack-release
+    steps:
+      - name: Check out exact commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Require deterministic same-commit snapshots
+        run: npm run prompts:verify
+
+      - name: Verify moat contracts
+        run: npm run typecheck && npm run test:moat && npm run build
+
+      - name: Attest exact manifest through service role
+        run: npm run pack:attest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CI_RUN_REF: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PRAGMA_EXPANSION_AUTHORIZATION_ID: ${{ inputs.expansion_authorization_id }}

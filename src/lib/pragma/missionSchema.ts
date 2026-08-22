@@ -1,4 +1,8 @@
-// mission_v1 — 완전 미션(MPJ 5 + DCT)의 zod 스키마. 생성계약 v1.3 §3.
+// mission_v1/v2 — legacy MPJ5 + DCT 읽기 호환.
+// mission_v3/v4 — historical MPJ4 계약 읽기 호환.
+// mission_v5 — historical 미니 담화 DCT 계약 읽기 호환.
+// mission_v6 — 현행 MPJ4 + DCT1:
+//   scale4 → fix_choice → fix_review → multi_judge.
 //
 // 편성·데모 선별분만 코어에서 승격 생성한다. MPJ 5유형은 완전 분리 union(B12):
 //   scale4 → judge3 → fix_choice → reason_conf → multi_judge (순서 고정, R1).
@@ -11,6 +15,7 @@ import {
   SourceModalitySchema,
 } from "@/lib/pragma/coreSchema";
 import { DEFAULT_DIRECTION, type LanguageDirection } from "@/lib/pragma/enums";
+import { ItemLineageSchema } from "@/lib/pragma/itemLineage";
 
 // ── 공통 필드 ─────────────────────────────────────────────────────────
 const MpjCommon = {
@@ -146,9 +151,12 @@ export type ProductionTask = z.infer<typeof ProductionTaskSchema>;
 // 스키마는 관대(선택)하게 두고, 존재·필수값 검사는 R20이 담당한다.
 // 이유: 모델 응답이 아니라 승격 edge function이 채우므로 zod hard-fail이 부적절.
 export const MissionProvenanceSchema = z.object({
+  provider: z.string().min(1).optional(),
   model: z.string().min(1),
   prompt_version: z.string().min(1),
   prompt_snapshot_hash: z.string().optional(),
+  /** 실제 system+user+model+temperature+response_format 요청의 canonical hash. */
+  prompt_instance_hash: z.string().min(1).optional(),
   mission_content_hash: z.string().min(1),
   generated_at: z.string().min(1),
   generation_attempt: z.number().int().positive(),
@@ -182,6 +190,7 @@ export const MissionV1Schema = z.object({
   unit: UnitSchema,
   mpj_items: z.array(MpjItemSchema).length(5),
   production_task: ProductionTaskSchema,
+  item_lineage: ItemLineageSchema.optional(),
   provenance: MissionProvenanceSchema.optional(), // 존재·필수값 = R20(missionRules)
   quality_check: QualityCheckSchema.optional(),   // 검증②(0-q·99) — 승격 후 주입
   // summary 없음 — 코드가 recommended_example_zh 5개를 모아 렌더(B13)
@@ -206,6 +215,33 @@ export const MPJ_TYPE_ORDER = [
   "judge3",
   "fix_choice",
   "reason_conf",
+  "multi_judge",
+] as const;
+
+/** historical mission_v3: MPJ5에서 multi_judge만 제거했던 4문항 계약. */
+export const MPJ_TYPE_ORDER_V3 = [
+  "scale4",
+  "judge3",
+  "fix_choice",
+  "reason_conf",
+] as const;
+
+/** historical mission_v4(fca7734): 후보 4개 전수분류를 처음 도입한 계약. */
+export const MPJ_TYPE_ORDER_V4 = [
+  "scale4",
+  "fix_choice",
+  "reason",
+  "multi_judge",
+] as const;
+
+/** historical mission_v5는 mission_v4 문항 골격과 미니 담화 DCT를 결합했다. */
+export const MPJ_TYPE_ORDER_V5 = MPJ_TYPE_ORDER_V4;
+
+/** 현행 mission_v6: Reason을 2단계 FixReview로 교체한 최종 MPJ4 계약. */
+export const MPJ_TYPE_ORDER_V6 = [
+  "scale4",
+  "fix_choice",
+  "fix_review",
   "multi_judge",
 ] as const;
 
@@ -314,10 +350,267 @@ export const MissionV2Schema = z.object({
   unit: UnitSchema,
   mpj_items: z.array(MpjItemV2Schema).length(5),
   production_task: ProductionTaskV2Schema,
+  item_lineage: ItemLineageSchema.optional(),
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
 });
 export type MissionV2 = z.infer<typeof MissionV2Schema>;
+
+// ══════════════════════════════════════════════════════════════════════
+// historical mission_v3/v4 — 읽기 전용 호환
+// ══════════════════════════════════════════════════════════════════════
+export const MpjItemV3Schema = z.discriminatedUnion("type", [
+  Scale4ItemV2,
+  Judge3ItemV2,
+  FixChoiceItemV2,
+  ReasonConfItemV2,
+]);
+export type MpjItemV3 = z.infer<typeof MpjItemV3Schema>;
+
+export const MissionV3Schema = z.object({
+  schema_version: z.literal("mission_v3"),
+  direction: z.enum(["ko_zh", "zh_ko"]),
+  unit: UnitSchema,
+  mpj_items: z.array(MpjItemV3Schema).length(4),
+  production_task: ProductionTaskV2Schema,
+  item_lineage: ItemLineageSchema.optional(),
+  provenance: MissionProvenanceSchema.optional(),
+  quality_check: QualityCheckSchema.optional(),
+});
+export type MissionV3 = z.infer<typeof MissionV3Schema>;
+
+const MpjCommonV4 = {
+  ...MpjCommonV2,
+  id: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+};
+
+const ScaleCode = z.enum([
+  "very_appropriate",
+  "somewhat_appropriate",
+  "somewhat_inappropriate",
+  "very_inappropriate",
+]);
+
+const Scale4ItemV4 = z.object({
+  ...MpjCommonV4,
+  type: z.literal("scale4"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  accepted_scale_codes: z.array(ScaleCode).length(2),
+  reference_scale_code: ScaleCode,
+});
+const FixChoiceItemV4 = z.object({
+  ...MpjCommonV4,
+  type: z.literal("fix_choice"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  accepted_band_codes: z.array(z.string()).length(1),
+  corrections: z
+    .array(z.object({ text: z.string().min(1), is_valid: z.boolean(), note_ko: z.string().min(1) }))
+    .length(4),
+});
+const ReasonItemV4 = z.object({
+  ...MpjCommonV4,
+  type: z.literal("reason"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  problem_band_code: z.string().min(1),
+  reasons: z
+    .array(z.object({
+      id: z.string().min(1),
+      text_ko: z.string().min(1),
+      kind: z.enum(["primary", "pragmatic_misconception", "meaning_grammar_context"]),
+    }))
+    .length(3),
+  accepted_reason_id: z.string().min(1),
+});
+const MultiJudgeItemV4 = z.object({
+  ...MpjCommonV4,
+  type: z.literal("multi_judge"),
+  candidates: z
+    .array(z.object({
+      text: z.string().min(1),
+      accepted_band_codes: z.array(z.string()).length(1),
+      note_ko: z.string().min(1),
+    }))
+    .length(4),
+});
+export const MpjItemV4Schema = z.discriminatedUnion("type", [
+  Scale4ItemV4,
+  FixChoiceItemV4,
+  ReasonItemV4,
+  MultiJudgeItemV4,
+]);
+export type MpjItemV4 = z.infer<typeof MpjItemV4Schema>;
+export const MissionV4Schema = z.object({
+  schema_version: z.literal("mission_v4"),
+  direction: z.enum(["ko_zh", "zh_ko"]),
+  unit: UnitSchema,
+  mpj_items: z.array(MpjItemV4Schema).length(4),
+  production_task: ProductionTaskV2Schema,
+  item_lineage: ItemLineageSchema.optional(),
+  provenance: MissionProvenanceSchema.optional(),
+  quality_check: QualityCheckSchema.optional(),
+});
+export type MissionV4 = z.infer<typeof MissionV4Schema>;
+
+// ══════════════════════════════════════════════════════════════════════
+// historical mission_v5 — 미니 담화 DCT 읽기 호환
+// ══════════════════════════════════════════════════════════════════════
+const MultiJudgeItemV5Legacy = z.object({
+  ...MpjCommonV4,
+  type: z.literal("multi_judge"),
+  candidates: z.array(z.object({
+    text: z.string().min(1),
+    accepted_band_codes: z.array(z.string()).length(1),
+    note_ko: z.string().min(1),
+  })).min(4).max(5),
+});
+export const MpjItemV5Schema = z.discriminatedUnion("type", [
+  Scale4ItemV4,
+  FixChoiceItemV4,
+  ReasonItemV4,
+  MultiJudgeItemV5Legacy,
+]);
+export type MpjItemV5 = z.infer<typeof MpjItemV5Schema>;
+const ProductionTaskV5Schema = ProductionTaskV2Schema.extend({
+  focal_segments: z.array(z.object({
+    text: z.string().min(1),
+    role: z.enum(["head", "support"]),
+  })).min(1).max(3),
+});
+export const MissionV5Schema = z.object({
+  schema_version: z.literal("mission_v5"),
+  direction: z.enum(["ko_zh", "zh_ko"]),
+  unit: UnitSchema,
+  mpj_items: z.array(MpjItemV5Schema).length(4),
+  production_task: ProductionTaskV5Schema,
+  item_lineage: ItemLineageSchema.optional(),
+  provenance: MissionProvenanceSchema.optional(),
+  quality_check: QualityCheckSchema.optional(),
+});
+export type MissionV5 = z.infer<typeof MissionV5Schema>;
+
+// ══════════════════════════════════════════════════════════════════════
+// mission_v6 — 최종 MPJ4 + 독립 DCT1
+// ══════════════════════════════════════════════════════════════════════
+const GenerationChecksV6 = z.object({
+  meaning_intent_preserved: z.literal(true),
+  natural_and_plausible: z.literal(true),
+  no_length_or_surface_cue: z.literal(true),
+  single_key_or_role_clear: z.literal(true),
+  review_note_ko: z.string().min(1),
+});
+
+const MpjCommonV6 = {
+  ...MpjCommonV4,
+  /** 모든 MPJ 응답은 성적 산출이 아닌 참고 판정·비점수 수행 trace다. */
+  judgment_frame: z.literal("reference_non_scored"),
+  generation_checks: GenerationChecksV6,
+};
+
+const Scale4ItemV6 = z.object({
+  ...MpjCommonV6,
+  type: z.literal("scale4"),
+  target: z.string().min(1),
+  /** 제출 전 UI는 강조하지 않으며, 제출 뒤 설명용으로만 사용한다. */
+  highlights: z.array(z.string()),
+  accepted_scale_codes: z.array(ScaleCode).length(2),
+  reference_scale_code: ScaleCode,
+});
+
+const FixChoiceRole = z.enum(["valid_a", "valid_b", "under_repair", "over_repair"]);
+const FixChoiceItemV6 = z.object({
+  ...MpjCommonV6,
+  type: z.literal("fix_choice"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  accepted_band_codes: z.array(z.string()).length(1),
+  corrections: z.array(z.object({
+    id: z.string().min(1),
+    text: z.string().min(1),
+    role: FixChoiceRole,
+    strategy_code: z.string().min(1),
+    is_valid: z.boolean(),
+    note_ko: z.string().min(1),
+  })).length(4),
+});
+
+export const FixReviewFailureTypeSchema = z.enum([
+  "under_repair",
+  "over_repair",
+  "meaning_shift",
+  "relation_mismatch",
+  "new_language_or_pragmatic_problem",
+]);
+export type FixReviewFailureType = z.infer<typeof FixReviewFailureTypeSchema>;
+
+const FixReviewItemV6 = z.object({
+  ...MpjCommonV6,
+  type: z.literal("fix_review"),
+  /** 수정 전 원문 산출. */
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  /** 같은 기준 PDR에서 검수할 교정본 3개: 통과 2, 탈락 1. */
+  corrections: z.array(z.object({
+    id: z.string().min(1),
+    text: z.string().min(1),
+    verdict: z.enum(["pass", "reject"]),
+    strategy_code: z.string().min(1),
+    failure_type: FixReviewFailureTypeSchema.optional(),
+    note_ko: z.string().min(1),
+  })).length(3),
+  failure_reasons: z.array(z.object({
+    id: z.string().min(1),
+    failure_type: FixReviewFailureTypeSchema,
+    /** 고정 추상 라벨이 아니라 해당 표현에 결부된 구체적 설명. */
+    text_ko: z.string().min(1),
+  })).length(4),
+  accepted_failure_reason_id: z.string().min(1),
+  repair_principle_ko: z.string().min(1),
+});
+
+const MultiJudgeItemV6 = z.object({
+  ...MpjCommonV6,
+  type: z.literal("multi_judge"),
+  /** 기준 PDR에서 정확히 하나만 바뀐 축. */
+  pdr_contrast_axis: z.enum(["p", "d", "r"]),
+  candidates: z.array(z.object({
+    id: z.string().min(1),
+    text: z.string().min(1),
+    band_role: z.enum(["under", "within", "over"]),
+    accepted_band_codes: z.array(z.string()).length(1),
+    note_ko: z.string().min(1),
+  })).length(4),
+});
+
+export const MpjItemV6Schema = z.discriminatedUnion("type", [
+  Scale4ItemV6,
+  FixChoiceItemV6,
+  FixReviewItemV6,
+  MultiJudgeItemV6,
+]);
+export type MpjItemV6 = z.infer<typeof MpjItemV6Schema>;
+
+const ProductionTaskV6Schema = ProductionTaskV2Schema.extend({
+  replay_limit: z.literal(2).optional(),
+  vocabulary_hints: z.array(VocabularyHintSchema).max(2).optional(),
+});
+
+export const MissionV6Schema = z.object({
+  schema_version: z.literal("mission_v6"),
+  direction: z.enum(["ko_zh", "zh_ko"]),
+  unit: UnitSchema,
+  mpj_items: z.array(MpjItemV6Schema).length(4),
+  production_task: ProductionTaskV6Schema,
+  item_lineage: ItemLineageSchema.optional(),
+  provenance: MissionProvenanceSchema.optional(),
+  quality_check: QualityCheckSchema.optional(),
+});
+export type MissionV6 = z.infer<typeof MissionV6Schema>;
+export type MissionRuntime = MissionV2 | MissionV3 | MissionV4 | MissionV5 | MissionV6;
+export type MpjItemRuntime = MissionRuntime["mpj_items"][number];
+export type ProductionTaskRuntime = MissionRuntime["production_task"];
 
 // ── v1 → v2 항목 매핑(정규화용) ───────────────────────────────────────
 function v1ItemToV2(it: MpjItem): MpjItemV2 {
@@ -372,10 +665,30 @@ function v1ItemToV2(it: MpjItem): MpjItemV2 {
  */
 export function normalizeMission(input: unknown): {
   ok: boolean;
-  data?: MissionV2;
+  data?: MissionRuntime;
   error?: z.ZodError;
 } {
   const sv = (input as { schema_version?: string } | null)?.schema_version;
+  if (sv === "mission_v6") {
+    const r = MissionV6Schema.safeParse(input);
+    if (r.success) return { ok: true, data: r.data };
+    return { ok: false, error: r.error };
+  }
+  if (sv === "mission_v5") {
+    const r = MissionV5Schema.safeParse(input);
+    if (r.success) return { ok: true, data: r.data };
+    return { ok: false, error: r.error };
+  }
+  if (sv === "mission_v4") {
+    const r = MissionV4Schema.safeParse(input);
+    if (r.success) return { ok: true, data: r.data };
+    return { ok: false, error: r.error };
+  }
+  if (sv === "mission_v3") {
+    const r = MissionV3Schema.safeParse(input);
+    if (r.success) return { ok: true, data: r.data };
+    return { ok: false, error: r.error };
+  }
   if (sv === "mission_v2") {
     const r = MissionV2Schema.safeParse(input);
     if (r.success) return { ok: true, data: r.data };
@@ -405,6 +718,7 @@ export function normalizeMission(input: unknown): {
         ...(pt.vocabulary_hints ? { vocabulary_hints: pt.vocabulary_hints } : {}),
         reference_alternatives: pt.reference_alternatives.map((a) => ({ text: a.zh, note_ko: a.note_ko })),
       },
+      ...(m.item_lineage ? { item_lineage: m.item_lineage } : {}),
       ...(m.provenance ? { provenance: m.provenance } : {}),
       ...(m.quality_check ? { quality_check: m.quality_check } : {}),
     },

@@ -645,7 +645,7 @@ const AdminArchive = () => {
 
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <Label>P (권력)</Label>
+                <Label>P (상대적 권력)</Label>
                 <Select
                   value={form.scenario_P ?? ""}
                   onValueChange={(v) => setForm({ ...form, scenario_P: v as ScenarioP })}
@@ -659,7 +659,7 @@ const AdminArchive = () => {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>D (거리)</Label>
+                <Label>D (사회적 거리)</Label>
                 <Select
                   value={form.scenario_D ?? ""}
                   onValueChange={(v) => setForm({ ...form, scenario_D: v as ScenarioD })}
@@ -673,7 +673,7 @@ const AdminArchive = () => {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>R (부담)</Label>
+                <Label>R (행위 부담도)</Label>
                 <Select
                   value={form.scenario_R ?? ""}
                   onValueChange={(v) => setForm({ ...form, scenario_R: v as ScenarioR })}

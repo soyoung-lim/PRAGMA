@@ -1,11 +1,12 @@
 import type { Json } from "@/integrations/supabase/types";
 import { DIRECTION_LANGS, type LanguageDirection } from "@/lib/pragma/enums";
 import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
-import type { MissionV2 } from "@/lib/pragma/missionSchema";
+import type { RevisionDecision, RevisionRecheckResult } from "@/lib/mission/missionFlow";
+import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import { POLICY_VERSION } from "@/lib/research/versions";
 
 export interface SaveAttemptInput {
-  mission: MissionV2;
+  mission: MissionRuntime;
   /** DB 미션이면 scenarios.scenario_id(uuid), 샘플이면 null */
   scenarioId: string | null;
   speechAct: string | null;
@@ -25,6 +26,12 @@ export interface SaveAttemptInput {
   mpjResponses?: MpjResponseTrace[];
   /** 번역 산출에서 내용 어휘 힌트를 열람했는지 남기는 비채점 수행 trace. */
   productionSupport?: ProductionSupportTrace;
+  /** 수정/유지 결정과 수정 후 단 한 번 수행한 경량 재확인. */
+  revisionDecision?: RevisionDecision;
+  retentionReason?: string;
+  recheckedResponse?: string;
+  revisionRecheck?: RevisionRecheckResult;
+  additionalRevisionUsed?: boolean;
   /**
    * 학습자 이견 기록(0-r·104). 판정을 바꾸지 않는다 — 결함 문항 발견과
    * 채점키 캘리브레이션 보조 자료로만 쓴다. 남기지 않으면 undefined.
@@ -37,11 +44,24 @@ export interface MpjResponseTrace extends Record<string, Json | undefined> {
   item_id: number;
   item_type: string;
   completed_at: string;
+  /** 참고 판정·비점수 수행임을 분석 단계에서도 잃지 않는다. */
+  judgment_frame?: "reference_non_scored";
+  scored?: false;
+  /** 문항 진입부터 응답 확정 후 다음으로 이동할 때까지의 체류시간. */
+  elapsed_ms?: number;
+  /** Scale4=1, FixChoice=3, FixReview=2, MultiJudge=4. */
+  judgment_response_count?: number;
   scale_code?: string;
   band_code?: string;
   correction_indexes?: number[];
   reason_ids?: string[];
   confidence?: string;
+  /** mission_v4/v5 historical reason / mission_v6 FixReview 단일 선택. */
+  reason_id?: string;
+  rejected_correction_id?: string;
+  failure_reason_id?: string;
+  /** mission_v4/v5 MultiJudge 후보 순서와 같은 band code 배열. */
+  candidate_band_codes?: string[];
   /** multi_judge에서 가장 잘 맞는다고 고른 두 후보와 가장 부적절하다고 고른 후보의 0-based 위치. */
   best_candidate_indexes?: number[];
   most_inappropriate_candidate_index?: number;
@@ -90,13 +110,30 @@ export function buildMissionAttemptRow(
       }[feedback.verdicts.semantic_fidelity]
     : null;
   const hasMpjResponses = !!input.mpjResponses?.length;
+  const hasRevisionTrace = Boolean(
+    input.revisionDecision ||
+    input.retentionReason ||
+    input.recheckedResponse ||
+    input.revisionRecheck,
+  );
   const contextJudgment =
-    hasMpjResponses || input.productionSupport
+    hasMpjResponses || input.productionSupport || hasRevisionTrace
       ? ({
-          schema_version: "mpj_response_v1",
+          schema_version: input.mission.schema_version === "mission_v6"
+            ? "mission_response_v2"
+            : "mpj_response_v1",
           mission_schema_version: input.mission.schema_version,
           responses: input.mpjResponses ?? [],
           production_support: input.productionSupport ?? null,
+          revision: hasRevisionTrace
+            ? {
+                decision: input.revisionDecision ?? null,
+                retention_reason: input.retentionReason?.trim() || null,
+                rechecked_response: input.recheckedResponse ?? null,
+                recheck: input.revisionRecheck ?? null,
+                additional_revision_used: input.additionalRevisionUsed ?? false,
+              }
+            : null,
           learner_dissent: input.contextJudgment ?? null,
         } as unknown as Json)
       : input.contextJudgment ?? null;
@@ -130,6 +167,7 @@ export function buildMissionAttemptRow(
         } as unknown as Json)
       : null,
     semantic_fidelity_status: semanticStatus,
+    hint_used: input.productionSupport?.opened ?? false,
     example_shown: true,
     mission_completed: true,
     content_ver: input.mission.unit.target_feature_version ?? null,
