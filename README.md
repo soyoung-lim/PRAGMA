@@ -6,6 +6,7 @@
 ![Status](https://img.shields.io/badge/status-research_in_progress-blue?style=flat-square)
 ![Stack](https://img.shields.io/badge/React_18-TypeScript-3178c6?style=flat-square)
 ![Backend](https://img.shields.io/badge/Supabase-PostgreSQL-3ecf8e?style=flat-square)
+![DB](https://img.shields.io/badge/Postgres_RLS-101_migrations-336791?style=flat-square)
 
 **같은 뜻이라도 상황과 관계에 따라 적절한 표현은 달라집니다.**
 
