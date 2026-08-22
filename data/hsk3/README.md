@@ -16,6 +16,10 @@ HSK 급수와 PRAGMA 학습자 수준을 숙달도 등가로 해석하지 않는
         -> supabase/seed/hsk3_reference_seed.sql
 ```
 
+- **`source/`의 두 CSV와 `supabase/seed/hsk3_reference_seed.sql`도 Git에서 제외한다**
+  (공식 대강의 축자 전사이므로 재배포하지 않는다). 로컬 파일은 유지되며, 무엇을
+  근거로 썼는지는 `source-manifest.json`의 sha256·행 수·독립 감사 결과로 대조한다.
+  이 때문에 새로 clone한 환경에서는 `npm run hsk3:build`·`hsk3:audit`가 동작하지 않는다.
 - 공식 PDF 자체는 Git에 넣지 않는다. 공식 URL, SHA-256과 외부 증거 보관 위치는
   `source-manifest.json`에 기록한다.
 - `source/`의 두 CSV는 기존 추출본을 해시 그대로 보존한 입력이다. 원 추출 실행 스크립트는

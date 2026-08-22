@@ -10,8 +10,7 @@
       "effective_at": "2026-07",
       "url": "https://hsk.cn-bj.ufileos.com/3.0/%E6%96%B0%E7%89%88HSK%E8%80%83%E8%AF%95%E5%A4%A7%E7%BA%B21219.pdf",
       "sha256": "EC74CE0439E837BBB15154BE13E747AE798903B2FD3A331629DF6C3B45504941",
-      "stored_in_git": false,
-      "external_evidence_path": "C:/PRAGMA_THESIS_LOCAL/02_문헌/HSK자료/新版HSK考试大纲1219.pdf"
+      "stored_in_git": false
     },
     {
       "role": "competency_description",
@@ -19,8 +18,7 @@
       "publisher": "中外语言交流合作中心",
       "url": "https://hsk.cn-bj.ufileos.com/3.0/HSK3.0%E8%80%83%E8%AF%95%E8%83%BD%E5%8A%9B%E6%8F%8F%E8%BF%B0.pdf",
       "sha256": "2F9ECD7D0B9C08248BE3ED624D267BD94E131D61C44D9CBDCEC01739505B6427",
-      "stored_in_git": false,
-      "external_evidence_path": "C:/PRAGMA_THESIS_LOCAL/02_문헌/HSK자료/HSK3.0考试能力描述.pdf"
+      "stored_in_git": false
     }
   ],
   "extracted_datasets": [
