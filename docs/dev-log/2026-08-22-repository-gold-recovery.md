@@ -45,11 +45,13 @@
 - Vitest와 production build는 Codex 격리 경로에서 esbuild가 상위 디렉터리 읽기를 시도해
   시작 전에 차단됐다. 이를 코드 회귀나 통과 증거로 해석하지 않는다.
 - 두 기능은 최신 운영 기준 `63faa89`에 각각 독립 커밋으로 이식했다.
+- PR에 기본 검증이 없던 공백을 확인해 Node 22에서 `typecheck → test → build`를 실행하는
+  `.github/workflows/ci.yml`을 추가했다. 원격 결과가 나오기 전에는 통과로 기록하지 않는다.
 
 ## 후속
 
 - clean checkout 또는 기존 정상 Node 22 환경에서 표적 테스트와 production build를 다시
   실행한다.
-- 원본 로컬 worktree는 원격 보존 상태를 다시 확인한 뒤 별도 정리한다.
+- PR CI 결과를 확인하고, 원본 로컬 worktree는 원격 보존 상태를 다시 확인한 뒤 별도 정리한다.
 - Mission V6 부활·선별 재사용 판단은 현재 Mission V4와의 계약 비교가 필요하므로 별도
   Extra High 검토 대상으로 둔다.
