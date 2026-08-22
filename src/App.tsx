@@ -59,6 +59,7 @@ const LearnerRecords = lazy(() => import("./pages/learner/LearnerRecords.tsx"));
 const StrategyMap = lazy(() => import("./pages/learner/StrategyMap.tsx"));
 const PrototypeMissionV2 = lazy(() => import("./pages/learner/PrototypeMissionV2.tsx"));
 const MissionRunV1 = lazy(() => import("./pages/learner/MissionRunV1.tsx"));
+const MissionRunV4 = lazy(() => import("./pages/learner/MissionRunV4.tsx"));
 const LearnerCourseLive = lazy(() => import("./pages/learner/LearnerCourseLive.tsx"));
 const EntryTaskMode = lazy(() => import("./pages/EntryTaskMode.tsx"));
 const EntryLanguageDirection = lazy(() => import("./pages/EntryLanguageDirection.tsx"));
@@ -170,10 +171,10 @@ const App = () => (
           <Route path="/entry/task-mode" element={<RequireApproved><EntryTaskMode /></RequireApproved>} />
           <Route path="/entry/language-direction" element={<RequireApproved><EntryLanguageDirection /></RequireApproved>} />
           <Route path="/entry/unavailable" element={<RequireApproved><EntryUnavailable /></RequireApproved>} />
-          {/* 학습 미션 정본 = /learner/practice (MissionRunV1, 프로토타입 v2 이식). 구 /scenario·mission-run은 리다이렉트/별칭 */}
+          {/* 현행 7단계 학습 미션. scenarioId가 있는 기존 저장 미션은 V1 호환 렌더러를 유지한다. */}
           <Route
             path="/learner/practice"
-            element={<RequireApproved allowDevMissionPreview><MissionRunV1 /></RequireApproved>}
+            element={<RequireApproved allowDevMissionPreview><MissionRunV4 /></RequireApproved>}
           />
           <Route path="/learner/practice/:scenarioId" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
           {/* 구 학습 미션 경로 — 새 정본으로 리다이렉트(구 PracticeMission 목업 은퇴) */}
@@ -188,6 +189,14 @@ const App = () => (
             element={
               import.meta.env.DEV
                 ? <RequireApproved><PrototypeMissionV2 /></RequireApproved>
+                : <Navigate to="/learner/practice" replace />
+            }
+          />
+          <Route
+            path="/prototype/mission-v4"
+            element={
+              import.meta.env.DEV
+                ? <MissionRunV4 />
                 : <Navigate to="/learner/practice" replace />
             }
           />
