@@ -40,6 +40,8 @@
 | TRC-20260815-01 | 한→중 목표어 문장과 화용 실현 근거의 추적 가능성 | 미션 생성과 근거 귀속을 분리하고, 모델은 rule/risk 사용 주장만 내며 서버가 허용 scope·evidence 합집합·coverage를 재계산한다. 자동검사는 검증 완료가 아니라 전문가 검토 전 pending gate다 | 현행 `mission_v5` 별도 저온 attribution, R31 fail-closed·R32 미귀속 warning, DB 저장 trigger, prompt/호출 장부 | 문장별 `target_path`, rule/risk/evidence ID, batch별 model·prompt hash·attempt, coverage summary, append-only lineage snapshot | 표적 37개·전체 401개 테스트, typecheck, 1,934-module build, diff check; 후속 Edge 실생성·원격 저장·전문가 검토 | DEC-20260815-02 / ITER-20260815-02 / EVD-20260815-02 | 생성·자동·DB·Edge 운영 적용 완료, 유료 실생성·전문가 검토 전 |
 | TRC-20260815-02 | 9화행 기준답안의 내용대표성과 외부 전문가 판정의 재현 가능한 종결 | 최초 표본 뒤에도 화행별 확전 자원을 남기고, 전문가 최종 불합의를 승인으로 환원하지 않는다 | 최종 Gold45(9화행×5), 최초 층화 표본 18(화행당 2), 예비 27(화행당 3), append-only 최종 불합의·현재 팩 공개 보류 | 고정 population/initial/reserve snapshot, 전문가별 독립 판정, resolution, terminal nonconsensus record | Gold45 cardinality·화행별 최소 수·표본계획·회귀·생성 잠금 DB gate와 계약 테스트; 후속 실제 Gold45 구축·전문가 운영 | DEC-20260815-03~04 / ITER-20260815-03 / EVD-20260815-03 | 계약·UI·DB·Edge·웹 운영 적용 완료, 실제 Gold45 구축·전문가 판정 전 |
 
+| TRC-20260817-01 | 플랫폼 재현성과 교강사 구축 데이터의 소유·이동 가능성 | 심사 대상 소스 버전과 운영 버전을 연결하고, 수업 구성 백업은 인증정보·학습자 수행자료 export와 분리한다 | 교과목 1건의 15주 편성·배정·참조 시나리오 JSON 백업, 형식·비밀정보 검사, 복원 직전 안전 백업, 선택 교과목 범위 exact snapshot 복원 | 포맷 버전·생성시각·교과목·주차·배정·참조 시나리오; 인증정보·검수자 식별자·학습자 수행 기록 제외 | 포맷·왕복 복원·참조 무결성·타 교과목/학습자 기록 불변 테스트, 배포 commit 고정 | DEC-20260817-03 / ITER-20260822-08 / EVD-20260822-08 | single-operator v1 구현·Railway 배포 완료; 사용자별 ownership·연구자료 export는 별도 |
+
 ## 소급 복원 추적표 (Retrospective baseline: 2026-07-29 · 기록일 2026-07-30)
 
 | Trace ID | 연구 문제·구성개념 | 이론·설계 원리 | 웹앱 기능 | 생성·수집 데이터 | 검증 방법 | 관련 Decision / Iteration | 신뢰도 |
