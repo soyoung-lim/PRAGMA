@@ -2176,7 +2176,7 @@
 ## DEC-20260822-08 · 혼합 작업공간은 보존 후 선별 이식하고 현행 정본과 분리한다
 
 - 날짜: 2026-08-22
-- 상태: archive 원격 보존·저위험 기능 2건 이식·merged 원격 branch 14개 정리 완료, 로컬 worktree 정리 전
+- 상태: archive 원격 보존·저위험 기능 2건 이식·clean CI 통과·merged 원격 branch 14개 정리 완료, PR 병합·로컬 worktree 정리 전
 - 문제: 오래된 브랜치 위에 Mission V6, moat, Mission V4 UI 실험과 연구 문서가 섞여 있어 전체 commit·merge·배포가 현재 운영 정본을 되돌릴 위험이 있었다.
 - 결정:
   - 원본 dirty 작업공간은 초기화하지 않고 별도 archive commit으로 보존한다.
