@@ -2192,6 +2192,7 @@
 - 이식:
   - `a30a6f7`: DEV 전용 7단계 직접 이동·현재 답안 채우기·개발 검증 우회.
   - `a5042c8`: 관리자 아카이브 exact count·100행 페이지네이션·공통 enum 라벨.
-- 검증: 최신 운영 기준 `63faa89`에서 `npm.cmd run typecheck`가 통과했다. Vitest와 production build는 격리 경로에서 esbuild의 상위 경로 읽기가 차단되어 시작하지 못했으며, 이를 코드 실패나 통과로 해석하지 않는다.
+  - `364cdfc`: 참조 0인 legacy 화면·helper 6개, 954행 제거.
+- 검증: 최신 운영 기준 `63faa89`에서 기능 이식 뒤와 legacy 제거 뒤 `npm.cmd run typecheck`가 각각 통과했다. Vitest와 production build는 격리 경로에서 esbuild의 상위 경로 읽기가 차단되어 시작하지 못했으며, 이를 코드 실패나 통과로 해석하지 않는다.
 - 다음 반영: 정상 Node 22 clean checkout에서 표적 테스트·build를 재실행하고, archive를 원격에 보존한 뒤 병합 완료·중복 branch/worktree를 제거한다. Mission V6는 별도 계약 판단 전까지 archive로 유지한다.
 - 관련 Decision / Evidence: `DEC-20260817-03`, `DEC-20260822-08`, `EVD-20260822-08`
