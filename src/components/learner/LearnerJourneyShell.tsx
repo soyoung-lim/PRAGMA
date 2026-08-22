@@ -7,6 +7,8 @@ interface LearnerJourneyShellProps {
   headerRight?: ReactNode;
   /** 세 열 리포트처럼 넓은 읽기 폭이 필요한 화면에만 사용한다. */
   wide?: boolean;
+  /** 데스크톱 미션 화면에서 세로 단계표와 본문을 아우르는 축에 헤더를 맞춘다. */
+  missionLayout?: boolean;
 }
 
 /**
@@ -18,14 +20,18 @@ export const LearnerJourneyShell = ({
   children,
   headerRight,
   wide = false,
+  missionLayout = false,
 }: LearnerJourneyShellProps) => {
-  const widthClass = wide ? "max-w-6xl" : "max-w-3xl";
-  const verticalPaddingClass = wide ? "py-3" : "py-6";
+  const widthClass = wide ? "max-w-6xl" : missionLayout ? "max-w-4xl" : "max-w-3xl";
+  const verticalPaddingClass = wide ? "py-3" : missionLayout ? "py-5" : "py-6";
+  const headerAlignmentClass = missionLayout
+    ? "xl:w-[61rem] xl:max-w-none xl:-translate-x-[6.5rem] xl:px-0"
+    : "";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 bg-[#15202B] print:hidden">
-        <div className={`mx-auto flex ${widthClass} items-center justify-between gap-4 px-6 py-4`}>
+        <div className={`mx-auto flex ${widthClass} items-center justify-between gap-4 px-6 py-4 ${headerAlignmentClass}`}>
           <HomeBrand />
           {headerRight}
         </div>
