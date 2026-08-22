@@ -247,18 +247,3 @@ scripts/                 프롬프트·독립 검토 자동화
 tests/                   브라우저·DB 보조 검증
 docs/                    현행 정본, 운영 기록, 연구 추적 증거
 ```
-
-## 상세 문서
-
-**설계 정본**
-
-- [생성·평가·저장 계약](docs/contracts/PRAGMA_생성계약_정본.md)
-- [학습자 구조](docs/product/PRAGMA_학습자구조_정본.md)
-- [관리자 구조](docs/product/PRAGMA_관리자구조_정본.md)
-
-**연구 추적 기록**
-
-- [설계 추적](docs/research-trail/01_design_traceability.md) ·
-  [결정 기록](docs/research-trail/02_decision_log.md) ·
-  [반복 개발](docs/research-trail/03_iteration_log.md) ·
-  [증거 색인](docs/research-trail/04_evidence_index.md)
