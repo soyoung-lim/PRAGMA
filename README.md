@@ -206,6 +206,23 @@ README는 전체 스키마 대신 현재 워크플로우를 이해하는 데 필
 프로덕션 프롬프트의 실행 정본은 Edge 소스입니다. `prompt_templates` 같은 DB 자료가 배포된
 프롬프트를 자동으로 바꾸지는 않습니다.
 
+## 저장소 구조
+
+```text
+src/
+  pages/                 공개·인증·구조 설명 화면
+  pages/learner/         수업·미션·기록·라운지
+  pages/admin/           생성·조립·검수·편성·분석
+  lib/                   미션·생성·품질·수업 도메인 로직
+  integrations/supabase/ Supabase client와 생성 타입
+supabase/
+  functions/             생성·TTS·STT·자막 Edge Functions
+  migrations/            DB schema·RLS·RPC 이력
+scripts/                 프롬프트·독립 검토 자동화
+tests/                   브라우저·DB 보조 검증
+docs/                    현행 정본, 운영 기록, 연구 추적 증거
+```
+
 ## 로컬 실행
 
 Node.js 22.x가 필요합니다.
@@ -231,19 +248,62 @@ npm run build
 실제 모델 호출, DB 쓰기, migration 적용, Edge·Railway 배포와 대량 생성은 비용·데이터·운영
 상태를 바꾸므로 별도 승인 게이트를 따릅니다.
 
-## 저장소 구조
+## 빠른 확인
 
-```text
-src/
-  pages/                 공개·인증·구조 설명 화면
-  pages/learner/         수업·미션·기록·라운지
-  pages/admin/           생성·조립·검수·편성·분석
-  lib/                   미션·생성·품질·수업 도메인 로직
-  integrations/supabase/ Supabase client와 생성 타입
-supabase/
-  functions/             생성·TTS·STT·자막 Edge Functions
-  migrations/            DB schema·RLS·RPC 이력
-scripts/                 프롬프트·독립 검토 자동화
-tests/                   브라우저·DB 보조 검증
-docs/                    현행 정본, 운영 기록, 연구 추적 증거
+| 확인할 것 | 어디서 |
+|---|---|
+| 실행 중인 서비스 | [pragma.up.railway.app](https://pragma.up.railway.app) |
+| 학습자 화면 | `src/pages/learner/` |
+| 교수자 화면 | `src/pages/admin/` |
+| 생성·검수 로직 | `src/lib/pragma/` · `supabase/functions/generate-scenario/` |
+| 검증 실행 | `npm run typecheck` · `npm test` |
+
+## 연구 정보
+
+이 저장소는 박사학위논문 **「AI 기반 한·중 통번역 학습 워크플로우 개발 연구 — 화용적 적절성 판단과 산출을 중심으로 —」**의 설계·개발 산출물입니다.
+
+### 인용
+
+**논문**
+
 ```
+임소영. (2026). AI 기반 한·중 통번역 학습 워크플로우 개발 연구:
+화용적 적절성 판단과 산출을 중심으로 [박사학위논문]. 한국외국어대학교.
+```
+
+**저장소**
+
+```
+임소영. (2026). PRAGMA: AI 기반 한·중 통번역 학습 워크플로우 [Computer software].
+GitHub. https://github.com/soyoung-lim/PRAGMA
+```
+
+**BibTeX**
+
+```bibtex
+@phdthesis{lim2026pragma,
+  author = {Lim, Soyoung},
+  title  = {AI 기반 한·중 통번역 학습 워크플로우 개발 연구:
+            화용적 적절성 판단과 산출을 중심으로},
+  school = {Hankuk University of Foreign Studies},
+  year   = {2026}
+}
+
+@software{lim2026pragma-software,
+  author = {Lim, Soyoung},
+  title  = {PRAGMA: AI 기반 한·중 통번역 학습 워크플로우},
+  year   = {2026},
+  url    = {https://github.com/soyoung-lim/PRAGMA}
+}
+```
+
+### 라이선스
+
+소스 코드는 MIT License로 배포합니다.
+
+```
+Copyright (c) 2026 Soyoung Lim
+```
+
+학습 콘텐츠, 설계 문서, 프롬프트, 연구 추적 기록 등 코드가 아닌 자료의 저작권은 저자에게 있습니다. 연구·교육 목적의 인용과 참조는 위 서지사항을 밝히고 자유롭게 하실 수 있습니다.
+
