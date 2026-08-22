@@ -306,8 +306,8 @@ function FeedbackBox({ verdict, feedback, action, highlights = [] }: {
   );
 }
 
-function ScaleView({ quest, onDone }: { quest: ScaleQuest; onDone: (response: QuestResponse) => void }) {
-  const [pick, setPick] = useState<string | null>(null);
+function ScaleView({ quest, onDone, devAutofill = false }: { quest: ScaleQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
+  const [pick, setPick] = useState<string | null>(() => devAutofill ? quest.referenceAnswer : null);
   const [answered, setAnswered] = useState(false);
   const compact = quest.id === "A1";
   const acceptedIds = quest.acceptedAnswers ?? [quest.referenceAnswer];
@@ -338,10 +338,13 @@ function ScaleView({ quest, onDone }: { quest: ScaleQuest; onDone: (response: Qu
   );
 }
 
-function FixChoiceView({ quest, onDone }: { quest: FixChoiceQuest; onDone: (response: QuestResponse) => void }) {
-  const [judgment, setJudgment] = useState<string | null>(null);
-  const [locked, setLocked] = useState(false);
-  const [corrections, setCorrections] = useState<Set<string>>(new Set());
+function FixChoiceView({ quest, onDone, devAutofill = false }: { quest: FixChoiceQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
+  const [judgment, setJudgment] = useState<string | null>(() => devAutofill ? quest.referenceJudgment : null);
+  const [locked, setLocked] = useState(devAutofill);
+  const [corrections, setCorrections] = useState<Set<string>>(() => devAutofill
+    ? new Set(quest.corrections.filter((option) => option.valid).map((option) => option.id))
+    : new Set()
+  );
   const [answered, setAnswered] = useState(false);
   const order = useMemo(() => shuffle(quest.corrections), [quest.corrections]);
   const toggleCorrection = (id: string) => {
@@ -435,10 +438,10 @@ function FixChoiceView({ quest, onDone }: { quest: FixChoiceQuest; onDone: (resp
   );
 }
 
-function ReasonView({ quest, onDone }: { quest: ReasonQuest; onDone: (response: QuestResponse) => void }) {
-  const [judgment, setJudgment] = useState<string | null>(null);
-  const [locked, setLocked] = useState(false);
-  const [reason, setReason] = useState("");
+function ReasonView({ quest, onDone, devMode = false, devAutofill = false }: { quest: ReasonQuest; onDone: (response: QuestResponse) => void; devMode?: boolean; devAutofill?: boolean }) {
+  const [judgment, setJudgment] = useState<string | null>(() => devAutofill ? quest.referenceJudgment : null);
+  const [locked, setLocked] = useState(devAutofill);
+  const [reason, setReason] = useState(() => devAutofill ? "관계와 요청 부담을 고려한 개발자 점검용 이유입니다." : "");
   const [answered, setAnswered] = useState(false);
   const referenceLabel = quest.judgmentOptions.find((option) => option.id === quest.referenceJudgment)?.label;
   const reasonValidation = validateReason(reason);
@@ -458,7 +461,7 @@ function ReasonView({ quest, onDone }: { quest: ReasonQuest; onDone: (response: 
             <input
               type="text"
               value={reason}
-              maxLength={50}
+              maxLength={devMode ? undefined : 50}
               disabled={answered}
               onChange={(event) => setReason(event.target.value)}
               aria-invalid={reason.length > 0 && !reasonValidation.valid}
@@ -471,11 +474,11 @@ function ReasonView({ quest, onDone }: { quest: ReasonQuest; onDone: (response: 
         )}
         {answered && <div className="mt-4"><FeedbackBox verdict={`권장 답안 · 이 상황에서는 ${referenceLabel}`} feedback={quest.feedback} highlights={quest.targetHighlights} /></div>}
       </section>
-      <ActionBar hint={!locked && !judgment ? "가장 가까운 판단을 하나 선택해 주세요." : locked && !answered ? reasonValidation.hint : undefined}>
+      <ActionBar hint={!locked && !judgment ? "가장 가까운 판단을 하나 선택해 주세요." : locked && !answered && !devMode ? reasonValidation.hint : undefined}>
         {!locked ? (
           <Button className="h-12 w-full" disabled={!judgment} onClick={() => setLocked(true)}>{judgment ? "판단 확인하기" : "답을 선택해 주세요"}</Button>
         ) : !answered ? (
-          <Button className="h-12 w-full" disabled={!reasonValidation.valid} onClick={() => setAnswered(true)}>이유 확인하기</Button>
+          <Button className="h-12 w-full" disabled={!devMode && !reasonValidation.valid} onClick={() => setAnswered(true)}>이유 확인하기</Button>
         ) : (
           <Button className="h-12 w-full" onClick={() => onDone({ judgment, reasonNote: reason.trim() })}>{nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" /></Button>
         )}
@@ -484,9 +487,9 @@ function ReasonView({ quest, onDone }: { quest: ReasonQuest; onDone: (response: 
   );
 }
 
-function BestWorstView({ quest, onDone }: { quest: BestWorstQuest; onDone: (response: QuestResponse) => void }) {
-  const [best, setBest] = useState<string | null>(null);
-  const [worst, setWorst] = useState<string | null>(null);
+function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWorstQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
+  const [best, setBest] = useState<string | null>(() => devAutofill ? quest.bestId : null);
+  const [worst, setWorst] = useState<string | null>(() => devAutofill ? quest.worstId : null);
   const [answered, setAnswered] = useState(false);
   const order = useMemo(() => shuffle(quest.candidates), [quest.candidates]);
   return (
@@ -806,17 +809,21 @@ function buildDevPreviewResponses(preset: DevPreviewPreset, finalized: boolean) 
   }, {});
 }
 
-function DctDraftView({ quest, onDone }: {
+function DctDraftView({ quest, onDone, devMode = false, devAutofill = false, devDraft = "" }: {
   quest: DctQuest;
   onDone: (response: DctResponse) => void;
+  devMode?: boolean;
+  devAutofill?: boolean;
+  devDraft?: string;
 }) {
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(() => devAutofill ? devDraft : "");
   const validation = validateDraft(draft);
+  const canSubmit = devMode || validation.valid;
   return (
     <QuestScaffold quest={quest}>
       <DctDraftCard quest={quest} value={draft} onChange={setDraft} />
-      <ActionBar hint={validation.hint}>
-        <Button className="h-12 w-full" disabled={!validation.valid} onClick={() => onDone({ first: draft.trim(), revised: draft.trim(), reflected: false })}>{validation.valid ? "번역 제출하기" : "번역안을 작성해 주세요"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+      <ActionBar hint={devMode ? undefined : validation.hint}>
+        <Button className="h-12 w-full" disabled={!canSubmit} onClick={() => onDone({ first: draft.trim(), revised: draft.trim(), reflected: false })}>{canSubmit ? "번역 제출하기" : "번역안을 작성해 주세요"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
       </ActionBar>
     </QuestScaffold>
   );
@@ -894,15 +901,17 @@ function DctContextReview({ quest, first }: { quest: DctFeedbackQuest; first: st
   );
 }
 
-function DctFeedbackView({ quest, response, onDone }: {
+function DctFeedbackView({ quest, response, onDone, devMode = false, devAutofill = false }: {
   quest: DctFeedbackQuest;
   response?: DctResponse;
   onDone: (response: DctResponse) => void;
+  devMode?: boolean;
+  devAutofill?: boolean;
 }) {
   const first = response?.first ?? "";
   const [ready, setReady] = useState(false);
-  const [revised, setRevised] = useState(first);
-  const [revisionOpen, setRevisionOpen] = useState(false);
+  const [revised, setRevised] = useState(() => devAutofill ? quest.referenceAnswer : first);
+  const [revisionOpen, setRevisionOpen] = useState(devAutofill);
   const revisionRef = useRef<HTMLElement>(null);
   const evaluation = useMemo(() => evaluateDct(quest, first), [first, quest]);
   useEffect(() => {
@@ -934,8 +943,8 @@ function DctFeedbackView({ quest, response, onDone }: {
     ? evaluation.feedback
     : "원문의 의미와 의도를 유지하면서, 관계와 상황에도 맞는 표현을 사용했습니다.";
   const revisionValidation = validateDraft(revised);
-  const canConfirm = revisionValidation.valid && (!needsChange || reflected);
-  const actionHint = revisionValidation.hint ?? (needsChange && !reflected ? "피드백을 반영해 한 곳 이상 수정해 주세요." : undefined);
+  const canConfirm = devMode || (revisionValidation.valid && (!needsChange || reflected));
+  const actionHint = devMode ? undefined : revisionValidation.hint ?? (needsChange && !reflected ? "피드백을 반영해 한 곳 이상 수정해 주세요." : undefined);
   if (!isMeaningfulDraft(first)) {
     return (
       <section className={`${panel} p-5 sm:p-6`}>
@@ -1076,11 +1085,12 @@ function progressLabel(quest: MissionQuest) {
   return PROGRESS_LABELS[quest.id] ?? quest.shortLabel;
 }
 
-function Progress({ activeIndex, completed, reviewIndex = null, responses, onReview }: {
+function Progress({ activeIndex, completed, reviewIndex = null, responses, devNavigation = false, onReview }: {
   activeIndex: number;
   completed?: boolean;
   reviewIndex?: number | null;
   responses: Record<string, QuestResponse | DctResponse>;
+  devNavigation?: boolean;
   onReview: (index: number) => void;
 }) {
   const quests = REQUEST_MISSION_V4_PREVIEW.quests;
@@ -1100,7 +1110,7 @@ function Progress({ activeIndex, completed, reviewIndex = null, responses, onRev
             const active = !completed && index === activeIndex;
             const reviewing = reviewIndex === index;
             const canReview = Boolean(responses[quest.id]);
-            const canNavigate = canReview || active;
+            const canNavigate = devNavigation || canReview || active;
             const sectionBreak = index === 5;
             return (
                 <div key={quest.id} className={`relative flex min-h-11 flex-1 items-center ${sectionBreak ? "mt-1.5" : ""}`}>
@@ -1136,7 +1146,7 @@ function Progress({ activeIndex, completed, reviewIndex = null, responses, onRev
               const active = !completed && index === activeIndex;
               const reviewing = reviewIndex === index;
               const canReview = Boolean(responses[quest.id]);
-              const canNavigate = canReview || active;
+              const canNavigate = devNavigation || canReview || active;
               return (
                 <div key={quest.id} className="flex min-w-0 flex-1 items-center">
                   {index > 0 && <span className={`h-0.5 min-w-1 flex-1 ${done || active ? "bg-[#9AA4B0]" : "bg-[#E1DED5]"}`} />}
@@ -1157,17 +1167,20 @@ function Progress({ activeIndex, completed, reviewIndex = null, responses, onRev
   );
 }
 
-function QuestRenderer({ quest, responses, onDone }: {
+function QuestRenderer({ quest, responses, onDone, devMode = false, devAutofill = false, devDraft = "" }: {
   quest: MissionQuest;
   responses: Record<string, QuestResponse | DctResponse>;
   onDone: (response: QuestResponse | DctResponse) => void;
+  devMode?: boolean;
+  devAutofill?: boolean;
+  devDraft?: string;
 }) {
-  if (quest.kind === "scale") return <ScaleView quest={quest} onDone={onDone} />;
-  if (quest.kind === "fix_choice") return <FixChoiceView quest={quest} onDone={onDone} />;
-  if (quest.kind === "reason") return <ReasonView quest={quest} onDone={onDone} />;
-  if (quest.kind === "best_worst") return <BestWorstView quest={quest} onDone={onDone} />;
-  if (quest.kind === "dct_feedback") return <DctFeedbackView quest={quest} response={responses[quest.dctId] as DctResponse | undefined} onDone={onDone} />;
-  return <DctDraftView quest={quest} onDone={onDone} />;
+  if (quest.kind === "scale") return <ScaleView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
+  if (quest.kind === "fix_choice") return <FixChoiceView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
+  if (quest.kind === "reason") return <ReasonView quest={quest} onDone={onDone} devMode={devMode} devAutofill={devAutofill} />;
+  if (quest.kind === "best_worst") return <BestWorstView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
+  if (quest.kind === "dct_feedback") return <DctFeedbackView quest={quest} response={responses[quest.dctId] as DctResponse | undefined} onDone={onDone} devMode={devMode} devAutofill={devAutofill} />;
+  return <DctDraftView quest={quest} onDone={onDone} devMode={devMode} devAutofill={devAutofill} devDraft={devDraft} />;
 }
 
 function responseLabel(quest: MissionQuest, response: QuestResponse) {
@@ -1335,11 +1348,13 @@ function DevPreviewToolbar({
   preset,
   onPresetChange,
   onJump,
+  onFill,
   onReset,
 }: {
   preset: DevPreviewPreset;
   onPresetChange: (preset: DevPreviewPreset) => void;
   onJump: (step: string) => void;
+  onFill: () => void;
   onReset: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1348,7 +1363,10 @@ function DevPreviewToolbar({
       {open && (
         <div className="mb-2 w-72 rounded-2xl border border-[#334155] bg-[#15202B] p-4 text-white shadow-2xl">
           <div className="flex items-center justify-between">
-            <p className="font-black tracking-[0.12em] text-[#F3D248]">DEV PREVIEW</p>
+            <div>
+              <p className="font-black tracking-[0.12em] text-[#F3D248]">DEV PREVIEW</p>
+              <p className="mt-0.5 text-[10px] text-white/45">localhost 전용 · 저장 안 됨</p>
+            </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="개발자 메뉴 닫기" className="rounded-md p-1 text-white/70 hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></button>
           </div>
           <label className="mt-4 block font-bold text-white/70" htmlFor="dev-preview-preset">답안 유형</label>
@@ -1374,8 +1392,9 @@ function DevPreviewToolbar({
             {REQUEST_MISSION_V4_PREVIEW.quests.map((quest, index) => <option key={quest.id} value={quest.id}>{index + 1}. {progressLabel(quest)}</option>)}
             <option value="summary">최종 summary</option>
           </select>
-          <button type="button" onClick={onReset} className="mt-3 w-full rounded-lg border border-white/20 px-3 py-2 font-bold text-white/80 hover:bg-white/10">첫 단계로 초기화</button>
-          <p className="mt-3 leading-5 text-white/50">프로토타입 전용 · 저장되지 않음</p>
+          <button type="button" onClick={onFill} className="mt-3 w-full rounded-lg bg-[#F3D248] px-3 py-2.5 font-black text-[#15202B] hover:bg-[#F7DD62]">현재 답안 채우기</button>
+          <button type="button" onClick={onReset} className="mt-2 w-full rounded-lg border border-white/20 px-3 py-2 font-bold text-white/80 hover:bg-white/10">첫 단계로 초기화</button>
+          <p className="mt-3 leading-5 text-white/50">단계 직접 이동 · 글자수/중문 검증 우회</p>
         </div>
       )}
       <button type="button" onClick={() => setOpen((current) => !current)} className="rounded-full border border-[#F3D248] bg-[#15202B] px-4 py-2.5 font-black tracking-[0.08em] text-[#F3D248] shadow-xl">DEV PREVIEW</button>
@@ -1390,9 +1409,10 @@ const MissionRunV4 = () => {
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
   const [responses, setResponses] = useState<Record<string, QuestResponse | DctResponse>>({});
   const [devPreset, setDevPreset] = useState<DevPreviewPreset>(readDevPreviewPreset);
+  const [devAutofillQuestId, setDevAutofillQuestId] = useState<string | null>(null);
   const [renderNonce, setRenderNonce] = useState(0);
   const quest = mission.quests[questIndex];
-  const isDevPreview = typeof window !== "undefined" && window.location.pathname.startsWith("/prototype/mission-v4");
+  const isDevPreview = import.meta.env.DEV;
 
   const updateDevPreviewUrl = (step?: string, preset = devPreset) => {
     const url = new URL(window.location.href);
@@ -1409,6 +1429,7 @@ const MissionRunV4 = () => {
     setReviewIndex(null);
     setCompleted(step === "summary");
     setQuestIndex(step === "summary" ? mission.quests.length - 1 : targetIndex);
+    setDevAutofillQuestId(null);
     setRenderNonce((current) => current + 1);
     updateDevPreviewUrl(step, preset);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1441,6 +1462,7 @@ const MissionRunV4 = () => {
     setCompleted(false);
     setReviewIndex(null);
     setResponses({});
+    setDevAutofillQuestId(null);
     setRenderNonce((current) => current + 1);
     if (isDevPreview) updateDevPreviewUrl(undefined);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1451,6 +1473,10 @@ const MissionRunV4 = () => {
   const reviewedResponse = reviewedQuest ? responses[reviewedQuest.id] : undefined;
   const currentProgressIndex = completed ? mission.quests.length : questIndex;
   const navigateProgress = (index: number) => {
+    if (isDevPreview) {
+      jumpToDevPreview(mission.quests[index].id);
+      return;
+    }
     if (index === currentProgressIndex || !responses[mission.quests[index].id]) {
       setReviewIndex(null);
       return;
@@ -1468,35 +1494,48 @@ const MissionRunV4 = () => {
             updateDevPreviewUrl(new URLSearchParams(window.location.search).get("step") ?? undefined, preset);
           }}
           onJump={jumpToDevPreview}
+          onFill={() => {
+            setResponses(buildDevPreviewResponses(devPreset, false));
+            setDevAutofillQuestId(quest.id);
+            setRenderNonce((current) => current + 1);
+          }}
           onReset={restart}
         />
       )}
       <div className="mx-auto max-w-3xl">
-      {reviewedQuest && reviewedResponse ? (
-        <div className="space-y-5">
-          <Progress activeIndex={currentProgressIndex} completed={completed} reviewIndex={reviewIndex} responses={responses} onReview={navigateProgress} />
-          <ReviewModeBanner index={reviewIndex ?? 0} completed={completed} onExit={() => setReviewIndex(null)} />
-          <CompletedQuestReview quest={reviewedQuest} response={reviewedResponse} />
-        </div>
-      ) : completed ? (
-        <div className="space-y-5">
-          <Progress activeIndex={currentProgressIndex} completed responses={responses} onReview={navigateProgress} />
-          <section className="rounded-2xl bg-[#15202B] px-6 py-7 text-white sm:px-8">
-            <p className="text-xs font-bold text-[#F3D248]">미션 완료</p>
-            <h1 className="mt-2 text-2xl font-black">이번 미션에서 완성한 내 번역</h1>
-          </section>
-          <div className="space-y-4">
-            <CompletionRecord label="번역 실습 · 면접 일정 조정" response={aDct} />
+        {reviewedQuest && reviewedResponse ? (
+          <div className="space-y-5">
+            <Progress activeIndex={currentProgressIndex} completed={completed} reviewIndex={reviewIndex} responses={responses} devNavigation={isDevPreview} onReview={navigateProgress} />
+            <ReviewModeBanner index={reviewIndex ?? 0} completed={completed} onExit={() => setReviewIndex(null)} />
+            <CompletedQuestReview quest={reviewedQuest} response={reviewedResponse} />
           </div>
-          <SessionPatternSummary responses={[aDct]} />
-          <Button variant="outline" className="h-12 w-full" onClick={restart}><RotateCcw className="mr-2 h-4 w-4" />처음부터 다시 보기</Button>
-        </div>
-      ) : (
-        <div className="space-y-5">
-          <Progress activeIndex={currentProgressIndex} responses={responses} onReview={navigateProgress} />
-          <QuestRenderer key={`${quest.id}-${renderNonce}`} quest={quest} responses={responses} onDone={finishQuest} />
-        </div>
-      )}
+        ) : completed ? (
+          <div className="space-y-5">
+            <Progress activeIndex={currentProgressIndex} completed responses={responses} devNavigation={isDevPreview} onReview={navigateProgress} />
+            <section className="rounded-2xl bg-[#15202B] px-6 py-7 text-white sm:px-8">
+              <p className="text-xs font-bold text-[#F3D248]">미션 완료</p>
+              <h1 className="mt-2 text-2xl font-black">이번 미션에서 완성한 내 번역</h1>
+            </section>
+            <div className="space-y-4">
+              <CompletionRecord label="번역 실습 · 면접 일정 조정" response={aDct} />
+            </div>
+            <SessionPatternSummary responses={[aDct]} />
+            <Button variant="outline" className="h-12 w-full" onClick={restart}><RotateCcw className="mr-2 h-4 w-4" />처음부터 다시 보기</Button>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <Progress activeIndex={currentProgressIndex} responses={responses} devNavigation={isDevPreview} onReview={navigateProgress} />
+            <QuestRenderer
+              key={`${quest.id}-${renderNonce}`}
+              quest={quest}
+              responses={responses}
+              onDone={finishQuest}
+              devMode={isDevPreview}
+              devAutofill={devAutofillQuestId === quest.id}
+              devDraft={DEV_PREVIEW_COPY[devPreset].a}
+            />
+          </div>
+        )}
       </div>
     </LearnerJourneyShell>
   );
