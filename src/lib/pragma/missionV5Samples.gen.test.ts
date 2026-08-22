@@ -56,9 +56,7 @@ const CANARY_CORE_ONLY = process.env.CONTENT_CANARY_CORE_ONLY === "1";
 /** 이전 카나리의 통과 코어를 고정해 미션 프롬프트 변경만 비교할 때 사용한다. */
 const CANARY_CORE_FIXTURE = process.env.CONTENT_CANARY_CORE_FIXTURE?.trim();
 
-const OUT_DIR =
-  process.env.V5_SAMPLE_OUT ??
-  "C:\\Users\\cnkr\\AppData\\Local\\Temp\\claude\\C--Users-cnkr-OneDrive\\15ddbb98-4662-4bdb-9316-fd57968c787b\\scratchpad\\v5-samples";
+const OUT_DIR = process.env.V5_SAMPLE_OUT ?? "tmp/v5-samples";
 
 function readEnv(): { url: string; key: string } {
   const raw = readFileSync(resolve(process.cwd(), ".env"), "utf8");

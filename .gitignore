@@ -42,3 +42,11 @@ tmp/
 
 # 교차 벤더 검토 배치 결과(연구 산출물 — 저장소에 올리지 않는다)
 cross-vendor-review-out/
+
+# HSK 3.0 공식 대강의 축자 전사와 그 파생 seed — 재배포 권리 문제로 저장소에 두지 않는다.
+# 로컬 파일은 그대로 유지하며, 근거 대조는 data/hsk3/source-manifest.json의 sha256으로 한다.
+/data/hsk3/source/
+/supabase/seed/
+
+# 시점 종속 내부 상태판 — 갱신하지 않으면 곧 사실과 어긋난다(로컬에는 유지).
+/docs/handoff/ACTIVE_HANDOFF.md

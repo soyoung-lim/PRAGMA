@@ -1,5 +1,8 @@
 # Migration Audit Report
 
+> **기준 시점: 2026-07. 이 문서는 그때의 읽기 전용 감사이며 현재 코드 상태가 아니다.**
+> 현행 구현 범위는 README의 「현재 구현 범위」 절을 따른다.
+
 > Read-only audit. **No files were modified except this report.**
 > Scope: `src/pages`, `src/pages/admin`, `src/components`, `src/hooks`, `src/lib`, `src/integrations`, `src/App.tsx`, `supabase/`.
 

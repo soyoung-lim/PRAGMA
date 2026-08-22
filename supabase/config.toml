@@ -2,6 +2,8 @@ project_id = "tlnjxagqwvefeqdagtkq"
 
 [db.seed]
 enabled = true
+# 아래 seed는 Git에서 제외돼 있다(HSK 공식 대강 파생물). 로컬에 없으면
+# `npm run hsk3:build`로 생성하거나 이 절을 비활성화한다.
 sql_paths = ["./seed/hsk3_reference_seed.sql"]
 
 [auth]

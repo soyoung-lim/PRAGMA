@@ -131,7 +131,7 @@ function fmtViolations(vs: { id: string; level: string; message: string }[]): st
 
 // 눈검사 리뷰 파일용 수집기
 const REVIEW: { act: string; core: any; coreResult: string; mission: any; missionResult: string; warnings: string[] }[] = [];
-const REVIEW_PATH = "C:\\Users\\cnkr\\OneDrive\\바탕 화면\\최근 작업\\골든미션_눈검사_0723.md";
+const REVIEW_PATH = process.env.GOLDEN_REVIEW_OUT ?? "tmp/golden-missions-review.md";
 
 // 실제 OpenAI·배포 엣지함수 호출 → 비용. CI 자동 실행 방지: RUN_GOLDEN=1 일 때만.
 //   RUN_GOLDEN=1 npx vitest run src/lib/pragma/goldenMissions.gen.test.ts
