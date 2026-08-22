@@ -2183,6 +2183,7 @@
   - 최신 운영 `origin/main`에서 기능별로 현재 구현 여부와 patch 의미를 대조한 뒤 필요한 변경만 독립 이식한다.
   - 관리자 아카이브는 client 500행 제한 대신 exact count와 페이지네이션을 사용한다.
   - 학습 미션 자유 이동·답안 채우기·입력 검증 우회는 `import.meta.env.DEV`에서만 허용한다.
+  - 현재 import·route·exported symbol 참조가 0인 legacy 파일만 제거하고, 연쇄적으로 보이는 보조 파일은 별도 확인 전 유지한다.
   - Mission V6는 구현 자산으로 보존하되 현재 7단계 Mission V4와 계약을 조정하기 전에는 현행 정본이나 배포 대상으로 취급하지 않는다.
 - 기각: 오래된 통합 브랜치 전체 병합, dirty 루트의 일괄 commit·배포, Mission V6 migration의 즉시 적용.
 - 관련 Iteration / Evidence: `ITER-20260822-08`, `EVD-20260822-08`

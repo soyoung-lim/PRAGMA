@@ -26,10 +26,14 @@
 2. `a5042c8` · 관리자 아카이브 정확 집계
    - 500행 client 제한과 현재 페이지 기반 개수 계산을 제거했다.
    - Supabase exact count, 100행 페이지네이션과 공통 enum 라벨을 사용한다.
+3. `364cdfc` · 참조가 없는 legacy 코드 폐기
+   - `NavLink`, 구 demo/localStorage helper 3개, 미사용 관리자 커리큘럼 화면과
+     리다이렉트로 은퇴한 `PracticeMission`을 제거했다.
+   - 현재 `src`의 import·route·exported symbol 참조가 0임을 다시 확인하고 삭제했다.
 
 ## 검증
 
-- `npm.cmd run typecheck`: 통과.
+- `npm.cmd run typecheck`: 기능 이식 뒤와 legacy 파일 제거 뒤 각각 통과.
 - Vitest와 production build는 Codex 격리 경로에서 esbuild가 상위 디렉터리 읽기를 시도해
   시작 전에 차단됐다. 이를 코드 회귀나 통과 증거로 해석하지 않는다.
 - 두 기능은 최신 운영 기준 `63faa89`에 각각 독립 커밋으로 이식했다.
@@ -41,4 +45,3 @@
 - archive를 원격에 보존한 뒤 병합 완료·중복 worktree와 브랜치를 제거한다.
 - Mission V6 부활·선별 재사용 판단은 현재 Mission V4와의 계약 비교가 필요하므로 별도
   Extra High 검토 대상으로 둔다.
-
