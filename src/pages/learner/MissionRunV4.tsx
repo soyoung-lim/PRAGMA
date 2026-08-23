@@ -1414,31 +1414,31 @@ function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = f
             ? { phase: "다듬기", activity: "내 번역 수정" }
             : { phase: "피드백", activity: progressLabel(quests[activeIndex]) };
   return (
-    <section className="sticky top-16 z-30 border-b border-[#D6CFBF] bg-[linear-gradient(90deg,rgba(251,250,246,0.98),rgba(248,244,229,0.98),rgba(251,250,246,0.98))] px-3 py-3 shadow-[0_5px_16px_rgba(21,32,43,0.045)] backdrop-blur-md sm:px-4" aria-label="미션 학습 흐름">
-      <div className="flex items-center gap-3 sm:gap-5">
+    <section className="sticky top-16 z-30 border-b border-[#DDD8CC] bg-[#FBFAF6]/96 px-3 py-2.5 backdrop-blur-md sm:px-4" aria-label="미션 학습 흐름">
+      <div className="flex items-center gap-3 sm:gap-4">
         <ol className="grid min-w-0 flex-1 grid-cols-5" aria-label="장면 이해, 표현 판단, 직접 산출, 피드백, 다듬기">
           {MACRO_PROGRESS.map((label, index) => {
             const done = Boolean(completed) || index < macroIndex;
             const active = !completed && index === macroIndex;
             return (
-              <li key={label} className="relative flex min-w-0 items-center justify-center gap-1 sm:gap-2">
+              <li key={label} className="relative flex min-w-0 items-center justify-center gap-1 sm:gap-1.5">
                 {index > 0 && (
-                  <span className={`absolute right-1/2 top-1/2 h-[1.5px] w-full ${done || active ? "bg-[#C7AE39]" : "bg-[#D5D1C7]"}`} aria-hidden />
+                  <span className={`absolute right-1/2 top-1/2 h-px w-full ${done || active ? "bg-[#9AA3AD]" : "bg-[#D9D6CD]"}`} aria-hidden />
                 )}
-                <span className={`relative z-10 h-3 w-3 shrink-0 rounded-full border ${done ? "border-[#B99E21] bg-[#F1CF39]" : active ? "border-[#15202B] bg-[#15202B] ring-[3px] ring-[#E7C93A] ring-offset-1 ring-offset-[#F9F6EC]" : "border-[#BFC1BF] bg-[#FFFEFA]"}`} aria-hidden />
-                <span className={`relative z-10 break-keep rounded-full px-1.5 py-0.5 text-center text-[10px] font-extrabold leading-4 sm:px-2 sm:text-[12px] ${active ? "bg-[#FFF1A8] text-[#15202B] shadow-[inset_0_0_0_1px_rgba(194,161,19,0.28)]" : done ? "bg-[#F9F6EC] text-[#4F5967]" : "bg-[#F9F7F0] text-[#7C8490]"}`}>
+                <span className={`relative z-10 h-2.5 w-2.5 shrink-0 rounded-full border ${done ? "border-[#D3B62D] bg-[#F3D248]" : active ? "border-[#15202B] bg-[#15202B] ring-2 ring-[#E8D04C] ring-offset-1 ring-offset-[#FBFAF6]" : "border-[#CFCBC0] bg-white"}`} aria-hidden />
+                <span className={`relative z-10 break-keep bg-[#FBFAF6] px-0.5 text-center text-[11px] font-bold leading-4 sm:text-[12px] ${active ? "font-black text-[#15202B]" : done ? "text-[#687387]" : "text-[#A0A5AD]"}`}>
                   {label}
                 </span>
               </li>
             );
           })}
         </ol>
-        <div className="hidden min-w-[8.5rem] border-l-2 border-[#D4B52E] pl-4 text-right sm:block">
-          <p className="text-[13px] font-black tracking-[-0.01em] text-[#15202B]">{detail.activity}</p>
-          <p className="mt-0.5 text-[10px] font-extrabold text-[#737D8B]">{detail.phase}</p>
+        <div className="hidden min-w-[7.5rem] border-l border-[#DDD8CC] pl-3 text-right sm:block">
+          <p className="text-[13px] font-black text-[#15202B]">{detail.activity}</p>
+          <p className="mt-0.5 text-[10px] font-bold text-[#8A919D]">{detail.phase}</p>
         </div>
       </div>
-      <p className="mt-2 truncate border-t border-[#DED8C8] pt-1.5 text-right text-[10px] font-extrabold text-[#596473] sm:hidden">{detail.activity}</p>
+      <p className="mt-1.5 truncate text-right text-[11px] font-bold text-[#747E8C] sm:hidden">{detail.activity}</p>
       <span className="sr-only">현재 단계: {detail.phase}, {detail.activity}</span>
     </section>
   );
