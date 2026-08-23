@@ -329,9 +329,9 @@ const AdminComposer = () => {
       setOutlines((prev) =>
         prev.map((item) => (item.id === outlineId ? { ...item, status: "draft" } : item)),
       );
-      toast.success("학습자 공개를 중지했습니다.");
+      toast.success("비공개로 바꿨습니다.");
     } catch (e) {
-      const message = e instanceof Error ? e.message : "공개를 중지하지 못했습니다.";
+      const message = e instanceof Error ? e.message : "비공개로 바꾸지 못했습니다.";
       setError(message);
       toast.error(message);
     } finally {
@@ -596,12 +596,12 @@ const AdminComposer = () => {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button className="h-9" variant="outline" disabled={unpublishing}>
-                  {unpublishing ? "처리 중…" : "공개 중지"}
+                  {unpublishing ? "처리 중…" : "비공개"}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>학습자 공개를 중지하시겠습니까?</AlertDialogTitle>
+                  <AlertDialogTitle>이 교과목을 비공개로 바꾸시겠습니까?</AlertDialogTitle>
                   <AlertDialogDescription asChild>
                     <div className="space-y-2 text-left">
                       <p className="font-semibold text-[#15202B]">{selectedOutline?.title}</p>
@@ -612,7 +612,7 @@ const AdminComposer = () => {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>취소</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleUnpublish}>공개 중지</AlertDialogAction>
+                  <AlertDialogAction onClick={handleUnpublish}>비공개</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
