@@ -147,18 +147,12 @@ PRAGMA는 결과물뿐 아니라 결과가 만들어지고 검토된 조건을 �
 프롬프트나 모델 출력 본문을 중복 저장하지 않습니다. 학습 이용과 연구 참여도 분리하며,
 운영 로그가 존재한다는 이유만으로 연구 분석에 사용할 수 없습니다.
 
+실제 모델 호출, DB 쓰기, migration 적용, Edge·Railway 배포와 대량 생성은 비용·데이터·운영
+상태를 바꾸므로 별도 승인 게이트를 따릅니다.
+
 ## 현재 구현 범위
 
-2026-08-11 저장소 기준입니다. 날짜에 따라 바뀌는 배포·테스트 수치는 research trail의 시점 고정 증거에서 확인합니다.
-
-### 구현됨
-
-- 양방향 번역·통역을 지원하는 MPJ5+DCT1 학습 흐름의 렌더링과 수행 기록(`mission_v5` 스키마)
-- 9화행과 P·D·R, 수준·모드·방향·도메인·주제를 다루는 코어 생성과 품질 점검
-- 라이브러리, 미션 조립, 교수자 검수·승인, 15주 강좌 편성
-- 주차 도입 아크, 예습·복습 학습 노트, 학습자 기록, 라운지 실화면
-- 생성 run·프롬프트 지문·LLM 호출·학습자 판단과 수정의 추적
-- Supabase와 Railway 기반 배포 구조, 인증·RLS·Edge Functions
+날짜에 따라 바뀌는 배포·테스트 수치는 research trail의 시점 고정 증거에서 확인합니다.
 
 ### 제한적으로 운영·검증됨
 
@@ -202,8 +196,6 @@ Railway에는 공개 가능한 `VITE_*` 프론트엔드 설정만 주입합니�
 | 배포 | Railway 정적 프론트엔드 + Supabase 백엔드 |
 | 검증 | Vitest 3, Testing Library, Playwright, ESLint, TypeScript |
 
-이 저장소는 Lovable에서 시작됐기 때문에 `lovable-tagger`와 미사용 cloud-auth 패키지가 남아 있습니다. 현재 인증·AI·음성 런타임은 Lovable Gateway를 사용하지 않습니다.
-
 ## 핵심 데이터 구조
 
 README는 전체 스키마 대신 현재 워크플로우를 이해하는 데 필요한 묶음만 제시합니다.
@@ -218,54 +210,6 @@ README는 전체 스키마 대신 현재 워크플로우를 이해하는 데 필
 
 프로덕션 프롬프트의 실행 정본은 Edge 소스입니다. `prompt_templates` 같은 DB 자료가 배포된
 프롬프트를 자동으로 바꾸지는 않습니다.
-
-## 저장소 구조
-
-```text
-src/
-  pages/                 공개·인증·구조 설명 화면
-  pages/learner/         수업·미션·기록·라운지
-  pages/admin/           생성·조립·검수·편성·분석
-  lib/                   미션·생성·품질·수업 도메인 로직
-  integrations/supabase/ Supabase client와 생성 타입
-supabase/
-  functions/             생성·TTS·STT·자막 Edge Functions
-  migrations/            DB schema·RLS·RPC 이력
-scripts/                 프롬프트·독립 검토 자동화
-tests/                   브라우저·DB 보조 검증
-docs/
-  contracts/             생성계약 정본과 개정 이력
-  product/               학습자·관리자 구조 정본
-  research-trail/        설계 추적·결정·반복·증거
-  dev-log/               개발 기록
-  screenshots/           화면 캡처
-docs/                    현행 정본, 운영 기록, 연구 추적 증거
-```
-
-## 로컬 실행
-
-Node.js 22.x가 필요합니다.
-
-```bash
-npm install
-npm run dev        # http://localhost:8080
-npm run typecheck
-npm test
-npm run build
-```
-
-환경변수 이름은 [.env.example](.env.example)을 참고합니다. 실제 secret이나 운영 자격증명은 저장소에 커밋하지 않습니다. `npm run build`는 먼저 프롬프트 snapshot을 갱신한 뒤 production bundle을 생성합니다.
-
-## 테스트·검증
-
-- `npm run typecheck`: 애플리케이션 TypeScript 검사
-- `npm test`: Vitest 단위·계약·회귀검사
-- `npm run build`: 프롬프트 snapshot 생성과 production build
-- `tests/`: Playwright 기반 시나리오 검증과 보조 스크립트
-- `scripts/manual-checks/`: 음성 round-trip·피드백·품질 점검용 승인형 수동 검사
-
-실제 모델 호출, DB 쓰기, migration 적용, Edge·Railway 배포와 대량 생성은 비용·데이터·운영
-상태를 바꾸므로 별도 승인 게이트를 따릅니다.
 
 ## 연구 정보
 
