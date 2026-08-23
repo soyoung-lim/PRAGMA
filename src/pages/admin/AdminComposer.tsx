@@ -5,6 +5,19 @@ import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  deleteCurriculumOutline,
+  unpublishCurriculumOutline,
   getCurriculumOutline,
   listCurriculumOutlines,
   updateCurriculumCompositionAxes,
@@ -91,6 +104,8 @@ const AdminComposer = () => {
   const [presetCode, setPresetCode] = useState<string>("");
 
   const [assign, setAssign] = useState<AssignMap>({});
+  const [deleting, setDeleting] = useState(false);
+  const [unpublishing, setUnpublishing] = useState(false);
   const [loadedAssignments, setLoadedAssignments] = useState<WeekAssignment[] | null>(null);
   const [addingWeek, setAddingWeek] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -298,6 +313,51 @@ const AdminComposer = () => {
 
   const addItem = (weekNo: number, c: ComposerCore) =>
     setAssign((prev) => addAssignment(prev, weekNo, c));
+
+  // 교과목 삭제 — 주차·미션 배정은 DB의 ON DELETE CASCADE가 함께 지운다.
+  // 학습자 수행 기록(learner_mission_logs)은 outline을 참조하지 않으므로 보존된다.
+  const selectedOutline = outlines.find((item) => item.id === outlineId);
+  const selectedIsPublished = selectedOutline?.status === "published";
+  const assignedCount = Object.values(assign).reduce((total, items) => total + items.length, 0);
+
+  const handleUnpublish = async () => {
+    if (!outlineId || !selectedIsPublished) return;
+    setUnpublishing(true);
+    setError(null);
+    try {
+      await unpublishCurriculumOutline(outlineId);
+      setOutlines((prev) =>
+        prev.map((item) => (item.id === outlineId ? { ...item, status: "draft" } : item)),
+      );
+      toast.success("비공개로 바꿨습니다.");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "비공개로 바꾸지 못했습니다.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setUnpublishing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!outlineId || selectedIsPublished) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteCurriculumOutline(outlineId);
+      setOutlines((prev) => prev.filter((item) => item.id !== outlineId));
+      setOutlineId("");
+      setWeeks([]);
+      setAssign({});
+      toast.success("교과목을 삭제했습니다.");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "교과목을 삭제하지 못했습니다.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!outlineId) return;
@@ -522,6 +582,16 @@ const AdminComposer = () => {
             ))}
           </select>
 
+          {outlineId && (
+            <Badge
+              variant="outline"
+              className={selectedIsPublished
+                ? "h-7 shrink-0 border-[#9CC7B0] bg-[#F4FAF6] text-[#245E44]"
+                : "h-7 shrink-0 border-[#D9DED9] bg-[#F6F5F1] text-[#5D6980]"}
+            >
+              {selectedIsPublished ? "공개" : "비공개"}
+            </Badge>
+          )}
           <Button className="h-9" variant="outline" onClick={() => setStructureEditor("new")}>
             새 교과목
           </Button>
@@ -534,13 +604,71 @@ const AdminComposer = () => {
             주차 계획 수정
           </Button>
           <Button
-            className="ml-auto h-9"
+            className="h-9"
             variant="outline"
             onClick={handleSave}
             disabled={!outlineId || saving}
           >
-            {saving ? "저장 중…" : "교과목 편성 저장"}
+            {saving ? "저장 중…" : "편성 저장"}
           </Button>
+
+          {/* 위험 동작(비공개·삭제)은 오른쪽 끝으로 분리해 일상 동작과 섞이지 않게 한다. */}
+          <div className="ml-auto flex items-center gap-2 border-l border-[#E2DED2] pl-3">
+            {selectedIsPublished && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button className="h-9" variant="outline" disabled={unpublishing}>
+                    {unpublishing ? "처리 중…" : "비공개"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>이 교과목을 비공개로 바꾸시겠습니까?</AlertDialogTitle>
+                    <AlertDialogDescription asChild>
+                      <div className="space-y-2 text-left">
+                        <p className="font-semibold text-[#15202B]">{selectedOutline?.title}</p>
+                        <p>학습자 수업 화면에서 이 교과목이 보이지 않게 됩니다.</p>
+                        <p>편성 내용과 학습자 수행 기록은 그대로 남습니다.</p>
+                      </div>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>취소</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleUnpublish}>비공개</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  className="h-9 border-[#D9B0AC] text-[#8B3531] hover:bg-[#FFF3F1] hover:text-[#8B3531]"
+                  variant="outline"
+                  disabled={!outlineId || deleting || selectedIsPublished}
+                  title={selectedIsPublished ? "학습자에게 게시 중인 교과목은 삭제할 수 없습니다." : undefined}
+                >
+                  {deleting ? "삭제 중…" : "교과목 삭제"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>이 교과목을 삭제하시겠습니까?</AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-2 text-left">
+                      <p className="font-semibold text-[#15202B]">{selectedOutline?.title}</p>
+                      <p>15주 주차 계획과 현재 배정된 미션 {assignedCount}건이 함께 삭제됩니다.</p>
+                      <p>학습자 수행 기록과 시나리오·미션 자체는 삭제되지 않습니다.</p>
+                      <p className="font-semibold text-[#8B3531]">되돌릴 수 없습니다.</p>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>취소</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete}>삭제</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
 
         <div className="mt-3 overflow-hidden rounded-xl border border-[#CFC9B9] bg-white shadow-[0_10px_26px_rgba(21,32,43,0.09)]">

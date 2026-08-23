@@ -16,8 +16,8 @@ import type { LearnerLevel, LanguageDirection, SpeechActUI } from "@/lib/pragma/
 
 const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
 const DIRECTIONS: LanguageDirection[] = ["ko_zh", "zh_ko"];
-const REGULAR_ACT_WEEKS = [2, 3, 4, 5, 6, 7, 9, 10, 11];
-const NO_ACT_WEEKS = [12, 13, 14]; // 통합·맥락화·프로젝트 — 화행 미강제
+const REGULAR_ACT_WEEKS = [2, 3, 4, 5, 6, 9, 10, 11, 12];
+const NO_ACT_WEEKS = [7, 13, 14]; // 메타화용 클리닉·맥락 변형 재적용 — 화행 미강제
 
 describe("표준 15주 골격 구조", () => {
   it("15주 · 9화행 각 1회 · 통합주 화행 없음 · OT/중간/기말 위치", () => {

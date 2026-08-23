@@ -11,11 +11,11 @@
 
 // ── Speech act — UI-only taxonomy (9) ──
 // NOTE: internal_key `agreement` is FROZEN (persisted in scenarios.speech_act /
-// decision_traces.speech_act, ENUMS.md registry). Its DISPLAY LABEL was changed
+// decision_traces.speech_act, docs/ENUMS.md registry). Its DISPLAY LABEL was changed
 // 동의→"초대" (concept = 초대·공동행동 권유 / invitation; short 2-char label for UI
 // uniformity across the 9 acts). 동의 is no longer a top-level act (absorbed into
 // `opposition` response strategies). Key kept for DB stability; act_position of
-// `agreement` is now INITIATING (invitation is an initiating act), see ENUMS.md §12.
+// `agreement` is now INITIATING (invitation is an initiating act), see docs/ENUMS.md §12.
 export type SpeechActUI =
   | "request" | "refusal" | "apology" | "thanks"
   | "proposal" | "agreement" | "opposition" | "compliment" | "complaint";
