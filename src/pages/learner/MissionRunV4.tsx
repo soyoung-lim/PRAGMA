@@ -1414,31 +1414,31 @@ function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = f
             ? { phase: "다듬기", activity: "내 번역 수정" }
             : { phase: "피드백", activity: progressLabel(quests[activeIndex]) };
   return (
-    <section className="sticky top-16 z-30 border-b border-[#E2DED3] bg-[#FBFAF6]/95 px-4 py-4 shadow-[0_10px_24px_rgba(21,32,43,0.04)] backdrop-blur sm:px-5" aria-label="미션 학습 흐름">
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <p className="text-[10px] font-black tracking-[0.12em] text-[#7A8493]">LEARNING FLOW</p>
-        <div className="text-right">
-          <p className="text-xs font-black text-[#15202B]">{detail.phase}</p>
-          <p className="mt-0.5 text-[10px] font-bold text-[#7A8493] sm:text-[11px]">{detail.activity}</p>
+    <section className="sticky top-16 z-30 border-b border-[#DDD8CC] bg-[#FBFAF6]/96 px-3 py-2.5 backdrop-blur-md sm:px-4" aria-label="미션 학습 흐름">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <ol className="grid min-w-0 flex-1 grid-cols-5" aria-label="장면 이해, 표현 판단, 직접 산출, 피드백, 다듬기">
+          {MACRO_PROGRESS.map((label, index) => {
+            const done = Boolean(completed) || index < macroIndex;
+            const active = !completed && index === macroIndex;
+            return (
+              <li key={label} className="relative flex min-w-0 items-center justify-center gap-1 sm:gap-1.5">
+                {index > 0 && (
+                  <span className={`absolute right-1/2 top-1/2 h-px w-full ${done || active ? "bg-[#9AA3AD]" : "bg-[#D9D6CD]"}`} aria-hidden />
+                )}
+                <span className={`relative z-10 h-2.5 w-2.5 shrink-0 rounded-full border ${done ? "border-[#D3B62D] bg-[#F3D248]" : active ? "border-[#15202B] bg-[#15202B] ring-2 ring-[#E8D04C] ring-offset-1 ring-offset-[#FBFAF6]" : "border-[#CFCBC0] bg-white"}`} aria-hidden />
+                <span className={`relative z-10 break-keep bg-[#FBFAF6] px-0.5 text-center text-[9px] font-bold leading-4 sm:text-[10px] ${active ? "font-black text-[#15202B]" : done ? "text-[#687387]" : "text-[#A0A5AD]"}`}>
+                  {label}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+        <div className="hidden min-w-[7.5rem] border-l border-[#DDD8CC] pl-3 text-right sm:block">
+          <p className="text-[10px] font-black text-[#15202B]">{detail.activity}</p>
+          <p className="mt-0.5 text-[9px] font-bold text-[#8A919D]">{detail.phase}</p>
         </div>
       </div>
-      <ol className="grid grid-cols-5" aria-label="장면 이해, 표현 판단, 직접 산출, 피드백, 다듬기">
-        {MACRO_PROGRESS.map((label, index) => {
-          const done = Boolean(completed) || index < macroIndex;
-          const active = !completed && index === macroIndex;
-          return (
-            <li key={label} className="relative flex min-w-0 flex-col items-center">
-              {index > 0 && (
-                <span className={`absolute right-1/2 top-[6px] h-px w-full ${done || active ? "bg-[#8793A0]" : "bg-[#D9D6CD]"}`} aria-hidden />
-              )}
-              <span className={`relative z-10 h-3 w-3 rounded-full border ${done ? "border-[#D3B62D] bg-[#F3D248]" : active ? "border-[#15202B] bg-[#15202B] ring-2 ring-[#E8D04C] ring-offset-1 ring-offset-[#FBFAF6]" : "border-[#CFCBC0] bg-white"}`} aria-hidden />
-              <span className={`mt-2 break-keep text-center text-[10px] font-bold leading-4 sm:text-[11px] ${active ? "text-[#15202B]" : done ? "text-[#687387]" : "text-[#A0A5AD]"}`}>
-                {label}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
+      <p className="mt-1.5 truncate text-right text-[9px] font-bold text-[#747E8C] sm:hidden">{detail.activity}</p>
       <span className="sr-only">현재 단계: {detail.phase}, {detail.activity}</span>
     </section>
   );
