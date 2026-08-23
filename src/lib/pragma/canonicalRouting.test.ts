@@ -86,13 +86,14 @@ describe("canonical document routing", () => {
     }
   });
 
-  it("keeps the current mission contract explicit about MPJ4 + DCT1", () => {
+  it("keeps MPJ5 + DCT1 as the approved design while marking mission_v5 MPJ4 as transitional", () => {
     const manifest = readFileSync(join(ROOT, "docs/CANONICAL.md"), "utf8");
     const contract = readFileSync(join(ROOT, CURRENT_CANONICALS[0]), "utf8");
 
-    expect(manifest).toContain("MPJ4 + DCT1");
-    expect(contract).toContain("mission_v5` = **MPJ4 + DCT1**");
-    expect(contract).not.toMatch(/현행[^\n]*MPJ5|MPJ5\s*\+\s*DCT1[^\n]*(유지|변경 금지|바뀌지 않았다)/);
+    expect(manifest).toContain("최신 승인 학습설계는 **MPJ5 + DCT1**");
+    expect(manifest).toContain("아직 **MPJ4 + DCT1**");
+    expect(contract).toContain("최신 승인 학습설계: **MPJ5 + DCT1**");
+    expect(contract).toContain("현재 운영 `mission_v5`의 MPJ4");
   });
 
   it("makes public mission explanations consume the MPJ item-count constant", () => {
