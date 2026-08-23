@@ -104,11 +104,7 @@ PRAGMA의 수준 구분은 CEFR·ACTFL 또는 HSK 급수와 등치되지 않습�
 5. `MultiJudge`: 여러 초안을 한 화면에서 비교해 BEST와 WORST를 하나씩 고릅니다.
 6. `DCT`: 같은 화용 초점의 새 사건을 직접 번역하거나 통역합니다.
 
-미션 콘텐츠를 저장하는 스키마 이름은 `mission_v5`입니다. 이름의 숫자 5는 스키마 버전이며 문항 수가 아닙니다.
-
 AI 피드백은 의미·의도 충실성, 명백한 문법·형식 문제, 상황 적절성을 분리합니다. 세 층이 모두 통과하면 수정을 강제하지 않고, 수정이 필요한 경우에는 최초안과 실질적으로 다른 답을 작성해야 완료할 수 있습니다. AI 판정과 다르다는 이유만으로 점수나 화용 능력 지표를 만들지 않으며, 학습자는 이견을 남길 수 있습니다.
-
-학습자 화면의 `수업 | 기록 | 라운지` 세 탭도 구현돼 있습니다. 라운지는 핵심 미션과 분리된 저부담 공간으로, 현재 전용 DB·관리자 운영·연구 로그 없이 일부 상태만 브라우저에 저장합니다.
 
 ### 교수자 운영
 
@@ -152,6 +148,8 @@ PRAGMA는 결과물뿐 아니라 결과가 만들어지고 검토된 조건을 �
 | 음성 | OpenAI `gpt-4o-transcribe`, ElevenLabs `eleven_multilingual_v2`, OpenAI TTS 대체 경로 |
 | 배포 | Railway 정적 프론트엔드 + Supabase 백엔드 |
 | 검증 | Vitest 3, Testing Library, Playwright, ESLint, TypeScript |
+
+Railway에는 공개 가능한 `VITE_*` 프론트엔드 설정만 주입합니다. OpenAI·ElevenLabs 키는 Supabase Edge Function secret으로 관리하며 브라우저 번들에 넣지 않습니다.
 
 ## 테스트·검증
 
