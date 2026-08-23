@@ -5,6 +5,18 @@ import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  deleteCurriculumOutline,
   getCurriculumOutline,
   listCurriculumOutlines,
   updateCurriculumCompositionAxes,
@@ -91,6 +103,7 @@ const AdminComposer = () => {
   const [presetCode, setPresetCode] = useState<string>("");
 
   const [assign, setAssign] = useState<AssignMap>({});
+  const [deleting, setDeleting] = useState(false);
   const [loadedAssignments, setLoadedAssignments] = useState<WeekAssignment[] | null>(null);
   const [addingWeek, setAddingWeek] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -298,6 +311,32 @@ const AdminComposer = () => {
 
   const addItem = (weekNo: number, c: ComposerCore) =>
     setAssign((prev) => addAssignment(prev, weekNo, c));
+
+  // 교과목 삭제 — 주차·미션 배정은 DB의 ON DELETE CASCADE가 함께 지운다.
+  // 학습자 수행 기록(learner_mission_logs)은 outline을 참조하지 않으므로 보존된다.
+  const selectedOutline = outlines.find((item) => item.id === outlineId);
+  const selectedIsPublished = selectedOutline?.status === "published";
+  const assignedCount = Object.values(assign).reduce((total, items) => total + items.length, 0);
+
+  const handleDelete = async () => {
+    if (!outlineId || selectedIsPublished) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteCurriculumOutline(outlineId);
+      setOutlines((prev) => prev.filter((item) => item.id !== outlineId));
+      setOutlineId("");
+      setWeeks([]);
+      setAssign({});
+      toast.success("교과목을 삭제했습니다.");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "교과목을 삭제하지 못했습니다.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!outlineId) return;
@@ -533,6 +572,35 @@ const AdminComposer = () => {
           >
             주차 계획 수정
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                className="h-9 border-[#D9B0AC] text-[#8B3531] hover:bg-[#FFF3F1] hover:text-[#8B3531]"
+                variant="outline"
+                disabled={!outlineId || deleting || selectedIsPublished}
+                title={selectedIsPublished ? "학습자에게 게시 중인 교과목은 삭제할 수 없습니다." : undefined}
+              >
+                {deleting ? "삭제 중…" : "교과목 삭제"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>이 교과목을 삭제하시겠습니까?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-2 text-left">
+                    <p className="font-semibold text-[#15202B]">{selectedOutline?.title}</p>
+                    <p>15주 주차 계획과 현재 배정된 미션 {assignedCount}건이 함께 삭제됩니다.</p>
+                    <p>학습자 수행 기록과 시나리오·미션 자체는 삭제되지 않습니다.</p>
+                    <p className="font-semibold text-[#8B3531]">되돌릴 수 없습니다.</p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>취소</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete}>삭제</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button
             className="ml-auto h-9"
             variant="outline"
