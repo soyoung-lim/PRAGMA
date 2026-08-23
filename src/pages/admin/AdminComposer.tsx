@@ -589,7 +589,7 @@ const AdminComposer = () => {
                 ? "h-7 shrink-0 border-[#9CC7B0] bg-[#F4FAF6] text-[#245E44]"
                 : "h-7 shrink-0 border-[#D9DED9] bg-[#F6F5F1] text-[#5D6980]"}
             >
-              {selectedIsPublished ? "학습자 공개 중" : "초안"}
+              {selectedIsPublished ? "공개" : "비공개"}
             </Badge>
           )}
           {selectedIsPublished && (
