@@ -1472,11 +1472,9 @@ function MpjLessonBridge({ lessonPoints, onContinue }: {
         <h1 className="break-keep text-2xl font-black tracking-[-0.03em] text-[#15202B]">방금 확인한 5가지</h1>
         <span className="text-[10px] font-black tracking-[0.14em] text-[#8B94A1]">5 POINT LESSON</span>
       </div>
-      <p className="mt-2 break-keep text-sm leading-6 text-[#697386]">다섯 문제에서 확인한 핵심만 빠르게 짚어볼게요.</p>
-
-      <ol className="mt-5 border-y border-[#E2DED4]">
+      <ol className="mt-4 border-y border-[#E2DED4]">
         {lessonPoints.map((point, index) => (
-          <li key={point.questId} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 border-t border-[#E2DED4] py-3.5 first:border-t-0 sm:grid-cols-[2.25rem_minmax(0,1fr)] sm:gap-4">
+          <li key={point.questId} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 border-t border-[#E2DED4] py-3 first:border-t-0 sm:grid-cols-[2.25rem_minmax(0,1fr)] sm:gap-4">
             <span className="pt-0.5 text-sm font-black tabular-nums text-[#B49A23]">{String(index + 1).padStart(2, "0")}</span>
             <div className="min-w-0">
               <p className="text-[10px] font-black tracking-[0.08em] text-[#7A8493]">{point.label}</p>
