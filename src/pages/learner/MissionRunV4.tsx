@@ -67,9 +67,7 @@ const optionBase = "w-full rounded-xl border px-4 py-3 text-left text-[15px] bre
 type SceneIntroSlide = {
   eyebrow: string;
   title: string;
-  body: string;
-  clues?: Array<{ label: string; value: string }>;
-  note?: string;
+  body?: string;
   action: string;
   tone: "navy" | "yellow" | "green";
 };
@@ -84,21 +82,14 @@ const MISSION_A_SCENE_INTRO: SceneIntroConfig = {
   slides: [
     {
       eyebrow: "01 · 오늘의 장면",
-      title: "면접 일정을 바꿔 달라고 요청해야 합니다.",
-      body: "다음 주 화요일 면접에 참석하기 어려워, 아직 만난 적 없는 인턴십 담당자에게 같은 주 다른 날로 조정을 부탁하는 이메일을 씁니다.",
+      title: "다음 주 화요일 면접에 참석하기 어려워, 아직 만난 적 없는 인턴십 담당자에게 같은 주 다른 날로 조정을 요청해야 합니다.",
       action: "장면 속 단서 보기",
       tone: "navy",
     },
     {
       eyebrow: "02 · 장면 속 단서",
-      title: "표현을 고르기 전에 이 세 가지를 기억하세요.",
-      body: "같은 요청도 상대와 채널, 부탁의 내용에 따라 다르게 들릴 수 있습니다.",
-      clues: [
-        { label: "상대", value: "아직 만난 적 없는 인턴십 담당자" },
-        { label: "채널", value: "처음 보내는 이메일" },
-        { label: "이번 요청", value: "이미 정해진 면접 일정 변경" },
-      ],
-      note: "이 단서들이 중국어 표현의 인상을 어떻게 바꾸는지 살펴보세요.",
+      title: "그런데, 이런 조건이 있습니다",
+      body: "아직 만난 적 없는 인턴십 담당자에게 처음 보내는 이메일이고, 이미 정해진 면접 일정의 변경을 요청합니다.",
       action: "내가 할 일 확인",
       tone: "yellow",
     },
@@ -106,7 +97,6 @@ const MISSION_A_SCENE_INTRO: SceneIntroConfig = {
       eyebrow: "03 · 당신의 선택",
       title: "어떤 중국어 요청이 이 장면에 어울릴까요?",
       body: "먼저 다섯 장면의 번역안을 비교하며 판단 기준을 찾아봅니다. 그다음 이 장면으로 돌아와 직접 번역합니다.",
-      note: "정답 문장을 외우기보다, 맥락에 따라 표현을 선택하는 연습입니다.",
       action: "5개 장면으로 감 잡기",
       tone: "green",
     },
@@ -173,78 +163,120 @@ function ActionBar({ hint, children }: { hint?: string; children: React.ReactNod
   );
 }
 
-function SceneIntroFlow({ config, step, onNext }: {
+function SceneIntroFlow({ config, step, onNext, onPrevious, onSelect }: {
   config: SceneIntroConfig;
   step: number;
   onNext: () => void;
+  onPrevious: () => void;
+  onSelect: (step: number) => void;
 }) {
   const slide = config.slides[step];
   const isLast = step === config.slides.length - 1;
   const toneClass = slide.tone === "navy"
-    ? "border-[#15202B] bg-[#15202B] text-white"
+    ? "bg-[#1B2733] text-[#F7F3E8]"
     : slide.tone === "yellow"
-      ? "border-[#E8D272] bg-[#FFF6CF] text-[#15202B]"
-      : "border-[#C9DDCE] bg-[#EAF4EC] text-[#15202B]";
-  const mutedClass = slide.tone === "navy" ? "text-white/70" : "text-[#5E6878]";
+      ? "bg-[#F5C842] text-[#15202B]"
+      : "bg-[#E8EFE7] text-[#15202B]";
+  const ghostClass = slide.tone === "navy"
+    ? "text-white/[0.045]"
+    : slide.tone === "yellow"
+      ? "text-[#15202B]/[0.055]"
+      : "text-[#2E6C58]/[0.06]";
+  const eyebrowClass = slide.tone === "navy"
+    ? "text-[#F5C842]"
+    : slide.tone === "yellow"
+      ? "text-[#6B5500]"
+      : "text-[#2E6C58]";
 
   return (
-    <section
-      className={`flex min-h-[27rem] flex-col rounded-2xl border px-6 py-7 shadow-[0_12px_32px_rgba(21,32,43,0.08)] sm:min-h-[30rem] sm:px-10 sm:py-9 ${toneClass}`}
-      aria-label={`${config.missionLabel} 장면 도입 ${step + 1}/3`}
-    >
-      <div className="flex items-center justify-between gap-4">
-        <p className={`text-[11px] font-black tracking-[0.12em] ${slide.tone === "navy" ? "text-[#F3D248]" : "text-[#776415]"}`}>
-          {slide.eyebrow}
-        </p>
-        <div className="flex items-center gap-1.5" aria-label={`장면 도입 ${step + 1}/3`}>
-          {config.slides.map((item, index) => (
-            <span
-              key={item.eyebrow}
-              className={`h-1.5 rounded-full transition-all ${index === step ? "w-6 bg-[#F3D248]" : slide.tone === "navy" ? "w-1.5 bg-white/30" : "w-1.5 bg-[#15202B]/20"}`}
-              aria-current={index === step ? "step" : undefined}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="my-auto py-8 sm:py-10">
-        <h1 className="max-w-2xl break-keep text-3xl font-black leading-[1.3] tracking-[-0.035em] sm:text-4xl">
-          {slide.title}
-        </h1>
-        <p className={`mt-5 max-w-2xl break-keep text-[15px] font-medium leading-7 sm:text-base ${mutedClass}`}>
-          {slide.body}
-        </p>
-
-        {slide.clues && (
-          <div className="mt-7 grid gap-3 sm:grid-cols-3">
-            {slide.clues.map((clue) => (
-              <article key={clue.label} className="rounded-xl border border-[#DCCB78] bg-white/75 px-4 py-4">
-                <p className="text-[11px] font-black tracking-[0.08em] text-[#776415]">{clue.label}</p>
-                <p className="mt-2 break-keep text-sm font-black leading-6 text-[#15202B]">{clue.value}</p>
-              </article>
-            ))}
-          </div>
-        )}
-
-        {slide.note && (
-          <p className={`mt-6 max-w-2xl break-keep text-sm font-bold leading-6 ${mutedClass}`}>
-            {slide.note}
-          </p>
-        )}
-      </div>
-
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          onClick={onNext}
-          className={`h-11 gap-2 rounded-xl px-5 font-black ${slide.tone === "navy" ? "bg-[#F3D248] text-[#15202B] hover:bg-[#F7DC61]" : "bg-[#15202B] text-white hover:bg-[#263647]"}`}
+    <div className="mx-auto w-full max-w-[720px] pt-1">
+      <section
+        className="rounded-[28px] border border-[#DED8C8] bg-[#F9F6EC] p-2.5 shadow-[0_18px_48px_rgba(21,32,43,0.13)] sm:p-3"
+        aria-label={`${config.missionLabel} 장면 도입 ${step + 1}/${config.slides.length}`}
+      >
+        <div
+          key={step}
+          className={`relative flex min-h-[320px] flex-col overflow-hidden rounded-[21px] px-6 py-6 sm:min-h-[350px] sm:px-9 sm:py-8 ${toneClass}`}
+          aria-live="polite"
         >
-          {slide.action}
-          <ChevronRight className="h-4 w-4" aria-hidden />
-        </Button>
-      </div>
-      {isLast && <span className="sr-only">다음 화면부터 표현 판단 1/5가 시작됩니다.</span>}
-    </section>
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute -right-2 -top-10 select-none text-[136px] font-black leading-none tracking-[-0.08em] sm:text-[170px] ${ghostClass}`}
+          >
+            0{step + 1}
+          </span>
+
+          <div className="relative z-10 flex h-full flex-1 flex-col">
+            <p className={`text-[11px] font-bold tracking-[0.16em] ${eyebrowClass}`}>
+              {slide.eyebrow}
+            </p>
+
+            {slide.tone === "navy" ? (
+              <h1
+                style={{ textWrap: "balance" }}
+                className="mt-auto max-w-[590px] break-keep pb-1 text-[21px] font-semibold leading-[1.42] tracking-[-0.03em] text-[#F7F3E8] sm:text-[24px]"
+              >
+                {slide.title}
+              </h1>
+            ) : (
+              <div className="my-auto max-w-[590px]">
+                <h1
+                  style={{ textWrap: "balance" }}
+                  className={`break-keep font-bold leading-[1.35] tracking-[-0.03em] text-[#15202B] ${slide.tone === "green" ? "text-[25px] sm:text-[31px]" : "text-[22px] sm:text-[27px]"}`}
+                >
+                  {slide.title}
+                </h1>
+                {slide.body && (
+                  <p className={`mt-5 max-w-[570px] break-keep font-medium tracking-[-0.012em] ${slide.tone === "green" ? "text-[14px] leading-[1.7] text-[#53615A] sm:text-[15px]" : "text-[15px] leading-[1.75] text-[#3E3A2D] sm:text-[16px]"}`}>
+                    {slide.body}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex min-h-[58px] items-center justify-between gap-3 px-2 pt-2.5 sm:px-3">
+          <div className="flex items-center gap-2" aria-label={`카드 ${step + 1} / ${config.slides.length}`}>
+            {config.slides.map((item, index) => (
+              <button
+                key={item.eyebrow}
+                type="button"
+                aria-label={`${index + 1}번 카드 보기`}
+                aria-current={step === index ? "step" : undefined}
+                onClick={() => onSelect(index)}
+                className={`h-2 rounded-full transition-all ${step === index ? "w-7 bg-[#15202B]" : "w-2 bg-[#C9C1AD] hover:bg-[#8F8776]"}`}
+              />
+            ))}
+            <span className="ml-1 hidden text-[11px] font-semibold tabular-nums text-[#777063] sm:inline">
+              {step + 1} / {config.slides.length}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {step > 0 && (
+              <button
+                type="button"
+                aria-label="이전 카드"
+                onClick={onPrevious}
+                className="whitespace-nowrap rounded-full px-2.5 py-2 text-[12px] font-semibold text-[#6D675C] hover:bg-[#EEE9DC] hover:text-[#15202B] sm:px-3 sm:text-[12.5px]"
+              >
+                <span aria-hidden="true" className="sm:hidden">←</span>
+                <span className="hidden sm:inline">이전</span>
+              </button>
+            )}
+            <Button
+              type="button"
+              onClick={onNext}
+              className={`h-auto whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] font-semibold tracking-[-0.015em] shadow-none transition-transform hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none sm:px-6 sm:text-[13.5px] ${isLast ? "bg-[#15202B] text-white hover:bg-[#273849]" : "bg-[#F5C842] text-[#15202B] hover:bg-[#FCE07A]"}`}
+            >
+              {slide.action} <span aria-hidden="true">→</span>
+            </Button>
+          </div>
+        </div>
+        {isLast && <span className="sr-only">다음 화면부터 표현 판단 1/5가 시작됩니다.</span>}
+      </section>
+    </div>
   );
 }
 
@@ -1333,10 +1365,10 @@ function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = f
   const macroIndex = macroProgressIndex(activeIndex, completed, revisionOpen, sceneIntroStep);
   const detail = completed
     ? { phase: "미션 완료", activity: "내 번역 돌아보기" }
-    : reviewIndex !== null
+      : reviewIndex !== null
       ? { phase: "기록 검토", activity: progressLabel(quests[reviewIndex]) }
       : sceneIntroStep !== null
-        ? { phase: `장면 이해 · ${sceneIntroStep + 1}/3`, activity: MISSION_A_SCENE_INTRO.slides[sceneIntroStep].eyebrow.replace(/^\d+ · /, "") }
+        ? { phase: "장면 이해", activity: MISSION_A_SCENE_INTRO.slides[sceneIntroStep].eyebrow.replace(/^\d+ · /, "") }
       : activeIndex <= 4
         ? { phase: `표현 판단 · ${activeIndex + 1}/5`, activity: progressLabel(quests[activeIndex]) }
         : activeIndex === 5
@@ -1345,7 +1377,7 @@ function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = f
             ? { phase: "다듬기", activity: "내 번역 수정" }
             : { phase: "피드백", activity: progressLabel(quests[activeIndex]) };
   return (
-    <section className="sticky top-16 z-30 rounded-xl border border-[#E2DED3] bg-[#FBFAF6]/95 px-4 py-3 shadow-sm backdrop-blur sm:px-5" aria-label="미션 학습 흐름">
+    <section className="sticky top-16 z-30 border-b border-[#E2DED3] bg-[#FBFAF6]/95 px-4 py-4 shadow-[0_10px_24px_rgba(21,32,43,0.04)] backdrop-blur sm:px-5" aria-label="미션 학습 흐름">
       <div className="mb-2 flex items-start justify-between gap-3">
         <p className="text-[10px] font-black tracking-[0.12em] text-[#7A8493]">LEARNING FLOW</p>
         <div className="text-right">
@@ -1722,6 +1754,14 @@ const MissionRunV4 = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const selectSceneIntro = (nextStep: number) => {
+    const boundedStep = Math.max(0, Math.min(MISSION_A_SCENE_INTRO.slides.length - 1, nextStep));
+    const hasExplicitSceneStep = new URLSearchParams(window.location.search).has("step");
+    setSceneIntroStep(boundedStep);
+    if (isDevPreview && hasExplicitSceneStep) updateDevPreviewUrl(SCENE_INTRO_STEP_IDS[boundedStep]);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const finishQuest = (response: QuestResponse | DctResponse) => {
     setResponses((current) => quest.kind === "dct_feedback"
       ? { ...current, [quest.id]: response, [quest.dctId]: response }
@@ -1788,7 +1828,13 @@ const MissionRunV4 = () => {
         {sceneIntroStep !== null ? (
           <div className="space-y-5">
             <Progress activeIndex={0} sceneIntroStep={sceneIntroStep} />
-            <SceneIntroFlow config={MISSION_A_SCENE_INTRO} step={sceneIntroStep} onNext={advanceSceneIntro} />
+            <SceneIntroFlow
+              config={MISSION_A_SCENE_INTRO}
+              step={sceneIntroStep}
+              onNext={advanceSceneIntro}
+              onPrevious={() => selectSceneIntro(sceneIntroStep - 1)}
+              onSelect={selectSceneIntro}
+            />
           </div>
         ) : reviewedQuest && reviewedResponse ? (
           <div className="space-y-5">
