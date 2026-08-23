@@ -388,8 +388,8 @@ export type MissionV3 = z.infer<typeof MissionV3Schema>;
 // ══════════════════════════════════════════════════════════════════════
 // Scale4는 4점 원응답을 보존하되 적절/부적절의 방향이 맞으면 정답으로 인정한다.
 // reference_scale_code는 정도성 차이를 참고 판정·수업 토론에 남긴다.
-// reason은 Judge3와 confidence를 반복하지 않는다. 대신 생성·QA가 확인할 수 있는
-// problem_band_code와 오답 역할을 저장하며, 학습자는 "가장 큰 이유" 하나만 고른다.
+// reason은 confidence를 묻지 않는다. problem_band_code는 생성·QA의 참고키이자
+// 학습자가 이유 선택 전에 잠그는 최초 대역 판단의 비교키이며, 이후 "가장 큰 이유" 하나만 고른다.
 const MpjCommonV4 = {
   ...MpjCommonV2,
   id: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
@@ -434,7 +434,7 @@ const ReasonItemV4 = z.object({
   type: z.literal("reason"),
   target: z.string().min(1),
   highlights: z.array(z.string()),
-  /** UI에는 묻지 않는 내부 판정키. 반드시 적정 대역 밖이어야 한다(R4). */
+  /** 이유 공개 전 최초 대역 판단의 참고키. 반드시 적정 대역 밖이어야 한다(R4). */
   problem_band_code: z.string().min(1),
   reasons: z
     .array(

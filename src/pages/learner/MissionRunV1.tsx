@@ -2821,7 +2821,7 @@ function MpjContextSurface({
 }
 
 // ── MPJ 한 문항 ─────────────────────────────────────────────────────────
-function MpjStage({
+export function MpjStage({
   item,
   mode,
   sequentialFix,
@@ -2849,6 +2849,7 @@ function MpjStage({
     onFirstAnswer?.();
   };
   const [fixJudgeSubmitted, setFixJudgeSubmitted] = useState(false);
+  const [reasonJudgeSubmitted, setReasonJudgeSubmitted] = useState(false);
   const [scalePick, setScalePick] = useState<string | null>(null);
   const [bandPick, setBandPick] = useState<string | null>(null);
   const [reasonPicks, setReasonPicks] = useState<Set<string>>(new Set());
@@ -2858,6 +2859,7 @@ function MpjStage({
   const [multiBestPick, setMultiBestPick] = useState<number | null>(null);
   const [multiWorstPick, setMultiWorstPick] = useState<number | null>(null);
   const fixChoicesRef = useRef<HTMLDivElement>(null);
+  const reasonChoicesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!fixJudgeSubmitted) return;
@@ -2866,6 +2868,14 @@ function MpjStage({
     });
     return () => window.cancelAnimationFrame(frame);
   }, [fixJudgeSubmitted]);
+
+  useEffect(() => {
+    if (!reasonJudgeSubmitted) return;
+    const frame = window.requestAnimationFrame(() => {
+      reasonChoicesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [reasonJudgeSubmitted]);
 
   // 대화창 끝 지점이 헤더 위로 올라갔는지 — 올라갔을 때만 맥락 바를 띄운다.
   // IntersectionObserver 대신 스크롤 리스너를 쓴다: 같은 값이면 React가 리렌더를
@@ -2910,7 +2920,7 @@ function MpjStage({
       case "reason_conf":
         return !!bandPick && reasonPicks.size > 0 && !!confidence;
       case "reason":
-        return !!reasonPick;
+        return reasonJudgeSubmitted && !!reasonPick;
       case "multi_judge":
         return (
           multiBestPick !== null &&
@@ -2950,6 +2960,8 @@ function MpjStage({
         setConfidence("꽤 확신");
         break;
       case "reason":
+        setBandPick(item.problem_band_code);
+        setReasonJudgeSubmitted(true);
         setReasonPick(item.accepted_reason_id);
         break;
       case "multi_judge":
@@ -2996,7 +3008,14 @@ function MpjStage({
           ...(confidence ? { confidence } : {}),
         };
       case "reason":
-        return { ...base, ...(reasonPick ? { reason_id: reasonPick } : {}) };
+        return {
+          ...base,
+          ...(bandPick ? { band_code: bandPick } : {}),
+          ...(reasonPick ? { reason_id: reasonPick } : {}),
+          ...(reasonPick
+            ? { reason_kind: item.reasons.find((reason) => reason.id === reasonPick)?.kind }
+            : {}),
+        };
       case "multi_judge":
         return {
           ...base,
@@ -3099,8 +3118,8 @@ function MpjStage({
             </>
           )}
 
-          {/* Judge3는 legacy judge3/reason_conf와 현행 fix_choice에서만 묻는다. */}
-          {(item.type === "judge3" || item.type === "fix_choice" || item.type === "reason_conf") && (
+          {/* 현행 reason은 최초 대역 판단을 잠근 뒤 이유 3개를 공개한다. */}
+          {(item.type === "judge3" || item.type === "fix_choice" || item.type === "reason_conf" || item.type === "reason") && (
             <>
               <div className="text-[13px] font-semibold">이 표현의 조절 정도는 어떤가요?</div>
               <div className="mt-2 flex flex-col gap-1.5">
@@ -3111,7 +3130,8 @@ function MpjStage({
                     selected={bandPick === b.code}
                     disabled={
                       answered ||
-                      (item.type === "fix_choice" && sequentialFix && fixJudgeSubmitted)
+                      (item.type === "fix_choice" && sequentialFix && fixJudgeSubmitted) ||
+                      (item.type === "reason" && reasonJudgeSubmitted)
                     }
                     onClick={() => setBandPick(b.code)}
                   />
@@ -3161,13 +3181,22 @@ function MpjStage({
             </div>
           )}
 
-          {/* v4 reason: 상단 문항 제목에서 행동을 안내하고 여기서는 선택지만 제시한다. */}
-          {item.type === "reason" && (
-            <div className="flex flex-col gap-1.5">
+          {/* v4/v5 reason: 최초 판단을 확정한 뒤 가장 큰 이유 하나만 고른다. */}
+          {item.type === "reason" && reasonJudgeSubmitted && (
+            <div
+              ref={reasonChoicesRef}
+              role="radiogroup"
+              aria-label="왜 그렇게 판단했나요? 가장 큰 이유 하나를 골라보세요."
+              className="mt-4 flex flex-col gap-1.5 border-t border-[#EAE4D2] pt-4"
+              style={{ scrollMarginTop: `${stickyContentTop + SCROLL_TARGET_GAP}px` }}
+            >
+              <div className="mb-1 text-[13px] font-semibold">왜 그렇게 판단했나요? 가장 큰 이유 하나를 골라보세요.</div>
                 {item.reasons.map((r) => (
                   <button
                     key={r.id}
                     type="button"
+                    role="radio"
+                    aria-checked={reasonPick === r.id}
                     disabled={answered}
                     onClick={() => setReasonPick(r.id)}
                     className={[
@@ -3352,9 +3381,17 @@ function MpjStage({
             >
               판단 제출 · 이어서 고쳐보기 →
             </Button>
+          ) : item.type === "reason" && !reasonJudgeSubmitted ? (
+            <Button
+              className="w-full"
+              disabled={!bandPick}
+              onClick={() => setReasonJudgeSubmitted(true)}
+            >
+              이 판단으로 정하기
+            </Button>
           ) : (
             <Button className="w-full" disabled={!canReveal} onClick={reveal}>
-              확인하기
+              {item.type === "reason" ? "이유 확인하기" : "확인하기"}
             </Button>
           )}
           {IS_DEMO && (

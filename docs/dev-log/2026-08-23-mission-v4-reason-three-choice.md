@@ -32,8 +32,7 @@
 
 ## 다음 게이트
 
-- 운영 미션 스키마와 runner에 `reasonId`·오개념 종류·피드백 상태를 연결한다.
-- 실제 저장에서 최초 판정, 이유 선택, 이견, 수정 상태가 서로 덮어쓰지 않는지 통합 검증한다.
+- V4 7단 표시층과 현행 `mission_v5` MPJ4의 단계 수·문항 구성을 조정한 뒤 실제 UUID 라우트 교체 여부를 결정한다.
 
 ## 7단 비교판 후속 확인
 
@@ -41,3 +40,11 @@
 - 완료 화면에 `나의 학습 기록 보기`를 연결하고, 피드백 뒤 선택형 이견 제기와 완료 요약을 추가했다.
 - V4는 저장 없는 미리보기이므로 답안·의견이 DB에 저장되지 않는다는 경계를 화면에 명시했다.
 - 연결 회귀 2건을 추가해 A4 포함 표적 테스트 4/4, typecheck, 개발 검토 빌드를 통과했다.
+
+## 운영 runner·수행 로그 후속
+
+- DB 기반 Mission V1의 현행 `reason`도 `최초 대역 판단 → 판단 잠금 → 이유 3지선다 → 피드백` 순서로 맞췄다.
+- `mpj_response_v1.responses[]`의 같은 문항 trace에 `band_code`, `reason_id`, `reason_kind`를 분리 저장한다. confidence는 계속 만들지 않는다.
+- 기존 `learner_mission_logs` 행 안에서 최초·수정 산출, `feedback_v1`, MPJ trace와 `learner_dissent`가 서로 덮어쓰지 않는지 통합 테스트로 확인했다. 새 컬럼과 migration은 필요하지 않았다.
+- 운영·미리보기 Reason 및 로그 표적 테스트 12/12와 typecheck가 통과했다. 효율 범위를 지키기 위해 전체 테스트·빌드·브라우저 재검증은 실행하지 않았다.
+- V4 샘플은 MPJ5 화면이고 현행 `mission_v5`는 MPJ4이므로 `/learner/practice/:scenarioId`를 V4로 교체하지 않았다.

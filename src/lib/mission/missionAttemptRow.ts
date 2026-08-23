@@ -47,6 +47,8 @@ export interface MpjResponseTrace extends Record<string, Json | undefined> {
   reason_ids?: string[];
   /** mission_v4 reason의 단일 주원인 선택 */
   reason_id?: string;
+  /** 선택한 reason 후보의 진단 역할. 정오 점수가 아니라 오개념 유형 분석용 trace. */
+  reason_kind?: "primary" | "pragmatic_misconception" | "meaning_grammar_context";
   /** legacy reason_conf에만 존재한다. mission_v4에는 기록하지 않는다. */
   confidence?: string;
   /** multi_judge 후보 순서와 같은 band code 배열 */

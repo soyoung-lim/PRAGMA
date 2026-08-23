@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildMissionAttemptRow } from "@/lib/mission/missionAttemptRow";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
+import { SAMPLE_MISSION_V4 } from "@/lib/mission/missionV4Sample";
 import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
 import { normalizeMission } from "@/lib/pragma/missionSchema";
 import { POLICY_VERSION } from "@/lib/research/versions";
@@ -219,6 +220,61 @@ describe("mission attempt row", () => {
     expect(row.context_judgment).toMatchObject({
       mission_schema_version: "mission_v5",
       responses: [{ item_type: "reason", reason_id: "primary" }],
+    });
+    expect(JSON.stringify(row.context_judgment)).not.toContain("confidence");
+  });
+
+  it("keeps judgment, reason diagnosis, feedback, revision, and dissent in one attempt without overwriting", () => {
+    const row = buildMissionAttemptRow({
+      mission: SAMPLE_MISSION_V4,
+      scenarioId: "11111111-1111-1111-1111-111111111111",
+      speechAct: "request",
+      level: "intermediate",
+      firstResponse: "你必须改地址。",
+      revisedResponse: "请问可以把地址改到新办公室吗？",
+      feedback,
+      startedAtIso: "2026-08-23T01:00:00.000Z",
+      mpjResponses: [
+        {
+          item_id: 3,
+          item_type: "reason",
+          band_code: "too_direct",
+          reason_id: "r2",
+          reason_kind: "primary",
+          completed_at: "2026-08-23T01:02:00.000Z",
+        },
+      ],
+      contextJudgment: {
+        kind: "learner_dissent",
+        at: "feedback",
+        conditions: ["relationship", "experience"],
+        reason_ko: "실제 거래처에서는 이 정도 표현도 사용했습니다.",
+        created_at: "2026-08-23T01:04:00.000Z",
+      },
+    }, "profile-1", "user-1", "2026-08-23T01:05:00.000Z");
+
+    expect(row).toMatchObject({
+      first_response: "你必须改地址。",
+      revised_response: "请问可以把地址改到新办公室吗？",
+      revision_target_selected: "clear",
+      target_feature_observed: {
+        schema_version: "feedback_v1",
+        verdicts: feedback.verdicts,
+      },
+      context_judgment: {
+        schema_version: "mpj_response_v1",
+        mission_schema_version: "mission_v4",
+        responses: [{
+          item_type: "reason",
+          band_code: "too_direct",
+          reason_id: "r2",
+          reason_kind: "primary",
+        }],
+        learner_dissent: {
+          kind: "learner_dissent",
+          conditions: ["relationship", "experience"],
+        },
+      },
     });
     expect(JSON.stringify(row.context_judgment)).not.toContain("confidence");
   });
