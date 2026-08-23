@@ -27,7 +27,7 @@ const DEFAULT_FINAL_WEEK = 15;
 // 편성 단계에서 배정되는 코어가 정본이다(week 행에 복사하지 않음).
 //
 // DB week_type은 orientation·regular·midterm·final 4종 고정(CHECK). 그래서
-// 12·13·14주(통합·맥락화·프로젝트)는 DB 상 regular + speech_act=null로 저장하고,
+// 7·13·14주(메타화용 클리닉·맥락 변형 재적용)는 DB 상 regular + speech_act=null로 저장하고,
 // "역할"은 아래 앱 층 상수(week_no→role)로 파생 표시한다(새 enum·컬럼 없음).
 
 /** 주차의 교육적 역할(표시·검증 분기용 — DB 컬럼 아님). */
@@ -38,6 +38,7 @@ export type CurriculumWeekRole =
   | "integration" // 복합 화용 조정 — 복합 요구가 든 기존 미션 1개를 배정
   | "contextualization" // 새 맥락에 적용하기 — 앞 주차와 다른 P·D·R·도메인으로 전이
   | "project" // 통번역 의사결정 정리 — 기존 미션 1개, 설명 활동은 수업에서 운영
+  | "metapragmatic" // 메타화용 클리닉 — 누적된 판단·산출 기록을 수업에서 다시 검토
   | "assessment"; // 중간·기말 수행 슬롯
 
 /** 단계형 표기(구 '1/2/3순환' 대체 — 실제 반복 구조가 아니므로). */
@@ -48,6 +49,7 @@ export const STAGE_LABEL: Record<CurriculumWeekRole, string> = {
   integration: "통합 수행",
   contextualization: "통합 수행",
   project: "통합 수행",
+  metapragmatic: "누적 검토",
   assessment: "수행 점검",
 };
 
@@ -58,6 +60,7 @@ export const ROLE_LABEL: Record<CurriculumWeekRole, string> = {
   integration: "통합·연쇄",
   contextualization: "맥락화",
   project: "프로젝트",
+  metapragmatic: "메타화용 클리닉",
   assessment: "평가",
 };
 
@@ -71,24 +74,29 @@ interface StandardWeekSpec {
 }
 
 /**
- * 공통 15주 골격 정본. 2~7·9~11주에 9화행을 각각 1회 주요 초점으로 배치한다
- * (12~15주는 이전 화행 재결합 가능 — 초점 미강제). 중간=8주, 기말=15주.
+ * 공통 15주 골격 정본(2026-08-23 개정). 2~6·9~12주에 9화행을 각각 1회 배치하고,
+ * 7·13·14주는 화행을 추가하지 않는 특별 주차로 둔다. 중간=8주, 기말=15주.
+ *
+ * 특별 주차 3개는 새 화행을 배우는 자리가 아니라 이미 수행한 판단·산출 기록을
+ * 수업에서 다시 쓰는 자리다: 7주 중간 누적 검토 → 13주 맥락 변형 재적용 →
+ * 14주 전체 종합 검토. 학습효과·전이를 검증하는 처치가 아니라 운영 설계다.
+ * 화행 연쇄(협상)는 이번 구현에서 제외하고 논문 6장 후속 연구로 남긴다.
  */
 export const STANDARD_15WEEK: readonly StandardWeekSpec[] = [
   { week_no: 1, db_type: "orientation", role: "orientation", speech_act: null, title: "오리엔테이션 · 출발점 확인" },
   { week_no: 2, db_type: "regular", role: "foundation", speech_act: "request", title: "요청" },
   { week_no: 3, db_type: "regular", role: "foundation", speech_act: "thanks", title: "감사" },
-  { week_no: 4, db_type: "regular", role: "foundation", speech_act: "agreement", title: "초대 · 공동행동 권유" },
-  { week_no: 5, db_type: "regular", role: "foundation", speech_act: "compliment", title: "칭찬하기" },
+  { week_no: 4, db_type: "regular", role: "foundation", speech_act: "compliment", title: "칭찬하기" },
+  { week_no: 5, db_type: "regular", role: "foundation", speech_act: "agreement", title: "초대 · 공동행동 권유" },
   { week_no: 6, db_type: "regular", role: "relationship", speech_act: "refusal", title: "거절" },
-  { week_no: 7, db_type: "regular", role: "relationship", speech_act: "apology", title: "사과 · 수리" },
+  { week_no: 7, db_type: "regular", role: "metapragmatic", speech_act: null, title: "중간 메타화용 클리닉" },
   { week_no: 8, db_type: "midterm", role: "assessment", speech_act: null, title: "중간 통합 점검" },
-  { week_no: 9, db_type: "regular", role: "relationship", speech_act: "complaint", title: "불만 · 문제 제기" },
+  { week_no: 9, db_type: "regular", role: "relationship", speech_act: "apology", title: "사과 · 수리" },
   { week_no: 10, db_type: "regular", role: "relationship", speech_act: "proposal", title: "제안 · 조언" },
   { week_no: 11, db_type: "regular", role: "relationship", speech_act: "opposition", title: "반대 · 이견 제시" },
-  { week_no: 12, db_type: "regular", role: "integration", speech_act: null, title: "복합 화용 조정" },
-  { week_no: 13, db_type: "regular", role: "contextualization", speech_act: null, title: "새 맥락에 적용하기" },
-  { week_no: 14, db_type: "regular", role: "project", speech_act: null, title: "통번역 의사결정 정리" },
+  { week_no: 12, db_type: "regular", role: "relationship", speech_act: "complaint", title: "불만 · 문제 제기" },
+  { week_no: 13, db_type: "regular", role: "contextualization", speech_act: null, title: "맥락 변형 재적용" },
+  { week_no: 14, db_type: "regular", role: "metapragmatic", speech_act: null, title: "종합 메타화용 클리닉" },
   { week_no: 15, db_type: "final", role: "assessment", speech_act: null, title: "기말 통합 수행 점검" },
 ] as const;
 
