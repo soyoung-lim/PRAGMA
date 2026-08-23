@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   deleteCurriculumOutline,
+  unpublishCurriculumOutline,
   getCurriculumOutline,
   listCurriculumOutlines,
   updateCurriculumCompositionAxes,
@@ -104,6 +105,7 @@ const AdminComposer = () => {
 
   const [assign, setAssign] = useState<AssignMap>({});
   const [deleting, setDeleting] = useState(false);
+  const [unpublishing, setUnpublishing] = useState(false);
   const [loadedAssignments, setLoadedAssignments] = useState<WeekAssignment[] | null>(null);
   const [addingWeek, setAddingWeek] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -317,6 +319,25 @@ const AdminComposer = () => {
   const selectedOutline = outlines.find((item) => item.id === outlineId);
   const selectedIsPublished = selectedOutline?.status === "published";
   const assignedCount = Object.values(assign).reduce((total, items) => total + items.length, 0);
+
+  const handleUnpublish = async () => {
+    if (!outlineId || !selectedIsPublished) return;
+    setUnpublishing(true);
+    setError(null);
+    try {
+      await unpublishCurriculumOutline(outlineId);
+      setOutlines((prev) =>
+        prev.map((item) => (item.id === outlineId ? { ...item, status: "draft" } : item)),
+      );
+      toast.success("학습자 공개를 중지했습니다.");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "공개를 중지하지 못했습니다.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setUnpublishing(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!outlineId || selectedIsPublished) return;
@@ -561,6 +582,41 @@ const AdminComposer = () => {
             ))}
           </select>
 
+          {outlineId && (
+            <Badge
+              variant="outline"
+              className={selectedIsPublished
+                ? "h-7 shrink-0 border-[#9CC7B0] bg-[#F4FAF6] text-[#245E44]"
+                : "h-7 shrink-0 border-[#D9DED9] bg-[#F6F5F1] text-[#5D6980]"}
+            >
+              {selectedIsPublished ? "학습자 공개 중" : "초안"}
+            </Badge>
+          )}
+          {selectedIsPublished && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button className="h-9" variant="outline" disabled={unpublishing}>
+                  {unpublishing ? "처리 중…" : "공개 중지"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>학습자 공개를 중지하시겠습니까?</AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-2 text-left">
+                      <p className="font-semibold text-[#15202B]">{selectedOutline?.title}</p>
+                      <p>학습자 수업 화면에서 이 교과목이 보이지 않게 됩니다.</p>
+                      <p>편성 내용과 학습자 수행 기록은 그대로 남습니다.</p>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>취소</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleUnpublish}>공개 중지</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <Button className="h-9" variant="outline" onClick={() => setStructureEditor("new")}>
             새 교과목
           </Button>

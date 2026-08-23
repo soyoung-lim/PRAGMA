@@ -189,6 +189,19 @@ export async function updateCurriculumCompositionAxes(
   throw new Error(`Curriculum outline not found (or not permitted): ${id}`);
 }
 
+/**
+ * 게시 중인 교과목의 공개를 거둔다(published → draft).
+ * 학습자는 published 교과목만 읽으므로, 이 호출은 노출을 줄이는 방향으로만 작동한다.
+ * 공개로 되돌리는 경로는 의도적으로 두지 않았다(9월 운영 시점에 별도 설계).
+ */
+export async function unpublishCurriculumOutline(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("curriculum_outlines")
+    .update({ status: "draft" })
+    .eq("id", id);
+  if (error) throw new Error(`Failed to unpublish curriculum outline ${id}: ${error.message}`);
+}
+
 /** Delete one outline; its weeks are removed by the DB ON DELETE CASCADE. */
 export async function deleteCurriculumOutline(id: string): Promise<void> {
   const { error } = await supabase
