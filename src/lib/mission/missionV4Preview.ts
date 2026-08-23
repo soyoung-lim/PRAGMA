@@ -65,8 +65,9 @@ export interface ReasonQuest extends QuestBase {
   reasons: Array<{
     id: string;
     text: string;
-    valid: boolean;
+    kind: "primary" | "pragmatic_misconception" | "meaning_grammar_context";
   }>;
+  acceptedReasonId: string;
   feedback: string;
 }
 
@@ -266,11 +267,24 @@ export const REQUEST_MISSION_V4_PREVIEW: {
       judgmentOptions: DIRECTNESS_3,
       referenceJudgment: "too_direct",
       reasons: [
-        { id: "a4-right", text: "처음 연락하는 윗사람에게 一下만으로는 선택할 여지를 충분히 남기지 못했다.", valid: true },
-        { id: "a4-opposite", text: "부담에 비해 지나치게 돌려 말해 요청 내용이 흐려졌다.", valid: false },
-        { id: "a4-meaning", text: "회의록을 요청한다는 핵심 내용이 번역에서 빠졌다.", valid: false },
+        {
+          id: "a4-right",
+          text: "처음 연락하는 윗사람에게 一下만으로는 선택할 여지를 충분히 남기지 못했다.",
+          kind: "primary",
+        },
+        {
+          id: "a4-opposite",
+          text: "부담에 비해 지나치게 돌려 말해 요청 내용이 흐려졌다.",
+          kind: "pragmatic_misconception",
+        },
+        {
+          id: "a4-meaning",
+          text: "회의록을 요청한다는 핵심 내용이 번역에서 빠졌다.",
+          kind: "meaning_grammar_context",
+        },
       ],
-      feedback: "`把……发我一下`은 상대에게 행동을 바로 지시하는 把자문입니다. `一下`이 강도를 조금 낮추지만, 초면의 윗사람에게 가능 여부를 묻는 형식은 아닙니다.",
+      acceptedReasonId: "a4-right",
+      feedback: "`一下`이 강도를 조금 낮추지만 가능 여부를 묻는 형식은 아니어서, 초면의 윗사람에게는 선택할 여지가 부족합니다.",
     },
     {
       id: "A5",

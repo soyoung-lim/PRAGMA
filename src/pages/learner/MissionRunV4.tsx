@@ -91,18 +91,6 @@ function validateDraft(value: string): DraftValidation {
   return { valid: true };
 }
 
-function validateReason(value: string): DraftValidation {
-  if (value.trim().length === 0) {
-    return { valid: false, hint: "판단의 근거를 짧게 적어 주세요." };
-  }
-  const syllables = value.match(/[가-힣]/g) ?? [];
-  const uniqueSyllables = new Set(syllables);
-  if (syllables.length < 4 || uniqueSyllables.size < 2) {
-    return { valid: false, hint: "완성된 한국어 문장으로 이유를 적어 주세요." };
-  }
-  return { valid: true };
-}
-
 function isMeaningfulDraft(value: string) {
   return validateDraft(value).valid;
 }
@@ -260,13 +248,14 @@ function optionState(answered: boolean, picked: boolean, correct: boolean) {
   return "border-[#E0DDD5] bg-[#FAF9F6] text-[#8A92A0]";
 }
 
-function OptionButton({ option, value, disabled, answered = false, acceptedIds = [], compact = false, onSelect }: {
+function OptionButton({ option, value, disabled, answered = false, acceptedIds = [], compact = false, radio = false, onSelect }: {
   option: ChoiceOption;
   value: string | null;
   disabled?: boolean;
   answered?: boolean;
   acceptedIds?: string[];
   compact?: boolean;
+  radio?: boolean;
   onSelect: (id: string) => void;
 }) {
   const picked = value === option.id;
@@ -274,14 +263,16 @@ function OptionButton({ option, value, disabled, answered = false, acceptedIds =
   return (
     <button
       type="button"
+      role={radio ? "radio" : undefined}
+      aria-checked={radio ? picked : undefined}
       disabled={disabled}
       onClick={() => onSelect(option.id)}
       className={`${optionBase} ${compact ? "!py-2" : ""} ${optionState(answered, picked, accepted)} disabled:cursor-default`}
     >
-      <span className="flex items-center justify-between gap-3">
+      <span className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <span>{option.label}</span>
         {answered && (
-          <span className="flex shrink-0 items-center gap-1.5">
+          <span className="flex shrink-0 flex-wrap items-center gap-1.5">
             {picked && <span className={`inline-flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-[10px] font-black ${accepted ? "border-[#15202B] text-[#15202B]" : "border-[#C86E68] text-[#8B3531]"}`}>{accepted ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}내 선택</span>}
             {accepted && <span className="inline-flex items-center gap-1 rounded-full border border-[#80AB94] bg-white px-2 py-0.5 text-[10px] font-black text-[#245E44]"><Check className="h-3 w-3" />권장 답안</span>}
           </span>
@@ -442,13 +433,16 @@ function FixChoiceView({ quest, onDone, devAutofill = false }: { quest: FixChoic
   );
 }
 
-function ReasonView({ quest, onDone, devMode = false, devAutofill = false }: { quest: ReasonQuest; onDone: (response: QuestResponse) => void; devMode?: boolean; devAutofill?: boolean }) {
+export function ReasonView({ quest, onDone, devAutofill = false }: { quest: ReasonQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
   const [judgment, setJudgment] = useState<string | null>(() => devAutofill ? quest.referenceJudgment : null);
   const [locked, setLocked] = useState(devAutofill);
-  const [reason, setReason] = useState(() => devAutofill ? "관계와 요청 부담을 고려한 개발자 점검용 이유입니다." : "");
+  const [reasonId, setReasonId] = useState<string | null>(() => devAutofill ? quest.acceptedReasonId : null);
   const [answered, setAnswered] = useState(false);
+  const reasonOrder = useMemo(() => shuffle(quest.reasons), [quest.reasons]);
   const referenceLabel = quest.judgmentOptions.find((option) => option.id === quest.referenceJudgment)?.label;
-  const reasonValidation = validateReason(reason);
+  const selectedReason = quest.reasons.find((reason) => reason.id === reasonId);
+  const acceptedReason = quest.reasons.find((reason) => reason.id === quest.acceptedReasonId);
+  const reasonAccepted = reasonId === quest.acceptedReasonId;
   return (
     <QuestScaffold quest={quest} target={quest.target} targetHighlights={answered ? quest.targetHighlights : undefined}>
       <section className={`${taskPanel} px-4 py-3.5 sm:px-5 sm:py-4`}>
@@ -461,30 +455,49 @@ function ReasonView({ quest, onDone, devMode = false, devAutofill = false }: { q
         </div>
         {locked && (
           <div className="mt-6 border-t border-[#E4E0D5] pt-5">
-            <h4 className="font-bold">왜 그렇게 판단했나요?</h4>
-            <input
-              type="text"
-              value={reason}
-              maxLength={devMode ? undefined : 50}
-              disabled={answered}
-              onChange={(event) => setReason(event.target.value)}
-              aria-invalid={reason.length > 0 && !reasonValidation.valid}
-              aria-describedby={`${quest.id}-reason-help`}
-              className="mt-3 h-11 w-full rounded-xl border border-[#D8D4C8] bg-white px-4 text-[15px] outline-none transition focus:border-[#15202B] focus:ring-1 focus:ring-[#15202B] disabled:bg-[#F3F4F5]"
-              placeholder="이 표현은 … 때문에 …라고 판단했습니다."
-            />
-            {!answered && <p id={`${quest.id}-reason-help`} className="mt-2 break-keep text-xs leading-5 text-[#687387]">문장 시작 도움 · “이 표현은 … 때문에 …라고 판단했습니다.” 아직 권장 답안은 보여 주지 않습니다.</p>}
+            <h4 id={`${quest.id}-reason-label`} className="break-keep font-bold">왜 그렇게 판단했나요? 가장 큰 이유 하나를 골라보세요.</h4>
+            <div role="radiogroup" aria-labelledby={`${quest.id}-reason-label`} className="mt-3 grid gap-2">
+              {reasonOrder.map((reason) => (
+                <OptionButton
+                  key={reason.id}
+                  option={{ id: reason.id, label: reason.text }}
+                  value={reasonId}
+                  disabled={answered}
+                  answered={answered}
+                  acceptedIds={[quest.acceptedReasonId]}
+                  radio
+                  onSelect={setReasonId}
+                />
+              ))}
+            </div>
+            {!answered && <p className="mt-2 break-keep text-xs leading-5 text-[#687387]">판단과 근거를 나누어 확인합니다. 이유를 고르기 전에는 참고 판정을 보여 주지 않습니다.</p>}
           </div>
         )}
-        {answered && <div className="mt-4"><FeedbackBox verdict={`권장 답안 · 이 상황에서는 ${referenceLabel}`} feedback={quest.feedback} highlights={quest.targetHighlights} /></div>}
+        {answered && acceptedReason && (
+          <div className="mt-4">
+            <FeedbackBox
+              verdict={`${reasonAccepted ? "맞아요" : "핵심 이유를 다시 확인해요"} · 참고 판정은 ${referenceLabel}`}
+              feedback={`${acceptedReason.text} ${quest.feedback}`}
+              action={!reasonAccepted && selectedReason ? `내가 고른 이유 · ${selectedReason.text}` : undefined}
+              highlights={quest.targetHighlights}
+            />
+          </div>
+        )}
       </section>
-      <ActionBar hint={!locked && !judgment ? "가장 가까운 판단을 하나 선택해 주세요." : locked && !answered && !devMode ? reasonValidation.hint : undefined}>
+      <ActionBar hint={!locked && !judgment ? "가장 가까운 판단을 하나 선택해 주세요." : locked && !answered && !reasonId ? "가장 큰 이유 하나를 선택해 주세요." : undefined}>
         {!locked ? (
-          <Button className={`h-12 ${actionButton}`} disabled={!judgment} onClick={() => setLocked(true)}>{judgment ? "판단 확인하기" : "답을 선택해 주세요"}</Button>
+          <Button className={`h-12 ${actionButton}`} disabled={!judgment} onClick={() => setLocked(true)}>{judgment ? "이 판단으로 정하기" : "답을 선택해 주세요"}</Button>
         ) : !answered ? (
-          <Button className={`h-12 ${actionButton}`} disabled={!devMode && !reasonValidation.valid} onClick={() => setAnswered(true)}>이유 확인하기</Button>
+          <Button className={`h-12 ${actionButton}`} disabled={!reasonId} onClick={() => setAnswered(true)}>이유 확인하기</Button>
         ) : (
-          <Button className="h-12 w-full" onClick={() => onDone({ judgment, reasonNote: reason.trim() })}>{nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+          <Button
+            className="h-12 w-full"
+            onClick={() => {
+              if (judgment && reasonId) onDone({ judgment, reasonId });
+            }}
+          >
+            {nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
         )}
       </ActionBar>
     </QuestScaffold>
@@ -806,7 +819,7 @@ function buildDevPreviewResponses(preset: DevPreviewPreset, finalized: boolean) 
       judgment: quest.referenceJudgment,
       correctionIds: quest.corrections.filter((option) => option.valid).map((option) => option.id),
     };
-    if (quest.kind === "reason") result[quest.id] = { judgment: quest.referenceJudgment, reasonNote: "개발 미리보기용 응답" };
+    if (quest.kind === "reason") result[quest.id] = { judgment: quest.referenceJudgment, reasonId: quest.acceptedReasonId };
     if (quest.kind === "best_worst") result[quest.id] = { best: quest.bestId, worst: quest.worstId };
     if (quest.kind === "dct") result[quest.id] = dctResponses[quest.id];
     if (quest.kind === "dct_feedback") result[quest.id] = dctResponses[quest.dctId];
@@ -1183,7 +1196,7 @@ function QuestRenderer({ quest, responses, onDone, devMode = false, devAutofill 
 }) {
   if (quest.kind === "scale") return <ScaleView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
   if (quest.kind === "fix_choice") return <FixChoiceView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
-  if (quest.kind === "reason") return <ReasonView quest={quest} onDone={onDone} devMode={devMode} devAutofill={devAutofill} />;
+  if (quest.kind === "reason") return <ReasonView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
   if (quest.kind === "best_worst") return <BestWorstView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
   if (quest.kind === "dct_feedback") return <DctFeedbackView quest={quest} response={responses[quest.dctId] as DctResponse | undefined} onDone={onDone} devMode={devMode} devAutofill={devAutofill} />;
   return <DctDraftView quest={quest} onDone={onDone} devMode={devMode} devAutofill={devAutofill} devDraft={devDraft} />;
@@ -1199,7 +1212,8 @@ function responseLabel(quest: MissionQuest, response: QuestResponse) {
   }
   if (quest.kind === "reason") {
     const judgment = quest.judgmentOptions.find((item) => item.id === response.judgment)?.label;
-    return `${judgment ?? "판정"} · ${(response.reasonNote as string | undefined) ?? "이유 기록"}`;
+    const reason = quest.reasons.find((item) => item.id === response.reasonId)?.text;
+    return `${judgment ?? "판정"} · ${reason ?? "이유 기록"}`;
   }
   if (quest.kind === "best_worst") {
     const best = quest.candidates.find((item) => item.id === response.best)?.text;
