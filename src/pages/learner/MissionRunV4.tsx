@@ -74,6 +74,7 @@ type SceneIntroSlide = {
 
 type SceneIntroConfig = {
   missionLabel: string;
+  previewOnly?: boolean;
   slides: readonly SceneIntroSlide[];
 };
 
@@ -98,6 +99,33 @@ const MISSION_A_SCENE_INTRO: SceneIntroConfig = {
       title: "어떤 중국어 요청이 이 장면에 어울릴까요?",
       body: "먼저 다섯 장면의 번역안을 비교하며 판단 기준을 찾아봅니다. 그다음 이 장면으로 돌아와 직접 번역합니다.",
       action: "5개 장면으로 감 잡기",
+      tone: "green",
+    },
+  ],
+};
+
+const MISSION_B_SCENE_INTRO: SceneIntroConfig = {
+  missionLabel: "미션 B",
+  previewOnly: true,
+  slides: [
+    {
+      eyebrow: "01 · 새로운 장면",
+      title: "같이 프로젝트를 하는 친한 동급생에게 오늘 저녁 온라인 회의를 30분 늦춰 달라고 요청해야 합니다.",
+      action: "달라진 맥락 보기",
+      tone: "navy",
+    },
+    {
+      eyebrow: "02 · A와 달라진 맥락",
+      title: "이번에는 상대와 채널, 부탁의 크기가 달라집니다",
+      body: "이미 친한 동급생에게 메신저로 연락하며, 약속 자체를 바꾸는 대신 시작 시간을 30분 조정해 달라고 부탁합니다.",
+      action: "이번 장면에서 할 일 확인",
+      tone: "yellow",
+    },
+    {
+      eyebrow: "03 · 이번 장면에서의 선택",
+      title: "이번 장면에는 어떤 중국어 요청이 어울릴까요?",
+      body: "같은 부탁이라도 달라진 상대와 채널, 부탁의 크기에 맞춰 표현을 다시 선택합니다.",
+      action: "B 도입 다시 보기",
       tone: "green",
     },
   ],
@@ -274,7 +302,11 @@ function SceneIntroFlow({ config, step, onNext, onPrevious, onSelect }: {
             </Button>
           </div>
         </div>
-        {isLast && <span className="sr-only">다음 화면부터 표현 판단 1/5가 시작됩니다.</span>}
+        {isLast && (
+          <span className="sr-only">
+            {config.previewOnly ? "미션 B 장면 도입 검토용 화면입니다." : "다음 화면부터 표현 판단 1/5가 시작됩니다."}
+          </span>
+        )}
       </section>
     </div>
   );
@@ -1354,12 +1386,13 @@ function macroProgressIndex(activeIndex: number, completed: boolean | undefined,
   return revisionOpen ? 4 : 3;
 }
 
-function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = false, sceneIntroStep = null }: {
+function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = false, sceneIntroStep = null, sceneIntroConfig = MISSION_A_SCENE_INTRO }: {
   activeIndex: number;
   completed?: boolean;
   reviewIndex?: number | null;
   revisionOpen?: boolean;
   sceneIntroStep?: number | null;
+  sceneIntroConfig?: SceneIntroConfig;
 }) {
   const quests = REQUEST_MISSION_V4_PREVIEW.quests;
   const macroIndex = macroProgressIndex(activeIndex, completed, revisionOpen, sceneIntroStep);
@@ -1368,7 +1401,7 @@ function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = f
       : reviewIndex !== null
       ? { phase: "기록 검토", activity: progressLabel(quests[reviewIndex]) }
       : sceneIntroStep !== null
-        ? { phase: "장면 이해", activity: MISSION_A_SCENE_INTRO.slides[sceneIntroStep].eyebrow.replace(/^\d+ · /, "") }
+        ? { phase: "장면 이해", activity: sceneIntroConfig.slides[sceneIntroStep].eyebrow.replace(/^\d+ · /, "") }
       : activeIndex <= 4
         ? { phase: `표현 판단 · ${activeIndex + 1}/5`, activity: progressLabel(quests[activeIndex]) }
         : activeIndex === 5
@@ -1622,12 +1655,14 @@ function SessionPatternSummary({ responses }: { responses: Array<DctResponse | u
 }
 
 function DevPreviewToolbar({
+  sceneIntroConfig,
   preset,
   onPresetChange,
   onJump,
   onFill,
   onReset,
 }: {
+  sceneIntroConfig: SceneIntroConfig;
   preset: DevPreviewPreset;
   onPresetChange: (preset: DevPreviewPreset) => void;
   onJump: (step: string) => void;
@@ -1667,7 +1702,7 @@ function DevPreviewToolbar({
             className="mt-1 h-9 w-full rounded-lg border border-white/20 bg-white px-3 font-bold text-[#15202B]"
           >
             <option value="" disabled>화면 선택</option>
-            {MISSION_A_SCENE_INTRO.slides.map((slide, index) => <option key={slide.eyebrow} value={SCENE_INTRO_STEP_IDS[index]}>장면 {index + 1}. {slide.eyebrow.replace(/^\d+ · /, "")}</option>)}
+            {sceneIntroConfig.slides.map((slide, index) => <option key={slide.eyebrow} value={SCENE_INTRO_STEP_IDS[index]}>장면 {index + 1}. {slide.eyebrow.replace(/^\d+ · /, "")}</option>)}
             {REQUEST_MISSION_V4_PREVIEW.quests.map((quest, index) => <option key={quest.id} value={quest.id}>{index + 1}. {progressLabel(quest)}</option>)}
             <option value="summary">최종 summary</option>
           </select>
@@ -1683,6 +1718,8 @@ function DevPreviewToolbar({
 
 const MissionRunV4 = () => {
   const mission = REQUEST_MISSION_V4_PREVIEW;
+  const requestedMission = new URLSearchParams(window.location.search).get("mission")?.toUpperCase();
+  const sceneIntroConfig = import.meta.env.DEV && requestedMission === "B" ? MISSION_B_SCENE_INTRO : MISSION_A_SCENE_INTRO;
   const [sceneIntroStep, setSceneIntroStep] = useState<number | null>(0);
   const [questIndex, setQuestIndex] = useState(0);
   const [completed, setCompleted] = useState(false);
@@ -1743,10 +1780,13 @@ const MissionRunV4 = () => {
   const advanceSceneIntro = () => {
     if (sceneIntroStep === null) return;
     const hasExplicitSceneStep = new URLSearchParams(window.location.search).has("step");
-    if (sceneIntroStep < MISSION_A_SCENE_INTRO.slides.length - 1) {
+    if (sceneIntroStep < sceneIntroConfig.slides.length - 1) {
       const nextStep = sceneIntroStep + 1;
       setSceneIntroStep(nextStep);
       if (isDevPreview && hasExplicitSceneStep) updateDevPreviewUrl(SCENE_INTRO_STEP_IDS[nextStep]);
+    } else if (sceneIntroConfig.previewOnly) {
+      setSceneIntroStep(0);
+      if (isDevPreview && hasExplicitSceneStep) updateDevPreviewUrl(SCENE_INTRO_STEP_IDS[0]);
     } else {
       setSceneIntroStep(null);
       if (isDevPreview && hasExplicitSceneStep) updateDevPreviewUrl("A1");
@@ -1755,7 +1795,7 @@ const MissionRunV4 = () => {
   };
 
   const selectSceneIntro = (nextStep: number) => {
-    const boundedStep = Math.max(0, Math.min(MISSION_A_SCENE_INTRO.slides.length - 1, nextStep));
+    const boundedStep = Math.max(0, Math.min(sceneIntroConfig.slides.length - 1, nextStep));
     const hasExplicitSceneStep = new URLSearchParams(window.location.search).has("step");
     setSceneIntroStep(boundedStep);
     if (isDevPreview && hasExplicitSceneStep) updateDevPreviewUrl(SCENE_INTRO_STEP_IDS[boundedStep]);
@@ -1810,6 +1850,7 @@ const MissionRunV4 = () => {
     <LearnerJourneyShell missionLayout headerRight={<span className="hidden text-xs font-semibold text-white/75 sm:block">요청 표현 · {mission.direction}</span>}>
       {isDevPreview && (
         <DevPreviewToolbar
+          sceneIntroConfig={sceneIntroConfig}
           preset={devPreset}
           onPresetChange={(preset) => {
             setDevPreset(preset);
@@ -1827,9 +1868,9 @@ const MissionRunV4 = () => {
       <div className="mx-auto max-w-3xl">
         {sceneIntroStep !== null ? (
           <div className="space-y-5">
-            <Progress activeIndex={0} sceneIntroStep={sceneIntroStep} />
+            <Progress activeIndex={0} sceneIntroStep={sceneIntroStep} sceneIntroConfig={sceneIntroConfig} />
             <SceneIntroFlow
-              config={MISSION_A_SCENE_INTRO}
+              config={sceneIntroConfig}
               step={sceneIntroStep}
               onNext={advanceSceneIntro}
               onPrevious={() => selectSceneIntro(sceneIntroStep - 1)}
