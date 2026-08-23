@@ -14,14 +14,6 @@ export interface MissionContext {
   precedingTurn?: string;
 }
 
-export interface MpjRecapConfig {
-  priorityForDct: number;
-  missedDecision: string;
-  retainedDecision: string;
-  dctCheckGroup: "request_form" | "opening" | "meaning" | "register";
-  dctCheck: string;
-}
-
 interface QuestBase {
   id: string;
   module: MissionModule;
@@ -31,8 +23,13 @@ interface QuestBase {
   source: string;
   /** 제출 뒤 목표어에서 직접 짚어 줄 표현 */
   targetHighlights?: string[];
-  /** MPJ 수행 로그를 DCT 직전의 짧은 기록으로 전환하는 승인 문구 */
-  recap?: MpjRecapConfig;
+}
+
+export interface MissionLessonPoint {
+  questId: string;
+  label: string;
+  text: string;
+  highlights?: string[];
 }
 
 export interface ChoiceOption {
@@ -167,6 +164,7 @@ export const REQUEST_MISSION_V4_PREVIEW: {
     note: string;
   };
   summaryPrinciple: string;
+  lessonPoints: MissionLessonPoint[];
   quests: MissionQuest[];
 } = {
   weekNo: 2,
@@ -182,6 +180,38 @@ export const REQUEST_MISSION_V4_PREVIEW: {
     note: "요청이라는 화행과 상대는 같지만, 이번 부탁은 아까보다 훨씬 가볍습니다.",
   },
   summaryPrinciple: "요청의 핵심 의미는 지키고, 이유·사과·선택권 같은 덧붙임은 관계와 상황에 맞게 선택합니다.",
+  lessonPoints: [
+    {
+      questId: "A1",
+      label: "첫인상 판단",
+      text: "请给我写一封推荐信처럼 큰 부탁을 바로 요구하면, 교수에게는 가능한지 묻는 표현보다 부담스럽게 들릴 수 있습니다.",
+      highlights: ["请给我写一封推荐信"],
+    },
+    {
+      questId: "A2",
+      label: "상황 비교",
+      text: "有点冷，把空调调小一点吧처럼 직접적인 표현도 친한 룸메이트에게 하는 낮은 부담의 부탁이라면 자연스러울 수 있습니다.",
+      highlights: ["有点冷，把空调调小一点吧"],
+    },
+    {
+      questId: "A3",
+      label: "고쳐 보기",
+      text: "처음 위챗으로 연락할 때 喂만 쓰기보다 助教您好，请问……처럼 호칭과 짧은 열기를 더하면 요청의 시작이 자연스러워집니다.",
+      highlights: ["喂", "助教您好，请问……"],
+    },
+    {
+      questId: "A4",
+      label: "이유 찾기",
+      text: "一下은 강도를 조금 낮추지만, 把……发我一下처럼 가능한지를 묻지 않으면 초면의 윗사람에게는 여전히 직접적으로 들릴 수 있습니다.",
+      highlights: ["一下", "把……发我一下"],
+    },
+    {
+      questId: "A5",
+      label: "BEST·WORST",
+      text: "能帮忙吗처럼 가능 여부를 묻고 이유를 남긴 표현이 BEST였고, 务必처럼 행동을 정해 버린 표현은 WORST였습니다.",
+      highlights: ["能帮忙吗", "务必"],
+    },
+  ],
   quests: [
     {
       id: "A1",
@@ -204,13 +234,6 @@ export const REQUEST_MISSION_V4_PREVIEW: {
       referenceAnswer: "somewhat_inappropriate",
       acceptedAnswers: ["somewhat_inappropriate", "very_inappropriate"],
       feedback: "내용은 전달되지만 请给我写는 추천서 작성을 직접 요구합니다. 부담이 큰 부탁인데 가능 여부나 선택할 여지를 충분히 남기지 못했습니다.",
-      recap: {
-        priorityForDct: 1,
-        missedDecision: "추천서 작성을 바로 요구했고, 가능한지 묻는 형식이 없었습니다.",
-        retainedDecision: "`请给我写`가 부담이 큰 요청에는 직접적이라고 구별했습니다.",
-        dctCheckGroup: "request_form",
-        dctCheck: "일정 변경을 바로 요구하지 말고, 가능한지 묻기",
-      },
     },
     {
       id: "A2",
@@ -232,13 +255,6 @@ export const REQUEST_MISSION_V4_PREVIEW: {
       options: DIRECTNESS_3,
       referenceAnswer: "appropriate",
       feedback: "有点冷으로 이유를 먼저 말하고 吧로 직접형의 강도를 낮췄습니다. 친밀하고 부담이 낮은 상황에서는 간결한 직접형도 자연스럽습니다.",
-      recap: {
-        priorityForDct: 5,
-        missedDecision: "친한 룸메이트에게는 `有点冷`로 이유를 말하고 `吧`를 쓴 간결한 요청도 자연스러웠습니다.",
-        retainedDecision: "친밀하고 부담이 낮은 장면에서는 이유와 `吧`를 쓴 간결한 요청도 가능하다고 구별했습니다.",
-        dctCheckGroup: "register",
-        dctCheck: "초면·이메일인 이번 장면을 룸메이트 요청과 같은 강도로 쓰지 않기",
-      },
     },
     {
       id: "A3",
@@ -270,13 +286,6 @@ export const REQUEST_MISSION_V4_PREVIEW: {
         { id: "a3-over", text: "助教您好，不知是否方便告知本周作业的截止日期？如蒙确认，不胜感激。", valid: false, note: "가벼운 확인에 지나치게 공식적인 문체를 겹쳤습니다." },
       ],
       feedback: "喂는 전화나 사람을 부를 때 쓰는 말이라 첫 위챗 메시지에서는 거칠게 들릴 수 있습니다. 이 상황에는 호칭과 짧은 확인 표현이면 충분합니다.",
-      recap: {
-        priorityForDct: 2,
-        missedDecision: "첫 위챗 메시지에서는 `喂`를 빼는 것만으로 부족하고, 호칭과 짧은 열기가 필요했습니다.",
-        retainedDecision: "첫 연락에 `助教您好`와 `请问` 또는 확인 목적을 먼저 둔 수정안을 골랐습니다.",
-        dctCheckGroup: "opening",
-        dctCheck: "초면의 담당자에게 `您好`로 이메일 열기",
-      },
     },
     {
       id: "A4",
@@ -316,13 +325,6 @@ export const REQUEST_MISSION_V4_PREVIEW: {
       ],
       acceptedReasonId: "a4-right",
       feedback: "`一下`이 강도를 조금 낮추지만 가능 여부를 묻는 형식은 아니어서, 초면의 윗사람에게는 선택할 여지가 부족합니다.",
-      recap: {
-        priorityForDct: 1,
-        missedDecision: "`一下`은 강도를 낮출 뿐, 초면의 윗사람에게 가능한지 묻는 형식은 아니었습니다.",
-        retainedDecision: "`把……发我一下`이 가능 여부를 묻지 않는 직접형임을 구별했습니다.",
-        dctCheckGroup: "request_form",
-        dctCheck: "일정 변경 요청을 가능 여부를 묻는 형식으로 쓰기",
-      },
     },
     {
       id: "A5",
@@ -348,13 +350,6 @@ export const REQUEST_MISSION_V4_PREVIEW: {
       bestId: "a5-best",
       worstId: "a5-worst",
       feedback: "",
-      recap: {
-        priorityForDct: 3,
-        missedDecision: "`能帮忙吗`로 가능 여부를 묻고 발표 준비 이유까지 유지한 표현이 BEST였습니다.",
-        retainedDecision: "`能帮忙吗`로 가능 여부를 묻고 원문의 이유까지 유지한 표현을 BEST로 골랐습니다.",
-        dctCheckGroup: "meaning",
-        dctCheck: "면접 참석이 어려운 이유와 일정 변경 요청을 모두 남기기",
-      },
     },
     {
       id: "A-DCT",

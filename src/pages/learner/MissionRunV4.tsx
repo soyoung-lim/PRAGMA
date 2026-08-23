@@ -20,6 +20,7 @@ import {
   type DctQuest,
   type FixChoiceQuest,
   type MissionContext,
+  type MissionLessonPoint,
   type MissionQuest,
   type ReasonQuest,
   type ScaleQuest,
@@ -1080,11 +1081,7 @@ function buildDevPreviewResponses(preset: DevPreviewPreset, finalized: boolean) 
   }, {});
 
   return mission.quests.reduce<Record<string, QuestResponse | DctResponse>>((result, quest) => {
-    if (quest.kind === "scale") result[quest.id] = {
-      pick: quest.id === "A1" && (preset === "direct" || preset === "mixed")
-        ? "somewhat_appropriate"
-        : quest.referenceAnswer,
-    };
+    if (quest.kind === "scale") result[quest.id] = { pick: quest.referenceAnswer };
     if (quest.kind === "fix_choice") result[quest.id] = {
       judgment: quest.referenceJudgment,
       correctionIds: quest.corrections.filter((option) => option.valid).map((option) => option.id),
@@ -1408,7 +1405,7 @@ function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = f
       : sceneIntroStep !== null
         ? { phase: "장면 이해", activity: sceneIntroConfig.slides[sceneIntroStep].eyebrow.replace(/^\d+ · /, "") }
       : mpjRecapOpen
-        ? { phase: "직접 산출", activity: "방금의 판단 기록" }
+        ? { phase: "직접 산출", activity: "번역 전 정리" }
       : activeIndex <= 4
         ? { phase: `표현 판단 · ${activeIndex + 1}/5`, activity: progressLabel(quests[activeIndex]) }
         : activeIndex === 5
@@ -1464,185 +1461,41 @@ function QuestRenderer({ quest, responses, onDone, onRevisionStateChange, devMod
   return <DctDraftView quest={quest} onDone={onDone} devMode={devMode} devAutofill={devAutofill} devDraft={devDraft} />;
 }
 
-type MpjRecapRecord = {
-  questId: string;
-  correct: boolean;
-  priority: number;
-  situation: string;
-  expression?: string;
-  selections: Array<{ label: string; value: string }>;
-  note: string;
-  dctCheckGroup: string;
-  dctCheck: string;
-};
-
-function sameIds(left: string[], right: string[]) {
-  return left.length === right.length && left.every((id) => right.includes(id));
-}
-
-function mpjRecapRecord(quest: MissionQuest, response: QuestResponse): MpjRecapRecord | null {
-  if (!quest.recap || quest.kind === "dct" || quest.kind === "dct_feedback") return null;
-  const base = {
-    questId: quest.id,
-    priority: quest.recap.priorityForDct,
-    situation: quest.context.situation,
-    dctCheckGroup: quest.recap.dctCheckGroup,
-    dctCheck: quest.recap.dctCheck,
-  };
-
-  if (quest.kind === "scale") {
-    const pick = typeof response.pick === "string" ? response.pick : "";
-    const acceptedIds = quest.acceptedAnswers ?? [quest.referenceAnswer];
-    const correct = acceptedIds.includes(pick);
-    const pickedLabel = quest.options.find((option) => option.id === pick)?.label ?? "선택 기록 없음";
-    const acceptedLabel = quest.options.filter((option) => acceptedIds.includes(option.id)).map((option) => option.label).join("~");
-    return {
-      ...base,
-      correct,
-      expression: quest.target,
-      selections: [
-        { label: "내 판단", value: pickedLabel },
-        ...(!correct ? [{ label: "권장 판단", value: acceptedLabel }] : []),
-      ],
-      note: correct ? quest.recap.retainedDecision : quest.recap.missedDecision,
-    };
-  }
-
-  if (quest.kind === "fix_choice") {
-    const judgment = typeof response.judgment === "string" ? response.judgment : "";
-    const selectedIds = Array.isArray(response.correctionIds)
-      ? response.correctionIds.filter((id): id is string => typeof id === "string")
-      : [];
-    const validIds = quest.corrections.filter((option) => option.valid).map((option) => option.id);
-    const correct = judgment === quest.referenceJudgment && sameIds(selectedIds, validIds);
-    const judgmentLabel = quest.judgmentOptions.find((option) => option.id === judgment)?.label ?? "선택 기록 없음";
-    const referenceLabel = quest.judgmentOptions.find((option) => option.id === quest.referenceJudgment)?.label ?? "권장 판단";
-    const selectedCorrections = quest.corrections.filter((option) => selectedIds.includes(option.id));
-    const selectedText = selectedCorrections.length > 0
-      ? `${selectedCorrections[0].text}${selectedCorrections.length > 1 ? ` 외 ${selectedCorrections.length - 1}개` : ""}`
-      : "수정안 선택 기록 없음";
-    return {
-      ...base,
-      correct,
-      expression: quest.target,
-      selections: [
-        { label: "내 판단", value: judgmentLabel },
-        { label: "내 수정", value: selectedText },
-        ...(!correct ? [{ label: "권장 판단", value: referenceLabel }] : []),
-      ],
-      note: correct ? quest.recap.retainedDecision : quest.recap.missedDecision,
-    };
-  }
-
-  if (quest.kind === "reason") {
-    const judgment = typeof response.judgment === "string" ? response.judgment : "";
-    const reasonId = typeof response.reasonId === "string" ? response.reasonId : "";
-    const correct = judgment === quest.referenceJudgment && reasonId === quest.acceptedReasonId;
-    const judgmentLabel = quest.judgmentOptions.find((option) => option.id === judgment)?.label ?? "선택 기록 없음";
-    const reasonText = quest.reasons.find((reason) => reason.id === reasonId)?.text ?? "이유 선택 기록 없음";
-    const acceptedReason = quest.reasons.find((reason) => reason.id === quest.acceptedReasonId)?.text ?? "";
-    return {
-      ...base,
-      correct,
-      expression: quest.target,
-      selections: [
-        { label: "내 판단", value: judgmentLabel },
-        { label: "내 이유", value: reasonText },
-        ...(!correct ? [{ label: "권장 이유", value: acceptedReason }] : []),
-      ],
-      note: correct ? quest.recap.retainedDecision : quest.recap.missedDecision,
-    };
-  }
-
-  const best = typeof response.best === "string" ? response.best : "";
-  const worst = typeof response.worst === "string" ? response.worst : "";
-  const correct = best === quest.bestId && worst === quest.worstId;
-  return {
-    ...base,
-    correct,
-    selections: [
-      { label: "내 BEST", value: quest.candidates.find((candidate) => candidate.id === best)?.text ?? "선택 기록 없음" },
-      { label: "내 WORST", value: quest.candidates.find((candidate) => candidate.id === worst)?.text ?? "선택 기록 없음" },
-    ],
-    note: correct ? quest.recap.retainedDecision : quest.recap.missedDecision,
-  };
-}
-
-function buildMpjRecap(responses: Record<string, QuestResponse | DctResponse>) {
-  const records = REQUEST_MISSION_V4_PREVIEW.quests
-    .slice(0, 5)
-    .map((quest) => mpjRecapRecord(quest, responses[quest.id] as QuestResponse))
-    .filter((record): record is MpjRecapRecord => Boolean(record))
-    .sort((left, right) => left.priority - right.priority);
-  const misses = records.filter((record) => !record.correct);
-  const retained = records.filter((record) => record.correct);
-  const selected: MpjRecapRecord[] = [];
-  if (misses[0]) selected.push(misses[0]);
-  const retainedDecision = retained.find((record) => !selected.some((item) => item.dctCheckGroup === record.dctCheckGroup)) ?? retained[0];
-  if (retainedDecision) selected.push(retainedDecision);
-  if (misses.length === 0) {
-    const secondDecision = retained.find((record) => !selected.some((item) => item.questId === record.questId || item.dctCheckGroup === record.dctCheckGroup));
-    if (secondDecision) selected.push(secondDecision);
-  }
-  const checkSources = [...selected, ...records.filter((record) => !selected.some((item) => item.questId === record.questId))];
-  const checks = checkSources
-    .map((record) => record.dctCheck)
-    .filter((check, index, values) => values.indexOf(check) === index)
-    .slice(0, 2);
-  return { selected, checks };
-}
-
-function MpjRecapBridge({ responses, onContinue }: {
-  responses: Record<string, QuestResponse | DctResponse>;
+function MpjLessonBridge({ lessonPoints, onContinue }: {
+  lessonPoints: MissionLessonPoint[];
   onContinue: () => void;
 }) {
-  const recap = buildMpjRecap(responses);
   return (
-    <section className="rounded-2xl border border-[#DCD7C9] bg-white p-5 shadow-[0_14px_36px_rgba(21,32,43,0.08)] sm:p-7" aria-label="직접 번역 전 판단 기록">
-      <p className="text-[11px] font-black tracking-[0.12em] text-[#8A7419]">직접 번역 전에</p>
-      <h1 className="mt-1 break-keep text-2xl font-black tracking-[-0.03em] text-[#15202B]">방금의 판단 기록</h1>
-      <p className="mt-2 break-keep text-sm leading-6 text-[#697386]">이번 번역에 필요한 기록만 짧게 추렸습니다.</p>
+    <section className="rounded-2xl border border-[#DED9CD] bg-[#FCFBF7] px-5 py-6 shadow-[0_10px_28px_rgba(21,32,43,0.05)] sm:px-8 sm:py-7" aria-label="직접 번역 전 5 POINT LESSON">
+      <p className="text-[11px] font-black tracking-[0.12em] text-[#8A7419]">직접 번역하기 전에</p>
+      <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
+        <h1 className="break-keep text-2xl font-black tracking-[-0.03em] text-[#15202B]">방금 확인한 5가지</h1>
+        <span className="text-[10px] font-black tracking-[0.14em] text-[#8B94A1]">5 POINT LESSON</span>
+      </div>
+      <p className="mt-2 break-keep text-sm leading-6 text-[#697386]">다섯 문제에서 확인한 핵심만 빠르게 짚어볼게요.</p>
 
-      <div className={`mt-5 grid gap-3 ${recap.selected.length > 1 ? "sm:grid-cols-2" : ""}`}>
-        {recap.selected.map((record) => (
-          <article key={record.questId} className={`min-w-0 rounded-xl border p-4 ${record.correct ? "border-[#C8DDD1] bg-[#F4F9F6]" : "border-[#E3D28A] bg-[#FFF9DF]"}`}>
-            <p className={`text-[11px] font-black ${record.correct ? "text-[#2E7254]" : "text-[#806819]"}`}>
-              {record.correct ? "가져갈 결정" : "다시 볼 판단"}
-            </p>
-            <h2 className="mt-1 break-keep text-sm font-black leading-6 text-[#15202B]">{record.situation}</h2>
-            {record.expression && <p className="font-zh mt-2 break-all text-[15px] leading-6 text-[#263444]">{record.expression}</p>}
-            <dl className="mt-3 space-y-1.5">
-              {record.selections.map((selection) => (
-                <div key={`${record.questId}-${selection.label}`} className="grid min-w-0 grid-cols-[4.25rem_minmax(0,1fr)] gap-2 text-xs leading-5">
-                  <dt className="font-black text-[#6C7585]">{selection.label}</dt>
-                  <dd className={/\p{Script=Han}/u.test(selection.value) ? "font-zh min-w-0 break-all text-[13px] text-[#263444]" : "min-w-0 break-words font-bold text-[#263444]"}>{selection.value}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="mt-3 border-t border-black/10 pt-3 break-keep text-xs font-semibold leading-5 text-[#4F5A69]"><RichLine text={record.note} /></p>
-          </article>
+      <ol className="mt-5 border-y border-[#E2DED4]">
+        {lessonPoints.map((point, index) => (
+          <li key={point.questId} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 border-t border-[#E2DED4] py-3.5 first:border-t-0 sm:grid-cols-[2.25rem_minmax(0,1fr)] sm:gap-4">
+            <span className="pt-0.5 text-sm font-black tabular-nums text-[#B49A23]">{String(index + 1).padStart(2, "0")}</span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black tracking-[0.08em] text-[#7A8493]">{point.label}</p>
+              <p className="mt-1 break-keep text-sm font-semibold leading-6 text-[#263444]">
+                <HighlightedText text={point.text} highlights={point.highlights} target />
+              </p>
+            </div>
+          </li>
         ))}
-      </div>
+      </ol>
 
-      <div className="mt-4 rounded-xl bg-[#15202B] px-4 py-4 text-white">
-        <p className="text-[11px] font-black tracking-[0.08em] text-[#F3D248]">이번 번역에서 확인할 것</p>
-        <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-          {recap.checks.map((check) => (
-            <li key={check} className="flex items-start gap-2 break-keep text-sm font-semibold leading-5 text-white/90">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#F3D248]" aria-hidden />
-              <span><RichLine text={check} /></span>
-            </li>
-          ))}
-        </ul>
+      <div className="mt-5 flex justify-end">
+        <Button type="button" className="h-11 px-5 font-black" onClick={onContinue}>
+          직접 번역해 보기 <ChevronRight className="ml-1 h-4 w-4" />
+        </Button>
       </div>
-
-      <Button type="button" className="mt-4 h-12 w-full font-black" onClick={onContinue}>
-        이 기록을 가지고 직접 번역하기 <ChevronRight className="ml-1 h-4 w-4" />
-      </Button>
     </section>
   );
 }
-
 function responseLabel(quest: MissionQuest, response: QuestResponse) {
   if (quest.kind === "scale") return quest.options.find((item) => item.id === response.pick)?.label ?? "선택 기록";
   if (quest.kind === "fix_choice") {
@@ -1890,7 +1743,7 @@ function DevPreviewToolbar({
             <option value="" disabled>화면 선택</option>
             {sceneIntroConfig.slides.map((slide, index) => <option key={slide.eyebrow} value={SCENE_INTRO_STEP_IDS[index]}>장면 {index + 1}. {slide.eyebrow.replace(/^\d+ · /, "")}</option>)}
             {REQUEST_MISSION_V4_PREVIEW.quests.map((quest, index) => <option key={quest.id} value={quest.id}>{index + 1}. {progressLabel(quest)}</option>)}
-            <option value="recap">MPJ5 뒤 판단 기록</option>
+            <option value="recap">MPJ5 뒤 5 POINT LESSON</option>
             <option value="summary">최종 summary</option>
           </select>
           <button type="button" onClick={onFill} className="mt-3 w-full rounded-lg bg-[#F3D248] px-3 py-2.5 font-black text-[#15202B] hover:bg-[#F7DD62]">현재 답안 채우기</button>
@@ -2100,7 +1953,7 @@ const MissionRunV4 = () => {
         ) : mpjRecapOpen ? (
           <div className="space-y-5">
             <Progress activeIndex={5} mpjRecapOpen />
-            <MpjRecapBridge responses={responses} onContinue={continueFromMpjRecap} />
+            <MpjLessonBridge lessonPoints={mission.lessonPoints} onContinue={continueFromMpjRecap} />
           </div>
         ) : reviewedQuest && reviewedResponse ? (
           <div className="space-y-5">
