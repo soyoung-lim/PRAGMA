@@ -53,7 +53,10 @@ type DevPreviewPreset = "all_good" | "direct" | "over_mitigated" | "mixed";
 
 const panel = "rounded-2xl border border-[#DDD8CB] bg-white";
 const taskPanel = "rounded-2xl border-2 border-[#C9D0DA] bg-white shadow-[0_8px_24px_rgba(21,32,43,0.05)]";
-const optionBase = "w-full rounded-xl border px-4 py-3 text-left text-[15px] transition-colors";
+// break-keep — 없으면 한국어 낱말 중간에서 줄이 끊긴다(좁은 화면에서 특히).
+// 비활성 상태를 옅게 — 기본 disabled 회색이 활성 버튼만큼 무거워 「지금 눌러야 할 것」이 흐려진다.
+const actionButton = "w-full disabled:bg-[#E9E7E0] disabled:text-[#98A0AC] disabled:opacity-100";
+const optionBase = "w-full rounded-xl border px-4 py-3 text-left text-[15px] break-keep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1";
 
 function shuffle<T>(values: readonly T[]): T[] {
   const copy = [...values];
@@ -117,8 +120,9 @@ function nextActionLabel(quest: MissionQuest) {
 
 function ActionBar({ hint, children }: { hint?: string; children: React.ReactNode }) {
   return (
-    <div className="sticky bottom-3 z-20 rounded-2xl border border-[#D8D4C8] bg-white/95 p-2.5 shadow-[0_12px_30px_rgba(21,32,43,0.14)] backdrop-blur">
-      {hint && <p className="mb-2 px-2 text-xs font-bold text-[#647084]" aria-live="polite">{hint}</p>}
+    // 불투명 배경 — 반투명이면 아래로 지나가는 본문 글자가 비쳐 행동 지시가 흐려진다.
+    <div className="sticky bottom-3 z-20 rounded-2xl border border-[#D8D4C8] bg-white p-2.5 shadow-[0_12px_30px_rgba(21,32,43,0.14)]">
+      {hint && <p className="mb-2 break-keep px-2 text-xs font-bold text-[#647084]" aria-live="polite">{hint}</p>}
       {children}
     </div>
   );
@@ -189,13 +193,13 @@ function ContextCard({ context, changedDimensions = [], headerRight }: {
         <p className="text-xs font-bold text-[#5D6980]">상황</p>
         {headerRight}
       </div>
-      <h2 className="mt-1.5 text-[17px] font-bold leading-7 text-[#101B2B]">
+      <h2 className="mt-1.5 break-keep text-[17px] font-bold leading-7 text-[#101B2B]">
         {context.situation}
       </h2>
       {context.precedingTurn && (
         <div className="mt-3 rounded-xl border-l-4 border-[#F0D34F] bg-[#F7F5EF] px-4 py-2.5">
           <p className="text-[11px] font-bold text-[#697386]">상대의 말</p>
-          <p className="mt-1 text-[15px] leading-6">{context.precedingTurn}</p>
+          <p className="mt-1 break-keep text-[15px] leading-6">{context.precedingTurn}</p>
         </div>
       )}
       <div className="mt-2.5 flex flex-wrap gap-1.5 text-xs text-[#566176]">
@@ -227,7 +231,7 @@ function LanguagePair({ source, target, targetHighlights = [] }: {
         <span className="mt-0.5 inline-flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg border border-[#E4CB50] bg-[#FFF7D1] px-3 text-sm font-black text-[#142033]">KO</span>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-bold text-[#697386]">내가 전하려는 말</p>
-          <p className="mt-0.5 text-[17px] font-normal leading-8 text-[#101B2B]">{source}</p>
+          <p className="mt-0.5 break-keep text-[17px] font-normal leading-8 text-[#101B2B]">{source}</p>
         </div>
       </div>
       {target && (
@@ -294,7 +298,7 @@ function FeedbackBox({ verdict, feedback, action, highlights = [] }: {
   highlights?: string[];
 }) {
   return (
-    <div className="rounded-xl border border-[#DDD8CB] border-l-4 border-l-[#E0C43C] bg-[#FAF9F5] px-4 py-3.5 text-[14px] leading-7 text-[#3F4A59]">
+    <div className="break-keep rounded-xl border border-[#DDD8CB] border-l-4 border-l-[#E0C43C] bg-[#FAF9F5] px-4 py-3.5 text-[14px] leading-7 text-[#3F4A59]">
       {verdict && <p className="mb-2 font-black text-[#4A5568]">{verdict}</p>}
       <SentenceLines text={feedback} highlights={highlights} />
       {action && (
@@ -329,7 +333,7 @@ function ScaleView({ quest, onDone, devAutofill = false }: { quest: ScaleQuest; 
       </section>
       <ActionBar hint={!answered && !pick ? "가장 알맞은 답을 하나 선택해 주세요." : undefined}>
         {!answered ? (
-          <Button className={`${compact ? "h-11" : "h-12"} w-full`} disabled={!pick} onClick={() => setAnswered(true)}>{pick ? "답안 확인하기" : "답을 선택해 주세요"}</Button>
+          <Button className={`${compact ? "h-11" : "h-12"} ${actionButton}`} disabled={!pick} onClick={() => setAnswered(true)}>{pick ? "답안 확인하기" : "답을 선택해 주세요"}</Button>
         ) : (
           <Button className="h-12 w-full" onClick={() => onDone({ pick })}>{nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" /></Button>
         )}
@@ -381,7 +385,7 @@ function FixChoiceView({ quest, onDone, devAutofill = false }: { quest: FixChoic
                 <span className="mt-2 rounded-full border border-current bg-white px-2 py-0.5">내 답안 · {judgmentLabel}</span>
                 <span className="mt-2 rounded-full border border-[#80AB94] bg-white px-2 py-0.5 text-[#245E44]">권장 답안 · {referenceLabel}</span>
               </div>
-              <p className="mt-2">
+              <p className="mt-2 break-keep">
                 {judgmentMatched
                   ? "이 장면을 읽은 방향이 같습니다. 이제 같은 뜻을 더 자연스럽게 옮긴 안을 찾아보세요."
                   : "관계와 채널 단서를 다시 보고 수정안을 골라보세요."}
@@ -415,7 +419,7 @@ function FixChoiceView({ quest, onDone, devAutofill = false }: { quest: FixChoic
                           </span>
                         )}
                       </span>
-                      {answered && <span className="mt-1 block text-xs font-normal leading-5">{correction.note}</span>}
+                      {answered && <span className="mt-1 block break-keep text-xs font-normal leading-5">{correction.note}</span>}
                     </button>
                   );
                 })}
@@ -427,9 +431,9 @@ function FixChoiceView({ quest, onDone, devAutofill = false }: { quest: FixChoic
       </section>
       <ActionBar hint={!locked && !judgment ? "이 상황에서의 적절성을 먼저 판단해 주세요." : locked && !answered ? `${corrections.size} / 2 선택됨${corrections.size === 2 ? " · 확인할 수 있어요" : ""}` : undefined}>
         {!locked ? (
-          <Button className="h-12 w-full" disabled={!judgment} onClick={() => setLocked(true)}>{judgment ? "판단 확인하기" : "답을 선택해 주세요"}</Button>
+          <Button className={`h-12 ${actionButton}`} disabled={!judgment} onClick={() => setLocked(true)}>{judgment ? "판단 확인하기" : "답을 선택해 주세요"}</Button>
         ) : !answered ? (
-          <Button className="h-12 w-full" disabled={corrections.size !== 2} onClick={() => setAnswered(true)}>교정안 확인하기</Button>
+          <Button className={`h-12 ${actionButton}`} disabled={corrections.size !== 2} onClick={() => setAnswered(true)}>교정안 확인하기</Button>
         ) : (
           <Button className="h-12 w-full" onClick={() => onDone({ judgment, correctionIds: [...corrections] })}>{nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" /></Button>
         )}
@@ -469,16 +473,16 @@ function ReasonView({ quest, onDone, devMode = false, devAutofill = false }: { q
               className="mt-3 h-11 w-full rounded-xl border border-[#D8D4C8] bg-white px-4 text-[15px] outline-none transition focus:border-[#15202B] focus:ring-1 focus:ring-[#15202B] disabled:bg-[#F3F4F5]"
               placeholder="이 표현은 … 때문에 …라고 판단했습니다."
             />
-            {!answered && <p id={`${quest.id}-reason-help`} className="mt-2 text-xs leading-5 text-[#687387]">문장 시작 도움 · “이 표현은 … 때문에 …라고 판단했습니다.” 아직 권장 답안은 보여 주지 않습니다.</p>}
+            {!answered && <p id={`${quest.id}-reason-help`} className="mt-2 break-keep text-xs leading-5 text-[#687387]">문장 시작 도움 · “이 표현은 … 때문에 …라고 판단했습니다.” 아직 권장 답안은 보여 주지 않습니다.</p>}
           </div>
         )}
         {answered && <div className="mt-4"><FeedbackBox verdict={`권장 답안 · 이 상황에서는 ${referenceLabel}`} feedback={quest.feedback} highlights={quest.targetHighlights} /></div>}
       </section>
       <ActionBar hint={!locked && !judgment ? "가장 가까운 판단을 하나 선택해 주세요." : locked && !answered && !devMode ? reasonValidation.hint : undefined}>
         {!locked ? (
-          <Button className="h-12 w-full" disabled={!judgment} onClick={() => setLocked(true)}>{judgment ? "판단 확인하기" : "답을 선택해 주세요"}</Button>
+          <Button className={`h-12 ${actionButton}`} disabled={!judgment} onClick={() => setLocked(true)}>{judgment ? "판단 확인하기" : "답을 선택해 주세요"}</Button>
         ) : !answered ? (
-          <Button className="h-12 w-full" disabled={!devMode && !reasonValidation.valid} onClick={() => setAnswered(true)}>이유 확인하기</Button>
+          <Button className={`h-12 ${actionButton}`} disabled={!devMode && !reasonValidation.valid} onClick={() => setAnswered(true)}>이유 확인하기</Button>
         ) : (
           <Button className="h-12 w-full" onClick={() => onDone({ judgment, reasonNote: reason.trim() })}>{nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" /></Button>
         )}
@@ -522,7 +526,7 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_max-content] sm:items-start sm:gap-4">
                     <div className="min-w-0">
                       <p className="font-zh text-[18px] leading-8">{candidate.text}</p>
-                      <p className="mt-2 text-sm leading-6 text-[#536075]">{candidate.note}</p>
+                      <p className="mt-2 break-keep text-sm leading-6 text-[#536075]">{candidate.note}</p>
                     </div>
                     <div className="flex flex-nowrap gap-1.5 whitespace-nowrap sm:justify-end">
                       <span className={`rounded px-2 py-1 text-[11px] font-black ${role === "BEST" ? "bg-[#DCEFE4] text-[#245E44]" : role === "WORST" ? "bg-[#F4D8D5] text-[#8B3531]" : "bg-[#EEECE6]"}`}>{role}</span>
@@ -531,11 +535,12 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                  // 좁은 화면에서는 후보 문장이 3~4자마다 끊기지 않도록 버튼을 아래로 내린다.
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                     <p className="min-w-0 font-zh text-[18px] leading-8">{candidate.text}</p>
                     <div className="flex shrink-0 gap-2">
-                    <button type="button" disabled={worstPicked} onClick={() => setBest(candidate.id)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${bestPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8]"}`}>BEST</button>
-                    <button type="button" disabled={bestPicked} onClick={() => setWorst(candidate.id)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${worstPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8]"}`}>WORST</button>
+                    <button type="button" disabled={worstPicked} onClick={() => setBest(candidate.id)} className={`h-9 flex-1 rounded-lg border px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1 disabled:opacity-50 sm:flex-none ${bestPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8] hover:bg-[#F8F7F2]"}`}>BEST</button>
+                    <button type="button" disabled={bestPicked} onClick={() => setWorst(candidate.id)} className={`h-9 flex-1 rounded-lg border px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1 disabled:opacity-50 sm:flex-none ${worstPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8] hover:bg-[#F8F7F2]"}`}>WORST</button>
                     </div>
                   </div>
                 )}
@@ -546,7 +551,7 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
       </section>
       <ActionBar hint={!answered ? (best && worst ? "BEST·WORST 선택 완료 · 확인할 수 있어요" : best ? "BEST 선택 완료 · WORST를 골라주세요" : worst ? "WORST 선택 완료 · BEST를 골라주세요" : "BEST와 WORST를 하나씩 골라주세요") : undefined}>
         {!answered ? (
-          <Button className="h-12 w-full" disabled={!best || !worst || best === worst} onClick={() => setAnswered(true)}>BEST·WORST 확인하기</Button>
+          <Button className={`h-12 ${actionButton}`} disabled={!best || !worst || best === worst} onClick={() => setAnswered(true)}>BEST·WORST 확인하기</Button>
         ) : (
           <Button className="h-12 w-full" onClick={() => onDone({ best, worst })}>다음: 번역 실습 <ChevronRight className="ml-1 h-4 w-4" /></Button>
         )}
@@ -599,7 +604,7 @@ function DctDraftCard({ quest, value, onChange }: { quest: DctQuest; value: stri
         <span className="mt-0.5 inline-flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg border border-[#E4CB50] bg-[#FFF7D1] px-3 text-sm font-black text-[#142033]">KO</span>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-bold text-[#697386]">내가 전하려는 말</p>
-          <p className="mt-0.5 text-[17px] leading-8">{quest.source}</p>
+          <p className="mt-0.5 break-keep text-[17px] leading-8">{quest.source}</p>
         </div>
       </div>
       <div className="border-t border-dashed border-[#D8D4C8] px-4 py-3 sm:px-5">
@@ -823,7 +828,7 @@ function DctDraftView({ quest, onDone, devMode = false, devAutofill = false, dev
     <QuestScaffold quest={quest}>
       <DctDraftCard quest={quest} value={draft} onChange={setDraft} />
       <ActionBar hint={devMode ? undefined : validation.hint}>
-        <Button className="h-12 w-full" disabled={!canSubmit} onClick={() => onDone({ first: draft.trim(), revised: draft.trim(), reflected: false })}>{canSubmit ? "번역 제출하기" : "번역안을 작성해 주세요"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+        <Button className={`h-12 ${actionButton}`} disabled={!canSubmit} onClick={() => onDone({ first: draft.trim(), revised: draft.trim(), reflected: false })}>{canSubmit ? "번역 제출하기" : "번역안을 작성해 주세요"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
       </ActionBar>
     </QuestScaffold>
   );
@@ -1027,7 +1032,7 @@ function DctFeedbackView({ quest, response, onDone, devMode = false, devAutofill
                 <div className="mt-3"><DctContextReview quest={quest} first={first} /></div>
               </section>
               <ActionBar hint={actionHint}>
-                <Button className="h-12 w-full" disabled={!canConfirm} onClick={() => onDone({ first, revised: revised.trim(), reflected, evaluation })}>{reflected ? "수정안 확정하기" : needsChange ? "피드백을 반영해 수정해 주세요" : "이 번역으로 확정하기"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                <Button className={`h-12 ${actionButton}`} disabled={!canConfirm} onClick={() => onDone({ first, revised: revised.trim(), reflected, evaluation })}>{reflected ? "수정안 확정하기" : needsChange ? "피드백을 반영해 수정해 주세요" : "이 번역으로 확정하기"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
               </ActionBar>
             </>
           ) : (
@@ -1098,13 +1103,14 @@ function Progress({ activeIndex, completed, reviewIndex = null, responses, devNa
   const activeQuest = completed ? undefined : quests[Math.min(activeIndex, quests.length - 1)];
   return (
     <>
+      {/* 화면 높이를 채우지 않고 단계 수만큼만 차지한다 — 늘려 놓으면 단계 사이가 벌어져 진행 위치가 읽히지 않는다. */}
       <aside
-        className="fixed bottom-6 top-24 z-30 hidden w-44 flex-col overflow-y-auto rounded-2xl border border-[#E2DED3] bg-[#FBFAF6]/95 px-4 py-5 shadow-sm backdrop-blur xl:flex"
+        className="fixed top-24 z-30 hidden max-h-[calc(100vh-7.5rem)] w-44 flex-col overflow-y-auto rounded-2xl border border-[#E2DED3] bg-[#FBFAF6]/95 px-4 py-4 shadow-sm backdrop-blur xl:flex"
         style={{ left: "max(1rem, calc(50% - 37rem))" }}
         aria-label="미션 학습 단계"
       >
         <p className="mb-2 px-1 text-xs font-black text-[#687387]">{reviewIndex === null ? `${displayIndex} / ${quests.length} 학습 단계` : `${reviewIndex + 1} / ${quests.length} 단계 기록 검토`}</p>
-        <div className="flex min-h-[32rem] flex-1 flex-col">
+        <div className="flex flex-col gap-2">
           {quests.map((quest, index) => {
             const done = Boolean(completed) || index < activeIndex;
             const active = !completed && index === activeIndex;
@@ -1113,14 +1119,14 @@ function Progress({ activeIndex, completed, reviewIndex = null, responses, devNa
             const canNavigate = devNavigation || canReview || active;
             const sectionBreak = index === 5;
             return (
-                <div key={quest.id} className={`relative flex min-h-11 flex-1 items-center ${sectionBreak ? "mt-1.5" : ""}`}>
-                  {index < quests.length - 1 && <span className={`absolute -bottom-1/2 left-[15px] top-1/2 w-px ${done ? "bg-[#9AA4B0]" : "bg-[#DDDAD2]"}`} />}
+                <div key={quest.id} className={`relative flex min-h-11 items-center ${sectionBreak ? "mt-2" : ""}`}>
+                  {index < quests.length - 1 && <span className={`absolute left-[15px] top-1/2 h-[calc(100%+0.5rem)] w-px ${done ? "bg-[#9AA4B0]" : "bg-[#DDDAD2]"}`} />}
                   <button
                     type="button"
                     disabled={!canNavigate}
                     onClick={() => onReview(index)}
                     aria-label={`${index + 1}. ${progressLabel(quest)}${reviewing ? " 기록 검토 중" : canReview ? " 다시 보기" : active ? " 현재 단계" : ""}`}
-                    className={`relative z-10 flex w-full items-center gap-3 rounded-lg px-1 py-1.5 text-left ${reviewing || active ? "bg-[#EEF1F5]" : ""} ${canNavigate ? "cursor-pointer hover:bg-white/80" : "cursor-default"}`}
+                    className={`relative z-10 flex w-full items-center gap-3 rounded-lg px-1 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] ${reviewing || active ? "bg-[#EEF1F5]" : ""} ${canNavigate ? "cursor-pointer hover:bg-white/80" : "cursor-default"}`}
                   >
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-black ${done ? "border-[#E1C536] bg-[#F3D248] text-[#15202B]" : active ? "border-[#15202B] bg-[#15202B] text-white ring-2 ring-[#E7CE4A]" : "border-[#DCD9D0] bg-white text-[#9AA2AF]"} ${reviewing ? "ring-2 ring-[#15202B] ring-offset-2" : ""}`}>
                       {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : index + 1}
@@ -1214,7 +1220,7 @@ function ReviewModeBanner({ index, completed, onExit }: { index: number; complet
     <section className="flex flex-col gap-3 rounded-xl border border-[#C9D0DA] bg-[#F2F4F7] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <div>
         <p className="text-xs font-black text-[#526075]">{index + 1}단계 기록을 다시 보는 중</p>
-        <p className="mt-1 text-xs leading-5 text-[#6A7485]">완료한 답과 피드백을 확인하고 있습니다. 새로운 문제를 푸는 화면이 아닙니다.</p>
+        <p className="mt-1 break-keep text-xs leading-5 text-[#6A7485]">완료한 답과 피드백을 확인하고 있습니다. 새로운 문제를 푸는 화면이 아닙니다.</p>
       </div>
       <Button variant="outline" className="h-9 shrink-0 bg-white px-4 text-xs" onClick={onExit}>
         {completed ? "미션 완료 화면으로 돌아가기" : "현재 학습 단계로 돌아가기"}
@@ -1281,7 +1287,8 @@ function CompletionRecord({ label, response }: { label: string; response?: DctRe
         <p className="text-xs font-black text-[#6B5518]">{label}</p>
       </div>
       <div className="space-y-5 p-5">
-        <div>
+        {/* 수정 전 = 중립 박스, 수정 후 = 강조 박스. 두 덩어리로 묶어야 전·후가 한눈에 대비된다. */}
+        <div className="rounded-xl border border-[#E5E1D8] bg-[#FAF9F5] p-4">
           <p className="text-[11px] font-bold text-[#7A8495]">내가 실제로 쓴 중국어</p>
           <p className="font-zh mt-2 text-[17px] leading-8"><HighlightedText text={response.first} highlights={evaluation?.highlights} target /></p>
         </div>
@@ -1294,16 +1301,16 @@ function CompletionRecord({ label, response }: { label: string; response?: DctRe
               </div>
             ) : <p className="mt-2 text-sm">표현의 문제가 아니라 원문의 핵심 내용이 빠졌습니다.</p>}
             <p className="mt-3 text-xs font-black text-[#725B12]">왜 고쳤나요?</p>
-            <p className="mt-1 text-sm leading-6 text-[#4F5A6B]">{evaluation.feedback}</p>
+            <p className="mt-1 break-keep text-sm leading-6 text-[#4F5A6B]">{evaluation.feedback}</p>
           </div>
         ) : evaluation ? (
           <div className="rounded-xl border border-[#BFD9CC] bg-[#F2F8F4] p-4">
             <p className="text-xs font-black text-[#286247]">잘한 점</p>
-            <p className="mt-2 text-sm leading-6">{evaluation.feedback}</p>
+            <p className="mt-2 break-keep text-sm leading-6">{evaluation.feedback}</p>
           </div>
         ) : null}
         {response.reflected ? (
-          <div className="rounded-xl border border-[#BFD9CC] bg-white p-4">
+          <div className="rounded-xl border-2 border-[#9CC7B0] bg-[#F4FAF6] p-4 shadow-sm">
             <p className="flex items-center gap-1.5 text-xs font-black text-[#245E44]"><Check className="h-3.5 w-3.5" />피드백을 반영한 최종 번역</p>
             <p className="font-zh mt-2 text-[17px] leading-8">{response.revised}</p>
           </div>
@@ -1328,14 +1335,14 @@ function SessionPatternSummary({ responses }: { responses: Array<DctResponse | u
   return (
     <section className={`${panel} p-5 sm:p-6`}>
       <h2 className="text-base font-black">이번 미션에서 확인한 점</h2>
-      <p className="mt-1 text-xs leading-5 text-[#6A7485]">이번 번역에서 실제로 확인된 결과만 정리했습니다.</p>
+      <p className="mt-1 break-keep text-xs leading-5 text-[#6A7485]">이번 번역에서 실제로 확인된 결과만 정리했습니다.</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {observations.map((observation) => {
           const strongCount = evaluations.filter((evaluation) => evaluation.criteria.find((criterion) => criterion.key === observation.key)?.level === "very_good").length;
           return (
             <article key={observation.key} className="rounded-xl bg-[#F7F6F1] p-4">
               <p className="text-xs font-black text-[#596579]">{observation.label}</p>
-              <p className="mt-2 text-sm font-black">{strongCount === evaluations.length ? observation.good : observation.next}</p>
+              <p className="mt-2 break-keep text-sm font-black">{strongCount === evaluations.length ? observation.good : observation.next}</p>
             </article>
           );
         })}
@@ -1359,7 +1366,8 @@ function DevPreviewToolbar({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="fixed bottom-4 right-4 z-[70] text-xs">
+    // 좁은 화면에서는 학습 액션 바 위로 올려 제출 버튼을 가리지 않게 한다(QA 도구는 학습 화면보다 뒤).
+    <div className="fixed bottom-36 right-3 z-[70] text-xs sm:bottom-4 sm:right-4">
       {open && (
         <div className="mb-2 w-72 rounded-2xl border border-[#334155] bg-[#15202B] p-4 text-white shadow-2xl">
           <div className="flex items-center justify-between">
@@ -1397,7 +1405,7 @@ function DevPreviewToolbar({
           <p className="mt-3 leading-5 text-white/50">단계 직접 이동 · 글자수/중문 검증 우회</p>
         </div>
       )}
-      <button type="button" onClick={() => setOpen((current) => !current)} className="rounded-full border border-[#F3D248] bg-[#15202B] px-4 py-2.5 font-black tracking-[0.08em] text-[#F3D248] shadow-xl">DEV PREVIEW</button>
+      <button type="button" onClick={() => setOpen((current) => !current)} className="rounded-full border border-[#F3D248]/60 bg-[#15202B]/85 px-3 py-2 text-[11px] font-black tracking-[0.08em] text-[#F3D248] opacity-60 shadow-lg transition hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F3D248] sm:px-4 sm:py-2.5 sm:text-xs">DEV PREVIEW</button>
     </div>
   );
 }
