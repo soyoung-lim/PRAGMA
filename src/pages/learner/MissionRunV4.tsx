@@ -995,10 +995,11 @@ function DctContextReview({ quest, first }: { quest: DctFeedbackQuest; first: st
   );
 }
 
-function DctFeedbackView({ quest, response, onDone, devMode = false, devAutofill = false }: {
+function DctFeedbackView({ quest, response, onDone, onRevisionStateChange, devMode = false, devAutofill = false }: {
   quest: DctFeedbackQuest;
   response?: DctResponse;
   onDone: (response: DctResponse) => void;
+  onRevisionStateChange?: (open: boolean) => void;
   devMode?: boolean;
   devAutofill?: boolean;
 }) {
@@ -1018,6 +1019,9 @@ function DctFeedbackView({ quest, response, onDone, devMode = false, devAutofill
     const timer = window.setTimeout(() => revisionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
     return () => window.clearTimeout(timer);
   }, [revisionOpen]);
+  useEffect(() => {
+    onRevisionStateChange?.(revisionOpen);
+  }, [onRevisionStateChange, revisionOpen]);
   const reflected = normalize(first) !== normalize(revised);
   const needsChange = evaluation.criteria.some((criterion) => criterion.level !== "very_good");
   const primaryCriterion = primaryFeedbackCriterion(evaluation.criteria);
@@ -1169,106 +1173,83 @@ function QuestScaffold({ quest, target, targetHighlights, children }: {
 }
 
 const PROGRESS_LABELS: Record<string, string> = {
-  A1: "판단하기",
-  A2: "상황 비교",
-  A3: "고쳐 보기",
+  A1: "첫인상 판단",
+  A2: "맥락 대비 판단",
+  A3: "판단하고 고쳐보기",
   A4: "이유 찾기",
-  A5: "BEST·WORST",
-  "A-DCT": "번역 실습",
-  "A-FEEDBACK": "피드백·수정",
+  A5: "여러 초안 비교",
+  "A-DCT": "내 번역 작성",
+  "A-FEEDBACK": "피드백 확인",
 };
 
 function progressLabel(quest: MissionQuest) {
   return PROGRESS_LABELS[quest.id] ?? quest.shortLabel;
 }
 
-function Progress({ activeIndex, completed, reviewIndex = null, responses, devNavigation = false, onReview }: {
+const MACRO_PROGRESS = ["장면 이해", "표현 판단", "직접 산출", "피드백", "다듬기"] as const;
+
+function macroProgressIndex(activeIndex: number, completed: boolean | undefined, revisionOpen: boolean) {
+  if (completed) return MACRO_PROGRESS.length;
+  if (activeIndex <= 4) return 1;
+  if (activeIndex === 5) return 2;
+  return revisionOpen ? 4 : 3;
+}
+
+function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = false }: {
   activeIndex: number;
   completed?: boolean;
   reviewIndex?: number | null;
-  responses: Record<string, QuestResponse | DctResponse>;
-  devNavigation?: boolean;
-  onReview: (index: number) => void;
+  revisionOpen?: boolean;
 }) {
   const quests = REQUEST_MISSION_V4_PREVIEW.quests;
-  const displayIndex = completed ? quests.length : Math.min(activeIndex + 1, quests.length);
-  const activeQuest = completed ? undefined : quests[Math.min(activeIndex, quests.length - 1)];
+  const macroIndex = macroProgressIndex(activeIndex, completed, revisionOpen);
+  const detail = completed
+    ? { phase: "미션 완료", activity: "내 번역 돌아보기" }
+    : reviewIndex !== null
+      ? { phase: "기록 검토", activity: progressLabel(quests[reviewIndex]) }
+      : activeIndex <= 4
+        ? { phase: `표현 판단 · ${activeIndex + 1}/5`, activity: progressLabel(quests[activeIndex]) }
+        : activeIndex === 5
+          ? { phase: "직접 산출", activity: progressLabel(quests[activeIndex]) }
+          : revisionOpen
+            ? { phase: "다듬기", activity: "내 번역 수정" }
+            : { phase: "피드백", activity: progressLabel(quests[activeIndex]) };
   return (
-    <>
-      {/* 화면 높이를 채우지 않고 단계 수만큼만 차지한다 — 늘려 놓으면 단계 사이가 벌어져 진행 위치가 읽히지 않는다. */}
-      <aside
-        className="fixed top-24 z-30 hidden max-h-[calc(100vh-7.5rem)] w-44 flex-col overflow-y-auto rounded-2xl border border-[#E2DED3] bg-[#FBFAF6]/95 px-4 py-4 shadow-sm backdrop-blur xl:flex"
-        style={{ left: "max(1rem, calc(50% - 37rem))" }}
-        aria-label="미션 학습 단계"
-      >
-        <p className="mb-2 px-1 text-xs font-black text-[#687387]">{reviewIndex === null ? `${displayIndex} / ${quests.length} 학습 단계` : `${reviewIndex + 1} / ${quests.length} 단계 기록 검토`}</p>
-        <div className="flex flex-col gap-2">
-          {quests.map((quest, index) => {
-            const done = Boolean(completed) || index < activeIndex;
-            const active = !completed && index === activeIndex;
-            const reviewing = reviewIndex === index;
-            const canReview = Boolean(responses[quest.id]);
-            const canNavigate = devNavigation || canReview || active;
-            const sectionBreak = index === 5;
-            return (
-                <div key={quest.id} className={`relative flex min-h-11 items-center ${sectionBreak ? "mt-2" : ""}`}>
-                  {index < quests.length - 1 && <span className={`absolute left-[15px] top-1/2 h-[calc(100%+0.5rem)] w-px ${done ? "bg-[#9AA4B0]" : "bg-[#DDDAD2]"}`} />}
-                  <button
-                    type="button"
-                    disabled={!canNavigate}
-                    onClick={() => onReview(index)}
-                    aria-label={`${index + 1}. ${progressLabel(quest)}${reviewing ? " 기록 검토 중" : canReview ? " 다시 보기" : active ? " 현재 단계" : ""}`}
-                    className={`relative z-10 flex w-full items-center gap-3 rounded-lg px-1 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] ${reviewing || active ? "bg-[#EEF1F5]" : ""} ${canNavigate ? "cursor-pointer hover:bg-white/80" : "cursor-default"}`}
-                  >
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-black ${done ? "border-[#E1C536] bg-[#F3D248] text-[#15202B]" : active ? "border-[#15202B] bg-[#15202B] text-white ring-2 ring-[#E7CE4A]" : "border-[#DCD9D0] bg-white text-[#9AA2AF]"} ${reviewing ? "ring-2 ring-[#15202B] ring-offset-2" : ""}`}>
-                      {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : index + 1}
-                    </span>
-                    <span className="min-w-0">
-                      <span className={`block truncate text-[13px] font-black leading-5 ${reviewing || active ? "text-[#15202B]" : done ? "text-[#68707D]" : "text-[#A3A9B2]"}`}>{progressLabel(quest)}</span>
-                    </span>
-                  </button>
-                </div>
-            );
-          })}
+    <section className="sticky top-16 z-30 rounded-xl border border-[#E2DED3] bg-[#FBFAF6]/95 px-4 py-3 shadow-sm backdrop-blur sm:px-5" aria-label="미션 학습 흐름">
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <p className="text-[10px] font-black tracking-[0.12em] text-[#7A8493]">LEARNING FLOW</p>
+        <div className="text-right">
+          <p className="text-xs font-black text-[#15202B]">{detail.phase}</p>
+          <p className="mt-0.5 text-[10px] font-bold text-[#7A8493] sm:text-[11px]">{detail.activity}</p>
         </div>
-      </aside>
-
-      <section className="sticky top-16 z-30 rounded-xl border border-[#E2DED3] bg-[#FBFAF6]/95 px-3 py-2 shadow-sm backdrop-blur xl:hidden">
-        <div className="flex h-8 items-center gap-3">
-          <p className="shrink-0 whitespace-nowrap text-xs font-black text-[#15202B]">
-            {reviewIndex === null ? `${displayIndex} / ${quests.length} · ${completed ? "완료" : activeQuest ? progressLabel(activeQuest) : ""}` : `${reviewIndex + 1} / ${quests.length} · 기록 검토`}
-          </p>
-          <div className="flex min-w-0 flex-1 items-center" aria-label="미션 학습 단계">
-            {quests.map((quest, index) => {
-              const done = Boolean(completed) || index < activeIndex;
-              const active = !completed && index === activeIndex;
-              const reviewing = reviewIndex === index;
-              const canReview = Boolean(responses[quest.id]);
-              const canNavigate = devNavigation || canReview || active;
-              return (
-                <div key={quest.id} className="flex min-w-0 flex-1 items-center">
-                  {index > 0 && <span className={`h-0.5 min-w-1 flex-1 ${done || active ? "bg-[#9AA4B0]" : "bg-[#E1DED5]"}`} />}
-                  <button
-                    type="button"
-                    disabled={!canNavigate}
-                    onClick={() => onReview(index)}
-                    aria-label={`${index + 1}. ${progressLabel(quest)}${reviewing ? " 기록 검토 중" : canReview ? " 다시 보기" : active ? " 현재 단계" : ""}`}
-                    className={`relative z-10 h-3 w-3 shrink-0 rounded-full border ${done ? "border-[#E1C536] bg-[#F3D248]" : active ? "border-[#15202B] bg-[#15202B] ring-2 ring-[#E7CE4A]" : "border-[#CFCBC0] bg-white"} ${reviewing ? "ring-2 ring-[#15202B] ring-offset-2" : ""} ${canNavigate ? "cursor-pointer" : "cursor-default"}`}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-    </>
+      </div>
+      <ol className="grid grid-cols-5" aria-label="장면 이해, 표현 판단, 직접 산출, 피드백, 다듬기">
+        {MACRO_PROGRESS.map((label, index) => {
+          const done = Boolean(completed) || index < macroIndex;
+          const active = !completed && index === macroIndex;
+          return (
+            <li key={label} className="relative flex min-w-0 flex-col items-center">
+              {index > 0 && (
+                <span className={`absolute right-1/2 top-[6px] h-px w-full ${done || active ? "bg-[#8793A0]" : "bg-[#D9D6CD]"}`} aria-hidden />
+              )}
+              <span className={`relative z-10 h-3 w-3 rounded-full border ${done ? "border-[#D3B62D] bg-[#F3D248]" : active ? "border-[#15202B] bg-[#15202B] ring-2 ring-[#E8D04C] ring-offset-1 ring-offset-[#FBFAF6]" : "border-[#CFCBC0] bg-white"}`} aria-hidden />
+              <span className={`mt-2 break-keep text-center text-[10px] font-bold leading-4 sm:text-[11px] ${active ? "text-[#15202B]" : done ? "text-[#687387]" : "text-[#A0A5AD]"}`}>
+                {label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      <span className="sr-only">현재 단계: {detail.phase}, {detail.activity}</span>
+    </section>
   );
 }
 
-function QuestRenderer({ quest, responses, onDone, devMode = false, devAutofill = false, devDraft = "" }: {
+function QuestRenderer({ quest, responses, onDone, onRevisionStateChange, devMode = false, devAutofill = false, devDraft = "" }: {
   quest: MissionQuest;
   responses: Record<string, QuestResponse | DctResponse>;
   onDone: (response: QuestResponse | DctResponse) => void;
+  onRevisionStateChange?: (open: boolean) => void;
   devMode?: boolean;
   devAutofill?: boolean;
   devDraft?: string;
@@ -1277,7 +1258,7 @@ function QuestRenderer({ quest, responses, onDone, devMode = false, devAutofill 
   if (quest.kind === "fix_choice") return <FixChoiceView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
   if (quest.kind === "reason") return <ReasonView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
   if (quest.kind === "best_worst") return <BestWorstView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
-  if (quest.kind === "dct_feedback") return <DctFeedbackView quest={quest} response={responses[quest.dctId] as DctResponse | undefined} onDone={onDone} devMode={devMode} devAutofill={devAutofill} />;
+  if (quest.kind === "dct_feedback") return <DctFeedbackView quest={quest} response={responses[quest.dctId] as DctResponse | undefined} onDone={onDone} onRevisionStateChange={onRevisionStateChange} devMode={devMode} devAutofill={devAutofill} />;
   return <DctDraftView quest={quest} onDone={onDone} devMode={devMode} devAutofill={devAutofill} devDraft={devDraft} />;
 }
 
@@ -1545,6 +1526,7 @@ const MissionRunV4 = () => {
   const [responses, setResponses] = useState<Record<string, QuestResponse | DctResponse>>({});
   const [devPreset, setDevPreset] = useState<DevPreviewPreset>(readDevPreviewPreset);
   const [devAutofillQuestId, setDevAutofillQuestId] = useState<string | null>(null);
+  const [feedbackRevisionOpen, setFeedbackRevisionOpen] = useState(false);
   const [renderNonce, setRenderNonce] = useState(0);
   const quest = mission.quests[questIndex];
   const isDevPreview = import.meta.env.DEV;
@@ -1565,6 +1547,7 @@ const MissionRunV4 = () => {
     setCompleted(step === "summary");
     setQuestIndex(step === "summary" ? mission.quests.length - 1 : targetIndex);
     setDevAutofillQuestId(null);
+    setFeedbackRevisionOpen(false);
     setRenderNonce((current) => current + 1);
     updateDevPreviewUrl(step, preset);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1585,6 +1568,7 @@ const MissionRunV4 = () => {
     );
     if (questIndex === mission.quests.length - 1) {
       setCompleted(true);
+      setFeedbackRevisionOpen(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
@@ -1598,6 +1582,7 @@ const MissionRunV4 = () => {
     setReviewIndex(null);
     setResponses({});
     setDevAutofillQuestId(null);
+    setFeedbackRevisionOpen(false);
     setRenderNonce((current) => current + 1);
     if (isDevPreview) updateDevPreviewUrl(undefined);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1640,13 +1625,13 @@ const MissionRunV4 = () => {
       <div className="mx-auto max-w-3xl">
         {reviewedQuest && reviewedResponse ? (
           <div className="space-y-5">
-            <Progress activeIndex={currentProgressIndex} completed={completed} reviewIndex={reviewIndex} responses={responses} devNavigation={isDevPreview} onReview={navigateProgress} />
+            <Progress activeIndex={currentProgressIndex} completed={completed} reviewIndex={reviewIndex} revisionOpen={feedbackRevisionOpen} />
             <ReviewModeBanner index={reviewIndex ?? 0} completed={completed} onExit={() => setReviewIndex(null)} />
             <CompletedQuestReview quest={reviewedQuest} response={reviewedResponse} />
           </div>
         ) : completed ? (
           <div className="space-y-5">
-            <Progress activeIndex={currentProgressIndex} completed responses={responses} devNavigation={isDevPreview} onReview={navigateProgress} />
+            <Progress activeIndex={currentProgressIndex} completed revisionOpen={feedbackRevisionOpen} />
             <section className="rounded-2xl bg-[#15202B] px-6 py-7 text-white sm:px-8">
               <p className="text-xs font-bold text-[#F3D248]">미션 완료</p>
               <h1 className="mt-2 text-2xl font-black">이번 미션에서 완성한 내 번역</h1>
@@ -1660,12 +1645,13 @@ const MissionRunV4 = () => {
           </div>
         ) : (
           <div className="space-y-5">
-            <Progress activeIndex={currentProgressIndex} responses={responses} devNavigation={isDevPreview} onReview={navigateProgress} />
+            <Progress activeIndex={currentProgressIndex} revisionOpen={feedbackRevisionOpen} />
             <QuestRenderer
               key={`${quest.id}-${renderNonce}`}
               quest={quest}
               responses={responses}
               onDone={finishQuest}
+              onRevisionStateChange={setFeedbackRevisionOpen}
               devMode={isDevPreview}
               devAutofill={devAutofillQuestId === quest.id}
               devDraft={DEV_PREVIEW_COPY[devPreset].a}
