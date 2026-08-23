@@ -64,6 +64,57 @@ const taskPanel = "rounded-2xl border-2 border-[#C9D0DA] bg-white shadow-[0_8px_
 const actionButton = "w-full disabled:bg-[#E9E7E0] disabled:text-[#98A0AC] disabled:opacity-100";
 const optionBase = "w-full rounded-xl border px-4 py-3 text-left text-[15px] break-keep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1";
 
+type SceneIntroSlide = {
+  eyebrow: string;
+  title: string;
+  body: string;
+  clues?: Array<{ label: string; value: string }>;
+  note?: string;
+  action: string;
+  tone: "navy" | "yellow" | "green";
+};
+
+type SceneIntroConfig = {
+  missionLabel: string;
+  slides: readonly SceneIntroSlide[];
+};
+
+const MISSION_A_SCENE_INTRO: SceneIntroConfig = {
+  missionLabel: "미션 A",
+  slides: [
+    {
+      eyebrow: "01 · 오늘의 장면",
+      title: "면접 일정을 바꿔 달라고 요청해야 합니다.",
+      body: "다음 주 화요일 면접에 참석하기 어려워, 아직 만난 적 없는 인턴십 담당자에게 같은 주 다른 날로 조정을 부탁하는 이메일을 씁니다.",
+      action: "장면 속 단서 보기",
+      tone: "navy",
+    },
+    {
+      eyebrow: "02 · 장면 속 단서",
+      title: "표현을 고르기 전에 이 세 가지를 기억하세요.",
+      body: "같은 요청도 상대와 채널, 부탁의 내용에 따라 다르게 들릴 수 있습니다.",
+      clues: [
+        { label: "상대", value: "아직 만난 적 없는 인턴십 담당자" },
+        { label: "채널", value: "처음 보내는 이메일" },
+        { label: "이번 요청", value: "이미 정해진 면접 일정 변경" },
+      ],
+      note: "이 단서들이 중국어 표현의 인상을 어떻게 바꾸는지 살펴보세요.",
+      action: "내가 할 일 확인",
+      tone: "yellow",
+    },
+    {
+      eyebrow: "03 · 당신의 선택",
+      title: "어떤 중국어 요청이 이 장면에 어울릴까요?",
+      body: "먼저 다섯 장면의 번역안을 비교하며 판단 기준을 찾아봅니다. 그다음 이 장면으로 돌아와 직접 번역합니다.",
+      note: "정답 문장을 외우기보다, 맥락에 따라 표현을 선택하는 연습입니다.",
+      action: "5개 장면으로 감 잡기",
+      tone: "green",
+    },
+  ],
+};
+
+const SCENE_INTRO_STEP_IDS = ["scene-1", "scene-2", "scene-3"] as const;
+
 function shuffle<T>(values: readonly T[]): T[] {
   const copy = [...values];
   for (let index = copy.length - 1; index > 0; index -= 1) {
@@ -119,6 +170,81 @@ function ActionBar({ hint, children }: { hint?: string; children: React.ReactNod
       {hint && <p className="mb-2 break-keep px-2 text-xs font-bold text-[#647084]" aria-live="polite">{hint}</p>}
       {children}
     </div>
+  );
+}
+
+function SceneIntroFlow({ config, step, onNext }: {
+  config: SceneIntroConfig;
+  step: number;
+  onNext: () => void;
+}) {
+  const slide = config.slides[step];
+  const isLast = step === config.slides.length - 1;
+  const toneClass = slide.tone === "navy"
+    ? "border-[#15202B] bg-[#15202B] text-white"
+    : slide.tone === "yellow"
+      ? "border-[#E8D272] bg-[#FFF6CF] text-[#15202B]"
+      : "border-[#C9DDCE] bg-[#EAF4EC] text-[#15202B]";
+  const mutedClass = slide.tone === "navy" ? "text-white/70" : "text-[#5E6878]";
+
+  return (
+    <section
+      className={`flex min-h-[27rem] flex-col rounded-2xl border px-6 py-7 shadow-[0_12px_32px_rgba(21,32,43,0.08)] sm:min-h-[30rem] sm:px-10 sm:py-9 ${toneClass}`}
+      aria-label={`${config.missionLabel} 장면 도입 ${step + 1}/3`}
+    >
+      <div className="flex items-center justify-between gap-4">
+        <p className={`text-[11px] font-black tracking-[0.12em] ${slide.tone === "navy" ? "text-[#F3D248]" : "text-[#776415]"}`}>
+          {slide.eyebrow}
+        </p>
+        <div className="flex items-center gap-1.5" aria-label={`장면 도입 ${step + 1}/3`}>
+          {config.slides.map((item, index) => (
+            <span
+              key={item.eyebrow}
+              className={`h-1.5 rounded-full transition-all ${index === step ? "w-6 bg-[#F3D248]" : slide.tone === "navy" ? "w-1.5 bg-white/30" : "w-1.5 bg-[#15202B]/20"}`}
+              aria-current={index === step ? "step" : undefined}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="my-auto py-8 sm:py-10">
+        <h1 className="max-w-2xl break-keep text-3xl font-black leading-[1.3] tracking-[-0.035em] sm:text-4xl">
+          {slide.title}
+        </h1>
+        <p className={`mt-5 max-w-2xl break-keep text-[15px] font-medium leading-7 sm:text-base ${mutedClass}`}>
+          {slide.body}
+        </p>
+
+        {slide.clues && (
+          <div className="mt-7 grid gap-3 sm:grid-cols-3">
+            {slide.clues.map((clue) => (
+              <article key={clue.label} className="rounded-xl border border-[#DCCB78] bg-white/75 px-4 py-4">
+                <p className="text-[11px] font-black tracking-[0.08em] text-[#776415]">{clue.label}</p>
+                <p className="mt-2 break-keep text-sm font-black leading-6 text-[#15202B]">{clue.value}</p>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {slide.note && (
+          <p className={`mt-6 max-w-2xl break-keep text-sm font-bold leading-6 ${mutedClass}`}>
+            {slide.note}
+          </p>
+        )}
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          onClick={onNext}
+          className={`h-11 gap-2 rounded-xl px-5 font-black ${slide.tone === "navy" ? "bg-[#F3D248] text-[#15202B] hover:bg-[#F7DC61]" : "bg-[#15202B] text-white hover:bg-[#263647]"}`}
+        >
+          {slide.action}
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </Button>
+      </div>
+      {isLast && <span className="sr-only">다음 화면부터 표현 판단 1/5가 시작됩니다.</span>}
+    </section>
   );
 }
 
@@ -1188,25 +1314,29 @@ function progressLabel(quest: MissionQuest) {
 
 const MACRO_PROGRESS = ["장면 이해", "표현 판단", "직접 산출", "피드백", "다듬기"] as const;
 
-function macroProgressIndex(activeIndex: number, completed: boolean | undefined, revisionOpen: boolean) {
+function macroProgressIndex(activeIndex: number, completed: boolean | undefined, revisionOpen: boolean, sceneIntroStep: number | null) {
   if (completed) return MACRO_PROGRESS.length;
+  if (sceneIntroStep !== null) return 0;
   if (activeIndex <= 4) return 1;
   if (activeIndex === 5) return 2;
   return revisionOpen ? 4 : 3;
 }
 
-function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = false }: {
+function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = false, sceneIntroStep = null }: {
   activeIndex: number;
   completed?: boolean;
   reviewIndex?: number | null;
   revisionOpen?: boolean;
+  sceneIntroStep?: number | null;
 }) {
   const quests = REQUEST_MISSION_V4_PREVIEW.quests;
-  const macroIndex = macroProgressIndex(activeIndex, completed, revisionOpen);
+  const macroIndex = macroProgressIndex(activeIndex, completed, revisionOpen, sceneIntroStep);
   const detail = completed
     ? { phase: "미션 완료", activity: "내 번역 돌아보기" }
     : reviewIndex !== null
       ? { phase: "기록 검토", activity: progressLabel(quests[reviewIndex]) }
+      : sceneIntroStep !== null
+        ? { phase: `장면 이해 · ${sceneIntroStep + 1}/3`, activity: MISSION_A_SCENE_INTRO.slides[sceneIntroStep].eyebrow.replace(/^\d+ · /, "") }
       : activeIndex <= 4
         ? { phase: `표현 판단 · ${activeIndex + 1}/5`, activity: progressLabel(quests[activeIndex]) }
         : activeIndex === 5
@@ -1505,6 +1635,7 @@ function DevPreviewToolbar({
             className="mt-1 h-9 w-full rounded-lg border border-white/20 bg-white px-3 font-bold text-[#15202B]"
           >
             <option value="" disabled>화면 선택</option>
+            {MISSION_A_SCENE_INTRO.slides.map((slide, index) => <option key={slide.eyebrow} value={SCENE_INTRO_STEP_IDS[index]}>장면 {index + 1}. {slide.eyebrow.replace(/^\d+ · /, "")}</option>)}
             {REQUEST_MISSION_V4_PREVIEW.quests.map((quest, index) => <option key={quest.id} value={quest.id}>{index + 1}. {progressLabel(quest)}</option>)}
             <option value="summary">최종 summary</option>
           </select>
@@ -1520,6 +1651,7 @@ function DevPreviewToolbar({
 
 const MissionRunV4 = () => {
   const mission = REQUEST_MISSION_V4_PREVIEW;
+  const [sceneIntroStep, setSceneIntroStep] = useState<number | null>(0);
   const [questIndex, setQuestIndex] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
@@ -1540,8 +1672,23 @@ const MissionRunV4 = () => {
   };
 
   const jumpToDevPreview = (step: string, preset = devPreset) => {
+    const sceneStepIndex = SCENE_INTRO_STEP_IDS.indexOf(step as typeof SCENE_INTRO_STEP_IDS[number]);
+    if (sceneStepIndex >= 0) {
+      setSceneIntroStep(sceneStepIndex);
+      setResponses({});
+      setReviewIndex(null);
+      setCompleted(false);
+      setQuestIndex(0);
+      setDevAutofillQuestId(null);
+      setFeedbackRevisionOpen(false);
+      setRenderNonce((current) => current + 1);
+      updateDevPreviewUrl(step, preset);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     const targetIndex = mission.quests.findIndex((item) => item.id === step);
     if (step !== "summary" && targetIndex < 0) return;
+    setSceneIntroStep(null);
     setResponses(buildDevPreviewResponses(preset, step === "summary"));
     setReviewIndex(null);
     setCompleted(step === "summary");
@@ -1561,6 +1708,20 @@ const MissionRunV4 = () => {
     if (step) jumpToDevPreview(step, preset);
   }, []);
 
+  const advanceSceneIntro = () => {
+    if (sceneIntroStep === null) return;
+    const hasExplicitSceneStep = new URLSearchParams(window.location.search).has("step");
+    if (sceneIntroStep < MISSION_A_SCENE_INTRO.slides.length - 1) {
+      const nextStep = sceneIntroStep + 1;
+      setSceneIntroStep(nextStep);
+      if (isDevPreview && hasExplicitSceneStep) updateDevPreviewUrl(SCENE_INTRO_STEP_IDS[nextStep]);
+    } else {
+      setSceneIntroStep(null);
+      if (isDevPreview && hasExplicitSceneStep) updateDevPreviewUrl("A1");
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const finishQuest = (response: QuestResponse | DctResponse) => {
     setResponses((current) => quest.kind === "dct_feedback"
       ? { ...current, [quest.id]: response, [quest.dctId]: response }
@@ -1577,6 +1738,7 @@ const MissionRunV4 = () => {
   };
 
   const restart = () => {
+    setSceneIntroStep(0);
     setQuestIndex(0);
     setCompleted(false);
     setReviewIndex(null);
@@ -1623,7 +1785,12 @@ const MissionRunV4 = () => {
         />
       )}
       <div className="mx-auto max-w-3xl">
-        {reviewedQuest && reviewedResponse ? (
+        {sceneIntroStep !== null ? (
+          <div className="space-y-5">
+            <Progress activeIndex={0} sceneIntroStep={sceneIntroStep} />
+            <SceneIntroFlow config={MISSION_A_SCENE_INTRO} step={sceneIntroStep} onNext={advanceSceneIntro} />
+          </div>
+        ) : reviewedQuest && reviewedResponse ? (
           <div className="space-y-5">
             <Progress activeIndex={currentProgressIndex} completed={completed} reviewIndex={reviewIndex} revisionOpen={feedbackRevisionOpen} />
             <ReviewModeBanner index={reviewIndex ?? 0} completed={completed} onExit={() => setReviewIndex(null)} />
