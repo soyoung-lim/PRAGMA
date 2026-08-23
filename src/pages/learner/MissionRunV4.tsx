@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Check,
   ChevronRight,
@@ -43,11 +44,16 @@ type DctEvaluation = {
   example: string;
   takeaway: string;
 };
+type DissentResponse = {
+  conditions: string[];
+  reason: string;
+};
 type DctResponse = {
   first: string;
   revised: string;
   reflected: boolean;
   evaluation?: DctEvaluation;
+  dissent?: DissentResponse;
 };
 type DevPreviewPreset = "all_good" | "direct" | "over_mitigated" | "mixed";
 
@@ -298,6 +304,76 @@ function FeedbackBox({ verdict, feedback, action, highlights = [] }: {
         </div>
       )}
     </div>
+  );
+}
+
+const DISSENT_CONDITIONS = [
+  { code: "relationship", label: "관계·친밀도에 대한 다른 판단" },
+  { code: "burden", label: "부탁의 부담 크기에 대한 다른 판단" },
+  { code: "preceding", label: "앞선 대화 흐름을 더 고려함" },
+  { code: "experience", label: "실제 사용 경험과 차이가 있음" },
+] as const;
+
+export function MissionDissentPanel({ onSubmit }: { onSubmit: (dissent: DissentResponse) => void }) {
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [reason, setReason] = useState("");
+  const [sent, setSent] = useState(false);
+
+  if (sent) {
+    return (
+      <div className="rounded-xl border border-[#CFE4D8] bg-[#F2FAF6] px-4 py-3 text-[12.5px] leading-5 text-[#2E7D5B]">
+        의견을 남겼습니다. 판정은 그대로 유지되며 이 미션의 응답 요약에만 포함됩니다.
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full rounded-xl border border-dashed border-[#B9C4CE] bg-white px-4 py-3 text-left text-[12.5px] text-[#3B4A57] transition hover:bg-[#F7F9FA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
+      >
+        피드백과 다르게 본 부분이 있다면 <b>의견 남기기 →</b>
+      </button>
+    );
+  }
+
+  return (
+    <section className="rounded-xl border border-[#B9C4CE] bg-white px-4 py-4" aria-labelledby="mission-dissent-heading">
+      <h3 id="mission-dissent-heading" className="text-sm font-black">피드백과 다르게 본 부분</h3>
+      <p className="mt-1 break-keep text-xs leading-5 text-[#687387]">해당하는 항목만 선택해 주세요. 이 의견은 판정을 바꾸지 않습니다.</p>
+      <div className="mt-3 grid gap-2">
+        {DISSENT_CONDITIONS.map((condition) => {
+          const selected = picked.includes(condition.code);
+          return (
+            <button
+              key={condition.code}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => setPicked((current) => selected ? current.filter((code) => code !== condition.code) : [...current, condition.code])}
+              className={`rounded-lg border px-3 py-2 text-left text-[12.5px] transition ${selected ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#E4E0D7] bg-white text-[#3B4A57] hover:bg-[#F7F9FA]"}`}
+            >
+              {condition.label}
+            </button>
+          );
+        })}
+      </div>
+      <Textarea className="mt-3 text-[12.5px]" rows={2} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="한 줄 이유 (선택)" />
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button
+          disabled={picked.length === 0 && !reason.trim()}
+          onClick={() => {
+            onSubmit({ conditions: picked, reason: reason.trim() });
+            setSent(true);
+          }}
+        >
+          의견 남기기
+        </Button>
+        <Button variant="outline" onClick={() => setOpen(false)}>닫기</Button>
+      </div>
+    </section>
   );
 }
 
@@ -930,6 +1006,7 @@ function DctFeedbackView({ quest, response, onDone, devMode = false, devAutofill
   const [ready, setReady] = useState(false);
   const [revised, setRevised] = useState(() => devAutofill ? quest.referenceAnswer : first);
   const [revisionOpen, setRevisionOpen] = useState(devAutofill);
+  const [dissent, setDissent] = useState<DissentResponse | undefined>(response?.dissent);
   const revisionRef = useRef<HTMLElement>(null);
   const evaluation = useMemo(() => evaluateDct(quest, first), [first, quest]);
   useEffect(() => {
@@ -1010,6 +1087,8 @@ function DctFeedbackView({ quest, response, onDone, devMode = false, devAutofill
             <p className="border-t border-[#EEEAE1] px-5 py-3 text-[11px] leading-5 text-[#6D7788]">AI가 생성한 참고 피드백입니다. 상황에 따라 다른 판단도 가능합니다.</p>
           </section>
 
+          <MissionDissentPanel onSubmit={setDissent} />
+
           <details className={`${panel} group overflow-hidden`}>
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-black">
               <span>다른 표현도 보고 싶다면</span>
@@ -1045,7 +1124,7 @@ function DctFeedbackView({ quest, response, onDone, devMode = false, devAutofill
                 <div className="mt-3"><DctContextReview quest={quest} first={first} /></div>
               </section>
               <ActionBar hint={actionHint}>
-                <Button className={`h-12 ${actionButton}`} disabled={!canConfirm} onClick={() => onDone({ first, revised: revised.trim(), reflected, evaluation })}>{reflected ? "수정안 확정하기" : needsChange ? "피드백을 반영해 수정해 주세요" : "이 번역으로 확정하기"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                <Button className={`h-12 ${actionButton}`} disabled={!canConfirm} onClick={() => onDone({ first, revised: revised.trim(), reflected, evaluation, dissent })}>{reflected ? "수정안 확정하기" : needsChange ? "피드백을 반영해 수정해 주세요" : "이 번역으로 확정하기"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
               </ActionBar>
             </>
           ) : (
@@ -1054,7 +1133,7 @@ function DctFeedbackView({ quest, response, onDone, devMode = false, devAutofill
                 <Button className="h-12 w-full" onClick={() => setRevisionOpen(true)}>한 번 다듬어보기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
               ) : (
                 <div className="grid gap-2">
-                  <Button className="h-12 w-full" onClick={() => onDone({ first, revised: first.trim(), reflected: false, evaluation })}>이 번역으로 확정하기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                  <Button className="h-12 w-full" onClick={() => onDone({ first, revised: first.trim(), reflected: false, evaluation, dissent })}>이 번역으로 확정하기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
                   <Button variant="outline" className="h-11 w-full" onClick={() => setRevisionOpen(true)}>다른 표현도 시도해보기</Button>
                 </div>
               )}
@@ -1336,6 +1415,40 @@ function CompletionRecord({ label, response }: { label: string; response?: DctRe
   );
 }
 
+function DissentSummary({ dissent }: { dissent?: DissentResponse }) {
+  if (!dissent) return null;
+  const labels = dissent.conditions.map((code) => DISSENT_CONDITIONS.find((condition) => condition.code === code)?.label ?? code);
+  return (
+    <section className="rounded-2xl border border-[#CFE4D8] bg-[#F2FAF6] p-5 sm:p-6">
+      <p className="text-xs font-black text-[#2E7D5B]">내가 다르게 본 부분</p>
+      <h2 className="mt-1 text-base font-black">판정은 유지하고 의견을 함께 남겼습니다.</h2>
+      {labels.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {labels.map((label) => <span key={label} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-[#356B55]">{label}</span>)}
+        </div>
+      )}
+      {dissent.reason && <p className="mt-3 break-keep text-sm leading-6 text-[#4F5B63]">{dissent.reason}</p>}
+    </section>
+  );
+}
+
+export function CompletionActions({ onRestart }: { onRestart: () => void }) {
+  return (
+    <section className={`${panel} p-4 sm:p-5`}>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Link
+          to="/learner/records#correction-notes"
+          className="flex h-12 items-center justify-center rounded-md bg-[#15202B] px-4 text-sm font-bold text-white transition hover:bg-[#263547] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
+        >
+          나의 학습 기록 보기
+        </Link>
+        <Button variant="outline" className="h-12 w-full" onClick={onRestart}><RotateCcw className="mr-2 h-4 w-4" />처음부터 다시 보기</Button>
+      </div>
+      <p className="mt-3 break-keep text-[11px] leading-5 text-[#6A7485]">현재 V4는 학습 흐름 미리보기입니다. 이 화면의 답안과 의견은 DB에 저장되지 않습니다.</p>
+    </section>
+  );
+}
+
 function SessionPatternSummary({ responses }: { responses: Array<DctResponse | undefined> }) {
   const evaluations = responses
     .filter((response): response is DctResponse => Boolean(response?.evaluation && isMeaningfulDraft(response.first)))
@@ -1541,8 +1654,9 @@ const MissionRunV4 = () => {
             <div className="space-y-4">
               <CompletionRecord label="번역 실습 · 면접 일정 조정" response={aDct} />
             </div>
+            <DissentSummary dissent={aDct?.dissent} />
             <SessionPatternSummary responses={[aDct]} />
-            <Button variant="outline" className="h-12 w-full" onClick={restart}><RotateCcw className="mr-2 h-4 w-4" />처음부터 다시 보기</Button>
+            <CompletionActions onRestart={restart} />
           </div>
         ) : (
           <div className="space-y-5">
