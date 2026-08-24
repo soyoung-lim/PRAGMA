@@ -244,8 +244,8 @@ function nextActionLabel(quest: MissionQuest) {
 
 function ActionBar({ hint, children }: { hint?: string; children: React.ReactNode }) {
   return (
-    // 불투명 배경 — 반투명이면 아래로 지나가는 본문 글자가 비쳐 행동 지시가 흐려진다.
-    <div className="sticky bottom-3 z-20 rounded-2xl border border-[#D8D4C8] bg-white p-2.5 shadow-[0_12px_30px_rgba(21,32,43,0.14)]">
+    // 일반 문서 흐름에 둔다 — 하단에 고정하면 첫 화면부터 뷰포트 바닥을 가려, 자료를 읽기 전에 판단을 요구하게 된다.
+    <div className="mt-3 rounded-2xl border border-[#D8D4C8] bg-white p-2.5 shadow-[0_2px_10px_rgba(21,32,43,0.05)]">
       {hint && <p className="mb-2 break-keep px-2 text-xs font-bold text-[#647084]" aria-live="polite">{hint}</p>}
       {children}
     </div>
@@ -357,7 +357,7 @@ function SceneIntroFlow({ config, step, onNext, onPrevious, onSelect }: {
             <Button
               type="button"
               onClick={onNext}
-              className={`h-auto whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] font-semibold tracking-[-0.015em] shadow-none transition-transform hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none sm:px-6 sm:text-[13.5px] ${isLast ? "bg-[#15202B] text-white hover:bg-[#273849]" : "bg-[#F5C842] text-[#15202B] hover:bg-[#FCE07A]"}`}
+              className={`h-auto whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] font-semibold tracking-[-0.015em] shadow-none transition-transform hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none sm:px-6 sm:text-[13.5px] ${slide.tone === "navy" ? "bg-[#F5C842] text-[#15202B] hover:bg-[#FCE07A]" : "bg-[#15202B] text-white hover:bg-[#273849]"}`}
             >
               {slide.action} <span aria-hidden="true">→</span>
             </Button>
