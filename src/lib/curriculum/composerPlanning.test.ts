@@ -38,6 +38,13 @@ function core(overrides: Partial<ComposerCore> & { scenario_id: string }): Compo
     situation_ko: overrides.situation_ko ?? "테스트 상황",
     source_text_ko: overrides.source_text_ko ?? "테스트 원문",
     direction: overrides.direction ?? "ko_zh",
+    context: overrides.context ?? {
+      counterpart: "교수자",
+      power: "speaker_lower",
+      distance: "distant",
+      burden: "mid",
+      channel: "written",
+    },
   };
 }
 

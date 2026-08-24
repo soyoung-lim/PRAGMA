@@ -13,6 +13,12 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Domain, GenMode, LanguageDirection, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
 import { coreDirection } from "@/lib/pragma/coreSchema";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
+import {
+  assertCurrentWeeklyMissionPairShapes,
+  type WeeklyContextAxis,
+  type WeeklyDiagnosticDimension,
+  type WeeklyMissionRole,
+} from "@/lib/curriculum/weeklyMissionPair";
 
 const db = supabase;
 // release_gate_mode는 신규 migration 컬럼이라 생성 타입 갱신 전까지 이 조회만 좁게 우회한다.
@@ -38,6 +44,8 @@ export interface ComposerCore {
   source_text_ko: string;
   /** 언어 방향(0-l·82) — core_content.direction 우선, 없으면 ko_zh(v1 호환). 편성 필터용 */
   direction: LanguageDirection;
+  /** A/B가 실제로 바꾼 축을 저장값과 대조하기 위한 관찰 가능 맥락. */
+  context: Record<WeeklyContextAxis, string | null>;
 }
 
 export interface WeekAssignment {
@@ -45,6 +53,11 @@ export interface WeekAssignment {
   scenario_id: string;
   position: number;
   slot_role: string;
+  /** NULL이면 역사적 편성. 새 A/B 정본은 speech_act_ab_v1. */
+  pair_contract_version?: "speech_act_ab_v1" | null;
+  mission_role?: WeeklyMissionRole | null;
+  changed_context_axes?: WeeklyContextAxis[] | null;
+  diagnostic_dimensions?: WeeklyDiagnosticDimension[] | null;
 }
 
 /**
@@ -61,7 +74,7 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
   const { data, error } = await releaseDb
     .from("scenarios")
     .select(
-      "scenario_id, speech_act, learner_level, domain, mode, theme_code, topic_code, mission_status, release_gate_mode, target_feature, core_content",
+      "scenario_id, speech_act, learner_level, domain, mode, theme_code, topic_code, mission_status, release_gate_mode, target_feature, scenario_p, scenario_d, scenario_r, source_modality, core_content",
     )
     .eq("content_format", "scenario_core_v1")
     .order("created_at", { ascending: false })
@@ -73,6 +86,24 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
       r.core_content && typeof r.core_content === "object" && !Array.isArray(r.core_content)
         ? (r.core_content as Record<string, unknown>)
         : {};
+    const contextSpec =
+      content.context_spec &&
+      typeof content.context_spec === "object" &&
+      !Array.isArray(content.context_spec)
+        ? (content.context_spec as Record<string, unknown>)
+        : {};
+    const rolePair =
+      contextSpec.role_pair &&
+      typeof contextSpec.role_pair === "object" &&
+      !Array.isArray(contextSpec.role_pair)
+        ? (contextSpec.role_pair as Record<string, unknown>)
+        : {};
+    const counterpart =
+      typeof rolePair.addressee_ko === "string"
+        ? rolePair.addressee_ko
+        : typeof rolePair.addressee === "string"
+          ? rolePair.addressee
+          : null;
     return {
       scenario_id: r.scenario_id,
       speech_act: r.speech_act as SpeechActUI,
@@ -92,6 +123,18 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
             ? content.source_text
             : "",
       direction: coreDirection(r.core_content),
+      context: {
+        counterpart,
+        power: typeof r.scenario_p === "string" ? r.scenario_p : null,
+        distance: typeof r.scenario_d === "string" ? r.scenario_d : null,
+        burden: typeof r.scenario_r === "string" ? r.scenario_r : null,
+        channel:
+          typeof content.channel === "string"
+            ? content.channel
+            : typeof r.source_modality === "string"
+              ? r.source_modality
+              : null,
+      },
     };
   });
 }
@@ -100,7 +143,9 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
 export async function listWeekAssignments(outlineId: string): Promise<WeekAssignment[]> {
   const { data, error } = await db
     .from("curriculum_week_scenarios")
-    .select("week_no, scenario_id, position, slot_role")
+    .select(
+      "week_no, scenario_id, position, slot_role, pair_contract_version, mission_role, changed_context_axes, diagnostic_dimensions",
+    )
     .eq("outline_id", outlineId)
     .order("week_no", { ascending: true })
     .order("position", { ascending: true });
@@ -116,6 +161,8 @@ export async function saveWeekAssignments(
   outlineId: string,
   assignments: WeekAssignment[],
 ): Promise<void> {
+  assertCurrentWeeklyMissionPairShapes(assignments);
+
   const { data: existing, error: readError } = await db
     .from("curriculum_week_scenarios")
     .select("id, week_no, scenario_id")
@@ -137,6 +184,10 @@ export async function saveWeekAssignments(
     scenario_id: a.scenario_id,
     position: a.position,
     slot_role: a.slot_role,
+    pair_contract_version: a.pair_contract_version ?? null,
+    mission_role: a.mission_role ?? null,
+    changed_context_axes: a.changed_context_axes ?? [],
+    diagnostic_dimensions: a.diagnostic_dimensions ?? [],
   }));
   const { error: upsertError } = await db
     .from("curriculum_week_scenarios")

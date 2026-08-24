@@ -7,8 +7,13 @@ import type {
   SpeechActUI,
 } from "@/lib/pragma/enums";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
+import {
+  weeklyMissionPairIssues,
+  type WeeklyMissionPairAssignment,
+  type WeeklyMissionPairIssueCode,
+} from "@/lib/curriculum/weeklyMissionPair";
 
-export type AssignedItem = { scenario_id: string; slot_role: string };
+export type AssignedItem = WeeklyMissionPairAssignment & { slot_role: string };
 export type AssignMap = Record<number, AssignedItem[]>;
 type PlanningWeek = Pick<
   CurriculumWeekRow,
@@ -238,7 +243,8 @@ export type AssignmentStructureIssueCode =
   | "missing_week"
   | "non_regular_week"
   | "speech_act"
-  | "too_many_items";
+  | "too_many_items"
+  | WeeklyMissionPairIssueCode;
 
 export interface AssignmentStructureIssue {
   weekNo: number;
@@ -293,6 +299,14 @@ export function assignmentStructureIssues(
       if (week.speech_act && core.speech_act !== week.speech_act) {
         issues.push({ weekNo, scenarioId: item.scenario_id, code: "speech_act" });
       }
+    }
+
+    for (const pairIssue of weeklyMissionPairIssues(items, coreById)) {
+      issues.push({
+        weekNo,
+        scenarioId: pairIssue.scenarioId,
+        code: pairIssue.code,
+      });
     }
   }
 

@@ -307,9 +307,13 @@ export type Database = {
       }
       curriculum_week_scenarios: {
         Row: {
+          changed_context_axes: string[]
           created_at: string
+          diagnostic_dimensions: string[]
           id: string
+          mission_role: string | null
           outline_id: string
+          pair_contract_version: string | null
           position: number
           scenario_id: string
           slot_role: string
@@ -317,9 +321,13 @@ export type Database = {
           week_no: number
         }
         Insert: {
+          changed_context_axes?: string[]
           created_at?: string
+          diagnostic_dimensions?: string[]
           id?: string
+          mission_role?: string | null
           outline_id: string
+          pair_contract_version?: string | null
           position?: number
           scenario_id: string
           slot_role?: string
@@ -327,9 +335,13 @@ export type Database = {
           week_no: number
         }
         Update: {
+          changed_context_axes?: string[]
           created_at?: string
+          diagnostic_dimensions?: string[]
           id?: string
+          mission_role?: string | null
           outline_id?: string
+          pair_contract_version?: string | null
           position?: number
           scenario_id?: string
           slot_role?: string

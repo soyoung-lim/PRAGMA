@@ -365,7 +365,16 @@ const AdminComposer = () => {
     for (const [weekNoStr, items] of Object.entries(assign)) {
       const weekNo = Number(weekNoStr);
       items.forEach((it, i) =>
-        flat.push({ week_no: weekNo, scenario_id: it.scenario_id, position: i, slot_role: it.slot_role }),
+        flat.push({
+          week_no: weekNo,
+          scenario_id: it.scenario_id,
+          position: i,
+          slot_role: it.slot_role,
+          pair_contract_version: it.pair_contract_version ?? null,
+          mission_role: it.mission_role ?? null,
+          changed_context_axes: it.changed_context_axes ?? [],
+          diagnostic_dimensions: it.diagnostic_dimensions ?? [],
+        }),
       );
     }
     const unreviewed = flat.filter((item) => !isReviewedMission(coreById[item.scenario_id]));
@@ -919,7 +928,14 @@ const AdminComposer = () => {
 function assignmentsToMap(rows: WeekAssignment[]): AssignMap {
   const m: AssignMap = {};
   for (const a of rows) {
-    (m[a.week_no] ??= []).push({ scenario_id: a.scenario_id, slot_role: a.slot_role });
+    (m[a.week_no] ??= []).push({
+      scenario_id: a.scenario_id,
+      slot_role: a.slot_role,
+      pair_contract_version: a.pair_contract_version ?? null,
+      mission_role: a.mission_role ?? null,
+      changed_context_axes: a.changed_context_axes ?? [],
+      diagnostic_dimensions: a.diagnostic_dimensions ?? [],
+    });
   }
   return m;
 }

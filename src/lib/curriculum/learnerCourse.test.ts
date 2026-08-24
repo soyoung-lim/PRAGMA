@@ -64,6 +64,13 @@ function core(
     situation_ko: situation,
     source_text_ko: "테스트 원문",
     direction: "ko_zh",
+    context: {
+      counterpart: "교수자",
+      power: "speaker_lower",
+      distance: "distant",
+      burden: "mid",
+      channel: "written",
+    },
   };
 }
 
