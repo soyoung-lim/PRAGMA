@@ -2237,3 +2237,12 @@
 - 검증: 현재 정본과 진입 문서의 MPJ4/MPJ5 표현을 다시 검색하고 Markdown diff whitespace를 점검했다. 코드·스키마·프롬프트·테스트·배포는 변경하지 않았다.
 - 다음 반영: 정본을 기준으로 localhost 장면 도입과 macro progress를 수정·승인한 뒤, MPJ5 운영 스키마·생성기·러너·저장 trace를 동기화한다.
 - 관련 Decision / Trace: `DEC-20260823-02`, `TRC-20260823-01`
+
+## ITER-20260824-01 · 학습자 강좌 CTA의 V4 실데이터 연결
+
+- 시작 문제: 강좌의 현재 미션 CTA가 scenario UUID를 정확히 넘겨도 route가 구 실행기를 렌더해 새 다섯 판단 활동 + DCT 화면과 분리됐다.
+- 변경: UUID route를 V4 loader로 바꾸고 `mission_v2/v4/v5` 어댑터, 화행별 band 라벨, 실제 feedback-lite, 완료 로그 저장을 연결했다. 운영 v4/v5의 복합 `fix_choice`는 A2 판단과 A3 교정으로 분리하되 A2의 실제 응답을 A3에 전달했다.
+- 검증: typecheck, 전체 452 pass·9 skip, 집중 3 pass, production build 1,943 modules와 diff check가 통과했다. localhost:5114 HTTP 200과 인앱 브라우저 장면 도입→A1 이동, 오류 로그 0건을 확인했다. 첫 sandbox Vitest는 격리 worktree의 Windows junction 읽기 제한으로 중단됐으나 동일 명령의 승인된 외부 실행은 통과했다.
+- 범위: commit·push·Railway 배포와 운영 스키마 migration은 하지 않았다. 지원 밖 입력은 구 실행기로 폴백한다.
+- 다음 반영: 사용자가 localhost 강좌 CTA에서 실화면을 확인한 뒤 승인하면 commit·push·배포한다.
+- 관련 Decision: `DEC-20260824-01`

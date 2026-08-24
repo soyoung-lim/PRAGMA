@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import {
   Check,
   ChevronRight,
@@ -22,9 +22,25 @@ import {
   type MissionContext,
   type MissionLessonPoint,
   type MissionQuest,
+  type MissionV4ViewModel,
   type ReasonQuest,
   type ScaleQuest,
 } from "@/lib/mission/missionV4Preview";
+import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
+import {
+  adaptRunnableMissionToV4,
+  UnsupportedMissionV4RuntimeError,
+} from "@/lib/mission/missionV4Runtime";
+import { requestFeedback } from "@/lib/mission/missionFeedback";
+import { saveMissionAttempt, type MpjResponseTrace } from "@/lib/mission/missionLog";
+import { getTargetFeature } from "@/lib/pragma/targetFeatures";
+import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
+import MissionRunV1 from "@/pages/learner/MissionRunV1";
+
+const MissionV4Context = createContext<MissionV4ViewModel>(REQUEST_MISSION_V4_PREVIEW);
+const useMissionV4 = () => useContext(MissionV4Context);
+const RuntimeMissionContext = createContext<RunnableMission | null>(null);
+const useRuntimeMission = () => useContext(RuntimeMissionContext);
 
 type QuestResponse = Record<string, unknown>;
 type FeedbackLevel = "very_good" | "recommend" | "required";
@@ -36,6 +52,8 @@ type FeedbackCriterion = {
   body: string;
 };
 type DctEvaluation = {
+  /** false면 자동 판정이 없으므로 수정 필요 여부를 추론하지 않는다. */
+  available?: boolean;
   criteria: FeedbackCriterion[];
   headline: string;
   body: string;
@@ -54,6 +72,7 @@ type DctResponse = {
   revised: string;
   reflected: boolean;
   evaluation?: DctEvaluation;
+  runtimeFeedback?: RuntimeFeedback;
   dissent?: DissentResponse;
 };
 type DevPreviewPreset = "all_good" | "direct" | "over_mitigated" | "mixed";
@@ -500,7 +519,7 @@ function FeedbackBox({ verdict, feedback, action, highlights = [] }: {
 
 const DISSENT_CONDITIONS = [
   { code: "relationship", label: "관계·친밀도에 대한 다른 판단" },
-  { code: "burden", label: "부탁의 부담 크기에 대한 다른 판단" },
+  { code: "burden", label: "행위의 부담 크기에 대한 다른 판단" },
   { code: "preceding", label: "앞선 대화 흐름을 더 고려함" },
   { code: "experience", label: "실제 사용 경험과 차이가 있음" },
 ] as const;
@@ -600,9 +619,17 @@ function ScaleView({ quest, onDone, devAutofill = false }: { quest: ScaleQuest; 
   );
 }
 
-function FixChoiceView({ quest, onDone, devAutofill = false }: { quest: FixChoiceQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
-  const [judgment, setJudgment] = useState<string | null>(() => devAutofill ? quest.referenceJudgment : null);
-  const [locked, setLocked] = useState(devAutofill);
+function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
+  quest: FixChoiceQuest;
+  responses: Record<string, QuestResponse | DctResponse>;
+  onDone: (response: QuestResponse) => void;
+  devAutofill?: boolean;
+}) {
+  const linkedJudgment = quest.judgmentQuestId
+    ? (responses[quest.judgmentQuestId] as QuestResponse | undefined)?.pick as string | undefined
+    : undefined;
+  const [judgment, setJudgment] = useState<string | null>(() => linkedJudgment ?? (devAutofill ? quest.referenceJudgment : null));
+  const [locked, setLocked] = useState(Boolean(linkedJudgment) || devAutofill);
   const [corrections, setCorrections] = useState<Set<string>>(() => devAutofill
     ? new Set(quest.corrections.filter((option) => option.valid).map((option) => option.id))
     : new Set()
@@ -701,6 +728,7 @@ function FixChoiceView({ quest, onDone, devAutofill = false }: { quest: FixChoic
 }
 
 export function ReasonView({ quest, onDone, devAutofill = false }: { quest: ReasonQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
+  const acceptedReasonIds = quest.acceptedReasonIds ?? [quest.acceptedReasonId];
   const [judgment, setJudgment] = useState<string | null>(() => devAutofill ? quest.referenceJudgment : null);
   const [locked, setLocked] = useState(devAutofill);
   const [reasonId, setReasonId] = useState<string | null>(() => devAutofill ? quest.acceptedReasonId : null);
@@ -708,8 +736,8 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
   const reasonOrder = useMemo(() => shuffle(quest.reasons), [quest.reasons]);
   const referenceLabel = quest.judgmentOptions.find((option) => option.id === quest.referenceJudgment)?.label;
   const selectedReason = quest.reasons.find((reason) => reason.id === reasonId);
-  const acceptedReason = quest.reasons.find((reason) => reason.id === quest.acceptedReasonId);
-  const reasonAccepted = reasonId === quest.acceptedReasonId;
+  const acceptedReason = quest.reasons.find((reason) => acceptedReasonIds.includes(reason.id));
+  const reasonAccepted = reasonId ? acceptedReasonIds.includes(reasonId) : false;
   return (
     <QuestScaffold quest={quest} target={quest.target} targetHighlights={answered ? quest.targetHighlights : undefined}>
       <section className={`${taskPanel} px-4 py-3.5 sm:px-5 sm:py-4`}>
@@ -731,7 +759,7 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
                   value={reasonId}
                   disabled={answered}
                   answered={answered}
-                  acceptedIds={[quest.acceptedReasonId]}
+                  acceptedIds={acceptedReasonIds}
                   radio
                   onSelect={setReasonId}
                 />
@@ -772,6 +800,8 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
 }
 
 function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWorstQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
+  const acceptedBestIds = quest.acceptedBestIds ?? [quest.bestId];
+  const acceptedWorstIds = quest.acceptedWorstIds ?? [quest.worstId];
   const [best, setBest] = useState<string | null>(() => devAutofill ? quest.bestId : null);
   const [worst, setWorst] = useState<string | null>(() => devAutofill ? quest.worstId : null);
   const [answered, setAnswered] = useState(false);
@@ -794,10 +824,16 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
           {order.map((candidate) => {
             const bestPicked = best === candidate.id;
             const worstPicked = worst === candidate.id;
-            const role = candidate.id === quest.bestId ? "BEST" : candidate.id === quest.worstId ? "WORST" : "가능한 표현";
-            const answeredStyle = role === "BEST"
+            const role = acceptedBestIds.includes(candidate.id)
+              ? (quest.acceptedBestIds ? "BEST 후보" : "BEST")
+              : acceptedWorstIds.includes(candidate.id)
+                ? (quest.acceptedWorstIds ? "WORST 후보" : "WORST")
+                : "가능한 표현";
+            const isBestRole = acceptedBestIds.includes(candidate.id);
+            const isWorstRole = acceptedWorstIds.includes(candidate.id);
+            const answeredStyle = isBestRole
               ? "border-[#4D8568] bg-[#EEF7F2]"
-              : role === "WORST"
+              : isWorstRole
                 ? "border-[#B96B67] bg-[#FFF1EF]"
                 : "border-[#D8D4C8] bg-[#FAF9F6]";
             return (
@@ -809,7 +845,7 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
                       <p className="mt-2 break-keep text-sm leading-6 text-[#536075]">{candidate.note}</p>
                     </div>
                     <div className="flex flex-nowrap gap-1.5 whitespace-nowrap sm:justify-end">
-                      <span className={`rounded px-2 py-1 text-[11px] font-black ${role === "BEST" ? "bg-[#DCEFE4] text-[#245E44]" : role === "WORST" ? "bg-[#F4D8D5] text-[#8B3531]" : "bg-[#EEECE6]"}`}>{role}</span>
+                      <span className={`rounded px-2 py-1 text-[11px] font-black ${isBestRole ? "bg-[#DCEFE4] text-[#245E44]" : isWorstRole ? "bg-[#F4D8D5] text-[#8B3531]" : "bg-[#EEECE6]"}`}>{role}</span>
                       {bestPicked && <span className="rounded bg-[#15202B] px-2 py-1 text-[11px] font-black text-white">내 BEST</span>}
                       {worstPicked && <span className="rounded bg-[#15202B] px-2 py-1 text-[11px] font-black text-white">내 WORST</span>}
                     </div>
@@ -850,7 +886,7 @@ function isOverMitigated(text: string) {
 }
 
 function VocabularyHints({ quest }: { quest: DctQuest }) {
-  const supportLevel = REQUEST_MISSION_V4_PREVIEW.supportLevel;
+  const supportLevel = useMissionV4().supportLevel;
   if (supportLevel === "advanced" || quest.vocabularyHints.length === 0) return null;
   const chips = (
     <div className="flex flex-wrap gap-2">
@@ -1035,6 +1071,103 @@ function evaluateDct(quest: DctFeedbackQuest, text: string): DctEvaluation {
   };
 }
 
+function feedbackLevel(ok: boolean, warning = false): FeedbackLevel {
+  return ok ? "very_good" : warning ? "recommend" : "required";
+}
+
+function evaluationFromRuntimeFeedback(
+  runtime: RunnableMission,
+  quest: DctFeedbackQuest,
+  feedback: RuntimeFeedback,
+): DctEvaluation {
+  const feature = getTargetFeature(runtime.mission.unit.target_feature);
+  const pragmaticOk = Boolean(
+    feature && feedback.verdicts.pragmatic_appropriateness.band_code === feature.within_band_code,
+  );
+  const meaningLevel = feedback.verdicts.semantic_fidelity === "preserved"
+    ? "very_good"
+    : feedback.verdicts.semantic_fidelity === "minor_loss"
+      ? "recommend"
+      : "required";
+  const grammarLevel = feedbackLevel(feedback.verdicts.grammatical_accuracy === "clean");
+  const pragmaticLevel = feedbackLevel(pragmaticOk, true);
+  const grammarNote = feedback.blocks.grammar[0];
+  const criteria: FeedbackCriterion[] = [
+    {
+      key: "meaning",
+      label: "의미 전달",
+      question: "뜻이 제대로 전달됐나요?",
+      level: meaningLevel,
+      body: feedback.blocks.meaning_ko || (meaningLevel === "very_good"
+        ? "원문의 핵심 의미가 유지되었습니다."
+        : "원문에서 빠지거나 달라진 의미를 다시 확인해 주세요."),
+    },
+    {
+      key: "language",
+      label: "문법 정확성",
+      question: "중국어 표현이 자연스러운가요?",
+      level: grammarLevel,
+      body: grammarNote?.explanation_ko || (grammarLevel === "very_good"
+        ? "의미 이해를 막는 문법 문제는 확인되지 않았습니다."
+        : "이해를 방해하는 표현을 다시 확인해 주세요."),
+    },
+    {
+      key: "pragmatics",
+      label: "화용 적절성",
+      question: "이 관계와 상황에 잘 맞나요?",
+      level: pragmaticLevel,
+      body: feedback.blocks.feature_ko || (pragmaticOk
+        ? "이번 화용 초점의 적정 범위에 들어갑니다."
+        : "관계와 상황에 맞게 표현의 정도를 다시 조절해 보세요."),
+    },
+  ];
+  const primary = primaryFeedbackCriterion(criteria);
+  const allGood = criteria.every((criterion) => criterion.level === "very_good");
+  const action = feedback.revision_scope === "grammar"
+    ? grammarNote?.suggested_correction
+    : feedback.revision_scope === "feature"
+      ? feedback.blocks.feature_ko
+      : feedback.revision_scope === "meaning"
+        ? feedback.blocks.meaning_ko
+        : undefined;
+  return {
+    criteria,
+    headline: allGood ? "아주 좋습니다. 이 번역으로 충분합니다." : "피드백을 확인하고 한 번 다듬어 보세요.",
+    body: primary.body,
+    highlights: grammarNote?.anchor_text ? [grammarNote.anchor_text] : [],
+    feedback: primary.body,
+    action,
+    example: feedback.blocks.alternatives[0]?.text ?? quest.referenceAnswer,
+    takeaway: runtime.mission.unit.closing_ko,
+  };
+}
+
+function unavailableRuntimeEvaluation(quest: DctFeedbackQuest, message: string): DctEvaluation {
+  const body = `자동 피드백을 불러오지 못했습니다. 참고 표현과 원문을 비교해 직접 다듬어 주세요. (${message})`;
+  return {
+    available: false,
+    criteria: [
+      { key: "meaning", label: "의미 전달", question: "뜻이 제대로 전달됐나요?", level: "recommend", body },
+      { key: "language", label: "문법 정확성", question: "중국어 표현이 자연스러운가요?", level: "recommend", body },
+      { key: "pragmatics", label: "화용 적절성", question: "이 관계와 상황에 잘 맞나요?", level: "recommend", body },
+    ],
+    headline: "자동 피드백을 불러오지 못했습니다.",
+    body,
+    highlights: [],
+    feedback: body,
+    action: "참고 표현을 복사하지 말고, 내 번역에서 한 곳을 직접 점검해 보세요.",
+    example: quest.referenceAnswer,
+    takeaway: "판정이 불가능했던 수행은 점수로 해석하지 않습니다.",
+  };
+}
+
+export function feedbackNeedsRevision(
+  evaluation: Pick<DctEvaluation, "available" | "criteria">,
+): boolean {
+  return evaluation.available !== false
+    && evaluation.criteria.some((criterion) => criterion.level !== "very_good");
+}
+
 const DEV_PREVIEW_COPY: Record<DevPreviewPreset, { label: string; a: string }> = {
   all_good: {
     label: "수정 없이 확정",
@@ -1194,17 +1327,36 @@ function DctFeedbackView({ quest, response, onDone, onRevisionStateChange, devMo
   devMode?: boolean;
   devAutofill?: boolean;
 }) {
+  const runtime = useRuntimeMission();
   const first = response?.first ?? "";
   const [ready, setReady] = useState(false);
+  const previewEvaluation = useMemo(() => evaluateDct(quest, first), [first, quest]);
+  const [evaluation, setEvaluation] = useState<DctEvaluation>(previewEvaluation);
+  const [runtimeFeedback, setRuntimeFeedback] = useState<RuntimeFeedback | undefined>(response?.runtimeFeedback);
   const [revised, setRevised] = useState(() => devAutofill ? quest.referenceAnswer : first);
   const [revisionOpen, setRevisionOpen] = useState(devAutofill);
   const [dissent, setDissent] = useState<DissentResponse | undefined>(response?.dissent);
   const revisionRef = useRef<HTMLElement>(null);
-  const evaluation = useMemo(() => evaluateDct(quest, first), [first, quest]);
   useEffect(() => {
+    let cancelled = false;
+    setReady(false);
+    if (runtime) {
+      void requestFeedback(runtime.mission, first).then((result) => {
+        if (cancelled) return;
+        if (result.ok && result.feedback) {
+          setRuntimeFeedback(result.feedback);
+          setEvaluation(evaluationFromRuntimeFeedback(runtime, quest, result.feedback));
+        } else {
+          setRuntimeFeedback(undefined);
+          setEvaluation(unavailableRuntimeEvaluation(quest, result.error ?? "알 수 없는 오류"));
+        }
+        setReady(true);
+      });
+      return () => { cancelled = true; };
+    }
     const timer = window.setTimeout(() => setReady(true), 1250);
     return () => window.clearTimeout(timer);
-  }, [quest.id]);
+  }, [first, previewEvaluation, quest, runtime]);
   useEffect(() => {
     if (!revisionOpen) return;
     const timer = window.setTimeout(() => revisionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
@@ -1214,22 +1366,27 @@ function DctFeedbackView({ quest, response, onDone, onRevisionStateChange, devMo
     onRevisionStateChange?.(revisionOpen);
   }, [onRevisionStateChange, revisionOpen]);
   const reflected = normalize(first) !== normalize(revised);
-  const needsChange = evaluation.criteria.some((criterion) => criterion.level !== "very_good");
+  const feedbackUnavailable = evaluation.available === false;
+  const needsChange = feedbackNeedsRevision(evaluation);
   const primaryCriterion = primaryFeedbackCriterion(evaluation.criteria);
   const stableCount = evaluation.criteria.filter((criterion) => criterion.level === "very_good").length;
   const recommendCount = evaluation.criteria.filter((criterion) => criterion.level === "recommend").length;
   const requiredCount = evaluation.criteria.filter((criterion) => criterion.level === "required").length;
-  const overallHeadline = requiredCount > 0
-    ? "다시 살펴봐야 합니다."
-    : recommendCount > 0
-      ? "한 가지만 고치면 됩니다."
-      : "이대로 확정해도 좋습니다.";
-  const overallBadge = requiredCount > 0
-    ? `${requiredCount}개 수정 필요${recommendCount > 0 ? ` · ${recommendCount}개 보완` : ""}`
-    : recommendCount > 0
-      ? `${stableCount}개 안정 · ${recommendCount}개 보완`
-      : "세 기준 안정";
-  const overallBody = needsChange
+  const overallHeadline = feedbackUnavailable
+    ? "자동 피드백을 확인하지 못했습니다."
+    : requiredCount > 0
+      ? "다시 살펴봐야 합니다."
+      : recommendCount > 0
+        ? "한 가지만 고치면 됩니다."
+        : "이대로 확정해도 좋습니다.";
+  const overallBadge = feedbackUnavailable
+    ? "판정 보류"
+    : requiredCount > 0
+      ? `${requiredCount}개 수정 필요${recommendCount > 0 ? ` · ${recommendCount}개 보완` : ""}`
+      : recommendCount > 0
+        ? `${stableCount}개 안정 · ${recommendCount}개 보완`
+        : "세 기준 안정";
+  const overallBody = feedbackUnavailable || needsChange
     ? evaluation.feedback
     : "원문의 의미와 의도를 유지하면서, 관계와 상황에도 맞는 표현을 사용했습니다.";
   const revisionValidation = validateDraft(revised);
@@ -1252,8 +1409,8 @@ function DctFeedbackView({ quest, response, onDone, onRevisionStateChange, devMo
       <StudentAnswerCard text={first} highlights={ready ? evaluation.highlights : []} />
       {!ready ? <FeedbackLoading /> : (
         <>
-          <section className={`${panel} overflow-hidden border ${needsChange ? "border-[#E0CB72]" : "border-[#B8D4C2]"}`}>
-            <div className={`p-5 sm:p-6 ${needsChange ? "bg-[#FFFCF0]" : "bg-[#F7FBF8]"}`}>
+          <section className={`${panel} overflow-hidden border ${feedbackUnavailable || needsChange ? "border-[#E0CB72]" : "border-[#B8D4C2]"}`}>
+            <div className={`p-5 sm:p-6 ${feedbackUnavailable || needsChange ? "bg-[#FFFCF0]" : "bg-[#F7FBF8]"}`}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 items-start gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F0D44F] text-[#15202B]"><Sparkles className="h-5 w-5" /></span>
@@ -1262,7 +1419,7 @@ function DctFeedbackView({ quest, response, onDone, onRevisionStateChange, devMo
                     <h2 className="mt-1 text-lg font-black leading-7">{overallHeadline}</h2>
                   </div>
                 </div>
-                <span className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black ${needsChange ? FEEDBACK_LEVEL_STYLE[primaryCriterion.level] : FEEDBACK_LEVEL_STYLE.very_good}`}>{overallBadge}</span>
+                <span className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black ${feedbackUnavailable ? "bg-[#EEECE6] text-[#596579]" : needsChange ? FEEDBACK_LEVEL_STYLE[primaryCriterion.level] : FEEDBACK_LEVEL_STYLE.very_good}`}>{overallBadge}</span>
               </div>
               <p className="mt-4 text-sm leading-6 text-[#4F5B6E]">{overallBody}</p>
             </div>
@@ -1319,7 +1476,7 @@ function DctFeedbackView({ quest, response, onDone, onRevisionStateChange, devMo
                 <div className="mt-3"><DctContextReview quest={quest} first={first} /></div>
               </section>
               <ActionBar hint={actionHint}>
-                <Button className={`h-12 ${actionButton}`} disabled={!canConfirm} onClick={() => onDone({ first, revised: revised.trim(), reflected, evaluation, dissent })}>{reflected ? "수정안 확정하기" : needsChange ? "피드백을 반영해 수정해 주세요" : "이 번역으로 확정하기"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                <Button className={`h-12 ${actionButton}`} disabled={!canConfirm} onClick={() => onDone({ first, revised: revised.trim(), reflected, evaluation, runtimeFeedback, dissent })}>{reflected ? "수정안 확정하기" : needsChange ? "피드백을 반영해 수정해 주세요" : "이 번역으로 확정하기"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
               </ActionBar>
             </>
           ) : (
@@ -1328,7 +1485,7 @@ function DctFeedbackView({ quest, response, onDone, onRevisionStateChange, devMo
                 <Button className="h-12 w-full" onClick={() => setRevisionOpen(true)}>한 번 다듬어보기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
               ) : (
                 <div className="grid gap-2">
-                  <Button className="h-12 w-full" onClick={() => onDone({ first, revised: first.trim(), reflected: false, evaluation, dissent })}>이 번역으로 확정하기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                  <Button className="h-12 w-full" onClick={() => onDone({ first, revised: first.trim(), reflected: false, evaluation, runtimeFeedback, dissent })}>이 번역으로 확정하기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
                   <Button variant="outline" className="h-11 w-full" onClick={() => setRevisionOpen(true)}>다른 표현도 시도해보기</Button>
                 </div>
               )}
@@ -1346,13 +1503,14 @@ function QuestScaffold({ quest, target, targetHighlights, children }: {
   targetHighlights?: string[];
   children: React.ReactNode;
 }) {
+  const mission = useMissionV4();
   return (
     <div className={quest.id === "A1" ? "space-y-2.5" : "space-y-3"}>
       {quest.id === "A1" && (
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-1">
-          <h1 className="text-lg font-black tracking-[-0.02em] text-[#15202B]">상황에 맞게 부탁하기</h1>
+          <h1 className="text-lg font-black tracking-[-0.02em] text-[#15202B]">상황에 맞는 표현 판단하기</h1>
           <p className="text-xs font-bold text-[#776727]">
-            {REQUEST_MISSION_V4_PREVIEW.weekNo}주차 · {REQUEST_MISSION_V4_PREVIEW.speechAct}
+            {mission.metaLabel ?? `${mission.weekNo}주차`} · {mission.speechAct}
           </p>
         </div>
       )}
@@ -1396,7 +1554,7 @@ function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = f
   sceneIntroConfig?: SceneIntroConfig;
   mpjRecapOpen?: boolean;
 }) {
-  const quests = REQUEST_MISSION_V4_PREVIEW.quests;
+  const quests = useMissionV4().quests;
   const macroIndex = macroProgressIndex(activeIndex, completed, revisionOpen, sceneIntroStep);
   const detail = completed
     ? { phase: "미션 완료", activity: "내 번역 돌아보기" }
@@ -1454,7 +1612,7 @@ function QuestRenderer({ quest, responses, onDone, onRevisionStateChange, devMod
   devDraft?: string;
 }) {
   if (quest.kind === "scale") return <ScaleView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
-  if (quest.kind === "fix_choice") return <FixChoiceView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
+  if (quest.kind === "fix_choice") return <FixChoiceView quest={quest} responses={responses} onDone={onDone} devAutofill={devAutofill} />;
   if (quest.kind === "reason") return <ReasonView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
   if (quest.kind === "best_worst") return <BestWorstView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
   if (quest.kind === "dct_feedback") return <DctFeedbackView quest={quest} response={responses[quest.dctId] as DctResponse | undefined} onDone={onDone} onRevisionStateChange={onRevisionStateChange} devMode={devMode} devAutofill={devAutofill} />;
@@ -1645,7 +1803,11 @@ function DissentSummary({ dissent }: { dissent?: DissentResponse }) {
   );
 }
 
-export function CompletionActions({ onRestart }: { onRestart: () => void }) {
+export function CompletionActions({ onRestart, runtime = false, saveState = "idle" }: {
+  onRestart: () => void;
+  runtime?: boolean;
+  saveState?: "idle" | "saving" | "saved" | "error";
+}) {
   return (
     <section className={`${panel} p-4 sm:p-5`}>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -1657,20 +1819,35 @@ export function CompletionActions({ onRestart }: { onRestart: () => void }) {
         </Link>
         <Button variant="outline" className="h-12 w-full" onClick={onRestart}><RotateCcw className="mr-2 h-4 w-4" />처음부터 다시 보기</Button>
       </div>
-      <p className="mt-3 break-keep text-[11px] leading-5 text-[#6A7485]">현재 V4는 학습 흐름 미리보기입니다. 이 화면의 답안과 의견은 DB에 저장되지 않습니다.</p>
+      <p className="mt-3 break-keep text-[11px] leading-5 text-[#6A7485]">
+        {runtime
+          ? saveState === "saving"
+            ? "학습 기록을 저장하고 있습니다."
+            : saveState === "saved"
+              ? "학습 기록에 저장되었습니다."
+              : saveState === "error"
+                ? "화면은 완료됐지만 학습 기록 저장에 실패했습니다. 다시 시도하려면 미션을 다시 완료해 주세요."
+                : "학습 기록 저장을 준비하고 있습니다."
+          : "현재 V4는 학습 흐름 미리보기입니다. 이 화면의 답안과 의견은 DB에 저장되지 않습니다."}
+      </p>
     </section>
   );
 }
 
 function SessionPatternSummary({ responses }: { responses: Array<DctResponse | undefined> }) {
+  const mission = useMissionV4();
   const evaluations = responses
-    .filter((response): response is DctResponse => Boolean(response?.evaluation && isMeaningfulDraft(response.first)))
+    .filter((response): response is DctResponse => Boolean(
+      response?.evaluation
+      && response.evaluation.available !== false
+      && isMeaningfulDraft(response.first),
+    ))
     .map((response) => response.evaluation as DctEvaluation);
   if (evaluations.length === 0) return null;
   const observations = [
-    { key: "meaning", label: "의미 전달", good: "핵심 의미를 빠뜨리지 않은 답안", next: "원문의 요청과 조건을 빠뜨리지 않았는지 확인해 보세요." },
+    { key: "meaning", label: "의미 전달", good: "핵심 의미를 빠뜨리지 않은 답안", next: "원문의 핵심 의미와 조건을 빠뜨리지 않았는지 확인해 보세요." },
     { key: "language", label: "문법 정확성", good: "문법상 큰 문제가 없었던 답안", next: "중국어 문장이 완결되었는지 다시 읽어 보세요." },
-    { key: "pragmatics", label: "화용 적절성", good: "관계와 상황에 맞는 표현을 사용한 답안", next: "요청의 부담에 맞게 표현의 무게를 조절했는지 확인해 보세요." },
+    { key: "pragmatics", label: "화용 적절성", good: "관계와 상황에 맞는 표현을 사용한 답안", next: `${mission.speechAct}의 상황과 부담에 맞게 표현의 무게를 조절했는지 확인해 보세요.` },
   ] as const;
   return (
     <section className={`${panel} p-5 sm:p-6`}>
@@ -1754,11 +1931,85 @@ function DevPreviewToolbar({
   );
 }
 
-const MissionRunV4 = () => {
-  const mission = REQUEST_MISSION_V4_PREVIEW;
+function selectedIndex(value: unknown, prefix: string): number | undefined {
+  if (typeof value !== "string" || !value.startsWith(prefix)) return undefined;
+  const index = Number(value.slice(prefix.length));
+  return Number.isInteger(index) && index >= 0 ? index : undefined;
+}
+
+function buildRuntimeMpjTraces(
+  runtime: RunnableMission,
+  responses: Record<string, QuestResponse | DctResponse>,
+): MpjResponseTrace[] {
+  const completedAt = new Date().toISOString();
+  const items = runtime.mission.mpj_items as unknown as Array<{
+    id?: number;
+    type: string;
+    reasons?: Array<{ id: string; kind?: "primary" | "pragmatic_misconception" | "meaning_grammar_context" }>;
+  }>;
+  const response = (id: string) => responses[id] as QuestResponse | undefined;
+  const corrections = (id: string) => ((response(id)?.correctionIds as string[] | undefined) ?? [])
+    .map((value) => selectedIndex(value, `${id}-`))
+    .filter((value): value is number => value !== undefined);
+  const bestWorst = (id: string) => ({
+    best_candidate_index: selectedIndex(response(id)?.best, `${id}-`),
+    worst_candidate_index: selectedIndex(response(id)?.worst, `${id}-`),
+  });
+  const reasonTrace = (itemIndex: number, responseId: string) => {
+    const reasonId = response(responseId)?.reasonId as string | undefined;
+    return {
+      reason_id: reasonId,
+      reason_kind: items[itemIndex]?.reasons?.find((item) => item.id === reasonId)?.kind,
+    };
+  };
+  const trace = (
+    itemIndex: number,
+    values: Omit<MpjResponseTrace, "item_id" | "item_type" | "completed_at">,
+  ): MpjResponseTrace => ({
+    item_id: items[itemIndex]?.id ?? itemIndex + 1,
+    item_type: items[itemIndex]?.type ?? "unknown",
+    completed_at: completedAt,
+    ...values,
+  });
+
+  if (runtime.mission.schema_version === "mission_v2") {
+    return [
+      trace(0, { scale_code: response("A1")?.pick as string | undefined }),
+      trace(1, { band_code: response("A2")?.pick as string | undefined }),
+      trace(2, {
+        band_code: response("A3")?.judgment as string | undefined,
+        correction_indexes: corrections("A3"),
+      }),
+      trace(3, {
+        band_code: response("A4")?.judgment as string | undefined,
+        reason_ids: [response("A4")?.reasonId as string].filter(Boolean),
+      }),
+      trace(4, bestWorst("A5")),
+    ];
+  }
+
+  return [
+    trace(0, { scale_code: response("A1")?.pick as string | undefined }),
+    trace(1, {
+      band_code: response("A2")?.pick as string | undefined,
+      correction_indexes: corrections("A3"),
+    }),
+    trace(2, {
+      band_code: response("A4")?.judgment as string | undefined,
+      ...reasonTrace(2, "A4"),
+    }),
+    trace(3, bestWorst("A5")),
+  ];
+}
+
+export function MissionRunV4Runner({ mission, runtime, isDevPreview }: {
+  mission: MissionV4ViewModel;
+  runtime?: RunnableMission;
+  isDevPreview: boolean;
+}) {
   const requestedMission = new URLSearchParams(window.location.search).get("mission")?.toUpperCase();
-  const sceneIntroConfig = import.meta.env.DEV && requestedMission === "B" ? MISSION_B_SCENE_INTRO : MISSION_A_SCENE_INTRO;
-  const [sceneIntroStep, setSceneIntroStep] = useState<number | null>(0);
+  const sceneIntroConfig = isDevPreview && requestedMission === "B" ? MISSION_B_SCENE_INTRO : MISSION_A_SCENE_INTRO;
+  const [sceneIntroStep, setSceneIntroStep] = useState<number | null>(() => mission.scenarioId ? null : 0);
   const [questIndex, setQuestIndex] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
@@ -1768,8 +2019,9 @@ const MissionRunV4 = () => {
   const [feedbackRevisionOpen, setFeedbackRevisionOpen] = useState(false);
   const [mpjRecapOpen, setMpjRecapOpen] = useState(false);
   const [renderNonce, setRenderNonce] = useState(0);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const startedAtRef = useRef(new Date().toISOString());
   const quest = mission.quests[questIndex];
-  const isDevPreview = import.meta.env.DEV;
 
   const updateDevPreviewUrl = (step?: string, preset = devPreset) => {
     const url = new URL(window.location.href);
@@ -1858,13 +2110,41 @@ const MissionRunV4 = () => {
   };
 
   const finishQuest = (response: QuestResponse | DctResponse) => {
-    setResponses((current) => quest.kind === "dct_feedback"
-      ? { ...current, [quest.id]: response, [quest.dctId]: response }
-      : { ...current, [quest.id]: response }
-    );
+    const nextResponses = quest.kind === "dct_feedback"
+      ? { ...responses, [quest.id]: response, [quest.dctId]: response }
+      : { ...responses, [quest.id]: response };
+    setResponses(nextResponses);
     if (questIndex === mission.quests.length - 1) {
       setCompleted(true);
       setFeedbackRevisionOpen(false);
+      if (runtime && quest.kind === "dct_feedback") {
+        const finalResponse = response as DctResponse;
+        setSaveState("saving");
+        void saveMissionAttempt({
+          mission: runtime.mission,
+          scenarioId: runtime.scenario_id,
+          speechAct: runtime.speech_act,
+          level: runtime.learner_level,
+          firstResponse: finalResponse.first,
+          revisedResponse: finalResponse.revised,
+          ...(finalResponse.runtimeFeedback ? { feedback: finalResponse.runtimeFeedback } : {}),
+          startedAtIso: startedAtRef.current,
+          mpjResponses: buildRuntimeMpjTraces(runtime, nextResponses),
+          ...(finalResponse.dissent
+            ? {
+                contextJudgment: {
+                  kind: "learner_dissent" as const,
+                  at: "feedback" as const,
+                  conditions: finalResponse.dissent.conditions,
+                  reason_ko: finalResponse.dissent.reason,
+                  created_at: new Date().toISOString(),
+                },
+              }
+            : {}),
+        })
+          .then((result) => setSaveState(result.ok ? "saved" : "error"))
+          .catch(() => setSaveState("error"));
+      }
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
@@ -1880,7 +2160,7 @@ const MissionRunV4 = () => {
   };
 
   const restart = () => {
-    setSceneIntroStep(0);
+    setSceneIntroStep(mission.scenarioId ? null : 0);
     setMpjRecapOpen(false);
     setQuestIndex(0);
     setCompleted(false);
@@ -1888,6 +2168,8 @@ const MissionRunV4 = () => {
     setResponses({});
     setDevAutofillQuestId(null);
     setFeedbackRevisionOpen(false);
+    setSaveState("idle");
+    startedAtRef.current = new Date().toISOString();
     setRenderNonce((current) => current + 1);
     if (isDevPreview) updateDevPreviewUrl(undefined);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1901,7 +2183,8 @@ const MissionRunV4 = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const aDct = responses["A-DCT"] as DctResponse | undefined;
+  const primaryDct = mission.quests.find((item): item is DctQuest => item.kind === "dct");
+  const aDct = primaryDct ? responses[primaryDct.id] as DctResponse | undefined : undefined;
   const reviewedQuest = reviewIndex === null ? undefined : mission.quests[reviewIndex];
   const reviewedResponse = reviewedQuest ? responses[reviewedQuest.id] : undefined;
   const currentProgressIndex = completed ? mission.quests.length : questIndex;
@@ -1918,7 +2201,9 @@ const MissionRunV4 = () => {
   };
 
   return (
-    <LearnerJourneyShell missionLayout headerRight={<span className="hidden text-xs font-semibold text-white/75 sm:block">요청 표현 · {mission.direction}</span>}>
+    <RuntimeMissionContext.Provider value={runtime ?? null}>
+    <MissionV4Context.Provider value={mission}>
+    <LearnerJourneyShell missionLayout headerRight={<span className="hidden text-xs font-semibold text-white/75 sm:block">{mission.speechAct} 표현 · {mission.direction}</span>}>
       {isDevPreview && (
         <DevPreviewToolbar
           sceneIntroConfig={sceneIntroConfig}
@@ -1967,11 +2252,11 @@ const MissionRunV4 = () => {
               <h1 className="mt-2 text-2xl font-black">이번 미션에서 완성한 내 번역</h1>
             </section>
             <div className="space-y-4">
-              <CompletionRecord label="번역 실습 · 면접 일정 조정" response={aDct} />
+              <CompletionRecord label={primaryDct?.title ?? "번역 실습"} response={aDct} />
             </div>
             <DissentSummary dissent={aDct?.dissent} />
             <SessionPatternSummary responses={[aDct]} />
-            <CompletionActions onRestart={restart} />
+            <CompletionActions onRestart={restart} runtime={Boolean(runtime)} saveState={saveState} />
           </div>
         ) : (
           <div className="space-y-5">
@@ -1990,6 +2275,86 @@ const MissionRunV4 = () => {
         )}
       </div>
     </LearnerJourneyShell>
+    </MissionV4Context.Provider>
+    </RuntimeMissionContext.Provider>
+  );
+}
+
+const MissionRunV4 = () => {
+  const { scenarioId } = useParams<{ scenarioId: string }>();
+  const [runtimeMission, setRuntimeMission] = useState<MissionV4ViewModel | null>(null);
+  const [runtimeRunnable, setRuntimeRunnable] = useState<RunnableMission | null>(null);
+  const [fallbackToLegacy, setFallbackToLegacy] = useState(false);
+  const [loading, setLoading] = useState(Boolean(scenarioId));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!scenarioId) {
+      setRuntimeMission(null);
+      setRuntimeRunnable(null);
+      setFallbackToLegacy(false);
+      setLoading(false);
+      setError(null);
+      return () => { cancelled = true; };
+    }
+
+    setLoading(true);
+    setError(null);
+    setFallbackToLegacy(false);
+    void fetchMissionByScenario(scenarioId)
+      .then((runnable) => {
+        if (cancelled) return;
+        setRuntimeMission(adaptRunnableMissionToV4(runnable));
+        setRuntimeRunnable(runnable);
+      })
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        if (reason instanceof UnsupportedMissionV4RuntimeError) {
+          setFallbackToLegacy(true);
+          return;
+        }
+        setError(reason instanceof Error ? reason.message : "미션을 불러오지 못했습니다.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [scenarioId]);
+
+  if (scenarioId && fallbackToLegacy) return <MissionRunV1 />;
+
+  if (loading) {
+    return (
+      <LearnerJourneyShell missionLayout>
+        <div className="mx-auto flex max-w-3xl items-center justify-center gap-3 rounded-2xl border border-[#DED9CD] bg-white px-6 py-12 text-sm font-bold text-[#5B6678]">
+          <LoaderCircle className="h-5 w-5 animate-spin" /> 실제 미션을 불러오고 있습니다.
+        </div>
+      </LearnerJourneyShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <LearnerJourneyShell missionLayout>
+        <section className="mx-auto max-w-3xl rounded-2xl border border-[#E5C8C2] bg-white px-6 py-8">
+          <p className="text-xs font-black text-[#A44736]">미션을 열지 못했습니다</p>
+          <p className="mt-2 text-sm leading-6 text-[#5B6678]">{error}</p>
+          <Button asChild className="mt-5"><Link to="/learner">학습 홈으로 돌아가기</Link></Button>
+        </section>
+      </LearnerJourneyShell>
+    );
+  }
+
+  const mission = runtimeMission ?? REQUEST_MISSION_V4_PREVIEW;
+  return (
+    <MissionRunV4Runner
+      key={mission.scenarioId ?? "preview"}
+      mission={mission}
+      runtime={runtimeRunnable ?? undefined}
+      isDevPreview={import.meta.env.DEV && !scenarioId}
+    />
   );
 };
 

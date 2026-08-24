@@ -172,12 +172,14 @@ const App = () => (
           <Route path="/entry/task-mode" element={<RequireApproved><EntryTaskMode /></RequireApproved>} />
           <Route path="/entry/language-direction" element={<RequireApproved><EntryLanguageDirection /></RequireApproved>} />
           <Route path="/entry/unavailable" element={<RequireApproved><EntryUnavailable /></RequireApproved>} />
-          {/* 현행 7단계 학습 미션. scenarioId가 있는 기존 저장 미션은 V1 호환 렌더러를 유지한다. */}
+          {/* 현행 다섯 판단 활동 + DCT 학습 미션. */}
           <Route
             path="/learner/practice"
             element={<RequireApproved allowDevMissionPreview><MissionRunV4 /></RequireApproved>}
           />
-          <Route path="/learner/practice/:scenarioId" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
+          {/* 실제 CTA는 MPJ5 mission_v1/v2와 과도기 mission_v4/v5를 모두
+              V4의 다섯 판단 활동 + DCT 흐름으로 연결한다. 미지원 스키마만 기존 실행기로 폴백한다. */}
+          <Route path="/learner/practice/:scenarioId" element={<RequireApproved><MissionRunV4 /></RequireApproved>} />
           {/* 구 학습 미션 경로 — 새 정본으로 리다이렉트(구 PracticeMission 목업 은퇴) */}
           <Route path="/scenario" element={<Navigate to="/learner/practice" replace />} />
           {/* legacy 별칭(옛 북마크 호환) — UI 네비게이션은 전부 /learner/practice 사용 */}

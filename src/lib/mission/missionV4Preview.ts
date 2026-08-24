@@ -5,7 +5,7 @@ export interface MissionContext {
   /** 학습자가 상황을 빠르게 파악하도록 자연어 문장 안에서만 강조할 단서 */
   highlights?: string[];
   relation: string;
-  channel: "이메일" | "위챗" | "대면";
+  channel: "이메일" | "위챗" | "메신저" | "대면" | "전화";
   pdr: {
     p: string;
     d: string;
@@ -60,6 +60,8 @@ export interface FixChoiceQuest extends QuestBase {
     valid: boolean;
     note: string;
   }>;
+  /** 과도기 MPJ4의 판단+교정 복합 문항을 두 학습 활동으로 펼칠 때, 앞 단계의 실제 판단 응답을 이어받는다. */
+  judgmentQuestId?: string;
   feedback: string;
 }
 
@@ -75,6 +77,8 @@ export interface ReasonQuest extends QuestBase {
     kind: "primary" | "pragmatic_misconception" | "meaning_grammar_context";
   }>;
   acceptedReasonId: string;
+  /** legacy MPJ5에서 복수 근거를 허용한 경우의 읽기 호환. 최신 설계는 단일 ID를 사용한다. */
+  acceptedReasonIds?: string[];
   feedback: string;
 }
 
@@ -89,6 +93,9 @@ export interface BestWorstQuest extends QuestBase {
   }>;
   bestId: string;
   worstId: string;
+  /** legacy MPJ5의 대역 판정을 BEST/WORST 선택으로 투영할 때 허용되는 후보 집합. */
+  acceptedBestIds?: string[];
+  acceptedWorstIds?: string[];
   feedback: string;
 }
 
@@ -150,7 +157,9 @@ const DIRECTNESS_3: ChoiceOption[] = [
   { id: "too_indirect", label: "지나치게 우회적" },
 ];
 
-export const REQUEST_MISSION_V4_PREVIEW: {
+export interface MissionV4ViewModel {
+  scenarioId?: string;
+  metaLabel?: string;
   weekNo: number;
   speechAct: string;
   level: string;
@@ -166,7 +175,9 @@ export const REQUEST_MISSION_V4_PREVIEW: {
   summaryPrinciple: string;
   lessonPoints: MissionLessonPoint[];
   quests: MissionQuest[];
-} = {
+}
+
+export const REQUEST_MISSION_V4_PREVIEW: MissionV4ViewModel = {
   weekNo: 2,
   speechAct: "요청",
   level: "중급 · HSK 5",

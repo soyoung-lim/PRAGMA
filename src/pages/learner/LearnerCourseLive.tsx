@@ -18,7 +18,6 @@ import {
   type WeekProgress,
   type WeekState,
 } from "@/lib/curriculum/learnerProgress";
-import { MPJ_ITEM_COUNT } from "@/lib/curriculum/learnerWorkflow";
 import { hasIntroArc } from "@/lib/mission/mockIntroArc";
 import { listCompletedMissionIds } from "@/lib/mission/missionLog";
 
@@ -149,7 +148,7 @@ const LearnerCourseLive = () => {
                     카드를 펼치게 하면 상세 패널이 그리드 아래라 화면 밖에 열려,
                     "눌렀는데 아무것도 없다"가 된다. */}
                 <p className="mt-2 text-[11.5px] text-[#8899A6]">
-                  표현 비교 {MPJ_ITEM_COUNT}문항 → 직접 옮기기 → 피드백 → 다시 다듬기
+                  표현 판단 5단계 → 직접 옮기기 → 피드백 → 다시 다듬기
                 </p>
                 <Button
                   className="mt-3 bg-[#FAD338] text-[#15202B] hover:bg-[#FCE07A]"
