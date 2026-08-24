@@ -83,3 +83,13 @@ GitHub의 Contributors·Contributions 숫자는 계정에 연결된 Git 메타�
 집계한 서비스 UI다. 학술 저자 순위나 연구 기여도 순위를 의미하지 않는다.
 연구 설계·검수·승인·최종 책임과 AI 도구가 수행한 기술적 실행 기록은 이 구분에
 따라 각각 설명한다.
+
+## 후속 신규 작업 cleanline
+
+de-linking 이후에도 한 운영 작업 브랜치가 재작성 전 history를 부모로 유지했다. 이 브랜치를
+main에 merge하지 않고, 구계보 `f89937f`와 재작성 main `29ec6eb`의 동일 tree를 기준으로 이후
+신규 11개만 `codex/mission-runtime-cleanline-2026-08-24`에 cherry-pick했다.
+
+이 방식은 신규 기능·migration·연구 기록을 보존하되 구 bot ancestry가 default branch에 다시
+도달하지 않게 한다. 상세 실행과 검증은 `DEC-20260824-05`, `ITER-20260824-07`,
+`EVD-20260824-04` 및 `docs/dev-log/2026-08-24-git-cleanline-transplant.md`에 기록했다.

@@ -2322,3 +2322,16 @@
 - 다음 반영: 먼저 후반 4개 화행의 reviewed 통역 A/B inventory를 확보하거나, 종단 검증 대상을
   번역 전용 강좌로 한정한다. 혼합 강좌 완성을 주장하기 전에는 9개 화행 주차별 2건 충족을 검사한다.
 - 관련 Decision / Trace / Evidence: `DEC-20260824-04`, `TRC-20260824-04`, `EVD-20260824-03`
+
+## ITER-20260824-07 · de-link main 위 신규 11개 cleanline 이식
+
+- 날짜: 2026-08-24
+- 시작 문제: 운영 반영이 끝난 기능 브랜치가 재작성 전 계보에 남아 있어 직접 merge 시 과거 bot
+  ancestry가 main에 다시 들어갈 위험이 있었다.
+- 변경: 동일 tree 기준점 뒤 신규 11개만 최신 main에 cherry-pick했다. MPJ5 generated manifest의
+  두 충돌은 현행 snapshot을 선택하고 main의 de-link 문서를 보존했다. 전체 회귀에서 발견한 낡은
+  운영 문구 기대와 CRLF 비호환 SQL 검사를 `0535daa`에서 보정했다.
+- 검증 결과: 이식 직후 기능 tree는 구 작업 브랜치와 같았고 차이는 de-link 문서뿐이었다. typecheck,
+  전체 79파일 480 pass·9 skip, production build 1,946 modules, diff check가 통과했다.
+- 범위: main push·CI·Railway 재배포와 구 원격 브랜치 삭제는 후속 gate다. DB·Edge 쓰기는 없었다.
+- 관련 Decision / Evidence: `DEC-20260824-05`, `EVD-20260824-04`

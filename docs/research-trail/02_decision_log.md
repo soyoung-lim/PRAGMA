@@ -2333,3 +2333,20 @@
   화행 자체의 객관적 난도가 아니라 상황의 관계·권력·실제 부담 조건을 가리킨다. 메타화용 데모
   자료는 실제 학생자료로 표시하지 않는다.
 - 관련 Trace / Iteration: `TRC-20260824-04`, `ITER-20260824-05`
+
+## DEC-20260824-05 · 재작성 main에는 신규 작업만 cleanline으로 이식한다
+
+- 날짜: 2026-08-24
+- 상태: 결정·로컬 이식·검증 완료, main fast-forward 전
+- 문제: 현행 작업 브랜치와 선택적 account de-linking이 끝난 main에는 공통 조상이 없었다. 이를
+  직접 merge하면 구계보의 bot 연결 commit ancestry가 main에 다시 도달한다.
+- 검토한 대안:
+  1. unrelated histories merge: 기능은 합쳐지지만 과거 1,502개 ancestry를 되살리므로 기각했다.
+  2. 구 작업 브랜치로 main을 force-push: de-linking과 provenance를 덮어쓰므로 기각했다.
+  3. 같은 tree의 대응 기준점 뒤 신규 commit만 새 main에 cherry-pick: 채택했다.
+- 결정: `f89937f`와 `29ec6eb`의 동일 tree를 기준으로 이후 신규 11개만 `origin/main` 기반 격리
+  브랜치에 이식한다. de-link 문서는 main 값을 보존하고 기능 tree 동등성·전체 회귀·build 뒤에만
+  fast-forward한다. 구 원격 작업 브랜치는 main 확인 뒤 삭제하되 로컬 SHA는 복구 경로로 남긴다.
+- 근거: cherry-pick은 필요한 변경만 새 ancestry에 기록해 기능과 연구 기록을 보존하면서 구 bot
+  ancestry가 default branch에 재진입하는 것을 구조적으로 막는다.
+- 관련 Iteration / Evidence: `ITER-20260824-07`, `EVD-20260824-04`
