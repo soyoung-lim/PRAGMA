@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -23,6 +23,7 @@ import CanonicalMissionRun, { feedbackNeedsRevision } from "@/pages/learner/Cano
 
 describe("CanonicalMissionRun live CTA route", () => {
   beforeEach(() => {
+    window.scrollTo = vi.fn();
     fetchMissionByScenario.mockResolvedValue({
       scenario_id: scenarioId,
       speech_act: "request",
@@ -34,7 +35,7 @@ describe("CanonicalMissionRun live CTA route", () => {
     });
   });
 
-  it("loads the CTA scenario directly into the new five-judgment screen", async () => {
+  it("shows the live scenario intro before entering the five-judgment screen", async () => {
     render(
       <MemoryRouter initialEntries={[`/learner/practice/${scenarioId}`]}>
         <Routes>
@@ -43,11 +44,19 @@ describe("CanonicalMissionRun live CTA route", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("heading", { name: "상황에 맞는 표현 판단하기" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: SAMPLE_MISSION_V5.production_task.situation_ko })).toBeInTheDocument();
     expect(screen.getByText("요청 표현 · 한국어 → 중국어")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "상황에 맞는 표현 판단하기" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /장면 속 단서 보기/ }));
+    expect(screen.getByText(/채널은 위챗이고/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /내가 할 일 확인/ }));
+    expect(screen.getByRole("heading", { name: "어떤 중국어 요청 표현이 이 장면에 어울릴까요?" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /5개 장면으로 감 잡기/ }));
+
+    expect(await screen.findByRole("heading", { name: "상황에 맞는 표현 판단하기" })).toBeInTheDocument();
     expect(screen.getByText(SAMPLE_MISSION_V5.mpj_items[0].situation_ko)).toBeInTheDocument();
     expect(fetchMissionByScenario).toHaveBeenCalledWith(scenarioId);
-    expect(screen.queryByText("01 · 오늘의 장면")).not.toBeInTheDocument();
   });
 
   it("does not force a revision when automatic feedback is unavailable", () => {

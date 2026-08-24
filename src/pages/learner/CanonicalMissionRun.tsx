@@ -152,6 +152,46 @@ const MISSION_B_SCENE_INTRO: SceneIntroConfig = {
   ],
 };
 
+function buildSceneIntroConfig(mission: CanonicalMissionViewModel): SceneIntroConfig {
+  if (!mission.scenarioId) return MISSION_A_SCENE_INTRO;
+
+  const production = mission.quests.find((quest): quest is DctQuest => quest.kind === "dct");
+  const context = production?.context ?? mission.quests[0]?.context;
+  const situation = context?.situation ?? "이번 미션의 상황을 확인하고 알맞은 표현을 선택합니다.";
+  const contextFacts = context
+    ? [
+        `상대·관계는 ${context.relation}입니다.`,
+        `채널은 ${context.channel}이고, 부담은 ${context.pdr.r}입니다.`,
+      ].join(" ")
+    : "상대와 관계, 채널, 부탁의 크기를 차례로 확인합니다.";
+
+  return {
+    missionLabel: mission.metaLabel ?? "이번 미션",
+    slides: [
+      {
+        eyebrow: "01 · 오늘의 장면",
+        title: situation,
+        action: "장면 속 단서 보기",
+        tone: "navy",
+      },
+      {
+        eyebrow: "02 · 장면 속 단서",
+        title: "그런데, 이런 조건이 있습니다",
+        body: contextFacts,
+        action: "내가 할 일 확인",
+        tone: "yellow",
+      },
+      {
+        eyebrow: "03 · 당신의 선택",
+        title: `어떤 중국어 ${mission.speechAct} 표현이 이 장면에 어울릴까요?`,
+        body: "먼저 다섯 장면의 번역안을 비교하며 판단 기준을 찾아봅니다. 그다음 이 장면으로 돌아와 직접 번역합니다.",
+        action: "5개 장면으로 감 잡기",
+        tone: "green",
+      },
+    ],
+  };
+}
+
 const SCENE_INTRO_STEP_IDS = ["scene-1", "scene-2", "scene-3"] as const;
 
 function shuffle<T>(values: readonly T[]): T[] {
@@ -1829,7 +1869,7 @@ export function CompletionActions({ onRestart, runtime = false, saveState = "idl
               : saveState === "error"
                 ? "화면은 완료됐지만 학습 기록 저장에 실패했습니다. 다시 시도하려면 미션을 다시 완료해 주세요."
                 : "학습 기록 저장을 준비하고 있습니다."
-          : "현재 V4는 학습 흐름 미리보기입니다. 이 화면의 답안과 의견은 DB에 저장되지 않습니다."}
+          : "현재 미리보기의 답안과 의견은 DB에 저장되지 않습니다."}
       </p>
     </section>
   );
@@ -2009,8 +2049,10 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview }: {
   isDevPreview: boolean;
 }) {
   const requestedMission = new URLSearchParams(window.location.search).get("mission")?.toUpperCase();
-  const sceneIntroConfig = isDevPreview && requestedMission === "B" ? MISSION_B_SCENE_INTRO : MISSION_A_SCENE_INTRO;
-  const [sceneIntroStep, setSceneIntroStep] = useState<number | null>(() => mission.scenarioId ? null : 0);
+  const sceneIntroConfig = isDevPreview && requestedMission === "B"
+    ? MISSION_B_SCENE_INTRO
+    : buildSceneIntroConfig(mission);
+  const [sceneIntroStep, setSceneIntroStep] = useState<number | null>(0);
   const [questIndex, setQuestIndex] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
@@ -2161,7 +2203,7 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview }: {
   };
 
   const restart = () => {
-    setSceneIntroStep(mission.scenarioId ? null : 0);
+    setSceneIntroStep(0);
     setMpjRecapOpen(false);
     setQuestIndex(0);
     setCompleted(false);
