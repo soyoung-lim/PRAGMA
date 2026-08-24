@@ -2442,5 +2442,7 @@
   본문은 16.5px 한 줄로 표시하고 중국어 강조 조각에 `Noto Serif SC`를 적용했다.
 - 검증 결과: runtime·preview lesson point 표적 2파일 5개 테스트와 typecheck가 통과했다. localhost
   preview에서 다섯 본문 모두 높이 30px, `white-space: nowrap`, overflow 없음이었고 중국어 계산 글꼴은
-  `Noto Serif SC`였다. 커밋·배포는 수행하지 않았다.
+  `Noto Serif SC`였다. production build 1,946 modules를 통과하고 기능 `24b9058`·snapshot `453b19b`를
+  원격 브랜치에 push했다. Railway `168d6695-ea6a-4f4e-b162-179691316711`은 `SUCCESS`이며 운영
+  CanonicalMissionRun chunk에서 새 one-point 문구와 불투명 workflow 배경을 확인했다.
 - 관련 Decision: `DEC-20260825-02`

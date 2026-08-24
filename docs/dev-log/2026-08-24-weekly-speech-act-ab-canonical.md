@@ -164,8 +164,12 @@ MPJ5+DCT1 미션 A/B 두 세트와 맥락 변화 원칙을 정본에 고정한�
 - 후속 실제 화면 점검에서 recap을 `문항당 표현 1개 + 근거 1개`의 한 줄 메모로 더 좁혔다. 본문은
   16.5px로 키우고 줄바꿈을 막았으며, 중국어 강조 조각에는 `Noto Serif SC`를 명시 적용했다. MPJ5도
   BEST와 WORST를 두 포인트처럼 병렬 설명하지 않고 BEST를 가른 핵심 한 점만 남긴다.
-- recap 표적 2파일 5개 테스트와 typecheck가 통과했다. localhost에서 다섯 본문 모두 30px 한 줄,
-  overflow 없음, 중국어 계산 글꼴 `Noto Serif SC`를 확인했다. 이 후속 수정은 아직 커밋·배포하지 않았다.
+- recap 표적 2파일 5개 테스트와 typecheck, production build 1,946 modules가 통과했다. localhost에서
+  다섯 본문 모두 30px 한 줄, overflow 없음, 중국어 계산 글꼴 `Noto Serif SC`를 확인했다. 기능
+  `24b9058`과 snapshot `453b19b`를 원격 브랜치에 push했다. Railway deployment
+  `168d6695-ea6a-4f4e-b162-179691316711`은 `SUCCESS`, image digest는
+  `sha256:74fe99f058ca8333f3264495f0a4f6f6c3c74091c35e0822bfdd1b918f63a8e9`이며 운영 홈과
+  `CanonicalMissionRun-BT_zCi_r.js`가 HTTP 200이고 새 one-point 문구와 불투명 workflow 배경을 포함했다.
 - 현행 후보 버전은 `mission_v5_mpj5_minidiscourse_v4_concise_learner_flow`, 콘텐츠 릴리스는
   `pragma_content_candidate_20260825_01`이다.
 - prompt snapshot 재생성 뒤 관련 5파일 66개 테스트와 typecheck가 통과했다.
