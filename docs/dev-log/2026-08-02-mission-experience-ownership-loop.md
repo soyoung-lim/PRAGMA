@@ -1,6 +1,6 @@
 # 2026-08-02 · 미션 경험 2차 — 사용자 주도 콜드 오픈과 결과 소유 루프
 
-branch `codex/mission-experience-2026-08-02` · 선행 구현 `397c3c8` · 구현 `1dbca22`
+branch `codex/mission-experience-2026-08-02` · 선행 구현 `66ec631` · 구현 `20f1894`
 
 ## 배경
 
@@ -66,7 +66,7 @@ branch `codex/mission-experience-2026-08-02` · 선행 구현 `397c3c8` · 구�
   - 390×844에서 콜드 오픈 두 화면과 변경 있음 소유 카드를 확인했고 수평 overflow가 없었다.
   - 새 콘솔 오류는 없었다. 기존 React Router v7 future flag 경고만 확인했다.
 - GitHub PR [#4](https://github.com/cnkr-commits/l2-pragmatic-translator/pull/4)를 생성해
-  `main`에 merge commit `e340e408`로 병합했다.
+  `main`에 merge commit `e2abde00`로 병합했다.
 - Railway production 배포 `286da3d5-5bbd-46f2-9587-a0feac1c7e41`가 해당 merge commit을
   빌드해 `SUCCESS`·`RUNNING` 상태임을 확인했다.
 - 운영 URL `https://pragma.up.railway.app/`가 HTTP 200을 반환하고, 운영 미션 chunk

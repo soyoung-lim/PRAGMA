@@ -35,7 +35,7 @@
 
 ## 원격 적용·운영 확인
 
-- 원격 `main`이 출발점 `6ce28e2`에서 움직이지 않은 것을 재확인한 뒤, 검증 브랜치 `14927f4`를 force 없이 fast-forward push했다.
+- 원격 `main`이 출발점 `389d4fc`에서 움직이지 않은 것을 재확인한 뒤, 검증 브랜치 `ec2bb16`를 force 없이 fast-forward push했다.
 - Supabase migration list에서 `20260815065000_hsk_audit_final_review_integration.sql` 한 건만 미적용임을 확인하고 적용했다. 직후 `db push --dry-run`은 원격 최신 상태였다.
 - Edge `generate-scenario`는 기존 v63·ACTIVE였다. 이번 최종 통합 커밋이 Edge 소스를 변경하지 않았으므로 재배포하지 않았다.
 - Railway 운영 `/admin/corpus`에서 HSK 11,000개 실시간 연결, 최근 49/35/14 기록, `3단계 자동 점검·경고 검토` 연결을 확인했다.

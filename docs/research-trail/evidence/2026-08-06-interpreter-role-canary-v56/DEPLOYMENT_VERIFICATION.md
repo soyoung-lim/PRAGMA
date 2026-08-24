@@ -3,9 +3,9 @@
 - 확인일: 2026-08-06
 - 대상: Supabase Edge `generate-scenario`
 - release: `pragma_content_candidate_20260806_03`
-- 로컬 기준: `main@812c099`, clean, `origin/main`보다 5커밋 앞섬
-- GitHub 원격 `main`: `5a2c5d5d7088abfa0146378bb34495704e6b5206`
-- Railway production: `5a2c5d5`, deployment `01a9cf65-2212-4394-b938-210772a0de96`,
+- 로컬 기준: `main@359f5f2`, clean, `origin/main`보다 5커밋 앞섬
+- GitHub 원격 `main`: `5319153ddb9c0834737a5760eedcee8ab9cc315f`
+- Railway production: `5319153`, deployment `01a9cf65-2212-4394-b938-210772a0de96`,
   `SUCCESS`·`RUNNING` — 이번 작업에서 배포하지 않음
 
 ## Edge 배포

@@ -1,7 +1,7 @@
 # HSK 3.0 참고 자료 체계와 비차단 lexical audit
 
 - 날짜: 2026-08-09
-- 기준: `main@70d1eff`
+- 기준: `main@7fc2c97`
 - 작업 브랜치: `codex/hsk3-reference-system`
 - 범위: 공식 HSK 자료 provenance, 파생·연구자 코딩 분리, DB 적재안, 생성 후 어휘 감사, 관리자 표시
 

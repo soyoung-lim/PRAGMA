@@ -7,20 +7,20 @@
 - 원격 migration 2건 적용(`20260729090000`, `20260730120000` — 둘 다 미적용 상태였음),
   Edge `generate-scenario` 배포. 배포본 직접 호출로 `scenario_core_v3`·focal_segments·
   코어 지문 `dc8f1494…0eb8d334`(저장소 스냅샷 일치) 실증.
-- `2be3f75`: missionRules의 버전 분기가 v4만 확인해 **mission_v5가 legacy(V2) 기준으로
+- `dba866b`: missionRules의 버전 분기가 v4만 확인해 **mission_v5가 legacy(V2) 기준으로
   검사되던 결함** 수정(R1·R7·R3·R5·R8·R27을 v5에 적용). 이 결함 상태에서는 v5 승격이
   규칙검사를 통과할 수 없었다. `MissionRunV1.sequentialFix` v5 누락도 복원.
   놓친 원인 = 기존 테스트가 checkMission 결과에서 R29만 필터. 회귀 테스트 추가.
-- `e04f7c7`+`208d051`: 9화행 표본 하네스(RUN_V5_SAMPLES·RUN_V5_RECHECK·RUN_V5_SUPPLEMENT).
+- `f916b44`+`b119534`: 9화행 표본 하네스(RUN_V5_SAMPLES·RUN_V5_RECHECK·RUN_V5_SUPPLEMENT).
   셀은 buildBatchPlan에서 추출(본 배치와 동일 규칙). 표본 결과(11건) = 코어 비-fail 9/11,
   미션 비-fail 8/11. 잔여 쟁점 = R5 길이 단서(6/11 지적, 완전 분리 1) — **미션 승격 단계
   사안으로 코어 동결과 분리**(corePromptSnapshotHash가 코어 표면만 해시함을 Codex가
   코드로 확인). 고P 셀(상대가 위) 보충 표본 2건 포함 — 기본 표본이 전부 첫 구인 셀
   (대등·지인·중부담)이라 고P 편향(계약 0-t)은 기본 9건으로 검수 불가했음.
-- `2dad502`: Codex 검수 반영 — v5 learner 로그 legacy confidence 정리, promoteMission
+- `4e22e43`: Codex 검수 반영 — v5 learner 로그 legacy confidence 정리, promoteMission
   429/502/503 백오프(같은 모델 유지 — 엣지 fallback 모델 전환은 배치 내 모델 혼합을
   낳아 기각), 하네스 fail 코어 승격 생략.
-- `efe5806`~`5648705`: admin IA 재편(A1) — 레거시 3화면 폐기, /admin/library(조회 전용),
+- `a04fd71`~`7fb5959`: admin IA 재편(A1) — 레거시 3화면 폐기, /admin/library(조회 전용),
   /admin/authentic(원자료 분석), **/admin/assembly 신설**(코어→미션 변환 작업대,
   배타 4상태 계기판·계열 혼합 경고). 개념 확정: 코어=미션 재료, 미션=학습 콘텐츠.
 - 스코프 확정(사용자): A2(일괄 조립)·B1(후보 개수 강제) 폐기. 유지 = B2(R5)·C(라운지 8월).
@@ -57,7 +57,7 @@
 
 ## B2 — multi_judge 길이 단서 보강과 실측 (2026-07-31)
 
-프롬프트 보강(`1942fdb`, 엣지 배포 완료, `prompt_version` → `mission_v5_mpj4_minidiscourse_v2`):
+프롬프트 보강(`104b18a`, 엣지 배포 완료, `prompt_version` → `mission_v5_mpj4_minidiscourse_v2`):
 대역과 길이가 별개 축임을 명시하고 탈상관 조합을 직접 요구했다 — ①과소 후보 중 1개는
 말수 많되 알맹이 없게 ②적정 후보 중 1개는 짧지만 알차게 ③과잉은 문장 추가가 아니라
 강도 표지로 ④작성 후 글자 수 자가 점검. 코어 동결 무관(`core_surface_hash` 불변).

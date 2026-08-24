@@ -33,7 +33,7 @@
 - `npm run typecheck` 통과.
 - 변경 TS/TSX 파일 ESLint 통과.
 - production build 통과: **1902 modules**.
-- prompt snapshot 16종: 운영 가시성 보완 커밋 `ee96b7b`, `git_dirty=false`,
+- prompt snapshot 16종: 운영 가시성 보완 커밋 `858c085`, `git_dirty=false`,
   `core_surface_hash=6dc227d791fb…`.
 - inventory SQL은 쓰기·DDL 동사를 포함하지 않고 알려진 참조 테이블을 모두 감사한다.
 - localhost `/admin/review`에서 6개 통계 카드와 읽기 가능한 3열×2행 필터, 현재 release·
@@ -102,7 +102,7 @@
   `no-explicit-any` 4건이 남아 전체 변경 목록 lint에는 포함하지 못했다.
 - prompt snapshot은 17종이며 `git_dirty=false`, core surface hash는
   `6dc227d791fb…`로 유지됐다.
-- 관련 커밋: `8b30d3d`, `dee7279`, `426caf7`.
+- 관련 커밋: `77fbe36`, `8b2a455`, `325541a`.
 - DB row 생성·수정·삭제, migration, live inventory, Railway 배포는 실행하지 않았다.
 - 후보 `_02`는 **차단**한다. 전체 refresh는 시작하지 않는다. 다음 반복은 (1) R16/R29 코어
   생성 안정성, (2) PDR 정확성·R27 고유성 등 미션 구조 준수를 별도 게이트로 다룬다.
@@ -139,7 +139,7 @@
 
 - 독립 합성·비요청 필드 보존·focal segment 차단을 포함한 관련 36개 테스트 통과.
 - 전체 Vitest **262 pass / 7 skip**, typecheck, 변경 파일 ESLint, `git diff --check` 통과.
-- production build **1902 modules** 통과. 구현 커밋 `b47c39e` 기준 prompt snapshot 17종,
+- production build **1902 modules** 통과. 구현 커밋 `14b0bd6` 기준 prompt snapshot 17종,
   `core_surface_hash=8e9b7ec87869…`, `git_dirty=false`다.
 - migration·Edge·Railway·DB row에는 적용하지 않았고 모델 호출도 실행하지 않았다. 원격 Edge는
   계속 version 47·후보 `_02`다.
@@ -184,8 +184,8 @@
 - `_05`는 채택하지 않는다. 백로그에서 재검토할 때는 `pass@1`, 후보별 통과율, `pass@k`,
   선택 후 시스템 통과율을 분리하고 후보 수·토큰 예산을 명시하는 평가 설계와 별도 승인을
   선행한다.
-- 사용자 승인으로 `_04`·진단 변경을 `59bd8c3`에서 revert했다. 현재 Edge 소스는 6셀을
-  실행했던 `b47c39e`와 일치하고 후보는 다시 `_03`이다. `generate-scenario` v51 ACTIVE,
+- 사용자 승인으로 `_04`·진단 변경을 `24fc8e4`에서 revert했다. 현재 Edge 소스는 6셀을
+  실행했던 `14b0bd6`와 일치하고 후보는 다시 `_03`이다. `generate-scenario` v51 ACTIVE,
   bundle hash는
   `e5e298a89f86344ecf6307d54840f0b1460a16964065d8e3dda45edbe937a690`이다.
 - 호출 원장 집계는 `_03` core 8회·repair 2회, `_04` core 1회·repair 1회로 총 12회다.
@@ -193,7 +193,7 @@
   DB migration은 유지했다. main 병합·Railway 배포·reviewed 승격은 하지 않았다.
 - 롤백 전 관련 회귀는 **23 pass / 4 skip**, 롤백·기록 후 전체 Vitest는
   **262 pass / 7 skip**, production build는 **1902 modules**를 통과했다. snapshot은 17종,
-  `core_surface_hash=8e9b7ec87869…`, 기준 커밋 `59bd8c3`, `git_dirty=false`다.
+  `core_surface_hash=8e9b7ec87869…`, 기준 커밋 `24fc8e4`, `git_dirty=false`다.
 
 ## 연구 증거 보존 위치 정정
 

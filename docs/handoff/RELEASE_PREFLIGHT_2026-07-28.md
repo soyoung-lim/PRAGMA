@@ -3,9 +3,9 @@
 - 기준일: 2026-07-28 (KST)
 - 대상 저장소: `l2-pragmatic-translator`
 - 점검 브랜치: `codex/lounge-release-2026-07-28`
-- 점검 기준 코드 HEAD: `111b0a2`
-- 비교 기준: `origin/main` `0bb0940`
-- 분리 코드 커밋: `b2941d9`
+- 점검 기준 코드 HEAD: `7d744a0`
+- 비교 기준: `origin/main` `711bf7f`
+- 분리 코드 커밋: `b71a5e7`
 - 최종 판정: **비-MPJ 릴리스 브랜치 GO / 운영 배포 NO-GO**
 
 ## 1. 이번 점검의 동결 범위
@@ -39,14 +39,14 @@
 
 `origin/main...HEAD`는 `0 behind / 8 ahead`다.
 
-1. `b2941d9 feat(learner): add lightweight lounge experience`
-2. `60695e4 docs: consolidate 2026-07-28 product contracts`
-3. `7f4ef8e docs: record non-MPJ release preflight`
-4. `c51ce4c docs: record lounge release lane validation`
-5. `f969d13 fix(admin): restore mobile navigation`
-6. `e727b67 docs: record authenticated admin smoke`
-7. `4dbc330 docs: record authenticated learner smoke`
-8. `111b0a2 fix(learner): use published course as canonical view`
+1. `b71a5e7 feat(learner): add lightweight lounge experience`
+2. `120661b docs: consolidate 2026-07-28 product contracts`
+3. `f6c7e46 docs: record non-MPJ release preflight`
+4. `cde3b51 docs: record lounge release lane validation`
+5. `1599326 fix(admin): restore mobile navigation`
+6. `46c9e19 docs: record authenticated admin smoke`
+7. `b821128 docs: record authenticated learner smoke`
+8. `7d744a0 fix(learner): use published course as canonical view`
 
 이 브랜치는 `origin/main`에서 분리했으므로 보류 중인 MPJ4 구현·스냅샷 커밋
 `bb33815`·`596eb90`을 포함하지 않는다. 실행 코드 diff는 라운지, 학습자
@@ -55,8 +55,8 @@ migration, Edge Function을 변경하지 않는다.
 
 ### 분리 실행 결과
 
-- `origin/main` `0bb0940`에서 `codex/lounge-release-2026-07-28` 생성
-- `c03fc00`의 라운지 구현만 `b2941d9`로 선별 적용
+- `origin/main` `711bf7f`에서 `codex/lounge-release-2026-07-28` 생성
+- `c03fc00`의 라운지 구현만 `b71a5e7`로 선별 적용
 - 예상했던 `MissionRunV1.tsx` 충돌 없이 자동 병합됨
 - 관리자 모바일 내비게이션 복구
 - 학습자 홈·수업을 DB 기반 강좌 단일 정본으로 통합
@@ -96,7 +96,7 @@ migration, Edge Function을 변경하지 않는다.
 
 현재 비-MPJ 릴리스 브랜치의 `promptSnapshot.generated.ts` 기록:
 
-- `git_commit`: `cbe1389`
+- `git_commit`: `59d195d`
 - `git_dirty`: `true`
 - `edge_source_sha256`: `73faa15b...`
 - `core_surface_hash`: `4c996a00259cf54dcc23b03d0998f7afd3926a95c284ed23719910ebb1d871c0`
@@ -139,7 +139,7 @@ Railway CLI로 읽기 전용 조회했다.
 - 환경: `production`
 - 서비스: `l2-pragmatic-translator` · **Online**
 - 연결 저장소·브랜치: `cnkr-commits/l2-pragmatic-translator` · `main`
-- 현재 성공 배포: `0bb0940` (`docs(openai): record core structured output deployment`)
+- 현재 성공 배포: `711bf7f` (`docs(openai): record core structured output deployment`)
 - 배포 시각: 2026-07-28 14:49 KST
 - 연결 도메인: **0개**
 
@@ -162,7 +162,7 @@ Railway의 현재 배포 커밋은 `origin/main`과 정확히 같다. 서비스 
 ## 7. Rollback
 
 - 프론트 장애 시 직전 확인 운영 커밋으로 Railway를 재배포하거나 릴리스 커밋을 revert한다.
-- 현재 Railway production과 `origin/main`은 모두 `0bb0940`이다.
+- 현재 Railway production과 `origin/main`은 모두 `711bf7f`이다.
 - `review_released`처럼 additive한 DB 변경은 앱 롤백만으로 제거하지 않는다.
 - 이미 적용된 것으로 기록된 MPJ4 migration과 Edge 배포는 이번 비-MPJ 릴리스의 rollback 대상으로 삼지 않는다.
 - core hash가 달라지면 새 생성물을 기존 계열과 섞지 않고 즉시 생성·배치를 중단한다.

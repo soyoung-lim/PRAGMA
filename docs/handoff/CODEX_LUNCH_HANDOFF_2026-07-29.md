@@ -7,7 +7,7 @@
 
 - 프로젝트: `l2-pragmatic-translator`
 - 작업 브랜치: `codex/lounge-release-2026-07-28`
-- 점심 전 UI 기준 커밋: `78d44a6 feat(mission): clarify production task flow`
+- 점심 전 UI 기준 커밋: `7ea6d97 feat(mission): clarify production task flow`
 - 이 문서와 정본 보정은 같은 브랜치의 후속 문서 커밋으로 푸시한다.
 - production `main` 병합·Railway 배포는 하지 않았다.
 - 보호 대상이 나타나면 `docs/handoff/BATCH_500_PREFLIGHT_2026-07-28.md`는 명시적 요청 없이 편집·stage·삭제하지 않는다.

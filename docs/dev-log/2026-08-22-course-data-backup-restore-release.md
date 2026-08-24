@@ -22,12 +22,12 @@
 
 ## 구현·배포 계보
 
-- 최초 구현: `6422950`
-- exact snapshot 복원: `c6a5aa1`
-- 파일명 충돌 방지와 최종 규칙: `0594f7a`, `bf3cbe9`
-- 테스트 파일 NUL 복구: `f27630b`
-- 운영 UI 최종 조정: `63faa89`
-- 운영 기준: `origin/main` `63faa89`, Railway production
+- 최초 구현: `79e5eb2`
+- exact snapshot 복원: `2dc101f`
+- 파일명 충돌 방지와 최종 규칙: `73024f0`, `7b0ac80`
+- 테스트 파일 NUL 복구: `4414691`
+- 운영 UI 최종 조정: `6075d2c`
+- 운영 기준: `origin/main` `6075d2c`, Railway production
 
 ## 검증과 주장 경계
 

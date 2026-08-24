@@ -25,7 +25,7 @@
 - 전체 테스트 280건 통과, 7건 skip.
 - TypeScript typecheck 통과.
 - production build 통과(1,903 modules).
-- 구현 커밋 `1fa7aab` 기준 prompt snapshot 18종, `core_surface_hash=b87e21b9b07e…`, `git_dirty=false`로 재발행했다.
+- 구현 커밋 `4bf920a` 기준 prompt snapshot 18종, `core_surface_hash=b87e21b9b07e…`, `git_dirty=false`로 재발행했다.
 
 ## 변경하지 않은 것
 
@@ -41,11 +41,11 @@
 
 ## 승인 후 운영 Edge 배포 검증
 
-- 배포 전 `main`과 `origin/main`이 `b63784c`로 일치하고 worktree가 clean임을 확인했다.
+- 배포 전 `main`과 `origin/main`이 `4fdaa8c`로 일치하고 worktree가 clean임을 확인했다.
 - 기존 운영 `generate-scenario` v53의 엔트리 소스를 내려받아 대조한 결과, Git blob
-  `22931384…`로 과거 `231b85a`와 정확히 일치했고 역할 계약 구현 `1fa7aab`의 엔트리
+  `22931384…`로 과거 `c30f913`와 정확히 일치했고 역할 계약 구현 `4bf920a`의 엔트리
   blob `7727db6a…`와 달랐다.
-- 사용자 승인 뒤 `main@b63784c`에서 `generate-scenario`만 배포했다. `index.ts`와 연결된
+- 사용자 승인 뒤 `main@4fdaa8c`에서 `generate-scenario`만 배포했다. `index.ts`와 연결된
   `_shared` 6개 자산이 업로드됐고, 운영 함수는 2026-08-06 14:18 KST 기준 v54·ACTIVE,
   `verify_jwt=true`, bundle SHA-256 `454b9d8be0f20e4623fe7021d86885e2d6318e0f79c65791c9d659c500b1348f`다.
 - v54 엔트리 소스를 다시 내려받아 로컬과 대조했다. 양쪽 SHA-256은
@@ -85,15 +85,15 @@
 
 ## 승인 후 `_02` 운영 배포 정합성
 
-- 사용자 승인 뒤 clean `main@6ca2f17`의 두 로컬 커밋을 `origin/main`에 push했다. Railway
+- 사용자 승인 뒤 clean `main@e96c501`의 두 로컬 커밋을 `origin/main`에 push했다. Railway
   production 배포 `8de5e60f-7daf-4429-a6a7-0fda13df6f98`은 같은 커밋에서 SUCCESS였다.
   직후 Lovable bot이 `bun.lock`과 `src/integrations/supabase/types.ts`를 바꾸는 두 커밋을 push해
-  이 배포는 REMOVED가 됐고, 현재 Railway는 후속 `5a2c5d5` 배포 `01a9cf65…`가 SUCCESS다.
+  이 배포는 REMOVED가 됐고, 현재 Railway는 후속 `5319153` 배포 `01a9cf65…`가 SUCCESS다.
 - 같은 HEAD에서 `generate-scenario`만 다시 배포했다. 2026-08-06 15:02:08 KST 기준 운영 함수는
   v55·ACTIVE, `verify_jwt=true`, bundle SHA-256
   `2c3cc34482e38b37c959ea0933f3037d67874e1d54962af046d7f72dc31d8207`이다.
 - v55 소스를 API로 다시 내려받은 결과 `index.ts`와 `_shared` 6개 파일이 줄바꿈 정규화 뒤
-  `HEAD@6ca2f17`과 7/7 바이트 일치했다. 후속 `5a2c5d5`도 이 7개 파일을 변경하지 않았다.
+  `HEAD@e96c501`과 7/7 바이트 일치했다. 후속 `5319153`도 이 7개 파일을 변경하지 않았다.
   엔트리 canonical SHA-256은
   `1343BBC77877A789AC7767C6306B8D46CCB1B41206A166791A9020ABC9E4D0D4`, 고친
   `coreSourceRepair.ts`는 `2A5C290CDBBD0FE1547B0A4A9A97677616793DBC809A06D07294F4A967008574`다.
@@ -141,13 +141,13 @@
   production build 1,903 modules를 통과했다. prompt snapshot은 18종,
   `core_surface_hash=0f15492f114d…`다. 전체 lint는 이번 변경 밖의 기존 `no-explicit-any`
   16건과 fast-refresh warning 10건 때문에 실패했으며 변경 파일 lint는 통과했다.
-- 구현 커밋은 `7c7246c`다. Edge·Railway 배포, AI 생성, DB 쓰기, 미션 승격, push는 하지 않았다.
+- 구현 커밋은 `f28368d`다. Edge·Railway 배포, AI 생성, DB 쓰기, 미션 승격, push는 하지 않았다.
   H6 사건 대응 3건과 K1 언어 역할 경계의 Fable flag는 계속 `FLAGGED_NOT_SENT`로 남긴다.
 
 ## 승인 후 v56 `_03` Edge 배포·DB 미저장 재카나리
 
-- 배포 직전 GitHub `main`과 `origin/main`은 `5a2c5d5`, 로컬은 clean `812c099`로 5커밋
-  앞선 상태였다. Railway production은 `5a2c5d5`·`SUCCESS`·`RUNNING`으로 재확인했고
+- 배포 직전 GitHub `main`과 `origin/main`은 `5319153`, 로컬은 clean `359f5f2`로 5커밋
+  앞선 상태였다. Railway production은 `5319153`·`SUCCESS`·`RUNNING`으로 재확인했고
   변경하지 않았다.
 - 사용자 승인 뒤 `generate-scenario`만 v56으로 배포했다. 2026-08-06 16:07:25 KST 기준
   `ACTIVE`, `verify_jwt=true`, bundle SHA-256은

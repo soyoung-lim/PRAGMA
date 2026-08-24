@@ -2,7 +2,7 @@
 
 ## 목적과 범위
 
-- 로컬 `main`에 이미 커밋돼 있던 5개 작업(`fdbe52a`~`23908f7`)을 다시 검증하고
+- 로컬 `main`에 이미 커밋돼 있던 5개 작업(`38c679d`~`29dd96f`)을 다시 검증하고
   `origin/main`과 Railway production에 반영했다.
 - 배포 범위는 정본 3종 델타 정합화, 카드뉴스형 미션 콜드 오픈, 현행 정본과 역사
   스냅숏의 2층 분리, 시스템 구조 화면 개선이다.
@@ -21,10 +21,10 @@
 
 ## Git과 운영 배포
 
-- 앱 `main` push: `b2fde89` → `23908f7`
+- 앱 `main` push: `fcadb5b` → `29dd96f`
 - Railway project/environment/service: `PRAGMA` / `production` / `PRAGMA`
 - Railway deployment: `151edc85-dbee-4f15-b97d-6569721535e6`
-- Railway가 기록한 Git commit: `23908f76305a325e929f747fca672050b14f32a7`
+- Railway가 기록한 Git commit: `29dd96f7641e9a17cd9f61525022c76cac7bc4fd`
 - deployment status: `SUCCESS`
 - `https://pragma.up.railway.app/`: HTTP 200
 - `https://pragma.up.railway.app/architecture`: HTTP 200

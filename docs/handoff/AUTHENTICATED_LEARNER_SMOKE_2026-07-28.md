@@ -2,7 +2,7 @@
 
 - 기준일: 2026-07-28 (KST)
 - 브랜치: `codex/lounge-release-2026-07-28`
-- 점검 전 HEAD: `e727b67`
+- 점검 전 HEAD: `46c9e19`
 - 환경: 분리 브랜치 로컬 서버 `http://localhost:8092`
 - 세션: 실제 Supabase 관리자 인증 세션
 - 방식: 학습자 화면 읽기 전용

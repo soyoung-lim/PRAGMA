@@ -68,7 +68,7 @@
 
 `src/lib/pragma/errorPatterns.ts`의 6개 패턴 중 5개가 `applicableDirections: ["ko_zh"]`다.
 중국어 자원(`把`·`发表`·`不行`·`谢谢`)에 매인 예시를 한국어 산출 과제에 주면 산출어와 어긋나기
-때문에 2026-08-03에 방향 필터로 막았다(`feaf470`).
+때문에 2026-08-03에 방향 필터로 막았다(`fd6f65d`).
 
 `promoteMission.ts:251`이 `error_pattern_hints_ko`로 프롬프트에 주입하는 실제 개수:
 

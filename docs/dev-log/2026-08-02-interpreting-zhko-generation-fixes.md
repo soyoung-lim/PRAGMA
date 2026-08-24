@@ -41,14 +41,14 @@ R29와 DB 유일성 제약은 품질·실행 추적을 지키는 유효한 안�
   `AdminGenerator.tsx`의 `no-explicit-any` 2건과 Edge 함수의 `no-useless-escape` 1건이
   남아 있으며, 이번 변경에서 추가된 오류는 아니다.
 - 프롬프트 스냅샷 13종 재생성. core surface hash는 `e12af89e99bd…`이며 구현 커밋
-  `d29ffa2`, `git_dirty=false` provenance를 확인했다.
+  `2eafdff`, `git_dirty=false` provenance를 확인했다.
 
 ## 범위와 확인 필요
 
 - DB·스키마·R29·`policy_ver`는 변경하지 않았다.
 - 콘텐츠를 대량 재생성하거나 자동 검수·승인하지 않았다.
 - PR [#8](https://github.com/cnkr-commits/l2-pragmatic-translator/pull/8)을 merge commit
-  `07fb3b5`로 main에 병합했다.
+  `b44cc02`로 main에 병합했다.
 - Supabase project `tlnjxagqwvefeqdagtkq`의 `generate-scenario` Edge 함수를 배포했다.
 - Railway 운영 URL이 HTTP 200을 반환하고 관리자 chunk `AdminGenerator-CBhfO0_U.js`에
   `crypto.randomUUID()` 기반 run ID 로직이 포함된 것을 확인했다.
@@ -86,9 +86,9 @@ R29와 DB 유일성 제약은 품질·실행 추적을 지키는 유효한 안�
 - typecheck, 변경 파일 ESLint, production build(**1901 modules**) 통과.
 - 프롬프트 스냅샷 16종 재생성. core hash
   `07d82beaab497ccbc53ce7d65b35aa95568e293d11a82ef9cab5976bf1cdbb6c`,
-  구현 커밋 `13d99f7`, `git_dirty=false`를 확인했다.
+  구현 커밋 `757b23d`, `git_dirty=false`를 확인했다.
 - PR [#12](https://github.com/cnkr-commits/l2-pragmatic-translator/pull/12)을 merge commit
-  `361faf5`로 병합했다.
+  `0c1f7df`로 병합했다.
 - Supabase `generate-scenario` Edge와 Railway 배포
   `f47f5661-d58a-4400-892b-0aedefc2bc13`(`SUCCESS`)를 반영했다. 운영 URL은 HTTP 200이고
   `missionRules-DIj4dkZb.js`에 새 통역 장면 규칙이 포함됐다.
@@ -129,7 +129,7 @@ R29와 DB 유일성 제약은 품질·실행 추적을 지키는 유효한 안�
 - 신규 회귀 시나리오 3개를 포함한 관련 테스트 **26 pass**, 전체 테스트 **238 pass / 6 skip**,
   typecheck, 변경 파일 ESLint, production build(**1901 modules**)와 스냅샷 동기화가 통과했다.
   core surface hash는 `07d82beaab497ccbc53ce7d65b35aa95568e293d11a82ef9cab5976bf1cdbb6c`로
-  유지됐고, 스냅샷은 구현 커밋 `f2f78e5`·`git_dirty=false`를 기록한다. 배포 후 core_v7
+  유지됐고, 스냅샷은 구현 커밋 `bf3beb5`·`git_dirty=false`를 기록한다. 배포 후 core_v7
   소수 재조립은 아직 수행하지 않았다.
 
 ### 범위
@@ -140,7 +140,7 @@ R29와 DB 유일성 제약은 품질·실행 추적을 지키는 유효한 안�
 
 ### 배포
 
-- 구현·기록 커밋 `f2f78e5`, `bd17845`를 PR #14로 병합했다(merge commit `3c7e57d`).
+- 구현·기록 커밋 `bf3beb5`, `9c1337a`를 PR #14로 병합했다(merge commit `1666e86`).
 - Supabase `generate-scenario` Edge를 프로젝트 `tlnjxagqwvefeqdagtkq`에 배포했다.
 - 전용 worktree를 `railway up . --path-as-root --detach`로 배포했고, deployment
   `e69237d2-e748-4ffa-b223-cdbdf96f53a7`의 `SUCCESS`를 확인했다.

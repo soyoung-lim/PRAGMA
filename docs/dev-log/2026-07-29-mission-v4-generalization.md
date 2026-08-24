@@ -6,7 +6,7 @@
 
 ## 관련 branch와 기준점
 
-- 기준 commit: `1637ce5`
+- 기준 commit: `44805b6`
 - 작업 branch: `codex/mission-v4-generalization-2026-07-29`
 - 작업공간: `.worktrees/mission-v4-feedback`
 - 검토 URL: `http://localhost:8094/learner/practice?preview=v4`

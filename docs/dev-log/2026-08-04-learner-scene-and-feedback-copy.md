@@ -45,12 +45,12 @@
   파란 말풍선 안에서 글자와 배경의 대비를 유지하면서 살펴볼 범위만 표시한다.
 - 통역 DCT는 밝은 장비 프레임 안에 재생·녹음 조작부만 각각 작은 검은 스튜디오 모듈로
   두었다. 콘솔 전체를 검게 만든 1차 복원안은 덩어리가 크고 전문 장비보다 큰 검은 카드처럼
-  보여 축소했다. 최초의 밝은 작업대 톤은 `b07e2a9`(2026-08-02 16:08 KST)에서 들어왔다.
+  보여 축소했다. 최초의 밝은 작업대 톤은 `a1ab88d`(2026-08-02 16:08 KST)에서 들어왔다.
 
 ## 검증
 
 - 프롬프트 스냅샷 재생성: 16종,
-  구현 커밋 `6e3985e`, `git_dirty=false`, `core_surface_hash=6dc227d791fb…`.
+  구현 커밋 `3da1c5a`, `git_dirty=false`, `core_surface_hash=6dc227d791fb…`.
 - 관련 계약·presentation 테스트: **23 pass**.
 - 전체 Vitest: **250 pass / 6 skip**.
 - typecheck와 변경 파일 ESLint 통과. 저장소 전체 `npm run lint`는 이번 변경 밖 기존
@@ -78,8 +78,8 @@
 
 ## 원격 반영·운영 배포
 
-- 브랜치 `codex/mission-experience-2026-08-02`를 구현 커밋 `6e3985e`와 스냅샷·연구기록
-  커밋 `b5e4cb1`까지 원격에 push했다. `main`은 병합하지 않았다.
+- 브랜치 `codex/mission-experience-2026-08-02`를 구현 커밋 `3da1c5a`와 스냅샷·연구기록
+  커밋 `92a9514`까지 원격에 push했다. `main`은 병합하지 않았다.
 - DB migration 변경은 없어 `supabase db push`를 실행하지 않았다.
 - Supabase project `tlnjxagqwvefeqdagtkq`에 `generate-scenario`만 `--use-api`로 배포했다.
   원격 목록에서 version **45**, status **ACTIVE**, function id

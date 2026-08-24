@@ -1,7 +1,7 @@
 # Codex 작업 로그 — 2026-07-27 ~ 2026-07-29
 
 > 작업 브랜치: `codex-0727`  
-> 기준점: `abdad16` (`pre-codex-2026-07-26`)  
+> 기준점: `5db6e07` (`pre-codex-2026-07-26`)  
 > 범위: §1~6은 P0 조사 결과와 후속 위험 기록(당시 수정·배포 없음). §7부터는
 > `codex-0727`에서 수행한 로컬 구현 기록이며, 배포·DB 반영·push는 하지 않았다.
 
@@ -141,10 +141,10 @@
 
 ### 7.8 커밋
 
-- `e29f54c` — `fix(core-prompt): enforce batch axes and add audit pilot`
+- `a984e13` — `fix(core-prompt): enforce batch axes and add audit pilot`
 - 코어 구현과 프롬프트 변경만 포함했다. 사이드바·라운지 파일은 포함하지 않았다.
 - 프롬프트 스냅샷은 위 커밋의 Edge 정본을 기준으로 재생성했다
-  (`git_commit=e29f54c`, `git_dirty=false`).
+  (`git_commit=a984e13`, `git_dirty=false`).
 
 ## 8. 제품 정체성과 Can-do 정렬 원칙 확정
 

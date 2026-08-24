@@ -21,7 +21,7 @@
 
 출처는 다음과 같다.
 
-- 축·대역 정본: `src/lib/pragma/targetFeatures.ts`, 커밋 `5240421`, SHA256
+- 축·대역 정본: `src/lib/pragma/targetFeatures.ts`, 커밋 `fcfd9c8`, SHA256
   `DBCCF104C3F8C50B0B25F96C98E1E7C1E129537B5FD2F4EB852A098544286949`
 - 감사 원문:
   `C:\PRAGMA_THESIS_LOCAL\05_증거\PRAGMA_카탈로그_축구조_감사_v2_2026-08-03.md`

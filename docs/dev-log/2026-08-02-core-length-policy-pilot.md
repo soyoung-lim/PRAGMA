@@ -42,7 +42,7 @@ branch `codex/interpreting-zhko-fixes-2026-08-02`
   `no-explicit-any`, `no-useless-escape`, hooks 경고 등이어서 이번 파일럿의 신규 오류로
   판정하지 않았다.
 - `git diff --check` 통과.
-- 구현 커밋 `1056c9b`에 묶인 프롬프트 스냅샷 core surface hash
+- 구현 커밋 `ffd7e4c`에 묶인 프롬프트 스냅샷 core surface hash
   `4ee4076a7b51…`, `git_dirty=false` 확인.
 
 ## 범위와 확인 필요
@@ -56,7 +56,7 @@ branch `codex/interpreting-zhko-fixes-2026-08-02`
 ## PR·배포·운영 smoke
 
 - PR [#10](https://github.com/cnkr-commits/l2-pragmatic-translator/pull/10)을 merge commit
-  `36e75e0`으로 `main`에 병합했다.
+  `bbfc373`으로 `main`에 병합했다.
 - Supabase project `tlnjxagqwvefeqdagtkq`의 `generate-scenario` Edge 함수를 배포했다.
 - 운영 Edge를 DB 저장 없이 통역·중→한 1건 호출했다. 원문은 중국어 37자·3문장으로
   입문 범위 30~45자에 들어왔고, `core_v6_length_chars_v1_repair`, attempt 2,

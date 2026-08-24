@@ -1,6 +1,6 @@
 # 2026-08-02 · 미션 경험 1차 — 장면 콜드 오픈과 번역 작성 스킨
 
-branch `codex/mission-experience-2026-08-02` · base `d1cb780` · 구현 `397c3c8`
+branch `codex/mission-experience-2026-08-02` · base `d817930` · 구현 `66ec631`
 
 ## 배경
 

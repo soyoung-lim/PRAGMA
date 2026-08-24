@@ -17,8 +17,8 @@
 | 항목 | 값 |
 |---|---|
 | **작업 브랜치** | **`codex-0727`** ← Codex는 여기서 작업한다 |
-| 분기 지점 | `c968bf7` (로컬 `main`과 동일 커밋) |
-| HEAD | `c968bf75deb1b3d96995f16e2bf9f90e6ae74bd3` (`c968bf7`) |
+| 분기 지점 | `f95b271` (로컬 `main`과 동일 커밋) |
+| HEAD | `f95b2711a9aa321d558df673bf094e87926dde37` (`f95b271`) |
 | origin/main 대비 | 로컬 `main`이 **6커밋 앞섬 (미푸시)** — 아래 §9 참조 |
 | working tree | **clean** (미커밋 0건) |
 | 배포 URL | `https://l2-pragmatics.up.railway.app` |
@@ -39,24 +39,24 @@
 
 ## 2. 최근 핵심 커밋과 의미 (2026-07-26)
 
-시간 역순. `8ff15ca`~`6cffe7f`는 **이미 origin/main에 푸시·배포 완료**.
+시간 역순. `489afbb`~`9751fa6`는 **이미 origin/main에 푸시·배포 완료**.
 
 | 커밋 | 의미 |
 |---|---|
-| `c968bf7` | (미푸시) **프로토타입 목업 4종을 `public/` → `docs/prototypes/` 이동** — 외부 노출 차단 |
-| `aa556be` | (미푸시) 이 인수인계 문서 |
-| `c2c0b51` | (미푸시) 프로토타입 목업 3종 체크포인트 (위 `c968bf7`이 위치를 교정함) |
-| `9830d67` | (미푸시) dev-log 문서 추적 |
-| `207a906` | (미푸시) `.claude/launch.json` 공용 dev 실행 설정 |
-| `ea4f4c6` | (미푸시) `.gitignore` — 머신 로컬 설정·백업본 무시 |
-| `6cffe7f` | Authentic Import 좌측 강조 바 제거(과함) |
-| `269cf47` | **개별 생성 R1c 실패 해소** + Authentic Import 존재감 강화 (지도교수 리포트 대응) |
-| `4efe62c` | 학습자 수행방식 전환 시 1부 건너뛰기 — **시연용 임시 조치. §10 필독** |
-| `02b31a3` | 대시보드 계수 카드 두 줄 접힘 해소 |
-| `673a7d0` | 프롬프트 스냅샷 재생성 |
-| `9a599ef` | 배치 화면 압축 · 편성기 수준 잠금 · 사이드바 번호 제거 |
-| `0d2dc1d` | **`/admin/prompt-harness` 재설계** — 빈 화면 해소, 프롬프트 정본 읽기 전용 표시 |
-| `8ff15ca` | **`prompt_snapshot_hash` provenance 도입** — edge 재배포 완료. §11 필독 |
+| `f95b271` | (미푸시) **프로토타입 목업 4종을 `public/` → `docs/prototypes/` 이동** — 외부 노출 차단 |
+| `a054e67` | (미푸시) 이 인수인계 문서 |
+| `8f0a1d7` | (미푸시) 프로토타입 목업 3종 체크포인트 (위 `f95b271`이 위치를 교정함) |
+| `7e01d20` | (미푸시) dev-log 문서 추적 |
+| `666a43b` | (미푸시) `.claude/launch.json` 공용 dev 실행 설정 |
+| `a205ba5` | (미푸시) `.gitignore` — 머신 로컬 설정·백업본 무시 |
+| `9751fa6` | Authentic Import 좌측 강조 바 제거(과함) |
+| `6cd79b7` | **개별 생성 R1c 실패 해소** + Authentic Import 존재감 강화 (지도교수 리포트 대응) |
+| `b31d6d8` | 학습자 수행방식 전환 시 1부 건너뛰기 — **시연용 임시 조치. §10 필독** |
+| `dc37e9e` | 대시보드 계수 카드 두 줄 접힘 해소 |
+| `53fa3b5` | 프롬프트 스냅샷 재생성 |
+| `8d534db` | 배치 화면 압축 · 편성기 수준 잠금 · 사이드바 번호 제거 |
+| `bc18468` | **`/admin/prompt-harness` 재설계** — 빈 화면 해소, 프롬프트 정본 읽기 전용 표시 |
+| `489afbb` | **`prompt_snapshot_hash` provenance 도입** — edge 재배포 완료. §11 필독 |
 
 ---
 
@@ -188,16 +188,16 @@ npx supabase functions deploy generate-scenario --use-api    # Docker 불필요
 
 | 커밋 | 내용 | 배포 영향 |
 |---|---|---|
-| `ea4f4c6` | `.gitignore` 갱신 | 없음 |
-| `207a906` | `.claude/launch.json` | 없음 |
-| `9830d67` | dev-log 문서 | 없음 |
-| `c2c0b51` | 프로토타입 목업 3종 추적 시작 | 없음(아래에서 위치 교정됨) |
-| `aa556be` | 이 인수인계 문서 | 없음 |
-| `c968bf7` | 프로토타입 4종 `public/` → `docs/prototypes/` | ⚠️ 아래 참조 |
+| `a205ba5` | `.gitignore` 갱신 | 없음 |
+| `666a43b` | `.claude/launch.json` | 없음 |
+| `7e01d20` | dev-log 문서 | 없음 |
+| `8f0a1d7` | 프로토타입 목업 3종 추적 시작 | 없음(아래에서 위치 교정됨) |
+| `a054e67` | 이 인수인계 문서 | 없음 |
+| `f95b271` | 프로토타입 4종 `public/` → `docs/prototypes/` | ⚠️ 아래 참조 |
 
 **푸시 여부는 사용자 승인 사항이며, 수요일 Claude 복귀 후 판단한다.**
 
-`c968bf7` 주의: `pragma-mission-v2-review.html`은 **이전부터 추적·배포돼 있던 파일**이라,
+`f95b271` 주의: `pragma-mission-v2-review.html`은 **이전부터 추적·배포돼 있던 파일**이라,
 다음 push 이후 `https://l2-pragmatics.up.railway.app/pragma-mission-v2-review.html`은 **404가 된다.**
 이 주소를 외부에 공유한 적이 있다면 push 전에 되돌려야 한다.
 (나머지 3종은 한 번도 공개된 적이 없다.)
@@ -210,7 +210,7 @@ npx supabase functions deploy generate-scenario --use-api    # Docker 불필요
 ## 10. 🔴 절대 수정하지 말아야 할 상위 합의
 
 1. **학습 미션 단위 = MPJ 5문항 + DCT 1회.** 변경 금지.
-   - `4efe62c`(1부 건너뛰기)는 **지도교수 시연 편의를 위한 임시 조치**이며 미션 정의를 바꾼 것이 아니다.
+   - `b31d6d8`(1부 건너뛰기)는 **지도교수 시연 편의를 위한 임시 조치**이며 미션 정의를 바꾼 것이 아니다.
    - 코드에서 `startAtPart2 = IS_DEMO && !scenarioId && ...`로 **샘플·데모에만** 적용되도록 막혀 있다.
      실제 학습 세션에서 1부를 건너뛰면 "판단 → 적용" 구인과 완료 조건이 깨진다. **이 가드를 풀지 마라.**
 2. **`channel`(매체) 축은 폐기됨.** 조합축·판정축·학습분기에서 부활시키지 마라.
@@ -279,7 +279,7 @@ npx supabase functions deploy generate-scenario --use-api    # Docker 불필요
   **사용자가 직접 로그인해서 확인해야 한다.**
 - **영향**: 이것 때문에 **provenance DB 저장 왕복이 아직 한 번도 실증되지 않았다.** 500 배치 전 반드시 해결.
 
-### ✅ B. 개별 생성 R1c 실패 (해결됨, `269cf47`)
+### ✅ B. 개별 생성 R1c 실패 (해결됨, `6cd79b7`)
 - **증상**: `/admin/generator`를 열자마자 아무것도 안 바꾸고 생성하면
   `theme 'campus_study'는 domain 'work'를 허용하지 않음` 실패.
 - **원인**: `DEFAULT_FORM.domain = "work"`인데 `themeCode` 초기값이 `THEME_CODES[0]`(=`campus_study`, school 전용)로 하드코딩.
@@ -288,7 +288,7 @@ npx supabase functions deploy generate-scenario --use-api    # Docker 불필요
 
 ### ⚠️ C. 학습자 러너 localStorage 키 공유
 - 번역·통역 샘플이 `pragma:mrun:sample` 키를 공유한다. 상태가 새면 착지 단계가 달라진다.
-- `4efe62c`에서 전환 시점·진입 시점 양쪽에 2부 시작 상태를 덮어써 해결. 이 로직을 지우지 마라.
+- `b31d6d8`에서 전환 시점·진입 시점 양쪽에 2부 시작 상태를 덮어써 해결. 이 로직을 지우지 마라.
 
 ### ⚠️ D. 편성기 안내 문구와 실제 동작 불일치 (미해결, 경미)
 - `/admin/composer` 준비 현황판은 "검토 완료만 편성됩니다"라고 표시하지만,

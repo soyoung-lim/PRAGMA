@@ -19,7 +19,7 @@
 - 세 층 모두 통과한 경우의 `이 표현으로 완료`는 그대로 유지한다.
 - 저장·누적 기록의 actual revision 판정(`first_response !== revised_response`)은 바꾸지 않고,
   학습자 완료 게이트에만 실질 수정 판정을 추가했다.
-- DEV의 명시적 `?preview=v5` 링크가 로그인으로 튕기던 문제는 별도 커밋 `0959ca5`에서
+- DEV의 명시적 `?preview=v5` 링크가 로그인으로 튕기던 문제는 별도 커밋 `3be51a3`에서
   `preview=v4|v5`만 인증 없이 열도록 보정했다. production 인증 정책은 불변이다.
 
 ## 검증

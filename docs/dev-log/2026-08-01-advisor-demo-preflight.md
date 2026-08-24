@@ -1,6 +1,6 @@
 # 2026-08-01 · 지도교수 점검 전 학습자·관리자 동선 정리
 
-branch `codex/learner-report-v1-2026-07-31` · base `9a244f0`
+branch `codex/learner-report-v1-2026-07-31` · base `8c5c201`
 
 ## 배경
 
@@ -12,13 +12,13 @@ branch `codex/learner-report-v1-2026-07-31` · base `9a244f0`
 
 ## 변경
 
-### 1. 관리자 미완성 메뉴 숨김 — `3e120be`
+### 1. 관리자 미완성 메뉴 숨김 — `16da639`
 
 `pending` 표시가 붙은 수업 자료 생성·학습 분석·연구 데이터 관리·사용자·권한을
 사이드바와 모바일 선택 메뉴에서 숨겼다. 라우트와 원래 메뉴 정의는 보존해 구현 완료 뒤
 필터만 해제할 수 있다.
 
-### 2. 수업 지도에서 실제 실행 가능한 미션으로 연결 — `6ad1e06`
+### 2. 수업 지도에서 실제 실행 가능한 미션으로 연결 — `4a7d4a4`
 
 - 현재 학습은 `nextScenario`가 있는 주차만 후보로 삼고, 일부 완료한 진행 중 주차를
   미시작 주차보다 우선한다. 선정 조건과 실제 「미션 시작」 렌더 조건을 일치시켰다.
@@ -32,7 +32,7 @@ branch `codex/learner-report-v1-2026-07-31` · base `9a244f0`
 - 현재 게시 강좌의 검수 완료 16개가 모두 번역이므로 요약의 `번역과 통역` 문구를
   제거해 편성보다 큰 주장을 하지 않았다.
 
-### 3. 라운지 홈을 코너 선택 화면으로 축소 — `debe8e8`
+### 3. 라운지 홈을 코너 선택 화면으로 축소 — `c478615`
 
 카드에서 예문 미리보기·관계 배지·긴 설명을 제거하고 아이콘, 제목·배지, 한 문장,
 「들어가기」만 남겼다. 1280×720에서 세 코너와 하단 내비가 스크롤 없이 한 화면에
@@ -57,7 +57,7 @@ branch `codex/learner-report-v1-2026-07-31` · base `9a244f0`
   - 미션 인트로 하단 중복 상황 전문 비노출, 노란 시작 버튼 유지.
   - 라운지 `scrollHeight=720`, `innerHeight=720`, 세 코너 모두 노출.
   - 관리자 `pending` 링크 4종의 실제 link count가 모두 0.
-- `main` 푸시 뒤 Railway production에서 코드 묶음 커밋 `6202604`가
+- `main` 푸시 뒤 Railway production에서 코드 묶음 커밋 `776f393`가
   `Active / Deployment successful` 상태임을 확인했고, `https://pragma.up.railway.app`의
   정상 응답을 확인했다(배포 ID `0674d126-e1c9-4169-b8c5-d876a2fe5cc5`).
 - 검증 과정에서 실제 번역 수행 기록 1건이 추가됐다. 콘텐츠·스키마 변경은 없다.
@@ -78,7 +78,7 @@ branch `codex/learner-report-v1-2026-07-31` · base `9a244f0`
 
 ## 학습자 로그인 화면 정리
 
-- base `5f159a3`, 구현 commit `762db5e`.
+- base `4406865`, 구현 commit `fc38906`.
 - 로그인 필수 정책과 Google OAuth 단일 진입은 유지하고, 인증된 사용자가
   `/student-login`에 다시 들어오면 기존 `/home` 프로필 관문으로 보내 중복 인증을
   요구하지 않게 했다.
@@ -96,7 +96,7 @@ branch `codex/learner-report-v1-2026-07-31` · base `9a244f0`
 - 학습설계·생성계약·데이터 구조·평가 방식의 변경이 아닌 로그인 진입부의 문구와 시각 위계
   교정이므로 `01_design_traceability`, `02_decision_log`, `03_iteration_log`는 갱신하지
   않았다. 아래 운영 배포 증거만 `04_evidence_index`에 연결했다.
-- `2e8a72e`를 `main`에 fast-forward 푸시해 Railway 자동 배포를 시작했다. 운영 URL
+- `7ccbfa7`를 `main`에 fast-forward 푸시해 Railway 자동 배포를 시작했다. 운영 URL
   `https://pragma.up.railway.app/`이 HTTP 200으로 응답했고, 새 청크
   `StudentLogin-CZV_zPm1.js`에서 `학습 시작하기`와 계정 변경 시 기록 분리 안내를,
   `Index-CkxXKPaY.js`에서 새 랜딩 문구를 확인했다. 구문 `직접 옮겨`는 운영 랜딩 청크에

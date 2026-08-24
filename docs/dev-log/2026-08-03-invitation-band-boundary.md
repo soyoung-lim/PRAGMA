@@ -29,7 +29,7 @@
 - 변경 파일 ESLint와 `git diff --check` 통과.
 - production build 통과(**1901 modules**).
 - core prompt surface와 hash `07d82beaab49…`는 변경하지 않았다.
-- PR #16을 merge commit `d592946`으로 병합했다.
+- PR #16을 merge commit `7fdd32b`으로 병합했다.
 - Railway production 배포 `57c64116-a817-4047-baae-d53d43d22494`가 `SUCCESS`였고,
   운영 URL HTTP 200과 `/assets/targetFeatures-DpMM3B1Z.js`의 feature `v1.1`·한국어
   경계 예시 포함을 확인했다.

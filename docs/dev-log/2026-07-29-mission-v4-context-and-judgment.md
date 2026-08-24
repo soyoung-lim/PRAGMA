@@ -7,17 +7,17 @@
 ## 관련 branch와 기준점
 
 - 기준 branch: `codex/lounge-release-2026-07-28`
-- 기준 commit: `1513155`
+- 기준 commit: `99c3be8`
 - 작업 branch: `codex/mission-v4-feedback-2026-07-29`
 - 작업공간: `.worktrees/mission-v4-feedback`
 - 검토 URL: `http://localhost:8094/learner/practice?preview=v4`
 
 ## 조사 결과
 
-- 기존 8093 서버는 과거 작업공간 `e4aa5db` 계열을 가리켰다.
+- 기존 8093 서버는 과거 작업공간 `d6dc0ee` 계열을 가리켰다.
 - 8092 서버의 실제 최신 기준선에는 `mission_v4`가 있었지만 MPJ4는 4후보 각각에 band를 고르는 기존 구현이었다.
 - 앞선 수정이 최신 기준선이 아닌 구버전 작업공간에 반영돼 최신 v4에는 나타나지 않았다.
-- 현재 변경은 기존 작업공간의 미커밋 변경을 건드리지 않기 위해 `1513155`에서 새 worktree와 branch를 만들어 수행했다.
+- 현재 변경은 기존 작업공간의 미커밋 변경을 건드리지 않기 위해 `99c3be8`에서 새 worktree와 branch를 만들어 수행했다.
 
 ## 구현한 것
 

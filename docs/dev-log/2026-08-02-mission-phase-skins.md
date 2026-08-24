@@ -44,7 +44,7 @@ email/messenger 채널은 언어 표현의 핵심 연구 축이 아니므로, �
   - 인앱 브라우저 564×731에서 수평 overflow가 없고 새 콘솔 오류가 없었다. 기존 React
     Router future flag 경고만 확인했다.
 - GitHub PR [#6](https://github.com/cnkr-commits/l2-pragmatic-translator/pull/6)을 merge commit
-  `056bf394`로 병합했다.
+  `dc38ef40`로 병합했다.
 - Railway production 배포 `1504272b-af34-42e2-a0ce-7f6f75df7b1e`가 해당 commit으로
   `SUCCESS`·`RUNNING`임을 확인했다.
 - 운영 URL `https://pragma.up.railway.app/`가 HTTP 200을 반환하고 운영 미션 chunk

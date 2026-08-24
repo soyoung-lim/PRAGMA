@@ -104,7 +104,7 @@
   - production build 통과
   - localhost에서 MPJ1~4와 번역·통역 화면을 실제 클릭해 항목 수, 공개 순서와 계산 스타일을 확인
 - 예상과 달랐던 점:
-  - 앞선 수정은 최신 `mission_v4`가 아닌 구버전 worktree와 8093 서버에 들어가 실제 최신 화면에 나타나지 않았다. `1513155` 기준의 새 worktree에서 다시 구현했다.
+  - 앞선 수정은 최신 `mission_v4`가 아닌 구버전 worktree와 8093 서버에 들어가 실제 최신 화면에 나타나지 않았다. `99c3be8` 기준의 새 worktree에서 다시 구현했다.
   - BEST 2·WORST 1 보완안은 후속 사용자 결정으로 BEST 1·WORST 1로 바뀌었다.
   - 선행 발화를 복원하자 메신저가 이미 진행 중인 대화가 되어, 고정 인사말을 추가할 필요가 없어졌다.
 - 다음 설계에 반영할 교훈:
@@ -292,7 +292,7 @@
   - 인간 검수는 노란 규칙 경고를 먼저 읽어 R19·R29를 빠르게 찾고, R5 warning은
     `DEC-20260731-01`의 비차단 신호로 구분한 뒤 대역·극단 오답·reference 전체 번역을 본다.
 - 관련 Decision / Evidence: `DEC-20260731-02`, `EVD-20260731-02`
-- 관련 커밋: `2d216ca`, `b5ce135`
+- 관련 커밋: `41819cf`, `f0328c8`
 
 ## ITER-20260731-03 · 시간순 학습 기록을 근거 기반 개인 리포트 v0로 전환
 
@@ -351,7 +351,7 @@
     최초안처럼 여러 수행을 연결해야만 나오는 관계여야 한다. 근거 원장은 메인 흐름이
     아니라 필요할 때 여는 별도 층으로 둔다.
 - 관련 Decision / Evidence: `DEC-20260731-04`, `EVD-20260731-04`
-- 관련 커밋: `db42e78`(최종 V1에 통합)
+- 관련 커밋: `41e57c2`(최종 V1에 통합)
 
 ## ITER-20260731-04 · 누적 리포트 V1을 한 화면 핵심 프로파일로 축소
 
@@ -395,7 +395,7 @@
   - 실제 장기 계정에서 비교 집단이 지나치게 잘게 쪼개지는지 확인한 뒤 최소 표본 조건을
     `report_claim_v1`에 정식 계약화한다.
 - 관련 Decision / Evidence: `DEC-20260731-05`, `EVD-20260731-06`
-- 관련 커밋: `db42e78`
+- 관련 커밋: `41e57c2`
 
 ## ITER-20260801-01 · 지도교수 점검 전 학습 진입 동선 수직 점검
 
@@ -434,7 +434,7 @@
   - 화면 접기·펼치기는 DOM에 그렸는지가 아니라 클릭 직후 viewport에 보이는지로 검증한다.
   - 시연을 위해 데이터에 없는 수행 방식을 주장하거나 정본 미션 단위를 변경하지 않는다.
 - 관련 Decision / Evidence: `DEC-20260801-01`, `EVD-20260801-01`
-- 관련 커밋: `3e120be`, `6ad1e06`, `debe8e8`
+- 관련 커밋: `16da639`, `4a7d4a4`, `c478615`
 
 ## ITER-20260802-01 · 절차 중심 미션 진입을 장면 중심 1차 경험으로 전환
 
@@ -477,7 +477,7 @@
     최종안의 의미를 재사용하는 방향으로 검토한다.
   - 배포 뒤 실제 reviewed 16건 전수 smoke와 이메일 2건의 장면 문구 적합성을 다시 확인한다.
 - 관련 Decision / Evidence: `DEC-20260802-01`, `EVD-20260802-01`
-- 관련 커밋: `397c3c8`
+- 관련 커밋: `66ec631`
 
 ## ITER-20260802-02 · 장면 진입에서 결과 소유·누적 보관까지 미션 경험 연결
 
@@ -517,7 +517,7 @@
     해치지 않는 범위에서 전체 경험 루프를 다시 완결한다.
   - 실제 운영 검증 전에는 콘텐츠 재생성이나 `policy_ver` 인상을 하지 않는다.
 - 관련 Decision / Evidence: `DEC-20260802-02`, `EVD-20260802-02`
-- 관련 커밋: `1dbca22`
+- 관련 커밋: `20f1894`
 
 ## ITER-20260802-03 · 채널별 장면 표면을 단계별 학습 표면으로 단순화
 
@@ -541,7 +541,7 @@
   - localhost에서 번역·통역 MPJ 모두 DM 표면과 모드별 판단 문구를 확인했다.
   - 번역 DCT의 고정 이메일형 작성기·중립 라벨, 통역 DCT의 정적 듣기·녹음 콘솔을 확인했다.
   - 인앱 브라우저 564×731에서 수평 overflow 없음과 새 콘솔 오류 없음을 확인했다.
-  - PR #6을 merge commit `056bf394`로 병합한 뒤 Railway production 배포
+  - PR #6을 merge commit `dc38ef40`로 병합한 뒤 Railway production 배포
     `1504272b-af34-42e2-a0ce-7f6f75df7b1e`의 SUCCESS·RUNNING과 운영 미션 chunk의
     DM·번역 작성기·통역 수행 콘솔 문구를 확인했다.
 - 예상과 달랐던 점:
@@ -554,7 +554,7 @@
     우선 설명하게 한다.
   - 통역은 번역과 시각 톤을 맞추되, 듣기·녹음이라는 수행 양식까지 문자 작성으로 바꾸지 않는다.
 - 관련 Decision / Evidence: `DEC-20260802-03`, `EVD-20260802-03`
-- 관련 커밋: `b07e2a9`
+- 관련 커밋: `a1ab88d`
 
 ## ITER-20260802-04 · 통역·중→한 생성의 문장 경계와 반복 실행 저장 복구
 
@@ -573,7 +573,7 @@
   - 캡처 원문을 포함한 문장 수·보정 프롬프트·실행 ID 신규 테스트와 관련 26개 테스트 통과.
   - 전체 **222 pass / 6 skip**, typecheck, production build(1899 modules) 통과.
   - 프롬프트 스냅샷을 12종에서 13종으로 갱신했고 core surface hash `e12af89e99bd…`를 확인했다.
-  - PR #8을 `07fb3b5`로 병합하고 Edge 함수를 배포했다. Railway 운영 번들의 UUID run ID와
+  - PR #8을 `b44cc02`로 병합하고 Edge 함수를 배포했다. Railway 운영 번들의 UUID run ID와
     DB 미저장 중→한 통역 표본의 중국어 2문장·`core_v5`·동일 prompt hash를 확인했다.
 - 예상과 달랐던 점:
   - 오류 메시지는 규칙검사 실패였지만 R29 자체가 잘못된 것이 아니었다. 중국어에서 쉼표로
@@ -585,7 +585,7 @@
   - 실행 식별자와 콘텐츠 동일성 hash를 하나의 값으로 겸용하지 않는다.
   - 자동 보정은 검증 실패 범위에만 제한하고 횟수·변경 가능 속성·provenance를 함께 고정한다.
 - 관련 Decision / Evidence: `DEC-20260802-04`, `EVD-20260802-04`
-- 관련 커밋: `d29ffa2`, `07fb3b5`
+- 관련 커밋: `2eafdff`, `b44cc02`
 
 ## ITER-20260802-05 · 원문 분량 판정을 문장 수에서 버전된 유효 글자 정책으로 전환
 
@@ -609,7 +609,7 @@
   - 신규 공유 정책·테스트·snapshot·batch 파일 ESLint와 `git diff --check`를 통과했다.
     저장소 전체 lint는 기존 오류 19건·경고 11건으로 실패했으며 이번 파일럿의 신규 오류로
     판정하지 않았다.
-  - PR #10을 merge commit `36e75e0`으로 병합하고 `generate-scenario` Edge 함수를 배포했다.
+  - PR #10을 merge commit `bbfc373`으로 병합하고 `generate-scenario` Edge 함수를 배포했다.
     DB 미저장 중→한 통역 smoke에서 37자·3문장, `core_v6_length_chars_v1_repair`, 보정 1회,
     정책 버전 `effective_chars_v1`, 동일 prompt hash를 확인했다.
   - Railway production 배포 `3df7e817-e377-40f0-8698-8510d0266085`가 Online이고, 빌드
@@ -633,7 +633,7 @@
   - Git worktree에서 Railway 직접 배포 시에는 항상 경로 인수와 `--path-as-root`를 함께 써서
     루트 저장소의 미커밋 상태가 배포 입력으로 섞이지 않게 한다.
 - 관련 Decision / Evidence: `DEC-20260802-05`, `EVD-20260802-05`
-- 관련 커밋: `1056c9b`
+- 관련 커밋: `ffd7e4c`
 
 ## ITER-20260802-06 · 중→한 통역 응답 장면의 언어 역할 복구
 
@@ -652,8 +652,8 @@
   - 관련 **30 pass**, 전체 **236 pass / 6 skip**, typecheck, 변경 파일 ESLint,
     production build(1901 modules) 통과.
   - 스냅샷 core hash `07d82beaab497ccbc53ce7d65b35aa95568e293d11a82ef9cab5976bf1cdbb6c`,
-    구현 커밋 `13d99f7`, `git_dirty=false` 확인.
-  - PR #12를 `361faf5`로 병합하고 Edge와 Railway 배포 `f47f5661…`을 완료했다.
+    구현 커밋 `757b23d`, `git_dirty=false` 확인.
+  - PR #12를 `0c1f7df`로 병합하고 Edge와 Railway 배포 `f47f5661…`을 완료했다.
   - DB 미저장 중급·중→한·통역·반대 표본에서 중국어/한국어 화자와 통역이 명시됐고,
     한국어 선행 발화·중국어 원문·57자(40~60)·선행 발화 보정 1회·동일 hash를 확인했다.
 - 예상과 달랐던 점:
@@ -666,7 +666,7 @@
   - 자동 보정의 적용 여부뿐 아니라 시도 후 미채택 표본도 파일럿 성공률에 포함한다.
   - 본배치 전 수준·방향별 생성 성공률과 TTS 시간을 함께 측정한다.
 - 관련 Decision / Evidence: `DEC-20260802-06`, `EVD-20260802-06`
-- 관련 커밋: `13d99f7`, `593de69`, `361faf5`
+- 관련 커밋: `757b23d`, `46192cb`, `0c1f7df`
 
 ## ITER-20260802-07 · core_v7 조립 실패의 재시도 정보 손실 복구
 
@@ -685,9 +685,9 @@
   - R27 MPJ 중복·DCT 복제와 R5 대역/길이 진단 회귀 3개를 추가했다.
   - 관련 3파일 **26 pass**, 전체 **238 pass / 6 skip**, typecheck, 변경 파일 ESLint,
     production build(**1901 modules**), 프롬프트 스냅샷 재생성·`git diff --check`가 통과했다.
-  - core surface hash `07d82beaab49…`가 유지됐고 스냅샷은 구현 커밋 `f2f78e5`와
+  - core surface hash `07d82beaab49…`가 유지됐고 스냅샷은 구현 커밋 `bf3beb5`와
     `git_dirty=false`를 기록해 코어 계열이 바뀌지 않았음을 확인했다.
-  - PR #14를 merge commit `3c7e57d`로 병합하고 Supabase Edge와 Railway deployment
+  - PR #14를 merge commit `1666e86`로 병합하고 Supabase Edge와 Railway deployment
     `e69237d2-e748-4ffa-b223-cdbdf96f53a7`을 배포했다. Railway `SUCCESS`, 운영 홈·신규
     review/rules 청크 HTTP 200과 새 버전·R27·R5 문구 포함을 확인했다.
 - 예상과 달랐던 점:
@@ -698,7 +698,7 @@
   - 배포 후 같은 core_v7 표본을 소수 재조립해 R27·R5 재발 건수를 분리 측정한다.
   - 초대의 선택권·약속 명료성 교환 관계는 카탈로그 변경 승인 전 별도 표본으로 확인한다.
 - 관련 Decision / Evidence: `DEC-20260802-07`, `EVD-20260802-07`
-- 관련 커밋: `f2f78e5`, `bd17845`, `3c7e57d`
+- 관련 커밋: `bf3beb5`, `9c1337a`, `1666e86`
 
 ## ITER-20260803-01 · 초대 대역 경계의 반복 오분류 보정
 
@@ -716,7 +716,7 @@
   - 카탈로그 **6 pass**, 전체 **239 pass / 6 skip**, typecheck, 변경 파일 ESLint,
     production build(**1901 modules**) 통과.
   - 코어 프롬프트 surface와 hash `07d82beaab49…`는 불변이다.
-  - PR #16을 merge commit `d592946`으로 병합하고 Railway production deployment
+  - PR #16을 merge commit `7fdd32b`으로 병합하고 Railway production deployment
     `57c64116-a817-4047-baae-d53d43d22494`을 배포했다. Railway `SUCCESS`, 운영 URL
     HTTP 200과 `targetFeatures-DpMM3B1Z.js`의 feature `v1.1`·한국어 경계 예시 포함을
     확인했다.
@@ -731,7 +731,7 @@
   - 배포 뒤 동일 core 계열의 초대 표본을 소수 재조립해 규칙 성공률과 AI 대역 finding을
     분리 집계한다.
 - 관련 Decision / Evidence: `DEC-20260803-01`, `EVD-20260803-01`
-- 관련 커밋: `39c5574`, `20baa79`, `d592946`
+- 관련 커밋: `1a2c464`, `052a958`, `7fdd32b`
 ## ITER-20260802-08 · 콜드 오픈 정보 밀도·공간·단계 중복 시각 반복
 
 - 날짜: 2026-08-02
@@ -851,7 +851,7 @@
   - 최종 산출을 학습 증거로 사용할 때는 `수정 필요` 판정과 실제 변경 여부를 함께 확인한다.
   - 다단계 수정이 필요해지면 중간 산출과 재평가를 먼저 데이터 계약으로 설계한다.
 - 관련 Decision / Evidence: `DEC-20260804-01`, `EVD-20260804-01`
-- 관련 커밋: `7b21913`
+- 관련 커밋: `944f4b8`
 
 ## ITER-20260804-02 · 학습자용 장면과 평가자용 기준의 분리
 
@@ -896,7 +896,7 @@
     평가 기준도 다시 새지 않는지 인간 눈검사한다.
   - 기존 core_v7 행은 오류 계보와 재현성을 위해 소급 수정하지 않는다.
 - 관련 Decision / Evidence: `DEC-20260804-02`, `EVD-20260804-02`
-- 관련 커밋: `6e3985e`
+- 관련 커밋: `3da1c5a`
 
 ## ITER-20260804-03 · 미동결 콘텐츠의 후보 계보와 안전 refresh 게이트
 
@@ -921,7 +921,7 @@
 - 실제 검증:
   - 전체 Vitest **256 pass / 7 skip**, typecheck, 변경 파일 ESLint, production build
     **1902 modules** 통과.
-  - prompt snapshot 16종을 가시성 보완 커밋 `ee96b7b`, `git_dirty=false`로 재생성했다.
+  - prompt snapshot 16종을 가시성 보완 커밋 `858c085`, `git_dirty=false`로 재생성했다.
     core surface hash는 `6dc227d791fb…`로 불변이다.
   - inventory SQL에 쓰기·DDL 동사가 없고 알려진 참조 테이블을 모두 감사하는지 테스트했다.
   - localhost 관리자 화면에서 release 통계·필터 레이아웃을 확인했다. 브라우저 세션에
@@ -940,7 +940,7 @@
     E2E → 승인된 전체 실행 순으로 연다.
   - 후보 계약이 바뀌면 과거 행을 소급 승격하지 않고 새 후보로 재생성한다.
 - 관련 Decision / Evidence: `DEC-20260804-03`, `EVD-20260804-03`
-- 관련 커밋: `bc18e35`, `ee96b7b`
+- 관련 커밋: `c86a01e`, `858c085`
 
 ## ITER-20260804-04 · 실패 산출 직접 수리와 고정 코어 카나리
 
@@ -977,7 +977,7 @@
     식별한다.
   - `_02`는 차단 증거로 보존하고 전체 refresh·자동 reviewed 승격에 사용하지 않는다.
 - 관련 Decision / Evidence: `DEC-20260804-04`, `EVD-20260804-04`
-- 관련 커밋: `8b30d3d`, `dee7279`, `426caf7`
+- 관련 커밋: `77fbe36`, `8b2a455`, `325541a`
 
 ## ITER-20260804-05 · 모델 강등 차단·품질점검 fail-closed·호출 원장
 
@@ -1010,7 +1010,7 @@
   - 연구 호출은 모델 라우팅과 usage 기록을 프롬프트 계보와 함께 버전 관리한다.
   - 운영 적용은 migration → Edge → 소수 smoke 순으로 원자적으로 연다.
 - 관련 Decision / Evidence: `DEC-20260804-05`, `EVD-20260804-05`
-- 관련 커밋: `91e2a33`
+- 관련 커밋: `bfda8de`
 
 ## ITER-20260804-06 · R16/R29 복합 repair의 부분 성공 보존
 
@@ -1032,7 +1032,7 @@
     회귀 테스트로 확인했다.
   - 관련 36 pass, 전체 **262 pass / 7 skip**, typecheck, 변경 파일 ESLint,
     `git diff --check`, production build **1902 modules**를 통과했다.
-  - 구현 커밋 `b47c39e` 기준 prompt snapshot 17종과 `core_surface_hash=8e9b7ec87869…`를
+  - 구현 커밋 `14b0bd6` 기준 prompt snapshot 17종과 `core_surface_hash=8e9b7ec87869…`를
     생성했고 `git_dirty=false`를 확인했다.
   - migration·Edge·Railway·DB row·모델 호출은 변경하거나 실행하지 않았다.
 - 예상과 달랐던 점:
@@ -1045,7 +1045,7 @@
     재구성할 수 있다.
   - 원격 효과 확인 전에는 `_03`의 코어 안정성 개선을 완료로 판정하지 않는다.
 - 관련 Decision / Evidence: `DEC-20260804-06`, `EVD-20260804-06`
-- 관련 커밋: `b47c39e`
+- 관련 커밋: `14b0bd6`
 
 ## ITER-20260804-07 · 원격 길이 repair 반증과 승인 경계 복원
 
@@ -1061,14 +1061,14 @@
   - v49 진단 메타로 같은 셀의 최초 47자·repair 후보 51자를 확인했다.
   - `_04` v50에서 3문장·문장별 예산 지시를 시험했지만 repair 후보와 최종 출력 모두
     46자로 실패했다.
-  - 복수 후보 선택안을 설계 단계에서 중단하고, `_04`·진단 변경을 `59bd8c3`에서 revert한
+  - 복수 후보 선택안을 설계 단계에서 중단하고, `_04`·진단 변경을 `24fc8e4`에서 revert한
     뒤 `_03`을 Edge v51로 재배포했다. migration은 유지했다.
 - 실제 검증:
   - 원장에는 `_03` core 8·repair 2, `_04` core 1·repair 1, 합계 12회가 모두 success·
     fallback false로 남았다. `_03`·`_04` `scenarios` 저장 행은 각각 0건이다.
   - v51은 ACTIVE이고 bundle hash는
     `e5e298a89f86344ecf6307d54840f0b1460a16964065d8e3dda45edbe937a690`이다.
-  - 롤백 Edge 소스가 `b47c39e`와 일치함을 `git diff --exit-code`로 확인했다.
+  - 롤백 Edge 소스가 `14b0bd6`와 일치함을 `git diff --exit-code`로 확인했다.
   - 관련 **23 pass / 4 skip**, 전체 **262 pass / 7 skip**, production build
     **1902 modules**를 통과했다. snapshot 17종·core hash `8e9b7ec87869…`다.
 - 예상과 달랐던 점:
@@ -1086,7 +1086,7 @@
     평가 설계 변경으로 분류한다.
   - 실패 후보와 원장 행은 삭제하지 않고, 채택 계약과 분리해 반증·통제 이탈 증거로 남긴다.
 - 관련 Decision / Evidence: `DEC-20260804-07`, `EVD-20260804-07`
-- 관련 커밋: `917b4a2`, `b540a5b`, `59bd8c3`
+- 관련 커밋: `a5ae81d`, `0a949de`, `24fc8e4`
 
 ## ITER-20260805-01 · 중→한 9화행의 30셀 혼합 검증 계획 구현
 
@@ -1122,7 +1122,7 @@
   - 계획 확대와 콘텐츠 승격을 분리하고, 인간 눈검사 결과가 생기기 전에는 54셀 확대나 새 오류
     패턴의 효과를 주장하지 않는다.
 - 관련 Decision / Trace: `DEC-20260805-01`, `TRC-20260805-01`
-- 관련 커밋: `1f10320`
+- 관련 커밋: `295333c`
 
 ## ITER-20260805-02 · 중→한 30셀의 실행 전 판정 계획 고정
 
@@ -1152,7 +1152,7 @@
   - 자동 게이트는 단계별 이탈을 설명하는 장치이고 인간 사용 가능 판정을 대체하지 않는다.
   - 레포 정본만이 아니라 논문 `05_증거`의 관련 감사도 실행 전 출처 점검에 포함해야 한다.
 - 관련 Decision / Trace: `DEC-20260805-02`, `TRC-20260805-01`
-- 관련 커밋: `abcdfda`
+- 관련 커밋: `991d293`
 
 ## ITER-20260805-03 · 중→한 코어 30셀 파일럿의 반복 길이 오류 중단
 
@@ -1334,7 +1334,7 @@
 - 실제 검증:
   - 관련 테스트 47건, 전체 280건이 통과했고 기존 조건부 7건은 skip됐다.
   - TypeScript typecheck와 production build(1,903 modules)가 통과했다.
-  - 구현 커밋 `1fa7aab` 기준 prompt snapshot 18종을 재발행했고 `core_surface_hash`는 `b87e21b9b07e…`, `git_dirty=false`다.
+  - 구현 커밋 `4bf920a` 기준 prompt snapshot 18종을 재발행했고 `core_surface_hash`는 `b87e21b9b07e…`, `git_dirty=false`다.
   - DB 생성·저장·기존 행 변경·Edge/Railway 배포는 0이다.
 - 예상과 달랐던 점:
   - UI나 STT/TTS 기능을 늘리지 않고도 통역 구인의 핵심 결함을 생성 데이터의 역할·시점·P·D·R 계약으로 분리할 수 있었다.
@@ -1343,13 +1343,13 @@
   - 구조화 계약은 자연어 검사의 기준점을 제공하지만 실제 사건 대응과 지시 대상의 자연스러움을 증명하지 않는다.
   - 다음 단계는 배포 승인을 받은 뒤 DB 저장 없는 소수 카나리와 사람 판정이며, 자동 통과율만으로 LOCK하지 않는다.
 - 관련 Decision / Evidence / Trace: `DEC-20260806-01`, `EVD-20260806-02`, `TRC-20260806-01`
-- 관련 커밋: 정본 반영 `c1a9345`, 구현 `1fa7aab`
+- 관련 커밋: 정본 반영 `343c422`, 구현 `4bf920a`
 
 ### 운영 배포 후속
 
-- 배포 전 운영 v53 엔트리가 과거 `231b85a`와 일치하고 역할 계약 구현 `1fa7aab`과 다른
+- 배포 전 운영 v53 엔트리가 과거 `c30f913`와 일치하고 역할 계약 구현 `4bf920a`과 다른
   정합성 결함을 직접 확인했다.
-- 사용자 승인 뒤 clean `main@b63784c`에서 `generate-scenario`만 배포했다. v54가 ACTIVE이고
+- 사용자 승인 뒤 clean `main@4fdaa8c`에서 `generate-scenario`만 배포했다. v54가 ACTIVE이고
   다시 내려받은 엔트리의 SHA-256·Git blob이 로컬과 정확히 일치했다.
 - 배포 중 실제 생성, 콘텐츠 DB 저장, 기존 495 변경, 상태 승격은 수행하지 않았다.
 - 다음 반복 관찰은 별도 승인 뒤 DB 미저장 통역 core-only 카나리와 사람 6항목 판정으로
@@ -1393,8 +1393,8 @@
 
 ### `_02` 운영 배포 후속
 
-- 사용자 승인 뒤 `main@6ca2f17`을 origin에 push했다. 해당 Railway 배포는 SUCCESS였으나 직후
-  Lovable bot의 두 후속 커밋으로 REMOVED됐고, 현재 Railway는 `5a2c5d5`에서 SUCCESS다.
+- 사용자 승인 뒤 `main@e96c501`을 origin에 push했다. 해당 Railway 배포는 SUCCESS였으나 직후
+  Lovable bot의 두 후속 커밋으로 REMOVED됐고, 현재 Railway는 `5319153`에서 SUCCESS다.
   후속 커밋은 Edge 관련 7개 파일을 바꾸지 않았으며 `generate-scenario`는
   v55·ACTIVE·`verify_jwt=true`다.
 - Edge bundle SHA-256은 `2c3cc34482e38b37c959ea0933f3037d67874e1d54962af046d7f72dc31d8207`다.
@@ -1411,14 +1411,14 @@
   - 제3 AI 도구가 `main`에 직접 push해 npm 의존성 방침과 Supabase 타입 정본을 오염시켰다.
   - 봇 커밋을 지우지 않으면서 현재 DB와 일치하는 안전한 복구 기준을 선택해야 했다.
 - 변경과 실행:
-  - `004a04a`·`5a2c5d5`의 작성자·변경 범위와 `bun.lock(b)` 제거 선례를 Git에서 직접 확인했다.
-  - `b63784c` 복원안과 운영 DB 타입 재생성안을 table/RPC 집합과 파일 크기로 비교했다.
+  - `205080d`·`5319153`의 작성자·변경 범위와 `bun.lock(b)` 제거 선례를 Git에서 직접 확인했다.
+  - `4fdaa8c` 복원안과 운영 DB 타입 재생성안을 table/RPC 집합과 파일 크기로 비교했다.
   - 운영 DB 재생성 타입을 채택하고 `bun.lock`을 제거했다. DB 쓰기·배포는 수행하지 않았다.
 - 실제 검증:
-  - Lovable 12 tables/3 RPCs, `b63784c` 20/6, 운영 DB 재생성 21/7이었다.
+  - Lovable 12 tables/3 RPCs, `4fdaa8c` 20/6, 운영 DB 재생성 21/7이었다.
   - 필수 12개 정의가 모두 복구됐고 typecheck, 전체 284 tests(8 skip), production build
     1,903 modules가 통과했다.
-  - 공식 Railway CLI는 지시서와 달리 current `5a2c5d5`·SUCCESS·RUNNING을 반환했다.
+  - 공식 Railway CLI는 지시서와 달리 current `5319153`·SUCCESS·RUNNING을 반환했다.
 - 예상과 달랐던 점:
   - 직전 Git 타입도 운영 DB의 `llm_invocation_events`와 신규 프로필 RPC를 아직 반영하지 않아
     단순 되돌리기가 완전한 복구가 아니었다.
@@ -1477,7 +1477,7 @@
   - 관련 46건, 전체 290건이 통과했고 8건은 기존 조건부 테스트로 skip됐다.
   - `npm run typecheck`, 변경 TypeScript 파일 ESLint, production build 1,903 modules가 통과했다.
     전체 lint는 기존 변경 밖 `no-explicit-any` 16건과 warning 10건으로 실패했다.
-  - snapshot 18종, `core_surface_hash=0f15492f114d…`; 구현 커밋 `7c7246c`다.
+  - snapshot 18종, `core_surface_hash=0f15492f114d…`; 구현 커밋 `f28368d`다.
   - Edge·Railway 배포, AI 생성, DB 쓰기, 미션 생성·승격, push는 0이다.
 - 예상과 달랐던 점:
   - v55의 역할 결함 두 건은 모델을 다시 호출하지 않고 구조 필드로부터 재렌더링할 수 있었다.
@@ -1579,7 +1579,7 @@
     `history/legacy/`로 격리했다. 기존 7월 29일 파일은 이후에도 수정됐으므로 정확한 7월 29일
     동결본이라고 재명명하지 않고 legacy 가변 판본으로 명시했다.
   - 앱 경로 목록, 양 에이전트 지침, history 규칙과 정본 라우팅 자동검사를 추가했다.
-  - 새 콜드 오픈 커밋 `e2de51b`까지 학습자 정본을 대조해 3장 진입·번역 선행 발화 예고·
+  - 새 콜드 오픈 커밋 `59d0d2d`까지 학습자 정본을 대조해 3장 진입·번역 선행 발화 예고·
     통역 비노출·MPJ 뒤 장면 회수를 반영했다.
 - 실제 검증:
   - 정본 라우팅 5개와 미션 스키마 11개 표적 검사 16/16 통과.
@@ -2188,12 +2188,12 @@
 
 - 시작 문제: 브랜치·worktree가 누적되어 이미 main에 흡수된 기능, 미통합 기능, dirty 실험과 연구 기록을 구별하기 어려웠다. 루트 작업공간은 여러 세대의 변경이 섞여 그대로 배포할 수 없었다.
 - 조사: 로컬 브랜치 23개, 원격 브랜치 27개, worktree 20개, dirty worktree 5개와 stash 0개를 확인하고 patch-equivalence와 현재 main의 실제 파일을 대조했다.
-- 보존: 코드·문서·연구 산출물 127개를 `codex/archive/mixed-workspace-2026-08-22`의 `25f7051`에 저장했다. nested worktree와 임시 렌더·PDF 캐시는 제외했고 원본 dirty 작업공간은 건드리지 않았다.
+- 보존: 코드·문서·연구 산출물 127개를 `codex/archive/mixed-workspace-2026-08-22`의 `6791507`에 저장했다. nested worktree와 임시 렌더·PDF 캐시는 제외했고 원본 dirty 작업공간은 건드리지 않았다.
 - 이식:
-  - `a30a6f7`: DEV 전용 7단계 직접 이동·현재 답안 채우기·개발 검증 우회.
-  - `a5042c8`: 관리자 아카이브 exact count·100행 페이지네이션·공통 enum 라벨.
-  - `364cdfc`: 참조 0인 legacy 화면·helper 6개, 954행 제거.
-- 검증: 최신 운영 기준 `63faa89`에서 기능 이식 뒤와 legacy 제거 뒤 `npm.cmd run typecheck`가 각각 통과했다. 로컬 Vitest와 production build는 격리 경로에서 esbuild의 상위 경로 읽기가 차단되어 시작하지 못했으며, 이를 코드 실패나 통과로 해석하지 않았다. 이후 GitHub Actions run `32568454036`의 clean Node 22 checkout에서 typecheck·전체 test·production build가 모두 통과했다.
+  - `df7e755`: DEV 전용 7단계 직접 이동·현재 답안 채우기·개발 검증 우회.
+  - `e7dcb6e`: 관리자 아카이브 exact count·100행 페이지네이션·공통 enum 라벨.
+  - `cedc56a`: 참조 0인 legacy 화면·helper 6개, 954행 제거.
+- 검증: 최신 운영 기준 `6075d2c`에서 기능 이식 뒤와 legacy 제거 뒤 `npm.cmd run typecheck`가 각각 통과했다. 로컬 Vitest와 production build는 격리 경로에서 esbuild의 상위 경로 읽기가 차단되어 시작하지 못했으며, 이를 코드 실패나 통과로 해석하지 않았다. 이후 GitHub Actions run `32568454036`의 clean Node 22 checkout에서 typecheck·전체 test·production build가 모두 통과했다.
 - 원격 정리: archive와 gold 통합 브랜치를 GitHub에 보존한 뒤 `origin/main`의 조상으로 완전히 흡수된 원격 브랜치 14개만 삭제했다. 고유 patch·문서·dirty worktree가 남은 브랜치는 유지했다.
 - 검증 자동화: PR에 자동 check가 없음을 확인해 Node 22 clean checkout에서 typecheck·전체 test·production build를 실행하는 기본 CI를 추가했고 최초 run `32568454036`이 통과했다.
 - 다음 반영: PR 병합과 Railway 운영 반영을 확인하고, 원본 로컬의 병합 완료·중복 branch/worktree를 제거한다. Mission V6는 별도 계약 판단 전까지 archive로 유지한다.

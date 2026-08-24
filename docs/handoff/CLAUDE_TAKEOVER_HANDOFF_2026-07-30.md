@@ -10,7 +10,7 @@
   `C:\Users\cnkr\.codex\worktrees\f1be\l2-pragmatic-translator`
 - branch: `codex/mission-v5-takeover-2026-07-30`
 - 오늘 UI 구현 기준 commit:
-  `8be7dee feat(mission): refine v5 learner production flow`
+  `7d5da1f feat(mission): refine v5 learner production flow`
 - 이 문서를 포함한 최종 HEAD와 원격 추적 상태는 아래 명령으로 확인한다.
 
 ```powershell
@@ -93,7 +93,7 @@ fixture는 `IS_DEMO`, sample, `mission_v5`, `ko_zh`,
 
 ## 5. 현재 검증과 provenance
 
-구현 commit `8be7dee` 기준:
+구현 commit `7d5da1f` 기준:
 
 - `npm run typecheck`: 통과
 - 전체 Vitest: 164 pass, 3 skip
@@ -104,7 +104,7 @@ fixture는 `IS_DEMO`, sample, `mission_v5`, `ko_zh`,
   - 다듬기에서 `번역 초안 / 번역 수정` 표시
 - prompt snapshot:
   - 12종
-  - git commit provenance: `8be7dee`
+  - git commit provenance: `7d5da1f`
   - git dirty: `false`
 - core surface hash:
   `dc8f149400de634a0e9e30f70c8b7e62d3c84999c044cf30fe1429100eb8d334`

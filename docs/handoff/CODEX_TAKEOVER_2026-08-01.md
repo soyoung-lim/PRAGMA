@@ -7,7 +7,7 @@
 
 - worktree: `C:\Users\cnkr\Documents\Projects\l2-pragmatic-translator\.worktrees\learner-report-v1`
 - branch: `codex/learner-report-v1-2026-07-31`
-- HEAD: `9a244f0` — **origin/main과 동일**(푸시·배포 완료 상태)
+- HEAD: `8c5c201` — **origin/main과 동일**(푸시·배포 완료 상태)
 - dev 서버: OneDrive `.claude/launch.json`의 `l2-learner-report-8080` (포트 8080)
   ⚠️ Google 로그인은 **8080에서만** 된다(Supabase 리다이렉트 허용목록).
 

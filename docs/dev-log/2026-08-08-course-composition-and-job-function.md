@@ -113,8 +113,8 @@
 
 ## 운영 반영
 
-- 구현 커밋 `652bb57`, `0c0b074`, 연구 기록 커밋 `3afcf56`과 기존 미푸시 정본 커밋
-  `d11b96a`를 `origin/main`에 push했다.
+- 구현 커밋 `9b68958`, `5172084`, 연구 기록 커밋 `5db854c`과 기존 미푸시 정본 커밋
+  `7c5023b`를 `origin/main`에 push했다.
 - 원격 migration 이력을 대조하고 오늘 추가한 두 건만 대기 중임을 dry-run으로 확인한 뒤
   `20260808130000_business_function_core_generation.sql`,
   `20260808150000_curriculum_composition_policy.sql`을 순서대로 적용했다.
