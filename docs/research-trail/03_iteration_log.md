@@ -2253,6 +2253,7 @@
 - 변경: `mission_v5`를 현행 5문항 tuple/과거 4문항 union으로 만들고, 독립 judge3 규칙·MPJ5 생성 프롬프트·품질 프롬프트·lineage target·일대일 런타임·`mpj_response_v2`를 연결했다. focal 없는 과거 코어는 MPJ4 생성 호환 분기를 유지했다. 새 prompt/release를 주장하는 행만 정확한 순서와 기존 전체 lineage gate를 통과하게 하는 migration을 추가했다.
 - 검증 결과: 집중 65개와 migration 계약 집중 52개가 통과했다. 전체 회귀는 77파일 463개 통과·3파일 9개 skip이었고 typecheck, 1,943-module production build, diff check가 통과했다. 마지막 legacy 품질 프롬프트 분기 뒤에는 관련 13개와 typecheck를 표적으로 재확인했다.
 - 예상과 달랐던 점: Zod의 깊은 union이 `strict:false` TypeScript 설정에서 tuple 원소를 `unknown`으로 넓혀 기존 관리자·legacy runner 전체 타입을 무너뜨렸다. 런타임 union 검증은 유지하되 소비자 출력형을 명시적으로 구성해 해결했다. 또 공유 생성 프롬프트를 단순 MPJ5로 바꾸면 focal 없는 legacy 코어의 `mission_v4` 생성이 깨지므로 시스템·사용자 프롬프트를 함께 분기하고 두 계약을 snapshot으로 고정했다.
-- 범위: 원격 migration, Edge 배포, Railway 배포, 유료 실생성, 원격 저장은 수행하지 않았다. 기존 MPJ4 행은 불변이다.
-- 다음 반영: 승인 뒤 migration→Edge→Railway 순으로 적용하고, 요청·거절·감사 대표 네이티브 MPJ5의 생성→R31→저장→교수자 큐→학습자 종단을 확인한다.
+- 운영 반영: migration `20260824183000` 적용, Edge `generate-scenario` v65 `ACTIVE`, Railway deployment `a84f3e3f-1302-4e46-b037-2feb87a6314b` `SUCCESS`, 운영 URL HTTP 200을 확인했다. 강제 재작성된 `origin/main`과 공통 merge-base가 없어 기능 브랜치를 원격 보존하고 worktree를 직접 배포했다.
+- 범위: 유료 실생성·원격 저장·교수자 검수·학습자 종단은 수행하지 않았다. 기존 MPJ4 행은 불변이다.
+- 다음 반영: 요청·거절·감사 대표 네이티브 MPJ5의 생성→R31→저장→교수자 큐→학습자 종단을 확인한다.
 - 관련 Decision / Trace / Evidence: `DEC-20260824-02`, `TRC-20260823-01`, `EVD-20260824-02`

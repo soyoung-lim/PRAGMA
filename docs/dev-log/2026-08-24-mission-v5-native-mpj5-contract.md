@@ -26,8 +26,14 @@
 - `git diff --check`: 오류 없음(CRLF 안내만 존재)
 - 빌드의 기존 CSS `Expected identifier but found "-"` 경고는 이번 변경과 별개로 남아 있다.
 
-## 미반영·확인 필요
+## 운영 반영
 
-- migration, Edge, Railway, 원격 DB에는 적용하지 않았다.
-- 네이티브 MPJ5 실생성·원격 저장·교수자 검수·학습자 종단 smoke는 배포 승인 뒤 확인해야 한다.
+- migration `20260824183000_mission_v5_native_mpj5_contract.sql`을 연결된 운영 DB에 적용했다.
+- Supabase Edge `generate-scenario` v65가 `ACTIVE`임을 확인했다.
+- 소스 커밋 `90d4415`의 worktree를 `--path-as-root`로 Railway production에 직접 배포했다. deployment `a84f3e3f-1302-4e46-b037-2feb87a6314b`는 `SUCCESS`이고 운영 URL은 HTTP 200이다.
+- 기능 브랜치 `codex/mission-runtime-canonicalize-2026-08-24`를 원격에 보존했다. 강제 재작성된 `origin/main`과 공통 merge-base가 없어 main 병합은 시도하지 않았다.
+
+## 확인 필요
+
+- 네이티브 MPJ5 유료 실생성·원격 저장·교수자 검수·학습자 종단 smoke는 수행하지 않았다.
 - 기존 원격 `mission_v5` MPJ4 행은 그대로 보존되며 자동 변환되지 않는다.
