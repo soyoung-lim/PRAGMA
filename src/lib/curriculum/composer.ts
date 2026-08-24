@@ -40,6 +40,8 @@ export interface ComposerCore {
   release_gate_mode?: "legacy_reviewed" | "expert_v1" | null;
   /** 미션 승격 시에만 채워짐. 코어만 있으면 null → 편성표 "미지정" */
   target_feature: string | null;
+  /** 현행 완전 미션 후보: mission_v5이며 독립 MPJ가 정확히 5개다. */
+  is_native_mpj5: boolean;
   situation_ko: string;
   source_text_ko: string;
   /** 언어 방향(0-l·82) — core_content.direction 우선, 없으면 ko_zh(v1 호환). 편성 필터용 */
@@ -74,7 +76,7 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
   const { data, error } = await releaseDb
     .from("scenarios")
     .select(
-      "scenario_id, speech_act, learner_level, domain, mode, theme_code, topic_code, mission_status, release_gate_mode, target_feature, scenario_p, scenario_d, scenario_r, source_modality, core_content",
+      "scenario_id, speech_act, learner_level, domain, mode, theme_code, topic_code, mission_status, release_gate_mode, target_feature, scenario_p, scenario_d, scenario_r, source_modality, core_content, mission_schema_version:mission_content->>schema_version, mission_mpj_items:mission_content->mpj_items",
     )
     .eq("content_format", "scenario_core_v1")
     .order("created_at", { ascending: false })
@@ -115,6 +117,10 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
       mission_status: r.mission_status ?? null,
       release_gate_mode: r.release_gate_mode ?? "legacy_reviewed",
       target_feature: r.target_feature ?? null,
+      is_native_mpj5:
+        r.mission_schema_version === "mission_v5" &&
+        Array.isArray(r.mission_mpj_items) &&
+        r.mission_mpj_items.length === 5,
       situation_ko: typeof content.situation_ko === "string" ? content.situation_ko : "",
       source_text_ko:
         typeof content.source_text_ko === "string"

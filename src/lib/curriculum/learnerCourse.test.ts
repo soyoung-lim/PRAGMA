@@ -61,6 +61,7 @@ function core(
     release_gate_mode: releaseGateMode,
     target_feature:
       missionStatus === null ? null : "request_mitigation_optionality",
+    is_native_mpj5: true,
     situation_ko: situation,
     source_text_ko: "테스트 원문",
     direction: "ko_zh",

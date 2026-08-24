@@ -37,6 +37,7 @@ export interface AutoFillOptions {
   direction: LanguageDirection;
   themes: ThemeCode[];
   courseModePolicy: CourseModePolicy;
+  /** 기존 outline 호출 호환용. 표준 화행 주차 자동 편성은 항상 두 미션이다. */
   defaultScenariosPerWeek: number;
   /** 선택 주제가 부족할 때 다른 주제로 넓힐지 여부. 교수자의 명시 조작만 허용한다. */
   allowThemeExpansion?: boolean;
@@ -64,7 +65,6 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
     direction,
     themes,
     courseModePolicy,
-    defaultScenariosPerWeek,
     allowThemeExpansion = false,
   } = options;
   if (!isCourseModePolicyValid(courseModePolicy)) {
@@ -87,7 +87,7 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
   for (const week of weeks) {
     if (week.type !== "regular" || !week.speech_act) continue;
     const act = week.speech_act as SpeechActUI;
-    const slots = week.scenario_slots ?? defaultScenariosPerWeek;
+    const slots = 2;
     const expectedMode = expectedCoreModeForWeek(
       courseModePolicy,
       week.week_no,
@@ -95,6 +95,7 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
     );
     const isBaseEligible = (core: ComposerCore) =>
       isReviewedMission(core) &&
+      core.is_native_mpj5 &&
       !usedIds.has(core.scenario_id) &&
       core.speech_act === act &&
       core.learner_level === level &&
@@ -107,16 +108,17 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
         (themes.length === 0 ||
           (core.theme_code != null && themes.includes(core.theme_code))),
     );
-    if (themes.length > 0 && candidates.length < slots && allowThemeExpansion) {
+    let picked = pickDistinctSituationMissions(candidates, slots);
+    if (themes.length > 0 && picked.length < slots && allowThemeExpansion) {
       candidates = cores.filter(isBaseEligible);
-      expandedThemeWeeks.push(week.week_no);
+      picked = pickDistinctSituationMissions(candidates, slots);
+      if (picked.length === slots) expandedThemeWeeks.push(week.week_no);
     }
 
-    const picked = candidates.slice(0, slots);
     if (picked.length < slots) {
-      shortages.push({ weekNo: week.week_no, missingSlots: slots - picked.length });
+      shortages.push({ weekNo: week.week_no, missingSlots: slots });
+      continue;
     }
-    if (picked.length === 0) continue;
     picked.forEach((core) => usedIds.add(core.scenario_id));
     assignments[week.week_no] = picked.map((core) => ({
       scenario_id: core.scenario_id,
@@ -153,22 +155,60 @@ export interface ManualCandidateOptions {
   themes: ThemeCode[];
   assignments: AssignMap;
   expectedMode?: GenMode | null;
+  weekNo?: number;
+  coreById?: Record<string, ComposerCore>;
 }
 
-/** 수동 교체 후보도 자동 편성과 같은 절대 조건 및 강좌 전체 중복 금지를 적용한다. */
+function normalizedSituation(core: ComposerCore): string {
+  return core.situation_ko
+    .normalize("NFKC")
+    .replace(/[\s\p{P}\p{S}]+/gu, "")
+    .toLowerCase();
+}
+
+export function hasSameSituation(
+  first: ComposerCore,
+  second: ComposerCore,
+): boolean {
+  const firstSituation = normalizedSituation(first);
+  return firstSituation.length > 0 && firstSituation === normalizedSituation(second);
+}
+
+/** 후보 순서를 보존하되 같은 상황문의 명백한 복제본은 한 주차에 함께 고르지 않는다. */
+export function pickDistinctSituationMissions(
+  candidates: readonly ComposerCore[],
+  count: number,
+): ComposerCore[] {
+  const picked: ComposerCore[] = [];
+  for (const candidate of candidates) {
+    if (picked.some((item) => hasSameSituation(item, candidate))) continue;
+    picked.push(candidate);
+    if (picked.length === count) break;
+  }
+  return picked;
+}
+
+/** 수동 교체 후보도 자동 편성과 같은 절대 조건, 강좌 중복, 명백한 상황 복제 금지를 적용한다. */
 export function filterManualCandidates(
   candidates: ComposerCore[],
   options: ManualCandidateOptions,
 ): ComposerCore[] {
   const usedIds = assignedScenarioIds(options.assignments);
+  const weekCores = options.weekNo == null || !options.coreById
+    ? []
+    : (options.assignments[options.weekNo] ?? [])
+        .map((item) => options.coreById?.[item.scenario_id])
+        .filter((core): core is ComposerCore => core != null);
   return candidates.filter(
     (core) =>
       isReviewedMission(core) &&
+      core.is_native_mpj5 &&
       !usedIds.has(core.scenario_id) &&
       (options.act ? core.speech_act === options.act : true) &&
       core.learner_level === options.level &&
       core.direction === options.direction &&
       (options.expectedMode ? core.mode === options.expectedMode : true) &&
+      !weekCores.some((assigned) => hasSameSituation(assigned, core)) &&
       (options.themes.length === 0 ||
         (core.theme_code != null && options.themes.includes(core.theme_code))),
   );
@@ -249,6 +289,7 @@ export type AssignmentStructureIssueCode =
   | "course_mode_policy"
   | "course_mode"
   | "too_many_items"
+  | "duplicate_situation"
   | WeeklyMissionPairIssueCode;
 
 export interface AssignmentStructureIssue {
@@ -317,6 +358,23 @@ export function assignmentStructureIssues(
       }
       if (expectedMode && core.mode !== expectedMode) {
         issues.push({ weekNo, scenarioId: item.scenario_id, code: "course_mode" });
+      }
+    }
+
+    const knownCores = items
+      .map((item) => coreById[item.scenario_id])
+      .filter((core): core is ComposerCore => core != null);
+    for (let index = 1; index < knownCores.length; index += 1) {
+      if (
+        knownCores
+          .slice(0, index)
+          .some((core) => hasSameSituation(core, knownCores[index]))
+      ) {
+        issues.push({
+          weekNo,
+          scenarioId: knownCores[index].scenario_id,
+          code: "duplicate_situation",
+        });
       }
     }
 

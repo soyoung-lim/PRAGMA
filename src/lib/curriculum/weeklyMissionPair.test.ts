@@ -29,6 +29,7 @@ function core(
     release_gate_mode: overrides.release_gate_mode ?? "expert_v1",
     // A/B의 정합성이나 범위 판정에 쓰지 않는 문항 수준 태그다.
     target_feature: overrides.target_feature ?? "request_mitigation_optionality",
+    is_native_mpj5: overrides.is_native_mpj5 ?? true,
     situation_ko: overrides.situation_ko ?? "과제 기한 연장을 요청하는 상황",
     source_text_ko: overrides.source_text_ko ?? "제출 기한을 연장해 주실 수 있을까요?",
     direction: overrides.direction ?? "ko_zh",

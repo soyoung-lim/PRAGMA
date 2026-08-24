@@ -139,6 +139,7 @@ const AdminComposer = () => {
           core.direction === direction &&
           core.learner_level === level &&
           isReviewedMission(core) &&
+          core.is_native_mpj5 &&
           (courseMode === "mixed" ||
             (courseMode === "translation"
               ? core.mode === "translation"
@@ -1092,6 +1093,8 @@ function WeekRow({
     themes,
     assignments,
     expectedMode,
+    weekNo: week.week_no,
+    coreById,
   });
 
   return (
@@ -1168,8 +1171,8 @@ function WeekRow({
         <div className="mt-3 rounded-lg border border-dashed border-[#D8D0BC] bg-[#FAF8F2] p-3">
           <p className="mb-2 text-[11.5px] text-muted-foreground">
             {expectedMode
-              ? `현재 방향·수준·주제와 이 주차의 ${expectedMode === "stt_interpreting" ? "통역" : "번역"} 모드에 맞는 검토 완료 미션만 표시됩니다.`
-              : "현재 방향·수준·주제와 맞는 검토 완료 미션만 표시됩니다."}
+              ? `현재 방향·수준·주제와 이 주차의 ${expectedMode === "stt_interpreting" ? "통역" : "번역"} 모드에 맞는 검토 완료 미션만 표시됩니다. 같은 주차의 명백한 상황 복제본은 제외됩니다.`
+              : "현재 방향·수준·주제와 맞는 검토 완료 미션만 표시됩니다. 같은 주차의 명백한 상황 복제본은 제외됩니다."}
           </p>
           {cands.length === 0 ? (
             <p className="text-[12.5px] text-muted-foreground">

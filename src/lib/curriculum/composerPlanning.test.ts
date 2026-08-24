@@ -36,7 +36,8 @@ function core(overrides: Partial<ComposerCore> & { scenario_id: string }): Compo
     topic_code: overrides.topic_code ?? "test_topic",
     mission_status: overrides.mission_status ?? "reviewed",
     target_feature: overrides.target_feature ?? "request_mitigation",
-    situation_ko: overrides.situation_ko ?? "테스트 상황",
+    is_native_mpj5: overrides.is_native_mpj5 ?? true,
+    situation_ko: overrides.situation_ko ?? `테스트 상황 ${overrides.scenario_id}`,
     source_text_ko: overrides.source_text_ko ?? "테스트 원문",
     direction: overrides.direction ?? "ko_zh",
     context: overrides.context ?? {
@@ -88,7 +89,7 @@ describe("프리셋 기반 15주 자동 편성", () => {
       });
 
       expect(result.filledWeeks).toBe(9);
-      expect(result.totalAssigned).toBe(27);
+      expect(result.totalAssigned).toBe(18);
       expect(result.interpretingWeekNumbers).toHaveLength(
         preset.target_interpreting_week_count,
       );
@@ -96,7 +97,8 @@ describe("프리셋 기반 15주 자동 편성", () => {
 
       const byId = new Map(cores.map((item) => [item.scenario_id, item]));
       for (const [weekNoText, items] of Object.entries(result.assignments)) {
-        expect(items).toHaveLength(3);
+        expect(items).toHaveLength(2);
+        expect(items.every((item) => item.pair_contract_version == null)).toBe(true);
         const expectedMode = expectedCoreModeForWeek(
           {
             courseMode: preset.course_mode,
@@ -125,6 +127,7 @@ describe("프리셋 기반 15주 자동 편성", () => {
       core({ scenario_id: "selected-theme", theme_code: "campus_study" }),
       eligibleFallback,
       core({ scenario_id: "generated", mission_status: "generated" }),
+      core({ scenario_id: "legacy-mpj4", is_native_mpj5: false }),
       core({ scenario_id: "wrong-act", speech_act: "apology" }),
       core({ scenario_id: "wrong-level", learner_level: "advanced" }),
       core({ scenario_id: "wrong-direction", direction: "zh_ko" }),
@@ -142,15 +145,18 @@ describe("프리셋 기반 15주 자동 편성", () => {
       defaultScenariosPerWeek: 2,
     });
 
-    expect(result.assignments[2].map((item) => item.scenario_id)).toEqual(["selected-theme"]);
-    expect(result.shortages).toEqual([{ weekNo: 2, missingSlots: 1 }]);
+    expect(result.assignments[2]).toBeUndefined();
+    expect(result.shortages).toEqual([{ weekNo: 2, missingSlots: 2 }]);
     expect(result.expandedThemeWeeks).toEqual([]);
   });
 
   it("교수자가 명시적으로 승인하면 부족한 주차만 다른 테마로 확대한다", () => {
     const cores = [
       core({ scenario_id: "selected-theme", theme_code: "campus_study" }),
-      core({ scenario_id: "expanded-theme", theme_code: "career_workplace" }),
+      core({
+        scenario_id: "expanded-theme",
+        theme_code: "career_workplace",
+      }),
     ];
     const requestWeek = createStandard15WeekTemplate().filter(
       (week) => week.speech_act === "request",
@@ -172,6 +178,32 @@ describe("프리셋 기반 15주 자동 편성", () => {
     ]);
     expect(result.shortages).toEqual([]);
     expect(result.expandedThemeWeeks).toEqual([2]);
+  });
+
+  it("자동 편성은 표기가 같은 상황 복제본을 건너뛰고 새로운 두 번째 상황을 고른다", () => {
+    const cores = [
+      core({ scenario_id: "first", situation_ko: "교수에게 일정 변경을 요청한다." }),
+      core({ scenario_id: "duplicate", situation_ko: " 교수에게 일정 변경을 요청한다 " }),
+      core({ scenario_id: "second", situation_ko: "기숙사 관리자에게 수리를 요청한다." }),
+    ];
+    const requestWeek = createStandard15WeekTemplate().filter(
+      (week) => week.speech_act === "request",
+    );
+
+    const result = buildAutomaticAssignments({
+      weeks: requestWeek,
+      cores,
+      level: "intermediate",
+      direction: "ko_zh",
+      themes: ["campus_study"],
+      courseModePolicy: { courseMode: "translation", interpretingWeekCount: 0 },
+      defaultScenariosPerWeek: 2,
+    });
+
+    expect(result.assignments[2].map((item) => item.scenario_id)).toEqual([
+      "first",
+      "second",
+    ]);
   });
 
   it("혼합 4/9는 앞 5개 화행 주차를 번역, 뒤 4개를 통역으로 편성한다", () => {
@@ -234,11 +266,15 @@ describe("주차 수동 교체", () => {
       scenario_id: "generated",
       mission_status: "generated",
     });
+    const legacyMpj4 = core({
+      scenario_id: "legacy-mpj4",
+      is_native_mpj5: false,
+    });
     const assignments: AssignMap = {
       2: [{ scenario_id: current.scenario_id, slot_role: "primary" }],
     };
     const candidates = filterManualCandidates(
-      [current, replacement, generated],
+      [current, replacement, generated, legacyMpj4],
       {
         act: "request",
         level: "intermediate",
@@ -278,6 +314,52 @@ describe("주차 수동 교체", () => {
       { courseMode: "interpreting", interpretingWeekCount: 9 },
     );
     expect(issues.map((issue) => issue.code)).toContain("course_mode");
+  });
+
+  it("같은 주차의 명백한 상황 복제본은 수동 후보와 저장 검사에서 제외한다", () => {
+    const missionA = core({
+      scenario_id: "mission-a",
+      situation_ko: "교수에게 일정 변경을 요청한다.",
+    });
+    const duplicate = core({
+      scenario_id: "duplicate",
+      situation_ko: " 교수에게  일정 변경을 요청한다 ",
+    });
+    const newSituation = core({
+      scenario_id: "new-situation",
+      situation_ko: "기숙사 관리자에게 시설 수리를 요청한다.",
+    });
+    const coreById = {
+      [missionA.scenario_id]: missionA,
+      [duplicate.scenario_id]: duplicate,
+      [newSituation.scenario_id]: newSituation,
+    };
+    const assignments: AssignMap = {
+      2: [{ scenario_id: missionA.scenario_id, slot_role: "primary" }],
+    };
+
+    expect(filterManualCandidates([duplicate, newSituation], {
+      act: "request",
+      level: "intermediate",
+      direction: "ko_zh",
+      themes: ["campus_study"],
+      assignments,
+      weekNo: 2,
+      coreById,
+    }).map((item) => item.scenario_id)).toEqual(["new-situation"]);
+
+    const issues = assignmentStructureIssues(
+      { 2: [
+        { scenario_id: missionA.scenario_id, slot_role: "primary" },
+        { scenario_id: duplicate.scenario_id, slot_role: "primary" },
+      ] },
+      coreById,
+      [{ week_no: 2, type: "regular", speech_act: "request", scenario_slots: 2 }],
+      "intermediate",
+      "ko_zh",
+      2,
+    );
+    expect(issues.map((issue) => issue.code)).toContain("duplicate_situation");
   });
 
   it("수준·언어방향 변경 뒤 새 조건과 맞지 않는 기존 배정을 찾는다", () => {

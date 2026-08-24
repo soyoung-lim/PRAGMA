@@ -100,7 +100,7 @@ type SceneIntroConfig = {
 };
 
 const MISSION_A_SCENE_INTRO: SceneIntroConfig = {
-  missionLabel: "미션 A",
+  missionLabel: "미션 1",
   slides: [
     {
       eyebrow: "01 · 오늘의 장면",
@@ -126,18 +126,18 @@ const MISSION_A_SCENE_INTRO: SceneIntroConfig = {
 };
 
 const MISSION_B_SCENE_INTRO: SceneIntroConfig = {
-  missionLabel: "미션 B",
+  missionLabel: "미션 2",
   previewOnly: true,
   slides: [
     {
       eyebrow: "01 · 새로운 장면",
       title: "같이 프로젝트를 하는 친한 동급생에게 오늘 저녁 온라인 회의를 30분 늦춰 달라고 요청해야 합니다.",
-      action: "달라진 맥락 보기",
+      action: "장면 속 단서 보기",
       tone: "navy",
     },
     {
-      eyebrow: "02 · A와 달라진 맥락",
-      title: "이번에는 상대와 채널, 부탁의 크기가 달라집니다",
+      eyebrow: "02 · 새 장면의 단서",
+      title: "이 장면에는 이런 조건이 있습니다",
       body: "이미 친한 동급생에게 메신저로 연락하며, 약속 자체를 바꾸는 대신 시작 시간을 30분 조정해 달라고 부탁합니다.",
       action: "이번 장면에서 할 일 확인",
       tone: "yellow",
@@ -145,8 +145,8 @@ const MISSION_B_SCENE_INTRO: SceneIntroConfig = {
     {
       eyebrow: "03 · 이번 장면에서의 선택",
       title: "이번 장면에는 어떤 중국어 요청이 어울릴까요?",
-      body: "같은 부탁이라도 달라진 상대와 채널, 부탁의 크기에 맞춰 표현을 다시 선택합니다.",
-      action: "B 도입 다시 보기",
+      body: "이 장면의 상대와 채널, 부탁의 크기를 살펴보고 어울리는 표현을 선택합니다.",
+      action: "도입 다시 보기",
       tone: "green",
     },
   ],
@@ -365,7 +365,7 @@ function SceneIntroFlow({ config, step, onNext, onPrevious, onSelect }: {
         </div>
         {isLast && (
           <span className="sr-only">
-            {config.previewOnly ? "미션 B 장면 도입 검토용 화면입니다." : "다음 화면부터 표현 판단 1/5가 시작됩니다."}
+            {config.previewOnly ? "미션 2 장면 도입 검토용 화면입니다." : "다음 화면부터 표현 판단 1/5가 시작됩니다."}
           </span>
         )}
       </section>
