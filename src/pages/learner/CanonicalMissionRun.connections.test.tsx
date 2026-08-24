@@ -4,9 +4,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
-import { CompletionActions, MissionDissentPanel } from "@/pages/learner/MissionRunV4";
+import { CompletionActions, MissionDissentPanel } from "@/pages/learner/CanonicalMissionRun";
 
-describe("MissionRunV4 completion connections", () => {
+describe("CanonicalMissionRun completion connections", () => {
   it("collects optional dissent without changing the judgment", () => {
     const onSubmit = vi.fn();
     render(<MissionDissentPanel onSubmit={onSubmit} />);

@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 
 import { SAMPLE_MISSION_V4 } from "@/lib/mission/missionV4Sample";
-import { MpjStage } from "@/pages/learner/MissionRunV1";
+import { MpjStage } from "@/pages/learner/LegacyMissionRun";
 
 function operationalReasonItem() {
   const item = SAMPLE_MISSION_V4.mpj_items.find((candidate) => candidate.type === "reason");
@@ -14,7 +14,7 @@ function operationalReasonItem() {
   return item;
 }
 
-describe("MissionRunV1 operational reason flow", () => {
+describe("LegacyMissionRun operational reason flow", () => {
   it("locks the initial band before reasons and emits independent structured traces", () => {
     Object.defineProperty(Element.prototype, "scrollIntoView", {
       configurable: true,

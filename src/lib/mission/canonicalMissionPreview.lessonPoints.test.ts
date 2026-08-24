@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { REQUEST_MISSION_V4_PREVIEW } from "./missionV4Preview";
+import { CANONICAL_MISSION_PREVIEW } from "./canonicalMissionPreview";
 
-describe("REQUEST_MISSION_V4_PREVIEW lessonPoints", () => {
+describe("CANONICAL_MISSION_PREVIEW lessonPoints", () => {
   it("keeps one grounded lesson in MPJ1–5 order without revealing the DCT answer", () => {
-    const { lessonPoints, quests } = REQUEST_MISSION_V4_PREVIEW;
+    const { lessonPoints, quests } = CANONICAL_MISSION_PREVIEW;
     const dct = quests.find((quest) => quest.kind === "dct");
 
     expect(lessonPoints).toHaveLength(5);

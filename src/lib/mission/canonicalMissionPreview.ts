@@ -1,3 +1,4 @@
+/** 현재 승인된 MPJ5 + DCT1 학습 경험의 화면 view model과 로컬 preview. */
 export type MissionModule = "A" | "B";
 
 export interface MissionContext {
@@ -157,7 +158,7 @@ const DIRECTNESS_3: ChoiceOption[] = [
   { id: "too_indirect", label: "지나치게 우회적" },
 ];
 
-export interface MissionV4ViewModel {
+export interface CanonicalMissionViewModel {
   scenarioId?: string;
   metaLabel?: string;
   weekNo: number;
@@ -177,7 +178,7 @@ export interface MissionV4ViewModel {
   quests: MissionQuest[];
 }
 
-export const REQUEST_MISSION_V4_PREVIEW: MissionV4ViewModel = {
+export const CANONICAL_MISSION_PREVIEW: CanonicalMissionViewModel = {
   weekNo: 2,
   speechAct: "요청",
   level: "중급 · HSK 5",

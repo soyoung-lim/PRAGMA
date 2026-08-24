@@ -17,7 +17,7 @@
 
 최신 승인 학습설계는 **MPJ5 + DCT1**이다. 다섯 MPJ의 기능은
 `첫인상 판단 → 맥락 대비 판단 → 판단하고 고쳐보기 → 이유 찾기 → 여러 초안 비교`이며,
-localhost Mission V4의 다섯 MPJ를 설계 기준으로 삼는다. MPJ5의 한 문항을 제거해 MPJ4로
+localhost `CanonicalMissionRun`의 다섯 MPJ를 설계 기준으로 삼는다. MPJ5의 한 문항을 제거해 MPJ4로
 되돌리는 것은 승인된 설계가 아니다.
 
 현재 운영 `mission_v5` 스키마·생성기·러너는 아직 **MPJ4 + DCT1**이며 최신 설계를 따라오지

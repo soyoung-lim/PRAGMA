@@ -8,9 +8,11 @@ import type {
   DctQuest,
   MissionContext,
   MissionQuest,
-  MissionV4ViewModel,
+  CanonicalMissionViewModel,
   ReasonQuest,
-} from "@/lib/mission/missionV4Preview";
+} from "@/lib/mission/canonicalMissionPreview";
+
+/** DB 저장 스키마를 현재 승인된 MPJ5 + DCT1 화면 계약으로 투영한다. */
 
 const APPROPRIATENESS_OPTIONS: ChoiceOption[] = [
   { id: "very_appropriate", label: "매우 적절" },
@@ -114,10 +116,10 @@ type RuntimeMultiJudge = RuntimeMpjCommon & {
   candidates: Array<{ text: string; accepted_band_codes: string[]; note_ko: string }>;
 };
 
-export class UnsupportedMissionV4RuntimeError extends Error {
+export class UnsupportedCanonicalMissionRuntimeError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = "UnsupportedMissionV4RuntimeError";
+    this.name = "UnsupportedCanonicalMissionRuntimeError";
   }
 }
 
@@ -145,7 +147,7 @@ function contextFrom(input: {
 
 function assertBand(code: string, options: ChoiceOption[]): string {
   if (!options.some((option) => option.id === code)) {
-    throw new UnsupportedMissionV4RuntimeError(`미션의 판정 대역이 화용 초점 카탈로그와 맞지 않습니다(${code}).`);
+    throw new UnsupportedCanonicalMissionRuntimeError(`미션의 판정 대역이 화용 초점 카탈로그와 맞지 않습니다(${code}).`);
   }
   return code;
 }
@@ -156,21 +158,21 @@ function runtimeFeedbackMode(pdr: Pdr): DctQuest["feedback"]["mode"] {
     : "avoid_over_mitigation";
 }
 
-/** DB 미션을 최신 V4의 다섯 판단 활동 + DCT 흐름에 투영한다. */
-export function adaptRunnableMissionToV4(runnable: RunnableMission): MissionV4ViewModel {
+/** DB 미션을 현재 정본의 다섯 판단 활동 + DCT 흐름에 투영한다. */
+export function adaptRunnableMissionToCanonical(runnable: RunnableMission): CanonicalMissionViewModel {
   const { mission } = runnable;
   if (mission.direction !== "ko_zh") {
-    throw new UnsupportedMissionV4RuntimeError("V4 첫 실데이터 연결은 한→중 미션만 지원합니다.");
+    throw new UnsupportedCanonicalMissionRuntimeError("정본 실행기의 첫 실데이터 연결은 한→중 미션만 지원합니다.");
   }
   if (mission.production_task.mode !== "translation") {
-    throw new UnsupportedMissionV4RuntimeError("V4 첫 실데이터 연결은 번역 미션만 지원합니다.");
+    throw new UnsupportedCanonicalMissionRuntimeError("정본 실행기의 첫 실데이터 연결은 번역 미션만 지원합니다.");
   }
   if (!runnable.speech_act) {
-    throw new UnsupportedMissionV4RuntimeError("화행 정보가 없는 미션은 V4에 연결할 수 없습니다.");
+    throw new UnsupportedCanonicalMissionRuntimeError("화행 정보가 없는 미션은 정본 실행기에 연결할 수 없습니다.");
   }
   const feature = getTargetFeature(mission.unit.target_feature);
   if (!feature || feature.speech_act !== runnable.speech_act) {
-    throw new UnsupportedMissionV4RuntimeError("미션 화행과 화용 초점 카탈로그가 맞지 않습니다.");
+    throw new UnsupportedCanonicalMissionRuntimeError("미션 화행과 화용 초점 카탈로그가 맞지 않습니다.");
   }
   const bandOptions: ChoiceOption[] = feature.band_schema.map((band) => ({
     id: band.code,
@@ -207,7 +209,7 @@ export function adaptRunnableMissionToV4(runnable: RunnableMission): MissionV4Vi
     const bestId = recommendedBestIndex >= 0 ? `A5-${recommendedBestIndex}` : acceptedBestIds[0];
     const worstId = acceptedWorstIds[0];
     if (!bestId || !worstId) {
-      throw new UnsupportedMissionV4RuntimeError("여러 초안 비교에 BEST/WORST 참고 대역이 없습니다.");
+      throw new UnsupportedCanonicalMissionRuntimeError("여러 초안 비교에 BEST/WORST 참고 대역이 없습니다.");
     }
     return {
       ...common(4, multiJudge),
@@ -233,7 +235,7 @@ export function adaptRunnableMissionToV4(runnable: RunnableMission): MissionV4Vi
   let quests: MissionQuest[];
   let contrastBefore: string;
   let contrastAfter: string;
-  let lessonPoints: MissionV4ViewModel["lessonPoints"];
+  let lessonPoints: CanonicalMissionViewModel["lessonPoints"];
 
   if (mission.schema_version === "mission_v2") {
     const [rawScale, rawContrast, rawFixChoice, rawReason, rawMultiJudge] = mission.mpj_items;
@@ -244,7 +246,7 @@ export function adaptRunnableMissionToV4(runnable: RunnableMission): MissionV4Vi
       rawReason.type !== "reason_conf" ||
       rawMultiJudge.type !== "multi_judge"
     ) {
-      throw new UnsupportedMissionV4RuntimeError("MPJ5 문항 순서가 최신 연결 계약과 맞지 않습니다.");
+      throw new UnsupportedCanonicalMissionRuntimeError("MPJ5 문항 순서가 최신 연결 계약과 맞지 않습니다.");
     }
     const scale = rawScale as unknown as RuntimeScale;
     const contrast = rawContrast as unknown as RuntimeJudge;
@@ -335,7 +337,7 @@ export function adaptRunnableMissionToV4(runnable: RunnableMission): MissionV4Vi
       rawReason.type !== "reason" ||
       rawMultiJudge.type !== "multi_judge"
     ) {
-      throw new UnsupportedMissionV4RuntimeError("과도기 MPJ 문항 순서가 연결 계약과 맞지 않습니다.");
+      throw new UnsupportedCanonicalMissionRuntimeError("과도기 MPJ 문항 순서가 연결 계약과 맞지 않습니다.");
     }
     const scale = rawScale as unknown as RuntimeScale;
     const fixChoice = rawFixChoice as unknown as RuntimeFixChoice;
@@ -415,7 +417,7 @@ export function adaptRunnableMissionToV4(runnable: RunnableMission): MissionV4Vi
       { questId: "A5", label: LESSON_LABELS[4], text: multiJudge.explanation_ko },
     ];
   } else {
-    throw new UnsupportedMissionV4RuntimeError(
+    throw new UnsupportedCanonicalMissionRuntimeError(
       `V4 실데이터 연결이 아직 지원하지 않는 스키마입니다(${mission.schema_version}).`,
     );
   }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { SAMPLE_MISSION_V5 } from "@/lib/mission/missionV4Sample";
 import type { RunnableMission } from "@/lib/mission/missionDb";
-import { adaptRunnableMissionToV4 } from "@/lib/mission/missionV4Runtime";
+import { adaptRunnableMissionToCanonical } from "@/lib/mission/canonicalMissionRuntime";
 
 function runnable(): RunnableMission {
   return {
@@ -18,7 +18,7 @@ function runnable(): RunnableMission {
 
 describe("mission V4 runtime bridge", () => {
   it("opens a current mission_v5 as five learner judgments followed by DCT and feedback", () => {
-    const view = adaptRunnableMissionToV4(runnable());
+    const view = adaptRunnableMissionToCanonical(runnable());
 
     expect(view.scenarioId).toBe("86d738b0-1891-4bfe-9b12-f8643ebbb45f");
     expect(view.speechAct).toBe("요청");

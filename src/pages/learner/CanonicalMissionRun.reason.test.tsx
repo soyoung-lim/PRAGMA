@@ -3,18 +3,18 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { REQUEST_MISSION_V4_PREVIEW, type ReasonQuest } from "@/lib/mission/missionV4Preview";
-import { ReasonView } from "@/pages/learner/MissionRunV4";
+import { CANONICAL_MISSION_PREVIEW, type ReasonQuest } from "@/lib/mission/canonicalMissionPreview";
+import { ReasonView } from "@/pages/learner/CanonicalMissionRun";
 
 function reasonQuest(): ReasonQuest {
-  const quest = REQUEST_MISSION_V4_PREVIEW.quests.find(
+  const quest = CANONICAL_MISSION_PREVIEW.quests.find(
     (candidate): candidate is ReasonQuest => candidate.kind === "reason",
   );
   if (!quest) throw new Error("Reason preview quest is missing");
   return quest;
 }
 
-describe("MissionRunV4 reason flow", () => {
+describe("CanonicalMissionRun reason flow", () => {
   it("keeps the canonical three-choice diagnostic contract", () => {
     const quest = reasonQuest();
 

@@ -19,9 +19,9 @@ vi.mock("@/lib/mission/missionDb", async (importOriginal) => {
 vi.mock("@/lib/mission/missionFeedback", () => ({ requestFeedback: vi.fn() }));
 vi.mock("@/lib/mission/missionLog", () => ({ saveMissionAttempt: vi.fn() }));
 
-import MissionRunV4, { feedbackNeedsRevision } from "@/pages/learner/MissionRunV4";
+import CanonicalMissionRun, { feedbackNeedsRevision } from "@/pages/learner/CanonicalMissionRun";
 
-describe("MissionRunV4 live CTA route", () => {
+describe("CanonicalMissionRun live CTA route", () => {
   beforeEach(() => {
     fetchMissionByScenario.mockResolvedValue({
       scenario_id: scenarioId,
@@ -38,7 +38,7 @@ describe("MissionRunV4 live CTA route", () => {
     render(
       <MemoryRouter initialEntries={[`/learner/practice/${scenarioId}`]}>
         <Routes>
-          <Route path="/learner/practice/:scenarioId" element={<MissionRunV4 />} />
+          <Route path="/learner/practice/:scenarioId" element={<CanonicalMissionRun />} />
         </Routes>
       </MemoryRouter>,
     );

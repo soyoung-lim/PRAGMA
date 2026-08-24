@@ -1,4 +1,4 @@
-# 2026-08-24 · 학습자 CTA → Mission V4 실데이터 연결
+# 2026-08-24 · 학습자 CTA → 정본 미션 실행기 실데이터 연결
 
 ## 목표
 
@@ -6,8 +6,8 @@
 
 ## 구현
 
-- UUID 경로의 실행기를 `MissionRunV4`로 교체했다.
-- `mission_v2`의 MPJ5와 운영 `mission_v4/v5`를 V4 view model로 변환한다.
+- UUID 경로의 실행기를 `CanonicalMissionRun`으로 교체했다.
+- `mission_v2`의 MPJ5와 운영 `mission_v4/v5`를 정본 view model로 변환한다.
 - 운영 `mission_v4/v5`의 복합 `fix_choice`는 새 문장을 만들지 않고 기존 판단을 A2, 기존 교정을 A3로 펼친다. A3는 A2의 실제 응답을 이어받는다.
 - 화행별 target-feature 카탈로그의 대역 코드·라벨을 사용해 요청 전용 직접성 라벨을 제거했다.
 - DCT 제출 뒤 기존 `feedback-lite`를 호출하고, 완료 시 기존 `learner_mission_logs` 저장 경로로 산출·피드백·MPJ trace·이견을 저장한다.
@@ -15,10 +15,16 @@
 - 강좌 CTA 설명을 `표현 판단 5단계`로 맞췄다.
 - 미지원 스키마·방향·모드는 기존 실행기로 폴백한다.
 
+## 유지보수 명칭 정리
+
+- 현재 승인된 MPJ5+DCT1 표시층과 실데이터 어댑터를 각각 `CanonicalMissionRun`, `canonicalMissionPreview`, `canonicalMissionRuntime`으로 명명했다.
+- 과거 스키마·방향·통역 호환 전용 실행기는 `LegacyMissionRun`으로 명명하고 새 라우트에 연결하지 말라는 deprecation 주석을 추가했다.
+- 파일·심볼·import만 변경했다. 라우트 동작, 데이터 스키마, 생성기, 저장 경로, 프로토타입, DB와 Railway는 변경하지 않았다.
+
 ## 확인
 
 - `npm.cmd run typecheck`: 통과
-- `npm.cmd test`: 77파일 452개 통과, 3파일 9개 skip
+- `npm.cmd test`: 77파일 453개 통과, 3파일 9개 skip
 - 집중 테스트: 2파일 3개 통과
 - `npm.cmd run build`: 통과(1,943 modules)
 - `git diff --check`: 오류 없음(CRLF 안내만 존재)
@@ -28,5 +34,5 @@
 
 ## 미반영
 
-- 커밋·push·Railway 배포는 하지 않았다.
+- 기능 연결은 로컬 커밋 `ec376d9`로 체크포인트했다. push·Railway 배포는 하지 않았다.
 - 운영 스키마 자체를 MPJ5 저장 구조로 마이그레이션하지 않았다. 이번 연결은 기존 검수 콘텐츠를 다섯 학습 활동으로 표시하고 기존 스키마 기준 trace로 저장한다.

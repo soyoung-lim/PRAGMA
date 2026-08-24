@@ -59,8 +59,8 @@ const WeeklyLearningNote = lazy(() => import("./pages/learner/WeeklyLearningNote
 const LearnerRecords = lazy(() => import("./pages/learner/LearnerRecords.tsx"));
 const StrategyMap = lazy(() => import("./pages/learner/StrategyMap.tsx"));
 const PrototypeMissionV2 = lazy(() => import("./pages/learner/PrototypeMissionV2.tsx"));
-const MissionRunV1 = lazy(() => import("./pages/learner/MissionRunV1.tsx"));
-const MissionRunV4 = lazy(() => import("./pages/learner/MissionRunV4.tsx"));
+const LegacyMissionRun = lazy(() => import("./pages/learner/LegacyMissionRun.tsx"));
+const CanonicalMissionRun = lazy(() => import("./pages/learner/CanonicalMissionRun.tsx"));
 const LearnerCourseLive = lazy(() => import("./pages/learner/LearnerCourseLive.tsx"));
 const EntryTaskMode = lazy(() => import("./pages/EntryTaskMode.tsx"));
 const EntryLanguageDirection = lazy(() => import("./pages/EntryLanguageDirection.tsx"));
@@ -175,16 +175,16 @@ const App = () => (
           {/* 현행 다섯 판단 활동 + DCT 학습 미션. */}
           <Route
             path="/learner/practice"
-            element={<RequireApproved allowDevMissionPreview><MissionRunV4 /></RequireApproved>}
+            element={<RequireApproved allowDevMissionPreview><CanonicalMissionRun /></RequireApproved>}
           />
           {/* 실제 CTA는 MPJ5 mission_v1/v2와 과도기 mission_v4/v5를 모두
-              V4의 다섯 판단 활동 + DCT 흐름으로 연결한다. 미지원 스키마만 기존 실행기로 폴백한다. */}
-          <Route path="/learner/practice/:scenarioId" element={<RequireApproved><MissionRunV4 /></RequireApproved>} />
+              정본의 다섯 판단 활동 + DCT 흐름으로 연결한다. 미지원 스키마만 기존 실행기로 폴백한다. */}
+          <Route path="/learner/practice/:scenarioId" element={<RequireApproved><CanonicalMissionRun /></RequireApproved>} />
           {/* 구 학습 미션 경로 — 새 정본으로 리다이렉트(구 PracticeMission 목업 은퇴) */}
           <Route path="/scenario" element={<Navigate to="/learner/practice" replace />} />
           {/* legacy 별칭(옛 북마크 호환) — UI 네비게이션은 전부 /learner/practice 사용 */}
           <Route path="/learner/mission-run" element={<Navigate to="/learner/practice" replace />} />
-          <Route path="/learner/mission-run/:scenarioId" element={<RequireApproved><MissionRunV1 /></RequireApproved>} />
+          <Route path="/learner/mission-run/:scenarioId" element={<RequireApproved><LegacyMissionRun /></RequireApproved>} />
           {/* 고정 예시 피드백을 쓰는 구 흐름 검증 화면은 개발 환경에서만 접근한다.
               프로덕션에서 직접 URL로 열려 정본 AI 피드백과 혼동되는 일을 막는다. */}
           <Route
@@ -199,7 +199,7 @@ const App = () => (
             path="/prototype/mission-v4"
             element={
               import.meta.env.DEV
-                ? <MissionRunV4 />
+                ? <CanonicalMissionRun />
                 : <Navigate to="/learner/practice" replace />
             }
           />

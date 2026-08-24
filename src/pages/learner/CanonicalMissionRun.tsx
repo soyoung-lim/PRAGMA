@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import {
-  REQUEST_MISSION_V4_PREVIEW,
+  CANONICAL_MISSION_PREVIEW,
   type BestWorstQuest,
   type ChoiceOption,
   type DctFeedbackQuest,
@@ -22,23 +22,24 @@ import {
   type MissionContext,
   type MissionLessonPoint,
   type MissionQuest,
-  type MissionV4ViewModel,
+  type CanonicalMissionViewModel,
   type ReasonQuest,
   type ScaleQuest,
-} from "@/lib/mission/missionV4Preview";
+} from "@/lib/mission/canonicalMissionPreview";
 import { fetchMissionByScenario, type RunnableMission } from "@/lib/mission/missionDb";
 import {
-  adaptRunnableMissionToV4,
-  UnsupportedMissionV4RuntimeError,
-} from "@/lib/mission/missionV4Runtime";
+  adaptRunnableMissionToCanonical,
+  UnsupportedCanonicalMissionRuntimeError,
+} from "@/lib/mission/canonicalMissionRuntime";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { saveMissionAttempt, type MpjResponseTrace } from "@/lib/mission/missionLog";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
-import MissionRunV1 from "@/pages/learner/MissionRunV1";
+import LegacyMissionRun from "@/pages/learner/LegacyMissionRun";
 
-const MissionV4Context = createContext<MissionV4ViewModel>(REQUEST_MISSION_V4_PREVIEW);
-const useMissionV4 = () => useContext(MissionV4Context);
+/** 현재 승인된 MPJ5 + DCT1 학습 경험의 유일한 정본 실행기. */
+const CanonicalMissionContext = createContext<CanonicalMissionViewModel>(CANONICAL_MISSION_PREVIEW);
+const useCanonicalMission = () => useContext(CanonicalMissionContext);
 const RuntimeMissionContext = createContext<RunnableMission | null>(null);
 const useRuntimeMission = () => useContext(RuntimeMissionContext);
 
@@ -886,7 +887,7 @@ function isOverMitigated(text: string) {
 }
 
 function VocabularyHints({ quest }: { quest: DctQuest }) {
-  const supportLevel = useMissionV4().supportLevel;
+  const supportLevel = useCanonicalMission().supportLevel;
   if (supportLevel === "advanced" || quest.vocabularyHints.length === 0) return null;
   const chips = (
     <div className="flex flex-wrap gap-2">
@@ -1194,7 +1195,7 @@ function readDevPreviewPreset(): DevPreviewPreset {
 }
 
 function buildDevPreviewResponses(preset: DevPreviewPreset, finalized: boolean) {
-  const mission = REQUEST_MISSION_V4_PREVIEW;
+  const mission = CANONICAL_MISSION_PREVIEW;
   const copy = DEV_PREVIEW_COPY[preset];
   const dctResponses = ["A-DCT"].reduce<Record<string, DctResponse>>((result, dctId) => {
     const feedbackQuest = mission.quests.find(
@@ -1503,7 +1504,7 @@ function QuestScaffold({ quest, target, targetHighlights, children }: {
   targetHighlights?: string[];
   children: React.ReactNode;
 }) {
-  const mission = useMissionV4();
+  const mission = useCanonicalMission();
   return (
     <div className={quest.id === "A1" ? "space-y-2.5" : "space-y-3"}>
       {quest.id === "A1" && (
@@ -1554,7 +1555,7 @@ function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = f
   sceneIntroConfig?: SceneIntroConfig;
   mpjRecapOpen?: boolean;
 }) {
-  const quests = useMissionV4().quests;
+  const quests = useCanonicalMission().quests;
   const macroIndex = macroProgressIndex(activeIndex, completed, revisionOpen, sceneIntroStep);
   const detail = completed
     ? { phase: "미션 완료", activity: "내 번역 돌아보기" }
@@ -1835,7 +1836,7 @@ export function CompletionActions({ onRestart, runtime = false, saveState = "idl
 }
 
 function SessionPatternSummary({ responses }: { responses: Array<DctResponse | undefined> }) {
-  const mission = useMissionV4();
+  const mission = useCanonicalMission();
   const evaluations = responses
     .filter((response): response is DctResponse => Boolean(
       response?.evaluation
@@ -1917,7 +1918,7 @@ function DevPreviewToolbar({
           >
             <option value="" disabled>화면 선택</option>
             {sceneIntroConfig.slides.map((slide, index) => <option key={slide.eyebrow} value={SCENE_INTRO_STEP_IDS[index]}>장면 {index + 1}. {slide.eyebrow.replace(/^\d+ · /, "")}</option>)}
-            {REQUEST_MISSION_V4_PREVIEW.quests.map((quest, index) => <option key={quest.id} value={quest.id}>{index + 1}. {progressLabel(quest)}</option>)}
+            {CANONICAL_MISSION_PREVIEW.quests.map((quest, index) => <option key={quest.id} value={quest.id}>{index + 1}. {progressLabel(quest)}</option>)}
             <option value="recap">MPJ5 뒤 5 POINT LESSON</option>
             <option value="summary">최종 summary</option>
           </select>
@@ -2002,8 +2003,8 @@ function buildRuntimeMpjTraces(
   ];
 }
 
-export function MissionRunV4Runner({ mission, runtime, isDevPreview }: {
-  mission: MissionV4ViewModel;
+export function CanonicalMissionRunner({ mission, runtime, isDevPreview }: {
+  mission: CanonicalMissionViewModel;
   runtime?: RunnableMission;
   isDevPreview: boolean;
 }) {
@@ -2202,7 +2203,7 @@ export function MissionRunV4Runner({ mission, runtime, isDevPreview }: {
 
   return (
     <RuntimeMissionContext.Provider value={runtime ?? null}>
-    <MissionV4Context.Provider value={mission}>
+    <CanonicalMissionContext.Provider value={mission}>
     <LearnerJourneyShell missionLayout headerRight={<span className="hidden text-xs font-semibold text-white/75 sm:block">{mission.speechAct} 표현 · {mission.direction}</span>}>
       {isDevPreview && (
         <DevPreviewToolbar
@@ -2275,14 +2276,14 @@ export function MissionRunV4Runner({ mission, runtime, isDevPreview }: {
         )}
       </div>
     </LearnerJourneyShell>
-    </MissionV4Context.Provider>
+    </CanonicalMissionContext.Provider>
     </RuntimeMissionContext.Provider>
   );
 }
 
-const MissionRunV4 = () => {
+const CanonicalMissionRun = () => {
   const { scenarioId } = useParams<{ scenarioId: string }>();
-  const [runtimeMission, setRuntimeMission] = useState<MissionV4ViewModel | null>(null);
+  const [runtimeMission, setRuntimeMission] = useState<CanonicalMissionViewModel | null>(null);
   const [runtimeRunnable, setRuntimeRunnable] = useState<RunnableMission | null>(null);
   const [fallbackToLegacy, setFallbackToLegacy] = useState(false);
   const [loading, setLoading] = useState(Boolean(scenarioId));
@@ -2305,12 +2306,12 @@ const MissionRunV4 = () => {
     void fetchMissionByScenario(scenarioId)
       .then((runnable) => {
         if (cancelled) return;
-        setRuntimeMission(adaptRunnableMissionToV4(runnable));
+        setRuntimeMission(adaptRunnableMissionToCanonical(runnable));
         setRuntimeRunnable(runnable);
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
-        if (reason instanceof UnsupportedMissionV4RuntimeError) {
+        if (reason instanceof UnsupportedCanonicalMissionRuntimeError) {
           setFallbackToLegacy(true);
           return;
         }
@@ -2323,7 +2324,7 @@ const MissionRunV4 = () => {
     return () => { cancelled = true; };
   }, [scenarioId]);
 
-  if (scenarioId && fallbackToLegacy) return <MissionRunV1 />;
+  if (scenarioId && fallbackToLegacy) return <LegacyMissionRun />;
 
   if (loading) {
     return (
@@ -2347,9 +2348,9 @@ const MissionRunV4 = () => {
     );
   }
 
-  const mission = runtimeMission ?? REQUEST_MISSION_V4_PREVIEW;
+  const mission = runtimeMission ?? CANONICAL_MISSION_PREVIEW;
   return (
-    <MissionRunV4Runner
+    <CanonicalMissionRunner
       key={mission.scenarioId ?? "preview"}
       mission={mission}
       runtime={runtimeRunnable ?? undefined}
@@ -2358,4 +2359,4 @@ const MissionRunV4 = () => {
   );
 };
 
-export default MissionRunV4;
+export default CanonicalMissionRun;

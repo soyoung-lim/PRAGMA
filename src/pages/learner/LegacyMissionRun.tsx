@@ -1,3 +1,7 @@
+/**
+ * @deprecated 과거 스키마·방향·통역 호환 전용 실행기.
+ * 새 학습 경험은 CanonicalMissionRun을 사용하고, 이 파일을 새 라우트에 연결하지 않는다.
+ */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { CheckCircle2, CircleAlert, Mail, MessageCircle, Mic, Send, Sparkles, Volume2 } from "lucide-react";
@@ -217,7 +221,7 @@ function learnerBandLabel(featureCode: string, code: string, fallback: string): 
 }
 
 // ── 페이지: 라우트 파라미터로 DB 조회, 없으면 샘플 ──────────────────────
-const MissionRunV1 = () => {
+const LegacyMissionRun = () => {
   const { scenarioId } = useParams();
   const [searchParams] = useSearchParams();
   // 원격 migration·Edge 배포 전에도 승인된 v4 흐름을 눈으로 확인할 수 있는 DEV 전용 샘플.
@@ -3427,4 +3431,4 @@ const Choice = ({ label, selected, disabled, onClick }: { label: string; selecte
   </button>
 );
 
-export default MissionRunV1;
+export default LegacyMissionRun;
