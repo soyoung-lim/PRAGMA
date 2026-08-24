@@ -267,6 +267,23 @@ const V5_MULTI = SAMPLE_MISSION_V5.mpj_items[3] as Extract<
 /** 현행 생성 계약과 같은 독립 맥락 대비 문항을 가진 네이티브 MPJ5 샘플. */
 export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
   ...SAMPLE_MISSION_V5,
+  diagnostic_dimensions: [
+    {
+      code: "force_calibration",
+      evidence_refs: ["mpj:2", "mpj:3", "mpj:4", "mpj:5"],
+      evidence_ko: "직접성 강도가 관계와 부담에 맞는지 여러 판단 형식에서 확인한다.",
+    },
+    {
+      code: "relational_calibration",
+      evidence_refs: ["mpj:1", "mpj:2", "dct"],
+      evidence_ko: "관계와 접촉 이력에 따라 같은 요청 전략의 적절성이 달라진다.",
+    },
+    {
+      code: "burden_optionality",
+      evidence_refs: ["mpj:2", "dct"],
+      evidence_ko: "자료를 다시 찾아야 하는 부담과 상대의 선택 가능성을 함께 조절한다.",
+    },
+  ],
   mpj_items: [
     { ...V5_SCALE, id: 1 },
     {
@@ -293,6 +310,7 @@ export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
   ],
   provenance: {
     ...SAMPLE_MISSION_V5.provenance!,
-    prompt_version: "mission_v5_mpj5_minidiscourse_v1",
+    prompt_version: "mission_v5_mpj5_minidiscourse_v2_multidimensional",
+    content_release_id: "pragma_content_candidate_20260824_02",
   },
 };

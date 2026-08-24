@@ -17,6 +17,10 @@
 
 import { z } from "zod";
 import {
+  MISSION_DIAGNOSTIC_DIMENSIONS,
+  MISSION_DIAGNOSTIC_EVIDENCE_REFS,
+} from "@/lib/pragma/diagnosticDimensions";
+import {
   PdrSchema,
   ChannelSchema,
   SourceModalitySchema,
@@ -535,6 +539,19 @@ export const MpjItemV5Schema = z.discriminatedUnion("type", [
 ]);
 export type MpjItemV5 = z.infer<typeof MpjItemV5Schema>;
 
+/**
+ * 미션 수준 진단차원과 그 판단 근거 위치. 과거 native MPJ5에는 이 필드가 없으므로
+ * 배열 자체는 optional이며, 현행 prompt version의 필수성·중복·합집합은 R33이 검사한다.
+ */
+export const MissionDiagnosticDimensionCoverageSchema = z.object({
+  code: z.enum(MISSION_DIAGNOSTIC_DIMENSIONS),
+  evidence_refs: z.array(z.enum(MISSION_DIAGNOSTIC_EVIDENCE_REFS)).min(1).max(6),
+  evidence_ko: z.string().trim().min(1),
+});
+export type MissionDiagnosticDimensionCoverage = z.infer<
+  typeof MissionDiagnosticDimensionCoverageSchema
+>;
+
 const MissionV5Common = {
   schema_version: z.literal("mission_v5"),
   direction: z.enum(["ko_zh", "zh_ko"]),
@@ -552,9 +569,13 @@ export const MissionV5LegacySchema = z.object({
   mpj_items: z.array(MpjItemV4Schema).length(4),
 });
 
-/** 2026-08-24 현행 생성·검수·실행 계약. */
+/** 2026-08-24 이후 네이티브 MPJ5. 현행 v2와 historical v1을 함께 읽는다. */
 export const MissionV5NativeSchema = z.object({
   ...MissionV5Common,
+  diagnostic_dimensions: z
+    .array(MissionDiagnosticDimensionCoverageSchema)
+    .max(MISSION_DIAGNOSTIC_DIMENSIONS.length)
+    .optional(),
   mpj_items: z.tuple([
     Scale4ItemV5,
     Judge3ItemV5,

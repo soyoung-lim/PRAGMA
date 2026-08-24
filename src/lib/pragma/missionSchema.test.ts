@@ -386,6 +386,9 @@ describe("mission_v5 native MPJ5 contract", () => {
   it("accepts native MPJ5 while keeping legacy mission_v5 MPJ4 readable", () => {
     const native = normalizeMission(nativeFixture());
     const legacy = normalizeMission(SAMPLE_MISSION_V5);
+    const historicalNative = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    delete historicalNative.diagnostic_dimensions;
+    historicalNative.provenance!.prompt_version = "mission_v5_mpj5_minidiscourse_v1";
 
     expect(native.ok).toBe(true);
     expect(native.data?.mpj_items.map((item) => item.type)).toEqual([
@@ -397,6 +400,7 @@ describe("mission_v5 native MPJ5 contract", () => {
     ]);
     expect(legacy.ok).toBe(true);
     expect(legacy.data?.mpj_items).toHaveLength(4);
+    expect(normalizeMission(historicalNative).ok).toBe(true);
   });
 
   it("passes native order, anchor, and band rules", () => {
@@ -435,5 +439,40 @@ describe("mission_v5 native MPJ5 contract", () => {
     expect(checked.violations.some(
       (item) => item.id === "R1" && item.message.includes("MPJ5"),
     )).toBe(true);
+  });
+
+  it("requires grounded multidimensional coverage only for the current native prompt", () => {
+    const missing = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    missing.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
+    delete missing.diagnostic_dimensions;
+
+    expect(checkMission(missing, context).violations.some(
+      (item) => item.id === "R33" && item.level === "fail",
+    )).toBe(true);
+
+    const valid = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    valid.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
+    expect(checkMission(valid, context).violations.filter((item) => item.id === "R33")).toEqual([]);
+  });
+
+  it("rejects duplicate dimension codes and evidence concentrated in one location", () => {
+    const invalid = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    invalid.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
+    invalid.diagnostic_dimensions = [
+      {
+        code: "force_calibration",
+        evidence_refs: ["mpj:1"],
+        evidence_ko: "첫 문항 근거",
+      },
+      {
+        code: "force_calibration",
+        evidence_refs: ["mpj:1"],
+        evidence_ko: "같은 위치를 중복 선언한 근거",
+      },
+    ];
+
+    const r33 = checkMission(invalid, context).violations.filter((item) => item.id === "R33");
+    expect(r33.some((item) => item.message.includes("중복 없는"))).toBe(true);
+    expect(r33.some((item) => item.message.includes("최소 두 위치"))).toBe(true);
   });
 });

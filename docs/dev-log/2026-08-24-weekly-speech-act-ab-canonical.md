@@ -54,3 +54,14 @@ MPJ5+DCT1 미션 A/B 두 세트와 맥락 변화 원칙을 정본에 고정한�
   고부담 맥락에서 독립적으로 수행하며 A/B·연속 혼합화행 계약은 만들지 않는다.
 - 이번 범위는 정본 문서 교정뿐이다. 기존 `target_interpreting_ratio`, 주차 내부 모드 혼합,
   13주 `맥락 변형 재적용` 소스와 UI·DB는 후속 동기화 대상이다.
+
+## 후속 구현 · native MPJ5 복수 진단차원 생성 계약
+
+- 신규 native MPJ5 prompt를 `mission_v5_mpj5_minidiscourse_v2_multidimensional`, 후보 릴리스를
+  `pragma_content_candidate_20260824_02`로 올렸다. v1·legacy 행은 그대로 읽는다.
+- 미션에 진단차원 코드와 `mpj:1~5`/`dct` 근거 위치·한국어 근거를 함께 생성·저장한다. 문항별
+  정답축은 기존 `target_feature` 하나로 유지하되, 미션 전체 목표는 화행 통합 수행임을 프롬프트에 분리했다.
+- R33과 DB trigger는 현행 v2에만 차원 2~6개, 코드·근거 중복 금지, 최소 두 근거 위치를 요구한다.
+  AI 품질점검은 선언한 차원이 실제 내용으로 뒷받침되는지 `diagnostic_coverage_mismatch`로 별도 감사한다.
+- 검증: 관련 계약 테스트 5파일 59개와 typecheck 통과. 유료 실생성·원격 DB/Edge/Railway 적용,
+  관리자 A/B 자동 연결은 실행하지 않았다.

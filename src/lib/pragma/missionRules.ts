@@ -1,4 +1,4 @@
-// 규칙검사 R1~R24 — 결정론·API 0회. 생성계약 v1.5 §8 + 양방향(0-l·85).
+// 규칙검사 R1~R33 — 결정론·API 0회. 생성계약 v1.5 §8 + 양방향(0-l·85).
 //
 // 순수 함수. 코드가 검사할 수 있는 것은 필드·선택지 수·중복·길이 편차·형식·
 // 코드값 정합뿐이다(관리자구조md §3-①). 의미 보존·자연성·화행 구현은 검사 불가 →
@@ -27,6 +27,10 @@ import {
   validateItemLineage,
 } from "@/lib/pragma/itemLineage";
 import { buildMissionLineageScope } from "@/lib/pragma/missionLineage";
+import {
+  MISSION_DIAGNOSTIC_DIMENSIONS,
+  MISSION_DIAGNOSTIC_EVIDENCE_REFS,
+} from "@/lib/pragma/diagnosticDimensions";
 import {
   CURRENT_ITEM_LINEAGE_PROMPT_VERSION,
   CURRENT_MISSION_PROMPT_VERSIONS,
@@ -774,6 +778,44 @@ export function checkMission(
       ) {
         add(v, "R31", "fail", "item_lineage attribution provenance가 mission_v5 생성계약과 다름");
       }
+    }
+  }
+
+  // R33 — 현행 native MPJ5는 단일 target_feature 판정축과 별도로 화행 수행의
+  // 복수 진단차원을 선언하고, 그 근거가 되는 MPJ/DCT 위치를 최소 둘 이상 남긴다.
+  if (
+    m.schema_version === "mission_v5" &&
+    m.provenance?.prompt_version === CURRENT_MISSION_PROMPT_VERSIONS[0]
+  ) {
+    const dimensions = "diagnostic_dimensions" in m
+      ? (m.diagnostic_dimensions ?? [])
+      : [];
+    const allowedDimensions = new Set<string>(MISSION_DIAGNOSTIC_DIMENSIONS);
+    const allowedRefs = new Set<string>(MISSION_DIAGNOSTIC_EVIDENCE_REFS);
+    const codes = dimensions.map((dimension) => dimension.code);
+
+    if (dimensions.length < 2 || dimensions.length > MISSION_DIAGNOSTIC_DIMENSIONS.length) {
+      add(v, "R33", "fail", "현행 mission_v5는 서로 다른 진단차원을 2~6개 포함해야 함");
+    }
+    if (new Set(codes).size !== codes.length || codes.some((code) => !allowedDimensions.has(code))) {
+      add(v, "R33", "fail", "diagnostic_dimensions.code는 허용 코드의 중복 없는 집합이어야 함");
+    }
+
+    const allEvidenceRefs = new Set<string>();
+    for (const dimension of dimensions) {
+      const refs = dimension.evidence_refs;
+      refs.forEach((ref) => allEvidenceRefs.add(ref));
+      if (
+        refs.length < 1 ||
+        new Set(refs).size !== refs.length ||
+        refs.some((ref) => !allowedRefs.has(ref)) ||
+        !dimension.evidence_ko.trim()
+      ) {
+        add(v, "R33", "fail", `${dimension.code}: 근거 위치·설명 계약 위반`);
+      }
+    }
+    if (allEvidenceRefs.size < 2) {
+      add(v, "R33", "fail", "복수 진단차원은 MPJ/DCT 중 최소 두 위치에 실제 근거를 가져야 함");
     }
   }
 

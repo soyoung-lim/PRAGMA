@@ -1395,6 +1395,24 @@ interface MissionGenBody {
   previous_mission?: unknown
 }
 
+const MISSION_DIAGNOSTIC_DIMENSIONS = [
+  'illocutionary_clarity',
+  'force_calibration',
+  'relational_calibration',
+  'burden_optionality',
+  'supportive_move_fit',
+  'channel_sequence_fit',
+] as const
+
+const MISSION_DIAGNOSTIC_EVIDENCE_REFS = [
+  'mpj:1',
+  'mpj:2',
+  'mpj:3',
+  'mpj:4',
+  'mpj:5',
+  'dct',
+] as const
+
 const ITEM_LINEAGE_MAX_BATCH_SIZE = 5
 const ITEM_LINEAGE_MAX_UNATTRIBUTED_RATIO = 0.2
 const ITEM_LINEAGE_MAX_COMPLETION_TOKENS = 5000
@@ -1798,6 +1816,21 @@ function buildMissionSystemPrompt(
   const exactOrder = nativeMpj5
     ? 'scale4 → judge3 → fix_choice → reason → multi_judge'
     : 'scale4 → fix_choice → reason → multi_judge'
+  const diagnosticShape = nativeMpj5
+    ? `  "diagnostic_dimensions": [
+    {
+      "code": "force_calibration",
+      "evidence_refs": ["mpj:2", "mpj:3"],
+      "evidence_ko": "예시 형식. 실제 생성 내용에서 강도 조절을 관찰할 수 있는 근거를 씁니다."
+    },
+    {
+      "code": "relational_calibration",
+      "evidence_refs": ["mpj:1", "dct"],
+      "evidence_ko": "예시 형식. 실제 생성 내용에서 관계 조절을 관찰할 수 있는 근거를 씁니다."
+    }
+  ],
+`
+    : ''
   const nativeJudgeRules = nativeMpj5
     ? `- judge3는 DCT와 같은 앵커 P/D/R의 별도 사건이며, scale4와 달리 비적정 대역 하나를 판정하게 합니다.
 `
@@ -1820,7 +1853,11 @@ MPJ ${itemCount}문항을 만듭니다. 학습 흐름은 ${learningFlow}입니�
 Scale4는 종합 첫인상을 4점으로 받고 적절/부적절 방향만 채점합니다.${nativeJudgeIntro}
  FixChoice는 별도 사건에서 판단을 잠근 뒤 교정안을 공개합니다.
 Reason 문항은 이유 공개 전에 최초 대역 판단을 한 번 잠그되 확신도는 묻지 않습니다.
-모든 판정의 축은 위 target feature band 하나뿐입니다(다른 축 혼입 금지).
+각 MPJ 문항에서 후보를 가르는 직접 채점축은 위 target feature band 하나뿐입니다(한 문항 안의 다른 축 동시 변화 금지).
+그러나 미션 전체의 학습목표는 특정 feature 하나가 아니라 해당 화행의 통합 수행입니다.
+${nativeMpj5 ? `따라서 diagnostic_dimensions에는 미션 전체에서 실제로 관찰되는 서로 다른 진단차원 2~6개와 근거 위치를 남깁니다.
+차원 코드는 ${MISSION_DIAGNOSTIC_DIMENSIONS.join(' | ')}만 사용하고, evidence_refs는 ${MISSION_DIAGNOSTIC_EVIDENCE_REFS.join(' | ')}만 사용합니다.
+이 배열은 문항별 정답축을 늘리는 필드가 아니라 미션 전체의 관찰 범위를 기록하는 관리자 메타데이터입니다.` : ''}
 출력은 아래 JSON만, 마크다운·설명 없이 반환합니다.
 
 공통 코드값(모든 문항 — 한국어 라벨 금지, 반드시 아래 코드로):
@@ -1834,6 +1871,7 @@ Reason 문항은 이유 공개 전에 최초 대역 판단을 한 번 잠그되 
 
 아래 ${itemCount}문항을 모두, 축약 없이, 모든 필드를 채워 출력합니다:
 {
+${diagnosticShape}
   "mpj_items": [
     {
       "type": "scale4",
@@ -1921,6 +1959,9 @@ Reason 문항은 이유 공개 전에 최초 대역 판단을 한 번 잠그되 
 
 핵심 규칙:
 - mpj_items는 **정확히 ${itemCount}개**, 순서는 ${exactOrder}.
+${nativeMpj5 ? `- diagnostic_dimensions는 **서로 다른 코드 2~6개**입니다. 각 code의 evidence_refs는 중복 없이 1개 이상이고, 전체 합집합은 MPJ/DCT 중 최소 2개 위치여야 합니다.
+- 선언한 차원은 그 근거 위치의 situation·P/D/R·preceding_turn·후보·DCT에서 실제로 관찰되어야 합니다. target_feature 이름을 바꿔 적거나 근거 없는 차원을 채우지 마세요.
+- 같은 evidence_ref가 여러 차원을 뒷받침할 수 있지만, 가능한 차원을 전부 체크하는 식의 과잉 선언은 금지합니다.` : ''}
 - scale4는 위에 주입된 "깨야 할 소박한 규칙"을 깨는 **적절한 반례**입니다.
   accepted_scale_codes는 반드시 ["very_appropriate","somewhat_appropriate"] 두 개이고,
   reference_scale_code는 그중 대표 정도 하나입니다. 학습자가 같은 적절성 방향을 고르면 맞게 처리합니다.
@@ -2027,6 +2068,11 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
       : '[앵커+대비] 4번 multi_judge는 위 P/D/R 중 정확히 한 축만 바꾼 대비 상황으로 만드세요.',
     '[수준 정책] 수정안·이유·후보 수는 모든 수준에서 4/3/5로 고정합니다. 난이도는 장면과 표현의 미묘함으로만 조절하세요.',
   )
+  if (nativeMpj5) {
+    parts.push(
+      '[통합 화행 목표] target_feature는 각 MPJ 판정의 초점 태그이고, 미션 전체 목표를 대신하지 않습니다. MPJ 5개와 DCT에 실제로 드러나는 복수 진단차원과 근거 위치를 diagnostic_dimensions에 남기세요.',
+    )
+  }
   if (b.error_pattern_hints_ko.length) {
     parts.push(
       '',
@@ -2049,6 +2095,9 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
         ? previousRecord.production_task as Record<string, unknown>
         : undefined
       const retryExcerpt = {
+        diagnostic_dimensions: Array.isArray(previousRecord.diagnostic_dimensions)
+          ? previousRecord.diagnostic_dimensions
+          : [],
         mpj_items: Array.isArray(previousRecord.mpj_items)
           ? previousRecord.mpj_items.slice(0, nativeMpj5 ? 5 : 4)
           : [],
@@ -2201,13 +2250,23 @@ function buildQualitySystemPrompt(
   const contextPlan = nativeMpj5
     ? 'judge3·fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
     : 'fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
+  const diagnosticCheck = nativeMpj5
+    ? `⑪ diagnostic_coverage_mismatch — diagnostic_dimensions의 각 code가 지정한 evidence_refs의
+   실제 장면·P/D/R·선행 발화·후보·DCT로 뒷받침되는가. target_feature를 이름만 바꿔 쓰거나,
+   근거 위치에서 관찰할 수 없는 차원을 과잉 선언하면 지적하라. 이 메타데이터는 문항별 단일
+   채점축과 별개인 **미션 전체 화행 수행의 관찰 범위**다.`
+    : ''
+  const checklistRange = nativeMpj5 ? '①~⑪' : '①~⑩'
+  const findingCodes = nativeMpj5
+    ? 'gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch | diagnostic_coverage_mismatch'
+    : 'gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch'
   return `너는 L2 화용 교육 자료의 **품질 심사자**다. 다른 모델이 생성한 학습 미션 1건을 받아
 결함을 찾아낸다. 너는 자료를 고쳐 쓰지 않고 **판정과 근거만** 낸다.
 
 [전제]
 - 이 미션은 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 과제이며 화행은 「${speechActKo}」다.
 - 학습자는 ${learningFlow} 뒤 스스로 산출한다.
-- 형식·필드·개수·코드값·중복·길이 편차는 **이미 결정론적 규칙검사(R1~R29)가 통과시켰다.**
+- 형식·필드·개수·코드값·중복·길이 편차는 **이미 결정론적 규칙검사(R1~R33)가 통과시켰다.**
   너는 그것을 다시 세지 마라. 너의 몫은 **의미·자연성·후보 자격**이다.
 
 [반드시 지킬 판정 원칙]
@@ -2261,9 +2320,10 @@ function buildQualitySystemPrompt(
    ${contextPlan}이며 multi_judge는 P/D/R 한 축만
    바꾼 대비 사건인가. 코드만 맞고 상황문의 구체적 단서가 그 PDR을 뒷받침하지 못하거나,
    사건이 사실상 복제되면 지적하라.
+${diagnosticCheck}
 
 [필수 확인 절차 — 건너뛰지 마라]
-①~⑩을 **하나씩 명시적으로 점검한 뒤** 판정하라. "전반적으로 괜찮아 보인다"로
+${checklistRange}을 **하나씩 명시적으로 점검한 뒤** 판정하라. "전반적으로 괜찮아 보인다"로
 넘어가지 마라. 특히 다음 두 가지는 **구체적 임계값**이 있다.
 - ②의 임계: 판정 후보에 **명령형·강요형(必须·给我·赶紧 등)이나 노골적 무례 표현**이
   쓰였다면, 그것은 거의 언제나 implausible_distractor 결함이다. 중국어를 배우지
@@ -2285,7 +2345,7 @@ function buildQualitySystemPrompt(
   "summary_ko": "한 문장 요약(검토자가 먼저 읽는다)",
   "findings": [
     {
-      "code": "gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch",
+      "code": "${findingCodes}",
       "severity": "warning" | "fail",
       "where": "위치 경로 (예: mpj_items[2].corrections[1])",
       "note_ko": "무엇이 왜 문제인지 1~2문장. 대안 문장을 쓰지 말 것."
@@ -2929,6 +2989,9 @@ Deno.serve(async (req) => {
           learner_label: b.feature.learner_label,       // 카탈로그 복사(R14)
           closing_ko: b.feature.closing_principle_ko,   // 카탈로그 복사(R14)
         },
+        ...(isMiniDiscourse && Array.isArray(gen.diagnostic_dimensions)
+          ? { diagnostic_dimensions: gen.diagnostic_dimensions }
+          : {}),
         mpj_items,
         production_task: {
           mode: productionMode,
@@ -3186,6 +3249,7 @@ Deno.serve(async (req) => {
         'gate1_violation', 'implausible_distractor', 'answer_cue', 'band_mismatch',
         'focus_contamination', 'unnatural_language', 'internal_inconsistency',
         'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch',
+        'diagnostic_coverage_mismatch',
       ]
       const rawFindings = Array.isArray(parsed.findings) ? parsed.findings : []
       const findings = rawFindings.slice(0, 20).map((raw) => {

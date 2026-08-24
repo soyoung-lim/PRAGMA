@@ -1,4 +1,8 @@
 import type { ComposerCore } from "@/lib/curriculum/composer";
+import {
+  MISSION_DIAGNOSTIC_DIMENSIONS,
+  type MissionDiagnosticDimension,
+} from "@/lib/pragma/diagnosticDimensions";
 
 /**
  * 한 화행 주차의 두 완결 미션(A/B)을 식별하는 현재 계약.
@@ -23,16 +27,8 @@ export type WeeklyContextAxis = (typeof WEEKLY_CONTEXT_AXES)[number];
  * target_feature와 별개인 화행 수행의 복수 진단차원.
  * target_feature는 문항 수준 진단·피드백 태그이며 아래 차원을 대신하지 않는다.
  */
-export const WEEKLY_DIAGNOSTIC_DIMENSIONS = [
-  "illocutionary_clarity",
-  "force_calibration",
-  "relational_calibration",
-  "burden_optionality",
-  "supportive_move_fit",
-  "channel_sequence_fit",
-] as const;
-export type WeeklyDiagnosticDimension =
-  (typeof WEEKLY_DIAGNOSTIC_DIMENSIONS)[number];
+export const WEEKLY_DIAGNOSTIC_DIMENSIONS = MISSION_DIAGNOSTIC_DIMENSIONS;
+export type WeeklyDiagnosticDimension = MissionDiagnosticDimension;
 
 export interface WeeklyMissionPairAssignment {
   scenario_id: string;

@@ -2276,3 +2276,17 @@
 - 다음 반영: 관리자 Composer가 현재 계약의 A/B를 선택·표시·저장하게 한 뒤 대표 한 주차의
   생성→편성→학습자 수행 종단을 닫는다.
 - 관련 Decision / Trace: `DEC-20260824-03`, `TRC-20260824-03`
+
+## ITER-20260824-04 · native MPJ5 복수 진단차원 생성·근거 계약
+
+- 날짜: 2026-08-24
+- 시작 문제: A/B 배정 행에는 복수 진단차원 코드가 생겼지만 생성 미션 자체에는 그 차원과 실제
+  근거가 없어, 자동 편성이 임의 메타데이터를 작성하거나 단일 `target_feature`를 coverage로 오인할 수 있었다.
+- 변경: 현행 native MPJ5 prompt와 후보 release를 v2/`_02`로 올리고, 미션 수준
+  `diagnostic_dimensions`에 닫힌 코드·MPJ/DCT 근거 위치·한국어 근거를 생성하도록 했다. R33과 DB
+  trigger는 2~6개 고유 차원과 최소 두 근거 위치를 검사하고, 품질점검은 의미적 과잉 선언을 별도 찾는다.
+- 호환성: v1 native MPJ5와 legacy MPJ4는 필드 없이 계속 읽으며 새 hard gate를 소급 적용하지 않는다.
+- 검증 결과: mission schema/rules, prompt snapshot, migration, A/B 공통 코드, refresh inventory의
+  집중 테스트 5파일 59개와 typecheck가 통과했다.
+- 범위: 유료 생성·원격 migration·Edge/Railway 배포와 관리자 A/B 자동 연결은 실행하지 않았다.
+- 관련 Decision / Trace: `DEC-20260824-03`, `TRC-20260824-03`

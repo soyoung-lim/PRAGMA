@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 
 import { PROMPT_SNAPSHOT } from "@/lib/pragma/promptSnapshot.generated";
 import {
+  MISSION_DIAGNOSTIC_DIMENSIONS,
+  MISSION_DIAGNOSTIC_EVIDENCE_REFS,
+} from "@/lib/pragma/diagnosticDimensions";
+import {
   CURRENT_CONTENT_RELEASE_ID,
   CURRENT_CORE_PROMPT_VERSIONS,
   CURRENT_CORE_QUALITY_PROMPT_VERSION,
@@ -82,6 +86,10 @@ describe("prompt snapshot integrity", () => {
     expect(canonicalSource).toContain(
       "'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch'",
     );
+    expect(canonicalSource).toContain("'diagnostic_coverage_mismatch'");
+    for (const code of MISSION_DIAGNOSTIC_DIMENSIONS) {
+      expect(canonicalSource).toContain(`'${code}'`);
+    }
     expect(canonicalSource).toContain("CURRENT_MISSION_QUALITY_PROMPT_VERSION");
     expect(canonicalSource).toContain("corePrecedingTurnIssue(");
     expect(canonicalSource).toContain("preceding_turn_repair_applied: precedingTurnRepairApplied");
@@ -210,12 +218,17 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).toContain('"type": "scale4"');
       expect(entry.text).toContain('"type": "judge3"');
       expect(entry.text).toContain('"reference_scale_code"');
+      expect(entry.text).toContain('"diagnostic_dimensions"');
+      expect(entry.text).toContain("미션 전체의 학습목표는 특정 feature 하나가 아니라");
+      for (const code of MISSION_DIAGNOSTIC_DIMENSIONS) expect(entry.text).toContain(code);
+      for (const ref of MISSION_DIAGNOSTIC_EVIDENCE_REFS) expect(entry.text).toContain(ref);
       expect(entry.text).not.toContain('"type": "reason_conf"');
     }
     expect(quality.text).toContain("MPJ 5문항");
     expect(quality.text).toContain("primary_reason_ambiguity");
     expect(quality.text).toContain("context_plan_mismatch");
-    expect(quality.text).toContain("결정론적 규칙검사(R1~R29)");
+    expect(quality.text).toContain("diagnostic_coverage_mismatch");
+    expect(quality.text).toContain("결정론적 규칙검사(R1~R33)");
     expect(quality.text).toContain("fix_choice의 is_valid 의미");
     expect(quality.text).toContain("false는 \"문법적으로 틀림\"이나 \"완전히 부적절함\"이라는 뜻이 아니다");
     expect(quality.text).toContain("note_ko 문장을 중국어 correction 자체로 오인하지 마라");
@@ -235,9 +248,11 @@ describe("prompt snapshot integrity", () => {
     expect(legacy.text).toContain("MPJ 4문항");
     expect(legacy.text).toContain("scale4 → fix_choice → reason → multi_judge");
     expect(legacy.text).not.toContain('"type": "judge3"');
+    expect(legacy.text).not.toContain('"diagnostic_dimensions"');
     expect(legacy.text).toContain("4문항 전부");
     expect(legacyQuality.text).toContain("legacy MPJ 4문항");
     expect(legacyQuality.text).toContain("fix_choice·reason은 DCT와 같은 앵커 PDR");
+    expect(legacyQuality.text).not.toContain("diagnostic_coverage_mismatch");
     expect(legacyQuality.text).not.toContain("judge3·fix_choice·reason");
   });
 

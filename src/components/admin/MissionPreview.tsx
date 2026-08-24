@@ -37,6 +37,7 @@ const QUALITY_CODE_KO: Record<string, string> = {
   scene_underspecified: "장면 미명세(상상이 갈림)",
   primary_reason_ambiguity: "주원인 복수 해석",
   context_plan_mismatch: "앵커·대비 맥락 불일치",
+  diagnostic_coverage_mismatch: "진단차원 근거 불일치",
 };
 
 export function MissionPreview({
