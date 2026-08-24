@@ -45,13 +45,16 @@ describe("커리큘럼 주차 복습 공개 매핑", () => {
 });
 
 describe("강좌 자동 편성 정책 매핑", () => {
-  it("새 강좌 생성은 migration 전 DB에도 호환되도록 정책 열에 의존하지 않는다", () => {
+  it("새 강좌는 번역 전용을 기본값으로 삼고 주차 단위 정책을 저장한다", () => {
     const draft = createEmptyOutlineDraft();
     const insert = outlineDraftToInsert(draft);
 
     expect(draft.composition_theme_codes).toEqual([]);
-    expect(draft.target_interpreting_ratio).toBe(0.3);
-    expect(insert).not.toHaveProperty("composition_theme_codes");
+    expect(draft.course_mode).toBe("translation");
+    expect(draft.target_interpreting_week_count).toBe(0);
+    expect(insert.composition_theme_codes).toEqual([]);
+    expect(insert.course_mode).toBe("translation");
+    expect(insert.target_interpreting_week_count).toBe(0);
     expect(insert).not.toHaveProperty("target_interpreting_ratio");
   });
 
@@ -61,13 +64,15 @@ describe("강좌 자동 편성 정책 매핑", () => {
       level: "advanced" as const,
       language_direction: "zh_ko" as const,
       composition_theme_codes: ["career_workplace" as const],
-      target_interpreting_ratio: 0.65,
+      course_mode: "mixed" as const,
+      target_interpreting_week_count: 6,
     };
     const update = outlineDraftToStructureUpdate(draft);
 
     expect(update).not.toHaveProperty("level");
     expect(update).not.toHaveProperty("language_direction");
     expect(update).not.toHaveProperty("composition_theme_codes");
-    expect(update).not.toHaveProperty("target_interpreting_ratio");
+    expect(update).not.toHaveProperty("course_mode");
+    expect(update).not.toHaveProperty("target_interpreting_week_count");
   });
 });

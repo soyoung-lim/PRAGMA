@@ -27,6 +27,12 @@ import type {
   LanguageDirection,
 } from "@/lib/pragma/enums";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
+import {
+  COURSE_MODES,
+  courseModePolicyFromLegacyRatio,
+  isCourseModePolicyValid,
+  type CourseMode,
+} from "@/lib/curriculum/courseModePolicy";
 import type {
   CurriculumOutlineRow,
   CurriculumOutlineInsert,
@@ -60,6 +66,17 @@ const arrayToDbNullable = <T>(v: T[]): T[] | null => (v.length > 0 ? [...v] : nu
 // ── curriculum_outlines ──
 
 export function outlineRowToDraft(row: CurriculumOutlineRow): CurriculumOutlineDraft {
+  const storedCourseMode = COURSE_MODES.includes(row.course_mode as CourseMode)
+    ? (row.course_mode as CourseMode)
+    : null;
+  const storedWeekCount = row.target_interpreting_week_count;
+  const legacyPolicy = courseModePolicyFromLegacyRatio(row.target_interpreting_ratio);
+  const storedPolicy = storedCourseMode && isCourseModePolicyValid({
+    courseMode: storedCourseMode,
+    interpretingWeekCount: storedWeekCount,
+  })
+    ? { courseMode: storedCourseMode, interpretingWeekCount: storedWeekCount }
+    : legacyPolicy;
   return {
     id: row.id,
     title: row.title,
@@ -75,14 +92,13 @@ export function outlineRowToDraft(row: CurriculumOutlineRow): CurriculumOutlineD
     final_week: row.final_week,
     scenarios_per_week: row.scenarios_per_week,
     composition_theme_codes: [...((row.composition_theme_codes ?? []) as ThemeCode[])],
-    target_interpreting_ratio: row.target_interpreting_ratio ?? 0.3,
+    course_mode: storedPolicy.courseMode,
+    target_interpreting_week_count: storedPolicy.interpretingWeekCount,
   };
 }
 
 /**
- * 새 강좌는 표준 정책(전체 주제·통역 30%)으로 시작한다. 정책 migration이 적용된
- * DB는 열의 DEFAULT로 같은 값을 채우고, 적용 전 DB도 신규 강좌를 만들 수 있도록
- * 두 신규 정책 열은 INSERT payload에 넣지 않는다. 이후 정책 변경은 Composer가 저장한다.
+ * 새 강좌의 편성 정책도 함께 저장한다. migration 전 DB 호환 재시도는 API 계층이 맡는다.
  */
 export function outlineDraftToInsert(draft: CurriculumOutlineDraft): CurriculumOutlineInsert {
   return {
@@ -99,6 +115,9 @@ export function outlineDraftToInsert(draft: CurriculumOutlineDraft): CurriculumO
     midterm_week: draft.midterm_week,
     final_week: draft.final_week,
     scenarios_per_week: draft.scenarios_per_week,
+    composition_theme_codes: [...draft.composition_theme_codes],
+    course_mode: draft.course_mode,
+    target_interpreting_week_count: draft.target_interpreting_week_count,
   };
 }
 
@@ -117,7 +136,8 @@ export function outlineDraftToUpdate(draft: CurriculumOutlineDraft): CurriculumO
     final_week: draft.final_week,
     scenarios_per_week: draft.scenarios_per_week,
     composition_theme_codes: [...draft.composition_theme_codes],
-    target_interpreting_ratio: draft.target_interpreting_ratio,
+    course_mode: draft.course_mode,
+    target_interpreting_week_count: draft.target_interpreting_week_count,
   };
 }
 
@@ -222,7 +242,8 @@ export function createEmptyOutlineDraft(): CurriculumOutlineDraft {
     final_week: null,
     scenarios_per_week: 2,
     composition_theme_codes: [],
-    target_interpreting_ratio: 0.3,
+    course_mode: "translation",
+    target_interpreting_week_count: 0,
   };
 }
 

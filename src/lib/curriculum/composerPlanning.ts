@@ -2,10 +2,17 @@ import type { CurriculumWeekRow } from "@/lib/curriculum/types";
 import type { ComposerCore } from "@/lib/curriculum/composer";
 import { isReviewedMission } from "@/lib/curriculum/composerEligibility";
 import type {
+  GenMode,
   LanguageDirection,
   LearnerLevel,
   SpeechActUI,
 } from "@/lib/pragma/enums";
+import {
+  expectedCoreModeForWeek,
+  interpretingTargetWeekNumbers,
+  isCourseModePolicyValid,
+  type CourseModePolicy,
+} from "@/lib/curriculum/courseModePolicy";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 import {
   weeklyMissionPairIssues,
@@ -23,40 +30,13 @@ type PlanningWeek = Pick<
 export const slotRoleFor = (core: ComposerCore): string =>
   core.mode === "stt_interpreting" ? "interpreting" : "primary";
 
-/** 후보 중 통역 비율을 최대한 맞춰 slots개를 고른다(부족하면 남는 것으로 채움). */
-export function pickByRatio(
-  candidates: ComposerCore[],
-  slots: number,
-  interpretingRatio: number,
-): ComposerCore[] {
-  if (candidates.length <= slots) return candidates.slice(0, slots);
-  const interpreting = candidates.filter((core) => core.mode === "stt_interpreting");
-  const translation = candidates.filter((core) => core.mode !== "stt_interpreting");
-  const wantedInterpreting = Math.min(
-    interpreting.length,
-    Math.round(slots * interpretingRatio),
-  );
-  const picked = [
-    ...interpreting.slice(0, wantedInterpreting),
-    ...translation.slice(0, slots - wantedInterpreting),
-  ];
-  if (picked.length < slots) {
-    const chosen = new Set(picked.map((core) => core.scenario_id));
-    for (const core of candidates) {
-      if (picked.length >= slots) break;
-      if (!chosen.has(core.scenario_id)) picked.push(core);
-    }
-  }
-  return picked.slice(0, slots);
-}
-
 export interface AutoFillOptions {
   weeks: PlanningWeek[];
   cores: ComposerCore[];
   level: LearnerLevel;
   direction: LanguageDirection;
   themes: ThemeCode[];
-  interpretingRatio: number;
+  courseModePolicy: CourseModePolicy;
   defaultScenariosPerWeek: number;
   /** 선택 주제가 부족할 때 다른 주제로 넓힐지 여부. 교수자의 명시 조작만 허용한다. */
   allowThemeExpansion?: boolean;
@@ -68,6 +48,7 @@ export interface AutoFillResult {
   totalAssigned: number;
   shortages: Array<{ weekNo: number; missingSlots: number }>;
   expandedThemeWeeks: number[];
+  interpretingWeekNumbers: number[];
 }
 
 /**
@@ -82,26 +63,43 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
     level,
     direction,
     themes,
-    interpretingRatio,
+    courseModePolicy,
     defaultScenariosPerWeek,
     allowThemeExpansion = false,
   } = options;
+  if (!isCourseModePolicyValid(courseModePolicy)) {
+    throw new Error("강좌 수행모드와 통역 주차 수가 일치하지 않습니다.");
+  }
   const assignments: AssignMap = {};
   const usedIds = new Set<string>();
   const shortages: AutoFillResult["shortages"] = [];
   const expandedThemeWeeks: number[] = [];
+  const targetWeekNumbers = weeks
+    .filter((week) => week.type === "regular" && week.speech_act)
+    .map((week) => week.week_no)
+    .sort((a, b) => a - b);
+  const interpretingWeekNumbers = interpretingTargetWeekNumbers(
+    courseModePolicy,
+    targetWeekNumbers,
+  );
   let filledWeeks = 0;
 
   for (const week of weeks) {
     if (week.type !== "regular" || !week.speech_act) continue;
     const act = week.speech_act as SpeechActUI;
     const slots = week.scenario_slots ?? defaultScenariosPerWeek;
+    const expectedMode = expectedCoreModeForWeek(
+      courseModePolicy,
+      week.week_no,
+      targetWeekNumbers,
+    );
     const isBaseEligible = (core: ComposerCore) =>
       isReviewedMission(core) &&
       !usedIds.has(core.scenario_id) &&
       core.speech_act === act &&
       core.learner_level === level &&
-      core.direction === direction;
+      core.direction === direction &&
+      core.mode === expectedMode;
 
     let candidates = cores.filter(
       (core) =>
@@ -114,7 +112,7 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
       expandedThemeWeeks.push(week.week_no);
     }
 
-    const picked = pickByRatio(candidates, slots, interpretingRatio);
+    const picked = candidates.slice(0, slots);
     if (picked.length < slots) {
       shortages.push({ weekNo: week.week_no, missingSlots: slots - picked.length });
     }
@@ -136,6 +134,7 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
     ),
     shortages,
     expandedThemeWeeks,
+    interpretingWeekNumbers,
   };
 }
 
@@ -153,6 +152,7 @@ export interface ManualCandidateOptions {
   direction: LanguageDirection;
   themes: ThemeCode[];
   assignments: AssignMap;
+  expectedMode?: GenMode | null;
 }
 
 /** 수동 교체 후보도 자동 편성과 같은 절대 조건 및 강좌 전체 중복 금지를 적용한다. */
@@ -168,6 +168,7 @@ export function filterManualCandidates(
       (options.act ? core.speech_act === options.act : true) &&
       core.learner_level === options.level &&
       core.direction === options.direction &&
+      (options.expectedMode ? core.mode === options.expectedMode : true) &&
       (options.themes.length === 0 ||
         (core.theme_code != null && options.themes.includes(core.theme_code))),
   );
@@ -194,10 +195,12 @@ export function addAssignment(
   assignments: AssignMap,
   weekNo: number,
   core: ComposerCore,
+  expectedMode?: GenMode | null,
 ): AssignMap {
   if (
     !isReviewedMission(core) ||
-    assignedScenarioIds(assignments).has(core.scenario_id)
+    assignedScenarioIds(assignments).has(core.scenario_id) ||
+    (expectedMode ? core.mode !== expectedMode : false)
   ) {
     return assignments;
   }
@@ -243,6 +246,8 @@ export type AssignmentStructureIssueCode =
   | "missing_week"
   | "non_regular_week"
   | "speech_act"
+  | "course_mode_policy"
+  | "course_mode"
   | "too_many_items"
   | WeeklyMissionPairIssueCode;
 
@@ -263,9 +268,17 @@ export function assignmentStructureIssues(
   level: LearnerLevel,
   direction: LanguageDirection,
   defaultScenariosPerWeek: number,
+  courseModePolicy?: CourseModePolicy,
 ): AssignmentStructureIssue[] {
   const issues: AssignmentStructureIssue[] = [];
   const weekByNo = new Map(weeks.map((week) => [week.week_no, week]));
+  const targetWeekNumbers = weeks
+    .filter((week) => week.type === "regular" && week.speech_act)
+    .map((week) => week.week_no)
+    .sort((a, b) => a - b);
+  if (courseModePolicy && !isCourseModePolicyValid(courseModePolicy)) {
+    issues.push({ weekNo: 0, code: "course_mode_policy" });
+  }
 
   for (const [weekNoText, items] of Object.entries(assignments)) {
     const weekNo = Number(weekNoText);
@@ -279,6 +292,9 @@ export function assignmentStructureIssues(
       continue;
     }
     const slots = week.scenario_slots ?? defaultScenariosPerWeek;
+    const expectedMode = courseModePolicy && isCourseModePolicyValid(courseModePolicy)
+      ? expectedCoreModeForWeek(courseModePolicy, weekNo, targetWeekNumbers)
+      : null;
     if (items.length > slots) issues.push({ weekNo, code: "too_many_items" });
 
     for (const item of items) {
@@ -298,6 +314,9 @@ export function assignmentStructureIssues(
       }
       if (week.speech_act && core.speech_act !== week.speech_act) {
         issues.push({ weekNo, scenarioId: item.scenario_id, code: "speech_act" });
+      }
+      if (expectedMode && core.mode !== expectedMode) {
+        issues.push({ weekNo, scenarioId: item.scenario_id, code: "course_mode" });
       }
     }
 

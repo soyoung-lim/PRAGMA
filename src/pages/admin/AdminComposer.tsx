@@ -46,6 +46,7 @@ import {
   LEVEL,
   MODE_LABEL,
   SPEECH_ACT_UI,
+  type GenMode,
   type LanguageDirection,
   type LearnerLevel,
   type SpeechActUI,
@@ -59,13 +60,22 @@ import {
 } from "@/lib/pragma/scenarioTopics";
 import { getTargetFeature, DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
 import { CurriculumEditor } from "./CurriculumEditor";
+import {
+  COURSE_MODE_LABEL,
+  COURSE_MODES,
+  MIXED_INTERPRETING_WEEK_PRESETS,
+  courseModePolicyFromLegacyRatio,
+  expectedCoreModeForWeek,
+  isCourseModePolicyValid,
+  type CourseMode,
+} from "@/lib/curriculum/courseModePolicy";
 
 // 15주 편성기 (태스크 D) — 관리자구조md §6-2 + 계약 0-g·47.
 // 흐름: 강좌 골격 선택 → 수준·주제·모드·언어방향 조절 → 자동 채우기
 //       → 주차별 수동 교체 → 저장. 편성 후보와 저장 대상은 검토 완료 미션으로 제한한다.
 // 읽기 전용 데이터는 scenario_core_v1 코어. 저장은 curriculum_week_scenarios.
 //
-// 네 편성 축을 한 화면에 둔다(지도교수 요구). 프리셋은 주제·모드 비율을 빠르게
+// 네 편성 축을 한 화면에 둔다(지도교수 요구). 프리셋은 주제·강좌 모드를 빠르게
 // 채우는 편의일 뿐이며, 교강사가 모든 축을 개별 조정한다.
 
 const LEVELS: LearnerLevel[] = ["beginner_intermediate", "intermediate", "advanced"];
@@ -94,12 +104,14 @@ const AdminComposer = () => {
   // 수준·방향도 편성기의 교강사 조절 축이다. 저장 시 outline 메타에 함께 반영한다.
   const [level, setLevel] = useState<LearnerLevel>("intermediate");
   const [direction, setDirection] = useState<LanguageDirection>("ko_zh");
-  // 테마·통역비율 = 프리셋과 독립. 프리셋 선택 시 여기에 복사(빠른 채우기).
+  // 테마·강좌 모드 = 프리셋과 독립. 프리셋 선택 시 여기에 복사(빠른 채우기).
   const [themes, setThemes] = useState<ThemeCode[]>([]);
-  const [interpRatio, setInterpRatio] = useState<number>(0.3);
+  const [courseMode, setCourseMode] = useState<CourseMode>("translation");
+  const [interpretingWeekCount, setInterpretingWeekCount] = useState(0);
   const [policyBaseline, setPolicyBaseline] = useState<{
     themeKey: string;
-    interpretingRatio: number;
+    courseMode: CourseMode;
+    interpretingWeekCount: number;
   } | null>(null);
   const [presetCode, setPresetCode] = useState<string>("");
 
@@ -127,9 +139,13 @@ const AdminComposer = () => {
           core.direction === direction &&
           core.learner_level === level &&
           isReviewedMission(core) &&
+          (courseMode === "mixed" ||
+            (courseMode === "translation"
+              ? core.mode === "translation"
+              : core.mode === "stt_interpreting")) &&
           (themes.length === 0 || themes.includes(core.theme_code as ThemeCode)),
       ).length,
-    [cores, direction, level, themes],
+    [cores, courseMode, direction, level, themes],
   );
 
   const coreById = useMemo(() => {
@@ -170,7 +186,8 @@ const AdminComposer = () => {
       setLevel("intermediate");
       setDirection("ko_zh");
       setThemes([]);
-      setInterpRatio(0.3);
+      setCourseMode("translation");
+      setInterpretingWeekCount(0);
       setPolicyBaseline(null);
       setPresetCode("");
       setAutoFillShortages([]);
@@ -193,16 +210,22 @@ const AdminComposer = () => {
         setDirection(o.language_direction as LanguageDirection);
         const hasStoredPolicy =
           Array.isArray(o.composition_theme_codes) &&
-          typeof o.target_interpreting_ratio === "number";
+          COURSE_MODES.includes(o.course_mode as CourseMode) &&
+          isCourseModePolicyValid({
+            courseMode: o.course_mode as CourseMode,
+            interpretingWeekCount: o.target_interpreting_week_count,
+          });
         if (hasStoredPolicy) {
           const storedThemes = o.composition_theme_codes.filter((theme): theme is ThemeCode =>
             THEME_CODES.includes(theme as ThemeCode),
           );
           setThemes(storedThemes);
-          setInterpRatio(o.target_interpreting_ratio);
+          setCourseMode(o.course_mode as CourseMode);
+          setInterpretingWeekCount(o.target_interpreting_week_count);
           setPolicyBaseline({
             themeKey: themePolicyKey(storedThemes),
-            interpretingRatio: o.target_interpreting_ratio,
+            courseMode: o.course_mode as CourseMode,
+            interpretingWeekCount: o.target_interpreting_week_count,
           });
         } else {
           setPolicyBaseline(null);
@@ -223,23 +246,33 @@ const AdminComposer = () => {
   }, [outlineId]);
 
   // migration 적용 전 만들어진 legacy outline은 저장된 정책 열이 없을 수 있다.
-  // 그 경우에만 실제 배정에서 주제·비율을 역산해 이전 동작을 보존한다.
+  // 그 경우에만 legacy 비율을 9주 정수 정책으로 해석해 이전 동작을 보존한다.
   useEffect(() => {
     if (!outlineId || loadedAssignments === null || cores.length === 0) return;
     if (
       outline &&
       Array.isArray(outline.composition_theme_codes) &&
-      typeof outline.target_interpreting_ratio === "number"
+      COURSE_MODES.includes(outline.course_mode as CourseMode) &&
+      isCourseModePolicyValid({
+        courseMode: outline.course_mode as CourseMode,
+        interpretingWeekCount: outline.target_interpreting_week_count,
+      })
     ) {
       return;
     }
     const assignedCores = loadedAssignments
       .map((item) => cores.find((core) => core.scenario_id === item.scenario_id))
       .filter((core): core is ComposerCore => Boolean(core));
+    const legacyPolicy = courseModePolicyFromLegacyRatio(outline?.target_interpreting_ratio);
     if (assignedCores.length === 0) {
       setThemes([]);
-      setInterpRatio(0.3);
-      setPolicyBaseline({ themeKey: "", interpretingRatio: 0.3 });
+      setCourseMode(legacyPolicy.courseMode);
+      setInterpretingWeekCount(legacyPolicy.interpretingWeekCount);
+      setPolicyBaseline({
+        themeKey: "",
+        courseMode: legacyPolicy.courseMode,
+        interpretingWeekCount: legacyPolicy.interpretingWeekCount,
+      });
       setPresetCode("");
       return;
     }
@@ -249,36 +282,49 @@ const AdminComposer = () => {
         .filter((theme): theme is ThemeCode => Boolean(theme)),
     )];
     const legacyThemes = assignedThemes.length === THEME_CODES.length ? [] : assignedThemes;
-    const legacyRatio =
-      assignedCores.filter((core) => core.mode === "stt_interpreting").length /
-      assignedCores.length;
     setThemes(legacyThemes);
-    setInterpRatio(legacyRatio);
+    setCourseMode(legacyPolicy.courseMode);
+    setInterpretingWeekCount(legacyPolicy.interpretingWeekCount);
     setPolicyBaseline({
       themeKey: themePolicyKey(legacyThemes),
-      interpretingRatio: legacyRatio,
+      courseMode: legacyPolicy.courseMode,
+      interpretingWeekCount: legacyPolicy.interpretingWeekCount,
     });
     setPresetCode("");
   }, [cores, loadedAssignments, outline, outlineId]);
 
-  // ── 프리셋 적용 = 주제·통역비율 빠른 채우기. 네 축의 정본은 현재 화면 선택값 ──
+  // ── 프리셋 적용 = 주제·강좌 모드 빠른 채우기. 네 축의 정본은 현재 화면 선택값 ──
   const applyPreset = (code: string) => {
     setPresetCode(code);
     const p = COURSE_PRESETS.find((x) => x.preset_code === code);
     if (!p) return;
     setThemes(p.included_themes);
-    setInterpRatio(p.translation_interpreting_ratio);
+    setCourseMode(p.course_mode);
+    setInterpretingWeekCount(p.target_interpreting_week_count);
   };
 
   const toggleTheme = (t: ThemeCode) =>
     setThemes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
+  const changeCourseMode = (nextMode: CourseMode) => {
+    setCourseMode(nextMode);
+    setInterpretingWeekCount(
+      nextMode === "translation"
+        ? 0
+        : nextMode === "interpreting"
+          ? 9
+          : interpretingWeekCount >= 1 && interpretingWeekCount <= 8
+            ? interpretingWeekCount
+            : 4,
+    );
+  };
+
   // 편성 조건이 바뀌면 직전 자동 채우기의 부족 경고는 더 이상 현재 조건을 설명하지 않는다.
   useEffect(() => {
     setAutoFillShortages([]);
-  }, [level, direction, themes, interpRatio]);
+  }, [level, direction, themes, courseMode, interpretingWeekCount]);
 
-  // ── 자동 채우기 (수준·주제·모드 비율·언어방향 = 현재 선택값) ──
+  // ── 자동 채우기 (수준·주제·강좌 모드·언어방향 = 현재 선택값) ──
   const autoFill = (allowThemeExpansion = false) => {
     if (!outline) return;
     const result = buildAutomaticAssignments({
@@ -287,7 +333,7 @@ const AdminComposer = () => {
       level,
       direction,
       themes,
-      interpretingRatio: interpRatio,
+      courseModePolicy: { courseMode, interpretingWeekCount },
       defaultScenariosPerWeek: outline.scenarios_per_week ?? 3,
       allowThemeExpansion,
     });
@@ -312,7 +358,12 @@ const AdminComposer = () => {
     setAssign((prev) => removeAssignment(prev, weekNo, scenarioId));
 
   const addItem = (weekNo: number, c: ComposerCore) =>
-    setAssign((prev) => addAssignment(prev, weekNo, c));
+    setAssign((prev) => addAssignment(
+      prev,
+      weekNo,
+      c,
+      expectedCoreModeForWeek({ courseMode, interpretingWeekCount }, weekNo),
+    ));
 
   // 교과목 삭제 — 주차·미션 배정은 DB의 ON DELETE CASCADE가 함께 지운다.
   // 학습자 수행 기록(learner_mission_logs)은 outline을 참조하지 않으므로 보존된다.
@@ -394,6 +445,7 @@ const AdminComposer = () => {
       level,
       direction,
       outline?.scenarios_per_week ?? 0,
+      { courseMode, interpretingWeekCount },
     );
     if (structureIssues.length > 0) {
       toast.error(
@@ -409,7 +461,8 @@ const AdminComposer = () => {
         level,
         language_direction: direction,
         composition_theme_codes: themes,
-        target_interpreting_ratio: interpRatio,
+        course_mode: courseMode,
+        target_interpreting_week_count: interpretingWeekCount,
       });
       await saveWeekAssignments(outlineId, flat);
       // 저장 직후 DB에서 두 층을 다시 읽어와 실제 반영을 확인(라운드트립 증명).
@@ -419,37 +472,47 @@ const AdminComposer = () => {
       ]);
       const reloadedHasPolicy =
         Array.isArray(reloadedOutline.composition_theme_codes) &&
-        typeof reloadedOutline.target_interpreting_ratio === "number";
+        COURSE_MODES.includes(reloadedOutline.course_mode as CourseMode) &&
+        isCourseModePolicyValid({
+          courseMode: reloadedOutline.course_mode as CourseMode,
+          interpretingWeekCount: reloadedOutline.target_interpreting_week_count,
+        });
       const savedThemes = reloadedHasPolicy
         ? reloadedOutline.composition_theme_codes.filter(
             (theme): theme is ThemeCode => THEME_CODES.includes(theme as ThemeCode),
           )
         : themes;
-      const savedRatio = reloadedHasPolicy
-        ? reloadedOutline.target_interpreting_ratio
-        : interpRatio;
+      const savedCourseMode = reloadedHasPolicy
+        ? reloadedOutline.course_mode as CourseMode
+        : courseMode;
+      const savedInterpretingWeekCount = reloadedHasPolicy
+        ? reloadedOutline.target_interpreting_week_count
+        : interpretingWeekCount;
       const hydratedOutline = reloadedHasPolicy
         ? reloadedOutline
         : {
             ...reloadedOutline,
             composition_theme_codes: savedThemes,
-            target_interpreting_ratio: savedRatio,
+            course_mode: savedCourseMode,
+            target_interpreting_week_count: savedInterpretingWeekCount,
           };
       setOutline(hydratedOutline);
       setWeeks(reloadedWeeks);
       setLevel(reloadedOutline.level as LearnerLevel);
       setDirection(reloadedOutline.language_direction as LanguageDirection);
       setThemes(savedThemes);
-      setInterpRatio(savedRatio);
+      setCourseMode(savedCourseMode);
+      setInterpretingWeekCount(savedInterpretingWeekCount);
       setPolicyBaseline({
         themeKey: themePolicyKey(savedThemes),
-        interpretingRatio: savedRatio,
+        courseMode: savedCourseMode,
+        interpretingWeekCount: savedInterpretingWeekCount,
       });
       setOutlines((prev) => prev.map((item) => (item.id === outlineId ? hydratedOutline : item)));
       setAssign(assignmentsToMap(reloaded));
       toast.success(`편성 저장 완료 — DB에서 ${reloaded.length}개 확인`);
       if (!compositionUpdate.compositionPolicyPersisted) {
-        toast.warning("DB 확장 전 호환 모드: 주제·통역 목표는 다음 접속 때 실제 배정에서 복원됩니다.");
+        toast.warning("DB 확장 전 호환 모드: 강좌 모드는 legacy 비율로 근사 저장됩니다.");
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "저장 중 오류가 발생했습니다.");
@@ -458,19 +521,27 @@ const AdminComposer = () => {
     }
   };
 
-  const assignedModeCounts = useMemo(() => {
+  const assignedModeWeekCounts = useMemo(() => {
     let interpreting = 0;
     let translation = 0;
-    for (const items of Object.values(assign)) {
-      for (const item of items) {
-        const core = coreById[item.scenario_id];
-        if (!core) continue;
-        if (core.mode === "stt_interpreting") interpreting += 1;
-        else translation += 1;
-      }
+    let mixed = 0;
+    for (const week of weeks.filter((item) => item.type === "regular" && item.speech_act)) {
+      const modes = new Set(
+        (assign[week.week_no] ?? [])
+          .map((item) => coreById[item.scenario_id]?.mode)
+          .filter(Boolean),
+      );
+      if (modes.size === 0) continue;
+      if (modes.size > 1) mixed += 1;
+      else if (modes.has("stt_interpreting")) interpreting += 1;
+      else translation += 1;
     }
-    return { interpreting, translation };
-  }, [assign, coreById]);
+    return { interpreting, translation, mixed };
+  }, [assign, coreById, weeks]);
+  const assignedMissionCount = useMemo(
+    () => Object.values(assign).reduce((total, items) => total + items.length, 0),
+    [assign],
+  );
 
   const axesDirty = Boolean(
     outline &&
@@ -478,7 +549,8 @@ const AdminComposer = () => {
         (outline.language_direction as LanguageDirection) !== direction ||
         (policyBaseline !== null &&
           (policyBaseline.themeKey !== themePolicyKey(themes) ||
-            policyBaseline.interpretingRatio !== interpRatio))),
+            policyBaseline.courseMode !== courseMode ||
+            policyBaseline.interpretingWeekCount !== interpretingWeekCount))),
   );
   const weekColumnBreak = Math.ceil(weeks.length / 2);
 
@@ -512,7 +584,8 @@ const AdminComposer = () => {
             compositionLevel={level}
             compositionDirection={direction}
             compositionThemes={themes}
-            compositionInterpretingRatio={interpRatio}
+            compositionCourseMode={courseMode}
+            compositionInterpretingWeekCount={interpretingWeekCount}
             onClose={() => setStructureEditor(null)}
             onSaved={handleStructureSaved}
           />
@@ -524,7 +597,7 @@ const AdminComposer = () => {
   return (
     <AdminShell
       title="15주 교과목·학습 미션 편성"
-      description="수준·주제·통번역 모드·언어 방향에 따라 15주 교과목과 주차별 학습 미션을 편성합니다."
+      description="수준·주제·강좌 수행모드·언어 방향에 따라 15주 교과목과 주차별 학습 미션을 편성합니다."
       compact
     >
       <div className="w-full max-w-[960px]">
@@ -543,7 +616,7 @@ const AdminComposer = () => {
             {
               step: "2",
               title: "AI 자동 편성",
-              copy: "주제·통번역 모드 비율 기반 미션 배정",
+              copy: "주제·강좌 수행모드 기반 미션 배정",
             },
             {
               step: "3",
@@ -758,24 +831,50 @@ const AdminComposer = () => {
               <div className="rounded-lg border border-[#E2DED2] bg-[#FAF9F5] p-3 sm:col-span-2 lg:col-span-1">
                 <span className="flex items-center gap-2 font-semibold text-[#15202B]">
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#E5E7E8] text-[11px]">3</span>
-                  통번역 모드 비율
+                  강좌 수행모드
                 </span>
-                <div className="mt-1.5 flex h-8 items-center gap-2 rounded-md border border-[#D8D4C8] bg-white px-3">
-                  <span className="text-[12px]">번역</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={Math.round(interpRatio * 100)}
-                    onChange={(event) => setInterpRatio(Number(event.target.value) / 100)}
-                    className="min-w-32 flex-1"
-                    aria-label="통역 비율"
-                  />
-                  <span className="whitespace-nowrap tabular-nums">
-                    통역 {Math.round(interpRatio * 100)}%
-                  </span>
-                </div>
+                <select
+                  value={courseMode}
+                  onChange={(event) => changeCourseMode(event.target.value as CourseMode)}
+                  className="mt-1.5 h-8 w-full rounded-md border border-[#D8D4C8] bg-white px-2"
+                >
+                  {COURSE_MODES.map((mode) => (
+                    <option key={mode} value={mode}>{COURSE_MODE_LABEL[mode]}</option>
+                  ))}
+                </select>
+                {courseMode === "mixed" && (
+                  <div className="mt-2 space-y-2 rounded-md border border-[#D8D4C8] bg-white p-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {MIXED_INTERPRETING_WEEK_PRESETS.map((count) => (
+                        <button
+                          key={count}
+                          type="button"
+                          onClick={() => setInterpretingWeekCount(count)}
+                          className={`rounded border px-2 py-0.5 text-[11.5px] ${
+                            interpretingWeekCount === count
+                              ? "border-[#15202B] bg-[#15202B] text-white"
+                              : "border-[#DED8C9] bg-white"
+                          }`}
+                        >
+                          통역 {count}/9주
+                        </button>
+                      ))}
+                      <select
+                        value={interpretingWeekCount}
+                        onChange={(event) => setInterpretingWeekCount(Number(event.target.value))}
+                        className="h-7 rounded border border-[#DED8C9] bg-white px-1 text-[11.5px]"
+                        aria-label="통역 주차 직접 설정"
+                      >
+                        {Array.from({ length: 8 }, (_, index) => index + 1).map((count) => (
+                          <option key={count} value={count}>직접 {count}/9주</option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-[11px] text-[#766C54]">
+                      앞 {9 - interpretingWeekCount}개 화행 주차는 번역 → 뒤 {interpretingWeekCount}개는 통역
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -823,7 +922,8 @@ const AdminComposer = () => {
             <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-[#EAE4D2] pt-2.5 text-[11.5px] text-muted-foreground">
               {outline ? (
                 <span>
-                  현재 배정 · 번역 {assignedModeCounts.translation}개 / 통역 {assignedModeCounts.interpreting}개
+                  현재 화행 주차 · 번역 {assignedModeWeekCounts.translation}주 / 통역 {assignedModeWeekCounts.interpreting}주
+                  {assignedModeWeekCounts.mixed > 0 ? ` / 주차 내 혼합 ${assignedModeWeekCounts.mixed}주` : ""}
                 </span>
               ) : (
                 <span className="font-medium text-[#365F58]">교과목 생성 전 편성 조건</span>
@@ -886,7 +986,7 @@ const AdminComposer = () => {
               </p>
             </div>
             <span className="text-[12px] text-muted-foreground">
-              현재 {assignedModeCounts.translation + assignedModeCounts.interpreting}개 배정
+              현재 {assignedMissionCount}개 배정
             </span>
           </div>
 
@@ -907,6 +1007,10 @@ const AdminComposer = () => {
                     level={level}
                     themes={themes}
                     direction={direction}
+                    expectedMode={expectedCoreModeForWeek(
+                      { courseMode, interpretingWeekCount },
+                      w.week_no,
+                    )}
                     adding={addingWeek === w.week_no}
                     onToggleAdd={() =>
                       setAddingWeek((cur) => (cur === w.week_no ? null : w.week_no))
@@ -950,6 +1054,7 @@ function WeekRow({
   level,
   themes,
   direction,
+  expectedMode,
   adding,
   onToggleAdd,
   onAdd,
@@ -964,6 +1069,7 @@ function WeekRow({
   themes: ThemeCode[];
   /** 현재 편성 언어 방향 — 후보 필터 절대 조건(0-l·91, 오배정 창 방지) */
   direction: LanguageDirection;
+  expectedMode: GenMode | null;
   adding: boolean;
   onToggleAdd: () => void;
   onAdd: (c: ComposerCore) => void;
@@ -985,6 +1091,7 @@ function WeekRow({
     direction,
     themes,
     assignments,
+    expectedMode,
   });
 
   return (
@@ -1060,7 +1167,9 @@ function WeekRow({
       {adding && isAssignable && (
         <div className="mt-3 rounded-lg border border-dashed border-[#D8D0BC] bg-[#FAF8F2] p-3">
           <p className="mb-2 text-[11.5px] text-muted-foreground">
-            현재 방향·수준·주제와 맞는 검토 완료 미션만 표시됩니다.
+            {expectedMode
+              ? `현재 방향·수준·주제와 이 주차의 ${expectedMode === "stt_interpreting" ? "통역" : "번역"} 모드에 맞는 검토 완료 미션만 표시됩니다.`
+              : "현재 방향·수준·주제와 맞는 검토 완료 미션만 표시됩니다."}
           </p>
           {cands.length === 0 ? (
             <p className="text-[12.5px] text-muted-foreground">

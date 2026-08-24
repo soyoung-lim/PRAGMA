@@ -62,6 +62,7 @@ import type {
   LanguageDirection,
 } from "@/lib/pragma/enums";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
+import type { CourseMode } from "@/lib/curriculum/courseModePolicy";
 
 const LANGUAGE_DIRECTION_LABEL: Record<LanguageDirection, string> = {
   ko_zh: "한→중",
@@ -95,7 +96,8 @@ interface CurriculumEditorProps {
   compositionLevel?: LearnerLevel;
   compositionDirection?: LanguageDirection;
   compositionThemes?: ThemeCode[];
-  compositionInterpretingRatio?: number;
+  compositionCourseMode?: CourseMode;
+  compositionInterpretingWeekCount?: number;
 }
 
 export const CurriculumEditor = ({
@@ -107,7 +109,8 @@ export const CurriculumEditor = ({
   compositionLevel,
   compositionDirection,
   compositionThemes,
-  compositionInterpretingRatio,
+  compositionCourseMode,
+  compositionInterpretingWeekCount,
 }: CurriculumEditorProps) => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -135,8 +138,9 @@ export const CurriculumEditor = ({
               level: compositionLevel ?? emptyOutline.level,
               language_direction: compositionDirection ?? emptyOutline.language_direction,
               composition_theme_codes: compositionThemes ?? emptyOutline.composition_theme_codes,
-              target_interpreting_ratio:
-                compositionInterpretingRatio ?? emptyOutline.target_interpreting_ratio,
+              course_mode: compositionCourseMode ?? emptyOutline.course_mode,
+              target_interpreting_week_count:
+                compositionInterpretingWeekCount ?? emptyOutline.target_interpreting_week_count,
               midterm_week: STANDARD_MIDTERM_WEEK,
               final_week: STANDARD_FINAL_WEEK,
               target_speech_acts: [...STANDARD_TARGET_ACTS],
@@ -164,7 +168,8 @@ export const CurriculumEditor = ({
     };
   }, [
     compositionDirection,
-    compositionInterpretingRatio,
+    compositionCourseMode,
+    compositionInterpretingWeekCount,
     compositionLevel,
     compositionThemes,
     outlineId,
@@ -205,6 +210,11 @@ export const CurriculumEditor = ({
         compositionLevel ?? outline.level,
         compositionDirection ?? outline.language_direction,
         outline.scenarios_per_week,
+        {
+          courseMode: compositionCourseMode ?? outline.course_mode,
+          interpretingWeekCount:
+            compositionInterpretingWeekCount ?? outline.target_interpreting_week_count,
+        },
       );
       if (assignmentIssues.length > 0) {
         const affectedWeeks = [...new Set(assignmentIssues.map((issue) => issue.weekNo))];

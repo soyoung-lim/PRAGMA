@@ -23,6 +23,7 @@ import {
   COURSE_PRESETS,
   type CoursePreset,
 } from "@/lib/pragma/scenarioTopics";
+import { expectedCoreModeForWeek } from "@/lib/curriculum/courseModePolicy";
 
 function core(overrides: Partial<ComposerCore> & { scenario_id: string }): ComposerCore {
   return {
@@ -54,32 +55,18 @@ function presetPool(
   direction: LanguageDirection,
 ): ComposerCore[] {
   const theme = preset.included_themes[0];
-  return STANDARD_TARGET_ACTS.flatMap((act) => [
-    core({
-      scenario_id: `${preset.preset_code}-${act}-i`,
-      speech_act: act,
-      learner_level: level,
-      direction,
-      theme_code: theme,
-      mode: "stt_interpreting",
-    }),
-    core({
-      scenario_id: `${preset.preset_code}-${act}-t1`,
-      speech_act: act,
-      learner_level: level,
-      direction,
-      theme_code: theme,
-      mode: "translation",
-    }),
-    core({
-      scenario_id: `${preset.preset_code}-${act}-t2`,
-      speech_act: act,
-      learner_level: level,
-      direction,
-      theme_code: theme,
-      mode: "translation",
-    }),
-  ]);
+  return STANDARD_TARGET_ACTS.flatMap((act) =>
+    (["translation", "stt_interpreting"] as const).flatMap((mode) =>
+      Array.from({ length: 3 }, (_, index) => core({
+        scenario_id: `${preset.preset_code}-${act}-${mode}-${index}`,
+        speech_act: act,
+        learner_level: level,
+        direction,
+        theme_code: theme,
+        mode,
+      })),
+    ),
+  );
 }
 
 describe("프리셋 기반 15주 자동 편성", () => {
@@ -93,25 +80,36 @@ describe("프리셋 기반 15주 자동 편성", () => {
         level: preset.target_level,
         direction: "ko_zh",
         themes: preset.included_themes,
-        interpretingRatio: preset.translation_interpreting_ratio,
+        courseModePolicy: {
+          courseMode: preset.course_mode,
+          interpretingWeekCount: preset.target_interpreting_week_count,
+        },
         defaultScenariosPerWeek: 3,
       });
 
       expect(result.filledWeeks).toBe(9);
       expect(result.totalAssigned).toBe(27);
+      expect(result.interpretingWeekNumbers).toHaveLength(
+        preset.target_interpreting_week_count,
+      );
       expect(duplicateScenarioIds(result.assignments)).toEqual([]);
 
       const byId = new Map(cores.map((item) => [item.scenario_id, item]));
-      for (const items of Object.values(result.assignments)) {
+      for (const [weekNoText, items] of Object.entries(result.assignments)) {
         expect(items).toHaveLength(3);
-        expect(items.filter((item) => item.slot_role === "interpreting")).toHaveLength(
-          Math.round(3 * preset.translation_interpreting_ratio),
+        const expectedMode = expectedCoreModeForWeek(
+          {
+            courseMode: preset.course_mode,
+            interpretingWeekCount: preset.target_interpreting_week_count,
+          },
+          Number(weekNoText),
         );
         for (const item of items) {
           const selected = byId.get(item.scenario_id);
           expect(selected?.mission_status).toBe("reviewed");
           expect(selected?.learner_level).toBe(preset.target_level);
           expect(selected?.direction).toBe("ko_zh");
+          expect(selected?.mode).toBe(expectedMode);
           expect(preset.included_themes).toContain(selected?.theme_code);
         }
       }
@@ -140,7 +138,7 @@ describe("프리셋 기반 15주 자동 편성", () => {
       level: "intermediate",
       direction: "ko_zh",
       themes: ["campus_study"],
-      interpretingRatio: 0,
+      courseModePolicy: { courseMode: "translation", interpretingWeekCount: 0 },
       defaultScenariosPerWeek: 2,
     });
 
@@ -163,7 +161,7 @@ describe("프리셋 기반 15주 자동 편성", () => {
       level: "intermediate",
       direction: "ko_zh",
       themes: ["campus_study"],
-      interpretingRatio: 0,
+      courseModePolicy: { courseMode: "translation", interpretingWeekCount: 0 },
       defaultScenariosPerWeek: 2,
       allowThemeExpansion: true,
     });
@@ -174,6 +172,33 @@ describe("프리셋 기반 15주 자동 편성", () => {
     ]);
     expect(result.shortages).toEqual([]);
     expect(result.expandedThemeWeeks).toEqual([2]);
+  });
+
+  it("혼합 4/9는 앞 5개 화행 주차를 번역, 뒤 4개를 통역으로 편성한다", () => {
+    const preset = COURSE_PRESETS[0];
+    const cores = presetPool(preset, "intermediate", "ko_zh");
+    const result = buildAutomaticAssignments({
+      weeks: createStandard15WeekTemplate(),
+      cores,
+      level: "intermediate",
+      direction: "ko_zh",
+      themes: preset.included_themes,
+      courseModePolicy: { courseMode: "mixed", interpretingWeekCount: 4 },
+      defaultScenariosPerWeek: 2,
+    });
+
+    expect(result.interpretingWeekNumbers).toEqual([9, 10, 11, 12]);
+    const byId = new Map(cores.map((item) => [item.scenario_id, item]));
+    for (const weekNo of [2, 3, 4, 5, 6]) {
+      expect(result.assignments[weekNo].every(
+        (item) => byId.get(item.scenario_id)?.mode === "translation",
+      )).toBe(true);
+    }
+    for (const weekNo of [9, 10, 11, 12]) {
+      expect(result.assignments[weekNo].every(
+        (item) => byId.get(item.scenario_id)?.mode === "stt_interpreting",
+      )).toBe(true);
+    }
   });
 });
 
@@ -225,6 +250,34 @@ describe("주차 수동 교체", () => {
     expect(candidates.map((item) => item.scenario_id)).toEqual(["replacement"]);
     expect(addAssignment(assignments, 3, current)).toBe(assignments);
     expect(addAssignment(assignments, 3, generated)).toBe(assignments);
+  });
+
+  it("수동 후보·추가와 저장 전 검사도 해당 주차의 수행 모드를 강제한다", () => {
+    const interpreting = core({
+      scenario_id: "interpreting",
+      mode: "stt_interpreting",
+    });
+    const candidates = filterManualCandidates([replacement, interpreting], {
+      act: "request",
+      level: "intermediate",
+      direction: "ko_zh",
+      themes: ["campus_study"],
+      assignments: {},
+      expectedMode: "stt_interpreting",
+    });
+    expect(candidates.map((item) => item.scenario_id)).toEqual(["interpreting"]);
+    expect(addAssignment({}, 9, replacement, "stt_interpreting")).toEqual({});
+
+    const issues = assignmentStructureIssues(
+      { 9: [{ scenario_id: replacement.scenario_id, slot_role: "primary" }] },
+      { replacement },
+      [{ week_no: 9, type: "regular", speech_act: "request", scenario_slots: 2 }],
+      "intermediate",
+      "ko_zh",
+      2,
+      { courseMode: "interpreting", interpretingWeekCount: 9 },
+    );
+    expect(issues.map((issue) => issue.code)).toContain("course_mode");
   });
 
   it("수준·언어방향 변경 뒤 새 조건과 맞지 않는 기존 배정을 찾는다", () => {

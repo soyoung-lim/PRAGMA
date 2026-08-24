@@ -21,6 +21,7 @@ import type {
   IndustrySector,
 } from "@/lib/pragma/enums";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
+import type { CourseMode } from "@/lib/curriculum/courseModePolicy";
 
 // ── DB aliases (source of truth: Supabase generated types) ──
 export type CurriculumOutlineRow = Tables<"curriculum_outlines">;
@@ -65,8 +66,10 @@ export interface CurriculumOutlineDraft {
   scenarios_per_week: number;
   /** 자동 편성에서 허용할 주제. 빈 배열은 전체 주제. */
   composition_theme_codes: ThemeCode[];
-  /** 자동 편성의 목표 통역 비율(0~1). 실제 배정 비율과 구분해 저장한다. */
-  target_interpreting_ratio: number;
+  /** 번역·통역 전용 또는 9개 화행 주차를 나누는 혼합 강좌. */
+  course_mode: CourseMode;
+  /** 통역으로 편성할 목표 화행 주차 수. 전용 강좌는 각각 0/9, 혼합은 1~8. */
+  target_interpreting_week_count: number;
 }
 
 export interface CurriculumWeekDraft {

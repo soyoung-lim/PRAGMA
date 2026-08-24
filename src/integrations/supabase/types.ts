@@ -248,6 +248,7 @@ export type Database = {
       curriculum_outlines: {
         Row: {
           composition_theme_codes: string[]
+          course_mode: string
           created_at: string
           domain: string
           final_week: number | null
@@ -261,12 +262,14 @@ export type Database = {
           status: string
           target_speech_acts: string[]
           target_interpreting_ratio: number
+          target_interpreting_week_count: number
           title: string
           updated_at: string
           week_count: number
         }
         Insert: {
           composition_theme_codes?: string[]
+          course_mode?: string
           created_at?: string
           domain: string
           final_week?: number | null
@@ -280,12 +283,14 @@ export type Database = {
           status?: string
           target_speech_acts?: string[]
           target_interpreting_ratio?: number
+          target_interpreting_week_count?: number
           title: string
           updated_at?: string
           week_count?: number
         }
         Update: {
           composition_theme_codes?: string[]
+          course_mode?: string
           created_at?: string
           domain?: string
           final_week?: number | null
@@ -299,6 +304,7 @@ export type Database = {
           status?: string
           target_speech_acts?: string[]
           target_interpreting_ratio?: number
+          target_interpreting_week_count?: number
           title?: string
           updated_at?: string
           week_count?: number

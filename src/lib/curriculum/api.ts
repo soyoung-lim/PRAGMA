@@ -24,6 +24,7 @@ import {
 } from "./mappers";
 import type { LanguageDirection, LearnerLevel } from "@/lib/pragma/enums";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
+import type { CourseMode } from "@/lib/curriculum/courseModePolicy";
 
 /** Combined return shape for one outline + its weeks (api-local alias). */
 export type CurriculumOutlineWithWeeks = {
@@ -78,11 +79,30 @@ export async function createCurriculumOutline(
   outlineDraft: CurriculumOutlineDraft,
   weekDrafts: CurriculumWeekDraft[],
 ): Promise<CurriculumOutlineWithWeeks> {
-  const { data: outline, error: outlineError } = await supabase
+  const insertPayload = outlineDraftToInsert(outlineDraft);
+  let { data: outline, error: outlineError } = await supabase
     .from("curriculum_outlines")
-    .insert(outlineDraftToInsert(outlineDraft))
+    .insert(insertPayload)
     .select()
     .single();
+  const missingCourseModeColumn =
+    outlineError?.code === "PGRST204" &&
+    (outlineError.message.includes("course_mode") ||
+      outlineError.message.includes("target_interpreting_week_count"));
+  if (missingCourseModeColumn) {
+    const legacyPayload = { ...insertPayload };
+    delete legacyPayload.course_mode;
+    delete legacyPayload.target_interpreting_week_count;
+    legacyPayload.target_interpreting_ratio =
+      outlineDraft.target_interpreting_week_count / 9;
+    const legacyResult = await supabase
+      .from("curriculum_outlines")
+      .insert(legacyPayload)
+      .select()
+      .single();
+    outline = legacyResult.data;
+    outlineError = legacyResult.error;
+  }
   if (outlineError || !outline) {
     throw new Error(`Failed to create curriculum outline: ${outlineError?.message ?? "no row returned"}`);
   }
@@ -103,7 +123,7 @@ export async function createCurriculumOutline(
 }
 
 /**
- * 기존 강좌 구조를 저장한다. 수준·방향·주제·모드 비율은 Composer의 별도 저장
+ * 기존 강좌 구조를 저장한다. 수준·방향·주제·강좌 모드는 Composer의 별도 저장
  * 경로가 소유한다. 주차는 UNIQUE(outline_id, week_no) 기준 upsert해 기존의
  * delete→reinsert 중간 실패로 15주 전체가 사라지는 위험을 제거한다.
  *
@@ -150,7 +170,8 @@ export async function updateCurriculumCompositionAxes(
     level: LearnerLevel;
     language_direction: LanguageDirection;
     composition_theme_codes: ThemeCode[];
-    target_interpreting_ratio: number;
+    course_mode: CourseMode;
+    target_interpreting_week_count: number;
   },
 ): Promise<CompositionAxesUpdateResult> {
   const { data, error } = await supabase
@@ -163,16 +184,20 @@ export async function updateCurriculumCompositionAxes(
     return { outline: data, compositionPolicyPersisted: true };
   }
 
-  // 로컬 앱이 policy migration보다 먼저 실행되는 전환 구간을 지원한다. 이 오류는
-  // 어떤 행도 갱신하지 않은 schema-cache 거절이므로 기존 열만으로 안전하게 재시도한다.
+  // 새 course-mode migration 전 DB에는 legacy ratio를 근사값으로 함께 남긴다.
   const missingPolicyColumn =
     error?.code === "PGRST204" &&
-    (error.message.includes("composition_theme_codes") ||
-      error.message.includes("target_interpreting_ratio"));
+    (error.message.includes("course_mode") ||
+      error.message.includes("target_interpreting_week_count"));
   if (missingPolicyColumn) {
     const { data: legacyData, error: legacyError } = await supabase
       .from("curriculum_outlines")
-      .update({ level: axes.level, language_direction: axes.language_direction })
+      .update({
+        level: axes.level,
+        language_direction: axes.language_direction,
+        composition_theme_codes: axes.composition_theme_codes,
+        target_interpreting_ratio: axes.target_interpreting_week_count / 9,
+      })
       .eq("id", id)
       .select()
       .maybeSingle();

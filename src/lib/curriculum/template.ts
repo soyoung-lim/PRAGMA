@@ -102,7 +102,7 @@ export const STANDARD_15WEEK: readonly StandardWeekSpec[] = [
 
 export const STANDARD_MIDTERM_WEEK = 8;
 export const STANDARD_FINAL_WEEK = 15;
-/** 표준 골격이 2~7·9~11주에 배치하는 9화행(자동 목표 화행 세팅용). */
+/** 표준 골격이 2~6·9~12주에 배치하는 9화행(자동 목표 화행 세팅용). */
 export const STANDARD_TARGET_ACTS: readonly SpeechActUI[] = STANDARD_15WEEK
   .map((w) => w.speech_act)
   .filter((a): a is SpeechActUI => a !== null);
