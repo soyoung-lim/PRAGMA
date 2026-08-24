@@ -8,7 +8,7 @@
 // 자동 기본값으로 선택하지 않는다.
 
 import { supabase } from "@/integrations/supabase/client";
-import { checkMission, type CheckContext } from "@/lib/pragma/missionRules";
+import { checkCore, checkMission, type CheckContext } from "@/lib/pragma/missionRules";
 import { getTargetFeature, DEFAULT_FEATURE_BY_ACT, type TargetFeature } from "@/lib/pragma/targetFeatures";
 import { errorPatternsForAct } from "@/lib/pragma/errorPatterns";
 import {
@@ -260,6 +260,23 @@ export async function promoteCore(
     planned_target_feature: feature.code, // R24
     direction, // 0-l·85 — 생성 미션의 방향이 요청과 일치하는지 검사
   };
+
+  // production_task는 모델 출력이 아니라 코어를 그대로 계승한다. 따라서 현재 규칙을
+  // 통과할 수 없는 코어는 미션 재생성으로 고칠 수 없으며, 유료 호출 전에 차단해야 한다.
+  const coreCheck = checkCore(core.core_content ?? {}, ctx);
+  if (coreCheck.result === "fail") {
+    return {
+      ok: false,
+      ruleResult: "fail",
+      violations: coreCheck.violations.map((violation) => ({
+        id: violation.id,
+        level: violation.level,
+        message: violation.message,
+      })),
+      attempts: 0,
+      error: "코어 규칙검사 실패 — 미션 생성은 실행하지 않았습니다.",
+    };
+  }
 
   let mission: MissionRuntime | undefined; // 정규화(v1/v2/v3/v4 엣지 응답) — 검사·표시·반환용
   let rawContent: unknown; // 엣지 원본(저장용 — migration이 버전별 상위집합을 허용)
