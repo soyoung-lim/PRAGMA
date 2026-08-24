@@ -1959,6 +1959,7 @@ ${diagnosticShape}
 
 핵심 규칙:
 - mpj_items는 **정확히 ${itemCount}개**, 순서는 ${exactOrder}.
+- 🔴 [장면 고유성] ${itemCount}개 situation_ko는 서로 다른 구체적 사건이어야 합니다. 같은 인물·용건·대상을 둔 사실상 같은 장면이나 동일 문장을 문항 사이에 복사하지 말고, 출력 전에 모든 situation_ko를 서로 대조하세요.
 ${nativeMpj5 ? `- diagnostic_dimensions는 **서로 다른 코드 2~6개**입니다. 각 code의 evidence_refs는 중복 없이 1개 이상이고, 전체 합집합은 MPJ/DCT 중 최소 2개 위치여야 합니다.
 - 선언한 차원은 그 근거 위치의 situation·P/D/R·preceding_turn·후보·DCT에서 실제로 관찰되어야 합니다. target_feature 이름을 바꿔 적거나 근거 없는 차원을 채우지 마세요.
 - 같은 evidence_ref가 여러 차원을 뒷받침할 수 있지만, 가능한 차원을 전부 체크하는 식의 과잉 선언은 금지합니다.` : ''}
@@ -2119,6 +2120,7 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
         '',
         '[재시도 편집 규칙]:',
         '- 직전 출력에서 실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지하세요.',
+        '- R27 실패라면 진단이 지목한 중복 situation_ko만 서로 다른 구체적 사건으로 다시 쓰세요. 필수 P/D/R·채널·화행 의도는 유지하되 동일 문장과 사실상 같은 인물·용건·대상의 복제를 금지합니다.',
         '- R5 실패라면 직전 multi_judge의 후보 문장과 대역을 직접 보고, 대역은 바꾸지 않은 채 길이 범위만 겹치게 고치세요.',
         '- 길이 조절을 위해 새 명제·이유·대안·보상·일정을 만들지 마세요. 중립적 연결·군더더기 또는 문장 압축만 사용하세요.',
         '- 수정 범위가 작아도 응답은 스키마의 전체 JSON을 빠짐없이 다시 출력하세요.',

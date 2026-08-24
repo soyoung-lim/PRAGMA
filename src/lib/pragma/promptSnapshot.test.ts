@@ -70,6 +70,15 @@ describe("prompt snapshot integrity", () => {
     expect(learnerSceneRepair.text).toContain("관찰 가능한 사실로 그대로 보존");
   });
 
+  it("prevents duplicate MPJ scenes and repairs R27 directly", () => {
+    expect(prompt("mission.system").text).toContain(
+      "5개 situation_ko는 서로 다른 구체적 사건",
+    );
+    expect(prompt("mission.user.retry").text).toContain(
+      "R27 실패라면 진단이 지목한 중복 situation_ko만",
+    );
+  });
+
   it("matches the current Edge source", () => {
     const source = readFileSync(
       resolve(process.cwd(), PROMPT_SNAPSHOT.edge_source),
