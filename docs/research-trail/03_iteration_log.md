@@ -2377,10 +2377,54 @@
 - 날짜: 2026-08-24
 - 시작 문제: localhost 실제 학습 미션 캡처에서 비응답 화행의 불필요한 중국어 선행 발화,
   MPJ4의 중복 판단 단계, MPJ5의 복수 BEST/WORST와 과도한 후보 수가 확인됐다.
-- 변경: 응답 화행에만 선행 발화를 허용하고, MPJ4를 이유 3개 직접 선택으로, MPJ5를
-  `BEST 1·중간 2·WORST 1`의 4후보 비교로 정렬했다. 생성 prompt와 현행 schema/rules/DB trigger를
-  함께 갱신하고, 역사 5후보 미션은 런타임에서 4개로 투영해 즉시 같은 학습자 경험을 제공한다.
-- 검증 결과: runtime·learner·schema·prompt·migration 관련 6파일 62개와 typecheck가 통과했다.
-  localhost dev preview에서 MPJ1에 `상대의 말`이 없고, MPJ4는 라디오 3개만, MPJ5는 후보 4개와
-  공개 후 BEST/WORST 각 1개·가능한 표현 2개임을 직접 확인했다.
+- 변경: 응답 화행에만 선행 발화를 허용하고, MPJ4는 최초 이분 판단을 잠근 뒤 정오 문구만 보여
+  주고 모든 학습자를 이유 3개 선택으로 보낸다. 최초 판단은 `initial_judgment`로 저장한다. MPJ5는
+  `BEST 1·중간 2·WORST 1`의 4후보 비교로 정렬했다. 역사 5후보 미션은 런타임에서 4개로 투영한다.
+- 검증 결과: 1차 runtime·learner·schema·prompt·migration 관련 6파일 62개와 최종 MPJ4 표적
+  3파일 8개, typecheck가 통과했다. 최초 오답 판단이 trace에 보존되고 이유 단계를 건너뛸 수 없음을
+  테스트했다. localhost dev preview에서 MPJ1 선행 발화 미표시와 MPJ5의 4후보·단일 BEST/WORST를
+  확인했다.
 - 관련 Decision: `DEC-20260824-07`
+
+## ITER-20260825-01 · MPJ5 4후보 변별 품질의 최소 보강
+
+- 날짜: 2026-08-25
+- 시작 문제: 4후보·BEST 1·중간 2·WORST 1 구조와 후보별 피드백은 구현돼 있었지만, 두 중간안의
+  성격과 의미 있는 차이가 구조검사·품질점검에서 충분히 명시되지 않았다.
+- 확인: 생성계약은 이미 의미·문법 보존, 허수·극단 오답 금지, 길이·완곡성 자동 상향 금지,
+  후보별 `note_ko`를 요구하고 있었고 학습자 UI도 네 후보 설명을 모두 공개했다.
+- 변경: 현행 R5에 중간 후보의 적정 1·비적정 경계 1 구성과 정규화된 후보 완전 중복 금지를
+  추가했다. 별도 모델 없이 기존 mission quality 점검에 `comparison_quality_mismatch` 한 항목을
+  추가해 중간 둘의 실제 차이, 유일하게 방어 가능한 BEST/WORST, 화용 외 단서 의존을 검수한다.
+- 검증 결과: mission rules/schema와 prompt snapshot 표적 2파일 32개, typecheck가 통과했다.
+  후보 수·학습자 UI·역사 5후보 런타임 호환은 변경하지 않았다.
+- 관련 Decision: `DEC-20260824-07`
+
+## ITER-20260825-02 · native MPJ5 선행 맥락을 self-contained scenario로 통합
+
+- 날짜: 2026-08-25
+- 시작 문제: 요청 화면에서 과제 수행자의 말과 무관한 중국어 `상대의 말` 카드가 노출됐고,
+  native 거절·반대는 별도 `preceding_turn`을 계속 요구해 9개 화행의 장면 계약이 달랐다.
+- 변경: 현행 생성 버전을 `mission_v5_mpj5_minidiscourse_v4_concise_learner_flow`로 올리고 native MPJ5
+  5문항과 DCT의 `preceding_turn`을 서버 조립 단계에서 null로 고정했다. 선행 요청·제안·의견·도움·
+  잘못·문제 사건은 `situation_ko`에 요약하도록 생성·기존 품질점검을 보강했다. R8은 현행 native의
+  비null 값을 차단하고, 런타임은 역사 native 값도 숨기되 legacy MPJ4 응답형 표시를 유지한다.
+- 검증 결과: 생성 prompt snapshot, R8/schema, migration 계약, runtime adapter, 실제 학습자 렌더링
+  표적 5파일 64개와 typecheck가 통과했다. legacy mission_v5 MPJ4 읽기 및 응답형 선행 발화 전달도
+  테스트했다. 전체 회귀·build·브라우저 smoke·배포는 실행하지 않았다.
+- 관련 Decision: `DEC-20260824-07`
+
+## ITER-20260825-03 · 장면·교정·recap의 학습자 읽기 부담 축소
+
+- 날짜: 2026-08-25
+- 시작 문제: 실제 학습자 화면에서 상황 카드가 메타 설명까지 포함해 독해 과제처럼 길었고, MPJ3은
+  네 후보 중 두 개를 고르게 해 MPJ5와 역할이 겹쳤다. 5포인트 recap도 문항에서 본 표현보다
+  일반화된 교훈을 반복했다.
+- 변경: 현행 native 장면은 P/D/R 판단에 필요한 사건과 제약만 담은 140자 이내의 정확히 두 문장으로
+  생성·검사한다. 역사 장면은 저장값을 바꾸지 않고 학습자 표시에서 메타 문장을 제외해 최대 두 문장으로
+  투영한다. MPJ3은 권장 수정안 1개와 경계안 2개 중 하나를 고르는 단일 선택으로 단순화하되 응답 배열
+  저장 형식은 유지했다. recap은 각 문항에서 실제로 본 중국어 표현과 그 문항의 근거를 한 문장씩
+  보여 준다. P/D/R 칩은 짧아진 상황문의 모호성을 보완하고 명시적 화용 수업과 연결하므로 숨기지 않았다.
+- 검증 결과: prompt snapshot을 갱신했고 runtime·learner UI·schema/rule·prompt·migration 표적 5파일
+  66개와 typecheck가 통과했다. 전체 회귀·build·브라우저 smoke·DB migration·배포는 실행하지 않았다.
+- 관련 Decision: `DEC-20260825-01`

@@ -84,6 +84,13 @@ describe("prompt snapshot integrity", () => {
     expect(system).toContain("별도의 대역 판단이나 확신도는 묻지 않습니다");
     expect(system).toContain("정확히 4후보이며 comparison_role은 best 1·middle 2·worst 1");
     expect(system).toContain('"preceding_turn"은 null');
+    expect(system).toContain("Scenario must be self-contained");
+    expect(system).toContain("summarize that information naturally in the scenario instead of generating a separate preceding_turn");
+    expect(system).toContain("거절은 무엇을 요청·제안받았는지");
+    expect(system).toContain("정확히 2개의 짧은 문장");
+    expect(system).toContain("수정안은 정확히 3개");
+    expect(system).toContain("is_valid=true는 정확히 1개");
+    expect(prompt("quality.system").text).toContain("situation_ko 안에 자연스럽게 요약되어 있고, preceding_turn은 null인지");
   });
 
   it("matches the current Edge source", () => {
@@ -198,7 +205,7 @@ describe("prompt snapshot integrity", () => {
     expect(prompt("core.user.source_repair").text).toContain("유효 글자 수를 반드시");
     expect(prompt("core.user.source_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(critic.text).toContain("국소적 두 턴만 본다");
-    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v11_interpreter_scene_canonical_v1");
+    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v12_concise_learner_scene_v1");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {
     const mission = prompt("mission.system");
@@ -224,6 +231,8 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).toContain("judge3는 DCT와 같은 앵커 P/D/R의 별도 사건");
       expect(entry.text).toContain("reason에는 accepted_band_codes·confidence를 만들지 마세요");
       expect(entry.text).toContain("4후보이며 comparison_role은 best 1·middle 2·worst 1");
+      expect(entry.text).toContain("즉시 소거되는 허수 오답이 아니라");
+      expect(entry.text).toContain("더 간접적·길거나 강한 표현을 자동으로 더 좋은 답으로 판정하지 마세요");
       expect(entry.text).toContain("primary의 위치와 id를 고정하지 말고");
       expect(entry.text).toContain("잠시 고민할 만큼 그럴듯해야 합니다");
       expect(entry.text).toContain("황당한 문법 금지 주장");
@@ -243,6 +252,9 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("MPJ 5문항");
     expect(quality.text).toContain("primary_reason_ambiguity");
     expect(quality.text).toContain("context_plan_mismatch");
+    expect(quality.text).toContain("comparison_quality_mismatch");
+    expect(quality.text).toContain("수용 가능한 중간 1");
+    expect(quality.text).toContain("엄밀한 2위·3위 선형 서열은");
     expect(quality.text).toContain("diagnostic_coverage_mismatch");
     expect(quality.text).toContain("결정론적 규칙검사(R1~R33)");
     expect(quality.text).toContain("fix_choice의 is_valid 의미");
@@ -285,7 +297,7 @@ describe("prompt snapshot integrity", () => {
     const written = prompt("mission.system");
     const spoken = prompt("mission.system.spoken");
 
-    expect(written.text).toContain("학습자 1인칭의 현재 장면");
+    expect(written.text).toContain("학습자 1인칭의 정확히 2개의 짧은 문장");
     expect(written.text).toContain("학습자가 마주한 상대의 역할·관계만 한 줄");
     expect(written.text).toContain('화자(나)의 역할, "A → B" 구조');
     expect(spoken.text).not.toContain("학습자 1인칭의 현재 장면");

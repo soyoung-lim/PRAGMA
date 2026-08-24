@@ -47,6 +47,8 @@ export interface MpjResponseTrace extends Record<string, Json | undefined> {
   reason_ids?: string[];
   /** mission_v4 reason의 단일 주원인 선택 */
   reason_id?: string;
+  /** reason 문항에서 해설을 보기 전에 제출한 최초 적절성 판단. */
+  initial_judgment?: "appropriate" | "inappropriate";
   /** 선택한 reason 후보의 진단 역할. 정오 점수가 아니라 오개념 유형 분석용 trace. */
   reason_kind?: "primary" | "pragmatic_misconception" | "meaning_grammar_context";
   /** legacy reason_conf에만 존재한다. mission_v4에는 기록하지 않는다. */

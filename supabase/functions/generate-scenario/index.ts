@@ -959,7 +959,7 @@ function buildCoreSystemPrompt(direction: Direction): string {
 출력은 아래 JSON만, 마크다운·설명 없이 그대로 반환합니다.
 
 {
-  "situation_ko": "학생에게 보여 줄 상황 카드 배경 (한국어 2~3문장: 상대·할 일·접촉 이력·실제 부담)",
+  "situation_ko": "학생에게 보여 줄 간결한 상황 카드 (한국어 정확히 2문장: 상대·사건/할 일·핵심 제약)",
   "relation_ko": "번역이면 학습자와 상대의 관계, 통역이면 원발화자 A와 청자 B의 관계를 합친 자연스러운 한 줄 (한국어)",
   "source_text": "학습자가 ${tgtL}로 옮길 ${srcL} 원문 — 실제 의사소통처럼 이어지는 2~4문장의 담화",
   "preceding_turn": null,
@@ -1003,6 +1003,9 @@ function buildCoreSystemPrompt(direction: Direction): string {
 목적", "즉각적인 반응을 요구하지 않는다"처럼 매체 속성을 연구 설명처럼 풀어 쓰지 않는다.
 상대의 권리·선택권·의무나 답안에 포함할 완화·강도·명료성 같은 **평가 기준을 설명하지
 않는다.** 이런 조건은 내부 context_spec·P/D/R·target feature에만 남긴다.
+상황문은 **정확히 두 개의 짧은 문장**으로 쓴다. 첫 문장에는 화자·상대·사건/할 일을, 둘째
+문장에는 관계 또는 과제 이해에 필요한 실제 부담·제약 하나를 둔다. 같은 사실을 바꿔 말하거나
+"~하는 상황이다" 뒤에 연구용 매체 설명을 덧붙여 분량을 늘리지 않는다.
 
 규칙:
 - source_text는 반드시 ${srcL}. 지정된 화행·관계·부담에 맞는 자연스러운 발화.
@@ -1750,15 +1753,22 @@ function buildMissionSystemPrompt(
   const lowBand = f.band_schema[0]?.code ?? 'under_band'
   const highBand = f.band_schema[f.band_schema.length - 1]?.code ?? 'over_band'
   const itemCount = nativeMpj5 ? 5 : 4
-  const precedingShape = isResponse
-    ? `"상대가 방금 한 자연스러운 ${tgtL} 선행 발화"`
-    : 'null'
-  const precedingRule = isResponse
-    ? `\n- 🔴 **${itemCount}문항 전부**에 "preceding_turn"을 반드시 채우세요.
+  const precedingShape = nativeMpj5
+    ? 'null'
+    : isResponse
+      ? `"상대가 방금 한 자연스러운 ${tgtL} 선행 발화"`
+      : 'null'
+  const precedingRule = nativeMpj5
+    ? `\n- 🔴 native MPJ5의 **${itemCount}문항 전부**에서 "preceding_turn"은 null입니다. 별도 상대 발화를 생성하지 마세요.
+- Scenario must be self-contained. If the target speech act presupposes a prior request, proposal, opinion, favor, offense, complaint-triggering event, or other relevant prior context, summarize that information naturally in the scenario instead of generating a separate preceding_turn.
+  거절은 무엇을 요청·제안받았는지, 반대는 어떤 의견에 반대하는지, 감사·칭찬·사과·직접 불만은 각각 어떤 도움·대상·잘못·문제 사건이 있었는지를 situation_ko 안에 자연스럽게 포함하세요.
+  학습자는 situation_ko만 읽고도 누구에게 무엇을 왜 말하는지 이해할 수 있어야 합니다.`
+    : isResponse
+      ? `\n- 🔴 **${itemCount}문항 전부**에 "preceding_turn"을 반드시 채우세요.
   상대(${tgtL} 화자)가 방금 한 자연스러운 ${tgtL} 발화여야 하며, 각 문항의 관계·사건과 직접 이어져야 합니다.
   학습자의 source와 같은 화행을 상대가 먼저 끝내 버리거나 정답 표현을 노출하지 마세요.
   이 화행은 인접쌍의 둘째 짝이므로 두 턴의 명제·사람·소유·지시 대상을 특히 일치시키세요.`
-    : `\n- 🔴 이 화행은 인접쌍의 둘째 짝이 아닙니다. **${itemCount}문항 전부**의 "preceding_turn"은 null로 두고 화면 밖 상대 발화를 만들지 마세요.`
+      : `\n- 🔴 이 화행은 인접쌍의 둘째 짝이 아닙니다. **${itemCount}문항 전부**의 "preceding_turn"은 null로 두고 화면 밖 상대 발화를 만들지 마세요.`
   const vocabularyHintsShape = isSpoken
     ? '[]'
     : `[{"source":"산출을 막을 수 있는 내용 어휘·짧은 구(${srcL})","target":"짧은 대응 표현(${tgtL})"},{"source":"서로 다른 내용 어휘·짧은 구(${srcL})","target":"짧은 대응 표현(${tgtL})"}]`
@@ -1776,18 +1786,18 @@ function buildMissionSystemPrompt(
 - situation_ko는 C의 관점으로 쓰고 A를 \`저는\`·\`나는\`으로 서술하지 마세요. A/B를 학습자라고 부르거나 C를 화행 수행자·수신자로 만들면 실패입니다.`
     : ''
   const situationShape = isSpoken
-    ? '학습자 통역사 관점에서 A·B·C의 서로 다른 역할과 A↔B의 P·D·R 근거가 자연스럽게 이어지는 한국어 2~3문장(A의 1인칭 금지)'
-    : '학습자가 지금 하려는 일을 1인칭으로 시작하고 P·D·R 근거가 자연스럽게 이어지는 한국어 2~3문장'
+    ? '학습자 통역사 관점에서 A·B·C 역할과 사건·핵심 제약만 담은 짧은 한국어 2문장(A의 1인칭 금지)'
+    : '학습자 1인칭으로 상대·사건/할 일·핵심 제약만 담은 짧은 한국어 2문장'
   const relationShape = isSpoken
     ? '원발화자 A와 청자 B의 역할·관계만 한 줄(학습자 C와의 관계·P/D/R 코드 제외)'
     : '학습자가 마주한 상대의 역할·관계만 한 줄(화자 역할·화살표 제외)'
   const sceneRules = isSpoken
-    ? `- 통역 situation_ko는 **학습자 통역사 C의 현재 장면**으로 이어지는 2~3문장입니다.
-  첫 문장은 "당신은 A와 B 사이에서 통역을 맡았다"는 구조가 자연스럽게 보이게 하고, 다음 문장에서 A와 B의 구체 역할·접촉 이력과 B가 감수할 부담을 드러내세요.
+    ? `- 통역 situation_ko는 **학습자 통역사 C의 현재 장면**을 정확히 2개의 짧은 문장으로 씁니다.
+  첫 문장에는 A·B·C 역할과 사건을, 둘째 문장에는 A↔B 관계 또는 B가 감수할 핵심 부담·제약 하나만 드러내세요.
   A의 1인칭(저는·나는), A/B를 학습자라고 부르는 표현, 학습자가 직접 화행을 수행·수신하는 표현, 역할 메타데이터 나열은 금지합니다.
 - 통역 relation_ko는 원발화자 A와 청자 B의 역할·관계를 한 줄로 쓰고, 학습자 C와 A/B의 관계를 P·D·R 근거로 쓰지 마세요.`
-    : `- 번역 situation_ko는 코드값을 풀어 쓰는 표가 아니라 **학습자 1인칭의 현재 장면으로 이어지는 2~3문장**이어야 합니다.
-  첫 문장은 "나는 지금 누구에게 무엇을 하려 한다"가 자연스럽게 보이게 하고, 다음 문장에서 D(접촉 이력·친밀도)와 R(상대가 감수할 비용·부담)을 구체화하세요.
+    : `- 번역 situation_ko는 코드값을 풀어 쓰는 표가 아니라 **학습자 1인칭의 정확히 2개의 짧은 문장**이어야 합니다.
+  첫 문장은 "나는 지금 누구에게 무엇을 하려 한다"가 자연스럽게 보이게 하고, 둘째 문장에는 관계 또는 상대가 감수할 핵심 부담·제약 하나만 구체화하세요.
   "상대는 …이고, 나는 …이다"처럼 역할 메타데이터를 나열하지 마세요.
 - 번역 relation_ko는 학습자 화면의 ‘상대’ 칩에 그대로 표시됩니다. **상대의 역할과 관계만** 쓰고,
   화자(나)의 역할, "A → B" 구조, P/D/R 코드·라벨은 넣지 마세요.`
@@ -1904,8 +1914,7 @@ ${diagnosticShape}
       "highlights": ["target의 실제 부분문자열"],
       "accepted_band_codes": ["부적절 band 정확히 1개"],
       "corrections": [
-        {"text":"서로 다른 적절 전략 1(${tgtL})","is_valid":true,"note_ko":"…"},
-        {"text":"서로 다른 적절 전략 2(${tgtL})","is_valid":true,"note_ko":"…"},
+        {"text":"이 장면의 권장 수정안 1(${tgtL})","is_valid":true,"note_ko":"…"},
         {"text":"그럴듯하지만 초점 대역상 부적절한 오답 1(${tgtL})","is_valid":false,"note_ko":"…"},
         {"text":"그럴듯하지만 초점 대역상 부적절한 오답 2(${tgtL})","is_valid":false,"note_ko":"…"}
       ],
@@ -1975,14 +1984,15 @@ ${nativeJudgeRules}- fix_choice는 **판단을 먼저 한 뒤 교정**하는 한
   오답도 target에 실제로 보이는 표현이나 이 장면의 인접한 화용 쟁점을 근거로 삼아, 정답을 모르는 학습자가 잠시 고민할 만큼 그럴듯해야 합니다.
   황당한 문법 금지 주장, 상황과 무관한 절대 규칙, target에 없는 요소를 있다고·없다고 하는 설명은 금지합니다.
   다만 오답이 주된 target-feature 원인과 동등하게 방어되면 문항을 버리고 다시 만드세요.
-- fix_choice의 수정안은 정확히 4개(적절한 서로 다른 전략 2 + 그럴듯한 오답 2).
+- fix_choice의 수정안은 정확히 3개(이 장면의 권장 수정안 1 + 그럴듯한 경계 오답 2)이며 is_valid=true는 정확히 1개입니다.
+  이것이 세상에서 유일한 번역이라는 뜻이 아니라, **제시된 세 표현 중 가장 알맞은 권장안**입니다.
 - fix_choice의 오답 2개는 reason 오답과 같은 수준으로 그럴듯해야 합니다.
   · 의미·의도는 보존하고 **이 초점에서만** 벗어난 경계 사례로 쓰세요.
   · \`必须…\`, 단독 명령형 \`给我+V\`, 강요 기능의 \`赶紧/立即+V\`처럼 화용 판단 없이 즉시 소거되는
     극단형은 쓰지 마세요. 단, 이 문자열이 선택권을 남기는 의문형·조건절 안에 포함됐다는 이유만으로
     금지하지는 마세요(예: 가능 여부를 묻는 의문형 안의 \`给我\`는 극단형이 아닙니다).
   · 오답이 "${f.within_band_code}"로도 방어되거나, 반대로 초급자도 바로 걸러낼 만큼 뻔하면
-    네 수정안을 다시 쓰세요.
+    세 수정안을 다시 쓰세요.
 - multi_judge는 정확히 4후보이며 comparison_role은 best 1·middle 2·worst 1입니다. best는 적정 대역, worst는 비적정 대역이어야 하고 후보 순서는 매번 섞으세요.
 - middle 두 개는 즉시 소거되는 허수 오답이 아니라 BEST/WORST와 비교할 가치가 있는 그럴듯한 중간안이어야 합니다.
 - 🔴 **판정 대역은 표현 형식 하나가 아니라 이 target feature의 정의와 관계·부담(P·D·R)에 상대적입니다.**
@@ -2258,15 +2268,27 @@ function buildQualitySystemPrompt(
   const contextPlan = nativeMpj5
     ? 'judge3·fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
     : 'fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
+  const comparisonQualityCheck = nativeMpj5
+    ? `⑪ comparison_quality_mismatch — multi_judge의 네 후보가 **BEST 1·수용 가능한 중간 1·
+   일부 화용 조정이 필요한 경계 중간 1·WORST 1**로 실제 구별되는가. 네 문장은 모두 의미와
+   문법이 온전해야 하며, 차이는 주로 이 장면의 화용적 선택에서 나야 한다. BEST가 단순히 가장
+   길거나 완곡한 문장이고 WORST가 단순히 가장 직접적인 문장이거나, 중간 둘이 사실상 동의문,
+   또는 BEST/WORST를 유일하게 방어할 수 없으면 지적하라. 중간 둘의 note_ko는 각각 왜 완전히
+   틀린 것은 아니지만 BEST는 아닌지 서로 다른 근거를 설명해야 한다. 엄밀한 2위·3위 선형 서열은
+   요구하지 않는다. 네 역할을 억지로 만들 수 없는 콘텐츠는 warning/fail로 검수·재생성 대상으로 보낸다.`
+    : ''
   const diagnosticCheck = nativeMpj5
-    ? `⑪ diagnostic_coverage_mismatch — diagnostic_dimensions의 각 code가 지정한 evidence_refs의
+    ? `⑫ diagnostic_coverage_mismatch — diagnostic_dimensions의 각 code가 지정한 evidence_refs의
    실제 장면·P/D/R·선행 발화·후보·DCT로 뒷받침되는가. target_feature를 이름만 바꿔 쓰거나,
    근거 위치에서 관찰할 수 없는 차원을 과잉 선언하면 지적하라. 이 메타데이터는 문항별 단일
    채점축과 별개인 **미션 전체 화행 수행의 관찰 범위**다.`
     : ''
-  const checklistRange = nativeMpj5 ? '①~⑪' : '①~⑩'
+  const precedingContextCheck = nativeMpj5
+    ? '④앞선 요청·제안·의견·도움·잘못·문제 사건이 필요한 화행이라면 그 사실이 situation_ko 안에 자연스럽게 요약되어 있고, preceding_turn은 null인지'
+    : '④앞선 대화가 있다면 그 사실과 preceding_turn을'
+  const checklistRange = nativeMpj5 ? '①~⑫' : '①~⑩'
   const findingCodes = nativeMpj5
-    ? 'gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch | diagnostic_coverage_mismatch'
+    ? 'gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch | comparison_quality_mismatch | diagnostic_coverage_mismatch'
     : 'gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch'
   return `너는 L2 화용 교육 자료의 **품질 심사자**다. 다른 모델이 생성한 학습 미션 1건을 받아
 결함을 찾아낸다. 너는 자료를 고쳐 쓰지 않고 **판정과 근거만** 낸다.
@@ -2318,8 +2340,8 @@ function buildQualitySystemPrompt(
    말고 C가 A의 원발화를 듣는지, B로서 감사·사과 등을 받는지를 구분한다.
 ⑧ scene_underspecified — 학습자에게 보이는 situation_ko만 읽어도 **판단에 필요한 장면이
    관찰 가능한 사실로 그려지는가**(0-r·107). ①누구에게 무엇을 하려는지 ②관계·접촉 이력
-   ③상대가 실제로 감당할 부담·조정 범위 ④앞선 대화가 있다면 그 사실과 preceding_turn을
-   확인하라. 이 핵심 사실이 빠져 학습자마다 P·D·R을 다르게 추론하게 되면 지적하라.
+   ③상대가 실제로 감당할 부담·조정 범위 ${precedingContextCheck} 확인하라. 이 핵심 사실이
+   빠져 학습자마다 P·D·R을 다르게 추론하게 되면 지적하라.
    ※ 기록 목적·즉시 반응 여부·권리/선택권/완화 전략 같은 내부 평가 기준을 학생용 장면에
    설명하라고 요구하지 마라. 매체 이름 라벨도 필수 조건이 아니다.
 ⑨ primary_reason_ambiguity — reason의 accepted_reason_id가 실제로 유일한 **가장 큰 이유**인가.
@@ -2328,6 +2350,7 @@ function buildQualitySystemPrompt(
    ${contextPlan}이며 multi_judge는 P/D/R 한 축만
    바꾼 대비 사건인가. 코드만 맞고 상황문의 구체적 단서가 그 PDR을 뒷받침하지 못하거나,
    사건이 사실상 복제되면 지적하라.
+${comparisonQualityCheck}
 ${diagnosticCheck}
 
 [필수 확인 절차 — 건너뛰지 마라]
@@ -2981,6 +3004,7 @@ Deno.serve(async (req) => {
         ...it,
         id: i + 1,
         axis_feature: b.feature.code,
+        ...(isMiniDiscourse ? { preceding_turn: null } : {}),
       }))
       const productionMode = b.core.source_modality === 'spoken' ? 'interpreting' : 'translation'
       // v4/v5 중립 스키마 — mpj_items는 모델이 중립 키(source/target/
@@ -3010,7 +3034,7 @@ Deno.serve(async (req) => {
           ...(b.core.channel ? { channel: b.core.channel } : {}),
           pdr: b.core.pdr,
           source_text: b.core.source_text_ko,          // 코어 계승(R23) — 입력 body는 v1 이름
-          preceding_turn: b.core.preceding_turn_zh ?? null,
+          preceding_turn: isMiniDiscourse ? null : (b.core.preceding_turn_zh ?? null),
           ...(productionMode === 'translation'
             ? { vocabulary_hints: Array.isArray(gen.vocabulary_hints) ? gen.vocabulary_hints : [] }
             : {}),
@@ -3257,7 +3281,7 @@ Deno.serve(async (req) => {
         'gate1_violation', 'implausible_distractor', 'answer_cue', 'band_mismatch',
         'focus_contamination', 'unnatural_language', 'internal_inconsistency',
         'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch',
-        'diagnostic_coverage_mismatch',
+        'comparison_quality_mismatch', 'diagnostic_coverage_mismatch',
       ]
       const rawFindings = Array.isArray(parsed.findings) ? parsed.findings : []
       const findings = rawFindings.slice(0, 20).map((raw) => {

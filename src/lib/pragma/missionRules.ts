@@ -535,9 +535,12 @@ export function checkMission(
         break;
       }
       case "fix_choice": {
-        // R3 valid 정확히 2
+        // R3 현행 native는 3지선다·권장안 1개, 역사는 4지선다·적절안 2개
         const validCount = it.corrections.filter((c) => c.is_valid).length;
-        if (validCount !== 2) {
+        const singleRepairContract = isCurrentNativeV5 || (isNativeV5 && it.corrections.length === 3);
+        if (singleRepairContract && (it.corrections.length !== 3 || validCount !== 1)) {
+          add(v, "R3", "fail", `문항 ${it.id}: 현행 native fix_choice는 수정안 3개·권장안 1개여야 함`);
+        } else if (!singleRepairContract && validCount !== 2) {
           add(v, "R3", "fail", `문항 ${it.id}: fix_choice valid=${validCount} (정확히 2여야 함)`);
         }
         // R18 accepted = 부적절 계열
@@ -618,6 +621,20 @@ export function checkMission(
           if (!worst || worst.accepted_band_codes.includes(withinCode)) {
             add(v, "R5", "fail", `문항 ${it.id}: WORST 후보는 비적정 대역이어야 함`);
           }
+          if (isCurrentNativeV5) {
+            const middles = it.candidates.filter((candidate) =>
+              "comparison_role" in candidate && candidate.comparison_role === "middle");
+            const withinMiddleCount = middles.filter((candidate) =>
+              candidate.accepted_band_codes.includes(withinCode)).length;
+            if (withinMiddleCount !== 1 || middles.length - withinMiddleCount !== 1) {
+              add(v, "R5", "fail", `문항 ${it.id}: 중간 후보는 적정 대역 1개와 비적정 경계 대역 1개여야 함`);
+            }
+            const normalizedCandidates = new Set(it.candidates.map((candidate) =>
+              candidate.text.normalize("NFKC").replace(/[\p{P}\p{S}\p{Z}\s]+/gu, "").toLowerCase()));
+            if (normalizedCandidates.size !== it.candidates.length) {
+              add(v, "R5", "fail", `문항 ${it.id}: 여러 초안 비교의 후보 문장이 중복됨`);
+            }
+          }
           if (pdrDifferenceCount(it.pdr, m.production_task.pdr) !== 1) {
             add(v, "R5", "fail", `문항 ${it.id}: 현행 MultiJudge는 앵커 PDR에서 한 축만 바꾼 대비 상황이어야 함`);
           }
@@ -661,7 +678,7 @@ export function checkMission(
 
   // ── R12 세트 accepted 분포 전부 동일 방향(warning) ──
   checkSetDistribution(v, m, withinCode);
-  if (isV4Contract) checkV4ContextPlan(v, m as MissionV4 | MissionV5);
+  if (isV4Contract) checkV4ContextPlan(v, m as MissionV4 | MissionV5, isCurrentNativeV5);
 
   // ── R13/R14 카탈로그 복사 검증 ──
   if (feature) {
@@ -693,27 +710,30 @@ export function checkMission(
   }
   checkSourceLang(v, dir, m.production_task.source_text, "production_task.source_text");
 
-  // ── R8 legacy v4 또는 거절·반대 preceding_turn ──
-  if ((isV4Contract && !isNativeV5) || isResponseAct(ctx.speech_act)) {
+  // ── R8 native MPJ5는 self-contained scenario, legacy 응답형은 preceding_turn ──
+  if (!isNativeV5 && ((isV4Contract && !isNativeV5) || isResponseAct(ctx.speech_act))) {
     for (const it of m.mpj_items) {
       if (!it.preceding_turn) {
         add(
           v,
           "R8",
           "fail",
-          `문항 ${it.id}: ${isV4Contract && !isNativeV5 ? "legacy v4 관계 맥락" : ctx.speech_act}은 preceding_turn 필수`,
+          `문항 ${it.id}: ${isV4Contract ? "legacy v4 관계 맥락" : ctx.speech_act}은 preceding_turn 필수`,
         );
       }
     }
   }
-  if (isCurrentNativeV5 && !isResponseAct(ctx.speech_act)) {
+  if (isCurrentNativeV5) {
     for (const it of m.mpj_items) {
       if (it.preceding_turn) {
-        add(v, "R8", "fail", `문항 ${it.id}: 비응답 화행은 preceding_turn을 생성하지 않음`);
+        add(v, "R8", "fail", `문항 ${it.id}: native MPJ5는 preceding_turn을 생성하지 않음`);
       }
     }
+    if (m.production_task.preceding_turn) {
+      add(v, "R8", "fail", "production_task: native MPJ5는 preceding_turn을 사용하지 않음");
+    }
   }
-  if (isResponseAct(ctx.speech_act)) {
+  if (!isNativeV5 && isResponseAct(ctx.speech_act)) {
     if (!m.production_task.preceding_turn) {
       add(v, "R8", "fail", "production_task: 거절·응답류는 preceding_turn 필수");
     }
@@ -1030,7 +1050,7 @@ function pdrDifferenceCount(
   return Number(a.p !== b.p) + Number(a.d !== b.d) + Number(a.r !== b.r);
 }
 
-function checkV4ContextPlan(v: RuleViolation[], m: MissionV4 | MissionV5) {
+function checkV4ContextPlan(v: RuleViolation[], m: MissionV4 | MissionV5, conciseCurrentNative = false) {
   const production = m.production_task.situation_ko.trim();
   const situations = m.mpj_items.map((it) => it.situation_ko.trim());
   const situationIndexes = new Map<string, number[]>();
@@ -1063,7 +1083,9 @@ function checkV4ContextPlan(v: RuleViolation[], m: MissionV4 | MissionV5) {
   });
   for (const it of m.mpj_items) {
     const sentenceMarks = (it.situation_ko.match(/[.!?。！？]/g) ?? []).length;
-    if (it.situation_ko.trim().length < 45 || sentenceMarks < 2) {
+    if (conciseCurrentNative && (sentenceMarks !== 2 || it.situation_ko.trim().length > 140)) {
+      add(v, "R27", "fail", `문항 ${it.id}: 현행 learner situation은 140자 이내의 정확히 2문장이어야 함`);
+    } else if (!conciseCurrentNative && (it.situation_ko.trim().length < 45 || sentenceMarks < 2)) {
       add(v, "R27", "warning", `문항 ${it.id}: 상황문이 짧아 P/D/R 근거가 충분히 보이지 않을 수 있음`);
     }
     const allowed =
@@ -1072,6 +1094,12 @@ function checkV4ContextPlan(v: RuleViolation[], m: MissionV4 | MissionV5) {
         : it.channel === "email" || it.channel === "messenger";
     if (!allowed) {
       add(v, "R28", "fail", `문항 ${it.id}: channel(${it.channel})이 ${m.production_task.mode} 수행 방식과 맞지 않음`);
+    }
+  }
+  if (conciseCurrentNative) {
+    const productionMarks = (production.match(/[.!?。！？]/g) ?? []).length;
+    if (productionMarks !== 2 || production.length > 140) {
+      add(v, "R27", "fail", "production_task: 현행 learner situation은 140자 이내의 정확히 2문장이어야 함");
     }
   }
 }

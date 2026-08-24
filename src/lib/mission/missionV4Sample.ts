@@ -267,6 +267,10 @@ const V5_MULTI = SAMPLE_MISSION_V5.mpj_items[3] as Extract<
 /** 현행 생성 계약과 같은 독립 맥락 대비 문항을 가진 네이티브 MPJ5 샘플. */
 export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
   ...SAMPLE_MISSION_V5,
+  production_task: {
+    ...SAMPLE_MISSION_V5.production_task,
+    preceding_turn: null,
+  },
   diagnostic_dimensions: [
     {
       code: "force_calibration",
@@ -304,7 +308,12 @@ export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
         "상대가 보관 자료를 다시 찾아야 하는 상황에서는 가능 여부를 묻지 않은 직접형이 부담에 비해 강하게 들릴 수 있습니다.",
       recommended_example: "请问方便把报告的原文件再发给我吗？",
     },
-    { ...V5_FIX, id: 3, preceding_turn: null },
+    {
+      ...V5_FIX,
+      id: 3,
+      preceding_turn: null,
+      corrections: [V5_FIX.corrections[0], V5_FIX.corrections[2], V5_FIX.corrections[3]],
+    },
     { ...V5_REASON, id: 4, preceding_turn: null },
     {
       ...V5_MULTI,
@@ -320,7 +329,7 @@ export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
   ],
   provenance: {
     ...SAMPLE_MISSION_V5.provenance!,
-    prompt_version: "mission_v5_mpj5_minidiscourse_v3_streamlined",
-    content_release_id: "pragma_content_candidate_20260824_02",
+    prompt_version: "mission_v5_mpj5_minidiscourse_v4_concise_learner_flow",
+    content_release_id: "pragma_content_candidate_20260825_01",
   },
 };

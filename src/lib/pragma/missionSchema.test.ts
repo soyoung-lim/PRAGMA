@@ -408,7 +408,7 @@ describe("mission_v5 native MPJ5 contract", () => {
     expect(checked.violations.filter((item) => item.level === "fail")).toEqual([]);
   });
 
-  it("enforces the current four-candidate roles and omits initiative preceding turns", () => {
+  it("enforces four candidate roles and omits preceding turns from every current native MPJ5", () => {
     const current = structuredClone(SAMPLE_MISSION_V5_NATIVE);
     current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
     expect(checkMission(current, context).violations.filter(
@@ -417,13 +417,63 @@ describe("mission_v5 native MPJ5 contract", () => {
 
     const invalid = structuredClone(current);
     invalid.mpj_items[0].preceding_turn = "不需要出现的对方发言。";
+    invalid.production_task.preceding_turn = "不需要出现的对方发言。";
     const multi = invalid.mpj_items[4];
     if (multi.type !== "multi_judge") throw new Error("Expected multi_judge");
     multi.candidates[0].comparison_role = "middle";
 
     const failures = checkMission(invalid, context).violations.filter((item) => item.level === "fail");
-    expect(failures.some((item) => item.id === "R8" && item.message.includes("비응답 화행"))).toBe(true);
+    expect(failures.some((item) => item.id === "R8" && item.message.includes("native MPJ5"))).toBe(true);
+    expect(failures.some((item) => item.id === "R8" && item.message.includes("production_task"))).toBe(true);
     expect(failures.some((item) => item.id === "R5" && item.message.includes("BEST 1"))).toBe(true);
+  });
+
+  it("requires concise two-sentence scenes and one recommended repair in the current native flow", () => {
+    const current = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
+    expect(checkMission(current, context).violations.filter(
+      (item) => item.level === "fail" && (item.id === "R3" || item.id === "R27"),
+    )).toEqual([]);
+
+    const invalidRepair = structuredClone(current);
+    const fix = invalidRepair.mpj_items[2];
+    if (fix.type !== "fix_choice") throw new Error("Expected fix_choice");
+    fix.corrections[1].is_valid = true;
+    expect(checkMission(invalidRepair, context).violations.some(
+      (item) => item.id === "R3" && item.level === "fail",
+    )).toBe(true);
+
+    const verboseScene = structuredClone(current);
+    verboseScene.mpj_items[0].situation_ko += " 추가 설명을 길게 덧붙인다.";
+    expect(checkMission(verboseScene, context).violations.some(
+      (item) => item.id === "R27" && item.level === "fail" && item.message.includes("정확히 2문장"),
+    )).toBe(true);
+  });
+
+  it("requires one acceptable and one adjustment-needed middle without duplicate candidates", () => {
+    const current = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
+    const multi = current.mpj_items[4];
+    if (multi.type !== "multi_judge") throw new Error("Expected multi_judge");
+    const middles = multi.candidates.filter((candidate) => candidate.comparison_role === "middle");
+    middles.forEach((candidate) => {
+      candidate.accepted_band_codes = ["within_band"];
+    });
+
+    const middleFailures = checkMission(current, context).violations.filter(
+      (item) => item.id === "R5" && item.level === "fail",
+    );
+    expect(middleFailures.some((item) => item.message.includes("적정 대역 1개와 비적정 경계 대역 1개"))).toBe(true);
+
+    const duplicate = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    duplicate.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
+    const duplicateMulti = duplicate.mpj_items[4];
+    if (duplicateMulti.type !== "multi_judge") throw new Error("Expected multi_judge");
+    duplicateMulti.candidates[1].text = `${duplicateMulti.candidates[0].text}！`;
+
+    expect(checkMission(duplicate, context).violations.some(
+      (item) => item.id === "R5" && item.level === "fail" && item.message.includes("후보 문장이 중복"),
+    )).toBe(true);
   });
 
   it("rejects a native judge outside the anchor or assigned to within_band", () => {

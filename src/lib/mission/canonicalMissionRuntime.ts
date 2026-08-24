@@ -6,6 +6,7 @@ import type {
   BestWorstQuest,
   ChoiceOption,
   DctQuest,
+  FixChoiceQuest,
   MissionContext,
   MissionQuest,
   CanonicalMissionViewModel,
@@ -140,7 +141,7 @@ function contextFrom(input: {
 }): MissionContext {
   const fallbackChannel: MissionContext["channel"] = input.sourceModality === "spoken" ? "대면" : "위챗";
   return {
-    situation: input.situation_ko,
+    situation: compactLearnerScenario(input.situation_ko),
     relation: input.relation_ko,
     channel: input.channel ? CHANNEL_LABEL[input.channel] : fallbackChannel,
     pdr: {
@@ -150,6 +151,93 @@ function contextFrom(input: {
     },
     precedingTurn: input.preceding_turn ?? undefined,
   };
+}
+
+const SCENE_META_SENTENCE = /(글로 작성해 보내는|즉시 반응|기록으로 남|매체의 특성|연구 목적|평가 기준)/;
+
+function clipped(value: string, max: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= max) return normalized;
+  const prefix = normalized.slice(0, max + 1);
+  const boundary = Math.max(prefix.lastIndexOf(" "), prefix.lastIndexOf(","));
+  return `${prefix.slice(0, boundary >= Math.floor(max * 0.65) ? boundary : max).trim()}…`;
+}
+
+/** 역사 장면도 학습자에게는 핵심 두 문장만 보여 주는 표시 전용 projection. */
+export function compactLearnerScenario(value: string): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  const sentences = normalized.match(/[^.!?。！？]+[.!?。！？]?/g)?.map((sentence) => sentence.trim()).filter(Boolean) ?? [];
+  if (sentences.length === 0) return clipped(normalized, 140);
+  const meaningful = sentences.filter((sentence, index) => index === 0 || !SCENE_META_SENTENCE.test(sentence));
+  return clipped((meaningful.length > 0 ? meaningful : sentences).slice(0, 2).join(" "), 140);
+}
+
+function singleCorrectionOptions(item: RuntimeFixChoice): FixChoiceQuest["corrections"] {
+  const recommendedIndex = item.corrections.findIndex(
+    (candidate) => candidate.is_valid && candidate.text === item.recommended_example,
+  );
+  const validIndex = recommendedIndex >= 0
+    ? recommendedIndex
+    : item.corrections.findIndex((candidate) => candidate.is_valid);
+  const invalidIndexes = item.corrections
+    .map((candidate, index) => ({ candidate, index }))
+    .filter(({ candidate }) => !candidate.is_valid)
+    .slice(0, 2)
+    .map(({ index }) => index);
+  if (validIndex < 0 || invalidIndexes.length !== 2) {
+    throw new UnsupportedCanonicalMissionRuntimeError("판단하고 고쳐보기에는 권장안 1개와 경계안 2개가 필요합니다.");
+  }
+  return [validIndex, ...invalidIndexes]
+    .sort((a, b) => a - b)
+    .map((index) => ({
+      id: `A3-${index}`,
+      text: item.corrections[index].text,
+      valid: index === validIndex,
+      note: item.corrections[index].note_ko,
+    }));
+}
+
+function expressionSnippet(value: string): string {
+  return clipped(value.replace(/[。！？.!?]+$/u, ""), 30);
+}
+
+function noteSnippet(value: string, max = 68): string {
+  return clipped(value.split(/[.!?。！？]/u)[0] ?? value, max).replace(/[。！？.!?]+$/u, "");
+}
+
+function concreteLessonPoints(quests: MissionQuest[]): CanonicalMissionViewModel["lessonPoints"] {
+  return quests.slice(0, 5).map((quest) => {
+    if (quest.kind === "scale") {
+      const expression = expressionSnippet(quest.target);
+      return { questId: quest.id, label: quest.shortLabel, text: `「${expression}」 — ${noteSnippet(quest.feedback)}`, highlights: [expression] };
+    }
+    if (quest.kind === "fix_choice") {
+      const recommended = quest.corrections.find((candidate) => candidate.valid);
+      if (!recommended) throw new UnsupportedCanonicalMissionRuntimeError("recap에 표시할 권장 수정안이 없습니다.");
+      const expression = expressionSnippet(recommended.text);
+      return { questId: quest.id, label: quest.shortLabel, text: `「${expression}」 — ${noteSnippet(recommended.note)}`, highlights: [expression] };
+    }
+    if (quest.kind === "reason") {
+      const accepted = quest.reasons.find((reason) => reason.id === quest.acceptedReasonId);
+      if (!accepted) throw new UnsupportedCanonicalMissionRuntimeError("recap에 표시할 주원인이 없습니다.");
+      const expression = expressionSnippet(quest.target);
+      return { questId: quest.id, label: quest.shortLabel, text: `「${expression}」 — ${noteSnippet(accepted.text)}`, highlights: [expression] };
+    }
+    if (quest.kind === "best_worst") {
+      const best = quest.candidates.find((candidate) => candidate.id === quest.bestId);
+      const worst = quest.candidates.find((candidate) => candidate.id === quest.worstId);
+      if (!best || !worst) throw new UnsupportedCanonicalMissionRuntimeError("recap에 표시할 BEST/WORST가 없습니다.");
+      const bestExpression = expressionSnippet(best.text);
+      const worstExpression = expressionSnippet(worst.text);
+      return {
+        questId: quest.id,
+        label: quest.shortLabel,
+        text: `BEST 「${bestExpression}」 — ${noteSnippet(best.note, 38)} / WORST 「${worstExpression}」 — ${noteSnippet(worst.note, 38)}`,
+        highlights: [bestExpression, worstExpression],
+      };
+    }
+    throw new UnsupportedCanonicalMissionRuntimeError("MPJ recap은 판단 문항 다섯 개만 지원합니다.");
+  });
 }
 
 function assertBand(code: string, options: ChoiceOption[]): string {
@@ -168,6 +256,7 @@ function runtimeFeedbackMode(pdr: Pdr): DctQuest["feedback"]["mode"] {
 /** DB 미션을 현재 정본의 다섯 판단 활동 + DCT 흐름에 투영한다. */
 export function adaptRunnableMissionToCanonical(runnable: RunnableMission): CanonicalMissionViewModel {
   const { mission } = runnable;
+  const isNativeMpj5 = mission.schema_version === "mission_v5" && mission.mpj_items.length === 5;
   if (mission.direction !== "ko_zh") {
     throw new UnsupportedCanonicalMissionRuntimeError("정본 실행기의 첫 실데이터 연결은 한→중 미션만 지원합니다.");
   }
@@ -196,7 +285,7 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       relation_ko: item.relation_ko,
       channel: item.channel,
       pdr: item.pdr,
-      preceding_turn: RESPONSE_ACTS.has(runnable.speech_act) ? item.preceding_turn : null,
+      preceding_turn: !isNativeMpj5 && RESPONSE_ACTS.has(runnable.speech_act) ? item.preceding_turn : null,
     }),
     source: item.source,
   });
@@ -316,20 +405,16 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
         target: fixChoice.target,
         judgmentOptions: bandOptions,
         referenceJudgment: assertBand(fixChoice.accepted_band_codes[0], bandOptions),
-        corrections: fixChoice.corrections.map((candidate, index) => ({
-          id: `A3-${index}`,
-          text: candidate.text,
-          valid: candidate.is_valid,
-          note: candidate.note_ko,
-        })),
+        corrections: singleCorrectionOptions(fixChoice),
         targetHighlights: fixChoice.highlights,
         feedback: fixChoice.explanation_ko,
       },
       {
         ...common(3, reason),
         kind: "reason",
-        prompt: "이 표현은 이 상황에 맞지 않습니다. 가장 큰 이유를 고르세요.",
+        prompt: "이 표현은 이 상황에 적절한가요?",
         target: reason.target,
+        referenceJudgment: "inappropriate",
         reasons: reason.reasons.map((item, index) => ({
           id: item.id,
           text: item.text_ko,
@@ -400,20 +485,16 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
         target: fixChoice.target,
         judgmentOptions: bandOptions,
         referenceJudgment: assertBand(fixChoice.accepted_band_codes[0], bandOptions),
-        corrections: fixChoice.corrections.map((candidate, index) => ({
-          id: `A3-${index}`,
-          text: candidate.text,
-          valid: candidate.is_valid,
-          note: candidate.note_ko,
-        })),
+        corrections: singleCorrectionOptions(fixChoice),
         targetHighlights: fixChoice.highlights,
         feedback: fixChoice.explanation_ko,
       },
       {
         ...common(3, reason),
         kind: "reason",
-        prompt: "이 표현은 이 상황에 맞지 않습니다. 가장 큰 이유를 고르세요.",
+        prompt: "이 표현은 이 상황에 적절한가요?",
         target: reason.target,
+        referenceJudgment: "inappropriate",
         reasons: reason.reasons.map((item) => ({
           id: item.id,
           text: item.text_ko,
@@ -481,20 +562,16 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
         judgmentOptions: bandOptions,
         referenceJudgment,
         judgmentQuestId: "A2",
-        corrections: fixChoice.corrections.map((candidate, index) => ({
-          id: `A3-${index}`,
-          text: candidate.text,
-          valid: candidate.is_valid,
-          note: candidate.note_ko,
-        })),
+        corrections: singleCorrectionOptions(fixChoice),
         targetHighlights: fixChoice.highlights,
         feedback: fixChoice.explanation_ko,
       },
       {
         ...common(3, reason),
         kind: "reason",
-        prompt: "이 표현은 이 상황에 맞지 않습니다. 가장 큰 이유를 고르세요.",
+        prompt: "이 표현은 이 상황에 적절한가요?",
         target: reason.target,
+        referenceJudgment: "inappropriate",
         reasons: reason.reasons.map((item) => ({
           id: item.id,
           text: item.text_ko,
@@ -525,6 +602,8 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       `정본 실데이터 연결이 아직 지원하지 않는 스키마입니다(${mission.schema_version}).`,
     );
   }
+
+  lessonPoints = concreteLessonPoints(quests);
 
   const task = mission.production_task;
   const dctContext = contextFrom({

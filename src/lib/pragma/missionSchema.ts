@@ -526,7 +526,15 @@ const Judge3ItemV5 = z.object({
 });
 
 const Scale4ItemV5 = Scale4ItemV4.extend({ id: z.literal(1), preceding_turn: z.string().min(1).nullable() });
-const FixChoiceItemV5 = FixChoiceItemV4.extend({ id: z.literal(3), preceding_turn: z.string().min(1).nullable() });
+const FixChoiceItemV5 = FixChoiceItemV4.extend({
+  id: z.literal(3),
+  preceding_turn: z.string().min(1).nullable(),
+  /** 현행은 3지선다·권장안 1개. 길이 4는 역사 native MPJ5 읽기 호환용. */
+  corrections: z
+    .array(z.object({ text: z.string().min(1), is_valid: z.boolean(), note_ko: z.string().min(1) }))
+    .min(3)
+    .max(4),
+});
 const ReasonItemV5 = ReasonItemV4.extend({ id: z.literal(4), preceding_turn: z.string().min(1).nullable() });
 const MultiJudgeItemV5 = MultiJudgeItemV4.extend({
   id: z.literal(5),

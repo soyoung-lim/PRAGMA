@@ -426,12 +426,10 @@ function SentenceLines({ text, highlights = [] }: { text: string; highlights?: s
   );
 }
 
-function ContextCard({ context, changedDimensions = [], headerRight }: {
+function ContextCard({ context, headerRight }: {
   context: MissionContext;
-  changedDimensions?: string[];
   headerRight?: React.ReactNode;
 }) {
-  const changed = new Set(changedDimensions.map((item) => item.trim().charAt(0).toUpperCase()));
   return (
     <section className="rounded-xl border border-[#E2DED4] bg-[#F4F2EC] px-4 py-3 sm:px-5">
       <div className="flex min-h-6 items-center justify-between gap-3">
@@ -447,17 +445,14 @@ function ContextCard({ context, changedDimensions = [], headerRight }: {
           <p className="mt-1 break-keep text-[15px] leading-6">{context.precedingTurn}</p>
         </div>
       )}
-      <div className="mt-2.5 flex flex-wrap gap-1.5 text-xs text-[#566176]">
-        {([
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {[
           ["P", context.pdr.p],
           ["D", context.pdr.d],
           ["R", context.pdr.r],
-        ] as const).map(([key, value]) => (
-          <span
-            key={key}
-            className={`rounded-full border px-2.5 py-1 font-bold ${changed.has(key) ? "border-[#E2C337] bg-[#FFF4B8] text-[#5F5014]" : "border-[#D9DEE7] bg-white/70 text-[#46546A]"}`}
-          >
-            {key} · {value}
+        ].map(([label, value]) => (
+          <span key={label} className="rounded-full border border-[#D3D8E1] bg-white px-2.5 py-1 text-xs font-bold text-[#4D5A70]">
+            {label} · {value}
           </span>
         ))}
       </div>
@@ -671,20 +666,12 @@ function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
     : undefined;
   const [judgment, setJudgment] = useState<string | null>(() => linkedJudgment ?? (devAutofill ? quest.referenceJudgment : null));
   const [locked, setLocked] = useState(Boolean(linkedJudgment) || devAutofill);
-  const [corrections, setCorrections] = useState<Set<string>>(() => devAutofill
-    ? new Set(quest.corrections.filter((option) => option.valid).map((option) => option.id))
-    : new Set()
+  const [correctionId, setCorrectionId] = useState<string | null>(() => devAutofill
+    ? (quest.corrections.find((option) => option.valid)?.id ?? null)
+    : null
   );
   const [answered, setAnswered] = useState(false);
   const order = useMemo(() => shuffle(quest.corrections), [quest.corrections]);
-  const toggleCorrection = (id: string) => {
-    setCorrections((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else if (next.size < 2) next.add(id);
-      return next;
-    });
-  };
   const referenceLabel = quest.judgmentOptions.find((option) => option.id === quest.referenceJudgment)?.label;
   const judgmentLabel = quest.judgmentOptions.find((option) => option.id === judgment)?.label;
   const judgmentMatched = judgment === quest.referenceJudgment;
@@ -719,12 +706,12 @@ function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
             </div>
             <div className="mt-5">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h4 className="font-bold">이제 어떻게 고치면 좋을까요?</h4>
-                <span className={`text-xs font-black ${corrections.size === 2 ? "text-[#245E44]" : "text-[#687387]"}`} aria-live="polite">{corrections.size} / 2 선택됨{corrections.size === 2 ? " · 확인할 수 있어요" : ""}</span>
+                <h4 className="font-bold">가장 알맞게 고친 표현은 무엇일까요?</h4>
+                <span className={`text-xs font-black ${correctionId ? "text-[#245E44]" : "text-[#687387]"}`} aria-live="polite">{correctionId ? "1개 선택됨 · 확인할 수 있어요" : "1개를 선택하세요"}</span>
               </div>
               <div className="mt-3 grid gap-2">
                 {order.map((correction) => {
-                  const picked = corrections.has(correction.id);
+                  const picked = correctionId === correction.id;
                   const state = answered
                     ? correction.valid
                       ? "border-[#4D8568] bg-white text-[#245E44]"
@@ -735,7 +722,7 @@ function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
                       ? "border-[#15202B] bg-[#F8F7F2] text-[#15202B] ring-1 ring-[#15202B]"
                       : "border-[#D8D4C8] bg-white";
                   return (
-                    <button key={correction.id} type="button" disabled={answered || (!picked && corrections.size >= 2)} onClick={() => toggleCorrection(correction.id)} className={`${optionBase} ${state} disabled:cursor-default`}>
+                    <button key={correction.id} type="button" disabled={answered} aria-pressed={picked} onClick={() => setCorrectionId(correction.id)} className={`${optionBase} ${state} disabled:cursor-default`}>
                       <span className="flex items-start justify-between gap-3">
                         <span className="font-zh text-[16.5px] font-normal leading-7">{correction.text}</span>
                         {answered && (
@@ -755,13 +742,13 @@ function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
         )}
         {answered && <div className="mt-4"><FeedbackBox verdict={`권장 답안 · 이 상황에서는 ${referenceLabel}`} feedback={quest.feedback} highlights={quest.targetHighlights} /></div>}
       </section>
-      <ActionBar hint={!locked && !judgment ? "이 상황에서의 적절성을 먼저 판단해 주세요." : locked && !answered ? `${corrections.size} / 2 선택됨${corrections.size === 2 ? " · 확인할 수 있어요" : ""}` : undefined}>
+      <ActionBar hint={!locked && !judgment ? "이 상황에서의 적절성을 먼저 판단해 주세요." : locked && !answered && !correctionId ? "가장 알맞은 교정안 하나를 선택해 주세요." : undefined}>
         {!locked ? (
           <Button className={`h-12 ${actionButton}`} disabled={!judgment} onClick={() => setLocked(true)}>{judgment ? "판단 확인하기" : "답을 선택해 주세요"}</Button>
         ) : !answered ? (
-          <Button className={`h-12 ${actionButton}`} disabled={corrections.size !== 2} onClick={() => setAnswered(true)}>교정안 확인하기</Button>
+          <Button className={`h-12 ${actionButton}`} disabled={!correctionId} onClick={() => setAnswered(true)}>교정안 확인하기</Button>
         ) : (
-          <Button className="h-12 w-full" onClick={() => onDone({ judgment, correctionIds: [...corrections] })}>{nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+          <Button className="h-12 w-full" onClick={() => onDone({ judgment, correctionIds: correctionId ? [correctionId] : [] })}>{nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" /></Button>
         )}
       </ActionBar>
     </QuestScaffold>
@@ -770,6 +757,13 @@ function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
 
 export function ReasonView({ quest, onDone, devAutofill = false }: { quest: ReasonQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
   const acceptedReasonIds = quest.acceptedReasonIds ?? [quest.acceptedReasonId];
+  const judgmentOptions = [
+    { id: "appropriate", label: "적절하다" },
+    { id: "inappropriate", label: "적절하지 않다" },
+  ];
+  const [judgment, setJudgment] = useState<string | null>(() => devAutofill ? quest.referenceJudgment : null);
+  const [judgmentLocked, setJudgmentLocked] = useState(false);
+  const [reasonPhase, setReasonPhase] = useState(false);
   const [reasonId, setReasonId] = useState<string | null>(() => devAutofill ? quest.acceptedReasonId : null);
   const [answered, setAnswered] = useState(false);
   const reasonOrder = useMemo(() => shuffle(quest.reasons), [quest.reasons]);
@@ -780,23 +774,52 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
     <QuestScaffold quest={quest} target={quest.target} targetHighlights={answered ? quest.targetHighlights : undefined}>
       <section className={`${taskPanel} px-4 py-3.5 sm:px-5 sm:py-4`}>
         <p className="mb-1 text-[11px] font-black text-[#6B7280]">지금 할 일</p>
-        <h3 className="text-base font-bold">{quest.prompt}</h3>
-        <div role="radiogroup" aria-label="가장 큰 이유 하나" className="mt-4 grid gap-2">
-          {reasonOrder.map((reason) => (
-            <OptionButton
-              key={reason.id}
-              option={{ id: reason.id, label: reason.text }}
-              value={reasonId}
-              disabled={answered}
-              answered={answered}
-              acceptedIds={acceptedReasonIds}
-              radio
-              onSelect={setReasonId}
-            />
-          ))}
-        </div>
-        {!answered && <p className="mt-2 break-keep text-xs leading-5 text-[#687387]">세 이유 중 이 상황의 화용적 부적절성을 가장 잘 설명하는 하나를 고르세요.</p>}
-        {answered && acceptedReason && (
+        {!reasonPhase ? (
+          <>
+            <h3 className="text-base font-bold">{quest.prompt}</h3>
+            <div role="radiogroup" aria-label="표현의 적절성 판단" className="mt-4 grid gap-2">
+              {judgmentOptions.map((option) => (
+                <OptionButton
+                  key={option.id}
+                  option={option}
+                  value={judgment}
+                  disabled={judgmentLocked}
+                  answered={judgmentLocked}
+                  acceptedIds={[quest.referenceJudgment]}
+                  radio
+                  onSelect={setJudgment}
+                />
+              ))}
+            </div>
+            {judgmentLocked && (
+              <div className={`mt-4 rounded-xl border px-4 py-3 text-sm font-bold leading-6 ${judgment === quest.referenceJudgment ? "border-[#BFD9CC] bg-[#F2F8F4] text-[#245E44]" : "border-[#E2AAA5] bg-[#FFF3F1] text-[#713E3A]"}`} role="status">
+                {judgment === quest.referenceJudgment
+                  ? "맞아요. 이 상황에서는 조정이 필요한 표현입니다."
+                  : "이 문항에서는 적절하지 않은 표현으로 판정합니다."}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <h3 className="text-base font-bold">그렇다면, 이 표현이 상황에 맞지 않는 가장 큰 이유는 무엇일까요?</h3>
+            <div role="radiogroup" aria-label="가장 큰 이유 하나" className="mt-4 grid gap-2">
+              {reasonOrder.map((reason) => (
+                <OptionButton
+                  key={reason.id}
+                  option={{ id: reason.id, label: reason.text }}
+                  value={reasonId}
+                  disabled={answered}
+                  answered={answered}
+                  acceptedIds={acceptedReasonIds}
+                  radio
+                  onSelect={setReasonId}
+                />
+              ))}
+            </div>
+            {!answered && <p className="mt-2 break-keep text-xs leading-5 text-[#687387]">세 이유 중 이 상황의 화용적 부적절성을 가장 잘 설명하는 하나를 고르세요.</p>}
+          </>
+        )}
+        {reasonPhase && answered && acceptedReason && (
           <div className="mt-4">
             <FeedbackBox
               verdict={reasonAccepted ? "맞아요" : "핵심 이유를 다시 확인해요"}
@@ -807,14 +830,18 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
           </div>
         )}
       </section>
-      <ActionBar hint={!answered && !reasonId ? "가장 큰 이유 하나를 선택해 주세요." : undefined}>
-        {!answered ? (
+      <ActionBar hint={!judgmentLocked && !judgment ? "적절한지 먼저 판단해 주세요." : reasonPhase && !answered && !reasonId ? "가장 큰 이유 하나를 선택해 주세요." : undefined}>
+        {!judgmentLocked ? (
+          <Button className={`h-12 ${actionButton}`} disabled={!judgment} onClick={() => setJudgmentLocked(true)}>판단 확인하기</Button>
+        ) : !reasonPhase ? (
+          <Button className={`h-12 ${actionButton}`} onClick={() => setReasonPhase(true)}>이유 찾기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
+        ) : !answered ? (
           <Button className={`h-12 ${actionButton}`} disabled={!reasonId} onClick={() => setAnswered(true)}>이유 확인하기</Button>
         ) : (
           <Button
             className="h-12 w-full"
             onClick={() => {
-              if (reasonId) onDone({ reasonId });
+              if (judgment && reasonId) onDone({ initialJudgment: judgment, reasonId });
             }}
           >
             {nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" />
@@ -1243,7 +1270,7 @@ function buildDevPreviewResponses(preset: DevPreviewPreset, finalized: boolean) 
       judgment: quest.referenceJudgment,
       correctionIds: quest.corrections.filter((option) => option.valid).map((option) => option.id),
     };
-    if (quest.kind === "reason") result[quest.id] = { reasonId: quest.acceptedReasonId };
+    if (quest.kind === "reason") result[quest.id] = { initialJudgment: quest.referenceJudgment, reasonId: quest.acceptedReasonId };
     if (quest.kind === "best_worst") result[quest.id] = { best: quest.bestId, worst: quest.worstId };
     if (quest.kind === "dct") result[quest.id] = dctResponses[quest.id];
     if (quest.kind === "dct_feedback") result[quest.id] = dctResponses[quest.dctId];
@@ -1651,7 +1678,7 @@ function MpjLessonBridge({ lessonPoints, onContinue }: {
     <section className="rounded-2xl border border-[#DED9CD] bg-[#FCFBF7] px-5 py-6 shadow-[0_10px_28px_rgba(21,32,43,0.05)] sm:px-8 sm:py-7" aria-label="직접 번역 전 5 POINT LESSON">
       <p className="text-[11px] font-black tracking-[0.12em] text-[#8A7419]">직접 번역하기 전에</p>
       <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
-        <h1 className="break-keep text-2xl font-black tracking-[-0.03em] text-[#15202B]">방금 확인한 5가지</h1>
+        <h1 className="break-keep text-2xl font-black tracking-[-0.03em] text-[#15202B]">문항별 핵심 5가지</h1>
         <span className="text-[10px] font-black tracking-[0.14em] text-[#8B94A1]">5 POINT LESSON</span>
       </div>
       <ol className="mt-4 border-y border-[#E2DED4]">
@@ -1685,8 +1712,9 @@ function responseLabel(quest: MissionQuest, response: QuestResponse) {
     return `${judgment ?? "판정"} · ${corrections.join(" / ")}`;
   }
   if (quest.kind === "reason") {
+    const judgment = response.initialJudgment === "appropriate" ? "적절하다" : response.initialJudgment === "inappropriate" ? "적절하지 않다" : null;
     const reason = quest.reasons.find((item) => item.id === response.reasonId)?.text;
-    return reason ?? "이유 기록";
+    return [judgment, reason].filter(Boolean).join(" · ") || "이유 기록";
   }
   if (quest.kind === "best_worst") {
     const best = quest.candidates.find((item) => item.id === response.best)?.text;
@@ -1981,6 +2009,7 @@ export function buildRuntimeMpjTraces(
   const reasonTrace = (itemIndex: number, responseId: string) => {
     const reasonId = response(responseId)?.reasonId as string | undefined;
     return {
+      initial_judgment: response(responseId)?.initialJudgment as "appropriate" | "inappropriate" | undefined,
       reason_id: reasonId,
       reason_kind: items[itemIndex]?.reasons?.find((item) => item.id === reasonId)?.kind,
     };
@@ -2004,6 +2033,7 @@ export function buildRuntimeMpjTraces(
         correction_indexes: corrections("A3"),
       }),
       trace(3, {
+        initial_judgment: response("A4")?.initialJudgment as "appropriate" | "inappropriate" | undefined,
         reason_ids: [response("A4")?.reasonId as string].filter(Boolean),
       }),
       trace(4, bestWorst("A5")),

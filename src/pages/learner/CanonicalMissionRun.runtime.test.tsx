@@ -59,7 +59,46 @@ describe("CanonicalMissionRun live CTA route", () => {
 
     expect(await screen.findByRole("heading", { name: "상황에 맞는 표현 판단하기" })).toBeInTheDocument();
     expect(screen.getByText(SAMPLE_MISSION_V5.mpj_items[0].situation_ko)).toBeInTheDocument();
+    expect(screen.getByText(/^P · /)).toBeInTheDocument();
+    expect(screen.getByText(/^D · /)).toBeInTheDocument();
+    expect(screen.getByText(/^R · /)).toBeInTheDocument();
     expect(fetchMissionByScenario).toHaveBeenCalledWith(scenarioId);
+  });
+
+  it("does not render a native MPJ5 preceding-turn card even for a response act", async () => {
+    const mission = JSON.parse(
+      JSON.stringify(SAMPLE_MISSION_V5_NATIVE)
+        .split("request_mitigation_optionality").join("refusal_softening")
+        .split("too_direct").join("too_blunt")
+        .split("too_indirect").join("over_elaborate"),
+    ) as typeof SAMPLE_MISSION_V5_NATIVE;
+    mission.mpj_items[0].preceding_turn = "UI에 표시하면 안 되는 legacy 값";
+    fetchMissionByScenario.mockResolvedValueOnce({
+      scenario_id: scenarioId,
+      speech_act: "refusal",
+      learner_level: "intermediate",
+      mission_status: "reviewed",
+      release_gate_mode: "authoritative_release",
+      direction: "ko_zh",
+      mission,
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/learner/practice/${scenarioId}`]}>
+        <Routes>
+          <Route path="/learner/practice/:scenarioId" element={<CanonicalMissionRun />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole("heading", { name: mission.production_task.situation_ko });
+    fireEvent.click(screen.getByRole("button", { name: /장면 속 단서 보기/ }));
+    fireEvent.click(screen.getByRole("button", { name: /내가 할 일 확인/ }));
+    fireEvent.click(screen.getByRole("button", { name: /5개 장면으로 감 잡기/ }));
+
+    expect(await screen.findByRole("heading", { name: "상황에 맞는 표현 판단하기" })).toBeInTheDocument();
+    expect(screen.queryByText("상대의 말")).not.toBeInTheDocument();
+    expect(screen.queryByText("UI에 표시하면 안 되는 legacy 값")).not.toBeInTheDocument();
   });
 
   it("does not force a revision when automatic feedback is unavailable", () => {
@@ -83,16 +122,16 @@ describe("CanonicalMissionRun live CTA route", () => {
     }, {
       A1: { pick: "somewhat_appropriate" },
       A2: { pick: "too_direct" },
-      A3: { judgment: "too_direct", correctionIds: ["A3-0", "A3-1"] },
-      A4: { reasonId: "r2" },
+      A3: { judgment: "too_direct", correctionIds: ["A3-0"] },
+      A4: { initialJudgment: "appropriate", reasonId: "r2" },
       A5: { best: "A5-1", worst: "A5-4" },
     } as Parameters<typeof buildRuntimeMpjTraces>[1]);
 
     expect(traces).toMatchObject([
       { item_id: 1, item_type: "scale4", scale_code: "somewhat_appropriate" },
       { item_id: 2, item_type: "judge3", band_code: "too_direct" },
-      { item_id: 3, item_type: "fix_choice", band_code: "too_direct", correction_indexes: [0, 1] },
-      { item_id: 4, item_type: "reason", reason_id: "r2", reason_kind: "primary" },
+      { item_id: 3, item_type: "fix_choice", band_code: "too_direct", correction_indexes: [0] },
+      { item_id: 4, item_type: "reason", initial_judgment: "appropriate", reason_id: "r2", reason_kind: "primary" },
       { item_id: 5, item_type: "multi_judge", best_candidate_index: 1, worst_candidate_index: 4 },
     ]);
   });

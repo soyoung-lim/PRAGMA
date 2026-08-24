@@ -70,6 +70,7 @@ export interface ReasonQuest extends QuestBase {
   kind: "reason";
   prompt: string;
   target: string;
+  referenceJudgment: "inappropriate";
   reasons: Array<{
     id: string;
     text: string;
@@ -288,7 +289,6 @@ export const CANONICAL_MISSION_PREVIEW: CanonicalMissionViewModel = {
       referenceJudgment: "rude",
       corrections: [
         { id: "a3-valid-1", text: "助教您好，请问作业是这周五交吗？", valid: true, note: "호칭과 请问으로 메시지를 자연스럽게 엽니다." },
-        { id: "a3-valid-2", text: "助教您好，我想确认一下，作业是这周五交吗？", valid: true, note: "확인 목적을 먼저 밝혀 부담을 낮춥니다." },
         { id: "a3-under", text: "作业这周五交吗？", valid: false, note: "喂는 뺐지만 대화 첫머리의 호칭과 열기가 여전히 없습니다." },
         { id: "a3-over", text: "助教您好，不知是否方便告知本周作业的截止日期？如蒙确认，不胜感激。", valid: false, note: "가벼운 확인에 지나치게 공식적인 문체를 겹쳤습니다." },
       ],
@@ -310,7 +310,8 @@ export const CANONICAL_MISSION_PREVIEW: CanonicalMissionViewModel = {
       source: "안녕하세요. 지난주 회의록을 좀 보내주실 수 있을까요?",
       target: "把上周的会议记录发我一下。",
       targetHighlights: ["把上周的会议记录发我一下"],
-      prompt: "이 표현은 이 상황에 맞지 않습니다. 가장 큰 이유를 고르세요.",
+      prompt: "이 표현은 이 상황에 적절한가요?",
+      referenceJudgment: "inappropriate",
       reasons: [
         {
           id: "a4-right",
