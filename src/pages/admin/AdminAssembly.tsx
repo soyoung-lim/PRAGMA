@@ -267,8 +267,15 @@ const AdminAssembly = () => {
           toast.success("미션 조립 완료 — 검수 대기(generated)");
         }
       } else {
-        const failIds = (res.violations ?? []).filter((v) => v.level === "fail").map((v) => v.id);
-        const msg = `${res.error ?? "조립 실패"}${failIds.length ? ` · ${failIds.join(",")}` : ""}`;
+        const failViolations = (res.violations ?? []).filter((v) => v.level === "fail");
+        const failIds = [...new Set(failViolations.map((v) => v.id))];
+        const failDetails = failViolations.map((v) => `${v.id}: ${v.message}`).join(" / ");
+        const msg = [
+          `${res.error ?? "조립 실패"}${failIds.length ? ` · ${failIds.join(",")}` : ""}`,
+          failDetails,
+        ]
+          .filter(Boolean)
+          .join(" — ");
         setFailures((f) => ({ ...f, [r.scenario_id]: msg }));
         toast.error(msg);
       }
