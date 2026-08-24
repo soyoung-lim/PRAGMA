@@ -86,13 +86,14 @@ describe("canonical document routing", () => {
     }
   });
 
-  it("keeps native mission_v5 MPJ5 canonical while marking remote legacy data as undeployed", () => {
+  it("keeps native mission_v5 MPJ5 canonical and separates deployed current from legacy rows", () => {
     const manifest = readFileSync(join(ROOT, "docs/CANONICAL.md"), "utf8");
     const contract = readFileSync(join(ROOT, CURRENT_CANONICALS[0]), "utf8");
 
     expect(manifest).toContain("최신 승인 학습설계는 **MPJ5 + DCT1**");
     expect(manifest).toContain("현행 소스의 `mission_v5` 생성·검사·러너 계약도 승인된 **MPJ5 + DCT1**");
-    expect(manifest).toContain("Railway 앱은 legacy 구현");
+    expect(manifest).toContain("운영 DB·Edge·Railway에 반영됐다");
+    expect(manifest).toContain("과거 `mission_v5` MPJ4 행은 legacy 구현으로 읽기 호환");
     expect(contract).toContain("최신 승인 학습설계와 현행 소스 계약: **네이티브 MPJ5 + DCT1**");
     expect(contract).toContain("현행 소스의 `mission_v5`는 네이티브 MPJ5+DCT1");
     expect(contract).toContain("mpj_response_v2");

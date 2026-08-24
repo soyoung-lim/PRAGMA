@@ -75,7 +75,9 @@ describe("moat migration/runtime contracts", () => {
     expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("item_lineage_attribution_v4_mission_v5_mpj5");
     expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("pragma_content_candidate_20260824_01");
     expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("jsonb_array_length(v_mission->'mpj_items') <> 5");
-    expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("'scale4',\n    'judge3',\n    'fix_choice',\n    'reason',\n    'multi_judge'");
+    expect(MISSION_V5_NATIVE_MPJ5_SQL).toMatch(
+      /'scale4',\r?\n    'judge3',\r?\n    'fix_choice',\r?\n    'reason',\r?\n    'multi_judge'/,
+    );
     expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("validate_current_mission_v5_item_lineage()'::regprocedure");
     expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("BEFORE INSERT OR UPDATE OF mission_content ON public.scenarios");
   });
