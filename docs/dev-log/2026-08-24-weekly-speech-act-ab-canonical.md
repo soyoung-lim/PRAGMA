@@ -42,3 +42,15 @@ MPJ5+DCT1 미션 A/B 두 세트와 맥락 변화 원칙을 정본에 고정한�
 - `npm.cmd test -- src/lib/curriculum/weeklyMissionPair.test.ts src/lib/curriculum/composerPlanning.test.ts src/lib/curriculum/learnerCourse.test.ts` — 3파일 22개 통과
 - `npm.cmd run typecheck` — 통과
 - `git diff --check` — 내용 오류 없음(CRLF 변환 경고만 확인)
+
+## 후속 정본 · 강좌 모드와 특별주차
+
+- 강좌 수행모드를 번역·통역·혼합으로 분리했다. A/B는 같은 모드를 유지한다.
+- 기존 미션 단위 `%` 슬라이더를 폐기하고, 혼합 강좌에서만 9개 화행 주차 중 통역 주차 수를
+  1~8주로 정하도록 했다. 0·9주는 각각 번역·통역 강좌로 표현한다.
+- 7·14주는 누적 학생자료가 필요한 중간·종합 메타화용 클리닉 skeleton으로 정했다. 실제 자료가
+  없을 때는 빈 상태 또는 명시적 데모 자료만 사용한다.
+- 13주는 `고부담 맥락 집중 실전`으로 정했다. 서로 다른 기학습 화행의 새 MPJ5+DCT1 미션 두 건을
+  고부담 맥락에서 독립적으로 수행하며 A/B·연속 혼합화행 계약은 만들지 않는다.
+- 이번 범위는 정본 문서 교정뿐이다. 기존 `target_interpreting_ratio`, 주차 내부 모드 혼합,
+  13주 `맥락 변형 재적용` 소스와 UI·DB는 후속 동기화 대상이다.
