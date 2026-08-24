@@ -149,7 +149,7 @@ MPJ5+DCT1 미션 A/B 두 세트와 맥락 변화 원칙을 정본에 고정한�
   preview에서 MPJ1의 선행 발화 미표시, MPJ5의 후보 4개 및 공개 후 BEST/WORST 각 1개를 확인했다.
   후속 MPJ5 변별 품질 표적 테스트 2파일 32개와 typecheck도 통과했다.
 - native self-contained scenario 전환은 생성·R8·런타임·migration 계약 및 UI를 다룬 표적
-  5파일 64개와 typecheck가 통과했다. 전체 회귀·build·브라우저 smoke·배포는 실행하지 않았다.
+  5파일 64개와 typecheck가 통과했다. 후속 학습자 읽기 부담 축소와 같은 릴리스로 운영 반영했다.
 
 ## 학습자 읽기 부담 축소 · 2026-08-25
 
@@ -162,5 +162,14 @@ MPJ5+DCT1 미션 A/B 두 세트와 맥락 변화 원칙을 정본에 고정한�
 - recap 다섯 항목은 각 MPJ에서 실제 본 중국어 표현과 해당 피드백 근거를 한 문장으로 조합한다.
   일반 교훈이나 새 중국어 예문을 생성하지 않는다.
 - 현행 후보 버전은 `mission_v5_mpj5_minidiscourse_v4_concise_learner_flow`, 콘텐츠 릴리스는
-  `pragma_content_candidate_20260825_01`이다. migration·배포·commit·push는 실행하지 않았다.
+  `pragma_content_candidate_20260825_01`이다.
 - prompt snapshot 재생성 뒤 관련 5파일 66개 테스트와 typecheck가 통과했다.
+- production build 1,946 modules가 통과했다. 기능 `47aa183`과 clean snapshot `b0dd434`를
+  `origin/codex/mpj5-mainline-2026-08-24`에 푸시했다.
+- 운영 DB에 `20260825003000_mission_v5_self_contained_scenarios.sql` 한 건을 적용했고 후속 dry-run은
+  최신 상태였다. `generate-scenario` Edge v68은 `ACTIVE`다.
+- clean worktree를 `--path-as-root`로 Railway production에 배포했다. deployment
+  `9d912106-17e6-425e-af7f-9a0d924f9926`은 `SUCCESS`, 이미지 digest는
+  `sha256:ce2e44235c82d565a43b945ef7db0aef16d39721c5b95ce59d62bb3949f07f61`이다.
+  운영 홈은 HTTP 200이고 `CanonicalMissionRun-B6LOpsb8.js`에서 MPJ3 단일 선택, 문항별 핵심 5가지,
+  P/D/R 표시 문구를 확인했다. 유료 콘텐츠 생성과 인증 학습자 종단은 실행하지 않았다.

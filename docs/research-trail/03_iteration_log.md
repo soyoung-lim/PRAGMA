@@ -2411,7 +2411,7 @@
   비null 값을 차단하고, 런타임은 역사 native 값도 숨기되 legacy MPJ4 응답형 표시를 유지한다.
 - 검증 결과: 생성 prompt snapshot, R8/schema, migration 계약, runtime adapter, 실제 학습자 렌더링
   표적 5파일 64개와 typecheck가 통과했다. legacy mission_v5 MPJ4 읽기 및 응답형 선행 발화 전달도
-  테스트했다. 전체 회귀·build·브라우저 smoke·배포는 실행하지 않았다.
+  테스트했다. 후속 `ITER-20260825-03`과 같은 릴리스로 운영 배포했다.
 - 관련 Decision: `DEC-20260824-07`
 
 ## ITER-20260825-03 · 장면·교정·recap의 학습자 읽기 부담 축소
@@ -2426,5 +2426,8 @@
   저장 형식은 유지했다. recap은 각 문항에서 실제로 본 중국어 표현과 그 문항의 근거를 한 문장씩
   보여 준다. P/D/R 칩은 짧아진 상황문의 모호성을 보완하고 명시적 화용 수업과 연결하므로 숨기지 않았다.
 - 검증 결과: prompt snapshot을 갱신했고 runtime·learner UI·schema/rule·prompt·migration 표적 5파일
-  66개와 typecheck가 통과했다. 전체 회귀·build·브라우저 smoke·DB migration·배포는 실행하지 않았다.
+  66개, typecheck와 production build 1,946 modules가 통과했다. 기능 `47aa183`과 clean snapshot
+  `b0dd434`를 원격 브랜치에 푸시하고 migration `20260825003000`을 적용했다. Edge
+  `generate-scenario` v68은 ACTIVE, Railway `9d912106-17e6-425e-af7f-9a0d924f9926`은 SUCCESS이며
+  운영 URL HTTP 200과 새 MPJ3·recap·P/D/R 문구를 확인했다. 유료 생성·실제 학습자 종단은 수행하지 않았다.
 - 관련 Decision: `DEC-20260825-01`
