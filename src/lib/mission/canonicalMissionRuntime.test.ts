@@ -49,8 +49,11 @@ describe("canonical mission runtime bridge", () => {
     expect(view.quests[1].source).toBe(view.quests[2].source);
     expect(view.quests[5].source).toBe(SAMPLE_MISSION_V5.production_task.source_text);
     expect(view.lessonPoints.every((point) => point.text.includes("「"))).toBe(true);
+    expect(view.lessonPoints.every((point) => point.text.length <= 56)).toBe(true);
+    expect(view.lessonPoints.every((point) => (point.text.match(/→/g) ?? []).length === 1)).toBe(true);
+    expect(view.lessonPoints.every((point) => !point.text.includes(" / "))).toBe(true);
     expect(view.lessonPoints[4].text).toContain("BEST");
-    expect(view.lessonPoints[4].text).toContain("WORST");
+    expect(view.lessonPoints[4].text).not.toContain("WORST");
   });
 
   it("keeps legacy response-act preceding turns readable", () => {

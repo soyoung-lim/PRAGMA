@@ -2431,3 +2431,16 @@
   `generate-scenario` v68은 ACTIVE, Railway `9d912106-17e6-425e-af7f-9a0d924f9926`은 SUCCESS이며
   운영 URL HTTP 200과 새 MPJ3·recap·P/D/R 문구를 확인했다. 유료 생성·실제 학습자 종단은 수행하지 않았다.
 - 관련 Decision: `DEC-20260825-01`
+
+## ITER-20260825-04 · 5포인트 recap을 한 줄 족집게 메모로 재압축
+
+- 날짜: 2026-08-25
+- 시작 문제: 실제 학습자 화면에서 recap 본문이 작고 두 줄로 감겼으며, 긴 중국어 문장과 일반 설명이
+  섞여 직접 산출 전 빠른 회상 메모 역할을 하지 못했다.
+- 변경: 런타임 recap은 문항별 중국어 앵커를 최대 18자, 구체 근거를 최대 26자의 메모형 문장으로
+  투영한다. 모든 항목은 단일 `→`와 단일 근거만 가지며 MPJ5는 BEST 핵심 한 점만 남긴다. 학습자
+  본문은 16.5px 한 줄로 표시하고 중국어 강조 조각에 `Noto Serif SC`를 적용했다.
+- 검증 결과: runtime·preview lesson point 표적 2파일 5개 테스트와 typecheck가 통과했다. localhost
+  preview에서 다섯 본문 모두 높이 30px, `white-space: nowrap`, overflow 없음이었고 중국어 계산 글꼴은
+  `Noto Serif SC`였다. 커밋·배포는 수행하지 않았다.
+- 관련 Decision: `DEC-20260825-02`

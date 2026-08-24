@@ -20,6 +20,9 @@ describe("CANONICAL_MISSION_PREVIEW lessonPoints", () => {
       expect(point.highlights?.length).toBeGreaterThan(0);
       for (const highlight of point.highlights ?? []) expect(point.text).toContain(highlight);
       expect(point.text).not.toContain("P·D·R");
+      expect(point.text.length).toBeLessThanOrEqual(56);
+      expect(point.text.match(/→/g)).toHaveLength(1);
+      expect(point.text).not.toContain(" / ");
       if (dct) expect(point.text).not.toContain(dct.referenceAnswer);
     }
   });

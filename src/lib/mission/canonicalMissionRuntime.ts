@@ -197,43 +197,61 @@ function singleCorrectionOptions(item: RuntimeFixChoice): FixChoiceQuest["correc
     }));
 }
 
-function expressionSnippet(value: string): string {
-  return clipped(value.replace(/[。！？.!?]+$/u, ""), 30);
+function expressionSnippet(value: string, max = 18): string {
+  return clipped(value.replace(/[。！？.!?]+$/u, ""), max);
 }
 
-function noteSnippet(value: string, max = 68): string {
-  return clipped(value.split(/[.!?。！？]/u)[0] ?? value, max).replace(/[。！？.!?]+$/u, "");
+function tutorMemo(value: string, max = 26): string {
+  const firstSentence = (value.split(/[.!?。！？]/u)[0] ?? value)
+    .replace(/^(이 상황에서는|이 문항에서는|현재 표현은|이 표현은)\s*/u, "")
+    .replace(/상대방/g, "상대")
+    .replace(/문제와\s*/g, "문제·")
+    .replace(/문제 및\s*/g, "문제·")
+    .replace(/문제·조치를 직접 언급하는 것이 상대에게 명확한 정보를 제공하여 문제 해결에 도움을 줄 수 있다/u, "문제·필요 조치를 밝혀 해결 요청이 선명")
+    .replace(/즉시 해결을 요구하는 것이 부담을 줄 수 있어 과도하다/u, "즉시 해결을 요구해 상대 부담이 큼")
+    .replace(/부드럽게 표현하여/g, "부드럽게 밝혀")
+    .replace(/명확히 하였다$/u, "분명히 함")
+    .replace(/즉각적인 조치를 강요하는 표현이 과도하다$/u, "즉각 조치를 강요해 과함")
+    .replace(/조치를 강요하는 표현이 과도하다$/u, "조치를 강요해 과함")
+    .replace(/명확히 하여 적절하다$/u, "분명히 해 적절")
+    .replace(/과도하다$/u, "과함")
+    .replace(/적절하다$/u, "적절")
+    .replace(/하였다$/u, "함")
+    .trim();
+  return clipped(firstSentence, max).replace(/[。！？.!?]+$/u, "");
+}
+
+function lessonAnchor(target: string, highlights?: string[]): string {
+  return expressionSnippet(highlights?.find((value) => value.trim().length > 0) ?? target);
 }
 
 function concreteLessonPoints(quests: MissionQuest[]): CanonicalMissionViewModel["lessonPoints"] {
   return quests.slice(0, 5).map((quest) => {
     if (quest.kind === "scale") {
-      const expression = expressionSnippet(quest.target);
-      return { questId: quest.id, label: quest.shortLabel, text: `「${expression}」 — ${noteSnippet(quest.feedback)}`, highlights: [expression] };
+      const expression = lessonAnchor(quest.target, quest.targetHighlights);
+      return { questId: quest.id, label: quest.shortLabel, text: `「${expression}」 → ${tutorMemo(quest.feedback)}`, highlights: [expression] };
     }
     if (quest.kind === "fix_choice") {
       const recommended = quest.corrections.find((candidate) => candidate.valid);
       if (!recommended) throw new UnsupportedCanonicalMissionRuntimeError("recap에 표시할 권장 수정안이 없습니다.");
       const expression = expressionSnippet(recommended.text);
-      return { questId: quest.id, label: quest.shortLabel, text: `「${expression}」 — ${noteSnippet(recommended.note)}`, highlights: [expression] };
+      return { questId: quest.id, label: quest.shortLabel, text: `「${expression}」 → ${tutorMemo(recommended.note)}`, highlights: [expression] };
     }
     if (quest.kind === "reason") {
       const accepted = quest.reasons.find((reason) => reason.id === quest.acceptedReasonId);
       if (!accepted) throw new UnsupportedCanonicalMissionRuntimeError("recap에 표시할 주원인이 없습니다.");
-      const expression = expressionSnippet(quest.target);
-      return { questId: quest.id, label: quest.shortLabel, text: `「${expression}」 — ${noteSnippet(accepted.text)}`, highlights: [expression] };
+      const expression = lessonAnchor(quest.target, quest.targetHighlights);
+      return { questId: quest.id, label: quest.shortLabel, text: `「${expression}」 → ${tutorMemo(accepted.text)}`, highlights: [expression] };
     }
     if (quest.kind === "best_worst") {
       const best = quest.candidates.find((candidate) => candidate.id === quest.bestId);
-      const worst = quest.candidates.find((candidate) => candidate.id === quest.worstId);
-      if (!best || !worst) throw new UnsupportedCanonicalMissionRuntimeError("recap에 표시할 BEST/WORST가 없습니다.");
+      if (!best) throw new UnsupportedCanonicalMissionRuntimeError("recap에 표시할 BEST가 없습니다.");
       const bestExpression = expressionSnippet(best.text);
-      const worstExpression = expressionSnippet(worst.text);
       return {
         questId: quest.id,
         label: quest.shortLabel,
-        text: `BEST 「${bestExpression}」 — ${noteSnippet(best.note, 38)} / WORST 「${worstExpression}」 — ${noteSnippet(worst.note, 38)}`,
-        highlights: [bestExpression, worstExpression],
+        text: `BEST 「${bestExpression}」 → ${tutorMemo(best.note, 22)}`,
+        highlights: [bestExpression],
       };
     }
     throw new UnsupportedCanonicalMissionRuntimeError("MPJ recap은 판단 문항 다섯 개만 지원합니다.");

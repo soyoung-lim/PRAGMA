@@ -80,10 +80,12 @@ type DevPreviewPreset = "all_good" | "direct" | "over_mitigated" | "mixed";
 
 const panel = "rounded-2xl border border-[#DDD8CB] bg-white";
 const taskPanel = "rounded-2xl border-2 border-[#C9D0DA] bg-white shadow-[0_8px_24px_rgba(21,32,43,0.05)]";
+const taskPanelBody = `${taskPanel} px-4 py-3 sm:px-5`;
+const optionGrid = "mt-3 grid gap-1.5";
 // break-keep — 없으면 한국어 낱말 중간에서 줄이 끊긴다(좁은 화면에서 특히).
 // 비활성 상태를 옅게 — 기본 disabled 회색이 활성 버튼만큼 무거워 「지금 눌러야 할 것」이 흐려진다.
 const actionButton = "w-full disabled:bg-[#E9E7E0] disabled:text-[#98A0AC] disabled:opacity-100";
-const optionBase = "w-full rounded-xl border px-4 py-3 text-left text-[15px] break-keep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1";
+const optionBase = "w-full rounded-xl border px-4 py-2 text-left text-[15px] break-keep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1";
 
 type SceneIntroSlide = {
   eyebrow: string;
@@ -388,19 +390,16 @@ function HighlightedText({ text, highlights = [], target = false }: {
   const highlightSet = new Set(highlights);
   return (
     <>
-      {text.split(expression).map((part, index) => highlightSet.has(part) ? (
-        <mark
-          key={`${part}-${index}`}
-          className={target
-            ? part.trim().length >= text.trim().length * 0.7
-              ? "bg-transparent font-normal text-inherit underline decoration-[#C9A90E] decoration-2 underline-offset-4"
-              : "rounded-sm bg-[#FFF5C8] px-0.5 font-normal text-inherit underline decoration-[#C9A90E] decoration-2 underline-offset-4"
-            : "bg-transparent font-normal text-inherit underline decoration-[#E8C62F] decoration-2 underline-offset-4"
-          }
-        >
-          {part}
-        </mark>
-      ) : <span key={`${part}-${index}`}>{part}</span>)}
+      {text.split(expression).map((part, index) => {
+        if (!highlightSet.has(part)) return <span key={`${part}-${index}`}>{part}</span>;
+        const highlightClass = target
+          ? part.trim().length >= text.trim().length * 0.7
+            ? "bg-transparent font-normal text-inherit underline decoration-[#C9A90E] decoration-2 underline-offset-4"
+            : "rounded-sm bg-[#FFF5C8] px-0.5 font-normal text-inherit underline decoration-[#C9A90E] decoration-2 underline-offset-4"
+          : "bg-transparent font-normal text-inherit underline decoration-[#E8C62F] decoration-2 underline-offset-4";
+        const chineseFont = /\p{Script=Han}/u.test(part) ? "font-zh" : "";
+        return <mark key={`${part}-${index}`} className={`${highlightClass} ${chineseFont}`}>{part}</mark>;
+      })}
     </>
   );
 }
@@ -500,13 +499,12 @@ function optionState(answered: boolean, picked: boolean, correct: boolean) {
   return "border-[#E0DDD5] bg-[#FAF9F6] text-[#8A92A0]";
 }
 
-function OptionButton({ option, value, disabled, answered = false, acceptedIds = [], compact = false, radio = false, onSelect }: {
+function OptionButton({ option, value, disabled, answered = false, acceptedIds = [], radio = false, onSelect }: {
   option: ChoiceOption;
   value: string | null;
   disabled?: boolean;
   answered?: boolean;
   acceptedIds?: string[];
-  compact?: boolean;
   radio?: boolean;
   onSelect: (id: string) => void;
 }) {
@@ -519,7 +517,7 @@ function OptionButton({ option, value, disabled, answered = false, acceptedIds =
       aria-checked={radio ? picked : undefined}
       disabled={disabled}
       onClick={() => onSelect(option.id)}
-      className={`${optionBase} ${compact ? "!py-2" : ""} ${optionState(answered, picked, accepted)} disabled:cursor-default`}
+      className={`${optionBase} ${optionState(answered, picked, accepted)} disabled:cursor-default`}
     >
       <span className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <span>{option.label}</span>
@@ -626,7 +624,6 @@ export function MissionDissentPanel({ onSubmit }: { onSubmit: (dissent: DissentR
 function ScaleView({ quest, onDone, devAutofill = false }: { quest: ScaleQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
   const [pick, setPick] = useState<string | null>(() => devAutofill ? quest.referenceAnswer : null);
   const [answered, setAnswered] = useState(false);
-  const compact = quest.id === "A1";
   const acceptedIds = quest.acceptedAnswers ?? [quest.referenceAnswer];
   const acceptedLabel = quest.options
     .filter((option) => acceptedIds.includes(option.id))
@@ -634,19 +631,19 @@ function ScaleView({ quest, onDone, devAutofill = false }: { quest: ScaleQuest; 
     .join(" ~ ");
   return (
     <QuestScaffold quest={quest} target={quest.target} targetHighlights={answered ? quest.targetHighlights : undefined}>
-      <section className={`${taskPanel} px-4 ${compact ? "py-3 sm:px-5 sm:py-3" : "py-3.5 sm:px-5 sm:py-4"}`}>
+      <section className={taskPanelBody}>
         <p className="mb-1 text-[11px] font-black text-[#6B7280]">지금 할 일</p>
         <h3 className="text-base font-bold">{quest.prompt}</h3>
-        <div className={`${compact ? "mt-3 gap-1.5" : "mt-4 gap-2"} grid`}>
+        <div className={optionGrid}>
           {quest.options.map((option) => (
-            <OptionButton key={option.id} option={option} value={pick} disabled={answered} answered={answered} acceptedIds={acceptedIds} compact={compact} onSelect={setPick} />
+            <OptionButton key={option.id} option={option} value={pick} disabled={answered} answered={answered} acceptedIds={acceptedIds} onSelect={setPick} />
           ))}
         </div>
         {answered && <div className="mt-4"><FeedbackBox verdict={`권장 답안 · 이 상황에서는 ${acceptedLabel}`} feedback={quest.feedback} highlights={quest.targetHighlights} /></div>}
       </section>
       <ActionBar hint={!answered && !pick ? "가장 알맞은 답을 하나 선택해 주세요." : undefined}>
         {!answered ? (
-          <Button className={`${compact ? "h-11" : "h-12"} ${actionButton}`} disabled={!pick} onClick={() => setAnswered(true)}>{pick ? "답안 확인하기" : "답을 선택해 주세요"}</Button>
+          <Button className={`h-11 ${actionButton}`} disabled={!pick} onClick={() => setAnswered(true)}>{pick ? "답안 확인하기" : "답을 선택해 주세요"}</Button>
         ) : (
           <Button className="h-12 w-full" onClick={() => onDone({ pick })}>{nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" /></Button>
         )}
@@ -677,10 +674,10 @@ function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
   const judgmentMatched = judgment === quest.referenceJudgment;
   return (
     <QuestScaffold quest={quest} target={quest.target} targetHighlights={answered ? quest.targetHighlights : undefined}>
-      <section className={`${taskPanel} px-4 py-3.5 sm:px-5 sm:py-4`}>
+      <section className={taskPanelBody}>
         <p className="mb-1 text-[11px] font-black text-[#6B7280]">지금 할 일</p>
         <h3 className="text-base font-bold">{quest.prompt}</h3>
-        <div className="mt-4 grid gap-2">
+        <div className={optionGrid}>
           {quest.judgmentOptions.map((option) => (
             <OptionButton key={option.id} option={option} value={judgment} disabled={locked} answered={locked} acceptedIds={[quest.referenceJudgment]} onSelect={setJudgment} />
           ))}
@@ -709,7 +706,7 @@ function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
                 <h4 className="font-bold">가장 알맞게 고친 표현은 무엇일까요?</h4>
                 <span className={`text-xs font-black ${correctionId ? "text-[#245E44]" : "text-[#687387]"}`} aria-live="polite">{correctionId ? "1개 선택됨 · 확인할 수 있어요" : "1개를 선택하세요"}</span>
               </div>
-              <div className="mt-3 grid gap-2">
+              <div className={optionGrid}>
                 {order.map((correction) => {
                   const picked = correctionId === correction.id;
                   const state = answered
@@ -772,12 +769,12 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
   const reasonAccepted = reasonId ? acceptedReasonIds.includes(reasonId) : false;
   return (
     <QuestScaffold quest={quest} target={quest.target} targetHighlights={answered ? quest.targetHighlights : undefined}>
-      <section className={`${taskPanel} px-4 py-3.5 sm:px-5 sm:py-4`}>
+      <section className={taskPanelBody}>
         <p className="mb-1 text-[11px] font-black text-[#6B7280]">지금 할 일</p>
         {!reasonPhase ? (
           <>
             <h3 className="text-base font-bold">{quest.prompt}</h3>
-            <div role="radiogroup" aria-label="표현의 적절성 판단" className="mt-4 grid gap-2">
+            <div role="radiogroup" aria-label="표현의 적절성 판단" className={optionGrid}>
               {judgmentOptions.map((option) => (
                 <OptionButton
                   key={option.id}
@@ -802,7 +799,7 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
         ) : (
           <>
             <h3 className="text-base font-bold">그렇다면, 이 표현이 상황에 맞지 않는 가장 큰 이유는 무엇일까요?</h3>
-            <div role="radiogroup" aria-label="가장 큰 이유 하나" className="mt-4 grid gap-2">
+            <div role="radiogroup" aria-label="가장 큰 이유 하나" className={optionGrid}>
               {reasonOrder.map((reason) => (
                 <OptionButton
                   key={reason.id}
@@ -859,7 +856,7 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
   const order = useMemo(() => shuffle(quest.candidates), [quest.candidates]);
   return (
     <QuestScaffold quest={quest}>
-      <section className={`${taskPanel} px-4 py-3.5 sm:px-5 sm:py-4`}>
+      <section className={taskPanelBody}>
         <p className="mb-1 text-[11px] font-black text-[#6B7280]">지금 할 일</p>
         <h3 className="text-base font-bold">{quest.prompt}</h3>
         {!answered && (
@@ -867,11 +864,11 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
             {best && worst ? "BEST·WORST 선택 완료 · 확인할 수 있어요" : best ? "BEST 선택 완료 · WORST를 골라주세요" : worst ? "WORST 선택 완료 · BEST를 골라주세요" : "BEST와 WORST를 하나씩 골라주세요"}
           </p>
         )}
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-3 flex items-center gap-3">
           <span className="inline-flex h-8 min-w-11 items-center justify-center rounded-lg bg-[#15202B] px-2.5 text-xs font-black text-white">ZH</span>
           <span className="text-sm font-bold text-[#5D6980]">번역 후보</span>
         </div>
-        <div className="mt-3 grid gap-3">
+        <div className="mt-2 grid gap-2">
           {order.map((candidate) => {
             const bestPicked = best === candidate.id;
             const worstPicked = worst === candidate.id;
@@ -888,12 +885,12 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
                 ? "border-[#B96B67] bg-[#FFF1EF]"
                 : "border-[#D8D4C8] bg-[#FAF9F6]";
             return (
-              <div key={candidate.id} className={`rounded-xl border p-4 ${answered ? answeredStyle : "border-[#D8D4C8] bg-white"}`}>
+              <div key={candidate.id} className={`rounded-xl border px-4 py-2 ${answered ? answeredStyle : "border-[#D8D4C8] bg-white"}`}>
                 {answered ? (
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_max-content] sm:items-start sm:gap-4">
                     <div className="min-w-0">
-                      <p className="font-zh text-[18px] leading-8">{candidate.text}</p>
-                      <p className="mt-2 break-keep text-sm leading-6 text-[#536075]">{candidate.note}</p>
+                      <p className="font-zh text-[17px] leading-7">{candidate.text}</p>
+                      <p className="mt-1 break-keep text-[13px] leading-5 text-[#536075]">{candidate.note}</p>
                     </div>
                     <div className="flex flex-nowrap gap-1.5 whitespace-nowrap sm:justify-end">
                       <span className={`rounded px-2 py-1 text-[11px] font-black ${isBestRole ? "bg-[#DCEFE4] text-[#245E44]" : isWorstRole ? "bg-[#F4D8D5] text-[#8B3531]" : "bg-[#EEECE6]"}`}>{role}</span>
@@ -904,7 +901,7 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
                 ) : (
                   // 좁은 화면에서는 후보 문장이 3~4자마다 끊기지 않도록 버튼을 아래로 내린다.
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                    <p className="min-w-0 font-zh text-[18px] leading-8">{candidate.text}</p>
+                    <p className="min-w-0 font-zh text-[17px] leading-7">{candidate.text}</p>
                     <div className="flex shrink-0 gap-2">
                     <button type="button" disabled={worstPicked} onClick={() => setBest(candidate.id)} className={`h-9 flex-1 rounded-lg border px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1 disabled:opacity-50 sm:flex-none ${bestPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8] hover:bg-[#F8F7F2]"}`}>BEST</button>
                     <button type="button" disabled={bestPicked} onClick={() => setWorst(candidate.id)} className={`h-9 flex-1 rounded-lg border px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1 disabled:opacity-50 sm:flex-none ${worstPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8] hover:bg-[#F8F7F2]"}`}>WORST</button>
@@ -1623,7 +1620,7 @@ function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = f
             ? { phase: "다듬기", activity: "내 번역 수정" }
             : { phase: "피드백", activity: progressLabel(quests[activeIndex]) };
   return (
-    <section className="sticky top-16 z-30 border-b border-[#DDD8CC] bg-[#FBFAF6]/96 px-3 py-2.5 backdrop-blur-md sm:px-4" aria-label="미션 학습 흐름">
+    <section className="sticky top-16 z-30 border-b border-[#DDD8CC] bg-[#FBFAF6] px-3 py-2.5 sm:px-4" aria-label="미션 학습 흐름">
       <div className="flex items-center gap-3 sm:gap-4">
         <ol className="grid min-w-0 flex-1 grid-cols-5" aria-label="장면 이해, 표현 판단, 직접 산출, 피드백, 다듬기">
           {MACRO_PROGRESS.map((label, index) => {
@@ -1686,8 +1683,8 @@ function MpjLessonBridge({ lessonPoints, onContinue }: {
           <li key={point.questId} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 border-t border-[#E2DED4] py-3 first:border-t-0 sm:grid-cols-[2.25rem_minmax(0,1fr)] sm:gap-4">
             <span className="pt-0.5 text-sm font-black tabular-nums text-[#B49A23]">{String(index + 1).padStart(2, "0")}</span>
             <div className="min-w-0">
-              <p className="text-[10px] font-black tracking-[0.08em] text-[#7A8493]">{point.label}</p>
-              <p className="mt-1 break-keep text-sm font-semibold leading-6 text-[#263444]">
+              <p className="text-[11px] font-black tracking-[0.06em] text-[#7A8493]">{point.label}</p>
+              <p className="mt-1 truncate text-[16px] font-semibold leading-7 text-[#263444] sm:text-[16.5px]">
                 <HighlightedText text={point.text} highlights={point.highlights} target />
               </p>
             </div>
