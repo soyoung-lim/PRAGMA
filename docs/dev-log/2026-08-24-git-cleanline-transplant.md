@@ -25,11 +25,20 @@
 - 최종 typecheck, 전체 79파일 480 pass·9 skip, production build 1,946 modules가 통과했다.
 - `git diff --check`는 내용 오류 없이 CRLF 변환 경고만 확인했다.
 - 검증 환경의 `npm ci`는 Node 24 engine warning과 기존 dependency audit 18건을 보고했다.
-  의존성 버전·lockfile은 변경하지 않았고 clean Node 22 GitHub Actions를 후속 최종 gate로 둔다.
+  의존성 버전·lockfile은 변경하지 않았다.
+- clean Node 22 GitHub Actions run `32722653098`에서 typecheck·전체 test·production build가
+  1분 6초에 모두 통과했다.
+
+## main·운영 마감
+
+- cleanline 13개 commit을 force 없이 `a496874..928e069`로 `main`에 fast-forward했다.
+- Railway 자동 배포 `5cffdd47-8411-4c34-a3f4-0e8fe55d18ec`가 같은 commit `928e069`에서
+  `SUCCESS`·`Online`이었고 production URL 연결을 확인했다.
+- 위 두 gate 뒤 구계보 원격 브랜치 `codex/mission-runtime-canonicalize-2026-08-24`
+  (`86cfa460`)만 삭제했다. 새 cleanline 원격 브랜치와 구 로컬 worktree는 복구 경로로 남겼다.
 
 ## 범위와 안전 경계
 
 - 구계보 브랜치를 main에 merge하거나 force-push하지 않았다.
 - 운영 DB·Edge 데이터는 이 Git 이식에서 변경하지 않았다.
-- cleanline을 main에 fast-forward하고 CI·Railway를 확인한 뒤에만 구 원격 작업 브랜치를 삭제한다.
-  삭제 후에도 로컬 worktree SHA로 복구할 수 있다.
+- main·CI·Railway 확인 뒤에만 구 원격 작업 브랜치를 삭제했으며 로컬 worktree SHA로 복구할 수 있다.

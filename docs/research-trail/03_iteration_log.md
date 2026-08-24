@@ -2333,5 +2333,7 @@
   운영 문구 기대와 CRLF 비호환 SQL 검사를 `0535daa`에서 보정했다.
 - 검증 결과: 이식 직후 기능 tree는 구 작업 브랜치와 같았고 차이는 de-link 문서뿐이었다. typecheck,
   전체 79파일 480 pass·9 skip, production build 1,946 modules, diff check가 통과했다.
-- 범위: main push·CI·Railway 재배포와 구 원격 브랜치 삭제는 후속 gate다. DB·Edge 쓰기는 없었다.
+- 운영 마감: `928e069`까지 main을 force 없이 fast-forward했고 Actions `32722653098`이 통과했다.
+  같은 SHA의 Railway `5cffdd47…`가 Online인 것을 확인한 뒤 구 원격 브랜치 `86cfa460`만 삭제했다.
+- 범위: 운영 DB·Edge 쓰기는 없었다. cleanline 원격과 구 로컬 worktree는 복구 경로로 보존했다.
 - 관련 Decision / Evidence: `DEC-20260824-05`, `EVD-20260824-04`

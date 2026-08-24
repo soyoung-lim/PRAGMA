@@ -93,3 +93,8 @@ main에 merge하지 않고, 구계보 `f89937f`와 재작성 main `29ec6eb`의 �
 이 방식은 신규 기능·migration·연구 기록을 보존하되 구 bot ancestry가 default branch에 다시
 도달하지 않게 한다. 상세 실행과 검증은 `DEC-20260824-05`, `ITER-20260824-07`,
 `EVD-20260824-04` 및 `docs/dev-log/2026-08-24-git-cleanline-transplant.md`에 기록했다.
+
+cleanline은 `928e069`까지 force 없이 main에 fast-forward했고 GitHub Actions `32722653098`과
+같은 SHA의 Railway deployment `5cffdd47-8411-4c34-a3f4-0e8fe55d18ec`가 모두 성공했다.
+그 뒤 구계보 원격 브랜치 `codex/mission-runtime-canonicalize-2026-08-24`만 삭제했다. 신규
+cleanline 원격 브랜치와 구 로컬 worktree `86cfa460`은 복구 경로로 남겼다.
