@@ -84,7 +84,7 @@ describe("CanonicalMissionRun live CTA route", () => {
       A1: { pick: "somewhat_appropriate" },
       A2: { pick: "too_direct" },
       A3: { judgment: "too_direct", correctionIds: ["A3-0", "A3-1"] },
-      A4: { judgment: "too_direct", reasonId: "r2" },
+      A4: { reasonId: "r2" },
       A5: { best: "A5-1", worst: "A5-4" },
     } as Parameters<typeof buildRuntimeMpjTraces>[1]);
 
@@ -92,7 +92,7 @@ describe("CanonicalMissionRun live CTA route", () => {
       { item_id: 1, item_type: "scale4", scale_code: "somewhat_appropriate" },
       { item_id: 2, item_type: "judge3", band_code: "too_direct" },
       { item_id: 3, item_type: "fix_choice", band_code: "too_direct", correction_indexes: [0, 1] },
-      { item_id: 4, item_type: "reason", band_code: "too_direct", reason_id: "r2", reason_kind: "primary" },
+      { item_id: 4, item_type: "reason", reason_id: "r2", reason_kind: "primary" },
       { item_id: 5, item_type: "multi_judge", best_candidate_index: 1, worst_candidate_index: 4 },
     ]);
   });

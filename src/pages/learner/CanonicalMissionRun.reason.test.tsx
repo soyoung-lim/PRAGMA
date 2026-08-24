@@ -27,18 +27,11 @@ describe("CanonicalMissionRun reason flow", () => {
     expect(quest.reasons.find((reason) => reason.id === quest.acceptedReasonId)?.kind).toBe("primary");
   });
 
-  it("locks the judgment before exposing reasons and submits a reason id", () => {
+  it("asks for the reason directly and submits only a reason id", () => {
     const quest = reasonQuest();
     const onDone = vi.fn();
     render(<ReasonView quest={quest} onDone={onDone} />);
 
-    expect(screen.queryByRole("radiogroup", { name: /가장 큰 이유 하나/ })).not.toBeInTheDocument();
-
-    const judgment = screen.getByRole("button", { name: "너무 직접적" });
-    fireEvent.click(judgment);
-    fireEvent.click(screen.getByRole("button", { name: "이 판단으로 정하기" }));
-
-    expect(judgment).toBeDisabled();
     expect(screen.getByRole("radiogroup", { name: /가장 큰 이유 하나/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "이유 확인하기" })).toBeDisabled();
 
@@ -47,11 +40,10 @@ describe("CanonicalMissionRun reason flow", () => {
     fireEvent.click(screen.getByRole("radio", { name: acceptedReason.text }));
     fireEvent.click(screen.getByRole("button", { name: "이유 확인하기" }));
 
-    expect(screen.getByText(/맞아요 · 참고 판정은 너무 직접적/)).toBeInTheDocument();
+    expect(screen.getByText("맞아요")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /다음: BEST·WORST 고르기/ }));
 
     expect(onDone).toHaveBeenCalledWith({
-      judgment: quest.referenceJudgment,
       reasonId: quest.acceptedReasonId,
     });
     expect(onDone.mock.calls[0][0]).not.toHaveProperty("reasonNote");

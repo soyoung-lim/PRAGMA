@@ -2371,3 +2371,16 @@
   `origin/codex/mpj5-mainline-2026-08-24`에 푸시했다. 의미상 복제 여부는 교수자 판단으로 남기며
   별도 유사도 모델을 구현하지 않는다.
 - 관련 Decision / Trace: `DEC-20260824-06`, `TRC-20260824-03`
+
+## ITER-20260824-10 · 실제 학습자 화면에서 발견한 MPJ1·2·4·5 계약 불일치 교정
+
+- 날짜: 2026-08-24
+- 시작 문제: localhost 실제 학습 미션 캡처에서 비응답 화행의 불필요한 중국어 선행 발화,
+  MPJ4의 중복 판단 단계, MPJ5의 복수 BEST/WORST와 과도한 후보 수가 확인됐다.
+- 변경: 응답 화행에만 선행 발화를 허용하고, MPJ4를 이유 3개 직접 선택으로, MPJ5를
+  `BEST 1·중간 2·WORST 1`의 4후보 비교로 정렬했다. 생성 prompt와 현행 schema/rules/DB trigger를
+  함께 갱신하고, 역사 5후보 미션은 런타임에서 4개로 투영해 즉시 같은 학습자 경험을 제공한다.
+- 검증 결과: runtime·learner·schema·prompt·migration 관련 6파일 62개와 typecheck가 통과했다.
+  localhost dev preview에서 MPJ1에 `상대의 말`이 없고, MPJ4는 라디오 3개만, MPJ5는 후보 4개와
+  공개 후 BEST/WORST 각 1개·가능한 표현 2개임을 직접 확인했다.
+- 관련 Decision: `DEC-20260824-07`

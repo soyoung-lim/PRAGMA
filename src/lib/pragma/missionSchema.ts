@@ -513,7 +513,7 @@ const MpjCommonV5 = {
   ...MpjCommonV2,
   id: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
   channel: ChannelSchema,
-  preceding_turn: z.string().min(1),
+  preceding_turn: z.string().min(1).nullable(),
 };
 
 const Judge3ItemV5 = z.object({
@@ -525,10 +525,25 @@ const Judge3ItemV5 = z.object({
   accepted_band_codes: z.array(z.string()).length(1),
 });
 
-const Scale4ItemV5 = Scale4ItemV4.extend({ id: z.literal(1) });
-const FixChoiceItemV5 = FixChoiceItemV4.extend({ id: z.literal(3) });
-const ReasonItemV5 = ReasonItemV4.extend({ id: z.literal(4) });
-const MultiJudgeItemV5 = MultiJudgeItemV4.extend({ id: z.literal(5) });
+const Scale4ItemV5 = Scale4ItemV4.extend({ id: z.literal(1), preceding_turn: z.string().min(1).nullable() });
+const FixChoiceItemV5 = FixChoiceItemV4.extend({ id: z.literal(3), preceding_turn: z.string().min(1).nullable() });
+const ReasonItemV5 = ReasonItemV4.extend({ id: z.literal(4), preceding_turn: z.string().min(1).nullable() });
+const MultiJudgeItemV5 = MultiJudgeItemV4.extend({
+  id: z.literal(5),
+  preceding_turn: z.string().min(1).nullable(),
+  candidates: z
+    .array(
+      z.object({
+        text: z.string().min(1),
+        accepted_band_codes: z.array(z.string()).length(1),
+        note_ko: z.string().min(1),
+        /** 신규 4후보 계약의 상대 비교 역할. historical 5후보 읽기 호환을 위해 optional. */
+        comparison_role: z.enum(["best", "middle", "worst"]).optional(),
+      }),
+    )
+    .min(4)
+    .max(5),
+});
 
 export const MpjItemV5Schema = z.discriminatedUnion("type", [
   Scale4ItemV5,

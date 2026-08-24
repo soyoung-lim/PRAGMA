@@ -1750,11 +1750,15 @@ function buildMissionSystemPrompt(
   const lowBand = f.band_schema[0]?.code ?? 'under_band'
   const highBand = f.band_schema[f.band_schema.length - 1]?.code ?? 'over_band'
   const itemCount = nativeMpj5 ? 5 : 4
-  const precedingRule = `\n- 🔴 **${itemCount}문항 전부**에 "preceding_turn"을 반드시 채우세요.
+  const precedingShape = isResponse
+    ? `"상대가 방금 한 자연스러운 ${tgtL} 선행 발화"`
+    : 'null'
+  const precedingRule = isResponse
+    ? `\n- 🔴 **${itemCount}문항 전부**에 "preceding_turn"을 반드시 채우세요.
   상대(${tgtL} 화자)가 방금 한 자연스러운 ${tgtL} 발화여야 하며, 각 문항의 관계·사건과 직접 이어져야 합니다.
-  학습자의 source와 같은 화행을 상대가 먼저 끝내 버리거나 정답 표현을 노출하지 마세요.${
-    isResponse ? ' 이 화행은 인접쌍의 둘째 짝이므로 두 턴의 명제·사람·소유·지시 대상을 특히 일치시키세요.' : ''
-  }`
+  학습자의 source와 같은 화행을 상대가 먼저 끝내 버리거나 정답 표현을 노출하지 마세요.
+  이 화행은 인접쌍의 둘째 짝이므로 두 턴의 명제·사람·소유·지시 대상을 특히 일치시키세요.`
+    : `\n- 🔴 이 화행은 인접쌍의 둘째 짝이 아닙니다. **${itemCount}문항 전부**의 "preceding_turn"은 null로 두고 화면 밖 상대 발화를 만들지 마세요.`
   const vocabularyHintsShape = isSpoken
     ? '[]'
     : `[{"source":"산출을 막을 수 있는 내용 어휘·짧은 구(${srcL})","target":"짧은 대응 표현(${tgtL})"},{"source":"서로 다른 내용 어휘·짧은 구(${srcL})","target":"짧은 대응 표현(${tgtL})"}]`
@@ -1799,7 +1803,7 @@ function buildMissionSystemPrompt(
       "relation_ko": "${relationShape}",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
-      "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
+      "preceding_turn": ${precedingShape},
       "target": "앵커 맥락에서는 초점 대역상 부적절하지만 의미·문법은 온전한 ${tgtL} 초안",
       "highlights": ["target의 실제 부분문자열"],
       "accepted_band_codes": ["부적절 band 정확히 1개"],
@@ -1852,7 +1856,7 @@ ${gate1}${spokenRule}
 MPJ ${itemCount}문항을 만듭니다. 학습 흐름은 ${learningFlow}입니다.
 Scale4는 종합 첫인상을 4점으로 받고 적절/부적절 방향만 채점합니다.${nativeJudgeIntro}
  FixChoice는 별도 사건에서 판단을 잠근 뒤 교정안을 공개합니다.
-Reason 문항은 이유 공개 전에 최초 대역 판단을 한 번 잠그되 확신도는 묻지 않습니다.
+Reason 문항은 표현이 부적절하다는 전제에서 가장 큰 이유 하나를 바로 고르게 하며, 별도의 대역 판단이나 확신도는 묻지 않습니다.
 각 MPJ 문항에서 후보를 가르는 직접 채점축은 위 target feature band 하나뿐입니다(한 문항 안의 다른 축 동시 변화 금지).
 그러나 미션 전체의 학습목표는 특정 feature 하나가 아니라 해당 화행의 통합 수행입니다.
 ${nativeMpj5 ? `따라서 diagnostic_dimensions에는 미션 전체에서 실제로 관찰되는 서로 다른 진단차원 2~6개와 근거 위치를 남깁니다.
@@ -1880,7 +1884,7 @@ ${diagnosticShape}
       "relation_ko": "${relationShape}",
       "pdr": {"p":"이 표현이 실제로 알맞아지는 코드","d":"…","r":"…"},
       "source": "판단 대상의 실제 ${srcL} 발화",
-      "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
+      "preceding_turn": ${precedingShape},
       "target": "소박한 규칙의 반례가 되는, 이 맥락에서는 적절한 ${tgtL} 초안",
       "highlights": ["target의 실제 부분문자열"],
       "accepted_scale_codes": ["very_appropriate","somewhat_appropriate"],
@@ -1895,7 +1899,7 @@ ${diagnosticShape}
       "relation_ko": "${relationShape}",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
-      "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
+      "preceding_turn": ${precedingShape},
       "target": "초점 대역상 부적절하지만 의미·문법은 온전한 ${tgtL} 초안",
       "highlights": ["target의 실제 부분문자열"],
       "accepted_band_codes": ["부적절 band 정확히 1개"],
@@ -1915,10 +1919,10 @@ ${diagnosticShape}
       "relation_ko": "${relationShape}",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
-      "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
+      "preceding_turn": ${precedingShape},
       "target": "초점 대역상 부적절하지만 의미·문법은 온전한 ${tgtL} 초안",
       "highlights": ["target의 실제 부분문자열"],
-      "problem_band_code": "부적절 band 정확히 1개 — UI에는 판정을 다시 묻지 않음",
+      "problem_band_code": "부적절 band 정확히 1개 — 생성·QA용 키이며 학습자에게 다시 판단시키지 않음",
       "reasons": [
         {"id":"r1","text_ko":"실제 문장 속 단서를 근거로 한 그럴듯하지만 주원인은 아닌 화용 해석","kind":"pragmatic_misconception"},
         {"id":"r2","text_ko":"주된 target-feature 원인","kind":"primary"},
@@ -1935,15 +1939,14 @@ ${diagnosticShape}
       "relation_ko": "${relationShape}",
       "pdr": {"p":"앵커와 같거나 한 축만 다른 코드","d":"…","r":"…"},
       "source": "비교 대상의 실제 ${srcL} 발화",
-      "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
+      "preceding_turn": ${precedingShape},
       "candidates": [
-        {"text":"과소안 1(${tgtL})","accepted_band_codes":["${lowBand}"],"note_ko":"…"},
-        {"text":"적절한 전략 1(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"note_ko":"…"},
-        {"text":"과잉안 1(${tgtL})","accepted_band_codes":["${highBand}"],"note_ko":"…"},
-        {"text":"적절한 전략 2(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"note_ko":"…"},
-        {"text":"과소안 2(${tgtL})","accepted_band_codes":["${lowBand}"],"note_ko":"…"}
+        {"text":"가장 적절한 전략(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"comparison_role":"best","note_ko":"…"},
+        {"text":"그럴듯한 중간 후보 1(${tgtL})","accepted_band_codes":["${lowBand}"],"comparison_role":"middle","note_ko":"…"},
+        {"text":"가장 부적절한 전략(${tgtL})","accepted_band_codes":["${highBand}"],"comparison_role":"worst","note_ko":"…"},
+        {"text":"그럴듯한 중간 후보 2(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"comparison_role":"middle","note_ko":"…"}
       ],
-      "explanation_ko": "다섯 초안의 차이를 P·D·R과 초점 대역으로 설명",
+      "explanation_ko": "네 초안의 차이를 P·D·R과 초점 대역으로 설명",
       "recommended_example": "이 상황의 적절안 1개(${tgtL})"
     }
   ],
@@ -1980,7 +1983,8 @@ ${nativeJudgeRules}- fix_choice는 **판단을 먼저 한 뒤 교정**하는 한
     금지하지는 마세요(예: 가능 여부를 묻는 의문형 안의 \`给我\`는 극단형이 아닙니다).
   · 오답이 "${f.within_band_code}"로도 방어되거나, 반대로 초급자도 바로 걸러낼 만큼 뻔하면
     네 수정안을 다시 쓰세요.
-- multi_judge는 정확히 5후보(과소 2·적정 2·과잉 1: ${lowBand} 2 + ${f.within_band_code} 2 + ${highBand} 1). 후보 순서는 매번 섞으세요.
+- multi_judge는 정확히 4후보이며 comparison_role은 best 1·middle 2·worst 1입니다. best는 적정 대역, worst는 비적정 대역이어야 하고 후보 순서는 매번 섞으세요.
+- middle 두 개는 즉시 소거되는 허수 오답이 아니라 BEST/WORST와 비교할 가치가 있는 그럴듯한 중간안이어야 합니다.
 - 🔴 **판정 대역은 표현 형식 하나가 아니라 이 target feature의 정의와 관계·부담(P·D·R)에 상대적입니다.**
   위에 주입된 band 설명과 소박한 규칙의 반례를 따르고, 더 간접적·길거나 강한 표현을 자동으로 더 좋은 답으로 판정하지 마세요.
   같은 표현 자원도 관계·부담과 사건의 실제 무게에 따라 과소·적정·과잉 위치가 달라질 수 있습니다.
@@ -2008,12 +2012,12 @@ ${pdrPerspectiveRule}
 - 차이는 오직 이 화용 초점에서만. 문법·의미·길이가 정답 단서가 되면 안 됨.
 - **pdr 값은 반드시 위 '공통 코드값'만 사용**(한국어 라벨 "동등" 등 절대 금지).
 ${vocabularyHintsRule}
-- [multi_judge 길이 통제 — 어기면 저장이 거부됩니다] 후보 5개는 화용 지식 없이 길이만 보고 정답을 고를 수 없어야 합니다.
+- [multi_judge 길이 통제 — 어기면 저장이 거부됩니다] 후보 4개는 화용 지식 없이 길이만 보고 정답을 고를 수 없어야 합니다.
   핵심 원리: **대역(적정/과소/과잉)과 길이는 별개 축입니다.** 부족한 후보는 짧아서가 아니라 핵심 요소가 빠져서 부족하고, 적정 후보는 길어서가 아니라 요소가 갖춰져서 적정합니다.
   ① 과소·불충분 후보 중 최소 1개는 **말수는 많되 알맹이가 없는** 문장으로 쓰세요(모호한 수식·군더더기는 있는데 핵심 요소가 빠진).
   ② 적정 후보 중 최소 1개는 **짧지만 알찬** 문장으로 쓰세요(핵심 요소를 갖춘 간결형).
   ③ 과잉 후보는 문장을 덧붙여 길게 만들지 말고, 같은 길이대에서 강도 표지(과공손 수식·이중 표현)로 만드세요.
-  ④ 작성 후 다섯 후보의 글자 수를 비교해 스스로 점검하세요: 최장/최단이 3배를 넘거나, 과잉안이 유일한 최장문이거나, 과소안이 유일한 최단문이면 — 그 후보를 다시 쓰세요.
+  ④ 작성 후 네 후보의 글자 수를 비교해 스스로 점검하세요: 최장/최단이 3배를 넘거나, 과잉안이 유일한 최장문이거나, 과소안이 유일한 최단문이면 — 그 후보를 다시 쓰세요.
 - 🔴 highlights는 target 안의 실제 부분문자열이어야 합니다.
 - source=${srcL}, 모든 target·교정안·후보=${tgtL}. 국가 단위 일반화 표현 금지.${precedingRule}
 - 완료 화면 원리는 시스템이 넣으므로 생성 금지.`
@@ -2056,6 +2060,8 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
   ]
   if (b.is_response_act) {
     parts.push(`- 이 화행은 인접쌍 둘째 짝 — 모든 MPJ 문항과 후보에 preceding_turn(${tgtL} 선행 발화)를 채우세요.`)
+  } else {
+    parts.push('- 이 화행은 인접쌍 둘째 짝이 아닙니다 — 모든 MPJ 문항의 preceding_turn은 null로 두세요.')
   }
   parts.push(
     '',

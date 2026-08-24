@@ -439,6 +439,8 @@ export function checkMission(
   const feature = getTargetFeature(m.unit.target_feature);
 
   const isNativeV5 = m.schema_version === "mission_v5" && m.mpj_items.length === 5;
+  const isCurrentNativeV5 = isNativeV5 &&
+    m.provenance?.prompt_version === CURRENT_MISSION_PROMPT_VERSIONS[0];
   // v4와 v5는 장면·채널·이유·후보 계약을 공유한다. v5 신규 생성분만
   // 독립 judge3를 더한 네이티브 MPJ5이며, 과거 v5 MPJ4는 읽기 호환한다.
   const isV4Contract = m.schema_version === "mission_v4" || m.schema_version === "mission_v5";
@@ -592,7 +594,34 @@ export function checkMission(
       case "multi_judge": {
         // R5 길이 통제 강화판
         checkMultiJudgeLength(v, it.id, it.candidates, withinCode);
-        if (isV4Contract) {
+        if (isCurrentNativeV5 || (isNativeV5 && it.candidates.length === 4)) {
+          const roleCounts = new Map<string, number>();
+          for (const candidate of it.candidates) {
+            const role = "comparison_role" in candidate ? candidate.comparison_role : undefined;
+            if (role) roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
+          }
+          if (
+            it.candidates.length !== 4 ||
+            roleCounts.get("best") !== 1 ||
+            roleCounts.get("middle") !== 2 ||
+            roleCounts.get("worst") !== 1
+          ) {
+            add(v, "R5", "fail", `문항 ${it.id}: 현행 MultiJudge는 4후보·BEST 1·중간 2·WORST 1이어야 함`);
+          }
+          const best = it.candidates.find((candidate) =>
+            "comparison_role" in candidate && candidate.comparison_role === "best");
+          const worst = it.candidates.find((candidate) =>
+            "comparison_role" in candidate && candidate.comparison_role === "worst");
+          if (!best?.accepted_band_codes.includes(withinCode)) {
+            add(v, "R5", "fail", `문항 ${it.id}: BEST 후보는 적정 대역이어야 함`);
+          }
+          if (!worst || worst.accepted_band_codes.includes(withinCode)) {
+            add(v, "R5", "fail", `문항 ${it.id}: WORST 후보는 비적정 대역이어야 함`);
+          }
+          if (pdrDifferenceCount(it.pdr, m.production_task.pdr) !== 1) {
+            add(v, "R5", "fail", `문항 ${it.id}: 현행 MultiJudge는 앵커 PDR에서 한 축만 바꾼 대비 상황이어야 함`);
+          }
+        } else if (isV4Contract) {
           const lowCode = feature?.band_schema[0]?.code;
           const highCode = feature?.band_schema[feature.band_schema.length - 1]?.code;
           const counts = new Map<string, number>();
@@ -664,16 +693,23 @@ export function checkMission(
   }
   checkSourceLang(v, dir, m.production_task.source_text, "production_task.source_text");
 
-  // ── R8 v4 전 문항 또는 거절·응답류 preceding_turn ──
-  if (isV4Contract || isResponseAct(ctx.speech_act)) {
+  // ── R8 legacy v4 또는 거절·반대 preceding_turn ──
+  if ((isV4Contract && !isNativeV5) || isResponseAct(ctx.speech_act)) {
     for (const it of m.mpj_items) {
       if (!it.preceding_turn) {
         add(
           v,
           "R8",
           "fail",
-          `문항 ${it.id}: ${isV4Contract ? "v4 관계 맥락" : ctx.speech_act}은 preceding_turn 필수`,
+          `문항 ${it.id}: ${isV4Contract && !isNativeV5 ? "legacy v4 관계 맥락" : ctx.speech_act}은 preceding_turn 필수`,
         );
+      }
+    }
+  }
+  if (isCurrentNativeV5 && !isResponseAct(ctx.speech_act)) {
+    for (const it of m.mpj_items) {
+      if (it.preceding_turn) {
+        add(v, "R8", "fail", `문항 ${it.id}: 비응답 화행은 preceding_turn을 생성하지 않음`);
       }
     }
   }

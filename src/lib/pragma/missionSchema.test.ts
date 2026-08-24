@@ -408,6 +408,24 @@ describe("mission_v5 native MPJ5 contract", () => {
     expect(checked.violations.filter((item) => item.level === "fail")).toEqual([]);
   });
 
+  it("enforces the current four-candidate roles and omits initiative preceding turns", () => {
+    const current = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
+    expect(checkMission(current, context).violations.filter(
+      (item) => item.level === "fail" && (item.id === "R5" || item.id === "R8"),
+    )).toEqual([]);
+
+    const invalid = structuredClone(current);
+    invalid.mpj_items[0].preceding_turn = "不需要出现的对方发言。";
+    const multi = invalid.mpj_items[4];
+    if (multi.type !== "multi_judge") throw new Error("Expected multi_judge");
+    multi.candidates[0].comparison_role = "middle";
+
+    const failures = checkMission(invalid, context).violations.filter((item) => item.level === "fail");
+    expect(failures.some((item) => item.id === "R8" && item.message.includes("비응답 화행"))).toBe(true);
+    expect(failures.some((item) => item.id === "R5" && item.message.includes("BEST 1"))).toBe(true);
+  });
+
   it("rejects a native judge outside the anchor or assigned to within_band", () => {
     const current = nativeFixture();
     const judge = current.mpj_items[1];

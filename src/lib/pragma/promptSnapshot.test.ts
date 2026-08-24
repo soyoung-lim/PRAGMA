@@ -79,6 +79,13 @@ describe("prompt snapshot integrity", () => {
     );
   });
 
+  it("locks the streamlined learner-facing MPJ contract", () => {
+    const system = prompt("mission.system").text;
+    expect(system).toContain("별도의 대역 판단이나 확신도는 묻지 않습니다");
+    expect(system).toContain("정확히 4후보이며 comparison_role은 best 1·middle 2·worst 1");
+    expect(system).toContain('"preceding_turn"은 null');
+  });
+
   it("matches the current Edge source", () => {
     const source = readFileSync(
       resolve(process.cwd(), PROMPT_SNAPSHOT.edge_source),
@@ -216,7 +223,7 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).toContain("독립 Judge3는 DCT 앵커 맥락");
       expect(entry.text).toContain("judge3는 DCT와 같은 앵커 P/D/R의 별도 사건");
       expect(entry.text).toContain("reason에는 accepted_band_codes·confidence를 만들지 마세요");
-      expect(entry.text).toContain("과소 2·적정 2·과잉 1");
+      expect(entry.text).toContain("4후보이며 comparison_role은 best 1·middle 2·worst 1");
       expect(entry.text).toContain("primary의 위치와 id를 고정하지 말고");
       expect(entry.text).toContain("잠시 고민할 만큼 그럴듯해야 합니다");
       expect(entry.text).toContain("황당한 문법 금지 주장");

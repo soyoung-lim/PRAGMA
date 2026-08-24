@@ -113,8 +113,15 @@ type RuntimeReason = RuntimeMpjCommon & {
 
 type RuntimeMultiJudge = RuntimeMpjCommon & {
   type: "multi_judge";
-  candidates: Array<{ text: string; accepted_band_codes: string[]; note_ko: string }>;
+  candidates: Array<{
+    text: string;
+    accepted_band_codes: string[];
+    note_ko: string;
+    comparison_role?: "best" | "middle" | "worst";
+  }>;
 };
+
+const RESPONSE_ACTS = new Set(["refusal", "opposition"]);
 
 export class UnsupportedCanonicalMissionRuntimeError extends Error {
   constructor(message: string) {
@@ -189,7 +196,7 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       relation_ko: item.relation_ko,
       channel: item.channel,
       pdr: item.pdr,
-      preceding_turn: item.preceding_turn,
+      preceding_turn: RESPONSE_ACTS.has(runnable.speech_act) ? item.preceding_turn : null,
     }),
     source: item.source,
   });
@@ -197,25 +204,47 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
   const toBestWorst = (
     multiJudge: RuntimeMultiJudge,
   ): BestWorstQuest => {
-    const acceptedBestIds = multiJudge.candidates
-      .map((candidate, index) => candidate.accepted_band_codes.includes(feature.within_band_code) ? `A5-${index}` : null)
-      .filter((id): id is string => Boolean(id));
-    const acceptedWorstIds = multiJudge.candidates
-      .map((candidate, index) => candidate.accepted_band_codes.includes(feature.within_band_code) ? null : `A5-${index}`)
-      .filter((id): id is string => Boolean(id));
+    const explicitBestIndex = multiJudge.candidates.findIndex((candidate) => candidate.comparison_role === "best");
+    const explicitWorstIndex = multiJudge.candidates.findIndex((candidate) => candidate.comparison_role === "worst");
     const recommendedBestIndex = multiJudge.candidates.findIndex(
       (candidate) => candidate.text === multiJudge.recommended_example,
     );
-    const bestId = recommendedBestIndex >= 0 ? `A5-${recommendedBestIndex}` : acceptedBestIds[0];
-    const worstId = acceptedWorstIds[0];
-    if (!bestId || !worstId) {
+    const inferredBestIndex = multiJudge.candidates.findIndex(
+      (candidate) => candidate.accepted_band_codes.includes(feature.within_band_code),
+    );
+    const inferredWorstIndex = multiJudge.candidates.findIndex(
+      (candidate) => !candidate.accepted_band_codes.includes(feature.within_band_code),
+    );
+    const bestIndex = explicitBestIndex >= 0
+      ? explicitBestIndex
+      : recommendedBestIndex >= 0
+        ? recommendedBestIndex
+        : inferredBestIndex;
+    const worstIndex = explicitWorstIndex >= 0 ? explicitWorstIndex : inferredWorstIndex;
+    if (bestIndex < 0 || worstIndex < 0 || bestIndex === worstIndex) {
       throw new UnsupportedCanonicalMissionRuntimeError("여러 초안 비교에 BEST/WORST 참고 대역이 없습니다.");
     }
+    const displayedIndexes = multiJudge.candidates
+      .map((_, index) => index)
+      .filter((index) => index === bestIndex || index === worstIndex)
+      .concat(
+        multiJudge.candidates
+          .map((_, index) => index)
+          .filter((index) => index !== bestIndex && index !== worstIndex)
+          .slice(0, 2),
+      )
+      .sort((a, b) => a - b);
+    if (displayedIndexes.length !== 4) {
+      throw new UnsupportedCanonicalMissionRuntimeError("여러 초안 비교에는 표시할 후보가 정확히 4개 필요합니다.");
+    }
+    const bestId = `A5-${bestIndex}`;
+    const worstId = `A5-${worstIndex}`;
     return {
       ...common(4, multiJudge),
       kind: "best_worst",
       prompt: "가장 적절한 번역과 가장 부적절한 번역을 하나씩 고르세요.",
-      candidates: multiJudge.candidates.map((candidate, index) => {
+      candidates: displayedIndexes.map((index) => {
+        const candidate = multiJudge.candidates[index];
         const id = `A5-${index}`;
         return {
           id,
@@ -226,8 +255,6 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       }) satisfies BestWorstQuest["candidates"],
       bestId,
       worstId,
-      acceptedBestIds,
-      acceptedWorstIds,
       feedback: multiJudge.explanation_ko,
     };
   };
@@ -301,10 +328,8 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       {
         ...common(3, reason),
         kind: "reason",
-        prompt: "이 표현이 상황에 맞지 않는 이유가 무엇인지 고르세요.",
+        prompt: "이 표현은 이 상황에 맞지 않습니다. 가장 큰 이유를 고르세요.",
         target: reason.target,
-        judgmentOptions: bandOptions,
-        referenceJudgment: assertBand(reason.accepted_band_codes[0], bandOptions),
         reasons: reason.reasons.map((item, index) => ({
           id: item.id,
           text: item.text_ko,
@@ -387,10 +412,8 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       {
         ...common(3, reason),
         kind: "reason",
-        prompt: "이 표현이 상황에 맞지 않는 가장 큰 이유를 고르세요.",
+        prompt: "이 표현은 이 상황에 맞지 않습니다. 가장 큰 이유를 고르세요.",
         target: reason.target,
-        judgmentOptions: bandOptions,
-        referenceJudgment: assertBand(reason.problem_band_code, bandOptions),
         reasons: reason.reasons.map((item) => ({
           id: item.id,
           text: item.text_ko,
@@ -470,10 +493,8 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       {
         ...common(3, reason),
         kind: "reason",
-        prompt: "이 표현이 상황에 맞지 않는 가장 큰 이유를 고르세요.",
+        prompt: "이 표현은 이 상황에 맞지 않습니다. 가장 큰 이유를 고르세요.",
         target: reason.target,
-        judgmentOptions: bandOptions,
-        referenceJudgment: assertBand(reason.problem_band_code, bandOptions),
         reasons: reason.reasons.map((item) => ({
           id: item.id,
           text: item.text_ko,

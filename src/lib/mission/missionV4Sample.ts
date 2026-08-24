@@ -285,7 +285,7 @@ export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
     },
   ],
   mpj_items: [
-    { ...V5_SCALE, id: 1 },
+    { ...V5_SCALE, id: 1, preceding_turn: null },
     {
       id: 2,
       type: "judge3",
@@ -295,7 +295,7 @@ export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
         "나는 거래처 자료 담당자에게 이미 마감한 보고서의 원본 파일을 다시 보내 달라고 요청하려 한다. 몇 차례 업무 연락만 한 사이이고, 상대는 보관 자료를 다시 찾아야 한다.",
       relation_ko: "거래처 자료 담당자 · 몇 차례 연락한 사이",
       pdr: ANCHOR_PDR,
-      preceding_turn: "报告已经归档了，原文件需要重新找一下。",
+      preceding_turn: null,
       source: "보고서 원본 파일을 다시 보내 주세요.",
       target: "把报告的原文件再发给我。",
       highlights: ["发给我"],
@@ -304,13 +304,23 @@ export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
         "상대가 보관 자료를 다시 찾아야 하는 상황에서는 가능 여부를 묻지 않은 직접형이 부담에 비해 강하게 들릴 수 있습니다.",
       recommended_example: "请问方便把报告的原文件再发给我吗？",
     },
-    { ...V5_FIX, id: 3 },
-    { ...V5_REASON, id: 4 },
-    { ...V5_MULTI, id: 5 },
+    { ...V5_FIX, id: 3, preceding_turn: null },
+    { ...V5_REASON, id: 4, preceding_turn: null },
+    {
+      ...V5_MULTI,
+      id: 5,
+      preceding_turn: null,
+      candidates: [
+        { ...V5_MULTI.candidates[0], comparison_role: "worst" },
+        { ...V5_MULTI.candidates[1], comparison_role: "best" },
+        { ...V5_MULTI.candidates[2], comparison_role: "middle" },
+        { ...V5_MULTI.candidates[3], comparison_role: "middle" },
+      ],
+    },
   ],
   provenance: {
     ...SAMPLE_MISSION_V5.provenance!,
-    prompt_version: "mission_v5_mpj5_minidiscourse_v2_multidimensional",
+    prompt_version: "mission_v5_mpj5_minidiscourse_v3_streamlined",
     content_release_id: "pragma_content_candidate_20260824_02",
   },
 };

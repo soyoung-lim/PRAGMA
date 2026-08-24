@@ -70,8 +70,6 @@ export interface ReasonQuest extends QuestBase {
   kind: "reason";
   prompt: string;
   target: string;
-  judgmentOptions: ChoiceOption[];
-  referenceJudgment: string;
   reasons: Array<{
     id: string;
     text: string;
@@ -94,9 +92,6 @@ export interface BestWorstQuest extends QuestBase {
   }>;
   bestId: string;
   worstId: string;
-  /** legacy MPJ5의 대역 판정을 BEST/WORST 선택으로 투영할 때 허용되는 후보 집합. */
-  acceptedBestIds?: string[];
-  acceptedWorstIds?: string[];
   feedback: string;
 }
 
@@ -315,9 +310,7 @@ export const CANONICAL_MISSION_PREVIEW: CanonicalMissionViewModel = {
       source: "안녕하세요. 지난주 회의록을 좀 보내주실 수 있을까요?",
       target: "把上周的会议记录发我一下。",
       targetHighlights: ["把上周的会议记录发我一下"],
-      prompt: "이 번역안은 이 상황에 맞나요?",
-      judgmentOptions: DIRECTNESS_3,
-      referenceJudgment: "too_direct",
+      prompt: "이 표현은 이 상황에 맞지 않습니다. 가장 큰 이유를 고르세요.",
       reasons: [
         {
           id: "a4-right",

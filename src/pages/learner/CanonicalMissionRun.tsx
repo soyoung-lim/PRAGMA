@@ -770,12 +770,9 @@ function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
 
 export function ReasonView({ quest, onDone, devAutofill = false }: { quest: ReasonQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
   const acceptedReasonIds = quest.acceptedReasonIds ?? [quest.acceptedReasonId];
-  const [judgment, setJudgment] = useState<string | null>(() => devAutofill ? quest.referenceJudgment : null);
-  const [locked, setLocked] = useState(devAutofill);
   const [reasonId, setReasonId] = useState<string | null>(() => devAutofill ? quest.acceptedReasonId : null);
   const [answered, setAnswered] = useState(false);
   const reasonOrder = useMemo(() => shuffle(quest.reasons), [quest.reasons]);
-  const referenceLabel = quest.judgmentOptions.find((option) => option.id === quest.referenceJudgment)?.label;
   const selectedReason = quest.reasons.find((reason) => reason.id === reasonId);
   const acceptedReason = quest.reasons.find((reason) => acceptedReasonIds.includes(reason.id));
   const reasonAccepted = reasonId ? acceptedReasonIds.includes(reasonId) : false;
@@ -784,35 +781,25 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
       <section className={`${taskPanel} px-4 py-3.5 sm:px-5 sm:py-4`}>
         <p className="mb-1 text-[11px] font-black text-[#6B7280]">지금 할 일</p>
         <h3 className="text-base font-bold">{quest.prompt}</h3>
-        <div className="mt-4 grid gap-2">
-          {quest.judgmentOptions.map((option) => (
-            <OptionButton key={option.id} option={option} value={judgment} disabled={locked} answered={answered} acceptedIds={[quest.referenceJudgment]} onSelect={setJudgment} />
+        <div role="radiogroup" aria-label="가장 큰 이유 하나" className="mt-4 grid gap-2">
+          {reasonOrder.map((reason) => (
+            <OptionButton
+              key={reason.id}
+              option={{ id: reason.id, label: reason.text }}
+              value={reasonId}
+              disabled={answered}
+              answered={answered}
+              acceptedIds={acceptedReasonIds}
+              radio
+              onSelect={setReasonId}
+            />
           ))}
         </div>
-        {locked && (
-          <div className="mt-6 border-t border-[#E4E0D5] pt-5">
-            <h4 id={`${quest.id}-reason-label`} className="break-keep font-bold">왜 그렇게 판단했나요? 가장 큰 이유 하나를 골라보세요.</h4>
-            <div role="radiogroup" aria-labelledby={`${quest.id}-reason-label`} className="mt-3 grid gap-2">
-              {reasonOrder.map((reason) => (
-                <OptionButton
-                  key={reason.id}
-                  option={{ id: reason.id, label: reason.text }}
-                  value={reasonId}
-                  disabled={answered}
-                  answered={answered}
-                  acceptedIds={acceptedReasonIds}
-                  radio
-                  onSelect={setReasonId}
-                />
-              ))}
-            </div>
-            {!answered && <p className="mt-2 break-keep text-xs leading-5 text-[#687387]">판단과 근거를 나누어 확인합니다. 이유를 고르기 전에는 참고 판정을 보여 주지 않습니다.</p>}
-          </div>
-        )}
+        {!answered && <p className="mt-2 break-keep text-xs leading-5 text-[#687387]">세 이유 중 이 상황의 화용적 부적절성을 가장 잘 설명하는 하나를 고르세요.</p>}
         {answered && acceptedReason && (
           <div className="mt-4">
             <FeedbackBox
-              verdict={`${reasonAccepted ? "맞아요" : "핵심 이유를 다시 확인해요"} · 참고 판정은 ${referenceLabel}`}
+              verdict={reasonAccepted ? "맞아요" : "핵심 이유를 다시 확인해요"}
               feedback={`${acceptedReason.text} ${quest.feedback}`}
               action={!reasonAccepted && selectedReason ? `내가 고른 이유 · ${selectedReason.text}` : undefined}
               highlights={quest.targetHighlights}
@@ -820,16 +807,14 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
           </div>
         )}
       </section>
-      <ActionBar hint={!locked && !judgment ? "가장 가까운 판단을 하나 선택해 주세요." : locked && !answered && !reasonId ? "가장 큰 이유 하나를 선택해 주세요." : undefined}>
-        {!locked ? (
-          <Button className={`h-12 ${actionButton}`} disabled={!judgment} onClick={() => setLocked(true)}>{judgment ? "이 판단으로 정하기" : "답을 선택해 주세요"}</Button>
-        ) : !answered ? (
+      <ActionBar hint={!answered && !reasonId ? "가장 큰 이유 하나를 선택해 주세요." : undefined}>
+        {!answered ? (
           <Button className={`h-12 ${actionButton}`} disabled={!reasonId} onClick={() => setAnswered(true)}>이유 확인하기</Button>
         ) : (
           <Button
             className="h-12 w-full"
             onClick={() => {
-              if (judgment && reasonId) onDone({ judgment, reasonId });
+              if (reasonId) onDone({ reasonId });
             }}
           >
             {nextActionLabel(quest)} <ChevronRight className="ml-1 h-4 w-4" />
@@ -841,8 +826,6 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
 }
 
 function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWorstQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
-  const acceptedBestIds = quest.acceptedBestIds ?? [quest.bestId];
-  const acceptedWorstIds = quest.acceptedWorstIds ?? [quest.worstId];
   const [best, setBest] = useState<string | null>(() => devAutofill ? quest.bestId : null);
   const [worst, setWorst] = useState<string | null>(() => devAutofill ? quest.worstId : null);
   const [answered, setAnswered] = useState(false);
@@ -865,13 +848,13 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
           {order.map((candidate) => {
             const bestPicked = best === candidate.id;
             const worstPicked = worst === candidate.id;
-            const role = acceptedBestIds.includes(candidate.id)
-              ? (quest.acceptedBestIds ? "BEST 후보" : "BEST")
-              : acceptedWorstIds.includes(candidate.id)
-                ? (quest.acceptedWorstIds ? "WORST 후보" : "WORST")
+            const role = candidate.id === quest.bestId
+              ? "BEST"
+              : candidate.id === quest.worstId
+                ? "WORST"
                 : "가능한 표현";
-            const isBestRole = acceptedBestIds.includes(candidate.id);
-            const isWorstRole = acceptedWorstIds.includes(candidate.id);
+            const isBestRole = candidate.id === quest.bestId;
+            const isWorstRole = candidate.id === quest.worstId;
             const answeredStyle = isBestRole
               ? "border-[#4D8568] bg-[#EEF7F2]"
               : isWorstRole
@@ -1260,7 +1243,7 @@ function buildDevPreviewResponses(preset: DevPreviewPreset, finalized: boolean) 
       judgment: quest.referenceJudgment,
       correctionIds: quest.corrections.filter((option) => option.valid).map((option) => option.id),
     };
-    if (quest.kind === "reason") result[quest.id] = { judgment: quest.referenceJudgment, reasonId: quest.acceptedReasonId };
+    if (quest.kind === "reason") result[quest.id] = { reasonId: quest.acceptedReasonId };
     if (quest.kind === "best_worst") result[quest.id] = { best: quest.bestId, worst: quest.worstId };
     if (quest.kind === "dct") result[quest.id] = dctResponses[quest.id];
     if (quest.kind === "dct_feedback") result[quest.id] = dctResponses[quest.dctId];
@@ -1702,9 +1685,8 @@ function responseLabel(quest: MissionQuest, response: QuestResponse) {
     return `${judgment ?? "판정"} · ${corrections.join(" / ")}`;
   }
   if (quest.kind === "reason") {
-    const judgment = quest.judgmentOptions.find((item) => item.id === response.judgment)?.label;
     const reason = quest.reasons.find((item) => item.id === response.reasonId)?.text;
-    return `${judgment ?? "판정"} · ${reason ?? "이유 기록"}`;
+    return reason ?? "이유 기록";
   }
   if (quest.kind === "best_worst") {
     const best = quest.candidates.find((item) => item.id === response.best)?.text;
@@ -2022,7 +2004,6 @@ export function buildRuntimeMpjTraces(
         correction_indexes: corrections("A3"),
       }),
       trace(3, {
-        band_code: response("A4")?.judgment as string | undefined,
         reason_ids: [response("A4")?.reasonId as string].filter(Boolean),
       }),
       trace(4, bestWorst("A5")),
@@ -2038,7 +2019,6 @@ export function buildRuntimeMpjTraces(
         correction_indexes: corrections("A3"),
       }),
       trace(3, {
-        band_code: response("A4")?.judgment as string | undefined,
         ...reasonTrace(3, "A4"),
       }),
       trace(4, bestWorst("A5")),
@@ -2052,7 +2032,6 @@ export function buildRuntimeMpjTraces(
       correction_indexes: corrections("A3"),
     }),
     trace(2, {
-      band_code: response("A4")?.judgment as string | undefined,
       ...reasonTrace(2, "A4"),
     }),
     trace(3, bestWorst("A5")),

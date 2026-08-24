@@ -58,5 +58,13 @@ describe("canonical mission runtime bridge", () => {
     );
     expect(view.quests[2]).toMatchObject({ kind: "fix_choice" });
     expect(view.quests[2]).not.toHaveProperty("judgmentQuestId");
+    expect(view.quests.slice(0, 5).every((quest) => quest.context.precedingTurn === undefined)).toBe(true);
+    expect(view.quests[3]).not.toHaveProperty("judgmentOptions");
+    expect(view.quests[3]).not.toHaveProperty("referenceJudgment");
+    expect(view.quests[4]).toMatchObject({ kind: "best_worst" });
+    if (view.quests[4].kind !== "best_worst") throw new Error("Expected best/worst quest");
+    expect(view.quests[4].candidates).toHaveLength(4);
+    expect(view.quests[4].candidates.filter((candidate) => candidate.role === "best")).toHaveLength(1);
+    expect(view.quests[4].candidates.filter((candidate) => candidate.role === "worst")).toHaveLength(1);
   });
 });
