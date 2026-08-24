@@ -5,7 +5,7 @@ import {
   MPJ_SUMMARY_DIVERGENCE_COPY,
 } from "@/lib/mission/mpjSummary";
 import type { MpjResponseTrace } from "@/lib/mission/missionAttemptRow";
-import { SAMPLE_MISSION_V4 } from "@/lib/mission/missionV4Sample";
+import { SAMPLE_MISSION_V4, SAMPLE_MISSION_V5_NATIVE } from "@/lib/mission/missionV4Sample";
 import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import {
   FEATURE_CODES_BY_ACT,
@@ -113,6 +113,21 @@ function correctResponses(mission: MissionRuntime, worstBand: "low" | "high"): M
 }
 
 describe("MPJ handoff summary generalization", () => {
+  it("keeps the native MPJ5 context judgment separate from correction", () => {
+    const rows = buildMpjSummaryRows(
+      SAMPLE_MISSION_V5_NATIVE,
+      correctResponses(SAMPLE_MISSION_V5_NATIVE, "low"),
+    );
+
+    expect(rows.map((row) => row.label)).toEqual([
+      "첫인상 판단",
+      "맥락 대비 판단",
+      "판단하고 고쳐보기",
+      "이유 찾기",
+      "여러 초안 비교",
+    ]);
+  });
+
   it("uses feature-specific learning concepts for every approved feature", () => {
     for (const featureCode of APPROVED_FEATURE_CODES) {
       const mission = missionFor(featureCode);

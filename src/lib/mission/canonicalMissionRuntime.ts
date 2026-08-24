@@ -329,6 +329,89 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
         ? item.highlights as string[]
         : undefined,
     }));
+  } else if (mission.schema_version === "mission_v5" && mission.mpj_items.length === 5) {
+    const [rawScale, rawContrast, rawFixChoice, rawReason, rawMultiJudge] = mission.mpj_items;
+    if (
+      rawScale.type !== "scale4" ||
+      rawContrast.type !== "judge3" ||
+      rawFixChoice.type !== "fix_choice" ||
+      rawReason.type !== "reason" ||
+      rawMultiJudge.type !== "multi_judge"
+    ) {
+      throw new UnsupportedCanonicalMissionRuntimeError("네이티브 MPJ5 문항 순서가 정본 연결 계약과 맞지 않습니다.");
+    }
+    const scale = rawScale as unknown as RuntimeScale;
+    const contrast = rawContrast as unknown as RuntimeJudge;
+    const fixChoice = rawFixChoice as unknown as RuntimeFixChoice;
+    const reason = rawReason as unknown as RuntimeReason;
+    const multiJudge = rawMultiJudge as unknown as RuntimeMultiJudge;
+    quests = [
+      {
+        ...common(0, scale),
+        kind: "scale",
+        prompt: "이 번역안은 이 상황에 얼마나 적절한가요?",
+        target: scale.target,
+        options: APPROPRIATENESS_OPTIONS,
+        referenceAnswer: scale.reference_scale_code,
+        acceptedAnswers: scale.accepted_scale_codes,
+        targetHighlights: scale.highlights,
+        feedback: scale.explanation_ko,
+      },
+      {
+        ...common(1, contrast),
+        kind: "scale",
+        prompt: "앞 장면과 비교했을 때 이 표현은 상황에 맞나요?",
+        target: contrast.target,
+        options: bandOptions,
+        referenceAnswer: assertBand(contrast.accepted_band_codes[0], bandOptions),
+        acceptedAnswers: contrast.accepted_band_codes.map((code) => assertBand(code, bandOptions)),
+        targetHighlights: contrast.highlights,
+        feedback: contrast.explanation_ko,
+      },
+      {
+        ...common(2, fixChoice),
+        kind: "fix_choice",
+        prompt: "이 상황에서 이 표현은 어떻게 들리나요?",
+        target: fixChoice.target,
+        judgmentOptions: bandOptions,
+        referenceJudgment: assertBand(fixChoice.accepted_band_codes[0], bandOptions),
+        corrections: fixChoice.corrections.map((candidate, index) => ({
+          id: `A3-${index}`,
+          text: candidate.text,
+          valid: candidate.is_valid,
+          note: candidate.note_ko,
+        })),
+        targetHighlights: fixChoice.highlights,
+        feedback: fixChoice.explanation_ko,
+      },
+      {
+        ...common(3, reason),
+        kind: "reason",
+        prompt: "이 표현이 상황에 맞지 않는 가장 큰 이유를 고르세요.",
+        target: reason.target,
+        judgmentOptions: bandOptions,
+        referenceJudgment: assertBand(reason.problem_band_code, bandOptions),
+        reasons: reason.reasons.map((item) => ({
+          id: item.id,
+          text: item.text_ko,
+          kind: item.kind,
+        })),
+        acceptedReasonId: reason.accepted_reason_id,
+        targetHighlights: reason.highlights,
+        feedback: reason.explanation_ko,
+      },
+      toBestWorst(multiJudge),
+    ];
+    contrastBefore = scale.situation_ko;
+    contrastAfter = contrast.situation_ko;
+    lessonPoints = mission.mpj_items.map((item, index) => ({
+      questId: `A${index + 1}`,
+      label: LESSON_LABELS[index],
+      text: item.explanation_ko,
+      highlights: "highlights" in item && Array.isArray(item.highlights)
+        ? item.highlights
+        : undefined,
+    }));
   } else if (mission.schema_version === "mission_v4" || mission.schema_version === "mission_v5") {
     const [rawScale, rawFixChoice, rawReason, rawMultiJudge] = mission.mpj_items;
     if (
@@ -418,7 +501,7 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
     ];
   } else {
     throw new UnsupportedCanonicalMissionRuntimeError(
-      `V4 실데이터 연결이 아직 지원하지 않는 스키마입니다(${mission.schema_version}).`,
+      `정본 실데이터 연결이 아직 지원하지 않는 스키마입니다(${mission.schema_version}).`,
     );
   }
 

@@ -1717,7 +1717,13 @@ async function attributeMissionItemLineage(
   return { ok: true, itemLineage }
 }
 
-function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken = false, direction: Direction = 'ko_zh'): string {
+function buildMissionSystemPrompt(
+  f: FeatureForGen,
+  isResponse = false,
+  isSpoken = false,
+  direction: Direction = 'ko_zh',
+  nativeMpj5 = true,
+): string {
   const { src, tgt } = DIR_LANGS[direction]
   const srcL = LANG_KO[src]
   const tgtL = LANG_KO[tgt]
@@ -1725,7 +1731,8 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken
   const channels = isSpoken ? '"facetoface" | "phone"' : '"email" | "messenger"'
   const lowBand = f.band_schema[0]?.code ?? 'under_band'
   const highBand = f.band_schema[f.band_schema.length - 1]?.code ?? 'over_band'
-  const precedingRule = `\n- 🔴 **4문항 전부**에 "preceding_turn"을 반드시 채우세요.
+  const itemCount = nativeMpj5 ? 5 : 4
+  const precedingRule = `\n- 🔴 **${itemCount}문항 전부**에 "preceding_turn"을 반드시 채우세요.
   상대(${tgtL} 화자)가 방금 한 자연스러운 ${tgtL} 발화여야 하며, 각 문항의 관계·사건과 직접 이어져야 합니다.
   학습자의 source와 같은 화행을 상대가 먼저 끝내 버리거나 정답 표현을 노출하지 마세요.${
     isResponse ? ' 이 화행은 인접쌍의 둘째 짝이므로 두 턴의 명제·사람·소유·지시 대상을 특히 일치시키세요.' : ''
@@ -1765,6 +1772,40 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken
   const pdrPerspectiveRule = isSpoken
     ? '- pdr.p는 **원발화자 A 기준**입니다: A가 청자 B보다 지위가 낮으면 "speaker_lower". relation_ko의 A↔B 관계와 pdr 값이 반드시 일치해야 합니다.'
     : '- pdr.p는 **화자(나) 기준**입니다: 화자가 상대(상사·교수 등)보다 지위가 낮으면 "speaker_lower". relation_ko의 관계 서술과 pdr 값이 반드시 일치해야 합니다.'
+  const judge3Shape = nativeMpj5
+    ? `,
+    {
+      "type": "judge3",
+      "channel": "허용 channel 코드",
+      "situation_ko": "첫 장면과 다른 사건. ${situationShape}",
+      "relation_ko": "${relationShape}",
+      "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
+      "source": "판단 대상의 실제 ${srcL} 발화",
+      "preceding_turn": "상대가 방금 한 자연스러운 ${tgtL} 선행 발화",
+      "target": "앵커 맥락에서는 초점 대역상 부적절하지만 의미·문법은 온전한 ${tgtL} 초안",
+      "highlights": ["target의 실제 부분문자열"],
+      "accepted_band_codes": ["부적절 band 정확히 1개"],
+      "explanation_ko": "첫 장면과 달라진 맥락에서 같은 표현 전략의 적절성이 왜 달라지는지 설명",
+      "recommended_example": "이 상황의 적절안 1개(${tgtL})"
+    }`
+    : ''
+  const learningFlow = nativeMpj5
+    ? '**첫인상 판단 → 맥락 대비 판단 → 판단하고 고쳐보기 → 이유 찾기 → 여러 초안 비교**'
+    : '**첫인상 판단 → 판단하고 고쳐보기 → 이유 찾기 → 여러 초안 비교**'
+  const nativeJudgeIntro = nativeMpj5
+    ? ' 독립 Judge3는 DCT 앵커 맥락에서 첫 장면과 다른 판정을 만들고,'
+    : ''
+  const exactOrder = nativeMpj5
+    ? 'scale4 → judge3 → fix_choice → reason → multi_judge'
+    : 'scale4 → fix_choice → reason → multi_judge'
+  const nativeJudgeRules = nativeMpj5
+    ? `- judge3는 DCT와 같은 앵커 P/D/R의 별도 사건이며, scale4와 달리 비적정 대역 하나를 판정하게 합니다.
+`
+    : ''
+  const targetTypes = nativeMpj5 ? 'judge3·fix_choice·reason' : 'fix_choice·reason'
+  const anchorContrastRule = nativeMpj5
+    ? 'judge3·fix_choice·reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건'
+    : 'fix_choice·reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건'
   return `당신은 ${LANG_DIR_KO[direction]} 통번역 교육용 '메타화용 판단 미션'을 설계하는 전문가입니다.
 이번 단원의 화용 초점은 「${f.learner_label}」입니다.
 초점 정의: ${f.operational_definition}
@@ -1775,9 +1816,10 @@ function buildMissionSystemPrompt(f: FeatureForGen, isResponse = false, isSpoken
 
 ${gate1}${spokenRule}
 
-MPJ 4문항을 만듭니다. 학습 흐름은 **첫인상 판단 → 판단하고 고쳐보기 → 왜 문제일까 → 여러 초안 비교**입니다.
-Scale4는 종합 첫인상을 4점으로 받고 적절/부적절 방향만 채점합니다. Judge3는 교정 문항에서 딱 한 번만 묻고,
-Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
+MPJ ${itemCount}문항을 만듭니다. 학습 흐름은 ${learningFlow}입니다.
+Scale4는 종합 첫인상을 4점으로 받고 적절/부적절 방향만 채점합니다.${nativeJudgeIntro}
+ FixChoice는 별도 사건에서 판단을 잠근 뒤 교정안을 공개합니다.
+Reason 문항은 이유 공개 전에 최초 대역 판단을 한 번 잠그되 확신도는 묻지 않습니다.
 모든 판정의 축은 위 target feature band 하나뿐입니다(다른 축 혼입 금지).
 출력은 아래 JSON만, 마크다운·설명 없이 반환합니다.
 
@@ -1790,7 +1832,7 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
 
 언어 규칙(방향 ${LANG_DIR_KO[direction]}): source·vocabulary_hints.source 위치의 원문 = **${srcL}** / preceding_turn·target·corrections.text·candidates.text·recommended_example·reference_alternatives.text·vocabulary_hints.target = **${tgtL}**. situation_ko·relation_ko·explanation_ko·note_ko·reasons.text_ko = 방향과 무관하게 **항상 한국어**(학습자 UI 언어).
 
-아래 4문항을 모두, 축약 없이, 모든 필드를 채워 출력합니다:
+아래 ${itemCount}문항을 모두, 축약 없이, 모든 필드를 채워 출력합니다:
 {
   "mpj_items": [
     {
@@ -1807,7 +1849,7 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
       "reference_scale_code": "very_appropriate 또는 somewhat_appropriate 중 대표 1개",
       "explanation_ko": "왜 이 초점의 소박한 규칙에 대한 반례가 이 P·D·R에서는 적절한지 설명",
       "recommended_example": "이 상황의 적절안 1개(${tgtL})"
-    },
+    }${judge3Shape},
     {
       "type": "fix_choice",
       "channel": "허용 channel 코드",
@@ -1878,11 +1920,11 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
 합치거나 나누는 것은 허용합니다 — 빠진 내용이 없어야 한다는 뜻입니다.
 
 핵심 규칙:
-- mpj_items는 **정확히 4개**, 순서는 scale4 → fix_choice → reason → multi_judge.
+- mpj_items는 **정확히 ${itemCount}개**, 순서는 ${exactOrder}.
 - scale4는 위에 주입된 "깨야 할 소박한 규칙"을 깨는 **적절한 반례**입니다.
   accepted_scale_codes는 반드시 ["very_appropriate","somewhat_appropriate"] 두 개이고,
   reference_scale_code는 그중 대표 정도 하나입니다. 학습자가 같은 적절성 방향을 고르면 맞게 처리합니다.
-- fix_choice는 **Judge3 판단을 먼저 한 뒤 교정**하는 한 문항이다. accepted_band_codes를 생략하지 마세요.
+${nativeJudgeRules}- fix_choice는 **판단을 먼저 한 뒤 교정**하는 한 문항이다. accepted_band_codes를 생략하지 마세요.
 - reason에는 accepted_band_codes·confidence를 만들지 마세요. 질문은 "이 표현이 상황에 맞지 않는 가장 큰 이유" 하나뿐입니다.
 - reason의 정답은 정확히 1개이며 kind="primary"여야 합니다. primary의 위치와 id를 고정하지 말고 세 선택지의 순서를 매번 섞으세요.
   오답도 target에 실제로 보이는 표현이나 이 장면의 인접한 화용 쟁점을 근거로 삼아, 정답을 모르는 학습자가 잠시 고민할 만큼 그럴듯해야 합니다.
@@ -1908,8 +1950,8 @@ Reason 문항에서는 판정과 확신도를 다시 묻지 않습니다.
      이유만으로 하위 대역을 주지 마세요.
   ④ 위 '이 초점이 아닌 것(혼입 금지)'에 나열된 요소는 이 초점의 판정 근거로 사용하지 마세요.
   ⑤ 근거를 명확히 쓸 수 없거나 "${f.within_band_code}"로도 똑같이 방어되면 그 문장을 다시 쓰세요.
-- fix_choice와 reason의 target은 해당 P·D·R에서 실제로 부적절해야 하며, 의미·문법 오류를 부적절성의 근거로 쓰지 마세요.
-- **앵커+대비**: fix_choice와 reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건,
+- ${targetTypes}의 target은 해당 P·D·R에서 실제로 부적절해야 하며, 의미·문법 오류를 부적절성의 근거로 쓰지 마세요.
+- **앵커+대비**: ${anchorContrastRule},
   scale4는 해당 표현이 실제로 적절해지는 대비 P/D/R, multi_judge는 DCT P/D/R 중 정확히 한 축만 바꾼 대비 사건입니다.
 - DCT는 코어의 같은 P/D/R에서 새 장면을 쓰는 근접 전이 과제입니다. MPJ가 DCT 상황문을 그대로 복제하면 안 됩니다.
 ${sceneRules}
@@ -1935,7 +1977,7 @@ ${vocabularyHintsRule}
 - 완료 화면 원리는 시스템이 넣으므로 생성 금지.`
 }
 
-function buildMissionUserPrompt(b: MissionGenBody): string {
+function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean): string {
   const dir = normDir(b.direction)
   const { src, tgt } = DIR_LANGS[dir]
   const srcL = LANG_KO[src]
@@ -1943,6 +1985,14 @@ function buildMissionUserPrompt(b: MissionGenBody): string {
   const usableFacts = Array.isArray(b.core.usable_facts)
     ? [...new Set(b.core.usable_facts.map((x) => x.trim()).filter(Boolean))].slice(0, 8)
     : []
+  const nativeMpj5 = nativeMpj5Override ?? (
+    Array.isArray(b.core.focal_segments) &&
+    b.core.focal_segments.some((segment) =>
+      segment?.role === 'head' &&
+      segment.text.trim().length > 0 &&
+      b.core.source_text_ko.includes(segment.text.trim())
+    )
+  )
   const parts = [
     '[생성 요청]',
     `- 언어 방향: ${LANG_DIR_KO[dir]}`,
@@ -1969,8 +2019,12 @@ function buildMissionUserPrompt(b: MissionGenBody): string {
     '',
     '[산출 정합] reference_alternatives(적절 산출안)가 쓰는 완화·전략은, MPJ 세트가 최소 1회 사전 노출해야 합니다.',
     `🔴 [참고안] reference_alternatives는 반드시 위 [산출 과제]의 "원문"(${srcL})을 ${tgtL}로 옮긴 것이어야 합니다 — MPJ 문항의 예문을 복사하거나 다른 상황의 문장을 넣지 마세요.`,
-    '[앵커+대비] 1번 fix_choice와 2번 reason은 위 P/D/R을 그대로 사용하되 서로 다른 사건으로 만드세요.',
-    '[앵커+대비] 3번 multi_judge는 위 P/D/R 중 정확히 한 축만 바꾼 대비 상황으로 만드세요.',
+    nativeMpj5
+      ? '[앵커+대비] 2번 judge3·3번 fix_choice·4번 reason은 위 P/D/R을 그대로 사용하되 서로 다른 사건으로 만드세요.'
+      : '[앵커+대비] 2번 fix_choice와 3번 reason은 위 P/D/R을 그대로 사용하되 서로 다른 사건으로 만드세요.',
+    nativeMpj5
+      ? '[앵커+대비] 5번 multi_judge는 위 P/D/R 중 정확히 한 축만 바꾼 대비 상황으로 만드세요.'
+      : '[앵커+대비] 4번 multi_judge는 위 P/D/R 중 정확히 한 축만 바꾼 대비 상황으로 만드세요.',
     '[수준 정책] 수정안·이유·후보 수는 모든 수준에서 4/3/5로 고정합니다. 난이도는 장면과 표현의 미묘함으로만 조절하세요.',
   )
   if (b.error_pattern_hints_ko.length) {
@@ -1996,7 +2050,7 @@ function buildMissionUserPrompt(b: MissionGenBody): string {
         : undefined
       const retryExcerpt = {
         mpj_items: Array.isArray(previousRecord.mpj_items)
-          ? previousRecord.mpj_items.slice(0, 4)
+          ? previousRecord.mpj_items.slice(0, nativeMpj5 ? 5 : 4)
           : [],
         reference_alternatives: Array.isArray(productionTask?.reference_alternatives)
           ? productionTask.reference_alternatives
@@ -2135,14 +2189,24 @@ function buildAuthenticUserPrompt(b: AuthenticBody): OpenAIUserContent {
 }
 
 // ── 검증② 프롬프트 (0-n·94 / 0-q·99) ──────────────────────────────────────
-function buildQualitySystemPrompt(direction: Direction, speechActKo: string): string {
+function buildQualitySystemPrompt(
+  direction: Direction,
+  speechActKo: string,
+  nativeMpj5 = true,
+): string {
   const { src, tgt } = DIR_LANGS[direction]
+  const learningFlow = nativeMpj5
+    ? '**첫인상 판단 → 맥락 대비 판단 → 판단+교정 → 주원인 선택 → 여러 초안 비교**(MPJ 5문항)'
+    : '**첫인상 판단 → 판단+교정 → 주원인 선택 → 여러 초안 비교**(legacy MPJ 4문항)'
+  const contextPlan = nativeMpj5
+    ? 'judge3·fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
+    : 'fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
   return `너는 L2 화용 교육 자료의 **품질 심사자**다. 다른 모델이 생성한 학습 미션 1건을 받아
 결함을 찾아낸다. 너는 자료를 고쳐 쓰지 않고 **판정과 근거만** 낸다.
 
 [전제]
 - 이 미션은 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 과제이며 화행은 「${speechActKo}」다.
-- 학습자는 **첫인상 판단 → 판단+교정 → 주원인 선택 → 여러 초안 비교**(MPJ 4문항) 뒤 스스로 산출한다.
+- 학습자는 ${learningFlow} 뒤 스스로 산출한다.
 - 형식·필드·개수·코드값·중복·길이 편차는 **이미 결정론적 규칙검사(R1~R29)가 통과시켰다.**
   너는 그것을 다시 세지 마라. 너의 몫은 **의미·자연성·후보 자격**이다.
 
@@ -2194,7 +2258,7 @@ function buildQualitySystemPrompt(direction: Direction, speechActKo: string): st
 ⑨ primary_reason_ambiguity — reason의 accepted_reason_id가 실제로 유일한 **가장 큰 이유**인가.
    다른 선택지도 같은 정도로 방어 가능하거나, primary가 target feature가 아닌 의미·문법 문제라면 fail이다.
 ⑩ context_plan_mismatch — scale4는 소박한 규칙을 깨는 적절한 대비 장면이고,
-   fix_choice·reason은 DCT와 같은 앵커 PDR의 다른 사건이며 multi_judge는 P/D/R 한 축만
+   ${contextPlan}이며 multi_judge는 P/D/R 한 축만
    바꾼 대비 사건인가. 코드만 맞고 상황문의 구체적 단서가 그 PDR을 뒷받침하지 못하거나,
    사건이 사실상 복제되면 지적하라.
 
@@ -2802,14 +2866,14 @@ Deno.serve(async (req) => {
       )
     }
 
-    // ── mission action: mission_v4(MPJ4) 승격 생성 (structured 1회, temp 0.3) ──
+    // ── mission action: 현행 mission_v5(MPJ5), legacy core는 mission_v4(MPJ4) ──
     if (input.action === 'mission') {
       const b = input.mission
       if (!b?.feature || !b?.core) {
         return new Response(JSON.stringify({ error: 'mission body required' }), { status: 400, headers: jsonHeaders })
       }
       const temp = b.failure_notes ? 0.5 : 0.3 // 재시도는 온도 상향(0-d·31)
-      // 미션은 복합 4유형 union이라 필드 누락이 잦다 → 저volume(승격분만)이므로
+      // 미션은 복합 유형 union이라 필드 누락이 잦다 → 저volume(승격분만)이므로
       // 강한 모델을 쓴다. 코어(고volume·단순)는 mini 유지.
       const isSpoken = b.core.source_modality === 'spoken'
       const missionDir = normDir(b.direction)
@@ -2823,8 +2887,8 @@ Deno.serve(async (req) => {
             .slice(0, 3)
         : []
       const isMiniDiscourse = inheritedFocal.some((seg) => seg.role === 'head')
-      const sys = buildMissionSystemPrompt(b.feature, b.is_response_act, isSpoken, missionDir)
-      const usr = buildMissionUserPrompt(b)
+      const sys = buildMissionSystemPrompt(b.feature, b.is_response_act, isSpoken, missionDir, isMiniDiscourse)
+      const usr = buildMissionUserPrompt(b, isMiniDiscourse)
       const model = MISSION_PRIMARY_MODEL
       const missionPromptVersion = isMiniDiscourse
         ? CURRENT_MISSION_PROMPT_VERSIONS[0]
@@ -2851,7 +2915,7 @@ Deno.serve(async (req) => {
         axis_feature: b.feature.code,
       }))
       const productionMode = b.core.source_modality === 'spoken' ? 'interpreting' : 'translation'
-      // v4 중립 스키마(MPJ4) — mpj_items는 모델이 중립 키(source/target/
+      // v4/v5 중립 스키마 — mpj_items는 모델이 중립 키(source/target/
       // corrections.text/candidates.text/recommended_example/preceding_turn)로 답한다.
       // production_task는 코어를 계승하되 중립 키(source_text/preceding_turn)로 조립.
       // focal_segments를 계승할 수 있으면 mission_v5(미니 담화형 DCT), 없으면 v4.
@@ -3095,7 +3159,12 @@ Deno.serve(async (req) => {
       // 생성(mission=gpt-4o)과 **다른 계열**을 쓴다 — 같은 모델의 자기 채점을 피한다.
       const dir = normDir(b.direction)
       const actKo = SPEECH_ACT_KO[b.speech_act ?? ''] ?? '해당 화행'
-      const sys = buildQualitySystemPrompt(dir, actKo)
+      const missionRecord = b.mission_content && typeof b.mission_content === 'object' && !Array.isArray(b.mission_content)
+        ? b.mission_content as Record<string, unknown>
+        : {}
+      const nativeMpj5 = missionRecord.schema_version === 'mission_v5' &&
+        Array.isArray(missionRecord.mpj_items) && missionRecord.mpj_items.length === 5
+      const sys = buildQualitySystemPrompt(dir, actKo, nativeMpj5)
       const usr = buildQualityUserPrompt(b)
       const model = CRITIC_PRIMARY_MODEL
       const att = await callOpenAI(CRITIC_PRIMARY_MODEL, apiKey, sys, usr, 0.2, {

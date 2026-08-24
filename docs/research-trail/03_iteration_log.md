@@ -2246,3 +2246,13 @@
 - 범위: commit·push·Railway 배포와 운영 스키마 migration은 하지 않았다. 지원 밖 입력은 구 실행기로 폴백한다.
 - 다음 반영: 사용자가 localhost 강좌 CTA에서 실화면을 확인한 뒤 승인하면 commit·push·배포한다.
 - 관련 Decision: `DEC-20260824-01`
+
+## ITER-20260824-02 · mission_v5 생성·검사·실행·저장의 네이티브 MPJ5 동기화
+
+- 시작 문제: 승인된 다섯 판단 활동과 실제 운영 데이터의 4문항 구조가 달라, 맥락 대비가 독립 생성·응답 단위가 아니었고 유지보수 시 구형 계약을 현행으로 오인할 가능성이 남았다.
+- 변경: `mission_v5`를 현행 5문항 tuple/과거 4문항 union으로 만들고, 독립 judge3 규칙·MPJ5 생성 프롬프트·품질 프롬프트·lineage target·일대일 런타임·`mpj_response_v2`를 연결했다. focal 없는 과거 코어는 MPJ4 생성 호환 분기를 유지했다. 새 prompt/release를 주장하는 행만 정확한 순서와 기존 전체 lineage gate를 통과하게 하는 migration을 추가했다.
+- 검증 결과: 집중 65개와 migration 계약 집중 52개가 통과했다. 전체 회귀는 77파일 463개 통과·3파일 9개 skip이었고 typecheck, 1,943-module production build, diff check가 통과했다. 마지막 legacy 품질 프롬프트 분기 뒤에는 관련 13개와 typecheck를 표적으로 재확인했다.
+- 예상과 달랐던 점: Zod의 깊은 union이 `strict:false` TypeScript 설정에서 tuple 원소를 `unknown`으로 넓혀 기존 관리자·legacy runner 전체 타입을 무너뜨렸다. 런타임 union 검증은 유지하되 소비자 출력형을 명시적으로 구성해 해결했다. 또 공유 생성 프롬프트를 단순 MPJ5로 바꾸면 focal 없는 legacy 코어의 `mission_v4` 생성이 깨지므로 시스템·사용자 프롬프트를 함께 분기하고 두 계약을 snapshot으로 고정했다.
+- 범위: 원격 migration, Edge 배포, Railway 배포, 유료 실생성, 원격 저장은 수행하지 않았다. 기존 MPJ4 행은 불변이다.
+- 다음 반영: 승인 뒤 migration→Edge→Railway 순으로 적용하고, 요청·거절·감사 대표 네이티브 MPJ5의 생성→R31→저장→교수자 큐→학습자 종단을 확인한다.
+- 관련 Decision / Trace / Evidence: `DEC-20260824-02`, `TRC-20260823-01`, `EVD-20260824-02`

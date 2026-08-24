@@ -14,7 +14,7 @@ function bandLabel(featureCode: string, code: string): string {
 
 const TYPE_LABEL: Record<string, string> = {
   scale4: "첫인상 판단",
-  judge3: "조절 정도 판단(legacy)",
+  judge3: "맥락 대비 판단",
   fix_choice: "판단하고 고쳐보기",
   reason_conf: "판정+이유+확신(legacy)",
   reason: "왜 문제일까",

@@ -28,6 +28,7 @@ const QUALITY_GATE_BOUNDARIES_SQL = read("supabase/migrations/20260815053000_qua
 const BOUNDED_EXTERNAL_VALIDATION_SQL = read("supabase/migrations/20260815054000_bounded_external_validation.sql");
 const PREREGISTERED_EXTERNAL_SAMPLING_SQL = read("supabase/migrations/20260815055000_preregistered_external_sampling.sql");
 const MISSION_V5_LINEAGE_GATE_SQL = read("supabase/migrations/20260815190000_mission_v5_item_lineage_hard_gate.sql");
+const MISSION_V5_NATIVE_MPJ5_SQL = read("supabase/migrations/20260824183000_mission_v5_native_mpj5_contract.sql");
 const GOLD45_NONCONSENSUS_SQL = read("supabase/migrations/20260815193000_gold45_nonconsensus_protocol.sql");
 const READINESS_ARRAY_INITIALIZER_FIX_SQL = read("supabase/migrations/20260815194000_fix_readiness_array_initializers.sql");
 const PROMOTE_TS = read("src/lib/pragma/promoteMission.ts");
@@ -40,7 +41,7 @@ describe("moat migration/runtime contracts", () => {
     expect(PROMOTE_TS).toContain('rpc("review_mission"');
     expect(EVENTS_TS).toContain('rpc("append_learner_mission_event"');
     expect(EXPORT_TS).toContain('rpc("export_learner_mission_events"');
-    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL, QUALITY_GATE_BOUNDARIES_SQL, BOUNDED_EXTERNAL_VALIDATION_SQL, PREREGISTERED_EXTERNAL_SAMPLING_SQL, MISSION_V5_LINEAGE_GATE_SQL, GOLD45_NONCONSENSUS_SQL, READINESS_ARRAY_INITIALIZER_FIX_SQL]) {
+    for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL, QUALITY_GATE_BOUNDARIES_SQL, BOUNDED_EXTERNAL_VALIDATION_SQL, PREREGISTERED_EXTERNAL_SAMPLING_SQL, MISSION_V5_LINEAGE_GATE_SQL, MISSION_V5_NATIVE_MPJ5_SQL, GOLD45_NONCONSENSUS_SQL, READINESS_ARRAY_INITIALIZER_FIX_SQL]) {
       expect((sql.match(/\$\$/g) ?? []).length % 2).toBe(0);
     }
   });
@@ -66,6 +67,16 @@ describe("moat migration/runtime contracts", () => {
     expect(MISSION_V5_LINEAGE_GATE_SQL).toContain("BEFORE INSERT OR UPDATE OF mission_content ON public.scenarios");
     expect(PROMOTE_TS).toContain("validation_result");
     expect(PROMOTE_TS).toContain("lineage_meta: lineageScope");
+  });
+
+  it("promotes only the current release to exact native MPJ5 while retaining the full lineage gate", () => {
+    expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("mission_v5_mpj5_minidiscourse_v1");
+    expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("item_lineage_attribution_v4_mission_v5_mpj5");
+    expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("pragma_content_candidate_20260824_01");
+    expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("jsonb_array_length(v_mission->'mpj_items') <> 5");
+    expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("'scale4',\n    'judge3',\n    'fix_choice',\n    'reason',\n    'multi_judge'");
+    expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("validate_current_mission_v5_item_lineage()'::regprocedure");
+    expect(MISSION_V5_NATIVE_MPJ5_SQL).toContain("BEFORE INSERT OR UPDATE OF mission_content ON public.scenarios");
   });
 
   it("requires two independent expert reviewers and preserves their rows", () => {

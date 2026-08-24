@@ -26,7 +26,7 @@ describe("prompt snapshot integrity", () => {
     expect(lineage.text).toContain("provenance 분류자");
     expect(lineage.text).toContain("검증 완료가 아니라 모델의 pending claim");
     expect(lineage.text).toContain("evidence ID, pack/version, 검토 상태, claim_id는 생성하지 않습니다");
-    expect(CURRENT_ITEM_LINEAGE_PROMPT_VERSION).toBe("item_lineage_attribution_v3_mission_v5");
+    expect(CURRENT_ITEM_LINEAGE_PROMPT_VERSION).toBe("item_lineage_attribution_v4_mission_v5_mpj5");
   });
 
   it("records the versioned effective-character pilot policy", () => {
@@ -187,16 +187,17 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("production_task.usable_facts");
   });
 
-  it("locks new Full Missions to Scale4 → Judge+Fix → Reason → MultiJudge → DCT", () => {
+  it("locks new Full Missions to Scale4 → Judge3 → Fix → Reason → MultiJudge → DCT", () => {
     const mission = prompt("mission.system");
     const spoken = prompt("mission.system.spoken");
     const quality = prompt("quality.system");
 
     for (const entry of [mission, spoken]) {
-      expect(entry.text).toContain("MPJ 4문항");
-      expect(entry.text).toContain("첫인상 판단 → 판단하고 고쳐보기 → 왜 문제일까 → 여러 초안 비교");
-      expect(entry.text).toContain("scale4 → fix_choice → reason → multi_judge");
-      expect(entry.text).toContain("Judge3는 교정 문항에서 딱 한 번만");
+      expect(entry.text).toContain("MPJ 5문항");
+      expect(entry.text).toContain("첫인상 판단 → 맥락 대비 판단 → 판단하고 고쳐보기 → 이유 찾기 → 여러 초안 비교");
+      expect(entry.text).toContain("scale4 → judge3 → fix_choice → reason → multi_judge");
+      expect(entry.text).toContain("독립 Judge3는 DCT 앵커 맥락");
+      expect(entry.text).toContain("judge3는 DCT와 같은 앵커 P/D/R의 별도 사건");
       expect(entry.text).toContain("reason에는 accepted_band_codes·confidence를 만들지 마세요");
       expect(entry.text).toContain("과소 2·적정 2·과잉 1");
       expect(entry.text).toContain("primary의 위치와 id를 고정하지 말고");
@@ -207,10 +208,11 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).not.toContain("직접형·간결형·강한 표현은 항상 나쁘다");
       expect(entry.text).not.toContain("감사의 경우 호의가 클수록");
       expect(entry.text).toContain('"type": "scale4"');
+      expect(entry.text).toContain('"type": "judge3"');
       expect(entry.text).toContain('"reference_scale_code"');
       expect(entry.text).not.toContain('"type": "reason_conf"');
     }
-    expect(quality.text).toContain("MPJ 4문항");
+    expect(quality.text).toContain("MPJ 5문항");
     expect(quality.text).toContain("primary_reason_ambiguity");
     expect(quality.text).toContain("context_plan_mismatch");
     expect(quality.text).toContain("결정론적 규칙검사(R1~R29)");
@@ -224,6 +226,19 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("이유만으로 보고하지 마라");
     expect(quality.text).not.toContain("①말하는 자리인지 적어 보내는 것인지");
     expect(quality.text).not.toContain("①~⑤ 중 **셋 이상이 불명확**");
+  });
+
+  it("keeps focal-less legacy core promotion on the four-item compatibility prompt", () => {
+    const legacy = prompt("mission.system.legacy_v4");
+    const legacyQuality = prompt("quality.system.legacy_v4");
+
+    expect(legacy.text).toContain("MPJ 4문항");
+    expect(legacy.text).toContain("scale4 → fix_choice → reason → multi_judge");
+    expect(legacy.text).not.toContain('"type": "judge3"');
+    expect(legacy.text).toContain("4문항 전부");
+    expect(legacyQuality.text).toContain("legacy MPJ 4문항");
+    expect(legacyQuality.text).toContain("fix_choice·reason은 DCT와 같은 앵커 PDR");
+    expect(legacyQuality.text).not.toContain("judge3·fix_choice·reason");
   });
 
   it("feeds the previous failed mission back for targeted retry editing", () => {

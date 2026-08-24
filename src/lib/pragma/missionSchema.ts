@@ -10,8 +10,9 @@
 // 현행 v4 MPJ 4유형:
 //   scale4(첫인상) → fix_choice(판정+교정) → reason(주원인)
 //   → multi_judge(5후보) (순서 고정, R1).
-// mission_v5 — 2026-07-30 미니 담화형 DCT. MPJ는 v4와 동일, DCT 원문만
-//   2~4문장 담화 + focal_segments(화용 집중 구간)로 확장(DEC-20260730-01).
+// mission_v5 — 미니 담화형 DCT. legacy 행은 v4와 같은 MPJ4를 읽기 호환하고,
+//   현행 생성 계약은 scale4 → judge3 → fix_choice → reason → multi_judge의
+//   네이티브 MPJ5를 사용한다. DCT는 2~4문장 담화 + focal_segments를 유지한다.
 // axis_feature = unit.target_feature 고정(0-b·19, R1). band code는 카탈로그 정본.
 
 import { z } from "zod";
@@ -231,6 +232,15 @@ export const MPJ_TYPE_ORDER_V3 = [
 /** 현행 mission_v4 유형 순서(R1). */
 export const MPJ_TYPE_ORDER_V4 = [
   "scale4",
+  "fix_choice",
+  "reason",
+  "multi_judge",
+] as const;
+
+/** 현행 mission_v5 네이티브 MPJ5 유형 순서(R1). */
+export const MPJ_TYPE_ORDER_V5 = [
+  "scale4",
+  "judge3",
   "fix_choice",
   "reason",
   "multi_judge",
@@ -484,31 +494,92 @@ export const MissionV4Schema = z.object({
 export type MissionV4 = z.infer<typeof MissionV4Schema>;
 
 // ══════════════════════════════════════════════════════════════════════
-// mission_v5 — 미니 담화형 DCT (2026-07-30, DEC-20260730-01)
+// mission_v5 — 미니 담화형 DCT + 네이티브 MPJ5
 // ══════════════════════════════════════════════════════════════════════
-// MPJ 4문항 구성·순서·판정은 v4와 완전히 동일하다. 변경점은 DCT뿐이다:
-//  ① production_task.source_text = 2~4문장 미니 담화(수준별 길이, R29)
-//  ② production_task.focal_segments = 코어에서 계승한 화용 집중 구간
-// 학습자는 전체 담화를 옮기고, 화용 집중 평가·화면 강조만 focal_segments에
-// 적용된다. v1~v4는 읽기 호환으로 유지하며 v5로 백필하지 않는다.
+// 2026-08-24부터 신규 생성은 독립 judge3(맥락 대비 판단)를 포함한 MPJ5다.
+// 기존 mission_v5 MPJ4 행은 삭제·백필하지 않고 legacy 스키마로 계속 읽는다.
+// 두 형태 모두 production_task.source_text 2~4문장과 focal_segments를 사용한다.
 const ProductionTaskV3Schema = ProductionTaskV2Schema.extend({
   /** 코어 계승(R23·R29). head 1 + support 0~2, 각 text는 source_text의 부분문자열. */
   focal_segments: z.array(FocalSegmentSchema).min(1).max(3),
 });
 export type ProductionTaskV3 = z.infer<typeof ProductionTaskV3Schema>;
 
-export const MissionV5Schema = z.object({
+const MpjCommonV5 = {
+  ...MpjCommonV2,
+  id: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+  channel: ChannelSchema,
+  preceding_turn: z.string().min(1),
+};
+
+const Judge3ItemV5 = z.object({
+  ...MpjCommonV5,
+  id: z.literal(2),
+  type: z.literal("judge3"),
+  target: z.string().min(1),
+  highlights: z.array(z.string()),
+  accepted_band_codes: z.array(z.string()).length(1),
+});
+
+const Scale4ItemV5 = Scale4ItemV4.extend({ id: z.literal(1) });
+const FixChoiceItemV5 = FixChoiceItemV4.extend({ id: z.literal(3) });
+const ReasonItemV5 = ReasonItemV4.extend({ id: z.literal(4) });
+const MultiJudgeItemV5 = MultiJudgeItemV4.extend({ id: z.literal(5) });
+
+export const MpjItemV5Schema = z.discriminatedUnion("type", [
+  Scale4ItemV5,
+  Judge3ItemV5,
+  FixChoiceItemV5,
+  ReasonItemV5,
+  MultiJudgeItemV5,
+]);
+export type MpjItemV5 = z.infer<typeof MpjItemV5Schema>;
+
+const MissionV5Common = {
   schema_version: z.literal("mission_v5"),
   direction: z.enum(["ko_zh", "zh_ko"]),
   unit: UnitSchema,
-  mpj_items: z.array(MpjItemV4Schema).length(4),
   production_task: ProductionTaskV3Schema,
   provenance: MissionProvenanceSchema.optional(),
   quality_check: QualityCheckSchema.optional(),
   hsk_lexical_audit: HskLexicalAuditSchema.optional(),
   item_lineage: ItemLineageSchema.optional(),
+};
+
+/** 2026-07-30~2026-08-23 생성분 읽기 호환. 신규 생성에는 사용하지 않는다. */
+export const MissionV5LegacySchema = z.object({
+  ...MissionV5Common,
+  mpj_items: z.array(MpjItemV4Schema).length(4),
 });
-export type MissionV5 = z.infer<typeof MissionV5Schema>;
+
+/** 2026-08-24 현행 생성·검수·실행 계약. */
+export const MissionV5NativeSchema = z.object({
+  ...MissionV5Common,
+  mpj_items: z.tuple([
+    Scale4ItemV5,
+    Judge3ItemV5,
+    FixChoiceItemV5,
+    ReasonItemV5,
+    MultiJudgeItemV5,
+  ]),
+});
+
+export const MissionV5Schema = z.union([MissionV5NativeSchema, MissionV5LegacySchema]);
+export type MissionV5Legacy = z.infer<typeof MissionV5LegacySchema>;
+type MissionV5NativeInferred = z.infer<typeof MissionV5NativeSchema>;
+export type MissionV5Native = Omit<MissionV5NativeInferred, "mpj_items"> & {
+  mpj_items: [
+    z.infer<typeof Scale4ItemV5>,
+    z.infer<typeof Judge3ItemV5>,
+    z.infer<typeof FixChoiceItemV5>,
+    z.infer<typeof ReasonItemV5>,
+    z.infer<typeof MultiJudgeItemV5>,
+  ];
+};
+// zod 3 + strict:false에서는 깊은 object union의 배열 원소가 unknown으로
+// 넓어질 수 있다. 런타임 검사는 위 union이 맡고, 소비자 타입은 두 검증된
+// 출력형의 명시적 합집합으로 유지한다.
+export type MissionV5 = MissionV5Native | MissionV5Legacy;
 
 export type MissionRuntime = MissionV2 | MissionV3 | MissionV4 | MissionV5;
 export type MpjItemRuntime = MissionRuntime["mpj_items"][number];

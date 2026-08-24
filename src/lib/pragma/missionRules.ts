@@ -19,6 +19,7 @@ import {
   MPJ_TYPE_ORDER_V2,
   MPJ_TYPE_ORDER_V3,
   MPJ_TYPE_ORDER_V4,
+  MPJ_TYPE_ORDER_V5,
 } from "@/lib/pragma/missionSchema";
 import {
   ITEM_LINEAGE_MAX_BATCH_SIZE,
@@ -433,14 +434,25 @@ export function checkMission(
   checkDirectionMatch(v, dir, ctx);
   const feature = getTargetFeature(m.unit.target_feature);
 
-  // mission_v5는 MPJ 4문항 구성·순서·판정이 v4와 완전히 동일하다(DEC-20260730-01).
-  // 변경점은 DCT 원문뿐이므로 아래 v4 계약 검사는 v5에도 그대로 적용한다.
+  const isNativeV5 = m.schema_version === "mission_v5" && m.mpj_items.length === 5;
+  // v4와 v5는 장면·채널·이유·후보 계약을 공유한다. v5 신규 생성분만
+  // 독립 judge3를 더한 네이티브 MPJ5이며, 과거 v5 MPJ4는 읽기 호환한다.
   const isV4Contract = m.schema_version === "mission_v4" || m.schema_version === "mission_v5";
+
+  if (
+    m.schema_version === "mission_v5" &&
+    m.provenance?.prompt_version === CURRENT_MISSION_PROMPT_VERSIONS[0] &&
+    !isNativeV5
+  ) {
+    add(v, "R1", "fail", "현행 mission_v5 생성계약은 독립 맥락 대비 문항을 포함한 MPJ5여야 함");
+  }
 
   // ── R1 유형 순서·axis_feature·band code 존재 ──
   const typesInOrder = m.mpj_items.map((it) => it.type);
-  const expectedTypeOrder = isV4Contract
-    ? MPJ_TYPE_ORDER_V4
+  const expectedTypeOrder = isNativeV5
+    ? MPJ_TYPE_ORDER_V5
+    : isV4Contract
+      ? MPJ_TYPE_ORDER_V4
     : m.schema_version === "mission_v3"
       ? MPJ_TYPE_ORDER_V3
       : MPJ_TYPE_ORDER_V2;
@@ -502,9 +514,16 @@ export function checkMission(
         break;
       }
       case "judge3": {
-        // R2 within_band 포함(반례 문항)
-        if (!it.accepted_band_codes.includes(withinCode)) {
-          add(v, "R2", "fail", `문항 ${it.id}: judge3 accepted에 within_band(${withinCode}) 없음 — 반례 문항 규칙`);
+        if (isNativeV5) {
+          if (it.accepted_band_codes.length !== 1 || it.accepted_band_codes.includes(withinCode)) {
+            add(v, "R2", "fail", `문항 ${it.id}: 네이티브 MPJ5 맥락 대비 판단은 비적정 대역 1개여야 함`);
+          }
+          if (!samePdrBand(it.pdr, m.production_task.pdr)) {
+            add(v, "R2", "fail", `문항 ${it.id}: 네이티브 MPJ5 맥락 대비 판단은 DCT와 같은 앵커 PDR이어야 함`);
+          }
+        } else if (!it.accepted_band_codes.includes(withinCode)) {
+          // legacy judge3는 소박한 규칙의 반례 문항이었다.
+          add(v, "R2", "fail", `문항 ${it.id}: legacy judge3 accepted에 within_band(${withinCode}) 없음 — 반례 문항 규칙`);
         }
         checkTargetHighlights(v, it.id, it.target, it.highlights);
         break;

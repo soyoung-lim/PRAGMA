@@ -17,7 +17,7 @@ function sameNumberSet(left: number[], right: number[]): boolean {
 }
 
 /**
- * MPJ 응답을 정답 개수 대신 네 판단 기능과 학습자가 가져갈 개념으로 정리한다.
+ * MPJ 응답을 정답 개수 대신 판단 기능과 학습자가 가져갈 개념으로 정리한다.
  * 방향·모드와 무관한 화용 구인 문구는 target feature 카탈로그에서 가져온다.
  */
 export function buildMpjSummaryRows(
@@ -51,9 +51,10 @@ export function buildMpjSummaryRows(
           !!response?.band_code &&
           (item.accepted_band_codes as readonly string[]).includes(response.band_code);
         return {
-          label: "판단하고 고쳐보기",
+          label: "맥락 대비 판단",
           comment: sameDirection
-            ? summary?.correction ?? "관계와 부담에 맞게 표현을 조절했습니다."
+            ? summary?.context_contrast ??
+              "맥락이 달라지면 같은 표현 전략의 적절성도 달라질 수 있음을 확인했습니다."
             : MPJ_SUMMARY_DIVERGENCE_COPY,
         };
       }

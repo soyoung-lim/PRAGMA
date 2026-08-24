@@ -19,9 +19,11 @@ export interface BandDef {
   label_ko: string;
 }
 
-/** MPJ 4개 뒤 학습자가 실제로 가져갈 판단 기준. AI 생성 없이 카탈로그에서 복사한다. */
+/** MPJ5 뒤 학습자가 실제로 가져갈 판단 기준. AI 생성 없이 카탈로그에서 복사한다. */
 export interface HandoffSummaryCopy {
   first_impression: string;
+  /** 네이티브 mission_v5의 독립 맥락 대비 판단. 미지정 카탈로그는 공통 문구를 쓴다. */
+  context_contrast?: string;
   correction: string;
   reason: string;
   compare_low: string;

@@ -11,7 +11,7 @@ import { buildMissionLineageScope } from "./missionLineage";
 import { normalizeMission } from "./missionSchema";
 import { checkMission, type CheckContext } from "./missionRules";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
-import { SAMPLE_MISSION_V5 } from "@/lib/mission/missionV4Sample";
+import { SAMPLE_MISSION_V5, SAMPLE_MISSION_V5_NATIVE } from "@/lib/mission/missionV4Sample";
 import {
   CURRENT_ITEM_LINEAGE_PROMPT_VERSION,
   CURRENT_MISSION_PROMPT_VERSIONS,
@@ -172,7 +172,7 @@ describe("item-level realization lineage", () => {
     };
     expect(checkMission(SAMPLE_MISSION_V5, context).violations.some((violation) => violation.id === "R31")).toBe(false);
 
-    const current = structuredClone(SAMPLE_MISSION_V5);
+    const current = structuredClone(SAMPLE_MISSION_V5_NATIVE);
     current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
     expect(checkMission(current, context).violations.some((violation) => violation.id === "R31" && violation.level === "fail")).toBe(true);
 
@@ -189,8 +189,8 @@ describe("item-level realization lineage", () => {
         prompt_version: CURRENT_ITEM_LINEAGE_PROMPT_VERSION,
         prompt_instance_hash: "a".repeat(64),
         attribution_attempts: 4,
-        batch_count: 4,
-        calls: [5, 5, 5, paths.length - 15].map((targetCount, index) => ({
+        batch_count: Math.ceil(paths.length / 5),
+        calls: Array.from({ length: Math.ceil(paths.length / 5) }, (_, index) => Math.min(5, paths.length - index * 5)).map((targetCount, index) => ({
           batch_index: index + 1,
           target_count: targetCount,
           model: "test-attributor",

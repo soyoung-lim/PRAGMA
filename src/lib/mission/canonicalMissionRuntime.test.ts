@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { SAMPLE_MISSION_V5 } from "@/lib/mission/missionV4Sample";
+import { SAMPLE_MISSION_V5, SAMPLE_MISSION_V5_NATIVE } from "@/lib/mission/missionV4Sample";
 import type { RunnableMission } from "@/lib/mission/missionDb";
 import { adaptRunnableMissionToCanonical } from "@/lib/mission/canonicalMissionRuntime";
 
@@ -16,8 +16,8 @@ function runnable(): RunnableMission {
   };
 }
 
-describe("mission V4 runtime bridge", () => {
-  it("opens a current mission_v5 as five learner judgments followed by DCT and feedback", () => {
+describe("canonical mission runtime bridge", () => {
+  it("keeps legacy mission_v5 readable by splitting its combined judgment and correction", () => {
     const view = adaptRunnableMissionToCanonical(runnable());
 
     expect(view.scenarioId).toBe("86d738b0-1891-4bfe-9b12-f8643ebbb45f");
@@ -36,5 +36,27 @@ describe("mission V4 runtime bridge", () => {
     expect(view.quests[2]).toMatchObject({ kind: "fix_choice", judgmentQuestId: "A2" });
     expect(view.quests[1].source).toBe(view.quests[2].source);
     expect(view.quests[5].source).toBe(SAMPLE_MISSION_V5.production_task.source_text);
+  });
+
+  it("maps native mission_v5 MPJ5 items one-to-one without splitting an item", () => {
+    const view = adaptRunnableMissionToCanonical({
+      ...runnable(),
+      mission: SAMPLE_MISSION_V5_NATIVE,
+    });
+
+    expect(view.quests.map((quest) => quest.kind)).toEqual([
+      "scale",
+      "scale",
+      "fix_choice",
+      "reason",
+      "best_worst",
+      "dct",
+      "dct_feedback",
+    ]);
+    expect(view.quests.slice(0, 5).map((quest) => quest.source)).toEqual(
+      SAMPLE_MISSION_V5_NATIVE.mpj_items.map((item) => item.source),
+    );
+    expect(view.quests[2]).toMatchObject({ kind: "fix_choice" });
+    expect(view.quests[2]).not.toHaveProperty("judgmentQuestId");
   });
 });

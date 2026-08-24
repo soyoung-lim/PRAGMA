@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
-import { SAMPLE_MISSION_V4 } from "@/lib/mission/missionV4Sample";
+import {
+  SAMPLE_MISSION_V4,
+  SAMPLE_MISSION_V5,
+  SAMPLE_MISSION_V5_NATIVE,
+} from "@/lib/mission/missionV4Sample";
 import { normalizeMission } from "@/lib/pragma/missionSchema";
 import { checkMission, type CheckContext } from "@/lib/pragma/missionRules";
+import { CURRENT_MISSION_PROMPT_VERSIONS } from "../../../supabase/functions/_shared/contentRelease";
 
 const context: CheckContext = {
   speech_act: "request",
@@ -366,5 +371,69 @@ describe("mission_v4 MPJ4 + DCT contract", () => {
       context,
     );
     expect(invalid.violations.some((item) => item.id === "R7" && item.level === "fail")).toBe(true);
+  });
+});
+
+describe("mission_v5 native MPJ5 contract", () => {
+  const nativeFixture = () => ({
+    ...SAMPLE_MISSION_V5_NATIVE,
+    provenance: {
+      ...SAMPLE_MISSION_V5_NATIVE.provenance!,
+      prompt_version: "local-native-mpj5-test",
+    },
+  });
+
+  it("accepts native MPJ5 while keeping legacy mission_v5 MPJ4 readable", () => {
+    const native = normalizeMission(nativeFixture());
+    const legacy = normalizeMission(SAMPLE_MISSION_V5);
+
+    expect(native.ok).toBe(true);
+    expect(native.data?.mpj_items.map((item) => item.type)).toEqual([
+      "scale4",
+      "judge3",
+      "fix_choice",
+      "reason",
+      "multi_judge",
+    ]);
+    expect(legacy.ok).toBe(true);
+    expect(legacy.data?.mpj_items).toHaveLength(4);
+  });
+
+  it("passes native order, anchor, and band rules", () => {
+    const checked = checkMission(nativeFixture(), context);
+    expect(checked.violations.filter((item) => item.level === "fail")).toEqual([]);
+  });
+
+  it("rejects a native judge outside the anchor or assigned to within_band", () => {
+    const current = nativeFixture();
+    const judge = current.mpj_items[1];
+    const checked = checkMission({
+      ...current,
+      mpj_items: [
+        current.mpj_items[0],
+        {
+          ...judge,
+          pdr: { p: "equal", d: "close", r: "low" },
+          accepted_band_codes: ["within_band"],
+        },
+        ...current.mpj_items.slice(2),
+      ],
+    }, context);
+
+    expect(checked.violations.filter((item) => item.id === "R2" && item.level === "fail")).toHaveLength(2);
+  });
+
+  it("does not allow the current native prompt version on a legacy four-item payload", () => {
+    const checked = checkMission({
+      ...SAMPLE_MISSION_V5,
+      provenance: {
+        ...SAMPLE_MISSION_V5.provenance!,
+        prompt_version: CURRENT_MISSION_PROMPT_VERSIONS[0],
+      },
+    }, context);
+
+    expect(checked.violations.some(
+      (item) => item.id === "R1" && item.message.includes("MPJ5"),
+    )).toBe(true);
   });
 });

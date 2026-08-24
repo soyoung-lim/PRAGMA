@@ -6,24 +6,24 @@
  * 새 학습설계 또는 생성 기준을 시험할 때는 기존 ID를 덮어쓰지 말고 새 ID를 만든다.
  */
 export const CURRENT_CONTENT_RELEASE = {
-  id: "pragma_content_candidate_20260806_03",
+  id: "pragma_content_candidate_20260824_01",
   lifecycle: "candidate",
   corePromptVersions: [
     "core_v11_interpreter_scene_canonical_v1",
     "core_v11_source_context_repair_v1",
   ],
   missionPromptVersions: [
-    "mission_v5_mpj4_minidiscourse_v6_interpreter_roles",
+    "mission_v5_mpj5_minidiscourse_v1",
     "mission_v4_mpj4_dct1_context_v9_interpreter_roles",
   ],
-  itemLineagePromptVersion: "item_lineage_attribution_v3_mission_v5",
+  itemLineagePromptVersion: "item_lineage_attribution_v4_mission_v5_mpj5",
   feedbackPromptVersions: [
     "feedback_v1_minidiscourse_v3",
     "feedback_v1_feature_general_v2",
   ],
   qualityPromptVersions: {
     core: "core_quality_v6_interpreter_roles",
-    mission: "quality_v3_interpreter_roles",
+    mission: "quality_v4_mpj5_interpreter_roles",
   },
 } as const;
 

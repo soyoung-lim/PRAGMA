@@ -112,7 +112,10 @@ export function buildMissionAttemptRow(
   const contextJudgment =
     (mpjResponses && mpjResponses.length > 0) || input.productionSupport
       ? ({
-          schema_version: "mpj_response_v1",
+          schema_version:
+            input.mission.schema_version === "mission_v5" && input.mission.mpj_items.length === 5
+              ? "mpj_response_v2"
+              : "mpj_response_v1",
           mission_schema_version: input.mission.schema_version,
           responses: mpjResponses ?? [],
           production_support: input.productionSupport ?? null,

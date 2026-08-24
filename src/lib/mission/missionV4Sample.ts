@@ -2,7 +2,7 @@
 // 원격 DB·Edge 배포 없이 승인된 MPJ4+DCT 화면 흐름을 확인하는 데만 사용한다.
 // import.meta.env.DEV로 보호된 ?preview=v4 경로에서만 선택된다.
 
-import type { MissionV4, MissionV5 } from "@/lib/pragma/missionSchema";
+import type { MissionV4, MissionV5Legacy, MissionV5Native } from "@/lib/pragma/missionSchema";
 
 const ANCHOR_PDR = {
   p: "speaker_lower",
@@ -214,7 +214,7 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
 const V5_SOURCE_TEXT =
   "지난번 주문은 잘 받았습니다. 그런데 이번 주부터 사무실을 옮기게 되어서요. 가능하시다면 이번 주문의 배송지를 새 사무실로 바꿔 주실 수 있을까요? 번거롭게 해드려 죄송합니다.";
 
-export const SAMPLE_MISSION_V5: MissionV5 = {
+export const SAMPLE_MISSION_V5: MissionV5Legacy = {
   ...SAMPLE_MISSION_V4,
   schema_version: "mission_v5",
   production_task: {
@@ -244,5 +244,55 @@ export const SAMPLE_MISSION_V5: MissionV5 = {
   provenance: {
     ...SAMPLE_MISSION_V4.provenance!,
     prompt_version: "mission_v5_mpj4_minidiscourse_v1",
+  },
+};
+
+const V5_SCALE = SAMPLE_MISSION_V5.mpj_items[0] as Extract<
+  MissionV5Legacy["mpj_items"][number],
+  { type?: "scale4" }
+>;
+const V5_FIX = SAMPLE_MISSION_V5.mpj_items[1] as Extract<
+  MissionV5Legacy["mpj_items"][number],
+  { type?: "fix_choice" }
+>;
+const V5_REASON = SAMPLE_MISSION_V5.mpj_items[2] as Extract<
+  MissionV5Legacy["mpj_items"][number],
+  { type?: "reason" }
+>;
+const V5_MULTI = SAMPLE_MISSION_V5.mpj_items[3] as Extract<
+  MissionV5Legacy["mpj_items"][number],
+  { type?: "multi_judge" }
+>;
+
+/** 현행 생성 계약과 같은 독립 맥락 대비 문항을 가진 네이티브 MPJ5 샘플. */
+export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
+  ...SAMPLE_MISSION_V5,
+  mpj_items: [
+    { ...V5_SCALE, id: 1 },
+    {
+      id: 2,
+      type: "judge3",
+      axis_feature: "request_mitigation_optionality",
+      channel: "messenger",
+      situation_ko:
+        "나는 거래처 자료 담당자에게 이미 마감한 보고서의 원본 파일을 다시 보내 달라고 요청하려 한다. 몇 차례 업무 연락만 한 사이이고, 상대는 보관 자료를 다시 찾아야 한다.",
+      relation_ko: "거래처 자료 담당자 · 몇 차례 연락한 사이",
+      pdr: ANCHOR_PDR,
+      preceding_turn: "报告已经归档了，原文件需要重新找一下。",
+      source: "보고서 원본 파일을 다시 보내 주세요.",
+      target: "把报告的原文件再发给我。",
+      highlights: ["发给我"],
+      accepted_band_codes: ["too_direct"],
+      explanation_ko:
+        "상대가 보관 자료를 다시 찾아야 하는 상황에서는 가능 여부를 묻지 않은 직접형이 부담에 비해 강하게 들릴 수 있습니다.",
+      recommended_example: "请问方便把报告的原文件再发给我吗？",
+    },
+    { ...V5_FIX, id: 3 },
+    { ...V5_REASON, id: 4 },
+    { ...V5_MULTI, id: 5 },
+  ],
+  provenance: {
+    ...SAMPLE_MISSION_V5.provenance!,
+    prompt_version: "mission_v5_mpj5_minidiscourse_v1",
   },
 };

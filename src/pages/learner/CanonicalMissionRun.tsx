@@ -1978,7 +1978,7 @@ function selectedIndex(value: unknown, prefix: string): number | undefined {
   return Number.isInteger(index) && index >= 0 ? index : undefined;
 }
 
-function buildRuntimeMpjTraces(
+export function buildRuntimeMpjTraces(
   runtime: RunnableMission,
   responses: Record<string, QuestResponse | DctResponse>,
 ): MpjResponseTrace[] {
@@ -2024,6 +2024,22 @@ function buildRuntimeMpjTraces(
       trace(3, {
         band_code: response("A4")?.judgment as string | undefined,
         reason_ids: [response("A4")?.reasonId as string].filter(Boolean),
+      }),
+      trace(4, bestWorst("A5")),
+    ];
+  }
+
+  if (runtime.mission.schema_version === "mission_v5" && items.length === 5) {
+    return [
+      trace(0, { scale_code: response("A1")?.pick as string | undefined }),
+      trace(1, { band_code: response("A2")?.pick as string | undefined }),
+      trace(2, {
+        band_code: response("A3")?.judgment as string | undefined,
+        correction_indexes: corrections("A3"),
+      }),
+      trace(3, {
+        band_code: response("A4")?.judgment as string | undefined,
+        ...reasonTrace(3, "A4"),
       }),
       trace(4, bestWorst("A5")),
     ];

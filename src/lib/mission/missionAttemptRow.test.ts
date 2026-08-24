@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildMissionAttemptRow } from "@/lib/mission/missionAttemptRow";
 import { SAMPLE_MISSION_V1 } from "@/lib/mission/missionV1Sample";
-import { SAMPLE_MISSION_V4 } from "@/lib/mission/missionV4Sample";
+import { SAMPLE_MISSION_V4, SAMPLE_MISSION_V5_NATIVE } from "@/lib/mission/missionV4Sample";
 import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
 import { normalizeMission } from "@/lib/pragma/missionSchema";
 import { POLICY_VERSION } from "@/lib/research/versions";
@@ -222,6 +222,35 @@ describe("mission attempt row", () => {
       responses: [{ item_type: "reason", reason_id: "primary" }],
     });
     expect(JSON.stringify(row.context_judgment)).not.toContain("confidence");
+  });
+
+  it("versions native mission_v5 five-item traces as mpj_response_v2", () => {
+    const row = buildMissionAttemptRow({
+      mission: SAMPLE_MISSION_V5_NATIVE,
+      scenarioId: "11111111-1111-1111-1111-111111111111",
+      speechAct: "request",
+      level: "intermediate",
+      firstResponse: "第一次翻译",
+      revisedResponse: "修改后的翻译",
+      startedAtIso: "2026-08-24T01:00:00.000Z",
+      mpjResponses: SAMPLE_MISSION_V5_NATIVE.mpj_items.map((item) => ({
+        item_id: item.id,
+        item_type: item.type,
+        completed_at: "2026-08-24T01:02:00.000Z",
+      })),
+    }, "profile-1", "user-1");
+
+    expect(row.context_judgment).toMatchObject({
+      schema_version: "mpj_response_v2",
+      mission_schema_version: "mission_v5",
+      responses: [
+        { item_id: 1, item_type: "scale4" },
+        { item_id: 2, item_type: "judge3" },
+        { item_id: 3, item_type: "fix_choice" },
+        { item_id: 4, item_type: "reason" },
+        { item_id: 5, item_type: "multi_judge" },
+      ],
+    });
   });
 
   it("keeps judgment, reason diagnosis, feedback, revision, and dissent in one attempt without overwriting", () => {
