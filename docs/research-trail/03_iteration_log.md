@@ -2569,3 +2569,14 @@
   확정을 막았다. 관련 테스트 42/42·최종 snapshot 13/13·typecheck를 통과했고 커밋은
   `f2ad7ce`, `7388a3c`, Railway는 `97cf3481-b5ff-405a-ac86-318ff9abc368`이다.
 - 관련 Decision / Trace / Evidence: `DEC-20260825-08`, `TRC-20260825-04`, `EVD-20260825-08`
+
+## ITER-20260826-01 · 학습 수행과 미션 본문 hash 연결
+
+- 날짜: 2026-08-26
+- 시작 문제: 학습 로그에는 미션·문항 ID와 feature·policy 버전이 있었지만 수행 시점의 정확한
+  `mission_content_hash`가 없어, 이후 콘텐츠 수정 시 어느 본문을 수행했는지 모호해질 수 있었다.
+- 변경: DB migration 없이 기존 `context_judgment` MPJ 응답 봉투에
+  `mission.provenance.mission_content_hash`를 복사한다. provenance 없는 legacy·sample은 `null`을
+  허용하며 UI·점수·분석 기능은 추가하지 않았다.
+- 검증 결과: `missionAttemptRow.test.ts` 표적 테스트로 native MPJ5의 hash 보존을 확인했다.
+- 관련 Trace: `TRC-20260826-01`

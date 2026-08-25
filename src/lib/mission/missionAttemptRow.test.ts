@@ -243,6 +243,7 @@ describe("mission attempt row", () => {
     expect(row.context_judgment).toMatchObject({
       schema_version: "mpj_response_v2",
       mission_schema_version: "mission_v5",
+      mission_content_hash: SAMPLE_MISSION_V5_NATIVE.provenance?.mission_content_hash,
       responses: [
         { item_id: 1, item_type: "scale4" },
         { item_id: 2, item_type: "judge3" },

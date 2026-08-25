@@ -32,7 +32,7 @@ export interface SaveAttemptInput {
   contextJudgment?: LearnerDissent;
 }
 
-/** context_judgment의 mpj_response_v1.responses에 저장되는 문항별 비채점 응답. */
+/** context_judgment의 versioned MPJ envelope에 저장되는 문항별 비채점 응답. */
 export interface MpjResponseTrace extends Record<string, Json | undefined> {
   item_id: number;
   item_type: string;
@@ -119,6 +119,9 @@ export function buildMissionAttemptRow(
               ? "mpj_response_v2"
               : "mpj_response_v1",
           mission_schema_version: input.mission.schema_version,
+          // 수행 시점의 정확한 미션 본문을 append-only lineage와 연결한다.
+          // 승인 전 legacy/sample 콘텐츠는 provenance가 없을 수 있으므로 null을 허용한다.
+          mission_content_hash: input.mission.provenance?.mission_content_hash ?? null,
           responses: mpjResponses ?? [],
           production_support: input.productionSupport ?? null,
           learner_dissent: input.contextJudgment ?? null,
