@@ -290,7 +290,10 @@ describe("prompt snapshot integrity", () => {
 
     expect(retry.text).toContain("[직전 실패 출력 — 진단이 가리킨 실제 문장을 직접 고칠 것]");
     expect(retry.text).toContain("PROBE_FAILED_CANDIDATE");
-    expect(retry.text).toContain("대역은 바꾸지 않은 채 길이 범위만 겹치게");
+    expect(retry.text).toContain("대역은 바꾸지 않은 채 후보 문장 길이 범위만 겹치게");
+    expect(retry.text).toContain("R5 대역·역할 실패");
+    expect(retry.text).toContain("MIDDLE=적정 1개+비적정 경계 1개");
+    expect(retry.text).toContain("바꾼 대역이 실제 표현과 note_ko에 맞도록");
     expect(retry.text).toContain("실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지");
   });
 

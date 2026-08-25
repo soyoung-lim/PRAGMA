@@ -13,7 +13,7 @@ export const CURRENT_CONTENT_RELEASE = {
     "core_v11_source_context_repair_v1",
   ],
   missionPromptVersions: [
-    "mission_v5_mpj5_minidiscourse_v4_concise_learner_flow",
+    "mission_v5_mpj5_minidiscourse_v5_r5_diagnostic_retry",
     "mission_v4_mpj4_dct1_context_v9_interpreter_roles",
   ],
   itemLineagePromptVersion: "item_lineage_attribution_v4_mission_v5_mpj5",
