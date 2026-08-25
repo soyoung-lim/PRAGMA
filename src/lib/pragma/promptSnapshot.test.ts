@@ -252,6 +252,7 @@ describe("prompt snapshot integrity", () => {
     expect(prompt("mission.system.proposal").text).toContain(
       "구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는다면",
     );
+    expect(prompt("mission.system.proposal").text).toContain("실제 too_directive 경계");
     expect(quality.text).toContain("MPJ 5문항");
     expect(quality.text).toContain("primary_reason_ambiguity");
     expect(quality.text).toContain("context_plan_mismatch");
@@ -303,6 +304,7 @@ describe("prompt snapshot integrity", () => {
     expect(retry.text).toContain("AI band_mismatch 실패");
     expect(retry.text).toContain("적정한 문장에 비적정 라벨만 다시 붙이지 마세요");
     expect(retry.text).toContain("proposal_optionality_clarity에서 구체적인 대안 둘");
+    expect(retry.text).toContain("원문에 구체적인 대안 둘이 이미 고정된 proposal 문항");
     expect(retry.text).toContain("AI comparison_quality_mismatch 실패");
     expect(retry.text).toContain("실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지");
   });

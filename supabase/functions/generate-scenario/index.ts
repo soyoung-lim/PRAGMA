@@ -1856,7 +1856,7 @@ function buildMissionSystemPrompt(
     ? 'judge3·fix_choice·reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건'
     : 'fix_choice·reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건'
   const featureBoundaryRule = f.code === 'proposal_optionality_clarity'
-    ? `🔴 제안 초점 경계: 문장이 **구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는다면** 선택 가능성과 방안 명료성을 모두 갖춘 적정 대역입니다. "두 가지를 생각했다"나 "정해야 한다" 같은 도입이 있어도 뒤에서 실제 대안과 의견 질문을 분명히 제시하면 too_tentative·too_directive로 붙이지 마세요. too_tentative는 행동/대안을 실제로 흐리거나 생략하고, too_directive는 결정을 확정하거나 선택을 명령하는 문장 자체로 실현하세요.`
+    ? `🔴 제안 초점 경계: 문장이 **구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는다면** 선택 가능성과 방안 명료성을 모두 갖춘 적정 대역입니다. "두 가지를 생각했다"나 "정해야 한다" 같은 도입이 있어도 뒤에서 실제 대안과 의견 질문을 분명히 제시하면 too_tentative·too_directive로 붙이지 마세요. too_tentative는 행동/대안을 실제로 흐리거나 생략하고, too_directive는 결정을 확정하거나 선택을 명령하는 문장 자체로 실현하세요. 특히 원문에 구체적인 대안 둘이 이미 고정된 문항의 비적정 target·candidate는 두 대안 사실을 보존한 실제 too_directive 경계로 만들고, 적정 질문문에 too_tentative 라벨을 붙이지 마세요.`
     : ''
   return `당신은 ${LANG_DIR_KO[direction]} 통번역 교육용 '메타화용 판단 미션'을 설계하는 전문가입니다.
 이번 단원의 화용 초점은 「${f.learner_label}」입니다.
@@ -2148,6 +2148,7 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
         '- R18 실패라면 부적절 표현을 다루는 필드를 적정 대역으로 두지 마세요. fix_choice의 accepted_band_codes는 비적정 대역 정확히 1개, reason의 problem_band_code도 비적정 대역으로 두세요. target이 실제로 적정하다면 target·highlights·선택지·해설을 함께 부적절한 경계 사례로 다시 쓰세요.',
         '- AI band_mismatch 실패라면 진단이 지목한 target·correction·candidate의 문장과 대역을 함께 고치세요. 특히 multi_judge에서는 4역할과 MIDDLE의 적정 1+비적정 1 구조를 유지하면서, 비적정 경계 후보가 실제로 해당 초점 자원이 부족·과잉하도록 문장 자체를 다시 쓰고 note_ko도 그 실제 차이를 설명하게 하세요. 적정한 문장에 비적정 라벨만 다시 붙이지 마세요.',
         '- proposal_optionality_clarity에서 구체적인 대안 둘을 제시하고 어느 쪽이 좋은지 묻는 문장은 적정 대역입니다. 비적정 문장도 두 대안 사실은 보존하되, too_directive는 결정을 확정하거나 즉시 선택을 명령하고, too_tentative는 두 대안을 말해도 실제 제안·결정 요청을 뒤로 미루거나 전적으로 떠넘기게 문장 자체를 다시 쓰세요.',
+        '- 원문에 구체적인 대안 둘이 이미 고정된 proposal 문항에서는 비적정 target·candidate를 두 대안을 보존한 실제 too_directive 경계로 다시 쓰세요. 두 대안을 분명히 말하고 어느 쪽이 좋은지 묻는 적정 질문문을 too_tentative로 재라벨링하지 마세요.',
         '- AI comparison_quality_mismatch 실패라면 multi_judge의 네 candidate.text를 서로 다른 문장으로 다시 쓰세요. BEST와 MIDDLE을 복제하거나 사실상 동의문으로 두지 말고, 각 comparison_role과 note_ko가 실제 표현 차이로 구별되게 하세요.',
         '- 길이 조절을 위해 새 명제·이유·대안·보상·일정을 만들지 마세요. 중립적 연결·군더더기 또는 문장 압축만 사용하세요.',
         '- 수정 범위가 작아도 응답은 스키마의 전체 JSON을 빠짐없이 다시 출력하세요.',
