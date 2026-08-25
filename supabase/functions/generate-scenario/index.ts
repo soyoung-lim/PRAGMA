@@ -2147,6 +2147,8 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
         '- R5 대역·역할 실패(진단에 BEST·WORST·중간 후보·적정 대역·비적정 대역이 명시됨)라면 길이만 손대지 말고 정확히 BEST=적정 1개, WORST=비적정 1개, MIDDLE=적정 1개+비적정 경계 1개가 되게 하세요. 바꾼 대역이 실제 표현과 note_ko에 맞도록 해당 후보를 함께 다시 쓰세요.',
         '- R18 실패라면 부적절 표현을 다루는 필드를 적정 대역으로 두지 마세요. fix_choice의 accepted_band_codes는 비적정 대역 정확히 1개, reason의 problem_band_code도 비적정 대역으로 두세요. target이 실제로 적정하다면 target·highlights·선택지·해설을 함께 부적절한 경계 사례로 다시 쓰세요.',
         '- AI band_mismatch 실패라면 진단이 지목한 target·correction·candidate의 문장과 대역을 함께 고치세요. 특히 multi_judge에서는 4역할과 MIDDLE의 적정 1+비적정 1 구조를 유지하면서, 비적정 경계 후보가 실제로 해당 초점 자원이 부족·과잉하도록 문장 자체를 다시 쓰고 note_ko도 그 실제 차이를 설명하게 하세요. 적정한 문장에 비적정 라벨만 다시 붙이지 마세요.',
+        '- proposal_optionality_clarity에서 구체적인 대안 둘을 제시하고 어느 쪽이 좋은지 묻는 문장은 적정 대역입니다. 비적정 문장도 두 대안 사실은 보존하되, too_directive는 결정을 확정하거나 즉시 선택을 명령하고, too_tentative는 두 대안을 말해도 실제 제안·결정 요청을 뒤로 미루거나 전적으로 떠넘기게 문장 자체를 다시 쓰세요.',
+        '- AI comparison_quality_mismatch 실패라면 multi_judge의 네 candidate.text를 서로 다른 문장으로 다시 쓰세요. BEST와 MIDDLE을 복제하거나 사실상 동의문으로 두지 말고, 각 comparison_role과 note_ko가 실제 표현 차이로 구별되게 하세요.',
         '- 길이 조절을 위해 새 명제·이유·대안·보상·일정을 만들지 마세요. 중립적 연결·군더더기 또는 문장 압축만 사용하세요.',
         '- 수정 범위가 작아도 응답은 스키마의 전체 JSON을 빠짐없이 다시 출력하세요.',
       )

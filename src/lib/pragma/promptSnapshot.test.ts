@@ -302,6 +302,8 @@ describe("prompt snapshot integrity", () => {
     expect(retry.text).toContain("reason의 problem_band_code도 비적정 대역");
     expect(retry.text).toContain("AI band_mismatch 실패");
     expect(retry.text).toContain("적정한 문장에 비적정 라벨만 다시 붙이지 마세요");
+    expect(retry.text).toContain("proposal_optionality_clarity에서 구체적인 대안 둘");
+    expect(retry.text).toContain("AI comparison_quality_mismatch 실패");
     expect(retry.text).toContain("실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지");
   });
 
