@@ -27,4 +27,22 @@ describe("repairFindingsForRuleViolations", () => {
       message: "문항 5: 현행 MultiJudge는 앵커 PDR에서 한 축만 바꾼 대비 상황이어야 함",
     }])).toEqual([]);
   });
+
+  it("routes item-local band and diagnostic failures to their allowed blocks", () => {
+    expect(repairFindingsForRuleViolations([
+      {
+        id: "R18",
+        level: "fail",
+        message: "문항 4: reason problem_band_code가 적정 대역임",
+      },
+      {
+        id: "R33",
+        level: "fail",
+        message: "현행 mission_v5는 서로 다른 진단차원을 2~6개 포함해야 함",
+      },
+    ])).toEqual([
+      expect.objectContaining({ code: "rule_R18_item", where: "mpj_items[3]" }),
+      expect.objectContaining({ code: "rule_R33_diagnostics", where: "diagnostic_dimensions" }),
+    ]);
+  });
 });

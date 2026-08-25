@@ -122,25 +122,51 @@ export const MISSION_GENERATION_MAX_ATTEMPTS = 1;
 
 type MissionRuleViolation = { id: string; level: string; message: string };
 
-/** R27 완전 중복은 뒤쪽 문항 하나만 바꾸면 되는 국소 결함이다. */
+const ITEM_BLOCK_REPAIRABLE_RULES = new Set([
+  "R2", "R3", "R4", "R5", "R6", "R7", "R10", "R11", "R18", "R21", "R27", "R28",
+]);
+const FROZEN_ITEM_INVARIANT = /PDR|preceding_turn|item_focus|axis_feature|source/i;
+
+/** 허용 operation 안에서 고칠 수 있는 결정론 결함만 문항 단위 수리로 보낸다. */
 export function repairFindingsForRuleViolations(
   violations: MissionRuleViolation[],
 ): QualityCheck["findings"] {
   const findings: QualityCheck["findings"] = [];
   const seen = new Set<string>();
   for (const violation of violations) {
-    if (violation.level !== "fail" || violation.id !== "R27") continue;
+    if (violation.level !== "fail") continue;
+    if (violation.id === "R33") {
+      const where = "diagnostic_dimensions";
+      if (!seen.has(where)) {
+        seen.add(where);
+        findings.push({ code: "rule_R33_diagnostics", severity: "fail", where, note_ko: violation.message });
+      }
+      continue;
+    }
+    if (violation.id === "R11" && violation.message.startsWith("reference_alternatives")) {
+      const where = "production_task.reference_alternatives";
+      if (!seen.has(where)) {
+        seen.add(where);
+        findings.push({ code: "rule_R11_references", severity: "fail", where, note_ko: violation.message });
+      }
+      continue;
+    }
+    if (!ITEM_BLOCK_REPAIRABLE_RULES.has(violation.id) || FROZEN_ITEM_INVARIANT.test(violation.message)) continue;
     const itemGroup = violation.message.match(/문항\s+([0-9·]+)/)?.[1];
     const itemNumbers = itemGroup
       ?.split("·")
       .map(Number)
       .filter((value) => Number.isInteger(value) && value >= 1 && value <= 5);
-    for (const itemNumber of itemNumbers?.slice(1) ?? []) {
-      const where = `mpj_items[${itemNumber - 1}].situation_ko`;
+    const repairItemNumbers = violation.id === "R27" && itemNumbers && itemNumbers.length > 1
+      ? itemNumbers.slice(1)
+      : itemNumbers ?? [];
+    for (const itemNumber of repairItemNumbers) {
+      const isDuplicateSituation = violation.id === "R27" && violation.message.includes("중복");
+      const where = `mpj_items[${itemNumber - 1}]${isDuplicateSituation ? ".situation_ko" : ""}`;
       if (seen.has(where)) continue;
       seen.add(where);
       findings.push({
-        code: "rule_R27_duplicate_situation",
+        code: isDuplicateSituation ? "rule_R27_duplicate_situation" : `rule_${violation.id}_item`,
         severity: "fail",
         where,
         note_ko: violation.message,
@@ -514,7 +540,7 @@ export async function promoteCore(
     const findings = repairFindingsForRuleViolations(initialViolations);
     const hasOnlyRepairableFailures = check.violations
       .filter((violation) => violation.level === "fail")
-      .every((violation) => violation.id === "R27" && findings.some((finding) => finding.note_ko === violation.message));
+      .every((violation) => findings.some((finding) => finding.note_ko === violation.message));
     if (!findings.length || !hasOnlyRepairableFailures) {
       return { ok: false, mission, ruleResult: "fail", violations: initialViolations, attempts, error: "규칙검사 실패 — 저장하지 않았습니다." };
     }
