@@ -38,7 +38,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 bg-[#15202B]">
+      <header className="sticky top-0 z-40 bg-[#15202B] print:hidden">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <HomeBrand />
           <Link
@@ -50,8 +50,8 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
         </div>
       </header>
 
-      <div className={`flex gap-6 pl-5 pr-8 ${compact ? "py-5" : "py-6"}`}>
-        <aside className="hidden w-[285px] shrink-0 md:block">
+      <div className={`flex gap-6 pl-5 pr-8 print:block print:p-0 ${compact ? "py-5" : "py-6"}`}>
+        <aside className="hidden w-[285px] shrink-0 md:block print:hidden">
           <nav className="flex flex-col px-1">
             <Link
               to={ADMIN_DASHBOARD_ITEM.to}
@@ -88,8 +88,8 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
           </nav>
         </aside>
 
-        <main className="min-w-0 flex-1">
-          <div className="mb-5 md:hidden">
+        <main className="min-w-0 flex-1 print:w-full">
+          <div className="mb-5 print:hidden md:hidden">
             <label
               htmlFor="admin-mobile-navigation"
               className="mb-1.5 block text-[12px] font-medium text-muted-foreground"
@@ -118,7 +118,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
             </select>
           </div>
 
-          <div className="flex items-stretch gap-3">
+          <div className="flex items-stretch gap-3 print:hidden">
             <span
               aria-hidden
               className="mt-1 w-[5px] shrink-0 self-stretch rounded-sm bg-[#FAD338]"
@@ -132,7 +132,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
               )}
             </div>
           </div>
-          <div className="mt-6">{children}</div>
+          <div className="mt-6 print:mt-0">{children}</div>
         </main>
       </div>
     </div>

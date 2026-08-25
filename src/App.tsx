@@ -10,9 +10,6 @@ import { seedIfEmpty } from "./lib/learningSessions";
 const RequireApproved = lazy(() => import("./components/RequireApproved"));
 const RequireAdmin = lazy(() => import("./components/RequireAdmin"));
 const RequireAuthenticated = lazy(() => import("./components/RequireAuthenticated"));
-const AdminPlaceholder = lazy(() =>
-  import("@/components/AdminShell").then((module) => ({ default: module.AdminPlaceholder })),
-);
 const Index = lazy(() => import("./pages/Index.tsx"));
 const Architecture = lazy(() => import("./pages/Architecture.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
@@ -21,6 +18,7 @@ const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
 const AdminGenerator = lazy(() => import("./pages/admin/AdminGenerator.tsx"));
 const AdminAuthentic = lazy(() => import("./pages/admin/AdminAuthentic.tsx"));
 const AdminAssembly = lazy(() => import("./pages/admin/AdminAssembly.tsx"));
+const AdminTeachingMaterials = lazy(() => import("./pages/admin/AdminTeachingMaterials.tsx"));
 const AdminBatch = lazy(() => import("./pages/admin/AdminBatch.tsx"));
 const AdminBrowser = lazy(() => import("./pages/admin/AdminBrowser.tsx"));
 const AdminArchive = lazy(() => import("./pages/admin/AdminArchive.tsx"));
@@ -312,8 +310,7 @@ const App = () => (
           <Route path="/admin/research-qa/final-review" element={<RequireAdmin><AdminFinalCorpusReview /></RequireAdmin>} />
           <Route path="/admin/research-qa/releases" element={<RequireAdmin><AdminMissionRelease /></RequireAdmin>} />
           <Route path="/admin/research-qa/improvements" element={<RequireAdmin><AdminImprovementFlywheel /></RequireAdmin>} />
-          {/* 워크플로 골격 — 후속 구현 화면(준비중). AdminPlaceholder가 "이 화면은 후속 단계에서 구현됩니다" 렌더 */}
-          <Route path="/admin/package" element={<RequireAdmin><AdminPlaceholder title="수업 자료 생성" description="주차별 수업 패키지 = 교수자용 교안(이론·예상 Q&A) + 학습자용 도입 화면(도입 장면·화용 설명·원리)" /></RequireAdmin>} />
+          <Route path="/admin/package" element={<RequireAdmin><AdminTeachingMaterials /></RequireAdmin>} />
           {/* /admin/course-ops 제거(2026-08-05) — 메뉴에 없고 어디서도 링크되지 않는 고아
               라우트였다. 교과목 운영은 9월 실증 사안으로 백로그에 있다(AdminShell 주석 참조). */}
           <Route path="/admin-login" element={<AdminLogin />} />

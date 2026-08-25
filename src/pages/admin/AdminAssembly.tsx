@@ -13,7 +13,7 @@
 // 금지사항이다. A2(다중 선택·일괄 조립)는 별도 승인 후 이 화면에 추가된다.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -561,6 +561,11 @@ const AdminAssembly = () => {
                       {(st === "generated" || st === "reviewed") && (
                         <Button size="sm" variant="ghost" onClick={() => togglePreview(r)}>
                           {openId === r.scenario_id ? "미션 접기 ▴" : "미션 보기 ▾"}
+                        </Button>
+                      )}
+                      {st === "reviewed" && (
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to={`/admin/package?mission=${r.scenario_id}`}>수업자료 열기</Link>
                         </Button>
                       )}
                       {!isAssembling && rowMsg[r.scenario_id] && (

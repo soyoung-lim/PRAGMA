@@ -55,7 +55,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     header: "수업 편성",
     items: [
       { to: "/admin/composer", label: "15주 교과목·학습 미션 편성" },
-      { to: "/admin/package", label: "수업 자료 생성", pending: true },
+      { to: "/admin/package", label: "수업 자료 생성" },
     ],
   },
   {
