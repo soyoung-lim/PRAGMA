@@ -841,11 +841,13 @@ export function checkMission(
     }
   }
 
-  // R31 — 검증 범위의 mission_v5는 문항별 모델 귀속을 완전하게 생성해야 저장할 수 있다.
+  // R31 — authoring 초안은 lineage_status=pending 동안 귀속을 유예한다. 교수자 최종화 뒤에는
+  // 현재 콘텐츠의 문항별 모델 귀속을 완전하게 생성해야 reviewed로 전환할 수 있다.
   // 귀속은 전문가 승인 전 pending claim이며, 구조·scope·근거 합집합만 자동 판정한다.
   if (
     m.schema_version === "mission_v5" &&
-    m.provenance?.prompt_version === CURRENT_MISSION_PROMPT_VERSIONS[0]
+    m.provenance?.prompt_version === CURRENT_MISSION_PROMPT_VERSIONS[0] &&
+    !("authoring" in m && m.authoring?.lineage_status === "pending")
   ) {
     const lineageScope = buildMissionLineageScope({
       direction: m.direction,

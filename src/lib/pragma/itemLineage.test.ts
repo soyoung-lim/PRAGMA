@@ -176,6 +176,20 @@ describe("item-level realization lineage", () => {
     current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
     expect(checkMission(current, context).violations.some((violation) => violation.id === "R31" && violation.level === "fail")).toBe(true);
 
+    current.authoring = {
+      schema_version: "mission_authoring_v1",
+      stage: "ai_draft",
+      lineage_status: "pending",
+      repair_attempts: 0,
+    };
+    expect(checkMission(current, context).violations.filter((violation) => violation.id === "R31")).toEqual([]);
+
+    current.authoring = {
+      ...current.authoring,
+      stage: "professor_finalized",
+      lineage_status: "complete",
+    };
+
     const paths = expectedItemLineageTargetPaths(current);
     const rule = scope.rules[0];
     current.item_lineage = {
