@@ -75,7 +75,10 @@ describe("prompt snapshot integrity", () => {
       "5개 situation_ko는 서로 다른 구체적 사건",
     );
     expect(prompt("mission.user.retry").text).toContain(
-      "R27 실패라면 진단이 지목한 중복 situation_ko만",
+      "R27 중복 실패라면 진단이 지목한 중복 situation_ko만",
+    );
+    expect(prompt("mission.user.retry").text).toContain(
+      "R27 문장 수·길이 실패라면 진단이 지목한 situation_ko만 140자 이내의 정확히 2개 한국어 문장",
     );
   });
 
