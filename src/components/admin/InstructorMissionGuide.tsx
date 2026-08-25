@@ -113,7 +113,9 @@ export function InstructorMissionGuide({ guide }: { guide: InstructorMissionGuid
             <p className="font-semibold">토론 질문</p>
             <ul className="mt-1 list-disc space-y-1 pl-5">
               <li>MPJ에서는 판단했지만 DCT에서 같은 원리를 적용하지 못했다면 어떤 상황 단서가 산출에서 사라졌는가?</li>
-              <li>복수 허용안은 각각 상대와의 관계를 어떤 인상으로 만드는가?</li>
+              <li>{guide.dct.alternatives.length > 1
+                ? "복수 허용안은 각각 상대와의 관계를 어떤 인상으로 만드는가?"
+                : "제시된 허용안과 다른 전략으로도 가능한 응답을 만든다면 관계적 인상이 어떻게 달라지는가?"}</li>
               <li>경계형 후보가 다른 현실적 맥락에서는 가능해지는지, 가능하다면 무엇이 달라져야 하는가?</li>
             </ul>
           </div>
@@ -126,7 +128,7 @@ export function InstructorMissionGuide({ guide }: { guide: InstructorMissionGuid
           <p className="font-medium">{guide.recontextualization.situationKo}</p>
           <p className="mt-1 text-[#657178]">관계: {guide.recontextualization.relationKo}</p>
           <p className="mt-3 rounded-lg bg-[#F4F1E8] px-3 py-2">{guide.recontextualization.promptKo}</p>
-          <p className="mt-3 text-[12px] text-[#657178]">2–4주 뒤 5분 회수: 같은 {guide.speechActKo}을 다른 관계·부담·매체에 놓고 표현을 하나만 조정하게 합니다.</p>
+          <p className="mt-3 text-[12px] text-[#657178]">2–4주 뒤 5분 회수: 화행 「{guide.speechActKo}」를 다른 관계·부담·매체에 놓고 표현을 하나만 조정하게 합니다.</p>
         </GuideSection>
       </div>
     </article>
@@ -134,4 +136,3 @@ export function InstructorMissionGuide({ guide }: { guide: InstructorMissionGuid
 }
 
 export default InstructorMissionGuide;
-

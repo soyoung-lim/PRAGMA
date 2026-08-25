@@ -131,6 +131,47 @@ function candidatesOf(item: MpjItemRuntime): InstructorGuideCandidate[] {
   }];
 }
 
+function guideItemOf(
+  item: MpjItemRuntime,
+  id = item.id,
+  titleKo = ITEM_TITLE[item.type] ?? item.type,
+): InstructorGuideItem {
+  return {
+    id,
+    titleKo,
+    situationKo: item.situation_ko,
+    source: item.source,
+    designIntentKo: item.explanation_ko,
+    candidates: candidatesOf(item),
+  };
+}
+
+function guideItemsOf(items: MpjItemRuntime[]): InstructorGuideItem[] {
+  const [scale, combined, reason, comparison] = items;
+  const isLegacyFourStep = items.length === 4
+    && scale?.type === "scale4"
+    && combined?.type === "fix_choice"
+    && (reason?.type === "reason" || reason?.type === "reason_conf")
+    && comparison?.type === "multi_judge";
+  if (!isLegacyFourStep) return items.map((item) => guideItemOf(item));
+
+  // 학습자 정본 실행기와 동일하게 legacy의 결합 판단·교정 문항을 MPJ2/MPJ3으로 분리한다.
+  return [
+    guideItemOf(scale, 1),
+    {
+      id: 2,
+      titleKo: ITEM_TITLE.judge3,
+      situationKo: combined.situation_ko,
+      source: combined.source,
+      designIntentKo: combined.explanation_ko,
+      candidates: [{ text: combined.target, noteKo: combined.explanation_ko }],
+    },
+    guideItemOf(combined, 3),
+    guideItemOf(reason, 4),
+    guideItemOf(comparison, 5),
+  ];
+}
+
 function reasonSignals(items: MpjItemRuntime[]): { misconceptionKo?: string; coreReasonKo?: string } {
   const reason = items.find((item) => item.type === "reason" || item.type === "reason_conf");
   if (!reason) return {};
@@ -187,14 +228,7 @@ export function buildInstructorMissionGuide(
     situationKo: mission.production_task.situation_ko,
     relationKo: mission.production_task.relation_ko,
     pdrKo: formatPdr(productionPdr),
-    mpjItems: items.map((item) => ({
-      id: item.id,
-      titleKo: ITEM_TITLE[item.type] ?? item.type,
-      situationKo: item.situation_ko,
-      source: item.source,
-      designIntentKo: item.explanation_ko,
-      candidates: candidatesOf(item),
-    })),
+    mpjItems: guideItemsOf(items),
     ...signals,
     contrast,
     microscope: microscopeOf(items),
@@ -209,7 +243,7 @@ export function buildInstructorMissionGuide(
     recontextualization: {
       situationKo: recontextItem.situation_ko,
       relationKo: recontextItem.relation_ko,
-      promptKo: `같은 ${speechActKo}이라도 이 관계와 부담에서는 어떤 표현 자원을 더하거나 덜어야 하는지 비교하세요.`,
+      promptKo: `화행 「${speechActKo}」도 이 관계와 부담에서는 어떤 표현 자원을 더하거나 덜어야 하는지 비교하세요.`,
     },
   };
 }

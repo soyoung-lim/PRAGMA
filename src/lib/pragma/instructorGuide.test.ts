@@ -23,10 +23,17 @@ describe("instructor mission guide", () => {
   it("does not invent a single-axis claim for legacy or compound contrasts", () => {
     const guide = buildInstructorMissionGuide(SAMPLE_MISSION_V5, "요청");
 
+    expect(guide.mpjItems).toHaveLength(5);
+    expect(guide.mpjItems.map((item) => item.titleKo)).toEqual([
+      "첫인상 판단",
+      "맥락 대비 판단",
+      "판단하고 고쳐보기",
+      "판단 근거 찾기",
+      "여러 초안 비교",
+    ]);
     expect(guide.contrast.verified).toBe(false);
     expect(guide.contrast.changedKo).toBeUndefined();
     expect(guide.contrast.firstSituationKo).toBeTruthy();
     expect(guide.contrast.secondSituationKo).toBeTruthy();
   });
 });
-
