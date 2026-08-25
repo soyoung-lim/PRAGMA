@@ -1,6 +1,6 @@
 // 코어 → 미션 승격 (관리자 UI 배선). 골든 테스트 경로를 앱으로 옮긴 것.
 //   엣지함수 action:'mission'(게이트1·provenance 반영본) → checkMission(R1~R24)
-//   → 전체 초안 1회 → 구조 통과분 격리 저장 → critic 지목 문항만 1회 수리.
+//   → 전체 초안 1회 → R27 국소 결함/critic 지목 문항만 1회 수리 → 유효 초안 격리 저장.
 // review_mission RPC = generated → reviewed(학습자 실행 게이트, 계약 0-b·17).
 //
 // 9개 화행 모두 사람 작성 기본 화용 초점으로 승격할 수 있다.
@@ -119,6 +119,36 @@ export interface PromoteOptions {
 
 /** 전체 미션은 한 번만 생성한다. 이후 수정은 실패 item block 1회로 제한한다. */
 export const MISSION_GENERATION_MAX_ATTEMPTS = 1;
+
+type MissionRuleViolation = { id: string; level: string; message: string };
+
+/** R27 완전 중복은 뒤쪽 문항 하나만 바꾸면 되는 국소 결함이다. */
+export function repairFindingsForRuleViolations(
+  violations: MissionRuleViolation[],
+): QualityCheck["findings"] {
+  const findings: QualityCheck["findings"] = [];
+  const seen = new Set<string>();
+  for (const violation of violations) {
+    if (violation.level !== "fail" || violation.id !== "R27") continue;
+    const itemGroup = violation.message.match(/문항\s+([0-9·]+)/)?.[1];
+    const itemNumbers = itemGroup
+      ?.split("·")
+      .map(Number)
+      .filter((value) => Number.isInteger(value) && value >= 1 && value <= 5);
+    const itemNumber = itemNumbers?.at(-1);
+    if (!itemNumber) continue;
+    const where = `mpj_items[${itemNumber - 1}].situation_ko`;
+    if (seen.has(where)) continue;
+    seen.add(where);
+    findings.push({
+      code: "rule_R27_duplicate_situation",
+      severity: "fail",
+      where,
+      note_ko: violation.message,
+    });
+  }
+  return findings;
+}
 
 /**
  * 검증② — 규칙검사 통과분을 **생성과 분리된 모델**로 비평(계약 0-n·94, 세칙 0-q·99).
@@ -474,34 +504,82 @@ export async function promoteCore(
   let mission = parsed.data;
   options.onProgress?.({ phase: "checking", attempt: 1, maxAttempts: 1 });
   let check = checkMission(rawContent, ctx, core.core_content ?? undefined);
-  const violations = check.violations.map((x) => ({ id: x.id, level: x.level, message: x.message }));
+  const initialViolations = check.violations.map((x) => ({ id: x.id, level: x.level, message: x.message }));
+  let repaired = false;
+  let repairError: string | undefined;
+  let quality: QualityCheck;
+  let contentToSave: Record<string, unknown> = rawContent;
+
   if (check.result === "fail") {
-    return { ok: false, mission, ruleResult: "fail", violations, attempts, error: "규칙검사 실패 — 저장하지 않았습니다." };
+    const findings = repairFindingsForRuleViolations(initialViolations);
+    const hasOnlyRepairableFailures = check.violations
+      .filter((violation) => violation.level === "fail")
+      .every((violation) => violation.id === "R27" && findings.some((finding) => finding.note_ko === violation.message));
+    if (!findings.length || !hasOnlyRepairableFailures) {
+      return { ok: false, mission, ruleResult: "fail", violations: initialViolations, attempts, error: "규칙검사 실패 — 저장하지 않았습니다." };
+    }
+    options.onProgress?.({ phase: "repairing" });
+    const structuralRepair = await repairMissionOnce({
+      missionContent: rawContent,
+      quality: {
+        verdict: "fail",
+        summary_ko: "결정론 규칙이 지목한 중복 상황 문항을 국소 수리합니다.",
+        findings,
+        model: "deterministic_rules",
+        prompt_version: "mission_rules_r27_v1",
+        checked_at: new Date().toISOString(),
+      },
+      feature,
+      direction,
+      speechAct: core.speech_act,
+      scenarioId: core.scenario_id,
+      generationRunId: core.generation_run_id,
+      generationItemKey: core.generation_item_key,
+      ctx,
+      coreContent: core.core_content,
+    });
+    if (structuralRepair.ok === false) {
+      return {
+        ok: false,
+        mission,
+        ruleResult: "fail",
+        violations: initialViolations,
+        attempts,
+        repairError: structuralRepair.error,
+        error: `규칙검사 실패 · 문항 수리 실패 — 저장하지 않았습니다: ${structuralRepair.error}`,
+      };
+    }
+    repaired = true;
+    mission = structuralRepair.mission;
+    quality = structuralRepair.quality;
+    check = structuralRepair.check;
+    contentToSave = structuralRepair.missionContent;
+    options.onProgress?.({ phase: "rechecking" });
+  } else {
+    options.onProgress?.({ phase: "quality" });
+    const qualityResult = await runQualityCheck({
+      missionContent: rawContent,
+      feature,
+      direction,
+      speechAct: core.speech_act,
+      scenarioId: core.scenario_id,
+      generationRunId: core.generation_run_id,
+      generationItemKey: core.generation_item_key,
+    });
+    quality = qualityResult.ok
+      ? qualityResult.quality
+      : {
+          verdict: "fail",
+          summary_ko: "AI critic을 완료하지 못해 교수자 확인이 필요합니다.",
+          findings: [{ code: "critic_unavailable", severity: "fail", where: "", note_ko: "error" in qualityResult ? qualityResult.error : "AI critic을 완료하지 못했습니다." }],
+          model: "unavailable",
+          prompt_version: "quality_unavailable_v1",
+          checked_at: new Date().toISOString(),
+        };
+    contentToSave = { ...rawContent, quality_check: quality };
   }
 
-  options.onProgress?.({ phase: "quality" });
-  const qualityResult = await runQualityCheck({
-    missionContent: rawContent,
-    feature,
-    direction,
-    speechAct: core.speech_act,
-    scenarioId: core.scenario_id,
-    generationRunId: core.generation_run_id,
-    generationItemKey: core.generation_item_key,
-  });
-  let quality: QualityCheck = qualityResult.ok
-    ? qualityResult.quality
-    : {
-        verdict: "fail",
-        summary_ko: "AI critic을 완료하지 못해 교수자 확인이 필요합니다.",
-        findings: [{ code: "critic_unavailable", severity: "fail", where: "", note_ko: "error" in qualityResult ? qualityResult.error : "AI critic을 완료하지 못했습니다." }],
-        model: "unavailable",
-        prompt_version: "quality_unavailable_v1",
-        checked_at: new Date().toISOString(),
-      };
-  let contentToSave: Record<string, unknown> = { ...rawContent, quality_check: quality };
-
-  // 구조 통과 초안은 critic fail 여부와 무관하게 먼저 격리 저장한다.
+  // 구조 통과 초안(필요하면 R27 국소 수리 후)은 critic fail 여부와 무관하게 격리 저장한다.
   options.onProgress?.({ phase: "saving" });
   const { data: savedId, error: saveErr } = await rpc("save_generated_mission", {
     p_scenario_id: core.scenario_id,
@@ -509,19 +587,34 @@ export async function promoteCore(
       mission_content: contentToSave,
       validation_result: {
         result: check.result,
-        violations,
+        violations: check.violations.map((violation) => ({
+          id: violation.id,
+          level: violation.level,
+          message: violation.message,
+        })),
         generation_attempts: attempts,
+        repair_attempts: repaired ? 1 : 0,
       },
       lineage_meta: lineageScope,
     },
   });
   if (saveErr) {
-    return { ok: false, mission, ruleResult: check.result as "pass" | "warning", violations, attempts, quality, error: `저장 실패: ${(saveErr as { message?: string }).message ?? saveErr}` };
+    return {
+      ok: false,
+      mission,
+      ruleResult: check.result as "pass" | "warning",
+      violations: check.violations.map((violation) => ({
+        id: violation.id,
+        level: violation.level,
+        message: violation.message,
+      })),
+      attempts,
+      quality,
+      error: `저장 실패: ${(saveErr as { message?: string }).message ?? saveErr}`,
+    };
   }
 
-  let repaired = false;
-  let repairError: string | undefined;
-  if (quality.verdict === "fail") {
+  if (quality.verdict === "fail" && !repaired) {
     options.onProgress?.({ phase: "repairing" });
     const repair = await repairMissionOnce({
       missionContent: contentToSave,

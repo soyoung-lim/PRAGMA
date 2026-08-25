@@ -2139,7 +2139,7 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
   return parts.join('\n')
 }
 
-const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v1'
+const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v2_rules'
 
 function repairTargets(findings: MissionRepairBody['findings']) {
   const itemIndexes = [...new Set(findings.flatMap((finding) => {
@@ -2161,19 +2161,21 @@ function buildMissionRepairPrompt(b: MissionRepairBody): { system: string; user:
     ...(targets.diagnosticDimensions ? ['replace_diagnostic_dimensions'] : []),
   ]
   const system = `당신은 PRAGMA 교수자 저작 파이프라인의 국소 수리 모델입니다.
-critic이 지목한 문항만 고치고, 통과한 문항과 DCT 코어는 절대 바꾸지 마세요.
+결정론 검사 또는 critic이 지목한 문항만 고치고, 통과한 문항과 DCT 코어는 절대 바꾸지 마세요.
 허용 operation은 replace_item_block, replace_reference_alternatives,
 replace_diagnostic_dimensions뿐입니다. replace_item_block은 item_index와 완전한 item을,
 나머지는 각각 reference_alternatives 또는 diagnostic_dimensions를 반환합니다.
 문항의 id·type·item_focus·axis_feature·source·PDR·preceding_turn은 원본을 유지합니다.
 원문의 행위자·사건·시간·수량·대안·핵심 명제·화행 목적을 유지하고, 문제로 지목된 화용 표현·
-후보·해설만 고치세요. 다른 문항을 더 좋게 쓰려는 변경은 금지합니다.
+후보·해설만 고치세요. 단, rule_R27_duplicate_situation은 동결된 source와 PDR에 맞게
+situation_ko만 다른 문항·DCT와 구별되는 구체적 장면으로 다시 쓰세요. 다른 문항을 더 좋게
+쓰려는 변경은 금지합니다.
 출력은 {"operations":[...]} JSON 하나뿐입니다.`
   const user = [
     `[화행] ${b.speech_act_ko} (${b.speech_act})`,
     `[문항 판정 초점] ${b.feature.code} — ${b.feature.operational_definition}`,
     `[허용 대상] ${allowed.length ? allowed.join(', ') : '(자동 수리 가능 대상 없음)'}`,
-    '[critic findings]',
+    '[검사 findings]',
     JSON.stringify(b.findings, null, 2),
     '[동결된 전체 미션]',
     JSON.stringify(b.mission_content, null, 2),
