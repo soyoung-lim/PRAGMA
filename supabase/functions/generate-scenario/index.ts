@@ -1855,6 +1855,9 @@ function buildMissionSystemPrompt(
   const anchorContrastRule = nativeMpj5
     ? 'judge3·fix_choice·reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건'
     : 'fix_choice·reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건'
+  const featureBoundaryRule = f.code === 'proposal_optionality_clarity'
+    ? `🔴 제안 초점 경계: 문장이 **구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는다면** 선택 가능성과 방안 명료성을 모두 갖춘 적정 대역입니다. "두 가지를 생각했다"나 "정해야 한다" 같은 도입이 있어도 뒤에서 실제 대안과 의견 질문을 분명히 제시하면 too_tentative·too_directive로 붙이지 마세요. too_tentative는 행동/대안을 실제로 흐리거나 생략하고, too_directive는 결정을 확정하거나 선택을 명령하는 문장 자체로 실현하세요.`
+    : ''
   return `당신은 ${LANG_DIR_KO[direction]} 통번역 교육용 '메타화용 판단 미션'을 설계하는 전문가입니다.
 이번 단원의 화용 초점은 「${f.learner_label}」입니다.
 초점 정의: ${f.operational_definition}
@@ -1862,6 +1865,7 @@ function buildMissionSystemPrompt(
 이 초점을 실현하는 장치: ${f.relevant_resources.join(', ')}
 이 초점이 아닌 것(혼입 금지): ${f.excluded_confounds.join(', ')}
 깨야 할 소박한 규칙: ${f.counter_rule_note}
+${featureBoundaryRule}
 
 ${gate1}${spokenRule}
 
@@ -2295,6 +2299,7 @@ function buildQualitySystemPrompt(
   const findingCodes = nativeMpj5
     ? 'gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch | comparison_quality_mismatch | diagnostic_coverage_mismatch'
     : 'gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch'
+  const featureBoundaryAudit = `5. **제안 초점 경계 감사** — 화용 초점 code가 proposal_optionality_clarity일 때, 구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는 문장은 선택 가능성과 방안 명료성을 모두 갖춘 within_band다. 이런 문장을 too_tentative·too_directive로 라벨링했으면 반드시 fail band_mismatch로 보고하라. 같은 문장 또는 의미상 같은 문장을 문항 사이에서 적정/비적정으로 다르게 판정했으면 fail internal_inconsistency다.`
   return `너는 L2 화용 교육 자료의 **품질 심사자**다. 다른 모델이 생성한 학습 미션 1건을 받아
 결함을 찾아낸다. 너는 자료를 고쳐 쓰지 않고 **판정과 근거만** 낸다.
 
@@ -2318,6 +2323,7 @@ function buildQualitySystemPrompt(
    band_mismatch를 보고하지 마라. 실제 문장이 within_band인데 false이거나, 실제 문장이
    non-within인데 true일 때만 대역 불일치다. note_ko는 근거 설명이지 판정 대상 표현이나
    별도의 대역 코드가 아니므로, note_ko 문장을 중국어 correction 자체로 오인하지 마라.
+${featureBoundaryAudit}
 
 [검사 항목]
 ① gate1_violation — 판정 후보(target·corrections·candidates·recommended·reference)가

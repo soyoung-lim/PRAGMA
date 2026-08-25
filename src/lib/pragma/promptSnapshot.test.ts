@@ -259,6 +259,7 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("결정론적 hard gate는 이미 통과했다");
     expect(quality.text).toContain("후보 길이 구간이 나뉘어도 그 사실만으로 fail하지 말고");
     expect(quality.text).toContain("fix_choice의 is_valid 의미");
+    expect(quality.text).toContain("제안 초점 경계 감사");
     expect(quality.text).toContain("false는 \"문법적으로 틀림\"이나 \"완전히 부적절함\"이라는 뜻이 아니다");
     expect(quality.text).toContain("note_ko 문장을 중국어 correction 자체로 오인하지 마라");
     expect(quality.text).toContain("판단에 필요한 장면이");
@@ -298,6 +299,7 @@ describe("prompt snapshot integrity", () => {
     expect(retry.text).toContain("reason의 problem_band_code도 비적정 대역");
     expect(retry.text).toContain("AI band_mismatch 실패");
     expect(retry.text).toContain("적정한 문장에 비적정 라벨만 다시 붙이지 마세요");
+    expect(retry.text).toContain("구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는다면");
     expect(retry.text).toContain("실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지");
   });
 
