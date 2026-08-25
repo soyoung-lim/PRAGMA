@@ -7,7 +7,7 @@ describe("repairFindingsForRuleViolations", () => {
     expect(repairFindingsForRuleViolations([{
       id: "R27",
       level: "fail",
-      message: "v4 MPJ 문항 2·3·4의 situation_ko가 완전히 중복됨",
+      message: "v4 MPJ 문항 2·3·4의 situation_ko가 완전히 중복됨. 앵커 PDR은 유지하되 다시 만드세요",
     }])).toEqual([
       expect.objectContaining({
         code: "rule_R27_duplicate_situation",

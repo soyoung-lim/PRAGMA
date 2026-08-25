@@ -125,7 +125,7 @@ type MissionRuleViolation = { id: string; level: string; message: string };
 const ITEM_BLOCK_REPAIRABLE_RULES = new Set([
   "R2", "R3", "R4", "R5", "R6", "R7", "R10", "R11", "R18", "R21", "R27", "R28",
 ]);
-const FROZEN_ITEM_INVARIANT = /PDR|preceding_turn|item_focus|axis_feature|source/i;
+const PDR_FROZEN_ITEM_RULES = new Set(["R2", "R3", "R4", "R5"]);
 
 /** 허용 operation 안에서 고칠 수 있는 결정론 결함만 문항 단위 수리로 보낸다. */
 export function repairFindingsForRuleViolations(
@@ -151,7 +151,8 @@ export function repairFindingsForRuleViolations(
       }
       continue;
     }
-    if (!ITEM_BLOCK_REPAIRABLE_RULES.has(violation.id) || FROZEN_ITEM_INVARIANT.test(violation.message)) continue;
+    if (!ITEM_BLOCK_REPAIRABLE_RULES.has(violation.id)) continue;
+    if (PDR_FROZEN_ITEM_RULES.has(violation.id) && /PDR/i.test(violation.message)) continue;
     const itemGroup = violation.message.match(/문항\s+([0-9·]+)/)?.[1];
     const itemNumbers = itemGroup
       ?.split("·")
