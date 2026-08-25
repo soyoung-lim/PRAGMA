@@ -1,10 +1,11 @@
-// 규칙검사 R1~R33 — 결정론·API 0회. 생성계약 v1.5 §8 + 양방향(0-l·85).
+// 규칙검사 R1~R33 — 결정론·API 0회. R22는 비차단 HSK lexical audit로 대체되어
+// retired 상태이고, 나머지 규칙만 이 파일에서 판정한다.
 //
 // 순수 함수. 코드가 검사할 수 있는 것은 필드·선택지 수·중복·길이 편차·형식·
 // 코드값 정합뿐이다(관리자구조md §3-①). 의미 보존·자연성·화행 구현은 검사 불가 →
 // AI 점검·인간 검수의 몫.
 //
-// 코어 서브셋(§8) = R1c·R8·R9·R10·R15·R16·R17·R19·R25·R26(+R22 warning).
+// 코어 서브셋 = R1c·R8·R9·R10·R15·R16·R17·R19·R25·R26.
 //
 // 양방향(0-l·84): 입력은 v1 또는 v2 JSON 모두 허용 — normalizeCore/normalizeMission이
 // v2 형태(중립 필드명 + direction)로 통일한 뒤 검사한다. R10은 데이터의 direction으로
@@ -79,6 +80,12 @@ export interface RuleResult {
   result: "pass" | "warning" | "fail";
   violations: RuleViolation[];
 }
+
+/**
+ * 번호는 연구·운영 기록의 감사 키이므로 재사용하지 않는다.
+ * R22의 수준·HSK 휴리스틱은 2026-08-09부터 별도 비차단 lexical audit가 담당한다.
+ */
+export const RETIRED_MISSION_RULE_IDS = ["R22"] as const;
 
 /** 검사 맥락 — 요청한 셀 조건과 카탈로그. */
 export interface CheckContext {
@@ -182,7 +189,7 @@ function checkSourceLang(v: RuleViolation[], dir: LanguageDirection, text: strin
 /** 주 판정문(target)이 방향의 target 언어인가 — hard fail. */
 function checkTargetLangHard(v: RuleViolation[], dir: LanguageDirection, text: string, label: string) {
   const lang = DIRECTION_LANGS[dir].target;
-  const ok = lang === "zh" ? hasCjk(text) : hasHangul(text);
+  const ok = lang === "zh" ? looksChinese(text) : hasHangul(text);
   if (!ok) add(v, "R10", "fail", `${label}: ${LANG_KO[lang]}가 아님`);
 }
 
@@ -192,7 +199,11 @@ function checkTargetLangSoft(v: RuleViolation[], dir: LanguageDirection, id: num
   for (const t of texts) {
     if (!t) continue;
     if (lang === "zh") {
-      if (!looksChinese(t)) add(v, "R10", "warning", `문항 ${id}: 후보 "${t.slice(0, 20)}"에 한글 혼입 또는 중국어 아님`);
+      if (hasHangul(t)) {
+        add(v, "R10", "fail", `문항 ${id}: 후보 "${t.slice(0, 20)}"에 한글 혼입`);
+      } else if (!hasCjk(t)) {
+        add(v, "R10", "warning", `문항 ${id}: 후보 "${t.slice(0, 20)}"에 중국어가 확인되지 않음`);
+      }
     } else {
       if (!hasHangul(t)) add(v, "R10", "warning", `문항 ${id}: 후보 "${t.slice(0, 20)}"에 한국어 없음`);
       else if (hasCjk(t)) add(v, "R10", "warning", `문항 ${id}: 후보 "${t.slice(0, 20)}"에 한자 혼입(한국어 산출)`);
@@ -204,7 +215,7 @@ function checkTargetLangSoft(v: RuleViolation[], dir: LanguageDirection, id: num
 function checkPrecedingLang(v: RuleViolation[], dir: LanguageDirection, text: string | null | undefined, label: string) {
   if (!text) return;
   const lang = DIRECTION_LANGS[dir].target;
-  const ok = lang === "zh" ? hasCjk(text) : hasHangul(text);
+  const ok = lang === "zh" ? looksChinese(text) : hasHangul(text);
   if (!ok) add(v, "R10", "fail", `${label}: 선행 발화가 ${LANG_KO[lang]}가 아님`);
 }
 
@@ -420,7 +431,7 @@ function checkCoreCommon(
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// 미션 검사 (R1~R24 전체)
+// 미션 검사 (현행 R1~R33, retired R22 제외)
 // ══════════════════════════════════════════════════════════════════════
 export function checkMission(
   missionInput: unknown,
@@ -966,7 +977,9 @@ function checkMultiJudgeLength(
     codesOf(c).every((b) => b !== withinCode) && isOverBand(codesOf(c));
   const isOk = (c: { accepted_band_codes?: string[] }) => codesOf(c).includes(withinCode);
 
-  // 완전 단조 (길이순 정렬이 정답 패턴과 일치) → fail
+  // 완전 단조 (길이순 정렬이 정답 패턴과 일치) → warning.
+  // 길이는 화용적 조절의 자연스러운 표면 실현일 수 있으므로 이것만으로 저장을 막지 않고,
+  // 실제 answer cue인지는 필수 AI 품질점검과 교수자 검수가 판정한다.
   const paired = candidates.map((c, i) => ({ len: lens[i], ok: isOk(c) }));
   const sorted = [...paired].sort((a, b) => a.len - b.len);
   const monotonic = sorted.every((p, i) => i === 0 || Number(p.ok) >= Number(sorted[i - 1].ok));
@@ -991,7 +1004,7 @@ function checkMultiJudgeLength(
         add(
           v,
           "R5",
-          "fail",
+          "warning",
           `문항 ${id}: multi_judge에서 부적절안과 적정안이 길이만으로 완전히 분리됨` +
             ` (${separation}; ${candidateLengths}). 재생성 시 각 후보의 초점 자원과 대역은 유지하고,` +
             ` 새 사실을 더하지 않는 중립적 연결·부연 또는 문장 압축으로 적정안과 부적절안의 길이 범위를 겹치게 하세요`,
@@ -1002,7 +1015,7 @@ function checkMultiJudgeLength(
 
   // over가 유일 최장문 → warning (v1.4 증거 기반 강등, §11)
   // 자연 언어에서 강도-길이 상관이 강해 hard fail은 자연성을 해친다. 소프트 단서는
-  // 인간 눈검사로 넘기고, 진짜 무효(완전 단조=길이순이 정답키)만 위에서 fail 처리한다.
+  // 인간 눈검사로 넘기며, 완전 분리도 AI가 실제 answer cue인지 함께 판정한다.
   const overIdx = candidates.map((c, i) => (isOver(c) ? i : -1)).filter((i) => i >= 0);
   const maxLen = Math.max(...lens);
   const maxCount = lens.filter((l) => l === maxLen).length;
@@ -1141,22 +1154,66 @@ function checkNationalization(v: RuleViolation[], m: MissionRuntime) {
 }
 
 function checkInternalDuplicates(v: RuleViolation[], m: MissionRuntime) {
-  const targets = m.mpj_items
-    .map((it) => ("target" in it ? it.target : ""))
-    .filter(Boolean);
-  const seen = new Set<string>();
-  for (const t of targets) {
-    if (seen.has(t)) add(v, "R19", "warning", `target 완전 중복: "${t.slice(0, 20)}…"`);
-    seen.add(t);
+  const normalized = (text: string) => text.normalize("NFKC").trim();
+  const checkGroup = (
+    label: string,
+    values: Array<{ text: string; where: string }>,
+  ) => {
+    const seen = new Map<string, string>();
+    for (const value of values) {
+      const text = normalized(value.text);
+      if (!text) continue;
+      const firstWhere = seen.get(text);
+      if (firstWhere) {
+        add(
+          v,
+          "R19",
+          "warning",
+          `${label} 완전 중복: ${firstWhere} = ${value.where} — "${text.slice(0, 24)}${text.length > 24 ? "…" : ""}"`,
+        );
+      } else {
+        seen.set(text, value.where);
+      }
+    }
+  };
+
+  checkGroup(
+    "source",
+    m.mpj_items.map((item) => ({ text: item.source, where: `문항 ${item.id}` })),
+  );
+
+  const candidates: Array<{ text: string; where: string }> = [];
+  for (const item of m.mpj_items) {
+    if ("target" in item && item.target) {
+      candidates.push({ text: item.target, where: `문항 ${item.id} target` });
+    }
+    if (item.type === "fix_choice") {
+      item.corrections.forEach((correction, index) => {
+        candidates.push({ text: correction.text, where: `문항 ${item.id} correction ${index + 1}` });
+      });
+    }
+    if (item.type === "multi_judge") {
+      item.candidates.forEach((candidate, index) => {
+        candidates.push({ text: candidate.text, where: `문항 ${item.id} candidate ${index + 1}` });
+      });
+    }
   }
+  checkGroup("판정 후보", candidates);
 }
 
 function checkRecommendedConsistency(v: RuleViolation[], m: MissionRuntime, withinCode: string) {
   for (const it of m.mpj_items) {
     if (it.type === "fix_choice") {
-      // 권장안이 valid 교정 중 하나와 동일하면 이상적(모순 아님). 부적절 target과 동일하면 warning
+      // 권장안이 valid 교정 중 하나와 동일하면 이상적(모순 아님). 부적절 target이나
+      // 명시적으로 invalid인 교정안을 그대로 재추천하면 기계적으로 확인 가능한 모순이다.
       if (it.recommended_example === it.target) {
-        add(v, "R21", "warning", `문항 ${it.id}: recommended_example가 부적절 target과 동일`);
+        add(v, "R21", "fail", `문항 ${it.id}: recommended_example가 부적절 target과 동일`);
+      } else if (
+        it.corrections.some(
+          (correction) => !correction.is_valid && correction.text === it.recommended_example,
+        )
+      ) {
+        add(v, "R21", "fail", `문항 ${it.id}: recommended_example가 invalid 교정안과 동일`);
       }
     }
   }

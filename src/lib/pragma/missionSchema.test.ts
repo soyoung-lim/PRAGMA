@@ -345,7 +345,7 @@ describe("mission_v4 MPJ4 + DCT contract", () => {
       context,
     );
     const violation = checked.violations.find(
-      (item) => item.id === "R5" && item.level === "fail" && item.message.includes("길이만으로 완전히 분리"),
+      (item) => item.id === "R5" && item.level === "warning" && item.message.includes("길이만으로 완전히 분리"),
     );
     expect(violation?.message).toContain("후보 1[too_direct]=1자");
     expect(violation?.message).toContain("후보 3[within_band]");

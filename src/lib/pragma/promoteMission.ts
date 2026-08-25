@@ -22,6 +22,7 @@ import {
   type QualityCheck,
 } from "@/lib/pragma/missionSchema";
 import { normalizeCore, coreDirection } from "@/lib/pragma/coreSchema";
+import { missionQualityFailureNotes } from "@/lib/pragma/missionQualityRetry";
 import {
   SPEECH_ACT_UI,
   LEVEL,
@@ -281,6 +282,7 @@ export async function promoteCore(
   let mission: MissionRuntime | undefined; // 정규화(v1/v2/v3/v4 엣지 응답) — 검사·표시·반환용
   let rawContent: unknown; // 엣지 원본(저장용 — migration이 버전별 상위집합을 허용)
   let check: ReturnType<typeof checkMission> | undefined;
+  let quality: QualityCheck | undefined;
   let failureNotes: string | undefined;
   let previousMission: unknown;
   let attempts = 0;
@@ -326,7 +328,34 @@ export async function promoteCore(
     // R23 계승 검사는 원본 core_content(v1/v2)를 넘긴다 — checkMission이 내부 정규화.
     options.onProgress?.({ phase: "checking", attempt, maxAttempts: 3 });
     check = checkMission(rawContent, ctx, core.core_content ?? undefined);
-    if (check.result !== "fail") break;
+    if (check.result !== "fail") {
+      if (options.qualityGate !== "required_non_fail") break;
+      options.onProgress?.({ phase: "quality" });
+      const checked = await runQualityCheck({
+        missionContent: rawContent,
+        feature,
+        direction,
+        speechAct: core.speech_act,
+        scenarioId: core.scenario_id,
+        generationRunId: core.generation_run_id,
+        generationItemKey: core.generation_item_key,
+      });
+      if (checked.ok === false) {
+        return {
+          ok: false,
+          mission,
+          ruleResult: check.result as "pass" | "warning",
+          attempts,
+          error: `${checked.error} — 미션은 저장하지 않았습니다.`,
+        };
+      }
+      quality = checked.quality;
+      if (quality.verdict !== "fail") break;
+      previousMission = rawContent;
+      failureNotes = missionQualityFailureNotes(quality);
+      if (attempt < 3) continue;
+      break;
+    }
     previousMission = rawContent;
     failureNotes = check.violations
       .filter((x) => x.level === "fail")
@@ -347,27 +376,29 @@ export async function promoteCore(
   // 결과는 mission_content에 얹어 함께 저장한다. 별도 품질 컬럼은 만들지 않되,
   // save_generated_mission RPC가 이 객체의 존재와 최소 계약을 fail-closed로 강제한다.
   // ⚠️ content_hash는 이 필드를 포함하지 않는다(provenance와 마찬가지로 사후 주입).
-  options.onProgress?.({ phase: "quality" });
-  const qualityResult = await runQualityCheck({
-    missionContent: rawContent,
-    feature,
-    direction,
-    speechAct: core.speech_act,
-    scenarioId: core.scenario_id,
-    generationRunId: core.generation_run_id,
-    generationItemKey: core.generation_item_key,
-  });
-  if (qualityResult.ok === false) {
-    return {
-      ok: false,
-      mission,
-      ruleResult: check.result as "pass" | "warning",
-      violations,
-      attempts,
-      error: `${qualityResult.error} — 미션은 저장하지 않았습니다.`,
-    };
+  if (!quality) {
+    options.onProgress?.({ phase: "quality" });
+    const qualityResult = await runQualityCheck({
+      missionContent: rawContent,
+      feature,
+      direction,
+      speechAct: core.speech_act,
+      scenarioId: core.scenario_id,
+      generationRunId: core.generation_run_id,
+      generationItemKey: core.generation_item_key,
+    });
+    if (qualityResult.ok === false) {
+      return {
+        ok: false,
+        mission,
+        ruleResult: check.result as "pass" | "warning",
+        violations,
+        attempts,
+        error: `${qualityResult.error} — 미션은 저장하지 않았습니다.`,
+      };
+    }
+    quality = qualityResult.quality;
   }
-  const quality = qualityResult.quality;
   if (options.qualityGate === "required_non_fail" && quality.verdict === "fail") {
     return {
       ok: false,

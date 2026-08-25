@@ -215,5 +215,24 @@ describe("item-level realization lineage", () => {
       })),
     };
     expect(checkMission(current, context).violations.filter((violation) => violation.id === "R31")).toEqual([]);
+
+    current.item_lineage.claims[0] = {
+      ...current.item_lineage.claims[0],
+      attribution_status: "model_unattributed",
+      rule_ids: [],
+      risk_ids: [],
+      evidence_ids: [],
+      note_ko: "허용 근거에 귀속하지 못한 테스트 주장",
+    };
+    current.item_lineage.coverage_summary = {
+      total_count: paths.length,
+      claimed_count: paths.length - 1,
+      unattributed_count: 1,
+    };
+    const withUnattributed = checkMission(current, context).violations;
+    expect(withUnattributed.filter((violation) => violation.id === "R31")).toEqual([]);
+    expect(withUnattributed.some(
+      (violation) => violation.id === "R32" && violation.level === "warning",
+    )).toBe(true);
   });
 });

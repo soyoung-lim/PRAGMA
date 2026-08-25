@@ -256,7 +256,8 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("수용 가능한 중간 1");
     expect(quality.text).toContain("엄밀한 2위·3위 선형 서열은");
     expect(quality.text).toContain("diagnostic_coverage_mismatch");
-    expect(quality.text).toContain("결정론적 규칙검사(R1~R33)");
+    expect(quality.text).toContain("결정론적 hard gate는 이미 통과했다");
+    expect(quality.text).toContain("후보 길이 구간이 나뉘어도 그 사실만으로 fail하지 말고");
     expect(quality.text).toContain("fix_choice의 is_valid 의미");
     expect(quality.text).toContain("false는 \"문법적으로 틀림\"이나 \"완전히 부적절함\"이라는 뜻이 아니다");
     expect(quality.text).toContain("note_ko 문장을 중국어 correction 자체로 오인하지 마라");

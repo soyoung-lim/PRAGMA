@@ -14,6 +14,7 @@ import {
   coreSourceIssue,
   mergeValidatedCoreRepair,
 } from '../_shared/coreSourceRepair.ts'
+import { canonicalizeCoreSituationFromSeed } from '../_shared/coreSituationCanonicalization.ts'
 import {
   CORE_LENGTH_POLICY_VERSION,
   CORE_LENGTH_RANGES,
@@ -48,6 +49,7 @@ import {
   hskReferenceCeiling,
   type HskTokenMatch,
 } from '../_shared/hskLexicalAudit.ts'
+import { canonicalizeNativeMpj5AnchorPdr } from '../_shared/missionCanonicalization.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -2296,8 +2298,9 @@ function buildQualitySystemPrompt(
 [전제]
 - 이 미션은 ${LANG_KO[src]} → ${LANG_KO[tgt]} 통번역 과제이며 화행은 「${speechActKo}」다.
 - 학습자는 ${learningFlow} 뒤 스스로 산출한다.
-- 형식·필드·개수·코드값·중복·길이 편차는 **이미 결정론적 규칙검사(R1~R33)가 통과시켰다.**
-  너는 그것을 다시 세지 마라. 너의 몫은 **의미·자연성·후보 자격**이다.
+- 형식·필드·개수·코드값·중복에 대한 결정론적 hard gate는 이미 통과했다. warning은 남아
+  있을 수 있으므로 형식을 다시 세는 데 시간을 쓰지 말되, 길이 차이가 실제 정답 단서인지와
+  후보의 의미·자연성·자격은 독립적으로 판정하라.
 
 [반드시 지킬 판정 원칙]
 1. **복수 정답 전제** — 같은 상황에 적절한 표현은 여럿이다. "내가 더 좋다고 생각하는 표현과
@@ -2326,6 +2329,8 @@ function buildQualitySystemPrompt(
    극단 문장(명령형 강요·노골적 무례)을 부적절 후보로 쓰는 것은 화용 훈련이 아니라
    "나쁜 표현 찾기"로 문항을 격하시킨다.
 ③ answer_cue — 길이·형식·정중 표지 개수 등 내용과 무관한 단서로 정답이 드러나는가.
+   특히 후보 길이 구간이 나뉘어도 그 사실만으로 fail하지 말고, 실제 BEST/WORST 선택을
+   화용 판단 없이 식별하거나 현저히 좁힐 수 있을 때만 근거와 함께 warning/fail로 보고하라.
 ④ band_mismatch — 부여된 대역 코드가 문장의 실제 화용 강도와 어긋나는가.
    해설이 대역 코드와 모순되는 경우도 포함.
 ⑤ focus_contamination — 후보들이 목표 초점 외의 차원(정보량·격식·어휘 난이도 등)까지
@@ -2784,11 +2789,15 @@ Deno.serve(async (req) => {
         gen.relation_ko,
         interpreterSceneRequired,
       )
+      const seedSituation = interpreterSceneRequired
+        ? { value: canonicalSituation.value, applied: false }
+        : canonicalizeCoreSituationFromSeed(b.situation_seed_ko, canonicalSituation.value)
       const bilingualSceneCanonicalizationApplied = canonicalSituation.applied || canonicalRelation.applied
-      if (bilingualSceneCanonicalizationApplied) {
+      const situationSeedCanonicalizationApplied = seedSituation.applied
+      if (bilingualSceneCanonicalizationApplied || situationSeedCanonicalizationApplied) {
         gen = {
           ...gen,
-          situation_ko: canonicalSituation.value,
+          situation_ko: seedSituation.value,
           relation_ko: canonicalRelation.value,
         }
       }
@@ -2945,6 +2954,7 @@ Deno.serve(async (req) => {
             preceding_turn_repair_applied: precedingTurnRepairApplied,
             bilingual_scene_repair_applied: bilingualSceneRepairApplied,
             bilingual_scene_canonicalization_applied: bilingualSceneCanonicalizationApplied,
+            situation_seed_canonicalization_applied: situationSeedCanonicalizationApplied,
             bilingual_scene_issue_remaining: bilingualSceneIssueRemaining,
             learner_scene_repair_applied: learnerSceneRepairApplied,
             length_policy_version: CORE_LENGTH_POLICY_VERSION,
@@ -2999,8 +3009,11 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
       }
       const rawItems = Array.isArray(gen.mpj_items) ? gen.mpj_items : []
+      const canonicalItems = isMiniDiscourse
+        ? canonicalizeNativeMpj5AnchorPdr(rawItems, b.core.pdr)
+        : rawItems
       // 위치·복사 필드는 서버가 강제: id=순번(R1), axis_feature=target_feature(R1)
-      const mpj_items = rawItems.map((it: Record<string, unknown>, i: number) => ({
+      const mpj_items = canonicalItems.map((it: Record<string, unknown>, i: number) => ({
         ...it,
         id: i + 1,
         axis_feature: b.feature.code,

@@ -233,6 +233,7 @@ const AdminAssembly = () => {
     setRowMsg((m) => ({ ...m, [r.scenario_id]: "" }));
     try {
       const res = await promoteCore(r as unknown as PromotableCore, {
+        qualityGate: "required_non_fail",
         onProgress: (stage) =>
           setAssemblyProgress((current) =>
             current?.id === r.scenario_id ? { ...current, stage } : current,

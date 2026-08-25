@@ -33,8 +33,10 @@ Yes라면 구현한다. No라면 지금은 하지 않는다.
 
 ## 현재 작업 인수인계 · Claude Code와 Codex 공통
 
-- 기존 작업을 이어갈 때 가장 먼저 `docs/handoff/ACTIVE_HANDOFF.md`를 읽는다.
-- 문서에 적힌 작업공간·branch·HEAD를 실제 Git 상태와 대조한 뒤 수정한다.
+- 기존 작업을 이어갈 때 가장 먼저 `docs/CANONICAL.md`, 최근 관련 `docs/dev-log/`,
+  `docs/research-trail/04_evidence_index.md`를 읽는다. 공개범위 정리로 삭제된
+  `docs/handoff/ACTIVE_HANDOFF.md`를 현재 정본으로 가정하거나 복원하지 않는다.
+- 사용자 인수인계 또는 최근 기록에 적힌 작업공간·branch·HEAD를 실제 Git 상태와 대조한 뒤 수정한다.
 - 다른 worktree에 있다면 그곳을 최신 상태라고 가정하거나 사용자 변경을 정리하지 않는다.
 - Claude Code와 Codex가 같은 worktree를 동시에 편집하지 않는다.
 
@@ -52,10 +54,11 @@ Yes라면 구현한다. No라면 지금은 하지 않는다.
   `첫인상 판단 → 맥락 대비 판단 → 판단하고 고쳐보기 → 이유 찾기 → 여러 초안 비교`다.
   localhost Mission V4의 다섯 MPJ를 최신 설계 근거로 보며, 그중 하나를 제거해 MPJ4로
   되돌리지 않는다.
-- 현재 운영 `mission_v5` 스키마·생성기·러너는 아직 **MPJ4 + DCT1**이므로 최신 학습설계와
-  동기화되지 않은 과도기 구현이다. `mission_v5`의 5는 스키마 버전일 뿐 MPJ 문항 수가 아니다.
-  운영 구현의 MPJ4를 최신 제품설계로 해석하지 말고, 설계 작업에서는 MPJ5를 우선한 뒤
-  스키마·생성기·러너의 후속 동기화 필요를 명시한다.
+- 현행 `mission_v5` 스키마·생성기·러너와 운영 DB·Edge·Railway는 **MPJ5 + DCT1**에
+  동기화됐다. 신규 생성 순서는 `scale4 → judge3 → fix_choice → reason → multi_judge`이며
+  `mpj_response_v2`로 저장한다. 과거 `mission_v5` MPJ4 행은 legacy 읽기 호환으로만 유지하고,
+  최신 제품설계나 신규 생성 계약으로 해석하지 않는다. 네이티브 MPJ5의 실생성·저장·교수자 검수·
+  인증 학습자 종단은 별도 운영 확인 대상이다.
 - 논문 작업공간을 함께 다룰 수 있는 세션이면
   `C:\PRAGMA_THESIS_LOCAL\01_정본\00_정본목록.md`와 위 세 경로의 일치 여부도 대조한다.
   불일치하면 검색이나 날짜로 한쪽을 선택하지 않고 보고한다.

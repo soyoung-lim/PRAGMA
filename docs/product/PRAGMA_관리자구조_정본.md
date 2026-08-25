@@ -2,9 +2,11 @@
 
 > 상태: 현재 정본. **이 문서는 구조·불변조건·승인 게이트만 담는다.**
 > 식별 규칙: 날짜 없는 이 경로만 현행이며, 날짜 판본은 `history/`의 역사 자료다.
-> 테스트 수·Edge 버전·해시·배포 상태 같은 날짜 종속 사실은 `docs/handoff/ACTIVE_HANDOFF.md`와
-> research-trail 증거가 정본이며, 여기에 적지 않는다.
-> **마지막 코드 대조: 2026-08-07 · main `9d57612`** (라우트·미션 스키마·검수 큐 대조)
+> 테스트 수·Edge 버전·해시·배포 상태 같은 날짜 종속 사실은
+> `docs/research-trail/04_evidence_index.md`와 관련 dev-log가 정본이며, 여기에 적지 않는다.
+> **2026-08-25 구현 동기화: `21afafd`** — native MPJ5 장면·FixChoice·MultiJudge·선행 발화
+> 생성/검사 계약과 운영 배포를 대조했다.
+> **이전 전범위 코드 대조 기준선: 2026-08-07 · main `9d57612`** (라우트·미션 스키마·검수 큐 대조)
 > 델타 재대조 `fcadb5b`→`9d57612`: 5커밋 중 실질 변경 1건 — `/admin/cross-vendor`
 > 열람 화면 신설(§2 표·§6.4·§12 반영). 나머지 4건은 폭·문구·필드 배치로 구조 무영향
 > (`08_작업관리\reviews\2026-08-07_관리자구조_델타재대조_변경안.md`, 박사님 승인)
@@ -15,7 +17,7 @@
 > 2026-08-22 정합성 보정: `/admin/archive`는 라이브러리 리다이렉트가 아니라 현행 스키마의
 > 보관·제외 시나리오를 조회하는 읽기 전용 화면임을 현재 라우트와 맞췄다.
 > 2026-08-24 소스 동기화: 관리자 승격 경로도 **네이티브 MPJ5 + DCT1**을 생성한다.
-> 과거 `mission_v5` MPJ4 행과 미배포 Railway 앱은 legacy 읽기 호환 범위다.
+> 과거 `mission_v5` MPJ4 행은 legacy 읽기 호환 범위다.
 > 적용 범위: 코어 생성, 배치, 라이브러리·조립, 검수, 프롬프트 provenance, 15주 편성, 학습 자료 공개
 > 이전 문서: 2026-07-21 관리자구조 문서는 결정 이력 보존용이며, 현재 동작과 충돌하면 이 문서가 우선한다.
 
@@ -94,7 +96,8 @@ industry는 업무가 일어나는 분야, business function은 그 분야 안�
 현재 코어 생성은 다음 계약을 사용한다.
 
 - strict JSON Schema (필수 필드는 생성계약 정본이 정의)
-- 현재 모델·프롬프트 버전·코어 표면 해시는 **프롬프트·지문 관리 화면과 ACTIVE_HANDOFF가 정본**이다.
+- 현재 모델·프롬프트 버전·코어 표면 해시는 **프롬프트·지문 관리 화면과
+  `docs/research-trail/04_evidence_index.md`가 정본**이다.
   이 문서에 숫자를 복사해 두지 않는다.
 
 strict 통과는 API·구조 호환성 확인이다. 중국어 자연성, 장면 타당성, 지시 대상, 화행 적절성은
@@ -212,8 +215,8 @@ schema·seed가 없거나 일부만 적용된 경우 데이터가 연결됐다�
 - 최신 승인 목표는 MPJ5+DCT1이며 기능 순서는 `첫인상 판단 → 맥락 대비 판단 → 판단하고
   고쳐보기 → 이유 찾기 → 여러 초안 비교 → DCT`다.
 - 현행 소스의 승격 결과는 `mission_v5`, 네이티브 MPJ5+DCT1이다. 정확한 순서는
-  `Scale4 → Judge3(독립 맥락 대비) → FixChoice(판단 뒤 수정안 4개) →
-  Reason(이유 3개 중 주원인 선택, 확신도 없음) → MultiJudge(후보 5개) → DCT`다.
+  `Scale4 → Judge3(독립 맥락 대비) → FixChoice(판단 뒤 수정안 3개 중 권장안 1개) →
+  Reason(최초 판단 뒤 이유 3개 중 주원인 선택, 확신도 없음) → MultiJudge(후보 4개) → DCT`다.
   과거 `mission_v5` MPJ4 행은 관리자 미리보기에서 계속 읽되 신규 생성 계약으로 취급하지 않는다.
 - 생성 후 규칙 기반 검사와 프롬프트 통제 기반 검토를 거쳐 `generated`로 저장한다.
   **품질 점검이 실패하면 저장하지 않는다(fail-closed, 앱·Edge·DB 세 겹).**
@@ -251,11 +254,16 @@ AI 검토 `pass`만으로 reviewed 처리하지 않는다.
 mission_v5 교수자 검수에는 다음을 추가한다.
 
 - Scale4가 해당 target feature의 `counter_rule_ko`가 경계하는 소박한 규칙을 깨는 적절한 반례이며 같은 적절성 방향 두 응답과 대표 정도 하나를 가지는가
-- Judge3 판단 후 교정 4개 중 적절한 서로 다른 전략 2개가 분명한가
+- Judge3가 DCT 앵커와 같은 P·D·R의 다른 사건에서 맥락 대비를 독립 판단하게 하는가
+- FixChoice가 별도 사건의 최초 판단을 잠근 뒤 권장안 1개와 일부 조정이 필요한 경계안 2개를
+  제시하며, 세 표현이 문법·의미 오류가 아닌 화용적 선택으로 변별되는가
 - Reason의 주원인이 하나이며(이유 3개 = 주원인·화용 오개념·의미/문법/맥락 각 1, R4) 다른 두 이유가 동등하게 방어되지 않는가. 동시에 두 오답이 황당한 문법 주장이나 무관한 절대 규칙으로 너무 쉽게 제거되지는 않는가
-- MultiJudge가 해당 feature의 band schema에 따라 과소 2·적정 2·과잉 1이고 길이·형식이 정답 단서가 아닌가
-- 네 MPJ의 target-language 선행 발화가 상대·관계·상황 맥락을 보완하면서 정답 표현을 노출하지 않는가
-- P·D·R이 상황문에서 자연스럽게 추론되는가
+- MultiJudge가 `BEST 1·적정 대역 중간 1·비적정 경계 중간 1·WORST 1`의 네 후보이며,
+  유일하게 방어 가능한 BEST/WORST와 서로 다른 중간 근거를 가지는가. 후보 길이·형식이 정답 단서가 아닌가
+- 현행 native MPJ5와 DCT의 `preceding_turn`이 null이고, 응답 화행에 필요한 선행 사건이
+  `situation_ko`에 자연스럽게 요약돼 self-contained한가
+- P·D·R이 140자 이내의 정확히 두 문장 상황문에서 자연스럽게 확인되며, 풀어 쓴 학습자용
+  P/D/R 칩과 충돌하지 않는가
 - **통역 셀 추가 검수(2026-08-06 확정)**: 원발화자 A·학습자 통역사·청자 B가 서로 다른
   세 참여자로 유일하게 결속되는가 / `학습자`가 A·B를 가리키는 데 쓰이지 않았는가 /
   학습자가 화행의 수행자·수신자가 아닌가 / A의 1인칭 서술이 없는가 / P·D·R이 A↔B
@@ -278,7 +286,7 @@ mission_v5 교수자 검수에는 다음을 추가한다.
   근거 사례: v3 스모크의 `fix_choice` 초점 혼입, 2026-08-05 통역 역할 카나리의
   규칙 기반 검사·AI 검토 동시 통과 후 연구자 판정에서 결함 발견. **자동 통과를 실질 통과로 읽지 않는다.**
 - 과거 버전 스모크 행을 현행 버전으로 변환하거나 reviewed로 승격하지 않는다.
-- 프롬프트 버전별 배포·스모크 상태는 ACTIVE_HANDOFF와 research-trail이 정본이다.
+- 프롬프트 버전별 배포·스모크 상태는 `docs/research-trail/04_evidence_index.md`와 관련 dev-log가 정본이다.
 
 ### 6.4 AI 모델 간 독립 검토 열람 (계약 §5.4)
 
@@ -345,7 +353,7 @@ DB 문서를 “프로덕션 정본”으로 오인하게 만드는 표현을 �
 - dirty worktree의 임시 hash를 정본처럼 기록하지 않는다.
 - 배포본과 저장소판의 지문을 확인한다.
 - 코어·미션·비평 프롬프트 버전을 서로 구분한다.
-- 현재 활성 프롬프트 버전과 배포 active 여부는 Prompt Harness·ACTIVE_HANDOFF에서 확인한다.
+- 현재 활성 프롬프트 버전과 배포 active 여부는 Prompt Harness·`docs/research-trail/04_evidence_index.md`에서 확인한다.
   이 문서에 버전 문자열을 복사해 두지 않는다.
 
 ## 8. 화행 목표와 진단용 target feature 관리
@@ -570,13 +578,13 @@ Full Mission의 문항 선택은 기존 `learner_mission_logs.context_judgment`�
 Edge 버전, migration 적용 여부, Railway 배포 상태, 테스트 수, 프롬프트 스냅샷 수,
 코어 표면 해시는 날짜 종속 사실이다. 이 문서에 적으면 반드시 썩는다.
 
-- 현재 상태의 정본: `docs/handoff/ACTIVE_HANDOFF.md` (최상단 절)
-- 시점 고정 증거: `docs/research-trail/` (evidence·dev-log)
+- 현재 상태의 정본: `docs/research-trail/04_evidence_index.md`와 관련 `docs/dev-log/`
+- 시점 고정 증거: `docs/research-trail/`
 - 프롬프트 지문 대조: `/admin/prompt-harness`
 
 ## 14. 관련 정본
 
-- 현재 작업 상태(날짜 종속 사실의 정본): `docs/handoff/ACTIVE_HANDOFF.md`
+- 현재 작업 상태(날짜 종속 사실의 정본): `docs/research-trail/04_evidence_index.md`와 관련 `docs/dev-log/`
 - 생성·평가·저장 계약: `docs/contracts/PRAGMA_생성계약_정본.md`
 - 학습자 구조: `docs/product/PRAGMA_학습자구조_정본.md`
 - 제품·연구 정체성: `docs/research/PRAGMA_PRODUCT_RESEARCH_IDENTITY_2026-07-28.md`
