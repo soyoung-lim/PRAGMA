@@ -56,12 +56,16 @@
   최초 실행은 Vitest가 worktree 상위 경로를 읽지 못하는 sandbox 권한 오류였고, 허용된 환경에서
   같은 명령을 재실행해 통과했다.
 - `npm.cmd run typecheck`: 통과.
-- 전체 회귀·build·운영 배포는 이 경량 투영 변경에서 반복하지 않았다.
+- `npm.cmd run build`: 1,950 modules production build 통과.
+- 전체 회귀는 이 경량 투영 변경에서 반복하지 않았다.
 
 ## 배포 확인
 
 - 2026-08-26 확인 시 Railway 최신 활성 배포 `c442bfe9-6ff1-417d-8b86-5987ae887f03`은
   `Deployment successful`, 운영 홈 HTTP 200이었다.
-- 이 배포 시작 시각은 2026-08-25 23:38 KST로 현재 HEAD `0767833`의 2026-08-26 00:05보다
-  앞선다. 따라서 `0767833`의 Railway 자동 배포 성공은 확인되지 않았으며, 이번 변경도 아직
-  커밋·push·배포하지 않았다.
+- 기능 커밋 `b20accd`와 prompt provenance 갱신 `9d16f3d`를
+  `origin/codex/mpj5-mainline-2026-08-24`에 push했으나 새 Railway 배포는 시작되지 않았다.
+- 운영 2주차 요청 편성은 후보 0개였다. 요청·중급·번역·한→중의 기존 검토 완료 3개와 검수
+  대기 12개를 표적으로 확인한 결과, 현재 재고는 legacy MPJ4 계열이어서 native MPJ5 편성
+  자격을 충족하지 않았다. 운영 데이터는 변경하지 않았다.
+- 다음 작업은 새 기능이 아니라 최신 배포 뒤 native MPJ5 요청 미션 2개 생성·검수·편성이다.
