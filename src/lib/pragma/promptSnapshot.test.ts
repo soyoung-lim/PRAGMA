@@ -249,6 +249,7 @@ describe("prompt snapshot integrity", () => {
       for (const ref of MISSION_DIAGNOSTIC_EVIDENCE_REFS) expect(entry.text).toContain(ref);
       expect(entry.text).not.toContain('"type": "reason_conf"');
     }
+    expect(mission.text).toContain("구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는다면");
     expect(quality.text).toContain("MPJ 5문항");
     expect(quality.text).toContain("primary_reason_ambiguity");
     expect(quality.text).toContain("context_plan_mismatch");
@@ -299,7 +300,6 @@ describe("prompt snapshot integrity", () => {
     expect(retry.text).toContain("reason의 problem_band_code도 비적정 대역");
     expect(retry.text).toContain("AI band_mismatch 실패");
     expect(retry.text).toContain("적정한 문장에 비적정 라벨만 다시 붙이지 마세요");
-    expect(retry.text).toContain("구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는다면");
     expect(retry.text).toContain("실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지");
   });
 
