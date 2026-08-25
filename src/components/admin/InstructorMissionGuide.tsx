@@ -44,6 +44,11 @@ export function InstructorMissionGuide({ guide }: { guide: InstructorMissionGuid
               </span>
             ))}
           </div>
+          {guide.burdenMeaningKo && (
+            <p className="mt-3 rounded-lg bg-[#F4F1E8] px-3 py-2 text-[12px]">
+              <span className="font-semibold">이 화행의 R:</span> {guide.burdenMeaningKo}
+            </p>
+          )}
         </GuideSection>
 
         <GuideSection number={2} title="대표 오개념과 첫 판단">

@@ -6,10 +6,10 @@
  * 새 학습설계 또는 생성 기준을 시험할 때는 기존 ID를 덮어쓰지 말고 새 ID를 만든다.
  */
 export const CURRENT_CONTENT_RELEASE = {
-  id: "pragma_content_candidate_20260825_06_relational_feedback_audited",
+  id: "pragma_content_candidate_20260826_01_act_r_politeness_audit",
   lifecycle: "candidate",
   corePromptVersions: [
-    "core_v12_concise_learner_scene_v1",
+    "core_v13_speech_act_r_meaning_v1",
     "core_v11_source_context_repair_v1",
   ],
   missionPromptVersions: [
@@ -23,7 +23,7 @@ export const CURRENT_CONTENT_RELEASE = {
   ],
   qualityPromptVersions: {
     core: "core_quality_v6_interpreter_roles",
-    mission: "quality_v12_narrow_relational_feedback_audit",
+    mission: "quality_v13_politeness_noncounting_audit",
   },
 } as const;
 

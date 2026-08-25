@@ -116,6 +116,20 @@ const PDR_BURDEN_KO: Record<string, string> = {
   mid: '중간',
   high: '높음',
 }
+const SPEECH_ACT_R_MEANING_KO: Record<string, string> = {
+  request: '상대에게 요구되는 노력·시간·자원과 요청 수행의 부담',
+  요청: '상대에게 요구되는 노력·시간·자원과 요청 수행의 부담',
+  apology: '잘못이 초래한 침해·피해의 심각도',
+  사과: '잘못이 초래한 침해·피해의 심각도',
+  proposal: '상대 의향과의 충돌, 제안 수용의 난이도와 사안의 중대성',
+  제안: '상대 의향과의 충돌, 제안 수용의 난이도와 사안의 중대성',
+}
+
+function speechActRMeaningKo(code?: string | null, label?: string | null): string | null {
+  return SPEECH_ACT_R_MEANING_KO[String(code ?? '').toLowerCase()]
+    ?? SPEECH_ACT_R_MEANING_KO[String(label ?? '')]
+    ?? null
+}
 const INDUSTRY_KO: Record<string, string> = {
   trade_distribution: '제조·글로벌 무역',
   IT_platform: 'IT·테크·플랫폼',
@@ -414,6 +428,9 @@ function buildUserPrompt(input: GenInput, candidateCount: number, variant: 'full
     `- P (Power, 지위): ${PDR_POWER_KO[input.pdr_power] ?? input.pdr_power}`,
     `- D (Distance, 거리): ${PDR_DISTANCE_KO[input.pdr_distance] ?? input.pdr_distance}`,
     `- R (Imposition, 부담도): ${PDR_BURDEN_KO[input.pdr_burden] ?? input.pdr_burden}`,
+    ...(speechActRMeaningKo(input.speech_act_ui ?? input.speech_act, speechActLabel)
+      ? [`- 이 화행에서 R의 구체적 의미: ${speechActRMeaningKo(input.speech_act_ui ?? input.speech_act, speechActLabel)}`]
+      : []),
   ]
   if (isWork && input.industry) {
     parts.splice(5, 0, `- 산업 분야: ${INDUSTRY_KO[input.industry] ?? input.industry}`)
@@ -1076,6 +1093,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
   const lengthHintKo = coreLengthHintKo(coreLengthLevel(b), coreLengthMode(b))
   const isInterpreting = coreLengthMode(b) === 'stt_interpreting'
   const powerLabel = PDR_P_KO[b.pdr.p] ?? b.pdr.p
+  const rMeaningKo = speechActRMeaningKo(b.speech_act, b.speech_act_ko)
   const parts = [
     '[생성 요청]',
     `- 언어 방향: ${LANG_DIR_KO[dir]}`,
@@ -1085,6 +1103,7 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
     `- 관계 P(지위): ${isInterpreting ? powerLabel.replace('화자(나)', '원발화자 A') : powerLabel}`,
     `- 관계 D(거리): ${PDR_D_KO[b.pdr.d] ?? b.pdr.d}`,
     `- 관계 R(부담): ${PDR_R_KO[b.pdr.r] ?? b.pdr.r}`,
+    ...(rMeaningKo ? [`- 이 화행에서 R의 구체적 의미: ${rMeaningKo}`] : []),
     `- 장면 시드: ${b.situation_seed_ko}`,
     `- 원문 분량: ${lengthHintKo}`,
     `- 문장 경계: 쉼표로 절을 길게 잇지 말고 ${sentencePunctuation}로 위 분량의 문장 수를 명시하세요.`,
@@ -2452,6 +2471,9 @@ function buildQualitySystemPrompt(
    band_mismatch를 보고하지 마라. 실제 문장이 within_band인데 false이거나, 실제 문장이
    non-within인데 true일 때만 대역 불일치다. note_ko는 근거 설명이지 판정 대상 표현이나
    별도의 대역 코드가 아니므로, note_ko 문장을 중국어 correction 자체로 오인하지 마라.
+5. **공손표지 비가산 원칙** — 请·谢谢·不好意思·호칭·완화어의 개수나 중첩 자체를
+   적절성의 긍정 증거로 쓰지 마라. 친밀도·권력·부담과 화행 목적에 비해 감사·사과·호칭·완화가
+   과도하면 더 좋은 답이 아니라 과잉 관계조정일 수 있다.
 ${featureBoundaryAudit}
 
 [검사 항목]
@@ -2472,7 +2494,8 @@ ${featureBoundaryAudit}
    특히 후보 길이 구간이 나뉘어도 그 사실만으로 fail하지 말고, 실제 BEST/WORST 선택을
    화용 판단 없이 식별하거나 현저히 좁힐 수 있을 때만 근거와 함께 warning/fail로 보고하라.
 ④ band_mismatch — 부여된 대역 코드가 문장의 실제 화용 강도와 어긋나는가.
-   해설이 대역 코드와 모순되는 경우도 포함.
+   해설이 대역 코드와 모순되는 경우도 포함. 공손표지가 많다는 이유만으로 within_band나 더 나은
+   대역을 부여했거나, 관계에 비해 과도한 공손표지 중첩을 적정으로 판정했다면 함께 지적하라.
 ⑤ focus_contamination — 후보들이 목표 초점 외의 차원(정보량·격식·어휘 난이도 등)까지
    동시에 바꿔서, 무엇 때문에 판정이 갈리는지 설명할 수 없게 되었는가.
 ⑥ unnatural_language — ${LANG_KO[tgt]} 문장이 교과서투·번역기투인가. 모든 문장이 주어·

@@ -14,6 +14,7 @@ describe("instructor mission guide", () => {
     expect(guide.mpjItems).toHaveLength(5);
     expect(guide.contrast).toMatchObject({ verified: true });
     expect(guide.contrast.changedKo).toContain("R(부담)");
+    expect(guide.burdenMeaningKo).toContain("노력·시간·자원");
     expect(guide.misconceptionKo).toBeTruthy();
     expect(guide.coreReasonKo).toBeTruthy();
     expect(guide.dct.alternatives).toHaveLength(2);
@@ -56,5 +57,15 @@ describe("instructor mission guide", () => {
     expect(requestGuide.microscope.boundaryPromptKo).toContain("외부 보조행위");
     expect(requestGuide.microscope.boundaryPromptKo).toContain("요청 본체의 앞뒤 배치");
     expect(requestGuide.microscope.boundaryPromptKo).toContain("적절성의 자동 기준");
+  });
+
+  it("defines R only for the three directly supported speech acts", () => {
+    const apologyGuide = buildInstructorMissionGuide(SAMPLE_MISSION_V5_NATIVE, "사과");
+    const proposalGuide = buildInstructorMissionGuide(SAMPLE_MISSION_V5_NATIVE, "제안");
+    const thanksGuide = buildInstructorMissionGuide(SAMPLE_MISSION_V5_NATIVE, "감사");
+
+    expect(apologyGuide.burdenMeaningKo).toContain("침해·피해의 심각도");
+    expect(proposalGuide.burdenMeaningKo).toContain("제안 수용의 난이도");
+    expect(thanksGuide.burdenMeaningKo).toBeUndefined();
   });
 });

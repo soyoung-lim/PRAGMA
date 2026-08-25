@@ -28,6 +28,12 @@ const PDR_VALUE_KO = {
   high: "높음",
 } as const;
 
+const SPEECH_ACT_R_MEANING_KO: Record<string, string> = {
+  요청: "상대에게 요구되는 노력·시간·자원과 요청 수행의 부담",
+  사과: "잘못이 초래한 침해·피해의 심각도",
+  제안: "상대 의향과의 충돌, 제안 수용의 난이도와 사안의 중대성",
+};
+
 type PdrAxis = keyof typeof PDR_AXIS;
 
 export type InstructorGuideCandidate = {
@@ -59,6 +65,7 @@ export type InstructorMissionGuide = {
   situationKo: string;
   relationKo: string;
   pdrKo: string[];
+  burdenMeaningKo?: string;
   mpjItems: InstructorGuideItem[];
   misconceptionKo?: string;
   coreReasonKo?: string;
@@ -231,6 +238,7 @@ export function buildInstructorMissionGuide(
     situationKo: mission.production_task.situation_ko,
     relationKo: mission.production_task.relation_ko,
     pdrKo: formatPdr(productionPdr),
+    burdenMeaningKo: SPEECH_ACT_R_MEANING_KO[speechActKo],
     mpjItems: guideItemsOf(items),
     ...signals,
     contrast,

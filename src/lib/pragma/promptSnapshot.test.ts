@@ -145,6 +145,10 @@ describe("prompt snapshot integrity", () => {
     expect(canonicalSource).toContain("MPJ5=mpj_items[4]");
     expect(canonicalSource).toContain("canRepairSituation");
     expect(canonicalSource).toContain('{"operation":"replace_item_block","item_index":4');
+    expect(canonicalSource).toContain("SPEECH_ACT_R_MEANING_KO");
+    expect(canonicalSource).toContain("상대에게 요구되는 노력·시간·자원과 요청 수행의 부담");
+    expect(canonicalSource).toContain("잘못이 초래한 침해·피해의 심각도");
+    expect(canonicalSource).toContain("제안 수용의 난이도와 사안의 중대성");
   });
 
   it("keeps written and spoken feedback on the same diagnostic rubric", () => {
@@ -214,7 +218,7 @@ describe("prompt snapshot integrity", () => {
     expect(prompt("core.user.source_repair").text).toContain("유효 글자 수를 반드시");
     expect(prompt("core.user.source_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(critic.text).toContain("국소적 두 턴만 본다");
-    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v12_concise_learner_scene_v1");
+    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v13_speech_act_r_meaning_v1");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {
     const mission = prompt("mission.system");
@@ -267,6 +271,8 @@ describe("prompt snapshot integrity", () => {
       for (const ref of MISSION_DIAGNOSTIC_EVIDENCE_REFS) expect(entry.text).toContain(ref);
       expect(entry.text).not.toContain('"type": "reason_conf"');
     }
+    expect(quality.text).toContain("공손표지 비가산 원칙");
+    expect(quality.text).toContain("공손표지가 많다는 이유만으로 within_band");
     expect(prompt("mission.system.proposal").text).toContain(
       "구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는다면",
     );
