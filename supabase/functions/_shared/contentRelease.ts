@@ -6,14 +6,14 @@
  * 새 학습설계 또는 생성 기준을 시험할 때는 기존 ID를 덮어쓰지 말고 새 ID를 만든다.
  */
 export const CURRENT_CONTENT_RELEASE = {
-  id: "pragma_content_candidate_20260825_04_relational_feedback",
+  id: "pragma_content_candidate_20260825_05_relational_feedback_enforced",
   lifecycle: "candidate",
   corePromptVersions: [
     "core_v12_concise_learner_scene_v1",
     "core_v11_source_context_repair_v1",
   ],
   missionPromptVersions: [
-    "mission_v5_mpj5_minidiscourse_v8_relational_feedback",
+    "mission_v5_mpj5_minidiscourse_v9_relational_feedback_shape",
     "mission_v4_mpj4_dct1_context_v9_interpreter_roles",
   ],
   itemLineagePromptVersion: "item_lineage_attribution_v4_mission_v5_mpj5",
@@ -23,7 +23,7 @@ export const CURRENT_CONTENT_RELEASE = {
   ],
   qualityPromptVersions: {
     core: "core_quality_v6_interpreter_roles",
-    mission: "quality_v10_relational_feedback",
+    mission: "quality_v11_exhaustive_relational_feedback",
   },
 } as const;
 

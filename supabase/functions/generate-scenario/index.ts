@@ -1849,7 +1849,7 @@ function buildMissionSystemPrompt(
       "target": "앵커 맥락에서는 초점 대역상 부적절하지만 의미·문법은 온전한 ${tgtL} 초안",
       "highlights": ["target의 실제 부분문자열"],
       "accepted_band_codes": ["부적절 band 정확히 1개"],
-      "explanation_ko": "첫 장면과 달라진 맥락에서 같은 표현 전략의 적절성이 왜 달라지는지 설명",
+      "explanation_ko": "2~3문장: 첫 장면과 유지된 표현 자원 → 달라진 P/D/R 한 축 → 현재 관계적 효과 → 조정할 한 지점",
       "recommended_example": "이 상황의 적절안 1개(${tgtL})"
     }`
     : ''
@@ -1938,7 +1938,7 @@ ${diagnosticShape}
       "highlights": ["target의 실제 부분문자열"],
       "accepted_scale_codes": ["very_appropriate","somewhat_appropriate"],
       "reference_scale_code": "very_appropriate 또는 somewhat_appropriate 중 대표 1개",
-      "explanation_ko": "왜 이 초점의 소박한 규칙에 대한 반례가 이 P·D·R에서는 적절한지 설명",
+      "explanation_ko": "${nativeMpj5 ? '2~3문장: 현재 상황 단서 → target의 실제 표현 자원·기능 → 관계적 효과 → 유지할 한 지점' : '왜 이 초점의 소박한 규칙에 대한 반례가 이 P·D·R에서는 적절한지 설명'}",
       "recommended_example": "이 상황의 적절안 1개(${tgtL})"
     }${judge3Shape},
     {
@@ -1953,11 +1953,11 @@ ${diagnosticShape}
       "highlights": ["target의 실제 부분문자열"],
       "accepted_band_codes": ["부적절 band 정확히 1개"],
       "corrections": [
-        {"text":"이 장면의 권장 수정안 1(${tgtL})","is_valid":true,"note_ko":"…"},
-        {"text":"그럴듯하지만 초점 대역상 부적절한 오답 1(${tgtL})","is_valid":false,"note_ko":"…"},
-        {"text":"그럴듯하지만 초점 대역상 부적절한 오답 2(${tgtL})","is_valid":false,"note_ko":"…"}
+        {"text":"이 장면의 권장 수정안 1(${tgtL})","is_valid":true,"note_ko":"${nativeMpj5 ? '실제 표현 자원·기능 → 관계적 효과 → 유지 이유 한 줄' : '…'}"},
+        {"text":"그럴듯하지만 초점 대역상 부적절한 오답 1(${tgtL})","is_valid":false,"note_ko":"${nativeMpj5 ? '실제 표현 자원·기능 → 관계적 효과 → 조정 방향 한 줄' : '…'}"},
+        {"text":"그럴듯하지만 초점 대역상 부적절한 오답 2(${tgtL})","is_valid":false,"note_ko":"${nativeMpj5 ? '다른 실제 표현 자원·기능 → 관계적 효과 → 조정 방향 한 줄' : '…'}"}
       ],
-      "explanation_ko": "P·D·R 단서와 초점 대역을 연결한 해설",
+      "explanation_ko": "${nativeMpj5 ? '2~3문장: 현재 상황 단서 → 원래 target과 수정안의 핵심 표현 차이·기능 → 관계적 효과 → 바꿀 한 지점' : 'P·D·R 단서와 초점 대역을 연결한 해설'}",
       "recommended_example": "이 상황의 적절안 1개(${tgtL})"
     },
     {
@@ -1977,7 +1977,7 @@ ${diagnosticShape}
         {"id":"r3","text_ko":"target의 실제 요소를 근거로 한 그럴듯하지만 주원인은 아닌 의미·문법·맥락 해석","kind":"meaning_grammar_context"}
       ],
       "accepted_reason_id": "r2",
-      "explanation_ko": "가장 큰 원인과 부차적 맥락을 구분한 해설",
+      "explanation_ko": "${nativeMpj5 ? '2~3문장: 현재 상황 단서 → target의 실제 문제 표현·기능 → 관계적 효과 → 주원인에 맞춘 조정 한 지점(의미·문법 문제와 구분)' : '가장 큰 원인과 부차적 맥락을 구분한 해설'}",
       "recommended_example": "이 상황의 적절안 1개(${tgtL})"
     },
     {
@@ -1989,12 +1989,12 @@ ${diagnosticShape}
       "source": "비교 대상의 실제 ${srcL} 발화",
       "preceding_turn": ${precedingShape},
       "candidates": [
-        {"text":"자연스러운 적정 전략 1(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"note_ko":"…"},
-        {"text":"실제로 쓸 법하지만 조정이 필요한 전략 1(${tgtL})","accepted_band_codes":["${lowBand}"],"note_ko":"…"},
-        {"text":"자연스러운 적정 전략 2(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"note_ko":"…"},
-        {"text":"실제로 쓸 법하지만 조정이 필요한 전략 2(${tgtL})","accepted_band_codes":["${highBand}"],"note_ko":"…"}
+        {"text":"자연스러운 적정 전략 1(${tgtL}; 적정 전략 2와 다른 화용 자원·관계효과)","accepted_band_codes":["${f.within_band_code}"],"note_ko":"${nativeMpj5 ? '실제 자원 1·기능 → 관계적 효과 1 → 유지 가능한 조건 한 줄' : '…'}"},
+        {"text":"실제로 쓸 법하지만 조정이 필요한 전략 1(${tgtL})","accepted_band_codes":["${lowBand}"],"note_ko":"${nativeMpj5 ? '실제 자원·기능 → 관계적 효과 → 조정 방향 한 줄' : '…'}"},
+        {"text":"자연스러운 적정 전략 2(${tgtL}; 적정 전략 1과 다른 화용 자원·관계효과)","accepted_band_codes":["${f.within_band_code}"],"note_ko":"${nativeMpj5 ? '실제 자원 2·기능 → 관계적 효과 2 → 유지 가능한 조건 한 줄' : '…'}"},
+        {"text":"실제로 쓸 법하지만 조정이 필요한 전략 2(${tgtL})","accepted_band_codes":["${highBand}"],"note_ko":"${nativeMpj5 ? '다른 실제 자원·기능 → 관계적 효과 → 조정 방향 한 줄' : '…'}"}
       ],
-      "explanation_ko": "네 초안의 차이를 P·D·R과 초점 대역으로 설명",
+      "explanation_ko": "${nativeMpj5 ? '2~3문장: 현재 상황 단서 → 네 후보의 실제 자원·기능 차이 → 서로 다른 관계적 효과 → 각 후보의 유지/조정 지도(숨은 우열 없음)' : '네 초안의 차이를 P·D·R과 초점 대역으로 설명'}",
       "recommended_example": "이 상황의 적절안 1개(${tgtL})"
     }
   ],
@@ -2154,7 +2154,7 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
   return parts.join('\n')
 }
 
-const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v2_rules'
+const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v3_relational_feedback'
 
 function repairTargets(findings: MissionRepairBody['findings']) {
   const itemIndexes = [...new Set(findings.flatMap((finding) => {
@@ -2185,6 +2185,11 @@ replace_diagnostic_dimensions뿐입니다. replace_item_block은 item_index와 �
 후보·해설만 고치세요. 단, rule_R27_duplicate_situation은 동결된 source와 PDR에 맞게
 situation_ko만 다른 문항·DCT와 구별되는 구체적 장면으로 다시 쓰세요. 다른 문항을 더 좋게
 쓰려는 변경은 금지합니다.
+모든 교체 문항의 explanation_ko와 note_ko는 **현재 상황 단서 → 실제 표현 자원·기능 → 관계적
+효과 → 유지/조정 한 지점**을 연결하고 한 화용 차이만 설명하세요. multi_judge의 적정안 2개는
+서로 다른 실제 화용 자원과 관계적 효과를 가져야 하며 숨은 우열을 만들지 마세요.
+허용 대상이 하나 이상이면 지목된 각 대상의 operation을 반드시 반환하고 operations를 빈 배열로
+끝내지 마세요. 한 후보 결함도 정답 키·후보·note·explanation이 일치하는 완전한 item block으로 고치세요.
 출력은 {"operations":[...]} JSON 하나뿐입니다.`
   const user = [
     `[화행] ${b.speech_act_ko} (${b.speech_act})`,
@@ -2481,7 +2486,9 @@ ${feedbackQualityCheck}
 
 [필수 확인 절차 — 건너뛰지 마라]
 ${checklistRange}을 **하나씩 명시적으로 점검한 뒤** 판정하라. "전반적으로 괜찮아 보인다"로
-넘어가지 마라. 특히 다음 두 가지는 **구체적 임계값**이 있다.
+넘어가지 마라. 심한 fail 하나를 찾았어도 나머지 검사를 중단하지 말고, 특히 native MPJ5는
+MPJ1~5의 feedback_quality와 MPJ5 comparison_quality를 별도로 끝까지 확인해 서로 다른 결함을
+각각 finding으로 보고하라. 특히 다음 두 가지는 **구체적 임계값**이 있다.
 - ②의 임계: 판정 후보에 **명령형·강요형(必须·给我·赶紧 등)이나 노골적 무례 표현**이
   쓰였다면, 그것은 거의 언제나 implausible_distractor 결함이다. 중국어를 배우지
   않은 사람도 "이건 너무 세다"고 알 수 있기 때문이다. "이 정도는 실제로 쓸 수도

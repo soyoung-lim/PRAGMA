@@ -606,7 +606,7 @@ export async function promoteCore(
     contentToSave = { ...rawContent, quality_check: quality };
   }
 
-  // 구조 통과 초안(필요하면 R27 국소 수리 후)은 critic fail 여부와 무관하게 격리 저장한다.
+  // 구조 통과 초안은 critic fail 여부와 무관하게 먼저 격리 저장한다(필요하면 R27 국소 수리 후).
   options.onProgress?.({ phase: "saving" });
   const { data: savedId, error: saveErr } = await rpc("save_generated_mission", {
     p_scenario_id: core.scenario_id,
@@ -641,7 +641,12 @@ export async function promoteCore(
     };
   }
 
-  if (quality.verdict === "fail" && !repaired) {
+  const hasRepairableRelationalWarning = quality.findings.some((finding) =>
+    finding.severity === "warning" &&
+    (finding.code === "feedback_quality_mismatch" || finding.code === "comparison_quality_mismatch") &&
+    /^mpj_items\[\d+\]/.test(finding.where),
+  );
+  if ((quality.verdict === "fail" || hasRepairableRelationalWarning) && !repaired) {
     options.onProgress?.({ phase: "repairing" });
     const repair = await repairMissionOnce({
       missionContent: contentToSave,

@@ -138,6 +138,8 @@ describe("prompt snapshot integrity", () => {
       expect(releaseSource).toContain(`"${version}"`);
     }
     expect(canonicalSource).toContain("content_release_id: CURRENT_CONTENT_RELEASE_ID");
+    expect(canonicalSource).toContain("mission_item_repair_v3_relational_feedback");
+    expect(canonicalSource).toContain("operations를 빈 배열로");
   });
 
   it("keeps written and spoken feedback on the same diagnostic rubric", () => {
@@ -238,6 +240,9 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).toContain("[학습 피드백 4층]");
       expect(entry.text).toContain("현재 상황 단서 → 실제 표현 자원과 그 기능 → 관계적 효과 → 유지하거나 조정할 방향 하나");
       expect(entry.text).toContain("primary pragmatic delta 하나만");
+      expect(entry.text).toContain("적정 전략 2와 다른 화용 자원·관계효과");
+      expect(entry.text).toContain("실제 자원 1·기능 → 관계적 효과 1");
+      expect(entry.text).toContain("현재 상황 단서 → 원래 target과 수정안의 핵심 표현 차이·기능");
       expect(entry.text).toContain("유일한 BEST/WORST나 엄밀한 선형 서열을 만들지 마세요");
       expect(entry.text).toContain("화용 판단 없이 즉시 소거되는");
       expect(entry.text).toContain("더 간접적·길거나 강한 표현을 자동으로 더 좋은 답으로 판정하지 마세요");
@@ -268,6 +273,7 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("feedback_quality_mismatch");
     expect(quality.text).toContain("현재 상황 단서 →");
     expect(quality.text).toContain("자원과 관계적 효과를 note_ko에서 구별");
+    expect(quality.text).toContain("심한 fail 하나를 찾았어도 나머지 검사를 중단하지 말고");
     expect(quality.text).toContain("적정 대역 2개·조정 필요 대역");
     expect(quality.text).toContain("유일한 BEST/WORST나 엄밀한 선형 서열도 요구하지 않는다");
     expect(quality.text).toContain("diagnostic_coverage_mismatch");

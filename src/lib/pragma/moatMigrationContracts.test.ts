@@ -49,6 +49,9 @@ describe("moat migration/runtime contracts", () => {
     expect(PROMOTE_TS).toContain('rpc("save_generated_mission_revision"');
     expect(PROMOTE_TS).toContain('rpc("finalize_reviewed_mission"');
     expect(PROMOTE_TS).toContain('rpc("supersede_generated_mission_for_rework"');
+    expect(PROMOTE_TS).toContain("hasRepairableRelationalWarning");
+    expect(PROMOTE_TS).toContain('finding.code === "feedback_quality_mismatch"');
+    expect(PROMOTE_TS).toContain('finding.code === "comparison_quality_mismatch"');
     expect(EVENTS_TS).toContain('rpc("append_learner_mission_event"');
     expect(EXPORT_TS).toContain('rpc("export_learner_mission_events"');
     for (const sql of [LINEAGE_SQL, EXPERT_SQL, EVENT_SQL, FLYWHEEL_SQL, CALIBRATION_SQL, EXPERT_V2_SQL, GOLD_EXPERT_SQL, RELEASE_SQL, OPERATIONAL_FLYWHEEL_SQL, MANIFEST_ATTESTATION_SQL, EXPANSION_READINESS_SQL, FINAL_CORPUS_SQL, FINAL_CORPUS_RELEASE_SQL, FINAL_MISSION_BATCH_SQL, FINAL_MISSION_RECONCILIATION_SQL, GATE_LINT_HYGIENE_SQL, QUALITY_GATE_BOUNDARIES_SQL, BOUNDED_EXTERNAL_VALIDATION_SQL, PREREGISTERED_EXTERNAL_SAMPLING_SQL, MISSION_V5_LINEAGE_GATE_SQL, MISSION_V5_NATIVE_MPJ5_SQL, MISSION_V5_DIAGNOSTIC_SQL, MISSION_V5_STREAMLINED_SQL, MISSION_V5_SELF_CONTAINED_SQL, MISSION_V5_SCOPED_LINEAGE_SQL, MISSION_V5_R5_RETRY_SQL, MISSION_V5_R5_GATE_ALIGNMENT_SQL, PROFESSOR_MISSION_REWORK_SQL, MISSION_AUTHORING_PIPELINE_SQL, GOLD45_NONCONSENSUS_SQL, READINESS_ARRAY_INITIALIZER_FIX_SQL]) {
