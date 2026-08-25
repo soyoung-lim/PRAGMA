@@ -68,6 +68,9 @@ export type InstructorMissionGuide = {
     source: string;
     functionAndEffectKo: string;
     adjustmentExample: string;
+    /** 화행별로 표면형과 상호작용 기능을 혼동하기 쉬운 경우에만 보이는 교수자 확인 질문. */
+    boundaryPromptLabelKo?: string;
+    boundaryPromptKo?: string;
   };
   dct: {
     situationKo: string;
@@ -231,7 +234,22 @@ export function buildInstructorMissionGuide(
     mpjItems: guideItemsOf(items),
     ...signals,
     contrast,
-    microscope: microscopeOf(items),
+    microscope: {
+      ...microscopeOf(items),
+      ...(speechActKo === "거절"
+        ? {
+            boundaryPromptLabelKo: "거절 순차 맥락 확인",
+            boundaryPromptKo:
+              "이 표현이 실제 최종 불수락인지, 상대의 호의·비용을 인정하며 재권유 뒤 수락 가능성을 남기는 의례적 1차 사양인지 장면 전체에서 구분하세요. 표면적으로 직접적인 사양만 보고 강한 최종 거절로 단정하지 않습니다.",
+          }
+        : speechActKo === "요청"
+          ? {
+              boundaryPromptLabelKo: "요청 표현 자원 확인",
+              boundaryPromptKo:
+                "직접성만 세지 말고, 이 문항에 실제로 나타난 문장 내부 완화, 외부 보조행위, 요청 본체의 앞뒤 배치 중 어느 층이 관계 효과를 만드는지 구분하세요. 특정 장치의 유무나 개수를 적절성의 자동 기준으로 쓰지 않습니다.",
+            }
+          : {}),
+    },
     dct: {
       situationKo: mission.production_task.situation_ko,
       sourceText: mission.production_task.source_text,

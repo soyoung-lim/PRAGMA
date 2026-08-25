@@ -36,4 +36,25 @@ describe("instructor mission guide", () => {
     expect(guide.contrast.firstSituationKo).toBeTruthy();
     expect(guide.contrast.secondSituationKo).toBeTruthy();
   });
+
+  it("adds the refusal sequence boundary without turning it into a new score or field", () => {
+    const refusalGuide = buildInstructorMissionGuide(SAMPLE_MISSION_V5_NATIVE, "거절");
+    const thanksGuide = buildInstructorMissionGuide(SAMPLE_MISSION_V5_NATIVE, "감사");
+
+    expect(refusalGuide.microscope.boundaryPromptLabelKo).toBe("거절 순차 맥락 확인");
+    expect(refusalGuide.microscope.boundaryPromptKo).toContain("실제 최종 불수락");
+    expect(refusalGuide.microscope.boundaryPromptKo).toContain("의례적 1차 사양");
+    expect(refusalGuide.microscope.boundaryPromptKo).toContain("표면적으로 직접적인 사양");
+    expect(thanksGuide.microscope.boundaryPromptKo).toBeUndefined();
+  });
+
+  it("adds the request realization layers without treating form counts as appropriateness", () => {
+    const requestGuide = buildInstructorMissionGuide(SAMPLE_MISSION_V5_NATIVE, "요청");
+
+    expect(requestGuide.microscope.boundaryPromptLabelKo).toBe("요청 표현 자원 확인");
+    expect(requestGuide.microscope.boundaryPromptKo).toContain("문장 내부 완화");
+    expect(requestGuide.microscope.boundaryPromptKo).toContain("외부 보조행위");
+    expect(requestGuide.microscope.boundaryPromptKo).toContain("요청 본체의 앞뒤 배치");
+    expect(requestGuide.microscope.boundaryPromptKo).toContain("적절성의 자동 기준");
+  });
 });

@@ -80,6 +80,11 @@ export function InstructorMissionGuide({ guide }: { guide: InstructorMissionGuid
           <p className="mt-2"><span className="font-semibold">원문의 의도:</span> {guide.microscope.source}</p>
           <p className="mt-2"><span className="font-semibold">기능과 관계적 효과:</span> {guide.microscope.functionAndEffectKo}</p>
           <p className="mt-2"><span className="font-semibold">조정 예시:</span> <span lang="zh">{guide.microscope.adjustmentExample}</span></p>
+          {guide.microscope.boundaryPromptKo && (
+            <p className="mt-3 rounded-lg border border-[#E8D9AF] bg-[#FFF9E8] px-3 py-2 text-[12px] text-[#6E5B20]">
+              <span className="font-semibold">{guide.microscope.boundaryPromptLabelKo ?? "화행 경계 확인"}:</span> {guide.microscope.boundaryPromptKo}
+            </p>
+          )}
         </GuideSection>
 
         <GuideSection number={5} title="MPJ·DCT 수행자료 토론">
