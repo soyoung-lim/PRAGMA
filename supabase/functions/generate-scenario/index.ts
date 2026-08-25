@@ -2235,6 +2235,9 @@ function sanitizeMissionRepairOperations(
       if (!original || typeof original !== 'object' || Array.isArray(original) ||
           !replacement || typeof replacement !== 'object' || Array.isArray(replacement)) continue
       const frozen = original as Record<string, unknown>
+      const canRepairSituation = findings.some((finding) =>
+        finding.code.startsWith('rule_R27') &&
+        finding.where.startsWith(`mpj_items[${index}]`))
       sanitized.push({
         operation: 'replace_item_block',
         item_index: index,
@@ -2248,6 +2251,11 @@ function sanitizeMissionRepairOperations(
           source: frozen.source,
           pdr: frozen.pdr,
           preceding_turn: frozen.preceding_turn ?? null,
+          situation_ko: canRepairSituation
+            ? (replacement as Record<string, unknown>).situation_ko ?? frozen.situation_ko
+            : frozen.situation_ko,
+          relation_ko: frozen.relation_ko,
+          channel: frozen.channel,
         },
       })
       continue
@@ -2853,7 +2861,7 @@ function buildQualityUserPrompt(b: QualityCheckBody): string {
 ${JSON.stringify(b.mission_content, null, 2)}`
 }
 
-const RELATIONAL_FEEDBACK_AUDIT_PROMPT_VERSION = 'quality_relational_feedback_v1'
+const RELATIONAL_FEEDBACK_AUDIT_PROMPT_VERSION = 'quality_relational_feedback_v2_zero_based_paths'
 
 function buildRelationalFeedbackAuditSystemPrompt(): string {
   return `너는 PRAGMA native MPJ5의 **피드백 계약만** 감사하는 좁은 품질 심사자다.
@@ -2877,6 +2885,8 @@ function buildRelationalFeedbackAuditSystemPrompt(): string {
 결함을 찾았어도 다음 문항 검사를 중단하지 마라. 고쳐 쓰지는 말고 최대 8개 finding만 반환한다.
 모든 finding은 현재 mission_content에 실제 존재하는 explanation_ko 또는 note_ko 경로를 가리키고,
 evidence_excerpt는 그 경로 값에서 그대로 복사한 짧은 부분문자열이어야 한다.
+경로의 배열 인덱스는 반드시 0부터 시작한다: MPJ1=mpj_items[0], MPJ2=[1], MPJ3=[2],
+MPJ4=[3], MPJ5=mpj_items[4]. mpj_items[5]는 존재하지 않으므로 절대 쓰지 마라.
 
 [출력 — 오직 JSON]
 {"findings":[{"code":"feedback_quality_mismatch"|"comparison_quality_mismatch","severity":"warning","where":"mpj_items[...].explanation_ko 또는 ...note_ko","evidence_excerpt":"현재 값의 실제 부분문자열","note_ko":"누락된 연결 한 가지"}]}

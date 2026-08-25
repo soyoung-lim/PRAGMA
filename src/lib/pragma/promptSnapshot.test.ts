@@ -140,8 +140,10 @@ describe("prompt snapshot integrity", () => {
     expect(canonicalSource).toContain("content_release_id: CURRENT_CONTENT_RELEASE_ID");
     expect(canonicalSource).toContain("mission_item_repair_v4_exact_operations");
     expect(canonicalSource).toContain("operations를 빈 배열로");
-    expect(canonicalSource).toContain("quality_relational_feedback_v1");
+    expect(canonicalSource).toContain("quality_relational_feedback_v2_zero_based_paths");
     expect(canonicalSource).toContain("선택권 존중/의견 존중");
+    expect(canonicalSource).toContain("MPJ5=mpj_items[4]");
+    expect(canonicalSource).toContain("canRepairSituation");
     expect(canonicalSource).toContain('{"operation":"replace_item_block","item_index":4');
   });
 
