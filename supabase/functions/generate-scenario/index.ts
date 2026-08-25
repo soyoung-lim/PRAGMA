@@ -2142,6 +2142,7 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
         '- R5 길이 실패(진단에 길이·최장·최단·분리·비율이 명시됨)라면 직전 multi_judge의 대역은 바꾸지 않은 채 후보 문장 길이 범위만 겹치게 고치세요.',
         '- R5 대역·역할 실패(진단에 BEST·WORST·중간 후보·적정 대역·비적정 대역이 명시됨)라면 길이만 손대지 말고 정확히 BEST=적정 1개, WORST=비적정 1개, MIDDLE=적정 1개+비적정 경계 1개가 되게 하세요. 바꾼 대역이 실제 표현과 note_ko에 맞도록 해당 후보를 함께 다시 쓰세요.',
         '- R18 fix_choice 실패라면 accepted_band_codes를 적정 대역으로 두지 마세요. target이 실제로 부적절한 비적정 경계 표현이면 그에 맞는 비적정 대역 정확히 1개로 고치고, target 자체가 적정하다면 target·highlights·해설을 함께 부적절한 경계 사례로 다시 쓰세요.',
+        '- AI band_mismatch 실패라면 진단이 지목한 target·correction·candidate의 문장과 대역을 함께 고치세요. 특히 multi_judge에서는 4역할과 MIDDLE의 적정 1+비적정 1 구조를 유지하면서, 비적정 경계 후보가 실제로 해당 초점 자원이 부족·과잉하도록 문장 자체를 다시 쓰고 note_ko도 그 실제 차이를 설명하게 하세요. 적정한 문장에 비적정 라벨만 다시 붙이지 마세요.',
         '- 길이 조절을 위해 새 명제·이유·대안·보상·일정을 만들지 마세요. 중립적 연결·군더더기 또는 문장 압축만 사용하세요.',
         '- 수정 범위가 작아도 응답은 스키마의 전체 JSON을 빠짐없이 다시 출력하세요.',
       )

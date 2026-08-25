@@ -296,6 +296,8 @@ describe("prompt snapshot integrity", () => {
     expect(retry.text).toContain("바꾼 대역이 실제 표현과 note_ko에 맞도록");
     expect(retry.text).toContain("R18 fix_choice 실패");
     expect(retry.text).toContain("accepted_band_codes를 적정 대역으로 두지 마세요");
+    expect(retry.text).toContain("AI band_mismatch 실패");
+    expect(retry.text).toContain("적정한 문장에 비적정 라벨만 다시 붙이지 마세요");
     expect(retry.text).toContain("실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지");
   });
 

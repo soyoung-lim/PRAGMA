@@ -36,6 +36,7 @@ import { DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
 import {
   promoteCore,
   reviewMission,
+  supersedeMissionForRework,
   type PromotableCore,
   type PromoteStage,
 } from "@/lib/pragma/promoteMission";
@@ -95,6 +96,8 @@ const LIST_CAP = 50;
 // 조회 상한. 495 배치를 두 번 돌리면 코어가 1000을 넘어 상한에 조용히 잘린다
 // (2026-07-31 실측 1299건) — 상한에 닿으면 화면에 알린다.
 const ROW_CAP = 4000;
+const CORE_ROW_SELECT =
+  "scenario_id, speech_act, learner_level, domain, industry_sector, mode, source_modality, theme_code, topic_code, mission_status, generation_run_id, generation_item_key, prompt_snapshot_hash, core_content";
 
 const PROGRESS_STEPS = ["미션 생성", "규칙 검사", "AI 품질 점검", "저장"] as const;
 
@@ -156,10 +159,9 @@ const AdminAssembly = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const request = (supabase as unknown as { from: (t: string) => any })
         .from("scenarios")
-        .select(
-          "scenario_id, speech_act, learner_level, domain, industry_sector, mode, source_modality, theme_code, topic_code, mission_status, generation_run_id, generation_item_key, prompt_snapshot_hash, core_content",
-        )
+        .select(CORE_ROW_SELECT)
         .eq("content_format", "scenario_core_v1")
+        .neq("review_status", "revise_required")
         .order("created_at", { ascending: false })
         .limit(ROW_CAP);
       const timeout = new Promise<never>((_, reject) => {
@@ -299,6 +301,42 @@ const AdminAssembly = () => {
       } else {
         toast.error(res.error ?? "검토 처리 실패");
       }
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onRework = async (r: CoreRow) => {
+    setBusy(r.scenario_id);
+    setRowMsg((m) => ({ ...m, [r.scenario_id]: "기존 생성물을 보존하고 재작업 코어를 만드는 중…" }));
+    try {
+      const superseded = await supersedeMissionForRework(r.scenario_id);
+      if (superseded.ok === false) {
+        toast.error(superseded.error);
+        return;
+      }
+
+      // RPC가 만든 정확한 run/item 메타를 다시 읽어 provenance에도 새 값을 사용한다.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error: fetchError } = await (supabase as unknown as { from: (t: string) => any })
+        .from("scenarios")
+        .select(CORE_ROW_SELECT)
+        .eq("scenario_id", superseded.scenarioId)
+        .single();
+      if (fetchError || !data) throw new Error(fetchError?.message ?? "재작업 코어 조회 실패");
+
+      const replacement = data as CoreRow;
+      setRows((prev) => [replacement, ...prev.filter((row) => row.scenario_id !== r.scenario_id)]);
+      setPreview((prev) => {
+        const { [r.scenario_id]: _drop, ...rest } = prev;
+        return rest;
+      });
+      setOpenId(null);
+      setBusy(null);
+      toast.info("기존 미션은 반려 이력으로 보존했습니다. 새 코어를 재조립합니다.");
+      await onAssemble(replacement);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "반려·재조립 준비 실패");
     } finally {
       setBusy(null);
     }
@@ -468,9 +506,20 @@ const AdminAssembly = () => {
                           <span className="text-[11.5px] text-muted-foreground">화용 초점 카탈로그 없음 — 조립 불가</span>
                         ))}
                       {st === "generated" && (
-                        <Button size="sm" variant="outline" disabled={busy === r.scenario_id} onClick={() => onReview(r)}>
-                          {busy === r.scenario_id ? "처리 중…" : "검토 완료(reviewed)"}
-                        </Button>
+                        <>
+                          <Button size="sm" variant="outline" disabled={busy === r.scenario_id} onClick={() => onReview(r)}>
+                            {busy === r.scenario_id ? "처리 중…" : "검토 완료(reviewed)"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={busy === r.scenario_id}
+                            title="현재 생성물은 이력에 보존하고 같은 코어로 새 미션을 조립합니다."
+                            onClick={() => onRework(r)}
+                          >
+                            반려·재조립
+                          </Button>
+                        </>
                       )}
                       {(st === "generated" || st === "reviewed") && (
                         <Button size="sm" variant="ghost" onClick={() => togglePreview(r)}>

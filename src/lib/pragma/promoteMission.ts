@@ -1,6 +1,6 @@
 // 코어 → 미션 승격 (관리자 UI 배선). 골든 테스트 경로를 앱으로 옮긴 것.
 //   엣지함수 action:'mission'(게이트1·provenance 반영본) → checkMission(R1~R24)
-//   → 실패 시 재생성 ≤2 → save_generated_mission RPC(mission_status='generated').
+//   → 실패 시 재생성 ≤5 → save_generated_mission RPC(mission_status='generated').
 // review_mission RPC = generated → reviewed(학습자 실행 게이트, 계약 0-b·17).
 //
 // 9개 화행 모두 사람 작성 기본 화용 초점으로 승격할 수 있다.
@@ -441,4 +441,21 @@ export async function reviewMission(scenarioId: string): Promise<{ ok: boolean; 
   const { error } = await rpc("review_mission", { p_scenario_id: scenarioId });
   if (error) return { ok: false, error: (error as { message?: string }).message ?? String(error) };
   return { ok: true };
+}
+
+/**
+ * 교수자 반려: 현재 generated 스냅샷을 보존하고 같은 코어의 새 조립 대기 행을 만든다.
+ * 실제 재조립은 반환된 scenarioId로 promoteCore를 다시 호출한다.
+ */
+export async function supersedeMissionForRework(
+  scenarioId: string,
+): Promise<{ ok: true; scenarioId: string } | { ok: false; error: string }> {
+  const { data, error } = await rpc("supersede_generated_mission_for_rework", {
+    p_scenario_id: scenarioId,
+  });
+  if (error) {
+    return { ok: false, error: (error as { message?: string }).message ?? String(error) };
+  }
+  if (typeof data !== "string") return { ok: false, error: "재작업 코어 ID를 받지 못했습니다." };
+  return { ok: true, scenarioId: data };
 }
