@@ -39,6 +39,7 @@ const QUALITY_CODE_KO: Record<string, string> = {
   context_plan_mismatch: "앵커·대비 맥락 불일치",
   diagnostic_coverage_mismatch: "진단차원 근거 불일치",
   comparison_quality_mismatch: "여러 초안의 적정·조정 대비 불충분",
+  feedback_quality_mismatch: "피드백의 상황·기능·관계효과 연결 불충분",
 };
 
 export function MissionPreview({

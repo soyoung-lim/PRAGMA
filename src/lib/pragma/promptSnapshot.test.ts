@@ -233,6 +233,11 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).toContain("judge3는 DCT와 같은 앵커 P/D/R의 별도 사건");
       expect(entry.text).toContain("reason에는 accepted_band_codes·confidence를 만들지 마세요");
       expect(entry.text).toContain("정확히 4후보이며 **적정 대역 2개 + 조정 필요 대역 2개**");
+      expect(entry.text).toContain("두 적정안은 같은 답의 재서술이 아니어야 합니다");
+      expect(entry.text).toContain("구별되는 관계적 효과");
+      expect(entry.text).toContain("[학습 피드백 4층]");
+      expect(entry.text).toContain("현재 상황 단서 → 실제 표현 자원과 그 기능 → 관계적 효과 → 유지하거나 조정할 방향 하나");
+      expect(entry.text).toContain("primary pragmatic delta 하나만");
       expect(entry.text).toContain("유일한 BEST/WORST나 엄밀한 선형 서열을 만들지 마세요");
       expect(entry.text).toContain("화용 판단 없이 즉시 소거되는");
       expect(entry.text).toContain("더 간접적·길거나 강한 표현을 자동으로 더 좋은 답으로 판정하지 마세요");
@@ -260,6 +265,9 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("primary_reason_ambiguity");
     expect(quality.text).toContain("context_plan_mismatch");
     expect(quality.text).toContain("comparison_quality_mismatch");
+    expect(quality.text).toContain("feedback_quality_mismatch");
+    expect(quality.text).toContain("현재 상황 단서 →");
+    expect(quality.text).toContain("자원과 관계적 효과를 note_ko에서 구별");
     expect(quality.text).toContain("적정 대역 2개·조정 필요 대역");
     expect(quality.text).toContain("유일한 BEST/WORST나 엄밀한 선형 서열도 요구하지 않는다");
     expect(quality.text).toContain("diagnostic_coverage_mismatch");

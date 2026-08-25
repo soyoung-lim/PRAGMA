@@ -2032,7 +2032,10 @@ ${nativeJudgeRules}- fix_choice는 **판단을 먼저 한 뒤 교정**하는 한
     금지하지는 마세요(예: 가능 여부를 묻는 의문형 안의 \`给我\`는 극단형이 아닙니다).
   · 오답이 "${f.within_band_code}"로도 방어되거나, 반대로 초급자도 바로 걸러낼 만큼 뻔하면
     세 수정안을 다시 쓰세요.
-- multi_judge는 정확히 4후보이며 **적정 대역 2개 + 조정 필요 대역 2개**입니다. comparison_role은 만들지 마세요.
+- multi_judge는 정확히 4후보이며 **적정 대역 2개 + 조정 필요 대역 2개**입니다. comparison_role은 만들지 마세요.${nativeMpj5 ? `
+- 두 적정안은 같은 답의 재서술이 아니어야 합니다. 둘 다 허용 가능하되, 서로 다른 실제 화용 자원을 써서
+  격식·친밀성·부담 관리 등 **구별되는 관계적 효과**를 만들어야 합니다. 두 note_ko에는 각각 어떤 자원이
+  어떤 관계적 인상을 만드는지 명시하고, 하나를 숨은 정답이나 차선책으로 서열화하지 마세요.` : ''}
 - 조정 필요 2개의 방향은 원문과 화행에 따라 과소+과잉, 과소+과소, 과잉+과잉을 모두 허용합니다. 양쪽 극단을 억지로 채우지 마세요.
 - 네 후보는 모두 의미·문법이 온전하고 실제로 쓸 법해야 합니다. 유일한 BEST/WORST나 엄밀한 선형 서열을 만들지 마세요.
 - 🔴 **판정 대역은 표현 형식 하나가 아니라 이 target feature의 정의와 관계·부담(P·D·R)에 상대적입니다.**
@@ -2045,7 +2048,12 @@ ${nativeJudgeRules}- fix_choice는 **판단을 먼저 한 뒤 교정**하는 한
   ③ 반대로 이 초점의 자원이 실제로 기능하고 이를 상쇄하는 요소가 없다면, 자원을 더 쌓지 않았다는
      이유만으로 하위 대역을 주지 마세요.
   ④ 위 '이 초점이 아닌 것(혼입 금지)'에 나열된 요소는 이 초점의 판정 근거로 사용하지 마세요.
-  ⑤ 근거를 명확히 쓸 수 없거나 "${f.within_band_code}"로도 똑같이 방어되면 그 문장을 다시 쓰세요.
+  ⑤ 근거를 명확히 쓸 수 없거나 "${f.within_band_code}"로도 똑같이 방어되면 그 문장을 다시 쓰세요.${nativeMpj5 ? `
+- 🔴 [학습 피드백 4층] 모든 MPJ의 explanation_ko와 후보별 note_ko는 짧게 쓰되 다음 연결을 빠뜨리지 마세요:
+  **현재 상황 단서 → 실제 표현 자원과 그 기능 → 관계적 효과 → 유지하거나 조정할 방향 하나**.
+  한 문항에서는 primary pragmatic delta 하나만 설명하고, 실제 표현을 짚지 않은 "공손하다/부적절하다" 식의
+  추상 평가로 끝내지 마세요. explanation_ko는 2~3문장 안에서 네 층을 연결하고, note_ko는 해당 후보의
+  표현 자원·관계적 효과·유지/조정 방향을 한 줄로 압축하세요.` : ''}
 - ${targetTypes}의 target은 해당 P·D·R에서 실제로 부적절해야 하며, 의미·문법 오류를 부적절성의 근거로 쓰지 마세요.
 - 🔴 [반대 맥락 테스트] 모든 비적정 target·correction·candidate는 P/D/R·역할·채널 중 하나만 인접하게
   바꾼 현실적인 상황에서는 적정하게 쓸 수 있어야 합니다. 그런 상황을 한 문장으로 설명할 수 없으면
@@ -2374,8 +2382,9 @@ function buildQualitySystemPrompt(
   const comparisonQualityCheck = nativeMpj5
     ? `⑪ comparison_quality_mismatch — multi_judge의 네 후보가 **적정 대역 2개·조정 필요 대역
    2개**로 실제 구별되는가. 네 문장은 모두 의미와 문법이 온전하고 실제로 쓸 법해야 하며, 차이는
-   주로 이 장면의 화용적 선택에서 나야 한다. 두 적정안이 사실상 복제되거나 조정 필요안이 화용
-   지식 없이 즉시 소거되는 극단형이면 지적하라. 조정 필요 방향은 과소/과잉 양쪽을 한 문항에
+   주로 이 장면의 화용적 선택에서 나야 한다. 두 적정안이 사실상 복제되거나, 서로 다른 실제 화용
+   자원과 관계적 효과를 note_ko에서 구별하지 못하거나, 조정 필요안이 화용 지식 없이 즉시 소거되는
+   극단형이면 지적하라. 두 적정안에 숨은 우열을 만들지는 마라. 조정 필요 방향은 과소/과잉 양쪽을 한 문항에
    강제하지 않으며, 유일한 BEST/WORST나 엄밀한 선형 서열도 요구하지 않는다.`
     : ''
   const diagnosticCheck = nativeMpj5
@@ -2384,12 +2393,19 @@ function buildQualitySystemPrompt(
    근거 위치에서 관찰할 수 없는 차원을 과잉 선언하면 지적하라. 이 메타데이터는 문항별 단일
    채점축과 별개인 **미션 전체 화행 수행의 관찰 범위**다.`
     : ''
+  const feedbackQualityCheck = nativeMpj5
+    ? `⑬ feedback_quality_mismatch — 각 MPJ의 explanation_ko와 후보별 note_ko가 **현재 상황 단서 →
+   실제 표현 자원과 기능 → 관계적 효과 → 유지/조정 방향 하나**를 짧게 연결하는가. 실제 표현을
+   짚지 않은 "공손하다/부적절하다" 같은 추상 평가만 있거나, 한 피드백에 여러 화용 차이를 섞어
+   무엇을 배워야 하는지 흐리면 warning으로 지적하라. 해설이 현재 표현·판정과 모순하면
+   internal_inconsistency로 fail 처리한다.`
+    : ''
   const precedingContextCheck = nativeMpj5
     ? '④앞선 요청·제안·의견·도움·잘못·문제 사건이 필요한 화행이라면 그 사실이 situation_ko 안에 자연스럽게 요약되어 있고, preceding_turn은 null인지'
     : '④앞선 대화가 있다면 그 사실과 preceding_turn을'
-  const checklistRange = nativeMpj5 ? '①~⑫' : '①~⑩'
+  const checklistRange = nativeMpj5 ? '①~⑬' : '①~⑩'
   const findingCodes = nativeMpj5
-    ? 'gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch | comparison_quality_mismatch | diagnostic_coverage_mismatch'
+    ? 'gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch | comparison_quality_mismatch | diagnostic_coverage_mismatch | feedback_quality_mismatch'
     : 'gate1_violation | implausible_distractor | answer_cue | band_mismatch | focus_contamination | unnatural_language | internal_inconsistency | scene_underspecified | primary_reason_ambiguity | context_plan_mismatch'
   const featureBoundaryAudit = `5. **제안 초점 경계 감사** — 화용 초점 code가 proposal_optionality_clarity일 때, 구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는 문장은 선택 가능성과 방안 명료성을 모두 갖춘 within_band다. 이런 문장을 too_tentative·too_directive로 라벨링했으면 반드시 fail band_mismatch로 보고하라. 같은 문장 또는 의미상 같은 문장을 문항 사이에서 적정/비적정으로 다르게 판정했으면 fail internal_inconsistency다.`
   return `너는 L2 화용 교육 자료의 **품질 심사자**다. 다른 모델이 생성한 학습 미션 1건을 받아
@@ -2461,6 +2477,7 @@ ${featureBoundaryAudit}
    사건이 사실상 복제되면 지적하라.
 ${comparisonQualityCheck}
 ${diagnosticCheck}
+${feedbackQualityCheck}
 
 [필수 확인 절차 — 건너뛰지 마라]
 ${checklistRange}을 **하나씩 명시적으로 점검한 뒤** 판정하라. "전반적으로 괜찮아 보인다"로
@@ -3509,6 +3526,7 @@ Deno.serve(async (req) => {
         'focus_contamination', 'unnatural_language', 'internal_inconsistency',
         'scene_underspecified', 'primary_reason_ambiguity', 'context_plan_mismatch',
         'comparison_quality_mismatch', 'diagnostic_coverage_mismatch',
+        'feedback_quality_mismatch',
       ]
       const rawFindings = Array.isArray(parsed.findings) ? parsed.findings : []
       const groundedFindings: Array<{
