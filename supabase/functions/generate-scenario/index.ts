@@ -2154,7 +2154,7 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
   return parts.join('\n')
 }
 
-const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v3_relational_feedback'
+const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v4_exact_operations'
 
 function repairTargets(findings: MissionRepairBody['findings']) {
   const itemIndexes = [...new Set(findings.flatMap((finding) => {
@@ -2190,6 +2190,11 @@ situation_ko만 다른 문항·DCT와 구별되는 구체적 장면으로 다시
 서로 다른 실제 화용 자원과 관계적 효과를 가져야 하며 숨은 우열을 만들지 마세요.
 허용 대상이 하나 이상이면 지목된 각 대상의 operation을 반드시 반환하고 operations를 빈 배열로
 끝내지 마세요. 한 후보 결함도 정답 키·후보·note·explanation이 일치하는 완전한 item block으로 고치세요.
+각 operation 객체는 아래 세 형태 중 하나를 **키 이름까지 정확히** 따르세요.
+- {"operation":"replace_item_block","item_index":4,"item":{원본과 같은 type의 완전한 문항 객체}}
+- {"operation":"replace_reference_alternatives","reference_alternatives":[완전한 대안 객체들]}
+- {"operation":"replace_diagnostic_dimensions","diagnostic_dimensions":[완전한 차원 객체들]}
+op·action·index·replacement 같은 다른 키 이름이나 수정된 필드만 담은 부분 객체는 쓰지 마세요.
 출력은 {"operations":[...]} JSON 하나뿐입니다.`
   const user = [
     `[화행] ${b.speech_act_ko} (${b.speech_act})`,
@@ -2213,17 +2218,20 @@ function sanitizeMissionRepairOperations(
   const parsed = raw && typeof raw === 'object' && !Array.isArray(raw)
     ? raw as Record<string, unknown>
     : {}
-  const operations = Array.isArray(parsed.operations) ? parsed.operations : []
+  const operations = Array.isArray(parsed.operations)
+    ? parsed.operations
+    : Array.isArray(parsed.repairs) ? parsed.repairs : []
   const sanitized: Array<Record<string, unknown>> = []
   for (const value of operations) {
     const operation = value && typeof value === 'object' && !Array.isArray(value)
       ? value as Record<string, unknown>
       : {}
-    if (operation.operation === 'replace_item_block') {
-      const index = Number(operation.item_index)
+    const operationName = operation.operation ?? operation.op ?? operation.action
+    if (operationName === 'replace_item_block') {
+      const index = Number(operation.item_index ?? operation.itemIndex ?? operation.index)
       if (!targets.itemIndexes.includes(index)) continue
       const original = items[index]
-      const replacement = operation.item
+      const replacement = operation.item ?? operation.replacement
       if (!original || typeof original !== 'object' || Array.isArray(original) ||
           !replacement || typeof replacement !== 'object' || Array.isArray(replacement)) continue
       const frozen = original as Record<string, unknown>
@@ -2244,7 +2252,7 @@ function sanitizeMissionRepairOperations(
       })
       continue
     }
-    if (operation.operation === 'replace_reference_alternatives' &&
+    if (operationName === 'replace_reference_alternatives' &&
         targets.productionReferences && Array.isArray(operation.reference_alternatives)) {
       sanitized.push({
         operation: 'replace_reference_alternatives',
@@ -2252,7 +2260,7 @@ function sanitizeMissionRepairOperations(
       })
       continue
     }
-    if (operation.operation === 'replace_diagnostic_dimensions' &&
+    if (operationName === 'replace_diagnostic_dimensions' &&
         targets.diagnosticDimensions && Array.isArray(operation.diagnostic_dimensions)) {
       sanitized.push({
         operation: 'replace_diagnostic_dimensions',
@@ -2843,6 +2851,40 @@ function buildQualityUserPrompt(b: QualityCheckBody): string {
 
 [심사 대상 mission_content]
 ${JSON.stringify(b.mission_content, null, 2)}`
+}
+
+const RELATIONAL_FEEDBACK_AUDIT_PROMPT_VERSION = 'quality_relational_feedback_v1'
+
+function buildRelationalFeedbackAuditSystemPrompt(): string {
+  return `너는 PRAGMA native MPJ5의 **피드백 계약만** 감사하는 좁은 품질 심사자다.
+다른 품질 항목은 보지 말고 아래 두 항목을 MPJ1~5 전체에서 끝까지 검사한다.
+
+1. feedback_quality_mismatch
+- explanation_ko와 후보별 note_ko가 현재 상황 단서, **해당 중국어 표현에 실제로 있는 자원 또는
+  그 자원의 구체적 기능**, 관계적 효과, 유지/조정할 한 지점을 연결하는가.
+- 표현의 실제 부분문자열을 인용하거나 현재 표현에 있는 자원을 모호하지 않게 지칭해야 한다.
+- "공손하다", "선택권을 준다", "부적절하다" 같은 일반 평가만으로 끝나거나 여러 화용 차이를
+  한꺼번에 가르치면 warning이다.
+
+2. comparison_quality_mismatch
+- MPJ5의 적정 대역 후보 2개가 실제로 서로 다른 화용 전략을 쓰고, note_ko가 **의미 있게 다른
+  관계적 인상**을 설명하는가.
+- 단순한 어순·의문형 재서술이나 두 note가 모두 결국 "선택권 존중/의견 존중" 하나로 환원되면
+  warning이다. 격식, 거리, 연대감, 협의 가능성, 부담의 귀속, 인식적 입장 가운데 적어도 하나의
+  관계적 차이가 실제 표현에 근거해 구별되어야 한다.
+- 둘 다 적정할 수 있으므로 숨은 우열이나 단일 모범답안을 만들라고 요구하지 마라.
+
+결함을 찾았어도 다음 문항 검사를 중단하지 마라. 고쳐 쓰지는 말고 최대 8개 finding만 반환한다.
+모든 finding은 현재 mission_content에 실제 존재하는 explanation_ko 또는 note_ko 경로를 가리키고,
+evidence_excerpt는 그 경로 값에서 그대로 복사한 짧은 부분문자열이어야 한다.
+
+[출력 — 오직 JSON]
+{"findings":[{"code":"feedback_quality_mismatch"|"comparison_quality_mismatch","severity":"warning","where":"mpj_items[...].explanation_ko 또는 ...note_ko","evidence_excerpt":"현재 값의 실제 부분문자열","note_ko":"누락된 연결 한 가지"}]}
+결함이 없으면 findings는 빈 배열이다.`
+}
+
+function buildRelationalFeedbackAuditUserPrompt(b: QualityCheckBody): string {
+  return `[심사 대상 mission_content]\n${JSON.stringify(b.mission_content, null, 2)}`
 }
 
 function parseOpenAIContent(raw: string): unknown {
@@ -3535,7 +3577,36 @@ Deno.serve(async (req) => {
         'comparison_quality_mismatch', 'diagnostic_coverage_mismatch',
         'feedback_quality_mismatch',
       ]
-      const rawFindings = Array.isArray(parsed.findings) ? parsed.findings : []
+      let relationalRawFindings: unknown[] = []
+      if (nativeMpj5) {
+        try {
+          const relationalAtt = await callOpenAI(
+            CRITIC_PRIMARY_MODEL,
+            apiKey,
+            buildRelationalFeedbackAuditSystemPrompt(),
+            buildRelationalFeedbackAuditUserPrompt(b),
+            0.1,
+            {
+              telemetry: telemetryFor('mission_critic', false, {
+                invocationAttempt: 2,
+                promptVersion: RELATIONAL_FEEDBACK_AUDIT_PROMPT_VERSION,
+              }),
+            },
+          )
+          if (relationalAtt.ok) {
+            const relationalParsed = parseOpenAIContent(relationalAtt.raw) as Record<string, unknown>
+            relationalRawFindings = Array.isArray(relationalParsed.findings)
+              ? relationalParsed.findings
+              : []
+          }
+        } catch (error) {
+          console.error('[quality_relational_feedback] optional audit failed', (error as Error).message)
+        }
+      }
+      const rawFindings = [
+        ...(Array.isArray(parsed.findings) ? parsed.findings : []),
+        ...relationalRawFindings,
+      ]
       const groundedFindings: Array<{
         code: string
         severity: 'warning' | 'fail'
@@ -3544,7 +3615,8 @@ Deno.serve(async (req) => {
         note_ko: string
       }> = []
       const groundingFailures: string[] = []
-      rawFindings.slice(0, 20).forEach((raw) => {
+      const findingKeys = new Set<string>()
+      rawFindings.slice(0, 28).forEach((raw) => {
         const f = (raw ?? {}) as Record<string, unknown>
         const grounding = groundCriticFinding(missionRecord, f)
         if (!grounding.ok) {
@@ -3552,6 +3624,9 @@ Deno.serve(async (req) => {
           return
         }
         const code = typeof f.code === 'string' && CODES.includes(f.code) ? f.code : 'internal_inconsistency'
+        const findingKey = `${code}\u0000${grounding.where}\u0000${grounding.evidenceExcerpt}`
+        if (findingKeys.has(findingKey)) return
+        findingKeys.add(findingKey)
         groundedFindings.push({
           code,
           severity: f.severity === 'fail' ? 'fail' : 'warning',
