@@ -1112,7 +1112,7 @@ function checkV4ContextPlan(v: RuleViolation[], m: MissionV4 | MissionV5, concis
   if (conciseCurrentNative) {
     const productionMarks = (production.match(/[.!?。！？]/g) ?? []).length;
     if (productionMarks !== 2 || production.length > 140) {
-      add(v, "R27", "fail", "production_task: 현행 learner situation은 140자 이내의 정확히 2문장이어야 함");
+      add(v, "R27", "warning", "production_task: learner situation이 권장 형식(140자 이내의 정확히 2문장)을 벗어남");
     }
   }
 }

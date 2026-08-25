@@ -448,6 +448,12 @@ describe("mission_v5 native MPJ5 contract", () => {
     expect(checkMission(verboseScene, context).violations.some(
       (item) => item.id === "R27" && item.level === "fail" && item.message.includes("정확히 2문장"),
     )).toBe(true);
+
+    const verboseProduction = structuredClone(current);
+    verboseProduction.production_task.situation_ko += " 교수자가 승인한 추가 맥락은 그대로 유지한다.";
+    expect(checkMission(verboseProduction, context).violations.some(
+      (item) => item.id === "R27" && item.level === "warning" && item.message.includes("production_task"),
+    )).toBe(true);
   });
 
   it("requires one acceptable and one adjustment-needed middle without duplicate candidates", () => {
