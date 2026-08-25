@@ -130,7 +130,7 @@ export function InstructorMissionGuide({ guide }: { guide: InstructorMissionGuid
             </ul>
           </div>
           <p className="mt-3 text-[11px] text-[#707A80] print:hidden">
-            실제 학습자 사례는 현재 자동 선별하지 않습니다. 학습자 수행 기록에서 익명화할 MPJ·DCT 사례 1–2건을 교수자가 선택해 사용합니다.
+            실제 학습자 사례는 현재 자동 선별하지 않습니다. 수업에서 수집된 수행 기록 중 익명화할 MPJ·DCT 사례 1–2건을 교수자가 선택해 사용합니다.
           </p>
         </GuideSection>
 

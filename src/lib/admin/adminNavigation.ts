@@ -63,7 +63,6 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     items: [
       { to: "/admin/learners", label: "학습자 관리" },
       { to: "/admin/decision-traces", label: "학습자 수행 기록" },
-      { to: "/admin/analytics", label: "학습 분석", pending: true },
       { to: "/admin/research-qa/improvements", label: "학습 콘텐츠 개선" },
       { to: "/admin/export", label: "수행 기록 내려받기" },
     ],
@@ -83,7 +82,6 @@ const PRIORITY_LABELS = [
   "수업 자료 생성",
   "학습자 관리",
   "학습자 수행 기록",
-  "학습 분석",
   "학습 콘텐츠 개선",
   "수행 기록 내려받기",
 ] as const;

@@ -26,8 +26,8 @@ const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.t
 const AdminQuestionDesigner = lazy(() => import("./pages/admin/AdminQuestionDesigner.tsx"));
 const AdminComposer = lazy(() => import("./pages/admin/AdminComposer.tsx"));
 const AdminLearners = lazy(() => import("./pages/admin/AdminLearners.tsx"));
-const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics.tsx"));
 const AdminExport = lazy(() => import("./pages/admin/AdminExport.tsx"));
+const AdminDecisionTraces = lazy(() => import("./pages/admin/AdminDecisionTraces.tsx"));
 const AdminDataBackup = lazy(() => import("./pages/admin/AdminDataBackup.tsx"));
 const AdminResearchQa = lazy(() => import("./pages/admin/AdminResearchQa.tsx"));
 const AdminGoldCalibration = lazy(() => import("./pages/admin/AdminGoldCalibration.tsx"));
@@ -36,7 +36,6 @@ const AdminGoldExpertOps = lazy(() => import("./pages/admin/AdminGoldExpertOps.t
 const AdminMissionRelease = lazy(() => import("./pages/admin/AdminMissionRelease.tsx"));
 const AdminFinalCorpusReview = lazy(() => import("./pages/admin/AdminFinalCorpusReview.tsx"));
 const AdminImprovementFlywheel = lazy(() => import("./pages/admin/AdminImprovementFlywheel.tsx"));
-const AdminDecisionTraces = lazy(() => import("./pages/admin/AdminDecisionTraces.tsx"));
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin.tsx"));
 const ExpertLogin = lazy(() => import("./pages/ExpertLogin.tsx"));
 const ExpertReviewQueue = lazy(() => import("./pages/expert/ExpertReviewQueue.tsx"));
@@ -300,7 +299,6 @@ const App = () => (
           <Route path="/admin/learners" element={<RequireAdmin><AdminLearners /></RequireAdmin>} />
           <Route path="/admin/decision-traces" element={<RequireAdmin><AdminDecisionTraces /></RequireAdmin>} />
           {/* 레거시 폐기(2026-07-30): /admin/reports — 미사용 화면 삭제(사용자 결정). */}
-          <Route path="/admin/analytics" element={<RequireAdmin><AdminAnalytics /></RequireAdmin>} />
           <Route path="/admin/export" element={<RequireAdmin><AdminExport /></RequireAdmin>} />
           <Route path="/admin/data-backup" element={<RequireAdmin><AdminDataBackup /></RequireAdmin>} />
           <Route path="/admin/research-qa" element={<RequireAdmin><AdminResearchQa /></RequireAdmin>} />

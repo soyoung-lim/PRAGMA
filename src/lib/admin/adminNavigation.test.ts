@@ -15,7 +15,6 @@ const REQUIRED_ENTRY_PATHS = [
   "/admin/package",
   "/admin/learners",
   "/admin/decision-traces",
-  "/admin/analytics",
   "/admin/research-qa/improvements",
   "/admin/export",
 ] as const;
@@ -34,10 +33,19 @@ describe("admin navigation reachability", () => {
     }
     expect(app).toContain('path="/admin/review"');
     expect(app).toContain('to="/admin/research-qa/final-review"');
+    expect(app).not.toContain('path="/admin/analytics"');
+
+    const missionLogs = readFileSync(
+      resolve(process.cwd(), "src/pages/admin/AdminDecisionTraces.tsx"),
+      "utf8",
+    );
+    expect(missionLogs).toContain('.from("learner_mission_logs")');
+    expect(missionLogs).not.toContain('.from("decision_traces")');
   });
 
   it("keeps the mobile selector on the canonical target for compatibility paths", () => {
     expect(adminMobileNavValue("/admin/review")).toBe("/admin/research-qa/final-review");
+    expect(adminMobileNavValue("/admin/decision-traces")).toBe("/admin/decision-traces");
     expect(adminMobileNavValue("/admin/export")).toBe("/admin/export");
   });
 });
