@@ -116,6 +116,9 @@ export interface PromoteOptions {
   qualityGate?: "standard" | "required_non_fail";
 }
 
+/** 서로 다른 hard-gate 오류를 국소 교정할 기회를 주되 무한 유료 호출은 막는다. */
+export const MISSION_GENERATION_MAX_ATTEMPTS = 5;
+
 /**
  * 검증② — 규칙검사 통과분을 **생성과 분리된 모델**로 비평(계약 0-n·94, 세칙 0-q·99).
  * 관리자 품질관리 장치이며 학습자에게 노출되지 않는다. 호출·스키마 검증이 실패하면
@@ -286,9 +289,9 @@ export async function promoteCore(
   let failureNotes: string | undefined;
   let previousMission: unknown;
   let attempts = 0;
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+  for (let attempt = 1; attempt <= MISSION_GENERATION_MAX_ATTEMPTS; attempt += 1) {
     attempts = attempt;
-    options.onProgress?.({ phase: "generating", attempt, maxAttempts: 3 });
+    options.onProgress?.({ phase: "generating", attempt, maxAttempts: MISSION_GENERATION_MAX_ATTEMPTS });
     const { data, error } = await invokeMissionWithBackoff({
         action: "mission",
         telemetry: {
@@ -326,7 +329,7 @@ export async function promoteCore(
     }
     mission = parsed.data;
     // R23 계승 검사는 원본 core_content(v1/v2)를 넘긴다 — checkMission이 내부 정규화.
-    options.onProgress?.({ phase: "checking", attempt, maxAttempts: 3 });
+    options.onProgress?.({ phase: "checking", attempt, maxAttempts: MISSION_GENERATION_MAX_ATTEMPTS });
     check = checkMission(rawContent, ctx, core.core_content ?? undefined);
     if (check.result !== "fail") {
       if (options.qualityGate !== "required_non_fail") break;
@@ -353,7 +356,7 @@ export async function promoteCore(
       if (quality.verdict !== "fail") break;
       previousMission = rawContent;
       failureNotes = missionQualityFailureNotes(quality);
-      if (attempt < 3) continue;
+      if (attempt < MISSION_GENERATION_MAX_ATTEMPTS) continue;
       break;
     }
     previousMission = rawContent;
@@ -364,7 +367,7 @@ export async function promoteCore(
   }
 
   if (!mission || !check) {
-    return { ok: false, error: "미션을 생성하지 못했습니다(3회 시도).", attempts };
+    return { ok: false, error: `미션을 생성하지 못했습니다(${MISSION_GENERATION_MAX_ATTEMPTS}회 시도).`, attempts };
   }
   const violations = check.violations.map((x) => ({ id: x.id, level: x.level, message: x.message }));
   if (check.result === "fail") {
