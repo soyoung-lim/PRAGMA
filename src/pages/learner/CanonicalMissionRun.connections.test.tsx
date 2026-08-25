@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { CompletionActions, MissionDissentPanel } from "@/pages/learner/CanonicalMissionRun";
+import { CANONICAL_MISSION_PREVIEW, type DctFeedbackQuest } from "@/lib/mission/canonicalMissionPreview";
+import { CompletionActions, CompletionRecord, DctFeedbackView, MissionDissentPanel } from "@/pages/learner/CanonicalMissionRun";
+
+afterEach(() => vi.useRealTimers());
 
 describe("CanonicalMissionRun completion connections", () => {
   it("collects optional dissent without changing the judgment", () => {
@@ -46,5 +49,27 @@ describe("CanonicalMissionRun completion connections", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "처음부터 다시 보기" }));
     expect(onRestart).toHaveBeenCalledTimes(1);
+  });
+
+  it("withholds reference answers until the learner has finalized the revision", () => {
+    vi.useFakeTimers();
+    const quest = CANONICAL_MISSION_PREVIEW.quests.find(
+      (candidate): candidate is DctFeedbackQuest => candidate.kind === "dct_feedback",
+    );
+    if (!quest) throw new Error("DCT feedback fixture is missing");
+    const first = "您好，下周二的面试我不能参加，可以调整时间吗？";
+    const response = { first, revised: first, reflected: false };
+
+    const { unmount } = render(<DctFeedbackView quest={quest} response={response} onDone={vi.fn()} />);
+    act(() => vi.advanceTimersByTime(1300));
+    for (const alternative of quest.feedback.alternatives) {
+      expect(screen.queryByText(alternative.text)).not.toBeInTheDocument();
+    }
+    unmount();
+
+    render(<CompletionRecord label="번역 실습" response={response} alternatives={quest.feedback.alternatives} />);
+    for (const alternative of quest.feedback.alternatives) {
+      expect(screen.getByText(alternative.text)).toBeInTheDocument();
+    }
   });
 });

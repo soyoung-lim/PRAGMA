@@ -33,6 +33,7 @@ import {
   type OpenAIResponseFormat,
   type OpenAIUserContent,
 } from '../_shared/openaiRequestContract.ts'
+import { groundCriticFinding } from '../_shared/criticGrounding.ts'
 import {
   CURRENT_CONTENT_RELEASE_ID,
   CURRENT_CORE_PROMPT_VERSIONS,
@@ -1878,6 +1879,9 @@ function buildMissionSystemPrompt(
     : ''
   const nativeJudgeRules = nativeMpj5
     ? `- judge3는 DCT와 같은 앵커 P/D/R의 별도 사건이며, scale4와 달리 비적정 대역 하나를 판정하게 합니다.
+- MPJ1(scale4)↔MPJ2(judge3)는 **최소대조 한 쌍**입니다. 화행·item_focus·핵심 목표어 실현 전략은 유지하고,
+  P/D/R 중 정확히 한 축만 바꿔 적절성 방향이 달라지게 하세요. 두 사건의 명제 내용은 달라도 되지만,
+  explanation_ko에는 무엇이 유지되고 어떤 맥락축 하나가 바뀌었는지 구체적으로 쓰세요.
 `
     : ''
   const targetTypes = nativeMpj5 ? 'judge3·fix_choice·reason' : 'fix_choice·reason'
@@ -2043,6 +2047,9 @@ ${nativeJudgeRules}- fix_choice는 **판단을 먼저 한 뒤 교정**하는 한
   ④ 위 '이 초점이 아닌 것(혼입 금지)'에 나열된 요소는 이 초점의 판정 근거로 사용하지 마세요.
   ⑤ 근거를 명확히 쓸 수 없거나 "${f.within_band_code}"로도 똑같이 방어되면 그 문장을 다시 쓰세요.
 - ${targetTypes}의 target은 해당 P·D·R에서 실제로 부적절해야 하며, 의미·문법 오류를 부적절성의 근거로 쓰지 마세요.
+- 🔴 [반대 맥락 테스트] 모든 비적정 target·correction·candidate는 P/D/R·역할·채널 중 하나만 인접하게
+  바꾼 현실적인 상황에서는 적정하게 쓸 수 있어야 합니다. 그런 상황을 한 문장으로 설명할 수 없으면
+  경계형 후보가 아니라 단순 나쁜 문장이므로 다시 쓰세요. 이를 위한 새 JSON 필드는 만들지 않습니다.
 - **앵커+대비**: ${anchorContrastRule},
   scale4는 해당 표현이 실제로 적절해지는 대비 P/D/R, multi_judge는 DCT P/D/R 중 정확히 한 축만 바꾼 대비 사건입니다.
 - DCT는 코어의 같은 P/D/R에서 새 장면을 쓰는 근접 전이 과제입니다. MPJ가 DCT 상황문을 그대로 복제하면 안 됩니다.
@@ -2422,6 +2429,8 @@ ${featureBoundaryAudit}
    소거할 수 있으면 결함이다.** 후보는 실제로 헷갈릴 만한 **경계 사례**여야 하며,
    극단 문장(명령형 강요·노골적 무례)을 부적절 후보로 쓰는 것은 화용 훈련이 아니라
    "나쁜 표현 찾기"로 문항을 격하시킨다.
+   각 비적정 후보가 P/D/R·역할·채널 중 하나만 달라진 인접한 현실 맥락에서는 적정해질 수 있는지
+   반대로 시험하라. 어떤 인접 맥락에서도 방어할 수 없으면 implausible_distractor다.
 ③ answer_cue — 길이·형식·정중 표지 개수 등 내용과 무관한 단서로 정답이 드러나는가.
    특히 후보 길이 구간이 나뉘어도 그 사실만으로 fail하지 말고, 실제 BEST/WORST 선택을
    화용 판단 없이 식별하거나 현저히 좁힐 수 있을 때만 근거와 함께 warning/fail로 보고하라.
@@ -2446,7 +2455,8 @@ ${featureBoundaryAudit}
 ⑨ primary_reason_ambiguity — reason의 accepted_reason_id가 실제로 유일한 **가장 큰 이유**인가.
    다른 선택지도 같은 정도로 방어 가능하거나, primary가 target feature가 아닌 의미·문법 문제라면 fail이다.
 ⑩ context_plan_mismatch — scale4는 소박한 규칙을 깨는 적절한 대비 장면이고,
-   ${contextPlan}이며 multi_judge는 P/D/R 한 축만
+   ${contextPlan}이다. native MPJ5의 scale4↔judge3는 화행·item_focus·핵심 실현 전략을 유지하면서
+   P/D/R 중 정확히 한 축만 달라져 적절성 방향이 바뀌어야 하며, multi_judge는 P/D/R 한 축만
    바꾼 대비 사건인가. 코드만 맞고 상황문의 구체적 단서가 그 PDR을 뒷받침하지 못하거나,
    사건이 사실상 복제되면 지적하라.
 ${comparisonQualityCheck}
@@ -2477,12 +2487,15 @@ ${checklistRange}을 **하나씩 명시적으로 점검한 뒤** 판정하라. "
     {
       "code": "${findingCodes}",
       "severity": "warning" | "fail",
-      "where": "위치 경로 (예: mpj_items[2].corrections[1])",
+      "where": "현재 mission_content에 실제 존재하는 정확한 위치 경로 (예: mpj_items[2].corrections[1])",
+      "evidence_excerpt": "where가 가리키는 현재 값에서 그대로 복사한 짧은 부분문자열",
       "note_ko": "무엇이 왜 문제인지 1~2문장. 대안 문장을 쓰지 말 것."
     }
   ]
 }
-결함이 없으면 findings는 빈 배열이다.`
+결함이 없으면 findings는 빈 배열이다.
+모든 finding은 현재 경로와 evidence_excerpt를 함께 가져야 합니다. 이전 버전 문구, 존재하지 않는
+경로, 해당 경로 값에 실제로 없는 인용은 무효입니다.`
 }
 
 // ── 코어 축 준수 비평 파일럿 프롬프트 ─────────────────────────────────────
@@ -2789,7 +2802,16 @@ function buildQualityUserPrompt(b: QualityCheckBody): string {
   const bands = Array.isArray(f.band_codes) && f.band_codes.length
     ? f.band_codes.join(' | ')
     : '(전달되지 않음)'
-  return `[화용 초점]
+  const provenance = b.mission_content && typeof b.mission_content === 'object' && !Array.isArray(b.mission_content)
+    ? (b.mission_content as Record<string, unknown>).provenance
+    : null
+  const missionContentHash = provenance && typeof provenance === 'object' && !Array.isArray(provenance)
+    ? String((provenance as Record<string, unknown>).mission_content_hash ?? '')
+    : ''
+  return `[대상 버전]
+- mission_content_hash: ${missionContentHash || '(없음)'}
+
+[화용 초점]
 - code: ${f.code ?? '(없음)'}
 - 학습자 라벨: ${f.learner_label ?? '(없음)'}
 - 조작적 정의: ${f.operational_definition ?? '(없음)'}
@@ -3489,33 +3511,59 @@ Deno.serve(async (req) => {
         'comparison_quality_mismatch', 'diagnostic_coverage_mismatch',
       ]
       const rawFindings = Array.isArray(parsed.findings) ? parsed.findings : []
-      const findings = rawFindings.slice(0, 20).map((raw) => {
+      const groundedFindings: Array<{
+        code: string
+        severity: 'warning' | 'fail'
+        where: string
+        evidence_excerpt: string
+        note_ko: string
+      }> = []
+      const groundingFailures: string[] = []
+      rawFindings.slice(0, 20).forEach((raw) => {
         const f = (raw ?? {}) as Record<string, unknown>
+        const grounding = groundCriticFinding(missionRecord, f)
+        if (!grounding.ok) {
+          groundingFailures.push(grounding.reason)
+          return
+        }
         const code = typeof f.code === 'string' && CODES.includes(f.code) ? f.code : 'internal_inconsistency'
-        return {
+        groundedFindings.push({
           code,
           severity: f.severity === 'fail' ? 'fail' : 'warning',
-          where: typeof f.where === 'string' ? f.where.slice(0, 120) : '',
+          where: grounding.where.slice(0, 120),
+          evidence_excerpt: grounding.evidenceExcerpt,
           note_ko: typeof f.note_ko === 'string' ? f.note_ko.slice(0, 400) : '',
-        }
+        })
       })
-      // 판정은 findings에서 서버가 재도출한다(모델의 자기신고를 그대로 믿지 않는다).
-      // 단 모델이 스스로 더 나쁘게 신고했으면 그쪽을 택한다 — 보수적으로 합친다.
-      const RANK: Record<string, number> = { pass: 0, warning: 1, fail: 2 }
-      const derived = findings.some((f) => f.severity === 'fail')
+      const isolatedGroundingFailures = groundingFailures.slice(0, 5).map((reason) => ({
+        code: 'critic_grounding_failure',
+        severity: 'warning' as const,
+        where: '',
+        note_ko: reason.slice(0, 400),
+      }))
+      const findings = [...groundedFindings, ...isolatedGroundingFailures]
+      // 콘텐츠 판정은 현재 경로와 인용이 확인된 finding에서만 서버가 재도출한다.
+      // 모델의 자기신고 verdict와 격리된 grounding 실패는 콘텐츠 fail로 승격하지 않는다.
+      const verdict = groundedFindings.some((f) => f.severity === 'fail')
         ? 'fail'
-        : findings.length > 0 ? 'warning' : 'pass'
-      const claimed = typeof parsed.verdict === 'string' && parsed.verdict in RANK
-        ? (parsed.verdict as string)
-        : 'pass'
-      const verdict = RANK[claimed] > RANK[derived] ? claimed : derived
+        : groundedFindings.length > 0 || groundingFailures.length > 0 ? 'warning' : 'pass'
+      const summaryKo = groundedFindings.length === 0 && groundingFailures.length > 0
+        ? `AI critic finding ${groundingFailures.length}건의 현재 문항 근거를 확인하지 못해 격리했습니다.`
+        : typeof parsed.summary_ko === 'string' ? parsed.summary_ko.slice(0, 400) : ''
       const checkedAt = new Date().toISOString()
+      const provenance = missionRecord.provenance && typeof missionRecord.provenance === 'object' && !Array.isArray(missionRecord.provenance)
+        ? missionRecord.provenance as Record<string, unknown>
+        : {}
+      const missionContentHash = typeof provenance.mission_content_hash === 'string'
+        ? provenance.mission_content_hash
+        : ''
       return new Response(
         JSON.stringify({
           quality_check: {
             verdict,
-            summary_ko: typeof parsed.summary_ko === 'string' ? parsed.summary_ko.slice(0, 400) : '',
+            summary_ko: summaryKo,
             findings,
+            mission_content_hash: missionContentHash,
             model,
             prompt_version: CURRENT_MISSION_QUALITY_PROMPT_VERSION,
             checked_at: checkedAt,

@@ -179,6 +179,8 @@ export const QualityFindingSchema = z.object({
   code: z.string().min(1),
   severity: z.enum(["warning", "fail"]),
   where: z.string().default(""),
+  /** critic이 지목한 현재 경로 값에서 서버가 대조한 짧은 실제 인용. */
+  evidence_excerpt: z.string().max(240).optional(),
   note_ko: z.string().default(""),
 });
 export const QualityCheckSchema = z.object({
@@ -188,6 +190,8 @@ export const QualityCheckSchema = z.object({
   model: z.string().default(""),
   prompt_version: z.string().default(""),
   checked_at: z.string().default(""),
+  /** critic이 실제로 검사한 현재 mission_content 버전. DB 열 추가 없이 JSON에 함께 보존한다. */
+  mission_content_hash: z.string().optional(),
 });
 export type QualityFinding = z.infer<typeof QualityFindingSchema>;
 export type QualityCheck = z.infer<typeof QualityCheckSchema>;

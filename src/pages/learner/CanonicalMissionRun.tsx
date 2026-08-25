@@ -767,6 +767,30 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
   const selectedReason = quest.reasons.find((reason) => reason.id === reasonId);
   const acceptedReason = quest.reasons.find((reason) => acceptedReasonIds.includes(reason.id));
   const reasonAccepted = reasonId ? acceptedReasonIds.includes(reasonId) : false;
+  const judgmentAccepted = judgment === quest.referenceJudgment;
+  const matrixFeedback = judgmentAccepted
+    ? reasonAccepted
+      ? {
+          verdict: "판단과 이유가 모두 맞아요",
+          intro: "상황에 맞지 않는다는 판단과 그 핵심 원인을 함께 찾았습니다.",
+          action: "다음 문항에서도 상황 단서와 표현의 기능을 연결해 보세요.",
+        }
+      : {
+          verdict: "판단 방향은 맞았어요",
+          intro: "처음 판단은 맞았습니다. 이제 그 판단을 설명하는 핵심 원인을 구분해 보세요.",
+          action: selectedReason ? `내가 고른 이유 · ${selectedReason.text}` : undefined,
+        }
+    : reasonAccepted
+      ? {
+          verdict: "핵심 이유는 찾았어요",
+          intro: "문제가 되는 단서는 찾았습니다. 이 단서가 있는 현재 상황에서는 적절성 방향도 ‘적절하지 않다’로 조정해야 합니다.",
+          action: "이유를 찾은 뒤 처음 판단의 방향까지 다시 맞춰 보세요.",
+        }
+      : {
+          verdict: "판단과 이유를 함께 다시 확인해요",
+          intro: "현재 상황의 적절성 방향과 그 핵심 원인을 함께 다시 연결해 보세요.",
+          action: selectedReason ? `내가 고른 이유 · ${selectedReason.text}` : undefined,
+        };
   return (
     <QuestScaffold quest={quest} target={quest.target} targetHighlights={answered ? quest.targetHighlights : undefined}>
       <section className={taskPanelBody}>
@@ -819,9 +843,9 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
         {reasonPhase && answered && acceptedReason && (
           <div className="mt-4">
             <FeedbackBox
-              verdict={reasonAccepted ? "맞아요" : "핵심 이유를 다시 확인해요"}
-              feedback={`${acceptedReason.text} ${quest.feedback}`}
-              action={!reasonAccepted && selectedReason ? `내가 고른 이유 · ${selectedReason.text}` : undefined}
+              verdict={matrixFeedback.verdict}
+              feedback={`${matrixFeedback.intro} 핵심 이유는 “${acceptedReason.text}”입니다. ${quest.feedback}`}
+              action={matrixFeedback.action}
               highlights={quest.targetHighlights}
             />
           </div>
@@ -1367,7 +1391,7 @@ function DctContextReview({ quest, first }: { quest: DctFeedbackQuest; first: st
   );
 }
 
-function DctFeedbackView({ quest, response, onDone, onRevisionStateChange, devMode = false, devAutofill = false }: {
+export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange, devMode = false, devAutofill = false }: {
   quest: DctFeedbackQuest;
   response?: DctResponse;
   onDone: (response: DctResponse) => void;
@@ -1488,21 +1512,6 @@ function DctFeedbackView({ quest, response, onDone, onRevisionStateChange, devMo
           </section>
 
           <MissionDissentPanel onSubmit={setDissent} />
-
-          <details className={`${panel} group overflow-hidden`}>
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-black">
-              <span>다른 표현도 보고 싶다면</span>
-              <span className="text-xs text-[#697386]"><span className="group-open:hidden">펼치기</span><span className="hidden group-open:inline">접기</span></span>
-            </summary>
-            <div className="space-y-3 border-t border-[#EEEAE1] p-5">
-              {quest.feedback.alternatives.map((alternative) => (
-                <div key={alternative.text} className="rounded-xl bg-[#F8F7F2] p-4">
-                  <p className="font-zh text-[16px] leading-7">{alternative.text}</p>
-                  <p className="mt-1.5 text-xs leading-5 text-[#667185]">{alternative.note}</p>
-                </div>
-              ))}
-            </div>
-          </details>
 
           {revisionOpen ? (
             <>
@@ -1789,7 +1798,11 @@ function CompletedQuestReview({ quest, response }: {
   );
 }
 
-function CompletionRecord({ label, response }: { label: string; response?: DctResponse }) {
+export function CompletionRecord({ label, response, alternatives = [] }: {
+  label: string;
+  response?: DctResponse;
+  alternatives?: DctQuest["feedback"]["alternatives"];
+}) {
   if (!response || !isMeaningfulDraft(response.first)) return null;
   const evaluation = response.evaluation;
   const needsAttention = evaluation?.criteria.filter((criterion) => criterion.level !== "very_good") ?? [];
@@ -1828,6 +1841,19 @@ function CompletionRecord({ label, response }: { label: string; response?: DctRe
           </div>
         ) : (
           <p className="flex items-center gap-1.5 text-xs font-bold text-[#286247]"><Check className="h-3.5 w-3.5" />첫 번역을 최종안으로 확정했습니다.</p>
+        )}
+        {alternatives.length > 0 && (
+          <div className="border-t border-[#E5E1D8] pt-5">
+            <p className="text-xs font-black text-[#596579]">수정 완료 후 보는 참고 표현</p>
+            <div className="mt-3 space-y-3">
+              {alternatives.map((alternative) => (
+                <div key={alternative.text} className="rounded-xl bg-[#F8F7F2] p-4">
+                  <p className="font-zh text-[16px] leading-7">{alternative.text}</p>
+                  <p className="mt-1.5 text-xs leading-5 text-[#667185]">{alternative.note}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </article>
@@ -2317,7 +2343,11 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview }: {
               <h1 className="mt-2 text-2xl font-black">이번 미션에서 완성한 내 번역</h1>
             </section>
             <div className="space-y-4">
-              <CompletionRecord label={primaryDct?.title ?? "번역 실습"} response={aDct} />
+              <CompletionRecord
+                label={primaryDct?.title ?? "번역 실습"}
+                response={aDct}
+                alternatives={primaryDct?.feedback.alternatives}
+              />
             </div>
             <DissentSummary dissent={aDct?.dissent} />
             <SessionPatternSummary responses={[aDct]} />
