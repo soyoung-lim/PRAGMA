@@ -35,13 +35,17 @@ import { THEME_LABEL, type ThemeCode } from "@/lib/pragma/scenarioTopics";
 import { DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
 import {
   promoteCore,
+  reviseMissionDraft,
   reviewMission,
   supersedeMissionForRework,
+  type ProfessorIssueOverride,
+  type ProfessorMissionEdits,
   type PromotableCore,
   type PromoteStage,
 } from "@/lib/pragma/promoteMission";
 import { fetchMissionForReview } from "@/lib/mission/missionDb";
 import { MissionPreview } from "@/components/admin/MissionPreview";
+import { ProfessorMissionWorkbench } from "@/components/admin/ProfessorMissionWorkbench";
 import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import { toast } from "sonner";
 
@@ -99,13 +103,14 @@ const ROW_CAP = 4000;
 const CORE_ROW_SELECT =
   "scenario_id, speech_act, learner_level, domain, industry_sector, mode, source_modality, theme_code, topic_code, mission_status, generation_run_id, generation_item_key, prompt_snapshot_hash, core_content";
 
-const PROGRESS_STEPS = ["미션 생성", "규칙 검사", "AI 품질 점검", "저장"] as const;
+const PROGRESS_STEPS = ["초안 생성", "구조 검사", "AI 품질", "격리 저장", "문항 수리"] as const;
 
 const progressIndex = (stage: PromoteStage) => {
   if (stage.phase === "generating" || stage.phase === "preparing") return 0;
   if (stage.phase === "checking") return 1;
   if (stage.phase === "quality") return 2;
-  return 3;
+  if (stage.phase === "saving") return 3;
+  return 4;
 };
 
 const progressLabel = (stage: PromoteStage) => {
@@ -113,7 +118,9 @@ const progressLabel = (stage: PromoteStage) => {
   if (stage.phase === "generating") return `미션 생성 · ${stage.attempt}/${stage.maxAttempts}차`;
   if (stage.phase === "checking") return `규칙 검사 · ${stage.attempt}/${stage.maxAttempts}차`;
   if (stage.phase === "quality") return "AI 품질 점검";
-  return "미션 저장";
+  if (stage.phase === "saving") return "유효 초안 격리 저장";
+  if (stage.phase === "repairing") return "지목 문항 1회 수리";
+  return "수리본 재검사";
 };
 
 const AdminAssembly = () => {
@@ -235,7 +242,6 @@ const AdminAssembly = () => {
     setRowMsg((m) => ({ ...m, [r.scenario_id]: "" }));
     try {
       const res = await promoteCore(r as unknown as PromotableCore, {
-        qualityGate: "required_non_fail",
         onProgress: (stage) =>
           setAssemblyProgress((current) =>
             current?.id === r.scenario_id ? { ...current, stage } : current,
@@ -253,7 +259,7 @@ const AdminAssembly = () => {
           : "AI점검 미실행";
         setRowMsg((m) => ({
           ...m,
-          [r.scenario_id]: `생성됨(${res.ruleResult}, 시도 ${res.attempts}회) · ${qLabel} — 눈검사 후 검토 완료 처리`,
+          [r.scenario_id]: `유효 초안 저장(${res.ruleResult}, 전체 생성 ${res.attempts}회) · ${qLabel}${res.repaired ? " · 지목 문항 수리 완료" : ""}${res.repairError ? ` · 자동 수리 보류: ${res.repairError}` : ""}`,
         }));
         if (res.mission) {
           const warnings = (res.violations ?? [])
@@ -265,7 +271,7 @@ const AdminAssembly = () => {
           setOpenId(r.scenario_id); // 조립 직후 바로 눈검사 뷰 펼침
         }
         if (res.quality?.verdict === "fail") {
-          toast.warning("미션 조립됨 — AI 품질점검에서 결함이 보고되었습니다. 눈검사 필요");
+          toast.warning("유효 초안을 저장했습니다. 남은 결함은 교수자가 문항 단위로 수정하거나 근거를 남겨 승인할 수 있습니다.");
         } else {
           toast.success("미션 조립 완료 — 검수 대기(generated)");
         }
@@ -291,12 +297,46 @@ const AdminAssembly = () => {
     }
   };
 
-  const onReview = async (r: CoreRow) => {
+  const onSaveEdits = async (r: CoreRow, edits: ProfessorMissionEdits) => {
     setBusy(r.scenario_id);
     try {
-      const res = await reviewMission(r.scenario_id);
+      const res = await reviseMissionDraft(r as unknown as PromotableCore, edits);
+      if (!res.ok || !res.mission) {
+        toast.error(res.error ?? "교수자 수정본 저장 실패");
+        return;
+      }
+      const warnings = (res.violations ?? [])
+        .filter((violation) => violation.level === "warning")
+        .map((violation) => `${violation.id}: ${violation.message}`);
+      const mission = res.quality
+        ? { ...res.mission, quality_check: res.quality }
+        : res.mission;
+      setPreview((current) => ({
+        ...current,
+        [r.scenario_id]: { mission, warnings },
+      }));
+      setRowMsg((current) => ({
+        ...current,
+        [r.scenario_id]: `교수자 수정본 저장 · AI 품질 ${res.quality?.verdict ?? "미확인"}`,
+      }));
+      toast.success("수정한 문항을 구조검사·AI 재점검 후 새 이력으로 저장했습니다.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onReview = async (r: CoreRow, overrides: ProfessorIssueOverride[]) => {
+    setBusy(r.scenario_id);
+    try {
+      const res = await reviewMission(r as unknown as PromotableCore, overrides);
       if (res.ok) {
         setStatus(r.scenario_id, "reviewed");
+        if (res.mission) {
+          setPreview((current) => ({
+            ...current,
+            [r.scenario_id]: { mission: res.mission!, warnings: [] },
+          }));
+        }
         toast.success("검토 완료(reviewed) — 학습자 실행 가능");
       } else {
         toast.error(res.error ?? "검토 처리 실패");
@@ -507,9 +547,6 @@ const AdminAssembly = () => {
                         ))}
                       {st === "generated" && (
                         <>
-                          <Button size="sm" variant="outline" disabled={busy === r.scenario_id} onClick={() => onReview(r)}>
-                            {busy === r.scenario_id ? "처리 중…" : "검토 완료(reviewed)"}
-                          </Button>
                           <Button
                             size="sm"
                             variant="ghost"
@@ -535,10 +572,21 @@ const AdminAssembly = () => {
                     )}
                   </div>
                   {openId === r.scenario_id && preview[r.scenario_id] && (
-                    <MissionPreview
-                      mission={preview[r.scenario_id].mission}
-                      warnings={preview[r.scenario_id].warnings}
-                    />
+                    <>
+                      <MissionPreview
+                        mission={preview[r.scenario_id].mission}
+                        warnings={preview[r.scenario_id].warnings}
+                      />
+                      {st === "generated" && (
+                        <ProfessorMissionWorkbench
+                          key={`${preview[r.scenario_id].mission.provenance?.mission_content_hash ?? "draft"}-${preview[r.scenario_id].mission.quality_check?.verdict ?? "none"}`}
+                          mission={preview[r.scenario_id].mission}
+                          busy={busy === r.scenario_id}
+                          onSave={(edits) => onSaveEdits(r, edits)}
+                          onReview={(overrides) => onReview(r, overrides)}
+                        />
+                      )}
+                    </>
                   )}
                 </li>
               );
@@ -640,7 +688,7 @@ const AssemblyProgressView = ({
       <div className="flex items-center justify-between gap-3">
         <span className="text-[11.5px] font-semibold text-[#233542]">{progressLabel(stage)}</span>
       </div>
-      <ol className="mt-1.5 grid grid-cols-4 gap-1.5">
+      <ol className="mt-1.5 grid grid-cols-5 gap-1.5">
         {PROGRESS_STEPS.map((label, index) => {
           const isActive = index === activeIndex;
           const isDone = index < activeIndex;

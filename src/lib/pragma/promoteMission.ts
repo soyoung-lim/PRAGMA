@@ -1,6 +1,6 @@
 // 코어 → 미션 승격 (관리자 UI 배선). 골든 테스트 경로를 앱으로 옮긴 것.
 //   엣지함수 action:'mission'(게이트1·provenance 반영본) → checkMission(R1~R24)
-//   → 실패 시 재생성 ≤5 → save_generated_mission RPC(mission_status='generated').
+//   → 전체 초안 1회 → 구조 통과분 격리 저장 → critic 지목 문항만 1회 수리.
 // review_mission RPC = generated → reviewed(학습자 실행 게이트, 계약 0-b·17).
 //
 // 9개 화행 모두 사람 작성 기본 화용 초점으로 승격할 수 있다.
@@ -22,7 +22,6 @@ import {
   type QualityCheck,
 } from "@/lib/pragma/missionSchema";
 import { normalizeCore, coreDirection } from "@/lib/pragma/coreSchema";
-import { missionQualityFailureNotes } from "@/lib/pragma/missionQualityRetry";
 import {
   SPEECH_ACT_UI,
   LEVEL,
@@ -99,6 +98,8 @@ export interface PromoteResult {
   savedId?: string;
   /** 검증②(0-n·94) 결과. 유효한 결과가 없으면 미션은 저장하지 않는다. */
   quality?: QualityCheck;
+  repaired?: boolean;
+  repairError?: string;
   error?: string;
 }
 
@@ -108,21 +109,21 @@ export type PromoteStage =
   | { phase: "generating"; attempt: number; maxAttempts: number }
   | { phase: "checking"; attempt: number; maxAttempts: number }
   | { phase: "quality" }
+  | { phase: "repairing" }
+  | { phase: "rechecking" }
   | { phase: "saving" };
 
 export interface PromoteOptions {
   onProgress?: (stage: PromoteStage) => void;
-  /** 정식 corpus 배치는 품질 점검 fail을 저장 전에 차단한다. */
-  qualityGate?: "standard" | "required_non_fail";
 }
 
-/** 서로 다른 hard-gate 오류를 국소 교정할 기회를 주되 무한 유료 호출은 막는다. */
-export const MISSION_GENERATION_MAX_ATTEMPTS = 5;
+/** 전체 미션은 한 번만 생성한다. 이후 수정은 실패 item block 1회로 제한한다. */
+export const MISSION_GENERATION_MAX_ATTEMPTS = 1;
 
 /**
  * 검증② — 규칙검사 통과분을 **생성과 분리된 모델**로 비평(계약 0-n·94, 세칙 0-q·99).
- * 관리자 품질관리 장치이며 학습자에게 노출되지 않는다. 호출·스키마 검증이 실패하면
- * 생성 결과를 반환하되 generated 상태로 저장하지 않는다.
+ * 관리자 품질관리 장치이며 학습자에게 노출되지 않는다. 호출·스키마 검증이 실패해도
+ * 구조상 유효한 초안은 generated 격리 상태로 저장해 교수자가 이어서 처리한다.
  */
 async function runQualityCheck(args: {
   missionContent: unknown;
@@ -204,6 +205,159 @@ const rpc = (fn: string, args: Record<string, unknown>) =>
     args,
   );
 
+const MPJ_AUTHORING_SLOTS = [
+  [1, "scale4", "appropriate_counterexample"],
+  [2, "judge3", "anchor_non_within"],
+  [3, "fix_choice", "anchor_non_within_then_repair"],
+  [4, "reason", "anchor_non_within_primary_reason"],
+  [5, "multi_judge", "within_2_adjustment_needed_2"],
+] as const;
+
+export function buildContrastPlan(speechAct: SpeechActUI, itemFocus: string) {
+  return {
+    version: "contrast_plan_v1" as const,
+    speech_act: speechAct,
+    mission_goal: "integrated_speech_act" as const,
+    item_slots: MPJ_AUTHORING_SLOTS.map(([item_id, item_type, intended_band_profile]) => ({
+      item_id,
+      item_type,
+      item_focus: itemFocus,
+      intended_band_profile,
+    })),
+  };
+}
+
+type MissionRepairOperation =
+  | { operation: "replace_item_block"; item_index: number; item: Record<string, unknown> }
+  | { operation: "replace_reference_alternatives"; reference_alternatives: unknown[] }
+  | { operation: "replace_diagnostic_dimensions"; diagnostic_dimensions: unknown[] };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function applyMissionRepairOperations(
+  missionContent: Record<string, unknown>,
+  operations: MissionRepairOperation[],
+): Record<string, unknown> {
+  const patched = structuredClone(missionContent);
+  const items = Array.isArray(patched.mpj_items) ? [...patched.mpj_items] : [];
+  const productionTask = isRecord(patched.production_task)
+    ? { ...patched.production_task }
+    : {};
+  for (const operation of operations) {
+    if (operation.operation === "replace_item_block") {
+      if (operation.item_index >= 0 && operation.item_index < items.length) {
+        items[operation.item_index] = operation.item;
+      }
+    } else if (operation.operation === "replace_reference_alternatives") {
+      productionTask.reference_alternatives = operation.reference_alternatives;
+    } else if (operation.operation === "replace_diagnostic_dimensions") {
+      patched.diagnostic_dimensions = operation.diagnostic_dimensions;
+    }
+  }
+  patched.mpj_items = items;
+  patched.production_task = productionTask;
+  delete patched.item_lineage;
+  delete patched.hsk_lexical_audit;
+  patched.authoring = {
+    schema_version: "mission_authoring_v1",
+    stage: "ai_repaired",
+    lineage_status: "pending",
+    repair_attempts: 1,
+  };
+  return patched;
+}
+
+async function contentHashForDraft(content: Record<string, unknown>): Promise<string> {
+  const hashPayload = { ...content };
+  delete hashPayload.provenance;
+  delete hashPayload.quality_check;
+  delete hashPayload.hsk_lexical_audit;
+  delete hashPayload.authoring;
+  const bytes = new TextEncoder().encode(JSON.stringify(hashPayload));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+async function repairMissionOnce(args: {
+  missionContent: Record<string, unknown>;
+  quality: QualityCheck;
+  feature: TargetFeature;
+  direction: LanguageDirection;
+  speechAct: SpeechActUI;
+  scenarioId: string;
+  generationRunId?: string | null;
+  generationItemKey?: string | null;
+  ctx: CheckContext;
+  coreContent: Record<string, unknown> | null;
+}): Promise<
+  | { ok: true; missionContent: Record<string, unknown>; mission: MissionRuntime; quality: QualityCheck; check: ReturnType<typeof checkMission> }
+  | { ok: false; error: string }
+> {
+  const reparable = args.quality.findings.some((finding) =>
+    /^(mpj_items\[\d+\]|production_task\.reference_alternatives|diagnostic_dimensions)/.test(finding.where));
+  if (!reparable) return { ok: false, error: "AI 결함에 자동 수리 가능한 문항 경로가 없습니다." };
+  const { data, error } = await supabase.functions.invoke("generate-scenario", {
+    body: {
+      action: "mission_repair",
+      telemetry: {
+        scenario_id: args.scenarioId,
+        generation_run_id: args.generationRunId ?? null,
+        generation_item_key: args.generationItemKey ?? null,
+        invocation_attempt: 1,
+      },
+      mission_repair: {
+        mission_content: args.missionContent,
+        findings: args.quality.findings,
+        feature: featureForGen(args.feature, args.direction),
+        direction: args.direction,
+        speech_act: args.speechAct,
+        speech_act_ko: SPEECH_ACT_UI[args.speechAct],
+      },
+    },
+  });
+  if (error) return { ok: false, error: `문항 수리 호출 실패: ${(error as { message?: string }).message ?? String(error)}` };
+  const rawOperations = (data as { operations?: unknown })?.operations;
+  if (!Array.isArray(rawOperations) || rawOperations.length === 0) {
+    return { ok: false, error: "AI가 안전하게 적용할 문항 수리를 반환하지 않았습니다." };
+  }
+  const operations = rawOperations.filter(isRecord) as MissionRepairOperation[];
+  const patched = applyMissionRepairOperations(args.missionContent, operations);
+  patched.authoring = {
+    schema_version: "mission_authoring_v1",
+    stage: "ai_repaired",
+    lineage_status: "pending",
+    repair_attempts: 1,
+  };
+  const provenance = isRecord(patched.provenance) ? patched.provenance : {};
+  patched.provenance = {
+    ...provenance,
+    mission_content_hash: await contentHashForDraft(patched),
+  };
+  const parsed = normalizeMission(patched);
+  if (!parsed.ok || !parsed.data) return { ok: false, error: "수리된 문항이 미션 스키마를 통과하지 못했습니다." };
+  const check = checkMission(patched, args.ctx, args.coreContent ?? undefined);
+  if (check.result === "fail") {
+    return {
+      ok: false,
+      error: `수리된 문항이 구조검사를 통과하지 못했습니다: ${check.violations.filter((v) => v.level === "fail").map((v) => v.id).join(", ")}`,
+    };
+  }
+  const checked = await runQualityCheck({
+    missionContent: patched,
+    feature: args.feature,
+    direction: args.direction,
+    speechAct: args.speechAct,
+    scenarioId: args.scenarioId,
+    generationRunId: args.generationRunId,
+    generationItemKey: args.generationItemKey,
+  });
+  if (checked.ok === false) return { ok: false, error: checked.error };
+  patched.quality_check = checked.quality;
+  return { ok: true, missionContent: patched, mission: parsed.data, quality: checked.quality, check };
+}
+
 /**
  * 코어 하나를 미션으로 승격 생성 → 검사 → save_generated_mission.
  * 계획 초점 = DEFAULT_FEATURE_BY_ACT[화행](R24). reviewed 승격은 별도(reviewMission).
@@ -282,141 +436,72 @@ export async function promoteCore(
     };
   }
 
-  let mission: MissionRuntime | undefined; // 정규화(v1/v2/v3/v4 엣지 응답) — 검사·표시·반환용
-  let rawContent: unknown; // 엣지 원본(저장용 — migration이 버전별 상위집합을 허용)
-  let check: ReturnType<typeof checkMission> | undefined;
-  let quality: QualityCheck | undefined;
-  let failureNotes: string | undefined;
-  let previousMission: unknown;
-  let attempts = 0;
-  for (let attempt = 1; attempt <= MISSION_GENERATION_MAX_ATTEMPTS; attempt += 1) {
-    attempts = attempt;
-    options.onProgress?.({ phase: "generating", attempt, maxAttempts: MISSION_GENERATION_MAX_ATTEMPTS });
-    const { data, error } = await invokeMissionWithBackoff({
-        action: "mission",
-        telemetry: {
-          scenario_id: core.scenario_id,
-          generation_run_id: core.generation_run_id ?? null,
-          generation_item_key: core.generation_item_key ?? null,
-          invocation_attempt: attempt,
-        },
-        mission: {
-          direction, // 0-l·89 — 엣지가 방향별 원문·산출 언어 결정(라운드2 배포 후 활성)
-          learner_level: core.learner_level,
-          speech_act_ko: SPEECH_ACT_UI[core.speech_act],
-          level_ko: LEVEL[core.learner_level],
-          level_policy_ko: LEVEL_POLICY[core.learner_level],
-          feature: featureForGen(feature, direction, lineageScope),
-          core: missionCore,
-          error_pattern_hints_ko: errorPatternsForAct(core.speech_act, direction).map(
-            (p) => `${p.description} (예: ${p.approvedExample})`,
-          ),
-          is_response_act: isResponseAct(core.speech_act),
-          failure_notes: failureNotes,
-          previous_mission: failureNotes ? previousMission : undefined,
-        },
-    });
-    if (error) {
-      const msg = (error as { message?: string })?.message ?? String(error);
-      return { ok: false, error: `미션 생성 호출 실패: ${msg}`, attempts };
-    }
-    rawContent = (data as { mission_content?: unknown })?.mission_content;
-    const parsed = normalizeMission(rawContent); // legacy v1/v2/v3와 현행 v4 모두 허용
-    if (!parsed.ok || !parsed.data) {
-      previousMission = rawContent;
-      failureNotes = "스키마 파싱 실패";
-      continue;
-    }
-    mission = parsed.data;
-    // R23 계승 검사는 원본 core_content(v1/v2)를 넘긴다 — checkMission이 내부 정규화.
-    options.onProgress?.({ phase: "checking", attempt, maxAttempts: MISSION_GENERATION_MAX_ATTEMPTS });
-    check = checkMission(rawContent, ctx, core.core_content ?? undefined);
-    if (check.result !== "fail") {
-      if (options.qualityGate !== "required_non_fail") break;
-      options.onProgress?.({ phase: "quality" });
-      const checked = await runQualityCheck({
-        missionContent: rawContent,
-        feature,
-        direction,
-        speechAct: core.speech_act,
-        scenarioId: core.scenario_id,
-        generationRunId: core.generation_run_id,
-        generationItemKey: core.generation_item_key,
-      });
-      if (checked.ok === false) {
-        return {
-          ok: false,
-          mission,
-          ruleResult: check.result as "pass" | "warning",
-          attempts,
-          error: `${checked.error} — 미션은 저장하지 않았습니다.`,
-        };
-      }
-      quality = checked.quality;
-      if (quality.verdict !== "fail") break;
-      previousMission = rawContent;
-      failureNotes = missionQualityFailureNotes(quality);
-      if (attempt < MISSION_GENERATION_MAX_ATTEMPTS) continue;
-      break;
-    }
-    previousMission = rawContent;
-    failureNotes = check.violations
-      .filter((x) => x.level === "fail")
-      .map((x) => `- ${x.id}: ${x.message}`)
-      .join("\n");
+  const attempts = 1;
+  options.onProgress?.({ phase: "generating", attempt: 1, maxAttempts: 1 });
+  const { data, error } = await invokeMissionWithBackoff({
+    action: "mission",
+    telemetry: {
+      scenario_id: core.scenario_id,
+      generation_run_id: core.generation_run_id ?? null,
+      generation_item_key: core.generation_item_key ?? null,
+      invocation_attempt: 1,
+    },
+    mission: {
+      direction,
+      learner_level: core.learner_level,
+      speech_act: core.speech_act,
+      speech_act_ko: SPEECH_ACT_UI[core.speech_act],
+      level_ko: LEVEL[core.learner_level],
+      level_policy_ko: LEVEL_POLICY[core.learner_level],
+      feature: featureForGen(feature, direction, lineageScope),
+      core: missionCore,
+      contrast_plan: buildContrastPlan(core.speech_act, feature.code),
+      error_pattern_hints_ko: errorPatternsForAct(core.speech_act, direction).map(
+        (pattern) => `${pattern.description} (예: ${pattern.approvedExample})`,
+      ),
+      is_response_act: isResponseAct(core.speech_act),
+    },
+  });
+  if (error) {
+    const msg = (error as { message?: string })?.message ?? String(error);
+    return { ok: false, error: `미션 생성 호출 실패: ${msg}`, attempts };
   }
-
-  if (!mission || !check) {
-    return { ok: false, error: `미션을 생성하지 못했습니다(${MISSION_GENERATION_MAX_ATTEMPTS}회 시도).`, attempts };
+  const rawContent = (data as { mission_content?: unknown })?.mission_content;
+  const parsed = normalizeMission(rawContent);
+  if (!parsed.ok || !parsed.data || !isRecord(rawContent)) {
+    return { ok: false, error: "생성된 전체 초안이 미션 스키마를 통과하지 못했습니다.", attempts };
   }
+  let mission = parsed.data;
+  options.onProgress?.({ phase: "checking", attempt: 1, maxAttempts: 1 });
+  let check = checkMission(rawContent, ctx, core.core_content ?? undefined);
   const violations = check.violations.map((x) => ({ id: x.id, level: x.level, message: x.message }));
   if (check.result === "fail") {
     return { ok: false, mission, ruleResult: "fail", violations, attempts, error: "규칙검사 실패 — 저장하지 않았습니다." };
   }
 
-  // 검사 통과 → 저장(generated). 엣지 원본을 저장한다.
-  // 검증②(0-n·94) — 규칙검사를 통과한 것만 비평한다(fail을 비평해봐야 재생성 대상).
-  // 결과는 mission_content에 얹어 함께 저장한다. 별도 품질 컬럼은 만들지 않되,
-  // save_generated_mission RPC가 이 객체의 존재와 최소 계약을 fail-closed로 강제한다.
-  // ⚠️ content_hash는 이 필드를 포함하지 않는다(provenance와 마찬가지로 사후 주입).
-  if (!quality) {
-    options.onProgress?.({ phase: "quality" });
-    const qualityResult = await runQualityCheck({
-      missionContent: rawContent,
-      feature,
-      direction,
-      speechAct: core.speech_act,
-      scenarioId: core.scenario_id,
-      generationRunId: core.generation_run_id,
-      generationItemKey: core.generation_item_key,
-    });
-    if (qualityResult.ok === false) {
-      return {
-        ok: false,
-        mission,
-        ruleResult: check.result as "pass" | "warning",
-        violations,
-        attempts,
-        error: `${qualityResult.error} — 미션은 저장하지 않았습니다.`,
+  options.onProgress?.({ phase: "quality" });
+  const qualityResult = await runQualityCheck({
+    missionContent: rawContent,
+    feature,
+    direction,
+    speechAct: core.speech_act,
+    scenarioId: core.scenario_id,
+    generationRunId: core.generation_run_id,
+    generationItemKey: core.generation_item_key,
+  });
+  let quality: QualityCheck = qualityResult.ok
+    ? qualityResult.quality
+    : {
+        verdict: "fail",
+        summary_ko: "AI critic을 완료하지 못해 교수자 확인이 필요합니다.",
+        findings: [{ code: "critic_unavailable", severity: "fail", where: "", note_ko: "error" in qualityResult ? qualityResult.error : "AI critic을 완료하지 못했습니다." }],
+        model: "unavailable",
+        prompt_version: "quality_unavailable_v1",
+        checked_at: new Date().toISOString(),
       };
-    }
-    quality = qualityResult.quality;
-  }
-  if (options.qualityGate === "required_non_fail" && quality.verdict === "fail") {
-    return {
-      ok: false,
-      mission,
-      ruleResult: check.result as "pass" | "warning",
-      violations,
-      attempts,
-      quality,
-      error: "정식 corpus 품질 점검에서 결함이 확인되어 저장하지 않았습니다.",
-    };
-  }
-  const contentToSave = rawContent && typeof rawContent === "object"
-    ? { ...(rawContent as Record<string, unknown>), quality_check: quality }
-    : rawContent;
+  let contentToSave: Record<string, unknown> = { ...rawContent, quality_check: quality };
 
+  // 구조 통과 초안은 critic fail 여부와 무관하게 먼저 격리 저장한다.
   options.onProgress?.({ phase: "saving" });
   const { data: savedId, error: saveErr } = await rpc("save_generated_mission", {
     p_scenario_id: core.scenario_id,
@@ -433,14 +518,239 @@ export async function promoteCore(
   if (saveErr) {
     return { ok: false, mission, ruleResult: check.result as "pass" | "warning", violations, attempts, quality, error: `저장 실패: ${(saveErr as { message?: string }).message ?? saveErr}` };
   }
-  return { ok: true, mission, ruleResult: check.result as "pass" | "warning", violations, attempts, quality, savedId: savedId as string };
+
+  let repaired = false;
+  let repairError: string | undefined;
+  if (quality.verdict === "fail") {
+    options.onProgress?.({ phase: "repairing" });
+    const repair = await repairMissionOnce({
+      missionContent: contentToSave,
+      quality,
+      feature,
+      direction,
+      speechAct: core.speech_act,
+      scenarioId: core.scenario_id,
+      generationRunId: core.generation_run_id,
+      generationItemKey: core.generation_item_key,
+      ctx,
+      coreContent: core.core_content,
+    });
+    if (repair.ok) {
+      options.onProgress?.({ phase: "rechecking" });
+      const repairedViolations = repair.check.violations.map((violation) => ({
+        id: violation.id,
+        level: violation.level,
+        message: violation.message,
+      }));
+      const { error: revisionError } = await rpc("save_generated_mission_revision", {
+        p_scenario_id: core.scenario_id,
+        p_payload: {
+          mission_content: repair.missionContent,
+          validation_result: {
+            result: repair.check.result,
+            violations: repairedViolations,
+            generation_attempts: 1,
+            repair_attempts: 1,
+          },
+        },
+      });
+      if (revisionError) {
+        repairError = `수리본 저장 실패: ${(revisionError as { message?: string }).message ?? String(revisionError)}`;
+      } else {
+        repaired = true;
+        contentToSave = repair.missionContent;
+        mission = repair.mission;
+        quality = repair.quality;
+        check = repair.check;
+      }
+    } else {
+      repairError = "error" in repair ? repair.error : "문항 수리를 완료하지 못했습니다.";
+    }
+  }
+  const finalViolations = check.violations.map((violation) => ({
+    id: violation.id,
+    level: violation.level,
+    message: violation.message,
+  }));
+  return {
+    ok: true,
+    mission,
+    ruleResult: check.result as "pass" | "warning",
+    violations: finalViolations,
+    attempts,
+    quality,
+    repaired,
+    repairError,
+    savedId: savedId as string,
+  };
 }
 
-/** generated → reviewed 승격(학습자 실행 게이트). 눈검사 통과 후 호출. */
-export async function reviewMission(scenarioId: string): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await rpc("review_mission", { p_scenario_id: scenarioId });
-  if (error) return { ok: false, error: (error as { message?: string }).message ?? String(error) };
-  return { ok: true };
+async function fetchGeneratedMissionContent(scenarioId: string): Promise<Record<string, unknown>> {
+  // 신규 authoring 메타가 생성 타입보다 먼저 배포될 수 있어 query builder만 국소 cast한다.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as unknown as { from: (table: string) => any })
+    .from("scenarios")
+    .select("mission_status,mission_content")
+    .eq("scenario_id", scenarioId)
+    .single();
+  if (error || data?.mission_status !== "generated" || !isRecord(data.mission_content)) {
+    throw new Error(error?.message ?? "검수 대기 미션을 찾지 못했습니다.");
+  }
+  return data.mission_content as Record<string, unknown>;
+}
+
+export interface ProfessorMissionEdits {
+  itemBlocks: Array<{ itemIndex: number; item: Record<string, unknown> }>;
+  referenceAlternatives?: unknown[];
+}
+
+/** 교수자가 선택한 item block만 바꾸고, 구조검사·critic 후 append-only draft를 저장한다. */
+export async function reviseMissionDraft(
+  core: PromotableCore,
+  edits: ProfessorMissionEdits,
+): Promise<PromoteResult> {
+  try {
+    const current = await fetchGeneratedMissionContent(core.scenario_id);
+    const featureCode = DEFAULT_FEATURE_BY_ACT[core.speech_act];
+    const feature = featureCode ? getTargetFeature(featureCode) : undefined;
+    if (!feature) return { ok: false, error: "문항 판정 초점 카탈로그를 찾지 못했습니다." };
+    const direction: LanguageDirection =
+      coreDirection(core.core_content) === "zh_ko" || core.language_direction === "zh_ko" ? "zh_ko" : "ko_zh";
+    const operations: MissionRepairOperation[] = edits.itemBlocks.map((edit) => ({
+      operation: "replace_item_block",
+      item_index: edit.itemIndex,
+      item: edit.item,
+    }));
+    if (edits.referenceAlternatives) {
+      operations.push({
+        operation: "replace_reference_alternatives",
+        reference_alternatives: edits.referenceAlternatives,
+      });
+    }
+    const patched = applyMissionRepairOperations(current, operations);
+    const currentAuthoring = isRecord(current.authoring) ? current.authoring : {};
+    patched.authoring = {
+      schema_version: "mission_authoring_v1",
+      stage: "professor_revised",
+      lineage_status: "pending",
+      repair_attempts: currentAuthoring.repair_attempts === 1 ? 1 : 0,
+    };
+    delete patched.quality_check;
+    const provenance = isRecord(patched.provenance) ? patched.provenance : {};
+    patched.provenance = { ...provenance, mission_content_hash: await contentHashForDraft(patched) };
+    const ctx: CheckContext = {
+      speech_act: core.speech_act,
+      level: core.learner_level,
+      domain: (core.domain ?? "daily") as Domain,
+      theme_code: (core.theme_code ?? "daily_living") as ThemeCode,
+      topic_code: core.topic_code ?? "",
+      industry: core.industry_sector ?? null,
+      mode: core.mode ?? "translation",
+      source_modality: (core.source_modality ?? "written") as "written" | "spoken",
+      planned_target_feature: feature.code,
+      direction,
+    };
+    const check = checkMission(patched, ctx, core.core_content ?? undefined);
+    const violations = check.violations.map((violation) => ({
+      id: violation.id,
+      level: violation.level,
+      message: violation.message,
+    }));
+    const parsed = normalizeMission(patched);
+    if (!parsed.ok || !parsed.data || check.result === "fail") {
+      return { ok: false, ruleResult: "fail", violations, error: "수정본이 구조검사를 통과하지 못했습니다." };
+    }
+    const checked = await runQualityCheck({
+      missionContent: patched,
+      feature,
+      direction,
+      speechAct: core.speech_act,
+      scenarioId: core.scenario_id,
+      generationRunId: core.generation_run_id,
+      generationItemKey: core.generation_item_key,
+    });
+    if (checked.ok === false) return { ok: false, mission: parsed.data, violations, error: checked.error };
+    patched.quality_check = checked.quality;
+    const { error } = await rpc("save_generated_mission_revision", {
+      p_scenario_id: core.scenario_id,
+      p_payload: {
+        mission_content: patched,
+        validation_result: { result: check.result, violations, professor_revision: true },
+      },
+    });
+    if (error) return { ok: false, error: (error as { message?: string }).message ?? String(error) };
+    return {
+      ok: true,
+      mission: normalizeMission(patched).data,
+      ruleResult: check.result as "pass" | "warning",
+      violations,
+      quality: checked.quality,
+      attempts: 1,
+    };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+export interface ProfessorIssueOverride {
+  issue_index: number;
+  code: string;
+  where: string;
+  rationale_ko: string;
+}
+
+/** generated → reviewed. 현재 콘텐츠를 동결한 뒤 lineage·HSK·hash를 새로 산출한다. */
+export async function reviewMission(
+  core: PromotableCore,
+  issueOverrides: ProfessorIssueOverride[] = [],
+): Promise<{ ok: boolean; mission?: MissionRuntime; error?: string }> {
+  try {
+    const current = await fetchGeneratedMissionContent(core.scenario_id);
+    const featureCode = DEFAULT_FEATURE_BY_ACT[core.speech_act];
+    const feature = featureCode ? getTargetFeature(featureCode) : undefined;
+    if (!feature) return { ok: false, error: "문항 판정 초점 카탈로그를 찾지 못했습니다." };
+    const direction: LanguageDirection =
+      coreDirection(core.core_content) === "zh_ko" || core.language_direction === "zh_ko" ? "zh_ko" : "ko_zh";
+    const lineageScope = buildMissionLineageScope({
+      direction,
+      speechAct: core.speech_act,
+      targetFeature: feature.code,
+    });
+    const { data, error: finalizeError } = await supabase.functions.invoke("generate-scenario", {
+      body: {
+        action: "finalize_mission",
+        telemetry: {
+          scenario_id: core.scenario_id,
+          generation_run_id: core.generation_run_id ?? null,
+          generation_item_key: core.generation_item_key ?? null,
+          invocation_attempt: 1,
+        },
+        finalize_mission: {
+          mission_content: current,
+          feature: featureForGen(feature, direction, lineageScope),
+          direction,
+          learner_level: core.learner_level,
+          level_ko: LEVEL[core.learner_level],
+        },
+      },
+    });
+    if (finalizeError) {
+      return { ok: false, error: `최종 근거·HSK 산출 실패: ${(finalizeError as { message?: string }).message ?? String(finalizeError)}` };
+    }
+    const finalized = (data as { mission_content?: unknown })?.mission_content;
+    const parsed = normalizeMission(finalized);
+    if (!parsed.ok || !parsed.data || !isRecord(finalized)) {
+      return { ok: false, error: "최종화된 미션이 스키마를 통과하지 못했습니다." };
+    }
+    const { error } = await rpc("finalize_reviewed_mission", {
+      p_scenario_id: core.scenario_id,
+      p_payload: { mission_content: finalized, issue_overrides: issueOverrides },
+    });
+    if (error) return { ok: false, error: (error as { message?: string }).message ?? String(error) };
+    return { ok: true, mission: parsed.data };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 /**

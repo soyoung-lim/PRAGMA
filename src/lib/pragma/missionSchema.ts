@@ -13,7 +13,9 @@
 // mission_v5 — 미니 담화형 DCT. legacy 행은 v4와 같은 MPJ4를 읽기 호환하고,
 //   현행 생성 계약은 scale4 → judge3 → fix_choice → reason → multi_judge의
 //   네이티브 MPJ5를 사용한다. DCT는 2~4문장 담화 + focal_segments를 유지한다.
-// axis_feature = unit.target_feature 고정(0-b·19, R1). band code는 카탈로그 정본.
+// `target_feature`·`axis_feature`는 역사 데이터 호환용 이름이다. 신규 authoring
+// 계약에서는 주차·미션 목표를 speech_act로 두고, MPJ의 직접 판정축을 item_focus로
+// 해석한다. band code는 item focus 카탈로그 정본을 따른다.
 
 import { z } from "zod";
 import {
@@ -262,6 +264,8 @@ export const MPJ_TYPE_ORDER_V5 = [
 
 const MpjCommonV2 = {
   id: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+  /** 신규 정본명. axis_feature는 직렬화 호환용으로 함께 둔다. */
+  item_focus: z.string().min(1).optional(),
   axis_feature: z.string().min(1),
   situation_ko: z.string().min(1),
   relation_ko: z.string().min(1),
@@ -545,7 +549,7 @@ const MultiJudgeItemV5 = MultiJudgeItemV4.extend({
         text: z.string().min(1),
         accepted_band_codes: z.array(z.string()).length(1),
         note_ko: z.string().min(1),
-        /** 신규 4후보 계약의 상대 비교 역할. historical 5후보 읽기 호환을 위해 optional. */
+        /** historical BEST/MIDDLE/WORST 생성물 읽기 호환용. 신규 v2는 대역만 사용한다. */
         comparison_role: z.enum(["best", "middle", "worst"]).optional(),
       }),
     )
@@ -575,9 +579,42 @@ export type MissionDiagnosticDimensionCoverage = z.infer<
   typeof MissionDiagnosticDimensionCoverageSchema
 >;
 
+export const MissionContrastPlanSchema = z.object({
+  version: z.literal("contrast_plan_v1"),
+  speech_act: z.string().min(1),
+  mission_goal: z.literal("integrated_speech_act"),
+  item_slots: z.array(z.object({
+    item_id: z.number().int().min(1).max(5),
+    item_type: z.enum(["scale4", "judge3", "fix_choice", "reason", "multi_judge"]),
+    item_focus: z.string().min(1),
+    intended_band_profile: z.string().min(1),
+  })).length(5),
+});
+export type MissionContrastPlan = z.infer<typeof MissionContrastPlanSchema>;
+
+export const MissionAuthoringSchema = z.object({
+  schema_version: z.literal("mission_authoring_v1"),
+  stage: z.enum(["ai_draft", "ai_repaired", "professor_revised", "professor_finalized"]),
+  lineage_status: z.enum(["pending", "complete"]),
+  repair_attempts: z.number().int().min(0).max(1),
+  professor_issue_overrides: z.array(z.object({
+    issue_index: z.number().int().min(0),
+    code: z.string().min(1),
+    where: z.string().default(""),
+    rationale_ko: z.string().trim().min(1),
+  })).optional(),
+});
+export type MissionAuthoring = z.infer<typeof MissionAuthoringSchema>;
+
 const MissionV5Common = {
   schema_version: z.literal("mission_v5"),
   direction: z.enum(["ko_zh", "zh_ko"]),
+  learning_goal: z.object({
+    kind: z.literal("speech_act"),
+    speech_act: z.string().min(1),
+  }).optional(),
+  contrast_plan: MissionContrastPlanSchema.optional(),
+  authoring: MissionAuthoringSchema.optional(),
   unit: UnitSchema,
   production_task: ProductionTaskV3Schema,
   provenance: MissionProvenanceSchema.optional(),

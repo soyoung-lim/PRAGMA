@@ -237,7 +237,7 @@ const NEXT_ACTION_LABEL: Record<string, string> = {
   A1: "다음: 상황에 맞는지 판단하기",
   A2: "다음: 판단하고 고쳐 보기",
   A3: "다음: 부적절한 이유 찾기",
-  A4: "다음: BEST·WORST 고르기",
+  A4: "다음: 적정안·조정안 고르기",
 };
 
 function nextActionLabel(quest: MissionQuest) {
@@ -861,7 +861,7 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
         <h3 className="text-base font-bold">{quest.prompt}</h3>
         {!answered && (
           <p className="mt-2 text-xs font-black text-[#687387]" aria-live="polite">
-            {best && worst ? "BEST·WORST 선택 완료 · 확인할 수 있어요" : best ? "BEST 선택 완료 · WORST를 골라주세요" : worst ? "WORST 선택 완료 · BEST를 골라주세요" : "BEST와 WORST를 하나씩 골라주세요"}
+            {best && worst ? "두 표현 선택 완료 · 확인할 수 있어요" : best ? "알맞은 표현 선택 완료 · 조정안을 골라주세요" : worst ? "조정안 선택 완료 · 알맞은 표현을 골라주세요" : "알맞은 표현과 조정이 필요한 표현을 하나씩 골라주세요"}
           </p>
         )}
         <div className="mt-3 flex items-center gap-3">
@@ -872,13 +872,13 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
           {order.map((candidate) => {
             const bestPicked = best === candidate.id;
             const worstPicked = worst === candidate.id;
-            const role = candidate.id === quest.bestId
-              ? "BEST"
-              : candidate.id === quest.worstId
-                ? "WORST"
+            const role = candidate.role === "best"
+              ? "적정 대역"
+              : candidate.role === "worst"
+                ? "조정 필요"
                 : "가능한 표현";
-            const isBestRole = candidate.id === quest.bestId;
-            const isWorstRole = candidate.id === quest.worstId;
+            const isBestRole = candidate.role === "best";
+            const isWorstRole = candidate.role === "worst";
             const answeredStyle = isBestRole
               ? "border-[#4D8568] bg-[#EEF7F2]"
               : isWorstRole
@@ -894,8 +894,8 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
                     </div>
                     <div className="flex flex-nowrap gap-1.5 whitespace-nowrap sm:justify-end">
                       <span className={`rounded px-2 py-1 text-[11px] font-black ${isBestRole ? "bg-[#DCEFE4] text-[#245E44]" : isWorstRole ? "bg-[#F4D8D5] text-[#8B3531]" : "bg-[#EEECE6]"}`}>{role}</span>
-                      {bestPicked && <span className="rounded bg-[#15202B] px-2 py-1 text-[11px] font-black text-white">내 BEST</span>}
-                      {worstPicked && <span className="rounded bg-[#15202B] px-2 py-1 text-[11px] font-black text-white">내 WORST</span>}
+                      {bestPicked && <span className="rounded bg-[#15202B] px-2 py-1 text-[11px] font-black text-white">내 적정안</span>}
+                      {worstPicked && <span className="rounded bg-[#15202B] px-2 py-1 text-[11px] font-black text-white">내 조정안</span>}
                     </div>
                   </div>
                 ) : (
@@ -903,8 +903,8 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                     <p className="min-w-0 font-zh text-[17px] leading-7">{candidate.text}</p>
                     <div className="flex shrink-0 gap-2">
-                    <button type="button" disabled={worstPicked} onClick={() => setBest(candidate.id)} className={`h-9 flex-1 rounded-lg border px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1 disabled:opacity-50 sm:flex-none ${bestPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8] hover:bg-[#F8F7F2]"}`}>BEST</button>
-                    <button type="button" disabled={bestPicked} onClick={() => setWorst(candidate.id)} className={`h-9 flex-1 rounded-lg border px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1 disabled:opacity-50 sm:flex-none ${worstPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8] hover:bg-[#F8F7F2]"}`}>WORST</button>
+                    <button type="button" disabled={worstPicked} onClick={() => setBest(candidate.id)} className={`h-9 flex-1 rounded-lg border px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1 disabled:opacity-50 sm:flex-none ${bestPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8] hover:bg-[#F8F7F2]"}`}>알맞음</button>
+                    <button type="button" disabled={bestPicked} onClick={() => setWorst(candidate.id)} className={`h-9 flex-1 rounded-lg border px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1 disabled:opacity-50 sm:flex-none ${worstPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8] hover:bg-[#F8F7F2]"}`}>조정 필요</button>
                     </div>
                   </div>
                 )}
@@ -913,9 +913,9 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
           })}
         </div>
       </section>
-      <ActionBar hint={!answered ? (best && worst ? "BEST·WORST 선택 완료 · 확인할 수 있어요" : best ? "BEST 선택 완료 · WORST를 골라주세요" : worst ? "WORST 선택 완료 · BEST를 골라주세요" : "BEST와 WORST를 하나씩 골라주세요") : undefined}>
+      <ActionBar hint={!answered ? (best && worst ? "두 표현 선택 완료 · 확인할 수 있어요" : best ? "알맞은 표현 선택 완료 · 조정안을 골라주세요" : worst ? "조정안 선택 완료 · 알맞은 표현을 골라주세요" : "알맞은 표현과 조정이 필요한 표현을 하나씩 골라주세요") : undefined}>
         {!answered ? (
-          <Button className={`h-12 ${actionButton}`} disabled={!best || !worst || best === worst} onClick={() => setAnswered(true)}>BEST·WORST 확인하기</Button>
+          <Button className={`h-12 ${actionButton}`} disabled={!best || !worst || best === worst} onClick={() => setAnswered(true)}>두 표현 확인하기</Button>
         ) : (
           <Button className="h-12 w-full" onClick={() => onDone({ best, worst })}>다음: 번역 실습 <ChevronRight className="ml-1 h-4 w-4" /></Button>
         )}
@@ -1716,14 +1716,14 @@ function responseLabel(quest: MissionQuest, response: QuestResponse) {
   if (quest.kind === "best_worst") {
     const best = quest.candidates.find((item) => item.id === response.best)?.text;
     const worst = quest.candidates.find((item) => item.id === response.worst)?.text;
-    return `내 BEST · ${best ?? "-"}\n내 WORST · ${worst ?? "-"}`;
+    return `내 적정안 · ${best ?? "-"}\n내 조정안 · ${worst ?? "-"}`;
   }
   return "";
 }
 
 function questFeedback(quest: MissionQuest) {
   if (quest.kind === "scale" || quest.kind === "fix_choice" || quest.kind === "reason") return quest.feedback;
-  if (quest.kind === "best_worst") return quest.candidates.map((item) => `${item.role === "best" ? "BEST" : item.role === "worst" ? "WORST" : "가능한 표현"} · ${item.note}`).join("\n");
+  if (quest.kind === "best_worst") return quest.candidates.map((item) => `${item.role === "best" ? "적정 대역" : item.role === "worst" ? "조정 필요" : "가능한 표현"} · ${item.note}`).join("\n");
   return "";
 }
 

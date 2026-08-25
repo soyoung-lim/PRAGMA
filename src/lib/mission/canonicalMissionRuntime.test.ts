@@ -52,8 +52,8 @@ describe("canonical mission runtime bridge", () => {
     expect(view.lessonPoints.every((point) => point.text.length <= 56)).toBe(true);
     expect(view.lessonPoints.every((point) => (point.text.match(/→/g) ?? []).length === 1)).toBe(true);
     expect(view.lessonPoints.every((point) => !point.text.includes(" / "))).toBe(true);
-    expect(view.lessonPoints[4].text).toContain("BEST");
-    expect(view.lessonPoints[4].text).not.toContain("WORST");
+    expect(view.lessonPoints[4].text).toContain("적정안");
+    expect(view.lessonPoints[4].text).not.toContain("조정안");
   });
 
   it("keeps legacy response-act preceding turns readable", () => {
@@ -103,6 +103,34 @@ describe("canonical mission runtime bridge", () => {
     expect(view.quests[4].candidates).toHaveLength(4);
     expect(view.quests[4].candidates.filter((candidate) => candidate.role === "best")).toHaveLength(1);
     expect(view.quests[4].candidates.filter((candidate) => candidate.role === "worst")).toHaveLength(1);
+  });
+
+  it("maps the current contrast plan to two acceptable and two adjustment-needed choices", () => {
+    const current = structuredClone(SAMPLE_MISSION_V5_NATIVE) as typeof SAMPLE_MISSION_V5_NATIVE & {
+      contrast_plan: {
+        version: "contrast_plan_v1";
+        speech_act: string;
+        mission_goal: "integrated_speech_act";
+        item_slots: Array<{ item_id: number; item_type: string; item_focus: string; intended_band_profile: string }>;
+      };
+    };
+    current.contrast_plan = {
+      version: "contrast_plan_v1",
+      speech_act: "request",
+      mission_goal: "integrated_speech_act",
+      item_slots: current.mpj_items.map((item, index) => ({
+        item_id: index + 1,
+        item_type: item.type,
+        item_focus: item.axis_feature,
+        intended_band_profile: "fixture",
+      })),
+    };
+    const view = adaptRunnableMissionToCanonical({ ...runnable(), mission: current });
+    const comparison = view.quests[4];
+    if (comparison.kind !== "best_worst") throw new Error("Expected comparison quest");
+    expect(comparison.prompt).toContain("알맞은 표현 1개와 조정이 필요한 표현 1개");
+    expect(comparison.candidates.filter((candidate) => candidate.role === "best")).toHaveLength(2);
+    expect(comparison.candidates.filter((candidate) => candidate.role === "worst")).toHaveLength(2);
   });
 
   it("projects historical learner scenes to two concise, non-meta sentences", () => {

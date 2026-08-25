@@ -70,22 +70,21 @@ describe("prompt snapshot integrity", () => {
     expect(learnerSceneRepair.text).toContain("관찰 가능한 사실로 그대로 보존");
   });
 
-  it("prevents duplicate MPJ scenes and repairs R27 directly", () => {
+  it("prevents duplicate MPJ scenes and injects the fixed contrast plan", () => {
     expect(prompt("mission.system").text).toContain(
       "5개 situation_ko는 서로 다른 구체적 사건",
     );
-    expect(prompt("mission.user.retry").text).toContain(
-      "R27 중복 실패라면 진단이 지목한 중복 situation_ko만",
-    );
-    expect(prompt("mission.user.retry").text).toContain(
-      "R27 문장 수·길이 실패라면 진단이 지목한 situation_ko만 140자 이내의 정확히 2개 한국어 문장",
-    );
+    const planned = prompt("mission.user.contrast_plan").text;
+    expect(planned).toContain("[고정 contrast plan — 그대로 구현]");
+    expect(planned).toContain('"mission_goal": "integrated_speech_act"');
+    expect(planned).not.toContain("[직전 실패 출력");
   });
 
   it("locks the streamlined learner-facing MPJ contract", () => {
     const system = prompt("mission.system").text;
     expect(system).toContain("별도의 대역 판단이나 확신도는 묻지 않습니다");
-    expect(system).toContain("정확히 4후보이며 comparison_role은 best 1·middle 2·worst 1");
+    expect(system).toContain("정확히 4후보이며 **적정 대역 2개 + 조정 필요 대역 2개**");
+    expect(system).toContain("comparison_role은 만들지 마세요");
     expect(system).toContain('"preceding_turn"은 null');
     expect(system).toContain("Scenario must be self-contained");
     expect(system).toContain("summarize that information naturally in the scenario instead of generating a separate preceding_turn");
@@ -233,8 +232,9 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).toContain("독립 Judge3는 DCT 앵커 맥락");
       expect(entry.text).toContain("judge3는 DCT와 같은 앵커 P/D/R의 별도 사건");
       expect(entry.text).toContain("reason에는 accepted_band_codes·confidence를 만들지 마세요");
-      expect(entry.text).toContain("4후보이며 comparison_role은 best 1·middle 2·worst 1");
-      expect(entry.text).toContain("즉시 소거되는 허수 오답이 아니라");
+      expect(entry.text).toContain("정확히 4후보이며 **적정 대역 2개 + 조정 필요 대역 2개**");
+      expect(entry.text).toContain("유일한 BEST/WORST나 엄밀한 선형 서열을 만들지 마세요");
+      expect(entry.text).toContain("화용 판단 없이 즉시 소거되는");
       expect(entry.text).toContain("더 간접적·길거나 강한 표현을 자동으로 더 좋은 답으로 판정하지 마세요");
       expect(entry.text).toContain("primary의 위치와 id를 고정하지 말고");
       expect(entry.text).toContain("잠시 고민할 만큼 그럴듯해야 합니다");
@@ -260,8 +260,8 @@ describe("prompt snapshot integrity", () => {
     expect(quality.text).toContain("primary_reason_ambiguity");
     expect(quality.text).toContain("context_plan_mismatch");
     expect(quality.text).toContain("comparison_quality_mismatch");
-    expect(quality.text).toContain("수용 가능한 중간 1");
-    expect(quality.text).toContain("엄밀한 2위·3위 선형 서열은");
+    expect(quality.text).toContain("적정 대역 2개·조정 필요 대역");
+    expect(quality.text).toContain("유일한 BEST/WORST나 엄밀한 선형 서열도 요구하지 않는다");
     expect(quality.text).toContain("diagnostic_coverage_mismatch");
     expect(quality.text).toContain("결정론적 hard gate는 이미 통과했다");
     expect(quality.text).toContain("후보 길이 구간이 나뉘어도 그 사실만으로 fail하지 말고");
@@ -293,23 +293,13 @@ describe("prompt snapshot integrity", () => {
     expect(legacyQuality.text).not.toContain("judge3·fix_choice·reason");
   });
 
-  it("feeds the previous failed mission back for targeted retry editing", () => {
-    const retry = prompt("mission.user.retry");
+  it("treats speech act as the learning goal and item_focus as an internal judgment tag", () => {
+    const planned = prompt("mission.user.contrast_plan");
 
-    expect(retry.text).toContain("[직전 실패 출력 — 진단이 가리킨 실제 문장을 직접 고칠 것]");
-    expect(retry.text).toContain("PROBE_FAILED_CANDIDATE");
-    expect(retry.text).toContain("대역은 바꾸지 않은 채 후보 문장 길이 범위만 겹치게");
-    expect(retry.text).toContain("R5 대역·역할 실패");
-    expect(retry.text).toContain("MIDDLE=적정 1개+비적정 경계 1개");
-    expect(retry.text).toContain("바꾼 대역이 실제 표현과 note_ko에 맞도록");
-    expect(retry.text).toContain("R18 실패");
-    expect(retry.text).toContain("reason의 problem_band_code도 비적정 대역");
-    expect(retry.text).toContain("AI band_mismatch 실패");
-    expect(retry.text).toContain("적정한 문장에 비적정 라벨만 다시 붙이지 마세요");
-    expect(retry.text).toContain("proposal_optionality_clarity에서 구체적인 대안 둘");
-    expect(retry.text).toContain("원문에 구체적인 대안 둘이 이미 고정된 proposal 문항");
-    expect(retry.text).toContain("AI comparison_quality_mismatch 실패");
-    expect(retry.text).toContain("실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지");
+    expect(planned.text).toContain("[통합 화행 목표]");
+    expect(planned.text).toContain("item_focus는 각 MPJ 판정의 내부 초점 태그");
+    expect(planned.text).toContain('"item_type": "multi_judge"');
+    expect(planned.text).toContain('"item_focus": "PROBE_FEATURE"');
   });
 
   it("keeps translation first-person but interpreting in the learner-interpreter viewpoint", () => {

@@ -38,6 +38,7 @@ const QUALITY_CODE_KO: Record<string, string> = {
   primary_reason_ambiguity: "주원인 복수 해석",
   context_plan_mismatch: "앵커·대비 맥락 불일치",
   diagnostic_coverage_mismatch: "진단차원 근거 불일치",
+  comparison_quality_mismatch: "여러 초안의 적정·조정 대비 불충분",
 };
 
 export function MissionPreview({
@@ -54,7 +55,7 @@ export function MissionPreview({
     <div className="mt-3 space-y-3 rounded-xl border border-[#D8D0BC] bg-[#FAF8F2] p-3.5 text-[13px]">
       {/* unit + provenance */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="font-semibold">이번 초점 · {mission.unit.learner_label}</span>
+        <span className="font-semibold">내부 문항 초점 · {mission.unit.learner_label}</span>
         <span className="rounded bg-[#E7EFF5] px-1.5 py-0.5 text-[11px] font-semibold text-[#2B5B7A]">{DIRECTION_LABEL[mission.direction]}</span>
         <span className="text-muted-foreground">({feat} v{mission.unit.target_feature_version})</span>
         {p && (

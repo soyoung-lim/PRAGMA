@@ -87,8 +87,20 @@ const PROBE_FEATURE = {
     evidence: [{ evidence_id: "PROBE_EVIDENCE", claim_scope_ko: "PROBE_EVIDENCE_SCOPE" }],
   },
 };
+const PROBE_CONTRAST_PLAN = {
+  version: "contrast_plan_v1",
+  speech_act: "request",
+  mission_goal: "integrated_speech_act",
+  item_slots: ["scale4", "judge3", "fix_choice", "reason", "multi_judge"].map((item_type, index) => ({
+    item_id: index + 1,
+    item_type,
+    item_focus: "PROBE_FEATURE",
+    intended_band_profile: "PROBE_BAND_PROFILE",
+  })),
+};
 const probeMissionBody = (direction, sourceModality, isResponseAct) => ({
   direction,
+  speech_act: "request",
   speech_act_ko: "PROBE_SPEECH_ACT",
   level_ko: "PROBE_LEVEL",
   level_policy_ko: "PROBE_LEVEL_POLICY",
@@ -104,6 +116,7 @@ const probeMissionBody = (direction, sourceModality, isResponseAct) => ({
   },
   error_pattern_hints_ko: ["PROBE_ERROR_HINT"],
   is_response_act: isResponseAct,
+  contrast_plan: PROBE_CONTRAST_PLAN,
 });
 
 const entry = (key, label, group, note, text) => ({ key, label, group, note, sha256: sha(text), text });
@@ -177,34 +190,9 @@ const prompts = [
   entry("mission.system.legacy_v4", "미션 승격 · legacy MPJ4 지시문", "mission",
     "focal segment가 없는 과거 단문 코어의 읽기·승격 호환 분기.",
     S.buildMissionSystemPrompt(PROBE_FEATURE, false, false, "ko_zh", false)),
-  entry("mission.user.retry", "미션 승격 · 실패 출력 직접 교정 요청서", "mission",
-    "규칙 실패 시 직전 실제 문장을 함께 전달해 실패 위치만 직접 고치게 한다.",
-    S.buildMissionUserPrompt({
-      direction: "ko_zh",
-      speech_act_ko: "PROBE_ACT",
-      level_ko: "PROBE_LEVEL",
-      level_policy_ko: "PROBE_LEVEL_POLICY",
-      feature: PROBE_FEATURE,
-      core: {
-        situation_ko: "PROBE_SITUATION",
-        relation_ko: "PROBE_RELATION",
-        source_text_ko: "PROBE_SOURCE_TEXT",
-        preceding_turn_zh: null,
-        pdr: { p: "equal", d: "acquaintance", r: "mid" },
-        source_modality: "spoken",
-        focal_segments: [{ text: "PROBE_SOURCE_TEXT", role: "head" }],
-      },
-      error_pattern_hints_ko: [],
-      is_response_act: false,
-      failure_notes: "- R5: PROBE_FAILURE_WITH_LENGTHS",
-      previous_mission: {
-        mpj_items: [{
-          type: "multi_judge",
-          candidates: [{ text: "PROBE_FAILED_CANDIDATE", accepted_band_codes: ["PROBE_BAND_LOW"] }],
-        }],
-        production_task: { reference_alternatives: [{ text: "PROBE_REFERENCE" }], vocabulary_hints: [] },
-      },
-    })),
+  entry("mission.user.contrast_plan", "미션 승격 · 고정 대비 계획 요청서", "mission",
+    "화행 목표와 다섯 문항의 내부 판정 초점을 생성 전에 고정한다.",
+    S.buildMissionUserPrompt(probeMissionBody("ko_zh", "spoken", false))),
   entry("mission.item_lineage.system", "미션 문항별 근거 귀속 · 지시문", "review",
     "생성이 끝난 mission_v5 목표어 문장을 pack rule/risk에 귀속하되 승인 상태로 승격하지 않는다.",
     S.buildItemLineageSystemPrompt(PROBE_FEATURE.lineage_scope)),

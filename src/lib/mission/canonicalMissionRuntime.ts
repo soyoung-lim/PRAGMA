@@ -250,7 +250,7 @@ function concreteLessonPoints(quests: MissionQuest[]): CanonicalMissionViewModel
       return {
         questId: quest.id,
         label: quest.shortLabel,
-        text: `BEST 「${bestExpression}」 → ${tutorMemo(best.note, 22)}`,
+        text: `적정안 「${bestExpression}」 → ${tutorMemo(best.note, 22)}`,
         highlights: [bestExpression],
       };
     }
@@ -311,8 +311,14 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
   const toBestWorst = (
     multiJudge: RuntimeMultiJudge,
   ): BestWorstQuest => {
-    const explicitBestIndex = multiJudge.candidates.findIndex((candidate) => candidate.comparison_role === "best");
-    const explicitWorstIndex = multiJudge.candidates.findIndex((candidate) => candidate.comparison_role === "worst");
+    const usesBandPairContract = "contrast_plan" in mission
+      && mission.contrast_plan?.version === "contrast_plan_v1";
+    const explicitBestIndex = usesBandPairContract
+      ? -1
+      : multiJudge.candidates.findIndex((candidate) => candidate.comparison_role === "best");
+    const explicitWorstIndex = usesBandPairContract
+      ? -1
+      : multiJudge.candidates.findIndex((candidate) => candidate.comparison_role === "worst");
     const recommendedBestIndex = multiJudge.candidates.findIndex(
       (candidate) => candidate.text === multiJudge.recommended_example,
     );
@@ -329,18 +335,20 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
         : inferredBestIndex;
     const worstIndex = explicitWorstIndex >= 0 ? explicitWorstIndex : inferredWorstIndex;
     if (bestIndex < 0 || worstIndex < 0 || bestIndex === worstIndex) {
-      throw new UnsupportedCanonicalMissionRuntimeError("여러 초안 비교에 BEST/WORST 참고 대역이 없습니다.");
+      throw new UnsupportedCanonicalMissionRuntimeError("여러 초안 비교에 적정/조정 필요 참고 대역이 없습니다.");
     }
-    const displayedIndexes = multiJudge.candidates
-      .map((_, index) => index)
-      .filter((index) => index === bestIndex || index === worstIndex)
-      .concat(
-        multiJudge.candidates
-          .map((_, index) => index)
-          .filter((index) => index !== bestIndex && index !== worstIndex)
-          .slice(0, 2),
-      )
-      .sort((a, b) => a - b);
+    const displayedIndexes = usesBandPairContract
+      ? multiJudge.candidates.map((_, index) => index)
+      : multiJudge.candidates
+        .map((_, index) => index)
+        .filter((index) => index === bestIndex || index === worstIndex)
+        .concat(
+          multiJudge.candidates
+            .map((_, index) => index)
+            .filter((index) => index !== bestIndex && index !== worstIndex)
+            .slice(0, 2),
+        )
+        .sort((a, b) => a - b);
     if (displayedIndexes.length !== 4) {
       throw new UnsupportedCanonicalMissionRuntimeError("여러 초안 비교에는 표시할 후보가 정확히 4개 필요합니다.");
     }
@@ -349,14 +357,18 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
     return {
       ...common(4, multiJudge),
       kind: "best_worst",
-      prompt: "가장 적절한 번역과 가장 부적절한 번역을 하나씩 고르세요.",
+      prompt: usesBandPairContract
+        ? "이 상황에 알맞은 표현 1개와 조정이 필요한 표현 1개를 고르세요."
+        : "가장 적절한 번역과 가장 부적절한 번역을 하나씩 고르세요.",
       candidates: displayedIndexes.map((index) => {
         const candidate = multiJudge.candidates[index];
         const id = `A5-${index}`;
         return {
           id,
           text: candidate.text,
-          role: id === bestId ? "best" : id === worstId ? "worst" : "middle",
+          role: usesBandPairContract
+            ? candidate.accepted_band_codes.includes(feature.within_band_code) ? "best" : "worst"
+            : id === bestId ? "best" : id === worstId ? "worst" : "middle",
           note: candidate.note_ko,
         };
       }) satisfies BestWorstQuest["candidates"],

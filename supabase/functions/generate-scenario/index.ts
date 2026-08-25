@@ -167,12 +167,14 @@ interface GenInput {
   // Two-step outline → final flow. Backward compatible:
   // when `action` is absent the handler behaves exactly like the legacy
   // single-shot full-scenario generation.
-  action?: 'outline' | 'final' | 'core' | 'mission' | 'authentic_analyze' | 'quality_check' | 'core_quality_check' | 'feedback'
+  action?: 'outline' | 'final' | 'core' | 'mission' | 'mission_repair' | 'finalize_mission' | 'authentic_analyze' | 'quality_check' | 'core_quality_check' | 'feedback'
   outline_count?: number
   selected_outline?: { title?: string; situation?: string } | null
   // v1.4 (2026-07-23): scenario_core_v1 / mission_v1 생성. 카탈로그는 클라가 전달.
   core?: CoreGenBody
   mission?: MissionGenBody
+  mission_repair?: MissionRepairBody
+  finalize_mission?: FinalizeMissionBody
   // 「실제 자료에서 생성」(Authentic Source Import) — 이미지/텍스트 원자료 분석.
   authentic?: AuthenticBody
   // 검증②(계약 0-n·94, 0-q·99) — 생성 모델과 분리된 모델의 미션 품질 비평.
@@ -487,6 +489,7 @@ type LlmOperation =
   | 'core_generate'
   | 'core_repair'
   | 'mission_generate'
+  | 'mission_repair'
   | 'item_lineage_attribution'
   | 'core_critic'
   | 'mission_critic'
@@ -1374,6 +1377,7 @@ interface FeatureForGen {
 interface MissionGenBody {
   direction?: string // 0-l·90 — 부재 시 ko_zh
   learner_level?: CoreLengthLevel
+  speech_act: string
   speech_act_ko: string
   level_ko: string
   level_policy_ko: string
@@ -1395,9 +1399,34 @@ interface MissionGenBody {
   }
   error_pattern_hints_ko: string[]
   is_response_act: boolean
-  failure_notes?: string
-  /** 직전 실패 출력을 재시도 모델이 직접 편집할 수 있게 전달한다. DB 저장물 아님. */
-  previous_mission?: unknown
+  contrast_plan: {
+    version: 'contrast_plan_v1'
+    speech_act: string
+    mission_goal: 'integrated_speech_act'
+    item_slots: Array<{
+      item_id: number
+      item_type: string
+      item_focus: string
+      intended_band_profile: string
+    }>
+  }
+}
+
+interface MissionRepairBody {
+  mission_content: Record<string, unknown>
+  findings: Array<{ code: string; severity: string; where: string; note_ko: string }>
+  feature: FeatureForGen
+  direction?: string
+  speech_act: string
+  speech_act_ko: string
+}
+
+interface FinalizeMissionBody {
+  mission_content: Record<string, unknown>
+  feature: FeatureForGen
+  direction?: string
+  learner_level?: CoreLengthLevel
+  level_ko?: string
 }
 
 const MISSION_DIAGNOSTIC_DIMENSIONS = [
@@ -1859,7 +1888,7 @@ function buildMissionSystemPrompt(
     ? `🔴 제안 초점 경계: 문장이 **구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는다면** 선택 가능성과 방안 명료성을 모두 갖춘 적정 대역입니다. "두 가지를 생각했다"나 "정해야 한다" 같은 도입이 있어도 뒤에서 실제 대안과 의견 질문을 분명히 제시하면 too_tentative·too_directive로 붙이지 마세요. too_tentative는 행동/대안을 실제로 흐리거나 생략하고, too_directive는 결정을 확정하거나 선택을 명령하는 문장 자체로 실현하세요. 특히 원문에 구체적인 대안 둘이 이미 고정된 문항의 비적정 target·candidate는 두 대안 사실을 보존한 실제 too_directive 경계로 만들고, 적정 질문문에 too_tentative 라벨을 붙이지 마세요.`
     : ''
   return `당신은 ${LANG_DIR_KO[direction]} 통번역 교육용 '메타화용 판단 미션'을 설계하는 전문가입니다.
-이번 단원의 화용 초점은 「${f.learner_label}」입니다.
+이번 미션의 학습목표는 지정 화행의 통합 수행입니다. 아래 「${f.learner_label}」은 각 문항의 후보를 가르는 내부 판정 초점(item_focus)입니다.
 초점 정의: ${f.operational_definition}
 판정 대역(band): ${bands}  (적정 대역 = "${f.within_band_code}")
 이 초점을 실현하는 장치: ${f.relevant_resources.join(', ')}
@@ -1873,7 +1902,7 @@ MPJ ${itemCount}문항을 만듭니다. 학습 흐름은 ${learningFlow}입니�
 Scale4는 종합 첫인상을 4점으로 받고 적절/부적절 방향만 채점합니다.${nativeJudgeIntro}
  FixChoice는 별도 사건에서 판단을 잠근 뒤 교정안을 공개합니다.
 Reason 문항은 표현이 부적절하다는 전제에서 가장 큰 이유 하나를 바로 고르게 하며, 별도의 대역 판단이나 확신도는 묻지 않습니다.
-각 MPJ 문항에서 후보를 가르는 직접 채점축은 위 target feature band 하나뿐입니다(한 문항 안의 다른 축 동시 변화 금지).
+각 MPJ 문항에서 후보를 가르는 직접 채점축은 위 item_focus band 하나뿐입니다(한 문항 안의 다른 축 동시 변화 금지).
 그러나 미션 전체의 학습목표는 특정 feature 하나가 아니라 해당 화행의 통합 수행입니다.
 ${nativeMpj5 ? `따라서 diagnostic_dimensions에는 미션 전체에서 실제로 관찰되는 서로 다른 진단차원 2~6개와 근거 위치를 남깁니다.
 차원 코드는 ${MISSION_DIAGNOSTIC_DIMENSIONS.join(' | ')}만 사용하고, evidence_refs는 ${MISSION_DIAGNOSTIC_EVIDENCE_REFS.join(' | ')}만 사용합니다.
@@ -1956,10 +1985,10 @@ ${diagnosticShape}
       "source": "비교 대상의 실제 ${srcL} 발화",
       "preceding_turn": ${precedingShape},
       "candidates": [
-        {"text":"가장 적절한 전략(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"comparison_role":"best","note_ko":"…"},
-        {"text":"그럴듯한 중간 후보 1(${tgtL})","accepted_band_codes":["${lowBand}"],"comparison_role":"middle","note_ko":"…"},
-        {"text":"가장 부적절한 전략(${tgtL})","accepted_band_codes":["${highBand}"],"comparison_role":"worst","note_ko":"…"},
-        {"text":"그럴듯한 중간 후보 2(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"comparison_role":"middle","note_ko":"…"}
+        {"text":"자연스러운 적정 전략 1(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"note_ko":"…"},
+        {"text":"실제로 쓸 법하지만 조정이 필요한 전략 1(${tgtL})","accepted_band_codes":["${lowBand}"],"note_ko":"…"},
+        {"text":"자연스러운 적정 전략 2(${tgtL})","accepted_band_codes":["${f.within_band_code}"],"note_ko":"…"},
+        {"text":"실제로 쓸 법하지만 조정이 필요한 전략 2(${tgtL})","accepted_band_codes":["${highBand}"],"note_ko":"…"}
       ],
       "explanation_ko": "네 초안의 차이를 P·D·R과 초점 대역으로 설명",
       "recommended_example": "이 상황의 적절안 1개(${tgtL})"
@@ -1999,8 +2028,9 @@ ${nativeJudgeRules}- fix_choice는 **판단을 먼저 한 뒤 교정**하는 한
     금지하지는 마세요(예: 가능 여부를 묻는 의문형 안의 \`给我\`는 극단형이 아닙니다).
   · 오답이 "${f.within_band_code}"로도 방어되거나, 반대로 초급자도 바로 걸러낼 만큼 뻔하면
     세 수정안을 다시 쓰세요.
-- multi_judge는 정확히 4후보이며 comparison_role은 best 1·middle 2·worst 1입니다. best는 적정 대역, worst는 비적정 대역이어야 하고 후보 순서는 매번 섞으세요.
-- middle 두 개는 즉시 소거되는 허수 오답이 아니라 BEST/WORST와 비교할 가치가 있는 그럴듯한 중간안이어야 합니다.
+- multi_judge는 정확히 4후보이며 **적정 대역 2개 + 조정 필요 대역 2개**입니다. comparison_role은 만들지 마세요.
+- 조정 필요 2개의 방향은 원문과 화행에 따라 과소+과잉, 과소+과소, 과잉+과잉을 모두 허용합니다. 양쪽 극단을 억지로 채우지 마세요.
+- 네 후보는 모두 의미·문법이 온전하고 실제로 쓸 법해야 합니다. 유일한 BEST/WORST나 엄밀한 선형 서열을 만들지 마세요.
 - 🔴 **판정 대역은 표현 형식 하나가 아니라 이 target feature의 정의와 관계·부담(P·D·R)에 상대적입니다.**
   위에 주입된 band 설명과 소박한 규칙의 반례를 따르고, 더 간접적·길거나 강한 표현을 자동으로 더 좋은 답으로 판정하지 마세요.
   같은 표현 자원도 관계·부담과 사건의 실제 무게에 따라 과소·적정·과잉 위치가 달라질 수 있습니다.
@@ -2089,11 +2119,13 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
     nativeMpj5
       ? '[앵커+대비] 5번 multi_judge는 위 P/D/R 중 정확히 한 축만 바꾼 대비 상황으로 만드세요.'
       : '[앵커+대비] 4번 multi_judge는 위 P/D/R 중 정확히 한 축만 바꾼 대비 상황으로 만드세요.',
-    '[수준 정책] 수정안·이유·후보 수는 모든 수준에서 4/3/5로 고정합니다. 난이도는 장면과 표현의 미묘함으로만 조절하세요.',
+    '[수준 정책] 수정안·이유·후보 수는 모든 수준에서 3/3/4로 고정합니다. 난이도는 장면과 표현의 미묘함으로만 조절하세요.',
   )
   if (nativeMpj5) {
     parts.push(
-      '[통합 화행 목표] target_feature는 각 MPJ 판정의 초점 태그이고, 미션 전체 목표를 대신하지 않습니다. MPJ 5개와 DCT에 실제로 드러나는 복수 진단차원과 근거 위치를 diagnostic_dimensions에 남기세요.',
+      '[통합 화행 목표] item_focus는 각 MPJ 판정의 내부 초점 태그이고, 미션 전체 목표를 대신하지 않습니다. MPJ 5개와 DCT에 실제로 드러나는 복수 진단차원과 근거 위치를 diagnostic_dimensions에 남기세요.',
+      '[고정 contrast plan — 그대로 구현]:',
+      JSON.stringify(b.contrast_plan, null, 2),
     )
   }
   if (b.error_pattern_hints_ko.length) {
@@ -2103,60 +2135,109 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
       ...b.error_pattern_hints_ko.map((h) => `- ${h}`),
     )
   }
-  if (b.failure_notes) {
-    parts.push(
-      '',
-      `[직전 시도 실패 — 아래를 반드시 고쳐 재생성]:`,
-      b.failure_notes,
-    )
-    const previous = b.previous_mission
-    if (previous && typeof previous === 'object' && !Array.isArray(previous)) {
-      const previousRecord = previous as Record<string, unknown>
-      const productionTask = previousRecord.production_task &&
-          typeof previousRecord.production_task === 'object' &&
-          !Array.isArray(previousRecord.production_task)
-        ? previousRecord.production_task as Record<string, unknown>
-        : undefined
-      const retryExcerpt = {
-        diagnostic_dimensions: Array.isArray(previousRecord.diagnostic_dimensions)
-          ? previousRecord.diagnostic_dimensions
-          : [],
-        mpj_items: Array.isArray(previousRecord.mpj_items)
-          ? previousRecord.mpj_items.slice(0, nativeMpj5 ? 5 : 4)
-          : [],
-        reference_alternatives: Array.isArray(productionTask?.reference_alternatives)
-          ? productionTask.reference_alternatives
-          : Array.isArray(previousRecord.reference_alternatives)
-            ? previousRecord.reference_alternatives
-            : [],
-        vocabulary_hints: Array.isArray(productionTask?.vocabulary_hints)
-          ? productionTask.vocabulary_hints
-          : Array.isArray(previousRecord.vocabulary_hints)
-            ? previousRecord.vocabulary_hints
-            : [],
-      }
-      parts.push(
-        '',
-        '[직전 실패 출력 — 진단이 가리킨 실제 문장을 직접 고칠 것]:',
-        JSON.stringify(retryExcerpt, null, 2),
-        '',
-        '[재시도 편집 규칙]:',
-        '- 직전 출력에서 실패 진단이 지목하지 않은 문항·P/D/R·사건·대역·핵심 의미는 유지하세요.',
-        '- R27 중복 실패라면 진단이 지목한 중복 situation_ko만 서로 다른 구체적 사건으로 다시 쓰세요. R27 문장 수·길이 실패라면 진단이 지목한 situation_ko만 140자 이내의 정확히 2개 한국어 문장으로 줄이세요. 두 경우 모두 필수 P/D/R·채널·화행 의도와 관찰 가능한 사실은 유지하고, 동일 문장과 사실상 같은 인물·용건·대상의 복제를 금지합니다.',
-        '- R5 길이 실패(진단에 길이·최장·최단·분리·비율이 명시됨)라면 직전 multi_judge의 대역은 바꾸지 않은 채 후보 문장 길이 범위만 겹치게 고치세요.',
-        '- R5 대역·역할 실패(진단에 BEST·WORST·중간 후보·적정 대역·비적정 대역이 명시됨)라면 길이만 손대지 말고 정확히 BEST=적정 1개, WORST=비적정 1개, MIDDLE=적정 1개+비적정 경계 1개가 되게 하세요. 바꾼 대역이 실제 표현과 note_ko에 맞도록 해당 후보를 함께 다시 쓰세요.',
-        '- R18 실패라면 부적절 표현을 다루는 필드를 적정 대역으로 두지 마세요. fix_choice의 accepted_band_codes는 비적정 대역 정확히 1개, reason의 problem_band_code도 비적정 대역으로 두세요. target이 실제로 적정하다면 target·highlights·선택지·해설을 함께 부적절한 경계 사례로 다시 쓰세요.',
-        '- AI band_mismatch 실패라면 진단이 지목한 target·correction·candidate의 문장과 대역을 함께 고치세요. 특히 multi_judge에서는 4역할과 MIDDLE의 적정 1+비적정 1 구조를 유지하면서, 비적정 경계 후보가 실제로 해당 초점 자원이 부족·과잉하도록 문장 자체를 다시 쓰고 note_ko도 그 실제 차이를 설명하게 하세요. 적정한 문장에 비적정 라벨만 다시 붙이지 마세요.',
-        '- proposal_optionality_clarity에서 구체적인 대안 둘을 제시하고 어느 쪽이 좋은지 묻는 문장은 적정 대역입니다. 비적정 문장도 두 대안 사실은 보존하되, too_directive는 결정을 확정하거나 즉시 선택을 명령하고, too_tentative는 두 대안을 말해도 실제 제안·결정 요청을 뒤로 미루거나 전적으로 떠넘기게 문장 자체를 다시 쓰세요.',
-        '- 원문에 구체적인 대안 둘이 이미 고정된 proposal 문항에서는 비적정 target·candidate를 두 대안을 보존한 실제 too_directive 경계로 다시 쓰세요. 두 대안을 분명히 말하고 어느 쪽이 좋은지 묻는 적정 질문문을 too_tentative로 재라벨링하지 마세요.',
-        '- AI comparison_quality_mismatch 실패라면 multi_judge의 네 candidate.text를 서로 다른 문장으로 다시 쓰세요. BEST와 MIDDLE을 복제하거나 사실상 동의문으로 두지 말고, 각 comparison_role과 note_ko가 실제 표현 차이로 구별되게 하세요.',
-        '- 길이 조절을 위해 새 명제·이유·대안·보상·일정을 만들지 마세요. 중립적 연결·군더더기 또는 문장 압축만 사용하세요.',
-        '- 수정 범위가 작아도 응답은 스키마의 전체 JSON을 빠짐없이 다시 출력하세요.',
-      )
-    }
-  }
   parts.push('', 'JSON만 반환하세요.')
   return parts.join('\n')
+}
+
+const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v1'
+
+function repairTargets(findings: MissionRepairBody['findings']) {
+  const itemIndexes = [...new Set(findings.flatMap((finding) => {
+    const match = finding.where.match(/mpj_items\[(\d+)\]/)
+    return match ? [Number(match[1])] : []
+  }))].filter((index) => Number.isInteger(index) && index >= 0 && index <= 4)
+  const productionReferences = findings.some((finding) =>
+    finding.where.startsWith('production_task.reference_alternatives'))
+  const diagnosticDimensions = findings.some((finding) =>
+    finding.where.startsWith('diagnostic_dimensions'))
+  return { itemIndexes, productionReferences, diagnosticDimensions }
+}
+
+function buildMissionRepairPrompt(b: MissionRepairBody): { system: string; user: string } {
+  const targets = repairTargets(b.findings)
+  const allowed = [
+    ...targets.itemIndexes.map((index) => `replace_item_block:${index}`),
+    ...(targets.productionReferences ? ['replace_reference_alternatives'] : []),
+    ...(targets.diagnosticDimensions ? ['replace_diagnostic_dimensions'] : []),
+  ]
+  const system = `당신은 PRAGMA 교수자 저작 파이프라인의 국소 수리 모델입니다.
+critic이 지목한 문항만 고치고, 통과한 문항과 DCT 코어는 절대 바꾸지 마세요.
+허용 operation은 replace_item_block, replace_reference_alternatives,
+replace_diagnostic_dimensions뿐입니다. replace_item_block은 item_index와 완전한 item을,
+나머지는 각각 reference_alternatives 또는 diagnostic_dimensions를 반환합니다.
+문항의 id·type·item_focus·axis_feature·source·PDR·preceding_turn은 원본을 유지합니다.
+원문의 행위자·사건·시간·수량·대안·핵심 명제·화행 목적을 유지하고, 문제로 지목된 화용 표현·
+후보·해설만 고치세요. 다른 문항을 더 좋게 쓰려는 변경은 금지합니다.
+출력은 {"operations":[...]} JSON 하나뿐입니다.`
+  const user = [
+    `[화행] ${b.speech_act_ko} (${b.speech_act})`,
+    `[문항 판정 초점] ${b.feature.code} — ${b.feature.operational_definition}`,
+    `[허용 대상] ${allowed.length ? allowed.join(', ') : '(자동 수리 가능 대상 없음)'}`,
+    '[critic findings]',
+    JSON.stringify(b.findings, null, 2),
+    '[동결된 전체 미션]',
+    JSON.stringify(b.mission_content, null, 2),
+  ].join('\n')
+  return { system, user }
+}
+
+function sanitizeMissionRepairOperations(
+  mission: Record<string, unknown>,
+  findings: MissionRepairBody['findings'],
+  raw: unknown,
+): Array<Record<string, unknown>> {
+  const targets = repairTargets(findings)
+  const items = Array.isArray(mission.mpj_items) ? mission.mpj_items : []
+  const parsed = raw && typeof raw === 'object' && !Array.isArray(raw)
+    ? raw as Record<string, unknown>
+    : {}
+  const operations = Array.isArray(parsed.operations) ? parsed.operations : []
+  const sanitized: Array<Record<string, unknown>> = []
+  for (const value of operations) {
+    const operation = value && typeof value === 'object' && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : {}
+    if (operation.operation === 'replace_item_block') {
+      const index = Number(operation.item_index)
+      if (!targets.itemIndexes.includes(index)) continue
+      const original = items[index]
+      const replacement = operation.item
+      if (!original || typeof original !== 'object' || Array.isArray(original) ||
+          !replacement || typeof replacement !== 'object' || Array.isArray(replacement)) continue
+      const frozen = original as Record<string, unknown>
+      sanitized.push({
+        operation: 'replace_item_block',
+        item_index: index,
+        item: {
+          ...(replacement as Record<string, unknown>),
+          id: frozen.id,
+          type: frozen.type,
+          item_focus: frozen.item_focus ?? frozen.axis_feature,
+          axis_feature: frozen.axis_feature,
+          source: frozen.source,
+          pdr: frozen.pdr,
+          preceding_turn: frozen.preceding_turn ?? null,
+        },
+      })
+      continue
+    }
+    if (operation.operation === 'replace_reference_alternatives' &&
+        targets.productionReferences && Array.isArray(operation.reference_alternatives)) {
+      sanitized.push({
+        operation: 'replace_reference_alternatives',
+        reference_alternatives: operation.reference_alternatives,
+      })
+      continue
+    }
+    if (operation.operation === 'replace_diagnostic_dimensions' &&
+        targets.diagnosticDimensions && Array.isArray(operation.diagnostic_dimensions)) {
+      sanitized.push({
+        operation: 'replace_diagnostic_dimensions',
+        diagnostic_dimensions: operation.diagnostic_dimensions,
+      })
+    }
+  }
+  return sanitized.slice(0, targets.itemIndexes.length + 2)
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -2281,13 +2362,11 @@ function buildQualitySystemPrompt(
     ? 'judge3·fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
     : 'fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
   const comparisonQualityCheck = nativeMpj5
-    ? `⑪ comparison_quality_mismatch — multi_judge의 네 후보가 **BEST 1·수용 가능한 중간 1·
-   일부 화용 조정이 필요한 경계 중간 1·WORST 1**로 실제 구별되는가. 네 문장은 모두 의미와
-   문법이 온전해야 하며, 차이는 주로 이 장면의 화용적 선택에서 나야 한다. BEST가 단순히 가장
-   길거나 완곡한 문장이고 WORST가 단순히 가장 직접적인 문장이거나, 중간 둘이 사실상 동의문,
-   또는 BEST/WORST를 유일하게 방어할 수 없으면 지적하라. 중간 둘의 note_ko는 각각 왜 완전히
-   틀린 것은 아니지만 BEST는 아닌지 서로 다른 근거를 설명해야 한다. 엄밀한 2위·3위 선형 서열은
-   요구하지 않는다. 네 역할을 억지로 만들 수 없는 콘텐츠는 warning/fail로 검수·재생성 대상으로 보낸다.`
+    ? `⑪ comparison_quality_mismatch — multi_judge의 네 후보가 **적정 대역 2개·조정 필요 대역
+   2개**로 실제 구별되는가. 네 문장은 모두 의미와 문법이 온전하고 실제로 쓸 법해야 하며, 차이는
+   주로 이 장면의 화용적 선택에서 나야 한다. 두 적정안이 사실상 복제되거나 조정 필요안이 화용
+   지식 없이 즉시 소거되는 극단형이면 지적하라. 조정 필요 방향은 과소/과잉 양쪽을 한 문항에
+   강제하지 않으며, 유일한 BEST/WORST나 엄밀한 선형 서열도 요구하지 않는다.`
     : ''
   const diagnosticCheck = nativeMpj5
     ? `⑫ diagnostic_coverage_mismatch — diagnostic_dimensions의 각 code가 지정한 evidence_refs의
@@ -2985,7 +3064,7 @@ Deno.serve(async (req) => {
       if (!b?.feature || !b?.core) {
         return new Response(JSON.stringify({ error: 'mission body required' }), { status: 400, headers: jsonHeaders })
       }
-      const temp = b.failure_notes ? 0.5 : 0.3 // 재시도는 온도 상향(0-d·31)
+      const temp = 0.3
       // 미션은 복합 유형 union이라 필드 누락이 잦다 → 저volume(승격분만)이므로
       // 강한 모델을 쓴다. 코어(고volume·단순)는 mini 유지.
       const isSpoken = b.core.source_modality === 'spoken'
@@ -3024,10 +3103,11 @@ Deno.serve(async (req) => {
       const canonicalItems = isMiniDiscourse
         ? canonicalizeNativeMpj5AnchorPdr(rawItems, b.core.pdr)
         : rawItems
-      // 위치·복사 필드는 서버가 강제: id=순번(R1), axis_feature=target_feature(R1)
+      // 위치·문항 초점은 서버가 강제한다. axis_feature는 역사 직렬화 호환용이다.
       const mpj_items = canonicalItems.map((it: Record<string, unknown>, i: number) => ({
         ...it,
         id: i + 1,
+        item_focus: b.feature.code,
         axis_feature: b.feature.code,
         ...(isMiniDiscourse ? { preceding_turn: null } : {}),
       }))
@@ -3040,6 +3120,16 @@ Deno.serve(async (req) => {
       const missionBase = {
         schema_version: isMiniDiscourse ? 'mission_v5' : 'mission_v4',
         direction: missionDir,
+        ...(isMiniDiscourse ? {
+          learning_goal: { kind: 'speech_act', speech_act: b.speech_act },
+          contrast_plan: b.contrast_plan,
+          authoring: {
+            schema_version: 'mission_authoring_v1',
+            stage: 'ai_draft',
+            lineage_status: 'pending',
+            repair_attempts: 0,
+          },
+        } : {}),
         unit: {
           target_feature: b.feature.code,
           target_feature_version: b.feature.version,
@@ -3071,36 +3161,13 @@ Deno.serve(async (req) => {
           ...(isMiniDiscourse ? { focal_segments: inheritedFocal } : {}),
         },
       }
-      let mission_content: Record<string, unknown> = missionBase
-      // 한→중 요청·거절·감사의 mission_v5만 현재 realization pack 검증 범위다.
-      // 별도 저온 호출이 실패하거나 미귀속 비율이 20%를 넘으면 생성 응답 자체를 막는다.
-      if (isMiniDiscourse && b.feature.lineage_scope) {
-        const attribution = await attributeMissionItemLineage(
-          missionBase,
-          b.feature.lineage_scope,
-          apiKey,
-          telemetryFor,
-        )
-        if (!attribution.ok) {
-          return new Response(
-            JSON.stringify({ error: '문항별 근거 귀속 실패', detail: attribution.detail }),
-            { status: 502, headers: jsonHeaders },
-          )
-        }
-        mission_content = { ...missionBase, item_lineage: attribution.itemLineage }
-      }
+      // 초안 단계에서는 최종 lineage·HSK를 만들지 않는다. 교수자 수정으로 내용이
+      // 동결된 뒤 finalize_mission이 현재 문장 기준으로 한 번 산출한다.
+      const mission_content: Record<string, unknown> = missionBase
       // provenance 서버 주입(계약 v1.5 0-h·56) — 모델 응답이 아니라 서버가 채운다.
       // mission_content_hash = provenance 제외 본문의 SHA-256(멱등·재현 추적).
       const genAt = new Date().toISOString()
       const contentHash = await sha256Hex(JSON.stringify(mission_content))
-      const missionAuditInput = collectMissionChineseTexts(mission_content, missionDir)
-      const hskLexicalAudit = await createHskLexicalAudit({
-        texts: missionAuditInput.texts,
-        direction: missionDir,
-        scope: missionAuditInput.scope,
-        referenceCeiling: hskReferenceCeiling(b.learner_level, b.level_ko),
-        matchTokens: matchHskTokens,
-      })
       const missionWithProvenance = {
         ...mission_content,
         provenance: {
@@ -3116,12 +3183,122 @@ Deno.serve(async (req) => {
           content_release_id: CURRENT_CONTENT_RELEASE_ID,
           mission_content_hash: contentHash,
           generated_at: genAt,
-          generation_attempt: b.failure_notes ? 2 : 1,
+          generation_attempt: 1,
+        },
+      }
+      return new Response(
+        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: missionPromptVersion, content_release_id: CURRENT_CONTENT_RELEASE_ID, generated_at: genAt } }),
+        { status: 200, headers: jsonHeaders },
+      )
+    }
+
+    // ── mission_repair: critic이 지목한 문항 block만 한 번 교체 ──
+    if (input.action === 'mission_repair') {
+      const b = input.mission_repair
+      if (!b?.mission_content || !b.feature || !Array.isArray(b.findings)) {
+        return new Response(JSON.stringify({ error: 'mission_repair body required' }), { status: 400, headers: jsonHeaders })
+      }
+      const targets = repairTargets(b.findings)
+      if (targets.itemIndexes.length === 0 && !targets.productionReferences && !targets.diagnosticDimensions) {
+        return new Response(JSON.stringify({ operations: [] }), { status: 200, headers: jsonHeaders })
+      }
+      const prompt = buildMissionRepairPrompt(b)
+      const att = await callOpenAI(MISSION_PRIMARY_MODEL, apiKey, prompt.system, prompt.user, 0.2, {
+        telemetry: telemetryFor('mission_repair', true, {
+          promptVersion: MISSION_ITEM_REPAIR_PROMPT_VERSION,
+        }),
+      })
+      if (!att.ok) {
+        return new Response(JSON.stringify({ error: 'OpenAI 호출 실패', detail: att.raw.slice(0, 400) }), { status: 502, headers: jsonHeaders })
+      }
+      let parsed: unknown
+      try {
+        parsed = parseOpenAIContent(att.raw)
+      } catch (e) {
+        return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
+      }
+      return new Response(
+        JSON.stringify({
+          operations: sanitizeMissionRepairOperations(b.mission_content, b.findings, parsed),
+          meta: {
+            provider: PROVIDER,
+            model: MISSION_PRIMARY_MODEL,
+            prompt_version: MISSION_ITEM_REPAIR_PROMPT_VERSION,
+            generated_at: new Date().toISOString(),
+          },
+        }),
+        { status: 200, headers: jsonHeaders },
+      )
+    }
+
+    // ── finalize_mission: 교수자 확정본 기준 lineage·HSK·hash 산출 ──
+    if (input.action === 'finalize_mission') {
+      const b = input.finalize_mission
+      if (!b?.mission_content || !b.feature) {
+        return new Response(JSON.stringify({ error: 'finalize_mission body required' }), { status: 400, headers: jsonHeaders })
+      }
+      const direction = normDir(b.direction)
+      const source = { ...b.mission_content }
+      delete source.item_lineage
+      delete source.hsk_lexical_audit
+      const existingProvenance = source.provenance && typeof source.provenance === 'object' && !Array.isArray(source.provenance)
+        ? source.provenance as Record<string, unknown>
+        : {}
+      let finalized: Record<string, unknown> = {
+        ...source,
+        authoring: {
+          ...((source.authoring && typeof source.authoring === 'object' && !Array.isArray(source.authoring))
+            ? source.authoring as Record<string, unknown>
+            : {}),
+          schema_version: 'mission_authoring_v1',
+          stage: 'professor_finalized',
+          lineage_status: 'complete',
+        },
+      }
+      if (b.feature.lineage_scope) {
+        const attributionInput = { ...finalized }
+        delete attributionInput.provenance
+        delete attributionInput.quality_check
+        delete attributionInput.authoring
+        const attribution = await attributeMissionItemLineage(
+          attributionInput,
+          b.feature.lineage_scope,
+          apiKey,
+          telemetryFor,
+        )
+        if (!attribution.ok) {
+          return new Response(
+            JSON.stringify({ error: '최종 문항별 근거 귀속 실패', detail: attribution.detail }),
+            { status: 502, headers: jsonHeaders },
+          )
+        }
+        finalized = { ...finalized, item_lineage: attribution.itemLineage }
+      }
+      const missionAuditInput = collectMissionChineseTexts(finalized, direction)
+      const hskLexicalAudit = await createHskLexicalAudit({
+        texts: missionAuditInput.texts,
+        direction,
+        scope: missionAuditInput.scope,
+        referenceCeiling: hskReferenceCeiling(b.learner_level, b.level_ko),
+        matchTokens: matchHskTokens,
+      })
+      const hashPayload = { ...finalized }
+      delete hashPayload.provenance
+      delete hashPayload.quality_check
+      delete hashPayload.hsk_lexical_audit
+      delete hashPayload.authoring
+      const finalHash = await sha256Hex(canonicalJson(hashPayload))
+      finalized = {
+        ...finalized,
+        provenance: {
+          ...existingProvenance,
+          mission_content_hash: finalHash,
+          finalized_at: new Date().toISOString(),
         },
         hsk_lexical_audit: hskLexicalAudit,
       }
       return new Response(
-        JSON.stringify({ mission_content: missionWithProvenance, meta: { provider: PROVIDER, model, prompt_version: missionPromptVersion, content_release_id: CURRENT_CONTENT_RELEASE_ID, generated_at: genAt } }),
+        JSON.stringify({ mission_content: finalized }),
         { status: 200, headers: jsonHeaders },
       )
     }

@@ -463,8 +463,35 @@ export function checkMission(
   ) {
     add(v, "R1", "fail", "현행 mission_v5 생성계약은 독립 맥락 대비 문항을 포함한 MPJ5여야 함");
   }
+  if (isCurrentNativeV5) {
+    if (m.learning_goal?.kind !== "speech_act" || m.learning_goal.speech_act !== ctx.speech_act) {
+      add(v, "R15", "fail", "현행 미션의 학습목표는 요청된 speech_act로 명시되어야 함");
+    }
+    if (
+      m.contrast_plan?.version !== "contrast_plan_v1" ||
+      m.contrast_plan.speech_act !== ctx.speech_act ||
+      m.contrast_plan.mission_goal !== "integrated_speech_act"
+    ) {
+      add(v, "R1", "fail", "현행 미션에는 화행 목표 기반 contrast_plan_v1이 필요함");
+    } else {
+      for (const [index, item] of m.mpj_items.entries()) {
+        const slot = m.contrast_plan.item_slots[index];
+        const itemFocus = "item_focus" in item && item.item_focus
+          ? item.item_focus
+          : item.axis_feature;
+        if (
+          !slot ||
+          slot.item_id !== item.id ||
+          slot.item_type !== item.type ||
+          slot.item_focus !== itemFocus
+        ) {
+          add(v, "R1", "fail", `문항 ${item.id}: contrast plan 슬롯과 실제 문항이 다름`);
+        }
+      }
+    }
+  }
 
-  // ── R1 유형 순서·axis_feature·band code 존재 ──
+  // ── R1 유형 순서·문항 판정 초점(item_focus)·band code 존재 ──
   const typesInOrder = m.mpj_items.map((it) => it.type);
   const expectedTypeOrder = isNativeV5
     ? MPJ_TYPE_ORDER_V5
@@ -480,16 +507,25 @@ export function checkMission(
     add(v, "R13", "fail", `target_feature '${m.unit.target_feature}'가 카탈로그에 없음`);
   }
   for (const it of m.mpj_items) {
-    if (it.axis_feature !== m.unit.target_feature) {
-      add(v, "R1", "fail", `문항 ${it.id}: axis_feature(${it.axis_feature}) ≠ unit.target_feature(${m.unit.target_feature})`);
+    const itemFocus = "item_focus" in it && typeof it.item_focus === "string"
+      ? it.item_focus
+      : it.axis_feature;
+    const itemFeature = getTargetFeature(itemFocus);
+    if ("item_focus" in it && it.item_focus && it.axis_feature !== it.item_focus) {
+      add(v, "R1", "fail", `문항 ${it.id}: item_focus와 호환 axis_feature가 다름`);
+    }
+    if (!itemFeature) {
+      add(v, "R13", "fail", `문항 ${it.id}: item_focus '${itemFocus}'가 카탈로그에 없음`);
+    } else if (itemFeature.speech_act !== ctx.speech_act) {
+      add(v, "R15", "fail", `문항 ${it.id}: item_focus가 요청 화행(${ctx.speech_act})과 다름`);
     }
     // band code가 카탈로그에 존재하는지
-    if (feature) {
+    if (itemFeature) {
       const codes = collectBandCodes(it);
       for (const c of codes) {
-        const inFeature = feature.band_schema.some((b) => b.code === c);
+        const inFeature = itemFeature.band_schema.some((b) => b.code === c);
         if (!inFeature) {
-          add(v, "R1", "fail", `문항 ${it.id}: band code '${c}'가 '${feature.code}' band_schema에 없음`);
+          add(v, "R1", "fail", `문항 ${it.id}: band code '${c}'가 '${itemFeature.code}' band_schema에 없음`);
         }
       }
     }
@@ -608,7 +644,27 @@ export function checkMission(
       case "multi_judge": {
         // R5 길이 통제 강화판
         checkMultiJudgeLength(v, it.id, it.candidates, withinCode);
-        if (isCurrentNativeV5 || (isNativeV5 && it.candidates.length === 4)) {
+        if (isCurrentNativeV5) {
+          const withinCandidates = it.candidates.filter((candidate) =>
+            candidate.accepted_band_codes.includes(withinCode));
+          const adjustmentCandidates = it.candidates.filter((candidate) =>
+            !candidate.accepted_band_codes.includes(withinCode));
+          if (
+            it.candidates.length !== 4 ||
+            withinCandidates.length !== 2 ||
+            adjustmentCandidates.length !== 2
+          ) {
+            add(v, "R5", "fail", `문항 ${it.id}: 현행 MultiJudge는 4후보·적정 2·조정 필요 2여야 함`);
+          }
+          const normalizedCandidates = new Set(it.candidates.map((candidate) =>
+            candidate.text.normalize("NFKC").replace(/[\p{P}\p{S}\p{Z}\s]+/gu, "").toLowerCase()));
+          if (normalizedCandidates.size !== it.candidates.length) {
+            add(v, "R5", "fail", `문항 ${it.id}: 여러 초안 비교의 후보 문장이 중복됨`);
+          }
+          if (pdrDifferenceCount(it.pdr, m.production_task.pdr) !== 1) {
+            add(v, "R5", "fail", `문항 ${it.id}: 현행 MultiJudge는 앵커 PDR에서 한 축만 바꾼 대비 상황이어야 함`);
+          }
+        } else if (isNativeV5 && it.candidates.length === 4) {
           const roleCounts = new Map<string, number>();
           for (const candidate of it.candidates) {
             const role = "comparison_role" in candidate ? candidate.comparison_role : undefined;
@@ -631,20 +687,6 @@ export function checkMission(
           }
           if (!worst || worst.accepted_band_codes.includes(withinCode)) {
             add(v, "R5", "fail", `문항 ${it.id}: WORST 후보는 비적정 대역이어야 함`);
-          }
-          if (isCurrentNativeV5) {
-            const middles = it.candidates.filter((candidate) =>
-              "comparison_role" in candidate && candidate.comparison_role === "middle");
-            const withinMiddleCount = middles.filter((candidate) =>
-              candidate.accepted_band_codes.includes(withinCode)).length;
-            if (withinMiddleCount !== 1 || middles.length - withinMiddleCount !== 1) {
-              add(v, "R5", "fail", `문항 ${it.id}: 중간 후보는 적정 대역 1개와 비적정 경계 대역 1개여야 함`);
-            }
-            const normalizedCandidates = new Set(it.candidates.map((candidate) =>
-              candidate.text.normalize("NFKC").replace(/[\p{P}\p{S}\p{Z}\s]+/gu, "").toLowerCase()));
-            if (normalizedCandidates.size !== it.candidates.length) {
-              add(v, "R5", "fail", `문항 ${it.id}: 여러 초안 비교의 후보 문장이 중복됨`);
-            }
           }
           if (pdrDifferenceCount(it.pdr, m.production_task.pdr) !== 1) {
             add(v, "R5", "fail", `문항 ${it.id}: 현행 MultiJudge는 앵커 PDR에서 한 축만 바꾼 대비 상황이어야 함`);
