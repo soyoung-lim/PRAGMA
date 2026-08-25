@@ -2211,6 +2211,7 @@ function sanitizeMissionRepairOperations(
         operation: 'replace_item_block',
         item_index: index,
         item: {
+          ...frozen,
           ...(replacement as Record<string, unknown>),
           id: frozen.id,
           type: frozen.type,

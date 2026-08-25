@@ -3,15 +3,21 @@ import { describe, expect, it } from "vitest";
 import { repairFindingsForRuleViolations } from "./promoteMission";
 
 describe("repairFindingsForRuleViolations", () => {
-  it("repairs only the later item in an R27 duplicate pair", () => {
+  it("keeps the first duplicate and repairs every later R27 item", () => {
     expect(repairFindingsForRuleViolations([{
       id: "R27",
       level: "fail",
-      message: "v4 MPJ 문항 2·4의 situation_ko가 완전히 중복됨",
-    }])).toEqual([expect.objectContaining({
-      code: "rule_R27_duplicate_situation",
-      where: "mpj_items[3].situation_ko",
-    })]);
+      message: "v4 MPJ 문항 2·3·4의 situation_ko가 완전히 중복됨",
+    }])).toEqual([
+      expect.objectContaining({
+        code: "rule_R27_duplicate_situation",
+        where: "mpj_items[2].situation_ko",
+      }),
+      expect.objectContaining({
+        code: "rule_R27_duplicate_situation",
+        where: "mpj_items[3].situation_ko",
+      }),
+    ]);
   });
 
   it("does not route invariant failures such as R5 to item repair", () => {

@@ -135,17 +135,17 @@ export function repairFindingsForRuleViolations(
       ?.split("·")
       .map(Number)
       .filter((value) => Number.isInteger(value) && value >= 1 && value <= 5);
-    const itemNumber = itemNumbers?.at(-1);
-    if (!itemNumber) continue;
-    const where = `mpj_items[${itemNumber - 1}].situation_ko`;
-    if (seen.has(where)) continue;
-    seen.add(where);
-    findings.push({
-      code: "rule_R27_duplicate_situation",
-      severity: "fail",
-      where,
-      note_ko: violation.message,
-    });
+    for (const itemNumber of itemNumbers?.slice(1) ?? []) {
+      const where = `mpj_items[${itemNumber - 1}].situation_ko`;
+      if (seen.has(where)) continue;
+      seen.add(where);
+      findings.push({
+        code: "rule_R27_duplicate_situation",
+        severity: "fail",
+        where,
+        note_ko: violation.message,
+      });
+    }
   }
   return findings;
 }
