@@ -2511,8 +2511,9 @@
     각 MPJ 후보를 판정하는 내부 태그일 뿐 학습목표가 아니다. 기존 `target_feature`·`axis_feature`는
     역사 직렬화 호환으로 유지한다.
   - 생성 전 `contrast_plan_v1`으로 5문항 type·item_focus·대역 의도를 고정하고 전체 초안은 1회만
-    생성한다. 결정론 구조 fail은 저장하지 않되, 구조 통과본은 critic fail이어도 `generated`로
-    격리 저장한다.
+    생성한다. 스키마·학습목표·동결 PDR 같은 불변항 fail은 저장하지 않는다. 허용된 item block·
+    DCT 참고안·진단차원 안에서 고칠 수 있는 결정론 fail은 해당 block만 1회 수리하고, 구조가
+    유효해진 초안은 critic fail이어도 `generated`로 격리 저장한다.
   - critic은 문제 위치와 근거만 반환한다. 자동 수리는 지목 item block·DCT 참고안·진단차원에
     한해 1회이며, 교수자 수정도 같은 제한된 block을 append-only revision으로 저장한다.
   - 남은 critic fail은 교수자가 10자 이상 근거를 남겨야 override할 수 있다. 최종 확정 시점에만
@@ -2522,4 +2523,7 @@
   - 기존 Gold45·expert release·확장 readiness gate는 변경하지 않는다.
 - 대체 범위: `DEC-20260824-07`의 BEST 1·중간 2·WORST 1 계약과 `DEC-20260825-03`의
   critic fail 미저장 결정을 대체한다. append-only 반려 원칙과 연구 공개 gate는 유지한다.
-- 관련 Trace / Iteration: `TRC-20260825-01`, `ITER-20260825-07`
+- 운영 후속 판정: R31 lineage 조기 gate, R18 대역 표기, R27 장면 중복을 실제 생성에서 분리해
+  R31은 최종화 시점으로 옮기고 R18·R27은 국소 수리에 포함했다. expert/Gold 공개 gate는 합의대로
+  유지하며 외부 근거가 없는 신규 reviewed 미션을 학습자에게 우회 공개하지 않는다.
+- 관련 Trace / Iteration / Evidence: `TRC-20260825-01`, `ITER-20260825-07`, `EVD-20260825-05`
