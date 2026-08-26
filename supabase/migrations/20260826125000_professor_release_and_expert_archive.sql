@@ -106,33 +106,41 @@ REVOKE INSERT, UPDATE, DELETE ON
   public.pragma_gold_nonconsensus_terminals
 FROM authenticated, anon;
 
--- Freeze retired expert/publication/improvement RPCs for application users. Definitions
--- and records remain available to the database owner/service role for audit and rollback.
-REVOKE ALL ON FUNCTION public.register_pragma_expert(uuid, text, text[], text[], text)
-  FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.assign_mission_expert_review(uuid, uuid, integer)
-  FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.propose_mission_review_resolution(jsonb)
-  FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.assign_gold_expert_review(uuid, uuid, integer)
-  FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.propose_gold_expert_resolution(jsonb)
-  FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.create_pragma_gold_external_sampling_plan(text)
-  FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.record_gold_regression_run(uuid[], jsonb, text, text)
-  FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.release_mission(uuid, uuid, uuid, uuid)
-  FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.materialize_pragma_improvement_candidates(
-  timestamptz, timestamptz, integer, integer
-) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.record_pragma_realization_pack_release(
-  text, text, text, text, text, text, text, uuid
-) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.apply_pragma_improvement_candidate(
-  uuid, text, uuid, text[], uuid
-) FROM PUBLIC, anon, authenticated;
+-- Freeze every current overload of retired expert/publication/improvement RPCs for
+-- application users. Definitions remain available to the owner/service role for audit.
+DO $freeze_retired_rpcs$
+DECLARE
+  v_function record;
+BEGIN
+  FOR v_function IN
+    SELECT format(
+      '%I.%I(%s)',
+      namespace.nspname,
+      procedure.proname,
+      pg_get_function_identity_arguments(procedure.oid)
+    ) AS signature
+    FROM pg_proc procedure
+    JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
+    WHERE namespace.nspname = 'public'
+      AND procedure.proname = ANY (ARRAY[
+        'register_pragma_expert',
+        'assign_mission_expert_review',
+        'propose_mission_review_resolution',
+        'assign_gold_expert_review',
+        'propose_gold_expert_resolution',
+        'create_pragma_gold_external_sampling_plan',
+        'record_gold_regression_run',
+        'release_mission',
+        'materialize_pragma_improvement_candidates',
+        'record_pragma_realization_pack_release',
+        'apply_pragma_improvement_candidate'
+      ])
+  LOOP
+    EXECUTE 'REVOKE ALL ON FUNCTION ' || v_function.signature ||
+      ' FROM PUBLIC, anon, authenticated';
+  END LOOP;
+END;
+$freeze_retired_rpcs$;
 
 ALTER TABLE public.pragma_improvement_refresh_runs
   DROP CONSTRAINT IF EXISTS pragma_improvement_refresh_runs_contract_version_check;

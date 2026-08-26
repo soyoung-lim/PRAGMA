@@ -19,8 +19,9 @@ describe("professor release and expert archive migration", () => {
   });
 
   it("freezes expert application writes while preserving records", () => {
-    expect(migration).toContain("REVOKE ALL ON FUNCTION public.release_mission");
-    expect(migration).toContain("REVOKE ALL ON FUNCTION public.assign_mission_expert_review");
+    expect(migration).toContain("'release_mission'");
+    expect(migration).toContain("'assign_mission_expert_review'");
+    expect(migration).toContain("REVOKE ALL ON FUNCTION");
     expect(migration).toContain("REVOKE INSERT, UPDATE, DELETE ON");
     expect(migration).not.toMatch(/DROP\s+TABLE/i);
     expect(migration).not.toMatch(/DELETE\s+FROM/i);
