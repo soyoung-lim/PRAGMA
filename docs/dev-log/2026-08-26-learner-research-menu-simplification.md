@@ -34,3 +34,13 @@
 
 - 기능 커밋: `f5dff2d`
 - 관련 결정·반복·증거: `DEC-20260826-03`, `ITER-20260826-04`, `EVD-20260826-03`
+
+## 후속 메뉴 정리 · 시나리오 아카이브 제거
+
+- `/admin/archive`는 완결 MPJ5+DCT1 목록이 아니라 `archived_only`·`excluded` 행만 조회해
+  코어 라이브러리·미션 조립·승인 미션 수업자료와 별개인 중복 화면이었다.
+- 메뉴·라우트·컴포넌트를 제거했으며 저장된 시나리오 데이터와 상태값은 삭제하지 않았다.
+- 완결 미션 탐색은 이미 `mission_content`가 있는 `reviewed`·`released` 미션만 읽는
+  `/admin/package`의 화행·수준·상황 검색을 사용한다.
+- `adminNavigation.test.ts` 4개와 typecheck가 통과했다. 전체 회귀·build·운영 배포는
+  반복하지 않았다.

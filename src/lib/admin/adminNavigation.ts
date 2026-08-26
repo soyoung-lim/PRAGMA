@@ -80,7 +80,6 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
     header: "기록과 보존",
     items: [
-      { to: "/admin/archive", label: "시나리오 아카이브" },
       { to: "/admin/data-backup", label: "수업 데이터 백업·복원" },
     ],
   },
@@ -160,7 +159,6 @@ export const ADMIN_COMPLETION_WORKFLOW: readonly AdminCompletionWorkflowStage[] 
 
 const PRIORITY_LABELS = [
   "3. 전체 자동 점검",
-  "시나리오 아카이브",
   "수업 자료 생성",
   "학습자 관리",
   "학습자 수행 기록",

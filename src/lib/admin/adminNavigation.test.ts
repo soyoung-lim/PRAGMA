@@ -13,7 +13,6 @@ import {
 
 const REQUIRED_ENTRY_PATHS = [
   "/admin/research-qa/final-review",
-  "/admin/archive",
   "/admin/package",
   "/admin/learners",
   "/admin/decision-traces",
@@ -36,6 +35,7 @@ describe("admin navigation reachability", () => {
     expect(app).toContain('path="/admin/review"');
     expect(app).toContain('to="/admin/research-qa/final-review"');
     expect(app).not.toContain('path="/admin/analytics"');
+    expect(app).not.toContain('path="/admin/archive"');
 
     const missionLogs = readFileSync(
       resolve(process.cwd(), "src/pages/admin/AdminDecisionTraces.tsx"),
@@ -64,6 +64,5 @@ describe("admin navigation reachability", () => {
     expect(adminCompletionWorkflowStage("/admin/package")?.id).toBe("teach");
     expect(adminCompletionWorkflowStage("/admin/learners")?.id).toBe("learn");
     expect(adminCompletionWorkflowStage("/admin/export")?.id).toBe("records");
-    expect(adminCompletionWorkflowStage("/admin/archive")).toBeNull();
   });
 });
