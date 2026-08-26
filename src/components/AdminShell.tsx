@@ -43,7 +43,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
 
   const itemClasses = (active: boolean) =>
     [
-      "mr-2 rounded-md px-3 py-1 text-[13.5px] whitespace-nowrap transition-colors",
+      "mr-2 rounded-md px-3 py-0.5 text-[13px] leading-5 whitespace-nowrap transition-colors",
       active
         ? "bg-[#FAD338] text-[#15202B] font-medium"
         : "text-foreground font-normal hover:bg-muted hover:text-foreground",
@@ -82,17 +82,17 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
               const panelId = `admin-nav-group-${groupIndex}`;
 
               return (
-                <div key={group.header} className="mt-2.5 flex flex-col">
+                <div key={group.header} className="mt-2 flex flex-col">
                   <button
                     type="button"
                     aria-expanded={expanded}
                     aria-controls={panelId}
                     onClick={() => toggleGroup(groupIndex)}
                     className={[
-                      "mr-2 flex min-h-8 items-center gap-2 rounded-md bg-[#15202B] px-2.5 py-1.5 text-left text-[12px] font-semibold text-white shadow-sm transition-all",
+                      "mr-2 flex min-h-8 items-center gap-2 px-2.5 py-1.5 text-left text-[12px] font-semibold transition-colors",
                       groupActive
-                        ? "ring-2 ring-[#FAD338] ring-offset-1 ring-offset-background"
-                        : "hover:bg-[#202D3A]",
+                        ? "rounded-md bg-[#15202B] text-white shadow-sm"
+                        : "border-b border-[#D8D3C6] bg-transparent text-[#15202B] hover:bg-[#F2F0E8]",
                     ].join(" ")}
                   >
                     <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FAD338] text-[10px] font-bold text-[#15202B]">
@@ -101,7 +101,11 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
                     <span className="min-w-0 flex-1 truncate">{groupLabel}</span>
                     <ChevronDown
                       aria-hidden
-                      className={`h-3.5 w-3.5 shrink-0 text-[#D8DEE4] transition-transform ${expanded ? "rotate-180" : ""}`}
+                      className={[
+                        "h-3.5 w-3.5 shrink-0 transition-transform",
+                        groupActive ? "text-[#D8DEE4]" : "text-[#7D858C]",
+                        expanded ? "rotate-180" : "",
+                      ].join(" ")}
                     />
                   </button>
                   <div
