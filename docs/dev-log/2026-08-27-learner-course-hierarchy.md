@@ -36,3 +36,7 @@
   콘텐츠는 삭제·재생성하지 않으며, 13주는 서로 다른 두 화행의 검수 완료 고부담 미션이 실제로
   편성되기 전까지 `편성 준비 중`으로 표시한다.
 - 검증은 변경 범위에 맞춰 typecheck와 `standard15week.test.ts` 3 tests로 종료했다.
+- migration `20260827003000`을 운영 Supabase에 적용했고, 기능 커밋 `3806423`을 원격 브랜치에
+  푸시했다. Railway production deployment `c9ab9390-ce8f-4c9c-a7a2-bccf33d03e1e`은 `SUCCESS`,
+  image digest는 `sha256:9f8ef5b2daaac1da665b6fdd24ef4ef6efe1213d59fc2fd146e43d5bfa2b93cc`다.
+- 전체 회귀와 별도 브라우저 검증은 사용자 지시에 따라 반복하지 않았다.
