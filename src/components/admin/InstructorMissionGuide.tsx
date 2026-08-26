@@ -1,4 +1,9 @@
 import type { InstructorMissionGuide as InstructorMissionGuideModel } from "@/lib/pragma/instructorGuide";
+import {
+  instructorGuideTimingPlan,
+  instructorGuideTimingTotal,
+  type InstructorGuideTimingPlan,
+} from "@/lib/pragma/instructorGuideTiming";
 
 export const INSTRUCTOR_GUIDE_STEP_COUNT = 6;
 
@@ -63,12 +68,14 @@ export function InstructorMissionGuide({
   displayMode = "document",
   activeStep = 1,
   answersRevealed = true,
+  timingPlan = instructorGuideTimingPlan(30),
 }: {
   guide: InstructorMissionGuideModel;
   audience?: InstructorGuideAudience;
   displayMode?: InstructorGuideDisplayMode;
   activeStep?: number;
   answersRevealed?: boolean;
+  timingPlan?: InstructorGuideTimingPlan;
 }) {
   const showAnswers = audience === "instructor" && (displayMode === "document" || answersRevealed);
   const sectionProps = (number: number) => ({ displayMode, active: activeStep === number });
@@ -82,13 +89,42 @@ export function InstructorMissionGuide({
       data-display-mode={displayMode}
     >
       {displayMode === "document" && (
-        <header className="break-inside-avoid rounded-xl bg-[#15202B] px-6 py-5 text-white print:rounded-none print:px-4 print:py-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#FAD338]">
-            {audience === "instructor" ? "PRAGMA 교수자 수업자료" : "PRAGMA 학생 활동지"}
-          </p>
-          <h2 className="mt-1 text-xl font-bold">{guide.speechActKo} · MPJ5+DCT1 {audience === "instructor" ? "운영안" : "활동지"}</h2>
-          <p className="mt-2 text-[13px] leading-5 text-[#DCE4E8]">학습목표: {guide.speechActKo} 통합 수행 · 문항 판정 초점: {guide.itemFocusKo}</p>
-        </header>
+        <>
+          <header className="break-inside-avoid rounded-xl bg-[#15202B] px-6 py-5 text-white print:rounded-none print:px-4 print:py-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#FAD338]">
+              {audience === "instructor" ? "PRAGMA 교수자 수업자료" : "PRAGMA 학생 활동지"}
+            </p>
+            <h2 className="mt-1 text-xl font-bold">{guide.speechActKo} · MPJ5+DCT1 {audience === "instructor" ? "운영안" : "활동지"}</h2>
+            <p className="mt-2 text-[13px] leading-5 text-[#DCE4E8]">학습목표: {guide.speechActKo} 통합 수행 · 문항 판정 초점: {guide.itemFocusKo}</p>
+          </header>
+          {audience === "instructor" && (
+            <section className="mt-4 break-inside-avoid rounded-xl border border-[#DDD8CB] bg-white p-5 print:rounded-none print:border-[#BEB7A7] print:p-4" aria-label="수업 시간 운영표">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7A6418]">수업 시간 프리셋</p>
+                  <h3 className="mt-1 text-[15px] font-bold text-[#233542]">{timingPlan.preset}분 · {timingPlan.labelKo}</h3>
+                  <p className="mt-1 text-[12px] text-[#657178]">{timingPlan.descriptionKo}</p>
+                </div>
+                <span className="rounded-full bg-[#FAD338] px-3 py-1 text-[12px] font-bold text-[#15202B]">총 {instructorGuideTimingTotal(timingPlan)}분</span>
+              </div>
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[680px] border-collapse text-left text-[12px] leading-5">
+                  <thead><tr className="border-b border-[#D8D0BC] text-[#53656F]"><th className="pb-2 pr-3">활동</th><th className="w-16 pb-2 pr-3">시간</th><th className="pb-2 pr-3">진행 방법</th><th className="pb-2">학습 산출물</th></tr></thead>
+                  <tbody>
+                    {timingPlan.activities.map((activity) => (
+                      <tr key={activity.id} className="border-b border-[#EEEAE0] last:border-0">
+                        <td className="py-2 pr-3 font-semibold text-[#233542]">{activity.labelKo}</td>
+                        <td className="py-2 pr-3">{activity.minutes}분</td>
+                        <td className="py-2 pr-3 text-[#53656F]">{activity.howKo}</td>
+                        <td className="py-2 text-[#53656F]">{activity.outputKo}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+        </>
       )}
 
       <div className={displayMode === "projector" ? "h-full" : "mt-4 grid gap-4"}>

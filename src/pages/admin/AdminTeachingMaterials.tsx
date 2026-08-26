@@ -12,6 +12,11 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { LEVEL, SPEECH_ACT_UI, type LearnerLevel, type SpeechActUI } from "@/lib/pragma/enums";
 import { buildInstructorMissionGuide } from "@/lib/pragma/instructorGuide";
+import {
+  INSTRUCTOR_GUIDE_TIMING_PRESETS,
+  instructorGuideTimingPlan,
+  type InstructorGuideTimingPreset,
+} from "@/lib/pragma/instructorGuideTiming";
 import { normalizeMission, type MissionRuntime } from "@/lib/pragma/missionSchema";
 import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
 
@@ -41,6 +46,7 @@ const AdminTeachingMaterials = () => {
   const [projectorStep, setProjectorStep] = useState(1);
   const [answersRevealed, setAnswersRevealed] = useState(false);
   const [printAudience, setPrintAudience] = useState<InstructorGuideAudience>("instructor");
+  const [timingPreset, setTimingPreset] = useState<InstructorGuideTimingPreset>(30);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,6 +159,7 @@ const AdminTeachingMaterials = () => {
         selected.speechAct ? SPEECH_ACT_UI[selected.speechAct] : "화행",
       )
     : null;
+  const timingPlan = instructorGuideTimingPlan(timingPreset);
   const learnerVisible = selected
     ? isMissionReleasedForLearner({
         mission_status: selected.missionStatus,
@@ -220,18 +227,30 @@ const AdminTeachingMaterials = () => {
             </select>
           </label>
           {selected && (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-              <div className="text-[11.5px] text-[#657178]">
-                <span className={learnerVisible ? "font-semibold text-[#2E7D5B]" : "font-semibold text-[#8A6A18]"}>
-                  {learnerVisible ? "학습자 사용 가능" : "내부 검토 완료 · 공개 gate 전"}
-                </span>
-                <span className="mx-2">·</span>
-                미션 {selected.scenarioId}
+            <div className="mt-3 border-t pt-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold text-[#53656F]">수업 시간</span>
+                {INSTRUCTOR_GUIDE_TIMING_PRESETS.map((preset) => (
+                  <Button key={preset} size="sm" variant={timingPreset === preset ? "default" : "outline"} onClick={() => setTimingPreset(preset)}>
+                    {preset}분
+                  </Button>
+                ))}
+                <span className="text-[11.5px] text-[#657178]">{timingPlan.labelKo}</span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={openProjector}>교실 큰 화면</Button>
-                <Button size="sm" variant="outline" onClick={() => printGuide("student")}>학생 활동지 인쇄</Button>
-                <Button size="sm" onClick={() => printGuide("instructor")}>교수자용 인쇄·PDF</Button>
+              {timingPreset === 90 && <p className="mt-2 text-[11.5px] text-[#7A6418]">90분은 같은 화행의 미션 A·B 두 세트를 각각 30분 운영한 뒤 30분 비교·전이하는 기준입니다.</p>}
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[11.5px] text-[#657178]">
+                  <span className={learnerVisible ? "font-semibold text-[#2E7D5B]" : "font-semibold text-[#8A6A18]"}>
+                    {learnerVisible ? "학습자 사용 가능" : "내부 검토 완료 · 공개 gate 전"}
+                  </span>
+                  <span className="mx-2">·</span>
+                  미션 {selected.scenarioId}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={openProjector}>교실 큰 화면</Button>
+                  <Button size="sm" variant="outline" onClick={() => printGuide("student")}>학생 활동지 인쇄</Button>
+                  <Button size="sm" onClick={() => printGuide("instructor")}>교수자용 인쇄·PDF</Button>
+                </div>
               </div>
             </div>
           )}
@@ -242,7 +261,7 @@ const AdminTeachingMaterials = () => {
         {!loading && !error && filtered.length === 0 && (
           <p className="rounded-xl border border-dashed bg-white px-5 py-10 text-center text-sm text-muted-foreground">조건에 맞는 승인 미션이 없습니다.</p>
         )}
-        {guide && <InstructorMissionGuide guide={guide} audience={printAudience} />}
+        {guide && <InstructorMissionGuide guide={guide} audience={printAudience} timingPlan={timingPlan} />}
       </div>
 
       {projectorOpen && guide && (
@@ -273,6 +292,7 @@ const AdminTeachingMaterials = () => {
               displayMode="projector"
               activeStep={projectorStep}
               answersRevealed={answersRevealed}
+              timingPlan={timingPlan}
             />
           </main>
 
