@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { flushSync } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
 import {
   INSTRUCTOR_GUIDE_STEP_COUNT,
   InstructorMissionGuide,
   InstructorMissionPairComparison,
-  type InstructorGuideAudience,
 } from "@/components/admin/InstructorMissionGuide";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +61,6 @@ const AdminTeachingMaterials = () => {
   const [projectorStep, setProjectorStep] = useState(1);
   const [projectorMissionIndex, setProjectorMissionIndex] = useState<0 | 1>(0);
   const [answersRevealed, setAnswersRevealed] = useState(false);
-  const [printAudience, setPrintAudience] = useState<InstructorGuideAudience>("instructor");
   const [timingPreset, setTimingPreset] = useState<InstructorGuideTimingPreset>(() => (
     parseInstructorGuideTimingPreset(searchParams.get("timing"))
   ));
@@ -281,13 +278,6 @@ const AdminTeachingMaterials = () => {
     moveProjector(projectorStep + 1);
   };
 
-  const printGuide = (audience: InstructorGuideAudience) => {
-    if (!pairReady) return;
-    flushSync(() => setPrintAudience(audience));
-    window.print();
-    setPrintAudience("instructor");
-  };
-
   const exportOfflineGuide = () => {
     if (!guide || !selected || !pairReady) return;
     const exportInput = {
@@ -392,10 +382,16 @@ const AdminTeachingMaterials = () => {
                   미션 {selected.scenarioId}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" disabled={!pairReady} onClick={openProjector}>교실 큰 화면</Button>
-                  <Button size="sm" variant="outline" disabled={!pairReady} onClick={() => printGuide("student")}>학생 활동지 인쇄</Button>
-                  <Button size="sm" variant="outline" disabled={!pairReady} onClick={exportOfflineGuide}>오프라인 수업본(.html)</Button>
-                  <Button size="sm" disabled={!pairReady} onClick={() => printGuide("instructor")}>교수자용 인쇄·PDF</Button>
+                  <Button size="sm" disabled={!pairReady} title="전체 화면 보기" onClick={openProjector}>프로젝터 화면</Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!pairReady}
+                    title="오프라인 수업본"
+                    onClick={exportOfflineGuide}
+                  >
+                    HTML
+                  </Button>
                 </div>
               </div>
             </div>
@@ -411,7 +407,6 @@ const AdminTeachingMaterials = () => {
           <>
             <InstructorMissionGuide
               guide={guide}
-              audience={printAudience}
               timingPlan={timingPlan}
               missionLabel={secondaryGuide && timingPreset === 90 ? "미션 1" : undefined}
             />
@@ -420,7 +415,6 @@ const AdminTeachingMaterials = () => {
                 <div className="mt-5 print:mt-0 print:[break-before:page]">
                   <InstructorMissionGuide
                     guide={secondaryGuide}
-                    audience={printAudience}
                     timingPlan={null}
                     missionLabel="미션 2"
                   />
@@ -428,7 +422,6 @@ const AdminTeachingMaterials = () => {
                 <InstructorMissionPairComparison
                   firstGuide={guide}
                   secondGuide={secondaryGuide}
-                  audience={printAudience}
                 />
               </>
             )}
