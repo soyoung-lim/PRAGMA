@@ -2728,3 +2728,25 @@
   `2c1161f4-0dee-4d63-bc98-ae6797a69230`이며 상태는 `SUCCESS`다.
 - 해석: 연구설계와 제품 UI의 불일치를 제거하면서 데이터 삭제 위험과 불필요한 DB 작업을 피했다.
 - 관련 Decision / Evidence: `DEC-20260826-10`, `EVD-20260826-10`
+
+## ITER-20260826-11 · 교수자 공개 계약 전환과 전문가 DB 이력 동결
+
+- 날짜: 2026-08-26
+- 시작 문제: 제품 표면은 교수자 최종 검수를 종료점으로 표시했지만 실제 learner RLS·lineage trigger와
+  개선 materializer에는 전문가 공개 gate와 전문가 불일치·Gold 의존성이 남아 있었다.
+- 변경: 교수자 확정 reviewed 미션을 학습자 SELECT와 이벤트 저장에 허용하고 covered lineage의
+  expert gate 강제 trigger를 제거했다. 전문가 테이블의 인증 사용자 쓰기 정책·권한과 과거 전문가·
+  Gold·공개 RPC 실행 권한을 회수했다. 새 materializer와 UI는 동의가 유효한 반복 학습자 이견과
+  교수자 승인·기각만 다룬다.
+- 안전 경계: 테이블·행·컬럼·함수 정의를 삭제하거나 콘텐츠를 backfill하지 않았다. service role은
+  감사·복구를 위해 보존했다.
+- 예상과 달랐던 점: 첫 DB 적용은 trusted manifest migration이 pack release RPC에 UUID 인자를 하나
+  추가한 사실을 직접 시그니처 목록이 반영하지 못해 실패했다. migration transaction 전체가
+  롤백된 것을 확인하고 함수명으로 현행 overload 전체를 찾는 권한 회수로 교정해 정상 적용했다.
+- 검증 결과: typecheck, 표적 5파일 15 tests, 교정 후 migration 계약 3 tests와 diff check가 통과했다.
+  dry-run은 신규 migration 1건만 표시했고 migration `20260826125000`이 운영 DB에 적용됐다. 기능
+  커밋은 `308aba6`, 교정 커밋은 `abc7533`, Railway deployment는
+  `30b9cde4-5a8a-4bd9-afc4-8904c7cdd311`이며 상태는 `SUCCESS`다.
+- 해석: 잘못된 연구 역할을 현재 공개·개선 계약에서 제거하면서 과거 감사 증거와 복구 가능성을
+  보존했다.
+- 관련 Decision / Evidence: `DEC-20260826-11`, `EVD-20260826-11`
