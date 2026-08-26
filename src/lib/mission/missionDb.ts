@@ -52,10 +52,10 @@ export async function fetchMissionByScenario(scenarioId: string): Promise<Runnab
   if (!runnable) {
     throw new Error(
       status === "generated"
-        ? "이 미션은 아직 내부 검토 완료(reviewed)되지 않았습니다."
+        ? "이 학습 콘텐츠는 아직 교수자 최종 검수를 마치지 않았습니다."
         : status === "reviewed" && releaseGateMode === "expert_v1"
-          ? "이 미션은 내부 검토를 마쳤지만 전문가·Gold 회귀 공개 gate를 통과하지 않았습니다."
-        : `실행할 수 없는 미션 상태입니다(${status ?? "없음"}).`,
+          ? "이 학습 콘텐츠는 검수를 마쳤지만 아직 학습자 공개 상태가 아닙니다."
+        : `실행할 수 없는 학습 콘텐츠 상태입니다(${status ?? "없음"}).`,
     );
   }
 

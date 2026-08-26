@@ -1,4 +1,3 @@
-import type { ExpertReviewSummary } from "@/lib/pragma/expertReviewConsensus";
 import type { GoldRegressionReport } from "@/lib/pragma/goldRegression";
 
 export interface MissionEventSignalInput {
@@ -12,10 +11,9 @@ export interface MissionEventSignalInput {
   realization_pack_id: string | null;
   realization_pack_version: string | null;
 }
-
 export interface ImprovementSignal {
   signal_key: string;
-  signal_type: "learner_dissent_cluster" | "gold_regression_drift" | "expert_disagreement";
+  signal_type: "learner_dissent_cluster" | "gold_regression_drift";
   target_feature: string | null;
   content_hash: string | null;
   lineage_version_id: string | null;
@@ -25,8 +23,7 @@ export interface ImprovementSignal {
   metrics: Record<string, number | string | null>;
   suggested_action:
     | "review_content_and_rule_scope"
-    | "review_gold_label_or_evaluator"
-    | "resolve_expert_boundary_case";
+    | "review_gold_label_or_evaluator";
   auto_apply_allowed: false;
 }
 
@@ -125,37 +122,6 @@ export function signalFromGoldRegression(
       mismatch_count: report.mismatches.length,
     },
     suggested_action: "review_gold_label_or_evaluator",
-    auto_apply_allowed: false,
-  };
-}
-
-export function signalFromExpertSummary(
-  summary: ExpertReviewSummary,
-  lineageVersionId: string,
-): ImprovementSignal | null {
-  if (summary.status !== "disagreement") return null;
-  return {
-    signal_key: `expert-disagreement:${lineageVersionId}`,
-    signal_type: "expert_disagreement",
-    target_feature: null,
-    content_hash: null,
-    lineage_version_id: lineageVersionId,
-    realization_pack_id: null,
-    realization_pack_version: null,
-    source_refs: [
-      ...summary.candidate_disagreements.map(
-        (item) => `${lineageVersionId}::candidate::${item.candidate_id}`,
-      ),
-      ...summary.lineage_claim_disagreements.map(
-        (item) => `${lineageVersionId}::claim::${item.claim_id}`,
-      ),
-    ],
-    metrics: {
-      reviewer_count: summary.reviewer_count,
-      candidate_disagreement_count: summary.candidate_disagreements.length,
-      lineage_claim_disagreement_count: summary.lineage_claim_disagreements.length,
-    },
-    suggested_action: "resolve_expert_boundary_case",
     auto_apply_allowed: false,
   };
 }

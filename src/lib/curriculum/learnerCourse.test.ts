@@ -123,7 +123,7 @@ describe("학습자 편성 강좌 조립", () => {
     expect(course.weeks[1].scenarios).toEqual([]);
   });
 
-  it("새 품질 게이트 자료는 내부 reviewed가 아니라 released 뒤에만 노출한다", () => {
+  it("DB가 공개한 자료만 학습자에게 노출한다", () => {
     const course = assembleLearnerCourse(
       source(
         [assignment(2, "waiting", 0), assignment(2, "released", 1)],

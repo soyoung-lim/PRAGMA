@@ -1,7 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 
 type ResearchStep = "missions" | "release";
-type LegacyResearchStep = "calibration" | "gold";
 
 const STEPS: Array<{
   id: ResearchStep;
@@ -35,7 +34,7 @@ const STEPS: Array<{
   },
 ];
 
-export const ResearchWorkflowGuide = ({ current }: { current: ResearchStep | LegacyResearchStep | "overview" }) => {
+export const ResearchWorkflowGuide = ({ current }: { current: ResearchStep | "overview" }) => {
   const { pathname } = useLocation();
   const preview = pathname.startsWith("/prototype/");
   const activeIndex = STEPS.findIndex((step) => step.id === current);

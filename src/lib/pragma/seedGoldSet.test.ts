@@ -11,7 +11,6 @@ describe("ko→zh seed Gold set", () => {
       expect(SeedGoldCaseSchema.safeParse(item).success, item.case_id).toBe(true);
       expect(item.review.status).toBe("researcher_seed");
       expect(item.review.researcher_reviewer_id).toBeNull();
-      expect(item.review.expert_reviews).toEqual([]);
       expect(item.candidates.every((candidate) => candidate.semantic_fidelity === "pending_researcher_review"))
         .toBe(true);
     }

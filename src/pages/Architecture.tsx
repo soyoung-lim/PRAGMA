@@ -223,9 +223,9 @@ const Architecture = () => (
           <Down />
           <Node lane="supply" title="1. 기준답안 연구 책임자 판정" desc={`9화행 × 5개 = ${FINAL_GOLD_POPULATION_COUNT}개 · 시스템 운영 게이트 설정`} />
           <Down />
-          <Node lane="supply" title="2. 기준답안 외부 전문가 확인" desc="9개 화행 × 2개 층화표본 · 전문가 2인 독립 확인" />
+          <Node lane="supply" title="2. 기준답안 자동 회귀 점검" desc="연구자 확정 기준답안으로 품질 점검 자동화의 작동 조건 확인" />
           <Down />
-          <Node lane="supply" title="3. 자동 점검·경고 집중 검토" desc="504개 전량 자동 점검 · 연구 책임자는 경고 문항 집중 확인" />
+          <Node lane="supply" title="3. 콘텐츠 자동 점검·교수자 검수" desc="504개 전량 자동 점검 · 교수자는 경고 문항을 우선 확인하고 최종 승인" />
           <Down />
           <Node
             lane="supply"

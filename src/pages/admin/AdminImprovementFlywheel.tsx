@@ -24,7 +24,7 @@ const db = supabase as any;
 type CandidateRow = {
   id: string;
   candidate_key: string;
-  signal_type: "learner_dissent_cluster" | "expert_disagreement" | "gold_regression_drift";
+  signal_type: "learner_dissent_cluster" | "gold_regression_drift";
   target_feature: string | null;
   content_hash: string | null;
   realization_pack_id: string | null;
@@ -46,15 +46,15 @@ type RegressionRow = { id: string; realization_pack_id: string; realization_pack
 
 const PREVIEW_CANDIDATE: CandidateRow = {
   id: "51000000-0000-4000-8000-000000000001",
-  candidate_key: "expert:preview-fingerprint",
-  signal_type: "expert_disagreement",
+  candidate_key: "learner:preview-fingerprint",
+  signal_type: "learner_dissent_cluster",
   target_feature: "request_mitigation_optionality",
   content_hash: "24adf002ee1d-preview",
   realization_pack_id: "pragma_ko_zh_request_refusal_thanks_v1",
   realization_pack_version: "1.2.0",
-  source_refs: ["expert-review:5200…001", "expert-review:5200…002", "claim:ILC-003"],
-  metrics: { reviewer_count: 2, review_round: 1, candidate_disagreement_keys: ["ILC-003"], lineage_claim_disagreement_keys: ["ILC-003"] },
-  suggested_action: "resolve_expert_boundary_case",
+  source_refs: ["learner-event:5200…001", "learner-event:5200…002", "learner-event:5200…003"],
+  metrics: { distinct_participant_count: 3, distinct_attempt_count: 3, dissent_event_count: 3 },
+  suggested_action: "review_content_and_rule_scope",
   proposed_change: null,
   evidence_fingerprint: "a".repeat(64),
   source_window_start: "2026-08-14T23:00:00.000Z",
@@ -62,8 +62,8 @@ const PREVIEW_CANDIDATE: CandidateRow = {
   created_at: "2026-08-15T00:00:00.000Z",
 };
 const PREVIEW_SOURCES: SourceRow[] = [
-  { id: "s1", candidate_id: PREVIEW_CANDIDATE.id, source_type: "mission_expert_review", source_id: "52000000-0000-4000-8000-000000000001", source_field: "round:1", source_snapshot: { overall_verdict: "approve" }, added_at: PREVIEW_CANDIDATE.created_at },
-  { id: "s2", candidate_id: PREVIEW_CANDIDATE.id, source_type: "mission_claim_disagreement", source_id: "53000000-0000-4000-8000-000000000001", source_field: "round:1:claim:ILC-003", source_snapshot: { review_count: 2 }, added_at: PREVIEW_CANDIDATE.created_at },
+  { id: "s1", candidate_id: PREVIEW_CANDIDATE.id, source_type: "learner_mission_event", source_id: "52000000-0000-4000-8000-000000000001", source_field: "learner_dissent_submitted", source_snapshot: { participant_count: 3 }, added_at: PREVIEW_CANDIDATE.created_at },
+  { id: "s2", candidate_id: PREVIEW_CANDIDATE.id, source_type: "learner_mission_event", source_id: "53000000-0000-4000-8000-000000000001", source_field: "learner_dissent_submitted", source_snapshot: { attempt_count: 3 }, added_at: PREVIEW_CANDIDATE.created_at },
 ];
 const PREVIEW_DECISION: DecisionRow = { id: "d1", candidate_id: PREVIEW_CANDIDATE.id, decision: "triage", note_ko: "중국어 완화 실현 경계 사례로 검토", resulting_pack_id: null, resulting_pack_version: null, resulting_gold_case_ids: [], resulting_pack_release_id: null, gold_regression_run_id: null, decided_at: "2026-08-15T00:10:00.000Z" };
 const PREVIEW_ATTESTATION: ManifestAttestationRow = {
@@ -82,7 +82,6 @@ const PREVIEW_ATTESTATION: ManifestAttestationRow = {
 
 const LABELS: Record<CandidateRow["signal_type"], string> = {
   learner_dissent_cluster: "여러 학습자가 같은 답에 제기한 이견",
-  expert_disagreement: "전문가가 반복해서 다르게 판단한 항목",
   gold_regression_drift: "품질검사 기준답안 자동 재시험의 성능 저하",
 };
 
@@ -128,7 +127,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
     if (preview) { setLoading(false); return; }
     setLoading(true);
     const [candidateResult, sourceResult, decisionResult, releaseResult, attestationResult, regressionResult] = await Promise.all([
-      db.from("pragma_improvement_candidates").select("id,candidate_key,signal_type,target_feature,content_hash,realization_pack_id,realization_pack_version,source_refs,metrics,suggested_action,proposed_change,evidence_fingerprint,source_window_start,source_window_end,created_at").order("created_at", { ascending: false }),
+      db.from("pragma_improvement_candidates").select("id,candidate_key,signal_type,target_feature,content_hash,realization_pack_id,realization_pack_version,source_refs,metrics,suggested_action,proposed_change,evidence_fingerprint,source_window_start,source_window_end,created_at").neq("signal_type", "expert_disagreement").order("created_at", { ascending: false }),
       db.from("pragma_improvement_candidate_sources").select("id,candidate_id,source_type,source_id,source_field,source_snapshot,added_at").order("added_at", { ascending: false }),
       db.from("pragma_improvement_decisions").select("id,candidate_id,decision,note_ko,resulting_pack_id,resulting_pack_version,resulting_gold_case_ids,resulting_pack_release_id,gold_regression_run_id,decided_at").order("decided_at", { ascending: false }),
       db.from("pragma_realization_pack_releases").select("id,pack_id,pack_version,artifact_hash,prompt_snapshot_hash,evidence_snapshot_hash,source_commit_ref,release_note_ko,source_candidate_id,manifest_attestation_id,created_at").order("created_at", { ascending: false }),
@@ -228,7 +227,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
       p_resulting_gold_case_ids: ids,
       p_gold_regression_run_id: regressionId,
     });
-    setMessage(error ? error.message : "새 pack manifest·외부 승인 Gold·passing regression을 묶어 applied를 append했습니다.");
+    setMessage(error ? error.message : "새 규칙집·연구자 확정 기준답안·자동 재시험을 묶어 반영 완료 기록을 저장했습니다.");
     setSaving(false); if (!error) await load();
   };
 
@@ -260,7 +259,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
       </section>
 
       <section className="rounded-xl border bg-white p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold"><DatabaseZap className="h-5 w-5" />반복되는 문제 신호 찾기</h2><p className="mt-1 text-sm leading-6 text-slate-600">최근 180일 동안 서로 다른 학습자 3명 이상이 같은 문항에 이의를 제기하거나, 전문가 판정이 반복해서 갈리는 경우만 후보로 만듭니다. 이미 사용한 기록은 다시 세지 않습니다.</p></div><Button onClick={materialize} disabled={preview || saving}><RefreshCw className="mr-1 h-4 w-4" />새로운 문제 신호 찾기</Button></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold"><DatabaseZap className="h-5 w-5" />반복되는 문제 신호 찾기</h2><p className="mt-1 text-sm leading-6 text-slate-600">최근 180일 동안 서로 다른 학습자 3명 이상이 같은 문항에 이의를 제기했거나, 기준답안 자동 재시험에서 성능 저하가 확인된 경우만 후보로 만듭니다. 이미 사용한 기록은 다시 세지 않습니다.</p></div><Button onClick={materialize} disabled={preview || saving}><RefreshCw className="mr-1 h-4 w-4" />새로운 문제 신호 찾기</Button></div>
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
@@ -294,7 +293,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
           </section>
 
           <section className="rounded-xl border bg-white p-5">
-            <h2 className="font-semibold">새 버전의 품질을 다시 확인하고 반영 완료</h2><p className="mt-1 text-sm text-slate-600">새 규칙집이 영향을 준 품질검사 사례를 외부 전문가가 다시 확인하고, {GOLD_SPEECH_ACTS.length}화행×{FINAL_GOLD_CASES_PER_SPEECH_ACT}개 기준답안 {FINAL_GOLD_POPULATION_COUNT}개의 자동 재시험도 통과해야 실제 개선 완료로 기록됩니다.</p>
+            <h2 className="font-semibold">새 버전의 품질을 다시 확인하고 반영 완료</h2><p className="mt-1 text-sm text-slate-600">교수자가 새 규칙집이 영향을 준 품질검사 사례를 확인하고, {GOLD_SPEECH_ACTS.length}화행×{FINAL_GOLD_CASES_PER_SPEECH_ACT}개 기준답안 {FINAL_GOLD_POPULATION_COUNT}개의 자동 재시험도 통과해야 실제 개선 완료로 기록됩니다.</p>
             <div className="mt-3 grid gap-3"><Select value={packReleaseId} onValueChange={(value) => { setPackReleaseId(value); setRegressionId(""); }}><SelectTrigger><SelectValue placeholder="이 개선으로 만든 새 규칙집 선택" /></SelectTrigger><SelectContent>{candidateReleases.map((item) => <SelectItem key={item.id} value={item.id}>{item.pack_id}@{item.pack_version} · {short(item.source_commit_ref, 12)}</SelectItem>)}</SelectContent></Select><Select value={regressionId} onValueChange={setRegressionId}><SelectTrigger><SelectValue placeholder="통과한 기준답안 자동 재시험 선택" /></SelectTrigger><SelectContent>{compatibleRegressions.map((item) => <SelectItem key={item.id} value={item.id}>{item.evaluator_version} · 적절성 {String(item.report.band_accuracy ?? "—")} / 의미 {String(item.report.semantic_accuracy ?? "—")}</SelectItem>)}</SelectContent></Select><Textarea value={goldCaseIds} onChange={(event) => setGoldCaseIds(event.target.value)} placeholder="다시 확인한 품질검사 사례 ID (쉼표 또는 줄바꿈)" /><Textarea value={applyNote} onChange={(event) => setApplyNote(event.target.value)} placeholder="어떻게 개선했고 무엇으로 확인했는지 요약" /></div><Button className="mt-3" onClick={apply} disabled={preview || saving || currentDecision?.decision !== "approve" || !packReleaseId || !regressionId || !goldCaseIds.trim() || !applyNote.trim()}>품질 확인 근거와 함께 반영 완료</Button>
           </section>
         </div>

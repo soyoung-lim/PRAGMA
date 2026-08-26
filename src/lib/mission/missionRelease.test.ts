@@ -7,7 +7,7 @@ describe("mission learner release state", () => {
     expect(isMissionReleasedForLearner({ mission_status: "released", release_gate_mode: "expert_v1" })).toBe(true);
   });
 
-  it("blocks covered missions that have only internal review", () => {
+  it("blocks covered missions that are not yet publicly released", () => {
     expect(isMissionReleasedForLearner({ mission_status: "reviewed", release_gate_mode: "expert_v1" })).toBe(false);
   });
 

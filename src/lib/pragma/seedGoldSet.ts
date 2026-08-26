@@ -67,14 +67,8 @@ export const SeedGoldCaseSchema = z.object({
   semantic_invariant_ko: z.string().min(1),
   candidates: z.array(GoldCandidateSchema).length(3),
   review: z.object({
-    status: z.enum(["researcher_seed", "researcher_approved", "expert_approved", "retired"]),
+    status: z.enum(["researcher_seed", "researcher_approved", "retired"]),
     researcher_reviewer_id: z.string().min(1).nullable(),
-    expert_reviews: z.array(z.object({
-      reviewer_id: z.string().min(1),
-      verdict: z.enum(["approve", "revise", "reject"]),
-      reviewed_at: z.string().datetime(),
-      note_ko: z.string().min(1),
-    })),
     note_ko: z.string().min(1),
   }),
   provenance: z.object({
@@ -152,9 +146,6 @@ export const SeedGoldCaseSchema = z.object({
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["candidates"], message: "승인 상태에는 모든 후보의 의미 충실성 pass가 필요합니다." });
     }
   }
-  if (item.review.status === "expert_approved" && item.review.expert_reviews.length < 2) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["review", "expert_reviews"], message: "전문가 승인에는 독립 검토 2건 이상이 필요합니다." });
-  }
 });
 
 export type SeedGoldCase = z.infer<typeof SeedGoldCaseSchema>;
@@ -208,8 +199,7 @@ const seedCase = (input: CaseInput): SeedGoldCase =>
     review: {
       status: "researcher_seed",
       researcher_reviewer_id: null,
-      expert_reviews: [],
-      note_ko: "회귀 구조를 위한 시드. 연구자 내용 검토와 외부 전문가 승인을 거치기 전에는 Gold 승인본으로 사용하지 않는다.",
+      note_ko: "회귀 구조를 위한 시드. 연구자 내용 검토를 거치기 전에는 확정 기준답안으로 사용하지 않는다.",
     },
     provenance: {
       curation_method: "codex_assisted_seed_pending_researcher_review",

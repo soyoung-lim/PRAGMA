@@ -19,11 +19,11 @@ export function isMissionReleasedForLearner(
 }
 
 export function missionReleaseLabel(state: MissionReleaseState): string {
-  if (state.mission_status === "released") return "전문가·회귀 통과(released)";
+  if (state.mission_status === "released") return "최종 공개 완료";
   if (state.mission_status === "reviewed" && state.release_gate_mode === "expert_v1") {
-    return "내부 검수 완료 · 전문가 공개 대기";
+    return "내부 검수 완료 · 공개 대기";
   }
-  if (state.mission_status === "reviewed") return "레거시 검토 완료";
-  if (state.mission_status === "generated") return "미션 생성됨";
-  return "코어(검수 대기)";
+  if (state.mission_status === "reviewed") return "검토 완료";
+  if (state.mission_status === "generated") return "학습 콘텐츠 생성 완료";
+  return "검수 대기";
 }

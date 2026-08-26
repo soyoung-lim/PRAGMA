@@ -11,7 +11,6 @@ import { REPRESENTATIVE_MISSION_SCENARIO_ID } from "./lib/demo/representativeMis
 
 const RequireApproved = lazy(() => import("./components/RequireApproved"));
 const RequireAdmin = lazy(() => import("./components/RequireAdmin"));
-const RequireAuthenticated = lazy(() => import("./components/RequireAuthenticated"));
 const Index = lazy(() => import("./pages/Index.tsx"));
 const Architecture = lazy(() => import("./pages/Architecture.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
@@ -32,15 +31,10 @@ const AdminDecisionTraces = lazy(() => import("./pages/admin/AdminDecisionTraces
 const AdminDataBackup = lazy(() => import("./pages/admin/AdminDataBackup.tsx"));
 const AdminResearchQa = lazy(() => import("./pages/admin/AdminQualityOverview.tsx"));
 const AdminGoldCalibration = lazy(() => import("./pages/admin/AdminGoldCalibration.tsx"));
-const AdminExpertReviewOps = lazy(() => import("./pages/admin/AdminExpertReviewOps.tsx"));
-const AdminGoldExpertOps = lazy(() => import("./pages/admin/AdminGoldExpertOps.tsx"));
 const AdminMissionRelease = lazy(() => import("./pages/admin/AdminFinalApproval.tsx"));
 const AdminFinalCorpusReview = lazy(() => import("./pages/admin/AdminFinalCorpusReview.tsx"));
 const AdminImprovementFlywheel = lazy(() => import("./pages/admin/AdminImprovementFlywheel.tsx"));
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin.tsx"));
-const ExpertLogin = lazy(() => import("./pages/ExpertLogin.tsx"));
-const ExpertReviewQueue = lazy(() => import("./pages/expert/ExpertReviewQueue.tsx"));
-const ExpertGoldReviewQueue = lazy(() => import("./pages/expert/ExpertGoldReviewQueue.tsx"));
 const StudentLogin = lazy(() => import("./pages/StudentLogin.tsx"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval.tsx"));
 const ProfileSetup = lazy(() => import("./pages/ProfileSetup.tsx"));
@@ -96,9 +90,10 @@ const App = () => (
             }
           />
           <Route path="/student-login" element={<StudentLogin />} />
-          <Route path="/expert-login" element={<ExpertLogin />} />
-          <Route path="/expert/reviews" element={<RequireAuthenticated><ExpertReviewQueue /></RequireAuthenticated>} />
-          <Route path="/expert/gold-reviews" element={<RequireAuthenticated><ExpertGoldReviewQueue /></RequireAuthenticated>} />
+          {/* 폐기된 콘텐츠 전문가 검수 주소는 현행 품질관리 흐름으로 연결한다. */}
+          <Route path="/expert-login" element={<Navigate to="/admin/research-qa" replace />} />
+          <Route path="/expert/reviews" element={<Navigate to="/admin/research-qa" replace />} />
+          <Route path="/expert/gold-reviews" element={<Navigate to="/admin/research-qa" replace />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/profile-setup" element={<ProfileSetup />} />
           <Route path="/home" element={<Home />} />
@@ -227,38 +222,10 @@ const App = () => (
                 : <Navigate to="/admin/research-qa/calibration" replace />
             }
           />
-          <Route
-            path="/prototype/expert-reviews"
-            element={
-              import.meta.env.DEV
-                ? <ExpertReviewQueue preview />
-                : <Navigate to="/expert/reviews" replace />
-            }
-          />
-          <Route
-            path="/prototype/expert-review-ops"
-            element={
-              import.meta.env.DEV
-                ? <AdminExpertReviewOps preview />
-                : <Navigate to="/admin/research-qa/expert-reviews" replace />
-            }
-          />
-          <Route
-            path="/prototype/expert-gold-reviews"
-            element={
-              import.meta.env.DEV
-                ? <ExpertGoldReviewQueue preview />
-                : <Navigate to="/expert/gold-reviews" replace />
-            }
-          />
-          <Route
-            path="/prototype/gold-expert-ops"
-            element={
-              import.meta.env.DEV
-                ? <AdminGoldExpertOps preview />
-                : <Navigate to="/admin/research-qa/gold-experts" replace />
-            }
-          />
+          <Route path="/prototype/expert-reviews" element={<Navigate to="/admin/research-qa" replace />} />
+          <Route path="/prototype/expert-review-ops" element={<Navigate to="/admin/research-qa" replace />} />
+          <Route path="/prototype/expert-gold-reviews" element={<Navigate to="/admin/research-qa" replace />} />
+          <Route path="/prototype/gold-expert-ops" element={<Navigate to="/admin/research-qa" replace />} />
           <Route
             path="/prototype/mission-release"
             element={
@@ -312,8 +279,8 @@ const App = () => (
           <Route path="/admin/data-backup" element={<RequireAdmin><AdminDataBackup /></RequireAdmin>} />
           <Route path="/admin/research-qa" element={<RequireAdmin><AdminResearchQa /></RequireAdmin>} />
           <Route path="/admin/research-qa/calibration" element={<RequireAdmin><AdminGoldCalibration /></RequireAdmin>} />
-          <Route path="/admin/research-qa/expert-reviews" element={<RequireAdmin><AdminExpertReviewOps /></RequireAdmin>} />
-          <Route path="/admin/research-qa/gold-experts" element={<RequireAdmin><AdminGoldExpertOps /></RequireAdmin>} />
+          <Route path="/admin/research-qa/expert-reviews" element={<Navigate to="/admin/research-qa" replace />} />
+          <Route path="/admin/research-qa/gold-experts" element={<Navigate to="/admin/research-qa" replace />} />
           <Route path="/admin/research-qa/final-review" element={<RequireAdmin><AdminFinalCorpusReview /></RequireAdmin>} />
           <Route path="/admin/research-qa/releases" element={<RequireAdmin><AdminMissionRelease /></RequireAdmin>} />
           <Route path="/admin/research-qa/improvements" element={<RequireAdmin><AdminImprovementFlywheel /></RequireAdmin>} />
