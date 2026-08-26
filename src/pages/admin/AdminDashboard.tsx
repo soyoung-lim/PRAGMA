@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
+import { AdminCompletionWorkflow } from "@/components/admin/AdminCompletionWorkflow";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -259,6 +260,8 @@ const AdminDashboard = () => {
       title="운영 대시보드"
       description="콘텐츠 생성부터 검수·편성·학습자 실행까지, 지금 확인하고 처리할 운영 현황을 보여줍니다."
     >
+      <AdminCompletionWorkflow />
+
       {/* Row 0: 분리 계수 — 단계별 수량을 한 숫자로 합치지 않는다 (0-g·46 → 0-q·101) */}
       <SectionHeader title="콘텐츠 단계별 현황" badge={<LiveBadge />} />
       {/* 다섯 숫자가 같은 모집단의 순차 감소로 읽히면 안 된다 — ①은 코어, ②~⑤는

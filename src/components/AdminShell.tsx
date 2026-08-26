@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { HomeBrand } from "@/components/HomeBrand";
-import { AdminCompletionWorkflow } from "@/components/admin/AdminCompletionWorkflow";
 import {
   ADMIN_DASHBOARD_ITEM,
   ADMIN_NAV_GROUPS,
@@ -118,8 +117,6 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
               ))}
             </select>
           </div>
-
-          <AdminCompletionWorkflow pathname={pathname} />
 
           <div className="flex items-stretch gap-3 print:hidden">
             <span
