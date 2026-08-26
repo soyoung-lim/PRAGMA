@@ -5,16 +5,25 @@ import { AdminShell } from "@/components/AdminShell";
 import {
   INSTRUCTOR_GUIDE_STEP_COUNT,
   InstructorMissionGuide,
+  InstructorMissionPairComparison,
   type InstructorGuideAudience,
 } from "@/components/admin/InstructorMissionGuide";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { LEVEL, SPEECH_ACT_UI, type LearnerLevel, type SpeechActUI } from "@/lib/pragma/enums";
+import {
+  LEVEL,
+  SPEECH_ACT_UI,
+  type LanguageDirection,
+  type LearnerLevel,
+  type SpeechActUI,
+} from "@/lib/pragma/enums";
 import { buildInstructorMissionGuide } from "@/lib/pragma/instructorGuide";
 import {
   INSTRUCTOR_GUIDE_TIMING_PRESETS,
   instructorGuideTimingPlan,
+  isCompatibleInstructorGuideSecondary,
+  parseInstructorGuideTimingPreset,
   type InstructorGuideTimingPreset,
 } from "@/lib/pragma/instructorGuideTiming";
 import { normalizeMission, type MissionRuntime } from "@/lib/pragma/missionSchema";
@@ -24,6 +33,8 @@ type TeachingMission = {
   scenarioId: string;
   speechAct: SpeechActUI | null;
   learnerLevel: LearnerLevel | null;
+  mode: string | null;
+  direction: LanguageDirection;
   missionStatus: string;
   releaseGateMode: string | null;
   reviewedAt: string | null;
@@ -37,6 +48,7 @@ const AdminTeachingMaterials = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [missions, setMissions] = useState<TeachingMission[]>([]);
   const [selectedId, setSelectedId] = useState(searchParams.get("mission") ?? "");
+  const [secondaryId, setSecondaryId] = useState(searchParams.get("mission2") ?? "");
   const [speechActFilter, setSpeechActFilter] = useState<"all" | SpeechActUI>("all");
   const [levelFilter, setLevelFilter] = useState<"all" | LearnerLevel>("all");
   const [search, setSearch] = useState("");
@@ -44,9 +56,12 @@ const AdminTeachingMaterials = () => {
   const [error, setError] = useState<string | null>(null);
   const [projectorOpen, setProjectorOpen] = useState(false);
   const [projectorStep, setProjectorStep] = useState(1);
+  const [projectorMissionIndex, setProjectorMissionIndex] = useState<0 | 1>(0);
   const [answersRevealed, setAnswersRevealed] = useState(false);
   const [printAudience, setPrintAudience] = useState<InstructorGuideAudience>("instructor");
-  const [timingPreset, setTimingPreset] = useState<InstructorGuideTimingPreset>(30);
+  const [timingPreset, setTimingPreset] = useState<InstructorGuideTimingPreset>(() => (
+    parseInstructorGuideTimingPreset(searchParams.get("timing"))
+  ));
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +88,8 @@ const AdminTeachingMaterials = () => {
           scenarioId: row.scenario_id,
           speechAct: row.speech_act ?? null,
           learnerLevel: row.learner_level ?? null,
+          mode: mission.data.production_task.mode,
+          direction: mission.data.direction,
           missionStatus: row.mission_status,
           releaseGateMode: row.release_gate_mode ?? "legacy_reviewed",
           reviewedAt: row.mission_reviewed_at ?? null,
@@ -80,12 +97,13 @@ const AdminTeachingMaterials = () => {
         } satisfies TeachingMission];
       });
       setMissions(parsed);
-      const requested = searchParams.get("mission");
       setSelectedId((current) => {
         if (current && parsed.some((mission) => mission.scenarioId === current)) return current;
-        if (requested && parsed.some((mission) => mission.scenarioId === requested)) return requested;
         return parsed[0]?.scenarioId ?? "";
       });
+      setSecondaryId((current) => (
+        current && parsed.some((mission) => mission.scenarioId === current) ? current : ""
+      ));
       setLoading(false);
     };
     void load();
@@ -108,6 +126,35 @@ const AdminTeachingMaterials = () => {
     }
   }, [filtered, selectedId]);
 
+  const selected = filtered.find((mission) => mission.scenarioId === selectedId) ?? null;
+  const secondaryCandidates = selected
+    ? missions.filter((mission) => isCompatibleInstructorGuideSecondary(selected, mission))
+    : [];
+  const selectedSecondary = secondaryCandidates.find((mission) => mission.scenarioId === secondaryId) ?? null;
+  const guide = selected
+    ? buildInstructorMissionGuide(
+        selected.mission,
+        selected.speechAct ? SPEECH_ACT_UI[selected.speechAct] : "화행",
+      )
+    : null;
+  const secondaryGuide = timingPreset === 90 && selectedSecondary
+    ? buildInstructorMissionGuide(
+        selectedSecondary.mission,
+        selectedSecondary.speechAct ? SPEECH_ACT_UI[selectedSecondary.speechAct] : "화행",
+      )
+    : null;
+  const timingPlan = instructorGuideTimingPlan(timingPreset);
+  const pairReady = timingPreset !== 90 || secondaryGuide !== null;
+
+  useEffect(() => {
+    if (secondaryId && !selectedSecondary) {
+      setSecondaryId("");
+      const next = new URLSearchParams(searchParams);
+      next.delete("mission2");
+      setSearchParams(next, { replace: true });
+    }
+  }, [secondaryId, selectedSecondary, searchParams, setSearchParams]);
+
   useEffect(() => {
     if (!projectorOpen) return;
     const previousOverflow = document.body.style.overflow;
@@ -123,6 +170,12 @@ const AdminTeachingMaterials = () => {
       }
       if (event.key === "ArrowRight" || event.key === "PageDown") {
         event.preventDefault();
+        if (projectorStep === INSTRUCTOR_GUIDE_STEP_COUNT && projectorMissionIndex === 0 && secondaryGuide) {
+          setProjectorMissionIndex(1);
+          setProjectorStep(1);
+          setAnswersRevealed(false);
+          return;
+        }
         setProjectorStep((current) => {
           const next = Math.min(INSTRUCTOR_GUIDE_STEP_COUNT, current + 1);
           if (next !== current) setAnswersRevealed(false);
@@ -131,6 +184,12 @@ const AdminTeachingMaterials = () => {
       }
       if (event.key === "ArrowLeft" || event.key === "PageUp") {
         event.preventDefault();
+        if (projectorStep === 1 && projectorMissionIndex === 1) {
+          setProjectorMissionIndex(0);
+          setProjectorStep(INSTRUCTOR_GUIDE_STEP_COUNT);
+          setAnswersRevealed(false);
+          return;
+        }
         setProjectorStep((current) => {
           const next = Math.max(1, current - 1);
           if (next !== current) setAnswersRevealed(false);
@@ -150,30 +209,46 @@ const AdminTeachingMaterials = () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [projectorOpen, projectorStep]);
+  }, [projectorMissionIndex, projectorOpen, projectorStep, secondaryGuide]);
 
-  const selected = filtered.find((mission) => mission.scenarioId === selectedId) ?? null;
-  const guide = selected
-    ? buildInstructorMissionGuide(
-        selected.mission,
-        selected.speechAct ? SPEECH_ACT_UI[selected.speechAct] : "화행",
-      )
-    : null;
-  const timingPlan = instructorGuideTimingPlan(timingPreset);
   const learnerVisible = selected
     ? isMissionReleasedForLearner({
         mission_status: selected.missionStatus,
         release_gate_mode: selected.releaseGateMode,
       })
     : false;
+  const activeProjectorGuide = projectorMissionIndex === 1 && secondaryGuide ? secondaryGuide : guide;
 
   const chooseMission = (scenarioId: string) => {
     setSelectedId(scenarioId);
-    setSearchParams({ mission: scenarioId }, { replace: true });
+    setSecondaryId("");
+    const next = new URLSearchParams(searchParams);
+    next.set("mission", scenarioId);
+    next.delete("mission2");
+    setSearchParams(next, { replace: true });
+  };
+
+  const chooseSecondaryMission = (scenarioId: string) => {
+    setSecondaryId(scenarioId);
+    const next = new URLSearchParams(searchParams);
+    if (scenarioId) next.set("mission2", scenarioId);
+    else next.delete("mission2");
+    setSearchParams(next, { replace: true });
+  };
+
+  const chooseTimingPreset = (preset: InstructorGuideTimingPreset) => {
+    setTimingPreset(preset);
+    const next = new URLSearchParams(searchParams);
+    next.set("timing", String(preset));
+    if (preset !== 90) next.delete("mission2");
+    setSearchParams(next, { replace: true });
+    if (preset !== 90) setSecondaryId("");
   };
 
   const openProjector = () => {
+    if (!pairReady) return;
     setProjectorStep(1);
+    setProjectorMissionIndex(0);
     setAnswersRevealed(false);
     setProjectorOpen(true);
   };
@@ -183,7 +258,26 @@ const AdminTeachingMaterials = () => {
     setAnswersRevealed(false);
   };
 
+  const moveToPreviousProjectorStep = () => {
+    if (projectorStep === 1 && projectorMissionIndex === 1) {
+      setProjectorMissionIndex(0);
+      moveProjector(INSTRUCTOR_GUIDE_STEP_COUNT);
+      return;
+    }
+    moveProjector(projectorStep - 1);
+  };
+
+  const moveToNextProjectorStep = () => {
+    if (projectorStep === INSTRUCTOR_GUIDE_STEP_COUNT && projectorMissionIndex === 0 && secondaryGuide) {
+      setProjectorMissionIndex(1);
+      moveProjector(1);
+      return;
+    }
+    moveProjector(projectorStep + 1);
+  };
+
   const printGuide = (audience: InstructorGuideAudience) => {
+    if (!pairReady) return;
     flushSync(() => setPrintAudience(audience));
     window.print();
     setPrintAudience("instructor");
@@ -231,13 +325,39 @@ const AdminTeachingMaterials = () => {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-semibold text-[#53656F]">수업 시간</span>
                 {INSTRUCTOR_GUIDE_TIMING_PRESETS.map((preset) => (
-                  <Button key={preset} size="sm" variant={timingPreset === preset ? "default" : "outline"} onClick={() => setTimingPreset(preset)}>
+                  <Button key={preset} size="sm" variant={timingPreset === preset ? "default" : "outline"} onClick={() => chooseTimingPreset(preset)}>
                     {preset}분
                   </Button>
                 ))}
                 <span className="text-[11.5px] text-[#657178]">{timingPlan.labelKo}</span>
               </div>
-              {timingPreset === 90 && <p className="mt-2 text-[11.5px] text-[#7A6418]">90분은 같은 화행의 미션 A·B 두 세트를 각각 30분 운영한 뒤 30분 비교·전이하는 기준입니다.</p>}
+              {timingPreset === 90 && (
+                <div className="mt-3 rounded-lg border border-[#E8D9AF] bg-[#FFF9E8] p-3">
+                  <p className="text-[11.5px] text-[#6E5B20]">
+                    90분은 같은 화행·수준·언어방향·수행모드의 독립 미션 1·2를 순서대로 운영합니다.
+                  </p>
+                  <label className="mt-2 block">
+                    <span className="mb-1 block text-[11px] font-semibold text-[#53656F]">미션 2</span>
+                    <select
+                      value={secondaryId}
+                      onChange={(event) => chooseSecondaryMission(event.target.value)}
+                      className="h-10 w-full rounded-md border bg-white px-3 text-[12px]"
+                    >
+                      <option value="">두 번째 승인 미션 선택</option>
+                      {secondaryCandidates.map((mission) => (
+                        <option key={mission.scenarioId} value={mission.scenarioId}>
+                          {mission.mission.production_task.situation_ko}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {!secondaryGuide && (
+                    <p className="mt-2 text-[11px] font-semibold text-[#8A5A18]">
+                      두 번째 미션을 선택하면 두 활동지·교실 화면·비교 활동이 함께 열립니다.
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="text-[11.5px] text-[#657178]">
                   <span className={learnerVisible ? "font-semibold text-[#2E7D5B]" : "font-semibold text-[#8A6A18]"}>
@@ -247,9 +367,9 @@ const AdminTeachingMaterials = () => {
                   미션 {selected.scenarioId}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={openProjector}>교실 큰 화면</Button>
-                  <Button size="sm" variant="outline" onClick={() => printGuide("student")}>학생 활동지 인쇄</Button>
-                  <Button size="sm" onClick={() => printGuide("instructor")}>교수자용 인쇄·PDF</Button>
+                  <Button size="sm" variant="outline" disabled={!pairReady} onClick={openProjector}>교실 큰 화면</Button>
+                  <Button size="sm" variant="outline" disabled={!pairReady} onClick={() => printGuide("student")}>학생 활동지 인쇄</Button>
+                  <Button size="sm" disabled={!pairReady} onClick={() => printGuide("instructor")}>교수자용 인쇄·PDF</Button>
                 </div>
               </div>
             </div>
@@ -261,15 +381,44 @@ const AdminTeachingMaterials = () => {
         {!loading && !error && filtered.length === 0 && (
           <p className="rounded-xl border border-dashed bg-white px-5 py-10 text-center text-sm text-muted-foreground">조건에 맞는 승인 미션이 없습니다.</p>
         )}
-        {guide && <InstructorMissionGuide guide={guide} audience={printAudience} timingPlan={timingPlan} />}
+        {guide && (
+          <>
+            <InstructorMissionGuide
+              guide={guide}
+              audience={printAudience}
+              timingPlan={timingPlan}
+              missionLabel={secondaryGuide && timingPreset === 90 ? "미션 1" : undefined}
+            />
+            {secondaryGuide && timingPreset === 90 && (
+              <>
+                <div className="mt-5 print:mt-0 print:[break-before:page]">
+                  <InstructorMissionGuide
+                    guide={secondaryGuide}
+                    audience={printAudience}
+                    timingPlan={null}
+                    missionLabel="미션 2"
+                  />
+                </div>
+                <InstructorMissionPairComparison
+                  firstGuide={guide}
+                  secondGuide={secondaryGuide}
+                  audience={printAudience}
+                />
+              </>
+            )}
+          </>
+        )}
       </div>
 
-      {projectorOpen && guide && (
+      {projectorOpen && activeProjectorGuide && (
         <div className="fixed inset-0 z-[100] flex flex-col bg-[#F7F4EC] text-[#15202B] print:hidden" role="dialog" aria-modal="true" aria-label="교실 큰 화면">
           <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D8D0BC] bg-[#15202B] px-4 py-3 text-white sm:px-6">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#FAD338]">PRAGMA 교실 화면</p>
-              <h2 className="mt-0.5 text-lg font-bold sm:text-xl">{guide.speechActKo} · MPJ5+DCT1</h2>
+              <h2 className="mt-0.5 text-lg font-bold sm:text-xl">
+                {activeProjectorGuide.speechActKo} · MPJ5+DCT1
+                {secondaryGuide && timingPreset === 90 ? ` · 미션 ${projectorMissionIndex + 1}` : ""}
+              </h2>
             </div>
             <div className="flex items-center gap-2">
               {projectorStep >= 2 && projectorStep <= 5 && (
@@ -288,7 +437,7 @@ const AdminTeachingMaterials = () => {
 
           <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
             <InstructorMissionGuide
-              guide={guide}
+              guide={activeProjectorGuide}
               displayMode="projector"
               activeStep={projectorStep}
               answersRevealed={answersRevealed}
@@ -297,12 +446,23 @@ const AdminTeachingMaterials = () => {
           </main>
 
           <footer className="flex items-center justify-between gap-3 border-t border-[#D8D0BC] bg-white px-4 py-3 sm:px-6">
-            <Button variant="outline" disabled={projectorStep === 1} onClick={() => moveProjector(projectorStep - 1)}>← 이전</Button>
-            <p className="text-sm font-bold" aria-live="polite">{projectorStep} / {INSTRUCTOR_GUIDE_STEP_COUNT}</p>
-            {projectorStep === INSTRUCTOR_GUIDE_STEP_COUNT ? (
+            <Button
+              variant="outline"
+              disabled={projectorStep === 1 && projectorMissionIndex === 0}
+              onClick={moveToPreviousProjectorStep}
+            >
+              ← 이전
+            </Button>
+            <p className="text-sm font-bold" aria-live="polite">
+              {secondaryGuide && timingPreset === 90 ? `미션 ${projectorMissionIndex + 1} · ` : ""}
+              {projectorStep} / {INSTRUCTOR_GUIDE_STEP_COUNT}
+            </p>
+            {projectorStep === INSTRUCTOR_GUIDE_STEP_COUNT && (!secondaryGuide || projectorMissionIndex === 1) ? (
               <Button onClick={() => setProjectorOpen(false)}>수업자료로 돌아가기</Button>
             ) : (
-              <Button onClick={() => moveProjector(projectorStep + 1)}>다음 →</Button>
+              <Button onClick={moveToNextProjectorStep}>
+                {projectorStep === INSTRUCTOR_GUIDE_STEP_COUNT && projectorMissionIndex === 0 ? "미션 2로 →" : "다음 →"}
+              </Button>
             )}
           </footer>
         </div>

@@ -68,6 +68,7 @@ import {
   type ThemeCode,
 } from "@/lib/pragma/scenarioTopics";
 import { getTargetFeature, DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
+import { instructorGuideSequencePath } from "@/lib/pragma/instructorGuideTiming";
 import { CurriculumEditor } from "./CurriculumEditor";
 import {
   COURSE_MODE_LABEL,
@@ -1179,7 +1180,17 @@ function WeekRow({
         </span>
         <span className="text-[13.5px] font-medium">{displayTitle}</span>
         {items.length > 0 && (
-          <span className="ml-auto text-[11.5px] text-muted-foreground">미션 {items.length}개</span>
+          <div className="ml-auto flex items-center gap-2 text-[11.5px]">
+            <span className="text-muted-foreground">미션 {items.length}개</span>
+            {items.length >= 2 && (
+              <Link
+                to={instructorGuideSequencePath(items[0].scenario_id, items[1].scenario_id)}
+                className="font-semibold text-[#2F6F63] hover:underline"
+              >
+                90분 묶음 수업자료
+              </Link>
+            )}
+          </div>
         )}
         {isAssignable ? (
           <Button

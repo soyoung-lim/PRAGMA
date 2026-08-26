@@ -69,13 +69,15 @@ export function InstructorMissionGuide({
   activeStep = 1,
   answersRevealed = true,
   timingPlan = instructorGuideTimingPlan(30),
+  missionLabel,
 }: {
   guide: InstructorMissionGuideModel;
   audience?: InstructorGuideAudience;
   displayMode?: InstructorGuideDisplayMode;
   activeStep?: number;
   answersRevealed?: boolean;
-  timingPlan?: InstructorGuideTimingPlan;
+  timingPlan?: InstructorGuideTimingPlan | null;
+  missionLabel?: string;
 }) {
   const showAnswers = audience === "instructor" && (displayMode === "document" || answersRevealed);
   const sectionProps = (number: number) => ({ displayMode, active: activeStep === number });
@@ -93,11 +95,12 @@ export function InstructorMissionGuide({
           <header className="break-inside-avoid rounded-xl bg-[#15202B] px-6 py-5 text-white print:rounded-none print:px-4 print:py-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#FAD338]">
               {audience === "instructor" ? "PRAGMA 교수자 수업자료" : "PRAGMA 학생 활동지"}
+              {missionLabel ? ` · ${missionLabel}` : ""}
             </p>
             <h2 className="mt-1 text-xl font-bold">{guide.speechActKo} · MPJ5+DCT1 {audience === "instructor" ? "운영안" : "활동지"}</h2>
             <p className="mt-2 text-[13px] leading-5 text-[#DCE4E8]">학습목표: {guide.speechActKo} 통합 수행 · 문항 판정 초점: {guide.itemFocusKo}</p>
           </header>
-          {audience === "instructor" && (
+          {audience === "instructor" && timingPlan && (
             <section className="mt-4 break-inside-avoid rounded-xl border border-[#DDD8CB] bg-white p-5 print:rounded-none print:border-[#BEB7A7] print:p-4" aria-label="수업 시간 운영표">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
@@ -276,6 +279,44 @@ export function InstructorMissionGuide({
         </GuideSection>
       </div>
     </article>
+  );
+}
+
+export function InstructorMissionPairComparison({
+  firstGuide,
+  secondGuide,
+  audience = "instructor",
+}: {
+  firstGuide: InstructorMissionGuideModel;
+  secondGuide: InstructorMissionGuideModel;
+  audience?: InstructorGuideAudience;
+}) {
+  return (
+    <section
+      className="mx-auto mt-5 max-w-[920px] break-inside-avoid rounded-2xl border border-[#D8D0BC] bg-white p-5 print:max-w-none print:rounded-none print:p-4"
+      aria-label="두 미션 판단 근거 비교"
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7A6418]">90분 통합 활동</p>
+      <h2 className="mt-1 text-lg font-bold text-[#233542]">미션 1·2 판단 근거 비교</h2>
+      <p className="mt-2 text-[12px] leading-5 text-[#657178]">
+        같은 화행을 서로 다른 두 상황에서 독립적으로 수행한 결과를 나란히 봅니다.
+        {audience === "instructor" && " 두 미션을 통제된 실험쌍이나 특정 변화축의 효과로 해석하지 않습니다."}
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {[
+          ["미션 1", firstGuide.situationKo],
+          ["미션 2", secondGuide.situationKo],
+        ].map(([label, situation]) => (
+          <div key={label} className="rounded-lg border border-[#DDD8CB] bg-[#FAF8F2] p-3">
+            <p className="text-[12px] font-bold text-[#233542]">{label}</p>
+            <p className="mt-1 text-[12px] leading-5 text-[#53656F]">{situation}</p>
+          </div>
+        ))}
+      </div>
+      <WritingSpace prompt="두 미션에서 내가 선택한 판단 근거의 공통점과 차이를 적어보세요." lines={3} />
+      <WritingSpace prompt="두 DCT 수정안에서 유지한 원리와 상황에 맞게 달리 조정한 점을 적어보세요." lines={3} />
+      <WritingSpace prompt="새 상황에 같은 화행을 적용한다면 표현을 어떻게 조정할지 한 문장으로 적어보세요." lines={2} />
+    </section>
   );
 }
 

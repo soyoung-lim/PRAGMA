@@ -1,6 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { InstructorMissionGuide } from "@/components/admin/InstructorMissionGuide";
+import {
+  InstructorMissionGuide,
+  InstructorMissionPairComparison,
+} from "@/components/admin/InstructorMissionGuide";
 import { SAMPLE_MISSION_V5_NATIVE } from "@/lib/mission/missionV4Sample";
 import { buildInstructorMissionGuide } from "@/lib/pragma/instructorGuide";
 import { instructorGuideTimingPlan } from "@/lib/pragma/instructorGuideTiming";
@@ -40,5 +43,19 @@ describe("InstructorMissionGuide output modes", () => {
       <InstructorMissionGuide guide={guide} displayMode="projector" activeStep={5} answersRevealed />,
     );
     expect(screen.getByText(guide.dct.alternatives[0].text)).toBeInTheDocument();
+  });
+
+  it("prints two mission guides with one timing table and one comparison activity", () => {
+    render(
+      <>
+        <InstructorMissionGuide guide={guide} timingPlan={instructorGuideTimingPlan(90)} missionLabel="미션 1" />
+        <InstructorMissionGuide guide={guide} timingPlan={null} missionLabel="미션 2" />
+        <InstructorMissionPairComparison firstGuide={guide} secondGuide={guide} />
+      </>,
+    );
+
+    expect(screen.getAllByLabelText("수업 시간 운영표")).toHaveLength(1);
+    expect(screen.getByLabelText("두 미션 판단 근거 비교")).toBeInTheDocument();
+    expect(screen.getByText(/통제된 실험쌍이나 특정 변화축의 효과로 해석하지 않습니다/)).toBeInTheDocument();
   });
 });

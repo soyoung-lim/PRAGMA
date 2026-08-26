@@ -15,6 +15,14 @@ export type InstructorGuideTimingPlan = {
   activities: readonly InstructorGuideTimingActivity[];
 };
 
+export type InstructorGuideMissionIdentity = {
+  scenarioId: string;
+  speechAct: string | null;
+  learnerLevel: string | null;
+  mode: string | null;
+  direction: string;
+};
+
 const TIMING_PLANS: Record<InstructorGuideTimingPreset, InstructorGuideTimingPlan> = {
   30: {
     preset: 30,
@@ -81,50 +89,50 @@ const TIMING_PLANS: Record<InstructorGuideTimingPreset, InstructorGuideTimingPla
   },
   90: {
     preset: 90,
-    labelKo: "동일 화행 두 세트 통합 운영",
-    descriptionKo: "같은 화행의 완결 미션 A·B를 각각 30분 운영하고 두 세트를 30분간 비교·전이합니다.",
+    labelKo: "같은 화행 두 미션 통합 운영",
+    descriptionKo: "같은 화행의 독립 미션 1·2를 각각 30분 운영하고 두 수행의 판단 근거를 30분간 비교·적용합니다.",
     activities: [
       {
         id: "mission-a",
-        labelKo: "미션 세트 A 수행",
+        labelKo: "미션 1 수행",
         minutes: 20,
         howKo: "첫 번째 MPJ5+DCT1을 최초 판단부터 DCT 수정까지 수행합니다.",
-        outputKo: "세트 A 수행 결과",
+        outputKo: "미션 1 수행 결과",
       },
       {
         id: "discussion-a",
-        labelKo: "세트 A discussion · 5 POINT LESSON",
+        labelKo: "미션 1 discussion · 5 POINT LESSON",
         minutes: 10,
-        howKo: "세트 A의 핵심 상황 단서와 표현 조정점을 정리합니다.",
-        outputKo: "세트 A 판단 원리",
+        howKo: "미션 1의 핵심 상황 단서와 표현 조정점을 정리합니다.",
+        outputKo: "미션 1 판단 근거",
       },
       {
         id: "mission-b",
-        labelKo: "미션 세트 B 수행",
+        labelKo: "미션 2 수행",
         minutes: 20,
         howKo: "같은 화행의 두 번째 MPJ5+DCT1을 독립적으로 수행합니다.",
-        outputKo: "세트 B 수행 결과",
+        outputKo: "미션 2 수행 결과",
       },
       {
         id: "discussion-b",
-        labelKo: "세트 B discussion · 5 POINT LESSON",
+        labelKo: "미션 2 discussion · 5 POINT LESSON",
         minutes: 10,
-        howKo: "세트 B의 핵심 상황 단서와 표현 조정점을 정리합니다.",
-        outputKo: "세트 B 판단 원리",
+        howKo: "미션 2의 핵심 상황 단서와 표현 조정점을 정리합니다.",
+        outputKo: "미션 2 판단 근거",
       },
       {
         id: "compare",
-        labelKo: "A·B 최소대조와 종합",
+        labelKo: "미션 1·2 판단 근거 비교",
         minutes: 20,
-        howKo: "같은 화행이 관계·부담·매체에 따라 어떻게 달라지는지 두 세트를 비교합니다.",
-        outputKo: "화행별 비교표와 공통 원리",
+        howKo: "독립적인 두 상황에서 선택하고 수정한 근거의 공통점과 차이를 나란히 정리합니다.",
+        outputKo: "두 미션 비교표와 공통 판단 원리",
       },
       {
         id: "transfer",
-        labelKo: "재맥락화·출구 활동",
+        labelKo: "새 상황 적용·출구 활동",
         minutes: 10,
-        howKo: "새로운 맥락에 표현을 전이하고 조정 이유를 한 문장으로 설명합니다.",
-        outputKo: "재맥락화 표현과 조정 이유",
+        howKo: "새로운 상황에 표현을 적용하고 조정 이유를 한 문장으로 설명합니다.",
+        outputKo: "새 상황 표현과 조정 이유",
       },
     ],
   },
@@ -138,4 +146,28 @@ export function instructorGuideTimingPlan(preset: InstructorGuideTimingPreset) {
 
 export function instructorGuideTimingTotal(plan: InstructorGuideTimingPlan) {
   return plan.activities.reduce((total, activity) => total + activity.minutes, 0);
+}
+
+export function parseInstructorGuideTimingPreset(value: string | null): InstructorGuideTimingPreset {
+  return value === "50" || value === "90" ? Number(value) as InstructorGuideTimingPreset : 30;
+}
+
+export function isCompatibleInstructorGuideSecondary(
+  first: InstructorGuideMissionIdentity,
+  candidate: InstructorGuideMissionIdentity,
+) {
+  return first.scenarioId !== candidate.scenarioId
+    && first.speechAct === candidate.speechAct
+    && first.learnerLevel === candidate.learnerLevel
+    && first.mode === candidate.mode
+    && first.direction === candidate.direction;
+}
+
+export function instructorGuideSequencePath(firstScenarioId: string, secondScenarioId: string) {
+  const params = new URLSearchParams({
+    mission: firstScenarioId,
+    mission2: secondScenarioId,
+    timing: "90",
+  });
+  return `/admin/package?${params.toString()}`;
 }
