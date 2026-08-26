@@ -300,7 +300,7 @@ const AdminTeachingMaterials = () => {
 
   return (
     <AdminShell
-      title="수업자료 만들기"
+      title="수업자료·교실 화면"
       description="승인된 학습 미션을 수업 시간에 맞춰 교수자 수업자료·학생 활동지·교실 화면으로 구성합니다."
     >
       <div className="max-w-[1080px]">

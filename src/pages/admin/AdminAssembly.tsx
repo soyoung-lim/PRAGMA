@@ -609,7 +609,7 @@ const AdminAssembly = () => {
           )}
           {filtered.length === 0 && (
             <p className="rounded-md border border-dashed border-[#EAE4D2] bg-white px-4 py-8 text-center text-[13px] text-muted-foreground">
-              조건에 맞는 재료가 없습니다. 필터를 조정하거나 AI 시나리오 생성에서 새 시나리오를 만드세요.
+              조건에 맞는 재료가 없습니다. 필터를 조정하거나 시나리오 개별·배치 생성에서 새 시나리오를 만드세요.
             </p>
           )}
         </section>

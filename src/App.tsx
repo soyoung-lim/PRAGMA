@@ -29,7 +29,6 @@ const AdminLearners = lazy(() => import("./pages/admin/AdminLearners.tsx"));
 const AdminExport = lazy(() => import("./pages/admin/AdminExport.tsx"));
 const AdminDecisionTraces = lazy(() => import("./pages/admin/AdminDecisionTraces.tsx"));
 const AdminDataBackup = lazy(() => import("./pages/admin/AdminDataBackup.tsx"));
-const AdminResearchQa = lazy(() => import("./pages/admin/AdminQualityOverview.tsx"));
 const AdminGoldCalibration = lazy(() => import("./pages/admin/AdminGoldCalibration.tsx"));
 const AdminMissionRelease = lazy(() => import("./pages/admin/AdminFinalApproval.tsx"));
 const AdminFinalCorpusReview = lazy(() => import("./pages/admin/AdminFinalCorpusReview.tsx"));
@@ -93,9 +92,9 @@ const App = () => (
           />
           <Route path="/student-login" element={<StudentLogin />} />
           {/* 폐기된 콘텐츠 전문가 검수 주소는 현행 품질관리 흐름으로 연결한다. */}
-          <Route path="/expert-login" element={<Navigate to="/admin/research-qa" replace />} />
-          <Route path="/expert/reviews" element={<Navigate to="/admin/research-qa" replace />} />
-          <Route path="/expert/gold-reviews" element={<Navigate to="/admin/research-qa" replace />} />
+          <Route path="/expert-login" element={<Navigate to="/admin/research-qa/final-review" replace />} />
+          <Route path="/expert/reviews" element={<Navigate to="/admin/research-qa/final-review" replace />} />
+          <Route path="/expert/gold-reviews" element={<Navigate to="/admin/research-qa/final-review" replace />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/profile-setup" element={<ProfileSetup />} />
           <Route path="/home" element={<Home />} />
@@ -211,13 +210,13 @@ const App = () => (
                 : <Navigate to="/learner/practice" replace />
             }
           />
-          {/* Research & QA Console의 무자격증명 시각 검증용. 프로덕션에서는 관리자 화면으로 보낸다. */}
+          {/* 폐기된 품질관리 현황 주소는 자동 품질 점검으로 연결한다. */}
           <Route
             path="/prototype/research-qa"
             element={
               import.meta.env.DEV
-                ? <AdminResearchQa />
-                : <Navigate to="/admin/research-qa" replace />
+                ? <Navigate to="/prototype/final-review" replace />
+                : <Navigate to="/admin/research-qa/final-review" replace />
             }
           />
           <Route
@@ -228,10 +227,10 @@ const App = () => (
                 : <Navigate to="/admin/research-qa/calibration" replace />
             }
           />
-          <Route path="/prototype/expert-reviews" element={<Navigate to="/admin/research-qa" replace />} />
-          <Route path="/prototype/expert-review-ops" element={<Navigate to="/admin/research-qa" replace />} />
-          <Route path="/prototype/expert-gold-reviews" element={<Navigate to="/admin/research-qa" replace />} />
-          <Route path="/prototype/gold-expert-ops" element={<Navigate to="/admin/research-qa" replace />} />
+          <Route path="/prototype/expert-reviews" element={<Navigate to="/admin/research-qa/final-review" replace />} />
+          <Route path="/prototype/expert-review-ops" element={<Navigate to="/admin/research-qa/final-review" replace />} />
+          <Route path="/prototype/expert-gold-reviews" element={<Navigate to="/admin/research-qa/final-review" replace />} />
+          <Route path="/prototype/gold-expert-ops" element={<Navigate to="/admin/research-qa/final-review" replace />} />
           <Route
             path="/prototype/mission-release"
             element={
@@ -277,16 +276,16 @@ const App = () => (
           <Route path="/admin/question-designer" element={<RequireAdmin><AdminQuestionDesigner /></RequireAdmin>} />
           {/* 이전 통합 검수 URL은 현행 3단계 통합 검수·승인 화면으로 보낸다. */}
           <Route path="/admin/review" element={<RequireAdmin><Navigate to="/admin/research-qa/final-review" replace /></RequireAdmin>} />
-          <Route path="/admin/cross-vendor" element={<RequireAdmin><Navigate to="/admin/research-qa" replace /></RequireAdmin>} />
+          <Route path="/admin/cross-vendor" element={<RequireAdmin><Navigate to="/admin/research-qa/final-review" replace /></RequireAdmin>} />
           <Route path="/admin/learners" element={<RequireAdmin><AdminLearners /></RequireAdmin>} />
           <Route path="/admin/decision-traces" element={<RequireAdmin><AdminDecisionTraces /></RequireAdmin>} />
           {/* 레거시 폐기(2026-07-30): /admin/reports — 미사용 화면 삭제(사용자 결정). */}
           <Route path="/admin/export" element={<RequireAdmin><AdminExport /></RequireAdmin>} />
           <Route path="/admin/data-backup" element={<RequireAdmin><AdminDataBackup /></RequireAdmin>} />
-          <Route path="/admin/research-qa" element={<RequireAdmin><AdminResearchQa /></RequireAdmin>} />
+          <Route path="/admin/research-qa" element={<RequireAdmin><Navigate to="/admin/research-qa/final-review" replace /></RequireAdmin>} />
           <Route path="/admin/research-qa/calibration" element={<RequireAdmin><AdminGoldCalibration /></RequireAdmin>} />
-          <Route path="/admin/research-qa/expert-reviews" element={<Navigate to="/admin/research-qa" replace />} />
-          <Route path="/admin/research-qa/gold-experts" element={<Navigate to="/admin/research-qa" replace />} />
+          <Route path="/admin/research-qa/expert-reviews" element={<Navigate to="/admin/research-qa/final-review" replace />} />
+          <Route path="/admin/research-qa/gold-experts" element={<Navigate to="/admin/research-qa/final-review" replace />} />
           <Route path="/admin/research-qa/final-review" element={<RequireAdmin><AdminFinalCorpusReview /></RequireAdmin>} />
           <Route path="/admin/research-qa/releases" element={<RequireAdmin><AdminMissionRelease /></RequireAdmin>} />
           <Route path="/admin/research-qa/improvements" element={<RequireAdmin><AdminImprovementFlywheel /></RequireAdmin>} />

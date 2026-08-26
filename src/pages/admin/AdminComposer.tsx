@@ -603,7 +603,7 @@ const AdminComposer = () => {
   if (structureEditor) {
     return (
       <AdminShell
-        title="주차별 수업 편성"
+        title="15주 수업 편성·강의계획서"
         compact
         description={
           structureEditor === "new"
@@ -664,7 +664,7 @@ const AdminComposer = () => {
 
   return (
     <AdminShell
-      title="주차별 수업 편성"
+      title="15주 수업 편성·강의계획서"
       description="강좌 일정에 따라 주차별 학습 주제와 승인된 학습 미션을 편성합니다."
       compact
     >

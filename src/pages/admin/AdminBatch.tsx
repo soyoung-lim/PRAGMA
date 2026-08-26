@@ -343,7 +343,7 @@ const AdminBatch = () => {
 
   return (
     <AdminShell
-      title="AI 시나리오 생성"
+      title="시나리오 배치 생성"
       description="정해진 조건 조합에 따라 AI 생성 학습 콘텐츠의 상황과 원문을 여러 건 만들고 내부 확인 대기 상태로 저장합니다."
     >
       <GenerationModeTabs />

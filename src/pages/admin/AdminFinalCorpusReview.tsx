@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, Clock3, ShieldAlert } from "lucide-react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import AdminShell from "@/components/AdminShell";
 import ResearchWorkflowGuide from "@/components/research/ResearchWorkflowGuide";
@@ -35,7 +35,6 @@ const PREVIEW_ITEMS: ReviewItem[] = [
 const stringify = (value: unknown) => JSON.stringify(value, null, 2);
 
 const AdminFinalCorpusReview = ({ preview = false }: { preview?: boolean }) => {
-  const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const [runs, setRuns] = useState<RunRow[]>(preview ? [{ id: "preview-run", target_count: 504, created_at: "2026-08-15T00:00:00Z" }] : []);
   const [runId, setRunId] = useState(preview ? "preview-run" : "");
@@ -140,7 +139,7 @@ const AdminFinalCorpusReview = ({ preview = false }: { preview?: boolean }) => {
   return <AdminShell title="자동 품질 점검" description="AI 생성 학습 콘텐츠의 자동 점검 결과를 확인하고, 경고가 있는 콘텐츠에 교수자 검토를 집중합니다. 자동 점검은 교수자의 최종 판정을 대신하지 않습니다.">
     <div className="space-y-5">
       <ResearchWorkflowGuide current="missions" />
-      <div className="flex flex-wrap items-center justify-between gap-3"><Button asChild variant="ghost" size="sm"><Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"}><ArrowLeft className="mr-1 h-4 w-4" />문항 품질관리 전체 현황</Link></Button><Badge className="bg-slate-900 text-white">자동 통과 확인 + 경고 집중 검토</Badge></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><Button asChild variant="ghost" size="sm"><Link to="/admin/dashboard"><ArrowLeft className="mr-1 h-4 w-4" />운영 대시보드</Link></Button><Badge className="bg-slate-900 text-white">자동 통과 확인 + 경고 집중 검토</Badge></div>
 
       <section className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-950">
         <strong>검토 범위:</strong> 자동 경고 문항을 먼저 자세히 보고, 무경고 문항은 자동 점검 통과와 핵심 내용에 이상이 없음을 확인합니다. 문항별 시작·제출 시각과 경고 여부를 저장해 경고 문항에 더 긴 시간을 썼는지 나중에 확인할 수 있습니다.

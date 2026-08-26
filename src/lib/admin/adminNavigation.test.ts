@@ -34,6 +34,9 @@ describe("admin navigation reachability", () => {
     expect(app).toContain('to="/admin/research-qa/final-review"');
     expect(app).not.toContain('path="/admin/analytics"');
     expect(app).not.toContain('path="/admin/archive"');
+    expect(app).not.toContain("AdminQualityOverview");
+    expect(app).toContain('path="/admin/research-qa"');
+    expect(app).toContain('to="/admin/research-qa/final-review"');
 
     const missionLogs = readFileSync(
       resolve(process.cwd(), "src/pages/admin/AdminDecisionTraces.tsx"),
@@ -45,6 +48,8 @@ describe("admin navigation reachability", () => {
 
   it("keeps the mobile selector on the canonical target for compatibility paths", () => {
     expect(adminMobileNavValue("/admin/review")).toBe("/admin/research-qa/final-review");
+    expect(adminMobileNavValue("/admin/generator")).toBe("/admin/generator");
+    expect(adminMobileNavValue("/admin/batch")).toBe("/admin/batch");
     expect(adminMobileNavValue("/admin/decision-traces")).toBe("/admin/decision-traces");
     expect(adminMobileNavValue("/admin/export")).toBe("/admin/export");
   });

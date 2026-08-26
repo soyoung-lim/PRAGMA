@@ -197,7 +197,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
 
   return (
     <AdminShell
-      title="데이터 기반 콘텐츠 개선"
+      title="콘텐츠 개선 후보"
       description="학습 수행에서 반복된 학습자 이견을 모아 교수자가 콘텐츠 개선 여부를 결정합니다."
     >
       <div className="space-y-5">
@@ -212,8 +212,8 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Button asChild variant="ghost" size="sm">
-            <Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"}>
-              <ArrowLeft className="mr-1 h-4 w-4" />품질관리 현황
+            <Link to={pathname.startsWith("/prototype/") ? "/prototype/final-review" : "/admin/dashboard"}>
+              <ArrowLeft className="mr-1 h-4 w-4" />운영·품질관리로 돌아가기
             </Link>
           </Button>
           <Badge className="gap-1 bg-slate-900 text-white">

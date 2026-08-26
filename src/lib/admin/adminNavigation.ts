@@ -18,9 +18,9 @@ export const ADMIN_DASHBOARD_ITEM: AdminNavItem = {
 // 관리자 메뉴·모바일 선택기·대시보드 바로가기가 함께 쓰는 단일 정본이다.
 export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
-    header: "1. 학습 콘텐츠 설계",
+    header: "1. 학습 콘텐츠 설계 기준",
     items: [
-      { to: "/admin/corpus", label: "HSK 3.0 어휘 기준" },
+      { to: "/admin/corpus", label: "HSK 3.0 콘텐츠 감사 기준" },
       { to: "/admin/question-designer", label: "수준별 설계 기준" },
       { to: "/admin/research-qa/calibration", label: "화용적 판정 기준" },
       { to: "/admin/prompt-harness", label: "생성 계약·프롬프트" },
@@ -29,11 +29,8 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
     header: "2. 학습 콘텐츠 제작",
     items: [
-      {
-        to: "/admin/generator",
-        label: "AI 시나리오 생성",
-        activePaths: ["/admin/generator", "/admin/batch"],
-      },
+      { to: "/admin/generator", label: "시나리오 개별 생성" },
+      { to: "/admin/batch", label: "시나리오 배치 생성" },
       { to: "/admin/library", label: "시나리오 라이브러리" },
       { to: "/admin/assembly", label: "학습 미션 조립" },
     ],
@@ -41,7 +38,6 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
     header: "3. 학습 콘텐츠 품질관리",
     items: [
-      { to: "/admin/research-qa", label: "품질관리 현황" },
       {
         to: "/admin/research-qa/final-review",
         label: "자동 품질 점검",
@@ -53,8 +49,8 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
     header: "4. 수업 운영",
     items: [
-      { to: "/admin/composer", label: "주차별 수업 편성" },
-      { to: "/admin/package", label: "수업자료 만들기" },
+      { to: "/admin/composer", label: "15주 수업 편성·강의계획서" },
+      { to: "/admin/package", label: "수업자료·교실 화면" },
       { to: "/admin/learners", label: "학습자 승인·관리" },
       { to: "/admin/data-backup", label: "수업 데이터 백업·복원" },
     ],
@@ -63,7 +59,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     header: "5. 학습 결과·연구 자료",
     items: [
       { to: "/admin/decision-traces", label: "학습 수행 기록" },
-      { to: "/admin/research-qa/improvements", label: "데이터 기반 콘텐츠 개선" },
+      { to: "/admin/research-qa/improvements", label: "콘텐츠 개선 후보" },
       { to: "/admin/export", label: "연구 데이터 내보내기" },
     ],
   },
@@ -71,10 +67,10 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 
 const PRIORITY_LABELS = [
   "자동 품질 점검",
-  "수업자료 만들기",
+  "수업자료·교실 화면",
   "학습자 승인·관리",
   "학습 수행 기록",
-  "데이터 기반 콘텐츠 개선",
+  "콘텐츠 개선 후보",
   "연구 데이터 내보내기",
 ] as const;
 
