@@ -21,4 +21,7 @@
 
 - `npm.cmd run typecheck`: 통과.
 - `learnerCourse.test.ts`, `learnerProgress.test.ts`: 2파일 15 tests 통과.
-- 전체 회귀·브라우저 중복 검증·DB 쓰기·배포는 수행하지 않았다.
+- 전체 회귀·브라우저 중복 검증·DB 쓰기는 수행하지 않았다.
+- 기능 커밋 `1241139`를 원격 기능 브랜치에 푸시했다.
+- Railway production deployment `9f113c8a-b469-47de-aea9-4af2ac92f379`은 `SUCCESS`, image digest는
+  `sha256:309cc2d9bca7eccccb26c1c0efc809a2c19f713a680640a9c5390412d46fa3b4`다.
