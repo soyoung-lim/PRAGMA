@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, GraduationCap, Network, PlayCircle, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, GraduationCap, Network, Play, SlidersHorizontal } from "lucide-react";
 import { HomeBrand } from "@/components/HomeBrand";
 import { ensureSession } from "@/lib/tracking";
 import { IS_DEMO } from "@/lib/auth/useProfile";
@@ -10,7 +10,7 @@ import { REPRESENTATIVE_MISSION_PATH } from "@/lib/demo/representativeMission";
 // "이 카드가 반응한다"까지만 말하고, 화살표의 이동이 "누르면 저쪽으로 간다"를 말한다.
 const arrow = "transition-transform duration-150 group-hover:translate-x-0.5";
 const defenseLink =
-  "group inline-flex w-[190px] items-center justify-center gap-2 rounded-lg border-[1.5px] border-[#15202B] bg-white px-4 py-2.5 text-[13.5px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2";
+  "group inline-flex w-[178px] items-center justify-center gap-2 rounded-lg border-[1.5px] border-[#15202B] bg-white px-3 py-2.5 text-[13.5px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2";
 
 const Landing = () => {
   useEffect(() => {
@@ -144,7 +144,7 @@ const Landing = () => {
               to={REPRESENTATIVE_MISSION_PATH}
               className={defenseLink}
             >
-              <PlayCircle aria-hidden size={17} strokeWidth={1.9} className="text-[#FAD338]" />
+              <Play aria-hidden size={16} strokeWidth={1.6} className="fill-[#3E4C57] text-[#3E4C57]" />
               대표 미션 시연
               <ArrowRight aria-hidden size={14} strokeWidth={2} className={`text-[#5C6A7A] ${arrow}`} />
             </Link>
