@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/AdminShell";
 import { CurriculumSyllabus } from "@/components/admin/CurriculumSyllabus";
+import { CurriculumSyllabusSettingsForm } from "@/components/admin/CurriculumSyllabusSettingsForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,13 @@ import {
   updateCurriculumCompositionAxes,
 } from "@/lib/curriculum/api";
 import type { CurriculumOutlineRow, CurriculumWeekRow } from "@/lib/curriculum/types";
+import {
+  EMPTY_SYLLABUS_SETTINGS,
+  loadCurriculumSyllabusSettings,
+  saveCurriculumSyllabusSettings,
+  syllabusEvaluationIsValid,
+  type CurriculumSyllabusSettings,
+} from "@/lib/curriculum/syllabusSettings";
 import {
   listCoreScenarios,
   listWeekAssignments,
@@ -101,6 +109,9 @@ const AdminComposer = () => {
   const [loadingOutline, setLoadingOutline] = useState(false);
   const [structureEditor, setStructureEditor] = useState<"new" | "current" | null>(null);
   const [syllabusOpen, setSyllabusOpen] = useState(false);
+  const [syllabusSettings, setSyllabusSettings] = useState<CurriculumSyllabusSettings>(
+    EMPTY_SYLLABUS_SETTINGS,
+  );
   const [reloadToken, setReloadToken] = useState(0);
 
   // 수준·방향도 편성기의 교강사 조절 축이다. 저장 시 outline 메타에 함께 반영한다.
@@ -568,6 +579,26 @@ const AdminComposer = () => {
     setReloadToken((token) => token + 1);
   };
 
+  const openSyllabus = () => {
+    if (!outlineId) return;
+    setSyllabusSettings(loadCurriculumSyllabusSettings(outlineId));
+    setSyllabusOpen(true);
+  };
+
+  const handleSaveSyllabusSettings = () => {
+    if (!outlineId) return;
+    if (!syllabusEvaluationIsValid(syllabusSettings)) {
+      toast.error("평가 비중 합계를 100%로 맞춰주세요.");
+      return;
+    }
+    try {
+      saveCurriculumSyllabusSettings(outlineId, syllabusSettings);
+      toast.success("강의계획서 교수자 항목을 이 브라우저에 저장했습니다.");
+    } catch {
+      toast.error("교수자 항목을 저장하지 못했습니다.");
+    }
+  };
+
   if (structureEditor) {
     return (
       <AdminShell
@@ -604,6 +635,11 @@ const AdminComposer = () => {
         description="저장된 15주 편성을 수업 운영 문서로 확인하고 인쇄·PDF로 내보냅니다."
         compact
       >
+        <CurriculumSyllabusSettingsForm
+          settings={syllabusSettings}
+          onChange={setSyllabusSettings}
+          onSave={handleSaveSyllabusSettings}
+        />
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#E2DED2] bg-white p-3 print:hidden">
           <div>
             <p className="text-[13px] font-semibold text-[#15202B]">현재 화면 편성 기준</p>
@@ -619,6 +655,7 @@ const AdminComposer = () => {
           weeks={weeks}
           assignments={assign}
           coreById={coreById}
+          settings={syllabusSettings}
         />
       </AdminShell>
     );
@@ -726,7 +763,7 @@ const AdminComposer = () => {
           <Button
             className="h-9"
             variant="outline"
-            onClick={() => setSyllabusOpen(true)}
+            onClick={openSyllabus}
             disabled={!outlineId || loadingOutline}
           >
             강의계획서
@@ -1177,13 +1214,21 @@ function WeekRow({
                   >
                     {core?.situation_ko ?? "(누락된 시나리오)"}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => onRemove(item.scenario_id)}
-                    className="shrink-0 text-[11.5px] text-red-700 hover:underline"
-                  >
-                    제거
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Link
+                      to={`/admin/package?mission=${item.scenario_id}`}
+                      className="text-[11.5px] font-medium text-[#2F6F63] hover:underline"
+                    >
+                      수업자료
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(item.scenario_id)}
+                      className="text-[11.5px] text-red-700 hover:underline"
+                    >
+                      제거
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
                   <span className="rounded-full bg-[#ECEFF1] px-2 py-0.5 text-[#52616B]">

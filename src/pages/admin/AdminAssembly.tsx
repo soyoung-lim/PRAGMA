@@ -564,9 +564,14 @@ const AdminAssembly = () => {
                         </Button>
                       )}
                       {st === "reviewed" && (
-                        <Button size="sm" variant="outline" asChild>
-                          <Link to={`/admin/package?mission=${r.scenario_id}`}>수업자료 열기</Link>
-                        </Button>
+                        <>
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to="/admin/composer">15주 편성에 사용</Link>
+                          </Button>
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={`/admin/package?mission=${r.scenario_id}`}>수업자료 열기</Link>
+                          </Button>
+                        </>
                       )}
                       {!isAssembling && rowMsg[r.scenario_id] && (
                         <span className="text-[11.5px] text-muted-foreground">{rowMsg[r.scenario_id]}</span>

@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { HomeBrand } from "@/components/HomeBrand";
+import { AdminCompletionWorkflow } from "@/components/admin/AdminCompletionWorkflow";
 import {
   ADMIN_DASHBOARD_ITEM,
   ADMIN_NAV_GROUPS,
@@ -132,6 +133,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
               )}
             </div>
           </div>
+          <AdminCompletionWorkflow pathname={pathname} />
           <div className="mt-6 print:mt-0">{children}</div>
         </main>
       </div>

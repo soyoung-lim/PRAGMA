@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import {
   ADMIN_NAV_GROUPS,
   ADMIN_PRIORITY_LINKS,
+  ADMIN_COMPLETION_WORKFLOW,
+  adminCompletionWorkflowStage,
   adminMobileNavValue,
 } from "@/lib/admin/adminNavigation";
 
@@ -47,5 +49,21 @@ describe("admin navigation reachability", () => {
     expect(adminMobileNavValue("/admin/review")).toBe("/admin/research-qa/final-review");
     expect(adminMobileNavValue("/admin/decision-traces")).toBe("/admin/decision-traces");
     expect(adminMobileNavValue("/admin/export")).toBe("/admin/export");
+  });
+
+  it("connects the five completion stages through existing screens", () => {
+    expect(ADMIN_COMPLETION_WORKFLOW.map((stage) => stage.id)).toEqual([
+      "create",
+      "review",
+      "teach",
+      "learn",
+      "records",
+    ]);
+    expect(adminCompletionWorkflowStage("/admin/assembly")?.id).toBe("create");
+    expect(adminCompletionWorkflowStage("/admin/research-qa/releases")?.id).toBe("review");
+    expect(adminCompletionWorkflowStage("/admin/package")?.id).toBe("teach");
+    expect(adminCompletionWorkflowStage("/admin/learners")?.id).toBe("learn");
+    expect(adminCompletionWorkflowStage("/admin/export")?.id).toBe("records");
+    expect(adminCompletionWorkflowStage("/admin/archive")).toBeNull();
   });
 });
