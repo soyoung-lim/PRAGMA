@@ -6,6 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { seedIfEmpty } from "./lib/learningSessions";
+import { IS_DEMO } from "./lib/auth/useProfile";
+import { REPRESENTATIVE_MISSION_SCENARIO_ID } from "./lib/demo/representativeMission";
 
 const RequireApproved = lazy(() => import("./components/RequireApproved"));
 const RequireAdmin = lazy(() => import("./components/RequireAdmin"));
@@ -84,6 +86,15 @@ const App = () => (
           <Route path="/" element={<Index />} />
           {/* 심사 설명용 read-only 구조 화면 — 실데이터가 없어 로그인을 요구하지 않는다. */}
           <Route path="/architecture" element={<Architecture />} />
+          {/* 디펜스용 단일 진입점 — 실제 승인 미션 실행기를 재사용하되 수행 로그는 저장하지 않는다. */}
+          <Route
+            path="/demo/mission"
+            element={
+              IS_DEMO
+                ? <RequireApproved><CanonicalMissionRun scenarioId={REPRESENTATIVE_MISSION_SCENARIO_ID} demoMode /></RequireApproved>
+                : <Navigate to="/" replace />
+            }
+          />
           <Route path="/student-login" element={<StudentLogin />} />
           <Route path="/expert-login" element={<ExpertLogin />} />
           <Route path="/expert/reviews" element={<RequireAuthenticated><ExpertReviewQueue /></RequireAuthenticated>} />

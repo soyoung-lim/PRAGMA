@@ -2091,10 +2091,20 @@ export function buildRuntimeMpjTraces(
   ];
 }
 
-export function CanonicalMissionRunner({ mission, runtime, isDevPreview }: {
+export function shouldPersistMissionAttempt(
+  runtime: RunnableMission | undefined,
+  questKind: MissionQuest["kind"],
+  demoMode: boolean,
+): boolean {
+  return Boolean(runtime) && questKind === "dct_feedback" && !demoMode;
+}
+
+export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMode = false }: {
   mission: CanonicalMissionViewModel;
   runtime?: RunnableMission;
   isDevPreview: boolean;
+  /** 디펜스 시연은 실제 미션·피드백을 쓰되 학습자 수행 로그는 만들지 않는다. */
+  demoMode?: boolean;
 }) {
   const requestedMission = new URLSearchParams(window.location.search).get("mission")?.toUpperCase();
   const sceneIntroConfig = isDevPreview && requestedMission === "B"
@@ -2208,7 +2218,7 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview }: {
     if (questIndex === mission.quests.length - 1) {
       setCompleted(true);
       setFeedbackRevisionOpen(false);
-      if (runtime && quest.kind === "dct_feedback") {
+      if (runtime && shouldPersistMissionAttempt(runtime, quest.kind, demoMode)) {
         const finalResponse = response as DctResponse;
         setSaveState("saving");
         void saveMissionAttempt({
@@ -2313,6 +2323,12 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview }: {
         />
       )}
       <div className="mx-auto max-w-3xl">
+        {demoMode && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-[#E3D08F] bg-[#FFF8E1] px-4 py-2.5 text-xs text-[#6B5518]" role="status">
+            <span className="font-black">디펜스 대표 미션 시연</span>
+            <span className="text-right font-semibold">실제 미션 실행 · 수행 기록 저장 안 됨</span>
+          </div>
+        )}
         {sceneIntroStep !== null ? (
           <div className="space-y-5">
             <Progress activeIndex={0} sceneIntroStep={sceneIntroStep} sceneIntroConfig={sceneIntroConfig} />
@@ -2351,7 +2367,7 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview }: {
             </div>
             <DissentSummary dissent={aDct?.dissent} />
             <SessionPatternSummary responses={[aDct]} />
-            <CompletionActions onRestart={restart} runtime={Boolean(runtime)} saveState={saveState} />
+            <CompletionActions onRestart={restart} runtime={Boolean(runtime) && !demoMode} saveState={saveState} />
           </div>
         ) : (
           <div className="space-y-5">
@@ -2375,8 +2391,15 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview }: {
   );
 }
 
-const CanonicalMissionRun = () => {
-  const { scenarioId } = useParams<{ scenarioId: string }>();
+const CanonicalMissionRun = ({
+  scenarioId: scenarioIdOverride,
+  demoMode = false,
+}: {
+  scenarioId?: string;
+  demoMode?: boolean;
+} = {}) => {
+  const { scenarioId: routeScenarioId } = useParams<{ scenarioId: string }>();
+  const scenarioId = scenarioIdOverride ?? routeScenarioId;
   const [runtimeMission, setRuntimeMission] = useState<CanonicalMissionViewModel | null>(null);
   const [runtimeRunnable, setRuntimeRunnable] = useState<RunnableMission | null>(null);
   const [fallbackToLegacy, setFallbackToLegacy] = useState(false);
@@ -2418,7 +2441,19 @@ const CanonicalMissionRun = () => {
     return () => { cancelled = true; };
   }, [scenarioId]);
 
-  if (scenarioId && fallbackToLegacy) return <LegacyMissionRun />;
+  if (scenarioId && fallbackToLegacy && !demoMode) return <LegacyMissionRun />;
+
+  if (scenarioId && fallbackToLegacy) {
+    return (
+      <LearnerJourneyShell missionLayout>
+        <section className="mx-auto max-w-3xl rounded-2xl border border-[#E5C8C2] bg-white px-6 py-8">
+          <p className="text-xs font-black text-[#A44736]">대표 미션을 열지 못했습니다</p>
+          <p className="mt-2 text-sm leading-6 text-[#5B6678]">현행 MPJ5+DCT1 실행 계약을 지원하는 대표 미션을 다시 지정해 주세요.</p>
+          <Button asChild className="mt-5"><Link to="/architecture">통합 구조로 돌아가기</Link></Button>
+        </section>
+      </LearnerJourneyShell>
+    );
+  }
 
   if (loading) {
     return (
@@ -2449,6 +2484,7 @@ const CanonicalMissionRun = () => {
       mission={mission}
       runtime={runtimeRunnable ?? undefined}
       isDevPreview={import.meta.env.DEV && !scenarioId}
+      demoMode={demoMode}
     />
   );
 };

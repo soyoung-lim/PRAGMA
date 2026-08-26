@@ -22,6 +22,7 @@ vi.mock("@/lib/mission/missionLog", () => ({ saveMissionAttempt: vi.fn() }));
 import CanonicalMissionRun, {
   buildRuntimeMpjTraces,
   feedbackNeedsRevision,
+  shouldPersistMissionAttempt,
 } from "@/pages/learner/CanonicalMissionRun";
 
 describe("CanonicalMissionRun live CTA route", () => {
@@ -134,5 +135,21 @@ describe("CanonicalMissionRun live CTA route", () => {
       { item_id: 4, item_type: "reason", initial_judgment: "appropriate", reason_id: "r2", reason_kind: "primary" },
       { item_id: 5, item_type: "multi_judge", best_candidate_index: 1, worst_candidate_index: 4 },
     ]);
+  });
+
+  it("keeps the representative demo on the live runtime without saving an attempt", () => {
+    const runtime = {
+      scenario_id: scenarioId,
+      speech_act: "request" as const,
+      learner_level: "intermediate" as const,
+      mission_status: "reviewed",
+      release_gate_mode: "legacy_reviewed",
+      direction: "ko_zh" as const,
+      mission: SAMPLE_MISSION_V5,
+    };
+
+    expect(shouldPersistMissionAttempt(runtime, "dct_feedback", false)).toBe(true);
+    expect(shouldPersistMissionAttempt(runtime, "dct_feedback", true)).toBe(false);
+    expect(shouldPersistMissionAttempt(runtime, "scale", false)).toBe(false);
   });
 });

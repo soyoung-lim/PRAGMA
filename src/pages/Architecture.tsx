@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronDown, ChevronRight, RotateCcw } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, PlayCircle, RotateCcw } from "lucide-react";
 import { MPJ_ITEM_COUNT } from "@/lib/curriculum/learnerWorkflow";
 import { FINAL_GOLD_POPULATION_COUNT } from "@/lib/pragma/goldProtocol";
+import { IS_DEMO } from "@/lib/auth/useProfile";
+import { REPRESENTATIVE_MISSION_PATH } from "@/lib/demo/representativeMission";
 
 // 심사 설명용 read-only 화면. 현재 런타임 흐름과 연구자료 처리 경계를 요약한다.
 
@@ -170,12 +172,23 @@ const Architecture = () => (
             </p>
           </div>
         </div>
-        <Link
-          to="/"
-          className="rounded-lg border border-[#FAD338] bg-[#FAD338] px-3 py-1.5 text-[12px] font-semibold text-[#15202B] transition-colors hover:bg-[#F5C400]"
-        >
-          ← 처음으로
-        </Link>
+        <div className="flex items-center gap-2">
+          {IS_DEMO && (
+            <Link
+              to={REPRESENTATIVE_MISSION_PATH}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#FAD338] bg-[#FAD338] px-3 py-1.5 text-[12px] font-semibold text-[#15202B] transition-colors hover:bg-[#F5C400]"
+            >
+              <PlayCircle aria-hidden size={14} strokeWidth={2} />
+              대표 미션 시연
+            </Link>
+          )}
+          <Link
+            to="/"
+            className="rounded-lg border border-white/35 px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-white/10"
+          >
+            ← 처음으로
+          </Link>
+        </div>
       </div>
     </header>
 

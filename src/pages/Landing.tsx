@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, GraduationCap, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, GraduationCap, Network, PlayCircle, SlidersHorizontal } from "lucide-react";
 import { HomeBrand } from "@/components/HomeBrand";
 import { ensureSession } from "@/lib/tracking";
 import { IS_DEMO } from "@/lib/auth/useProfile";
+import { REPRESENTATIVE_MISSION_PATH } from "@/lib/demo/representativeMission";
 
 // 화살표는 hover에서 진행 방향으로 살짝 미끄러진다. 카드가 통째로 떠오르는 동작은
 // "이 카드가 반응한다"까지만 말하고, 화살표의 이동이 "누르면 저쪽으로 간다"를 말한다.
@@ -121,24 +122,27 @@ const Landing = () => {
           </Link>
         </section>
 
-        {/* 전체 구조 보기 — 디펜스 시연 진입점. 두 갈래보다는 작지만 '눌러야 할 것'
-            으로 보이도록 테두리·아이콘을 준다. 실증 시작 전에는 VITE_ENABLE_DEMO로 감춘다. */}
+        {/* 디펜스 진입점. 설명(/architecture)과 실제 실행(/demo/mission)을 나란히 두되
+            학습자·교수자 두 주 경로보다 작게 유지한다. 실증 시작 전에는 감춘다. */}
         {IS_DEMO && (
-          <Link
-            to="/architecture"
-            className="mt-6 inline-flex items-center gap-2.5 rounded-lg border-[1.5px] border-[#15202B] bg-white px-5 py-2.5 text-[14px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
-          >
-            {/* 노랑은 형광펜과 학습자 버튼 두 곳으로 끝낸다 — 여기까지 노랑이면
-                시선이 한 번 더 새고, 주 경로가 그만큼 흐려진다. */}
-            <span
-              aria-hidden
-              className="grid h-[24px] w-[24px] place-items-center rounded-[7px] bg-[#EFEBDD] text-[13px] text-[#5C6A7A]"
+          <section className="mt-6 flex flex-wrap items-center justify-center gap-3" aria-label="디펜스 시연">
+            <Link
+              to="/architecture"
+              className="group inline-flex items-center gap-2 rounded-lg border-[1.5px] border-[#15202B] bg-white px-4 py-2.5 text-[13.5px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
             >
-              ◎
-            </span>
-            PRAGMA 통합 워크플로우 보기
-            <ArrowRight aria-hidden size={14} strokeWidth={2} className={`text-[#5C6A7A] ${arrow}`} />
-          </Link>
+              <Network aria-hidden size={17} strokeWidth={1.9} className="text-[#5C6A7A]" />
+              통합 구조 보기
+              <ArrowRight aria-hidden size={14} strokeWidth={2} className={`text-[#5C6A7A] ${arrow}`} />
+            </Link>
+            <Link
+              to={REPRESENTATIVE_MISSION_PATH}
+              className="group inline-flex items-center gap-2 rounded-lg border-[1.5px] border-[#15202B] bg-[#15202B] px-4 py-2.5 text-[13.5px] font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#22303E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+            >
+              <PlayCircle aria-hidden size={17} strokeWidth={1.9} className="text-[#FAD338]" />
+              대표 미션 시연
+              <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
+            </Link>
+          </section>
         )}
       </main>
 

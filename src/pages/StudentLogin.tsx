@@ -1,14 +1,18 @@
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { HomeBrand } from "@/components/HomeBrand";
 import { useProfile } from "@/lib/auth/useProfile";
+import { safeLoginReturnPath } from "@/lib/auth/loginReturn";
 import { GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 
 const StudentLogin = () => {
   const [busy, setBusy] = useState(false);
   const { loading, session, isDevStub } = useProfile();
+  const location = useLocation();
+  const requestedPath = new URLSearchParams(location.search).get("next");
+  const afterLoginPath = safeLoginReturnPath(requestedPath);
 
   // Supabase가 Google OAuth를 직접 수행한다(Lovable 브로커 경유 없음) —
   // 그래서 로컬·Railway 어디서 열어도 동작한다. 성공하면 이 탭이 Google로
@@ -18,7 +22,7 @@ const StudentLogin = () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: window.location.origin + "/learner/course" },
+        options: { redirectTo: window.location.origin + afterLoginPath },
       });
       if (error) {
         toast.error("Google 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.");
@@ -30,10 +34,10 @@ const StudentLogin = () => {
     }
   };
 
-  // 이미 인증된 학습자는 다시 Google 인증을 요구하지 않는다. /home이 프로필 완료
-  // 여부를 확인해 학습 강좌 또는 프로필 작성으로 안전하게 이어 준다.
+  // 이미 인증된 학습자는 다시 Google 인증을 요구하지 않는다. 명시적 next가 있으면
+  // 요청 화면으로 복귀하고, RequireApproved가 프로필 미완료 사용자를 /home으로 보낸다.
   if (!loading && (session || isDevStub)) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to={requestedPath ? afterLoginPath : "/home"} replace />;
   }
 
   return (
