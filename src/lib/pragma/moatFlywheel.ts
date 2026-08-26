@@ -1,5 +1,3 @@
-import type { GoldRegressionReport } from "@/lib/pragma/goldRegression";
-
 export interface MissionEventSignalInput {
   event_id: string;
   attempt_id: string;
@@ -13,7 +11,7 @@ export interface MissionEventSignalInput {
 }
 export interface ImprovementSignal {
   signal_key: string;
-  signal_type: "learner_dissent_cluster" | "gold_regression_drift";
+  signal_type: "learner_dissent_cluster";
   target_feature: string | null;
   content_hash: string | null;
   lineage_version_id: string | null;
@@ -21,9 +19,7 @@ export interface ImprovementSignal {
   realization_pack_version: string | null;
   source_refs: string[];
   metrics: Record<string, number | string | null>;
-  suggested_action:
-    | "review_content_and_rule_scope"
-    | "review_gold_label_or_evaluator";
+  suggested_action: "review_content_and_rule_scope";
   auto_apply_allowed: false;
 }
 
@@ -98,30 +94,4 @@ export function detectLearnerDissentSignals(
       suggested_action: "review_content_and_rule_scope",
       auto_apply_allowed: false,
     }));
-}
-
-export function signalFromGoldRegression(
-  report: GoldRegressionReport,
-  runId: string,
-): ImprovementSignal | null {
-  if (report.gate_status !== "fail" || report.mismatches.length === 0) return null;
-  return {
-    signal_key: `gold-regression:${runId}`,
-    signal_type: "gold_regression_drift",
-    target_feature: null,
-    content_hash: null,
-    lineage_version_id: null,
-    realization_pack_id: null,
-    realization_pack_version: null,
-    source_refs: report.mismatches.map(
-      (item) => `${item.case_id}::${item.candidate_id}::${item.field}`,
-    ),
-    metrics: {
-      band_accuracy: report.band_accuracy,
-      semantic_accuracy: report.semantic_accuracy,
-      mismatch_count: report.mismatches.length,
-    },
-    suggested_action: "review_gold_label_or_evaluator",
-    auto_apply_allowed: false,
-  };
 }

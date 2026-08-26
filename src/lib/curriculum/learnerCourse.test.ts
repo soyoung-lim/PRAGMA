@@ -123,18 +123,18 @@ describe("학습자 편성 강좌 조립", () => {
     expect(course.weeks[1].scenarios).toEqual([]);
   });
 
-  it("DB가 공개한 자료만 학습자에게 노출한다", () => {
+  it("교수자 최종 검수를 마친 자료를 학습자에게 노출한다", () => {
     const course = assembleLearnerCourse(
       source(
         [assignment(2, "waiting", 0), assignment(2, "released", 1)],
         [
-          core("waiting", "reviewed", "대기 상황", "expert_v1"),
+          core("waiting", "reviewed", "교수자 승인 상황", "expert_v1"),
           core("released", "released", "승인 상황", "expert_v1"),
         ],
       ),
     );
 
-    expect(course.weeks[0].scenarios.map((scenario) => scenario.scenario_id)).toEqual(["released"]);
+    expect(course.weeks[0].scenarios.map((scenario) => scenario.scenario_id)).toEqual(["waiting", "released"]);
   });
 
   it("편성에는 있으나 조회되지 않은 코어를 학습자에게 누락 문구로 노출하지 않는다", () => {

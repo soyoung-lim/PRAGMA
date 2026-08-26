@@ -9,16 +9,20 @@ import { supabase } from "@/integrations/supabase/client";
 
 type QualityCounts = {
   reviewRecords: number | null;
-  releases: number | null;
+  professorApproved: number | null;
   error: string | null;
 };
 
+type CountResult = {
+  count: number | null;
+  error: { message?: string } | null;
+};
+type CountQuery = Promise<CountResult> & {
+  eq: (column: string, value: string) => Promise<CountResult>;
+};
 const db = supabase as unknown as {
   from: (table: string) => {
-    select: (columns: string, options: { count: "exact"; head: true }) => Promise<{
-      count: number | null;
-      error: { message?: string } | null;
-    }>;
+    select: (columns: string, options: { count: "exact"; head: true }) => CountQuery;
   };
 };
 
@@ -27,27 +31,27 @@ const AdminQualityOverview = () => {
   const preview = pathname.startsWith("/prototype/");
   const [counts, setCounts] = useState<QualityCounts>({
     reviewRecords: null,
-    releases: null,
+    professorApproved: null,
     error: null,
   });
 
   useEffect(() => {
     if (preview) {
-      setCounts({ reviewRecords: 0, releases: 0, error: null });
+      setCounts({ reviewRecords: 0, professorApproved: 0, error: null });
       return;
     }
 
     let active = true;
     void (async () => {
-      const [reviews, releases] = await Promise.all([
+      const [reviews, approved] = await Promise.all([
         db.from("pragma_final_corpus_researcher_item_reviews").select("id", { count: "exact", head: true }),
-        db.from("pragma_final_corpus_releases").select("id", { count: "exact", head: true }),
+        db.from("scenarios").select("scenario_id", { count: "exact", head: true }).eq("mission_status", "reviewed"),
       ]);
       if (!active) return;
       setCounts({
         reviewRecords: reviews.error ? null : reviews.count ?? 0,
-        releases: releases.error ? null : releases.count ?? 0,
-        error: reviews.error?.message ?? releases.error?.message ?? null,
+        professorApproved: approved.error ? null : approved.count ?? 0,
+        error: reviews.error?.message ?? approved.error?.message ?? null,
       });
     })();
 
@@ -96,7 +100,7 @@ const AdminQualityOverview = () => {
             자동 점검 결과와 콘텐츠를 확인한 교수자가 수업 사용과 학습자 공개를 최종 결정합니다.
           </p>
           <p className="mt-4 text-sm font-medium">
-            저장된 공개 자료 묶음 {counts.releases ?? "—"}건
+            교수자 최종 검수 완료 {counts.professorApproved ?? "—"}건
           </p>
           <Link to={releasePath} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#15202B] hover:underline">
             최종 검수 화면 열기 <ArrowRight className="h-4 w-4" aria-hidden />

@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ENGINEERING_SEED_GATE, runGoldRegression } from "./goldRegression";
-import {
-  detectLearnerDissentSignals,
-  signalFromGoldRegression,
-} from "./moatFlywheel";
-import { SEED_GOLD_CASES } from "./seedGoldSet";
+import { detectLearnerDissentSignals } from "./moatFlywheel";
 
 describe("moat improvement flywheel signals", () => {
   it("requires distinct attempts before escalating repeated learner dissent", () => {
@@ -53,24 +48,5 @@ describe("moat improvement flywheel signals", () => {
       realization_pack_version: null,
     };
     expect(detectLearnerDissentSignals([event, { ...event, event_id: "e2", attempt_id: "a2", participant_id: "p2" }, { ...event, event_id: "e3", attempt_id: "a3", participant_id: "p3" }])).toEqual([]);
-  });
-
-  it("turns regression drift into review work, never an automatic rule change", () => {
-    const item = SEED_GOLD_CASES[0];
-    const report = runGoldRegression(
-      SEED_GOLD_CASES,
-      [{
-        case_id: item.case_id,
-        candidate_id: item.candidates[0].candidate_id,
-        predicted_band_code: "wrong",
-        predicted_semantic_fidelity: "pass",
-      }],
-      { ...ENGINEERING_SEED_GATE, require_complete_coverage: false },
-    );
-    const signal = signalFromGoldRegression(report, "run-1");
-
-    expect(signal?.signal_type).toBe("gold_regression_drift");
-    expect(signal?.suggested_action).toBe("review_gold_label_or_evaluator");
-    expect(signal?.auto_apply_allowed).toBe(false);
   });
 });
