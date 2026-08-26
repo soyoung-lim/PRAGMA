@@ -2759,8 +2759,9 @@
 - 변경: 현재 30·50·90분 운영표와 승인 미션 6단계를 외부 의존성 없는 단일 HTML로 생성했다. 화살표
   이동, Enter 해설 공개, 인쇄·PDF를 제공하고 90분은 두 미션과 비교 화면까지 포함했다.
 - 안전 경계: DB·API·인증·학습기록·학생 공유를 추가하지 않았고 모든 콘텐츠 문자열을 escape했다.
-- 검증 결과: 전용 2 tests, typecheck와 production build 1,940 modules가 통과했다. 실제 브라우저
-  다운로드·운영 배포는 커밋 뒤 확인한다.
+- 검증 결과: 전용 2 tests, typecheck와 production build 1,940 modules가 통과했다. 기능 커밋
+  `79d8e63`을 push했고 Railway deployment `4510f92b-ca40-4df8-8077-4e4bac2a3e69`은 `SUCCESS`다.
+  중복 브라우저 검증과 DB·운영 데이터 쓰기는 수행하지 않았다.
 - 해석: PDF를 대체하지 않고 수업 실행 복원력만 보완해, 추가 저장 구조 없이 교수자 출력 경로를
   완결했다.
 - 관련 Decision / Evidence: `DEC-20260826-12`, `EVD-20260826-12`

@@ -23,3 +23,7 @@
 - `npm.cmd run typecheck`: 통과.
 - `npm.cmd run build`: 1,940 modules 통과. 기존 CSS·chunk 경고 외 신규 실패 없음.
 - DB·운영 데이터 쓰기는 수행하지 않았다.
+- 기능 커밋 `79d8e63`을 원격 기능 브랜치에 push했다.
+- Railway deployment `4510f92b-ca40-4df8-8077-4e4bac2a3e69`은 `SUCCESS`, image digest는
+  `sha256:928f52c181495bcd3f4e5cf47e82eac9e7e73ce5ee219c9da8bb8bcd897f1ac4`다.
+- 중복 브라우저 검증은 수행하지 않았다.
