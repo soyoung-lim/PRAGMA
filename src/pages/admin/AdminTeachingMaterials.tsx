@@ -286,8 +286,8 @@ const AdminTeachingMaterials = () => {
 
   return (
     <AdminShell
-      title="수업 자료 생성"
-      description="승인된 MPJ5+DCT1 미션을 웹앱 수행자료 중심의 교수자 수업안으로 조립합니다."
+      title="수업자료 만들기"
+      description="승인된 학습 미션을 수업 시간에 맞춰 교수자 수업자료·학생 활동지·교실 화면으로 구성합니다."
     >
       <div className="max-w-[1080px]">
         <section className="mb-5 rounded-xl border border-[#E2DED2] bg-white p-4 print:hidden">

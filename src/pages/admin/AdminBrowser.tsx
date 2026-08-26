@@ -143,7 +143,7 @@ const AdminBrowser = () => {
       setError(
         cause instanceof Error
           ? cause.message
-          : "시나리오 코어를 불러오지 못했습니다.",
+          : "시나리오를 불러오지 못했습니다.",
       );
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
@@ -203,8 +203,8 @@ const AdminBrowser = () => {
     // 이 화면은 조회·필터(라이브러리)가 절반, 코어→미션 승격이 절반이다 —
     // promoteCore·reviewMission이 여기서 실행된다. 승격 기능은 이름 대신 설명이 말한다.
     <AdminShell
-      title="학습 콘텐츠 코어 라이브러리"
-      description="화행·수준·통번역 모드에 따라 코어를 조회하고, 선택한 코어를 학습 미션으로 조립합니다."
+      title="시나리오 라이브러리"
+      description="화행·수준·통번역 모드에 따라 시나리오를 조회하고, 학습 미션으로 조립할 재료를 확인합니다."
     >
       <div className="max-w-[1080px]">
         {/* ── 요약 ── */}
@@ -212,10 +212,10 @@ const AdminBrowser = () => {
           <div className="flex flex-wrap items-end gap-3">
             <div
               className="flex min-w-[350px] shrink-0 flex-wrap items-center gap-x-3.5 gap-y-1 rounded-lg bg-[#F5F5F2] px-3.5 py-2"
-              aria-label="코어 현황"
+              aria-label="시나리오 현황"
             >
               <div className="flex items-baseline gap-2">
-                <span className="text-[13.5px] font-semibold text-[#42505A]">코어</span>
+                <span className="text-[13.5px] font-semibold text-[#42505A]">시나리오</span>
                 <span className="text-[24px] font-bold tabular-nums text-[#15202B]">{filtered.length}</span>
                 {hasActiveFilters && (
                   <span className="text-[11.5px] text-muted-foreground">전체 {rows.length} 중</span>
@@ -239,7 +239,7 @@ const AdminBrowser = () => {
             </div>
 
             {/* ── 필터 ── */}
-            <div className="flex flex-wrap items-end gap-2 border-l border-[#E0DDD4] pl-3 text-[12px]" aria-label="코어 필터">
+            <div className="flex flex-wrap items-end gap-2 border-l border-[#E0DDD4] pl-3 text-[12px]" aria-label="시나리오 필터">
               <span className="mb-1.5 mr-0.5 text-[11px] font-bold tracking-[0.08em] text-[#6C747A]">필터</span>
               <Filter className="w-full sm:w-[96px]" label="모드" value={fMode} onChange={(v) => setFMode(v as typeof fMode)}
                 opts={[["all", "전체"], ["translation", MODE_LABEL.translation], ["stt_interpreting", MODE_LABEL.stt_interpreting]]} />
@@ -318,7 +318,7 @@ const AdminBrowser = () => {
                             aria-label={
                               n === 0
                                 ? `${SPEECH_ACT_UI[act]} · ${LEVEL[lv]} 조건으로 개별 생성 화면 열기`
-                                : `${SPEECH_ACT_UI[act]} · ${LEVEL[lv]} 코어 ${n}개 보기`
+                                : `${SPEECH_ACT_UI[act]} · ${LEVEL[lv]} 시나리오 ${n}개 보기`
                             }
                             className={`flex h-10 w-full cursor-pointer flex-col items-center justify-center rounded-md leading-none transition-[filter] duration-150 hover:brightness-[0.94] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E2F3A]/50 ${
                               active

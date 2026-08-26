@@ -194,7 +194,7 @@ const Page = () => {
 
   return (
     <AdminShell
-      title="학습자 관리"
+      title="학습자 승인·관리"
       description="학습자 프로필 조회와 승인/반려/비활성 처리를 합니다."
     >
       <div className="mb-4 flex items-center gap-3">

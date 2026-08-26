@@ -935,7 +935,7 @@ const AdminGenerator = () => {
 
   return (
     <AdminShell
-      title="AI 학습 콘텐츠 생성"
+      title="AI 시나리오 생성"
       description="한 건씩 조건을 정해 AI 생성 학습 콘텐츠의 상황과 원문을 만들고 내부 확인 대기 상태로 저장합니다."
     >
       <GenerationModeTabs />
@@ -1292,7 +1292,7 @@ const AdminGenerator = () => {
               </SelectContent>
             </Select>
             <p className="mt-1 text-[10.5px] text-muted-foreground">
-              코어 메타(theme·topic)로 저장돼 교강사 '주제별 편성' 필터에 쓰입니다. (topic은 자동 배정) ·
+              시나리오 메타(theme·topic)로 저장돼 교강사 '주제별 편성' 필터에 쓰입니다. (topic은 자동 배정) ·
               현재 도메인({DOMAIN[form.domain]})에서 고를 수 있는 주제만 표시됩니다.
             </p>
           </div>
@@ -1377,7 +1377,7 @@ const AdminGenerator = () => {
                   disabled={finalizing || selectedOutlines.size === 0}
                   className="w-full bg-[#1d2336] text-white hover:bg-[#1d2336]/90 disabled:opacity-60"
                 >
-                  ✨ {finalizing ? "코어 생성·저장 중..." : `선택한 ${selectedOutlines.size}개 개요로 코어 생성`}
+                  ✨ {finalizing ? "시나리오 생성·저장 중..." : `선택한 ${selectedOutlines.size}개 개요로 시나리오 생성`}
                 </Button>
               </div>
             )}
@@ -1415,7 +1415,7 @@ const AdminGenerator = () => {
           </div>
 
           <p className="rounded-md border border-dashed border-[#EAE4D2] bg-[#FAF7EE] px-3 py-2.5 text-[11px] leading-relaxed text-[#5B5446]">
-            생성 흐름: 위에서 <b>상황 개요 생성 → 개요 선택 → 코어 생성</b>. 코어(scenario_core_v1)는
+            생성 흐름: 위에서 <b>상황 개요 생성 → 개요 선택 → 시나리오 생성</b>. 생성된 시나리오는
             검수 대기(draft)로 저장돼 batch·편성과 같은 뱅크에 들어갑니다.
           </p>
 
@@ -1466,14 +1466,14 @@ const AdminGenerator = () => {
             {finalizing && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#EAE4D2] border-t-[#1d2336]" />
-                <p className="mt-3 text-[12px] text-muted-foreground">코어 생성 중...</p>
+                <p className="mt-3 text-[12px] text-muted-foreground">시나리오 생성 중...</p>
               </div>
             )}
 
             {!finalizing && !coreResults && !aiResult && !aiError && (
               <div className="flex items-center justify-center py-20 text-center">
                 <p className="text-[12px] leading-relaxed text-muted-foreground">
-                  좌측에서 조건·주제를 정하고 <b>상황 개요 생성 → 개요 선택 → 코어 생성</b>을 누르면<br />
+                  좌측에서 조건·주제를 정하고 <b>상황 개요 생성 → 개요 선택 → 시나리오 생성</b>을 누르면<br />
                   생성된 scenario_core_v1이 여기에 표시됩니다.
                 </p>
               </div>

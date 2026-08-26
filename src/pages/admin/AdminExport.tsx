@@ -43,7 +43,7 @@ const Page = () => {
 
   return (
   <AdminShell
-    title="수행 기록 내려받기"
+    title="연구 데이터 내보내기"
     description="수업이 끝난 뒤, 동의한 학습자의 수행 기록만 직접 식별정보를 제외한 연구용 파일로 내려받습니다."
   >
     <div className="mb-5 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-950">

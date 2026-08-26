@@ -603,7 +603,7 @@ const AdminComposer = () => {
   if (structureEditor) {
     return (
       <AdminShell
-        title="15주 교과목·학습 미션 편성"
+        title="주차별 수업 편성"
         compact
         description={
           structureEditor === "new"
@@ -632,7 +632,7 @@ const AdminComposer = () => {
   if (syllabusOpen && outline) {
     return (
       <AdminShell
-        title="강의계획서"
+        title="15주 강의계획서"
         description="저장된 15주 편성을 수업 운영 문서로 확인하고 인쇄·PDF로 내보냅니다."
         compact
       >
@@ -664,8 +664,8 @@ const AdminComposer = () => {
 
   return (
     <AdminShell
-      title="15주 교과목·학습 미션 편성"
-      description="수준·주제·강좌 수행모드·언어 방향에 따라 15주 교과목과 주차별 학습 미션을 편성합니다."
+      title="주차별 수업 편성"
+      description="강좌 일정에 따라 주차별 학습 주제와 승인된 학습 미션을 편성합니다."
       compact
     >
       <div className="w-full max-w-[960px]">
@@ -1269,7 +1269,7 @@ function WeekRow({
           </p>
           {cands.length === 0 ? (
             <p className="text-[12.5px] text-muted-foreground">
-              조건에 맞는 후보 코어가 없습니다
+              조건에 맞는 후보 시나리오가 없습니다
               {act ? ` (${SPEECH_ACT_UI[act]} · ${LEVEL[level]}${themes.length ? " · 선택 주제" : ""})` : ""}.
             </p>
           ) : (

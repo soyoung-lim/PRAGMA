@@ -11,7 +11,7 @@ export type AdminNavGroup = {
 };
 
 export type AdminCompletionWorkflowStage = {
-  id: "create" | "review" | "teach" | "learn" | "records";
+  id: "design" | "create" | "review" | "teach" | "results";
   label: string;
   shortLabel: string;
   to: string;
@@ -28,59 +28,53 @@ export const ADMIN_DASHBOARD_ITEM: AdminNavItem = {
 // 관리자 메뉴·모바일 선택기·대시보드 바로가기가 함께 쓰는 단일 정본이다.
 export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
-    header: "학습 콘텐츠 설계",
+    header: "1. 학습 콘텐츠 설계",
     items: [
       { to: "/admin/corpus", label: "HSK 3.0 어휘 기준" },
       { to: "/admin/question-designer", label: "수준별 설계 기준" },
+      { to: "/admin/research-qa/calibration", label: "화용적 판정 기준" },
       { to: "/admin/prompt-harness", label: "생성 계약·프롬프트" },
     ],
   },
   {
-    header: "학습 콘텐츠 제작",
+    header: "2. 학습 콘텐츠 제작",
     items: [
       {
         to: "/admin/generator",
-        label: "AI 학습 콘텐츠 생성",
+        label: "AI 시나리오 생성",
         activePaths: ["/admin/generator", "/admin/batch"],
       },
-      { to: "/admin/library", label: "코어 라이브러리" },
+      { to: "/admin/library", label: "시나리오 라이브러리" },
       { to: "/admin/assembly", label: "학습 미션 조립" },
     ],
   },
   {
-    header: "품질 검증·공개",
+    header: "3. 학습 콘텐츠 품질관리",
     items: [
-      { to: "/admin/research-qa", label: "전체 현황" },
-      { to: "/admin/research-qa/calibration", label: "1. 판정 기준 확정" },
-      { to: "/admin/research-qa/gold-experts", label: "2. 외부 전문가 확인" },
+      { to: "/admin/research-qa", label: "품질관리 현황" },
       {
         to: "/admin/research-qa/final-review",
-        label: "3. 전체 자동 점검",
+        label: "자동 품질 점검",
         activePaths: ["/admin/research-qa/final-review", "/admin/review"],
       },
-      { to: "/admin/research-qa/releases", label: "4. 교수자 검수·승인" },
+      { to: "/admin/research-qa/releases", label: "교수자 최종 검수·공개" },
     ],
   },
   {
-    header: "수업 편성",
+    header: "4. 수업 운영",
     items: [
-      { to: "/admin/composer", label: "15주 교과목·학습 미션 편성" },
-      { to: "/admin/package", label: "수업 자료 생성" },
-    ],
-  },
-  {
-    header: "학습자와 연구 자료",
-    items: [
-      { to: "/admin/learners", label: "학습자 관리" },
-      { to: "/admin/decision-traces", label: "학습자 수행 기록" },
-      { to: "/admin/research-qa/improvements", label: "학습 콘텐츠 개선" },
-      { to: "/admin/export", label: "수행 기록 내려받기" },
-    ],
-  },
-  {
-    header: "기록과 보존",
-    items: [
+      { to: "/admin/composer", label: "주차별 수업 편성" },
+      { to: "/admin/package", label: "수업자료 만들기" },
+      { to: "/admin/learners", label: "학습자 승인·관리" },
       { to: "/admin/data-backup", label: "수업 데이터 백업·복원" },
+    ],
+  },
+  {
+    header: "5. 학습 결과·연구 자료",
+    items: [
+      { to: "/admin/decision-traces", label: "학습 수행 기록" },
+      { to: "/admin/research-qa/improvements", label: "데이터 기반 콘텐츠 개선" },
+      { to: "/admin/export", label: "연구 데이터 내보내기" },
     ],
   },
 ] as const;
@@ -89,81 +83,85 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 // 각 단계의 actions는 같은 정본을 다음 실제 사용 화면으로 넘기는 최소 연결이다.
 export const ADMIN_COMPLETION_WORKFLOW: readonly AdminCompletionWorkflowStage[] = [
   {
+    id: "design",
+    label: "학습 콘텐츠 설계",
+    shortLabel: "콘텐츠 설계",
+    to: "/admin/corpus",
+    activePaths: ["/admin/corpus", "/admin/question-designer", "/admin/research-qa/calibration", "/admin/prompt-harness"],
+    actions: [
+      { to: "/admin/corpus", label: "HSK 3.0 어휘 기준" },
+      { to: "/admin/question-designer", label: "수준별 설계 기준" },
+      { to: "/admin/research-qa/calibration", label: "화용적 판정 기준" },
+      { to: "/admin/prompt-harness", label: "생성 계약·프롬프트" },
+    ],
+    next: { to: "/admin/generator", label: "콘텐츠 제작으로 이동" },
+  },
+  {
     id: "create",
-    label: "콘텐츠 생성·미션 조립",
-    shortLabel: "생성",
+    label: "학습 콘텐츠 제작",
+    shortLabel: "콘텐츠 제작",
     to: "/admin/assembly",
     activePaths: ["/admin/generator", "/admin/batch", "/admin/library", "/admin/assembly"],
     actions: [
-      { to: "/admin/generator", label: "콘텐츠 생성" },
-      { to: "/admin/assembly", label: "미션 조립" },
+      { to: "/admin/generator", label: "AI 시나리오 생성" },
+      { to: "/admin/library", label: "시나리오 라이브러리" },
+      { to: "/admin/assembly", label: "학습 미션 조립" },
     ],
     next: { to: "/admin/research-qa/final-review", label: "검수로 이동" },
   },
   {
     id: "review",
-    label: "검수·승인",
-    shortLabel: "검수",
+    label: "학습 콘텐츠 품질관리",
+    shortLabel: "품질관리",
     to: "/admin/research-qa/final-review",
     activePaths: [
       "/admin/research-qa",
-      "/admin/research-qa/calibration",
-      "/admin/research-qa/gold-experts",
-      "/admin/research-qa/expert-reviews",
       "/admin/research-qa/final-review",
       "/admin/research-qa/releases",
       "/admin/review",
     ],
     actions: [
-      { to: "/admin/research-qa/final-review", label: "전체 자동 점검" },
-      { to: "/admin/research-qa/releases", label: "교수자 검수·승인" },
+      { to: "/admin/research-qa", label: "품질관리 현황" },
+      { to: "/admin/research-qa/final-review", label: "자동 품질 점검" },
+      { to: "/admin/research-qa/releases", label: "교수자 최종 검수·공개" },
     ],
-    next: { to: "/admin/composer", label: "15주 편성으로 이동" },
+    next: { to: "/admin/composer", label: "수업 운영으로 이동" },
   },
   {
     id: "teach",
-    label: "15주 편성·수업자료",
-    shortLabel: "편성·수업자료",
+    label: "수업 운영",
+    shortLabel: "수업 운영",
     to: "/admin/composer",
-    activePaths: ["/admin/composer", "/admin/curriculum", "/admin/package"],
+    activePaths: ["/admin/composer", "/admin/curriculum", "/admin/package", "/admin/learners", "/admin/data-backup"],
     actions: [
-      { to: "/admin/composer", label: "15주 편성" },
-      { to: "/admin/package", label: "수업자료" },
+      { to: "/admin/composer", label: "주차별 수업 편성" },
+      { to: "/admin/package", label: "수업자료 만들기" },
+      { to: "/admin/learners", label: "학습자 승인·관리" },
+      { to: "/admin/data-backup", label: "백업·복원" },
     ],
-    next: { to: "/admin/learners", label: "학습 운영으로 이동" },
+    next: { to: "/admin/decision-traces", label: "학습 결과로 이동" },
   },
   {
-    id: "learn",
-    label: "게시·학습 수행",
-    shortLabel: "학습 수행",
-    to: "/admin/learners",
-    activePaths: ["/admin/learners"],
-    actions: [
-      { to: "/admin/learners", label: "학습자 관리" },
-      { to: "/learner/course", label: "학습자 수업 열기" },
-    ],
-    next: { to: "/admin/decision-traces", label: "수행 기록으로 이동" },
-  },
-  {
-    id: "records",
-    label: "기록·내보내기",
-    shortLabel: "기록·내보내기",
+    id: "results",
+    label: "학습 결과·연구 자료",
+    shortLabel: "결과·연구 자료",
     to: "/admin/decision-traces",
-    activePaths: ["/admin/decision-traces", "/admin/export"],
+    activePaths: ["/admin/decision-traces", "/admin/research-qa/improvements", "/admin/export"],
     actions: [
-      { to: "/admin/decision-traces", label: "수행 기록" },
-      { to: "/admin/export", label: "기록 내려받기" },
+      { to: "/admin/decision-traces", label: "학습 수행 기록" },
+      { to: "/admin/research-qa/improvements", label: "데이터 기반 콘텐츠 개선" },
+      { to: "/admin/export", label: "연구 데이터 내보내기" },
     ],
   },
 ] as const;
 
 const PRIORITY_LABELS = [
-  "3. 전체 자동 점검",
-  "수업 자료 생성",
-  "학습자 관리",
-  "학습자 수행 기록",
-  "학습 콘텐츠 개선",
-  "수행 기록 내려받기",
+  "자동 품질 점검",
+  "수업자료 만들기",
+  "학습자 승인·관리",
+  "학습 수행 기록",
+  "데이터 기반 콘텐츠 개선",
+  "연구 데이터 내보내기",
 ] as const;
 
 const ALL_ADMIN_NAV_ITEMS = ADMIN_NAV_GROUPS.flatMap((group) => group.items);

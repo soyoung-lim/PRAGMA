@@ -110,7 +110,7 @@ const Page = () => {
 
   return (
     <AdminShell
-      title="학습자 수행 기록"
+      title="학습 수행 기록"
       description="현행 학습미션의 판단, 최초 산출, 피드백 후 수정과 완료 상태를 학습자별로 확인합니다."
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
@@ -120,7 +120,7 @@ const Page = () => {
 
       {error && (
         <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          학습자 수행 기록 조회 실패: {error}
+          학습 수행 기록 조회 실패: {error}
         </div>
       )}
 

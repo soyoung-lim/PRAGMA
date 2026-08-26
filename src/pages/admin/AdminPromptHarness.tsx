@@ -139,7 +139,7 @@ const CARD_DISPLAY: Record<
 // 실제 edge 소스에서 자동 재생성되므로(prebuild) 화면이 코드보다 낡을 수 없다.
 // 편집 경로는 만들지 않는다 — 프롬프트를 고치려면 코드를 고쳐야 한다.
 const SNAPSHOT_GROUP_LABEL: Record<string, string> = {
-  core: "코어 생성 (500개 뱅크)",
+  core: "시나리오 생성 (500개 라이브러리)",
   mission: "미션 승격 (MPJ + 산출 과제)",
   review: "프롬프트 통제 기반 검토",
   runtime: "학습자 실행 중 피드백",
@@ -251,7 +251,7 @@ function ProvenanceBanner({
 
       <div className="mt-3 grid gap-2 text-[12.5px] sm:grid-cols-2">
         <div className="rounded-lg border border-[#EAE4D2] bg-white px-3 py-2">
-          <div className="text-[11.5px] text-muted-foreground">코어 생성 표면 지문 (SHA-256)</div>
+          <div className="text-[11.5px] text-muted-foreground">시나리오 생성 표면 지문 (SHA-256)</div>
           <div className="mt-0.5 break-all font-mono text-[11px]">{snap.core_surface_hash}</div>
           <div className="mt-1 text-[11px] text-muted-foreground">
             모델 {snap.generation_config.model} · temperature {snap.generation_config.temperature} ·{" "}

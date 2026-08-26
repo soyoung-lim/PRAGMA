@@ -241,7 +241,7 @@ const AdminImprovementFlywheel = ({ preview = false }: { preview?: boolean }) =>
   );
   const manifestReady = draftMatchesReleaseScope && !PACK_RELEASE_MANIFEST_DRAFT.git_dirty && !!exactManifestAttestation;
 
-  return <AdminShell title="학습 콘텐츠 개선" description="학습자 반응, 외부 전문가 판단 차이와 품질검사 결과를 모아 중국어 표현 규칙과 학습 문항을 근거 있게 개선합니다.">
+  return <AdminShell title="데이터 기반 콘텐츠 개선" description="학습 수행 기록과 품질 점검 결과를 바탕으로 중국어 표현 규칙과 학습 콘텐츠를 근거 있게 개선합니다.">
     <div className="space-y-5">
       <section className="rounded-xl border border-[#D9D4C8] bg-white p-5">
         <p className="text-xs font-semibold text-[#756F64]">학습자·학습 분석</p>

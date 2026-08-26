@@ -53,16 +53,19 @@ describe("admin navigation reachability", () => {
 
   it("connects the five completion stages through existing screens", () => {
     expect(ADMIN_COMPLETION_WORKFLOW.map((stage) => stage.id)).toEqual([
+      "design",
       "create",
       "review",
       "teach",
-      "learn",
-      "records",
+      "results",
     ]);
+    expect(adminCompletionWorkflowStage("/admin/prompt-harness")?.id).toBe("design");
+    expect(adminCompletionWorkflowStage("/admin/research-qa/calibration")?.id).toBe("design");
     expect(adminCompletionWorkflowStage("/admin/assembly")?.id).toBe("create");
     expect(adminCompletionWorkflowStage("/admin/research-qa/releases")?.id).toBe("review");
+    expect(adminCompletionWorkflowStage("/admin/research-qa/gold-experts")).toBeNull();
     expect(adminCompletionWorkflowStage("/admin/package")?.id).toBe("teach");
-    expect(adminCompletionWorkflowStage("/admin/learners")?.id).toBe("learn");
-    expect(adminCompletionWorkflowStage("/admin/export")?.id).toBe("records");
+    expect(adminCompletionWorkflowStage("/admin/learners")?.id).toBe("teach");
+    expect(adminCompletionWorkflowStage("/admin/export")?.id).toBe("results");
   });
 });

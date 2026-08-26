@@ -18,7 +18,7 @@ export function AdminCompletionWorkflow({ pathname }: { pathname: string }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#486C65]">
-            PRAGMA 수업 운영 흐름
+            PRAGMA 통합 운영 흐름
           </p>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
             현재 {currentIndex + 1}/5 · {current.label}
