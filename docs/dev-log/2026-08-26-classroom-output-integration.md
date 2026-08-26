@@ -29,6 +29,9 @@
 - `npm.cmd run typecheck`: 통과.
 - `git diff --check`: 통과.
 - 전체 회귀·build·브라우저·운영 배포는 반복하지 않았다.
+- 기능 커밋 `42f9520`의 clean worktree를 Railway production에 직접 배포했다. deployment
+  `3ef230ce-e80f-4197-a770-d3e0fb4dbce8`은 `Online`이며 운영 URL은
+  `https://pragma.up.railway.app`이다.
 
 ## 기록
 
