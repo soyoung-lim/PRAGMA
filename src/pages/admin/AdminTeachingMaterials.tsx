@@ -24,6 +24,7 @@ import {
   instructorGuideTimingPlan,
   isCompatibleInstructorGuideSecondary,
   parseInstructorGuideTimingPreset,
+  shouldClearInstructorGuideSecondary,
   type InstructorGuideTimingPreset,
 } from "@/lib/pragma/instructorGuideTiming";
 import { normalizeMission, type MissionRuntime } from "@/lib/pragma/missionSchema";
@@ -147,13 +148,13 @@ const AdminTeachingMaterials = () => {
   const pairReady = timingPreset !== 90 || secondaryGuide !== null;
 
   useEffect(() => {
-    if (secondaryId && !selectedSecondary) {
+    if (shouldClearInstructorGuideSecondary(loading, secondaryId, selectedSecondary?.scenarioId ?? null)) {
       setSecondaryId("");
       const next = new URLSearchParams(searchParams);
       next.delete("mission2");
       setSearchParams(next, { replace: true });
     }
-  }, [secondaryId, selectedSecondary, searchParams, setSearchParams]);
+  }, [loading, secondaryId, selectedSecondary, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!projectorOpen) return;

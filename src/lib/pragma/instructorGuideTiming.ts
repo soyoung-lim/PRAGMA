@@ -171,3 +171,11 @@ export function instructorGuideSequencePath(firstScenarioId: string, secondScena
   });
   return `/admin/package?${params.toString()}`;
 }
+
+export function shouldClearInstructorGuideSecondary(
+  loading: boolean,
+  requestedScenarioId: string,
+  resolvedScenarioId: string | null,
+) {
+  return !loading && requestedScenarioId.length > 0 && resolvedScenarioId === null;
+}

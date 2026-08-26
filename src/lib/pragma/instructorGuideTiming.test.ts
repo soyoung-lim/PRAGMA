@@ -7,6 +7,7 @@ import {
   instructorGuideTimingTotal,
   isCompatibleInstructorGuideSecondary,
   parseInstructorGuideTimingPreset,
+  shouldClearInstructorGuideSecondary,
 } from "@/lib/pragma/instructorGuideTiming";
 
 describe("instructor guide timing presets", () => {
@@ -35,5 +36,11 @@ describe("instructor guide timing presets", () => {
     );
     expect(parseInstructorGuideTimingPreset("90")).toBe(90);
     expect(parseInstructorGuideTimingPreset("unknown")).toBe(30);
+  });
+
+  it("keeps the requested second mission until the mission inventory finishes loading", () => {
+    expect(shouldClearInstructorGuideSecondary(true, "mission-b", null)).toBe(false);
+    expect(shouldClearInstructorGuideSecondary(false, "mission-b", "mission-b")).toBe(false);
+    expect(shouldClearInstructorGuideSecondary(false, "mission-b", null)).toBe(true);
   });
 });
