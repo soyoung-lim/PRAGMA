@@ -57,3 +57,9 @@
 - 코드 커밋 `838d1f1`을 push했고, Railway deployment
   `b3932cd3-7fd1-4e46-9572-0da3bae479f5`는 `SUCCESS`다. image digest는
   `sha256:3bcc71b15d0e53122fc69089f0aa03d24892b71256bc320df3f698a83670b0b1`이다.
+- 후속 화면 피드백에 따라 두 CTA 폭을 190px에서 178px로 줄이고, 대표 미션의 얇은 연노랑
+  원형 재생 아이콘을 짙은 남색의 채워진 재생 삼각형으로 교체했다. 빨강은 경고·중단 의미와
+  과도한 주목을 만들 수 있어 사용하지 않았다. 타입 검사와 로컬 브라우저 확인을 통과했으며,
+  코드 커밋은 `49548c8`, Railway deployment는
+  `833f1237-bb24-46db-9fea-c57dc4516e34` (`SUCCESS`), image digest는
+  `sha256:29523d3d2ef8eb044f4d04d4d10754a6721f48b0dc0f9efee8edda9c3a79129d`다.
