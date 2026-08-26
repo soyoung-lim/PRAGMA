@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/AdminShell";
+import { CurriculumSyllabus } from "@/components/admin/CurriculumSyllabus";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -99,6 +100,7 @@ const AdminComposer = () => {
   const [weeks, setWeeks] = useState<CurriculumWeekRow[]>([]);
   const [loadingOutline, setLoadingOutline] = useState(false);
   const [structureEditor, setStructureEditor] = useState<"new" | "current" | null>(null);
+  const [syllabusOpen, setSyllabusOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
 
   // 수준·방향도 편성기의 교강사 조절 축이다. 저장 시 outline 메타에 함께 반영한다.
@@ -595,6 +597,33 @@ const AdminComposer = () => {
     );
   }
 
+  if (syllabusOpen && outline) {
+    return (
+      <AdminShell
+        title="강의계획서"
+        description="저장된 15주 편성을 수업 운영 문서로 확인하고 인쇄·PDF로 내보냅니다."
+        compact
+      >
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#E2DED2] bg-white p-3 print:hidden">
+          <div>
+            <p className="text-[13px] font-semibold text-[#15202B]">현재 화면 편성 기준</p>
+            <p className="mt-0.5 text-[11.5px] text-muted-foreground">최신 편성을 반영하려면 먼저 돌아가서 편성 저장을 눌러주세요.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setSyllabusOpen(false)}>편성으로 돌아가기</Button>
+            <Button onClick={() => window.print()}>강의계획서 인쇄·PDF</Button>
+          </div>
+        </div>
+        <CurriculumSyllabus
+          outline={outline}
+          weeks={weeks}
+          assignments={assign}
+          coreById={coreById}
+        />
+      </AdminShell>
+    );
+  }
+
   return (
     <AdminShell
       title="15주 교과목·학습 미션 편성"
@@ -693,6 +722,14 @@ const AdminComposer = () => {
             disabled={!outlineId || saving}
           >
             {saving ? "저장 중…" : "편성 저장"}
+          </Button>
+          <Button
+            className="h-9"
+            variant="outline"
+            onClick={() => setSyllabusOpen(true)}
+            disabled={!outlineId || loadingOutline}
+          >
+            강의계획서
           </Button>
 
           {/* 위험 동작(비공개·삭제)은 오른쪽 끝으로 분리해 일상 동작과 섞이지 않게 한다. */}

@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
-import { InstructorMissionGuide } from "@/components/admin/InstructorMissionGuide";
+import {
+  INSTRUCTOR_GUIDE_STEP_COUNT,
+  InstructorMissionGuide,
+  type InstructorGuideAudience,
+} from "@/components/admin/InstructorMissionGuide";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +37,10 @@ const AdminTeachingMaterials = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [projectorOpen, setProjectorOpen] = useState(false);
+  const [projectorStep, setProjectorStep] = useState(1);
+  const [answersRevealed, setAnswersRevealed] = useState(false);
+  const [printAudience, setPrintAudience] = useState<InstructorGuideAudience>("instructor");
 
   useEffect(() => {
     let cancelled = false;
@@ -93,6 +102,50 @@ const AdminTeachingMaterials = () => {
     }
   }, [filtered, selectedId]);
 
+  useEffect(() => {
+    if (!projectorOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const moveTo = (step: number) => {
+      setProjectorStep(Math.max(1, Math.min(INSTRUCTOR_GUIDE_STEP_COUNT, step)));
+      setAnswersRevealed(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setProjectorOpen(false);
+        return;
+      }
+      if (event.key === "ArrowRight" || event.key === "PageDown") {
+        event.preventDefault();
+        setProjectorStep((current) => {
+          const next = Math.min(INSTRUCTOR_GUIDE_STEP_COUNT, current + 1);
+          if (next !== current) setAnswersRevealed(false);
+          return next;
+        });
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault();
+        setProjectorStep((current) => {
+          const next = Math.max(1, current - 1);
+          if (next !== current) setAnswersRevealed(false);
+          return next;
+        });
+      }
+      if (event.key === "Enter" && projectorStep >= 2 && projectorStep <= 5) {
+        event.preventDefault();
+        setAnswersRevealed((current) => !current);
+      }
+      if (event.key >= "1" && event.key <= String(INSTRUCTOR_GUIDE_STEP_COUNT)) {
+        moveTo(Number(event.key));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [projectorOpen, projectorStep]);
+
   const selected = filtered.find((mission) => mission.scenarioId === selectedId) ?? null;
   const guide = selected
     ? buildInstructorMissionGuide(
@@ -110,6 +163,23 @@ const AdminTeachingMaterials = () => {
   const chooseMission = (scenarioId: string) => {
     setSelectedId(scenarioId);
     setSearchParams({ mission: scenarioId }, { replace: true });
+  };
+
+  const openProjector = () => {
+    setProjectorStep(1);
+    setAnswersRevealed(false);
+    setProjectorOpen(true);
+  };
+
+  const moveProjector = (step: number) => {
+    setProjectorStep(Math.max(1, Math.min(INSTRUCTOR_GUIDE_STEP_COUNT, step)));
+    setAnswersRevealed(false);
+  };
+
+  const printGuide = (audience: InstructorGuideAudience) => {
+    flushSync(() => setPrintAudience(audience));
+    window.print();
+    setPrintAudience("instructor");
   };
 
   return (
@@ -158,7 +228,11 @@ const AdminTeachingMaterials = () => {
                 <span className="mx-2">·</span>
                 미션 {selected.scenarioId}
               </div>
-              <Button size="sm" onClick={() => window.print()}>인쇄·PDF 저장</Button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={openProjector}>교실 큰 화면</Button>
+                <Button size="sm" variant="outline" onClick={() => printGuide("student")}>학생 활동지 인쇄</Button>
+                <Button size="sm" onClick={() => printGuide("instructor")}>교수자용 인쇄·PDF</Button>
+              </div>
             </div>
           )}
         </section>
@@ -168,8 +242,51 @@ const AdminTeachingMaterials = () => {
         {!loading && !error && filtered.length === 0 && (
           <p className="rounded-xl border border-dashed bg-white px-5 py-10 text-center text-sm text-muted-foreground">조건에 맞는 승인 미션이 없습니다.</p>
         )}
-        {guide && <InstructorMissionGuide guide={guide} />}
+        {guide && <InstructorMissionGuide guide={guide} audience={printAudience} />}
       </div>
+
+      {projectorOpen && guide && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-[#F7F4EC] text-[#15202B] print:hidden" role="dialog" aria-modal="true" aria-label="교실 큰 화면">
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D8D0BC] bg-[#15202B] px-4 py-3 text-white sm:px-6">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#FAD338]">PRAGMA 교실 화면</p>
+              <h2 className="mt-0.5 text-lg font-bold sm:text-xl">{guide.speechActKo} · MPJ5+DCT1</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {projectorStep >= 2 && projectorStep <= 5 && (
+                <Button
+                  size="sm"
+                  variant={answersRevealed ? "secondary" : "outline"}
+                  className={answersRevealed ? "" : "border-[#FAD338] bg-transparent text-[#FAD338] hover:bg-[#263746] hover:text-[#FAD338]"}
+                  onClick={() => setAnswersRevealed((current) => !current)}
+                >
+                  {answersRevealed ? "해설 숨기기" : "해설 공개"}
+                </Button>
+              )}
+              <Button size="sm" variant="ghost" className="text-white hover:bg-[#263746] hover:text-white" onClick={() => setProjectorOpen(false)}>닫기 · Esc</Button>
+            </div>
+          </header>
+
+          <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+            <InstructorMissionGuide
+              guide={guide}
+              displayMode="projector"
+              activeStep={projectorStep}
+              answersRevealed={answersRevealed}
+            />
+          </main>
+
+          <footer className="flex items-center justify-between gap-3 border-t border-[#D8D0BC] bg-white px-4 py-3 sm:px-6">
+            <Button variant="outline" disabled={projectorStep === 1} onClick={() => moveProjector(projectorStep - 1)}>← 이전</Button>
+            <p className="text-sm font-bold" aria-live="polite">{projectorStep} / {INSTRUCTOR_GUIDE_STEP_COUNT}</p>
+            {projectorStep === INSTRUCTOR_GUIDE_STEP_COUNT ? (
+              <Button onClick={() => setProjectorOpen(false)}>수업자료로 돌아가기</Button>
+            ) : (
+              <Button onClick={() => moveProjector(projectorStep + 1)}>다음 →</Button>
+            )}
+          </footer>
+        </div>
+      )}
     </AdminShell>
   );
 };

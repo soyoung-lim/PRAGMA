@@ -83,7 +83,39 @@
   margin: 12mm;
 }
 
+@page curriculum-syllabus {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
 @media print {
+  .curriculum-syllabus {
+    page: curriculum-syllabus;
+    max-width: none !important;
+    font-size: 9pt;
+  }
+
+  .curriculum-syllabus section,
+  .curriculum-syllabus header,
+  .curriculum-syllabus footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .curriculum-syllabus table {
+    font-size: 7.5pt;
+  }
+
+  .curriculum-syllabus tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .curriculum-syllabus * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   .weekly-learning-note {
     page: weekly-learning-note;
     padding: 0 !important;
