@@ -1,5 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ChevronDown } from "lucide-react";
 import { HomeBrand } from "@/components/HomeBrand";
 import {
   ADMIN_DASHBOARD_ITEM,
@@ -19,6 +20,18 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const mobileNavValue = adminMobileNavValue(pathname);
+  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(
+    () => new Set(ADMIN_NAV_GROUPS.map((_, index) => index)),
+  );
+
+  const toggleGroup = (groupIndex: number) => {
+    setExpandedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(groupIndex)) next.delete(groupIndex);
+      else next.add(groupIndex);
+      return next;
+    });
+  };
 
   const standaloneClasses = (active: boolean) =>
     [
@@ -30,7 +43,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
 
   const itemClasses = (active: boolean) =>
     [
-      "rounded-md px-3 py-[6px] text-[14px] whitespace-nowrap transition-colors mr-2",
+      "mr-2 rounded-md px-3 py-1 text-[13.5px] whitespace-nowrap transition-colors",
       active
         ? "bg-[#FAD338] text-[#15202B] font-medium"
         : "text-foreground font-normal hover:bg-muted hover:text-foreground",
@@ -64,33 +77,38 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
               const groupActive = group.items.some((item) =>
                 adminNavItemIsActive(item, pathname),
               );
+              const expanded = expandedGroups.has(groupIndex);
               const groupLabel = group.header.replace(/^\d+\.\s*/, "");
+              const panelId = `admin-nav-group-${groupIndex}`;
 
               return (
-                <div key={group.header} className="mt-4 flex flex-col">
-                  <div
+                <div key={group.header} className="mt-2.5 flex flex-col">
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-controls={panelId}
+                    onClick={() => toggleGroup(groupIndex)}
                     className={[
-                      "mr-2 flex items-center gap-2 rounded-md px-2.5 py-2 text-[12px] font-semibold whitespace-nowrap select-none",
+                      "mr-2 flex min-h-8 items-center gap-2 rounded-md bg-[#15202B] px-2.5 py-1.5 text-left text-[12px] font-semibold text-white shadow-sm transition-all",
                       groupActive
-                        ? "bg-[#15202B] text-white shadow-sm"
-                        : "bg-[#F2F0E8] text-[#59656D]",
+                        ? "ring-2 ring-[#FAD338] ring-offset-1 ring-offset-background"
+                        : "hover:bg-[#202D3A]",
                     ].join(" ")}
                   >
-                    <span
-                      className={[
-                        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                        groupActive
-                          ? "bg-[#FAD338] text-[#15202B]"
-                          : "bg-[#DEDACF] text-[#59656D]",
-                      ].join(" ")}
-                    >
+                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FAD338] text-[10px] font-bold text-[#15202B]">
                       {groupIndex + 1}
                     </span>
-                    {groupLabel}
-                  </div>
+                    <span className="min-w-0 flex-1 truncate">{groupLabel}</span>
+                    <ChevronDown
+                      aria-hidden
+                      className={`h-3.5 w-3.5 shrink-0 text-[#D8DEE4] transition-transform ${expanded ? "rotate-180" : ""}`}
+                    />
+                  </button>
                   <div
+                    id={panelId}
                     className={[
-                      "mt-1.5 flex flex-col gap-[2px] border-l pl-4",
+                      "mt-1 flex flex-col gap-px border-l pl-3",
+                      expanded ? "" : "hidden",
                       groupActive ? "border-[#D6BC40]" : "border-[#e5e1d8]",
                     ].join(" ")}
                   >
