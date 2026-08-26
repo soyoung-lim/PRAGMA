@@ -119,6 +119,8 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
             </select>
           </div>
 
+          <AdminCompletionWorkflow pathname={pathname} />
+
           <div className="flex items-stretch gap-3 print:hidden">
             <span
               aria-hidden
@@ -133,7 +135,6 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
               )}
             </div>
           </div>
-          <AdminCompletionWorkflow pathname={pathname} />
           <div className="mt-6 print:mt-0">{children}</div>
         </main>
       </div>
