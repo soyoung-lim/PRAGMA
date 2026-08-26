@@ -44,3 +44,6 @@
   `/admin/package`의 화행·수준·상황 검색을 사용한다.
 - `adminNavigation.test.ts` 4개와 typecheck가 통과했다. 전체 회귀·build·운영 배포는
   반복하지 않았다.
+- 기능 커밋 `9a205f7`을 원격 기능 브랜치에 푸시하고 Railway production에 직접 배포했다.
+  deployment `5be4713f-e426-4ff8-98b8-cfa69e10a3a1`은 `SUCCESS`다.
+- 관련 결정·증거: `DEC-20260826-06`, `EVD-20260826-06`.
