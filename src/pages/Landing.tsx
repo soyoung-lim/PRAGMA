@@ -9,6 +9,8 @@ import { REPRESENTATIVE_MISSION_PATH } from "@/lib/demo/representativeMission";
 // 화살표는 hover에서 진행 방향으로 살짝 미끄러진다. 카드가 통째로 떠오르는 동작은
 // "이 카드가 반응한다"까지만 말하고, 화살표의 이동이 "누르면 저쪽으로 간다"를 말한다.
 const arrow = "transition-transform duration-150 group-hover:translate-x-0.5";
+const defenseLink =
+  "group inline-flex w-[190px] items-center justify-center gap-2 rounded-lg border-[1.5px] border-[#15202B] bg-white px-4 py-2.5 text-[13.5px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2";
 
 const Landing = () => {
   useEffect(() => {
@@ -93,9 +95,11 @@ const Landing = () => {
             </span>
             {/* hover에서 어둡게 눌리면 '비활성'처럼 보인다 — 같은 색상을 한 단계
                 밝혀서 떠오르는 쪽으로 반응하게 한다. */}
-            <span className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[#15202B] bg-[#FAD338] px-4 py-1.5 text-[14px] font-bold text-[#15202B] transition-colors group-hover:bg-[#FCE07A]">
-              학습 시작하기
-              <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
+            <span className="mt-auto pt-4">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#15202B] bg-[#FAD338] px-4 py-1.5 text-[14px] font-bold text-[#15202B] transition-colors group-hover:bg-[#FCE07A]">
+                학습 시작하기
+                <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
+              </span>
             </span>
           </Link>
 
@@ -115,9 +119,11 @@ const Landing = () => {
                 버튼은 무엇을 하러 가는지만 말한다 — 학습 시작하기 / 수업 운영하기.
                 채움색은 헤더의 #15202B보다 한 단계 연한 남색이다. 순검정-흰색 대비는
                 노랑 버튼보다 훨씬 세서, 같은 크기여도 교수자 쪽이 앞으로 튀어나온다. */}
-            <span className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[#3E4C57] bg-[#3E4C57] px-4 py-1.5 text-[14px] font-bold text-white transition-colors group-hover:bg-[#4E5F6C]">
-              수업 운영하기
-              <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
+            <span className="mt-auto pt-4">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#3E4C57] bg-[#3E4C57] px-4 py-1.5 text-[14px] font-bold text-white transition-colors group-hover:bg-[#4E5F6C]">
+                수업 운영하기
+                <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
+              </span>
             </span>
           </Link>
         </section>
@@ -128,7 +134,7 @@ const Landing = () => {
           <section className="mt-6 flex flex-wrap items-center justify-center gap-3" aria-label="디펜스 시연">
             <Link
               to="/architecture"
-              className="group inline-flex items-center gap-2 rounded-lg border-[1.5px] border-[#15202B] bg-white px-4 py-2.5 text-[13.5px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+              className={defenseLink}
             >
               <Network aria-hidden size={17} strokeWidth={1.9} className="text-[#5C6A7A]" />
               통합 구조 보기
@@ -136,11 +142,11 @@ const Landing = () => {
             </Link>
             <Link
               to={REPRESENTATIVE_MISSION_PATH}
-              className="group inline-flex items-center gap-2 rounded-lg border-[1.5px] border-[#15202B] bg-[#15202B] px-4 py-2.5 text-[13.5px] font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#22303E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+              className={defenseLink}
             >
               <PlayCircle aria-hidden size={17} strokeWidth={1.9} className="text-[#FAD338]" />
               대표 미션 시연
-              <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
+              <ArrowRight aria-hidden size={14} strokeWidth={2} className={`text-[#5C6A7A] ${arrow}`} />
             </Link>
           </section>
         )}
