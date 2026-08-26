@@ -62,6 +62,12 @@ export interface LearnerCourseSource {
   cores: ComposerCore[];
 }
 
+/** 학습자에게 공개된 교과목 목록. RLS에만 기대지 않고 앱에서도 published만 남긴다. */
+export async function listPublishedCourseOutlines(): Promise<CurriculumOutlineRow[]> {
+  const outlines = await listCurriculumOutlines();
+  return outlines.filter((outline) => outline.status === "published");
+}
+
 /**
  * 편성 원천을 학습자 강좌로 투영한다.
  * 기존 DB에 남은 core-only/generated 배정과 삭제된 코어는 상황 문구조차 노출하지 않는다.
@@ -117,10 +123,12 @@ export function assembleLearnerCourse({
   return { outline, weeks: learnerWeeks };
 }
 
-/** 게시된 커리큘럼 1개(가장 최근 수정)의 편성본을 학습자 시점으로 조립. 없으면 null. */
-export async function getPublishedCourse(): Promise<LearnerCourse | null> {
-  const outlines = await listCurriculumOutlines();
-  const published = outlines.find((o) => o.status === "published");
+/** 선택한 게시 강좌를 학습자 시점으로 조립한다. id가 없으면 구 주소 호환용 최신 강좌를 쓴다. */
+export async function getPublishedCourse(courseId?: string): Promise<LearnerCourse | null> {
+  const outlines = await listPublishedCourseOutlines();
+  const published = courseId
+    ? outlines.find((outline) => outline.id === courseId)
+    : outlines[0];
   if (!published) return null;
 
   const [{ outline, weeks }, assignments, cores] = await Promise.all([

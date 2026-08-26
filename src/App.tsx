@@ -53,7 +53,9 @@ const StrategyMap = lazy(() => import("./pages/learner/StrategyMap.tsx"));
 const PrototypeMissionV2 = lazy(() => import("./pages/learner/PrototypeMissionV2.tsx"));
 const LegacyMissionRun = lazy(() => import("./pages/learner/LegacyMissionRun.tsx"));
 const CanonicalMissionRun = lazy(() => import("./pages/learner/CanonicalMissionRun.tsx"));
+const LearnerCourseList = lazy(() => import("./pages/learner/LearnerCourseList.tsx"));
 const LearnerCourseLive = lazy(() => import("./pages/learner/LearnerCourseLive.tsx"));
+const LearnerCourseWeek = lazy(() => import("./pages/learner/LearnerCourseWeek.tsx"));
 const EntryTaskMode = lazy(() => import("./pages/EntryTaskMode.tsx"));
 const EntryLanguageDirection = lazy(() => import("./pages/EntryLanguageDirection.tsx"));
 const EntryUnavailable = lazy(() => import("./pages/EntryUnavailable.tsx"));
@@ -114,8 +116,12 @@ const App = () => (
           <Route path="/learner/home" element={<Navigate to="/learner/course" replace />} />
           <Route path="/learner/lounge" element={<RequireApproved><LoungeHome /></RequireApproved>} />
           <Route path="/learner/lounge/:corner" element={<RequireApproved><LoungeCorner /></RequireApproved>} />
-          {/* 게시·편성된 DB 강좌가 일반 학습자 수업의 단일 정본이다. */}
-          <Route path="/learner/course" element={<RequireApproved><LearnerCourseLive /></RequireApproved>} />
+          {/* 게시 교과목 → 15주 학습계획 → 주차 A·B 미션. */}
+          <Route path="/learner/course" element={<RequireApproved><LearnerCourseList /></RequireApproved>} />
+          <Route path="/learner/course/:courseId" element={<RequireApproved><LearnerCourseLive /></RequireApproved>} />
+          <Route path="/learner/course/:courseId/week/:weekNo" element={<RequireApproved><LearnerCourseWeek /></RequireApproved>} />
+          <Route path="/learner/course/:courseId/week/:weekNo/note" element={<RequireApproved><WeeklyLearningNote /></RequireApproved>} />
+          <Route path="/learner/course/:courseId/week/:weekNo/intro" element={<RequireApproved><IntroArc /></RequireApproved>} />
           <Route path="/learner/course-live" element={<Navigate to="/learner/course" replace />} />
           <Route path="/learner/course/week/:weekNo/note" element={<RequireApproved><WeeklyLearningNote /></RequireApproved>} />
           {/* 도입 아크 — 목표 특징을 처음 배우는 자리(Hook → 귀납 → 원리 → 수용).

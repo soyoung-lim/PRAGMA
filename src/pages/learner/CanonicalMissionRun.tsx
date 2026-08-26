@@ -1882,9 +1882,22 @@ export function CompletionActions({ onRestart, runtime = false, saveState = "idl
   runtime?: boolean;
   saveState?: "idle" | "saving" | "saved" | "error";
 }) {
+  const returnCourseId = new URLSearchParams(window.location.search).get("courseId");
+  const returnWeekNo = Number(new URLSearchParams(window.location.search).get("weekNo"));
+  const returnPath = returnCourseId && Number.isInteger(returnWeekNo)
+    ? `/learner/course/${encodeURIComponent(returnCourseId)}/week/${returnWeekNo}`
+    : null;
   return (
     <section className={`${panel} p-4 sm:p-5`}>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className={`grid gap-2 ${returnPath ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+        {returnPath && (
+          <Link
+            to={returnPath}
+            className="flex h-12 items-center justify-center rounded-md bg-[#F3D248] px-4 text-center text-sm font-bold text-[#15202B] transition hover:bg-[#F7DF73] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
+          >
+            이번 주 학습으로 돌아가기
+          </Link>
+        )}
         <Link
           to="/learner/records#correction-notes"
           className="flex h-12 items-center justify-center rounded-md bg-[#15202B] px-4 text-sm font-bold text-white transition hover:bg-[#263547] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
