@@ -19,12 +19,20 @@ function specialWeekCopy(weekNo: number): string {
     return "앞서 완료한 미션의 표현 선택과 수정 근거를 수업에서 다시 검토합니다.";
   }
   if (role === "contextualization") {
-    return "앞서 배운 판단 기준을 관계·부담이 달라진 새 맥락에 다시 적용합니다.";
+    return "서로 다른 두 화행을 관계와 선택권의 부담이 큰 새 맥락에서 수행합니다.";
   }
   if (role === "assessment") {
     return "교수자 안내에 따라 지금까지의 화용 판단과 산출을 통합해 점검합니다.";
   }
   return "교수자 안내에 따라 앞선 학습 기록을 연결하고 정리합니다.";
+}
+
+function emptyWeekCopy(weekNo: number): string {
+  const role = weekRole(weekNo);
+  if (role === "contextualization") {
+    return "고부담 실전 미션을 편성 중입니다. 배정 후 서로 다른 두 화행 미션을 이곳에서 수행합니다.";
+  }
+  return `${specialWeekCopy(weekNo)} 교수자 수업 안내에 따라 진행합니다.`;
 }
 
 const LearnerCourseWeek = () => {
@@ -138,7 +146,7 @@ const LearnerCourseWeek = () => {
 
           {week.scenarios.length === 0 ? (
             <div className="mt-3 rounded-xl border border-[#EAE4D2] bg-[#FAF8F2] p-5 text-[13px] leading-6 text-muted-foreground">
-              {specialWeekCopy(week.week_no)} 새 미션이 필요한 주차가 아니면 교수자 수업 안내에 따라 진행합니다.
+              {emptyWeekCopy(week.week_no)}
             </div>
           ) : (
             <ul className="mt-3 grid gap-3 sm:grid-cols-2">
