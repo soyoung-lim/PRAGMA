@@ -60,31 +60,58 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
               {ADMIN_DASHBOARD_ITEM.label}
             </Link>
 
-            {ADMIN_NAV_GROUPS.map((group) => (
-              <div key={group.header} className="flex flex-col">
-                <span
-                  className="mt-5 mb-1.5 px-3 text-[12px] font-medium uppercase tracking-[0.08em] text-[#8a857c] whitespace-nowrap cursor-default select-none"
-                >
-                  {group.header}
-                </span>
-                <div className="flex flex-col gap-[2px] border-l border-[#e5e1d8] pl-4">
-                  {group.items.map((item) => (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      className={itemClasses(adminNavItemIsActive(item, pathname))}
+            {ADMIN_NAV_GROUPS.map((group, groupIndex) => {
+              const groupActive = group.items.some((item) =>
+                adminNavItemIsActive(item, pathname),
+              );
+              const groupLabel = group.header.replace(/^\d+\.\s*/, "");
+
+              return (
+                <div key={group.header} className="mt-4 flex flex-col">
+                  <div
+                    className={[
+                      "mr-2 flex items-center gap-2 rounded-md px-2.5 py-2 text-[12px] font-semibold whitespace-nowrap select-none",
+                      groupActive
+                        ? "bg-[#15202B] text-white shadow-sm"
+                        : "bg-[#F2F0E8] text-[#59656D]",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                        groupActive
+                          ? "bg-[#FAD338] text-[#15202B]"
+                          : "bg-[#DEDACF] text-[#59656D]",
+                      ].join(" ")}
                     >
-                      {item.label}
-                      {item.pending && (
-                        <span className="ml-1.5 rounded-full bg-[#EDE9DD] px-1.5 py-[1px] align-middle text-[10px] font-normal text-[#8a857c]">
-                          준비 중
-                        </span>
-                      )}
-                    </Link>
-                  ))}
+                      {groupIndex + 1}
+                    </span>
+                    {groupLabel}
+                  </div>
+                  <div
+                    className={[
+                      "mt-1.5 flex flex-col gap-[2px] border-l pl-4",
+                      groupActive ? "border-[#D6BC40]" : "border-[#e5e1d8]",
+                    ].join(" ")}
+                  >
+                    {group.items.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className={itemClasses(adminNavItemIsActive(item, pathname))}
+                      >
+                        {item.label}
+                        {item.pending && (
+                          <span className="ml-1.5 rounded-full bg-[#EDE9DD] px-1.5 py-[1px] align-middle text-[10px] font-normal text-[#8a857c]">
+                            준비 중
+                          </span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </nav>
         </aside>
 
