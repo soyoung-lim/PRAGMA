@@ -408,9 +408,14 @@ describe("mission_v5 native MPJ5 contract", () => {
     expect(checked.violations.filter((item) => item.level === "fail")).toEqual([]);
   });
 
-  it("enforces four candidate roles and omits preceding turns from every current native MPJ5", () => {
+  it("accepts four band-pair candidates without legacy roles and omits current native preceding turns", () => {
     const current = structuredClone(SAMPLE_MISSION_V5_NATIVE);
     current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
+    const currentMulti = current.mpj_items[4];
+    if (currentMulti.type !== "multi_judge") throw new Error("Expected multi_judge");
+    currentMulti.candidates.forEach((candidate) => {
+      delete candidate.comparison_role;
+    });
     expect(checkMission(current, context).violations.filter(
       (item) => item.level === "fail" && (item.id === "R5" || item.id === "R8"),
     )).toEqual([]);
@@ -418,14 +423,21 @@ describe("mission_v5 native MPJ5 contract", () => {
     const invalid = structuredClone(current);
     invalid.mpj_items[0].preceding_turn = "不需要出现的对方发言。";
     invalid.production_task.preceding_turn = "不需要出现的对方发言。";
-    const multi = invalid.mpj_items[4];
-    if (multi.type !== "multi_judge") throw new Error("Expected multi_judge");
-    multi.candidates[0].comparison_role = "middle";
 
     const failures = checkMission(invalid, context).violations.filter((item) => item.level === "fail");
     expect(failures.some((item) => item.id === "R8" && item.message.includes("native MPJ5"))).toBe(true);
     expect(failures.some((item) => item.id === "R8" && item.message.includes("production_task"))).toBe(true);
-    expect(failures.some((item) => item.id === "R5" && item.message.includes("BEST 1"))).toBe(true);
+  });
+
+  it("keeps the four-role check for historical native MPJ5", () => {
+    const historical = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    const multi = historical.mpj_items[4];
+    if (multi.type !== "multi_judge") throw new Error("Expected multi_judge");
+    multi.candidates[0].comparison_role = "middle";
+
+    expect(checkMission(historical, context).violations.some(
+      (item) => item.id === "R5" && item.level === "fail" && item.message.includes("BEST 1"),
+    )).toBe(true);
   });
 
   it("requires concise two-sentence scenes and one recommended repair in the current native flow", () => {
@@ -456,20 +468,22 @@ describe("mission_v5 native MPJ5 contract", () => {
     )).toBe(true);
   });
 
-  it("requires one acceptable and one adjustment-needed middle without duplicate candidates", () => {
-    const current = structuredClone(SAMPLE_MISSION_V5_NATIVE);
-    current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
-    const multi = current.mpj_items[4];
-    if (multi.type !== "multi_judge") throw new Error("Expected multi_judge");
-    const middles = multi.candidates.filter((candidate) => candidate.comparison_role === "middle");
-    middles.forEach((candidate) => {
-      candidate.accepted_band_codes = ["within_band"];
-    });
+  it("requires two acceptable and two adjustment-needed candidates without duplicates", () => {
+    for (const acceptableCount of [1, 3]) {
+      const current = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+      current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
+      const multi = current.mpj_items[4];
+      if (multi.type !== "multi_judge") throw new Error("Expected multi_judge");
+      multi.candidates.forEach((candidate, index) => {
+        delete candidate.comparison_role;
+        candidate.accepted_band_codes = [index < acceptableCount ? "within_band" : "too_direct"];
+      });
 
-    const middleFailures = checkMission(current, context).violations.filter(
-      (item) => item.id === "R5" && item.level === "fail",
-    );
-    expect(middleFailures.some((item) => item.message.includes("적정 대역 1개와 비적정 경계 대역 1개"))).toBe(true);
+      expect(checkMission(current, context).violations.some(
+        (item) => item.id === "R5" && item.level === "fail"
+          && item.message.includes("4후보·적정 2·조정 필요 2"),
+      )).toBe(true);
+    }
 
     const duplicate = structuredClone(SAMPLE_MISSION_V5_NATIVE);
     duplicate.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
