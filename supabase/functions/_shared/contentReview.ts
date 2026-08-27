@@ -35,6 +35,7 @@ export type ModelReview<T> = {
   result: T; provider: "openai" | "anthropic"; model: string; requested_model: string;
   response_id: string; usage: Record<string, unknown>; checked_at: string;
   prompt_version: string; input_hash: string;
+  request_parameters?: { max_tokens: number; timeout_ms: number; effort?: string };
 };
 export type ContentReviewRun = {
   id: string; kind: ReviewTarget["kind"]; target_id: string; week_no: number;
