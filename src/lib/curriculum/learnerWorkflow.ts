@@ -27,8 +27,8 @@ export interface LearnerWorkflowStep {
   detail: string;
 }
 
-/** mission_v4·v5 정본 문항 수. v1·v2 legacy만 5문항이었다. */
-export const MPJ_ITEM_COUNT = 4;
+/** 현행 네이티브 mission_v5의 정본 판단 문항 수. 구 v4는 MPJ4로만 읽기 호환한다. */
+export const MPJ_ITEM_COUNT = 5;
 
 export function learnerWorkflowSteps(
   options: { interpreting?: boolean; mpjCount?: number } = {},

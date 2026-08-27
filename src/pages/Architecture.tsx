@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronDown, ChevronRight, RotateCcw } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, PlayCircle, RotateCcw } from "lucide-react";
 import { MPJ_ITEM_COUNT } from "@/lib/curriculum/learnerWorkflow";
 import { FINAL_GOLD_POPULATION_COUNT } from "@/lib/pragma/goldProtocol";
+import { IS_DEMO } from "@/lib/auth/useProfile";
+import { REPRESENTATIVE_MISSION_PATH } from "@/lib/demo/representativeMission";
 
 // 심사 설명용 read-only 화면. 현재 런타임 흐름과 연구자료 처리 경계를 요약한다.
 
@@ -170,12 +172,23 @@ const Architecture = () => (
             </p>
           </div>
         </div>
-        <Link
-          to="/"
-          className="rounded-lg border border-[#FAD338] bg-[#FAD338] px-3 py-1.5 text-[12px] font-semibold text-[#15202B] transition-colors hover:bg-[#F5C400]"
-        >
-          ← 처음으로
-        </Link>
+        <div className="flex items-center gap-2">
+          {IS_DEMO && (
+            <Link
+              to={REPRESENTATIVE_MISSION_PATH}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#FAD338] bg-[#FAD338] px-3 py-1.5 text-[12px] font-semibold text-[#15202B] transition-colors hover:bg-[#F5C400]"
+            >
+              <PlayCircle aria-hidden size={14} strokeWidth={2} />
+              대표 미션 시연
+            </Link>
+          )}
+          <Link
+            to="/"
+            className="rounded-lg border border-white/35 px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-white/10"
+          >
+            ← 처음으로
+          </Link>
+        </div>
       </div>
     </header>
 
@@ -210,9 +223,9 @@ const Architecture = () => (
           <Down />
           <Node lane="supply" title="1. 기준답안 연구 책임자 판정" desc={`9화행 × 5개 = ${FINAL_GOLD_POPULATION_COUNT}개 · 시스템 운영 게이트 설정`} />
           <Down />
-          <Node lane="supply" title="2. 기준답안 외부 전문가 확인" desc="9개 화행 × 2개 층화표본 · 전문가 2인 독립 확인" />
+          <Node lane="supply" title="2. 기준답안 자동 회귀 점검" desc="연구자 확정 기준답안으로 품질 점검 자동화의 작동 조건 확인" />
           <Down />
-          <Node lane="supply" title="3. 자동 점검·경고 집중 검토" desc="504개 전량 자동 점검 · 연구 책임자는 경고 문항 집중 확인" />
+          <Node lane="supply" title="3. 콘텐츠 자동 점검·교수자 검수" desc="504개 전량 자동 점검 · 교수자는 경고 문항을 우선 확인하고 최종 승인" />
           <Down />
           <Node
             lane="supply"

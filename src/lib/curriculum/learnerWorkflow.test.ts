@@ -16,11 +16,11 @@ describe("learnerWorkflow", () => {
     ]);
   });
 
-  it("MPJ는 4문항이다 — legacy 5문항으로 되돌리지 않는다", () => {
-    expect(MPJ_ITEM_COUNT).toBe(4);
+  it("현행 네이티브 MPJ는 5문항이다", () => {
+    expect(MPJ_ITEM_COUNT).toBe(5);
     const judge = learnerWorkflowSteps().find((step) => step.key === "judge");
-    expect(judge?.aside).toBe("MPJ 4");
-    expect(judge?.detail).toContain("4번");
+    expect(judge?.aside).toBe("MPJ 5");
+    expect(judge?.detail).toContain("5번");
   });
 
   it("실제 문항 수를 받으면 그 값을 쓴다", () => {

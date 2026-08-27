@@ -7,8 +7,8 @@ describe("mission learner release state", () => {
     expect(isMissionReleasedForLearner({ mission_status: "released", release_gate_mode: "expert_v1" })).toBe(true);
   });
 
-  it("blocks covered missions that have only internal review", () => {
-    expect(isMissionReleasedForLearner({ mission_status: "reviewed", release_gate_mode: "expert_v1" })).toBe(false);
+  it("uses professor-reviewed as the current release endpoint", () => {
+    expect(isMissionReleasedForLearner({ mission_status: "reviewed", release_gate_mode: "expert_v1" })).toBe(true);
   });
 
   it("preserves reviewed behavior for legacy rows", () => {

@@ -1,5 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ChevronDown } from "lucide-react";
 import { HomeBrand } from "@/components/HomeBrand";
 import {
   ADMIN_DASHBOARD_ITEM,
@@ -19,6 +20,18 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const mobileNavValue = adminMobileNavValue(pathname);
+  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(
+    () => new Set(ADMIN_NAV_GROUPS.map((_, index) => index)),
+  );
+
+  const toggleGroup = (groupIndex: number) => {
+    setExpandedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(groupIndex)) next.delete(groupIndex);
+      else next.add(groupIndex);
+      return next;
+    });
+  };
 
   const standaloneClasses = (active: boolean) =>
     [
@@ -30,7 +43,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
 
   const itemClasses = (active: boolean) =>
     [
-      "rounded-md px-3 py-[6px] text-[14px] whitespace-nowrap transition-colors mr-2",
+      "mr-2 rounded-md px-3 py-0.5 text-[13px] leading-5 whitespace-nowrap transition-colors",
       active
         ? "bg-[#FAD338] text-[#15202B] font-medium"
         : "text-foreground font-normal hover:bg-muted hover:text-foreground",
@@ -45,7 +58,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
             to="/"
             className="text-sm text-[#8899A6] transition-colors hover:text-[#F1EFE8]"
           >
-            ← 학습자 화면으로
+            학습자 수업 열기 ↗
           </Link>
         </div>
       </header>
@@ -60,31 +73,67 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
               {ADMIN_DASHBOARD_ITEM.label}
             </Link>
 
-            {ADMIN_NAV_GROUPS.map((group) => (
-              <div key={group.header} className="flex flex-col">
-                <span
-                  className="mt-5 mb-1.5 px-3 text-[12px] font-medium uppercase tracking-[0.08em] text-[#8a857c] whitespace-nowrap cursor-default select-none"
-                >
-                  {group.header}
-                </span>
-                <div className="flex flex-col gap-[2px] border-l border-[#e5e1d8] pl-4">
-                  {group.items.map((item) => (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      className={itemClasses(adminNavItemIsActive(item, pathname))}
-                    >
-                      {item.label}
-                      {item.pending && (
-                        <span className="ml-1.5 rounded-full bg-[#EDE9DD] px-1.5 py-[1px] align-middle text-[10px] font-normal text-[#8a857c]">
-                          준비 중
-                        </span>
-                      )}
-                    </Link>
-                  ))}
+            {ADMIN_NAV_GROUPS.map((group, groupIndex) => {
+              const groupActive = group.items.some((item) =>
+                adminNavItemIsActive(item, pathname),
+              );
+              const expanded = expandedGroups.has(groupIndex);
+              const groupLabel = group.header.replace(/^\d+\.\s*/, "");
+              const panelId = `admin-nav-group-${groupIndex}`;
+
+              return (
+                <div key={group.header} className="mt-2 flex flex-col">
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-controls={panelId}
+                    onClick={() => toggleGroup(groupIndex)}
+                    className={[
+                      "mr-2 flex min-h-8 items-center gap-2 px-2.5 py-1.5 text-left text-[12px] font-semibold transition-colors",
+                      groupActive
+                        ? "rounded-md bg-[#15202B] text-white shadow-sm"
+                        : "border-b border-[#D8D3C6] bg-transparent text-[#15202B] hover:bg-[#F2F0E8]",
+                    ].join(" ")}
+                  >
+                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FAD338] text-[10px] font-bold text-[#15202B]">
+                      {groupIndex + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{groupLabel}</span>
+                    <ChevronDown
+                      aria-hidden
+                      className={[
+                        "h-3.5 w-3.5 shrink-0 transition-transform",
+                        groupActive ? "text-[#D8DEE4]" : "text-[#7D858C]",
+                        expanded ? "rotate-180" : "",
+                      ].join(" ")}
+                    />
+                  </button>
+                  <div
+                    id={panelId}
+                    className={[
+                      "mt-1 flex flex-col gap-px border-l pl-3",
+                      expanded ? "" : "hidden",
+                      groupActive ? "border-[#D6BC40]" : "border-[#e5e1d8]",
+                    ].join(" ")}
+                  >
+                    {group.items.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className={itemClasses(adminNavItemIsActive(item, pathname))}
+                      >
+                        {item.label}
+                        {item.pending && (
+                          <span className="ml-1.5 rounded-full bg-[#EDE9DD] px-1.5 py-[1px] align-middle text-[10px] font-normal text-[#8a857c]">
+                            준비 중
+                          </span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </nav>
         </aside>
 

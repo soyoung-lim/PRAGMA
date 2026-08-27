@@ -74,12 +74,12 @@ describe("프리셋 기반 15주 자동 편성", () => {
   it.each(COURSE_PRESETS)(
     "$label 프리셋이 공통 15주 골격의 9개 화행 주차를 검토 완료 미션으로 채운다",
     (preset) => {
-      const cores = presetPool(preset, preset.target_level, "ko_zh");
+      const cores = presetPool(preset, preset.target_level, preset.language_direction);
       const result = buildAutomaticAssignments({
         weeks: createStandard15WeekTemplate(),
         cores,
         level: preset.target_level,
-        direction: "ko_zh",
+        direction: preset.language_direction,
         themes: preset.included_themes,
         courseModePolicy: {
           courseMode: preset.course_mode,
@@ -110,7 +110,7 @@ describe("프리셋 기반 15주 자동 편성", () => {
           const selected = byId.get(item.scenario_id);
           expect(selected?.mission_status).toBe("reviewed");
           expect(selected?.learner_level).toBe(preset.target_level);
-          expect(selected?.direction).toBe("ko_zh");
+          expect(selected?.direction).toBe(preset.language_direction);
           expect(selected?.mode).toBe(expectedMode);
           expect(preset.included_themes).toContain(selected?.theme_code);
         }
@@ -206,7 +206,7 @@ describe("프리셋 기반 15주 자동 편성", () => {
     ]);
   });
 
-  it("혼합 4/9는 앞 5개 화행 주차를 번역, 뒤 4개를 통역으로 편성한다", () => {
+  it("혼합 6/12는 전반부 화행을 번역, 후반부 화행을 통역으로 편성한다", () => {
     const preset = COURSE_PRESETS[0];
     const cores = presetPool(preset, "intermediate", "ko_zh");
     const result = buildAutomaticAssignments({
@@ -215,11 +215,11 @@ describe("프리셋 기반 15주 자동 편성", () => {
       level: "intermediate",
       direction: "ko_zh",
       themes: preset.included_themes,
-      courseModePolicy: { courseMode: "mixed", interpretingWeekCount: 4 },
+      courseModePolicy: { courseMode: "mixed", interpretingWeekCount: 6 },
       defaultScenariosPerWeek: 2,
     });
 
-    expect(result.interpretingWeekNumbers).toEqual([9, 10, 11, 12]);
+    expect(result.interpretingWeekNumbers).toEqual([9, 10, 11, 12, 13, 14]);
     const byId = new Map(cores.map((item) => [item.scenario_id, item]));
     for (const weekNo of [2, 3, 4, 5, 6]) {
       expect(result.assignments[weekNo].every(
@@ -311,7 +311,7 @@ describe("주차 수동 교체", () => {
       "intermediate",
       "ko_zh",
       2,
-      { courseMode: "interpreting", interpretingWeekCount: 9 },
+      { courseMode: "interpreting", interpretingWeekCount: 12 },
     );
     expect(issues.map((issue) => issue.code)).toContain("course_mode");
   });

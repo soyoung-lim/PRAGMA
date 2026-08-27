@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ENGINEERING_SEED_GATE,
-  EXPERT_RELEASE_GATE,
+  RESEARCHER_RELEASE_GATE,
   observationsFromExpectedLabels,
   runGoldRegression,
 } from "./goldRegression";
@@ -23,11 +23,11 @@ describe("Gold regression harness", () => {
     expect(report.mismatches).toEqual([]);
   });
 
-  it("does not silently treat unapproved seeds as an expert release benchmark", () => {
+  it("does not silently treat unapproved seeds as a researcher-confirmed release benchmark", () => {
     const observations = observationsFromExpectedLabels(SEED_GOLD_CASES, ["researcher_seed"]);
-    const report = runGoldRegression(SEED_GOLD_CASES, observations, EXPERT_RELEASE_GATE);
+    const report = runGoldRegression(SEED_GOLD_CASES, observations, RESEARCHER_RELEASE_GATE);
 
-    expect(report.mode).toBe("expert_release_gate");
+    expect(report.mode).toBe("researcher_gate");
     expect(report.gate_status).toBe("not_runnable");
     expect(report.eligible_case_count).toBe(0);
     expect(report.band_accuracy).toBeNull();

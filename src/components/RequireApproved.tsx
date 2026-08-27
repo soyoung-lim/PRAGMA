@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { IS_DEV, useProfile } from "@/lib/auth/useProfile";
+import { loginPathFor } from "@/lib/auth/loginReturn";
 
 type Props = {
   children: React.ReactNode;
@@ -34,7 +35,7 @@ export const RequireApproved = ({ children, allowDevMissionPreview = false }: Pr
   }
 
   if (!session && !isDevStub) {
-    return <Navigate to="/student-login" replace />;
+    return <Navigate to={loginPathFor(`${location.pathname}${location.search}${location.hash}`)} replace />;
   }
 
   if (!profile || !profile.profile_completed) {

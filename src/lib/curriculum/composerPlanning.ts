@@ -8,6 +8,7 @@ import type {
   SpeechActUI,
 } from "@/lib/pragma/enums";
 import {
+  ACTUAL_LEARNING_WEEK_NOS,
   expectedCoreModeForWeek,
   interpretingTargetWeekNumbers,
   isCourseModePolicyValid,
@@ -74,13 +75,12 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
   const usedIds = new Set<string>();
   const shortages: AutoFillResult["shortages"] = [];
   const expandedThemeWeeks: number[] = [];
-  const targetWeekNumbers = weeks
-    .filter((week) => week.type === "regular" && week.speech_act)
-    .map((week) => week.week_no)
-    .sort((a, b) => a - b);
+  const learningWeekNumbers = ACTUAL_LEARNING_WEEK_NOS.filter((weekNo) =>
+    weeks.some((week) => week.week_no === weekNo),
+  );
   const interpretingWeekNumbers = interpretingTargetWeekNumbers(
     courseModePolicy,
-    targetWeekNumbers,
+    learningWeekNumbers,
   );
   let filledWeeks = 0;
 
@@ -91,7 +91,7 @@ export function buildAutomaticAssignments(options: AutoFillOptions): AutoFillRes
     const expectedMode = expectedCoreModeForWeek(
       courseModePolicy,
       week.week_no,
-      targetWeekNumbers,
+      learningWeekNumbers,
     );
     const isBaseEligible = (core: ComposerCore) =>
       isReviewedMission(core) &&
@@ -313,10 +313,9 @@ export function assignmentStructureIssues(
 ): AssignmentStructureIssue[] {
   const issues: AssignmentStructureIssue[] = [];
   const weekByNo = new Map(weeks.map((week) => [week.week_no, week]));
-  const targetWeekNumbers = weeks
-    .filter((week) => week.type === "regular" && week.speech_act)
-    .map((week) => week.week_no)
-    .sort((a, b) => a - b);
+  const learningWeekNumbers = ACTUAL_LEARNING_WEEK_NOS.filter((weekNo) =>
+    weeks.some((week) => week.week_no === weekNo),
+  );
   if (courseModePolicy && !isCourseModePolicyValid(courseModePolicy)) {
     issues.push({ weekNo: 0, code: "course_mode_policy" });
   }
@@ -334,7 +333,7 @@ export function assignmentStructureIssues(
     }
     const slots = week.scenario_slots ?? defaultScenariosPerWeek;
     const expectedMode = courseModePolicy && isCourseModePolicyValid(courseModePolicy)
-      ? expectedCoreModeForWeek(courseModePolicy, weekNo, targetWeekNumbers)
+      ? expectedCoreModeForWeek(courseModePolicy, weekNo, learningWeekNumbers)
       : null;
     if (items.length > slots) issues.push({ weekNo, code: "too_many_items" });
 

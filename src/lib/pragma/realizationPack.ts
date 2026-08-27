@@ -69,7 +69,7 @@ export const RealizationEvidenceSchema = z.object({
 });
 
 export const RealizationReviewSchema = z.object({
-  status: z.enum(["researcher_seed", "researcher_approved", "expert_approved", "retired"]),
+  status: z.enum(["researcher_seed", "researcher_approved", "retired"]),
   reviewer_ids: z.array(z.string().min(1)),
   reviewed_at: z.string().datetime().nullable(),
   note_ko: z.string().min(1).nullable(),
@@ -129,7 +129,7 @@ export const RealizationPackSchema = z.object({
   pack_id: z.literal(KO_ZH_CORE_PACK_ID),
   version: z.string().min(1),
   direction: z.literal("ko_zh"),
-  status: z.enum(["seed", "researcher_approved", "expert_approved", "retired"]),
+  status: z.enum(["seed", "researcher_approved", "retired"]),
   scope: z.object({
     speech_acts: z.array(z.enum(["request", "refusal", "thanks"])).length(3),
     target_language: z.literal("zh"),
@@ -197,7 +197,7 @@ const SEED_REVIEW = {
   status: "researcher_seed" as const,
   reviewer_ids: [],
   reviewed_at: null,
-  note_ko: "기존 생성계약·카탈로그 자산을 v1 정본으로 이관한 시드. 외부 전문가 승인 전.",
+  note_ko: "기존 생성계약·카탈로그 자산을 v1 정본으로 이관한 연구자 검토 전 시드.",
 };
 
 export const KO_ZH_CORE_REALIZATION_PACK: RealizationPack = {

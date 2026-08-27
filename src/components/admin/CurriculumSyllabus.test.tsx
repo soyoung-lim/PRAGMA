@@ -1,0 +1,75 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { CurriculumSyllabus } from "@/components/admin/CurriculumSyllabus";
+import type { ComposerCore } from "@/lib/curriculum/composer";
+import type { AssignMap } from "@/lib/curriculum/composerPlanning";
+import type { CurriculumOutlineRow, CurriculumWeekRow } from "@/lib/curriculum/types";
+import type { CurriculumSyllabusSettings } from "@/lib/curriculum/syllabusSettings";
+
+const outline = {
+  id: "outline-1",
+  title: "화행 기반 한중 번역",
+  semester_goal: "맥락에 맞는 화행 번역을 수행한다.",
+  level: "intermediate",
+  language_direction: "ko_zh",
+  course_mode: "translation",
+  week_count: 15,
+  scenarios_per_week: 2,
+  domain: "daily",
+  target_speech_acts: ["request"],
+} as CurriculumOutlineRow;
+
+const weeks = [
+  {
+    id: "week-1",
+    week_no: 1,
+    type: "regular",
+    title: "요청",
+    speech_act: "request",
+    can_do: ["관계와 부담에 맞는 요청을 번역할 수 있다."],
+  },
+] as CurriculumWeekRow[];
+
+const assignments: AssignMap = {
+  1: [
+    { scenario_id: "scenario-a", slot_role: "A" },
+    { scenario_id: "scenario-b", slot_role: "B" },
+  ],
+};
+
+const coreById = {
+  "scenario-a": { scenario_id: "scenario-a", mode: "translation", situation_ko: "교수자에게 기한 연장을 요청한다." },
+  "scenario-b": { scenario_id: "scenario-b", mode: "translation", situation_ko: "친구에게 도움을 요청한다." },
+} as unknown as Record<string, ComposerCore>;
+
+const settings: CurriculumSyllabusSettings = {
+  instructorName: "홍길동",
+  scheduleLocation: "화 3–4교시 · 101호",
+  attendanceAssignmentPolicy: "배정 미션은 해당 주차 안에 완료한다.",
+  materials: "PRAGMA 승인 미션과 학생 활동지",
+  evaluationWeights: { mpj: 30, dct: 40, completion: 20, participation: 10 },
+};
+
+describe("CurriculumSyllabus", () => {
+  it("projects the current course and both weekly mission sets without inventing policy", () => {
+    render(
+      <CurriculumSyllabus
+        outline={outline}
+        weeks={weeks}
+        assignments={assignments}
+        coreById={coreById}
+        settings={settings}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: outline.title })).toBeInTheDocument();
+    expect(screen.getByText(/교수자에게 기한 연장을 요청한다/)).toBeInTheDocument();
+    expect(screen.getByText(/친구에게 도움을 요청한다/)).toBeInTheDocument();
+    expect(screen.getByText("미션 세트 A·B 수행 → 5 POINT LESSON → DCT 수정")).toBeInTheDocument();
+    expect(screen.getByText("배정 미션 완료 · 주차 학습노트 정리")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "학습목표–평가 근거 대응" })).toBeInTheDocument();
+    expect(screen.getByText("최초 산출, 최소 피드백 반영, 수정본")).toBeInTheDocument();
+    expect(screen.getByText("배정 미션은 해당 주차 안에 완료한다.")).toBeInTheDocument();
+    expect(screen.getByText("40%")).toBeInTheDocument();
+  });
+});

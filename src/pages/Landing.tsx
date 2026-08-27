@@ -1,13 +1,16 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, GraduationCap, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, GraduationCap, Network, Play, SlidersHorizontal } from "lucide-react";
 import { HomeBrand } from "@/components/HomeBrand";
 import { ensureSession } from "@/lib/tracking";
 import { IS_DEMO } from "@/lib/auth/useProfile";
+import { REPRESENTATIVE_MISSION_PATH } from "@/lib/demo/representativeMission";
 
 // 화살표는 hover에서 진행 방향으로 살짝 미끄러진다. 카드가 통째로 떠오르는 동작은
 // "이 카드가 반응한다"까지만 말하고, 화살표의 이동이 "누르면 저쪽으로 간다"를 말한다.
 const arrow = "transition-transform duration-150 group-hover:translate-x-0.5";
+const defenseLink =
+  "group inline-flex w-[178px] items-center justify-center gap-2 rounded-lg border-[1.5px] border-[#15202B] bg-white px-3 py-2.5 text-[13.5px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2";
 
 const Landing = () => {
   useEffect(() => {
@@ -92,9 +95,11 @@ const Landing = () => {
             </span>
             {/* hover에서 어둡게 눌리면 '비활성'처럼 보인다 — 같은 색상을 한 단계
                 밝혀서 떠오르는 쪽으로 반응하게 한다. */}
-            <span className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[#15202B] bg-[#FAD338] px-4 py-1.5 text-[14px] font-bold text-[#15202B] transition-colors group-hover:bg-[#FCE07A]">
-              학습 시작하기
-              <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
+            <span className="mt-auto pt-4">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#15202B] bg-[#FAD338] px-4 py-1.5 text-[14px] font-bold text-[#15202B] transition-colors group-hover:bg-[#FCE07A]">
+                학습 시작하기
+                <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
+              </span>
             </span>
           </Link>
 
@@ -114,31 +119,36 @@ const Landing = () => {
                 버튼은 무엇을 하러 가는지만 말한다 — 학습 시작하기 / 수업 운영하기.
                 채움색은 헤더의 #15202B보다 한 단계 연한 남색이다. 순검정-흰색 대비는
                 노랑 버튼보다 훨씬 세서, 같은 크기여도 교수자 쪽이 앞으로 튀어나온다. */}
-            <span className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-[#3E4C57] bg-[#3E4C57] px-4 py-1.5 text-[14px] font-bold text-white transition-colors group-hover:bg-[#4E5F6C]">
-              수업 운영하기
-              <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
+            <span className="mt-auto pt-4">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#3E4C57] bg-[#3E4C57] px-4 py-1.5 text-[14px] font-bold text-white transition-colors group-hover:bg-[#4E5F6C]">
+                수업 운영하기
+                <ArrowRight aria-hidden size={14} strokeWidth={2} className={arrow} />
+              </span>
             </span>
           </Link>
         </section>
 
-        {/* 전체 구조 보기 — 디펜스 시연 진입점. 두 갈래보다는 작지만 '눌러야 할 것'
-            으로 보이도록 테두리·아이콘을 준다. 실증 시작 전에는 VITE_ENABLE_DEMO로 감춘다. */}
+        {/* 디펜스 진입점. 설명(/architecture)과 실제 실행(/demo/mission)을 나란히 두되
+            학습자·교수자 두 주 경로보다 작게 유지한다. 실증 시작 전에는 감춘다. */}
         {IS_DEMO && (
-          <Link
-            to="/architecture"
-            className="mt-6 inline-flex items-center gap-2.5 rounded-lg border-[1.5px] border-[#15202B] bg-white px-5 py-2.5 text-[14px] font-bold text-[#15202B] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[#FFFDF4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
-          >
-            {/* 노랑은 형광펜과 학습자 버튼 두 곳으로 끝낸다 — 여기까지 노랑이면
-                시선이 한 번 더 새고, 주 경로가 그만큼 흐려진다. */}
-            <span
-              aria-hidden
-              className="grid h-[24px] w-[24px] place-items-center rounded-[7px] bg-[#EFEBDD] text-[13px] text-[#5C6A7A]"
+          <section className="mt-6 flex flex-wrap items-center justify-center gap-3" aria-label="디펜스 시연">
+            <Link
+              to="/architecture"
+              className={defenseLink}
             >
-              ◎
-            </span>
-            PRAGMA 통합 워크플로우 보기
-            <ArrowRight aria-hidden size={14} strokeWidth={2} className={`text-[#5C6A7A] ${arrow}`} />
-          </Link>
+              <Network aria-hidden size={17} strokeWidth={1.9} className="text-[#5C6A7A]" />
+              통합 구조 보기
+              <ArrowRight aria-hidden size={14} strokeWidth={2} className={`text-[#5C6A7A] ${arrow}`} />
+            </Link>
+            <Link
+              to={REPRESENTATIVE_MISSION_PATH}
+              className={defenseLink}
+            >
+              <Play aria-hidden size={16} strokeWidth={1.6} className="fill-[#3E4C57] text-[#3E4C57]" />
+              대표 미션 시연
+              <ArrowRight aria-hidden size={14} strokeWidth={2} className={`text-[#5C6A7A] ${arrow}`} />
+            </Link>
+          </section>
         )}
       </main>
 

@@ -1,7 +1,8 @@
 // 학습자 미션 DB fetch — scenarios 행의 mission_content(v1/v2/v3/v4)를 읽어온다.
 //
 // 승격·검토 경로: mission_status = NULL | generated | reviewed | released.
-// covered는 released, legacy는 reviewed만 실행한다. DEV에서는 generated도 허용해
+// 현행은 교수자 최종 검수 reviewed를 공개 종료점으로 사용하고 historical released도 실행한다.
+// DEV에서는 generated도 허용해
 // 승격 UI가 붙기 전에 렌더러를 검증할 수 있게 한다(allowGenerated).
 //
 // ⚠️ 타입 우회: types.ts가 mission_content 컬럼을 아직 모른다 → AdminBrowser식 캐스트.
@@ -52,10 +53,8 @@ export async function fetchMissionByScenario(scenarioId: string): Promise<Runnab
   if (!runnable) {
     throw new Error(
       status === "generated"
-        ? "이 미션은 아직 내부 검토 완료(reviewed)되지 않았습니다."
-        : status === "reviewed" && releaseGateMode === "expert_v1"
-          ? "이 미션은 내부 검토를 마쳤지만 전문가·Gold 회귀 공개 gate를 통과하지 않았습니다."
-        : `실행할 수 없는 미션 상태입니다(${status ?? "없음"}).`,
+        ? "이 학습 콘텐츠는 아직 교수자 최종 검수를 마치지 않았습니다."
+        : `실행할 수 없는 학습 콘텐츠 상태입니다(${status ?? "없음"}).`,
     );
   }
 

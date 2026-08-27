@@ -14,6 +14,7 @@
 import type {
   Domain,
   GenMode,
+  LanguageDirection,
   LearnerLevel,
   PdrDistance,
   PdrPower,
@@ -515,14 +516,17 @@ export function assertTopicCoverage(): { ok: boolean; short: ThemeCode[] } {
 
 // ── 15주 프리셋 (편성기 config — 스키마 아님, 0-c·26) ──────────────────
 export interface CoursePreset {
+  outline_id: string;
   preset_code: string;
   label: string;
   target_level: LearnerLevel;
+  language_direction: LanguageDirection;
+  primary_domain: Domain;
   included_themes: ThemeCode[];
   /** 화행 배분 가중치(합 임의 — 비율로 정규화). 비우면 균등 */
   speech_act_distribution?: Partial<Record<SpeechActUI, number>>;
   course_mode: CourseMode;
-  /** 9개 화행 주차 중 통역 주차 수. */
+  /** OT·중간·기말을 제외한 실제 학습 12주 중 통역 주차 수. */
   target_interpreting_week_count: number;
   /**
    * 반복 원칙 1문장 — 편성표에 노출(0-g·47, RQ2 증명 장치).
@@ -533,58 +537,64 @@ export interface CoursePreset {
 
 export const COURSE_PRESETS: CoursePreset[] = [
   {
-    preset_code: "campus_exchange",
-    label: "캠퍼스·유학 중국어",
+    outline_id: "915fec24-cc38-4b00-a2a0-c3628abcd3f7",
+    preset_code: "ko_zh_pragmatic_translation_interpreting",
+    label: "AI 한중 화용 통번역 실습",
     target_level: "intermediate",
-    included_themes: ["campus_study", "international_exchange"],
-    speech_act_distribution: { request: 3, apology: 2, thanks: 2, refusal: 1 },
+    language_direction: "ko_zh",
+    primary_domain: "school",
+    included_themes: [
+      "campus_study",
+      "international_exchange",
+      "relationship_social",
+      "daily_living",
+    ],
     course_mode: "mixed",
-    target_interpreting_week_count: 3,
+    target_interpreting_week_count: 6,
     repetition_principle:
-      "캠퍼스·유학 장면에서 요청을 축으로 감사·사과·거절을 3:2:2:1 비중으로 반복 노출하여 저부담→고부담 순으로 익힌다.",
+      "일상·학업 맥락의 화용 판단을 전반부 번역에서 익히고 후반부 통역 상황에 다시 적용한다.",
   },
   {
-    preset_code: "career_workplace",
-    label: "취업·직장 협업 중국어",
-    target_level: "intermediate",
-    included_themes: ["career_workplace"],
-    speech_act_distribution: { request: 2, refusal: 2, apology: 2, proposal: 2, opposition: 1 },
-    course_mode: "mixed",
-    target_interpreting_week_count: 3,
-    repetition_principle:
-      "직장 협업 장면에서 요청·거절·사과·제안을 고르게 반복하고 반대·이견 표현을 학기 정점에 배치한다.",
-  },
-  {
-    preset_code: "travel_living",
-    label: "여행·생활 문제해결 중국어",
-    target_level: "beginner_intermediate",
-    included_themes: ["travel_mobility", "daily_living"],
-    speech_act_distribution: { request: 3, thanks: 2, complaint: 1, apology: 1 },
-    course_mode: "mixed",
-    target_interpreting_week_count: 4,
-    repetition_principle:
-      "여행·생활 문제해결 장면에서 요청을 중심으로 감사·불만·사과를 반복하며 9개 화행 주차 중 4주를 통역으로 편성한다.",
-  },
-  {
-    preset_code: "digital_commerce",
-    label: "디지털 콘텐츠·커머스 중국어",
-    target_level: "intermediate",
-    included_themes: ["digital_content", "commerce_customer"],
-    speech_act_distribution: { proposal: 2, request: 2, opposition: 1, compliment: 1, complaint: 1 },
-    course_mode: "mixed",
-    target_interpreting_week_count: 3,
-    repetition_principle:
-      "디지털 콘텐츠·커머스 장면에서 제안·요청을 축으로 이견·칭찬·불만을 반복 노출한다.",
-  },
-  {
-    preset_code: "customer_service",
-    label: "고객응대·갈등 조정 중국어",
+    outline_id: "a10c5b2e-7c5a-4f0c-9f4a-6d61cf6b8e21",
+    preset_code: "ko_zh_business_communication",
+    label: "AI 한중 비즈니스 커뮤니케이션",
     target_level: "advanced",
-    included_themes: ["commerce_customer", "relationship_social"],
-    speech_act_distribution: { apology: 3, proposal: 2, refusal: 1, complaint: 1 },
+    language_direction: "ko_zh",
+    primary_domain: "work",
+    included_themes: ["career_workplace", "commerce_customer", "digital_content"],
     course_mode: "mixed",
-    target_interpreting_week_count: 3,
+    target_interpreting_week_count: 2,
     repetition_principle:
-      "고객응대·갈등 조정 장면에서 사과·제안을 집중 반복하고 거절·불만으로 난도를 단계적으로 올린다.",
+      "직장·고객·플랫폼 맥락에서 권한관계와 공식성을 판단하고 고부담 화행에 다시 적용한다.",
+  },
+  {
+    outline_id: "c3f9a2d7-6e84-4f61-a953-2b7d9c0e4a12",
+    preset_code: "zh_ko_practical_translation",
+    label: "AI 중한 실전 번역",
+    target_level: "intermediate",
+    language_direction: "zh_ko",
+    primary_domain: "daily",
+    included_themes: [
+      "digital_content",
+      "career_workplace",
+      "commerce_customer",
+      "campus_study",
+      "daily_living",
+    ],
+    course_mode: "translation",
+    target_interpreting_week_count: 0,
+    repetition_principle:
+      "여러 생활 영역의 중국어 원문을 한국어 독자와 상황에 맞게 조정하는 화용 번역을 반복한다.",
   },
 ];
+
+export const DEFENSE_COURSE_IDS = COURSE_PRESETS.map((preset) => preset.outline_id);
+
+/** 기존 DB의 표준 3과목 이름만 새 표시명으로 읽는다. 교수자가 지정한 다른 이름은 보존한다. */
+export function courseDisplayTitle(course: { id: string; title: string }): string {
+  const preset = COURSE_PRESETS.find((item) => item.outline_id === course.id);
+  if (preset && course.title === preset.label.replace(/^AI /, "AI 기반 ")) {
+    return preset.label;
+  }
+  return course.title;
+}

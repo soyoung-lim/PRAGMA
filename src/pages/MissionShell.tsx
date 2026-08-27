@@ -271,7 +271,7 @@ const MissionShell = () => {
         </div>
 
         <div className="rounded-md border border-dashed border-[#EAE4D2] bg-[#FAF7EE] p-3 text-[12px] text-muted-foreground">
-          해설·학급 분포·전문가 의견은 <strong>Context Switch까지 제출한 뒤에만</strong> 공개됩니다.
+          해설·학급 분포·참고 관점은 <strong>Context Switch까지 제출한 뒤에만</strong> 공개됩니다.
           (첫 판단 오염 방지)
         </div>
       </div>
@@ -322,7 +322,7 @@ const MissionShell = () => {
         </div>
 
         <div className="rounded-xl border border-[#EAE4D2] bg-white p-4">
-          <div className="text-[13px] font-semibold">전문가 참조 범위</div>
+          <div className="text-[13px] font-semibold">참고 관점 범위</div>
           <p className="mt-1 text-[11px] text-muted-foreground">
             하나의 정답이 아니라, 상황별로 적합한 범위입니다.
           </p>

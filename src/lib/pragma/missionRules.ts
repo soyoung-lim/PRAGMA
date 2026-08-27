@@ -843,7 +843,7 @@ export function checkMission(
 
   // R31 — authoring 초안은 lineage_status=pending 동안 귀속을 유예한다. 교수자 최종화 뒤에는
   // 현재 콘텐츠의 문항별 모델 귀속을 완전하게 생성해야 reviewed로 전환할 수 있다.
-  // 귀속은 전문가 승인 전 pending claim이며, 구조·scope·근거 합집합만 자동 판정한다.
+  // 귀속은 교수자 최종 검수 전 pending claim이며, 구조·scope·근거 합집합만 자동 판정한다.
   if (
     m.schema_version === "mission_v5" &&
     m.provenance?.prompt_version === CURRENT_MISSION_PROMPT_VERSIONS[0] &&
@@ -862,14 +862,14 @@ export function checkMission(
       const attribution = lineage.attribution_provenance;
       const coverage = lineage.coverage_summary;
       if (lineage.claim_status !== "model_attribution_pending_review") {
-        add(v, "R31", "fail", "mission_v5 item_lineage는 전문가 검토 전 pending 상태여야 함");
+        add(v, "R31", "fail", "mission_v5 item_lineage는 교수자 최종 검수 전 pending 상태여야 함");
       }
       if (!coverage) {
         add(v, "R31", "fail", "item_lineage.coverage_summary 누락");
       } else if (coverage.unattributed_count / coverage.total_count > ITEM_LINEAGE_MAX_UNATTRIBUTED_RATIO) {
         add(v, "R31", "fail", `model_unattributed 비율 20% 초과 (${coverage.unattributed_count}/${coverage.total_count})`);
       } else if (coverage.unattributed_count > 0) {
-        add(v, "R32", "warning", `전문가가 우선 확인할 model_unattributed claim ${coverage.unattributed_count}개`);
+        add(v, "R32", "warning", `교수자가 우선 확인할 model_unattributed claim ${coverage.unattributed_count}개`);
       }
       if (
         !attribution ||

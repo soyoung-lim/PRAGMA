@@ -3,7 +3,6 @@ import { ArrowLeft, CheckCircle2, LockKeyhole, Save, ShieldCheck } from "lucide-
 import { Link, useLocation } from "react-router-dom";
 
 import { AdminShell } from "@/components/AdminShell";
-import { ResearchWorkflowGuide } from "@/components/research/ResearchWorkflowGuide";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -303,13 +302,12 @@ const AdminGoldCalibration = () => {
 
   return (
     <AdminShell
-      title="1단계 · 판정 기준 확정"
-      description={`현재 ${BOOTSTRAP_SEED_GOLD_SPEECH_ACT_COUNT}화행 Seed ${BOOTSTRAP_SEED_GOLD_CASE_COUNT}개를 점검합니다. 최종 9화행 pack은 화행별 ${FINAL_GOLD_CASES_PER_SPEECH_ACT}개, 총 ${FINAL_GOLD_POPULATION_COUNT}개를 별도로 확정해야 합니다.`}
+      title="화용적 판정 기준"
+      description={`화행별 상황·관계·의미와 중국어 표현의 적절성을 판단하는 기준을 사례와 근거로 관리합니다. 현재 ${BOOTSTRAP_SEED_GOLD_SPEECH_ACT_COUNT}화행 Seed ${BOOTSTRAP_SEED_GOLD_CASE_COUNT}개를 점검합니다.`}
     >
-      <ResearchWorkflowGuide current="calibration" />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa" : "/admin/research-qa"} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> 문항 품질관리 전체 현황
+        <Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa-calibration" : "/admin/question-designer"} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> 수준별 설계 기준
         </Link>
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">현재 Seed 해결 {resolvedCount}/{BOOTSTRAP_SEED_GOLD_CASE_COUNT}</Badge>

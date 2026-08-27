@@ -18,72 +18,60 @@ export const ADMIN_DASHBOARD_ITEM: AdminNavItem = {
 // 관리자 메뉴·모바일 선택기·대시보드 바로가기가 함께 쓰는 단일 정본이다.
 export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
-    header: "학습 콘텐츠 설계",
+    header: "1. 학습 콘텐츠 설계 기준",
     items: [
-      { to: "/admin/corpus", label: "HSK 3.0 어휘 기준" },
+      { to: "/admin/corpus", label: "HSK 3.0 콘텐츠 감사 기준" },
       { to: "/admin/question-designer", label: "수준별 설계 기준" },
+      { to: "/admin/research-qa/calibration", label: "화용적 판정 기준" },
       { to: "/admin/prompt-harness", label: "생성 계약·프롬프트" },
     ],
   },
   {
-    header: "학습 콘텐츠 제작",
+    header: "2. 학습 콘텐츠 제작",
     items: [
-      {
-        to: "/admin/generator",
-        label: "AI 학습 콘텐츠 생성",
-        activePaths: ["/admin/generator", "/admin/batch"],
-      },
-      { to: "/admin/library", label: "코어 라이브러리" },
+      { to: "/admin/generator", label: "시나리오 개별 생성" },
+      { to: "/admin/batch", label: "시나리오 배치 생성" },
+      { to: "/admin/library", label: "시나리오 라이브러리" },
       { to: "/admin/assembly", label: "학습 미션 조립" },
     ],
   },
   {
-    header: "품질 검증·공개",
+    header: "3. 학습 콘텐츠 품질관리",
     items: [
-      { to: "/admin/research-qa", label: "전체 현황" },
-      { to: "/admin/research-qa/calibration", label: "1. 판정 기준 확정" },
-      { to: "/admin/research-qa/gold-experts", label: "2. 외부 전문가 확인" },
       {
         to: "/admin/research-qa/final-review",
-        label: "3. 전체 자동 점검",
+        label: "자동 품질 점검",
         activePaths: ["/admin/research-qa/final-review", "/admin/review"],
       },
-      { to: "/admin/research-qa/releases", label: "4. 교수자 검수·승인" },
+      { to: "/admin/research-qa/releases", label: "교수자 최종 검수·공개" },
     ],
   },
   {
-    header: "수업 편성",
+    header: "4. 수업 운영",
     items: [
-      { to: "/admin/composer", label: "15주 교과목·학습 미션 편성" },
-      { to: "/admin/package", label: "수업 자료 생성" },
-    ],
-  },
-  {
-    header: "학습자와 연구 자료",
-    items: [
-      { to: "/admin/learners", label: "학습자 관리" },
-      { to: "/admin/decision-traces", label: "학습자 수행 기록" },
-      { to: "/admin/research-qa/improvements", label: "학습 콘텐츠 개선" },
-      { to: "/admin/export", label: "수행 기록 내려받기" },
-    ],
-  },
-  {
-    header: "기록과 보존",
-    items: [
-      { to: "/admin/archive", label: "시나리오 아카이브" },
+      { to: "/admin/composer", label: "15주 수업 편성·강의계획서" },
+      { to: "/admin/package", label: "수업자료·교실 화면" },
+      { to: "/admin/learners", label: "학습자 승인·관리" },
       { to: "/admin/data-backup", label: "수업 데이터 백업·복원" },
+    ],
+  },
+  {
+    header: "5. 학습 결과·연구 자료",
+    items: [
+      { to: "/admin/decision-traces", label: "학습 수행 기록" },
+      { to: "/admin/research-qa/improvements", label: "콘텐츠 개선 후보" },
+      { to: "/admin/export", label: "연구 데이터 내보내기" },
     ],
   },
 ] as const;
 
 const PRIORITY_LABELS = [
-  "3. 전체 자동 점검",
-  "시나리오 아카이브",
-  "수업 자료 생성",
-  "학습자 관리",
-  "학습자 수행 기록",
-  "학습 콘텐츠 개선",
-  "수행 기록 내려받기",
+  "자동 품질 점검",
+  "수업자료·교실 화면",
+  "학습자 승인·관리",
+  "학습 수행 기록",
+  "콘텐츠 개선 후보",
+  "연구 데이터 내보내기",
 ] as const;
 
 const ALL_ADMIN_NAV_ITEMS = ADMIN_NAV_GROUPS.flatMap((group) => group.items);

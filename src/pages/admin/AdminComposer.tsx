@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/AdminShell";
+import { CurriculumSyllabus } from "@/components/admin/CurriculumSyllabus";
+import { CurriculumSyllabusSettingsForm } from "@/components/admin/CurriculumSyllabusSettingsForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +25,13 @@ import {
   updateCurriculumCompositionAxes,
 } from "@/lib/curriculum/api";
 import type { CurriculumOutlineRow, CurriculumWeekRow } from "@/lib/curriculum/types";
+import {
+  EMPTY_SYLLABUS_SETTINGS,
+  loadCurriculumSyllabusSettings,
+  saveCurriculumSyllabusSettings,
+  syllabusEvaluationIsValid,
+  type CurriculumSyllabusSettings,
+} from "@/lib/curriculum/syllabusSettings";
 import {
   listCoreScenarios,
   listWeekAssignments,
@@ -53,12 +62,14 @@ import {
 } from "@/lib/pragma/enums";
 import {
   COURSE_PRESETS,
+  courseDisplayTitle,
   THEME_CODES,
   THEME_LABEL,
   type CoursePreset,
   type ThemeCode,
 } from "@/lib/pragma/scenarioTopics";
 import { getTargetFeature, DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
+import { instructorGuideSequencePath } from "@/lib/pragma/instructorGuideTiming";
 import { CurriculumEditor } from "./CurriculumEditor";
 import {
   COURSE_MODE_LABEL,
@@ -99,6 +110,10 @@ const AdminComposer = () => {
   const [weeks, setWeeks] = useState<CurriculumWeekRow[]>([]);
   const [loadingOutline, setLoadingOutline] = useState(false);
   const [structureEditor, setStructureEditor] = useState<"new" | "current" | null>(null);
+  const [syllabusOpen, setSyllabusOpen] = useState(false);
+  const [syllabusSettings, setSyllabusSettings] = useState<CurriculumSyllabusSettings>(
+    EMPTY_SYLLABUS_SETTINGS,
+  );
   const [reloadToken, setReloadToken] = useState(0);
 
   // 수준·방향도 편성기의 교강사 조절 축이다. 저장 시 outline 메타에 함께 반영한다.
@@ -247,7 +262,7 @@ const AdminComposer = () => {
   }, [outlineId]);
 
   // migration 적용 전 만들어진 legacy outline은 저장된 정책 열이 없을 수 있다.
-  // 그 경우에만 legacy 비율을 9주 정수 정책으로 해석해 이전 동작을 보존한다.
+  // 그 경우에만 legacy 비율을 12주 정수 정책으로 해석해 이전 동작을 보존한다.
   useEffect(() => {
     if (!outlineId || loadedAssignments === null || cores.length === 0) return;
     if (
@@ -299,6 +314,8 @@ const AdminComposer = () => {
     setPresetCode(code);
     const p = COURSE_PRESETS.find((x) => x.preset_code === code);
     if (!p) return;
+    setLevel(p.target_level);
+    setDirection(p.language_direction);
     setThemes(p.included_themes);
     setCourseMode(p.course_mode);
     setInterpretingWeekCount(p.target_interpreting_week_count);
@@ -313,10 +330,10 @@ const AdminComposer = () => {
       nextMode === "translation"
         ? 0
         : nextMode === "interpreting"
-          ? 9
-          : interpretingWeekCount >= 1 && interpretingWeekCount <= 8
+          ? 12
+          : interpretingWeekCount >= 1 && interpretingWeekCount <= 11
             ? interpretingWeekCount
-            : 4,
+            : 6,
     );
   };
 
@@ -566,10 +583,30 @@ const AdminComposer = () => {
     setReloadToken((token) => token + 1);
   };
 
+  const openSyllabus = () => {
+    if (!outlineId) return;
+    setSyllabusSettings(loadCurriculumSyllabusSettings(outlineId));
+    setSyllabusOpen(true);
+  };
+
+  const handleSaveSyllabusSettings = () => {
+    if (!outlineId) return;
+    if (!syllabusEvaluationIsValid(syllabusSettings)) {
+      toast.error("평가 비중 합계를 100%로 맞춰주세요.");
+      return;
+    }
+    try {
+      saveCurriculumSyllabusSettings(outlineId, syllabusSettings);
+      toast.success("강의계획서 교수자 항목을 이 브라우저에 저장했습니다.");
+    } catch {
+      toast.error("교수자 항목을 저장하지 못했습니다.");
+    }
+  };
+
   if (structureEditor) {
     return (
       <AdminShell
-        title="15주 교과목·학습 미션 편성"
+        title="15주 수업 편성·강의계획서"
         compact
         description={
           structureEditor === "new"
@@ -595,10 +632,43 @@ const AdminComposer = () => {
     );
   }
 
+  if (syllabusOpen && outline) {
+    return (
+      <AdminShell
+        title="15주 강의계획서"
+        description="저장된 15주 편성을 수업 운영 문서로 확인하고 인쇄·PDF로 내보냅니다."
+        compact
+      >
+        <CurriculumSyllabusSettingsForm
+          settings={syllabusSettings}
+          onChange={setSyllabusSettings}
+          onSave={handleSaveSyllabusSettings}
+        />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#E2DED2] bg-white p-3 print:hidden">
+          <div>
+            <p className="text-[13px] font-semibold text-[#15202B]">현재 화면 편성 기준</p>
+            <p className="mt-0.5 text-[11.5px] text-muted-foreground">최신 편성을 반영하려면 먼저 돌아가서 편성 저장을 눌러주세요.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setSyllabusOpen(false)}>편성으로 돌아가기</Button>
+            <Button onClick={() => window.print()}>강의계획서 인쇄·PDF</Button>
+          </div>
+        </div>
+        <CurriculumSyllabus
+          outline={outline}
+          weeks={weeks}
+          assignments={assign}
+          coreById={coreById}
+          settings={syllabusSettings}
+        />
+      </AdminShell>
+    );
+  }
+
   return (
     <AdminShell
-      title="15주 교과목·학습 미션 편성"
-      description="수준·주제·강좌 수행모드·언어 방향에 따라 15주 교과목과 주차별 학습 미션을 편성합니다."
+      title="15주 수업 편성·강의계획서"
+      description="강좌 일정에 따라 주차별 학습 주제와 승인된 학습 미션을 편성합니다."
       compact
     >
       <div className="w-full max-w-[960px]">
@@ -660,7 +730,7 @@ const AdminComposer = () => {
             <option value="">— 교과목 선택 —</option>
             {outlines.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.title} · {LEVEL[item.level as LearnerLevel] ?? item.level}
+                {courseDisplayTitle(item)} · {LEVEL[item.level as LearnerLevel] ?? item.level}
               </option>
             ))}
           </select>
@@ -694,6 +764,14 @@ const AdminComposer = () => {
           >
             {saving ? "저장 중…" : "편성 저장"}
           </Button>
+          <Button
+            className="h-9"
+            variant="outline"
+            onClick={openSyllabus}
+            disabled={!outlineId || loadingOutline}
+          >
+            강의계획서
+          </Button>
 
           {/* 위험 동작(비공개·삭제)은 오른쪽 끝으로 분리해 일상 동작과 섞이지 않게 한다. */}
           <div className="ml-auto flex items-center gap-2 border-l border-[#E2DED2] pl-3">
@@ -709,7 +787,7 @@ const AdminComposer = () => {
                     <AlertDialogTitle>이 교과목을 비공개로 바꾸시겠습니까?</AlertDialogTitle>
                     <AlertDialogDescription asChild>
                       <div className="space-y-2 text-left">
-                        <p className="font-semibold text-[#15202B]">{selectedOutline?.title}</p>
+                        <p className="font-semibold text-[#15202B]">{selectedOutline && courseDisplayTitle(selectedOutline)}</p>
                         <p>학습자 수업 화면에서 이 교과목이 보이지 않게 됩니다.</p>
                         <p>편성 내용과 학습자 수행 기록은 그대로 남습니다.</p>
                       </div>
@@ -738,7 +816,7 @@ const AdminComposer = () => {
                   <AlertDialogTitle>이 교과목을 삭제하시겠습니까?</AlertDialogTitle>
                   <AlertDialogDescription asChild>
                     <div className="space-y-2 text-left">
-                      <p className="font-semibold text-[#15202B]">{selectedOutline?.title}</p>
+                      <p className="font-semibold text-[#15202B]">{selectedOutline && courseDisplayTitle(selectedOutline)}</p>
                       <p>15주 주차 계획과 현재 배정된 미션 {assignedCount}건이 함께 삭제됩니다.</p>
                       <p>학습자 수행 기록과 시나리오·미션 자체는 삭제되지 않습니다.</p>
                       <p className="font-semibold text-[#8B3531]">되돌릴 수 없습니다.</p>
@@ -857,7 +935,7 @@ const AdminComposer = () => {
                               : "border-[#DED8C9] bg-white"
                           }`}
                         >
-                          통역 {count}/9주
+                          통역 {count}/12주
                         </button>
                       ))}
                       <select
@@ -866,13 +944,13 @@ const AdminComposer = () => {
                         className="h-7 rounded border border-[#DED8C9] bg-white px-1 text-[11.5px]"
                         aria-label="통역 주차 직접 설정"
                       >
-                        {Array.from({ length: 8 }, (_, index) => index + 1).map((count) => (
-                          <option key={count} value={count}>직접 {count}/9주</option>
+                        {Array.from({ length: 11 }, (_, index) => index + 1).map((count) => (
+                          <option key={count} value={count}>직접 {count}/12주</option>
                         ))}
                       </select>
                     </div>
                     <p className="text-[11px] text-[#766C54]">
-                      앞 {9 - interpretingWeekCount}개 화행 주차는 번역 → 뒤 {interpretingWeekCount}개는 통역
+                      앞 {12 - interpretingWeekCount}개 학습 주차는 번역 → 뒤 {interpretingWeekCount}개는 통역
                     </p>
                   </div>
                 )}
@@ -1105,7 +1183,17 @@ function WeekRow({
         </span>
         <span className="text-[13.5px] font-medium">{displayTitle}</span>
         {items.length > 0 && (
-          <span className="ml-auto text-[11.5px] text-muted-foreground">미션 {items.length}개</span>
+          <div className="ml-auto flex items-center gap-2 text-[11.5px]">
+            <span className="text-muted-foreground">미션 {items.length}개</span>
+            {items.length >= 2 && (
+              <Link
+                to={instructorGuideSequencePath(items[0].scenario_id, items[1].scenario_id)}
+                className="font-semibold text-[#2F6F63] hover:underline"
+              >
+                90분 묶음 수업자료
+              </Link>
+            )}
+          </div>
         )}
         {isAssignable ? (
           <Button
@@ -1140,13 +1228,21 @@ function WeekRow({
                   >
                     {core?.situation_ko ?? "(누락된 시나리오)"}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => onRemove(item.scenario_id)}
-                    className="shrink-0 text-[11.5px] text-red-700 hover:underline"
-                  >
-                    제거
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Link
+                      to={`/admin/package?mission=${item.scenario_id}`}
+                      className="text-[11.5px] font-medium text-[#2F6F63] hover:underline"
+                    >
+                      수업자료
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(item.scenario_id)}
+                      className="text-[11.5px] text-red-700 hover:underline"
+                    >
+                      제거
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
                   <span className="rounded-full bg-[#ECEFF1] px-2 py-0.5 text-[#52616B]">
@@ -1176,7 +1272,7 @@ function WeekRow({
           </p>
           {cands.length === 0 ? (
             <p className="text-[12.5px] text-muted-foreground">
-              조건에 맞는 후보 코어가 없습니다
+              조건에 맞는 후보 시나리오가 없습니다
               {act ? ` (${SPEECH_ACT_UI[act]} · ${LEVEL[level]}${themes.length ? " · 선택 주제" : ""})` : ""}.
             </p>
           ) : (

@@ -60,13 +60,13 @@ interface WeeklyLearningNoteProps {
 }
 
 const WeeklyLearningNote = ({ allowSample = false }: WeeklyLearningNoteProps) => {
-  const { weekNo: weekNoParam } = useParams();
+  const { courseId, weekNo: weekNoParam } = useParams();
   const weekNo = Number(weekNoParam);
   const {
     data: course = null,
     error: courseError,
     isPending: loading,
-  } = useLearnerCourse();
+  } = useLearnerCourse(courseId);
   const error =
     courseError instanceof Error
       ? courseError.message
@@ -147,8 +147,10 @@ const WeeklyLearningNote = ({ allowSample = false }: WeeklyLearningNoteProps) =>
     requiredMissionIds,
     completedMissionIds: effectiveCompletedMissionIds,
   });
-  const returnPath = courseWeek
-    ? "/learner/course"
+  const returnPath = courseWeek && courseId
+    ? `/learner/course/${courseId}/week/${weekNo}`
+    : courseWeek
+      ? "/learner/course"
     : allowSample
       ? `/learner/demo/course/week/${WEEK_REQUEST.weekNo}`
       : "/learner/course";

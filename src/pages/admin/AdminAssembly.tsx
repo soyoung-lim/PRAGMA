@@ -75,7 +75,7 @@ interface CoreRow {
 // 상호 배타 4상태. failed는 DB 상태가 아니라 이번 세션의 조립 시도 결과다.
 type AssemblyState = "core_only" | "generated" | "reviewed" | "failed";
 const STATE_KO: Record<AssemblyState, string> = {
-  core_only: "코어만 (조립 대기)",
+  core_only: "시나리오만 (조립 대기)",
   generated: "미션 생성됨 (검수 대기)",
   reviewed: "검토 완료",
   failed: "이번 조립 실패",
@@ -181,7 +181,7 @@ const AdminAssembly = () => {
       if (queryError) throw new Error(queryError.message);
       setRows((data ?? []) as CoreRow[]);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "코어를 불러오지 못했습니다.");
+      setError(cause instanceof Error ? cause.message : "시나리오를 불러오지 못했습니다.");
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
       setLoading(false);
@@ -348,7 +348,7 @@ const AdminAssembly = () => {
 
   const onRework = async (r: CoreRow) => {
     setBusy(r.scenario_id);
-    setRowMsg((m) => ({ ...m, [r.scenario_id]: "기존 생성물을 보존하고 재작업 코어를 만드는 중…" }));
+    setRowMsg((m) => ({ ...m, [r.scenario_id]: "기존 생성물을 보존하고 재작업 시나리오를 만드는 중…" }));
     try {
       const superseded = await supersedeMissionForRework(r.scenario_id);
       if (superseded.ok === false) {
@@ -363,7 +363,7 @@ const AdminAssembly = () => {
         .select(CORE_ROW_SELECT)
         .eq("scenario_id", superseded.scenarioId)
         .single();
-      if (fetchError || !data) throw new Error(fetchError?.message ?? "재작업 코어 조회 실패");
+      if (fetchError || !data) throw new Error(fetchError?.message ?? "재작업 시나리오 조회 실패");
 
       const replacement = data as CoreRow;
       setRows((prev) => [replacement, ...prev.filter((row) => row.scenario_id !== r.scenario_id)]);
@@ -373,7 +373,7 @@ const AdminAssembly = () => {
       });
       setOpenId(null);
       setBusy(null);
-      toast.info("기존 미션은 반려 이력으로 보존했습니다. 새 코어를 재조립합니다.");
+      toast.info("기존 미션은 반려 이력으로 보존했습니다. 새 시나리오로 다시 조립합니다.");
       await onAssemble(replacement);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "반려·재조립 준비 실패");
@@ -403,7 +403,7 @@ const AdminAssembly = () => {
   return (
     <AdminShell
       title="학습 미션 조립"
-      description="코어를 MPJ 5문항과 직접 산출 과제로 완성하고, 검수 가능한 학습 미션으로 저장합니다."
+      description="시나리오를 MPJ 5문항과 직접 산출 과제로 완성하고, 검수 가능한 학습 미션으로 저장합니다."
     >
       <div className="max-w-[1080px]">
       {/* ── 변환 계기판 — 상호 배타 4상태 ── */}
@@ -464,7 +464,7 @@ const AdminAssembly = () => {
 
           <div className="rounded-lg border border-[#E6E1D5] border-t-4 border-t-[#18232D] bg-[#FBFAF6] p-3.5 pt-3">
             <h3 className="text-[13px] font-bold text-[#3D464D]">생성 기준</h3>
-            <p className="mt-0.5 text-[11px] text-[#737069]">같은 생성 조건의 코어만 조립</p>
+            <p className="mt-0.5 text-[11px] text-[#737069]">같은 생성 조건의 시나리오만 조립</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <CompactSel label="생성 run" value={fRun} onChange={setFRun}
                 opts={[["all", "전체"], ...runIds.map((id) => [id, id.length > 18 ? `${id.slice(0, 18)}…` : id] as [string, string])]} />
@@ -487,7 +487,7 @@ const AdminAssembly = () => {
           <div className="flex items-baseline justify-between px-1">
             <div>
               <h3 className="text-[15px] font-bold text-[#202B33]">조립 큐</h3>
-              <p className="mt-0.5 text-[11.5px] text-muted-foreground">선택한 조건의 코어 {filtered.length}개</p>
+              <p className="mt-0.5 text-[11.5px] text-muted-foreground">선택한 조건의 시나리오 {filtered.length}개</p>
             </div>
             {filtered.length > LIST_CAP && !showAll && (
               <span className="text-[12px] text-muted-foreground">처음 {LIST_CAP}개 표시</span>
@@ -551,7 +551,7 @@ const AdminAssembly = () => {
                             size="sm"
                             variant="ghost"
                             disabled={busy === r.scenario_id}
-                            title="현재 생성물은 이력에 보존하고 같은 코어로 새 미션을 조립합니다."
+                            title="현재 생성물은 이력에 보존하고 같은 시나리오로 새 미션을 조립합니다."
                             onClick={() => onRework(r)}
                           >
                             반려·재조립
@@ -564,9 +564,14 @@ const AdminAssembly = () => {
                         </Button>
                       )}
                       {st === "reviewed" && (
-                        <Button size="sm" variant="outline" asChild>
-                          <Link to={`/admin/package?mission=${r.scenario_id}`}>수업자료 열기</Link>
-                        </Button>
+                        <>
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to="/admin/composer">15주 편성에 사용</Link>
+                          </Button>
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={`/admin/package?mission=${r.scenario_id}`}>수업자료 열기</Link>
+                          </Button>
+                        </>
                       )}
                       {!isAssembling && rowMsg[r.scenario_id] && (
                         <span className="text-[11.5px] text-muted-foreground">{rowMsg[r.scenario_id]}</span>
@@ -604,7 +609,7 @@ const AdminAssembly = () => {
           )}
           {filtered.length === 0 && (
             <p className="rounded-md border border-dashed border-[#EAE4D2] bg-white px-4 py-8 text-center text-[13px] text-muted-foreground">
-              조건에 맞는 재료가 없습니다. 필터를 조정하거나 미션 재료 생성에서 코어를 만드세요.
+              조건에 맞는 재료가 없습니다. 필터를 조정하거나 시나리오 개별·배치 생성에서 새 시나리오를 만드세요.
             </p>
           )}
         </section>

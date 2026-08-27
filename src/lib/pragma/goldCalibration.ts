@@ -113,7 +113,6 @@ export function buildResearcherApprovedCalibrationCase(
     review: {
       status: "researcher_approved",
       researcher_reviewer_id: reviewerId,
-      expert_reviews: [],
       note_ko: parsed.rationale_ko,
     },
     provenance: {

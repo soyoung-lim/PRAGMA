@@ -94,7 +94,7 @@ export async function createCurriculumOutline(
     delete legacyPayload.course_mode;
     delete legacyPayload.target_interpreting_week_count;
     legacyPayload.target_interpreting_ratio =
-      outlineDraft.target_interpreting_week_count / 9;
+      outlineDraft.target_interpreting_week_count / 12;
     const legacyResult = await supabase
       .from("curriculum_outlines")
       .insert(legacyPayload)
@@ -196,7 +196,7 @@ export async function updateCurriculumCompositionAxes(
         level: axes.level,
         language_direction: axes.language_direction,
         composition_theme_codes: axes.composition_theme_codes,
-        target_interpreting_ratio: axes.target_interpreting_week_count / 9,
+        target_interpreting_ratio: axes.target_interpreting_week_count / 12,
       })
       .eq("id", id)
       .select()

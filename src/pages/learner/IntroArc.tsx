@@ -74,9 +74,9 @@ const ContextFrame = ({ context }: { context: IntroContextFrame }) => (
 const IntroArc = () => {
   const navigate = useNavigate();
   // 편성 강좌에서 들어오면 :weekNo가 붙는다. 파라미터가 없으면 개발용 2주차 목업이다.
-  const { weekNo: weekNoParam } = useParams();
+  const { courseId, weekNo: weekNoParam } = useParams();
   const liveWeekNo = weekNoParam ? Number(weekNoParam) : null;
-  const { data: course = null, isPending: courseLoading } = useLearnerCourse();
+  const { data: course = null, isPending: courseLoading } = useLearnerCourse(courseId);
   const liveWeek =
     liveWeekNo !== null && course
       ? course.weeks.find((w) => w.week_no === liveWeekNo) ?? null
@@ -127,7 +127,14 @@ const IntroArc = () => {
 
   const finish = () => {
     updateFeatureState(INTRO_FEATURE_ID, { introExplanationCompleted: true });
-    navigate(arcScenario ? `/learner/practice/${arcScenario.scenario_id}` : "/learner/practice");
+    const returnQuery = courseId && liveWeekNo !== null
+      ? `?courseId=${encodeURIComponent(courseId)}&weekNo=${liveWeekNo}`
+      : "";
+    navigate(
+      arcScenario
+        ? `/learner/practice/${arcScenario.scenario_id}${returnQuery}`
+        : "/learner/practice",
+    );
   };
 
   // ── 화면들 ──
@@ -429,7 +436,9 @@ const IntroArc = () => {
         </LearnerJourneyShell>
       );
     }
-    if (!arcScenario) return <Navigate to="/learner/course" replace />;
+    if (!arcScenario) {
+      return <Navigate to={courseId ? `/learner/course/${courseId}` : "/learner/course"} replace />;
+    }
   }
 
   const weekLabel =

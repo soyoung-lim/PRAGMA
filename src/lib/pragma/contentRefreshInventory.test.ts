@@ -11,7 +11,7 @@ const sql = readFileSync(
 
 describe("content refresh inventory SQL", () => {
   it("tracks the same candidate ID as the runtime manifest", () => {
-    expect(sql).toContain(CURRENT_CONTENT_RELEASE_ID);
+    expect(sql).toContain(`SELECT '${CURRENT_CONTENT_RELEASE_ID}'::text AS current_release_id`);
   });
 
   it("is read-only and audits every scenario dependency before refresh", () => {

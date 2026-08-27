@@ -295,7 +295,7 @@ const AdminBatch = () => {
     if (running) return;
     const next = resumeRunId.trim();
     if (!isCoreRunIdForDirection(next, direction)) {
-      toast.error(`${DIRECTION_LABEL[direction]} 방향의 코어 배치 ID를 입력해 주세요.`);
+      toast.error(`${DIRECTION_LABEL[direction]} 방향의 시나리오 배치 ID를 입력해 주세요.`);
       return;
     }
     persistCoreRunId(direction, next);
@@ -343,7 +343,7 @@ const AdminBatch = () => {
 
   return (
     <AdminShell
-      title="AI 학습 콘텐츠 생성"
+      title="시나리오 배치 생성"
       description="정해진 조건 조합에 따라 AI 생성 학습 콘텐츠의 상황과 원문을 여러 건 만들고 내부 확인 대기 상태로 저장합니다."
     >
       <GenerationModeTabs />
@@ -356,7 +356,7 @@ const AdminBatch = () => {
             </div>
             <div className="mt-1.5">
               <Badge variant="secondary" className="px-2.5 py-1 font-semibold">
-                시나리오 코어 · v1.4
+                시나리오 · v1.4
               </Badge>
             </div>
           </div>
@@ -396,7 +396,7 @@ const AdminBatch = () => {
         </div>
 
         <p className="mt-2.5 max-w-[42rem] text-[12px] text-muted-foreground">
-          상황·원문·태그만 생성해 코어 뱅크를 채웁니다(scenario_core_v1).{" "}
+          상황·원문·태그를 생성해 시나리오 라이브러리를 채웁니다.{" "}
           {direction === "zh_ko"
             ? "중→한은 핵심 3화행 18셀과 확장 6화행 중급 12셀을 합친 30셀 혼합 파일럿을 우선 검증합니다."
             : "본 배치는 연구 구인 243셀(화행×P×D×R)과 전달 커버리지 54셀(화행×수준×모드)을 별도로 검산합니다."}
@@ -703,7 +703,7 @@ const AdminBatch = () => {
           </div>
           <p className="mt-1.5 max-w-[42rem] text-[11.5px] text-muted-foreground">
             중단된 배치는 현재 ID로 미완료 셀만 재개합니다. 검수 탈락 셀을 교체할 때만 새 ID로
-            생성합니다. 두 방식 모두 코어 생성 프롬프트와 해당 해시는 바뀌지 않습니다.
+            생성합니다. 두 방식 모두 시나리오 생성 프롬프트와 해당 해시는 바뀌지 않습니다.
           </p>
           {selectedPlan.indexes.length > 0 && !selectedPlan.invalid && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -764,7 +764,7 @@ const AdminBatch = () => {
           <div className="mt-4 rounded-lg border border-[#EAE4D2] bg-[#FAF8F2] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="text-[13px] font-semibold">코어 축 준수 AI 비평 파일럿</div>
+                <div className="text-[13px] font-semibold">설계 기준 준수 AI 비평 파일럿</div>
                 <p className="mt-1 text-[11.5px] text-muted-foreground">
                   감사 표시 전용이며 저장·배치 게이트가 아닙니다. 18건 눈검사와 대조해
                   BLOCKER 11건 중 9건 이상 검출하고 수용 4건을 fail로 오판하지 않을 때만 확대합니다.

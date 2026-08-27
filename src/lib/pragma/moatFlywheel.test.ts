@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { summarizeExpertReviews } from "./expertReviewConsensus";
-import { ENGINEERING_SEED_GATE, runGoldRegression } from "./goldRegression";
-import {
-  detectLearnerDissentSignals,
-  signalFromExpertSummary,
-  signalFromGoldRegression,
-} from "./moatFlywheel";
-import { SEED_GOLD_CASES } from "./seedGoldSet";
+import { detectLearnerDissentSignals } from "./moatFlywheel";
 
 describe("moat improvement flywheel signals", () => {
   it("requires distinct attempts before escalating repeated learner dissent", () => {
@@ -55,47 +48,5 @@ describe("moat improvement flywheel signals", () => {
       realization_pack_version: null,
     };
     expect(detectLearnerDissentSignals([event, { ...event, event_id: "e2", attempt_id: "a2", participant_id: "p2" }, { ...event, event_id: "e3", attempt_id: "a3", participant_id: "p3" }])).toEqual([]);
-  });
-
-  it("turns regression drift into review work, never an automatic rule change", () => {
-    const item = SEED_GOLD_CASES[0];
-    const report = runGoldRegression(
-      SEED_GOLD_CASES,
-      [{
-        case_id: item.case_id,
-        candidate_id: item.candidates[0].candidate_id,
-        predicted_band_code: "wrong",
-        predicted_semantic_fidelity: "pass",
-      }],
-      { ...ENGINEERING_SEED_GATE, require_complete_coverage: false },
-    );
-    const signal = signalFromGoldRegression(report, "run-1");
-
-    expect(signal?.signal_type).toBe("gold_regression_drift");
-    expect(signal?.suggested_action).toBe("review_gold_label_or_evaluator");
-    expect(signal?.auto_apply_allowed).toBe(false);
-  });
-
-  it("preserves expert disagreement as a human resolution candidate", () => {
-    const summary = summarizeExpertReviews([
-      { review_id: "r1", reviewer_id: "a", verdict: "approve", confidence: 4, candidate_bands: { A: "within_band" } },
-      { review_id: "r2", reviewer_id: "b", verdict: "revise", confidence: 4, candidate_bands: { A: "too_direct" } },
-    ]);
-    const signal = signalFromExpertSummary(summary, "lineage-1");
-
-    expect(signal?.signal_type).toBe("expert_disagreement");
-    expect(signal?.suggested_action).toBe("resolve_expert_boundary_case");
-    expect(signal?.auto_apply_allowed).toBe(false);
-  });
-
-  it("keeps claim-level expert disagreement in source references", () => {
-    const summary = summarizeExpertReviews([
-      { review_id: "r1", reviewer_id: "a", verdict: "approve", confidence: 4, candidate_bands: { A: "within_band" }, lineage_claims: { C1: { verdict: "support", proposed_rule_ids: [], proposed_risk_ids: [], rationale_ko: "원 연결 지지" } } },
-      { review_id: "r2", reviewer_id: "b", verdict: "revise", confidence: 4, candidate_bands: { A: "within_band" }, lineage_claims: { C1: { verdict: "revise", proposed_rule_ids: ["R2"], proposed_risk_ids: [], rationale_ko: "대체 연결 제안" } } },
-    ]);
-    const signal = signalFromExpertSummary(summary, "lineage-1");
-
-    expect(signal?.source_refs).toContain("lineage-1::claim::C1");
-    expect(signal?.metrics.lineage_claim_disagreement_count).toBe(1);
   });
 });

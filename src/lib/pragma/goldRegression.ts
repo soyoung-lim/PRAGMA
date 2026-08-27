@@ -29,7 +29,7 @@ export interface GoldRegressionMismatch {
 
 export interface GoldRegressionReport {
   gate_status: "pass" | "fail" | "not_runnable";
-  mode: "engineering_seed" | "researcher_gate" | "expert_release_gate" | "mixed";
+  mode: "engineering_seed" | "researcher_gate" | "mixed";
   eligible_case_count: number;
   expected_observation_count: number;
   received_observation_count: number;
@@ -61,7 +61,6 @@ function modeOf(statuses: GoldReviewStatus[]): GoldRegressionReport["mode"] {
   if (unique.size !== 1) return "mixed";
   if (unique.has("researcher_seed")) return "engineering_seed";
   if (unique.has("researcher_approved")) return "researcher_gate";
-  if (unique.has("expert_approved")) return "expert_release_gate";
   return "mixed";
 }
 
@@ -220,8 +219,8 @@ export const ENGINEERING_SEED_GATE: GoldRegressionOptions = {
   require_semantic_labels: false,
 };
 
-export const EXPERT_RELEASE_GATE: GoldRegressionOptions = {
-  eligible_statuses: ["expert_approved"],
+export const RESEARCHER_RELEASE_GATE: GoldRegressionOptions = {
+  eligible_statuses: ["researcher_approved"],
   minimum_band_accuracy: 0.9,
   minimum_semantic_accuracy: 0.95,
   require_complete_coverage: true,

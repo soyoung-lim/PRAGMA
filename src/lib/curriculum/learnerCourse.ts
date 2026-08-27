@@ -23,6 +23,8 @@ import type {
   SpeechActUI,
 } from "@/lib/pragma/enums";
 import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
+import { DEFENSE_COURSE_IDS } from "@/lib/pragma/scenarioTopics";
+import { expectedCoreModeForWeek, type CourseMode } from "@/lib/curriculum/courseModePolicy";
 
 export interface LearnerWeekScenario {
   scenario_id: string;
@@ -62,6 +64,15 @@ export interface LearnerCourseSource {
   cores: ComposerCore[];
 }
 
+/** 학습자에게 공개된 교과목 목록. RLS에만 기대지 않고 앱에서도 published만 남긴다. */
+export async function listPublishedCourseOutlines(): Promise<CurriculumOutlineRow[]> {
+  const outlines = await listCurriculumOutlines();
+  const displayOrder = new Map(DEFENSE_COURSE_IDS.map((id, index) => [id, index]));
+  return outlines
+    .filter((outline) => outline.status === "published" && displayOrder.has(outline.id))
+    .sort((left, right) => (displayOrder.get(left.id) ?? 99) - (displayOrder.get(right.id) ?? 99));
+}
+
 /**
  * 편성 원천을 학습자 강좌로 투영한다.
  * 기존 DB에 남은 core-only/generated 배정과 삭제된 코어는 상황 문구조차 노출하지 않는다.
@@ -72,6 +83,10 @@ export function assembleLearnerCourse({
   assignments,
   cores,
 }: LearnerCourseSource): LearnerCourse {
+  const modePolicy = {
+    courseMode: outline.course_mode as CourseMode,
+    interpretingWeekCount: outline.target_interpreting_week_count,
+  };
   const coreById = new Map<string, ComposerCore>();
   for (const core of cores) coreById.set(core.scenario_id, core);
 
@@ -100,6 +115,9 @@ export function assembleLearnerCourse({
       scenarios: (byWeek.get(week.week_no) ?? []).flatMap((assignment) => {
         const core = coreById.get(assignment.scenario_id);
         if (!core || !isMissionReleasedForLearner(core)) return [];
+        // 과목 정책 변경 전 배정은 DB에 보존하되, 다른 수행모드로 실행하지 않는다.
+        const expectedMode = expectedCoreModeForWeek(modePolicy, week.week_no);
+        if (expectedMode && core.mode !== expectedMode) return [];
         return [
           {
             scenario_id: assignment.scenario_id,
@@ -117,10 +135,12 @@ export function assembleLearnerCourse({
   return { outline, weeks: learnerWeeks };
 }
 
-/** 게시된 커리큘럼 1개(가장 최근 수정)의 편성본을 학습자 시점으로 조립. 없으면 null. */
-export async function getPublishedCourse(): Promise<LearnerCourse | null> {
-  const outlines = await listCurriculumOutlines();
-  const published = outlines.find((o) => o.status === "published");
+/** 선택한 게시 강좌를 학습자 시점으로 조립한다. id가 없으면 구 주소 호환용 최신 강좌를 쓴다. */
+export async function getPublishedCourse(courseId?: string): Promise<LearnerCourse | null> {
+  const outlines = await listPublishedCourseOutlines();
+  const published = courseId
+    ? outlines.find((outline) => outline.id === courseId)
+    : outlines[0];
   if (!published) return null;
 
   const [{ outline, weeks }, assignments, cores] = await Promise.all([
