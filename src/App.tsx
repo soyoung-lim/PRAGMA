@@ -274,20 +274,19 @@ const App = () => (
           <Route path="/admin/composer" element={<RequireAdmin><AdminComposer /></RequireAdmin>} />
           <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
           <Route path="/admin/question-designer" element={<RequireAdmin><AdminQuestionDesigner /></RequireAdmin>} />
-          {/* 이전 통합 검수 URL은 현행 3단계 통합 검수·승인 화면으로 보낸다. */}
-          <Route path="/admin/review" element={<RequireAdmin><Navigate to="/admin/research-qa/final-review" replace /></RequireAdmin>} />
-          <Route path="/admin/cross-vendor" element={<RequireAdmin><Navigate to="/admin/research-qa/final-review" replace /></RequireAdmin>} />
+          <Route path="/admin/review" element={<RequireAdmin><AdminAssembly key="review" reviewMode /></RequireAdmin>} />
+          <Route path="/admin/cross-vendor" element={<RequireAdmin><Navigate to="/admin/review" replace /></RequireAdmin>} />
           <Route path="/admin/learners" element={<RequireAdmin><AdminLearners /></RequireAdmin>} />
           <Route path="/admin/decision-traces" element={<RequireAdmin><AdminDecisionTraces /></RequireAdmin>} />
           {/* 레거시 폐기(2026-07-30): /admin/reports — 미사용 화면 삭제(사용자 결정). */}
           <Route path="/admin/export" element={<RequireAdmin><AdminExport /></RequireAdmin>} />
           <Route path="/admin/data-backup" element={<RequireAdmin><AdminDataBackup /></RequireAdmin>} />
-          <Route path="/admin/research-qa" element={<RequireAdmin><Navigate to="/admin/research-qa/final-review" replace /></RequireAdmin>} />
+          <Route path="/admin/research-qa" element={<RequireAdmin><Navigate to="/admin/review" replace /></RequireAdmin>} />
           <Route path="/admin/research-qa/calibration" element={<RequireAdmin><AdminGoldCalibration /></RequireAdmin>} />
           <Route path="/admin/research-qa/expert-reviews" element={<Navigate to="/admin/research-qa/final-review" replace />} />
           <Route path="/admin/research-qa/gold-experts" element={<Navigate to="/admin/research-qa/final-review" replace />} />
           <Route path="/admin/research-qa/final-review" element={<RequireAdmin><AdminFinalCorpusReview /></RequireAdmin>} />
-          <Route path="/admin/research-qa/releases" element={<RequireAdmin><AdminMissionRelease /></RequireAdmin>} />
+          <Route path="/admin/research-qa/releases" element={<RequireAdmin><Navigate to="/admin/review" replace /></RequireAdmin>} />
           <Route path="/admin/research-qa/improvements" element={<RequireAdmin><AdminImprovementFlywheel /></RequireAdmin>} />
           <Route path="/admin/package" element={<RequireAdmin><AdminTeachingMaterials /></RequireAdmin>} />
           {/* /admin/course-ops 제거(2026-08-05) — 메뉴에 없고 어디서도 링크되지 않는 고아

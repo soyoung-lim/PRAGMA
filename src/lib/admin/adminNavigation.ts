@@ -33,21 +33,15 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       { to: "/admin/batch", label: "시나리오 배치 생성" },
       { to: "/admin/library", label: "시나리오 라이브러리" },
       { to: "/admin/assembly", label: "학습 미션 조립" },
-    ],
-  },
-  {
-    header: "3. 학습 콘텐츠 품질관리",
-    items: [
       {
-        to: "/admin/research-qa/final-review",
-        label: "자동 품질 점검",
-        activePaths: ["/admin/research-qa/final-review", "/admin/review"],
+        to: "/admin/review",
+        label: "콘텐츠 검수·확정",
+        activePaths: ["/admin/research-qa/final-review", "/admin/research-qa/releases", "/admin/cross-vendor"],
       },
-      { to: "/admin/research-qa/releases", label: "교수자 최종 검수·공개" },
     ],
   },
   {
-    header: "4. 수업 운영",
+    header: "3. 수업 운영",
     items: [
       { to: "/admin/composer", label: "15주 수업 편성·강의계획서" },
       { to: "/admin/package", label: "수업자료·교실 화면" },
@@ -56,7 +50,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     ],
   },
   {
-    header: "5. 학습 결과·연구 자료",
+    header: "4. 학습 결과·연구 자료",
     items: [
       { to: "/admin/decision-traces", label: "학습 수행 기록" },
       { to: "/admin/research-qa/improvements", label: "콘텐츠 개선 후보" },
@@ -66,7 +60,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 ] as const;
 
 const PRIORITY_LABELS = [
-  "자동 품질 점검",
+  "콘텐츠 검수·확정",
   "수업자료·교실 화면",
   "학습자 승인·관리",
   "학습 수행 기록",

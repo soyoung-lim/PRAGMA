@@ -46,6 +46,9 @@ import {
 import { fetchMissionForReview } from "@/lib/mission/missionDb";
 import { MissionPreview } from "@/components/admin/MissionPreview";
 import { ProfessorMissionWorkbench } from "@/components/admin/ProfessorMissionWorkbench";
+import { ContentReviewPanel } from "@/components/admin/ContentReviewPanel";
+import type { ContentReviewApproval } from "@/lib/pragma/contentReviewApi";
+import { CONTENT_REVIEW_STEPS } from "../../../supabase/functions/_shared/contentReview";
 import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import { toast } from "sonner";
 
@@ -123,7 +126,7 @@ const progressLabel = (stage: PromoteStage) => {
   return "수리본 재검사";
 };
 
-const AdminAssembly = () => {
+const AdminAssembly = ({ reviewMode = false }: { reviewMode?: boolean }) => {
   const [searchParams] = useSearchParams();
   const [rows, setRows] = useState<CoreRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +136,7 @@ const AdminAssembly = () => {
   const initAct = searchParams.get("act");
   const initLevel = searchParams.get("level");
 
-  const [fState, setFState] = useState<"all" | AssemblyState>("all");
+  const [fState, setFState] = useState<"all" | AssemblyState>(reviewMode && !searchParams.get("scenarioId") ? "generated" : "all");
   const [fAct, setFAct] = useState<"all" | SpeechActUI>(
     ACTS.includes(initAct as SpeechActUI) ? (initAct as SpeechActUI) : "all",
   );
@@ -164,13 +167,15 @@ const AdminAssembly = () => {
     try {
       // scenarios의 신규 조립 메타 컬럼이 생성 타입보다 앞서 배포돼 임시 query builder cast가 필요하다.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const request = (supabase as unknown as { from: (t: string) => any })
+      let request = (supabase as unknown as { from: (t: string) => any })
         .from("scenarios")
         .select(CORE_ROW_SELECT)
         .eq("content_format", "scenario_core_v1")
         .neq("review_status", "revise_required")
         .order("created_at", { ascending: false })
         .limit(ROW_CAP);
+      if (reviewMode) request = request.in("mission_status", ["generated", "reviewed", "released"]);
+      if (searchParams.get("scenarioId")) request = request.eq("scenario_id", searchParams.get("scenarioId"));
       const timeout = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => reject(new Error("조회 시간이 15초를 초과했습니다.")), QUERY_TIMEOUT_MS);
       });
@@ -186,7 +191,7 @@ const AdminAssembly = () => {
       if (timeoutId) clearTimeout(timeoutId);
       setLoading(false);
     }
-  }, []);
+  }, [reviewMode, searchParams]);
 
   useEffect(() => {
     void loadRows();
@@ -195,7 +200,7 @@ const AdminAssembly = () => {
   const stateOf = useCallback(
     (r: CoreRow): AssemblyState => {
       if (failures[r.scenario_id] && !r.mission_status) return "failed";
-      if (r.mission_status === "reviewed") return "reviewed";
+      if (r.mission_status === "reviewed" || r.mission_status === "released") return "reviewed";
       if (r.mission_status === "generated") return "generated";
       return "core_only";
     },
@@ -325,10 +330,10 @@ const AdminAssembly = () => {
     }
   };
 
-  const onReview = async (r: CoreRow, overrides: ProfessorIssueOverride[]) => {
+  const onReview = async (r: CoreRow, overrides: ProfessorIssueOverride[], approval: ContentReviewApproval) => {
     setBusy(r.scenario_id);
     try {
-      const res = await reviewMission(r as unknown as PromotableCore, overrides);
+      const res = await reviewMission(r as unknown as PromotableCore, overrides, approval);
       if (res.ok) {
         setStatus(r.scenario_id, "reviewed");
         if (res.mission) {
@@ -339,7 +344,7 @@ const AdminAssembly = () => {
         }
         toast.success("검토 완료(reviewed) — 학습자 실행 가능");
       } else {
-        toast.error(res.error ?? "검토 처리 실패");
+        throw new Error(res.error ?? "검토 처리 실패");
       }
     } finally {
       setBusy(null);
@@ -402,14 +407,23 @@ const AdminAssembly = () => {
 
   return (
     <AdminShell
-      title="학습 미션 조립"
-      description="시나리오를 MPJ 5문항과 직접 산출 과제로 완성하고, 검수 가능한 학습 미션으로 저장합니다."
+      title={reviewMode ? "콘텐츠 검수·확정" : "학습 미션 조립"}
+      description={reviewMode ? "수업에 사용할 콘텐츠의 현재 버전을 검수하고 교수자가 최종 승인합니다. 미션을 열어 시작하세요." : "시나리오를 MPJ 5문항과 직접 산출 과제로 완성하고, 검수 가능한 학습 미션으로 저장합니다."}
     >
       <div className="max-w-[1080px]">
+      {reviewMode && <section className="mb-4 space-y-3 rounded-xl border bg-white p-4 text-sm">
+        <p className="font-semibold">{CONTENT_REVIEW_STEPS.map((step) => step.label).join(" → ")}</p>
+        <p>미션은 편성 전에, 주차 수업자료는 미션 편성 후에 검수합니다. AI는 오류 후보와 근거를 제시하며 콘텐츠를 자동 수정하거나 승인하지 않습니다.</p>
+        <div className="flex flex-wrap gap-3">
+          <Link className="underline" to="/admin/package?review=1">편성 후 주차 자료 검수 →</Link>
+          <Link className="text-muted-foreground underline" to="/admin/research-qa/final-review">과거 정식 생성 검토 기록</Link>
+          {searchParams.get("scenarioId") && <Link className="underline" to="/admin/review">전체 미션 목록</Link>}
+        </div>
+      </section>}
       {/* ── 변환 계기판 — 상호 배타 4상태 ── */}
       <section className="rounded-xl border border-[#E2DED2] bg-white p-5">
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-          {(Object.keys(STATE_KO) as AssemblyState[]).map((s) => (
+          {(reviewMode ? ["generated", "reviewed"] as AssemblyState[] : Object.keys(STATE_KO) as AssemblyState[]).map((s) => (
             <button
               key={s}
               type="button"
@@ -486,7 +500,7 @@ const AdminAssembly = () => {
         <section className="mt-4 space-y-2">
           <div className="flex items-baseline justify-between px-1">
             <div>
-              <h3 className="text-[15px] font-bold text-[#202B33]">조립 큐</h3>
+              <h3 className="text-[15px] font-bold text-[#202B33]">{reviewMode ? "미션 검수 대기열" : "조립 큐"}</h3>
               <p className="mt-0.5 text-[11.5px] text-muted-foreground">선택한 조건의 시나리오 {filtered.length}개</p>
             </div>
             {filtered.length > LIST_CAP && !showAll && (
@@ -545,7 +559,7 @@ const AdminAssembly = () => {
                         ) : (
                           <span className="text-[11.5px] text-muted-foreground">화용 초점 카탈로그 없음 — 조립 불가</span>
                         ))}
-                      {st === "generated" && (
+                      {st === "generated" && !reviewMode && (
                         <>
                           <Button
                             size="sm"
@@ -560,7 +574,7 @@ const AdminAssembly = () => {
                       )}
                       {(st === "generated" || st === "reviewed") && (
                         <Button size="sm" variant="ghost" onClick={() => togglePreview(r)}>
-                          {openId === r.scenario_id ? "미션 접기 ▴" : "미션 보기 ▾"}
+                          {openId === r.scenario_id ? "미션 접기 ▴" : reviewMode ? "원본·5단계 검수 열기 ▾" : "미션 보기 ▾"}
                         </Button>
                       )}
                       {st === "reviewed" && (
@@ -589,13 +603,15 @@ const AdminAssembly = () => {
                       />
                       {st === "generated" && (
                         <ProfessorMissionWorkbench
+                          scenarioId={r.scenario_id}
                           key={`${preview[r.scenario_id].mission.provenance?.mission_content_hash ?? "draft"}-${preview[r.scenario_id].mission.quality_check?.verdict ?? "none"}`}
                           mission={preview[r.scenario_id].mission}
                           busy={busy === r.scenario_id}
                           onSave={(edits) => onSaveEdits(r, edits)}
-                          onReview={(overrides) => onReview(r, overrides)}
+                          onReview={(overrides, approval) => onReview(r, overrides, approval)}
                         />
                       )}
+                      {reviewMode && st === "reviewed" && <ContentReviewPanel target={{ kind: "mission", targetId: r.scenario_id }} historicalApproval />}
                     </>
                   )}
                 </li>

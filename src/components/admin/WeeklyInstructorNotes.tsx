@@ -1,6 +1,6 @@
 import type { LearnerCourseWeek } from "@/lib/curriculum/learnerCourse";
 import type { InstructorMissionGuide } from "@/lib/pragma/instructorGuide";
-import { FEATURE_CODES_BY_ACT, getTargetFeature } from "@/lib/pragma/targetFeatures";
+import { weeklyInstructorContent } from "@/lib/curriculum/weeklyInstructorContent";
 
 export interface WeeklyMissionNotes {
   scenarioId: string;
@@ -14,21 +14,20 @@ export function WeeklyInstructorNotes({ week, direction, missions }: {
   direction: string;
   missions: WeeklyMissionNotes[];
 }) {
-  const features = (week.speech_act ? FEATURE_CODES_BY_ACT[week.speech_act] : [])
-    .flatMap((code) => { const feature = getTargetFeature(code); return feature ? [feature] : []; });
+  const { features, procedure } = weeklyInstructorContent(week, direction);
   return <section aria-label="교수자 전용 메모" className="space-y-4 rounded-xl border border-[#DBD3BD] bg-[#FFFCF2] p-5">
     <div>
       <h2 className="text-lg font-bold">교수자 전용 메모</h2>
       <p className="mt-1 text-xs text-muted-foreground">공용 화면·유인물·HTML에 포함되지 않습니다. 기존 검토 기준과 배정 미션의 해설을 참고합니다.</p>
     </div>
     {features.map((feature) => <div key={feature.code} className="rounded-lg border bg-white p-4">
-      <h3 className="font-semibold">{feature.learner_label}</h3>
-      <p className="mt-2 text-sm leading-6">{direction === "zh_ko" ? feature.counter_rule_note_zh_ko ?? feature.counter_rule_note : feature.counter_rule_note}</p>
+      <h3 className="font-semibold">{feature.label}</h3>
+      <p className="mt-2 text-sm leading-6">{feature.note}</p>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
-        {(direction === "zh_ko" ? feature.excluded_confounds_zh_ko ?? feature.excluded_confounds : feature.excluded_confounds).map((item, index) => <li key={index}>{item}</li>)}
+        {feature.confounds.map((item, index) => <li key={index}>{item}</li>)}
       </ul>
     </div>)}
-    <p className="text-sm leading-6">주차의 목표와 핵심 설명을 확인한 뒤 편성된 미션으로 연결합니다. 수행 후에는 학생이 선택·수정한 이유를 기존 기록과 함께 확인합니다.</p>
+    <p className="text-sm leading-6">{procedure}</p>
     <h3 className="font-bold">미션별 핵심 해설</h3>
     {missions.map(({ scenarioId, label, guide }) => <details key={scenarioId} className="rounded-lg border bg-white p-4">
       <summary className="cursor-pointer font-semibold">{label} · {guide.speechActKo}</summary>
