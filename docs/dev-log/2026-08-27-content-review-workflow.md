@@ -84,3 +84,32 @@
 - typecheck 통과, Edge 도메인 번들 재생성. 전체 테스트·production build·브라우저 E2E는 반복하지
   않았다. 유료 호출·운영 DB·Edge·Railway 배포는 0회다.
 - 관리자 정본 §6.4, 생성계약 §5.4, `DEC-20260827-05`에 승인 계약을 동기화했다.
+
+## 독립 의견 반영: 승인 경계와 학생 공개 (기준 `f1a8415`)
+
+- 사용자 승인한 Opus·GPT Pro 의견 중 지금 필요한 보완만 구현했다. `[교차검증 필수]` 범위의
+  독립 의견을 반영한 로컬 변경이며, 운영 적용 승인이나 운영 종단 검증을 대신하지 않는다.
+- 미적용 migration에 현재 원본 hash 기반 INSERT/UPDATE 승인 gate를 넣고 구 `review_mission`
+  직접 실행을 차단했다. 기존 reviewed/released 행은 유지하되 본문·상태 교체와 삭제를 막는다.
+  GUC 플래그는 승인 근거로 쓰지 않는다. 승인된 검수 결과·판단도 DB 트리거로 변경·삭제를 막는다.
+- finalization은 `SECURITY DEFINER`로 관리자 확인·원본/검수 잠금·현재 버전 검사를 거친다.
+  승인 기록을 먼저 쓰고, 미션 갱신·lineage의 검수 ID 저장까지 같은 트랜잭션으로 처리한다.
+  저장 실패 시 승인까지 롤백한다. 기존 승인·수행 기록은 백필하지 않는다.
+- 모델 출력의 상세 검사는 Edge 것을 재사용하고 DB에는 완료 메타·verdict·지적 ID 대응만 확인한다.
+  신규 OpenAI 1차 fail은 별도 교수자 근거와 UI 확인을 요구한다. 기존 critic override는 유지한다.
+- 학생 유인물은 기존 검수 스냅샷의 공용 본문만 안전한 RPC로 읽는다. 교수자 메모·검수 원문을
+  반환하지 않는다. 미승인·변경·조회 실패 시 미리보기로 대체하지 않는다. 관리자 미리보기는 유지한다.
+- 표적 **14 tests 통과**: 화면 2파일 9 tests, 로컬 PostgreSQL(PGlite) 5 tests. SQL 검사는 실제
+  lineage migration·authoring trigger·QA migration을 실행하며 종속 테이블/인증은 fixture다.
+  승인 우회·fail 근거·증거 동결·원자적 롤백·stale·학생 공개 범위를 확인했다. 첫 SQL 실행에서
+  CASE 비교의 괄호 누락을 찾아 수정했다. 동시성·전체 운영 스키마를 검증한 것으로 해석하지 않는다.
+  `npm run review:db-test`를 CI의 기존 작업에 연결했다. PGlite는 개발 전용 의존성이다.
+- typecheck 통과. 화면 테스트 최초 실행은 esbuild 샌드박스 읽기 제한으로 중단되어 허용된 경로로
+  재실행했다. 전체 테스트·production build·브라우저 E2E는 반복하지 않았다. 유료 호출·운영 DB·
+  Edge·Railway 적용은 모두 0회다. AI 검수 입력·기준·프롬프트는 바꾸지 않아 `content_review_v2` 유지.
+- 보류: provenance hash 직렬화 전면 통합, 동일 의미 상태 변경의 선택적 stale 최적화, 별도 사용
+  이력 테이블·초안 판단 append-only 시스템. QA source hash와 producer lineage hash는 구분한다.
+- 운영 시 유의: 새 DB·앱·Edge를 함께 적용해야 한다. 기존 자동 조립 유인물도 현재 버전 검수 전에는
+  학생에게 대기 안내가 뜬다. 기존 미션·수행 기록은 계속 이용한다. 승인 미션 본문을 UPDATE하거나
+  DELETE하는 정리·복원 작업은 이제 거부되므로 이를 우회해 데이터를 교체하지 않는다.
+- 기록: 관리자·학습자 정본, 생성계약, `DEC-20260827-05`, `EVD-20260827-05`를 동기화했다.

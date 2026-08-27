@@ -26,13 +26,13 @@ beforeEach(() => {
       claude_review: { ...metadata({ verdict: "warning", summary_ko: "관계 맥락 확인 필요", findings: [finding] } as ReviewResult), provider: "anthropic" },
       adjudication: metadata({ summary_ko: "원문과 상황에 따른 판정", decisions: [{ finding_id: finding.id, decision: "reject", rationale_ko: "원문 상황에 참여 자율성이 명시됨",
         proposed_change_ko: "", needs_professor: true, evidence_path: finding.where, evidence_quote: finding.quote }] }),
-      running_stage: null, lease_until: null, last_error: null, approved_at: null, approved_by: null, professor_note: null, professor_decisions: [], created_at: "2026-08-27" } };
+      running_stage: null, lease_until: null, last_error: null, approved_at: null, approved_by: null, professor_note: null, openai_fail_override: null, professor_decisions: [], created_at: "2026-08-27" } };
   mocks.inspect.mockImplementation(async () => inspection);
   mocks.save.mockImplementation(async (_id: string, _hash: string, decisions: ProfessorFindingDecision[]) => {
     inspection = { ...inspection, run: { ...inspection.run!, professor_decisions: decisions } };
   });
-  mocks.approve.mockImplementation(async () => {
-    inspection = { ...inspection, run: { ...inspection.run!, approved_at: "2026-08-27", professor_note: "수업 사용 가능" } };
+  mocks.approve.mockImplementation(async (approval) => {
+    inspection = { ...inspection, run: { ...inspection.run!, approved_at: "2026-08-27", professor_note: "수업 사용 가능", openai_fail_override: approval.openaiFailOverride ?? null } };
   });
 });
 afterEach(cleanup);
@@ -93,5 +93,22 @@ describe("professor finding decisions", () => {
     expect(screen.queryByRole("button", { name: "교수자 승인·확정" })).not.toBeInTheDocument();
     expect(mocks.save).not.toHaveBeenCalled();
     expect(mocks.approve).not.toHaveBeenCalled();
+  });
+
+  it("requires a separate rationale and confirmation for OpenAI fail even when Claude has no findings", async () => {
+    inspection.run!.openai_review = metadata({ verdict: "fail", summary_ko: "중대 지적", findings: [{ ...finding, id: "openai-1", severity: "fail" }] });
+    inspection.run!.claude_review!.result = { verdict: "pass", summary_ko: "지적 없음", findings: [] };
+    inspection.run!.adjudication!.result.decisions = [];
+    showPanel();
+    fireEvent.change(await screen.findByRole("textbox", { name: "교수자 승인 근거" }), { target: { value: rationale } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "현재 원본·OpenAI·Claude·재검토 결과를 확인했습니다." }));
+    expect(screen.getByRole("button", { name: "교수자 승인·확정" })).toBeDisabled();
+    fireEvent.change(screen.getByRole("textbox", { name: "OpenAI 중대 지적 사용 근거" }), { target: { value: rationale } });
+    expect(screen.getByRole("button", { name: "교수자 승인·확정" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: /OpenAI 중대 지적을 검토했으며/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "현재 원본·OpenAI·Claude·재검토 결과를 확인했습니다." }));
+    fireEvent.click(screen.getByRole("button", { name: "교수자 승인·확정" }));
+    await waitFor(() => expect(mocks.approve).toHaveBeenCalledWith(expect.objectContaining({ openaiFailOverride: rationale })));
+    expect(await screen.findByText(`OpenAI 중대 지적 사용 근거: ${rationale}`)).toBeVisible();
   });
 });

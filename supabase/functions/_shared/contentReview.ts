@@ -45,6 +45,7 @@ export type ContentReviewRun = {
   adjudication: ModelReview<Adjudication> | null;
   running_stage: ReviewStage | null; lease_until: string | null; last_error: string | null;
   approved_at: string | null; approved_by: string | null; professor_note: string | null;
+  openai_fail_override: string | null;
   professor_decisions: ProfessorFindingDecision[];
   created_at: string;
 };

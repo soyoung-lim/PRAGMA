@@ -22,11 +22,15 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [openaiFailOverride, setOpenaiFailOverride] = useState("");
+  const [openaiFailConfirmed, setOpenaiFailConfirmed] = useState(false);
   const [decisionDrafts, setDecisionDrafts] = useState<Record<string, ProfessorDecisionDraft>>({});
   const state = query.data;
   const run = state?.run ?? null;
   const savedDecisionsJson = JSON.stringify(run?.professor_decisions ?? []);
-  useEffect(() => { setConfirmed(false); setNote(""); }, [state?.contentHash, run?.id]);
+  useEffect(() => {
+    setConfirmed(false); setNote(""); setOpenaiFailOverride(""); setOpenaiFailConfirmed(false);
+  }, [state?.contentHash, run?.id]);
   useEffect(() => {
     const saved: ProfessorFindingDecision[] = JSON.parse(savedDecisionsJson);
     setDecisionDrafts(Object.fromEntries(saved.map((entry) => [entry.finding_id, entry])));
@@ -52,7 +56,9 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
   const locked = run?.running_stage && run.lease_until && Date.parse(run.lease_until) > Date.now();
   const blocked = run?.rules.verdict === "fail";
   const dependencyBlocked = state?.dependencies.some((item) => !item.approved);
-  const ready = Boolean(state && next === "professor" && decisionsClear && !dependencyBlocked && !blocked && !approvalDisabled);
+  const hasOpenaiFail = run?.openai_review?.result.verdict === "fail";
+  const openaiFailClear = !hasOpenaiFail || (openaiFailConfirmed && openaiFailOverride.trim().length >= 10);
+  const ready = Boolean(state && next === "professor" && decisionsClear && openaiFailClear && !dependencyBlocked && !blocked && !approvalDisabled);
   const saveDecisions = async () => {
     if (!run || !state || next !== "professor" || !professorDecisionsComplete(findings, draftDecisions)) return;
     setBusy(true); setError(null);
@@ -67,7 +73,8 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
     try {
       if (next === "professor") {
         if (!run || !ready || !confirmed || note.trim().length < 10) return;
-        const approval = { reviewId: run.id, contentHash: state!.contentHash, professorNote: note.trim() };
+        const approval: ContentReviewApproval = { reviewId: run.id, contentHash: state!.contentHash, professorNote: note.trim(),
+          ...(hasOpenaiFail ? { openaiFailOverride: openaiFailOverride.trim() } : {}) };
         await (onApprove ?? approveContentReview)(approval);
         await query.refetch();
       } else if (next !== "approved") {
@@ -157,6 +164,15 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
         <p className="text-xs">원본·OpenAI 품질 점검·Claude 지적과 판정을 모두 확인하세요. Claude 지적별 결정을 저장하고, 전체 수업 사용 근거도 남깁니다.</p>
         {!decisionsClear && <p className="text-amber-800">지적별 교수자 판단을 저장하고 수정 필요·판단 보류를 해결해야 최종 확정할 수 있습니다.</p>}
         {onApprove && <p className="text-xs text-muted-foreground">미션 승인 시 기존 근거 귀속·최종화 API가 추가 실행됩니다.</p>}
+        {hasOpenaiFail && <div className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3">
+          <p className="font-semibold">OpenAI 1차 점검에 중대 지적이 있습니다.</p>
+          <p className="text-xs">Claude의 지적 유무와 별개입니다. 수정이 필요하면 원본을 수정하고 다시 검수하세요. 수정 없이 사용할 때만 그 근거를 남깁니다.</p>
+          <Textarea aria-label="OpenAI 중대 지적 사용 근거" value={openaiFailOverride}
+            onChange={(event) => { setOpenaiFailOverride(event.target.value); setOpenaiFailConfirmed(false); setConfirmed(false); }}
+            placeholder="중대 지적을 검토하고도 현재 내용을 사용할 수 있는 근거를 10자 이상 기록하세요." />
+          <label className="flex gap-2 text-xs"><input type="checkbox" checked={openaiFailConfirmed}
+            onChange={(event) => setOpenaiFailConfirmed(event.target.checked)} />OpenAI 중대 지적을 검토했으며 수정 없이 사용할 수 있다고 판단했습니다.</label>
+        </div>}
         <Textarea aria-label="교수자 승인 근거" value={note} onChange={(event) => setNote(event.target.value)} placeholder="수업 사용 적합성과 남은 지적에 대한 교수자 판단을 10자 이상 기록하세요." />
         <label className="flex gap-2 text-xs"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />현재 원본·OpenAI·Claude·재검토 결과를 확인했습니다.</label>
         {approvalDisabled && <p className="text-amber-800">저장하지 않은 수정 또는 기존 결함의 교수자 판단 근거를 먼저 확인하세요.</p>}
@@ -166,7 +182,9 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
         {busy ? "처리 중…" : next === "rules" ? "규칙 검사 시작 · 무료" : next === "professor" ? "교수자 승인·확정" : `${CONTENT_REVIEW_STEPS[stepIndex].label} 실행 · 유료`}
       </Button>}
       {next === "claude" && !state.models.claude && <p className="text-amber-800">Claude 검토 모델이 설정되지 않았습니다. 운영 환경의 CLAUDE_AUDIT_MODEL을 먼저 설정해야 합니다.</p>}
-      {next === "approved" && <p className="rounded bg-emerald-50 p-3">현재 버전 교수자 승인 · {run?.approved_at}<span className="mt-1 block">{run?.professor_note}</span></p>}
+      {next === "approved" && <div className="rounded bg-emerald-50 p-3">현재 버전 교수자 승인 · {run?.approved_at}<p className="mt-1">{run?.professor_note}</p>
+        {run?.openai_fail_override && <p className="mt-2">OpenAI 중대 지적 사용 근거: {run.openai_fail_override}</p>}
+      </div>}
       <details><summary className="cursor-pointer text-xs">검수 대상 원본·이력</summary>
         <p className="my-2 text-xs">현재 정적 콘텐츠 원본을 검수합니다. 개별 학습자 실시간 피드백을 전수 검토했다는 뜻은 아닙니다.</p>
         <pre className="max-h-72 overflow-auto rounded bg-[#F7F7F5] p-3 text-[11px]">{JSON.stringify(state.snapshot, null, 2)}</pre>

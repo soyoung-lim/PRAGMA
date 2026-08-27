@@ -155,6 +155,7 @@ const AdminTeachingMaterials = () => {
           <summary className="cursor-pointer font-semibold">이 주차 수업자료 검수·확정</summary>
           {reviewOpen && <ContentReviewPanel key={`${courseId}-${week.week_no}`} target={{ kind: "weekly_material", targetId: courseId, weekNo: week.week_no }} />}
         </details>}
+        {!projectorOpen && <p className="text-xs text-muted-foreground">아래는 현재 편성의 교수자 미리보기입니다. 학생 유인물은 이 주차 검수·확정 후 공개되며, 내용이나 편성이 바뀌면 재검수가 필요합니다.</p>}
         <div className="flex flex-wrap items-center gap-2">
           <Button ref={projectorButtonRef} onClick={() => { setNotesOpen(false); setActiveSection(0); setProjectorOpen(true); }}>프로젝터 화면</Button>
           <Button variant="outline" onClick={exportHtml}>HTML</Button>

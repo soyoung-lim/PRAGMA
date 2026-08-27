@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ProfessorFindingDecision, ReviewInspection, ReviewTarget } from "../../../supabase/functions/_shared/contentReview";
-export type ContentReviewApproval = { reviewId: string; contentHash: string; professorNote: string };
+import type { WeeklyCourseMaterial } from "@/lib/curriculum/weeklyMaterials";
+export type ContentReviewApproval = { reviewId: string; contentHash: string; professorNote: string; openaiFailOverride?: string };
 
 export async function contentReviewRequest(target: ReviewTarget, action = "inspect"): Promise<ReviewInspection> {
   const { data, error } = await supabase.functions.invoke("content-review", { body: { target, action } });
@@ -18,8 +19,19 @@ export async function approveContentReview(approval: ContentReviewApproval): Pro
   // New RPC pending generated type refresh; keep the exception local.
   const { error } = await (supabase as any).rpc("approve_content_review", {
     p_review_id: approval.reviewId, p_content_hash: approval.contentHash, p_note: approval.professorNote,
+    p_openai_fail_override: approval.openaiFailOverride ?? null,
   });
   if (error) throw new Error(error.message);
+}
+export async function getApprovedWeeklyMaterial(outlineId: string, weekNo: number): Promise<{
+  reviewId: string; contentHash: string; material: WeeklyCourseMaterial;
+} | null> {
+  // This RPC returns only the approved public material, never instructor notes or AI review results.
+  const { data, error } = await (supabase as any).rpc("get_approved_weekly_material", {
+    p_outline_id: outlineId, p_week_no: weekNo,
+  });
+  if (error) throw new Error(error.message);
+  return data;
 }
 export async function saveProfessorDecisions(reviewId: string, contentHash: string, decisions: ProfessorFindingDecision[]): Promise<void> {
   const { error } = await (supabase as any).rpc("save_content_review_decisions", {
