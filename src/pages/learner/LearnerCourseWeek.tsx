@@ -8,9 +8,8 @@ import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import { ROLE_LABEL, weekRole } from "@/lib/curriculum/template";
 import { useLearnerCourse } from "@/lib/curriculum/useLearnerCourse";
 import { MODE_LABEL, SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
-import { getTargetFeature } from "@/lib/pragma/targetFeatures";
+import { missionSituationSummary } from "@/lib/curriculum/weeklyMaterials";
 import { courseDisplayTitle } from "@/lib/pragma/scenarioTopics";
-import { friendlyFeatureLabel } from "@/lib/mission/learnerReport";
 import { listCompletedMissionIds } from "@/lib/mission/missionLog";
 import { hasIntroArc } from "@/lib/mission/mockIntroArc";
 
@@ -92,11 +91,7 @@ const LearnerCourseWeek = () => {
   const speechActLabel = week.speech_act
     ? SPEECH_ACT_UI[week.speech_act as SpeechActUI]
     : week.title;
-  const firstFeatureCode = week.scenarios.find((scenario) => scenario.target_feature)?.target_feature;
-  const firstFeature = firstFeatureCode ? getTargetFeature(firstFeatureCode) : undefined;
-  const goal = firstFeatureCode
-    ? friendlyFeatureLabel(firstFeatureCode, firstFeature?.learner_label ?? "")
-    : week.can_do[0] ?? null;
+  const goal = week.can_do[0] ?? null;
   const introAvailable = week.scenarios.some(
     (scenario) => scenario.runnable && hasIntroArc(scenario.target_feature),
   );
@@ -128,7 +123,7 @@ const LearnerCourseWeek = () => {
             </Button>
           )}
           <Button asChild variant="outline">
-            <Link to={`${coursePath}/week/${week.week_no}/note`}>주차 학습 노트 →</Link>
+            <Link to={`${coursePath}/week/${week.week_no}/note`}>강의 유인물 →</Link>
           </Button>
         </div>
 
@@ -156,9 +151,6 @@ const LearnerCourseWeek = () => {
             <ul className="mt-3 grid gap-3 sm:grid-cols-2">
               {week.scenarios.map((scenario, index) => {
                 const done = completed.has(scenario.scenario_id);
-                const feature = scenario.target_feature
-                  ? getTargetFeature(scenario.target_feature)
-                  : undefined;
                 const setLabel = week.speech_act
                   ? `미션 ${index + 1}`
                   : `활동 ${index + 1}`;
@@ -171,16 +163,14 @@ const LearnerCourseWeek = () => {
                         {done ? "완료" : "시작 전"}
                       </span>
                     </div>
-                    <p className="mt-2 flex-1 text-[14px] font-semibold leading-5 text-[#15202B]">
-                      {scenario.situation_ko}
+                    <p className="mt-2 line-clamp-2 text-[14px] font-semibold leading-5 text-[#15202B]">
+                      {missionSituationSummary(scenario.situation_ko)}
                     </p>
                     <p className="mt-2 text-[11.5px] text-muted-foreground">
                       {scenario.mode === "stt_interpreting"
                         ? MODE_LABEL.stt_interpreting
                         : MODE_LABEL.translation}
-                      {scenario.target_feature
-                        ? ` · ${feature?.learner_label ?? "핵심 표현 판단"}`
-                        : ""}
+                      {" · 표현 판단 5개 + 직접 산출 1개"}
                     </p>
                     <Button asChild variant={done ? "outline" : "default"} className="mt-4 w-full">
                       <Link to={practicePath}>{done ? "다시 하기 →" : `${setLabel} 시작하기 →`}</Link>

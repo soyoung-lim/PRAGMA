@@ -1,5 +1,9 @@
 import type { InstructorMissionGuide } from "@/lib/pragma/instructorGuide";
 import type { InstructorGuideTimingPlan } from "@/lib/pragma/instructorGuideTiming";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { WeeklyMaterialDocument } from "@/components/curriculum/WeeklyMaterialDocument";
+import type { WeeklyCourseMaterial } from "@/lib/curriculum/weeklyMaterials";
 
 type ExportMission = {
   scenarioId: string;
@@ -98,6 +102,31 @@ function pairComparison(first: ExportMission, second: ExportMission) {
     <p class="muted">두 미션을 통제된 실험쌍이나 특정 변화축의 효과로 해석하지 않습니다.</p>
     <div class="columns"><div class="card"><strong>미션 1</strong><p>${escapeHtml(first.guide.situationKo)}</p></div><div class="card"><strong>미션 2</strong><p>${escapeHtml(second.guide.situationKo)}</p></div></div>
     <ol class="questions"><li>두 미션에서 선택한 판단 근거의 공통점과 차이는 무엇인가?</li><li>두 DCT 수정안에서 유지한 원리와 상황에 맞게 달리 조정한 점은 무엇인가?</li><li>새 상황에 같은 화행을 적용한다면 표현을 어떻게 조정할 것인가?</li></ol>`);
+}
+
+/** 주차 공용 본문만 내보낸다. 기존 교수자용 export의 숨겨진 해설은 이 경로에 섞지 않는다. */
+export function buildWeeklyMaterialsHtml(material: WeeklyCourseMaterial): string {
+  const body = renderToStaticMarkup(createElement(WeeklyMaterialDocument, { material }));
+  return `<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(material.courseTitle)} · ${material.weekNo}주차 수업자료</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f8f6ee;color:#15202b;font-family:system-ui,sans-serif;line-height:1.65}
+main{max-width:1100px;margin:auto;padding:28px}.material-heading{background:#fad338;padding:22px 30px;border-radius:14px}
+h1{margin:8px 0;font-size:30px}h2{font-size:30px;margin-top:0}.material-section{margin-top:20px;background:white;border:1px solid #e5dfd0;border-radius:14px;padding:32px;font-size:23px;min-height:42vh}
+.material-section p,.material-section li{font-size:23px;line-height:1.8}.material-section li{margin:12px 0}[hidden]{display:none!important}
+nav{position:sticky;top:0;z-index:1;background:#f8f6ee;display:flex;align-items:center;justify-content:flex-end;gap:12px;margin:0 0 16px;padding:8px 0}button{font:inherit;padding:8px 18px;border:1px solid #bbb;border-radius:8px;background:white}button:disabled{opacity:.4}footer{font-size:12px;color:#657178}
+@media print{body{background:white}main{padding:0}nav,footer{display:none}.material-section,.material-section[hidden]{display:block!important;min-height:0;break-inside:avoid;padding:18px}.material-section p,.material-section li{font-size:12px}h2{font-size:18px}}
+</style></head><body><main>
+<nav aria-label="수업자료 페이지"><span id="page"></span><button id="previous">이전</button><button id="next">다음</button><button id="print">인쇄</button></nav>
+${body}
+<footer>주차 수업자료의 공용 사본입니다. 교수자 전용 메모와 개인 수행 기록은 포함하지 않습니다. 원본 수정 후에는 HTML을 다시 내려받으세요.</footer>
+</main><script>(()=>{const sections=[...document.querySelectorAll('[data-material-section]')],page=document.getElementById('page'),previous=document.getElementById('previous'),next=document.getElementById('next');let index=0;const show=(value)=>{index=Math.max(0,Math.min(sections.length-1,value));sections.forEach((section,i)=>{section.hidden=i!==index});page.textContent=(index+1)+' / '+sections.length;previous.disabled=index===0;next.disabled=index===sections.length-1};previous.onclick=()=>show(index-1);next.onclick=()=>show(index+1);document.getElementById('print').onclick=()=>window.print();document.addEventListener('keydown',event=>{if(event.key==='ArrowRight'||event.key==='PageDown'){event.preventDefault();show(index+1)}if(event.key==='ArrowLeft'||event.key==='PageUp'){event.preventDefault();show(index-1)}});show(0)})();</script></body></html>`;
+}
+
+export function weeklyMaterialsHtmlFilename(material: WeeklyCourseMaterial): string {
+  const course = material.courseId.replace(/[^a-zA-Z0-9_-]/g, "-");
+  return `PRAGMA_${course}_${material.weekNo}주차_수업자료.html`;
 }
 
 export function instructorGuideHtmlFilename(input: InstructorGuideHtmlExport) {

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { InstructorMissionGuide } from "@/lib/pragma/instructorGuide";
 import { instructorGuideTimingPlan } from "@/lib/pragma/instructorGuideTiming";
-import { buildInstructorGuideStandaloneHtml, instructorGuideHtmlFilename } from "@/lib/pragma/instructorGuideHtml";
+import { buildInstructorGuideStandaloneHtml, instructorGuideHtmlFilename, buildWeeklyMaterialsHtml } from "@/lib/pragma/instructorGuideHtml";
+import type { WeeklyCourseMaterial } from "@/lib/curriculum/weeklyMaterials";
 
 const guide: InstructorMissionGuide = {
   speechActKo: "요청",
@@ -20,6 +21,25 @@ const guide: InstructorMissionGuide = {
 };
 
 describe("standalone instructor guide HTML", () => {
+  it("주차 공용 HTML은 허용한 본문만 출력하고 교수자 메모는 파일에서 제외한다", () => {
+    const material: WeeklyCourseMaterial & { teacherNotes: string; missionAnswers: string } = {
+      courseId: "course-1", courseTitle: "<script>alert('x')</script>", weekNo: 5,
+      title: "초대", contextLabel: "중급 · 한→중 · 번역",
+      preparationLabel: "편성 미션 2개 반영", preparationNote: "수업 전 확인",
+      sections: [{ id: "goals", title: "이번 주 학습목표", paragraphs: ["공용 핵심 설명"], items: ["공용 질문"] }],
+      missions: [], teacherNotes: "PRIVATE_INSTRUCTOR_SENTINEL", missionAnswers: "PRIVATE_ANSWER_SENTINEL",
+    };
+    const html = buildWeeklyMaterialsHtml(material);
+    expect(html).toContain("공용 핵심 설명");
+    expect(html).toContain("공용 질문");
+    expect(html).not.toContain("PRIVATE_INSTRUCTOR_SENTINEL");
+    expect(html).not.toContain("PRIVATE_ANSWER_SENTINEL");
+    expect(html).not.toContain("<script>alert('x')</script>");
+    expect(html).not.toMatch(/https?:\/\//);
+    expect(html).toContain("window.print()");
+    expect(html).toContain("ArrowRight");
+  });
+
   it("creates a self-contained, escaped offline lesson file", () => {
     const html = buildInstructorGuideStandaloneHtml({
       primary: { scenarioId: "mission-a", guide },

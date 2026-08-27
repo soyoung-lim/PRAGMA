@@ -69,7 +69,7 @@ import {
   type ThemeCode,
 } from "@/lib/pragma/scenarioTopics";
 import { getTargetFeature, DEFAULT_FEATURE_BY_ACT } from "@/lib/pragma/targetFeatures";
-import { instructorGuideSequencePath } from "@/lib/pragma/instructorGuideTiming";
+import { weeklyMaterialsPath } from "@/lib/curriculum/weeklyMaterials";
 import { CurriculumEditor } from "./CurriculumEditor";
 import {
   COURSE_MODE_LABEL,
@@ -1182,17 +1182,12 @@ function WeekRow({
           {week.week_no}주차
         </span>
         <span className="text-[13.5px] font-medium">{displayTitle}</span>
+        <Link to={weeklyMaterialsPath(week.outline_id, week.week_no)} className="text-[11.5px] font-semibold text-[#2F6F63] hover:underline">
+          주차 수업자료
+        </Link>
         {items.length > 0 && (
           <div className="ml-auto flex items-center gap-2 text-[11.5px]">
             <span className="text-muted-foreground">미션 {items.length}개</span>
-            {items.length >= 2 && (
-              <Link
-                to={instructorGuideSequencePath(items[0].scenario_id, items[1].scenario_id)}
-                className="font-semibold text-[#2F6F63] hover:underline"
-              >
-                90분 묶음 수업자료
-              </Link>
-            )}
           </div>
         )}
         {isAssignable ? (
@@ -1229,12 +1224,6 @@ function WeekRow({
                     {core?.situation_ko ?? "(누락된 시나리오)"}
                   </p>
                   <div className="flex shrink-0 items-center gap-2">
-                    <Link
-                      to={`/admin/package?mission=${item.scenario_id}`}
-                      className="text-[11.5px] font-medium text-[#2F6F63] hover:underline"
-                    >
-                      수업자료
-                    </Link>
                     <button
                       type="button"
                       onClick={() => onRemove(item.scenario_id)}
