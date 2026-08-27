@@ -2,7 +2,7 @@ import { webcrypto } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SAMPLE_MISSION_V5_NATIVE } from "@/lib/mission/missionV4Sample";
 import { buildContentReviewDomain } from "./contentReviewDomain";
-import { buildReviewPrompt, instructionalMission, nextReviewStage, professorDecisionsComplete, reviewHash, validateAdjudication, validateReviewResult,
+import { buildReviewPrompt, instructionalMission, materializeReviewEvidence, nextReviewStage, professorDecisionsComplete, reviewHash, validateAdjudication, validateReviewResult,
   type ContentReviewRun, type ReviewResult } from "../../../supabase/functions/_shared/contentReview";
 import { callContentReviewer } from "../../../supabase/functions/_shared/contentReviewProvider";
 
@@ -39,6 +39,9 @@ describe("current content five-stage review", () => {
       expect(() => validateAdjudication({ summary_ko: "확인", decisions }, audit, snapshot)).toThrow();
     }
     expect(audit.findings[0].issue_ko).toBe("지적");
+    const { evidence_quote: _quote, ...wireDecision } = decision;
+    const restored = materializeReviewEvidence({ summary_ko: "확인", decisions: [wireDecision] }, snapshot, true);
+    expect(validateAdjudication(restored, audit, snapshot).decisions[0].evidence_quote).toBe(snapshot.content.source);
   });
 
   it("rejects invented evidence and inconsistent pass verdicts", () => {
@@ -146,7 +149,8 @@ describe("current content five-stage review", () => {
   });
 
   it("records the bounded Opus request and accepts text alongside thinking blocks", async () => {
-    const output: ReviewResult = { verdict: "pass", summary_ko: "지적 없음", findings: [] };
+    const { quote: _quote, ...wireFinding } = finding;
+    const output = { verdict: "warning", summary_ko: "확인", findings: [wireFinding] };
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "claude-reply", model: "claude-opus-5",
       stop_reason: "end_turn", usage: { input_tokens: 100, output_tokens: 200 },
       content: [{ type: "thinking", thinking: "private" }, { type: "text", text: JSON.stringify(output) }],
@@ -154,11 +158,24 @@ describe("current content five-stage review", () => {
     const result = await callContentReviewer({ stage: "claude", run: run(), apiKey: "test", model: "claude-opus-5", fetcher });
     const request = JSON.parse(fetcher.mock.calls[0][1].body);
     expect(request.output_config.effort).toBe("medium");
+    expect(request.output_config.format.schema.properties.findings.items.properties).not.toHaveProperty("quote");
+    expect(request.output_config.format.schema.properties.findings.items.properties.where.enum).toContain("/content/source");
     expect(request.messages[0].content).not.toContain("OPENAI_PRIVATE_VERDICT");
-    expect(result).toMatchObject({ result: output, model: "claude-opus-5", usage: { input_tokens: 100, output_tokens: 200 },
+    expect(result).toMatchObject({ result: { ...output, findings: [{ ...finding, id: "claude-1" }] }, raw_result: output,
+      prompt_version: "content_review_v2:claude", output_format_version: "evidence_refs_v2", model: "claude-opus-5", usage: { input_tokens: 100, output_tokens: 200 },
       request_parameters: { max_tokens: 7000, timeout_ms: 130_000, effort: "medium" } });
     expect(JSON.stringify(result)).not.toContain("private");
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("copies exact evidence without rewriting model findings or accepting nonexistent paths", () => {
+    const source = { content: { "a/b~c": "첫 줄\n第二行", count: 2 } };
+    const raw = { verdict: "warning", summary_ko: "확인", findings: [{ ...finding, where: "/content/a~1b~0c" }] };
+    const before = JSON.stringify(raw);
+    const restored = validateReviewResult(materializeReviewEvidence(raw, source, false), source, "claude");
+    expect(restored.findings[0]).toMatchObject({ where: "/content/a~1b~0c", quote: "첫 줄\n第二行", issue_ko: finding.issue_ko, reason_ko: finding.reason_ko });
+    expect(JSON.stringify(raw)).toBe(before);
+    expect(() => materializeReviewEvidence({ ...raw, findings: [{ ...finding, where: "/missing" }] }, source, false)).toThrow("콘텐츠에 없는 근거 경로");
   });
 
   it.each(["connection", "body"])("reports a %s timeout without retrying the provider", async (phase) => {

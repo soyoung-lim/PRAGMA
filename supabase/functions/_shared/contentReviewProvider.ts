@@ -1,5 +1,5 @@
 import {
-  buildReviewPrompt, CONTENT_REVIEW_VERSION, reviewHash, validateAdjudication, validateReviewResult,
+  buildReviewPrompt, CONTENT_REVIEW_VERSION, materializeReviewEvidence, reviewHash, validateAdjudication, validateReviewResult,
   type Adjudication, type ContentReviewRun, type ModelReview, type ReviewResult,
 } from "./contentReview.ts";
 
@@ -45,11 +45,14 @@ export async function callContentReviewer(options: {
     : body.choices[0].message.content;
   if (typeof body.id !== "string" || typeof body.model !== "string") throw new Error("모델 호출 근거 메타데이터가 누락됐습니다.");
   const raw = JSON.parse(text);
-  const result = stage === "adjudication" ? validateAdjudication(raw, run.claude_review!.result, run.snapshot)
-    : validateReviewResult(raw, run.snapshot, stage);
+  const grounded = materializeReviewEvidence(raw, run.snapshot, stage === "adjudication");
+  const result = stage === "adjudication" ? validateAdjudication(grounded, run.claude_review!.result, run.snapshot)
+    : validateReviewResult(grounded, run.snapshot, stage);
   return { result, provider: anthropic ? "anthropic" : "openai", model: body.model, requested_model: model,
     response_id: body.id, usage: body.usage ?? {}, checked_at: new Date().toISOString(),
-    prompt_version: `${CONTENT_REVIEW_VERSION}:${stage}:evidence_paths_v1`, input_hash: await reviewHash({ system: prompt.system, user: prompt.user, schema: prompt.schema }),
+    // DB approval expects the criteria/stage version; wire format is separate.
+    prompt_version: `${CONTENT_REVIEW_VERSION}:${stage}`, output_format_version: "evidence_refs_v2", raw_result: raw,
+    input_hash: await reviewHash({ system: prompt.system, user: prompt.user, schema: prompt.schema }),
     request_parameters: { max_tokens: request.max_tokens, timeout_ms: timeoutMs, ...(effort ? { effort } : {}) },
   };
 }
