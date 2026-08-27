@@ -115,7 +115,7 @@ const App = () => (
           <Route path="/learner/home" element={<Navigate to="/learner/course" replace />} />
           <Route path="/learner/lounge" element={<RequireApproved><LoungeHome /></RequireApproved>} />
           <Route path="/learner/lounge/:corner" element={<RequireApproved><LoungeCorner /></RequireApproved>} />
-          {/* 게시 교과목 → 15주 학습계획 → 주차 A·B 미션. */}
+          {/* 게시 교과목 → 15주 학습계획 → 주차별 독립 학습 미션 2개. */}
           <Route path="/learner/course" element={<RequireApproved><LearnerCourseList /></RequireApproved>} />
           <Route path="/learner/course/:courseId" element={<RequireApproved><LearnerCourseLive /></RequireApproved>} />
           <Route path="/learner/course/:courseId/week/:weekNo" element={<RequireApproved><LearnerCourseWeek /></RequireApproved>} />

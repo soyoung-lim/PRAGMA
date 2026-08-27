@@ -2,11 +2,13 @@ import { useNavigate } from "react-router-dom";
 
 import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
-import { COURSE_MODE_LABEL, type CourseMode } from "@/lib/curriculum/courseModePolicy";
+import { courseModeWeekSummary, type CourseMode } from "@/lib/curriculum/courseModePolicy";
 import { useLearnerCourses } from "@/lib/curriculum/useLearnerCourse";
 import {
   DIRECTION_LABEL,
+  DOMAIN,
   LEVEL,
+  type Domain,
   type LanguageDirection,
   type LearnerLevel,
 } from "@/lib/pragma/enums";
@@ -25,7 +27,7 @@ const LearnerCourseList = () => {
           <p className="text-[11px] font-bold text-[#B8860B]">MY COURSES</p>
           <h1 className="mt-1 text-[22px] font-black text-[#15202B]">학습할 교과목을 선택하세요</h1>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            교과목을 열면 15주 계획과 주차별 A·B 학습미션을 확인할 수 있습니다.
+            교과목을 열면 15주 계획과 주차별 학습 미션을 확인할 수 있습니다.
           </p>
         </section>
 
@@ -40,13 +42,12 @@ const LearnerCourseList = () => {
             아직 게시된 교과목이 없습니다.
           </div>
         ) : (
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {courses.map((course) => {
               const themes = (course.composition_theme_codes ?? []) as ThemeCode[];
               const themeText = themes
                 .map((theme) => THEME_LABEL[theme])
                 .filter(Boolean)
-                .slice(0, 2)
                 .join(" · ");
               const targetActCount = course.target_speech_acts?.length ?? 0;
               return (
@@ -58,15 +59,20 @@ const LearnerCourseList = () => {
                   >
                     <span className="text-[11px] font-bold text-[#B8860B]">
                       {LEVEL[course.level as LearnerLevel] ?? course.level} ·{" "}
-                      {COURSE_MODE_LABEL[course.course_mode as CourseMode] ?? course.course_mode}
+                      {DIRECTION_LABEL[course.language_direction as LanguageDirection] ?? course.language_direction}
                     </span>
                     <h2 className="mt-1.5 text-[18px] font-black leading-snug text-[#15202B]">
                       {course.title}
                     </h2>
                     <p className="mt-2 text-[12.5px] text-muted-foreground">
-                      {DIRECTION_LABEL[course.language_direction as LanguageDirection] ?? course.language_direction}
-                      {themeText ? ` · ${themeText}` : ""}
+                      {DOMAIN[course.domain as Domain] ?? course.domain} · {courseModeWeekSummary({
+                        courseMode: course.course_mode as CourseMode,
+                        interpretingWeekCount: course.target_interpreting_week_count,
+                      })}
                     </p>
+                    {themeText && (
+                      <p className="mt-2 text-[11.5px] leading-5 text-muted-foreground">{themeText}</p>
+                    )}
                     <div className="mt-5 flex w-full items-center justify-between gap-3 border-t border-[#EFEBDD] pt-3">
                       <span className="text-[12px] text-muted-foreground">
                         15주 강좌 · 실제 학습 12주

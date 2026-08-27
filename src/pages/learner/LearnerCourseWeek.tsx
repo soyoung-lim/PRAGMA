@@ -131,7 +131,7 @@ const LearnerCourseWeek = () => {
         <section className="mt-6">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-[16px] font-black text-[#15202B]">
-              {week.speech_act ? "이번 주 A·B 미션" : "이번 주 학습 활동"}
+              {week.speech_act ? "이번 주 학습 미션 2개" : "이번 주 학습 활동"}
             </h2>
             {missionIds.length > 0 && (
               <span className="text-[12px] text-muted-foreground">
@@ -156,11 +156,7 @@ const LearnerCourseWeek = () => {
                   ? getTargetFeature(scenario.target_feature)
                   : undefined;
                 const setLabel = week.speech_act
-                  ? index === 0
-                    ? "A세트"
-                    : index === 1
-                      ? "B세트"
-                      : `추가 세트 ${index + 1}`
+                  ? `미션 ${index + 1}`
                   : `활동 ${index + 1}`;
                 const practicePath = `/learner/practice/${scenario.scenario_id}?courseId=${encodeURIComponent(courseId)}&weekNo=${week.week_no}`;
                 return (
@@ -193,7 +189,7 @@ const LearnerCourseWeek = () => {
 
           {week.speech_act && week.scenarios.length === 1 && (
             <div className="mt-3 rounded-lg border border-dashed border-[#E4DED0] bg-[#FAF8F2] px-4 py-3 text-[12px] text-muted-foreground">
-              B세트 콘텐츠를 준비하고 있습니다.
+              두 번째 학습 미션을 준비하고 있습니다.
             </div>
           )}
         </section>

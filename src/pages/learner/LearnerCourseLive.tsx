@@ -12,6 +12,7 @@ import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import { friendlyFeatureLabel } from "@/lib/mission/learnerReport";
 import { isActWeek, weekProgress, type WeekState } from "@/lib/curriculum/learnerProgress";
 import { listCompletedMissionIds } from "@/lib/mission/missionLog";
+import { courseModeWeekSummary, type CourseMode } from "@/lib/curriculum/courseModePolicy";
 
 const STATE_BADGE: Record<WeekState, { label: string; cls: string }> = {
   done: { label: "완료", cls: "bg-[#E7F1EC] text-[#2E6F63]" },
@@ -35,7 +36,7 @@ function weekDescription(week: LearnerCourseWeek): string {
   if (week.week_no === 15) return "학기 전체 화용 판단과 통번역 수행을 종합해 점검합니다.";
   if (role === "metapragmatic") {
     return week.week_no === 7
-      ? "완료한 A·B 미션의 표현 선택과 수정 근거를 함께 검토합니다."
+      ? "완료한 두 학습 미션의 표현 선택과 수정 근거를 함께 검토합니다."
       : "학기 전체 판단·산출·수정 기록을 종합해 통번역 의사결정을 정리합니다.";
   }
   if (role === "contextualization") {
@@ -100,7 +101,12 @@ const LearnerCourseLive = () => {
               ← 내 교과목
             </Link>
             <h1 className="mt-3 text-[21px] font-black text-[#15202B]">{course.outline.title}</h1>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">15주 강좌 · 실제 학습 12주</p>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">
+              15주 강좌 · 실제 학습 12주 · {courseModeWeekSummary({
+                courseMode: course.outline.course_mode as CourseMode,
+                interpretingWeekCount: course.outline.target_interpreting_week_count,
+              })}
+            </p>
 
             <div className="mt-6 flex flex-wrap items-end justify-between gap-2">
               <div>
@@ -162,7 +168,7 @@ const LearnerCourseLive = () => {
                         </p>
                         {progress.assigned.length > 0 && (
                           <p className="mt-1 text-[11.5px] font-semibold text-[#3E4C57]">
-                            A·B 미션 {progress.doneCount}/{progress.assigned.length}
+                            학습 미션 {progress.doneCount}/{progress.assigned.length}
                           </p>
                         )}
                       </div>

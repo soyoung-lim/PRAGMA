@@ -261,7 +261,7 @@ const AdminComposer = () => {
   }, [outlineId]);
 
   // migration 적용 전 만들어진 legacy outline은 저장된 정책 열이 없을 수 있다.
-  // 그 경우에만 legacy 비율을 9주 정수 정책으로 해석해 이전 동작을 보존한다.
+  // 그 경우에만 legacy 비율을 12주 정수 정책으로 해석해 이전 동작을 보존한다.
   useEffect(() => {
     if (!outlineId || loadedAssignments === null || cores.length === 0) return;
     if (
@@ -313,6 +313,8 @@ const AdminComposer = () => {
     setPresetCode(code);
     const p = COURSE_PRESETS.find((x) => x.preset_code === code);
     if (!p) return;
+    setLevel(p.target_level);
+    setDirection(p.language_direction);
     setThemes(p.included_themes);
     setCourseMode(p.course_mode);
     setInterpretingWeekCount(p.target_interpreting_week_count);
@@ -327,10 +329,10 @@ const AdminComposer = () => {
       nextMode === "translation"
         ? 0
         : nextMode === "interpreting"
-          ? 9
-          : interpretingWeekCount >= 1 && interpretingWeekCount <= 8
+          ? 12
+          : interpretingWeekCount >= 1 && interpretingWeekCount <= 11
             ? interpretingWeekCount
-            : 4,
+            : 6,
     );
   };
 
@@ -932,7 +934,7 @@ const AdminComposer = () => {
                               : "border-[#DED8C9] bg-white"
                           }`}
                         >
-                          통역 {count}/9주
+                          통역 {count}/12주
                         </button>
                       ))}
                       <select
@@ -941,13 +943,13 @@ const AdminComposer = () => {
                         className="h-7 rounded border border-[#DED8C9] bg-white px-1 text-[11.5px]"
                         aria-label="통역 주차 직접 설정"
                       >
-                        {Array.from({ length: 8 }, (_, index) => index + 1).map((count) => (
-                          <option key={count} value={count}>직접 {count}/9주</option>
+                        {Array.from({ length: 11 }, (_, index) => index + 1).map((count) => (
+                          <option key={count} value={count}>직접 {count}/12주</option>
                         ))}
                       </select>
                     </div>
                     <p className="text-[11px] text-[#766C54]">
-                      앞 {9 - interpretingWeekCount}개 화행 주차는 번역 → 뒤 {interpretingWeekCount}개는 통역
+                      앞 {12 - interpretingWeekCount}개 학습 주차는 번역 → 뒤 {interpretingWeekCount}개는 통역
                     </p>
                   </div>
                 )}

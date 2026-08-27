@@ -23,6 +23,7 @@ import type {
   SpeechActUI,
 } from "@/lib/pragma/enums";
 import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
+import { DEFENSE_COURSE_IDS } from "@/lib/pragma/scenarioTopics";
 
 export interface LearnerWeekScenario {
   scenario_id: string;
@@ -65,7 +66,10 @@ export interface LearnerCourseSource {
 /** 학습자에게 공개된 교과목 목록. RLS에만 기대지 않고 앱에서도 published만 남긴다. */
 export async function listPublishedCourseOutlines(): Promise<CurriculumOutlineRow[]> {
   const outlines = await listCurriculumOutlines();
-  return outlines.filter((outline) => outline.status === "published");
+  const displayOrder = new Map(DEFENSE_COURSE_IDS.map((id, index) => [id, index]));
+  return outlines
+    .filter((outline) => outline.status === "published" && displayOrder.has(outline.id))
+    .sort((left, right) => (displayOrder.get(left.id) ?? 99) - (displayOrder.get(right.id) ?? 99));
 }
 
 /**
