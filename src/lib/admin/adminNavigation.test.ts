@@ -23,7 +23,8 @@ describe("admin navigation reachability", () => {
     expect(ADMIN_PRIORITY_LINKS.map((item) => item.to)).toEqual(REQUIRED_ENTRY_PATHS);
     const allPaths = ADMIN_NAV_GROUPS.flatMap((group) => group.items).map((item) => item.to);
     expect(new Set(allPaths).size).toBe(allPaths.length);
-    expect(allPaths).not.toContain("/admin/research-qa/calibration");
+    const research = ADMIN_NAV_GROUPS.find((group) => group.header === "4. 학습 결과·연구 자료");
+    expect(research?.items.map((item) => item.to)).toContain("/admin/research-qa/calibration");
   });
 
   it("keeps a route or compatibility route for every restored entry", () => {
@@ -52,7 +53,7 @@ describe("admin navigation reachability", () => {
   it("keeps the mobile selector on the canonical target for compatibility paths", () => {
     expect(adminMobileNavValue("/admin/review")).toBe("/admin/review");
     expect(adminMobileNavValue("/admin/research-qa/releases")).toBe("/admin/review");
-    expect(adminMobileNavValue("/admin/research-qa/calibration")).toBe("");
+    expect(adminMobileNavValue("/admin/research-qa/calibration")).toBe("/admin/research-qa/calibration");
     const production = ADMIN_NAV_GROUPS.find((group) => group.header === "2. 학습 콘텐츠 제작");
     expect(production?.items.at(-1)?.to).toBe("/admin/review");
     expect(ADMIN_NAV_GROUPS.some((group) => group.header.includes("품질관리"))).toBe(false);
