@@ -91,6 +91,15 @@ describe("current content five-stage review", () => {
     expect(content.mission.mpj_items).toHaveLength(5);
     expect(content.mission.production_task).toEqual(SAMPLE_MISSION_V5_NATIVE.production_task);
     expect(content.context.core_content.situation_ko).toBe("상황");
+    for (const stage of ["openai", "claude", "adjudication"] as const) {
+      const prompt = buildReviewPrompt(stage, domain.snapshot, run());
+      const properties = prompt.schema.properties as any;
+      const paths = stage === "adjudication" ? properties.decisions.items.properties.evidence_path.enum : properties.findings.items.properties.where.enum;
+      expect(paths).toEqual(expect.arrayContaining(["/content/context/core_content", "/content/mission/mpj_items/0", "/content/mission/mpj_items/4", "/content/mission/production_task", "/criteria"]));
+      expect(paths).not.toContain("/content/context/mission/mpj_items/1");
+      for (const where of paths) expect(() => validateReviewResult({ verdict: "warning", summary_ko: "누락 확인", findings: [{ ...finding, where, quote: null }] }, domain.snapshot, "claude")).not.toThrow();
+      expect(() => validateReviewResult({ verdict: "warning", summary_ko: "잘못된 경로", findings: [{ ...finding, where: "/content/context/mission/mpj_items/1", quote: null }] }, domain.snapshot, "claude")).toThrow("콘텐츠에 없는 근거 경로");
+    }
   });
 
   it("versions the corrected rules in the snapshot without replacing earlier review hashes", async () => {
@@ -117,6 +126,9 @@ describe("current content five-stage review", () => {
     expect(content.instructor_only.features.length).toBeGreaterThan(0);
     expect(content.public_material).not.toHaveProperty("instructor_only");
     expect(domain.dependencies).toEqual(["m1"]);
+    const paths = (buildReviewPrompt("claude", domain.snapshot).schema.properties.findings as any).items.properties.where.enum;
+    expect(paths).toEqual(expect.arrayContaining(["/content/public_material", "/content/instructor_only"]));
+    expect(paths).not.toContain("/content/mission/mpj_items/0");
   });
 
   it("saves successful provider metadata and never silently retries truncation or refusal", async () => {

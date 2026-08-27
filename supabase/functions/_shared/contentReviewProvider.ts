@@ -49,7 +49,7 @@ export async function callContentReviewer(options: {
     : validateReviewResult(raw, run.snapshot, stage);
   return { result, provider: anthropic ? "anthropic" : "openai", model: body.model, requested_model: model,
     response_id: body.id, usage: body.usage ?? {}, checked_at: new Date().toISOString(),
-    prompt_version: `${CONTENT_REVIEW_VERSION}:${stage}`, input_hash: await reviewHash({ system: prompt.system, user: prompt.user }),
+    prompt_version: `${CONTENT_REVIEW_VERSION}:${stage}:evidence_paths_v1`, input_hash: await reviewHash({ system: prompt.system, user: prompt.user, schema: prompt.schema }),
     request_parameters: { max_tokens: request.max_tokens, timeout_ms: timeoutMs, ...(effort ? { effort } : {}) },
   };
 }
