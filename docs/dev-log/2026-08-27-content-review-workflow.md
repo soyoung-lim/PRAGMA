@@ -113,3 +113,31 @@
   학생에게 대기 안내가 뜬다. 기존 미션·수행 기록은 계속 이용한다. 승인 미션 본문을 UPDATE하거나
   DELETE하는 정리·복원 작업은 이제 거부되므로 이를 우회해 데이터를 교체하지 않는다.
 - 기록: 관리자·학습자 정본, 생성계약, `DEC-20260827-05`, `EVD-20260827-05`를 동기화했다.
+
+## 운영 적용 완료 (2026-08-27)
+
+- 사용자 배포 승인과 Claude 키 등록 후 기능 HEAD `63c4936eaadea9ab7582ffc14bf41195aae759c3`을
+  [PR #27](https://github.com/soyoung-lim/PRAGMA/pull/27)로 정상 merge했다.
+  main 병합 커밋은 `0cf9102c347fa594dcad88367786034649e78e48`이다.
+- [PR CI 33076792325](https://github.com/soyoung-lim/PRAGMA/actions/runs/33076792325) 성공:
+  Vitest **563 passed·기존 9 skipped**, 별도 로컬 PostgreSQL 승인 경계 **5 tests 통과**,
+  typecheck·production build **1,953 modules** 통과. 병합 후
+  [main CI 33076981895](https://github.com/soyoung-lim/PRAGMA/actions/runs/33076981895)도 성공했다.
+  인계·배포 때문에 로컬 전체 테스트나 build를 반복하지 않았다.
+- Supabase `tlnjxagqwvefeqdagtkq`에서 적용 예정 migration이 이번 한 개임을 dry-run으로 확인한 뒤
+  `20260827190000_content_review_workflow.sql`을 적용했다. 원격 migration 이력 반영도 확인했다.
+  `content-review` Edge를 JWT 검증 유지 상태로 배포했다. 다른 Edge·OAuth 설정은 변경하지 않았다.
+- `ANTHROPIC_API_KEY` 존재를 확인하고 기존 교차 검토 스크립트의 모델인
+  `CLAUDE_AUDIT_MODEL=claude-opus-5`를 설정했다. 키 값은 읽거나 기록하지 않았다.
+  유료 모델 호출은 0회이므로 키 유효성·잔액·실제 모델 응답 성공은 아직 확인하지 않았다.
+- main 연동 Railway 자동 배포 `ba881d89-0773-4d3f-b6c9-c74b9ded54d3`가 위 병합 커밋으로
+  **SUCCESS**인 것을 확인했다. 수동 업로드는 하지 않았다. CI 성공과 Railway 성공을 각각 확인했다.
+- 기존 관리자 인증 세션으로 운영 `/admin/review`에서 실제 미션의 원본·5단계 검수 작업대와
+  현재 버전 조회를 확인했다. 실제 교과목 `915fec24-cc38-4b00-a2a0-c3628abcd3f7`의 5주차 자료도
+  현재 버전·연결 미션 2개의 검수 필요 상태·교수자 미리보기 안내가 표시됐다.
+- 같은 세션에서 학생 유인물 경로를 열어 미승인 자료 대신 `교수자 검수 후 공개` 안내만 표시되고
+  인쇄 버튼·교수자 메모가 나오지 않음을 확인했다. 확인한 화면의 브라우저 오류는 0건이다.
+  이는 관리자 세션의 학습자 경로 조회이며 별도 학습자 권한의 RLS 종단 검증은 아니다.
+- 규칙 검사 실행·유료 검수·교수자 승인·새 콘텐츠 생성·학습 수행은 하지 않았다. 기존 콘텐츠나
+  수행 기록을 테스트용으로 수정하지 않았다. 운영의 유료 3단계→실제 교수자 승인 종단은 별도 확인
+  대상으로 남는다. 새 검수 프롬프트·계약 `content_review_v2`가 배포됐으며 이번 배포 중 추가 변경은 없다.
