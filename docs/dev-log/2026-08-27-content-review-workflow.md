@@ -141,3 +141,22 @@
 - 규칙 검사 실행·유료 검수·교수자 승인·새 콘텐츠 생성·학습 수행은 하지 않았다. 기존 콘텐츠나
   수행 기록을 테스트용으로 수정하지 않았다. 운영의 유료 3단계→실제 교수자 승인 종단은 별도 확인
   대상으로 남는다. 새 검수 프롬프트·계약 `content_review_v2`가 배포됐으며 이번 배포 중 추가 변경은 없다.
+
+## 첫 실제 검수와 v8 판별 보완
+
+- 사용자가 기존 미션 1건의 실제 검수 실행을 승인했다. 기준 HEAD `1427347`에서 기존 제안·중급·
+  한→중 번역 미션 `c9c60726-39bf-4d31-9145-248dcb5c6ad4`(MPJ5+DCT1)를 선택했다.
+- 최초 무료 규칙 검사 기록 시각은 `2026-08-27T14:24:53.427876+00:00`, 콘텐츠 hash 접두부는
+  `8b304a5e3e38`다. R5 길이 단서 warning 1건과 BEST/MIDDLE/WORST 관련 fail 3건이 저장됐고,
+  유료 실행 버튼이 비활성화됐다. 이 시점까지 유료 호출은 0회, 교수자 승인·원본 수정도 없다.
+- 원인은 현행 prompt v9만 2+2로 인식하는 `missionRules.ts`의 버전 분기였다. 저장 미션은
+  `mission_v5_mpj5_minidiscourse_v8_relational_feedback`이며, 생성 당시 커밋 `9b1b967`의
+  프롬프트도 적정 2·조정 필요 2를 명시했다. v8이 옛 BEST/WORST 규칙으로 떨어지는 호환 오류다.
+- v8의 MultiJudge에만 원래의 2+2 검사를 적용한다. v9 전용의 다른 신규 검사를 소급 적용하거나,
+  과거 BEST/WORST 미션·생성기·러너·학습 기록을 바꾸지 않았다. 설계 선택의 미결정 상태도 유지한다.
+- 검수 snapshot의 criteria에 `rules_version=mission_rules_v8_comparison_compat_v1`을 넣어
+  규칙 보완 전후 hash를 구분한다. 기존 실패 기록은 변경·삭제하지 않고 새 검수 이력으로 진행한다.
+  AI 검수 프롬프트는 `content_review_v2` 그대로이며 DB migration·승인 조건 변경은 없다.
+- 표적 `missionSchema.test.ts` 22개·`contentReview.test.ts` 10개, 합계 **32 tests** 및 typecheck
+  통과. v8 2+2 수용·잘못된 개수 거부, 과거 BEST/WORST 검사 유지, 규칙 버전 변경 시 hash 분리를
+  확인했다. Edge 도메인 번들은 248,902자로 재생성했다. 전체 테스트·build는 로컬에서 반복하지 않았다.

@@ -452,6 +452,10 @@ export function checkMission(
   const isNativeV5 = m.schema_version === "mission_v5" && m.mpj_items.length === 5;
   const isCurrentNativeV5 = isNativeV5 &&
     m.provenance?.prompt_version === CURRENT_MISSION_PROMPT_VERSIONS[0];
+  // v8 already generated two acceptable alternatives (9b1b967). Advancing the
+  // current prompt must not reinterpret those saved candidates as BEST/WORST.
+  const usesBandPairComparison = isNativeV5 && (isCurrentNativeV5 ||
+    m.provenance?.prompt_version === "mission_v5_mpj5_minidiscourse_v8_relational_feedback");
   // v4와 v5는 장면·채널·이유·후보 계약을 공유한다. v5 신규 생성분만
   // 독립 judge3를 더한 네이티브 MPJ5이며, 과거 v5 MPJ4는 읽기 호환한다.
   const isV4Contract = m.schema_version === "mission_v4" || m.schema_version === "mission_v5";
@@ -644,7 +648,7 @@ export function checkMission(
       case "multi_judge": {
         // R5 길이 통제 강화판
         checkMultiJudgeLength(v, it.id, it.candidates, withinCode);
-        if (isCurrentNativeV5) {
+        if (usesBandPairComparison) {
           const withinCandidates = it.candidates.filter((candidate) =>
             candidate.accepted_band_codes.includes(withinCode));
           const adjustmentCandidates = it.candidates.filter((candidate) =>
