@@ -54,6 +54,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       { to: "/admin/decision-traces", label: "학습 수행 기록" },
       { to: "/admin/research-qa/improvements", label: "콘텐츠 개선 후보" },
       { to: "/admin/export", label: "연구 데이터 내보내기" },
+      { to: "/admin/research-qa/calibration", label: "연구용 예시 검토 — 파일럿" },
     ],
   },
 ] as const;
