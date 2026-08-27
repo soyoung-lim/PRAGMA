@@ -91,6 +91,15 @@ describe("current content five-stage review", () => {
     expect(content.mission.mpj_items).toHaveLength(5);
     expect(content.mission.production_task).toEqual(SAMPLE_MISSION_V5_NATIVE.production_task);
     expect(content.context.core_content.situation_ko).toBe("상황");
+    for (const stage of ["openai", "claude", "adjudication"] as const) {
+      const prompt = buildReviewPrompt(stage, domain.snapshot, run());
+      const properties = prompt.schema.properties as any;
+      const paths = stage === "adjudication" ? properties.decisions.items.properties.evidence_path.enum : properties.findings.items.properties.where.enum;
+      expect(paths).toEqual(expect.arrayContaining(["/content/context/core_content", "/content/mission/mpj_items/0", "/content/mission/mpj_items/4", "/content/mission/production_task", "/criteria"]));
+      expect(paths).not.toContain("/content/context/mission/mpj_items/1");
+      for (const where of paths) expect(() => validateReviewResult({ verdict: "warning", summary_ko: "누락 확인", findings: [{ ...finding, where, quote: null }] }, domain.snapshot, "claude")).not.toThrow();
+      expect(() => validateReviewResult({ verdict: "warning", summary_ko: "잘못된 경로", findings: [{ ...finding, where: "/content/context/mission/mpj_items/1", quote: null }] }, domain.snapshot, "claude")).toThrow("콘텐츠에 없는 근거 경로");
+    }
   });
 
   it("versions the corrected rules in the snapshot without replacing earlier review hashes", async () => {
@@ -117,6 +126,9 @@ describe("current content five-stage review", () => {
     expect(content.instructor_only.features.length).toBeGreaterThan(0);
     expect(content.public_material).not.toHaveProperty("instructor_only");
     expect(domain.dependencies).toEqual(["m1"]);
+    const paths = (buildReviewPrompt("claude", domain.snapshot).schema.properties.findings as any).items.properties.where.enum;
+    expect(paths).toEqual(expect.arrayContaining(["/content/public_material", "/content/instructor_only"]));
+    expect(paths).not.toContain("/content/mission/mpj_items/0");
   });
 
   it("saves successful provider metadata and never silently retries truncation or refusal", async () => {
@@ -131,5 +143,34 @@ describe("current content five-stage review", () => {
       await expect(callContentReviewer({ stage: "claude", run: run(), apiKey: "test", model: "claude-test", fetcher })).rejects.toThrow();
     }
     expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+
+  it("records the bounded Opus request and accepts text alongside thinking blocks", async () => {
+    const output: ReviewResult = { verdict: "pass", summary_ko: "지적 없음", findings: [] };
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "claude-reply", model: "claude-opus-5",
+      stop_reason: "end_turn", usage: { input_tokens: 100, output_tokens: 200 },
+      content: [{ type: "thinking", thinking: "private" }, { type: "text", text: JSON.stringify(output) }],
+    })));
+    const result = await callContentReviewer({ stage: "claude", run: run(), apiKey: "test", model: "claude-opus-5", fetcher });
+    const request = JSON.parse(fetcher.mock.calls[0][1].body);
+    expect(request.output_config.effort).toBe("medium");
+    expect(request.messages[0].content).not.toContain("OPENAI_PRIVATE_VERDICT");
+    expect(result).toMatchObject({ result: output, model: "claude-opus-5", usage: { input_tokens: 100, output_tokens: 200 },
+      request_parameters: { max_tokens: 7000, timeout_ms: 130_000, effort: "medium" } });
+    expect(JSON.stringify(result)).not.toContain("private");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["connection", "body"])("reports a %s timeout without retrying the provider", async (phase) => {
+    const controller = new AbortController();
+    vi.stubGlobal("AbortSignal", { timeout: () => controller.signal });
+    const expire = () => { controller.abort(); throw new DOMException("Signal timed out", "TimeoutError"); };
+    const fetcher = vi.fn().mockImplementation(async () => {
+      if (phase === "connection") return expire();
+      return { ok: true, json: async () => expire() };
+    });
+    await expect(callContentReviewer({ stage: "claude", run: run(), apiKey: "test", model: "claude-opus-5", fetcher }))
+      .rejects.toThrow("Claude 응답 대기 130초를 초과했습니다. 이전 단계 결과는 보존되며 자동 재호출은 없습니다.");
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });
