@@ -22,7 +22,6 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     items: [
       { to: "/admin/corpus", label: "HSK 3.0 콘텐츠 감사 기준" },
       { to: "/admin/question-designer", label: "수준별 설계 기준" },
-      { to: "/admin/research-qa/calibration", label: "화용적 판정 기준" },
       { to: "/admin/prompt-harness", label: "생성 계약·프롬프트" },
     ],
   },

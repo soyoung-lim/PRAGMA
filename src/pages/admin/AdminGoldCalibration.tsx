@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, LockKeyhole, Save, ShieldCheck } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { ArrowLeft, CheckCircle2, Info, Save, ShieldCheck } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { AdminShell } from "@/components/AdminShell";
 import { Badge } from "@/components/ui/badge";
@@ -120,7 +120,6 @@ const statusTone = (status?: CalibrationStatus) => {
 };
 
 const AdminGoldCalibration = () => {
-  const { pathname } = useLocation();
   const [selectedCaseId, setSelectedCaseId] = useState(SEED_GOLD_CASES[0].case_id);
   const [actFilter, setActFilter] = useState<"all" | SeedGoldCase["speech_act"]>("all");
   const [draft, setDraft] = useState<ReviewDraft>(emptyDraft);
@@ -302,16 +301,16 @@ const AdminGoldCalibration = () => {
 
   return (
     <AdminShell
-      title="화용적 판정 기준"
-      description={`화행별 상황·관계·의미와 중국어 표현의 적절성을 판단하는 기준을 사례와 근거로 관리합니다. 현재 ${BOOTSTRAP_SEED_GOLD_SPEECH_ACT_COUNT}화행 Seed ${BOOTSTRAP_SEED_GOLD_CASE_COUNT}개를 점검합니다.`}
+      title="연구용 예시 검토 — 파일럿"
+      description={`초기에 작성한 ${BOOTSTRAP_SEED_GOLD_SPEECH_ACT_COUNT}화행 ${BOOTSTRAP_SEED_GOLD_CASE_COUNT}개 예시의 판단과 근거를 기록합니다. 앱 전체의 판정 기준을 설정하는 화면은 아닙니다.`}
     >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <Link to={pathname.startsWith("/prototype/") ? "/prototype/research-qa-calibration" : "/admin/question-designer"} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> 수준별 설계 기준
+        <Link to="/admin/review" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> 수업 콘텐츠 검수·확정으로 이동
         </Link>
         <div className="flex flex-wrap gap-2">
-          <Badge variant="outline">현재 Seed 해결 {resolvedCount}/{BOOTSTRAP_SEED_GOLD_CASE_COUNT}</Badge>
-          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">현재 승인 해결본 {approvedCount} · 최종 gate {FINAL_GOLD_POPULATION_COUNT} 필요</Badge>
+          <Badge variant="outline">파일럿 판정 기록 {resolvedCount}/{BOOTSTRAP_SEED_GOLD_CASE_COUNT}</Badge>
+          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">기준안 승인 {approvedCount}건</Badge>
           <Badge variant="outline" className={isAdmin ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600"}>
             {loading ? "권한 확인 중" : isAdmin ? "관리자 저장 가능" : "미리보기 · 저장 잠김"}
           </Badge>
@@ -320,9 +319,20 @@ const AdminGoldCalibration = () => {
 
       <section className="mb-5 rounded-xl border border-[#E5CF72] bg-[#FFF9DF] p-4 text-sm leading-6 text-[#665515]">
         <div className="flex gap-3">
-          <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0" />
-          <p><strong>Seed와 최종 Gold를 구분합니다:</strong> 판단을 제출하기 전에는 미리 정한 답과 해설을 보여주지 않습니다. 현재 {BOOTSTRAP_SEED_GOLD_CASE_COUNT}개는 요청·거절·감사 수직 표본의 초기 규칙 점검 자산이며, 9화행 최종 gate를 열지 않습니다. 최종 Gold는 확장 pack에서 9화행×{FINAL_GOLD_CASES_PER_SPEECH_ACT}개로 새로 고정합니다.</p>
+          <Info className="mt-0.5 h-5 w-5 shrink-0" />
+          <div>
+            <p className="font-semibold">현재 수업 콘텐츠의 5단계 검수·승인과 별개인 연구용 파일럿입니다.</p>
+            <p className="mt-1">0/{BOOTSTRAP_SEED_GOLD_CASE_COUNT}은 파일럿 예시에 대한 판정 기록이 없다는 뜻이며, 수업 준비율이나 미검수 수업 콘텐츠 수가 아닙니다. 지금 모두 평가할 필요는 없습니다.</p>
+          </div>
         </div>
+        <details className="mt-3 border-t border-[#E5CF72] pt-3">
+          <summary className="cursor-pointer font-medium">기존 판정 방식과 연구 프로토콜의 한계</summary>
+          <ul className="mt-2 list-disc space-y-2 pl-5">
+            <li>현재 화면은 미리 정한 기준안을 공개하지 않으며, 그 기준안과 일치하는 판단만 승인할 수 있습니다. 다른 판단은 ‘수정 필요’나 ‘기각’으로 기록할 수 있지만, 예시 자체를 수정해 확정하는 편집 기능은 없습니다.</li>
+            <li>{FINAL_GOLD_POPULATION_COUNT}개는 기존 연구 프로토콜의 9화행 × {FINAL_GOLD_CASES_PER_SPEECH_ACT}개 설정값입니다. 현재 {BOOTSTRAP_SEED_GOLD_CASE_COUNT}개와는 별개이며, 지금 수업 운영을 위해 채워야 하는 수나 대표성·타당성을 보장하는 기준이 아닙니다.</li>
+            <li>기존 예시·판정 기록과 과거 연구배치·외부 표본 추출의 참조는 보존합니다. 이 기록을 현재 수업 콘텐츠의 검수 완료나 학습자 공개 승인으로 사용하지 않습니다.</li>
+          </ul>
+        </details>
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[290px_minmax(0,1fr)]">
