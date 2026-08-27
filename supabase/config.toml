@@ -1,5 +1,8 @@
 project_id = "tlnjxagqwvefeqdagtkq"
 
+[functions.content-review]
+verify_jwt = true
+
 [db.seed]
 enabled = true
 # 아래 seed는 Git에서 제외돼 있다(HSK 공식 대강 파생물). 로컬에 없으면

@@ -11,6 +11,9 @@ vi.mock("@/lib/curriculum/api", () => ({ listCurriculumOutlines: mocks.outlines,
 vi.mock("@/lib/curriculum/composer", () => ({ listCoreScenarios: mocks.cores, listWeekAssignments: mocks.assignments }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: mocks.from } }));
 vi.mock("@/components/AdminShell", () => ({ AdminShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main> }));
+vi.mock("@/lib/pragma/contentReviewApi", () => ({ contentReviewRequest: vi.fn().mockResolvedValue({ run: null,
+  contentHash: "hash", sourceHash: "source", snapshot: { instructor_only: "PRIVATE_REVIEW_SENTINEL" }, history: [], dependencies: [], models: { openai: "test", claude: null },
+}) }));
 
 const outline = { id: "course-a", title: "주차 자료 테스트", level: "intermediate", language_direction: "ko_zh", course_mode: "translation", target_interpreting_week_count: 0, status: "published" };
 const courseWeeks = [2, 3].map((week_no) => ({ id: `week-${week_no}`, outline_id: outline.id, week_no, title: `${week_no}주차 요청`, type: "regular", can_do: [`${week_no}주차 목표`], speech_act: "request", review_released: false }));
@@ -41,11 +44,15 @@ describe("교과목·주차 수업자료 연결", () => {
     const notes = await screen.findByRole("region", { name: "교수자 전용 메모" });
     await waitFor(() => expect(notes.textContent).toContain(guide.dct.alternatives[0].text));
     expect(mocks.missionRows).toHaveBeenCalledWith("scenario_id", ["mission-1"]);
+    fireEvent.click(screen.getByText("이 주차 수업자료 검수·확정"));
+    await screen.findByText(/PRIVATE_REVIEW_SENTINEL/);
 
     fireEvent.click(screen.getByRole("button", { name: "프로젝터 화면" }));
     const projector = screen.getByRole("dialog", { name: "주차 프로젝터" });
     expect(screen.queryByRole("region", { name: "교수자 전용 메모" })).not.toBeInTheDocument();
     expect(projector.textContent).not.toContain(guide.dct.alternatives[0].text);
+    expect(projector.textContent).not.toContain("PRIVATE_REVIEW_SENTINEL");
+    expect(screen.queryByRole("region", { name: "콘텐츠 5단계 검수" })).not.toBeInTheDocument();
     expect(within(projector).getByText("이번 주 학습목표")).toBeVisible();
     fireEvent.keyDown(window, { key: "ArrowRight" });
     expect(within(projector).getByText("이번 주 학습목표")).not.toBeVisible();

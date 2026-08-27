@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { ComposerCore, WeekAssignment } from "@/lib/curriculum/composer";
-import {
-  assembleLearnerCourse,
-  type LearnerCourseSource,
-} from "@/lib/curriculum/learnerCourse";
+import { assembleLearnerCourse } from "@/lib/curriculum/learnerCourseProjection";
+import type { LearnerCourseSource } from "@/lib/curriculum/learnerCourse";
 import type {
   CurriculumOutlineRow,
   CurriculumWeekRow,

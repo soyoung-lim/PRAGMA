@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ContentReviewPanel } from "./ContentReviewPanel";
+import type { ContentReviewApproval } from "@/lib/pragma/contentReviewApi";
 import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import type {
   ProfessorIssueOverride,
@@ -16,15 +18,17 @@ const ITEM_LABELS = [
 ];
 
 export function ProfessorMissionWorkbench({
+  scenarioId,
   mission,
   busy,
   onSave,
   onReview,
 }: {
+  scenarioId: string;
   mission: MissionRuntime;
   busy: boolean;
   onSave: (edits: ProfessorMissionEdits) => Promise<void>;
-  onReview: (overrides: ProfessorIssueOverride[]) => Promise<void>;
+  onReview: (overrides: ProfessorIssueOverride[], approval: ContentReviewApproval) => Promise<void>;
 }) {
   const initialItems = useMemo(
     () => mission.mpj_items.map((item) => JSON.stringify(item, null, 2)),
@@ -77,6 +81,7 @@ export function ProfessorMissionWorkbench({
     rationale_ko: rationales[issueIndex]?.trim() ?? "",
   }));
   const canReview = overrides.every((override) => override.rationale_ko.length >= 10);
+  const dirty = referenceText !== initialReferences || itemTexts.some((text, index) => text !== initialItems[index]);
 
   return (
     <section className="mt-3 rounded-xl border border-[#D7DDE0] bg-white p-3.5 text-[12px]">
@@ -87,9 +92,6 @@ export function ProfessorMissionWorkbench({
             학습목표는 화행입니다. 아래 편집은 지목된 문항 block과 DCT 참고안만 바꿉니다.
           </p>
         </div>
-        <Button size="sm" disabled={busy || !canReview} onClick={() => void onReview(overrides)}>
-          {busy ? "처리 중…" : "최종 확정·reviewed"}
-        </Button>
       </div>
 
       {failFindings.length > 0 && (
@@ -144,6 +146,10 @@ export function ProfessorMissionWorkbench({
           </Button>
         </div>
       </details>
+      <ContentReviewPanel target={{ kind: "mission", targetId: scenarioId }}
+        refreshKey={mission.provenance?.mission_content_hash ?? "draft"}
+        approvalDisabled={busy || !canReview || dirty}
+        onApprove={(approval) => onReview(overrides, approval)} />
     </section>
   );
 }

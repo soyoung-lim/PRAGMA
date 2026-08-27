@@ -1,0 +1,64 @@
+# 현재 콘텐츠 버전의 5단계 검수와 제작 메뉴 통합
+
+- 분류: 지금 반드시 해결 / **[교차검증 필수]** — DB 권한·교수자 승인 조건 변경.
+- 기준: `origin/main`의 `f66446f`에서 `codex/content-review-workflow-2026-08-27` 생성.
+  기존 worktree와 오래된 로컬 main은 변경하지 않았다.
+- 사용자 결정: 규칙 → OpenAI → Claude → OpenAI 재검토 → 교수자 승인.
+  독립 품질관리 대분류 대신 제작의 마지막 메뉴로 통합. 불필요한 반복 검증은 생략.
+
+## 구현
+
+- 사이드바 4개 그룹·대시보드 포함 17개 링크. `/admin/review`는 기존 Assembly 작업대를
+  검수 모드로 재사용한다. 구 releases·cross-vendor는 여기로 연결하고, final-review는 과거
+  정식 생성 이력의 읽기 전용 화면으로 남긴다. 과거 504 분모를 현재 운영 품질 점검률로 쓰지 않는다.
+- `content-review` Edge가 관리자 인증 후 DB의 현재 원본을 읽어 각 단계를 명시적으로 실행한다.
+  규칙은 기존 `checkMission`, 주차 자료는 기존 공통 자료 함수·별도 교수자 메모 원본을 재사용한다.
+  동일 코드의 Edge 번들을 `review:bundle`로 만들며 prebuild에서 오래된 번들을 차단한다.
+- 미션: 코어·MPJ5·DCT1과 해당 화행의 기준을 검수. 주차: 편성 후 공통 본문·고유 교수자 메모를
+  검수하고 재사용 미션 해설은 원 미션의 승인 상태를 참조한다. 프로젝터/HTML/유인물을 각각
+  중복 감사하지 않는다. 주차 승인에는 연결 미션의 현재 버전 승인도 필요하다.
+- Claude 입력에는 원본·기준만 제공한다. OpenAI 1차 판정은 주지 않는다. 재검토는 Claude 지적
+  ID마다 수용·보완·기각과 근거를 요구하며 원 지적을 숨기거나 자동으로 내용을 바꾸지 않는다.
+- 검수 스냅샷·콘텐츠/원본 hash·모델/응답 ID/사용량·프롬프트 버전/입력 hash·교수자 근거를 저장한다.
+  변한 원본에는 이전 결과를 승계하지 않는다. 성공 단계 재호출 방지, 실행 잠금, 명시적 오류와
+  수동 재시도만 두었다. 모델 응답 거절·잘림·누락·허위 인용은 성공으로 저장하지 않는다.
+- 신규 generated 미션의 최종화 RPC는 현재 버전의 앞 4단계와 교수자 근거를 확인하고 승인 기록을
+  원자적으로 저장한다. 최종화가 학습 본문을 바꾸는 것도 거부한다. 기존 승인·학습 기록은 백필하거나
+  취소하지 않는다. 과거 reviewed 미션도 별도로 선택해 현행 QA를 할 수 있다.
+- 새 검수용 프롬프트 버전은 `content_review_v1`. 기존 생성·학습·피드백 프롬프트와 BEST/WORST
+  미결정 사안은 변경하지 않았다. 실시간 개인별 피드백 전수 감사를 구현한 것은 아니다.
+
+## 실행한 확인과 한계
+
+- 표적 4파일 **20 tests 통과**: 메뉴 3, 새 검수 계약·근거·모델 응답 8, 주차 출력 분리 2,
+  기존 학습자 편성 투영 7. API 응답은 fixture로 대체했고 유료 호출은 0회다.
+- 첫 실행은 esbuild 샌드박스 경로 제한, 이후 서버 API 테스트의 jsdom `AbortSignal.timeout` 부재와
+  환경 변경에 따른 공통 setup의 window 의존으로 중단됐다. 테스트용 timeout을 명시적으로 대체하고
+  마지막에는 실패한 검수 테스트 8개만 재실행했다. 편성 순수 함수 테스트는 DB 클라이언트 초기화 없이
+  동일 투영 함수를 직접 검사하도록 import를 옮겼다. 실제 assertion은 유지했다.
+- TypeScript typecheck 통과. Vite production build 1회 통과: **1,953 modules**.
+  Browserslist·CSS 최소화(`-: T`)·큰 chunk 경고가 남았다. 이번 범위 밖으로 보류한다.
+- 전체 테스트·반복 브라우저 E2E·운영 DB 쓰기·실제 모델 호출·Railway 배포는 실행하지 않았다.
+  프런트 빌드는 운영 인증·모델 호출·DB 승인 종단 성공의 증거가 아니다.
+
+## 운영 적용 전 필요한 것
+
+1. clean commit의 SQL/RLS·승인 경계만 독립 검토: 승인 없이 model 결과를 쓸 수 있는가,
+   다른 콘텐츠/과거 버전으로 승인 가능한가, finalization 본문 변경이 가능한가,
+   기존 승인·학습 기록을 보존하는가. 관련 구조 전체 재설계는 요청하지 않는다.
+2. 사용자 승인 후 migration `20260827190000_content_review_workflow.sql`, Edge와 앱을 함께 적용한다.
+   DB 승인 gate와 구 UI를 장시간 섞어 운영하지 않는다. 적용 전에는 검수 서비스 미배포 안내가 정상이다.
+3. Edge의 `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, **명시적 `CLAUDE_AUDIT_MODEL`** 설정.
+   OpenAI는 기존 critic 경로 `gpt-4.1`을 재사용한다. 모델 자동 강등은 없다.
+4. 승인한 현재 콘텐츠 한 건으로 유료 3단계·교수자 승인만 종단 확인한다. 미션 최종화에는 기존
+   문항 귀속 API 호출이 별도로 남아 있으므로 검수 3회가 총 운영 호출 수를 뜻하지 않는다.
+
+기준/자료 구성 함수가 달라지면 번들을 재생성하고 `content_review_v1` 기준 버전과 DB의 승인 버전
+조건을 함께 개정해야 한다. 과거 검수 기록은 보존한다.
+
+## 기록
+
+- 결정: `DEC-20260827-05` (`docs/research-trail/02_decision_log.md`).
+- 관리자 정본 §2·§6.4와 생성계약 §5.4를 승인된 구조에 맞췄다. 운영 적용 상태는 이 dev-log로 구분한다.
+- 구현 참고: [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs),
+  [Claude Structured Outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs).

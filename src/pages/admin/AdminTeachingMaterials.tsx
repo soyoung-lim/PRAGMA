@@ -15,12 +15,14 @@ import { normalizeMission } from "@/lib/pragma/missionSchema";
 import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
 import { SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
 import { DEFENSE_COURSE_IDS } from "@/lib/pragma/scenarioTopics";
+import { ContentReviewPanel } from "@/components/admin/ContentReviewPanel";
 import { supabase } from "@/integrations/supabase/client";
 
 const AdminTeachingMaterials = () => {
   const [params, setParams] = useSearchParams();
   const courseId = params.get("courseId") ?? "";
   const requestedWeek = params.get("weekNo");
+  const [reviewOpen, setReviewOpen] = useState(params.get("review") === "1");
   const [notesOpen, setNotesOpen] = useState(false);
   const [projectorOpen, setProjectorOpen] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
@@ -149,6 +151,10 @@ const AdminTeachingMaterials = () => {
       {courseQuery.isError && <p role="alert">주차 계획을 불러오지 못했습니다. 교과목 선택을 확인해 주세요.</p>}
       {course && !week && <p role="alert">해당 주차를 찾을 수 없습니다.</p>}
       {course && week && material && <>
+        {!projectorOpen && <details open={reviewOpen} onToggle={(event) => setReviewOpen(event.currentTarget.open)} className="rounded-xl border bg-white p-4">
+          <summary className="cursor-pointer font-semibold">이 주차 수업자료 검수·확정</summary>
+          {reviewOpen && <ContentReviewPanel key={`${courseId}-${week.week_no}`} target={{ kind: "weekly_material", targetId: courseId, weekNo: week.week_no }} />}
+        </details>}
         <div className="flex flex-wrap items-center gap-2">
           <Button ref={projectorButtonRef} onClick={() => { setNotesOpen(false); setActiveSection(0); setProjectorOpen(true); }}>프로젝터 화면</Button>
           <Button variant="outline" onClick={exportHtml}>HTML</Button>

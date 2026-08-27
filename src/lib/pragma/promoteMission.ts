@@ -828,8 +828,10 @@ export interface ProfessorIssueOverride {
 export async function reviewMission(
   core: PromotableCore,
   issueOverrides: ProfessorIssueOverride[] = [],
+  approval?: { reviewId: string; contentHash: string; professorNote: string },
 ): Promise<{ ok: boolean; mission?: MissionRuntime; error?: string }> {
   try {
+    if (!approval) return { ok: false, error: "현재 버전의 5단계 검수에서 교수자 승인을 진행하세요." };
     const current = await fetchGeneratedMissionContent(core.scenario_id);
     const featureCode = DEFAULT_FEATURE_BY_ACT[core.speech_act];
     const feature = featureCode ? getTargetFeature(featureCode) : undefined;
@@ -869,7 +871,8 @@ export async function reviewMission(
     }
     const { error } = await rpc("finalize_reviewed_mission", {
       p_scenario_id: core.scenario_id,
-      p_payload: { mission_content: finalized, issue_overrides: issueOverrides },
+      p_payload: { mission_content: finalized, issue_overrides: issueOverrides,
+        review_id: approval.reviewId, review_content_hash: approval.contentHash, professor_note: approval.professorNote },
     });
     if (error) return { ok: false, error: (error as { message?: string }).message ?? String(error) };
     return { ok: true, mission: parsed.data };

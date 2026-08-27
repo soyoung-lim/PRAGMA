@@ -10,7 +10,7 @@ import {
 } from "@/lib/admin/adminNavigation";
 
 const REQUIRED_ENTRY_PATHS = [
-  "/admin/research-qa/final-review",
+  "/admin/review",
   "/admin/package",
   "/admin/learners",
   "/admin/decision-traces",
@@ -47,7 +47,11 @@ describe("admin navigation reachability", () => {
   });
 
   it("keeps the mobile selector on the canonical target for compatibility paths", () => {
-    expect(adminMobileNavValue("/admin/review")).toBe("/admin/research-qa/final-review");
+    expect(adminMobileNavValue("/admin/review")).toBe("/admin/review");
+    expect(adminMobileNavValue("/admin/research-qa/releases")).toBe("/admin/review");
+    const production = ADMIN_NAV_GROUPS.find((group) => group.header === "2. 학습 콘텐츠 제작");
+    expect(production?.items.at(-1)?.to).toBe("/admin/review");
+    expect(ADMIN_NAV_GROUPS.some((group) => group.header.includes("품질관리"))).toBe(false);
     expect(adminMobileNavValue("/admin/generator")).toBe("/admin/generator");
     expect(adminMobileNavValue("/admin/batch")).toBe("/admin/batch");
     expect(adminMobileNavValue("/admin/decision-traces")).toBe("/admin/decision-traces");
