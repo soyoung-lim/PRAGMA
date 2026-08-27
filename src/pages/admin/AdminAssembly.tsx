@@ -569,7 +569,7 @@ const AdminAssembly = () => {
                             <Link to="/admin/composer">15주 편성에 사용</Link>
                           </Button>
                           <Button size="sm" variant="outline" asChild>
-                            <Link to={`/admin/package?mission=${r.scenario_id}`}>수업자료 열기</Link>
+                            <Link to="/admin/package">교과목·주차 수업자료</Link>
                           </Button>
                         </>
                       )}

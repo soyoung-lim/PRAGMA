@@ -23,12 +23,8 @@ export interface LearnerNoteFeature {
   code: string;
   version: string;
   label: string;
-  definition: string;
   resources: string[];
-  comparisonLabels: string[];
-  distinguishFrom: string[];
   principle: string;
-  counterRule: string;
 }
 
 export interface WeeklyLearnerNote {
@@ -60,18 +56,11 @@ const BURDEN_CONTEXT: Record<PdrBurden, string> = {
   high: "상대의 시간·노력 부담이 큰 일",
 };
 
-function unique(values: string[]): string[] {
-  return [...new Set(values.filter(Boolean))];
-}
-
 function featureCodesForWeek(week: LearnerCourseWeek): string[] {
-  const assigned = week.scenarios.flatMap((scenario) =>
-    scenario.target_feature ? [scenario.target_feature] : [],
-  );
-  const defaults = week.speech_act
+  // 수업 내용의 기준은 주차 계획이다. 배정 미션의 내부 진단 태그로 본문을 바꾸지 않는다.
+  return week.speech_act
     ? [...FEATURE_CODES_BY_ACT[week.speech_act]]
-    : [];
-  return unique([...assigned, ...defaults]);
+    : [...new Set(week.scenarios.flatMap((scenario) => scenario.speech_act ? FEATURE_CODES_BY_ACT[scenario.speech_act] : []))];
 }
 
 function contextCuesForWeek(week: LearnerCourseWeek): LearnerNoteContextCue[] {
@@ -106,24 +95,11 @@ export function buildWeeklyLearnerNote(
       code: feature.code,
       version: feature.version,
       label: feature.learner_label,
-      definition:
-        zhToKo && feature.operational_definition_zh_ko
-          ? feature.operational_definition_zh_ko
-          : feature.operational_definition,
       resources:
         zhToKo && feature.relevant_resources_zh_ko?.length
           ? feature.relevant_resources_zh_ko
           : feature.relevant_resources,
-      comparisonLabels: feature.band_schema.map((band) => band.label_ko),
-      distinguishFrom:
-        zhToKo && feature.excluded_confounds_zh_ko?.length
-          ? feature.excluded_confounds_zh_ko
-          : feature.excluded_confounds,
       principle: feature.closing_principle_ko,
-      counterRule:
-        zhToKo && feature.counter_rule_note_zh_ko
-          ? feature.counter_rule_note_zh_ko
-          : feature.counter_rule_note,
     }];
   });
 

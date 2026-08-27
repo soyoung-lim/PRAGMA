@@ -252,7 +252,7 @@ const Architecture = () => (
             desc="9개 화행과 목표 요소를 순환 배치 · 승인 미션만 사용"
           />
           <Down />
-          <Node lane="learn" title="주차 학습 노트" desc="예습·복습용 · 주차 목표와 상황 판단 기준" />
+          <Node lane="learn" title="강의 유인물" desc="교과목·주차 공통 자료 · 목표와 핵심 설명" />
           <Down />
           <Node
             lane="learn"

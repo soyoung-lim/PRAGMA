@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { LearnerCourseWeek } from "@/lib/curriculum/learnerCourse";
 import { buildWeeklyLearnerNote } from "@/lib/curriculum/learnerNote";
+import { buildWeeklyCourseMaterial, missionSituationSummary } from "@/lib/curriculum/weeklyMaterials";
+import type { CurriculumOutlineRow } from "@/lib/curriculum/types";
 
 function week(overrides: Partial<LearnerCourseWeek> = {}): LearnerCourseWeek {
   return {
@@ -67,5 +69,48 @@ describe("주차 학습 노트 조립", () => {
       "compliment_grounding_sensitivity",
       "compliment_response_uptake",
     ]);
+  });
+
+  it("공용 내용에 내부 판정 정의·교수자 메모를 넣지 않는다", () => {
+    const note = buildWeeklyLearnerNote(week({ speech_act: "agreement" }), "ko_zh");
+    expect(note.features[0]).not.toHaveProperty("definition");
+    expect(note.features[0]).not.toHaveProperty("distinguishFrom");
+    expect(note.features[0]).not.toHaveProperty("counterRule");
+    expect(JSON.stringify(note)).not.toContain("too_ambiguous");
+  });
+
+  it("미션이 없거나 다른 진단 태그가 배정돼도 주차의 공통 내용은 유지한다", () => {
+    const empty = buildWeeklyLearnerNote(week(), "ko_zh");
+    const assigned = buildWeeklyLearnerNote(week({ scenarios: [{
+      scenario_id: "mission-1", situation_ko: "테스트 상황", mission_status: "reviewed",
+      target_feature: "invitation_choice_commitment", mode: "translation", runnable: true,
+    }] }), "ko_zh");
+    expect(assigned).toEqual(empty);
+  });
+
+  it("교과목·주차 정보와 기존 목표로 미편성 주차 자료를 구성한다", () => {
+    const outline = { id: "course-1", title: "중한 번역 수업", level: "intermediate", language_direction: "zh_ko", course_mode: "translation", target_interpreting_week_count: 0 } as CurriculumOutlineRow;
+    const material = buildWeeklyCourseMaterial(outline, week());
+    expect(material.courseTitle).toBe("중한 번역 수업");
+    expect(material.contextLabel).toContain("중→한");
+    expect(material.sections[0].items).toEqual(week().can_do);
+    expect(material.missions).toEqual([]);
+    expect(material.preparationLabel).toContain("계획 미리보기");
+    expect(material.sections[material.sections.length - 1]?.paragraphs[0]).toContain("편성 후");
+  });
+
+  it("편성된 미션을 바꾸면 수업자료의 상황·원문도 함께 바뀐다", () => {
+    const outline = { id: "course-1", title: "수업", level: "intermediate", language_direction: "ko_zh", course_mode: "translation", target_interpreting_week_count: 0 } as CurriculumOutlineRow;
+    const assigned = week({ scenarios: [1, 2].map((id) => ({ scenario_id: `mission-${id}`, situation_ko: `편성 상황 ${id}.`, source_text: `편성 원문 ${id}`, mission_status: "reviewed", target_feature: null, mode: "translation", runnable: true })) });
+    const material = buildWeeklyCourseMaterial(outline, assigned);
+    expect(material.preparationLabel).toBe("편성 미션 2개 반영");
+    expect(material.sections.find((section) => section.id === "mission-mission-2")?.items).toEqual(["편성 원문 2"]);
+    assigned.scenarios[1].source_text = "교체한 원문";
+    expect(JSON.stringify(buildWeeklyCourseMaterial(outline, assigned))).toContain("교체한 원문");
+  });
+
+  it("미션 카드 설명은 첫 문장만 사용하고 긴 문장은 생략 표시한다", () => {
+    expect(missionSituationSummary("첫 번째 상황입니다. 두 번째 설명입니다.")).toBe("첫 번째 상황입니다.");
+    expect(missionSituationSummary("가".repeat(100), 60)).toBe(`${"가".repeat(60)}…`);
   });
 });

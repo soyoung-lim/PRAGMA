@@ -29,6 +29,9 @@ import { expectedCoreModeForWeek, type CourseMode } from "@/lib/curriculum/cours
 export interface LearnerWeekScenario {
   scenario_id: string;
   situation_ko: string;
+  /** 편성된 코어의 기본 원문. DCT 참고 답안이 아니다. */
+  source_text?: string;
+  speech_act?: SpeechActUI;
   mission_status: string | null;
   target_feature: string | null;
   mode: ComposerCore["mode"];
@@ -122,6 +125,8 @@ export function assembleLearnerCourse({
           {
             scenario_id: assignment.scenario_id,
             situation_ko: core.situation_ko,
+            source_text: core.source_text_ko,
+            speech_act: core.speech_act,
             mission_status: core.mission_status,
             target_feature: core.target_feature,
             mode: core.mode,
