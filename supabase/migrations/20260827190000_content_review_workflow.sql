@@ -20,6 +20,9 @@ CREATE TABLE public.content_review_runs (
   approved_at timestamptz,
   approved_by uuid REFERENCES auth.users(id),
   professor_note text,
+  professor_decisions jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(professor_decisions) = 'array'),
+  professor_decisions_by uuid REFERENCES auth.users(id),
+  professor_decisions_at timestamptz,
   created_by uuid NOT NULL REFERENCES auth.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   CHECK ((kind = 'mission' AND week_no = 0) OR (kind = 'weekly_material' AND week_no BETWEEN 1 AND 15)),
@@ -89,7 +92,7 @@ BEGIN
   IF NOT COALESCE(public.is_admin(), false) THEN RAISE EXCEPTION 'Admin required'; END IF;
   SELECT * INTO v_review FROM public.content_review_runs WHERE id = p_review_id FOR UPDATE;
   IF NOT FOUND OR v_review.content_hash IS DISTINCT FROM p_content_hash
-    OR v_review.criteria_version <> 'content_review_v1' OR v_review.rules->>'verdict' NOT IN ('pass','warning')
+    OR v_review.criteria_version <> 'content_review_v2' OR v_review.rules->>'verdict' NOT IN ('pass','warning')
     OR v_review.openai_review IS NULL OR v_review.claude_review IS NULL OR v_review.adjudication IS NULL
     OR v_review.running_stage IS NOT NULL THEN RAISE EXCEPTION 'Complete the four QA stages for the current version'; END IF;
   v_source := public.get_content_review_source(v_review.kind, v_review.target_id, v_review.week_no);
@@ -100,7 +103,7 @@ BEGIN
       v_dependency_hash := public.get_content_review_source('mission', v_assignment.scenario_id, 0)->>'source_hash';
       IF NOT EXISTS (SELECT 1 FROM public.content_review_runs r WHERE r.kind = 'mission'
         AND r.target_id = v_assignment.scenario_id AND r.source_hash = v_dependency_hash
-        AND r.criteria_version = 'content_review_v1' AND r.approved_at IS NOT NULL) THEN
+        AND r.criteria_version = 'content_review_v2' AND r.approved_at IS NOT NULL) THEN
         RAISE EXCEPTION 'Approve the current version of each assigned mission first';
       END IF;
     END LOOP;
@@ -111,6 +114,44 @@ $$;
 REVOKE ALL ON FUNCTION public.assert_content_review_ready(uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.assert_content_review_ready(uuid, text) TO authenticated;
 
+-- Kept in the still-unapplied migration: one exact decision per Claude finding.
+-- A decision to revise/defer is a record, never permission to publish this version.
+CREATE FUNCTION public.validate_content_review_decisions(p_findings jsonb, p_decisions jsonb, p_require_clear boolean DEFAULT false)
+RETURNS void LANGUAGE plpgsql IMMUTABLE SET search_path = public AS $$
+BEGIN
+  IF jsonb_typeof(p_findings) IS DISTINCT FROM 'array' OR jsonb_typeof(p_decisions) IS DISTINCT FROM 'array' THEN
+    RAISE EXCEPTION 'Professor decisions must match the Claude findings';
+  END IF;
+  IF jsonb_array_length(p_findings) <> jsonb_array_length(p_decisions)
+    OR (SELECT count(DISTINCT d->>'finding_id') FROM jsonb_array_elements(p_decisions) d) <> jsonb_array_length(p_decisions)
+    OR EXISTS (SELECT 1 FROM jsonb_array_elements(p_decisions) d
+      WHERE jsonb_typeof(d) IS DISTINCT FROM 'object'
+        OR COALESCE(d->>'decision', '') NOT IN ('revision_required','no_change','defer')
+        OR jsonb_typeof(d->'rationale_ko') IS DISTINCT FROM 'string'
+        OR length(btrim(COALESCE(d->>'rationale_ko', ''))) < 10
+        OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p_findings) f WHERE f->>'id' = d->>'finding_id')
+        OR (p_require_clear AND d->>'decision' <> 'no_change')) THEN
+    RAISE EXCEPTION 'Record every professor decision; revision or defer cannot be approved';
+  END IF;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.validate_content_review_decisions(jsonb, jsonb, boolean) FROM PUBLIC, anon, authenticated;
+
+CREATE FUNCTION public.save_content_review_decisions(p_review_id uuid, p_content_hash text, p_decisions jsonb)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_review public.content_review_runs;
+BEGIN
+  v_review := public.assert_content_review_ready(p_review_id, p_content_hash);
+  IF v_review.approved_at IS NOT NULL THEN RAISE EXCEPTION 'Final professor decisions are immutable'; END IF;
+  PERFORM public.validate_content_review_decisions(v_review.claude_review#>'{result,findings}', p_decisions);
+  UPDATE public.content_review_runs SET professor_decisions = p_decisions,
+    professor_decisions_by = auth.uid(), professor_decisions_at = now() WHERE id = p_review_id;
+  RETURN p_review_id;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.save_content_review_decisions(uuid, text, jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.save_content_review_decisions(uuid, text, jsonb) TO authenticated;
+
 -- Used for weekly material and retrospective QA of already-approved missions.
 -- Generated missions are approved atomically by finalize_reviewed_mission below.
 CREATE FUNCTION public.approve_content_review(p_review_id uuid, p_content_hash text, p_note text)
@@ -118,6 +159,7 @@ RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE v_review public.content_review_runs;
 BEGIN
   v_review := public.assert_content_review_ready(p_review_id, p_content_hash);
+  PERFORM public.validate_content_review_decisions(v_review.claude_review#>'{result,findings}', v_review.professor_decisions, true);
   IF length(btrim(COALESCE(p_note, ''))) < 10 THEN RAISE EXCEPTION 'Record a professor approval rationale (10+ characters)'; END IF;
   IF v_review.kind = 'mission' AND NOT EXISTS (SELECT 1 FROM public.scenarios WHERE scenario_id = v_review.target_id AND mission_status IN ('reviewed','released')) THEN
     RAISE EXCEPTION 'Use mission finalization to approve a generated mission';
@@ -161,6 +203,7 @@ BEGIN
   WHERE scenario_id = p_scenario_id AND mission_status = 'generated' FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'mission not found or not generated: %', p_scenario_id; END IF;
   v_review := public.assert_content_review_ready((p_payload->>'review_id')::uuid, p_payload->>'review_content_hash');
+  PERFORM public.validate_content_review_decisions(v_review.claude_review#>'{result,findings}', v_review.professor_decisions, true);
   IF v_review.kind <> 'mission' OR v_review.target_id <> p_scenario_id THEN RAISE EXCEPTION 'Review target mismatch'; END IF;
   IF length(btrim(COALESCE(p_payload->>'professor_note', ''))) < 10 THEN RAISE EXCEPTION 'Professor rationale required'; END IF;
   IF public.pragma_review_instructional_mission(v_final) IS DISTINCT FROM public.pragma_review_instructional_mission(v_row.mission_content) THEN

@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { ReviewInspection, ReviewTarget } from "../../../supabase/functions/_shared/contentReview";
+import type { ProfessorFindingDecision, ReviewInspection, ReviewTarget } from "../../../supabase/functions/_shared/contentReview";
 export type ContentReviewApproval = { reviewId: string; contentHash: string; professorNote: string };
 
 export async function contentReviewRequest(target: ReviewTarget, action = "inspect"): Promise<ReviewInspection> {
@@ -18,6 +18,12 @@ export async function approveContentReview(approval: ContentReviewApproval): Pro
   // New RPC pending generated type refresh; keep the exception local.
   const { error } = await (supabase as any).rpc("approve_content_review", {
     p_review_id: approval.reviewId, p_content_hash: approval.contentHash, p_note: approval.professorNote,
+  });
+  if (error) throw new Error(error.message);
+}
+export async function saveProfessorDecisions(reviewId: string, contentHash: string, decisions: ProfessorFindingDecision[]): Promise<void> {
+  const { error } = await (supabase as any).rpc("save_content_review_decisions", {
+    p_review_id: reviewId, p_content_hash: contentHash, p_decisions: decisions,
   });
   if (error) throw new Error(error.message);
 }

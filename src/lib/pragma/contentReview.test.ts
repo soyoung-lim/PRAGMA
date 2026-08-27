@@ -2,16 +2,17 @@ import { webcrypto } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SAMPLE_MISSION_V5_NATIVE } from "@/lib/mission/missionV4Sample";
 import { buildContentReviewDomain } from "./contentReviewDomain";
-import { buildReviewPrompt, instructionalMission, nextReviewStage, reviewHash, validateAdjudication, validateReviewResult,
+import { buildReviewPrompt, instructionalMission, nextReviewStage, professorDecisionsComplete, reviewHash, validateAdjudication, validateReviewResult,
   type ContentReviewRun, type ReviewResult } from "../../../supabase/functions/_shared/contentReview";
 import { callContentReviewer } from "../../../supabase/functions/_shared/contentReviewProvider";
 
 const snapshot = { content: { source: "请您参加活动。" }, criteria: { version: "test" } };
-const finding = { severity: "warning", where: "/content/source", quote: "请您参加活动。", issue_ko: "지적", reason_ko: "이유", suggestion_ko: "제안" };
+const finding = { severity: "warning", where: "/content/source", quote: "请您参加活动。", issue_ko: "지적", reason_ko: "이유", suggestion_ko: "제안",
+  problem_type_ko: "화용적 적절성", needs_professor: true, uncertainty_ko: "수업 맥락에 따라 달라질 수 있음" };
 const audit = validateReviewResult({ verdict: "warning", summary_ko: "확인", findings: [finding] }, snapshot, "claude");
 const run = () => ({ id: "test", snapshot, rules: { verdict: "pass", findings: [], summary_ko: "규칙" },
   openai_review: { result: { verdict: "pass", summary_ko: "OPENAI_PRIVATE_VERDICT", findings: [] } },
-  claude_review: { result: audit }, adjudication: null, approved_at: null,
+  claude_review: { result: audit }, adjudication: null, approved_at: null, professor_decisions: [],
 } as unknown as ContentReviewRun);
 beforeEach(() => {
   vi.stubGlobal("crypto", webcrypto);
@@ -21,13 +22,13 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("current content five-stage review", () => {
-  it("keeps Claude independent and gives OpenAI the actual audit for adjudication", () => {
+  it("keeps Claude independent and excludes OpenAI's first judgment from adjudication", () => {
     const independent = buildReviewPrompt("claude", snapshot, run());
     expect(independent.user).not.toContain("OPENAI_PRIVATE_VERDICT");
     expect(independent.user).not.toContain("claude-1");
     const reconsider = buildReviewPrompt("adjudication", snapshot, run());
-    expect(reconsider.user).toContain("OPENAI_PRIVATE_VERDICT");
-    expect(reconsider.user).toContain("claude-1");
+    expect(reconsider.user).not.toContain("OPENAI_PRIVATE_VERDICT");
+    expect(JSON.parse(reconsider.user)).toEqual({ snapshot, claude_review: audit });
   });
 
   it("requires exactly one reasoned disposition per Claude finding, including rejection", () => {
@@ -44,6 +45,24 @@ describe("current content five-stage review", () => {
     expect(() => validateReviewResult({ verdict: "warning", summary_ko: "확인", findings: [{ ...finding, quote: "없는 원문" }] }, snapshot, "claude")).toThrow();
     expect(() => validateReviewResult({ verdict: "warning", summary_ko: "확인", findings: [{ ...finding, where: "/content/missing" }] }, snapshot, "claude")).toThrow();
     expect(() => validateReviewResult({ verdict: "pass", summary_ko: "확인", findings: [finding] }, snapshot, "claude")).toThrow();
+    for (const incomplete of [{ ...finding, problem_type_ko: "" }, { ...finding, needs_professor: undefined }, { ...finding, uncertainty_ko: "" }]) {
+      expect(() => validateReviewResult({ verdict: "warning", summary_ko: "확인", findings: [incomplete] }, snapshot, "claude")).toThrow();
+    }
+    expect(audit.findings[0]).toMatchObject({ problem_type_ko: "화용적 적절성", needs_professor: true, uncertainty_ko: finding.uncertainty_ko });
+  });
+
+  it("allows recorded revision or defer but requires every finding cleared for approval", () => {
+    const decision = { finding_id: "claude-1", decision: "no_change" as const, rationale_ko: "원문과 수업 맥락을 확인하여 사용 가능" };
+    expect(professorDecisionsComplete(audit.findings, [decision], true)).toBe(true);
+    for (const value of ["revision_required", "defer"] as const) {
+      expect(professorDecisionsComplete(audit.findings, [{ ...decision, decision: value }])).toBe(true);
+      expect(professorDecisionsComplete(audit.findings, [{ ...decision, decision: value }], true)).toBe(false);
+    }
+    for (const decisions of [[], [{ ...decision, finding_id: "unknown" }], [{ ...decision, rationale_ko: "짧음" }]]) {
+      expect(professorDecisionsComplete(audit.findings, decisions)).toBe(false);
+    }
+    expect(professorDecisionsComplete([...audit.findings, { ...audit.findings[0], id: "claude-2" }], [decision, decision])).toBe(false);
+    expect(professorDecisionsComplete([], [], true)).toBe(true);
   });
 
   it("hashes instructional changes but not finalization metadata or object key order", async () => {

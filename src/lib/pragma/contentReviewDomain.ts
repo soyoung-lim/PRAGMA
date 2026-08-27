@@ -12,7 +12,8 @@ import { CONTENT_REVIEW_VERSION, instructionalMission, type ReviewFinding, type 
 export function buildContentReviewDomain(kind: string, source: Record<string, any>) {
   const findings: ReviewFinding[] = [];
   const add = (issue: string) => findings.push({ id: `rule-${findings.length + 1}`, severity: "fail", where: "", quote: null,
-    issue_ko: issue, reason_ko: issue, suggestion_ko: "해당 콘텐츠 또는 편성을 수정한 후 다시 검사하세요." });
+    issue_ko: issue, reason_ko: issue, suggestion_ko: "해당 콘텐츠 또는 편성을 수정한 후 다시 검사하세요.",
+    problem_type_ko: "구조·형식", needs_professor: false, uncertainty_ko: "" });
   let content: Record<string, unknown>;
   let act: string | null;
   let dependencies: string[] = [];
@@ -31,7 +32,7 @@ export function buildContentReviewDomain(kind: string, source: Record<string, an
       const checked = checkMission(raw, context, row.core_content);
       checked.violations.forEach((violation, index) => findings.push({ id: `rule-${index + 1}`, severity: violation.level,
         where: "", quote: null, issue_ko: `${violation.id}: ${violation.message}`, reason_ko: violation.message,
-        suggestion_ko: "기존 생성계약의 해당 규칙을 확인하세요." }));
+        suggestion_ko: "기존 생성계약의 해당 규칙을 확인하세요.", problem_type_ko: "구조·형식", needs_professor: false, uncertainty_ko: "" }));
       if (parsed.data.mpj_items.length !== 5) add("현재 채택 기준은 네이티브 MPJ5+DCT1입니다. 과거 4문항 미션은 기록으로 보존합니다.");
     }
     const { mission_content: _mission, ...context } = row;
