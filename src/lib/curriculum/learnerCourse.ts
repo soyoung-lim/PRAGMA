@@ -24,6 +24,7 @@ import type {
 } from "@/lib/pragma/enums";
 import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
 import { DEFENSE_COURSE_IDS } from "@/lib/pragma/scenarioTopics";
+import { expectedCoreModeForWeek, type CourseMode } from "@/lib/curriculum/courseModePolicy";
 
 export interface LearnerWeekScenario {
   scenario_id: string;
@@ -82,6 +83,10 @@ export function assembleLearnerCourse({
   assignments,
   cores,
 }: LearnerCourseSource): LearnerCourse {
+  const modePolicy = {
+    courseMode: outline.course_mode as CourseMode,
+    interpretingWeekCount: outline.target_interpreting_week_count,
+  };
   const coreById = new Map<string, ComposerCore>();
   for (const core of cores) coreById.set(core.scenario_id, core);
 
@@ -110,6 +115,9 @@ export function assembleLearnerCourse({
       scenarios: (byWeek.get(week.week_no) ?? []).flatMap((assignment) => {
         const core = coreById.get(assignment.scenario_id);
         if (!core || !isMissionReleasedForLearner(core)) return [];
+        // 과목 정책 변경 전 배정은 DB에 보존하되, 다른 수행모드로 실행하지 않는다.
+        const expectedMode = expectedCoreModeForWeek(modePolicy, week.week_no);
+        if (expectedMode && core.mode !== expectedMode) return [];
         return [
           {
             scenario_id: assignment.scenario_id,

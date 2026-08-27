@@ -27,7 +27,10 @@ function specialWeekCopy(weekNo: number): string {
   return "교수자 안내에 따라 앞선 학습 기록을 연결하고 정리합니다.";
 }
 
-function emptyWeekCopy(weekNo: number): string {
+function emptyWeekCopy(weekNo: number, isSpeechActWeek: boolean): string {
+  if (isSpeechActWeek) {
+    return "이번 주의 학습 미션을 준비하고 있습니다. 교수자가 편성을 완료하면 이곳에서 시작할 수 있습니다.";
+  }
   const role = weekRole(weekNo);
   if (role === "contextualization") {
     return "고부담 실전 미션을 편성 중입니다. 배정 후 서로 다른 두 화행 미션을 이곳에서 수행합니다.";
@@ -146,7 +149,7 @@ const LearnerCourseWeek = () => {
 
           {week.scenarios.length === 0 ? (
             <div className="mt-3 rounded-xl border border-[#EAE4D2] bg-[#FAF8F2] p-5 text-[13px] leading-6 text-muted-foreground">
-              {emptyWeekCopy(week.week_no)}
+              {emptyWeekCopy(week.week_no, Boolean(week.speech_act))}
             </div>
           ) : (
             <ul className="mt-3 grid gap-3 sm:grid-cols-2">

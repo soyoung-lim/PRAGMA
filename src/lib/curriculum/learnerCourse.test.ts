@@ -14,6 +14,8 @@ const outline = {
   id: "outline-1",
   title: "검토 완료 미션 강좌",
   status: "published",
+  course_mode: "translation",
+  target_interpreting_week_count: 0,
 } as CurriculumOutlineRow;
 
 const weeks = [
@@ -96,6 +98,39 @@ function source(
 }
 
 describe("학습자 편성 강좌 조립", () => {
+  it("새 통역 주차와 다른 과거 번역 배정은 보존하되 학습자에게 실행시키지 않는다", () => {
+    const assignments = [assignment(2, "translation", 0), assignment(9, "old-translation", 0), assignment(9, "interpreting", 1)];
+    const course = assembleLearnerCourse({
+      outline: { ...outline, course_mode: "mixed", target_interpreting_week_count: 6 },
+      weeks: [weeks[0], { ...weeks[1], week_no: 9 }],
+      assignments,
+      cores: [
+        core("translation", "reviewed"),
+        core("old-translation", "reviewed"),
+        { ...core("interpreting", "reviewed"), mode: "stt_interpreting" },
+      ],
+    });
+
+    expect(course.weeks[0].scenarios.map((item) => item.scenario_id)).toEqual(["translation"]);
+    expect(course.weeks[1].scenarios.map((item) => item.scenario_id)).toEqual(["interpreting"]);
+    expect(assignments).toEqual([assignment(2, "translation", 0), assignment(9, "old-translation", 0), assignment(9, "interpreting", 1)]);
+  });
+
+  it("번역 전용 강좌의 고부담 주차도 통역·모드 불명 미션은 노출하지 않는다", () => {
+    const course = assembleLearnerCourse({
+      outline,
+      weeks: [{ ...weeks[0], week_no: 13, speech_act: null }],
+      assignments: [assignment(13, "translation", 0), assignment(13, "interpreting", 1), assignment(13, "unknown", 2)],
+      cores: [
+        core("translation", "reviewed"),
+        { ...core("interpreting", "reviewed"), mode: "stt_interpreting" },
+        { ...core("unknown", "reviewed"), mode: null },
+      ],
+    });
+
+    expect(course.weeks[0].scenarios.map((item) => item.scenario_id)).toEqual(["translation"]);
+  });
+
   it("reviewed 미션만 원래 주차·순서대로 노출한다", () => {
     const course = assembleLearnerCourse(
       source(

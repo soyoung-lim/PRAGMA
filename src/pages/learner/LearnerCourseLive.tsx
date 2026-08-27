@@ -12,7 +12,7 @@ import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import { friendlyFeatureLabel } from "@/lib/mission/learnerReport";
 import { isActWeek, weekProgress, type WeekState } from "@/lib/curriculum/learnerProgress";
 import { listCompletedMissionIds } from "@/lib/mission/missionLog";
-import { courseModeWeekSummary, type CourseMode } from "@/lib/curriculum/courseModePolicy";
+import { courseModeWeekSummary, expectedCoreModeForWeek, type CourseMode } from "@/lib/curriculum/courseModePolicy";
 
 const STATE_BADGE: Record<WeekState, { label: string; cls: string }> = {
   done: { label: "완료", cls: "bg-[#E7F1EC] text-[#2E6F63]" },
@@ -132,9 +132,15 @@ const LearnerCourseLive = () => {
                   ? SPEECH_ACT_UI[week.speech_act as SpeechActUI]
                   : null;
                 const isCourseMilestone = week.week_no === 1 || week.week_no === 8 || week.week_no === 15;
+                const plannedMode = expectedCoreModeForWeek({
+                  courseMode: course.outline.course_mode as CourseMode,
+                  interpretingWeekCount: course.outline.target_interpreting_week_count,
+                }, week.week_no);
                 const badge = progress.assigned.length > 0
                   ? STATE_BADGE[progress.state]
-                  : role === "metapragmatic"
+                  : week.speech_act
+                    ? STATE_BADGE.empty
+                    : role === "metapragmatic"
                     ? { label: "수업 활동", cls: "bg-[#EEF0F4] text-[#5A6470]" }
                     : role === "contextualization"
                       ? { label: "편성 준비 중", cls: "bg-[#FFF3C9] text-[#7A5E00]" }
@@ -155,6 +161,7 @@ const LearnerCourseLive = () => {
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-[10.5px] font-bold uppercase tracking-wide text-[#B8860B]">
                             {isCourseMilestone ? "학기 이정표" : week.speech_act ? "화행 학습" : ROLE_LABEL[role]}
+                            {plannedMode ? ` · ${plannedMode === "stt_interpreting" ? "통역" : "번역"}` : ""}
                           </span>
                           <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold sm:hidden ${badge.cls}`}>
                             {badge.label}

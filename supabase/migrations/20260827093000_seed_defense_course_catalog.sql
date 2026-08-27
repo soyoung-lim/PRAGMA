@@ -1,6 +1,8 @@
 -- Publish only the three defense course shells and their shared 15-week plan.
 -- No mission content or week assignment is generated here. Existing assignments
--- on the flagship course are preserved.
+-- on the flagship course are preserved, including existing week IDs and
+-- instructor-entered context metadata. The app hides mode-incompatible legacy
+-- assignments from the new learning plan without deleting them.
 
 ALTER TABLE public.curriculum_outlines
   DROP CONSTRAINT IF EXISTS curriculum_outlines_course_mode_check;
@@ -161,12 +163,4 @@ ON CONFLICT (outline_id, week_no) DO UPDATE SET
   can_do = EXCLUDED.can_do,
   speech_act = EXCLUDED.speech_act,
   scenario_slots = EXCLUDED.scenario_slots,
-  channel = NULL,
-  pdr_power = NULL,
-  pdr_distance = NULL,
-  pdr_imposition = NULL,
-  curriculum_load_band = NULL,
-  competency_focus = NULL,
-  domain = NULL,
-  industry = NULL,
   updated_at = now();
