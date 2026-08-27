@@ -93,6 +93,17 @@ describe("current content five-stage review", () => {
     expect(content.context.core_content.situation_ko).toBe("상황");
   });
 
+  it("versions the corrected rules in the snapshot without replacing earlier review hashes", async () => {
+    const domain = buildContentReviewDomain("mission", { scenario: { speech_act: "request", learner_level: "intermediate", mode: "translation",
+      core_content: {}, mission_content: SAMPLE_MISSION_V5_NATIVE,
+    } });
+    const { rules_version, ...previousCriteria } = domain.snapshot.criteria;
+    expect(rules_version).toBe("mission_rules_v8_comparison_compat_v1");
+    expect(await reviewHash(domain.snapshot)).not.toBe(await reviewHash({
+      ...domain.snapshot, criteria: previousCriteria,
+    }));
+  });
+
   it("blocks incomplete weeks and reviews shared original plus unique private notes", () => {
     const source = { outline: { id: "course", title: "수업", level: "intermediate", language_direction: "ko_zh", course_mode: "translation", target_interpreting_week_count: 0 },
       week: { week_no: 2, title: "요청", type: "regular", speech_act: "request", can_do: ["학습목표"] },

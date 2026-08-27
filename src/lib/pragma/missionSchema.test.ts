@@ -440,6 +440,24 @@ describe("mission_v5 native MPJ5 contract", () => {
     )).toBe(true);
   });
 
+  it("keeps the v8 band-pair contract after the current prompt advances", () => {
+    const savedV8 = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    savedV8.provenance!.prompt_version = "mission_v5_mpj5_minidiscourse_v8_relational_feedback";
+    const multi = savedV8.mpj_items[4];
+    if (multi.type !== "multi_judge") throw new Error("Expected multi_judge");
+    multi.candidates.forEach((candidate) => { delete candidate.comparison_role; });
+    expect(checkMission(savedV8, context).violations.filter(
+      (item) => item.id === "R5" && item.level === "fail",
+    )).toEqual([]);
+
+    multi.candidates.forEach((candidate, index) => {
+      candidate.accepted_band_codes = [index === 0 ? "within_band" : "too_direct"];
+    });
+    expect(checkMission(savedV8, context).violations.some(
+      (item) => item.id === "R5" && item.level === "fail" && item.message.includes("적정 2·조정 필요 2"),
+    )).toBe(true);
+  });
+
   it("requires concise two-sentence scenes and one recommended repair in the current native flow", () => {
     const current = structuredClone(SAMPLE_MISSION_V5_NATIVE);
     current.provenance!.prompt_version = CURRENT_MISSION_PROMPT_VERSIONS[0];
