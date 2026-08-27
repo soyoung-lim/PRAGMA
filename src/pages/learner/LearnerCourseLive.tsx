@@ -9,6 +9,7 @@ import type { LearnerCourseWeek } from "@/lib/curriculum/learnerCourse";
 import { ROLE_LABEL, weekRole } from "@/lib/curriculum/template";
 import { SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
+import { courseDisplayTitle } from "@/lib/pragma/scenarioTopics";
 import { friendlyFeatureLabel } from "@/lib/mission/learnerReport";
 import { isActWeek, weekProgress, type WeekState } from "@/lib/curriculum/learnerProgress";
 import { listCompletedMissionIds } from "@/lib/mission/missionLog";
@@ -92,15 +93,15 @@ const LearnerCourseLive = () => {
           <div className="mt-6 rounded-xl border border-dashed border-[#EAE4D2] bg-white px-6 py-10 text-center text-[13px] text-muted-foreground">
             선택한 교과목을 찾을 수 없습니다.
             <Link to="/learner/course" className="mt-3 block font-bold text-[#15202B]">
-              내 교과목으로 돌아가기
+              교과목 선택으로 돌아가기
             </Link>
           </div>
         ) : (
           <>
             <Link to="/learner/course" className="text-[12.5px] font-medium text-muted-foreground hover:text-foreground">
-              ← 내 교과목
+              ← 교과목 선택
             </Link>
-            <h1 className="mt-3 text-[21px] font-black text-[#15202B]">{course.outline.title}</h1>
+            <h1 className="mt-3 text-[21px] font-black text-[#15202B]">{courseDisplayTitle(course.outline)}</h1>
             <p className="mt-1 text-[12.5px] text-muted-foreground">
               15주 강좌 · 실제 학습 12주 · {courseModeWeekSummary({
                 courseMode: course.outline.course_mode as CourseMode,

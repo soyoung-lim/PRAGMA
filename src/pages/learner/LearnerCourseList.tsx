@@ -3,44 +3,50 @@ import { Link } from "react-router-dom";
 
 import { LearnerBottomNav } from "@/components/learner/LearnerBottomNav";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
+import { courseModeWeekSummary, type CourseMode } from "@/lib/curriculum/courseModePolicy";
 import { useLearnerCourses } from "@/lib/curriculum/useLearnerCourse";
 import {
-  DIRECTION_LABEL,
   LEVEL,
   type LanguageDirection,
   type LearnerLevel,
 } from "@/lib/pragma/enums";
-import { COURSE_PRESETS } from "@/lib/pragma/scenarioTopics";
+import { COURSE_PRESETS, courseDisplayTitle, THEME_CODES, type ThemeCode } from "@/lib/pragma/scenarioTopics";
 
-// 교과목 선택을 돕는 소개 문구. 실제 편성·주제·수행모드 데이터는 바꾸지 않는다.
-const COURSE_INTRO: Record<string, string> = {
-  ko_zh_pragmatic_translation_interpreting:
-    "상황과 관계를 읽고, 의도와 말투를 살려 중국어로 옮깁니다.",
-  ko_zh_business_communication:
-    "회의·협업·고객 응대에 필요한 중국어 표현과 전달 방식을 익힙니다.",
-  zh_ko_practical_translation:
-    "중국어의 의도와 뉘앙스를 자연스러운 한국어로 옮깁니다.",
+// 카드에서만 짧게 표시한다. 생성·검색·편성용 주제 정본은 그대로 둔다.
+const COURSE_TOPIC_LABEL: Record<ThemeCode, string> = {
+  campus_study: "대학생활",
+  international_exchange: "유학·교류",
+  relationship_social: "대인관계",
+  daily_living: "일상생활",
+  career_workplace: "취업·직장",
+  commerce_customer: "거래·고객응대",
+  digital_content: "콘텐츠·SNS",
+  travel_mobility: "여행·이동",
+};
+const COURSE_DIRECTION: Record<LanguageDirection, string> = {
+  ko_zh: "한국어 → 중국어",
+  zh_ko: "중국어 → 한국어",
+};
+const LEVEL_ORDER: Record<LearnerLevel, number> = {
+  beginner_intermediate: 0,
+  intermediate: 1,
+  advanced: 2,
 };
 
 const LearnerCourseList = () => {
   const { data: courses = [], error, isPending } = useLearnerCourses();
+  // 목록의 표시 순서만 변경하고, 공유 쿼리 데이터와 실제 편성 순서는 보존한다.
+  const sortedCourses = [...courses].sort((left, right) =>
+    (LEVEL_ORDER[left.level as LearnerLevel] ?? 99) - (LEVEL_ORDER[right.level as LearnerLevel] ?? 99),
+  );
 
   return (
-    <LearnerJourneyShell
-      headerRight={<span className="text-[12px] text-[#8899A6]">내 교과목</span>}
-    >
-      <main className="pb-24 pt-3 sm:pt-5" aria-labelledby="course-list-title">
-        <section>
-          <p className="flex items-center gap-2.5 text-[10px] font-bold tracking-[0.18em] text-[#8A6A16]">
-            <span aria-hidden="true" className="h-0.5 w-5 rounded-full bg-[#FAD338]" />
-            MY COURSES
-          </p>
-          <h1 id="course-list-title" className="mt-3 text-[28px] font-bold tracking-[-0.04em] text-[#15202B] sm:text-[32px]">
-            내 교과목
+    <LearnerJourneyShell wide>
+      <main className="mx-auto max-w-[820px] pb-[4.5rem] pt-4 sm:pt-5" aria-labelledby="course-list-title">
+        <section className="mb-6">
+          <h1 id="course-list-title" className="border-l-4 border-[#FAD338] pl-3 text-[26px] font-bold leading-9 tracking-[-0.04em] text-[#15202B]">
+            교과목 선택
           </h1>
-          <p className="mt-3 break-keep text-[13px] leading-relaxed text-muted-foreground sm:text-[14px]">
-            교과목을 선택해 주차별 학습계획과 미션을 확인하세요.
-          </p>
         </section>
 
         {isPending ? (
@@ -54,44 +60,58 @@ const LearnerCourseList = () => {
             아직 게시된 교과목이 없습니다.
           </div>
         ) : (
-          <ul className="mt-7 space-y-3.5 sm:mt-8" aria-label="교과목 목록">
-            {courses.map((course, index) => {
+          <ul className="space-y-4" aria-label="교과목 목록">
+            {sortedCourses.map((course) => {
               const preset = COURSE_PRESETS.find((item) => item.outline_id === course.id);
-              const intro = preset ? COURSE_INTRO[preset.preset_code] : undefined;
+              const themeCodes = course.composition_theme_codes?.length ? course.composition_theme_codes : THEME_CODES;
+              const themePriority = [...(preset?.included_themes ?? []), ...THEME_CODES];
+              const themes = [...new Set(themePriority)]
+                .filter((code) => themeCodes.includes(code))
+                .map((code) => COURSE_TOPIC_LABEL[code]);
+              const topicSummary = `${themes.slice(0, 4).join(", ")}${themes.length > 4 ? " 등" : ""}`;
+              const modeSummary = courseModeWeekSummary({
+                courseMode: course.course_mode as CourseMode,
+                interpretingWeekCount: course.target_interpreting_week_count,
+              });
               const titleId = `course-title-${course.id}`;
-              const introId = `course-intro-${course.id}`;
+              const detailsId = `course-details-${course.id}`;
               return (
                 <li key={course.id}>
                   <Link
                     to={`/learner/course/${course.id}`}
                     aria-labelledby={titleId}
-                    aria-describedby={intro ? introId : undefined}
-                    className="group block rounded-[20px] border border-[#E5E1D6] bg-white px-5 py-5 text-left shadow-[0_2px_8px_rgba(21,32,43,0.025)] transition-[border-color,box-shadow,background-color] duration-200 hover:border-[#C7BB96] hover:bg-[#FFFDF7] hover:shadow-[0_6px_20px_rgba(21,32,43,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-4 focus-visible:ring-offset-background motion-reduce:transition-none sm:px-7"
+                    aria-describedby={detailsId}
+                    className="group grid gap-3 rounded-2xl border border-[#E5E1D6] bg-white px-4 py-4 text-left shadow-[0_2px_8px_rgba(21,32,43,0.025)] transition-[border-color,box-shadow,background-color] duration-200 hover:border-[#C7BB96] hover:bg-[#FFFDF7] hover:shadow-[0_6px_20px_rgba(21,32,43,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none sm:px-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-6"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5 text-[12px] font-semibold">
-                        <span className="rounded-md bg-[#F6F2E5] px-2 py-0.5 text-[#786022]">
+                    <div className="min-w-0">
+                      <div className="flex items-start gap-2.5 sm:items-center">
+                        <span className="mt-1 shrink-0 rounded-md bg-[#F6F2E5] px-2 py-0.5 text-[12px] font-semibold leading-5 text-[#786022] sm:mt-0">
                           {LEVEL[course.level as LearnerLevel] ?? course.level}
                         </span>
-                        <span className="text-[#5C6A7A]">
-                          {DIRECTION_LABEL[course.language_direction as LanguageDirection] ?? course.language_direction}
-                        </span>
+                        <h2 id={titleId} className="break-keep text-[18px] font-bold leading-7 tracking-[-0.035em] text-[#15202B] sm:whitespace-nowrap sm:text-[20px]">
+                          {courseDisplayTitle(course)}
+                        </h2>
                       </div>
-                      <span aria-hidden="true" className="text-[12px] font-medium tabular-nums tracking-[0.12em] text-[#87919A]">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
+                      <dl id={detailsId} className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 text-[13px] leading-5 text-[#5C6A7A]">
+                        <div className="flex items-baseline gap-1.5">
+                          <dt className="sr-only">언어방향</dt>
+                          <dd className="font-medium text-[#15202B]">{COURSE_DIRECTION[course.language_direction as LanguageDirection] ?? course.language_direction}</dd>
+                        </div>
+                        <div className="flex items-baseline gap-3">
+                          <dt className="sr-only">수행모드</dt>
+                          <dd className="font-medium text-[#15202B]">
+                            <span aria-hidden="true" className="mr-3 font-normal text-[#C7C2B4]">|</span>
+                            {modeSummary}{course.course_mode === "translation" ? " · 통역 없음" : ""}
+                          </dd>
+                        </div>
+                        <div className="w-full">
+                          <dt className="sr-only">주제</dt>
+                          <dd className="break-keep text-[#74808E]">{topicSummary}</dd>
+                        </div>
+                      </dl>
                     </div>
-                    <h2 id={titleId} className="mt-2.5 break-keep text-[20px] font-bold leading-snug tracking-[-0.035em] text-[#15202B] sm:whitespace-nowrap sm:text-[23px]">
-                      {course.title}
-                    </h2>
-                    {intro && (
-                      <p id={introId} className="mt-1.5 break-keep text-[13px] leading-relaxed text-[#5C6A7A] sm:text-[14px]">
-                        {intro}
-                      </p>
-                    )}
-                    <div className="mt-4 flex items-center gap-4">
-                      <span aria-hidden="true" className="h-px flex-1 bg-[#EFECE3]" />
-                      <span className="inline-flex shrink-0 items-center gap-2.5 text-[12px] font-semibold text-[#15202B] sm:text-[13px]">
+                    <div className="flex items-center justify-end border-t border-[#EFECE3] pt-2 md:border-l md:border-t-0 md:py-3 md:pl-6">
+                      <span className="inline-flex min-h-7 shrink-0 items-center gap-2 text-[12px] font-semibold text-[#15202B] sm:text-[13px]">
                         주차별 학습계획 보기
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F6F4EC] transition-colors duration-200 group-hover:bg-[#FAD338] group-focus-visible:bg-[#FAD338] motion-reduce:transition-none">
                           <ArrowRight aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />

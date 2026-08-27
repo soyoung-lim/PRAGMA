@@ -62,6 +62,7 @@ import {
 } from "@/lib/pragma/enums";
 import {
   COURSE_PRESETS,
+  courseDisplayTitle,
   THEME_CODES,
   THEME_LABEL,
   type CoursePreset,
@@ -729,7 +730,7 @@ const AdminComposer = () => {
             <option value="">— 교과목 선택 —</option>
             {outlines.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.title} · {LEVEL[item.level as LearnerLevel] ?? item.level}
+                {courseDisplayTitle(item)} · {LEVEL[item.level as LearnerLevel] ?? item.level}
               </option>
             ))}
           </select>
@@ -786,7 +787,7 @@ const AdminComposer = () => {
                     <AlertDialogTitle>이 교과목을 비공개로 바꾸시겠습니까?</AlertDialogTitle>
                     <AlertDialogDescription asChild>
                       <div className="space-y-2 text-left">
-                        <p className="font-semibold text-[#15202B]">{selectedOutline?.title}</p>
+                        <p className="font-semibold text-[#15202B]">{selectedOutline && courseDisplayTitle(selectedOutline)}</p>
                         <p>학습자 수업 화면에서 이 교과목이 보이지 않게 됩니다.</p>
                         <p>편성 내용과 학습자 수행 기록은 그대로 남습니다.</p>
                       </div>
@@ -815,7 +816,7 @@ const AdminComposer = () => {
                   <AlertDialogTitle>이 교과목을 삭제하시겠습니까?</AlertDialogTitle>
                   <AlertDialogDescription asChild>
                     <div className="space-y-2 text-left">
-                      <p className="font-semibold text-[#15202B]">{selectedOutline?.title}</p>
+                      <p className="font-semibold text-[#15202B]">{selectedOutline && courseDisplayTitle(selectedOutline)}</p>
                       <p>15주 주차 계획과 현재 배정된 미션 {assignedCount}건이 함께 삭제됩니다.</p>
                       <p>학습자 수행 기록과 시나리오·미션 자체는 삭제되지 않습니다.</p>
                       <p className="font-semibold text-[#8B3531]">되돌릴 수 없습니다.</p>

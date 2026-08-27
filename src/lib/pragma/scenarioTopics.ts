@@ -539,7 +539,7 @@ export const COURSE_PRESETS: CoursePreset[] = [
   {
     outline_id: "915fec24-cc38-4b00-a2a0-c3628abcd3f7",
     preset_code: "ko_zh_pragmatic_translation_interpreting",
-    label: "AI 기반 한중 화용 통번역 실습",
+    label: "AI 한중 화용 통번역 실습",
     target_level: "intermediate",
     language_direction: "ko_zh",
     primary_domain: "school",
@@ -557,7 +557,7 @@ export const COURSE_PRESETS: CoursePreset[] = [
   {
     outline_id: "a10c5b2e-7c5a-4f0c-9f4a-6d61cf6b8e21",
     preset_code: "ko_zh_business_communication",
-    label: "AI 기반 한중 비즈니스 커뮤니케이션",
+    label: "AI 한중 비즈니스 커뮤니케이션",
     target_level: "advanced",
     language_direction: "ko_zh",
     primary_domain: "work",
@@ -570,7 +570,7 @@ export const COURSE_PRESETS: CoursePreset[] = [
   {
     outline_id: "c3f9a2d7-6e84-4f61-a953-2b7d9c0e4a12",
     preset_code: "zh_ko_practical_translation",
-    label: "AI 기반 중한 실전 번역",
+    label: "AI 중한 실전 번역",
     target_level: "intermediate",
     language_direction: "zh_ko",
     primary_domain: "daily",
@@ -589,3 +589,12 @@ export const COURSE_PRESETS: CoursePreset[] = [
 ];
 
 export const DEFENSE_COURSE_IDS = COURSE_PRESETS.map((preset) => preset.outline_id);
+
+/** 기존 DB의 표준 3과목 이름만 새 표시명으로 읽는다. 교수자가 지정한 다른 이름은 보존한다. */
+export function courseDisplayTitle(course: { id: string; title: string }): string {
+  const preset = COURSE_PRESETS.find((item) => item.outline_id === course.id);
+  if (preset && course.title === preset.label.replace(/^AI /, "AI 기반 ")) {
+    return preset.label;
+  }
+  return course.title;
+}

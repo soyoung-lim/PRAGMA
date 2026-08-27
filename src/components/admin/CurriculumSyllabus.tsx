@@ -13,6 +13,7 @@ import {
   type SpeechActUI,
 } from "@/lib/pragma/enums";
 import { COURSE_MODE_LABEL, type CourseMode } from "@/lib/curriculum/courseModePolicy";
+import { courseDisplayTitle } from "@/lib/pragma/scenarioTopics";
 import {
   EMPTY_SYLLABUS_SETTINGS,
   SYLLABUS_EVALUATION_ROWS,
@@ -77,7 +78,7 @@ export function CurriculumSyllabus({
     <article className="curriculum-syllabus mx-auto max-w-[1000px] bg-white text-[#15202B]">
       <header className="border-b-4 border-[#15202B] pb-4">
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#486C65]">PRAGMA COURSE SYLLABUS</p>
-        <h1 className="mt-1 text-3xl font-bold leading-tight">{outline.title}</h1>
+        <h1 className="mt-1 text-3xl font-bold leading-tight">{courseDisplayTitle(outline)}</h1>
         <p className="mt-2 text-sm leading-relaxed text-[#52616B]">
           {outline.semester_goal || "학기 목표는 교과목 편성 화면에서 입력합니다."}
         </p>

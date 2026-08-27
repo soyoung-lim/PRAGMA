@@ -9,6 +9,7 @@ import { ROLE_LABEL, weekRole } from "@/lib/curriculum/template";
 import { useLearnerCourse } from "@/lib/curriculum/useLearnerCourse";
 import { MODE_LABEL, SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
+import { courseDisplayTitle } from "@/lib/pragma/scenarioTopics";
 import { friendlyFeatureLabel } from "@/lib/mission/learnerReport";
 import { listCompletedMissionIds } from "@/lib/mission/missionLog";
 import { hasIntroArc } from "@/lib/mission/mockIntroArc";
@@ -80,7 +81,7 @@ const LearnerCourseWeek = () => {
             {error instanceof Error ? error.message : "이 주차 계획을 찾을 수 없습니다."}
           </p>
           <Link to="/learner/course" className="mt-3 inline-block text-[13px] font-bold">
-            ← 내 교과목으로 돌아가기
+            ← 교과목 선택으로 돌아가기
           </Link>
         </div>
       </LearnerJourneyShell>
@@ -102,7 +103,7 @@ const LearnerCourseWeek = () => {
 
   return (
     <LearnerJourneyShell
-      headerRight={<span className="text-[12px] text-[#8899A6]">{course.outline.title}</span>}
+      headerRight={<span className="text-[12px] text-[#8899A6]">{courseDisplayTitle(course.outline)}</span>}
     >
       <div className="pb-24">
         <Link to={coursePath} className="text-[12.5px] font-medium text-muted-foreground hover:text-foreground">
