@@ -113,4 +113,25 @@ describe("주차 학습 노트 조립", () => {
     expect(missionSituationSummary("첫 번째 상황입니다. 두 번째 설명입니다.")).toBe("첫 번째 상황입니다.");
     expect(missionSituationSummary("가".repeat(100), 60)).toBe(`${"가".repeat(60)}…`);
   });
+
+  it("수업자료 본문은 두 문장 전체를 보존하고 연결 목록만 요약한다", () => {
+    const outline = { id: "course-1", title: "수업", level: "intermediate", language_direction: "ko_zh", course_mode: "translation", target_interpreting_week_count: 0 } as CurriculumOutlineRow;
+    const situation = "학과 선배가 오늘 저녁 모임에 함께 가자고 제안했습니다. 이미 잡힌 약속이 있어 참석할 수 없으며 다른 날 참석하겠다고 약속할 수는 없습니다.";
+    const assigned = week({ scenarios: [{ scenario_id: "refusal-1", situation_ko: situation, source_text: "오늘은 먼저 잡힌 약속이 있어서 참석하기 어렵습니다.", mission_status: "reviewed", target_feature: "refusal_softening", mode: "translation", runnable: true }] });
+    const before = structuredClone(assigned);
+    const material = buildWeeklyCourseMaterial(outline, assigned);
+    expect(material.sections.find((section) => section.id === "mission-refusal-1")?.paragraphs).toEqual([situation]);
+    expect(material.missions[0].summary).toBe("학과 선배가 오늘 저녁 모임에 함께 가자고 제안했습니다.");
+    expect(assigned).toEqual(before);
+  });
+
+  it("자료 본문의 긴 첫 문장도 목록의 78자 제한으로 자르지 않는다", () => {
+    const outline = { id: "course-1", title: "수업", level: "intermediate", language_direction: "zh_ko", course_mode: "translation", target_interpreting_week_count: 0 } as CurriculumOutlineRow;
+    const situation = `${"상황 단서 ".repeat(18)}입니다. 두 번째 문장의 필수 조건도 남깁니다.`;
+    const assigned = week({ scenarios: [{ scenario_id: "long-1", situation_ko: situation, mission_status: "reviewed", target_feature: null, mode: "translation", runnable: true }] });
+    const material = buildWeeklyCourseMaterial(outline, assigned);
+    expect(material.sections.find((section) => section.id === "mission-long-1")?.paragraphs).toEqual([situation]);
+    expect(material.missions[0].summary.length).toBeLessThanOrEqual(79);
+    expect(material.missions[0].summary.endsWith("…")).toBe(true);
+  });
 });

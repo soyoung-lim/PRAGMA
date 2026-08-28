@@ -86,7 +86,8 @@ export function buildWeeklyCourseMaterial(
   week.scenarios.forEach((scenario, index) => sections.push({
     id: `mission-${scenario.scenario_id}`,
     title: `미션 ${index + 1} · 상황과 기본 원문`,
-    paragraphs: [missionSituationSummary(scenario.situation_ko)],
+    // 본문의 관계·부담·선행 사건을 보존한다. 첫 문장 요약은 연결된 미션 목록에만 쓴다.
+    paragraphs: [scenario.situation_ko],
     items: scenario.source_text ? [scenario.source_text] : [],
   }));
   sections.push({

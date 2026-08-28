@@ -5,6 +5,7 @@ import { buildContentReviewDomain } from "./contentReviewDomain";
 import { buildReviewPrompt, instructionalMission, materializeReviewEvidence, nextReviewStage, professorDecisionsComplete, reviewHash, validateAdjudication, validateReviewResult,
   type ContentReviewRun, type ReviewResult } from "../../../supabase/functions/_shared/contentReview";
 import { callContentReviewer } from "../../../supabase/functions/_shared/contentReviewProvider";
+import { REFUSAL_TEACHING_CASE } from "@/lib/curriculum/refusalTeachingCase";
 
 const snapshot = { content: { source: "请您参加活动。" }, criteria: { version: "test" } };
 const finding = { severity: "warning", where: "/content/source", quote: "请您参加活动。", issue_ko: "지적", reason_ko: "이유", suggestion_ko: "제안",
@@ -132,6 +133,27 @@ describe("current content five-stage review", () => {
     const paths = (buildReviewPrompt("claude", domain.snapshot).schema.properties.findings as any).items.properties.where.enum;
     expect(paths).toEqual(expect.arrayContaining(["/content/public_material", "/content/instructor_only"]));
     expect(paths).not.toContain("/content/mission/mpj_items/0");
+  });
+
+  it("hashes the selected refusal teaching case in private review content without exposing it publicly", async () => {
+    const example = REFUSAL_TEACHING_CASE;
+    const domain = buildContentReviewDomain("weekly_material", {
+      outline: { id: "course", title: "수업", level: "intermediate", language_direction: "ko_zh", course_mode: "translation", target_interpreting_week_count: 0 },
+      week: { week_no: 6, title: "거절", type: "regular", speech_act: "refusal", can_do: [] },
+      assignments: [{ scenario_id: example.scenarioId, week_no: 6, position: 0 }],
+      scenarios: [{ scenario_id: example.scenarioId, speech_act: "refusal", mission_status: "reviewed", mode: "translation",
+        core_content: { situation_ko: example.situationKo, source_text_ko: example.sourceText } }],
+    });
+    const content = domain.snapshot.content as any;
+    expect(content.instructor_only.missionCases).toEqual([example]);
+    expect(JSON.stringify(content.public_material)).not.toContain(example.title);
+    expect(content.public_material.sections.find((section: any) => section.id === `mission-${example.scenarioId}`).paragraphs).toEqual([example.situationKo]);
+    const { missionCases: _cases, ...previousNotes } = content.instructor_only;
+    expect(await reviewHash(domain.snapshot)).not.toBe(await reviewHash({ ...domain.snapshot,
+      content: { ...content, instructor_only: previousNotes },
+    }));
+    expect(domain.rules.verdict).toBe("fail"); // 1/2 편성 상태를 완료로 바꾸지 않는다.
+    expect(domain.dependencies).toEqual([example.scenarioId]);
   });
 
   it("saves successful provider metadata and never silently retries truncation or refusal", async () => {
