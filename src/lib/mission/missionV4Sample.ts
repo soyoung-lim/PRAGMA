@@ -3,6 +3,10 @@
 // import.meta.env.DEV로 보호된 ?preview=v4 경로에서만 선택된다.
 
 import type { MissionV4, MissionV5Legacy, MissionV5Native } from "@/lib/pragma/missionSchema";
+import { TARGET_FEATURES } from "@/lib/pragma/targetFeatures";
+
+// 개발 미리보기는 현행 카탈로그를 사용한다. 저장된 과거 미션을 변환하는 경로가 아니다.
+const requestFeature = TARGET_FEATURES.request_mitigation_optionality;
 
 const ANCHOR_PDR = {
   p: "speaker_lower",
@@ -15,10 +19,9 @@ export const SAMPLE_MISSION_V4: MissionV4 = {
   direction: "ko_zh",
   unit: {
     target_feature: "request_mitigation_optionality",
-    target_feature_version: "1.0",
-    learner_label: "완화와 선택권",
-    closing_ko:
-      "요청은 상대에게 거절할 여지를 얼마나 남기느냐로 무게가 정해집니다. 친밀·저부담이면 직접형도 알맞고, 초면·고부담이면 선택권을 남기는 표현이 어울립니다.",
+    target_feature_version: requestFeature.version,
+    learner_label: requestFeature.learner_label,
+    closing_ko: requestFeature.closing_principle_ko,
   },
   mpj_items: [
     {

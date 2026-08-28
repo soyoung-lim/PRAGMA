@@ -8,6 +8,7 @@ import {
 } from "@/lib/mission/missionV4Sample";
 import { normalizeMission } from "@/lib/pragma/missionSchema";
 import { checkMission, type CheckContext } from "@/lib/pragma/missionRules";
+import { TARGET_FEATURES } from "@/lib/pragma/targetFeatures";
 import { CURRENT_MISSION_PROMPT_VERSIONS } from "../../../supabase/functions/_shared/contentRelease";
 
 const context: CheckContext = {
@@ -123,8 +124,8 @@ function missionV4() {
     schema_version: "mission_v4" as const,
     unit: {
       ...legacy.unit,
-      closing_ko:
-        "요청은 상대에게 거절할 여지를 얼마나 남기느냐로 무게가 정해집니다. 친밀·저부담이면 직접형도 알맞고, 초면·고부담이면 선택권을 남기는 표현이 어울립니다.",
+      target_feature_version: TARGET_FEATURES.request_mitigation_optionality.version,
+      closing_ko: TARGET_FEATURES.request_mitigation_optionality.closing_principle_ko,
     },
     mpj_items: [
       {
@@ -406,6 +407,21 @@ describe("mission_v5 native MPJ5 contract", () => {
   it("passes native order, anchor, and band rules", () => {
     const checked = checkMission(nativeFixture(), context);
     expect(checked.violations.filter((item) => item.level === "fail")).toEqual([]);
+  });
+
+  it("keeps catalog 1.0 records readable without silently approving them against 1.1", () => {
+    const historical = structuredClone(nativeFixture());
+    historical.unit.target_feature_version = "1.0";
+    historical.unit.closing_ko =
+      "요청은 상대에게 거절할 여지를 얼마나 남기느냐로 무게가 정해집니다. 친밀·저부담이면 직접형도 알맞고, 초면·고부담이면 선택권을 남기는 표현이 어울립니다.";
+    const before = structuredClone(historical);
+    const parsed = normalizeMission(historical);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data?.unit.target_feature_version).toBe("1.0");
+    const checked = checkMission(historical, context);
+    expect(checked.violations.filter((item) => item.id === "R13" || item.id === "R14")
+      .map((item) => item.id)).toEqual(["R13", "R14"]);
+    expect(historical).toEqual(before);
   });
 
   it("accepts four band-pair candidates without legacy roles and omits current native preceding turns", () => {
