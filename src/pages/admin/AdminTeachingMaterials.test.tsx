@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SAMPLE_MISSION_V5_NATIVE } from "@/lib/mission/missionV4Sample";
 import { buildInstructorMissionGuide } from "@/lib/pragma/instructorGuide";
 import AdminTeachingMaterials from "./AdminTeachingMaterials";
+import { REFUSAL_TEACHING_CASE } from "@/lib/curriculum/refusalTeachingCase";
 
 const mocks = vi.hoisted(() => ({ outlines: vi.fn(), curriculum: vi.fn(), cores: vi.fn(), assignments: vi.fn(), from: vi.fn(), missionRows: vi.fn() }));
 vi.mock("@/lib/curriculum/api", () => ({ listCurriculumOutlines: mocks.outlines, getCurriculumOutline: mocks.curriculum }));
@@ -36,6 +37,33 @@ function mount(weekNo = 2) {
 }
 
 describe("교과목·주차 수업자료 연결", () => {
+  it("선택 거절 미션의 전체 상황과 사후 지도안을 분리하고 프로젝터에 답안을 내보내지 않는다", async () => {
+    const example = REFUSAL_TEACHING_CASE;
+    mocks.curriculum.mockResolvedValue({ outline, weeks: [{ ...courseWeeks[0], week_no: 6, title: "거절", speech_act: "refusal" }] });
+    mocks.assignments.mockResolvedValue([{ week_no: 6, scenario_id: example.scenarioId, position: 0 }]);
+    mocks.cores.mockResolvedValue([{ scenario_id: example.scenarioId, speech_act: "refusal", mission_status: "reviewed", mode: "translation",
+      situation_ko: example.situationKo, source_text_ko: example.sourceText, target_feature: "refusal_softening" }]);
+    const mission = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    mission.production_task.situation_ko = example.situationKo;
+    mission.production_task.source_text = example.sourceText;
+    mission.production_task.reference_alternatives[0].text = example.referenceText;
+    mocks.missionRows.mockResolvedValue({ data: [{ scenario_id: example.scenarioId, speech_act: "refusal", mission_status: "reviewed", mission_content: mission }], error: null });
+    mount(6);
+    expect(await screen.findByText(example.situationKo)).toBeVisible();
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(screen.queryByText(example.title)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "교수자 전용 메모" }));
+    const title = await screen.findByText(example.title);
+    fireEvent.click(screen.getByText("미션 1 · 거절"));
+    fireEvent.click(title);
+    expect(screen.getByText(example.boundaries[0].text)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "프로젝터 화면" }));
+    expect(screen.queryByText(example.title)).not.toBeInTheDocument();
+    expect(screen.queryByText(example.referenceText)).not.toBeInTheDocument();
+    expect(screen.queryByText(example.boundaries[0].text)).not.toBeInTheDocument();
+    expect(screen.getByText(example.situationKo)).toBeInTheDocument();
+  });
+
   it("공통 자료에는 해설을 조회하지 않고 교수자 메모에서만 조회한다", async () => {
     mount();
     await screen.findByText("2주차 목표");

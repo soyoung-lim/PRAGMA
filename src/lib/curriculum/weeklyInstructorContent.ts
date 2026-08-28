@@ -1,9 +1,16 @@
 import type { LearnerCourseWeek } from "./learnerCourse";
 import { FEATURE_CODES_BY_ACT, getTargetFeature } from "@/lib/pragma/targetFeatures";
+import { refusalTeachingCaseFor } from "./refusalTeachingCase";
 
 /** 고유 교수자 설명의 단일 원본. 공용 출력 모델에서는 가져오지 않는다. */
 export function weeklyInstructorContent(week: LearnerCourseWeek, direction: string) {
+  const missionCases = week.speech_act === "refusal" ? week.scenarios.flatMap((scenario) => {
+    const teachingCase = refusalTeachingCaseFor(scenario, direction);
+    return teachingCase ? [teachingCase] : [];
+  }) : [];
   return {
+    // 무관한 주차의 검수 해시를 바꾸지 않도록 빈 속성은 추가하지 않는다.
+    ...(missionCases.length ? { missionCases } : {}),
     features: (week.speech_act ? FEATURE_CODES_BY_ACT[week.speech_act] : []).flatMap((code) => {
       const feature = getTargetFeature(code);
       return feature ? [{ code, label: feature.learner_label,
