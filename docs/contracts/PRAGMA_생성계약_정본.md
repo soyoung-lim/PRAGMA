@@ -487,8 +487,8 @@ MJT5라는 문항 형식의 다양성만으로 화행의 다차원 학습 범위
 
 - `scale4`는 독립 첫인상 문항이다. `accepted_scale_codes`는 같은 방향의 두 코드이고, `reference_scale_code`는 그 안의 대표 정도 하나다.
 - Scale4는 각 target feature 카탈로그의 `counter_rule_ko`가 경계하는 소박한 규칙에 대한 반례를 우선 배치한다. 특정 PDR에서는 직접성·강도·명료성·책임 범위 등 해당 자원의 다른 대역이 적절할 수 있음을 보여 주어, 더 간접적·길거나 강한 표현을 자동 상향하는 편향을 막는다.
-- `judge3`는 DCT 앵커와 같은 P·D·R의 다른 사건을 독립 판단한다. `fix_choice`는 다시 다른
-  사건에서 대역 판단을 잠근 뒤 권장안 1개와 경계안 2개를 공개하고 가장 알맞은 수정안 하나를
+- `judge3`가 DCT 앵커와 같은 P·D·R의 Anchor A를 독립 판단한다. `fix_choice`와 `reason`은
+  같은 Anchor A 상황을 공유한다. `fix_choice`는 대역 판단을 잠근 뒤 권장안 1개와 경계안 2개를 공개하고 가장 알맞은 수정안 하나를
   고르게 한다. 복수 선택 배열형 trace는 역사 응답 호환을 위해 유지한다.
 - `reason`은 이유 공개 전 `problem_band_code`와 같은 대역 체계로 최초 판단을 잠그고, 이유 3개와 단일 `accepted_reason_id` 중 하나를 고른다. 최초 판단과 이유 선택은 별도 trace로 남긴다.
 - `multi_judge` 후보 수는 모든 수준에서 4개로 고정한다. 역할은 `BEST 1·middle 2·WORST 1`이고,
@@ -535,10 +535,14 @@ P·D·R 원시 저장 코드는 학생에게 보여 주지 않는다. 현행 학
 
 각 미션 내부의 맥락 배치는 `앵커+대비`다.
 
-- Scale4: 소박한 규칙의 반례가 실제로 적절해지는 대비 PDR
-- Judge3·FixChoice·Reason: DCT와 같은 앵커 PDR, 서로 다른 사건
-- MultiJudge: 앵커 P/D/R 중 정확히 한 축만 바꾼 대비 상황
-- DCT: 같은 앵커 PDR의 새 사건으로 근접 전이
+- Scale4(MJT1): Anchor A에서 P/D/R 한 축만 바꾼 Contrast X
+- Judge3·FixChoice·Reason(MJT2·3·4): DCT와 같은 앵커 PDR과 동일한 Anchor A 상황
+- MultiJudge(MJT5): Anchor A에서 P/D/R 한 축만 바꾼 Contrast Y
+- DCT: 같은 앵커 PDR의 New Event C로 근접 전이
+
+서버는 MJT2가 생성한 Anchor A의 `situation_ko`·`relation_ko`·channel을 MJT3·4에 고정한다.
+따라서 현행 상황 topology는 `X → A → A → A → Y → C`다. X/A/Y/C 사이의 완전 중복은
+결정론적으로 차단하고, 의미적 차이·자연성·대비의 충분성은 AI critic과 교수자 검수가 판정한다.
 
 화행 학습 주차에는 같은 `speech_act`·수준·언어방향·수행모드의 완전한 MJT5+DCT1 미션 두 건을
 편성한다. 미션 2는 미션 1의 사실상 복제본이 아닌 새로운 상황이어야 한다. 생성과 검수는 각 미션을
@@ -637,7 +641,7 @@ AI 품질점검과 교수자 검수가 담당한다.
 | R24 | 계획 target feature와 생성 feature 일치 | fail |
 | R25 | 신규 코어 `context_spec`, 통역 A/B/C·PDR 역할 계약 | fail |
 | R26 | work 산업 라벨을 뒷받침하는 최소 분야 단서 | fail; 의미 품질의 최종 판정은 아님 |
-| R27 | MJT/DCT 장면 중복, 현행 학습자 장면 2문장·140자 이하 | fail/warning |
+| R27 | 현행 `X→A→A→A→Y→C` 상황 topology, X/A/Y/C 완전 중복, 학습자 장면 2문장·140자 이하 | topology·MJT 형식 fail, DCT 형식 warning |
 | R28 | 번역은 email/messenger, 통역은 face-to-face/phone | fail |
 | R29 | DCT 유효 글자 범위·focal segment·담화 전체 참고안 경고 | fail/warning; 길이 범위는 §2026-08-02 파일럿 |
 | R30 | 학생용 장면의 정답 평가 방향 노출 | fail |

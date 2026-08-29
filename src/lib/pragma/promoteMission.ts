@@ -154,6 +154,24 @@ export function repairFindingsForRuleViolations(
       }
       continue;
     }
+    if (violation.id === "R27") {
+      const itemNumber = Number(violation.message.match(/문항\s+(\d+)/)?.[1]);
+      const where = violation.message.includes("[slot:DCT]")
+        ? "production_task.situation_ko"
+        : Number.isInteger(itemNumber) && itemNumber >= 1 && itemNumber <= 5
+          ? `mpj_items[${itemNumber - 1}].situation_ko`
+          : null;
+      if (where && !seen.has(where)) {
+        seen.add(where);
+        findings.push({
+          code: "rule_R27_situation",
+          severity: "fail",
+          where,
+          note_ko: violation.message,
+        });
+      }
+      continue;
+    }
     if (!ITEM_BLOCK_REPAIRABLE_RULES.has(violation.id)) continue;
     if (PDR_FROZEN_ITEM_RULES.has(violation.id) && /PDR/i.test(violation.message)) continue;
     const itemGroup = violation.message.match(/문항\s+([0-9·]+)/)?.[1];
@@ -161,16 +179,13 @@ export function repairFindingsForRuleViolations(
       ?.split("·")
       .map(Number)
       .filter((value) => Number.isInteger(value) && value >= 1 && value <= 5);
-    const repairItemNumbers = violation.id === "R27" && itemNumbers && itemNumbers.length > 1
-      ? itemNumbers.slice(1)
-      : itemNumbers ?? [];
+    const repairItemNumbers = itemNumbers ?? [];
     for (const itemNumber of repairItemNumbers) {
-      const isDuplicateSituation = violation.id === "R27" && violation.message.includes("중복");
-      const where = `mpj_items[${itemNumber - 1}]${isDuplicateSituation ? ".situation_ko" : ""}`;
+      const where = `mpj_items[${itemNumber - 1}]`;
       if (seen.has(where)) continue;
       seen.add(where);
       findings.push({
-        code: isDuplicateSituation ? "rule_R27_duplicate_situation" : `rule_${violation.id}_item`,
+        code: `rule_${violation.id}_item`,
         severity: "fail",
         where,
         note_ko: violation.message,
@@ -298,6 +313,7 @@ export function buildContrastPlan(speechAct: SpeechActUI, itemFocus: string) {
 }
 
 export type MissionRepairOperation =
+  | { operation: "replace_situation"; path: string; situation_ko: string }
   | { operation: "replace_item_block"; item_index: number; item: Record<string, unknown> }
   | { operation: "replace_fix_choice_candidate"; item_index: number; candidate_index: number; candidate: Record<string, unknown> }
   | { operation: "replace_multi_judge_candidate"; item_index: number; candidate_index: number; candidate: Record<string, unknown> }
@@ -318,7 +334,16 @@ export function applyMissionRepairOperations(
     ? { ...patched.production_task }
     : {};
   for (const operation of operations) {
-    if (operation.operation === "replace_item_block") {
+    if (operation.operation === "replace_situation") {
+      const itemMatch = operation.path.match(/^mpj_items\[(\d+)\]\.situation_ko$/);
+      if (itemMatch) {
+        const itemIndex = Number(itemMatch[1]);
+        const item = isRecord(items[itemIndex]) ? items[itemIndex] as Record<string, unknown> : null;
+        if (item) items[itemIndex] = { ...item, situation_ko: operation.situation_ko };
+      } else if (operation.path === "production_task.situation_ko") {
+        productionTask.situation_ko = operation.situation_ko;
+      }
+    } else if (operation.operation === "replace_item_block") {
       if (operation.item_index >= 0 && operation.item_index < items.length) {
         items[operation.item_index] = operation.item;
       }

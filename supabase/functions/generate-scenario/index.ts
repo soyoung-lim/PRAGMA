@@ -50,7 +50,7 @@ import {
   hskReferenceCeiling,
   type HskTokenMatch,
 } from '../_shared/hskLexicalAudit.ts'
-import { canonicalizeNativeMpj5AnchorPdr } from '../_shared/missionCanonicalization.ts'
+import { canonicalizeNativeMpj5ContextTopology } from '../_shared/missionCanonicalization.ts'
 import {
   MISSION_CANDIDATE_REFERENCES,
   applyMissionCandidateBlueprints,
@@ -1874,12 +1874,21 @@ function buildMissionSystemPrompt(
   const pdrPerspectiveRule = isSpoken
     ? '- pdr.p는 **원발화자 A 기준**입니다: A가 청자 B보다 지위가 낮으면 "speaker_lower". relation_ko의 A↔B 관계와 pdr 값이 반드시 일치해야 합니다.'
     : '- pdr.p는 **화자(나) 기준**입니다: 화자가 상대(상사·교수 등)보다 지위가 낮으면 "speaker_lower". relation_ko의 관계 서술과 pdr 값이 반드시 일치해야 합니다.'
+  const anchorSituationShape = nativeMpj5
+    ? `Anchor A. ${situationShape}`
+    : situationShape
+  const sharedAnchorSituationShape = nativeMpj5
+    ? `MJT2의 Anchor A와 글자까지 같은 상황문. ${situationShape}`
+    : situationShape
+  const reasonSituationShape = nativeMpj5
+    ? sharedAnchorSituationShape
+    : `첫 문항과 다른 사건. ${situationShape}`
   const judge3Shape = nativeMpj5
     ? `,
     {
       "type": "judge3",
       "channel": "허용 channel 코드",
-      "situation_ko": "첫 장면과 다른 사건. ${situationShape}",
+      "situation_ko": "${anchorSituationShape}",
       "relation_ko": "${relationShape}",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
@@ -1895,8 +1904,11 @@ function buildMissionSystemPrompt(
     ? '**첫인상 판단 → 맥락 대비 판단 → 판단하고 고쳐보기 → 이유 찾기 → 여러 초안 비교**'
     : '**첫인상 판단 → 판단하고 고쳐보기 → 이유 찾기 → 여러 초안 비교**'
   const nativeJudgeIntro = nativeMpj5
-    ? ' 독립 Judge3는 DCT 앵커 맥락에서 첫 장면과 다른 판정을 만들고,'
+    ? ' Judge3가 Anchor A를 만들고 FixChoice·Reason은 같은 상황을 공유하며,'
     : ''
+  const fixChoiceFlow = nativeMpj5
+    ? ' FixChoice는 같은 Anchor A에서 판단을 잠근 뒤 교정안을 공개합니다.'
+    : ' FixChoice는 별도 사건에서 판단을 잠근 뒤 교정안을 공개합니다.'
   const exactOrder = nativeMpj5
     ? 'scale4 → judge3 → fix_choice → reason → multi_judge'
     : 'scale4 → fix_choice → reason → multi_judge'
@@ -1916,16 +1928,25 @@ function buildMissionSystemPrompt(
 `
     : ''
   const nativeJudgeRules = nativeMpj5
-    ? `- judge3는 DCT와 같은 앵커 P/D/R의 별도 사건이며, scale4와 달리 비적정 대역 하나를 판정하게 합니다.
-- MPJ1(scale4)↔MPJ2(judge3)는 **최소대조 한 쌍**입니다. 화행·item_focus·핵심 목표어 실현 전략은 유지하고,
+    ? `- judge3는 DCT와 같은 앵커 P/D/R의 Anchor A이며, 비적정 대역 하나를 판정하게 합니다.
+- MJT1(scale4) Contrast X↔MJT2(judge3) Anchor A는 **최소대조 한 쌍**입니다. 화행·item_focus·핵심 목표어 실현 전략은 유지하고,
   P/D/R 중 정확히 한 축만 바꿔 적절성 방향이 달라지게 하세요. 두 사건의 명제 내용은 달라도 되지만,
   explanation_ko에는 무엇이 유지되고 어떤 맥락축 하나가 바뀌었는지 구체적으로 쓰세요.
 `
     : ''
   const targetTypes = nativeMpj5 ? 'judge3·fix_choice·reason' : 'fix_choice·reason'
   const anchorContrastRule = nativeMpj5
-    ? 'judge3·fix_choice·reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건'
+    ? 'judge3가 Anchor A를 한 번 만들고 fix_choice·reason은 그 situation_ko·relation_ko를 글자까지 동일하게 공유하며, 세 문항 모두 DCT와 같은 P/D/R을 사용'
     : 'fix_choice·reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건'
+  const contextTopologyRule = nativeMpj5
+    ? `- 🔴 [R27 v2 상황 topology] MJT1 X → MJT2 A → MJT3 A → MJT4 A → MJT5 Y → DCT C입니다.
+  MJT2에서 Anchor A 상황을 한 번 만들고 MJT3·4는 같은 사건을 다시 표현하지 말고 situation_ko·relation_ko를 정확히 복사하세요.
+  서버도 MJT2의 A를 MJT3·4에 고정합니다. MJT1 X와 MJT5 Y는 각각 A에서 P/D/R 한 축만 바꾼 별도 대비 사건이고,
+  DCT C는 Anchor P/D/R을 유지하는 새 사건입니다. X/A/Y/C는 서로 완전히 같은 상황문을 쓰지 마세요.`
+    : ''
+  const sceneUniquenessRule = nativeMpj5
+    ? '- 🔴 [R27 v2 장면 구조] MJT2·3·4의 situation_ko는 Anchor A로 정확히 같아야 하고, MJT1 X·Anchor A·MJT5 Y·DCT C는 서로 다른 구체적 사건이어야 합니다.'
+    : `- 🔴 [장면 고유성] ${itemCount}개 situation_ko는 서로 다른 구체적 사건이어야 합니다. 같은 인물·용건·대상을 둔 사실상 같은 장면이나 동일 문장을 문항 사이에 복사하지 말고, 출력 전에 모든 situation_ko를 서로 대조하세요.`
   const featureBoundaryRule = f.code === 'proposal_optionality_clarity'
     ? `🔴 제안 초점 경계: 문장이 **구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는다면** 선택 가능성과 방안 명료성을 모두 갖춘 적정 대역입니다. "두 가지를 생각했다"나 "정해야 한다" 같은 도입이 있어도 뒤에서 실제 대안과 의견 질문을 분명히 제시하면 too_tentative·too_directive로 붙이지 마세요. too_tentative는 행동/대안을 실제로 흐리거나 생략하고, too_directive는 결정을 확정하거나 선택을 명령하는 문장 자체로 실현하세요. 특히 원문에 구체적인 대안 둘이 이미 고정된 문항의 비적정 target·candidate는 두 대안 사실을 보존한 실제 too_directive 경계로 만들고, 적정 질문문에 too_tentative 라벨을 붙이지 마세요.`
     : ''
@@ -1949,7 +1970,7 @@ ${gate1}${spokenRule}
 
 MPJ ${itemCount}문항을 만듭니다. 학습 흐름은 ${learningFlow}입니다.
 Scale4는 종합 첫인상을 4점으로 받고 적절/부적절 방향만 채점합니다.${nativeJudgeIntro}
- FixChoice는 별도 사건에서 판단을 잠근 뒤 교정안을 공개합니다.
+${fixChoiceFlow}
 Reason 문항은 표현이 부적절하다는 전제에서 가장 큰 이유 하나를 바로 고르게 하며, 별도의 대역 판단이나 확신도는 묻지 않습니다.
 각 MPJ 문항에서 후보를 가르는 직접 채점축은 위 item_focus band 하나뿐입니다(한 문항 안의 다른 축 동시 변화 금지).
 그러나 미션 전체의 학습목표는 특정 feature 하나가 아니라 해당 화행의 통합 수행입니다.
@@ -1989,7 +2010,7 @@ ${diagnosticShape}
     {
       "type": "fix_choice",
       "channel": "허용 channel 코드",
-      "situation_ko": "${situationShape}",
+      "situation_ko": "${sharedAnchorSituationShape}",
       "relation_ko": "${relationShape}",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
@@ -2008,7 +2029,7 @@ ${diagnosticShape}
     {
       "type": "reason",
       "channel": "허용 channel 코드",
-      "situation_ko": "첫 문항과 다른 사건. ${situationShape}",
+      "situation_ko": "${reasonSituationShape}",
       "relation_ko": "${relationShape}",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
@@ -2055,7 +2076,7 @@ ${diagnosticShape}
 
 핵심 규칙:
 - mpj_items는 **정확히 ${itemCount}개**, 순서는 ${exactOrder}.
-- 🔴 [장면 고유성] ${itemCount}개 situation_ko는 서로 다른 구체적 사건이어야 합니다. 같은 인물·용건·대상을 둔 사실상 같은 장면이나 동일 문장을 문항 사이에 복사하지 말고, 출력 전에 모든 situation_ko를 서로 대조하세요.
+${sceneUniquenessRule}
 ${nativeMpj5 ? `- diagnostic_dimensions는 **서로 다른 코드 2~6개**입니다. 각 code의 evidence_refs는 중복 없이 1개 이상이고, 전체 합집합은 MPJ/DCT 중 최소 2개 위치여야 합니다.
 - 선언한 차원은 그 근거 위치의 situation·P/D/R·preceding_turn·후보·DCT에서 실제로 관찰되어야 합니다. target_feature 이름을 바꿔 적거나 근거 없는 차원을 채우지 마세요.
 - 같은 evidence_ref가 여러 차원을 뒷받침할 수 있지만, 가능한 차원을 전부 체크하는 식의 과잉 선언은 금지합니다.` : ''}
@@ -2106,6 +2127,7 @@ ${nativeJudgeRules}- fix_choice는 **판단을 먼저 한 뒤 교정**하는 한
 - **앵커+대비**: ${anchorContrastRule},
   scale4는 해당 표현이 실제로 적절해지는 대비 P/D/R, multi_judge는 DCT P/D/R 중 정확히 한 축만 바꾼 대비 사건입니다.
 - DCT는 코어의 같은 P/D/R에서 새 장면을 쓰는 근접 전이 과제입니다. MPJ가 DCT 상황문을 그대로 복제하면 안 됩니다.
+${contextTopologyRule}
 ${sceneRules}
 - channel은 연구 축이 아니라 UI 표현용입니다. 상황과 일치시켜 번역은 email/messenger, 통역은 facetoface/phone만 사용하세요.
 - reason의 세 선택지는 target을 사실대로 기술해야 합니다. 실제 있는 요소를 "없다"고 쓰지 말고, 세 선택지 모두 표면상 검토할 가치가 있어야 하며 primary 하나만 판정의 가장 큰 원인이어야 합니다.
@@ -2529,7 +2551,13 @@ function repairTargets(findings: MissionRepairBody['findings']) {
     collection: 'corrections' | 'candidates'
   }> = []
   const itemIndexes: number[] = []
+  const situationTargets: string[] = []
   for (const finding of actionableRepairFindings(findings)) {
+    if (/^mpj_items\[\d+\]\.situation_ko$/.test(finding.where) ||
+        finding.where === 'production_task.situation_ko') {
+      situationTargets.push(finding.where)
+      continue
+    }
     const candidateMatch = finding.where.match(/mpj_items\[(\d+)\]\.(corrections|candidates)\[(\d+)\]/)
     if (candidateMatch) {
       const itemIndex = Number(candidateMatch[1])
@@ -2557,6 +2585,7 @@ function repairTargets(findings: MissionRepairBody['findings']) {
   return {
     itemIndexes: uniqueItemIndexes,
     candidateTargets: uniqueCandidateTargets,
+    situationTargets: [...new Set(situationTargets)],
     productionReferences,
     diagnosticDimensions,
   }
@@ -2603,7 +2632,25 @@ function buildMissionRepairPrompt(b: MissionRepairBody): { system: string; user:
       findings: targetFindings.filter((finding) => finding.where === path),
     }
   })
+  const situationPackets = targets.situationTargets.map((path) => ({
+    path,
+    current_situation_ko: path === 'production_task.situation_ko'
+      ? (b.mission_content.production_task as Record<string, unknown> | undefined)?.situation_ko
+      : (missionItems[Number(path.match(/mpj_items\[(\d+)\]/)?.[1])] as Record<string, unknown> | undefined)?.situation_ko,
+    immutable_situations: [
+      ...missionItems.map((item, index) => ({
+        path: `mpj_items[${index}].situation_ko`,
+        situation_ko: (item as Record<string, unknown> | undefined)?.situation_ko,
+      })),
+      {
+        path: 'production_task.situation_ko',
+        situation_ko: (b.mission_content.production_task as Record<string, unknown> | undefined)?.situation_ko,
+      },
+    ].filter((item) => item.path !== path),
+    findings: targetFindings.filter((finding) => finding.where === path),
+  }))
   const allowed = [
+    ...targets.situationTargets.map((path) => `replace_situation:${path}`),
     ...targets.itemIndexes.map((index) => `replace_item_block:${index}`),
     ...targets.candidateTargets.map((target) =>
       `${target.collection === 'corrections' ? 'replace_fix_choice_candidate' : 'replace_multi_judge_candidate'}:${target.itemIndex}:${target.candidateIndex}`),
@@ -2612,16 +2659,18 @@ function buildMissionRepairPrompt(b: MissionRepairBody): { system: string; user:
   ]
   const system = `당신은 PRAGMA 교수자 저작 파이프라인의 국소 수리 모델입니다.
 결정론 검사 또는 critic이 지목한 대상만 고치고, 통과한 후보·문항과 DCT 코어는 절대 바꾸지 마세요.
+R27 situation 경로가 지목되면 replace_situation으로 그 문자열 하나만 다시 만드세요. 다른 필드는 반환하거나
+바꾸지 마세요. MJT3·4 Anchor A 경로라면 새 사건을 만들지 말고 packet의 MJT2 Anchor A 문자열을 그대로 씁니다.
 후보 경로가 지목되면 replace_fix_choice_candidate 또는 replace_multi_judge_candidate로 그 후보 하나만
 다시 만드세요. candidate에는 text와 note_ko만 반환하며 is_valid·accepted_band_codes·comparison_role은
 서버가 원본 그대로 동결합니다. 문항 전체 operation으로 후보 수리를 우회하지 마세요.
-허용 operation은 replace_fix_choice_candidate, replace_multi_judge_candidate, replace_item_block,
+허용 operation은 replace_situation, replace_fix_choice_candidate, replace_multi_judge_candidate, replace_item_block,
 replace_reference_alternatives, replace_diagnostic_dimensions입니다. replace_item_block은 item_index와 완전한
 item을, 나머지는 각각 지정 후보 또는 reference_alternatives·diagnostic_dimensions를 반환합니다.
 문항의 id·type·item_focus·axis_feature·source·PDR·preceding_turn은 원본을 유지합니다.
 원문의 행위자·사건·시간·수량·대안·핵심 명제·화행 목적을 유지하고, 문제로 지목된 화용 표현·
-후보·해설만 고치세요. 단, rule_R27_duplicate_situation은 동결된 source와 PDR에 맞게
-situation_ko만 다른 문항·DCT와 구별되는 구체적 장면으로 다시 쓰세요. 다른 문항을 더 좋게
+후보·해설만 고치세요. 단, rule_R27_situation은 동결된 source와 PDR에 맞게
+지목된 situation_ko만 topology 역할에 맞는 구체적 장면으로 다시 쓰세요. 다른 문항을 더 좋게
 쓰려는 변경은 금지합니다.
 모든 교체 문항의 explanation_ko와 note_ko는 **현재 상황 단서 → 실제 표현 자원·기능 → 관계적
 효과 → 유지/조정 한 지점**을 연결하고 한 화용 차이만 설명하세요. multi_judge의 적정안 2개는
@@ -2641,7 +2690,8 @@ band_mismatch 후보는 이전 표현을 방어하거나 가볍게 바꿔 쓰지
 immutable_peer_texts와 정규화 후 같은 문장도 무효입니다. packet의 repair_boundary_rule을
 실제 문장 기능으로 구현하고, 일반적인 공손·완화 표지를 단순 중첩한 것을 경계 밖 표현으로
 오인하지 마세요.
-각 operation 객체는 아래 다섯 형태 중 하나를 **키 이름까지 정확히** 따르세요.
+각 operation 객체는 아래 여섯 형태 중 하나를 **키 이름까지 정확히** 따르세요.
+- {"operation":"replace_situation","path":"mpj_items[4].situation_ko 또는 production_task.situation_ko","situation_ko":"한국어 정확히 2문장"}
 - {"operation":"replace_fix_choice_candidate","item_index":2,"candidate_index":1,"candidate":{"text":"완전한 후보 문장","note_ko":"표현 자원·관계 효과·조정 방향"}}
 - {"operation":"replace_multi_judge_candidate","item_index":4,"candidate_index":3,"candidate":{"text":"완전한 후보 문장","note_ko":"표현 자원·관계 효과·조정 방향"}}
 - {"operation":"replace_item_block","item_index":4,"item":{원본과 같은 type의 완전한 문항 객체}}
@@ -2660,7 +2710,9 @@ op·action·index·replacement 같은 다른 키 이름이나 수정된 필드�
     JSON.stringify(targetFindings, null, 2),
     ...(candidatePackets.length > 0
       ? ['[실패 후보별 최소 수리 packet — 여기에 없는 문항은 immutable]', JSON.stringify(candidatePackets, null, 2)]
-      : ['[동결된 전체 미션]', JSON.stringify(b.mission_content, null, 2)]),
+      : situationPackets.length > 0
+        ? ['[실패 상황별 최소 수리 packet — path 밖의 상황은 immutable]', JSON.stringify(situationPackets, null, 2)]
+        : ['[동결된 전체 미션]', JSON.stringify(b.mission_content, null, 2)]),
   ].join('\n')
   return { system, user }
 }
@@ -2681,11 +2733,26 @@ function sanitizeMissionRepairOperations(
   const sanitized: Array<Record<string, unknown>> = []
   const candidateTargetKeys = new Set(targets.candidateTargets.map((target) =>
     `${target.itemIndex}:${target.collection}:${target.candidateIndex}`))
+  const situationTargetPaths = new Set(targets.situationTargets)
   for (const value of operations) {
     const operation = value && typeof value === 'object' && !Array.isArray(value)
       ? value as Record<string, unknown>
       : {}
     const operationName = operation.operation ?? operation.op ?? operation.action
+    if (operationName === 'replace_situation') {
+      const path = String(operation.path ?? '')
+      const situation = typeof operation.situation_ko === 'string' ? operation.situation_ko.trim() : ''
+      if (!situationTargetPaths.has(path) || !situation) continue
+      const itemMatch = path.match(/^mpj_items\[(\d+)\]\.situation_ko$/)
+      const current = itemMatch
+        ? (items[Number(itemMatch[1])] as Record<string, unknown> | undefined)?.situation_ko
+        : path === 'production_task.situation_ko'
+          ? (mission.production_task as Record<string, unknown> | undefined)?.situation_ko
+          : null
+      if (situation === current) continue
+      sanitized.push({ operation: 'replace_situation', path, situation_ko: situation })
+      continue
+    }
     if (operationName === 'replace_fix_choice_candidate' || operationName === 'replace_multi_judge_candidate') {
       const itemIndex = Number(operation.item_index ?? operation.itemIndex)
       const candidateIndex = Number(operation.candidate_index ?? operation.candidateIndex)
@@ -2776,7 +2843,7 @@ function sanitizeMissionRepairOperations(
       })
     }
   }
-  return sanitized.slice(0, targets.itemIndexes.length + targets.candidateTargets.length + 2)
+  return sanitized.slice(0, targets.situationTargets.length + targets.itemIndexes.length + targets.candidateTargets.length + 2)
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -3737,7 +3804,7 @@ Deno.serve(async (req) => {
       }
       const rawItems = Array.isArray(gen.mpj_items) ? gen.mpj_items : []
       const canonicalItems = isMiniDiscourse
-        ? canonicalizeNativeMpj5AnchorPdr(rawItems, b.core.pdr)
+        ? canonicalizeNativeMpj5ContextTopology(rawItems, b.core.pdr)
         : rawItems
       let plannedItems = isMiniDiscourse
         ? applyMissionCandidateBlueprints(canonicalItems, b.feature)

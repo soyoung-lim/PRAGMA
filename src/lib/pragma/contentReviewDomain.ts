@@ -60,8 +60,8 @@ export function buildContentReviewDomain(kind: string, source: Record<string, an
   const featureCodes = act ? FEATURE_CODES_BY_ACT[act as keyof typeof FEATURE_CODES_BY_ACT] ?? [] : [];
   const snapshot = { content, criteria: { version: CONTENT_REVIEW_VERSION,
     // Rule corrections get a new content hash without replacing prior runs.
-    rules_version: "mission_rules_v8_comparison_compat_v1",
-    mission_design: "MJT5+DCT1. 같은 화행의 서로 다른 상황에서 완전 미션 2개. A/B 실험·전이 효과 검증 아님.",
+    rules_version: "mission_rules_v9_r27_topology",
+    mission_design: "MJT5+DCT1. 상황 topology는 X→A→A→A→Y→C이며 Anchor A를 MJT2·3·4가 공유함. A/B 실험·전이 효과 검증 아님.",
     features: featureCodes.map((code) => getTargetFeature(code)).filter(Boolean),
     scope: "수업에 채택할 현재 정적 콘텐츠 원본. 개별 학습자 실시간 피드백의 전수 감사는 포함하지 않음.",
   } };

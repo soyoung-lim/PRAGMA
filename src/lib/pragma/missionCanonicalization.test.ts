@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { canonicalizeNativeMpj5AnchorPdr } from '../../../supabase/functions/_shared/missionCanonicalization'
+import {
+  canonicalizeNativeMpj5AnchorPdr,
+  canonicalizeNativeMpj5ContextTopology,
+} from '../../../supabase/functions/_shared/missionCanonicalization'
 
 describe('canonicalizeNativeMpj5AnchorPdr', () => {
-  it('copies the production PDR onto anchor items and preserves one MJT5 contrast axis', () => {
+  it('copies the production PDR onto anchor items and preserves one axis for both contrasts', () => {
     const anchor = { p: 'equal', d: 'acquaintance', r: 'low' }
     const items = [
       { type: 'scale4', pdr: { p: 'speaker_lower', d: 'distant', r: 'mid' } },
@@ -16,7 +19,7 @@ describe('canonicalizeNativeMpj5AnchorPdr', () => {
     const result = canonicalizeNativeMpj5AnchorPdr(items, anchor)
 
     expect(result.map((item) => item.pdr)).toEqual([
-      items[0].pdr,
+      { p: 'speaker_lower', d: 'acquaintance', r: 'low' },
       anchor,
       anchor,
       anchor,
@@ -24,7 +27,7 @@ describe('canonicalizeNativeMpj5AnchorPdr', () => {
     ])
   })
 
-  it('reduces a multi-axis MJT5 contrast to one valid axis without touching other items', () => {
+  it('reduces multi-axis X/Y contrasts to one valid axis', () => {
     const anchor = { p: 'equal', d: 'acquaintance', r: 'low' }
     const items = [
       { type: 'scale4', pdr: { p: 'speaker_lower', d: 'distant', r: 'high' } },
@@ -32,7 +35,7 @@ describe('canonicalizeNativeMpj5AnchorPdr', () => {
     ]
 
     expect(canonicalizeNativeMpj5AnchorPdr(items, anchor)).toEqual([
-      items[0],
+      { type: 'scale4', pdr: { p: 'speaker_lower', d: 'acquaintance', r: 'low' } },
       { type: 'multi_judge', pdr: { p: 'speaker_higher', d: 'acquaintance', r: 'low' } },
     ])
   })
@@ -49,5 +52,26 @@ describe('canonicalizeNativeMpj5AnchorPdr', () => {
   it('leaves items unchanged when the production PDR is absent', () => {
     const items = [{ type: 'reason', pdr: { p: 'equal', d: 'close', r: 'low' } }]
     expect(canonicalizeNativeMpj5AnchorPdr(items, null)).toBe(items)
+  })
+})
+
+describe('canonicalizeNativeMpj5ContextTopology', () => {
+  it('freezes MJT2 Anchor A onto MJT3 and MJT4 without changing expressions', () => {
+    const anchorPdr = { p: 'equal', d: 'acquaintance', r: 'mid' }
+    const items = [
+      { type: 'scale4', situation_ko: 'Contrast X', relation_ko: 'X relation', channel: 'messenger', pdr: { ...anchorPdr, r: 'low' } },
+      { type: 'judge3', situation_ko: 'Anchor A', relation_ko: 'A relation', channel: 'email', pdr: anchorPdr, target: 'judge' },
+      { type: 'fix_choice', situation_ko: 'old fix scene', relation_ko: 'old relation', channel: 'messenger', pdr: anchorPdr, corrections: ['fixed'] },
+      { type: 'reason', situation_ko: 'old reason scene', relation_ko: 'old relation', channel: 'messenger', pdr: anchorPdr, reasons: ['fixed'] },
+      { type: 'multi_judge', situation_ko: 'Contrast Y', relation_ko: 'Y relation', channel: 'messenger', pdr: { ...anchorPdr, r: 'high' } },
+    ]
+
+    const result = canonicalizeNativeMpj5ContextTopology(items, anchorPdr)
+
+    expect(result.map((item) => item.situation_ko)).toEqual([
+      'Contrast X', 'Anchor A', 'Anchor A', 'Anchor A', 'Contrast Y',
+    ])
+    expect(result[2]).toMatchObject({ relation_ko: 'A relation', channel: 'email', corrections: ['fixed'] })
+    expect(result[3]).toMatchObject({ relation_ko: 'A relation', channel: 'email', reasons: ['fixed'] })
   })
 })

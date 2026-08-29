@@ -267,7 +267,11 @@ const V5_MULTI = SAMPLE_MISSION_V5.mpj_items[3] as Extract<
   { type?: "multi_judge" }
 >;
 
-/** 현행 생성 계약과 같은 독립 맥락 대비 문항을 가진 네이티브 MPJ5 샘플. */
+const V5_NATIVE_ANCHOR_SITUATION =
+  "나는 거래처 자료 담당자에게 이미 마감한 보고서의 원본 파일을 다시 보내 달라고 요청하려 한다. 몇 차례 업무 연락만 한 사이이고, 상대는 보관 자료를 다시 찾아야 한다.";
+const V5_NATIVE_ANCHOR_RELATION = "거래처 자료 담당자 · 몇 차례 연락한 사이";
+
+/** 현행 X→A→A→A→Y→C 맥락 topology를 가진 네이티브 MJT5 샘플. */
 export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
   ...SAMPLE_MISSION_V5,
   production_task: {
@@ -292,15 +296,22 @@ export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
     },
   ],
   mpj_items: [
-    { ...V5_SCALE, id: 1, preceding_turn: null },
+    {
+      ...V5_SCALE,
+      id: 1,
+      situation_ko:
+        "나는 거래처 자료 담당자에게 방금 정리한 최신 안내 파일을 다시 보내 달라고 요청하려 한다. 몇 차례 업무 연락한 사이지만 파일이 준비돼 있어 상대의 추가 부담은 낮다.",
+      relation_ko: V5_NATIVE_ANCHOR_RELATION,
+      pdr: { ...ANCHOR_PDR, r: "low" },
+      preceding_turn: null,
+    },
     {
       id: 2,
       type: "judge3",
       axis_feature: "request_mitigation_optionality",
       channel: "messenger",
-      situation_ko:
-        "나는 거래처 자료 담당자에게 이미 마감한 보고서의 원본 파일을 다시 보내 달라고 요청하려 한다. 몇 차례 업무 연락만 한 사이이고, 상대는 보관 자료를 다시 찾아야 한다.",
-      relation_ko: "거래처 자료 담당자 · 몇 차례 연락한 사이",
+      situation_ko: V5_NATIVE_ANCHOR_SITUATION,
+      relation_ko: V5_NATIVE_ANCHOR_RELATION,
       pdr: ANCHOR_PDR,
       preceding_turn: null,
       source: "보고서 원본 파일을 다시 보내 주세요.",
@@ -314,10 +325,67 @@ export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
     {
       ...V5_FIX,
       id: 3,
+      situation_ko: V5_NATIVE_ANCHOR_SITUATION,
+      relation_ko: V5_NATIVE_ANCHOR_RELATION,
+      pdr: ANCHOR_PDR,
       preceding_turn: null,
-      corrections: [V5_FIX.corrections[0], V5_FIX.corrections[2], V5_FIX.corrections[3]],
+      source: "보고서 원본 파일을 다시 보내 주실 수 있을까요?",
+      target: "把报告的原文件再发给我。",
+      highlights: ["发给我"],
+      corrections: [
+        {
+          text: "请问方便把报告的原文件再发给我吗？",
+          is_valid: true,
+          note_ko: "가능 여부를 물어 자료를 다시 찾아야 하는 상대의 선택권을 남깁니다.",
+        },
+        {
+          text: "请把报告的原文件再发给我。",
+          is_valid: false,
+          note_ko: "부탁 표지는 있지만 가능 여부를 묻지 않아 현재 부담에 비해 직접적입니다.",
+        },
+        {
+          text: "报告原文件的事，您有空时再看看就行。",
+          is_valid: false,
+          note_ko: "무엇을 언제 보내야 하는지 흐려져 요청의 명료성이 부족합니다.",
+        },
+      ],
+      explanation_ko:
+        "같은 Anchor A에서 가능 여부를 묻는 첫 수정안만 상대의 자료 탐색 부담과 선택권을 함께 반영합니다.",
+      recommended_example: "请问方便把报告的原文件再发给我吗？",
     },
-    { ...V5_REASON, id: 4, preceding_turn: null },
+    {
+      ...V5_REASON,
+      id: 4,
+      situation_ko: V5_NATIVE_ANCHOR_SITUATION,
+      relation_ko: V5_NATIVE_ANCHOR_RELATION,
+      pdr: ANCHOR_PDR,
+      preceding_turn: null,
+      source: "보고서 원본을 다시 전달해 주세요.",
+      target: "把报告的原文件再发给我。",
+      highlights: ["发给我"],
+      problem_band_code: "too_direct",
+      reasons: [
+        {
+          id: "r1",
+          text_ko: "보고서 원본이라는 파일 종류를 구체적으로 밝혔기 때문이다.",
+          kind: "meaning_grammar_context",
+        },
+        {
+          id: "r2",
+          text_ko: "가능 여부를 묻지 않아 자료를 다시 찾아야 하는 상대의 선택권을 남기지 않기 때문이다.",
+          kind: "primary",
+        },
+        {
+          id: "r3",
+          text_ko: "간결한 요청은 어떤 업무 관계에서도 항상 무례하기 때문이다.",
+          kind: "pragmatic_misconception",
+        },
+      ],
+      accepted_reason_id: "r2",
+      explanation_ko:
+        "Anchor A의 핵심 문제는 문장 길이가 아니라 자료를 다시 찾아야 하는 상대에게 가능 여부를 묻지 않은 점입니다.",
+      recommended_example: "请问方便把报告的原文件再发给我吗？",
+    },
     {
       ...V5_MULTI,
       id: 5,
@@ -332,7 +400,7 @@ export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
   ],
   provenance: {
     ...SAMPLE_MISSION_V5.provenance!,
-    prompt_version: "mission_v5_mpj5_minidiscourse_v4_concise_learner_flow",
-    content_release_id: "pragma_content_candidate_20260825_01",
+    prompt_version: "mission_v5_mpj5_minidiscourse_v12_r27_topology",
+    content_release_id: "pragma_scope_lock_20260830_07_mjt5_dct1_r27_topology",
   },
 };

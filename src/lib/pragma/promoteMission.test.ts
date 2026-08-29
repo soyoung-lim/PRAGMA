@@ -10,20 +10,21 @@ import {
 } from "./promoteMission";
 
 describe("repairFindingsForRuleViolations", () => {
-  it("keeps the first duplicate and repairs every later R27 item", () => {
-    expect(repairFindingsForRuleViolations([{
-      id: "R27",
-      level: "fail",
-      message: "v4 MPJ 문항 2·3·4의 situation_ko가 완전히 중복됨. 앵커 PDR은 유지하되 다시 만드세요",
-    }])).toEqual([
-      expect.objectContaining({
-        code: "rule_R27_duplicate_situation",
-        where: "mpj_items[2].situation_ko",
-      }),
-      expect.objectContaining({
-        code: "rule_R27_duplicate_situation",
-        where: "mpj_items[3].situation_ko",
-      }),
+  it("routes only the violating R27 situation slot", () => {
+    expect(repairFindingsForRuleViolations([
+      {
+        id: "R27",
+        level: "fail",
+        message: "문항 5: [slot:MJT5] Contrast Y situation_ko가 X 또는 A와 완전히 중복됨",
+      },
+      {
+        id: "R27",
+        level: "fail",
+        message: "production_task: [slot:DCT] New Event C situation_ko가 X/A/Y 상황을 완전히 복제함",
+      },
+    ])).toEqual([
+      expect.objectContaining({ code: "rule_R27_situation", where: "mpj_items[4].situation_ko" }),
+      expect.objectContaining({ code: "rule_R27_situation", where: "production_task.situation_ko" }),
     ]);
   });
 
@@ -55,6 +56,27 @@ describe("repairFindingsForRuleViolations", () => {
 });
 
 describe("candidate-level mission repair", () => {
+  it("replaces only the selected situation string", () => {
+    const original = {
+      mpj_items: [
+        { id: 1, type: "scale4", situation_ko: "X", target: "immutable" },
+        { id: 2, type: "judge3", situation_ko: "A" },
+      ],
+      production_task: { situation_ko: "C", source_text: "immutable source" },
+    };
+
+    const patched = applyMissionRepairOperations(original, [
+      { operation: "replace_situation", path: "mpj_items[0].situation_ko", situation_ko: "new X" },
+      { operation: "replace_situation", path: "production_task.situation_ko", situation_ko: "new C" },
+    ]);
+
+    expect(patched.mpj_items).toEqual([
+      { id: 1, type: "scale4", situation_ko: "new X", target: "immutable" },
+      { id: 2, type: "judge3", situation_ko: "A" },
+    ]);
+    expect(patched.production_task).toEqual({ situation_ko: "new C", source_text: "immutable source" });
+  });
+
   it("allows the initial boundary call plus only one stored-draft regeneration", () => {
     expect(candidateRetryAlreadyAttempted(1)).toBe(false);
     expect(candidateRetryAlreadyAttempted(2)).toBe(true);

@@ -6,6 +6,7 @@ import { buildReviewPrompt, instructionalMission, materializeReviewEvidence, nex
   type ContentReviewRun, type ReviewResult } from "../../../supabase/functions/_shared/contentReview";
 import { callContentReviewer } from "../../../supabase/functions/_shared/contentReviewProvider";
 import { REFUSAL_TEACHING_CASE } from "@/lib/curriculum/refusalTeachingCase";
+import { CURRENT_CONTENT_RELEASE_ID } from "../../../supabase/functions/_shared/contentRelease";
 
 const snapshot = { content: { source: "请您参加活动。" }, criteria: { version: "test" } };
 const finding = { severity: "warning", where: "/content/source", quote: "请您参加活动。", issue_ko: "지적", reason_ko: "이유", suggestion_ko: "제안",
@@ -111,7 +112,7 @@ describe("current content five-stage review", () => {
       core_content: {}, mission_content: SAMPLE_MISSION_V5_NATIVE,
     } });
     const { rules_version, ...previousCriteria } = domain.snapshot.criteria;
-    expect(rules_version).toBe("mission_rules_v8_comparison_compat_v1");
+    expect(rules_version).toBe("mission_rules_v9_r27_topology");
     expect(await reviewHash(domain.snapshot)).not.toBe(await reviewHash({
       ...domain.snapshot, criteria: previousCriteria,
     }));
@@ -121,7 +122,8 @@ describe("current content five-stage review", () => {
     const source = { outline: { id: "course", title: "수업", level: "intermediate", language_direction: "ko_zh", course_mode: "translation", target_interpreting_week_count: 0 },
       week: { week_no: 2, title: "요청", type: "regular", speech_act: "request", can_do: ["학습목표"] },
       assignments: [{ scenario_id: "m1", week_no: 2, position: 0 }],
-      scenarios: [{ scenario_id: "m1", mission_status: "reviewed", mode: "translation", core_content: { situation_ko: "상황입니다.", source_text: "원문" } }],
+      scenarios: [{ scenario_id: "m1", mission_status: "reviewed", content_release_id: CURRENT_CONTENT_RELEASE_ID,
+        mode: "translation", core_content: { situation_ko: "상황입니다.", source_text: "원문" } }],
     };
     const domain = buildContentReviewDomain("weekly_material", source);
     expect(domain.rules.verdict).toBe("fail");
@@ -141,7 +143,7 @@ describe("current content five-stage review", () => {
       outline: { id: "course", title: "수업", level: "intermediate", language_direction: "ko_zh", course_mode: "translation", target_interpreting_week_count: 0 },
       week: { week_no: 6, title: "거절", type: "regular", speech_act: "refusal", can_do: [] },
       assignments: [{ scenario_id: example.scenarioId, week_no: 6, position: 0 }],
-      scenarios: [{ scenario_id: example.scenarioId, speech_act: "refusal", mission_status: "reviewed", mode: "translation",
+      scenarios: [{ scenario_id: example.scenarioId, speech_act: "refusal", mission_status: "reviewed", content_release_id: CURRENT_CONTENT_RELEASE_ID, mode: "translation",
         core_content: { situation_ko: example.situationKo, source_text_ko: example.sourceText } }],
     });
     const content = domain.snapshot.content as any;

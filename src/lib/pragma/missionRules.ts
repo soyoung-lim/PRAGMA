@@ -1114,34 +1114,56 @@ function pdrDifferenceCount(
 function checkV4ContextPlan(v: RuleViolation[], m: MissionV4 | MissionV5, conciseCurrentNative = false) {
   const production = m.production_task.situation_ko.trim();
   const situations = m.mpj_items.map((it) => it.situation_ko.trim());
-  const situationIndexes = new Map<string, number[]>();
-  situations.forEach((situation, index) => {
-    const indexes = situationIndexes.get(situation) ?? [];
-    indexes.push(index + 1);
-    situationIndexes.set(situation, indexes);
-  });
-  for (const [situation, indexes] of situationIndexes) {
-    if (indexes.length < 2) continue;
-    add(
-      v,
-      "R27",
-      "fail",
-      `v4 MJT 문항 ${indexes.join("·")}의 situation_ko가 완전히 중복됨: ` +
-        `"${situation.slice(0, 90)}${situation.length > 90 ? "…" : ""}". ` +
-        "앵커 PDR은 유지하되 인물의 구체적 용건·대상·사건을 서로 다르게 다시 만드세요",
-    );
+  if (conciseCurrentNative && situations.length === 5) {
+    const [contrastX, anchorA, anchorFix, anchorReason, contrastY] = situations;
+    if (anchorFix !== anchorA) {
+      add(v, "R27", "fail", "문항 3: [slot:MJT3] Anchor A situation_ko가 MJT2와 동일하지 않음");
+    }
+    if (anchorReason !== anchorA) {
+      add(v, "R27", "fail", "문항 4: [slot:MJT4] Anchor A situation_ko가 MJT2와 동일하지 않음");
+    }
+    if (contrastX === anchorA) {
+      add(v, "R27", "fail", "문항 1: [slot:MJT1] Contrast X situation_ko가 Anchor A와 완전히 중복됨");
+    }
+    if (contrastY === anchorA || contrastY === contrastX) {
+      add(v, "R27", "fail", "문항 5: [slot:MJT5] Contrast Y situation_ko가 X 또는 A와 완전히 중복됨");
+    }
+    if ([contrastX, anchorA, contrastY].includes(production)) {
+      add(v, "R27", "fail", "production_task: [slot:DCT] New Event C situation_ko가 X/A/Y 상황을 완전히 복제함");
+    }
+    if (pdrDifferenceCount(m.mpj_items[0].pdr, m.production_task.pdr) !== 1) {
+      add(v, "R27", "fail", "문항 1: [slot:MJT1] Contrast X는 Anchor PDR에서 정확히 한 축만 달라야 함");
+    }
+  } else {
+    const situationIndexes = new Map<string, number[]>();
+    situations.forEach((situation, index) => {
+      const indexes = situationIndexes.get(situation) ?? [];
+      indexes.push(index + 1);
+      situationIndexes.set(situation, indexes);
+    });
+    for (const [situation, indexes] of situationIndexes) {
+      if (indexes.length < 2) continue;
+      add(
+        v,
+        "R27",
+        "fail",
+        `v4 MJT 문항 ${indexes.join("·")}의 situation_ko가 완전히 중복됨: ` +
+          `"${situation.slice(0, 90)}${situation.length > 90 ? "…" : ""}". ` +
+          "앵커 PDR은 유지하되 인물의 구체적 용건·대상·사건을 서로 다르게 다시 만드세요",
+      );
+    }
+    situations.forEach((situation, index) => {
+      if (situation !== production) return;
+      add(
+        v,
+        "R27",
+        "fail",
+        `v4 MJT 문항 ${index + 1}의 situation_ko가 DCT 상황을 그대로 복제함: ` +
+          `"${situation.slice(0, 90)}${situation.length > 90 ? "…" : ""}". ` +
+          "같은 앵커 PDR을 유지하면서도 DCT와 다른 인물의 구체적 용건·대상·사건으로 다시 만드세요",
+      );
+    });
   }
-  situations.forEach((situation, index) => {
-    if (situation !== production) return;
-    add(
-      v,
-      "R27",
-      "fail",
-      `v4 MJT 문항 ${index + 1}의 situation_ko가 DCT 상황을 그대로 복제함: ` +
-        `"${situation.slice(0, 90)}${situation.length > 90 ? "…" : ""}". ` +
-        "같은 앵커 PDR을 유지하면서도 DCT와 다른 인물의 구체적 용건·대상·사건으로 다시 만드세요",
-    );
-  });
   for (const it of m.mpj_items) {
     const sentenceMarks = (it.situation_ko.match(/[.!?。！？]/g) ?? []).length;
     if (conciseCurrentNative && (sentenceMarks !== 2 || it.situation_ko.trim().length > 140)) {

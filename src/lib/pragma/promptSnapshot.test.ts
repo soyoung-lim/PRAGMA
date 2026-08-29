@@ -70,9 +70,9 @@ describe("prompt snapshot integrity", () => {
     expect(learnerSceneRepair.text).toContain("관찰 가능한 사실로 그대로 보존");
   });
 
-  it("prevents duplicate MPJ scenes and injects the fixed contrast plan", () => {
+  it("locks the R27 anchor topology and injects the fixed contrast plan", () => {
     expect(prompt("mission.system").text).toContain(
-      "5개 situation_ko는 서로 다른 구체적 사건",
+      "MJT2·3·4의 situation_ko는 Anchor A로 정확히 같아야",
     );
     const planned = prompt("mission.user.contrast_plan").text;
     expect(planned).toContain("[고정 contrast plan — 그대로 구현]");
@@ -259,8 +259,10 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).toContain("MPJ 5문항");
       expect(entry.text).toContain("첫인상 판단 → 맥락 대비 판단 → 판단하고 고쳐보기 → 이유 찾기 → 여러 초안 비교");
       expect(entry.text).toContain("scale4 → judge3 → fix_choice → reason → multi_judge");
-      expect(entry.text).toContain("독립 Judge3는 DCT 앵커 맥락");
-      expect(entry.text).toContain("judge3는 DCT와 같은 앵커 P/D/R의 별도 사건");
+      expect(entry.text).toContain("Judge3가 Anchor A를 만들고 FixChoice·Reason은 같은 상황을 공유");
+      expect(entry.text).toContain("MJT1 X → MJT2 A → MJT3 A → MJT4 A → MJT5 Y → DCT C");
+      expect(entry.text).toContain("MJT2·3·4의 situation_ko는 Anchor A로 정확히 같아야");
+      expect(entry.text).not.toContain(`[장면 고유성] 5개 situation_ko는 서로 다른`);
       expect(entry.text).toContain("reason에는 accepted_band_codes·confidence를 만들지 마세요");
       expect(entry.text).toContain("정확히 4후보이며 **적정 대역 2개 + 조정 필요 대역 2개**");
       expect(entry.text).toContain("두 적정안은 같은 답의 재서술이 아니어야 합니다");
