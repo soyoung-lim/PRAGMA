@@ -1,0 +1,200 @@
+{
+  "evidence_id": "EVD-20260830-03",
+  "checked_at_local_date": "2026-08-30",
+  "baseline": {
+    "source_commit": "738238570df14963ea72b372cb40bdb9c6b9e718",
+    "run_id": "scope-lock-pilot-20260830-08-yield30",
+    "release_id": "pragma_scope_lock_20260830_08_mjt5_dct1_r27_repair_context",
+    "core_prompt_surface_hash": "6e5aee7cf1244bd9dc0f0b44d01f7e9aa35dfef008f8ff67f56ef7048060b0a1",
+    "edge_generate_scenario_version": 104,
+    "edge_sha256": "58dc699be06258f5a136a4791b442c7aea7c9b1317cefac7ac681d0a7a3261a8"
+  },
+  "review_scope": {
+    "production_canary": "gpt-4o generation -> R1-R33 -> gpt-4.1 quality_v16 -> bounded recovery -> eligible/quarantine",
+    "claude_in_this_canary": false,
+    "representative_e2e": "OpenAI content-review -> Claude independent content-review -> OpenAI adjudication -> professor approval",
+    "candidate_pool_500_requires_claude_for_every_item": false,
+    "reviewed_60_representative_12_e2e_4_include_claude": true
+  },
+  "plan": {
+    "planned_cells": 30,
+    "same_lock_pilot_item_indexes_as_06": true,
+    "initial_core_saved": 23,
+    "hard_invalid_replacement_targets": 7,
+    "hard_invalid_replacement_saved": 3,
+    "final_core_saved": 26,
+    "mission_attempted": 26,
+    "excluded_core_cells": [
+      { "item_index": 170, "direct_cause": "core_source_length_hard_invalid" },
+      { "item_index": 260, "direct_cause": "R26_industry_specificity" },
+      { "item_index": 280, "direct_cause": "core_source_length_hard_invalid" },
+      { "item_index": 290, "direct_cause": "core_source_length_hard_invalid" }
+    ]
+  },
+  "yield": {
+    "first_pass_eligible": 5,
+    "first_pass_rate_planned": 0.1666666667,
+    "first_pass_rate_mission_attempted": 0.1923076923,
+    "final_eligible": 10,
+    "final_rate_planned": 0.3333333333,
+    "final_rate_mission_attempted": 0.3846153846,
+    "final_rejected": 20,
+    "final_rejected_rate_planned": 0.6666666667,
+    "stored_verdicts": { "pass": 0, "warning": 10, "fail": 2 },
+    "unstored_missions": 14
+  },
+  "final_failure_direct_causes": {
+    "core_source_length_hard_invalid": 3,
+    "R26_core_industry_specificity": 1,
+    "R27_confirmed_from_completed_runner_output": 6,
+    "relative_boundary_output_incomplete": 5,
+    "terminal_current_quality_fail": 2,
+    "pre_pause_terminal_detail_unavailable": 3,
+    "counts_are_mutually_exclusive_and_sum_to_30_minus_final_eligible": true
+  },
+  "r27": {
+    "confirmed_final_direct_dropouts": 6,
+    "confirmed_repair_attempted": 5,
+    "confirmed_repair_recovered": 0,
+    "confirmed_unrepairable_dct_path": 1,
+    "all_mission_repair_operations": 12,
+    "all_mission_repair_final_eligible": 5,
+    "all_mission_repair_final_dropout": 7,
+    "max_repair_per_scenario": 1,
+    "boundary_note": "Three terminal results completed before the manual pause, but their runner error summaries were not durably recorded. Ledger operation names alone cannot assign those three to R27 or another rule."
+  },
+  "quality_and_recovery": {
+    "fail_lineage_revisions": 8,
+    "terminal_current_fail_drafts": 2,
+    "band_mismatch": {
+      "missions_with_fail_lineage": 4,
+      "fail_findings_across_lineage": 7,
+      "recovered_to_warning": 2,
+      "terminal_current_fail": 2
+    },
+    "implausible_distractor": {
+      "missions_with_fail_lineage": 3,
+      "fail_findings_across_lineage": 4,
+      "recovered_to_warning": 3,
+      "terminal_current_fail": 0
+    },
+    "persisted_candidate_regeneration_target_missions": 6,
+    "persisted_candidate_regeneration_candidates": 8,
+    "candidate_regeneration_max_per_candidate": 1,
+    "normal_peer_pollution_observed": 0,
+    "bounded_recovery_violation": 0,
+    "failed_revision_eligible": 0,
+    "reviewed_or_released": 0,
+    "course_assignments": 0
+  },
+  "infrastructure": {
+    "total_provider_requests": 201,
+    "successful_model_calls": 194,
+    "failed_provider_requests": 7,
+    "failed_statuses": { "429": 7 },
+    "provider_reliability": 0.9651741294,
+    "failed_operations": { "core_repair": 6, "mission_generate": 1 },
+    "manual_operational_interruptions": 1,
+    "manual_interruption_recovery_scenario": "cb001bf5-c93f-4e57-a020-5d53db5ef386",
+    "final_item_loss_directly_attributed_only_to_infrastructure": 0
+  },
+  "model_usage": {
+    "successful_calls": 194,
+    "prompt_tokens": 869805,
+    "cached_input_tokens": 173696,
+    "completion_tokens": 103898,
+    "total_tokens": 973703,
+    "by_model": {
+      "gpt-4.1-mini-2025-04-14": {
+        "successful_calls": 37,
+        "prompt_tokens": 135598,
+        "cached_input_tokens": 75776,
+        "completion_tokens": 8636,
+        "estimated_standard_api_cost_usd": 0.045324
+      },
+      "gpt-4.1-2025-04-14": {
+        "successful_calls": 84,
+        "prompt_tokens": 351185,
+        "cached_input_tokens": 36608,
+        "completion_tokens": 28525,
+        "estimated_standard_api_cost_usd": 0.875658
+      },
+      "gpt-4o-2024-08-06": {
+        "successful_calls": 73,
+        "prompt_tokens": 383022,
+        "cached_input_tokens": 61312,
+        "completion_tokens": 66737,
+        "estimated_standard_api_cost_usd": 1.548285
+      }
+    },
+    "estimated_standard_api_cost_usd": 2.469267,
+    "requests_per_eligible": 20.1,
+    "successful_calls_per_eligible": 19.4,
+    "tokens_per_eligible": 97370.3,
+    "estimated_cost_per_eligible_usd": 0.2469267,
+    "pricing_basis": "Same published standard API price basis stored in EVD-20260829-04; estimate is not an invoice and excludes Supabase/Edge overhead."
+  },
+  "comparison_to_06": {
+    "baseline": {
+      "total_provider_requests": 224,
+      "successful_model_calls": 219,
+      "successful_tokens": 1133961,
+      "estimated_cost_usd": 2.9261105,
+      "final_eligible": 19
+    },
+    "absolute": {
+      "core_saved": { "_06": 29, "_08": 26 },
+      "first_pass_eligible": { "_06": 12, "_08": 5 },
+      "final_eligible": { "_06": 19, "_08": 10 }
+    },
+    "per_eligible_change_percent": {
+      "total_provider_requests": 70.4910714286,
+      "successful_model_calls": 68.3105022831,
+      "successful_tokens": 63.1480888673,
+      "estimated_cost": 60.3359579209
+    },
+    "cost_warning_threshold_exceeded": true
+  },
+  "axis_distribution": {
+    "direction": {
+      "ko_zh": { "planned": 20, "eligible": 6, "failure_rate": 0.7 },
+      "zh_ko": { "planned": 10, "eligible": 4, "failure_rate": 0.6 }
+    },
+    "level": {
+      "intermediate": { "planned": 20, "eligible": 7, "failure_rate": 0.65 },
+      "advanced": { "planned": 10, "eligible": 3, "failure_rate": 0.7 }
+    },
+    "mode": {
+      "translation": { "planned": 24, "eligible": 8, "failure_rate": 0.6666666667 },
+      "stt_interpreting": { "planned": 6, "eligible": 2, "failure_rate": 0.6666666667 }
+    },
+    "eligible_speech_acts": {
+      "agreement": 1,
+      "apology": 1,
+      "complaint": 2,
+      "compliment": 1,
+      "opposition": 0,
+      "proposal": 1,
+      "refusal": 2,
+      "request": 2,
+      "thanks": 0
+    }
+  },
+  "professor_eye_review_candidates_not_approved": [
+    { "scenario_id": "8242c579-4f86-4564-a655-903a53236764", "direction": "ko_zh", "level": "intermediate", "mode": "stt_interpreting", "speech_act": "complaint" },
+    { "scenario_id": "62836a32-0ddc-41c9-b515-0e871cd0d5ac", "direction": "ko_zh", "level": "intermediate", "mode": "stt_interpreting", "speech_act": "proposal" },
+    { "scenario_id": "04250280-0276-41e8-9714-af160b1bc4c8", "direction": "ko_zh", "level": "advanced", "mode": "translation", "speech_act": "refusal" },
+    { "scenario_id": "ff4fb74e-37f2-486f-ab96-291dbaf83de0", "direction": "ko_zh", "level": "advanced", "mode": "translation", "speech_act": "complaint" },
+    { "scenario_id": "9f1109e2-1ac1-42c0-94c2-d5d93cbd40a9", "direction": "zh_ko", "level": "intermediate", "mode": "translation", "speech_act": "apology" }
+  ],
+  "decision": {
+    "result": "production_structure_review_required",
+    "reasons": [
+      "final eligible 10/30 is below the production-structure threshold",
+      "confirmed R27 direct dropout is 6/30",
+      "relative boundary output incomplete directly dropped 5/30",
+      "all four per-eligible usage metrics worsened by more than 50 percent versus _06"
+    ],
+    "automatic_500_started": false
+  }
+}

@@ -2965,3 +2965,28 @@
   균형 30·500을 실행하지 않는다.
 - 관련: `DEC-20260830-02`, `EVD-20260830-02`,
   `docs/dev-log/2026-08-30-r27-residual-clean8.md`.
+
+## ITER-20260830-03 · `_08` 균형 30과 production/representative 검수 경계
+
+- 날짜: 2026-08-30
+- 시작 문제: `_08` clean 8만으로 500 생산 수율을 판정할 수 없었고, 자동 생산 canary 도중
+  Claude를 추가하면 `_06` 비교 가능성이 깨지는 반면 최종 E2E에서 Claude를 빼면 교차검증 증거
+  사슬이 불완전해진다.
+- 설계 경계: 이번 30은 GPT-4o 생성·R1~R33·GPT-4.1 `quality_v16`·bounded recovery까지만
+  측정했다. 60 reviewed·대표12·동일-ID E2E4에는 별도 content-review의 OpenAI 검수·Claude
+  독립 검수·OpenAI adjudication·교수자 승인을 포함한다. 코드·DB·release와 생성 규칙은 바꾸지 않았다.
+- 실행: 동일 30셀에서 최초 core 23개, 실패 7셀의 허용된 1회 대체 뒤 26개를 저장·미션 시도했다.
+  provider 확인 중 한 차례 수동 중단했으나 완료된 성공·탈락 6건은 재실행하지 않고 진행 중 1건만
+  operational interruption으로 분리해 재개했다.
+- 결과: 첫 패스 5/30, 최종 10/30, 저장 warning 10·current fail 2·미저장 14다. 최종 탈락은
+  core 4, 확인된 R27 6, 상대 경계 누락 5, terminal quality fail 2, 중단 전 상세 code 확인 불가 3이다.
+  mission repair 12회는 미션당 최대 1회였고 최종 적격 5·탈락 7이었다. 후보 교체는 6미션·8후보,
+  정상 peer 오염·failed revision 적격 승격·bounded 위반은 0이다.
+- 비용: provider requests 201, 성공 model calls 194, 성공 token 973,703, 동일 단가 추정 $2.469다.
+  적격당 requests/calls/token/cost는 `_06`보다 70.5%/68.3%/63.1%/60.3% 높다. 429 7건과 수동
+  interruption은 semantic dropout과 분리했고 인프라 단독 최종 탈락은 0이다.
+- 예상과 달랐던 점/교훈: R27 repair context를 보강했지만 균형 표본에서 확인 가능한 R27 직접
+  탈락이 다시 6/30이었고 상대 경계 누락도 5건으로 늘었다. 국소 규칙 하나의 추가 보정보다 전체
+  생성·복구 단가와 실패 topology를 함께 재검토해야 하며 500을 강행할 근거가 없다.
+- 관련: `DEC-20260830-03`, `EVD-20260830-03`,
+  `docs/dev-log/2026-08-30-08-production-yield30.md`.

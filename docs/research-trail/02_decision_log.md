@@ -3110,3 +3110,27 @@
   시작하지 않는다. 실패 critic 본문을 저장하지 않는 현행 정책상 두 수리본의 critical code는
   `확인 불가`로 남긴다.
 - 근거: `ITER-20260830-02`, `EVD-20260830-02`, 구현 `7973ef6`, Edge v104.
+
+## DEC-20260830-03 · production canary와 대표 E2E의 다중모델 검수 범위 분리
+
+- 날짜: 2026-08-30
+- 상태: 연구자 승인·`_08` 균형 30 완료. 500 본생성 정지.
+- 문제: `_08` 중간에 Claude 검수를 추가하면 `_06`과 자동 생산 수율을 비교할 수 없지만, 이를 이유로
+  Claude 독립 검수를 최종 검수·공개 workflow에서 제외하면 다중모델 교차검증과 교수자 승인 증거 사슬이
+  끊긴다.
+- 결정: `_08` production canary는 `GPT-4o 생성 → R1~R33 → GPT-4.1 quality_v16 → bounded recovery`
+  까지만 측정한다. Claude/Anthropic은 이번 30의 hard gate나 수율 분모에 넣지 않는다. 500 candidate
+  pool에도 전수 Claude hard gate를 요구하지 않는다.
+- 대표 E2E 경계: 60개 실제 교과목용 reviewed mission, Defense Representative Set 12개, 동일-ID
+  E2E 4개에는 별도 `content-review` workflow의 OpenAI 검수 → Claude 독립 검수 → OpenAI
+  adjudication → 교수자 최종 승인을 포함한다. 자동 생산 critic과 content-review OpenAI 단계를 같은
+  호출로 과장하지 않고 각 invocation·판정·승인을 따로 추적한다.
+- 변경 없음: R1~R33, R27, candidate blueprint, 상대 대역, mission prompt, critic 기준,
+  release/fingerprint, UI·DB schema는 동결한다.
+- 실행 결과/판정: 첫 패스 5/30, 최종 10/30이다. 확인 가능한 R27 직접 탈락 6건과 상대 경계
+  출력 누락 5건이 반복됐고, 적격당 requests·성공 호출·token·추정비용은 `_06`보다 각각
+  70.5%·68.3%·63.1%·60.3% 증가했다. fail revision은 generated 격리로 적격·공개되지 않았지만
+  사전 yield·반복 defect·비용 기준을 충족하지 못해 **production 구조 재검토 필요**로 판정하고
+  500을 시작하지 않는다.
+- 근거: `docs/dev-log/2026-08-30-08-production-yield30.md`; run
+  `scope-lock-pilot-20260830-08-yield30`; `EVD-20260830-03`, `ITER-20260830-03`.
