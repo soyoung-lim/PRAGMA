@@ -2927,3 +2927,23 @@
   500을 실행하지 않는다.
 - 관련: `DEC-20260829-04`, `EVD-20260829-04`, aggregate
   `docs/research-trail/evidence/2026-08-29-scope-lock-p0/yield30-production-canary.json`.
+
+## ITER-20260830-01 · R27 v2 topology와 표적 8 sniper 재개
+
+- 날짜: 2026-08-30
+- 시작 문제: `_06`의 주요 수율 병목 R27은 상황 비교가 필요한 MJT2·3·4까지 별도 사건으로
+  강제했다. 규칙만 완화하지 않고 생성·검사·repair를 같은 topology에 맞출 필요가 있었다.
+- 변경: MJT1 X, MJT2·3·4 A, MJT5 Y, DCT C를 생성계약과 deterministic 검사에 반영하고,
+  서버가 A의 situation·relation·channel을 MJT3·4에 복사한다. R27 finding은 해당 situation 경로
+  하나로만 수리한다. 과거 `_06`은 backfill하지 않았다.
+- 예상과 달랐던 점: 첫 실행에서 situation-only repair target이 action guard에서 누락되어 AI 호출
+  전에 빈 operations로 종료됐다. 다른 성공분을 폐기하지 않고 조건 한 줄만 보정해 동일 run을
+  재개했다. 이후 한 R27 셀은 회복됐으나 두 셀은 각각 수리 후 critic/구조검사를 통과하지 못했다.
+- 검증/결과: 표적 74 tests·typecheck·최종 snapshot 13 tests 통과. 코어 8/8, 최초 적격 3/8,
+  sniper 재개 후 누적 5/8이다. 저장 warning 5·fail 0·미저장 3, 최종 원인은 R27 2와 상대 경계
+  출력 누락 1이다. ledger 77/77 성공·381,854 token이며 실패 revision 저장은 0이다.
+- 교훈: deterministic Anchor 공유는 R27 실패를 줄였지만 X/Y의 새 사건 생성과 situation-only
+  repair의 의미 정합성을 자동으로 보장하지 않는다. Gate 1 실패 상태에서 균형 30으로 표본을 늘리면
+  원인을 희석하므로 사전 계약대로 정지한다.
+- 관련: `DEC-20260830-01`, `EVD-20260830-01`,
+  `docs/dev-log/2026-08-30-r27-topology-canary.md`.
