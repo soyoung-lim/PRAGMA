@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   applyMissionRepairOperations,
   canPersistRepairQuality,
+  candidateRetryAlreadyAttempted,
+  candidateRegenerationFindings,
+  qualityAfterCandidateRegeneration,
   repairFindingsForRuleViolations,
 } from "./promoteMission";
 
@@ -52,6 +55,12 @@ describe("repairFindingsForRuleViolations", () => {
 });
 
 describe("candidate-level mission repair", () => {
+  it("allows the initial boundary call plus only one stored-draft regeneration", () => {
+    expect(candidateRetryAlreadyAttempted(1)).toBe(false);
+    expect(candidateRetryAlreadyAttempted(2)).toBe(true);
+    expect(candidateRetryAlreadyAttempted(3)).toBe(true);
+  });
+
   it("changes only the targeted MJT3/MJT5 candidate and freezes answer metadata", () => {
     const original = {
       mpj_items: [
@@ -120,5 +129,80 @@ describe("candidate-level mission repair", () => {
       prompt_version: "quality-test",
       checked_at: "2026-08-29T00:00:00.000Z",
     })).toBe(false);
+  });
+
+  it("routes only exact MJT3/MJT5 band or plausibility failures to regeneration", () => {
+    const quality = {
+      verdict: "fail" as const,
+      summary_ko: "fail",
+      findings: [
+        { code: "band_mismatch", severity: "fail" as const, where: "mpj_items[2].corrections[1]", note_ko: "band" },
+        { code: "implausible_distractor", severity: "fail" as const, where: "mpj_items[4].candidates[3].text", note_ko: "implausible" },
+        { code: "band_mismatch", severity: "fail" as const, where: "mpj_items[1].target", note_ko: "not candidate" },
+        { code: "unnatural_language", severity: "fail" as const, where: "mpj_items[2].corrections[2]", note_ko: "repair" },
+      ],
+      model: "critic",
+      prompt_version: "quality-test",
+      checked_at: "2026-08-29T00:00:00.000Z",
+    };
+    expect(candidateRegenerationFindings(quality).map((finding) => finding.where)).toEqual([
+      "mpj_items[2].corrections[1]",
+      "mpj_items[4].candidates[3].text",
+    ]);
+  });
+
+  it("removes only regenerated candidate failures and preserves uncertainty as warning", () => {
+    const quality = qualityAfterCandidateRegeneration({
+      verdict: "fail",
+      summary_ko: "before",
+      findings: [
+        { code: "band_mismatch", severity: "fail", where: "mpj_items[2].corrections[1]", note_ko: "old" },
+        { code: "feedback_quality_mismatch", severity: "warning", where: "mpj_items[0].explanation_ko", note_ko: "keep" },
+      ],
+      model: "critic",
+      prompt_version: "quality-test",
+      checked_at: "2026-08-29T00:00:00.000Z",
+    }, ["mpj_items[2].corrections[1]"], [{
+      path: "mpj_items[2].corrections[1]",
+      severity: "warning",
+      actual_band_code: "uncertain",
+      note_ko: "경계 불확실",
+    }], {
+      model: "candidate-critic",
+      promptVersion: "candidate-v1",
+      checkedAt: "2026-08-29T00:01:00.000Z",
+      missionContentHash: "hash",
+    });
+    expect(quality.verdict).toBe("warning");
+    expect(quality.findings).toEqual([
+      expect.objectContaining({ code: "feedback_quality_mismatch", note_ko: "keep" }),
+      expect.objectContaining({ code: "band_mismatch", severity: "warning", note_ko: expect.stringContaining("candidate_boundary_uncertain") }),
+    ]);
+  });
+
+  it("keeps an unrelated critical finding after the targeted candidate is resolved", () => {
+    const quality = qualityAfterCandidateRegeneration({
+      verdict: "fail",
+      summary_ko: "before",
+      findings: [
+        { code: "band_mismatch", severity: "fail", where: "mpj_items[2].corrections[1]", note_ko: "candidate" },
+        { code: "band_mismatch", severity: "fail", where: "mpj_items[1].target", note_ko: "non-target" },
+      ],
+      model: "critic",
+      prompt_version: "quality-test",
+      checked_at: "2026-08-29T00:00:00.000Z",
+    }, ["mpj_items[2].corrections[1]"], [{
+      path: "mpj_items[2].corrections[1]",
+      severity: "pass",
+    }], {
+      model: "candidate-critic",
+      promptVersion: "candidate-v1",
+      checkedAt: "2026-08-29T00:01:00.000Z",
+      missionContentHash: "hash",
+    });
+    expect(quality.verdict).toBe("fail");
+    expect(quality.findings).toEqual([
+      expect.objectContaining({ where: "mpj_items[1].target", severity: "fail" }),
+    ]);
   });
 });

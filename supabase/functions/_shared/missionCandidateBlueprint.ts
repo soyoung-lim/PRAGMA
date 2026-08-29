@@ -30,6 +30,47 @@ export interface MissionCandidateBlueprintSet {
   multi_judge: MissionCandidateBlueprint[]
 }
 
+export interface MissionCandidateReference {
+  item_type: 'fix_choice' | 'multi_judge'
+  item_index: 2 | 4
+  collection: 'corrections' | 'candidates'
+  candidate_index: number
+  anchor_candidate_index: number | null
+  phase: 'within_anchor' | 'relative_boundary'
+}
+
+/** mission_v5 고정 순서에서 MJT3·MJT5 후보와 최소대조 anchor의 유일한 매핑. */
+export const MISSION_CANDIDATE_REFERENCES: readonly MissionCandidateReference[] = [
+  { item_type: 'fix_choice', item_index: 2, collection: 'corrections', candidate_index: 0, anchor_candidate_index: null, phase: 'within_anchor' },
+  { item_type: 'fix_choice', item_index: 2, collection: 'corrections', candidate_index: 1, anchor_candidate_index: 0, phase: 'relative_boundary' },
+  { item_type: 'fix_choice', item_index: 2, collection: 'corrections', candidate_index: 2, anchor_candidate_index: 0, phase: 'relative_boundary' },
+  { item_type: 'multi_judge', item_index: 4, collection: 'candidates', candidate_index: 0, anchor_candidate_index: null, phase: 'within_anchor' },
+  { item_type: 'multi_judge', item_index: 4, collection: 'candidates', candidate_index: 1, anchor_candidate_index: 0, phase: 'relative_boundary' },
+  { item_type: 'multi_judge', item_index: 4, collection: 'candidates', candidate_index: 2, anchor_candidate_index: null, phase: 'within_anchor' },
+  { item_type: 'multi_judge', item_index: 4, collection: 'candidates', candidate_index: 3, anchor_candidate_index: 2, phase: 'relative_boundary' },
+] as const
+
+export function missionCandidatePath(reference: MissionCandidateReference): string {
+  return `mpj_items[${reference.item_index}].${reference.collection}[${reference.candidate_index}]`
+}
+
+export function missionCandidateReferenceForPath(path: string): MissionCandidateReference | null {
+  return MISSION_CANDIDATE_REFERENCES.find((reference) => {
+    const base = missionCandidatePath(reference)
+    return path === base || path.startsWith(`${base}.`)
+  }) ?? null
+}
+
+export function missionCandidateBlueprintForReference(
+  feature: CandidateBlueprintFeature,
+  reference: MissionCandidateReference,
+): MissionCandidateBlueprint | null {
+  const set = buildMissionCandidateBlueprints(feature)
+  return reference.item_type === 'fix_choice'
+    ? set.fix_choice[reference.candidate_index] ?? null
+    : set.multi_judge[reference.candidate_index] ?? null
+}
+
 const PRESERVE = [
   'propositional_meaning',
   'utterance_intent',

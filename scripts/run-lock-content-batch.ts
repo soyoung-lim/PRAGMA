@@ -63,21 +63,43 @@ if (phase === "audit") {
   if (!summary.targetMet || !summary.directionMinimumsMet) process.exitCode = 1;
 } else if (phase === "mission") {
   const cores = await loadLockMissionBatchCores(runId);
-  const results = await runMissionBatch(cores, {
+  const requestedScenarioIds = new Set(
+    (process.env.PRAGMA_BATCH_SCENARIO_IDS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  const selectedCores = requestedScenarioIds.size > 0
+    ? cores.filter((core) => requestedScenarioIds.has(core.scenario_id))
+    : cores;
+  if (requestedScenarioIds.size > 0 && selectedCores.length !== requestedScenarioIds.size) {
+    throw new Error(`요청한 scenario ID 중 현재 run에 없는 값이 있습니다: ${[...requestedScenarioIds].join(",")}`);
+  }
+  const results = await runMissionBatch(selectedCores, {
     concurrency: 1,
     retryFailedGenerated: true,
+    stopOnBandTargetingRepeat: true,
     onProgress: (done, total, last) => {
       process.stdout.write(`\rmission ${done}/${total} last=${last.scenarioId} ${last.ok ? "ok" : "fail"}`);
     },
   });
   process.stdout.write("\n");
   const failed = results.filter((item) => !item.ok);
+  const regenerationCounts = results.map((item) => item.candidateRegenerationCount ?? 0);
+  const regenerationTotal = regenerationCounts.reduce((sum, count) => sum + count, 0);
   console.log(JSON.stringify({
     phase,
     runId,
     total: results.length,
     failed: failed.length,
     reused: results.filter((item) => item.reused).length,
+    firstPassEligible: results.filter((item) =>
+      item.firstPassQualityVerdict === "pass" || item.firstPassQualityVerdict === "warning").length,
+    finalEligible: results.filter((item) =>
+      item.qualityVerdict === "pass" || item.qualityVerdict === "warning").length,
+    candidateRegenerationTotal: regenerationTotal,
+    candidateRegenerationAveragePerMission: results.length ? regenerationTotal / results.length : 0,
+    candidateRegenerationMaxPerCandidate: Math.max(0, ...results.map((item) => item.candidateRegenerationMaxPerCandidate ?? 0)),
     failures: failed.map((item) => ({
       scenarioId: item.scenarioId,
       rules: item.violations?.filter((violation) => violation.level === "fail"),

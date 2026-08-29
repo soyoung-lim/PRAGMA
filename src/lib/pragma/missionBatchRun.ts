@@ -20,6 +20,9 @@ export interface MissionBatchItemResult {
   ok: boolean;
   reused: boolean;
   qualityVerdict?: "pass" | "warning" | "fail";
+  firstPassQualityVerdict?: "pass" | "warning" | "fail";
+  candidateRegenerationCount?: number;
+  candidateRegenerationMaxPerCandidate?: number;
   violations?: { id: string; level: string; message: string }[];
   error?: string;
 }
@@ -31,6 +34,7 @@ export interface MissionBatchOptions {
   promote?: (core: PromotableCore) => Promise<PromoteResult>;
   retryFailedGenerated?: boolean;
   retryFailed?: (core: PromotableCore) => Promise<PromoteResult>;
+  stopOnBandTargetingRepeat?: boolean;
 }
 
 const PROMOTED_STATUSES = new Set(["generated", "reviewed", "released"]);
@@ -101,10 +105,11 @@ export async function runMissionBatch(
   const results: MissionBatchItemResult[] = new Array(cores.length);
   let cursor = 0;
   let done = 0;
+  let stopped = false;
 
   const worker = async () => {
     while (true) {
-      if (options.signal?.aborted) return;
+      if (options.signal?.aborted || stopped) return;
       const index = cursor;
       cursor += 1;
       if (index >= cores.length) return;
@@ -123,6 +128,9 @@ export async function runMissionBatch(
             ok: retried.ok,
             reused: false,
             qualityVerdict: retried.quality?.verdict,
+            firstPassQualityVerdict: retried.firstPassQualityVerdict,
+            candidateRegenerationCount: retried.candidateRegenerationCount,
+            candidateRegenerationMaxPerCandidate: retried.candidateRegenerationMaxPerCandidate,
             violations: retried.violations,
             error: retried.error,
           };
@@ -159,6 +167,9 @@ export async function runMissionBatch(
             ok: promoted.ok,
             reused: false,
             qualityVerdict: promoted.quality?.verdict,
+            firstPassQualityVerdict: promoted.firstPassQualityVerdict,
+            candidateRegenerationCount: promoted.candidateRegenerationCount,
+            candidateRegenerationMaxPerCandidate: promoted.candidateRegenerationMaxPerCandidate,
             violations: promoted.violations,
             error: promoted.error,
           };
@@ -175,6 +186,9 @@ export async function runMissionBatch(
       results[index] = result;
       done += 1;
       options.onProgress?.(done, cores.length, result);
+      if (options.stopOnBandTargetingRepeat && result.error?.includes("BAND_TARGETING_STOP:band_targeting_repeated_semantic_defect")) {
+        stopped = true;
+      }
     }
   };
 

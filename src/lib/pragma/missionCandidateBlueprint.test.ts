@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  MISSION_CANDIDATE_REFERENCES,
   applyMissionCandidateBlueprints,
   buildMissionCandidateBlueprints,
+  missionCandidatePath,
+  missionCandidateReferenceForPath,
 } from '../../../supabase/functions/_shared/missionCandidateBlueprint'
 
 const feature = {
@@ -66,5 +69,17 @@ describe('MJT3·MJT5 deterministic candidate blueprint', () => {
       ['C', 'within_band'],
       ['D', 'too_high'],
     ])
+  })
+
+  it('maps each boundary candidate to its verified within anchor', () => {
+    const boundary = MISSION_CANDIDATE_REFERENCES.filter((reference) => reference.phase === 'relative_boundary')
+    expect(boundary.map((reference) => [missionCandidatePath(reference), reference.anchor_candidate_index])).toEqual([
+      ['mpj_items[2].corrections[1]', 0],
+      ['mpj_items[2].corrections[2]', 0],
+      ['mpj_items[4].candidates[1]', 0],
+      ['mpj_items[4].candidates[3]', 2],
+    ])
+    expect(missionCandidateReferenceForPath('mpj_items[4].candidates[3]')).toEqual(boundary[3])
+    expect(missionCandidateReferenceForPath('mpj_items[1].target')).toBeNull()
   })
 })

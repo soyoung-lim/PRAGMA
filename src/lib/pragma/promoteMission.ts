@@ -98,7 +98,10 @@ export interface PromoteResult {
   savedId?: string;
   /** 검증②(0-n·94) 결과. 유효한 결과가 없으면 미션은 저장하지 않는다. */
   quality?: QualityCheck;
+  firstPassQualityVerdict?: "pass" | "warning" | "fail";
   repaired?: boolean;
+  candidateRegenerationCount?: number;
+  candidateRegenerationMaxPerCandidate?: number;
   repairError?: string;
   error?: string;
 }
@@ -361,6 +364,71 @@ export function canPersistRepairQuality(quality: QualityCheck): boolean {
   return quality.verdict !== "fail";
 }
 
+const CANDIDATE_REGENERATION_CODES = new Set(["band_mismatch", "implausible_distractor"]);
+const CANDIDATE_PATH = /^mpj_items\[(2|4)\]\.(corrections|candidates)\[(\d+)\](?:\.|$)/;
+const CANDIDATE_GENERATION_PROMPT_VERSION = "mission_candidate_band_v1_relative_minimal_contrast";
+
+/** attempt=1 중 첫 1건은 최초 boundary 생성이고, 두 번째부터는 이미 후보 regeneration을 실행한 흔적이다. */
+export function candidateRetryAlreadyAttempted(attemptOneSuccessfulCalls: number): boolean {
+  return attemptOneSuccessfulCalls > 1;
+}
+
+export function candidateRegenerationFindings(quality: QualityCheck): QualityCheck["findings"] {
+  return quality.findings.filter((finding) =>
+    finding.severity === "fail" &&
+    CANDIDATE_REGENERATION_CODES.has(finding.code) &&
+    CANDIDATE_PATH.test(finding.where));
+}
+
+type CandidateBandCheck = {
+  path: string;
+  severity: "pass" | "warning" | "fail";
+  actual_band_code?: string;
+  direction_from_anchor?: string;
+  boundary_crossed?: boolean | null;
+  semantic_defect?: string;
+  note_ko?: string;
+};
+
+/** 재생성한 후보의 국소 검사로 해소된 finding만 제거하며, 기존 비대상 판정은 보존한다. */
+export function qualityAfterCandidateRegeneration(
+  quality: QualityCheck,
+  resolvedPaths: readonly string[],
+  checks: readonly CandidateBandCheck[],
+  meta: { model: string; promptVersion: string; checkedAt: string; missionContentHash: string },
+): QualityCheck {
+  const resolved = new Set(resolvedPaths);
+  const retained = quality.findings.filter((finding) => {
+    if (!CANDIDATE_REGENERATION_CODES.has(finding.code)) return true;
+    const match = finding.where.match(CANDIDATE_PATH);
+    const basePath = match ? finding.where.slice(0, finding.where.indexOf("]", finding.where.indexOf("]") + 1) + 1) : finding.where;
+    return !resolved.has(basePath) && !resolved.has(finding.where);
+  });
+  const warnings = checks
+    .filter((check) => check.severity === "warning")
+    .map((check) => ({
+      code: "band_mismatch",
+      severity: "warning" as const,
+      where: check.path,
+      note_ko: `[candidate_boundary_uncertain] ${check.note_ko ?? "대역 경계가 불확실해 교수자 확인이 필요합니다."}`.slice(0, 400),
+    }));
+  const findings = [...retained, ...warnings];
+  const verdict = findings.some((finding) => finding.severity === "fail")
+    ? "fail" as const
+    : findings.length > 0 ? "warning" as const : "pass" as const;
+  return {
+    verdict,
+    summary_ko: verdict === "pass"
+      ? "실패 후보를 within 기준 최소대조로 재생성하고 국소 검사를 통과했습니다."
+      : "후보 재생성 뒤 남은 warning 또는 비대상 finding을 보존했습니다.",
+    findings,
+    model: meta.model,
+    prompt_version: meta.promptVersion,
+    checked_at: meta.checkedAt,
+    mission_content_hash: meta.missionContentHash,
+  };
+}
+
 async function contentHashForDraft(content: Record<string, unknown>): Promise<string> {
   const hashPayload = { ...content };
   delete hashPayload.provenance;
@@ -451,6 +519,92 @@ async function repairMissionOnce(args: {
   }
   patched.quality_check = checked.quality;
   return { ok: true, missionContent: patched, mission: parsed.data, quality: checked.quality, check };
+}
+
+async function regenerateMissionCandidatesOnce(args: {
+  missionContent: Record<string, unknown>;
+  quality: QualityCheck;
+  feature: TargetFeature;
+  direction: LanguageDirection;
+  speechAct: SpeechActUI;
+  scenarioId: string;
+  generationRunId?: string | null;
+  generationItemKey?: string | null;
+  ctx: CheckContext;
+  coreContent: Record<string, unknown> | null;
+}): Promise<
+  | { ok: true; missionContent: Record<string, unknown>; mission: MissionRuntime; quality: QualityCheck; check: ReturnType<typeof checkMission>; regenerationCount: number }
+  | { ok: false; error: string; stopCode?: string }
+> {
+  const findings = candidateRegenerationFindings(args.quality);
+  if (findings.length === 0) return { ok: false, error: "재생성할 band/현실성 후보가 없습니다." };
+  const { data, error } = await supabase.functions.invoke("generate-scenario", {
+    body: {
+      action: "mission_candidate_regenerate",
+      telemetry: {
+        scenario_id: args.scenarioId,
+        generation_run_id: args.generationRunId ?? null,
+        generation_item_key: args.generationItemKey ?? null,
+        invocation_attempt: 1,
+      },
+      mission_candidate_regenerate: {
+        mission_content: args.missionContent,
+        findings,
+        feature: featureForGen(args.feature, args.direction),
+        direction: args.direction,
+        speech_act: args.speechAct,
+        speech_act_ko: SPEECH_ACT_UI[args.speechAct],
+        regeneration_attempt: 1,
+      },
+    },
+  });
+  if (error) return { ok: false, error: `후보 재생성 호출 실패: ${(error as { message?: string }).message ?? String(error)}` };
+  const response = isRecord(data) ? data : {};
+  const stopCode = typeof response.stop_code === "string" ? response.stop_code : undefined;
+  if (stopCode) {
+    return {
+      ok: false,
+      stopCode,
+      error: `BAND_TARGETING_STOP:${stopCode}:${typeof response.error === "string" ? response.error : "후보 재생성을 중단했습니다."}`,
+    };
+  }
+  const rawOperations = Array.isArray(response.operations) ? response.operations : [];
+  if (rawOperations.length === 0) return { ok: false, error: "후보 재생성 결과가 없습니다." };
+  const operations = rawOperations.filter(isRecord) as MissionRepairOperation[];
+  const patched = applyMissionRepairOperations(args.missionContent, operations);
+  const provenance = isRecord(patched.provenance) ? patched.provenance : {};
+  const contentHash = await contentHashForDraft(patched);
+  patched.provenance = { ...provenance, mission_content_hash: contentHash };
+  const parsed = normalizeMission(patched);
+  if (!parsed.ok || !parsed.data) return { ok: false, error: "재생성 후보가 미션 스키마를 통과하지 못했습니다." };
+  const check = checkMission(patched, args.ctx, args.coreContent ?? undefined);
+  if (check.result === "fail") {
+    return {
+      ok: false,
+      error: `재생성 후보가 결정론 검사를 통과하지 못했습니다: ${check.violations.filter((violation) => violation.level === "fail").map((violation) => violation.id).join(", ")}`,
+    };
+  }
+  const checks = Array.isArray(response.candidate_checks)
+    ? response.candidate_checks.filter(isRecord) as CandidateBandCheck[]
+    : [];
+  const resolvedPaths = operations.map((operation) =>
+    operation.operation === "replace_fix_choice_candidate"
+      ? `mpj_items[${operation.item_index}].corrections[${operation.candidate_index}]`
+      : operation.operation === "replace_multi_judge_candidate"
+        ? `mpj_items[${operation.item_index}].candidates[${operation.candidate_index}]`
+        : "").filter(Boolean);
+  if (checks.length !== resolvedPaths.length) return { ok: false, error: "후보 국소 검사 결과 수가 재생성 후보 수와 다릅니다." };
+  const meta = isRecord(response.meta) ? response.meta : {};
+  const quality = qualityAfterCandidateRegeneration(args.quality, resolvedPaths, checks, {
+    model: typeof meta.critic_model === "string" ? meta.critic_model : "candidate_band_critic",
+    promptVersion: typeof meta.critic_prompt_version === "string" ? meta.critic_prompt_version : "quality_candidate_band_v1_boundary_crossing",
+    checkedAt: typeof meta.generated_at === "string" ? meta.generated_at : new Date().toISOString(),
+    missionContentHash: contentHash,
+  });
+  // 대상 후보의 국소 검사와 deterministic 검사가 통과했으면 revision은 격리 저장한다.
+  // 비대상 기존 fail은 quality에 그대로 남아 후보 은행 적격 승격을 계속 차단한다.
+  patched.quality_check = quality;
+  return { ok: true, missionContent: patched, mission: parsed.data, quality, check, regenerationCount: resolvedPaths.length };
 }
 
 /**
@@ -561,7 +715,15 @@ export async function promoteCore(
     const msg = (error as { message?: string })?.message ?? String(error);
     return { ok: false, error: `미션 생성 호출 실패: ${msg}`, attempts };
   }
-  const rawContent = (data as { mission_content?: unknown })?.mission_content;
+  const generationResponse = isRecord(data) ? data : {};
+  if (typeof generationResponse.stop_code === "string") {
+    return {
+      ok: false,
+      attempts,
+      error: `BAND_TARGETING_STOP:${generationResponse.stop_code}:${typeof generationResponse.error === "string" ? generationResponse.error : "후보 생성이 중단됐습니다."}`,
+    };
+  }
+  const rawContent = generationResponse.mission_content;
   const parsed = normalizeMission(rawContent);
   if (!parsed.ok || !parsed.data || !isRecord(rawContent)) {
     return { ok: false, error: "생성된 전체 초안이 미션 스키마를 통과하지 못했습니다.", attempts };
@@ -571,6 +733,11 @@ export async function promoteCore(
   let check = checkMission(rawContent, ctx, core.core_content ?? undefined);
   const initialViolations = check.violations.map((x) => ({ id: x.id, level: x.level, message: x.message }));
   let repaired = false;
+  const rawProvenance = isRecord(rawContent.provenance) ? rawContent.provenance : {};
+  const rawBandTargeting = isRecord(rawProvenance.band_targeting) ? rawProvenance.band_targeting : {};
+  let candidateRegenerationCount = typeof rawBandTargeting.within_regeneration_count === "number"
+    ? Math.max(0, Math.trunc(rawBandTargeting.within_regeneration_count))
+    : 0;
   let repairError: string | undefined;
   let quality: QualityCheck;
   let contentToSave: Record<string, unknown> = rawContent;
@@ -644,6 +811,8 @@ export async function promoteCore(
     contentToSave = { ...rawContent, quality_check: quality };
   }
 
+  const firstPassQualityVerdict = quality.verdict;
+
   // 구조 통과 초안은 critic fail 여부와 무관하게 먼저 격리 저장한다(필요하면 R27 국소 수리 후).
   options.onProgress?.({ phase: "saving" });
   const { data: savedId, error: saveErr } = await rpc("save_generated_mission", {
@@ -686,7 +855,7 @@ export async function promoteCore(
   );
   if ((quality.verdict === "fail" || hasRepairableRelationalWarning) && !repaired) {
     options.onProgress?.({ phase: "repairing" });
-    const repair = await repairMissionOnce({
+    const sharedArgs = {
       missionContent: contentToSave,
       quality,
       feature,
@@ -697,7 +866,10 @@ export async function promoteCore(
       generationItemKey: core.generation_item_key,
       ctx,
       coreContent: core.core_content,
-    });
+    };
+    const repair = candidateRegenerationFindings(quality).length > 0
+      ? await regenerateMissionCandidatesOnce(sharedArgs)
+      : await repairMissionOnce(sharedArgs);
     if (repair.ok) {
       options.onProgress?.({ phase: "rechecking" });
       const repairedViolations = repair.check.violations.map((violation) => ({
@@ -725,6 +897,9 @@ export async function promoteCore(
         mission = repair.mission;
         quality = repair.quality;
         check = repair.check;
+        candidateRegenerationCount += "regenerationCount" in repair && typeof repair.regenerationCount === "number"
+          ? repair.regenerationCount
+          : 0;
       }
     } else {
       repairError = "error" in repair ? repair.error : "문항 수리를 완료하지 못했습니다.";
@@ -742,7 +917,10 @@ export async function promoteCore(
     violations: finalViolations,
     attempts,
     quality,
+    firstPassQualityVerdict,
     repaired,
+    candidateRegenerationCount,
+    candidateRegenerationMaxPerCandidate: candidateRegenerationCount > 0 ? 1 : 0,
     repairError,
     savedId: savedId as string,
   };
@@ -762,14 +940,29 @@ async function fetchGeneratedMissionContent(scenarioId: string): Promise<Record<
   return data.mission_content as Record<string, unknown>;
 }
 
-/** 저장된 critic-fail 초안에서 지목된 후보만 다시 만들고, 재검사 통과 revision만 보존한다. */
+async function hasPriorCandidateRegeneration(core: PromotableCore): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (supabase as unknown as { from: (table: string) => any })
+    .from("llm_invocation_events")
+    .select("id", { count: "exact", head: true })
+    .eq("scenario_id", core.scenario_id)
+    .eq("prompt_version", CANDIDATE_GENERATION_PROMPT_VERSION)
+    .eq("invocation_attempt", 1)
+    .eq("success", true);
+  if (core.generation_run_id) query = query.eq("generation_run_id", core.generation_run_id);
+  const { count, error } = await query;
+  if (error) throw new Error(`후보 regeneration 호출 장부 조회 실패: ${error.message}`);
+  return candidateRetryAlreadyAttempted(Number(count ?? 0));
+}
+
+/** 저장된 critic-fail 초안에서 band/현실성 후보는 재생성하고, 그 밖의 후보 결함만 repair한다. */
 export async function retryGeneratedMissionCandidateRepair(core: PromotableCore): Promise<PromoteResult> {
   try {
     const current = await fetchGeneratedMissionContent(core.scenario_id);
     const qualityResult = QualityCheckSchema.safeParse(current.quality_check);
     if (!qualityResult.success) return { ok: false, error: "저장된 AI 품질점검을 읽을 수 없습니다." };
     if (qualityResult.data.verdict !== "fail") {
-      return { ok: true, quality: qualityResult.data, attempts: 0, repaired: false };
+      return { ok: true, quality: qualityResult.data, firstPassQualityVerdict: qualityResult.data.verdict, attempts: 0, repaired: false };
     }
     const featureCode = DEFAULT_FEATURE_BY_ACT[core.speech_act];
     const feature = featureCode ? getTargetFeature(featureCode) : undefined;
@@ -788,7 +981,7 @@ export async function retryGeneratedMissionCandidateRepair(core: PromotableCore)
       planned_target_feature: feature.code,
       direction,
     };
-    const repaired = await repairMissionOnce({
+    const sharedArgs = {
       missionContent: current,
       quality: qualityResult.data,
       feature,
@@ -799,7 +992,19 @@ export async function retryGeneratedMissionCandidateRepair(core: PromotableCore)
       generationItemKey: core.generation_item_key,
       ctx,
       coreContent: core.core_content,
-    });
+    };
+    const needsCandidateRegeneration = candidateRegenerationFindings(qualityResult.data).length > 0;
+    if (needsCandidateRegeneration && await hasPriorCandidateRegeneration(core)) {
+      return {
+        ok: false,
+        quality: qualityResult.data,
+        firstPassQualityVerdict: qualityResult.data.verdict,
+        error: "BAND_TARGETING_STOP:candidate_regeneration_attempt_exhausted:이 저장 초안은 후보 regeneration을 이미 1회 실행했습니다.",
+      };
+    }
+    const repaired = needsCandidateRegeneration
+      ? await regenerateMissionCandidatesOnce(sharedArgs)
+      : await repairMissionOnce(sharedArgs);
     if (repaired.ok === false) return { ok: false, quality: qualityResult.data, error: repaired.error };
     const violations = repaired.check.violations.map((violation) => ({
       id: violation.id,
@@ -819,6 +1024,11 @@ export async function retryGeneratedMissionCandidateRepair(core: PromotableCore)
       },
     });
     if (error) return { ok: false, error: (error as { message?: string }).message ?? String(error) };
+    const currentProvenance = isRecord(current.provenance) ? current.provenance : {};
+    const currentBandTargeting = isRecord(currentProvenance.band_targeting) ? currentProvenance.band_targeting : {};
+    const initialRegenerationCount = typeof currentBandTargeting.within_regeneration_count === "number"
+      ? Math.max(0, Math.trunc(currentBandTargeting.within_regeneration_count))
+      : 0;
     return {
       ok: true,
       mission: repaired.mission,
@@ -826,7 +1036,12 @@ export async function retryGeneratedMissionCandidateRepair(core: PromotableCore)
       violations,
       attempts: 1,
       quality: repaired.quality,
+      firstPassQualityVerdict: qualityResult.data.verdict,
       repaired: true,
+      candidateRegenerationCount: initialRegenerationCount +
+        ("regenerationCount" in repaired && typeof repaired.regenerationCount === "number" ? repaired.regenerationCount : 0),
+      candidateRegenerationMaxPerCandidate: initialRegenerationCount > 0 ||
+        ("regenerationCount" in repaired && typeof repaired.regenerationCount === "number") ? 1 : 0,
     };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };

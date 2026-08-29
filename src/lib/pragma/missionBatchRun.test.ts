@@ -77,4 +77,20 @@ describe("resumable mission batch", () => {
       expect.objectContaining({ scenarioId: "passed", ok: true, reused: true }),
     ]);
   });
+
+  it("stops the sequential canary when the first regeneration repeats the semantic defect", async () => {
+    const promote = vi.fn(async (item: { scenario_id: string }) =>
+      item.scenario_id === "repeat"
+        ? { ok: false, error: "BAND_TARGETING_STOP:band_targeting_repeated_semantic_defect:repeat" }
+        : { ok: true, quality: { verdict: "pass" } },
+    );
+    const results = await runMissionBatch(
+      [core("repeat"), core("must-not-run")],
+      { promote: promote as never, concurrency: 1, stopOnBandTargetingRepeat: true },
+    );
+    expect(promote).toHaveBeenCalledTimes(1);
+    expect(results).toEqual([
+      expect.objectContaining({ scenarioId: "repeat", ok: false }),
+    ]);
+  });
 });

@@ -144,7 +144,9 @@ describe("prompt snapshot integrity", () => {
       expect(releaseSource).toContain(`"${version}"`);
     }
     expect(canonicalSource).toContain("content_release_id: CURRENT_CONTENT_RELEASE_ID");
-    expect(canonicalSource).toContain("mission_item_repair_v8_functional_band_boundary");
+    expect(canonicalSource).toContain("mission_item_repair_v9_non_band_only");
+    expect(canonicalSource).toContain("mission_candidate_band_v1_relative_minimal_contrast");
+    expect(canonicalSource).toContain("quality_candidate_band_v1_boundary_crossing");
     expect(canonicalSource).toContain("operations를 빈 배열로");
     expect(canonicalSource).toContain("replace_fix_choice_candidate");
     expect(canonicalSource).toContain("replace_multi_judge_candidate");
@@ -154,6 +156,8 @@ describe("prompt snapshot integrity", () => {
     expect(canonicalSource).toContain("실패 후보별 최소 수리 packet");
     expect(canonicalSource).toContain("normalizedReplacement === normalizedOriginal");
     expect(canonicalSource).toContain("candidateRepairBoundaryRule");
+    expect(canonicalSource).toContain("verified_within_anchor");
+    expect(canonicalSource).toContain("critic_self_contradiction_calibrated");
     expect(canonicalSource).toContain("normalizedPeers.has(normalizedReplacement)");
     expect(canonicalSource).toContain("quality_relational_feedback_v2_zero_based_paths");
     expect(canonicalSource).toContain("선택권 존중/의견 존중");

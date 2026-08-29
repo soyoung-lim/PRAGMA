@@ -569,13 +569,20 @@ P·D·R 중 실제 부담이 높은 맥락의 재적용으로만 기술한다.
 - 생성 후 결정론 검사
 - 최초 완전 미션은 한 응답에서 생성한다. 결정론 검사 실패 중 허용된 문항·산출 필드만 국소
   repair하며, 허용되지 않은 필드와 기존 정상 문항은 동결한다.
-- MJT3 `fix_choice`와 MJT5 `multi_judge`는 서버가 후보별 `intended_band`·교육적 역할·보존할
-  의미/발화 의도/화행 기능·조절 축·극단화 금지를 먼저 고정한다. 모델은 한 응답에서 이 blueprint에
-  맞는 후보 표현을 함께 실현하며, 서버는 정답·대역 metadata를 blueprint 값으로 다시 고정한다.
-- AI 품질점검이 정확한 MJT3·MJT5 후보 경로를 `fail`로 지목하면 그 후보만 재생성한다. 정상 후보,
-  후보 순서와 대역 metadata는 변경하지 않으며, 동일 문장이나 정상 peer와 중복되는 교체안은 거부한다.
-- repair 뒤 결정론 검사와 AI 재검사를 모두 통과한 결과만 새 성공 revision으로 저장한다. 재검사
-  `fail`은 성공 revision으로 덮어쓰지 않고 기존 생성 초안을 격리 상태로 유지한다.
+- MJT3 `fix_choice`는 검증된 within 후보 1개를 lower·upper의 공통 기준으로 사용한다. MJT5
+  `multi_judge`는 within A·B를 먼저 생성·검증하고 lower는 A, upper는 B와 상대적 최소대조로
+  생성한다. 서버가 후보별 `intended_band`·교육적 역할·보존할 의미/발화 의도/화행 기능·조절 축·
+  극단화 금지를 먼저 고정하며, 특정 최종 표현은 하드코딩하지 않는다.
+- within 후보가 실패하면 경계 후보를 만들지 않고 해당 within 후보만 한 번 재생성한다. 최초
+  재생성에서도 같은 의미 결함이 반복되면 중단하며 무한 재시도하지 않는다.
+- AI 품질점검이 정확한 MJT3·MJT5 후보 경로를 `band_mismatch` 또는
+  `implausible_distractor`로 지목하면 기존 표현을 repair하지 않고 동일 blueprint와 검증된 within
+  기준으로 해당 후보만 새로 생성한다. 정상 후보·후보 순서·대역 metadata는 immutable하다.
+- 후보 교체 뒤에는 변경 후보 검사와 기존 결정론적 최종 문항 검사만 수행한다. 그 결과는 대상
+  후보의 판정만 해소하며, 기존 warning과 비대상 critical fail을 제거하거나 전체 미션을 자동
+  pass로 완화하지 않는다. 그 밖의 단순 형식·표현 결함만 candidate-level repair 대상이다.
+- critic의 명시적 자기모순만 counter-rule로 보정한다. 경계 판단이 불확실한 경우 warning으로
+  남기며 자동 pass로 전환하지 않는다.
 - 구조적으로 저장된 `generated` 초안도 current LOCK release·동일 fingerprint·결정론 검사·AI critical
   fail 제외·고유 content hash를 모두 만족해야 500 후보 집계에 포함된다.
 - 별도 outline 파이프라인과 mission_v5 구조 변경은 사용하지 않는다.

@@ -52,8 +52,13 @@ import {
 } from '../_shared/hskLexicalAudit.ts'
 import { canonicalizeNativeMpj5AnchorPdr } from '../_shared/missionCanonicalization.ts'
 import {
+  MISSION_CANDIDATE_REFERENCES,
   applyMissionCandidateBlueprints,
   buildMissionCandidateBlueprints,
+  missionCandidateBlueprintForReference,
+  missionCandidatePath,
+  missionCandidateReferenceForPath,
+  type MissionCandidateReference,
 } from '../_shared/missionCandidateBlueprint.ts'
 
 const corsHeaders = {
@@ -186,13 +191,14 @@ interface GenInput {
   // Two-step outline → final flow. Backward compatible:
   // when `action` is absent the handler behaves exactly like the legacy
   // single-shot full-scenario generation.
-  action?: 'outline' | 'final' | 'core' | 'mission' | 'mission_repair' | 'finalize_mission' | 'authentic_analyze' | 'quality_check' | 'core_quality_check' | 'feedback'
+  action?: 'outline' | 'final' | 'core' | 'mission' | 'mission_repair' | 'mission_candidate_regenerate' | 'finalize_mission' | 'authentic_analyze' | 'quality_check' | 'core_quality_check' | 'feedback'
   outline_count?: number
   selected_outline?: { title?: string; situation?: string } | null
   // v1.4 (2026-07-23): scenario_core_v1 / mission_v1 생성. 카탈로그는 클라가 전달.
   core?: CoreGenBody
   mission?: MissionGenBody
   mission_repair?: MissionRepairBody
+  mission_candidate_regenerate?: MissionCandidateRegenerationBody
   finalize_mission?: FinalizeMissionBody
   // 「실제 자료에서 생성」(Authentic Source Import) — 이미지/텍스트 원자료 분석.
   authentic?: AuthenticBody
@@ -2193,13 +2199,310 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
   return parts.join('\n')
 }
 
-const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v8_functional_band_boundary'
+const MISSION_CANDIDATE_GENERATION_PROMPT_VERSION = 'mission_candidate_band_v1_relative_minimal_contrast'
+const MISSION_CANDIDATE_CHECK_PROMPT_VERSION = 'quality_candidate_band_v1_boundary_crossing'
+const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v9_non_band_only'
+
+type CandidateBandCheckResult = {
+  path: string
+  severity: 'pass' | 'warning' | 'fail'
+  actual_band_code: string
+  direction_from_anchor: 'within' | 'toward_lower' | 'toward_upper' | 'uncertain'
+  boundary_crossed: boolean | null
+  semantic_defect: 'none' | 'meaning_shift' | 'intent_shift' | 'speech_act_shift' | 'unnatural' | 'focus_contamination' | 'uncertain'
+  note_ko: string
+}
+
+type TelemetryFactory = (
+  operation: LlmOperation,
+  required: boolean,
+  details?: Partial<Omit<OpenAITelemetry, 'requestGroupId' | 'operation' | 'required'>>,
+) => OpenAITelemetry
+
+function recordCandidate(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+function candidatePacket(
+  items: unknown[],
+  reference: MissionCandidateReference,
+  feature: FeatureForGen,
+): Record<string, unknown> | null {
+  const item = recordCandidate(items[reference.item_index])
+  if (!item || item.type !== reference.item_type) return null
+  const collection = Array.isArray(item[reference.collection]) ? item[reference.collection] as unknown[] : []
+  const candidate = recordCandidate(collection[reference.candidate_index])
+  const blueprint = missionCandidateBlueprintForReference(feature, reference)
+  if (!candidate || !blueprint) return null
+  const anchor = reference.anchor_candidate_index === null
+    ? null
+    : recordCandidate(collection[reference.anchor_candidate_index])
+  return {
+    path: missionCandidatePath(reference),
+    phase: reference.phase,
+    blueprint,
+    item_context: {
+      type: item.type,
+      situation_ko: item.situation_ko,
+      relation_ko: item.relation_ko,
+      pdr: item.pdr,
+      source: item.source,
+      target: item.target,
+    },
+    current_candidate: candidate,
+    verified_within_anchor: anchor,
+    immutable_peer_texts: collection
+      .filter((_, index) => index !== reference.candidate_index)
+      .map((peer) => recordCandidate(peer)?.text)
+      .filter((text): text is string => typeof text === 'string'),
+  }
+}
+
+function normalizeCandidateText(value: unknown): string {
+  return typeof value === 'string'
+    ? value.normalize('NFKC').replace(/[\p{P}\p{S}\p{Z}\s]+/gu, '').toLowerCase()
+    : ''
+}
+
+function applyCandidateReplacementsToItems(
+  sourceItems: unknown[],
+  operations: Array<{ path: string; candidate: Record<string, unknown> }>,
+): unknown[] {
+  const items = structuredClone(sourceItems)
+  for (const operation of operations) {
+    const reference = missionCandidateReferenceForPath(operation.path)
+    if (!reference) continue
+    const item = recordCandidate(items[reference.item_index])
+    const collection = item && Array.isArray(item[reference.collection])
+      ? [...item[reference.collection] as unknown[]]
+      : []
+    const original = recordCandidate(collection[reference.candidate_index])
+    if (!item || !original) continue
+    collection[reference.candidate_index] = {
+      ...original,
+      text: operation.candidate.text,
+      note_ko: operation.candidate.note_ko,
+    }
+    items[reference.item_index] = { ...item, [reference.collection]: collection }
+  }
+  return items
+}
+
+async function generateMissionCandidates(args: {
+  apiKey: string
+  items: unknown[]
+  references: readonly MissionCandidateReference[]
+  feature: FeatureForGen
+  direction: Direction
+  speechActKo: string
+  telemetryFor: TelemetryFactory
+  invocationAttempt: number
+}): Promise<{ ok: true; operations: Array<{ path: string; candidate: Record<string, unknown> }> } | { ok: false; error: string }> {
+  const packets = args.references
+    .map((reference) => candidatePacket(args.items, reference, args.feature))
+    .filter((packet): packet is Record<string, unknown> => Boolean(packet))
+  if (packets.length !== args.references.length) return { ok: false, error: 'candidate packet 구성 실패' }
+  const system = `너는 mission_v5의 MJT3·MJT5 후보 표현만 생성한다. 전체 문항이나 metadata를 다시 쓰지 마라.
+각 packet의 blueprint가 정한 의미·발화 의도·화행 기능을 보존하고 target feature 하나만 조절한다.
+within_anchor는 해당 P·D·R에서 실제 within band인 자연스러운 후보로 만든다.
+relative_boundary는 verified_within_anchor와 의미·의도·화행 기능을 유지한 최소대조로 만들되,
+blueprint의 intended_band 방향이 실제 경계를 분명히 통과해야 한다. 단순 공손표지 중첩이나 길이 변화만으로
+경계를 구현하지 말고, 실제 발화 가능한 인접 경계 표현을 만든다. 특정 상투 표현에 의존하지 마라.
+immutable_peer_texts와 같은 문장, current_candidate와 같은 문장, 새 사실·이유·대안 추가는 금지한다.
+출력은 {"operations":[{"path":"정확한 packet path","candidate":{"text":"목표어 완전 문장","note_ko":"실제 조절 자원·관계 효과·대역 방향"}}]} JSON뿐이다.`
+  const user = `[화행] ${args.speechActKo}
+[언어 방향] ${LANG_DIR_KO[args.direction]}
+[화용 초점] ${args.feature.code}: ${args.feature.operational_definition}
+[적정 대역] ${args.feature.within_band_code}
+[대역] ${args.feature.band_schema.map((band) => `${band.code}=${band.label_ko}`).join(' | ')}
+[counter-rule] ${args.feature.counter_rule_note}
+[candidate packets]
+${JSON.stringify(packets, null, 2)}`
+  const att = await callOpenAI(MISSION_PRIMARY_MODEL, args.apiKey, system, user, 0.2, {
+    telemetry: args.telemetryFor('mission_generate', true, {
+      invocationAttempt: args.invocationAttempt,
+      promptVersion: MISSION_CANDIDATE_GENERATION_PROMPT_VERSION,
+    }),
+  })
+  if (!att.ok) return { ok: false, error: `candidate 생성 호출 실패: ${att.raw.slice(0, 300)}` }
+  let parsed: Record<string, unknown>
+  try {
+    parsed = parseOpenAIContent(att.raw) as Record<string, unknown>
+  } catch (error) {
+    return { ok: false, error: `candidate 생성 파싱 실패: ${(error as Error).message}` }
+  }
+  const rawOperations = Array.isArray(parsed.operations) ? parsed.operations : []
+  const expected = new Map(args.references.map((reference) => [missionCandidatePath(reference), reference]))
+  const operations: Array<{ path: string; candidate: Record<string, unknown> }> = []
+  const used = new Set<string>()
+  for (const value of rawOperations) {
+    const operation = recordCandidate(value)
+    const path = typeof operation?.path === 'string' ? operation.path : ''
+    const reference = expected.get(path)
+    const replacement = recordCandidate(operation?.candidate)
+    if (!reference || used.has(path) || !replacement) continue
+    const text = typeof replacement.text === 'string' ? replacement.text.trim() : ''
+    const noteKo = typeof replacement.note_ko === 'string' ? replacement.note_ko.trim() : ''
+    const packet = candidatePacket(args.items, reference, args.feature)
+    const current = recordCandidate(packet?.current_candidate)
+    const peers = Array.isArray(packet?.immutable_peer_texts) ? packet?.immutable_peer_texts : []
+    const normalized = normalizeCandidateText(text)
+    if (!text || !noteKo || !normalized || normalized === normalizeCandidateText(current?.text) ||
+        peers.some((peer) => normalizeCandidateText(peer) === normalized)) continue
+    used.add(path)
+    operations.push({ path, candidate: { text, note_ko: noteKo } })
+  }
+  return operations.length === args.references.length
+    ? { ok: true, operations }
+    : { ok: false, error: `candidate 생성 결과 누락: ${operations.length}/${args.references.length}` }
+}
+
+async function checkMissionCandidates(args: {
+  apiKey: string
+  items: unknown[]
+  references: readonly MissionCandidateReference[]
+  feature: FeatureForGen
+  direction: Direction
+  speechActKo: string
+  telemetryFor: TelemetryFactory
+  invocationAttempt: number
+}): Promise<{ ok: true; results: CandidateBandCheckResult[] } | { ok: false; error: string }> {
+  const packets = args.references
+    .map((reference) => candidatePacket(args.items, reference, args.feature))
+    .filter((packet): packet is Record<string, unknown> => Boolean(packet))
+  if (packets.length !== args.references.length) return { ok: false, error: 'candidate 검사 packet 구성 실패' }
+  const system = `너는 MJT3·MJT5 후보 하나의 의미 보존과 화용 대역만 검사한다. 문장을 수정하지 마라.
+within_anchor는 해당 P·D·R에서 within인지 판정한다. relative_boundary는 verified_within_anchor 대비
+조정 방향이 보이는지와 intended_band 경계를 실제로 통과했는지를 별도로 판정한다.
+의미·발화 의도·화행 기능이 바뀌면 fail이다. 실제 대역 경계가 불확실하면 fail이 아니라 warning이며
+actual_band_code="uncertain", boundary_crossed=null로 쓴다. 공손표지 개수나 길이만으로 판정하지 마라.
+출력은 {"results":[{"path":"packet path","severity":"pass|warning|fail","actual_band_code":"정본 코드 또는 uncertain","direction_from_anchor":"within|toward_lower|toward_upper|uncertain","boundary_crossed":true|false|null,"semantic_defect":"none|meaning_shift|intent_shift|speech_act_shift|unnatural|focus_contamination|uncertain","note_ko":"근거"}]} JSON뿐이다.`
+  const user = `[화행] ${args.speechActKo}
+[언어 방향] ${LANG_DIR_KO[args.direction]}
+[화용 초점] ${args.feature.code}: ${args.feature.operational_definition}
+[대역] ${args.feature.band_schema.map((band) => `${band.code}=${band.label_ko}`).join(' | ')}
+[적정 대역] ${args.feature.within_band_code}
+[counter-rule] ${args.feature.counter_rule_note}
+[candidate packets]
+${JSON.stringify(packets, null, 2)}`
+  const att = await callOpenAI(CRITIC_PRIMARY_MODEL, args.apiKey, system, user, 0.1, {
+    telemetry: args.telemetryFor('mission_critic', true, {
+      invocationAttempt: args.invocationAttempt,
+      promptVersion: MISSION_CANDIDATE_CHECK_PROMPT_VERSION,
+    }),
+  })
+  if (!att.ok) return { ok: false, error: `candidate 검사 호출 실패: ${att.raw.slice(0, 300)}` }
+  let parsed: Record<string, unknown>
+  try {
+    parsed = parseOpenAIContent(att.raw) as Record<string, unknown>
+  } catch (error) {
+    return { ok: false, error: `candidate 검사 파싱 실패: ${(error as Error).message}` }
+  }
+  const rawResults = Array.isArray(parsed.results) ? parsed.results : []
+  const expected = new Map(args.references.map((reference) => [missionCandidatePath(reference), reference]))
+  const results: CandidateBandCheckResult[] = []
+  for (const value of rawResults) {
+    const result = recordCandidate(value)
+    const path = typeof result?.path === 'string' ? result.path : ''
+    const reference = expected.get(path)
+    const blueprint = reference ? missionCandidateBlueprintForReference(args.feature, reference) : null
+    if (!reference || !blueprint || results.some((entry) => entry.path === path)) continue
+    const actualBand = typeof result?.actual_band_code === 'string' ? result.actual_band_code : 'uncertain'
+    const semanticDefect = ['none', 'meaning_shift', 'intent_shift', 'speech_act_shift', 'unnatural', 'focus_contamination', 'uncertain']
+      .includes(String(result?.semantic_defect))
+      ? String(result?.semantic_defect) as CandidateBandCheckResult['semantic_defect']
+      : 'uncertain'
+    const uncertain = actualBand === 'uncertain' || result?.boundary_crossed === null || semanticDefect === 'uncertain'
+    const semanticFail = !['none', 'uncertain'].includes(semanticDefect)
+    const bandFail = actualBand !== 'uncertain' && actualBand !== blueprint.intended_band
+    const boundaryFail = reference.phase === 'relative_boundary' && result?.boundary_crossed === false
+    const severity: CandidateBandCheckResult['severity'] = semanticFail || bandFail || boundaryFail
+      ? 'fail'
+      : uncertain || result?.severity === 'warning' ? 'warning' : 'pass'
+    const direction = ['within', 'toward_lower', 'toward_upper', 'uncertain'].includes(String(result?.direction_from_anchor))
+      ? String(result?.direction_from_anchor) as CandidateBandCheckResult['direction_from_anchor']
+      : 'uncertain'
+    results.push({
+      path,
+      severity,
+      actual_band_code: actualBand,
+      direction_from_anchor: direction,
+      boundary_crossed: typeof result?.boundary_crossed === 'boolean' ? result.boundary_crossed : null,
+      semantic_defect: semanticDefect,
+      note_ko: typeof result?.note_ko === 'string' ? result.note_ko.slice(0, 400) : '',
+    })
+  }
+  return results.length === args.references.length
+    ? { ok: true, results }
+    : { ok: false, error: `candidate 검사 결과 누락: ${results.length}/${args.references.length}` }
+}
+
+async function realizeRelativeBandCandidates(args: {
+  apiKey: string
+  items: unknown[]
+  feature: FeatureForGen
+  direction: Direction
+  speechActKo: string
+  telemetryFor: TelemetryFactory
+}): Promise<
+  | { ok: true; items: unknown[]; within_regeneration_count: number; warnings: CandidateBandCheckResult[] }
+  | { ok: false; stop_code: string; error: string; results?: CandidateBandCheckResult[] }
+> {
+  const withinReferences = MISSION_CANDIDATE_REFERENCES.filter((reference) => reference.phase === 'within_anchor')
+  const firstCheck = await checkMissionCandidates({ ...args, references: withinReferences, invocationAttempt: 1 })
+  if (!firstCheck.ok) return { ok: false, stop_code: 'within_candidate_check_failed', error: firstCheck.error }
+  const failedWithin = firstCheck.results
+    .filter((result) => result.severity === 'fail')
+    .map((result) => missionCandidateReferenceForPath(result.path))
+    .filter((reference): reference is MissionCandidateReference => Boolean(reference))
+  let items = args.items
+  let withinRegenerationCount = 0
+  let withinResults = firstCheck.results
+  if (failedWithin.length > 0) {
+    const regenerated = await generateMissionCandidates({ ...args, items, references: failedWithin, invocationAttempt: 2 })
+    if (!regenerated.ok) return { ok: false, stop_code: 'within_candidate_regeneration_failed', error: regenerated.error, results: firstCheck.results }
+    withinRegenerationCount = regenerated.operations.length
+    items = applyCandidateReplacementsToItems(items, regenerated.operations)
+    const recheck = await checkMissionCandidates({ ...args, items, references: failedWithin, invocationAttempt: 2 })
+    if (!recheck.ok) return { ok: false, stop_code: 'within_candidate_recheck_failed', error: recheck.error, results: firstCheck.results }
+    const repeated = recheck.results.filter((result) => result.severity === 'fail')
+    if (repeated.length > 0) {
+      return {
+        ok: false,
+        stop_code: 'band_targeting_repeated_semantic_defect',
+        error: 'within 후보가 첫 regeneration 뒤에도 같은 의미·대역 결함을 반복했습니다.',
+        results: repeated,
+      }
+    }
+    const recheckedByPath = new Map(recheck.results.map((result) => [result.path, result]))
+    withinResults = firstCheck.results.map((result) => recheckedByPath.get(result.path) ?? result)
+  }
+  const boundaryReferences = MISSION_CANDIDATE_REFERENCES.filter((reference) => reference.phase === 'relative_boundary')
+  const boundaries = await generateMissionCandidates({ ...args, items, references: boundaryReferences, invocationAttempt: 1 })
+  if (!boundaries.ok) return { ok: false, stop_code: 'relative_boundary_generation_failed', error: boundaries.error, results: withinResults }
+  items = applyCandidateReplacementsToItems(items, boundaries.operations)
+  return {
+    ok: true,
+    items,
+    within_regeneration_count: withinRegenerationCount,
+    warnings: withinResults.filter((result) => result.severity === 'warning'),
+  }
+}
 
 function actionableRepairFindings(findings: MissionRepairBody['findings']) {
-  const failedCandidateFindings = findings.filter((finding) =>
+  const repairOnlyFindings = findings.filter((finding) =>
+    finding.code !== 'band_mismatch' && finding.code !== 'implausible_distractor')
+  const failedCandidateFindings = repairOnlyFindings.filter((finding) =>
     finding.severity === 'fail' &&
     /^mpj_items\[\d+\]\.(corrections|candidates)\[\d+\]/.test(finding.where))
-  return failedCandidateFindings.length > 0 ? failedCandidateFindings : findings
+  return failedCandidateFindings.length > 0 ? failedCandidateFindings : repairOnlyFindings
+}
+
+interface MissionCandidateRegenerationBody extends MissionRepairBody {
+  /** 같은 후보의 첫 regeneration에서 동일 의미 결함이 반복되면 호출자가 canary를 정지한다. */
+  regeneration_attempt: 1
 }
 
 function candidateRepairBoundaryRule(intendedBand: string | undefined): string {
@@ -2662,7 +2965,9 @@ ${featureBoundaryAudit}
 8. **blueprint-판정 일치** — 아래 심사 요청의 candidate blueprint는 후보별 서버 고정 정답
    역할이다. band_mismatch는 실제 표현이 그 intended_band와 다를 때만 보고하라. 네 근거가
    "실제 표현도 intended_band다"라고 결론 내리면 같은 후보에 band_mismatch를 만들지 마라.
-   finding의 0-based 경로·인용·실제 metadata를 최종 출력 전에 한 번 더 대조하라.
+   MJT3 lower/upper는 within 수정안, MJT5 lower는 within A·upper는 within B와 비교해 **조정 방향이
+   보이는지**와 **실제 대역 경계를 통과했는지**를 별도로 판단하라. 방향은 보이지만 경계 통과가
+   불확실하면 warning이다. finding의 0-based 경로·인용·실제 metadata를 최종 출력 전에 대조하라.
 
 [검사 항목]
 ① gate1_violation — 판정 후보(target·corrections·candidates·recommended·reference)가
@@ -2740,6 +3045,10 @@ MPJ1~5의 feedback_quality와 MPJ5 comparison_quality를 별도로 끝까지 확
       "severity": "warning" | "fail",
       "where": "현재 mission_content에 실제 존재하는 정확한 위치 경로 (예: mpj_items[2].corrections[1])",
       "evidence_excerpt": "where가 가리키는 현재 값에서 그대로 복사한 짧은 부분문자열",
+      "intended_band_code": "band_mismatch 후보의 blueprint 대역 코드, 그 밖에는 빈 문자열",
+      "actual_band_code": "실제 판정 대역 코드 | uncertain",
+      "direction_from_within": "within | toward_lower | toward_upper | uncertain",
+      "boundary_crossed": true | false | null,
       "note_ko": "무엇이 왜 문제인지 1~2문장. 대안 문장을 쓰지 말 것."
     }
   ]
@@ -3430,9 +3739,36 @@ Deno.serve(async (req) => {
       const canonicalItems = isMiniDiscourse
         ? canonicalizeNativeMpj5AnchorPdr(rawItems, b.core.pdr)
         : rawItems
-      const plannedItems = isMiniDiscourse
+      let plannedItems = isMiniDiscourse
         ? applyMissionCandidateBlueprints(canonicalItems, b.feature)
         : canonicalItems
+      let bandTargetingMeta: Record<string, unknown> | null = null
+      if (isMiniDiscourse) {
+        const targeted = await realizeRelativeBandCandidates({
+          apiKey,
+          items: plannedItems,
+          feature: b.feature,
+          direction: missionDir,
+          speechActKo: b.speech_act_ko,
+          telemetryFor,
+        })
+        if (!targeted.ok) {
+          return new Response(
+            JSON.stringify({
+              error: targeted.error,
+              stop_code: targeted.stop_code,
+              candidate_results: targeted.results ?? [],
+            }),
+            { status: 200, headers: jsonHeaders },
+          )
+        }
+        plannedItems = targeted.items as Record<string, unknown>[]
+        bandTargetingMeta = {
+          version: 'relative_band_targeting_v1',
+          within_regeneration_count: targeted.within_regeneration_count,
+          within_warnings: targeted.warnings,
+        }
+      }
       // 위치·문항 초점은 서버가 강제한다. axis_feature는 역사 직렬화 호환용이다.
       const mpj_items = plannedItems.map((it: Record<string, unknown>, i: number) => ({
         ...it,
@@ -3514,6 +3850,7 @@ Deno.serve(async (req) => {
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: 1,
+          ...(bandTargetingMeta ? { band_targeting: bandTargetingMeta } : {}),
         },
       }
       return new Response(
@@ -3522,7 +3859,87 @@ Deno.serve(async (req) => {
       )
     }
 
-    // ── mission_repair: critic이 지목한 문항 block만 한 번 교체 ──
+    // ── mission_candidate_regenerate: band/현실성 fail 후보를 within 최소대조에서 새로 생성 ──
+    if (input.action === 'mission_candidate_regenerate') {
+      const b = input.mission_candidate_regenerate
+      if (!b?.mission_content || !b.feature || !Array.isArray(b.findings) || b.regeneration_attempt !== 1) {
+        return new Response(JSON.stringify({ error: 'mission_candidate_regenerate body required' }), { status: 400, headers: jsonHeaders })
+      }
+      const missionItems = Array.isArray(b.mission_content.mpj_items) ? b.mission_content.mpj_items : []
+      const references = [...new Map(
+        b.findings
+          .filter((finding) => finding.severity === 'fail' &&
+            (finding.code === 'band_mismatch' || finding.code === 'implausible_distractor'))
+          .map((finding) => missionCandidateReferenceForPath(finding.where))
+          .filter((reference): reference is MissionCandidateReference => Boolean(reference))
+          .map((reference) => [missionCandidatePath(reference), reference]),
+      ).values()]
+      if (references.length === 0) {
+        return new Response(JSON.stringify({ operations: [], candidate_checks: [] }), { status: 200, headers: jsonHeaders })
+      }
+      const direction = normDir(b.direction)
+      const generated = await generateMissionCandidates({
+        apiKey,
+        items: missionItems,
+        references,
+        feature: b.feature,
+        direction,
+        speechActKo: b.speech_act_ko,
+        telemetryFor,
+        invocationAttempt: 1,
+      })
+      if (!generated.ok) {
+        return new Response(JSON.stringify({ error: generated.error, stop_code: 'candidate_regeneration_failed' }), { status: 200, headers: jsonHeaders })
+      }
+      const replacedItems = applyCandidateReplacementsToItems(missionItems, generated.operations)
+      const checked = await checkMissionCandidates({
+        apiKey,
+        items: replacedItems,
+        references,
+        feature: b.feature,
+        direction,
+        speechActKo: b.speech_act_ko,
+        telemetryFor,
+        invocationAttempt: 1,
+      })
+      if (!checked.ok) {
+        return new Response(JSON.stringify({ error: checked.error, stop_code: 'candidate_regeneration_check_failed' }), { status: 200, headers: jsonHeaders })
+      }
+      const repeated = checked.results.filter((result) => result.severity === 'fail')
+      if (repeated.length > 0) {
+        return new Response(JSON.stringify({
+          error: '후보가 첫 regeneration 뒤에도 같은 의미·대역 결함을 반복했습니다.',
+          stop_code: 'band_targeting_repeated_semantic_defect',
+          operations: [],
+          candidate_checks: checked.results,
+        }), { status: 200, headers: jsonHeaders })
+      }
+      const operations = generated.operations.map((operation) => {
+        const reference = missionCandidateReferenceForPath(operation.path)!
+        return {
+          operation: reference.item_type === 'fix_choice'
+            ? 'replace_fix_choice_candidate'
+            : 'replace_multi_judge_candidate',
+          item_index: reference.item_index,
+          candidate_index: reference.candidate_index,
+          candidate: operation.candidate,
+        }
+      })
+      return new Response(JSON.stringify({
+        operations,
+        candidate_checks: checked.results,
+        meta: {
+          provider: PROVIDER,
+          model: MISSION_PRIMARY_MODEL,
+          prompt_version: MISSION_CANDIDATE_GENERATION_PROMPT_VERSION,
+          critic_model: CRITIC_PRIMARY_MODEL,
+          critic_prompt_version: MISSION_CANDIDATE_CHECK_PROMPT_VERSION,
+          generated_at: new Date().toISOString(),
+        },
+      }), { status: 200, headers: jsonHeaders })
+    }
+
+    // ── mission_repair: band 외 단순 형식·표현 결함의 후보/문항만 한 번 교체 ──
     if (input.action === 'mission_repair') {
       const b = input.mission_repair
       if (!b?.mission_content || !b.feature || !Array.isArray(b.findings)) {
@@ -3864,15 +4281,39 @@ Deno.serve(async (req) => {
           return
         }
         const code = typeof f.code === 'string' && CODES.includes(f.code) ? f.code : 'internal_inconsistency'
+        let severity: 'warning' | 'fail' = f.severity === 'fail' ? 'fail' : 'warning'
+        let calibrationPrefix = ''
+        if (code === 'band_mismatch') {
+          const reference = missionCandidateReferenceForPath(grounding.where)
+          const blueprint = reference && Array.isArray(b.feature?.band_schema) && b.feature?.within_band_code
+            ? missionCandidateBlueprintForReference({
+                band_schema: b.feature.band_schema,
+                within_band_code: b.feature.within_band_code,
+              }, reference)
+            : null
+          const actualBand = typeof f.actual_band_code === 'string' ? f.actual_band_code : ''
+          const directionFromWithin = typeof f.direction_from_within === 'string' ? f.direction_from_within : ''
+          const explicitSelfContradiction = Boolean(blueprint && actualBand === blueprint.intended_band)
+          const explicitlyUncertain = actualBand === 'uncertain' ||
+            (reference?.phase === 'relative_boundary' &&
+              (f.boundary_crossed === null || directionFromWithin === 'uncertain'))
+          if (explicitSelfContradiction) {
+            severity = 'warning'
+            calibrationPrefix = '[critic_self_contradiction_calibrated] '
+          } else if (explicitlyUncertain) {
+            severity = 'warning'
+            calibrationPrefix = '[critic_boundary_uncertain] '
+          }
+        }
         const findingKey = `${code}\u0000${grounding.where}\u0000${grounding.evidenceExcerpt}`
         if (findingKeys.has(findingKey)) return
         findingKeys.add(findingKey)
         groundedFindings.push({
           code,
-          severity: f.severity === 'fail' ? 'fail' : 'warning',
+          severity,
           where: grounding.where.slice(0, 120),
           evidence_excerpt: grounding.evidenceExcerpt,
-          note_ko: typeof f.note_ko === 'string' ? f.note_ko.slice(0, 400) : '',
+          note_ko: `${calibrationPrefix}${typeof f.note_ko === 'string' ? f.note_ko : ''}`.slice(0, 400),
         })
       })
       const isolatedGroundingFailures = groundingFailures.slice(0, 5).map((reason) => ({
