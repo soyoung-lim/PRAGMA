@@ -134,6 +134,7 @@ export interface PromotionTerminalEvidence {
   regenerationCount: number;
   operation: string;
   operationResult: "not_attempted" | "succeeded" | "failed" | "UNKNOWN";
+  operationError?: string;
   infrastructureError: boolean;
   providerStatus: number | "UNKNOWN";
   finalOutcome: "eligible" | "quality_fail_draft" | "terminal_dropout" | "UNKNOWN";
@@ -391,6 +392,7 @@ function promotionTerminal(
     regenerationCount: overrides.regenerationCount ?? 0,
     operation: overrides.operation ?? "none",
     operationResult: overrides.operationResult ?? "not_attempted",
+    ...(overrides.operationError ? { operationError: overrides.operationError } : {}),
     infrastructureError: overrides.infrastructureError ?? false,
     providerStatus: overrides.providerStatus ?? "UNKNOWN",
     finalOutcome: overrides.finalOutcome,
@@ -1163,12 +1165,13 @@ export async function promoteCore(
       regenerationCount: candidateRegenerationCount,
       operation: boundaryFallbackAttempted
         ? "relative_boundary_candidate_fallback"
-        : repaired ? "mission_item_repair_or_candidate_regeneration" : "none",
+        : repaired || repairError ? "mission_item_repair_or_candidate_regeneration" : "none",
       operationResult: repairError
         ? "failed"
         : repaired || boundaryFallbackAttempted
           ? "succeeded"
           : "not_attempted",
+      operationError: repairError,
       boundaryFallback,
       finalOutcome: quality.verdict === "fail" ? "quality_fail_draft" : "eligible",
     }),

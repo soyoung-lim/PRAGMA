@@ -37,6 +37,7 @@ export function coreTerminalEvidence(
   runId: string,
   result: CoreCellResult,
   recordedAt = new Date().toISOString(),
+  replacementNo = 0,
 ): BatchTerminalEvidenceRecord {
   return {
     generation_run_id: runId,
@@ -51,7 +52,7 @@ export function coreTerminalEvidence(
     critic_verdict: "UNKNOWN",
     critic_finding_code: [],
     attempt_no: result.reused ? 0 : 1,
-    replacement_no: 0,
+    replacement_no: replacementNo,
     regeneration_count: 0,
     repair_fallback_operation: "none",
     repair_fallback_result: "not_attempted",
@@ -95,7 +96,7 @@ export function missionTerminalEvidence(
       ? "reused"
       : terminal?.finalOutcome ?? (result.ok ? "eligible_or_quarantined" : "terminal_dropout"),
     stop_code: terminal?.stopCode ?? "UNKNOWN",
-    terminal_error: result.error?.slice(0, 500) ?? "UNKNOWN",
+    terminal_error: terminal?.operationError?.slice(0, 500) ?? result.error?.slice(0, 500) ?? "UNKNOWN",
     boundary_fallback: terminal?.boundaryFallback ?? null,
     recorded_at: recordedAt,
   };

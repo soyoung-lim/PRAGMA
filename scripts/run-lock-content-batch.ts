@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 type Phase = "core-pilot" | "core-priority" | "core-full" | "mission" | "audit";
@@ -57,6 +57,19 @@ const appendEvidence = (records: readonly Record<string, unknown>[]) => {
   mkdirSync(dirname(evidencePath), { recursive: true });
   appendFileSync(evidencePath, records.map((record) => `${JSON.stringify(record)}\n`).join(""), "utf8");
 };
+const priorCoreAttempts = new Map<number, number>();
+if (existsSync(evidencePath)) {
+  for (const line of readFileSync(evidencePath, "utf8").split(/\r?\n/).filter(Boolean)) {
+    try {
+      const record = JSON.parse(line) as Record<string, unknown>;
+      if (record.generation_run_id !== runId || record.phase !== "core" ||
+          typeof record.item_index !== "number" || record.final_outcome === "reused") continue;
+      priorCoreAttempts.set(record.item_index, (priorCoreAttempts.get(record.item_index) ?? 0) + 1);
+    } catch {
+      // Append-only evidence must not be rewritten because of one malformed historical line.
+    }
+  }
+}
 
 const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 if (signInError) throw new Error(`관리자 로그인 실패: ${signInError.message}`);
@@ -150,7 +163,9 @@ if (phase === "audit") {
       concurrency: 3,
       onProgress: (done, total, last) => {
         process.stdout.write(`\rcore ${done}/${total} index=${last.index} ${last.ok ? "ok" : "fail"}`);
-        appendEvidence([coreTerminalEvidence(runId, last) as unknown as Record<string, unknown>]);
+        const replacementNo = priorCoreAttempts.get(last.index) ?? 0;
+        appendEvidence([coreTerminalEvidence(runId, last, new Date().toISOString(), replacementNo) as unknown as Record<string, unknown>]);
+        if (!last.reused) priorCoreAttempts.set(last.index, replacementNo + 1);
       },
     },
   );

@@ -49,4 +49,33 @@ describe("batch terminal evidence", () => {
     expect(deterministic.infrastructure_error).toBe(false);
     expect(itemIndexFromPlanItemKey(null)).toBe("UNKNOWN");
   });
+
+  it("records a failed optional repair without mislabelling it as no operation", () => {
+    const record = missionTerminalEvidence("run-09", {
+      scenarioId: "scenario-2",
+      generationItemKey: "ko_zh|request|intermediate|school|translation|equal|close|mid|theme|topic|-|-|120",
+      ok: true,
+      reused: false,
+      qualityVerdict: "warning",
+      terminal: {
+        terminalStage: "eligible",
+        itemCandidatePaths: [],
+        deterministicFailureCodes: [],
+        criticVerdict: "warning",
+        criticFindingCodes: [],
+        attemptNo: 1,
+        regenerationCount: 0,
+        operation: "mission_item_repair_or_candidate_regeneration",
+        operationResult: "failed",
+        operationError: "optional repair rejected",
+        infrastructureError: false,
+        providerStatus: "UNKNOWN",
+        finalOutcome: "eligible",
+      },
+    }, "2026-08-30T00:00:00.000Z");
+
+    expect(record.repair_fallback_operation).toBe("mission_item_repair_or_candidate_regeneration");
+    expect(record.repair_fallback_result).toBe("failed");
+    expect(record.terminal_error).toBe("optional repair rejected");
+  });
 });
