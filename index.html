@@ -8,16 +8,20 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 
-    <!-- 링크 공유 카드: 이미지 없이 제목·설명만 뜨게 한다.
-         og:image / twitter:image를 넣지 않아야 카톡·슬랙이 썸네일을 만들지 않는다.
-         (기존 이미지는 Lovable(gpt-engineer) 스토리지를 가리키고 있었다 — 이관 잔재라 함께 제거)
-         twitter:card도 summary_large_image는 이미지 전제이므로 summary로 낮춘다. -->
+    <!-- 링크 공유 카드: 자체 브랜드 배너(public/og-image.png, 1280×640)를 썸네일로 쓴다.
+         과거에는 Lovable 이관 잔재 이미지를 제거하며 이미지 없는 카드로 두었으나(2026-08),
+         브랜드 이미지가 생겨 og:image를 복원했다. 절대 URL이어야 카톡·슬랙이 읽는다. -->
     <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pragma.up.railway.app/">
     <meta property="og:title" content="PRAGMA | AI 기반 한·중 통번역 학습">
     <meta property="og:description" content="한·중 통번역 과정에서 여러 표현을 비교하고, AI 피드백을 바탕으로 관계와 상황에 맞는 표현을 다듬는 수업 플랫폼입니다.">
-    <meta name="twitter:card" content="summary">
+    <meta property="og:image" content="https://pragma.up.railway.app/og-image.png">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="640">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="PRAGMA | AI 기반 한·중 통번역 학습">
     <meta name="twitter:description" content="한·중 통번역 과정에서 여러 표현을 비교하고, AI 피드백을 바탕으로 관계와 상황에 맞는 표현을 다듬는 수업 플랫폼입니다.">
+    <meta name="twitter:image" content="https://pragma.up.railway.app/og-image.png">
   </head>
   <body>
     <div id="root"></div>
