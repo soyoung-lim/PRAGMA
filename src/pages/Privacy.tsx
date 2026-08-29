@@ -8,19 +8,19 @@ import { HomeBrand } from "@/components/HomeBrand";
 // 보관 기간·연구윤리 심의·문의처는 연구자가 확정할 사항이라 [확인 필요]로 남긴다.
 // 확정 전까지 이 페이지를 연구 참여 동의서로 쓰지 않는다.
 //
-// 레이아웃: 로그인 카드용 강조 테두리를 문서 전체에 씌우면 무게중심이 왼쪽으로 쏠린다.
-// 조항은 카드 대신 여백과 얇은 구분선으로 나누고, 번호는 본문 왼쪽 여백에 둔다.
-// 핵심 세 가지는 본문을 읽기 전에 요약으로 먼저 보이게 한다.
+// 레이아웃: 조항 7개짜리 고지문은 한 화면에 들어와야 읽힌다. 제목을 본문 위가 아니라
+// 왼쪽 열에 두어 세로 높이를 접고(모바일은 1단), 요약 스트립은 학술 표의 상하 괘선
+// 방식으로 처리한다. 장식용 카드·여백은 두지 않는다.
 
 const UPDATED_AT = "2026-08-29";
 
 const Pending = () => (
-  <span className="ml-1 rounded bg-[#FDF3D0] px-1.5 py-0.5 align-middle text-[12px] font-semibold text-[#7A6410]">
+  <span className="ml-1.5 rounded bg-[#FDF3D0] px-1.5 py-px align-middle text-[11px] font-semibold text-[#7A6410]">
     확인 필요
   </span>
 );
 
-const Section = ({
+const Row = ({
   no,
   title,
   children,
@@ -29,31 +29,14 @@ const Section = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <section className="border-t border-[#E8E4D8] py-8 first:border-t-0 first:pt-0 sm:py-9">
-    <div className="sm:flex sm:gap-7">
-      <div className="shrink-0 sm:w-12 sm:pt-[3px] sm:text-right">
-        <span className="text-[13px] font-semibold tabular-nums text-[#B6AF9C]">{no}</span>
-      </div>
-      <div className="mt-1 min-w-0 sm:mt-0">
-        <h2 className="break-keep text-[16.5px] font-bold leading-snug tracking-[-0.02em] text-[#15202B]">
-          {title}
-        </h2>
-        <div className="mt-3 space-y-2.5 break-keep text-[14px] leading-[1.75] text-[#4A4639]">
-          {children}
-        </div>
-      </div>
+  <div className="grid grid-cols-1 gap-x-8 gap-y-1 border-t border-[#ECE8DD] py-3.5 sm:grid-cols-[172px_1fr]">
+    <h2 className="break-keep text-[13.5px] font-bold leading-snug tracking-[-0.01em] text-[#15202B]">
+      <span className="mr-2 font-semibold tabular-nums text-[#B6AF9C]">{no}</span>
+      {title}
+    </h2>
+    <div className="min-w-0 space-y-1.5 break-keep text-[13px] leading-[1.65] text-[#4A4639]">
+      {children}
     </div>
-  </section>
-);
-
-const SummaryItem = ({ label, value }: { label: string; value: string }) => (
-  <div className="min-w-0">
-    <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8A8578]">
-      {label}
-    </dt>
-    <dd className="mt-1.5 break-keep text-[14px] font-medium leading-relaxed text-[#15202B]">
-      {value}
-    </dd>
   </div>
 );
 
@@ -66,30 +49,36 @@ const Privacy = () => {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[680px] flex-1 px-5 py-11 sm:px-6 sm:py-16">
-        {/* 초안 상태를 본문 배지로만 알리면 세 곳에 흩어져 산만하다. 머리에서 한 번 밝힌다. */}
-        <p className="inline-flex items-center gap-2 rounded-full bg-[#FDF3D0] px-3 py-1 text-[12.5px] font-semibold text-[#7A6410]">
-          초안 — 보관 기간·연구윤리·문의처 미확정
-        </p>
-
-        <h1 className="mt-5 break-keep text-[29px] font-bold leading-[1.2] tracking-[-0.03em] text-[#15202B]">
+      <main className="mx-auto w-full max-w-[860px] flex-1 px-5 py-8 sm:px-6 sm:py-10">
+        <h1 className="break-keep text-[22px] font-bold leading-tight tracking-[-0.02em] text-[#15202B]">
           개인정보처리방침
         </h1>
-        <p className="mt-3 break-keep text-[14px] leading-[1.75] text-[#6B665C]">
+        <p className="mt-1.5 break-keep text-[13px] leading-[1.65] text-[#4A4639]">
           PRAGMA는 한국외국어대학교 박사학위논문 연구를 위해 개발·운영되는 학습용 웹
           애플리케이션입니다.
         </p>
-        <p className="mt-2 text-[12.5px] text-[#8A8578]">최종 갱신 {UPDATED_AT}</p>
+        <p className="mt-1 text-[12px] text-[#8A8578]">
+          최종 갱신 {UPDATED_AT} · 초안 — 보관 기간·연구윤리·문의처는 확정 후 명시
+        </p>
 
-        {/* 한눈에 — 상세 조항을 읽지 않아도 핵심 세 가지는 파악되게 한다. */}
-        <dl className="mt-9 grid grid-cols-1 gap-5 rounded-xl border border-[#E8E4D8] bg-white px-6 py-5 sm:grid-cols-3 sm:gap-6">
-          <SummaryItem label="수집" value="계정 정보와 학습 수행 기록" />
-          <SummaryItem label="목적" value="학습 기능 제공과 학위논문 연구" />
-          <SummaryItem label="제3자 제공" value="없음" />
+        {/* 요약 — 학술 표의 상하 괘선. 상세를 읽지 않아도 핵심 세 가지가 먼저 보인다. */}
+        <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-2 border-y-2 border-[#15202B] py-2.5">
+          {[
+            ["수집", "계정 정보와 학습 수행 기록"],
+            ["목적", "학습 기능 제공과 학위논문 연구"],
+            ["제3자 제공", "없음"],
+          ].map(([k, v]) => (
+            <div key={k} className="flex items-baseline gap-2">
+              <dt className="text-[11.5px] font-semibold uppercase tracking-[0.05em] text-[#8A8578]">
+                {k}
+              </dt>
+              <dd className="break-keep text-[13px] font-medium text-[#15202B]">{v}</dd>
+            </div>
+          ))}
         </dl>
 
-        <div className="mt-12">
-          <Section no="01" title="수집하는 항목">
+        <div className="mt-4">
+          <Row no="01" title="수집하는 항목">
             <p>
               <strong className="font-semibold text-[#15202B]">계정 정보</strong> — Google 계정
               이메일 주소, 서비스 내부 역할과 승인 상태, 익명 참여자 식별자, 가입·수정 시각.
@@ -99,80 +88,67 @@ const Privacy = () => {
               시작·재개 이력, 화용 판단 과제 응답, 맥락 대비 판단, 최초 산출물, 제공된 피드백,
               학습자가 남긴 이의, 수정 산출물.
             </p>
-            <p className="text-[#8A8578]">
-              별도의 주민등록번호·연락처·결제 정보는 수집하지 않습니다.
-            </p>
-          </Section>
+            <p className="text-[#8A8578]">주민등록번호·연락처·결제 정보는 수집하지 않습니다.</p>
+          </Row>
 
-          <Section no="02" title="이용 목적">
+          <Row no="02" title="이용 목적">
             <p>
               학습 기능 제공(진행 상황 저장과 이어하기)과 학위논문 연구를 위한 분석에만
-              이용합니다. 그 밖의 목적으로 이용하지 않으며, 광고·마케팅에 활용하지 않습니다.
+              이용합니다. 그 밖의 목적과 광고·마케팅에 활용하지 않습니다.
             </p>
-          </Section>
+          </Row>
 
-          <Section no="03" title="보관 기간과 파기">
+          <Row no="03" title="보관 기간과 파기">
             <p>
               보관 기간과 파기 방법은 확정 후 이 항에 명시합니다.
               <Pending />
             </p>
-          </Section>
+          </Row>
 
-          <Section no="04" title="처리 위탁">
+          <Row no="04" title="처리 위탁">
             <p>
-              제3자에게 개인정보를 판매하거나 제공하지 않습니다. 서비스 운영을 위해 다음을
-              이용합니다.
+              제3자에게 판매·제공하지 않습니다. 서비스 운영을 위해{" "}
+              <strong className="font-semibold text-[#15202B]">Supabase</strong>(데이터베이스·인증)
+              · <strong className="font-semibold text-[#15202B]">Railway</strong>(배포) ·{" "}
+              <strong className="font-semibold text-[#15202B]">OpenAI·Anthropic</strong>(콘텐츠
+              생성·검수) · <strong className="font-semibold text-[#15202B]">ElevenLabs</strong>(음성
+              합성)를 이용합니다.
             </p>
-            <ul className="space-y-1.5 pt-0.5">
-              {[
-                ["Supabase", "데이터베이스·인증"],
-                ["Railway", "애플리케이션 배포"],
-                ["OpenAI, Anthropic", "학습 콘텐츠 생성 및 검수"],
-                ["ElevenLabs", "음성 합성"],
-              ].map(([name, role]) => (
-                <li key={name} className="flex gap-2.5">
-                  <span aria-hidden className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-[#C9C2AE]" />
-                  <span>
-                    <strong className="font-semibold text-[#15202B]">{name}</strong>
-                    <span className="text-[#8A8578]"> — {role}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </Section>
+          </Row>
 
-          <Section no="05" title="이용자의 권리">
+          <Row no="05" title="이용자의 권리">
             <p>
               열람·정정·삭제·처리정지를 요구할 수 있습니다. 계정을 삭제하면 연결된 학습 수행
               기록도 함께 삭제됩니다.
             </p>
-          </Section>
+          </Row>
 
-          <Section no="06" title="연구윤리">
+          <Row no="06" title="연구윤리">
             <p>
               연구윤리 심의 여부와 승인 정보는 확정 후 이 항에 명시합니다.
               <Pending />
             </p>
-          </Section>
+          </Row>
 
-          <Section no="07" title="문의">
+          <Row no="07" title="문의">
             <p>
               연구책임자 성명과 연락처는 확정 후 이 항에 명시합니다.
               <Pending />
             </p>
-          </Section>
+          </Row>
         </div>
 
-        <div className="mt-10 border-t border-[#E8E4D8] pt-7">
+        <div className="flex items-center justify-between border-t-2 border-[#15202B] pt-3.5">
           <Link
             to="/"
-            className="group inline-flex items-center gap-1.5 rounded-md text-[13px] font-medium text-[#687584] transition-colors hover:text-[#15202B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
+            className="group inline-flex items-center gap-1.5 rounded-md text-[12.5px] font-medium text-[#687584] transition-colors hover:text-[#15202B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
           >
             <span aria-hidden className="transition-transform group-hover:-translate-x-0.5">
               ←
             </span>
             시작 화면으로
           </Link>
+          <span className="text-[11.5px] text-[#B6AF9C]">PRAGMA · {UPDATED_AT}</span>
         </div>
       </main>
     </div>
