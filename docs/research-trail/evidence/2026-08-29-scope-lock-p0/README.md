@@ -118,3 +118,23 @@ P0 migration 적용·배포 후 deployment ID와 deploy commit을 채워야 완�
 
 이 증거는 within anchor·상대 최소대조·후보 격리·재시도 상한의 구현과 제한된 생산 반복을
 뒷받침한다. 30/500 생산 가능, 교수자 승인, 60슬롯, 동일-ID E2E 또는 학습효과의 증거는 아니다.
+
+## 균형 30 production yield 증거
+
+- run: `scope-lock-pilot-20260829-06-yield30`, 구현 commit `f714a1f`, `_06` fingerprint 불변
+- 계획 30 → 최초 코어 24 → hard-invalid 대체 6 중 5 회복 → 최종 코어·미션 시도 29
+- 첫 패스 적격 12/30(40.0%), 후보 재생성 7미션·8후보, 최종 적격 19/30(63.3%), 탈락 11/30
+- 최종 탈락: R27 6, MJT3·MJT5 상대 경계 출력 누락 3, MJT4 R18 1, core R26 1
+- 적격 19개는 pass 0·warning 19·critical fail 저장 0이다. 명시적 critic 자기모순 calibration 1건,
+  일반 warning은 false positive로 세지 않았다.
+- repair 오염·실패 revision 저장·candidate 재생성 상한 위반 0. 후보당 최대 1회
+- 잔액 부족 30개 요청+진단 1회는 저장·token 없이 실패했다. 충전 뒤 동일 run의 호출 reliability는
+  219/224(97.8%)이고 최종 탈락을 인프라에 직접 귀속한 항목은 0이다.
+- 성공 token 1,133,961, 성공 호출 219. 2026-08-29 OpenAI 표준 단가 추정 총 $2.93·적격 1개당
+  $0.154다. 단순 500 외삽은 약 790셀·5,763 성공 호출·29.84M token·$77이며 보장이나 청구서가 아니다.
+- 사전 판정: 최종 적격 19/30이고 동일 frozen R27이 6/30이므로 **1회 추가 국소 수정 필요**.
+  500 본생성은 시작하지 않았다.
+
+정확한 집계·모델별 token·단가·분포는 `yield30-production-canary.json`을 따른다. 이 증거는
+production yield·bounded recovery 비용의 관찰이며 19개가 reviewed 또는 교수자 승인되었다는 증거,
+500 완료, 60슬롯, 동일-ID E2E 또는 학습효과의 증거가 아니다.

@@ -143,3 +143,51 @@ MJT3 `fix_choice`와 MJT5 `multi_judge` 후보 생성·블록 repair에 집중�
 국소 반복 증거이며 교수자 승인, 60슬롯, 동일-ID E2E 또는 학습효과의 증거가 아니다.
 
 구현 커밋: `f714a1f`.
+
+## 균형 30개 production yield canary
+
+### 실행 계약과 표본
+
+- 연구자 승인에 따라 `_06` release·fingerprint와 구현 커밋 `f714a1f`를 그대로 고정하고, 기존 표적
+  8개와 별도 run `scope-lock-pilot-20260829-06-yield30`을 실행했다. 중간에 prompt·generator·critic·
+  repair·MJT 구조를 바꾸지 않았다.
+- 30개 계획 셀의 최초 코어 저장은 24개였다. hard-invalid 6개만 대체 1회를 실행해 5개를 회복했고,
+  R26 산업 단서 결함이 반복된 1개는 제외했다. 최종 코어 29개만 미션 승격했다.
+- 최초 실행 전 API 잔액 부족으로 30개 core 요청과 진단 1회가 `credit_balance_exhausted`로 실패했다.
+  저장 행·token은 없었다. 충전 뒤 동일 run을 재개했으며 이 사건은 semantic yield와 분리했다.
+
+### 수율과 실패 분포
+
+- 첫 패스 적격은 계획 30개 기준 12개(40.0%), 미션 시도 29개 기준 41.4%였다. 후보 재생성 대상은
+  7미션·8후보이고 후보당 최대 1회를 지켰다. 최종 적격은 19/30(63.3%), 최종 탈락은 11/30(36.7%)다.
+  저장된 적격 19개는 모두 warning이고 pass/fail 저장 행은 0개다.
+- 최종 탈락 직접 원인은 R27 장면 중복 6, MJT3·MJT5 상대 경계 출력 누락 3, MJT4 R18 1,
+  pre-mission R26 1이다. MJT2 직접 탈락은 0이다. R27은 사전 기준의 동일 frozen defect 6/30에
+  정확히 도달했다.
+- 방향별 탈락은 한→중 6/20(30%), 중→한 5/10(50%), 수준별은 중급 8/20(40%), 고급
+  3/10(30%), 모드별은 번역 9/24(37.5%), 통역 2/6(33.3%)였다. 작은 표본이므로 방향 차이를
+  체계적 효과로 단정하지 않는다. 모드 집중은 관찰되지 않았다.
+- warning findings는 `comparison_quality_mismatch` 33, `feedback_quality_mismatch` 19,
+  `critic_grounding_failure` 12, 경계 불확실 `band_mismatch` 2였다. 명시적 자기모순 calibration은
+  1건이며 나머지 warning을 false positive로 계산하지 않았다.
+- 적격 audit은 19개 모두 current release·구조·저장·critical fail 제외·고유 hash 조건을 통과했다.
+  정상 peer 오염, 실패 revision 저장, bounded recovery 위반은 0건이다.
+
+### 호출·비용과 500 외삽
+
+- ledger 전체는 255호출·219성공·36실패다. 이 중 잔액 부족 31호출을 분리하면 충전 뒤 reliability는
+  219/224(97.8%)이고, 최종 탈락을 인프라에 직접 귀속한 항목은 0개다. 성공 호출은 적격 1개당
+  11.53회, 충전 뒤 전체 요청은 11.79회다.
+- token은 input 1,017,418(그중 cached 171,264), output 116,543, 합계 1,133,961이며 적격 1개당
+  약 59,682 token이다. 2026-08-29 확인 OpenAI 표준 API 단가로 계산한 추정비용은 총 $2.93,
+  적격 1개당 $0.154다. 실제 청구서가 아니며 Supabase/Edge 비용은 포함하지 않는다.
+- 같은 수율·모델 혼합이 유지된다는 단순 외삽에서 유효 500개에는 계획 셀 약 790, 성공 모델 호출
+  약 5,763, 충전 뒤 reliability를 반영한 요청 약 5,895, token 약 29.84M, 표준 API 비용 약 $77가
+  필요하다. 고정 500셀만 시도하면 기대 적격은 약 317개이므로 500 유효 후보를 채우는 보장이 없다.
+
+### 판정과 완료 경계
+
+사전 기준에 따라 최종 판정은 **1회 추가 국소 수정 필요**다. 최종 적격 19/30이 15~20 구간이고
+R27이 6/30의 직접 탈락 원인이기 때문이다. 이 canary에서 R27·MJT4·경계 생성 구조를 수정하지 않았고
+500 본생성도 시작하지 않았다. 상세 aggregate는
+`docs/research-trail/evidence/2026-08-29-scope-lock-p0/yield30-production-canary.json`에 보존한다.
