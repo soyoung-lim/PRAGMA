@@ -99,3 +99,47 @@ MJT3 `fix_choice`와 MJT5 `multi_judge` 후보 생성·블록 repair에 집중�
 실증까지다. 500 생산 가능 판정은 **보류**다.
 
 구현 커밋: `9395126`.
+
+## 상대적 최소대조 band targeting 보정과 8개 최종 canary
+
+### 변경
+
+- MJT3는 검증된 within 후보 1개를 lower·upper의 공통 anchor로, MJT5는 먼저 검증한 within A·B를
+  각각 lower·upper의 anchor로 사용하도록 생성 순서를 분리했다. 경계 후보는 절대 대역 지시가 아니라
+  anchor 대비 의미·발화 의도·화행 기능을 보존한 상대적 최소대조로 생성한다.
+- within이 실패하면 그 후보만 1회 재생성하고, 같은 의미 결함이 반복되면 중단한다.
+  `band_mismatch`·`implausible_distractor`는 기존 문장 repair가 아니라 해당 후보 신규 생성으로,
+  비대역 형식 결함만 기존 candidate-level repair로 보낸다.
+- 후보 교체 뒤에는 대상 후보 검사와 결정론 검사만 수행한다. 정상 peer·순서·band metadata와
+  비대상 warning/fail은 보존한다. 재개 실행에서도 같은 후보를 다시 재생성하지 않도록 invocation
+  ledger 기반 1회 한도를 추가했다.
+- 새 release는 `pragma_scope_lock_20260829_06_mjt5_dct1_relative_band`, mission prompt는
+  `mission_v5_mpj5_minidiscourse_v11_relative_band`, critic은
+  `quality_v16_relative_band_calibration`이다. DB 스키마·UI·mission_v5·P·D·R·대역은 바꾸지 않았다.
+
+### 최소 검증과 실제 8개 canary
+
+- blueprint·batch·prompt snapshot·승격 표적 4파일 27 tests와 typecheck가 통과했다. 재개 시 재생성
+  1회 한도를 추가한 뒤에는 `promoteMission` 9 tests와 typecheck만 다시 통과시켰다.
+- `generate-scenario`를 운영 Edge에 배포했다. 처음 추가한 ledger operation 이름은 운영 DB enum이
+  거부했으며, 스키마를 넓히지 않고 기존 operation과 prompt version 구분을 재사용해 재배포했다.
+- 새 run `scope-lock-pilot-20260829-06-band8`의 코어는 8/8이었다. 최초 완전 실행에서 자동 gate
+  적격은 2/8, 후보 재생성 3회였다. 저장 성공분을 유지한 sniper 재개 뒤 최종 적격은 6/8이다.
+- 최종 저장 상태는 pass 1, warning 5, fail 1, 미션 미생성 1이다. critical
+  `implausible_distractor`는 0이다. 잔존 critical `band_mismatch`는 한 미션의 4 findings이며,
+  승인 범위인 MJT3·MJT5 후보 2건과 변경 금지 범위인 MJT2·MJT4 target 2건이 함께 남았다.
+  다른 한 건은 기존 R27 장면 중복 결함이 같은 scenario에서 반복돼 중단했다.
+- 재개 실행을 합치면 candidate regeneration operation은 5회(계획 표본당 평균 0.625), 보정 전
+  동일 후보 최대 관측은 2회였다. 마지막 ledger guard는 향후 최대 1회로 제한하며 표적 test와
+  typecheck로만 검증했고 새 8개를 다시 생성하지 않았다.
+- 명시적 critic 자기모순 자동 calibration은 최종 audit에 0건 기록됐다. warning 5건 전체를
+  false positive로 해석하지 않는다.
+
+### 판정과 완료 경계
+
+후보 격리, within-first 상대적 생성, 비대역 판정 보존, 재시도 상한은 구현·검증했다. 그러나 승인
+조건인 최종 critical `band_mismatch=0`을 충족하지 못해 균형 30은 **진행 불가**, 500 본생성은 계속
+중단한다. 기존 성공 파일럿과 두 release는 삭제·backfill하지 않았다. 이 결과는 생성 feasibility의
+국소 반복 증거이며 교수자 승인, 60슬롯, 동일-ID E2E 또는 학습효과의 증거가 아니다.
+
+구현 커밋: `f714a1f`.

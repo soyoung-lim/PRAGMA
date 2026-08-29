@@ -29,10 +29,11 @@ P0 migration 적용·배포 후 deployment ID와 deploy commit을 채워야 완�
 
 ## 고정된 콘텐츠 퍼널
 
-- 현재 재-canary LOCK release: `pragma_scope_lock_20260829_05_mjt5_dct1_candidate_blueprint`
-- 생성 fingerprint: mission `mission_v5_mpj5_minidiscourse_v10_candidate_blueprint`, critic
-  `quality_v15_candidate_blueprint_consistency`, repair `mission_item_repair_v8_functional_band_boundary`,
-  core surface hash `6e5aee7cf1244bd9dc0f0b44d01f7e9aa35dfef008f8ff67f56ef7048060b0a1`
+- 현재 재-canary LOCK release: `pragma_scope_lock_20260829_06_mjt5_dct1_relative_band`
+- 생성 fingerprint: mission `mission_v5_mpj5_minidiscourse_v11_relative_band`, critic
+  `quality_v16_relative_band_calibration`, candidate regeneration
+  `mission_candidate_band_v1_relative_minimal_contrast`, non-band repair
+  `mission_item_repair_v9_non_band_only`
 - 60슬롯: 세 강좌 각각 20슬롯
 - 교과목 우선 코어: 슬롯당 5개, 총 300개
 - 500 유효 완전 미션 후보 최소치:
@@ -97,3 +98,23 @@ P0 migration 적용·배포 후 deployment ID와 deploy commit을 채워야 완�
 로컬 `.env`의 batch 관리자 자격증명은 canary 실행에만 사용했고 값은 출력·문서화·커밋하지 않았다.
 이 증거는 후보 격리와 실패 revision 비저장 동작을 뒷받침하지만 500 생산 가능성, 콘텐츠 타당성,
 교수자 승인 또는 학습효과의 증거는 아니다.
+
+## within-first 상대 대역 8개 canary 증거
+
+- 구현 commit: `f714a1f`
+- run: `scope-lock-pilot-20260829-06-band8`
+- 생성: 코어 8/8. 최초 자동 gate 적격 2/8, 저장 성공분을 유지한 sniper 재개 뒤 최종 적격 6/8
+- 최종 저장 상태: pass 1, warning 5, fail 1, 미션 미생성 1
+- critical: `implausible_distractor` 0. `band_mismatch` 1미션/4 findings 중 승인 범위 MJT3·MJT5
+  후보 2건, 변경 금지 범위 MJT2·MJT4 target 2건
+- 미생성 1건은 동일 scenario에서 기존 R27 장면 중복 결함이 반복되어 중단
+- candidate regeneration: canary 재개 실행 합계 5 operations, 계획 8개당 평균 0.625. guard 적용 전
+  동일 후보 최대 2회가 관측되어 invocation ledger 기반 1회 상한을 추가했다. 이 마지막 guard는
+  9 tests·typecheck로 확인했고 새 canary를 다시 만들지 않았다.
+- critic: 명시적 자기모순 자동 calibration 기록 0. warning 5개를 false positive로 간주하지 않는다.
+- 최소 검증: 상대 대역 구현 표적 4파일 27 tests·typecheck, 마지막 guard 9 tests·typecheck 통과
+- 배포: `generate-scenario` Edge 배포 성공 응답을 확인했다. 배포 version/ID는 별도 수집하지 않았다.
+- 정지 판정: 최종 critical `band_mismatch=0` 조건을 충족하지 못해 균형 30과 500은 실행하지 않았다.
+
+이 증거는 within anchor·상대 최소대조·후보 격리·재시도 상한의 구현과 제한된 생산 반복을
+뒷받침한다. 30/500 생산 가능, 교수자 승인, 60슬롯, 동일-ID E2E 또는 학습효과의 증거는 아니다.

@@ -2885,3 +2885,23 @@
   현 구조는 오염 방지는 달성했지만 경계 후보 복구율은 게이트를 통과하지 못했다.
 - 관련: `DEC-20260829-02`, `EVD-20260829-02`,
   `docs/dev-log/2026-08-29-scope-lock-p0-foundation.md`, 커밋 `9395126`.
+
+## ITER-20260829-03 · within-first 상대 대역 생성과 재시도 상한
+
+- 날짜: 2026-08-29
+- 시작 문제: 후보 단위 repair는 정상 peer 오염을 막았지만 lower·upper가 anchor 없이 생성되어 실제
+  대역 경계를 넘지 못했고, 같은 run 재개가 이미 시도한 후보를 다시 호출할 수 있었다.
+- 변경: MJT3 within 1개와 MJT5 within A·B를 먼저 검증하고 경계 후보를 상대적 최소대조로 생성했다.
+  band/implausible 실패는 후보 신규 생성, 단순 형식 실패는 candidate repair로 분기했다. 비대상
+  판정을 보존하고 invocation ledger로 후보당 재생성을 1회로 제한했다.
+- 예상과 달랐던 점: 최초 Edge 배포는 새 ledger operation 이름을 운영 enum이 거부했다. 새 migration을
+  만들지 않고 기존 operation과 prompt version을 재사용해 해결했다. canary 적격은 2/8에서 저장
+  성공분을 유지한 재개 뒤 6/8로 늘었지만 한 미션에 범위 안팎의 band fail이 함께 남았다.
+- 검증/결과: 표적 4파일 27 tests·typecheck, 마지막 재시도 guard의 9 tests·typecheck가 통과했다.
+  최종 pass 1·warning 5·fail 1·미생성 1, critical implausible 0, band fail 1미션/4 findings다.
+  균형 30과 500은 실행하지 않았다.
+- 교훈: 상대 anchor와 candidate isolation만으로 전체 MJT의 대역 gate를 보장할 수 없다. 승인 범위를
+  MJT3·MJT5로 유지한다면 30 진입 기준도 전체 critical 0이 아니라 범위별 처리 정책을 연구자가 먼저
+  결정해야 하며, 현재 계약에서는 기존 기준대로 정지하는 것이 맞다.
+- 관련: `DEC-20260829-03`, `EVD-20260829-03`,
+  `docs/dev-log/2026-08-29-scope-lock-p0-foundation.md`, 커밋 `f714a1f`.
