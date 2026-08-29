@@ -33,9 +33,14 @@
 - `npm run typecheck` 통과.
 - 정본에서 Edge용 content-review domain을 재생성하고 `npm run build` 통과(1,949 modules).
 - `git diff --check` 통과. 줄바꿈 변환 안내 외 공백 오류는 없다.
-- 원격 DB 적용·유료 AI 호출·콘텐츠 생성·교수자 승인·배포는 수행하지 않았다.
+- 운영 Supabase에 migration `20260829183000_scope_lock_attempt_lineage.sql`을 적용했다.
+- `generate-scenario` Edge v91과 `content-review` Edge v9의 `ACTIVE`를 확인했다. 프런트엔드는
+  배포하지 않아 새 release 콘텐츠 준비 전 기존 공개 흐름을 전환하지 않았다.
+- 유료 AI 호출·콘텐츠 생성·교수자 승인·Railway 배포는 수행하지 않았다.
 
 ## 정확한 완료 경계
 
-로컬 구현·정적 계약·단위 회귀까지만 완료했다. 운영 적용, 30파일럿, prompt fingerprint LOCK,
-500 후보 생산, 교수자 reviewed 미션, 60슬롯 실제 배치, Defense 12, 번역2+통역2 E2E는 남아 있다.
+로컬 구현·정적 계약·단위 회귀와 운영 DB 계보 migration·생성/검토 Edge 배포까지 완료했다.
+30파일럿, prompt fingerprint LOCK, 500 후보 생산, 교수자 reviewed 미션, 60슬롯 실제 배치,
+Defense 12, 번역2+통역2 E2E와 Railway 배포는 남아 있다. 파일럿 runner는 관리자 자격증명이
+코드·로컬 `.env`에 없어서 실행하지 않았다.

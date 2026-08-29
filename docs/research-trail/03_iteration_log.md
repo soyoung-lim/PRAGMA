@@ -2860,7 +2860,8 @@
   분리하고 확인 시점 `c43d623`을 기준점으로 고정했다. 기존 16배정은 FK상 물리 고아가 아니라 현행
   `scenario_core_v1` 투영 밖 legacy 행이었다.
 - 검증/한계: 영향 범위 16파일 94 tests, typecheck, 정본 생성물 재생성 뒤 production build와 diff
-  check가 통과했다. 원격 migration·유료 batch·교수자 승인·실제 번역/통역 E2E·배포는 아직 수행하지
-  않아 콘텐츠 완성이나 학습효과를 주장하지 않는다.
+  check가 통과했다. 운영 계보 migration과 `generate-scenario` v91·`content-review` v9를 적용했다.
+  유료 batch·교수자 승인·실제 번역/통역 E2E·Railway 배포는 아직 수행하지 않아 콘텐츠 완성이나
+  학습효과를 주장하지 않는다.
 - 관련: `TRC-20260829-01`, `DEC-20260829-01`, `EVD-20260829-01`,
   `docs/dev-log/2026-08-29-scope-lock-p0-foundation.md`.
