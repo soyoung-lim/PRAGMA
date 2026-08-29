@@ -267,7 +267,7 @@ const Architecture = () => (
               한 미션의 흐름 · 매 미션 반복
             </span>
             <div className="mt-2 flex flex-wrap items-center gap-[5px] lg:flex-nowrap lg:justify-center lg:gap-0.5 xl:gap-1">
-              {[`감각 익히기(MPJ ${MPJ_ITEM_COUNT})`, "직접 표현하기", "피드백 확인", "한 곳 다듬기"].map((step, i) => (
+              {[`감각 익히기(MJT ${MPJ_ITEM_COUNT})`, "직접 표현하기", "피드백 확인", "한 곳 다듬기"].map((step, i) => (
                 <span key={step} className="contents">
                   {i > 0 && <ChevronRight size={9} strokeWidth={2.25} className="shrink-0 text-[#D6B84A]" />}
                   <span className="whitespace-nowrap rounded-md border border-[#EADFAF] bg-white px-2 py-1 text-[11px] font-semibold lg:px-[5px] lg:text-[9.5px] xl:px-1.5 xl:text-[10px]">

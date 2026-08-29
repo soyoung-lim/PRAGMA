@@ -465,7 +465,7 @@ export function checkMission(
     m.provenance?.prompt_version === CURRENT_MISSION_PROMPT_VERSIONS[0] &&
     !isNativeV5
   ) {
-    add(v, "R1", "fail", "현행 mission_v5 생성계약은 독립 맥락 대비 문항을 포함한 MPJ5여야 함");
+    add(v, "R1", "fail", "현행 mission_v5 생성계약은 독립 맥락 대비 문항을 포함한 MJT5여야 함");
   }
   if (isCurrentNativeV5) {
     if (m.learning_goal?.kind !== "speech_act" || m.learning_goal.speech_act !== ctx.speech_act) {
@@ -573,10 +573,10 @@ export function checkMission(
       case "judge3": {
         if (isNativeV5) {
           if (it.accepted_band_codes.length !== 1 || it.accepted_band_codes.includes(withinCode)) {
-            add(v, "R2", "fail", `문항 ${it.id}: 네이티브 MPJ5 맥락 대비 판단은 비적정 대역 1개여야 함`);
+            add(v, "R2", "fail", `문항 ${it.id}: 네이티브 MJT5 맥락 대비 판단은 비적정 대역 1개여야 함`);
           }
           if (!samePdrBand(it.pdr, m.production_task.pdr)) {
-            add(v, "R2", "fail", `문항 ${it.id}: 네이티브 MPJ5 맥락 대비 판단은 DCT와 같은 앵커 PDR이어야 함`);
+            add(v, "R2", "fail", `문항 ${it.id}: 네이티브 MJT5 맥락 대비 판단은 DCT와 같은 앵커 PDR이어야 함`);
           }
         } else if (!it.accepted_band_codes.includes(withinCode)) {
           // legacy judge3는 소박한 규칙의 반례 문항이었다.
@@ -783,11 +783,11 @@ export function checkMission(
   if (isCurrentNativeV5) {
     for (const it of m.mpj_items) {
       if (it.preceding_turn) {
-        add(v, "R8", "fail", `문항 ${it.id}: native MPJ5는 preceding_turn을 생성하지 않음`);
+        add(v, "R8", "fail", `문항 ${it.id}: native MJT5는 preceding_turn을 생성하지 않음`);
       }
     }
     if (m.production_task.preceding_turn) {
-      add(v, "R8", "fail", "production_task: native MPJ5는 preceding_turn을 사용하지 않음");
+      add(v, "R8", "fail", "production_task: native MJT5는 preceding_turn을 사용하지 않음");
     }
   }
   if (!isNativeV5 && isResponseAct(ctx.speech_act)) {
@@ -930,7 +930,7 @@ export function checkMission(
       }
     }
     if (allEvidenceRefs.size < 2) {
-      add(v, "R33", "fail", "복수 진단차원은 MPJ/DCT 중 최소 두 위치에 실제 근거를 가져야 함");
+      add(v, "R33", "fail", "복수 진단차원은 MJT/DCT 중 최소 두 위치에 실제 근거를 가져야 함");
     }
   }
 
@@ -1126,7 +1126,7 @@ function checkV4ContextPlan(v: RuleViolation[], m: MissionV4 | MissionV5, concis
       v,
       "R27",
       "fail",
-      `v4 MPJ 문항 ${indexes.join("·")}의 situation_ko가 완전히 중복됨: ` +
+      `v4 MJT 문항 ${indexes.join("·")}의 situation_ko가 완전히 중복됨: ` +
         `"${situation.slice(0, 90)}${situation.length > 90 ? "…" : ""}". ` +
         "앵커 PDR은 유지하되 인물의 구체적 용건·대상·사건을 서로 다르게 다시 만드세요",
     );
@@ -1137,7 +1137,7 @@ function checkV4ContextPlan(v: RuleViolation[], m: MissionV4 | MissionV5, concis
       v,
       "R27",
       "fail",
-      `v4 MPJ 문항 ${index + 1}의 situation_ko가 DCT 상황을 그대로 복제함: ` +
+      `v4 MJT 문항 ${index + 1}의 situation_ko가 DCT 상황을 그대로 복제함: ` +
         `"${situation.slice(0, 90)}${situation.length > 90 ? "…" : ""}". ` +
         "같은 앵커 PDR을 유지하면서도 DCT와 다른 인물의 구체적 용건·대상·사건으로 다시 만드세요",
     );

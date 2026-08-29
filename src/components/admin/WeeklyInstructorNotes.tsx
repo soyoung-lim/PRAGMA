@@ -56,7 +56,7 @@ export function WeeklyInstructorNotes({ week, direction, missions }: {
             <p className="mt-3 text-xs leading-5 text-muted-foreground">{item.evidenceLimit}</p>
           </details>)}
       {guide.mpjItems.map((item) => <details key={item.id} className="mt-3 rounded border p-3 text-sm">
-        <summary className="cursor-pointer font-semibold">MPJ {item.id} · {item.titleKo}</summary>
+        <summary className="cursor-pointer font-semibold">MJT {item.id} · {item.titleKo}</summary>
         <p className="mt-2">{item.designIntentKo}</p>
         <ul className="mt-2 space-y-3">{item.candidates.map((candidate, index) => <li key={index}>
           <p>{candidate.text}</p>

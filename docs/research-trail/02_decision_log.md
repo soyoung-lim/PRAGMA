@@ -2997,3 +2997,16 @@
 - 검증: 표적 고유48 tests, typecheck, 새 지도안/메모/본문 관련7파일 ESLint, 검수 bundle 대조. 운영 읽기·로컬 실제 렌더러의 DOM 확인. 자세한 검증 범위/초기 테스트 작성 오류는 dev-log에 기록했다.
 - 한계/확인 필요: 6주차는1/2 편성으로 미완성이다. 지도안의 교수자 확인과 향후 프런트/검수 Edge 동시 배포는 남겨 두며 승인·학습 종단을 대행하지 않는다. 문헌 카드/대장·논문 본문·human_approval·기존 승인 및 학습 기록 불변. 현재 미커밋이다.
 - 관련: `TRC-20260828-16`, `EVD-20260828-04`, [구현·원문 근거·네 영역 정합성](../dev-log/2026-08-28-literature-gold-refusal-application.md). 동일 반복을03_iteration_log에 다시 전사하지 않는다.
+
+## DEC-20260829-01 · Scope Lock P0와 500–60–12–4 실행 계약
+
+- 날짜: 2026-08-29
+- 상태: 연구자 보완 수용·로컬 기반 구현. 원격 적용·콘텐츠 생산·교수자 승인 전.
+- 문제: pre-lock 콘텐츠와 현행 생성 후보가 섞이고, 교과목 배정이 수행 로그의 course/week/assignment와 연결되지 않아 논문·디펜스의 동일-ID 증거 사슬을 만들 수 없었다. 500 후보·60슬롯·12대표·4E2E를 같은 품질 수준으로 말하면 과장도 생긴다.
+- 결정: 기존 `content_release_id`·run/hash/lineage로 새 LOCK release를 분리하고 새 epoch 컬럼은 만들지 않는다. 500은 자동 게이트를 통과한 완전 미션 후보, 60슬롯은 교수자 승인 배치, 12는 evidence manifest, 4는 실제 종단 증거로 구별한다. 60슬롯 비율에서 500 최소치를 한→중333·중→한167로 사전 고정한다.
+- 생성 공정: 30파일럿은 생성 fingerprint가 바뀌지 않으면 500에 포함하고 바뀌면 새 release에서 제외한다. 교과목 우선 300은 슬롯별 코어5개를 만든 뒤 상위1~2개부터 완전 미션으로 승격한다. 60배치와 고유 reviewed 수는 별도 집계한다. baseline 이후 콘텐츠 공장·P0 계보/E2E·교수자 검수는 병렬 진행할 수 있다.
+- 수행 계보: `curriculum_week_scenarios.id`를 assignment ID로 사용하며 course/week/assignment/mission/attempt/content hash를 필수 연결한다. course context가 있는 새 쓰기는 DB에서 실제 배정과 reviewed/released lineage hash 일치를 검증한다. 과거 로그는 삭제하지 않는다.
+- 용어: 논문·대외 화면은 `MJT 5문항 + DCT 1과제`로 통일하고 내부 호환 필드 `mpj_*`는 유지한다.
+- 비노출: 라운지·추가 분석/개선/calibration/export/백업 전용 UI는 데이터·migration을 삭제하지 않고 메뉴 비노출과 P0 경로 redirect로 동결한다.
+- 기각: 기존 495/504 Gold 코퍼스 경로 재사용, 300 완전 미션 선생성, 500 전체 교수자 검수, 새 Gold/expert gate, 대규모 UI/QA/분석 확장, pre-lock 콘텐츠 수리.
+- 근거/범위: 사용자 확정 Scope Freeze와 품질 퍼널, GPT Pro 교차검증의 파일럿 조건부 포함·코어 선별 승격·수치 분리·3트랙 병렬화는 **보완 수용**했다. 일정 추정·감사 점수는 채택하지 않았다. 상세 baseline과 미완료 경계는 `EVD-20260829-01`에 기록한다.

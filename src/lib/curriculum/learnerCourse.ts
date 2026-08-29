@@ -26,6 +26,7 @@ import { assembleLearnerCourse } from "./learnerCourseProjection";
 import { DEFENSE_COURSE_IDS } from "@/lib/pragma/scenarioTopics";
 
 export interface LearnerWeekScenario {
+  assignment_id?: string;
   scenario_id: string;
   situation_ko: string;
   /** 편성된 코어의 기본 원문. DCT 참고 답안이 아니다. */

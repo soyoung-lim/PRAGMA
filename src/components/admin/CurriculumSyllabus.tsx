@@ -121,8 +121,8 @@ export function CurriculumSyllabus({
       <section className="mt-6">
         <h2 className="border-l-4 border-[#FAD338] pl-2 text-lg font-bold">학습 운영 원칙</h2>
         <div className="mt-2 grid gap-2 text-[12px] leading-relaxed sm:grid-cols-2">
-          <p className="rounded-md bg-[#F7F9F8] px-3 py-2">같은 화행의 완결 미션 2세트를 수행하며, 각 세트는 MPJ5+DCT1로 구성합니다.</p>
-          <p className="rounded-md bg-[#F7F9F8] px-3 py-2">MPJ 수행 뒤 5 POINT LESSON으로 핵심 판단 근거를 확인합니다.</p>
+          <p className="rounded-md bg-[#F7F9F8] px-3 py-2">같은 화행의 완결 미션 2세트를 수행하며, 각 세트는 MJT5+DCT1로 구성합니다.</p>
+          <p className="rounded-md bg-[#F7F9F8] px-3 py-2">MJT 수행 뒤 5 POINT LESSON으로 핵심 판단 근거를 확인합니다.</p>
           <p className="rounded-md bg-[#F7F9F8] px-3 py-2">DCT는 최초 산출 → 최소 피드백 → 수정 → 참고안 비교 순서로 진행합니다.</p>
           <p className="rounded-md bg-[#F7F9F8] px-3 py-2">교수자는 승인된 미션의 6단계 수업자료와 학생 활동지를 함께 활용합니다.</p>
         </div>

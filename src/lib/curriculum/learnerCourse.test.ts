@@ -7,6 +7,7 @@ import type {
   CurriculumOutlineRow,
   CurriculumWeekRow,
 } from "@/lib/curriculum/types";
+import { CURRENT_CONTENT_RELEASE_ID } from "../../../supabase/functions/_shared/contentRelease";
 
 const outline = {
   id: "outline-1",
@@ -59,6 +60,7 @@ function core(
     topic_code: "test_topic",
     mission_status: missionStatus,
     release_gate_mode: releaseGateMode,
+    content_release_id: CURRENT_CONTENT_RELEASE_ID,
     target_feature:
       missionStatus === null ? null : "request_mitigation_optionality",
     is_native_mpj5: true,
@@ -81,6 +83,7 @@ function assignment(
   position: number,
 ): WeekAssignment {
   return {
+    id: `assignment-${weekNo}-${scenarioId}`,
     week_no: weekNo,
     scenario_id: scenarioId,
     position,

@@ -45,16 +45,12 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       { to: "/admin/composer", label: "15주 수업 편성·강의계획서" },
       { to: "/admin/package", label: "수업자료·교실 화면" },
       { to: "/admin/learners", label: "학습자 승인·관리" },
-      { to: "/admin/data-backup", label: "수업 데이터 백업·복원" },
     ],
   },
   {
     header: "4. 학습 결과·연구 자료",
     items: [
       { to: "/admin/decision-traces", label: "학습 수행 기록" },
-      { to: "/admin/research-qa/improvements", label: "콘텐츠 개선 후보" },
-      { to: "/admin/export", label: "연구 데이터 내보내기" },
-      { to: "/admin/research-qa/calibration", label: "연구용 예시 검토 — 파일럿" },
     ],
   },
 ] as const;
@@ -64,8 +60,6 @@ const PRIORITY_LABELS = [
   "수업자료·교실 화면",
   "학습자 승인·관리",
   "학습 수행 기록",
-  "콘텐츠 개선 후보",
-  "연구 데이터 내보내기",
 ] as const;
 
 const ALL_ADMIN_NAV_ITEMS = ADMIN_NAV_GROUPS.flatMap((group) => group.items);

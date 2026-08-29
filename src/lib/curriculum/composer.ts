@@ -38,6 +38,8 @@ export interface ComposerCore {
   mission_status: string | null;
   /** 기존 자료는 reviewed, 새 품질 게이트 자료는 released가 학습자 사용 가능 상태다. */
   release_gate_mode?: "legacy_reviewed" | "expert_v1" | null;
+  /** core_content.generation.content_release_id — pre-lock/current 운영 경계. */
+  content_release_id?: string | null;
   /** 미션 승격 시에만 채워짐. 코어만 있으면 null → 편성표 "미지정" */
   target_feature: string | null;
   /** 현행 완전 미션 후보: mission_v5이며 독립 MPJ가 정확히 5개다. */
@@ -51,6 +53,8 @@ export interface ComposerCore {
 }
 
 export interface WeekAssignment {
+  /** curriculum_week_scenarios.id — 학습 수행 귀속에 쓰는 assignment ID. */
+  id?: string;
   week_no: number;
   scenario_id: string;
   position: number;
@@ -94,6 +98,12 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
       !Array.isArray(content.context_spec)
         ? (content.context_spec as Record<string, unknown>)
         : {};
+    const generation =
+      content.generation &&
+      typeof content.generation === "object" &&
+      !Array.isArray(content.generation)
+        ? (content.generation as Record<string, unknown>)
+        : {};
     const rolePair =
       contextSpec.role_pair &&
       typeof contextSpec.role_pair === "object" &&
@@ -116,6 +126,8 @@ export async function listCoreScenarios(): Promise<ComposerCore[]> {
       topic_code: r.topic_code ?? null,
       mission_status: r.mission_status ?? null,
       release_gate_mode: r.release_gate_mode ?? "legacy_reviewed",
+      content_release_id:
+        typeof generation.content_release_id === "string" ? generation.content_release_id : null,
       target_feature: r.target_feature ?? null,
       is_native_mpj5:
         r.mission_schema_version === "mission_v5" &&
@@ -150,7 +162,7 @@ export async function listWeekAssignments(outlineId: string): Promise<WeekAssign
   const { data, error } = await db
     .from("curriculum_week_scenarios")
     .select(
-      "week_no, scenario_id, position, slot_role, pair_contract_version, mission_role, changed_context_axes, diagnostic_dimensions",
+      "id, week_no, scenario_id, position, slot_role, pair_contract_version, mission_role, changed_context_axes, diagnostic_dimensions",
     )
     .eq("outline_id", outlineId)
     .order("week_no", { ascending: true })

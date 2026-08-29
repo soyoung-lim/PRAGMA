@@ -87,7 +87,7 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
   return <section aria-label="콘텐츠 5단계 검수" className="my-4 space-y-4 rounded-xl border border-[#D8D3C4] bg-white p-4 text-sm">
     <div className="flex flex-wrap items-start justify-between gap-2">
       <div><h3 className="font-bold">현재 버전 검수</h3>
-        <p className="mt-1 text-xs text-muted-foreground">{target.kind === "mission" ? "코어·MPJ5·DCT1 전체" : "편성 후 공통 수업자료·교수자 고유 메모"} · 수정하면 새 버전을 검수합니다.</p>
+        <p className="mt-1 text-xs text-muted-foreground">{target.kind === "mission" ? "코어·MJT5·DCT1 전체" : "편성 후 공통 수업자료·교수자 고유 메모"} · 수정하면 새 버전을 검수합니다.</p>
       </div>
       <Button size="sm" variant="outline" disabled={busy || query.isFetching} onClick={() => void query.refetch()}>결과 새로고침</Button>
     </div>

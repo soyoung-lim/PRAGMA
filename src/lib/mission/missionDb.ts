@@ -10,7 +10,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeMission, type MissionRuntime } from "@/lib/pragma/missionSchema";
 import type { LanguageDirection, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
-import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
+import { isCurrentMissionReleasedForLearner } from "@/lib/mission/missionRelease";
+import { CURRENT_CONTENT_RELEASE_ID } from "../../../supabase/functions/_shared/contentRelease";
 
 const db = supabase as unknown as { from: (t: string) => any };
 
@@ -48,8 +49,12 @@ export async function fetchMissionByScenario(scenarioId: string): Promise<Runnab
 
   const status: string | null = data.mission_status ?? null;
   const releaseGateMode: string | null = data.release_gate_mode ?? "legacy_reviewed";
-  const runnable = isMissionReleasedForLearner({ mission_status: status, release_gate_mode: releaseGateMode })
-    || (IS_DEV && status === "generated");
+  const contentReleaseId = parsedReleaseId(data.mission_content);
+  const runnable = isCurrentMissionReleasedForLearner({
+    mission_status: status,
+    release_gate_mode: releaseGateMode,
+    content_release_id: contentReleaseId,
+  }) || (IS_DEV && status === "generated" && contentReleaseId === CURRENT_CONTENT_RELEASE_ID);
   if (!runnable) {
     throw new Error(
       status === "generated"
@@ -100,12 +105,16 @@ export async function listRunnableMissions(): Promise<MissionListItem[]> {
   const statuses = IS_DEV ? ["released", "reviewed", "generated"] : ["released", "reviewed"];
   const { data, error } = await db
     .from("scenarios")
-    .select("scenario_id, speech_act, learner_level, mission_status, release_gate_mode, core_content")
+    .select("scenario_id, speech_act, learner_level, mission_status, release_gate_mode, core_content, mission_content")
     .in("mission_status", statuses)
     .order("mission_reviewed_at", { ascending: false, nullsFirst: false });
   if (error) throw new Error(`미션 목록 조회 실패: ${error.message}`);
   return ((data ?? []) as any[])
-    .filter((r) => isMissionReleasedForLearner(r) || (IS_DEV && r.mission_status === "generated"))
+    .filter((r) => {
+      const contentReleaseId = parsedReleaseId(r.mission_content);
+      return isCurrentMissionReleasedForLearner({ ...r, content_release_id: contentReleaseId })
+        || (IS_DEV && r.mission_status === "generated" && contentReleaseId === CURRENT_CONTENT_RELEASE_ID);
+    })
     .map((r) => ({
       scenario_id: r.scenario_id,
       speech_act: (r.speech_act as SpeechActUI) ?? null,
@@ -114,4 +123,12 @@ export async function listRunnableMissions(): Promise<MissionListItem[]> {
       release_gate_mode: r.release_gate_mode ?? "legacy_reviewed",
       situation_ko: r.core_content?.situation_ko ?? "",
     }));
+}
+
+function parsedReleaseId(missionContent: unknown): string | null {
+  if (!missionContent || typeof missionContent !== "object" || Array.isArray(missionContent)) return null;
+  const provenance = (missionContent as Record<string, unknown>).provenance;
+  if (!provenance || typeof provenance !== "object" || Array.isArray(provenance)) return null;
+  const releaseId = (provenance as Record<string, unknown>).content_release_id;
+  return typeof releaseId === "string" ? releaseId : null;
 }

@@ -154,7 +154,7 @@ const LearnerCourseWeek = () => {
                 const setLabel = week.speech_act
                   ? `미션 ${index + 1}`
                   : `활동 ${index + 1}`;
-                const practicePath = `/learner/practice/${scenario.scenario_id}?courseId=${encodeURIComponent(courseId)}&weekNo=${week.week_no}`;
+                const practicePath = `/learner/practice/${scenario.scenario_id}?courseId=${encodeURIComponent(courseId)}&weekNo=${week.week_no}&assignmentId=${encodeURIComponent(scenario.assignment_id ?? "")}`;
                 return (
                   <li key={scenario.scenario_id} className="flex flex-col rounded-xl border border-[#EAE4D2] bg-white p-4">
                     <div className="flex items-center justify-between gap-3">

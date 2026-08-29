@@ -140,7 +140,7 @@ const CARD_DISPLAY: Record<
 // 편집 경로는 만들지 않는다 — 프롬프트를 고치려면 코드를 고쳐야 한다.
 const SNAPSHOT_GROUP_LABEL: Record<string, string> = {
   core: "시나리오 생성 (500개 라이브러리)",
-  mission: "미션 승격 (MPJ + 산출 과제)",
+  mission: "미션 승격 (MJT + 산출 과제)",
   review: "프롬프트 통제 기반 검토",
   runtime: "학습자 실행 중 피드백",
   authoring: "실제 자료 활용",

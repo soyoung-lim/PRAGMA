@@ -860,12 +860,16 @@ export type Database = {
       }
       learner_mission_logs: {
         Row: {
+          assignment_id: string | null
+          attempt_id: string | null
           auth_user_id: string
           cell_id: string | null
           cohort_id: string | null
           completed_at: string | null
           consent_version: string | null
           content_ver: string | null
+          content_hash: string | null
+          course_id: string | null
           context_judgment: Json | null
           created_at: string
           example_shown: boolean | null
@@ -898,14 +902,19 @@ export type Database = {
           task_type: string | null
           transfer_response: string | null
           updated_at: string
+          week_no: number | null
         }
         Insert: {
+          assignment_id?: string | null
+          attempt_id?: string | null
           auth_user_id: string
           cell_id?: string | null
           cohort_id?: string | null
           completed_at?: string | null
           consent_version?: string | null
           content_ver?: string | null
+          content_hash?: string | null
+          course_id?: string | null
           context_judgment?: Json | null
           created_at?: string
           example_shown?: boolean | null
@@ -938,14 +947,19 @@ export type Database = {
           task_type?: string | null
           transfer_response?: string | null
           updated_at?: string
+          week_no?: number | null
         }
         Update: {
+          assignment_id?: string | null
+          attempt_id?: string | null
           auth_user_id?: string
           cell_id?: string | null
           cohort_id?: string | null
           completed_at?: string | null
           consent_version?: string | null
           content_ver?: string | null
+          content_hash?: string | null
+          course_id?: string | null
           context_judgment?: Json | null
           created_at?: string
           example_shown?: boolean | null
@@ -978,8 +992,23 @@ export type Database = {
           task_type?: string | null
           transfer_response?: string | null
           updated_at?: string
+          week_no?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "learner_mission_logs_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_week_scenarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learner_mission_logs_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_outlines"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "learner_mission_logs_profile_id_fkey"
             columns: ["profile_id"]

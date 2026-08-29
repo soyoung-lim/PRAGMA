@@ -441,7 +441,7 @@ describe("mission_v5 native MPJ5 contract", () => {
     invalid.production_task.preceding_turn = "不需要出现的对方发言。";
 
     const failures = checkMission(invalid, context).violations.filter((item) => item.level === "fail");
-    expect(failures.some((item) => item.id === "R8" && item.message.includes("native MPJ5"))).toBe(true);
+    expect(failures.some((item) => item.id === "R8" && item.message.includes("native MJT5"))).toBe(true);
     expect(failures.some((item) => item.id === "R8" && item.message.includes("production_task"))).toBe(true);
   });
 
@@ -559,7 +559,7 @@ describe("mission_v5 native MPJ5 contract", () => {
     }, context);
 
     expect(checked.violations.some(
-      (item) => item.id === "R1" && item.message.includes("MPJ5"),
+      (item) => item.id === "R1" && item.message.includes("MJT5"),
     )).toBe(true);
   });
 

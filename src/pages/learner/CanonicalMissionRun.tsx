@@ -33,8 +33,19 @@ import {
 } from "@/lib/mission/canonicalMissionRuntime";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { saveMissionAttempt, type MpjResponseTrace } from "@/lib/mission/missionLog";
+import {
+  appendMissionEvent,
+  getOrCreateMissionAttemptId,
+  rotateMissionAttemptId,
+  type MissionEventType,
+} from "@/lib/mission/missionEvents";
+import {
+  parseMissionCourseLocation,
+  type MissionCourseLocation,
+} from "@/lib/mission/missionCourseContext";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
+import { CONSENT_VERSION, POLICY_VERSION } from "@/lib/research/versions";
 import LegacyMissionRun from "@/pages/learner/LegacyMissionRun";
 
 /** 현재 승인된 MPJ5 + DCT1 학습 경험의 유일한 정본 실행기. */
@@ -2005,7 +2016,7 @@ function DevPreviewToolbar({
             <option value="" disabled>화면 선택</option>
             {sceneIntroConfig.slides.map((slide, index) => <option key={slide.eyebrow} value={SCENE_INTRO_STEP_IDS[index]}>장면 {index + 1}. {slide.eyebrow.replace(/^\d+ · /, "")}</option>)}
             {CANONICAL_MISSION_PREVIEW.quests.map((quest, index) => <option key={quest.id} value={quest.id}>{index + 1}. {progressLabel(quest)}</option>)}
-            <option value="recap">MPJ5 뒤 5 POINT LESSON</option>
+            <option value="recap">MJT5 뒤 5 POINT LESSON</option>
             <option value="summary">최종 summary</option>
           </select>
           <button type="button" onClick={onFill} className="mt-3 w-full rounded-lg bg-[#F3D248] px-3 py-2.5 font-black text-[#15202B] hover:bg-[#F7DD62]">현재 답안 채우기</button>
@@ -2112,12 +2123,13 @@ export function shouldPersistMissionAttempt(
   return Boolean(runtime) && questKind === "dct_feedback" && !demoMode;
 }
 
-export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMode = false }: {
+export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMode = false, courseContext }: {
   mission: CanonicalMissionViewModel;
   runtime?: RunnableMission;
   isDevPreview: boolean;
   /** 디펜스 시연은 실제 미션·피드백을 쓰되 학습자 수행 로그는 만들지 않는다. */
   demoMode?: boolean;
+  courseContext?: MissionCourseLocation | null;
 }) {
   const requestedMission = new URLSearchParams(window.location.search).get("mission")?.toUpperCase();
   const sceneIntroConfig = isDevPreview && requestedMission === "B"
@@ -2135,7 +2147,51 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMod
   const [renderNonce, setRenderNonce] = useState(0);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const startedAtRef = useRef(new Date().toISOString());
+  const attemptStorageKey = runtime
+    ? `pragma:mission-attempt:${runtime.scenario_id}:${courseContext?.assignmentId ?? "direct"}`
+    : "pragma:mission-attempt:preview";
+  const [attemptId, setAttemptId] = useState(() => getOrCreateMissionAttemptId(attemptStorageKey));
   const quest = mission.quests[questIndex];
+
+  const emitMissionEvent = (eventType: MissionEventType, payload: Record<string, unknown> = {}) => {
+    if (!runtime || demoMode) return;
+    void appendMissionEvent({
+      attemptId,
+      scenarioId: runtime.scenario_id,
+      missionId: runtime.scenario_id,
+      eventType,
+      contentVersion: runtime.mission.unit.target_feature_version ?? null,
+      contentHash: runtime.mission.provenance?.mission_content_hash ?? null,
+      policyVersion: POLICY_VERSION,
+      consentVersion: CONSENT_VERSION,
+      featureId: runtime.mission.unit.target_feature,
+      speechAct: runtime.speech_act,
+      direction: runtime.direction,
+      taskMode: runtime.mission.production_task.mode === "interpreting" ? "interpreting" : "translation",
+      payload,
+      courseContext: courseContext ?? undefined,
+    });
+  };
+
+  useEffect(() => {
+    if (!runtime || demoMode) return;
+    void appendMissionEvent({
+      attemptId,
+      scenarioId: runtime.scenario_id,
+      missionId: runtime.scenario_id,
+      eventType: "mission_session_opened",
+      contentVersion: runtime.mission.unit.target_feature_version ?? null,
+      contentHash: runtime.mission.provenance?.mission_content_hash ?? null,
+      policyVersion: POLICY_VERSION,
+      consentVersion: CONSENT_VERSION,
+      featureId: runtime.mission.unit.target_feature,
+      speechAct: runtime.speech_act,
+      direction: runtime.direction,
+      taskMode: runtime.mission.production_task.mode === "interpreting" ? "interpreting" : "translation",
+      payload: {},
+      courseContext: courseContext ?? undefined,
+    });
+  }, [attemptId, courseContext, demoMode, runtime]);
 
   const updateDevPreviewUrl = (step?: string, preset = devPreset) => {
     const url = new URL(window.location.href);
@@ -2228,17 +2284,36 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMod
       ? { ...responses, [quest.id]: response, [quest.dctId]: response }
       : { ...responses, [quest.id]: response };
     setResponses(nextResponses);
+    if (questIndex < 5) {
+      emitMissionEvent("mpj_response_submitted", { quest_id: quest.id, response });
+    } else if (quest.kind === "dct") {
+      const dct = response as DctResponse;
+      emitMissionEvent("first_response_submitted", { response: dct.first });
+    }
     if (questIndex === mission.quests.length - 1) {
       setCompleted(true);
       setFeedbackRevisionOpen(false);
       if (runtime && shouldPersistMissionAttempt(runtime, quest.kind, demoMode)) {
         const finalResponse = response as DctResponse;
+        emitMissionEvent("feedback_received", {
+          feedback_available: Boolean(finalResponse.runtimeFeedback),
+          revision_scope: finalResponse.runtimeFeedback?.revision_scope ?? null,
+        });
+        if (finalResponse.revised !== finalResponse.first) {
+          emitMissionEvent("revision_submitted", { revised_response: finalResponse.revised });
+        }
+        if (finalResponse.dissent) {
+          emitMissionEvent("learner_dissent_submitted", { dissent: finalResponse.dissent });
+        }
         setSaveState("saving");
         void saveMissionAttempt({
           mission: runtime.mission,
           scenarioId: runtime.scenario_id,
           speechAct: runtime.speech_act,
           level: runtime.learner_level,
+          ...(courseContext
+            ? { courseContext: { ...courseContext, attemptId } }
+            : {}),
           firstResponse: finalResponse.first,
           revisedResponse: finalResponse.revised,
           ...(finalResponse.runtimeFeedback ? { feedback: finalResponse.runtimeFeedback } : {}),
@@ -2256,7 +2331,10 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMod
               }
             : {}),
         })
-          .then((result) => setSaveState(result.ok ? "saved" : "error"))
+          .then((result) => {
+            setSaveState(result.ok ? "saved" : "error");
+            if (result.ok) emitMissionEvent("mission_completed", { mission_log_id: result.id });
+          })
           .catch(() => setSaveState("error"));
       }
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2284,6 +2362,7 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMod
     setFeedbackRevisionOpen(false);
     setSaveState("idle");
     startedAtRef.current = new Date().toISOString();
+    setAttemptId(rotateMissionAttemptId(attemptStorageKey));
     setRenderNonce((current) => current + 1);
     if (isDevPreview) updateDevPreviewUrl(undefined);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2413,6 +2492,7 @@ const CanonicalMissionRun = ({
 } = {}) => {
   const { scenarioId: routeScenarioId } = useParams<{ scenarioId: string }>();
   const scenarioId = scenarioIdOverride ?? routeScenarioId;
+  const courseLocation = parseMissionCourseLocation(window.location.search);
   const [runtimeMission, setRuntimeMission] = useState<CanonicalMissionViewModel | null>(null);
   const [runtimeRunnable, setRuntimeRunnable] = useState<RunnableMission | null>(null);
   const [fallbackToLegacy, setFallbackToLegacy] = useState(false);
@@ -2454,6 +2534,18 @@ const CanonicalMissionRun = ({
     return () => { cancelled = true; };
   }, [scenarioId]);
 
+  if (courseLocation.ok === false) {
+    return (
+      <LearnerJourneyShell missionLayout>
+        <section className="mx-auto max-w-3xl rounded-2xl border border-[#E5C8C2] bg-white px-6 py-8">
+          <p className="text-xs font-black text-[#A44736]">교과목 수행 경로를 확인해 주세요</p>
+          <p className="mt-2 text-sm leading-6 text-[#5B6678]">{courseLocation.error}</p>
+          <Button asChild className="mt-5"><Link to="/learner/course">교과목으로 돌아가기</Link></Button>
+        </section>
+      </LearnerJourneyShell>
+    );
+  }
+
   if (scenarioId && fallbackToLegacy && !demoMode) return <LegacyMissionRun />;
 
   if (scenarioId && fallbackToLegacy) {
@@ -2461,7 +2553,7 @@ const CanonicalMissionRun = ({
       <LearnerJourneyShell missionLayout>
         <section className="mx-auto max-w-3xl rounded-2xl border border-[#E5C8C2] bg-white px-6 py-8">
           <p className="text-xs font-black text-[#A44736]">대표 미션을 열지 못했습니다</p>
-          <p className="mt-2 text-sm leading-6 text-[#5B6678]">현행 MPJ5+DCT1 실행 계약을 지원하는 대표 미션을 다시 지정해 주세요.</p>
+          <p className="mt-2 text-sm leading-6 text-[#5B6678]">현행 MJT5+DCT1 실행 계약을 지원하는 대표 미션을 다시 지정해 주세요.</p>
           <Button asChild className="mt-5"><Link to="/architecture">통합 구조로 돌아가기</Link></Button>
         </section>
       </LearnerJourneyShell>
@@ -2498,6 +2590,7 @@ const CanonicalMissionRun = ({
       runtime={runtimeRunnable ?? undefined}
       isDevPreview={import.meta.env.DEV && !scenarioId}
       demoMode={demoMode}
+      courseContext={courseLocation.context}
     />
   );
 };

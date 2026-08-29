@@ -33,7 +33,7 @@ export function buildContentReviewDomain(kind: string, source: Record<string, an
       checked.violations.forEach((violation, index) => findings.push({ id: `rule-${index + 1}`, severity: violation.level,
         where: "", quote: null, issue_ko: `${violation.id}: ${violation.message}`, reason_ko: violation.message,
         suggestion_ko: "기존 생성계약의 해당 규칙을 확인하세요.", problem_type_ko: "구조·형식", needs_professor: false, uncertainty_ko: "" }));
-      if (parsed.data.mpj_items.length !== 5) add("현재 채택 기준은 네이티브 MPJ5+DCT1입니다. 과거 4문항 미션은 기록으로 보존합니다.");
+      if (parsed.data.mpj_items.length !== 5) add("현재 채택 기준은 네이티브 MJT5+DCT1입니다. 과거 4문항 미션은 기록으로 보존합니다.");
     }
     const { mission_content: _mission, ...context } = row;
     content = { context: { ...context, core_content: instructionalMission(row.core_content ?? {}) }, mission: instructionalMission(raw ?? {}) };
@@ -54,14 +54,14 @@ export function buildContentReviewDomain(kind: string, source: Record<string, an
       public_material: buildWeeklyCourseMaterial(course.outline, week),
       instructor_only: weeklyInstructorContent(week, course.outline.language_direction),
       reused_mission_explanations: dependencies.map((id) => ({ scenario_id: id,
-        policy: "MPJ·DCT 해설은 해당 미션 검수 원본을 재사용. 주차 승인 시 연결 미션의 현재 버전 승인도 확인." })),
+        policy: "MJT·DCT 해설은 해당 미션 검수 원본을 재사용. 주차 승인 시 연결 미션의 현재 버전 승인도 확인." })),
     };
   }
   const featureCodes = act ? FEATURE_CODES_BY_ACT[act as keyof typeof FEATURE_CODES_BY_ACT] ?? [] : [];
   const snapshot = { content, criteria: { version: CONTENT_REVIEW_VERSION,
     // Rule corrections get a new content hash without replacing prior runs.
     rules_version: "mission_rules_v8_comparison_compat_v1",
-    mission_design: "MPJ5+DCT1. 같은 화행의 서로 다른 상황에서 완전 미션 2개. A/B 실험·전이 효과 검증 아님.",
+    mission_design: "MJT5+DCT1. 같은 화행의 서로 다른 상황에서 완전 미션 2개. A/B 실험·전이 효과 검증 아님.",
     features: featureCodes.map((code) => getTargetFeature(code)).filter(Boolean),
     scope: "수업에 채택할 현재 정적 콘텐츠 원본. 개별 학습자 실시간 피드백의 전수 감사는 포함하지 않음.",
   } };

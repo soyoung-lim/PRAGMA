@@ -27,9 +27,7 @@ const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.t
 const AdminQuestionDesigner = lazy(() => import("./pages/admin/AdminQuestionDesigner.tsx"));
 const AdminComposer = lazy(() => import("./pages/admin/AdminComposer.tsx"));
 const AdminLearners = lazy(() => import("./pages/admin/AdminLearners.tsx"));
-const AdminExport = lazy(() => import("./pages/admin/AdminExport.tsx"));
 const AdminDecisionTraces = lazy(() => import("./pages/admin/AdminDecisionTraces.tsx"));
-const AdminDataBackup = lazy(() => import("./pages/admin/AdminDataBackup.tsx"));
 const AdminGoldCalibration = lazy(() => import("./pages/admin/AdminGoldCalibration.tsx"));
 const AdminMissionRelease = lazy(() => import("./pages/admin/AdminFinalApproval.tsx"));
 const AdminFinalCorpusReview = lazy(() => import("./pages/admin/AdminFinalCorpusReview.tsx"));
@@ -42,8 +40,6 @@ const Home = lazy(() => import("./pages/Home.tsx"));
 const Roadmap = lazy(() => import("./pages/Roadmap.tsx"));
 const WorkflowPreview = lazy(() => import("./pages/WorkflowPreview.tsx"));
 const MissionShell = lazy(() => import("./pages/MissionShell.tsx"));
-const LoungeHome = lazy(() => import("./pages/learner/LoungeHome.tsx"));
-const LoungeCorner = lazy(() => import("./pages/learner/LoungeCorner.tsx"));
 const CourseOverview = lazy(() => import("./pages/learner/CourseOverview.tsx"));
 const WeekDetail = lazy(() => import("./pages/learner/WeekDetail.tsx"));
 const IntroArc = lazy(() => import("./pages/learner/IntroArc.tsx"));
@@ -116,8 +112,8 @@ const App = () => (
           />
           {/* 홈은 폐지 — 학습자 착지 화면은 수업이다(2026-08-01). 옛 링크·북마크는 그대로 잇는다. */}
           <Route path="/learner/home" element={<Navigate to="/learner/course" replace />} />
-          <Route path="/learner/lounge" element={<RequireApproved><LoungeHome /></RequireApproved>} />
-          <Route path="/learner/lounge/:corner" element={<RequireApproved><LoungeCorner /></RequireApproved>} />
+          <Route path="/learner/lounge" element={<Navigate to="/learner/course" replace />} />
+          <Route path="/learner/lounge/:corner" element={<Navigate to="/learner/course" replace />} />
           {/* 게시 교과목 → 15주 학습계획 → 주차별 독립 학습 미션 2개. */}
           <Route path="/learner/course" element={<RequireApproved><LearnerCourseList /></RequireApproved>} />
           <Route path="/learner/course/:courseId" element={<RequireApproved><LearnerCourseLive /></RequireApproved>} />
@@ -282,15 +278,15 @@ const App = () => (
           <Route path="/admin/learners" element={<RequireAdmin><AdminLearners /></RequireAdmin>} />
           <Route path="/admin/decision-traces" element={<RequireAdmin><AdminDecisionTraces /></RequireAdmin>} />
           {/* 레거시 폐기(2026-07-30): /admin/reports — 미사용 화면 삭제(사용자 결정). */}
-          <Route path="/admin/export" element={<RequireAdmin><AdminExport /></RequireAdmin>} />
-          <Route path="/admin/data-backup" element={<RequireAdmin><AdminDataBackup /></RequireAdmin>} />
+          <Route path="/admin/export" element={<RequireAdmin><Navigate to="/admin/decision-traces" replace /></RequireAdmin>} />
+          <Route path="/admin/data-backup" element={<RequireAdmin><Navigate to="/admin/composer" replace /></RequireAdmin>} />
           <Route path="/admin/research-qa" element={<RequireAdmin><Navigate to="/admin/review" replace /></RequireAdmin>} />
-          <Route path="/admin/research-qa/calibration" element={<RequireAdmin><AdminGoldCalibration /></RequireAdmin>} />
+          <Route path="/admin/research-qa/calibration" element={<RequireAdmin><Navigate to="/admin/review" replace /></RequireAdmin>} />
           <Route path="/admin/research-qa/expert-reviews" element={<Navigate to="/admin/research-qa/final-review" replace />} />
           <Route path="/admin/research-qa/gold-experts" element={<Navigate to="/admin/research-qa/final-review" replace />} />
           <Route path="/admin/research-qa/final-review" element={<RequireAdmin><AdminFinalCorpusReview /></RequireAdmin>} />
           <Route path="/admin/research-qa/releases" element={<RequireAdmin><Navigate to="/admin/review" replace /></RequireAdmin>} />
-          <Route path="/admin/research-qa/improvements" element={<RequireAdmin><AdminImprovementFlywheel /></RequireAdmin>} />
+          <Route path="/admin/research-qa/improvements" element={<RequireAdmin><Navigate to="/admin/review" replace /></RequireAdmin>} />
           <Route path="/admin/package" element={<RequireAdmin><AdminTeachingMaterials /></RequireAdmin>} />
           {/* /admin/course-ops 제거(2026-08-05) — 메뉴에 없고 어디서도 링크되지 않는 고아
               라우트였다. 교과목 운영은 9월 실증 사안으로 백로그에 있다(AdminShell 주석 참조). */}

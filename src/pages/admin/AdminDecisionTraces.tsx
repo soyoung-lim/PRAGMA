@@ -11,6 +11,7 @@ type ProfileSummary = {
   anonymous_participant_id: string | null;
 };
 type MissionLogRow = MissionLog & { profiles: ProfileSummary | null };
+type CourseOption = { id: string; title: string };
 
 const DETAIL_FIELDS: Array<{ key: keyof MissionLog; label: string }> = [
   { key: "source_text", label: "출발어 원문·전사" },
@@ -25,6 +26,9 @@ const DETAIL_FIELDS: Array<{ key: keyof MissionLog; label: string }> = [
   { key: "self_confidence_rating", label: "자신감" },
   { key: "content_ver", label: "콘텐츠 버전" },
   { key: "policy_ver", label: "정책 버전" },
+  { key: "attempt_id", label: "수행 attempt ID" },
+  { key: "assignment_id", label: "주차 배치 ID" },
+  { key: "content_hash", label: "실행 콘텐츠 해시" },
 ];
 
 const fmtKst = (iso: string | null) => {
@@ -79,17 +83,30 @@ const Page = () => {
   const [rows, setRows] = useState<MissionLogRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [courseId, setCourseId] = useState("all");
+  const [weekNo, setWeekNo] = useState("all");
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const { data, error: queryError } = await supabase
+      const [courseResult, logResult] = await Promise.all([
+        supabase.from("curriculum_outlines").select("id,title").order("title"),
+        (() => {
+          let query = supabase
         .from("learner_mission_logs")
         .select(
           "*, profiles!learner_mission_logs_profile_id_fkey(full_name,email,anonymous_participant_id)",
         )
-        .order("updated_at", { ascending: false });
+            .order("updated_at", { ascending: false });
+          if (courseId !== "all") query = query.eq("course_id", courseId);
+          if (weekNo !== "all") query = query.eq("week_no", Number(weekNo));
+          return query;
+        })(),
+      ]);
       if (cancelled) return;
+      setCourses((courseResult.data ?? []) as CourseOption[]);
+      const { data, error: queryError } = logResult;
       if (queryError) {
         setError(queryError.message);
         setRows([]);
@@ -100,7 +117,12 @@ const Page = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [courseId, weekNo]);
+
+  const courseTitle = useMemo(
+    () => new Map(courses.map((course) => [course.id, course.title])),
+    [courses],
+  );
 
   const completedCount = useMemo(
     () => rows?.filter((row) => row.mission_completed).length ?? 0,
@@ -116,6 +138,33 @@ const Page = () => {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <span>{loading ? "불러오는 중…" : error ? "조회 실패" : `총 ${rows.length}건`}</span>
         {!loading && !error && <span>완료 {completedCount}건</span>}
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        <label className="text-xs font-semibold text-muted-foreground">
+          교과목
+          <select
+            value={courseId}
+            onChange={(event) => setCourseId(event.target.value)}
+            className="ml-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
+          >
+            <option value="all">전체</option>
+            {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+          </select>
+        </label>
+        <label className="text-xs font-semibold text-muted-foreground">
+          주차
+          <select
+            value={weekNo}
+            onChange={(event) => setWeekNo(event.target.value)}
+            className="ml-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
+          >
+            <option value="all">전체</option>
+            {Array.from({ length: 15 }, (_, index) => index + 1).map((week) => (
+              <option key={week} value={week}>{week}주차</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {error && (
@@ -143,6 +192,7 @@ const Page = () => {
                 <th className="px-3 py-2 font-medium">학습자</th>
                 <th className="px-3 py-2 font-medium">화행</th>
                 <th className="px-3 py-2 font-medium">미션</th>
+                <th className="px-3 py-2 font-medium">교과목·주차</th>
                 <th className="px-3 py-2 font-medium">과업</th>
                 <th className="px-3 py-2 font-medium">상태</th>
                 <th className="px-3 py-2 text-right font-medium">내용</th>
@@ -161,6 +211,11 @@ const Page = () => {
                       <td className="px-3 py-2">{row.speech_act ?? "—"}</td>
                       <td className="max-w-56 truncate px-3 py-2 font-mono text-xs" title={row.mission_id}>
                         {row.mission_id}
+                      </td>
+                      <td className="max-w-52 px-3 py-2 text-xs">
+                        {row.course_id
+                          ? `${courseTitle.get(row.course_id) ?? row.course_id.slice(0, 8)} · ${row.week_no ?? "—"}주차`
+                          : "직접 수행"}
                       </td>
                       <td className="px-3 py-2">
                         {[row.task_type, row.mode].filter(Boolean).join(" · ") || "—"}
@@ -190,7 +245,7 @@ const Page = () => {
                     </tr>
                     {open && (
                       <tr className="border-t border-border bg-background">
-                        <td colSpan={7} className="px-3 py-3">
+                        <td colSpan={8} className="px-3 py-3">
                           <DetailPanel row={row} />
                         </td>
                       </tr>

@@ -42,6 +42,34 @@ const feedback: RuntimeFeedback = {
 };
 
 describe("mission attempt row", () => {
+  it("links a course run to course, week, assignment, attempt, mission, and content hash", () => {
+    const row = buildMissionAttemptRow({
+      mission: SAMPLE_MISSION_V5_NATIVE,
+      scenarioId: "11111111-1111-4111-8111-111111111111",
+      speechAct: "request",
+      level: "intermediate",
+      courseContext: {
+        courseId: "915fec24-cc38-4b00-a2a0-c3628abcd3f7",
+        weekNo: 2,
+        assignmentId: "22222222-2222-4222-8222-222222222222",
+        attemptId: "33333333-3333-4333-8333-333333333333",
+      },
+      firstResponse: "第一次翻译",
+      revisedResponse: "修改后的翻译",
+      startedAtIso: "2026-08-29T01:00:00.000Z",
+    }, "profile-1", "user-1");
+
+    expect(row).toMatchObject({
+      course_id: "915fec24-cc38-4b00-a2a0-c3628abcd3f7",
+      week_no: 2,
+      assignment_id: "22222222-2222-4222-8222-222222222222",
+      attempt_id: "33333333-3333-4333-8333-333333333333",
+      cell_id: "11111111-1111-4111-8111-111111111111",
+      mission_id: "11111111-1111-4111-8111-111111111111",
+      content_hash: SAMPLE_MISSION_V5_NATIVE.provenance?.mission_content_hash,
+    });
+  });
+
   it("stamps the canonical research policy version", () => {
     const row = buildMissionAttemptRow({
       mission: sampleMissionV2(),

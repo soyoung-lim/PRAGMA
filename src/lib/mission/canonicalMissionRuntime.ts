@@ -254,7 +254,7 @@ function concreteLessonPoints(quests: MissionQuest[]): CanonicalMissionViewModel
         highlights: [bestExpression],
       };
     }
-    throw new UnsupportedCanonicalMissionRuntimeError("MPJ recap은 판단 문항 다섯 개만 지원합니다.");
+    throw new UnsupportedCanonicalMissionRuntimeError("MJT recap은 판단 문항 다섯 개만 지원합니다.");
   });
 }
 
@@ -392,7 +392,7 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       rawReason.type !== "reason_conf" ||
       rawMultiJudge.type !== "multi_judge"
     ) {
-      throw new UnsupportedCanonicalMissionRuntimeError("MPJ5 문항 순서가 최신 연결 계약과 맞지 않습니다.");
+      throw new UnsupportedCanonicalMissionRuntimeError("MJT5 문항 순서가 최신 연결 계약과 맞지 않습니다.");
     }
     const scale = rawScale as unknown as RuntimeScale;
     const contrast = rawContrast as unknown as RuntimeJudge;
@@ -478,7 +478,7 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       rawReason.type !== "reason" ||
       rawMultiJudge.type !== "multi_judge"
     ) {
-      throw new UnsupportedCanonicalMissionRuntimeError("네이티브 MPJ5 문항 순서가 정본 연결 계약과 맞지 않습니다.");
+      throw new UnsupportedCanonicalMissionRuntimeError("네이티브 MJT5 문항 순서가 정본 연결 계약과 맞지 않습니다.");
     }
     const scale = rawScale as unknown as RuntimeScale;
     const contrast = rawContrast as unknown as RuntimeJudge;
@@ -554,7 +554,7 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       rawReason.type !== "reason" ||
       rawMultiJudge.type !== "multi_judge"
     ) {
-      throw new UnsupportedCanonicalMissionRuntimeError("과도기 MPJ 문항 순서가 연결 계약과 맞지 않습니다.");
+      throw new UnsupportedCanonicalMissionRuntimeError("과도기 MJT 문항 순서가 연결 계약과 맞지 않습니다.");
     }
     const scale = rawScale as unknown as RuntimeScale;
     const fixChoice = rawFixChoice as unknown as RuntimeFixChoice;

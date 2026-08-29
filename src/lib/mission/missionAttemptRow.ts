@@ -10,6 +10,8 @@ export interface SaveAttemptInput {
   scenarioId: string | null;
   speechAct: string | null;
   level: string | null;
+  /** 공개 교과목에서 진입한 수행은 네 값이 모두 필수다. */
+  courseContext?: CourseAttemptContext;
   /** 학습 전(피드백 전) 산출 = 최초 번역/통역 */
   firstResponse: string;
   /** 다듬은 최종 산출(없으면 최초와 동일) */
@@ -30,6 +32,13 @@ export interface SaveAttemptInput {
    * 채점키 캘리브레이션 보조 자료로만 쓴다. 남기지 않으면 undefined.
    */
   contextJudgment?: LearnerDissent;
+}
+
+export interface CourseAttemptContext {
+  courseId: string;
+  weekNo: number;
+  assignmentId: string;
+  attemptId: string;
 }
 
 /** context_judgment의 versioned MPJ envelope에 저장되는 문항별 비채점 응답. */
@@ -133,6 +142,11 @@ export function buildMissionAttemptRow(
     auth_user_id: authUserId,
     mission_id: input.scenarioId ?? `sample:${input.mission.unit.target_feature}`,
     cell_id: input.scenarioId,
+    course_id: input.courseContext?.courseId ?? null,
+    week_no: input.courseContext?.weekNo ?? null,
+    assignment_id: input.courseContext?.assignmentId ?? null,
+    attempt_id: input.courseContext?.attemptId ?? null,
+    content_hash: input.mission.provenance?.mission_content_hash ?? null,
     feature_id: input.mission.unit.target_feature,
     speech_act: input.speechAct,
     level: input.level,
