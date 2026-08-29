@@ -1,6 +1,6 @@
 # PRAGMA Scope Lock P0 기준·증거 묶음
 
-확인 시각: 2026-08-29 18:19 KST
+확인 시각: 2026-08-29 (후보 재-canary Gate 2까지)
 
 ## Gate 0 authoritative baseline
 
@@ -29,7 +29,10 @@ P0 migration 적용·배포 후 deployment ID와 deploy commit을 채워야 완�
 
 ## 고정된 콘텐츠 퍼널
 
-- LOCK release: `pragma_scope_lock_20260829_01_mjt5_dct1`
+- 현재 재-canary LOCK release: `pragma_scope_lock_20260829_05_mjt5_dct1_candidate_blueprint`
+- 생성 fingerprint: mission `mission_v5_mpj5_minidiscourse_v10_candidate_blueprint`, critic
+  `quality_v15_candidate_blueprint_consistency`, repair `mission_item_repair_v8_functional_band_boundary`,
+  core surface hash `6e5aee7cf1244bd9dc0f0b44d01f7e9aa35dfef008f8ff67f56ef7048060b0a1`
 - 60슬롯: 세 강좌 각각 20슬롯
 - 교과목 우선 코어: 슬롯당 5개, 총 300개
 - 500 유효 완전 미션 후보 최소치:
@@ -73,9 +76,24 @@ P0 migration 적용·배포 후 deployment ID와 deploy commit을 채워야 완�
 
 ## 아직 증거가 아닌 것
 
-- batch 유료 실행, 30파일럿 판정, 교수자 최종 승인
+- 균형 30 재-canary 통과, 500 본생성, 교수자 최종 승인
 - reviewed 60슬롯 배치, 인증 학습자 번역·통역 4개 E2E
 - 현재 source의 Railway 배포 ID·커밋, 운영 화면 캡처
 - 500/60/12/4 완료 및 학습효과
-- 파일럿 runner 실행 자격증명. 로컬 `.env`에는 공개 가능한 VITE Supabase 설정만 있고
-  `PRAGMA_BATCH_ADMIN_EMAIL`·`PRAGMA_BATCH_ADMIN_PASSWORD`는 없다.
+
+## MJT3·MJT5 후보 재-canary 증거
+
+- 구현 commit: `9395126`
+- run: `scope-lock-pilot-20260829-05-canary8`
+- 생성: 영향 유형 코어 8/8, deterministic 구조 유효 완전 미션 8/8
+- 자동 품질 gate: 적격 4/8(한→중 3, 중→한 1), critical fail 4/8
+- critical code: `band_mismatch` 4, `implausible_distractor` 0
+- repair: 저장된 fail 4건을 후보 단위로 재시도했으나 승격 0. 재검사 fail 또는 critic 429/502는
+  성공 revision으로 저장하지 않아 정상 후보·기존 성공분을 덮어쓴 사례 0
+- 최소 검증: 구현 표적 5파일 27 tests·typecheck 통과. 마지막 v8 경계 규칙 뒤 영향 스냅샷
+  13 tests·typecheck 통과
+- 정지 판정: 승인된 8개 선행 gate를 통과하지 못해 균형 30과 500은 실행하지 않았다.
+
+로컬 `.env`의 batch 관리자 자격증명은 canary 실행에만 사용했고 값은 출력·문서화·커밋하지 않았다.
+이 증거는 후보 격리와 실패 revision 비저장 동작을 뒷받침하지만 500 생산 가능성, 콘텐츠 타당성,
+교수자 승인 또는 학습효과의 증거는 아니다.

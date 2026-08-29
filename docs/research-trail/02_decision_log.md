@@ -3010,3 +3010,24 @@
 - 비노출: 라운지·추가 분석/개선/calibration/export/백업 전용 UI는 데이터·migration을 삭제하지 않고 메뉴 비노출과 P0 경로 redirect로 동결한다.
 - 기각: 기존 495/504 Gold 코퍼스 경로 재사용, 300 완전 미션 선생성, 500 전체 교수자 검수, 새 Gold/expert gate, 대규모 UI/QA/분석 확장, pre-lock 콘텐츠 수리.
 - 근거/범위: 사용자 확정 Scope Freeze와 품질 퍼널, GPT Pro 교차검증의 파일럿 조건부 포함·코어 선별 승격·수치 분리·3트랙 병렬화는 **보완 수용**했다. 일정 추정·감사 점수는 채택하지 않았다. 상세 baseline과 미완료 경계는 `EVD-20260829-01`에 기록한다.
+
+## DEC-20260829-02 · MJT3·MJT5 후보 역할 고정과 8개 생산 게이트 정지
+
+- 날짜: 2026-08-29
+- 상태: 후보 단위 구조개선 구현·운영 canary 8개 실행, 30/500 생성 정지.
+- 문제: 첫 30파일럿의 자동 게이트는 8/30이었고 실패 22개 중 `band_mismatch` 18개와
+  `implausible_distractor` 8개가 MJT3·MJT5 후보 및 블록 repair에 집중됐다. 후보 역할·대역과
+  표면 문장 생성을 한 번에 모델에 맡겨 정상 후보까지 바뀌는 복구 단가가 컸다.
+- 결정: mission_v5·MJT 5문항+DCT 1과제·P·D·R·대역·DB는 유지한다. MJT3·MJT5만 서버 고정
+  candidate blueprint로 역할과 intended band를 선결정하고, 모델은 한 응답에서 표현만 실현한다.
+  critic fail의 정확한 후보만 재생성하며 정상 peer·순서·metadata는 immutable로 둔다. 재검사 fail은
+  성공 revision으로 저장하지 않는다.
+- critic 경계: counter-rule·P·D·R 관점과 blueprint를 전달하고, 표현도 intended band라고 판정한
+  근거와 `band_mismatch`를 동시에 내는 self-inconsistency를 금지한다. 애매한 세부 대역은 warning이다.
+  critic fail을 단순 완화하거나 교수자 승인으로 자동 전환하지 않는다.
+- 실제 판정: 새 영향 유형 8개는 구조 8/8이었으나 품질 적격 4/8, critical `band_mismatch` 4/8이었다.
+  후보 격리와 실패 revision 비저장은 작동했지만 `too_indirect` 등 경계 대역 표면 실현은 안정적이지
+  않았다. 승인된 선행 게이트에 따라 균형 30과 500 본생성을 정지한다.
+- 기각/보류: 전체 프롬프트 재작성, mission 구조·대역 재설계, 성공분 삭제, critic 임계 완화,
+  fail 후보 전체 미션 재생성, 8개 실패 상태에서의 30/500 강행은 채택하지 않는다.
+- 근거: `ITER-20260829-02`, `EVD-20260829-02`, 구현 커밋 `9395126`.

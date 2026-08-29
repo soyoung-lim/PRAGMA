@@ -2865,3 +2865,23 @@
   학습효과를 주장하지 않는다.
 - 관련: `TRC-20260829-01`, `DEC-20260829-01`, `EVD-20260829-01`,
   `docs/dev-log/2026-08-29-scope-lock-p0-foundation.md`.
+
+## ITER-20260829-02 · MJT3·MJT5 후보 격리 repair와 재-canary
+
+- 날짜: 2026-08-29
+- 시작 문제: 30파일럿 중 22개가 자동 품질 게이트에 실패했고, 실제 생성 결함과 critic
+  false positive가 섞인 상태에서 블록 repair가 정상 후보까지 바꾸었다.
+- 변경: MJT3·MJT5의 후보별 역할·대역 blueprint, 후보 경로별 repair packet, 정상 peer·metadata
+  동결, 무변경·peer 중복 교체 거부, 재검사 fail 비저장과 저장된 fail 초안의 재개 실행을 구현했다.
+  P·D·R 구조 실패 2건은 기존 앵커+한 축 대비 계약의 deterministic canonicalization으로만 교정했다.
+- 예상과 달랐던 점: 격리 장치는 정상 작동했으나 모델은 `too_indirect` 후보를 일반 완화 표지의
+  중첩으로 실현해 실제로는 within에 남겼다. critic도 한 사례에서 근거·metadata와 반대되는
+  `band_mismatch`를 생성했다. 구조 안전성과 대역 실현 안정성은 별개였다.
+- 검증/결과: 표적 27 tests·typecheck, 마지막 v8 뒤 영향 스냅샷 13 tests·typecheck가 통과했다.
+  새 canary는 코어 8/8·구조 유효 미션 8/8·자동 품질 적격 4/8이었다. 네 fail 모두
+  `band_mismatch`, critical `implausible_distractor`는 0이었다. 실패 repair의 성공 revision 저장은
+  0건이며 30과 500은 실행하지 않았다.
+- 교훈: 500 생산 가능성은 첫 패스 비율뿐 아니라 실패 후보의 국소 복구 성공률로 판정해야 한다.
+  현 구조는 오염 방지는 달성했지만 경계 후보 복구율은 게이트를 통과하지 못했다.
+- 관련: `DEC-20260829-02`, `EVD-20260829-02`,
+  `docs/dev-log/2026-08-29-scope-lock-p0-foundation.md`, 커밋 `9395126`.

@@ -43,4 +43,59 @@
 로컬 구현·정적 계약·단위 회귀와 운영 DB 계보 migration·생성/검토 Edge 배포까지 완료했다.
 30파일럿, prompt fingerprint LOCK, 500 후보 생산, 교수자 reviewed 미션, 60슬롯 실제 배치,
 Defense 12, 번역2+통역2 E2E와 Railway 배포는 남아 있다. 파일럿 runner는 관리자 자격증명이
-코드·로컬 `.env`에 없어서 실행하지 않았다.
+코드·로컬 `.env`에 없던 이 checkpoint에서는 실행하지 않았고, 아래 재-canary 단계에서 로컬
+환경값 설정 뒤 실행했다. 자격증명 값은 출력·기록·커밋하지 않았다.
+
+## MJT3·MJT5 후보 단위 생성·repair 재-canary
+
+### 시작 문제
+
+초기 30파일럿은 완전 미션 30/30을 저장했지만 자동 품질 게이트는 8/30만 통과했다.
+실패 22개 중 `band_mismatch`는 18개, `implausible_distractor`는 8개에 나타났고 실제 결함은
+MJT3 `fix_choice`와 MJT5 `multi_judge` 후보 생성·블록 repair에 집중됐다. 기존 성공분과 release를
+폐기하지 않고 이 두 유형만 후보 단위로 교정했다.
+
+### 변경
+
+- `candidate_blueprint_v1`이 MJT3의 `within/lower/upper` 3후보와 MJT5의
+  `within/lower/within/upper` 4후보에 `intended_band`·교육적 역할을 고정한다. 의미·발화 의도·
+  화행 기능 보존, 조절 축, 비현실적 극단화 금지만 지시하고 특정 표현은 하드코딩하지 않는다.
+- 최초 후보는 기존처럼 한 LLM 응답에서 함께 생성하되 서버가 정답·대역 metadata를 blueprint로
+  다시 고정한다. critic에는 counter-rule·P·D·R 관점·0-based blueprint를 전달하고 애매한 세부
+  대역은 warning으로 남기도록 했다.
+- critic의 정확한 `fail` 후보 경로만 repair packet으로 만들고 정상 후보·순서·metadata는 동결한다.
+  동일 후보 무변경, 정상 peer와의 중복, 허용 경로 밖 operation은 서버가 버린다. 재검사 `fail`은
+  성공 revision으로 저장하지 않는다.
+- 같은 run에서 저장된 quality-fail 초안만 재시도하고 pass/warning 미션은 재사용하도록 batch를
+  중단·재개 가능하게 했다. mission 단계 동시성은 API 429 확산을 막기 위해 1로 제한했다.
+- 현행 fingerprint는 release `pragma_scope_lock_20260829_05_mjt5_dct1_candidate_blueprint`,
+  mission prompt `mission_v5_mpj5_minidiscourse_v10_candidate_blueprint`, critic
+  `quality_v15_candidate_blueprint_consistency`, repair `mission_item_repair_v8_functional_band_boundary`,
+  core surface hash `6e5aee7cf1244bd9dc0f0b44d01f7e9aa35dfef008f8ff67f56ef7048060b0a1`이다.
+
+### 최소 검증과 실제 재-canary
+
+- 구현 단계 표적 5파일 27 tests와 typecheck가 통과했다. 마지막 v8 경계 규칙 보완 뒤에는 영향
+  스냅샷 13 tests와 typecheck만 다시 실행해 통과했다. 전체 회귀·build·화면 검증은 반복하지 않았다.
+- 새 run `scope-lock-pilot-20260829-05-canary8`에서 영향 유형 코어 8/8을 생성했다. 최초 미션은
+  결정론 P·D·R 제약 때문에 6/8이었고, MJT2·3·4 앵커와 MJT5 한 축 대비를 기존 계약대로
+  canonicalize하는 국소 교정 뒤 구조 유효 미션 8/8을 확보했다.
+- 최종 저장 audit은 자동 게이트 적격 4/8(한→중 3, 중→한 1), critical fail 4/8이며 네 건 모두
+  `band_mismatch`였다. `implausible_distractor` critical fail은 0건이었다. 한 건은 critic의 근거와
+  metadata가 모두 intended band를 가리키면서 `band_mismatch`를 낸 명백한 self-inconsistency였고,
+  나머지는 후보가 목표 경계 대역을 실제로 실현하지 못한 생성 결함이 중심이었다.
+- 저장된 fail 4건을 후보 단위로 재시도했으나 승격된 건은 없었다. 세 건은 재검사 fail, 한 건은
+  critic 요청의 429/502로 종료됐다. 실패 repair는 revision을 덮어쓰지 않아 정상 후보와 기존
+  성공분에 새 결함이 저장된 건은 0건이다.
+- 비저장 진단에서 v8은 정상 peer 복제를 거부했지만, `too_indirect` 후보가 발화행위를 명시한 채
+  일반 완화만 더해 실제로는 within에 머물렀다. 따라서 후보 격리 구조는 작동하지만 상위 경계
+  표면 실현의 생산 안정성은 아직 확보되지 않았다.
+
+### 완료 경계
+
+승인된 8개 선행 게이트가 4/8에 그쳐 균형 30개 재-canary와 500개 본생성은 실행하지 않았다.
+초기 30의 18/30·8/30과 새 표적 8의 4/8·0/8은 표본 구성이 달라 직접 개선율로 해석하지 않는다.
+현재 완료된 범위는 후보 역할 고정, 후보별 격리 repair, 실패 revision 비저장, 재개 실행과 그 한계의
+실증까지다. 500 생산 가능 판정은 **보류**다.
+
+구현 커밋: `9395126`.
