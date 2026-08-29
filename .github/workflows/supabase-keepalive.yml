@@ -1,0 +1,92 @@
+# Supabase 무료 플랜은 일정 기간 요청이 없으면 프로젝트를 일시정지한다.
+# 정지되면 앱 화면은 떠 있는데 로그인·미션·생성이 모두 죽으므로 더 나쁘다.
+# 논문 심사(2026-11) 전후로 앱을 며칠 안 건드리는 구간이 생겨도 살아 있도록,
+# 매일 한 번 실제 DB 읽기를 수행해 활동을 남긴다.
+#
+# 판정 기준 (2026-08-29 실측):
+#   publishable(anon) 키 + `/rest/v1/hsk3_topics` HEAD 요청 → HTTP 200.
+#   이는 PostgREST가 PostgreSQL에 실제 SELECT를 실행한 결과다(RLS가 행을 걸러
+#   빈 결과가 되어도 쿼리는 DB에서 실행된다). hsk3_topics는 정적 참조 테이블이라
+#   이름·존재가 안정적이고, HEAD라 본문을 받지 않으므로 데이터가 노출되지 않는다.
+#   `/auth/v1/settings`(200)는 연결성 보조 확인으로만 쓰고 판정에는 쓰지 않는다.
+#   참고: `/rest/v1/` 루트(OpenAPI)는 이 프로젝트에서 401을 돌려주지만, 테이블
+#   엔드포인트는 정상 동작한다. 루트 401을 키 비호환으로 해석하지 않는다.
+#
+# ⚠️ GitHub는 저장소에 60일간 활동이 없으면 예약 워크플로를 자동 비활성화한다.
+#    저장소가 조용해지는 시기에는 Actions 탭에서 활성 상태를 확인한다.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    # 매일 02:23 UTC (KST 11:23). 정각을 피해 실행 지연을 줄인다.
+    - cron: '23 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Real DB read via PostgREST
+    runs-on: ubuntu-latest
+    # SUPABASE_URL·SUPABASE_ANON_KEY는 이 환경에 등록돼 있다(live-rls-role-smoke와 동일).
+    environment: pragma-live-smoke
+    timeout-minutes: 5
+    steps:
+      - name: Keep-alive DB read
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "::error::SUPABASE_URL 또는 SUPABASE_ANON_KEY 시크릿이 없다. pragma-live-smoke 환경을 확인한다."
+            exit 1
+          fi
+
+          base="${SUPABASE_URL%/}"
+
+          # 보조 확인: 연결성만 본다. 판정에는 쓰지 않는다.
+          auth_code="$(curl -sS -o /dev/null -w '%{http_code}' \
+            --max-time 30 -H "apikey: ${SUPABASE_ANON_KEY}" \
+            "${base}/auth/v1/settings" || echo 000)"
+          echo "auth/v1/settings (연결성 참고): HTTP ${auth_code}"
+          if [ "${auth_code}" != "200" ]; then
+            echo "::warning::Auth 설정 조회가 200이 아니다(HTTP ${auth_code}). 아래 DB 읽기 결과로 최종 판정한다."
+          fi
+
+          # 판정 기준: 정적 참조 테이블에 대한 실제 DB 읽기.
+          # HEAD이므로 응답 본문이 없고, RLS가 행을 걸러도 쿼리는 PostgreSQL에서 실행된다.
+          code="$(curl -sS -o /dev/null -w '%{http_code}' \
+            --head --retry 3 --retry-delay 15 --retry-all-errors --max-time 30 \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            "${base}/rest/v1/hsk3_topics?select=topic_seq&limit=1")"
+
+          echo "rest/v1/hsk3_topics HEAD: HTTP ${code}"
+
+          case "${code}" in
+            200|206)
+              echo "DB 읽기 성공 — Supabase 프로젝트가 살아 있다."
+              ;;
+            400|404)
+              echo "::error::테이블 또는 컬럼을 찾지 못했다. hsk3_topics(topic_seq)가 개명·삭제됐다면 이 워크플로의 대상 테이블을 갱신한다. (HTTP ${code})"
+              exit 1
+              ;;
+            401|403)
+              echo "::error::인증이 거부됐다. publishable 키가 회전됐거나 anon 권한이 회수됐을 수 있다. SUPABASE_ANON_KEY 시크릿과 테이블 권한을 확인한다. (HTTP ${code})"
+              exit 1
+              ;;
+            000)
+              echo "::error::응답이 없다. 네트워크 실패이거나 프로젝트가 정지 상태일 수 있다. 대시보드에서 Restore 여부를 확인한다."
+              exit 1
+              ;;
+            *)
+              echo "::error::예상하지 못한 응답이다. 프로젝트 일시정지(Restore 필요) 여부를 대시보드에서 확인한다. (HTTP ${code})"
+              exit 1
+              ;;
+          esac
