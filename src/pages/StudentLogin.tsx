@@ -102,7 +102,13 @@ const StudentLogin = () => {
               </button>
 
               <p className="mt-3 text-left text-[11.5px] leading-relaxed text-[#8A8578]">
-                학교·개인 계정 모두 가능합니다. 계정을 바꾸면 기록이 이어지지 않습니다.
+                학교·개인 계정 모두 가능합니다. 계정을 바꾸면 기록이 이어지지 않습니다.{" "}
+                <Link
+                  to="/privacy"
+                  className="underline underline-offset-2 transition-colors hover:text-[#15202B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
+                >
+                  개인정보처리방침
+                </Link>
               </p>
             </section>
 

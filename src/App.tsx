@@ -13,6 +13,7 @@ const RequireApproved = lazy(() => import("./components/RequireApproved"));
 const RequireAdmin = lazy(() => import("./components/RequireAdmin"));
 const Index = lazy(() => import("./pages/Index.tsx"));
 const Architecture = lazy(() => import("./pages/Architecture.tsx"));
+const Privacy = lazy(() => import("./pages/Privacy.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const AdminCorpus = lazy(() => import("./pages/admin/AdminCorpus.tsx"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
@@ -81,6 +82,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           {/* 심사 설명용 read-only 구조 화면 — 실데이터가 없어 로그인을 요구하지 않는다. */}
           <Route path="/architecture" element={<Architecture />} />
+          {/* Google OAuth 동의 화면이 요구하는 공개 링크 — 비로그인 접근을 유지한다. */}
+          <Route path="/privacy" element={<Privacy />} />
           {/* 디펜스용 단일 진입점 — 실제 승인 미션 실행기를 재사용하되 수행 로그는 저장하지 않는다. */}
           <Route
             path="/demo/mission"
