@@ -3134,3 +3134,21 @@
   500을 시작하지 않는다.
 - 근거: `docs/dev-log/2026-08-30-08-production-yield30.md`; run
   `scope-lock-pilot-20260830-08-yield30`; `EVD-20260830-03`, `ITER-20260830-03`.
+
+## DEC-20260830-04 · 상대경계 누락만 후보 단위 1회 복구하고 terminal 원인을 artifact에 분리
+
+- 날짜: 2026-08-30
+- 상태: 연구자 승인 구현·Edge 배포·SET-A 6개 표적 canary 완료, 균형 30/500 정지.
+- 문제: `_06` 3건과 `_08` 5건에서 `mission_candidate_band_v1_relative_minimal_contrast`
+  출력 누락이 반복됐고, `_08` 중단 전 terminal 3건은 계획 셀별 종료 원인이 영속화되지 않아
+  사후 귀인이 불가능했다.
+- 결정: 결합 응답에서 누락된 MJT3·MJT5 경계 후보만 전체 lifecycle에서 최대 1회 재생성하고,
+  정상 후보와 `situation_ko`는 불변으로 둔다. provider 장부는 기존 `llm_invocation_events`를 유지하며
+  non-LLM terminal 원인은 run별 append-only JSONL에 기록한다. 새 DB·판정 규칙은 만들지 않는다.
+- 결과: SET-A 6조건에서 상대경계 누락과 직접 탈락은 0건이라 runtime fallback은 발동하지 않았다.
+  후보 단위 상한·격리 경로는 33 tests와 typecheck로 확인했다. core 6/6 뒤 미션 첫 패스 2/6,
+  최종 적격 3/6이며 비대상 탈락은 R27 2·critic fail 1이다. 정상 peer·상황 오염과 인프라 실패는 0이다.
+- 판정: **균형 30 재실행 가능**. 이는 fallback runtime 성공률이나 전체 production yield의 입증이
+  아니다. 새 균형 30에서 확률적 누락·실제 복구·전체 수율을 측정해야 하며 500은 별도 승인 전 금지한다.
+- 근거: `ITER-20260830-04`, `EVD-20260830-04`, 구현 `1d86bdc`, 관측성 correction `ee523b2`,
+  Edge v105, run `scope-lock-pilot-20260830-09-boundary6`.

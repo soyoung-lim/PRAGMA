@@ -2990,3 +2990,24 @@
   생성·복구 단가와 실패 topology를 함께 재검토해야 하며 500을 강행할 근거가 없다.
 - 관련: `DEC-20260830-03`, `EVD-20260830-03`,
   `docs/dev-log/2026-08-30-08-production-yield30.md`.
+
+## ITER-20260830-04 · 상대경계 bounded fallback과 terminal outcome 관측성
+
+- 날짜: 2026-08-30
+- 시작 문제: 상대경계 후보 출력 누락이 두 production canary에서 반복됐지만 미션 전체 재생성은
+  정상 후보를 오염시키고 비용을 키웠다. 동시에 계획 셀의 non-LLM terminal 원인이 호출 장부만으로는
+  복원되지 않는 구간이 있었다.
+- 변경: 누락 후보만 1회 재생성하는 Edge fallback과, 다른 recovery를 포함한 후보별 통합 횟수 상한을
+  추가했다. batch runner는 core·mission의 단계·rule·critic·repair·infra·최종 outcome을 JSONL에
+  append한다. UI·DB schema와 품질 규칙은 그대로다.
+- 검증/결과: 표적 5파일 33 tests·typecheck, Edge v105 ACTIVE. SET-A 6개는 최초 core 5개와 R29
+  replacement 1개로 6개를 만들었다. 미션 첫 패스 2·최종 적격 3, quality-fail 격리 1·R27 미저장 2다.
+  상대경계 누락과 fallback 시도는 0이라 실제 recovery 성공률은 측정할 수 없지만 직접 탈락·peer 오염·
+  situation 변경·후보별 상한 위반은 0이다.
+- 예상과 달랐던 점: 원시 JSONL 한 줄이 optional repair 실패를 `none/failed`로 기록했다. 과거 줄을
+  재작성하지 않고 이후 operation·error를 정확히 기록하는 forward correction을 추가했다.
+- 교훈/다음 경계: 표적 조건에서 반복 병목이 사라졌다고 production 수율까지 일반화할 수 없다.
+  추가 표적 생성을 반복해 누락을 억지로 유발하기보다 frozen 새 release의 균형 30에서 fallback 발동과
+  전체 yield를 함께 재측정하는 것이 짧은 경로다. 500은 시작하지 않는다.
+- 관련: `DEC-20260830-04`, `EVD-20260830-04`,
+  `docs/dev-log/2026-08-30-relative-boundary-observability-canary.md`.
