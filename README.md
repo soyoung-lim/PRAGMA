@@ -1,6 +1,6 @@
-# PRAGMA
-
-> **AI 기반 한·중 통번역 학습 워크플로우 개발 연구**
+<p align="center">
+  <img src="docs/brand/banner.svg" alt="PRAGMA — AI 기반 한·중 통번역 학습 워크플로우 개발 연구" width="100%">
+</p>
 
 [![Live](https://img.shields.io/badge/live-pragma.up.railway.app-2ea44f?style=flat-square)](https://pragma.up.railway.app)
 ![Status](https://img.shields.io/badge/status-research_in_progress-blue?style=flat-square)
@@ -138,16 +138,6 @@ PRAGMA는 결과물뿐 아니라 결과가 만들어지고 검토된 조건을 �
 | 음성 | OpenAI `gpt-4o-transcribe`, ElevenLabs `eleven_multilingual_v2`, OpenAI TTS 대체 경로 |
 | 배포 | Railway 정적 프론트엔드 + Supabase 백엔드 |
 | 검증 | Vitest 3, Testing Library, Playwright, ESLint, TypeScript |
-
-## 테스트·검증
-
-- `npm run typecheck`: 애플리케이션 TypeScript 검사
-- `npm test`: Vitest 단위·계약·회귀검사
-- `npm run build`: 프롬프트 snapshot 생성과 production build
-- `tests/`: Playwright 기반 시나리오 검증과 보조 스크립트
-- `scripts/manual-checks/`: 음성 round-trip·피드백·품질 점검용 승인형 수동 검사
-
-<br>
 
 ## 개발 현황
 
