@@ -78,6 +78,8 @@ describe("prompt snapshot integrity", () => {
     expect(planned).toContain("[고정 contrast plan — 그대로 구현]");
     expect(planned).toContain('"mission_goal": "integrated_speech_act"');
     expect(planned).not.toContain("[직전 실패 출력");
+    const edgeSource = readFileSync(resolve(process.cwd(), "supabase/functions/generate-scenario/index.ts"), "utf8");
+    expect(edgeSource).toContain("targets.situationTargets.length === 0");
   });
 
   it("locks the streamlined learner-facing MPJ contract", () => {

@@ -4014,6 +4014,7 @@ Deno.serve(async (req) => {
       }
       const targets = repairTargets(b.findings)
       if (targets.itemIndexes.length === 0 && targets.candidateTargets.length === 0 &&
+          targets.situationTargets.length === 0 &&
           !targets.productionReferences && !targets.diagnosticDimensions) {
         return new Response(JSON.stringify({ operations: [] }), { status: 200, headers: jsonHeaders })
       }
