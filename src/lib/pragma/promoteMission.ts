@@ -208,10 +208,20 @@ async function runQualityCheck(args: {
             code: feature.code,
             learner_label: feature.learner_label,
             band_codes: feature.band_schema.map((b) => b.code),
+            band_schema: feature.band_schema.map((band) => ({ code: band.code, label_ko: band.label_ko })),
+            within_band_code: feature.within_band_code,
             operational_definition:
               direction === "zh_ko" && feature.operational_definition_zh_ko
                 ? feature.operational_definition_zh_ko
                 : feature.operational_definition,
+            excluded_confounds:
+              direction === "zh_ko" && feature.excluded_confounds_zh_ko
+                ? feature.excluded_confounds_zh_ko
+                : feature.excluded_confounds,
+            counter_rule_note:
+              direction === "zh_ko" && feature.counter_rule_note_zh_ko
+                ? feature.counter_rule_note_zh_ko
+                : feature.counter_rule_note,
           },
           direction,
           speech_act: speechAct,
@@ -284,8 +294,10 @@ export function buildContrastPlan(speechAct: SpeechActUI, itemFocus: string) {
   };
 }
 
-type MissionRepairOperation =
+export type MissionRepairOperation =
   | { operation: "replace_item_block"; item_index: number; item: Record<string, unknown> }
+  | { operation: "replace_fix_choice_candidate"; item_index: number; candidate_index: number; candidate: Record<string, unknown> }
+  | { operation: "replace_multi_judge_candidate"; item_index: number; candidate_index: number; candidate: Record<string, unknown> }
   | { operation: "replace_reference_alternatives"; reference_alternatives: unknown[] }
   | { operation: "replace_diagnostic_dimensions"; diagnostic_dimensions: unknown[] };
 
@@ -293,7 +305,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function applyMissionRepairOperations(
+export function applyMissionRepairOperations(
   missionContent: Record<string, unknown>,
   operations: MissionRepairOperation[],
 ): Record<string, unknown> {
@@ -306,6 +318,25 @@ function applyMissionRepairOperations(
     if (operation.operation === "replace_item_block") {
       if (operation.item_index >= 0 && operation.item_index < items.length) {
         items[operation.item_index] = operation.item;
+      }
+    } else if (
+      operation.operation === "replace_fix_choice_candidate" ||
+      operation.operation === "replace_multi_judge_candidate"
+    ) {
+      const item = isRecord(items[operation.item_index]) ? items[operation.item_index] as Record<string, unknown> : null;
+      const collection = operation.operation === "replace_fix_choice_candidate" ? "corrections" : "candidates";
+      const candidates = item && Array.isArray(item[collection]) ? [...item[collection] as unknown[]] : [];
+      const originalCandidate = isRecord(candidates[operation.candidate_index])
+        ? candidates[operation.candidate_index] as Record<string, unknown>
+        : null;
+      if (item && originalCandidate && typeof operation.candidate.text === "string" &&
+          typeof operation.candidate.note_ko === "string") {
+        candidates[operation.candidate_index] = {
+          ...originalCandidate,
+          text: operation.candidate.text,
+          note_ko: operation.candidate.note_ko,
+        };
+        items[operation.item_index] = { ...item, [collection]: candidates };
       }
     } else if (operation.operation === "replace_reference_alternatives") {
       productionTask.reference_alternatives = operation.reference_alternatives;
@@ -324,6 +355,10 @@ function applyMissionRepairOperations(
     repair_attempts: 1,
   };
   return patched;
+}
+
+export function canPersistRepairQuality(quality: QualityCheck): boolean {
+  return quality.verdict !== "fail";
 }
 
 async function contentHashForDraft(content: Record<string, unknown>): Promise<string> {
@@ -411,6 +446,9 @@ async function repairMissionOnce(args: {
     generationItemKey: args.generationItemKey,
   });
   if (checked.ok === false) return { ok: false, error: checked.error };
+  if (!canPersistRepairQuality(checked.quality)) {
+    return { ok: false, error: "수리 후보가 AI 품질점검을 다시 통과하지 못해 revision으로 저장하지 않았습니다." };
+  }
   patched.quality_check = checked.quality;
   return { ok: true, missionContent: patched, mission: parsed.data, quality: checked.quality, check };
 }
@@ -722,6 +760,77 @@ async function fetchGeneratedMissionContent(scenarioId: string): Promise<Record<
     throw new Error(error?.message ?? "검수 대기 미션을 찾지 못했습니다.");
   }
   return data.mission_content as Record<string, unknown>;
+}
+
+/** 저장된 critic-fail 초안에서 지목된 후보만 다시 만들고, 재검사 통과 revision만 보존한다. */
+export async function retryGeneratedMissionCandidateRepair(core: PromotableCore): Promise<PromoteResult> {
+  try {
+    const current = await fetchGeneratedMissionContent(core.scenario_id);
+    const qualityResult = QualityCheckSchema.safeParse(current.quality_check);
+    if (!qualityResult.success) return { ok: false, error: "저장된 AI 품질점검을 읽을 수 없습니다." };
+    if (qualityResult.data.verdict !== "fail") {
+      return { ok: true, quality: qualityResult.data, attempts: 0, repaired: false };
+    }
+    const featureCode = DEFAULT_FEATURE_BY_ACT[core.speech_act];
+    const feature = featureCode ? getTargetFeature(featureCode) : undefined;
+    if (!feature) return { ok: false, error: "문항 판정 초점 카탈로그를 찾지 못했습니다." };
+    const direction: LanguageDirection =
+      coreDirection(core.core_content) === "zh_ko" || core.language_direction === "zh_ko" ? "zh_ko" : "ko_zh";
+    const ctx: CheckContext = {
+      speech_act: core.speech_act,
+      level: core.learner_level,
+      domain: (core.domain ?? "daily") as Domain,
+      theme_code: (core.theme_code ?? "daily_living") as ThemeCode,
+      topic_code: core.topic_code ?? "",
+      industry: core.industry_sector ?? null,
+      mode: core.mode ?? "translation",
+      source_modality: (core.source_modality ?? "written") as "written" | "spoken",
+      planned_target_feature: feature.code,
+      direction,
+    };
+    const repaired = await repairMissionOnce({
+      missionContent: current,
+      quality: qualityResult.data,
+      feature,
+      direction,
+      speechAct: core.speech_act,
+      scenarioId: core.scenario_id,
+      generationRunId: core.generation_run_id,
+      generationItemKey: core.generation_item_key,
+      ctx,
+      coreContent: core.core_content,
+    });
+    if (repaired.ok === false) return { ok: false, quality: qualityResult.data, error: repaired.error };
+    const violations = repaired.check.violations.map((violation) => ({
+      id: violation.id,
+      level: violation.level,
+      message: violation.message,
+    }));
+    const { error } = await rpc("save_generated_mission_revision", {
+      p_scenario_id: core.scenario_id,
+      p_payload: {
+        mission_content: repaired.missionContent,
+        validation_result: {
+          result: repaired.check.result,
+          violations,
+          candidate_retry: true,
+          repair_attempts: 1,
+        },
+      },
+    });
+    if (error) return { ok: false, error: (error as { message?: string }).message ?? String(error) };
+    return {
+      ok: true,
+      mission: repaired.mission,
+      ruleResult: repaired.check.result as "pass" | "warning",
+      violations,
+      attempts: 1,
+      quality: repaired.quality,
+      repaired: true,
+    };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 export interface ProfessorMissionEdits {

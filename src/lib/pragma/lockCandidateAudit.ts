@@ -50,6 +50,9 @@ export interface LockCandidateAuditSummary {
   directionMinimumsMet: boolean;
   targetMet: boolean;
   reviewedUniqueMissions: number;
+  blockerCounts: Partial<Record<LockCandidateBlocker, number>>;
+  qualityCriticalFailCodes: Record<string, number>;
+  qualityCriticalFailSamples: Record<string, { scenarioId: string; where: string; noteKo: string }[]>;
   rows: AuditedLockCandidate[];
 }
 
@@ -126,7 +129,9 @@ export function auditLockCandidates(
       ) {
         blockers.push("prompt_version");
       }
-      if (textAt(provenance, "prompt_snapshot_hash") !== expectedPromptSnapshotHash) {
+      // The snapshot hash fingerprints the core prompt surface. Mission provenance
+      // is gated independently by CURRENT_MISSION_PROMPT_VERSIONS above.
+      if (textAt(coreGeneration, "prompt_snapshot_hash") !== expectedPromptSnapshotHash) {
         blockers.push("prompt_snapshot_hash");
       }
       if (!contentHash || !HASH_RE.test(contentHash)) {
@@ -156,6 +161,36 @@ export function auditLockCandidates(
       .filter((candidate) => ["reviewed", "released"].includes(candidate.mission_status ?? ""))
       .map((candidate) => candidate.scenario_id),
   );
+  const blockerCounts: Partial<Record<LockCandidateBlocker, number>> = {};
+  for (const row of rows) {
+    for (const blocker of row.blockers) blockerCounts[blocker] = (blockerCounts[blocker] ?? 0) + 1;
+  }
+  const qualityCriticalFailCodes: Record<string, number> = {};
+  const qualityCriticalFailSamples: Record<string, { scenarioId: string; where: string; noteKo: string }[]> = {};
+  for (const candidate of candidates) {
+    const quality = record(candidate.mission_content?.quality_check);
+    if (quality?.verdict !== "fail" || !Array.isArray(quality.findings)) continue;
+    const codes = new Set(
+      quality.findings
+        .map((finding) => record(finding))
+        .filter((finding) => finding?.severity === "fail")
+        .map((finding) => textAt(finding, "code") ?? "unknown"),
+    );
+    for (const code of codes) qualityCriticalFailCodes[code] = (qualityCriticalFailCodes[code] ?? 0) + 1;
+    for (const rawFinding of quality.findings) {
+      const finding = record(rawFinding);
+      if (finding?.severity !== "fail") continue;
+      const code = textAt(finding, "code") ?? "unknown";
+      const samples = qualityCriticalFailSamples[code] ?? [];
+      if (samples.length >= 2) continue;
+      samples.push({
+        scenarioId: candidate.scenario_id,
+        where: textAt(finding, "where") ?? "",
+        noteKo: textAt(finding, "note_ko") ?? "",
+      });
+      qualityCriticalFailSamples[code] = samples;
+    }
+  }
   return {
     target: VALID_LOCK_CANDIDATE_TARGET,
     eligible: eligibleRows.length,
@@ -165,17 +200,22 @@ export function auditLockCandidates(
       directionCounts.ko_zh >= DIRECTION_MINIMUMS.ko_zh && directionCounts.zh_ko >= DIRECTION_MINIMUMS.zh_ko,
     targetMet: eligibleRows.length >= VALID_LOCK_CANDIDATE_TARGET,
     reviewedUniqueMissions: reviewedIds.size,
+    blockerCounts,
+    qualityCriticalFailCodes,
+    qualityCriticalFailSamples,
     rows,
   };
 }
 
-export async function loadLockCandidateRows(): Promise<LockCandidateRow[]> {
-  const { data, error } = await (supabase as unknown as { from: (table: string) => any })
+export async function loadLockCandidateRows(runId?: string): Promise<LockCandidateRow[]> {
+  let query = (supabase as unknown as { from: (table: string) => any })
     .from("scenarios")
     .select("scenario_id, speech_act, learner_level, domain, mode, source_modality, theme_code, topic_code, industry_sector, language_direction, mission_status, core_content, mission_content")
     .in("mission_status", ["generated", "reviewed", "released"])
     .order("created_at", { ascending: true })
     .limit(4000);
+  if (runId) query = query.eq("generation_run_id", runId);
+  const { data, error } = await query;
   if (error) throw new Error(`LOCK 후보 조회 실패: ${error.message}`);
   return (data ?? []).map((row: Record<string, unknown>) => ({
     ...row,

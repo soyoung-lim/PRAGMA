@@ -51,6 +51,10 @@ import {
   type HskTokenMatch,
 } from '../_shared/hskLexicalAudit.ts'
 import { canonicalizeNativeMpj5AnchorPdr } from '../_shared/missionCanonicalization.ts'
+import {
+  applyMissionCandidateBlueprints,
+  buildMissionCandidateBlueprints,
+} from '../_shared/missionCandidateBlueprint.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -247,7 +251,11 @@ interface QualityCheckBody {
     code?: string
     learner_label?: string
     band_codes?: string[]         // 카탈로그 band_schema 코드 목록(대역 정합 판단용)
+    band_schema?: Array<{ code: string; label_ko: string }>
+    within_band_code?: string
     operational_definition?: string
+    excluded_confounds?: string[]
+    counter_rule_note?: string
   } | null
   direction?: string              // ko_zh | zh_ko
   speech_act?: string | null
@@ -1106,6 +1114,9 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
     ...(rMeaningKo ? [`- 이 화행에서 R의 구체적 의미: ${rMeaningKo}`] : []),
     `- 장면 시드: ${b.situation_seed_ko}`,
     `- 원문 분량: ${lengthHintKo}`,
+    ...(src === 'zh'
+      ? ['- 중국어 길이 계수: 한자·라틴문자·숫자 각각 1개를 유효 글자 1자로 세고, 공백·문장부호는 제외합니다. 짧은 절 두 개로 끝내지 말고 반환 직전에 source_text를 직접 세어 지정 범위의 중앙값에 맞추세요.']
+      : []),
     `- 문장 경계: 쉼표로 절을 길게 잇지 말고 ${sentencePunctuation}로 위 분량의 문장 수를 명시하세요.`,
   ]
   if (b.industry) {
@@ -1286,6 +1297,7 @@ async function corePromptSnapshotHash(): Promise<string> {
     scope: 'core_generation',
     action: 'core',
     model: PRIMARY_MODEL,
+    repair_model: CRITIC_PRIMARY_MODEL,
     model_fallback: FALLBACK_MODEL,
     temperature: CORE_TEMPERATURE,
     response_format: CORE_RESPONSE_FORMAT,
@@ -1829,6 +1841,7 @@ function buildMissionSystemPrompt(
   완화·공손·선택권·호칭·종결형 등 target feature를 실현하는 화용 표현, 완성 문장과 문법 설명은 금지합니다.
   production preceding_turn에 목표어가 이미 그대로 보이면 같은 목표어를 힌트로 다시 주지 마세요.`
   const bands = f.band_schema.map((b) => `"${b.code}"(${b.label_ko})`).join(' / ')
+  const candidateBlueprints = nativeMpj5 ? buildMissionCandidateBlueprints(f) : null
   const gate1 = `🔴 게이트1(불변항 — 절대 규칙): target·모든 corrections.text·모든 candidates.text·recommended_example·reference_alternatives.text는 **먼저 각 원문의 명제·의도·화행 목적을 유지**해야 합니다. 의미나 의도가 달라진 문장은 화용 판단 후보가 될 수 없습니다. 부적절성은 오직 「${f.learner_label}」 초점의 **과소·적정·과잉 차이**로만 실현합니다. MPJ 문항에는 그 문항 source 밖의 새 사실·이유·대안·수리·보상·새 일정을 추가하지 마세요. DCT reference_alternatives만 사용자 요청서의 [사용 가능한 추가 사실] 폐쇄 목록을 사용할 수 있습니다.`
   const spokenRule = isSpoken
     ? `\n🔴 이 미션은 통역(구두 담화)입니다. source·target·모든 후보는 **실제 말로 주고받을 법한 구두체**로 작성하세요(이메일 문어체·서면 격식 표현 금지).
@@ -1918,6 +1931,13 @@ function buildMissionSystemPrompt(
 이 초점이 아닌 것(혼입 금지): ${f.excluded_confounds.join(', ')}
 깨야 할 소박한 규칙: ${f.counter_rule_note}
 ${featureBoundaryRule}
+${candidateBlueprints ? `
+[MJT3·MJT5 서버 고정 candidate blueprint]
+${JSON.stringify(candidateBlueprints, null, 2)}
+- candidate_index 순서와 intended_band·candidate_role은 서버 계약이므로 바꾸거나 재배열하지 마세요.
+- 한 번의 응답에서 모든 후보를 함께 만들되, 각 후보는 자기 blueprint의 preserve·adjustment·forbidden_extremization만 따라 표면 실현하세요.
+- 비현실적 극단화 없이, 비적정 후보도 인접한 실제 맥락 하나에서는 방어 가능한 경계 표현으로 만드세요.
+- 특정 후보의 대역을 구현할 수 없으면 다른 후보의 역할을 바꾸지 말고 해당 후보만 다시 작성하세요.` : ''}
 
 ${gate1}${spokenRule}
 
@@ -2173,32 +2193,128 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
   return parts.join('\n')
 }
 
-const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v4_exact_operations'
+const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v8_functional_band_boundary'
+
+function actionableRepairFindings(findings: MissionRepairBody['findings']) {
+  const failedCandidateFindings = findings.filter((finding) =>
+    finding.severity === 'fail' &&
+    /^mpj_items\[\d+\]\.(corrections|candidates)\[\d+\]/.test(finding.where))
+  return failedCandidateFindings.length > 0 ? failedCandidateFindings : findings
+}
+
+function candidateRepairBoundaryRule(intendedBand: string | undefined): string {
+  if (!intendedBand) return 'Realize the assigned band through the focal pragmatic resource only.'
+  if (/(too_indirect|too_tentative|too_ambiguous|too_obscured)/.test(intendedBand)) {
+    return 'Keep the action, participants and proposition recoverable, but make the speech-act commitment or requested action only inferable rather than clearly posed. Stacking ordinary politeness or optionality markers while keeping the act explicit is still within-band and is not enough.'
+  }
+  if (/(too_direct|too_blunt|too_pressuring|too_confrontational)/.test(intendedBand)) {
+    return 'Keep the same proposition and speech act, but reduce focal mitigation or choice enough to constrain the addressee. Do not use coercion, insult, an impossible command or a different speech act.'
+  }
+  if (/(insufficient|under_|too_brief|too_weak)/.test(intendedBand)) {
+    return 'Keep the speech act recognizable but under-realize exactly one focal resource enough to cross below the acceptable boundary; do not delete the proposition or make the sentence fragmentary.'
+  }
+  if (/(excessive|over_|too_elaborate|too_strong)/.test(intendedBand)) {
+    return 'Over-realize only the focal pragmatic resource relative to this PDR. Use redundancy or overextension without inventing a reason, promise, alternative, event or other new fact.'
+  }
+  return 'Realize the assigned non-within boundary through one focal pragmatic difference while preserving the full proposition and speech-act function.'
+}
 
 function repairTargets(findings: MissionRepairBody['findings']) {
-  const itemIndexes = [...new Set(findings.flatMap((finding) => {
-    const match = finding.where.match(/mpj_items\[(\d+)\]/)
-    return match ? [Number(match[1])] : []
-  }))].filter((index) => Number.isInteger(index) && index >= 0 && index <= 4)
+  const candidateTargets: Array<{
+    itemIndex: number
+    candidateIndex: number
+    collection: 'corrections' | 'candidates'
+  }> = []
+  const itemIndexes: number[] = []
+  for (const finding of actionableRepairFindings(findings)) {
+    const candidateMatch = finding.where.match(/mpj_items\[(\d+)\]\.(corrections|candidates)\[(\d+)\]/)
+    if (candidateMatch) {
+      const itemIndex = Number(candidateMatch[1])
+      const candidateIndex = Number(candidateMatch[3])
+      const collection = candidateMatch[2] as 'corrections' | 'candidates'
+      if (Number.isInteger(itemIndex) && itemIndex >= 0 && itemIndex <= 4 &&
+          Number.isInteger(candidateIndex) && candidateIndex >= 0) {
+        candidateTargets.push({ itemIndex, candidateIndex, collection })
+      }
+      continue
+    }
+    const itemMatch = finding.where.match(/mpj_items\[(\d+)\]/)
+    if (itemMatch) itemIndexes.push(Number(itemMatch[1]))
+  }
+  const uniqueCandidateTargets = [...new Map(candidateTargets.map((target) => [
+    `${target.itemIndex}:${target.collection}:${target.candidateIndex}`,
+    target,
+  ])).values()]
+  const uniqueItemIndexes = [...new Set(itemIndexes)]
+    .filter((index) => Number.isInteger(index) && index >= 0 && index <= 4)
   const productionReferences = findings.some((finding) =>
     finding.where.startsWith('production_task.reference_alternatives'))
   const diagnosticDimensions = findings.some((finding) =>
     finding.where.startsWith('diagnostic_dimensions'))
-  return { itemIndexes, productionReferences, diagnosticDimensions }
+  return {
+    itemIndexes: uniqueItemIndexes,
+    candidateTargets: uniqueCandidateTargets,
+    productionReferences,
+    diagnosticDimensions,
+  }
 }
 
 function buildMissionRepairPrompt(b: MissionRepairBody): { system: string; user: string } {
   const targets = repairTargets(b.findings)
+  const targetFindings = actionableRepairFindings(b.findings)
+  const candidateBlueprints = buildMissionCandidateBlueprints(b.feature)
+  const missionItems = Array.isArray(b.mission_content.mpj_items) ? b.mission_content.mpj_items : []
+  const candidatePackets = targets.candidateTargets.map((target) => {
+    const rawItem = missionItems[target.itemIndex]
+    const item = rawItem && typeof rawItem === 'object' && !Array.isArray(rawItem)
+      ? rawItem as Record<string, unknown>
+      : {}
+    const collection = Array.isArray(item[target.collection]) ? item[target.collection] as unknown[] : []
+    const blueprint = target.collection === 'corrections'
+      ? candidateBlueprints.fix_choice[target.candidateIndex]
+      : candidateBlueprints.multi_judge[target.candidateIndex]
+    const path = `mpj_items[${target.itemIndex}].${target.collection}[${target.candidateIndex}]`
+    return {
+      path,
+      operation: target.collection === 'corrections'
+        ? 'replace_fix_choice_candidate'
+        : 'replace_multi_judge_candidate',
+      item_index: target.itemIndex,
+      candidate_index: target.candidateIndex,
+      blueprint,
+      repair_boundary_rule: candidateRepairBoundaryRule(blueprint?.intended_band),
+      item_context: {
+        type: item.type,
+        situation_ko: item.situation_ko,
+        relation_ko: item.relation_ko,
+        pdr: item.pdr,
+        source: item.source,
+        target: item.target,
+      },
+      current_candidate: collection[target.candidateIndex],
+      immutable_peer_texts: collection
+        .filter((_, index) => index !== target.candidateIndex)
+        .map((candidate) => candidate && typeof candidate === 'object' && !Array.isArray(candidate)
+          ? (candidate as Record<string, unknown>).text
+          : null),
+      findings: targetFindings.filter((finding) => finding.where === path),
+    }
+  })
   const allowed = [
     ...targets.itemIndexes.map((index) => `replace_item_block:${index}`),
+    ...targets.candidateTargets.map((target) =>
+      `${target.collection === 'corrections' ? 'replace_fix_choice_candidate' : 'replace_multi_judge_candidate'}:${target.itemIndex}:${target.candidateIndex}`),
     ...(targets.productionReferences ? ['replace_reference_alternatives'] : []),
     ...(targets.diagnosticDimensions ? ['replace_diagnostic_dimensions'] : []),
   ]
   const system = `당신은 PRAGMA 교수자 저작 파이프라인의 국소 수리 모델입니다.
-결정론 검사 또는 critic이 지목한 문항만 고치고, 통과한 문항과 DCT 코어는 절대 바꾸지 마세요.
-허용 operation은 replace_item_block, replace_reference_alternatives,
-replace_diagnostic_dimensions뿐입니다. replace_item_block은 item_index와 완전한 item을,
-나머지는 각각 reference_alternatives 또는 diagnostic_dimensions를 반환합니다.
+결정론 검사 또는 critic이 지목한 대상만 고치고, 통과한 후보·문항과 DCT 코어는 절대 바꾸지 마세요.
+후보 경로가 지목되면 replace_fix_choice_candidate 또는 replace_multi_judge_candidate로 그 후보 하나만
+다시 만드세요. candidate에는 text와 note_ko만 반환하며 is_valid·accepted_band_codes·comparison_role은
+서버가 원본 그대로 동결합니다. 문항 전체 operation으로 후보 수리를 우회하지 마세요.
+허용 operation은 replace_fix_choice_candidate, replace_multi_judge_candidate, replace_item_block,
+replace_reference_alternatives, replace_diagnostic_dimensions입니다. replace_item_block은 item_index와 완전한
+item을, 나머지는 각각 지정 후보 또는 reference_alternatives·diagnostic_dimensions를 반환합니다.
 문항의 id·type·item_focus·axis_feature·source·PDR·preceding_turn은 원본을 유지합니다.
 원문의 행위자·사건·시간·수량·대안·핵심 명제·화행 목적을 유지하고, 문제로 지목된 화용 표현·
 후보·해설만 고치세요. 단, rule_R27_duplicate_situation은 동결된 source와 PDR에 맞게
@@ -2208,8 +2324,23 @@ situation_ko만 다른 문항·DCT와 구별되는 구체적 장면으로 다시
 효과 → 유지/조정 한 지점**을 연결하고 한 화용 차이만 설명하세요. multi_judge의 적정안 2개는
 서로 다른 실제 화용 자원과 관계적 효과를 가져야 하며 숨은 우열을 만들지 마세요.
 허용 대상이 하나 이상이면 지목된 각 대상의 operation을 반드시 반환하고 operations를 빈 배열로
-끝내지 마세요. 한 후보 결함도 정답 키·후보·note·explanation이 일치하는 완전한 item block으로 고치세요.
-각 operation 객체는 아래 세 형태 중 하나를 **키 이름까지 정확히** 따르세요.
+끝내지 마세요. 후보 수리는 원문의 명제·발화 의도·화행 기능을 유지하고 고정 blueprint의
+intended_band만 표면 실현하세요. 비현실적 극단화·의미 소실·다른 화행으로의 변경은 금지합니다.
+band_mismatch 후보는 이전 표현을 방어하거나 가볍게 바꿔 쓰지 말고, **동결된 intended_band의
+경계를 실제로 넘는 서로 다른 표면 실현**으로 교체하세요. non-within 후보는 초점 자원 하나의
+부족·과잉이 현재 P·D·R에서 분명하되 인접 실제 맥락에서는 방어 가능해야 합니다. 원문에 없는
+이유·약속·대안·새 일정을 추가해 경계를 만들지 마세요. note_ko에는 교체 문장에 실제 존재하는
+초점 자원과 그것이 intended_band를 만드는 이유를 구체적으로 적으세요.
+교체 text는 현재 후보와 정규화 후 동일하면 무효입니다. non-within blueprint인데 note_ko에서
+"적절하다/적정하다"고 결론 내리거나, 현재 후보가 사실상 within이라는 finding을 note_ko에
+그대로 복사하지 마세요. finding은 **왜 이전 후보를 버려야 하는지**에만 사용하고 새 후보의
+목표 대역은 오직 blueprint로 결정하세요.
+immutable_peer_texts와 정규화 후 같은 문장도 무효입니다. packet의 repair_boundary_rule을
+실제 문장 기능으로 구현하고, 일반적인 공손·완화 표지를 단순 중첩한 것을 경계 밖 표현으로
+오인하지 마세요.
+각 operation 객체는 아래 다섯 형태 중 하나를 **키 이름까지 정확히** 따르세요.
+- {"operation":"replace_fix_choice_candidate","item_index":2,"candidate_index":1,"candidate":{"text":"완전한 후보 문장","note_ko":"표현 자원·관계 효과·조정 방향"}}
+- {"operation":"replace_multi_judge_candidate","item_index":4,"candidate_index":3,"candidate":{"text":"완전한 후보 문장","note_ko":"표현 자원·관계 효과·조정 방향"}}
 - {"operation":"replace_item_block","item_index":4,"item":{원본과 같은 type의 완전한 문항 객체}}
 - {"operation":"replace_reference_alternatives","reference_alternatives":[완전한 대안 객체들]}
 - {"operation":"replace_diagnostic_dimensions","diagnostic_dimensions":[완전한 차원 객체들]}
@@ -2218,11 +2349,15 @@ op·action·index·replacement 같은 다른 키 이름이나 수정된 필드�
   const user = [
     `[화행] ${b.speech_act_ko} (${b.speech_act})`,
     `[문항 판정 초점] ${b.feature.code} — ${b.feature.operational_definition}`,
+    `[counter-rule·반례] ${b.feature.counter_rule_note}`,
+    '[서버 고정 candidate blueprint]',
+    JSON.stringify(candidateBlueprints, null, 2),
     `[허용 대상] ${allowed.length ? allowed.join(', ') : '(자동 수리 가능 대상 없음)'}`,
     '[검사 findings]',
-    JSON.stringify(b.findings, null, 2),
-    '[동결된 전체 미션]',
-    JSON.stringify(b.mission_content, null, 2),
+    JSON.stringify(targetFindings, null, 2),
+    ...(candidatePackets.length > 0
+      ? ['[실패 후보별 최소 수리 packet — 여기에 없는 문항은 immutable]', JSON.stringify(candidatePackets, null, 2)]
+      : ['[동결된 전체 미션]', JSON.stringify(b.mission_content, null, 2)]),
   ].join('\n')
   return { system, user }
 }
@@ -2241,11 +2376,54 @@ function sanitizeMissionRepairOperations(
     ? parsed.operations
     : Array.isArray(parsed.repairs) ? parsed.repairs : []
   const sanitized: Array<Record<string, unknown>> = []
+  const candidateTargetKeys = new Set(targets.candidateTargets.map((target) =>
+    `${target.itemIndex}:${target.collection}:${target.candidateIndex}`))
   for (const value of operations) {
     const operation = value && typeof value === 'object' && !Array.isArray(value)
       ? value as Record<string, unknown>
       : {}
     const operationName = operation.operation ?? operation.op ?? operation.action
+    if (operationName === 'replace_fix_choice_candidate' || operationName === 'replace_multi_judge_candidate') {
+      const itemIndex = Number(operation.item_index ?? operation.itemIndex)
+      const candidateIndex = Number(operation.candidate_index ?? operation.candidateIndex)
+      const collection = operationName === 'replace_fix_choice_candidate' ? 'corrections' : 'candidates'
+      if (!candidateTargetKeys.has(`${itemIndex}:${collection}:${candidateIndex}`)) continue
+      const originalItem = items[itemIndex]
+      if (!originalItem || typeof originalItem !== 'object' || Array.isArray(originalItem)) continue
+      const itemRecord = originalItem as Record<string, unknown>
+      const originalCandidates = Array.isArray(itemRecord[collection]) ? itemRecord[collection] as unknown[] : []
+      const originalCandidate = originalCandidates[candidateIndex]
+      const replacement = operation.candidate ?? operation.replacement
+      if (!originalCandidate || typeof originalCandidate !== 'object' || Array.isArray(originalCandidate) ||
+          !replacement || typeof replacement !== 'object' || Array.isArray(replacement)) continue
+      const frozenCandidate = originalCandidate as Record<string, unknown>
+      const replacementCandidate = replacement as Record<string, unknown>
+      if (typeof replacementCandidate.text !== 'string' || !replacementCandidate.text.trim() ||
+          typeof replacementCandidate.note_ko !== 'string' || !replacementCandidate.note_ko.trim()) continue
+      const normalizedOriginal = String(frozenCandidate.text ?? '')
+        .normalize('NFKC').replace(/[\p{P}\p{S}\p{Z}\s]+/gu, '').toLowerCase()
+      const normalizedReplacement = replacementCandidate.text
+        .normalize('NFKC').replace(/[\p{P}\p{S}\p{Z}\s]+/gu, '').toLowerCase()
+      if (!normalizedReplacement || normalizedReplacement === normalizedOriginal) continue
+      const normalizedPeers = new Set(originalCandidates
+        .filter((_, index) => index !== candidateIndex)
+        .map((candidate) => candidate && typeof candidate === 'object' && !Array.isArray(candidate)
+          ? String((candidate as Record<string, unknown>).text ?? '')
+              .normalize('NFKC').replace(/[\p{P}\p{S}\p{Z}\s]+/gu, '').toLowerCase()
+          : ''))
+      if (normalizedPeers.has(normalizedReplacement)) continue
+      sanitized.push({
+        operation: operationName,
+        item_index: itemIndex,
+        candidate_index: candidateIndex,
+        candidate: {
+          ...frozenCandidate,
+          text: replacementCandidate.text,
+          note_ko: replacementCandidate.note_ko,
+        },
+      })
+      continue
+    }
     if (operationName === 'replace_item_block') {
       const index = Number(operation.item_index ?? operation.itemIndex ?? operation.index)
       if (!targets.itemIndexes.includes(index)) continue
@@ -2295,7 +2473,7 @@ function sanitizeMissionRepairOperations(
       })
     }
   }
-  return sanitized.slice(0, targets.itemIndexes.length + 2)
+  return sanitized.slice(0, targets.itemIndexes.length + targets.candidateTargets.length + 2)
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -2475,6 +2653,16 @@ function buildQualitySystemPrompt(
    적절성의 긍정 증거로 쓰지 마라. 친밀도·권력·부담과 화행 목적에 비해 감사·사과·호칭·완화가
    과도하면 더 좋은 답이 아니라 과잉 관계조정일 수 있다.
 ${featureBoundaryAudit}
+6. **대역 경계의 불확실성** — 실제 문장이 적정 대역인지 비적정 대역인지는 명확하지만 비적정
+   세부 대역의 어느 쪽인지 경계적인 경우에는 학습 오도 근거가 확인되지 않는 한 fail로 올리지 말고
+   warning으로 남겨라. 아래에 전달된 counter-rule·반례를 우선 적용하고, 표현 표지 하나만으로
+   대역을 결정하지 마라.
+7. **P·D·R 관점** — 번역의 P는 학습자 화자 기준이고, 통역의 P는 원발화자 A와 청자 B의
+   관계에서 A 기준이다. 학습자 통역사 C의 지위를 A 또는 B의 지위로 바꾸어 읽지 마라.
+8. **blueprint-판정 일치** — 아래 심사 요청의 candidate blueprint는 후보별 서버 고정 정답
+   역할이다. band_mismatch는 실제 표현이 그 intended_band와 다를 때만 보고하라. 네 근거가
+   "실제 표현도 intended_band다"라고 결론 내리면 같은 후보에 band_mismatch를 만들지 마라.
+   finding의 0-based 경로·인용·실제 metadata를 최종 출력 전에 한 번 더 대조하라.
 
 [검사 항목]
 ① gate1_violation — 판정 후보(target·corrections·candidates·recommended·reference)가
@@ -2871,6 +3059,15 @@ function buildQualityUserPrompt(b: QualityCheckBody): string {
   const missionContentHash = provenance && typeof provenance === 'object' && !Array.isArray(provenance)
     ? String((provenance as Record<string, unknown>).mission_content_hash ?? '')
     : ''
+  const bandSchema = Array.isArray(f.band_schema) && f.band_schema.length
+    ? f.band_schema.map((band) => `${band.code}=${band.label_ko}`).join(' | ')
+    : bands
+  const candidateBlueprints = Array.isArray(f.band_schema) && f.band_schema.length && f.within_band_code
+    ? buildMissionCandidateBlueprints({
+        band_schema: f.band_schema,
+        within_band_code: f.within_band_code,
+      })
+    : null
   return `[대상 버전]
 - mission_content_hash: ${missionContentHash || '(없음)'}
 
@@ -2878,7 +3075,13 @@ function buildQualityUserPrompt(b: QualityCheckBody): string {
 - code: ${f.code ?? '(없음)'}
 - 학습자 라벨: ${f.learner_label ?? '(없음)'}
 - 조작적 정의: ${f.operational_definition ?? '(없음)'}
-- 이 초점의 대역 코드: ${bands}
+- 이 초점의 대역 정본: ${bandSchema}
+- 적정 대역: ${f.within_band_code ?? '(전달되지 않음)'}
+- counter-rule·반례: ${f.counter_rule_note ?? '(전달되지 않음)'}
+- 이 초점에서 제외할 축: ${Array.isArray(f.excluded_confounds) ? f.excluded_confounds.join(' / ') : '(전달되지 않음)'}
+
+[서버 고정 candidate blueprint — 0-based 경로의 intended_band 정본]
+${candidateBlueprints ? JSON.stringify(candidateBlueprints, null, 2) : '(전달되지 않음)'}
 
 [심사 대상 mission_content]
 ${JSON.stringify(b.mission_content, null, 2)}`
@@ -3044,7 +3247,7 @@ Deno.serve(async (req) => {
           bilingualSceneIssue: null,
           learnerSceneIssue: initialLearnerSceneIssue,
         })
-        const repairModel = model
+        const repairModel = CRITIC_PRIMARY_MODEL
         const repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
           responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
           telemetry: telemetryFor('core_repair', true, {
@@ -3227,8 +3430,11 @@ Deno.serve(async (req) => {
       const canonicalItems = isMiniDiscourse
         ? canonicalizeNativeMpj5AnchorPdr(rawItems, b.core.pdr)
         : rawItems
+      const plannedItems = isMiniDiscourse
+        ? applyMissionCandidateBlueprints(canonicalItems, b.feature)
+        : canonicalItems
       // 위치·문항 초점은 서버가 강제한다. axis_feature는 역사 직렬화 호환용이다.
-      const mpj_items = canonicalItems.map((it: Record<string, unknown>, i: number) => ({
+      const mpj_items = plannedItems.map((it: Record<string, unknown>, i: number) => ({
         ...it,
         id: i + 1,
         item_focus: b.feature.code,
@@ -3323,7 +3529,8 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'mission_repair body required' }), { status: 400, headers: jsonHeaders })
       }
       const targets = repairTargets(b.findings)
-      if (targets.itemIndexes.length === 0 && !targets.productionReferences && !targets.diagnosticDimensions) {
+      if (targets.itemIndexes.length === 0 && targets.candidateTargets.length === 0 &&
+          !targets.productionReferences && !targets.diagnosticDimensions) {
         return new Response(JSON.stringify({ operations: [] }), { status: 200, headers: jsonHeaders })
       }
       const prompt = buildMissionRepairPrompt(b)

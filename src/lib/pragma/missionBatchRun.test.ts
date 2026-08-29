@@ -1,11 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
-vi.mock("@/lib/pragma/promoteMission", () => ({ promoteCore: vi.fn() }));
+vi.mock("@/lib/pragma/promoteMission", () => ({
+  promoteCore: vi.fn(),
+  retryGeneratedMissionCandidateRepair: vi.fn(),
+}));
 
 import { runMissionBatch, type MissionBatchCore } from "@/lib/pragma/missionBatchRun";
 
-function core(id: string, missionStatus: string | null = null): MissionBatchCore {
+function core(
+  id: string,
+  missionStatus: string | null = null,
+  qualityVerdict: MissionBatchCore["mission_quality_verdict"] = null,
+): MissionBatchCore {
   return {
     scenario_id: id,
     speech_act: "request",
@@ -19,6 +26,7 @@ function core(id: string, missionStatus: string | null = null): MissionBatchCore
     generation_run_id: "run-1",
     generation_item_key: `key-${id}`,
     mission_status: missionStatus,
+    mission_quality_verdict: qualityVerdict,
     core_content: {},
   };
 }
@@ -50,6 +58,23 @@ describe("resumable mission batch", () => {
     expect(results).toEqual([
       expect.objectContaining({ scenarioId: "good", ok: true, qualityVerdict: "warning" }),
       expect.objectContaining({ scenarioId: "bad", ok: false, error: "quality unavailable" }),
+    ]);
+  });
+
+  it("retries only stored generated rows whose critic verdict is fail", async () => {
+    const promote = vi.fn();
+    const retryFailed = vi.fn(async () => ({ ok: true, quality: { verdict: "warning" } } as never));
+    const results = await runMissionBatch(
+      [core("failed", "generated", "fail"), core("passed", "generated", "pass")],
+      { promote, retryFailed, retryFailedGenerated: true, concurrency: 1 },
+    );
+
+    expect(promote).not.toHaveBeenCalled();
+    expect(retryFailed).toHaveBeenCalledTimes(1);
+    expect(retryFailed).toHaveBeenCalledWith(expect.objectContaining({ scenario_id: "failed" }));
+    expect(results).toEqual([
+      expect.objectContaining({ scenarioId: "failed", ok: true, reused: false, qualityVerdict: "warning" }),
+      expect.objectContaining({ scenarioId: "passed", ok: true, reused: true }),
     ]);
   });
 });

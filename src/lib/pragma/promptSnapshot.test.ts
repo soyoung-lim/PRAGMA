@@ -92,7 +92,13 @@ describe("prompt snapshot integrity", () => {
     expect(system).toContain("정확히 2개의 짧은 문장");
     expect(system).toContain("수정안은 정확히 3개");
     expect(system).toContain("is_valid=true는 정확히 1개");
+    expect(system).toContain("[MJT3·MJT5 서버 고정 candidate blueprint]");
+    expect(system).toContain('"candidate_role": "recommended_repair"');
+    expect(system).toContain('"candidate_role": "upper_boundary_adjustment"');
+    expect(system).toContain("비현실적 극단화");
     expect(prompt("quality.system").text).toContain("situation_ko 안에 자연스럽게 요약되어 있고, preceding_turn은 null인지");
+    expect(prompt("quality.system").text).toContain("대역 경계의 불확실성");
+    expect(prompt("quality.system").text).toContain("학습자 통역사 C의 지위를");
   });
 
   it("matches the current Edge source", () => {
@@ -138,8 +144,17 @@ describe("prompt snapshot integrity", () => {
       expect(releaseSource).toContain(`"${version}"`);
     }
     expect(canonicalSource).toContain("content_release_id: CURRENT_CONTENT_RELEASE_ID");
-    expect(canonicalSource).toContain("mission_item_repair_v4_exact_operations");
+    expect(canonicalSource).toContain("mission_item_repair_v8_functional_band_boundary");
     expect(canonicalSource).toContain("operations를 빈 배열로");
+    expect(canonicalSource).toContain("replace_fix_choice_candidate");
+    expect(canonicalSource).toContain("replace_multi_judge_candidate");
+    expect(canonicalSource).toContain("blueprint-판정 일치");
+    expect(canonicalSource).toContain("0-based 경로의 intended_band 정본");
+    expect(canonicalSource).toContain("actionableRepairFindings");
+    expect(canonicalSource).toContain("실패 후보별 최소 수리 packet");
+    expect(canonicalSource).toContain("normalizedReplacement === normalizedOriginal");
+    expect(canonicalSource).toContain("candidateRepairBoundaryRule");
+    expect(canonicalSource).toContain("normalizedPeers.has(normalizedReplacement)");
     expect(canonicalSource).toContain("quality_relational_feedback_v2_zero_based_paths");
     expect(canonicalSource).toContain("선택권 존중/의견 존중");
     expect(canonicalSource).toContain("MPJ5=mpj_items[4]");

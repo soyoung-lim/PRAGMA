@@ -359,13 +359,21 @@ export function mergeValidatedCoreRepair(
     const repairedSourceText = String(
       input.repairedOutput.source_text ?? input.repairedOutput.source_text_ko ?? '',
     )
+    const repairedFocalSegments = hasValidFocalSegments(
+      repairedSourceText,
+      input.repairedOutput.focal_segments,
+    )
+      ? input.repairedOutput.focal_segments
+      : hasValidFocalSegments(repairedSourceText, input.originalOutput.focal_segments)
+        ? input.originalOutput.focal_segments
+        : null
     if (
       !coreSourceIssue(repairedSourceText, input.effectiveCharRange) &&
-      hasValidFocalSegments(repairedSourceText, input.repairedOutput.focal_segments)
+      repairedFocalSegments
     ) {
       output.source_text = repairedSourceText
       delete output.source_text_ko
-      output.focal_segments = input.repairedOutput.focal_segments
+      output.focal_segments = repairedFocalSegments
       sourceRepairApplied = true
     }
   }
@@ -455,6 +463,12 @@ export function buildCoreOutputRepairPrompt(input: CoreOutputRepairPromptInput):
       '- source_text를 고친 뒤 focal_segments도 새 source_text에서 그대로 복사한 부분문자열로 다시 맞추세요.',
       `- 반환 직전에 source_text의 유효 글자 수를 다시 세어 ${input.effectiveCharRange.min}~${input.effectiveCharRange.max}자 안인지 확인하세요.`,
     )
+    if (input.sourceLanguage === 'zh') {
+      repairRules.push(
+        '- 중국어 계수에서 한자·라틴문자·숫자는 각각 유효 글자 1자이고 공백·문장부호는 제외합니다.',
+        `- 짧은 중국어 절 두 개로 끝내지 말고, 기존 situation_ko에 이미 있는 사람·사건·부담을 새 사실 없이 source_text에 충분히 실현하여 유효 글자 ${targetEffectiveCharCount}자 부근까지 확장하세요.`,
+      )
+    }
   } else {
     repairRules.push('- source_text와 focal_segments는 직전 출력에서 바꾸지 마세요.')
   }

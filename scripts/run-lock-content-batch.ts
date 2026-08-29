@@ -1,14 +1,20 @@
-import { supabase } from "../src/integrations/supabase/client";
-import { loadExistingCoreRunItems, runCoreBatch } from "../src/lib/pragma/coreBatchRun";
-import {
-  LOCK_COURSE_PRIORITY_CORE_PLAN,
-  LOCK_FULL_CORE_PLAN,
-  LOCK_PILOT_CORE_PLAN,
-} from "../src/lib/pragma/contentFunnelPlan";
-import { loadLockMissionBatchCores, runMissionBatch } from "../src/lib/pragma/missionBatchRun";
-import { auditLockCandidates, loadLockCandidateRows } from "../src/lib/pragma/lockCandidateAudit";
-
 type Phase = "core-pilot" | "core-priority" | "core-full" | "mission" | "audit";
+
+// The app client persists auth in browser localStorage. The unattended Node runner
+// only needs the session for this process, so provide an in-memory implementation
+// before dynamically importing modules that share the app client.
+const memoryStorage = new Map<string, string>();
+Object.defineProperty(globalThis, "localStorage", {
+  configurable: true,
+  value: {
+    get length() { return memoryStorage.size; },
+    clear() { memoryStorage.clear(); },
+    getItem(key: string) { return memoryStorage.get(key) ?? null; },
+    key(index: number) { return [...memoryStorage.keys()][index] ?? null; },
+    removeItem(key: string) { memoryStorage.delete(key); },
+    setItem(key: string, value: string) { memoryStorage.set(key, value); },
+  } satisfies Storage,
+});
 
 const phase = process.argv[2] as Phase | undefined;
 const runId = process.argv[3];
@@ -24,26 +30,60 @@ if (!email || !password) {
   throw new Error("PRAGMA_BATCH_ADMIN_EMAIL과 PRAGMA_BATCH_ADMIN_PASSWORD가 필요합니다.");
 }
 
+const [
+  { supabase },
+  { loadExistingCoreRunItems, runCoreBatch },
+  { LOCK_COURSE_PRIORITY_CORE_PLAN, LOCK_FULL_CORE_PLAN, LOCK_PILOT_CORE_PLAN },
+  { loadLockMissionBatchCores, runMissionBatch },
+  { auditLockCandidates, loadLockCandidateRows },
+] = await Promise.all([
+  import("../src/integrations/supabase/client"),
+  import("../src/lib/pragma/coreBatchRun"),
+  import("../src/lib/pragma/contentFunnelPlan"),
+  import("../src/lib/pragma/missionBatchRun"),
+  import("../src/lib/pragma/lockCandidateAudit"),
+]);
+
 const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 if (signInError) throw new Error(`관리자 로그인 실패: ${signInError.message}`);
 
 if (phase === "audit") {
   const promptHash = process.argv[4] ?? process.env.PRAGMA_LOCK_PROMPT_SNAPSHOT_HASH;
   if (!promptHash) throw new Error("audit에는 확정한 LOCK prompt snapshot hash가 필요합니다.");
-  const summary = auditLockCandidates(await loadLockCandidateRows(), promptHash);
-  console.log(JSON.stringify(summary, null, 2));
+  const summary = auditLockCandidates(
+    await loadLockCandidateRows(runId === "all-current" ? undefined : runId),
+    promptHash,
+  );
+  const { rows, ...compactSummary } = summary;
+  console.log(JSON.stringify(
+    process.env.PRAGMA_BATCH_AUDIT_DETAIL === "1" ? summary : compactSummary,
+    null,
+    2,
+  ));
   if (!summary.targetMet || !summary.directionMinimumsMet) process.exitCode = 1;
 } else if (phase === "mission") {
   const cores = await loadLockMissionBatchCores(runId);
   const results = await runMissionBatch(cores, {
-    concurrency: 2,
+    concurrency: 1,
+    retryFailedGenerated: true,
     onProgress: (done, total, last) => {
       process.stdout.write(`\rmission ${done}/${total} last=${last.scenarioId} ${last.ok ? "ok" : "fail"}`);
     },
   });
   process.stdout.write("\n");
   const failed = results.filter((item) => !item.ok);
-  console.log(JSON.stringify({ phase, runId, total: results.length, failed: failed.length, reused: results.filter((item) => item.reused).length }, null, 2));
+  console.log(JSON.stringify({
+    phase,
+    runId,
+    total: results.length,
+    failed: failed.length,
+    reused: results.filter((item) => item.reused).length,
+    failures: failed.map((item) => ({
+      scenarioId: item.scenarioId,
+      rules: item.violations?.filter((violation) => violation.level === "fail"),
+      error: item.error ?? "unknown",
+    })),
+  }, null, 2));
   if (failed.length > 0) process.exitCode = 1;
 } else {
   const plan = phase === "core-pilot"
@@ -51,12 +91,24 @@ if (phase === "audit") {
     : phase === "core-priority"
       ? LOCK_COURSE_PRIORITY_CORE_PLAN
       : LOCK_FULL_CORE_PLAN;
+  const requestedIndexes = new Set(
+    (process.env.PRAGMA_BATCH_ITEM_INDEXES ?? "")
+      .split(",")
+      .map((value) => Number.parseInt(value.trim(), 10))
+      .filter(Number.isInteger),
+  );
+  const selectedPlan = requestedIndexes.size > 0
+    ? plan.filter((item) => requestedIndexes.has(item.itemIndex))
+    : plan;
+  if (requestedIndexes.size > 0 && selectedPlan.length !== requestedIndexes.size) {
+    throw new Error(`요청한 item index 중 현재 phase에 없는 값이 있습니다: ${[...requestedIndexes].join(",")}`);
+  }
   const existingItems = await loadExistingCoreRunItems(runId);
   const results = await runCoreBatch(
-    plan.map((item) => item.cell),
+    selectedPlan.map((item) => item.cell),
     {
       runId,
-      itemIndexes: plan.map((item) => item.itemIndex),
+      itemIndexes: selectedPlan.map((item) => item.itemIndex),
       existingItems,
       concurrency: 3,
       onProgress: (done, total, last) => {
@@ -66,7 +118,17 @@ if (phase === "audit") {
   );
   process.stdout.write("\n");
   const failed = results.filter((item) => !item.ok);
-  console.log(JSON.stringify({ phase, runId, total: results.length, failed: failed.length, reused: results.filter((item) => item.reused).length }, null, 2));
+  console.log(JSON.stringify({
+    phase,
+    runId,
+    total: results.length,
+    failed: failed.length,
+    reused: results.filter((item) => item.reused).length,
+    failures: failed.map((item) => ({
+      index: item.index,
+      error: item.ruleFailFirst ?? item.error ?? "unknown",
+    })),
+  }, null, 2));
   if (failed.length > 0) process.exitCode = 1;
 }
 

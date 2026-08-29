@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CURRENT_CONTENT_RELEASE_ID } from "../../../supabase/functions/_shared/contentRelease";
 import {
   promoteCore,
+  retryGeneratedMissionCandidateRepair,
   type PromotableCore,
   type PromoteResult,
 } from "@/lib/pragma/promoteMission";
@@ -10,6 +11,7 @@ import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 
 export interface MissionBatchCore extends PromotableCore {
   mission_status: string | null;
+  mission_quality_verdict: "pass" | "warning" | "fail" | null;
 }
 
 export interface MissionBatchItemResult {
@@ -18,6 +20,7 @@ export interface MissionBatchItemResult {
   ok: boolean;
   reused: boolean;
   qualityVerdict?: "pass" | "warning" | "fail";
+  violations?: { id: string; level: string; message: string }[];
   error?: string;
 }
 
@@ -26,6 +29,8 @@ export interface MissionBatchOptions {
   signal?: AbortSignal;
   onProgress?: (done: number, total: number, last: MissionBatchItemResult) => void;
   promote?: (core: PromotableCore) => Promise<PromoteResult>;
+  retryFailedGenerated?: boolean;
+  retryFailed?: (core: PromotableCore) => Promise<PromoteResult>;
 }
 
 const PROMOTED_STATUSES = new Set(["generated", "reviewed", "released"]);
@@ -49,7 +54,7 @@ export async function loadLockMissionBatchCores(runId: string): Promise<MissionB
   const { data, error } = await (supabase as unknown as { from: (table: string) => any })
     .from("scenarios")
     .select(
-      "scenario_id, speech_act, learner_level, domain, industry_sector, mode, source_modality, theme_code, topic_code, language_direction, generation_run_id, generation_item_key, mission_status, core_content",
+      "scenario_id, speech_act, learner_level, domain, industry_sector, mode, source_modality, theme_code, topic_code, language_direction, generation_run_id, generation_item_key, mission_status, core_content, mission_content",
     )
     .eq("generation_run_id", runId)
     .eq("content_format", "scenario_core_v1")
@@ -75,6 +80,13 @@ export async function loadLockMissionBatchCores(runId: string): Promise<MissionB
       generation_run_id: row.generation_run_id as string | null,
       generation_item_key: row.generation_item_key as string | null,
       mission_status: row.mission_status as string | null,
+      mission_quality_verdict: (() => {
+        const mission = record(row.mission_content);
+        const quality = record(mission?.quality_check);
+        return quality?.verdict === "pass" || quality?.verdict === "warning" || quality?.verdict === "fail"
+          ? quality.verdict
+          : null;
+      })(),
       core_content: record(row.core_content),
     }));
 }
@@ -85,6 +97,7 @@ export async function runMissionBatch(
 ): Promise<MissionBatchItemResult[]> {
   const concurrency = Math.max(1, Math.min(options.concurrency ?? 2, 4));
   const promote = options.promote ?? promoteCore;
+  const retryFailed = options.retryFailed ?? retryGeneratedMissionCandidateRepair;
   const results: MissionBatchItemResult[] = new Array(cores.length);
   let cursor = 0;
   let done = 0;
@@ -97,7 +110,32 @@ export async function runMissionBatch(
       if (index >= cores.length) return;
       const core = cores[index];
       let result: MissionBatchItemResult;
-      if (PROMOTED_STATUSES.has(core.mission_status ?? "")) {
+      if (
+        options.retryFailedGenerated &&
+        core.mission_status === "generated" &&
+        core.mission_quality_verdict === "fail"
+      ) {
+        try {
+          const retried = await retryFailed(core);
+          result = {
+            scenarioId: core.scenario_id,
+            generationItemKey: core.generation_item_key ?? null,
+            ok: retried.ok,
+            reused: false,
+            qualityVerdict: retried.quality?.verdict,
+            violations: retried.violations,
+            error: retried.error,
+          };
+        } catch (error) {
+          result = {
+            scenarioId: core.scenario_id,
+            generationItemKey: core.generation_item_key ?? null,
+            ok: false,
+            reused: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      } else if (PROMOTED_STATUSES.has(core.mission_status ?? "")) {
         result = {
           scenarioId: core.scenario_id,
           generationItemKey: core.generation_item_key ?? null,
@@ -121,6 +159,7 @@ export async function runMissionBatch(
             ok: promoted.ok,
             reused: false,
             qualityVerdict: promoted.quality?.verdict,
+            violations: promoted.violations,
             error: promoted.error,
           };
         } catch (error) {
