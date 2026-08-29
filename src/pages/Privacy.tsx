@@ -49,8 +49,10 @@ const Privacy = () => {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[860px] flex-1 px-5 py-8 sm:px-6 sm:py-10">
-        <h1 className="break-keep text-[22px] font-bold leading-tight tracking-[-0.02em] text-[#15202B]">
+      <main className="mx-auto w-full max-w-[860px] flex-1 px-5 py-7 sm:px-6 sm:py-8">
+        {/* 로고의 노란 바를 제목에 이어받는다 — 브랜드 마크와 같은 형태(라운드 세로 바). */}
+        <h1 className="flex items-center gap-2.5 break-keep text-[22px] font-bold leading-tight tracking-[-0.02em] text-[#15202B]">
+          <span aria-hidden className="inline-block h-[20px] w-[5px] rounded-full bg-[#FAD338]" />
           개인정보처리방침
         </h1>
         <p className="mt-1.5 break-keep text-[13px] leading-[1.65] text-[#4A4639]">
@@ -142,7 +144,13 @@ const Privacy = () => {
             </span>
             시작 화면으로
           </Link>
-          <span className="text-[11.5px] text-[#B6AF9C]">PRAGMA · {UPDATED_AT}</span>
+          {/* 푸터 서명도 로고타입 문법으로 — 노란 바 + 넓은 자간의 워드마크. */}
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-[#8A8578]">
+            <span aria-hidden className="inline-block h-[10px] w-[3px] rounded-full bg-[#FAD338]" />
+            <span className="font-bold tracking-[0.18em] text-[#4A4639]">PRAGMA</span>
+            <span aria-hidden className="h-[9px] w-px bg-[#D8D2C2]" />
+            {UPDATED_AT}
+          </span>
         </div>
       </main>
     </div>
