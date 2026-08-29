@@ -64,6 +64,12 @@ import {
   missionCandidateReferenceForPath,
   type MissionCandidateReference,
 } from '../_shared/missionCandidateBlueprint.ts'
+import {
+  normalizeCandidateRegenerationCounts,
+  planCandidateFallback,
+  recordCandidateRegeneration,
+  type CandidateRegenerationCounts,
+} from '../_shared/missionCandidateRecovery.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -2225,7 +2231,7 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
   return parts.join('\n')
 }
 
-const MISSION_CANDIDATE_GENERATION_PROMPT_VERSION = 'mission_candidate_band_v1_relative_minimal_contrast'
+const MISSION_CANDIDATE_GENERATION_PROMPT_VERSION = 'mission_candidate_band_v2_bounded_fallback'
 const MISSION_CANDIDATE_CHECK_PROMPT_VERSION = 'quality_candidate_band_v1_boundary_crossing'
 const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v10_r27_topology_context'
 
@@ -2292,6 +2298,19 @@ function normalizeCandidateText(value: unknown): string {
     : ''
 }
 
+function candidateTextSnapshot(items: unknown[], excludedPath?: string): string {
+  return JSON.stringify(MISSION_CANDIDATE_REFERENCES
+    .map((reference) => {
+      const path = missionCandidatePath(reference)
+      const item = recordCandidate(items[reference.item_index])
+      const collection = item && Array.isArray(item[reference.collection])
+        ? item[reference.collection] as unknown[]
+        : []
+      return [path, recordCandidate(collection[reference.candidate_index])?.text ?? null]
+    })
+    .filter(([path]) => path !== excludedPath))
+}
+
 function applyCandidateReplacementsToItems(
   sourceItems: unknown[],
   operations: Array<{ path: string; candidate: Record<string, unknown> }>,
@@ -2325,11 +2344,23 @@ async function generateMissionCandidates(args: {
   speechActKo: string
   telemetryFor: TelemetryFactory
   invocationAttempt: number
-}): Promise<{ ok: true; operations: Array<{ path: string; candidate: Record<string, unknown> }> } | { ok: false; error: string }> {
+}): Promise<
+  | { ok: true; operations: Array<{ path: string; candidate: Record<string, unknown> }> }
+  | {
+      ok: false
+      error: string
+      failure_kind: 'packet' | 'provider' | 'parse' | 'output_missing'
+      provider_status?: number
+      operations?: Array<{ path: string; candidate: Record<string, unknown> }>
+      missing_paths?: string[]
+    }
+> {
   const packets = args.references
     .map((reference) => candidatePacket(args.items, reference, args.feature))
     .filter((packet): packet is Record<string, unknown> => Boolean(packet))
-  if (packets.length !== args.references.length) return { ok: false, error: 'candidate packet 구성 실패' }
+  if (packets.length !== args.references.length) {
+    return { ok: false, failure_kind: 'packet', error: 'candidate packet 구성 실패' }
+  }
   const system = `너는 mission_v5의 MJT3·MJT5 후보 표현만 생성한다. 전체 문항이나 metadata를 다시 쓰지 마라.
 각 packet의 blueprint가 정한 의미·발화 의도·화행 기능을 보존하고 target feature 하나만 조절한다.
 within_anchor는 해당 P·D·R에서 실제 within band인 자연스러운 후보로 만든다.
@@ -2352,12 +2383,19 @@ ${JSON.stringify(packets, null, 2)}`
       promptVersion: MISSION_CANDIDATE_GENERATION_PROMPT_VERSION,
     }),
   })
-  if (!att.ok) return { ok: false, error: `candidate 생성 호출 실패: ${att.raw.slice(0, 300)}` }
+  if (!att.ok) {
+    return {
+      ok: false,
+      failure_kind: 'provider',
+      provider_status: att.status,
+      error: `candidate 생성 호출 실패: ${att.raw.slice(0, 300)}`,
+    }
+  }
   let parsed: Record<string, unknown>
   try {
     parsed = parseOpenAIContent(att.raw) as Record<string, unknown>
   } catch (error) {
-    return { ok: false, error: `candidate 생성 파싱 실패: ${(error as Error).message}` }
+    return { ok: false, failure_kind: 'parse', error: `candidate 생성 파싱 실패: ${(error as Error).message}` }
   }
   const rawOperations = Array.isArray(parsed.operations) ? parsed.operations : []
   const expected = new Map(args.references.map((reference) => [missionCandidatePath(reference), reference]))
@@ -2380,9 +2418,15 @@ ${JSON.stringify(packets, null, 2)}`
     used.add(path)
     operations.push({ path, candidate: { text, note_ko: noteKo } })
   }
-  return operations.length === args.references.length
-    ? { ok: true, operations }
-    : { ok: false, error: `candidate 생성 결과 누락: ${operations.length}/${args.references.length}` }
+  if (operations.length === args.references.length) return { ok: true, operations }
+  const realized = new Set(operations.map((operation) => operation.path))
+  return {
+    ok: false,
+    failure_kind: 'output_missing',
+    error: `candidate 생성 결과 누락: ${operations.length}/${args.references.length}`,
+    operations,
+    missing_paths: [...expected.keys()].filter((path) => !realized.has(path)),
+  }
 }
 
 async function checkMissionCandidates(args: {
@@ -2473,8 +2517,27 @@ async function realizeRelativeBandCandidates(args: {
   speechActKo: string
   telemetryFor: TelemetryFactory
 }): Promise<
-  | { ok: true; items: unknown[]; within_regeneration_count: number; warnings: CandidateBandCheckResult[] }
-  | { ok: false; stop_code: string; error: string; results?: CandidateBandCheckResult[] }
+  | {
+      ok: true
+      items: unknown[]
+      within_regeneration_count: number
+      candidate_regeneration_counts: CandidateRegenerationCounts
+      boundary_fallback: {
+        eligible_paths: string[]
+        attempted_paths: string[]
+        succeeded_paths: string[]
+        situation_unchanged: boolean
+        immutable_candidates_unchanged: boolean
+      }
+      warnings: CandidateBandCheckResult[]
+    }
+  | {
+      ok: false
+      stop_code: string
+      error: string
+      results?: CandidateBandCheckResult[]
+      boundary_fallback?: Record<string, unknown>
+    }
 > {
   const withinReferences = MISSION_CANDIDATE_REFERENCES.filter((reference) => reference.phase === 'within_anchor')
   const firstCheck = await checkMissionCandidates({ ...args, references: withinReferences, invocationAttempt: 1 })
@@ -2485,11 +2548,16 @@ async function realizeRelativeBandCandidates(args: {
     .filter((reference): reference is MissionCandidateReference => Boolean(reference))
   let items = args.items
   let withinRegenerationCount = 0
+  let candidateRegenerationCounts: CandidateRegenerationCounts = {}
   let withinResults = firstCheck.results
   if (failedWithin.length > 0) {
     const regenerated = await generateMissionCandidates({ ...args, items, references: failedWithin, invocationAttempt: 2 })
     if (!regenerated.ok) return { ok: false, stop_code: 'within_candidate_regeneration_failed', error: regenerated.error, results: firstCheck.results }
     withinRegenerationCount = regenerated.operations.length
+    candidateRegenerationCounts = recordCandidateRegeneration(
+      candidateRegenerationCounts,
+      regenerated.operations.map((operation) => operation.path),
+    )
     items = applyCandidateReplacementsToItems(items, regenerated.operations)
     const recheck = await checkMissionCandidates({ ...args, items, references: failedWithin, invocationAttempt: 2 })
     if (!recheck.ok) return { ok: false, stop_code: 'within_candidate_recheck_failed', error: recheck.error, results: firstCheck.results }
@@ -2506,13 +2574,94 @@ async function realizeRelativeBandCandidates(args: {
     withinResults = firstCheck.results.map((result) => recheckedByPath.get(result.path) ?? result)
   }
   const boundaryReferences = MISSION_CANDIDATE_REFERENCES.filter((reference) => reference.phase === 'relative_boundary')
+  const situationSnapshot = JSON.stringify(args.items.map((value) => recordCandidate(value)?.situation_ko ?? null))
   const boundaries = await generateMissionCandidates({ ...args, items, references: boundaryReferences, invocationAttempt: 1 })
-  if (!boundaries.ok) return { ok: false, stop_code: 'relative_boundary_generation_failed', error: boundaries.error, results: withinResults }
-  items = applyCandidateReplacementsToItems(items, boundaries.operations)
+  let boundaryFallback = {
+    eligible_paths: [] as string[],
+    attempted_paths: [] as string[],
+    succeeded_paths: [] as string[],
+    situation_unchanged: true,
+    immutable_candidates_unchanged: true,
+  }
+  if (boundaries.ok) {
+    items = applyCandidateReplacementsToItems(items, boundaries.operations)
+  } else {
+    if (boundaries.failure_kind !== 'output_missing') {
+      return {
+        ok: false,
+        stop_code: 'relative_boundary_generation_failed',
+        error: boundaries.error,
+        results: withinResults,
+        boundary_fallback: {
+          failure_kind: boundaries.failure_kind,
+          provider_status: boundaries.provider_status ?? null,
+        },
+      }
+    }
+    const partialOperations = boundaries.operations ?? []
+    items = applyCandidateReplacementsToItems(items, partialOperations)
+    const expectedPaths = boundaryReferences.map(missionCandidatePath)
+    const fallbackPlan = planCandidateFallback(
+      expectedPaths,
+      partialOperations.map((operation) => operation.path),
+      candidateRegenerationCounts,
+    )
+    boundaryFallback.eligible_paths = fallbackPlan.eligiblePaths
+    if (fallbackPlan.exhaustedPaths.length > 0) {
+      return {
+        ok: false,
+        stop_code: 'relative_boundary_fallback_budget_exhausted',
+        error: `candidate fallback budget exhausted: ${fallbackPlan.exhaustedPaths.join(', ')}`,
+        results: withinResults,
+        boundary_fallback: { ...boundaryFallback, exhausted_paths: fallbackPlan.exhaustedPaths },
+      }
+    }
+    for (const path of fallbackPlan.eligiblePaths) {
+      const reference = missionCandidateReferenceForPath(path)
+      if (!reference) continue
+      boundaryFallback.attempted_paths.push(path)
+      const fallback = await generateMissionCandidates({
+        ...args,
+        items,
+        references: [reference],
+        invocationAttempt: 2,
+      })
+      candidateRegenerationCounts = recordCandidateRegeneration(candidateRegenerationCounts, [path])
+      if (!fallback.ok) {
+        return {
+          ok: false,
+          stop_code: 'relative_boundary_fallback_failed',
+          error: fallback.error,
+          results: withinResults,
+          boundary_fallback: {
+            ...boundaryFallback,
+            failed_path: path,
+            failure_kind: fallback.failure_kind,
+            provider_status: fallback.provider_status ?? null,
+            candidate_regeneration_counts: candidateRegenerationCounts,
+          },
+        }
+      }
+      const immutableBefore = candidateTextSnapshot(items, path)
+      items = applyCandidateReplacementsToItems(items, fallback.operations)
+      const changedPaths = fallback.operations.map((operation) => operation.path)
+      if (changedPaths.length !== 1 || changedPaths[0] !== path) {
+        boundaryFallback.immutable_candidates_unchanged = false
+      }
+      if (immutableBefore !== candidateTextSnapshot(items, path)) {
+        boundaryFallback.immutable_candidates_unchanged = false
+      }
+      boundaryFallback.succeeded_paths.push(path)
+    }
+  }
+  boundaryFallback.situation_unchanged = situationSnapshot ===
+    JSON.stringify(items.map((value) => recordCandidate(value)?.situation_ko ?? null))
   return {
     ok: true,
     items,
     within_regeneration_count: withinRegenerationCount,
+    candidate_regeneration_counts: candidateRegenerationCounts,
+    boundary_fallback: boundaryFallback,
     warnings: withinResults.filter((result) => result.severity === 'warning'),
   }
 }
@@ -3825,14 +3974,17 @@ Deno.serve(async (req) => {
               error: targeted.error,
               stop_code: targeted.stop_code,
               candidate_results: targeted.results ?? [],
+              boundary_fallback: targeted.boundary_fallback ?? null,
             }),
             { status: 200, headers: jsonHeaders },
           )
         }
         plannedItems = targeted.items as Record<string, unknown>[]
         bandTargetingMeta = {
-          version: 'relative_band_targeting_v1',
+          version: 'relative_band_targeting_v2_bounded_fallback',
           within_regeneration_count: targeted.within_regeneration_count,
+          candidate_regeneration_counts: targeted.candidate_regeneration_counts,
+          boundary_fallback: targeted.boundary_fallback,
           within_warnings: targeted.warnings,
         }
       }

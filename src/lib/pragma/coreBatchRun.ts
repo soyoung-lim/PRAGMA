@@ -35,6 +35,10 @@ export interface CoreCellResult {
   ruleResult?: "pass" | "warning" | "fail";
   ruleFailFirst?: string;
   error?: string;
+  terminalStage?: "core_generation" | "core_deterministic" | "core_save" | "core_eligible" | "core_reused";
+  deterministicFailureCodes?: string[];
+  infrastructureError?: boolean;
+  providerStatus?: number | "UNKNOWN";
 }
 
 export interface CoreRunOptions {
@@ -150,6 +154,7 @@ export async function runCoreCell(
   index: number,
   opts: CoreRunOptions,
 ): Promise<CoreCellResult> {
+  let terminalStage: NonNullable<CoreCellResult["terminalStage"]> = "core_generation";
   try {
     const mode = cell.mode;
     const sourceModality = modalityOf(mode);
@@ -203,6 +208,7 @@ export async function runCoreCell(
     const meta = data.meta;
 
     // 2. 클라 검사 (checkCore) — fail이면 저장하지 않는다
+    terminalStage = "core_deterministic";
     const ruleResult = checkCore(core, ctxOf(cell));
     if (ruleResult.result === "fail") {
       return {
@@ -212,6 +218,8 @@ export async function runCoreCell(
         coreContent: core,
         ruleResult: "fail",
         ruleFailFirst: ruleResult.violations.find((v) => v.level === "fail")?.message,
+        deterministicFailureCodes: ruleResult.violations.filter((v) => v.level === "fail").map((v) => v.id),
+        terminalStage,
         error: "규칙검사 실패(저장 안 함)",
       };
     }
@@ -246,6 +254,7 @@ export async function runCoreCell(
     const saveArgs = opts.finalCorpusRunId
       ? { p_run_id: opts.finalCorpusRunId, p_payload: payload }
       : { p_payload: payload };
+    terminalStage = "core_save";
     const { data: savedId, error: saveErr } = await (
       supabase.rpc as unknown as (
         fn: string,
@@ -261,9 +270,20 @@ export async function runCoreCell(
       scenarioId: savedId as string,
       coreContent: core,
       ruleResult: ruleResult.result === "warning" ? "warning" : "pass",
+      terminalStage: "core_eligible",
     };
   } catch (e) {
-    return { index, cell, ok: false, error: (e as Error).message ?? "실패" };
+    const status = (e as { context?: { status?: unknown }; status?: unknown })?.context?.status ??
+      (e as { status?: unknown })?.status;
+    return {
+      index,
+      cell,
+      ok: false,
+      terminalStage,
+      infrastructureError: typeof status === "number",
+      providerStatus: typeof status === "number" ? status : "UNKNOWN",
+      error: (e as Error).message ?? "실패",
+    };
   }
 }
 
@@ -303,6 +323,7 @@ export async function runCoreBatch(
             reused: true,
             coreContent:
               typeof existing === "string" ? undefined : existing?.coreContent,
+            terminalStage: "core_reused",
           }
         : await runCoreCell(cell, itemIndex, opts);
       results.push(res);

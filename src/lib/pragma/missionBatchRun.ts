@@ -5,6 +5,7 @@ import {
   retryGeneratedMissionCandidateRepair,
   type PromotableCore,
   type PromoteResult,
+  type PromotionTerminalEvidence,
 } from "@/lib/pragma/promoteMission";
 import type { Domain, GenMode, LanguageDirection, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
@@ -25,6 +26,7 @@ export interface MissionBatchItemResult {
   candidateRegenerationMaxPerCandidate?: number;
   violations?: { id: string; level: string; message: string }[];
   error?: string;
+  terminal?: PromotionTerminalEvidence;
 }
 
 export interface MissionBatchOptions {
@@ -133,6 +135,7 @@ export async function runMissionBatch(
             candidateRegenerationMaxPerCandidate: retried.candidateRegenerationMaxPerCandidate,
             violations: retried.violations,
             error: retried.error,
+            terminal: retried.terminal,
           };
         } catch (error) {
           result = {
@@ -172,6 +175,7 @@ export async function runMissionBatch(
             candidateRegenerationMaxPerCandidate: promoted.candidateRegenerationMaxPerCandidate,
             violations: promoted.violations,
             error: promoted.error,
+            terminal: promoted.terminal,
           };
         } catch (error) {
           result = {

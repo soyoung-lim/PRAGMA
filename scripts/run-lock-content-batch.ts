@@ -1,3 +1,6 @@
+import { appendFileSync, mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+
 type Phase = "core-pilot" | "core-priority" | "core-full" | "mission" | "audit";
 
 // The app client persists auth in browser localStorage. The unattended Node runner
@@ -36,13 +39,24 @@ const [
   { LOCK_COURSE_PRIORITY_CORE_PLAN, LOCK_FULL_CORE_PLAN, LOCK_PILOT_CORE_PLAN },
   { loadLockMissionBatchCores, runMissionBatch },
   { auditLockCandidates, loadLockCandidateRows },
+  { coreTerminalEvidence, missionTerminalEvidence },
 ] = await Promise.all([
   import("../src/integrations/supabase/client"),
   import("../src/lib/pragma/coreBatchRun"),
   import("../src/lib/pragma/contentFunnelPlan"),
   import("../src/lib/pragma/missionBatchRun"),
   import("../src/lib/pragma/lockCandidateAudit"),
+  import("../src/lib/pragma/batchTerminalEvidence"),
 ]);
+
+const evidencePath = resolve(
+  process.env.PRAGMA_TERMINAL_EVIDENCE_PATH ??
+    `tmp/pragma-terminal-evidence/${runId}.jsonl`,
+);
+const appendEvidence = (records: readonly Record<string, unknown>[]) => {
+  mkdirSync(dirname(evidencePath), { recursive: true });
+  appendFileSync(evidencePath, records.map((record) => `${JSON.stringify(record)}\n`).join(""), "utf8");
+};
 
 const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 if (signInError) throw new Error(`관리자 로그인 실패: ${signInError.message}`);
@@ -81,6 +95,7 @@ if (phase === "audit") {
     stopOnBandTargetingRepeat: true,
     onProgress: (done, total, last) => {
       process.stdout.write(`\rmission ${done}/${total} last=${last.scenarioId} ${last.ok ? "ok" : "fail"}`);
+      appendEvidence([missionTerminalEvidence(runId, last) as unknown as Record<string, unknown>]);
     },
   });
   process.stdout.write("\n");
@@ -135,6 +150,7 @@ if (phase === "audit") {
       concurrency: 3,
       onProgress: (done, total, last) => {
         process.stdout.write(`\rcore ${done}/${total} index=${last.index} ${last.ok ? "ok" : "fail"}`);
+        appendEvidence([coreTerminalEvidence(runId, last) as unknown as Record<string, unknown>]);
       },
     },
   );

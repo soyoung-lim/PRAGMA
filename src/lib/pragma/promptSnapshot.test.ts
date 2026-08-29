@@ -149,7 +149,7 @@ describe("prompt snapshot integrity", () => {
     }
     expect(canonicalSource).toContain("content_release_id: CURRENT_CONTENT_RELEASE_ID");
     expect(canonicalSource).toContain("mission_item_repair_v10_r27_topology_context");
-    expect(canonicalSource).toContain("mission_candidate_band_v1_relative_minimal_contrast");
+    expect(canonicalSource).toContain("mission_candidate_band_v2_bounded_fallback");
     expect(canonicalSource).toContain("quality_candidate_band_v1_boundary_crossing");
     expect(canonicalSource).toContain("operations를 빈 배열로");
     expect(canonicalSource).toContain("replace_fix_choice_candidate");

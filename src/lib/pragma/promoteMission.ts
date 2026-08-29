@@ -33,6 +33,14 @@ import {
   type SpeechActUI,
 } from "@/lib/pragma/enums";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
+import {
+  candidateRegenerationMax,
+  candidateRegenerationTotal,
+  canonicalCandidatePath,
+  normalizeCandidateRegenerationCounts,
+  recordCandidateRegeneration,
+  type CandidateRegenerationCounts,
+} from "../../../supabase/functions/_shared/missionCandidateRecovery";
 
 export const LEVEL_POLICY: Record<LearnerLevel, string> = {
   beginner_intermediate: "입문: 단문 중심, 종속절 제한. 자원 조합 1개. 원문 1~2문장.",
@@ -104,6 +112,52 @@ export interface PromoteResult {
   candidateRegenerationMaxPerCandidate?: number;
   repairError?: string;
   error?: string;
+  terminal?: PromotionTerminalEvidence;
+}
+
+export interface PromotionTerminalEvidence {
+  terminalStage:
+    | "preparing"
+    | "mission_generation"
+    | "relative_boundary"
+    | "schema"
+    | "deterministic"
+    | "critic"
+    | "saving"
+    | "eligible"
+    | "unknown";
+  itemCandidatePaths: string[];
+  deterministicFailureCodes: string[];
+  criticVerdict: "pass" | "warning" | "fail" | "UNKNOWN";
+  criticFindingCodes: Array<{ code: string; path: string }>;
+  attemptNo: number;
+  regenerationCount: number;
+  operation: string;
+  operationResult: "not_attempted" | "succeeded" | "failed" | "UNKNOWN";
+  infrastructureError: boolean;
+  providerStatus: number | "UNKNOWN";
+  finalOutcome: "eligible" | "quality_fail_draft" | "terminal_dropout" | "UNKNOWN";
+  stopCode?: string;
+  boundaryFallback?: Record<string, unknown> | null;
+}
+
+function providerStatusFromError(error: unknown): number | "UNKNOWN" {
+  const status = (error as { context?: { status?: unknown }; status?: unknown })?.context?.status ??
+    (error as { status?: unknown })?.status;
+  return typeof status === "number" ? status : "UNKNOWN";
+}
+
+function qualityFindingSummary(quality: QualityCheck | undefined) {
+  return quality?.findings.map((finding) => ({ code: finding.code, path: finding.where })) ?? [];
+}
+
+function bandTargetingFromContent(content: Record<string, unknown>): Record<string, unknown> {
+  const provenance = isRecord(content.provenance) ? content.provenance : {};
+  return isRecord(provenance.band_targeting) ? provenance.band_targeting : {};
+}
+
+function candidateCountsFromContent(content: Record<string, unknown>): CandidateRegenerationCounts {
+  return normalizeCandidateRegenerationCounts(bandTargetingFromContent(content).candidate_regeneration_counts);
 }
 
 /** 관리자 조립 UI에 노출하는 실제 처리 경계. 퍼센트 추정에는 쓰지 않는다. */
@@ -324,6 +378,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function promotionTerminal(
+  overrides: Partial<PromotionTerminalEvidence> & Pick<PromotionTerminalEvidence, "terminalStage" | "finalOutcome">,
+): PromotionTerminalEvidence {
+  return {
+    terminalStage: overrides.terminalStage,
+    itemCandidatePaths: overrides.itemCandidatePaths ?? [],
+    deterministicFailureCodes: overrides.deterministicFailureCodes ?? [],
+    criticVerdict: overrides.criticVerdict ?? "UNKNOWN",
+    criticFindingCodes: overrides.criticFindingCodes ?? [],
+    attemptNo: overrides.attemptNo ?? 1,
+    regenerationCount: overrides.regenerationCount ?? 0,
+    operation: overrides.operation ?? "none",
+    operationResult: overrides.operationResult ?? "not_attempted",
+    infrastructureError: overrides.infrastructureError ?? false,
+    providerStatus: overrides.providerStatus ?? "UNKNOWN",
+    finalOutcome: overrides.finalOutcome,
+    ...(overrides.stopCode ? { stopCode: overrides.stopCode } : {}),
+    ...(overrides.boundaryFallback !== undefined
+      ? { boundaryFallback: overrides.boundaryFallback }
+      : {}),
+  };
+}
+
 export function applyMissionRepairOperations(
   missionContent: Record<string, unknown>,
   operations: MissionRepairOperation[],
@@ -391,7 +468,7 @@ export function canPersistRepairQuality(quality: QualityCheck): boolean {
 
 const CANDIDATE_REGENERATION_CODES = new Set(["band_mismatch", "implausible_distractor"]);
 const CANDIDATE_PATH = /^mpj_items\[(2|4)\]\.(corrections|candidates)\[(\d+)\](?:\.|$)/;
-const CANDIDATE_GENERATION_PROMPT_VERSION = "mission_candidate_band_v1_relative_minimal_contrast";
+const CANDIDATE_GENERATION_PROMPT_VERSION = "mission_candidate_band_v2_bounded_fallback";
 
 /** attempt=1 중 첫 1건은 최초 boundary 생성이고, 두 번째부터는 이미 후보 regeneration을 실행한 흔적이다. */
 export function candidateRetryAlreadyAttempted(attemptOneSuccessfulCalls: number): boolean {
@@ -563,6 +640,18 @@ async function regenerateMissionCandidatesOnce(args: {
 > {
   const findings = candidateRegenerationFindings(args.quality);
   if (findings.length === 0) return { ok: false, error: "재생성할 band/현실성 후보가 없습니다." };
+  const currentCounts = candidateCountsFromContent(args.missionContent);
+  const eligibleFindings = findings.filter((finding) => {
+    const path = canonicalCandidatePath(finding.where);
+    return Boolean(path) && (currentCounts[path!] ?? 0) < 1;
+  });
+  if (eligibleFindings.length === 0) {
+    return {
+      ok: false,
+      stopCode: "candidate_regeneration_attempt_exhausted",
+      error: "BAND_TARGETING_STOP:candidate_regeneration_attempt_exhausted:대상 후보는 전체 생명주기에서 regeneration을 이미 1회 실행했습니다.",
+    };
+  }
   const { data, error } = await supabase.functions.invoke("generate-scenario", {
     body: {
       action: "mission_candidate_regenerate",
@@ -574,7 +663,7 @@ async function regenerateMissionCandidatesOnce(args: {
       },
       mission_candidate_regenerate: {
         mission_content: args.missionContent,
-        findings,
+        findings: eligibleFindings,
         feature: featureForGen(args.feature, args.direction),
         direction: args.direction,
         speech_act: args.speechAct,
@@ -619,6 +708,16 @@ async function regenerateMissionCandidatesOnce(args: {
         ? `mpj_items[${operation.item_index}].candidates[${operation.candidate_index}]`
         : "").filter(Boolean);
   if (checks.length !== resolvedPaths.length) return { ok: false, error: "후보 국소 검사 결과 수가 재생성 후보 수와 다릅니다." };
+  const nextCounts = recordCandidateRegeneration(currentCounts, resolvedPaths);
+  const nextProvenance = isRecord(patched.provenance) ? patched.provenance : {};
+  const nextBandTargeting = isRecord(nextProvenance.band_targeting) ? nextProvenance.band_targeting : {};
+  patched.provenance = {
+    ...nextProvenance,
+    band_targeting: {
+      ...nextBandTargeting,
+      candidate_regeneration_counts: nextCounts,
+    },
+  };
   const meta = isRecord(response.meta) ? response.meta : {};
   const quality = qualityAfterCandidateRegeneration(args.quality, resolvedPaths, checks, {
     model: typeof meta.critic_model === "string" ? meta.critic_model : "candidate_band_critic",
@@ -644,7 +743,11 @@ export async function promoteCore(
   const featureCode = DEFAULT_FEATURE_BY_ACT[core.speech_act];
   const feature = featureCode ? getTargetFeature(featureCode) : undefined;
   if (!feature) {
-    return { ok: false, error: `'${SPEECH_ACT_UI[core.speech_act]}'는 아직 화용 초점 카탈로그가 없어 승격할 수 없습니다.` };
+    return {
+      ok: false,
+      error: `'${SPEECH_ACT_UI[core.speech_act]}'는 아직 화용 초점 카탈로그가 없어 승격할 수 없습니다.`,
+      terminal: promotionTerminal({ terminalStage: "preparing", finalOutcome: "terminal_dropout" }),
+    };
   }
   // 방향 = core_content.direction(정본, 0-l·82) 우선, 없으면 행 태그, 없으면 ko_zh.
   const direction: LanguageDirection =
@@ -654,6 +757,7 @@ export async function promoteCore(
     return {
       ok: false,
       error: `'${SPEECH_ACT_UI[core.speech_act]}'는 아직 ${DIRECTION_LABEL.zh_ko} 카탈로그 변형이 없어 승격할 수 없습니다.`,
+      terminal: promotionTerminal({ terminalStage: "preparing", finalOutcome: "terminal_dropout" }),
     };
   }
   // core_content를 정규화(v1/v2 모두) 후 현 배포 엣지가 기대하는 v1 이름으로 전달.
@@ -707,6 +811,12 @@ export async function promoteCore(
       })),
       attempts: 0,
       error: "코어 규칙검사 실패 — 미션 생성은 실행하지 않았습니다.",
+      terminal: promotionTerminal({
+        terminalStage: "deterministic",
+        deterministicFailureCodes: coreCheck.violations.filter((violation) => violation.level === "fail").map((violation) => violation.id),
+        attemptNo: 0,
+        finalOutcome: "terminal_dropout",
+      }),
     };
   }
 
@@ -738,20 +848,67 @@ export async function promoteCore(
   });
   if (error) {
     const msg = (error as { message?: string })?.message ?? String(error);
-    return { ok: false, error: `미션 생성 호출 실패: ${msg}`, attempts };
+    const providerStatus = providerStatusFromError(error);
+    return {
+      ok: false,
+      error: `미션 생성 호출 실패: ${msg}`,
+      attempts,
+      terminal: promotionTerminal({
+        terminalStage: "mission_generation",
+        infrastructureError: providerStatus !== "UNKNOWN",
+        providerStatus,
+        finalOutcome: "terminal_dropout",
+      }),
+    };
   }
   const generationResponse = isRecord(data) ? data : {};
   if (typeof generationResponse.stop_code === "string") {
+    const candidateResults = Array.isArray(generationResponse.candidate_results)
+      ? generationResponse.candidate_results.filter(isRecord)
+      : [];
+    const boundaryFallback = isRecord(generationResponse.boundary_fallback)
+      ? generationResponse.boundary_fallback
+      : null;
+    const providerStatus = typeof boundaryFallback?.provider_status === "number"
+      ? boundaryFallback.provider_status
+      : "UNKNOWN";
     return {
       ok: false,
       attempts,
       error: `BAND_TARGETING_STOP:${generationResponse.stop_code}:${typeof generationResponse.error === "string" ? generationResponse.error : "후보 생성이 중단됐습니다."}`,
+      terminal: promotionTerminal({
+        terminalStage: generationResponse.stop_code.startsWith("relative_boundary")
+          ? "relative_boundary"
+          : "mission_generation",
+        itemCandidatePaths: candidateResults
+          .map((result) => typeof result.path === "string" ? result.path : "")
+          .filter(Boolean),
+        regenerationCount: (() => {
+          const fallback = isRecord(generationResponse.boundary_fallback) ? generationResponse.boundary_fallback : {};
+          return Array.isArray(fallback.attempted_paths) ? fallback.attempted_paths.length : 0;
+        })(),
+        operation: generationResponse.stop_code.startsWith("relative_boundary")
+          ? "relative_boundary_candidate_fallback"
+          : "candidate_generation",
+        operationResult: "failed",
+        infrastructureError: providerStatus !== "UNKNOWN" &&
+          (providerStatus === 429 || providerStatus >= 500),
+        providerStatus,
+        stopCode: generationResponse.stop_code,
+        boundaryFallback,
+        finalOutcome: "terminal_dropout",
+      }),
     };
   }
   const rawContent = generationResponse.mission_content;
   const parsed = normalizeMission(rawContent);
   if (!parsed.ok || !parsed.data || !isRecord(rawContent)) {
-    return { ok: false, error: "생성된 전체 초안이 미션 스키마를 통과하지 못했습니다.", attempts };
+    return {
+      ok: false,
+      error: "생성된 전체 초안이 미션 스키마를 통과하지 못했습니다.",
+      attempts,
+      terminal: promotionTerminal({ terminalStage: "schema", finalOutcome: "terminal_dropout" }),
+    };
   }
   let mission = parsed.data;
   options.onProgress?.({ phase: "checking", attempt: 1, maxAttempts: 1 });
@@ -760,9 +917,15 @@ export async function promoteCore(
   let repaired = false;
   const rawProvenance = isRecord(rawContent.provenance) ? rawContent.provenance : {};
   const rawBandTargeting = isRecord(rawProvenance.band_targeting) ? rawProvenance.band_targeting : {};
-  let candidateRegenerationCount = typeof rawBandTargeting.within_regeneration_count === "number"
-    ? Math.max(0, Math.trunc(rawBandTargeting.within_regeneration_count))
-    : 0;
+  const initialCandidateCounts = normalizeCandidateRegenerationCounts(
+    rawBandTargeting.candidate_regeneration_counts,
+  );
+  let candidateRegenerationCount = Object.keys(initialCandidateCounts).length > 0
+    ? candidateRegenerationTotal(initialCandidateCounts)
+    : typeof rawBandTargeting.within_regeneration_count === "number"
+      ? Math.max(0, Math.trunc(rawBandTargeting.within_regeneration_count))
+      : 0;
+  let candidateRegenerationMaxCount = candidateRegenerationMax(initialCandidateCounts);
   let repairError: string | undefined;
   let quality: QualityCheck;
   let contentToSave: Record<string, unknown> = rawContent;
@@ -773,7 +936,19 @@ export async function promoteCore(
       .filter((violation) => violation.level === "fail")
       .every((violation) => findings.some((finding) => finding.note_ko === violation.message));
     if (!findings.length || !hasOnlyRepairableFailures) {
-      return { ok: false, mission, ruleResult: "fail", violations: initialViolations, attempts, error: "규칙검사 실패 — 저장하지 않았습니다." };
+      return {
+        ok: false,
+        mission,
+        ruleResult: "fail",
+        violations: initialViolations,
+        attempts,
+        error: "규칙검사 실패 — 저장하지 않았습니다.",
+        terminal: promotionTerminal({
+          terminalStage: "deterministic",
+          deterministicFailureCodes: initialViolations.filter((violation) => violation.level === "fail").map((violation) => violation.id),
+          finalOutcome: "terminal_dropout",
+        }),
+      };
     }
     options.onProgress?.({ phase: "repairing" });
     const structuralRepair = await repairMissionOnce({
@@ -804,6 +979,13 @@ export async function promoteCore(
         attempts,
         repairError: structuralRepair.error,
         error: `규칙검사 실패 · 문항 수리 실패 — 저장하지 않았습니다: ${structuralRepair.error}`,
+        terminal: promotionTerminal({
+          terminalStage: "deterministic",
+          deterministicFailureCodes: initialViolations.filter((violation) => violation.level === "fail").map((violation) => violation.id),
+          operation: "mission_item_repair",
+          operationResult: "failed",
+          finalOutcome: "terminal_dropout",
+        }),
       };
     }
     repaired = true;
@@ -870,6 +1052,15 @@ export async function promoteCore(
       attempts,
       quality,
       error: `저장 실패: ${(saveErr as { message?: string }).message ?? saveErr}`,
+      terminal: promotionTerminal({
+        terminalStage: "saving",
+        deterministicFailureCodes: initialViolations.filter((violation) => violation.level === "fail").map((violation) => violation.id),
+        criticVerdict: quality.verdict,
+        criticFindingCodes: qualityFindingSummary(quality),
+        operation: "save_generated_mission",
+        operationResult: "failed",
+        finalOutcome: "terminal_dropout",
+      }),
     };
   }
 
@@ -922,9 +1113,15 @@ export async function promoteCore(
         mission = repair.mission;
         quality = repair.quality;
         check = repair.check;
-        candidateRegenerationCount += "regenerationCount" in repair && typeof repair.regenerationCount === "number"
-          ? repair.regenerationCount
-          : 0;
+        const repairedCounts = candidateCountsFromContent(repair.missionContent);
+        candidateRegenerationCount = Object.keys(repairedCounts).length > 0
+          ? candidateRegenerationTotal(repairedCounts)
+          : candidateRegenerationCount + ("regenerationCount" in repair && typeof repair.regenerationCount === "number"
+            ? repair.regenerationCount
+            : 0);
+        candidateRegenerationMaxCount = Object.keys(repairedCounts).length > 0
+          ? candidateRegenerationMax(repairedCounts)
+          : Math.max(candidateRegenerationMaxCount, candidateRegenerationCount > 0 ? 1 : 0);
       }
     } else {
       repairError = "error" in repair ? repair.error : "문항 수리를 완료하지 못했습니다.";
@@ -935,6 +1132,11 @@ export async function promoteCore(
     level: violation.level,
     message: violation.message,
   }));
+  const boundaryFallback = isRecord(rawBandTargeting.boundary_fallback)
+    ? rawBandTargeting.boundary_fallback
+    : null;
+  const boundaryFallbackAttempted = Array.isArray(boundaryFallback?.attempted_paths) &&
+    boundaryFallback.attempted_paths.length > 0;
   return {
     ok: true,
     mission,
@@ -945,9 +1147,31 @@ export async function promoteCore(
     firstPassQualityVerdict,
     repaired,
     candidateRegenerationCount,
-    candidateRegenerationMaxPerCandidate: candidateRegenerationCount > 0 ? 1 : 0,
+    candidateRegenerationMaxPerCandidate: candidateRegenerationMaxCount,
     repairError,
     savedId: savedId as string,
+    terminal: promotionTerminal({
+      terminalStage: quality.verdict === "fail" ? "critic" : "eligible",
+      itemCandidatePaths: quality.findings
+        .map((finding) => canonicalCandidatePath(finding.where))
+        .filter((path): path is string => Boolean(path)),
+      deterministicFailureCodes: initialViolations
+        .filter((violation) => violation.level === "fail")
+        .map((violation) => violation.id),
+      criticVerdict: quality.verdict,
+      criticFindingCodes: qualityFindingSummary(quality),
+      regenerationCount: candidateRegenerationCount,
+      operation: boundaryFallbackAttempted
+        ? "relative_boundary_candidate_fallback"
+        : repaired ? "mission_item_repair_or_candidate_regeneration" : "none",
+      operationResult: repairError
+        ? "failed"
+        : repaired || boundaryFallbackAttempted
+          ? "succeeded"
+          : "not_attempted",
+      boundaryFallback,
+      finalOutcome: quality.verdict === "fail" ? "quality_fail_draft" : "eligible",
+    }),
   };
 }
 
@@ -1018,13 +1242,28 @@ export async function retryGeneratedMissionCandidateRepair(core: PromotableCore)
       ctx,
       coreContent: core.core_content,
     };
-    const needsCandidateRegeneration = candidateRegenerationFindings(qualityResult.data).length > 0;
-    if (needsCandidateRegeneration && await hasPriorCandidateRegeneration(core)) {
+    const candidateFindings = candidateRegenerationFindings(qualityResult.data);
+    const needsCandidateRegeneration = candidateFindings.length > 0;
+    const currentCounts = candidateCountsFromContent(current);
+    const hasStructuredCounts = Object.keys(currentCounts).length > 0;
+    const eligibleCandidateFindingExists = candidateFindings.some((finding) => {
+      const path = canonicalCandidatePath(finding.where);
+      return Boolean(path) && (currentCounts[path!] ?? 0) < 1;
+    });
+    if (needsCandidateRegeneration && !eligibleCandidateFindingExists) {
       return {
         ok: false,
         quality: qualityResult.data,
         firstPassQualityVerdict: qualityResult.data.verdict,
         error: "BAND_TARGETING_STOP:candidate_regeneration_attempt_exhausted:이 저장 초안은 후보 regeneration을 이미 1회 실행했습니다.",
+      };
+    }
+    if (needsCandidateRegeneration && !hasStructuredCounts && await hasPriorCandidateRegeneration(core)) {
+      return {
+        ok: false,
+        quality: qualityResult.data,
+        firstPassQualityVerdict: qualityResult.data.verdict,
+        error: "BAND_TARGETING_STOP:candidate_regeneration_attempt_exhausted:이 legacy 저장 초안은 후보 regeneration을 이미 1회 실행했습니다.",
       };
     }
     const repaired = needsCandidateRegeneration
@@ -1049,11 +1288,19 @@ export async function retryGeneratedMissionCandidateRepair(core: PromotableCore)
       },
     });
     if (error) return { ok: false, error: (error as { message?: string }).message ?? String(error) };
-    const currentProvenance = isRecord(current.provenance) ? current.provenance : {};
-    const currentBandTargeting = isRecord(currentProvenance.band_targeting) ? currentProvenance.band_targeting : {};
-    const initialRegenerationCount = typeof currentBandTargeting.within_regeneration_count === "number"
-      ? Math.max(0, Math.trunc(currentBandTargeting.within_regeneration_count))
-      : 0;
+    const repairedCounts = candidateCountsFromContent(repaired.missionContent);
+    const initialRegenerationCount = Object.keys(currentCounts).length > 0
+      ? candidateRegenerationTotal(currentCounts)
+      : (() => {
+          const currentBandTargeting = bandTargetingFromContent(current);
+          return typeof currentBandTargeting.within_regeneration_count === "number"
+            ? Math.max(0, Math.trunc(currentBandTargeting.within_regeneration_count))
+            : 0;
+        })();
+    const finalRegenerationCount = Object.keys(repairedCounts).length > 0
+      ? candidateRegenerationTotal(repairedCounts)
+      : initialRegenerationCount +
+        ("regenerationCount" in repaired && typeof repaired.regenerationCount === "number" ? repaired.regenerationCount : 0);
     return {
       ok: true,
       mission: repaired.mission,
@@ -1063,10 +1310,10 @@ export async function retryGeneratedMissionCandidateRepair(core: PromotableCore)
       quality: repaired.quality,
       firstPassQualityVerdict: qualityResult.data.verdict,
       repaired: true,
-      candidateRegenerationCount: initialRegenerationCount +
-        ("regenerationCount" in repaired && typeof repaired.regenerationCount === "number" ? repaired.regenerationCount : 0),
-      candidateRegenerationMaxPerCandidate: initialRegenerationCount > 0 ||
-        ("regenerationCount" in repaired && typeof repaired.regenerationCount === "number") ? 1 : 0,
+      candidateRegenerationCount: finalRegenerationCount,
+      candidateRegenerationMaxPerCandidate: Object.keys(repairedCounts).length > 0
+        ? candidateRegenerationMax(repairedCounts)
+        : finalRegenerationCount > 0 ? 1 : 0,
     };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
