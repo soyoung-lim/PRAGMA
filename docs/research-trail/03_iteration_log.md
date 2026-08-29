@@ -2947,3 +2947,21 @@
   원인을 희석하므로 사전 계약대로 정지한다.
 - 관련: `DEC-20260830-01`, `EVD-20260830-01`,
   `docs/dev-log/2026-08-30-r27-topology-canary.md`.
+
+## ITER-20260830-02 · R27 repair context와 clean 8
+
+- 날짜: 2026-08-30
+- 시작 문제: `_07`에서 남은 두 건은 situation-only repair가 slot의 topology 역할·P·D·R·source·
+  Anchor를 보지 못하고, 복수 X/Y 결과끼리 중복돼도 Edge sanitizer가 막지 못했다.
+- 변경: 해당 packet과 exact topology guard만 보강했다. base prompt·candidate blueprint·대역·다른
+  R규칙·UI·DB는 동결하고 `_08`을 새로 발급했다.
+- 검증: 표적 57 tests·typecheck 통과, Edge v104 ACTIVE. 새 run에서 코어 7/8 뒤 hard-invalid 셀
+  1회 대체로 8/8을 만들고 그 8개만 실행했다. ledger 67/67 성공·332,836 token이다.
+- 결과: 첫 패스 2/8, 최종 적격 5/8. 최초 Y 중복 2건의 수리본은 결정론 R27을 통과했으나 critic
+  fail로 저장하지 않았다. 저장 6건의 topology는 정상이나 1건은 비R27 `band_mismatch` fail이고
+  fail quality revision 1건이 존재한다.
+- 교훈/경계: packet 부족과 재위반은 닫혔지만 R27 복구 뒤 전체 critic을 함께 통과하는 생산 수율은
+  확보되지 않았다. 실패 본문 비저장으로 critic code는 확인 불가다. 승인대로 여기서 정지하고
+  균형 30·500을 실행하지 않는다.
+- 관련: `DEC-20260830-02`, `EVD-20260830-02`,
+  `docs/dev-log/2026-08-30-r27-residual-clean8.md`.

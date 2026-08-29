@@ -1,0 +1,90 @@
+{
+  "evidence_id": "EVD-20260830-02",
+  "checked_at_local_date": "2026-08-30",
+  "diagnosed_prior_failures": [
+    {
+      "scenario_id": "485c7349-afc4-4047-8ba8-7078b551a347",
+      "axes": "ko_zh|complaint|intermediate|stt_interpreting|speaker_higher|acquaintance|mid",
+      "history": "initial R27 MJT5 duplicate -> mission_repair -> critic rejection -> not stored"
+    },
+    {
+      "scenario_id": "1dd3c17c-2f0f-4cc4-87fd-74cd6e3f10ee",
+      "axes": "zh_ko|request|intermediate|translation|equal|acquaintance|mid",
+      "history": "initial R27 MJT1+MJT5 duplicate -> mission_repair -> deterministic re-violation -> not stored"
+    }
+  ],
+  "evidence_boundary": "Both rows have mission_content=null and zero lineage. The append-only ledger intentionally excludes prompt/response bodies, so exact failed and repaired situation_ko strings cannot be reconstructed.",
+  "common_cause": "The slot-local situation packet omitted topology role, target PDR/source context and Anchor A; multiple proposed replacements were not checked against each other.",
+  "change": {
+    "release_id": "pragma_scope_lock_20260830_08_mjt5_dct1_r27_repair_context",
+    "base_mission_prompt_version": "mission_v5_mpj5_minidiscourse_v12_r27_topology",
+    "repair_prompt_version": "mission_item_repair_v10_r27_topology_context",
+    "implementation_commit": "7973ef6",
+    "attestation_commit": "8d38e1a",
+    "candidate_blueprint_changed": false,
+    "r27_definition_changed": false,
+    "ui_changed": false,
+    "db_schema_changed": false,
+    "backfill": false
+  },
+  "verification": {
+    "targeted_test_files": 5,
+    "targeted_tests_passed": 57,
+    "typecheck": "passed",
+    "core_prompt_surface_hash": "6e5aee7cf1244bd9dc0f0b44d01f7e9aa35dfef008f8ff67f56ef7048060b0a1"
+  },
+  "deployment": {
+    "function": "generate-scenario",
+    "version": 104,
+    "status": "ACTIVE",
+    "sha256": "58dc699be06258f5a136a4791b442c7aea7c9b1317cefac7ac681d0a7a3261a8"
+  },
+  "clean_canary": {
+    "run_id": "scope-lock-pilot-20260830-08-r27-clean8",
+    "planned": 8,
+    "initial_core_valid": 7,
+    "hard_invalid_replacement_attempts": 1,
+    "final_core_valid": 8,
+    "first_pass_eligible": 2,
+    "final_eligible": 5,
+    "stored_generated": 6,
+    "stored_warning": 5,
+    "stored_fail": 1,
+    "unstored": 2,
+    "initial_r27_failures": 2,
+    "post_repair_deterministic_r27_failures": 0,
+    "repair_critic_rejections": 2,
+    "repair_critic_codes": "unavailable because rejected repair bodies are not persisted",
+    "other_known_final_critical": {
+      "missions": 1,
+      "findings": [{ "code": "band_mismatch", "where": "mpj_items[1].target" }]
+    },
+    "failed_revision_rows": 1,
+    "normal_peer_pollution_observed": 0,
+    "bounded_recovery_violations": 0,
+    "candidate_regeneration_total": 7,
+    "candidate_regeneration_average_per_mission": 0.875,
+    "candidate_regeneration_max_per_candidate": 1
+  },
+  "ledger": {
+    "calls": 67,
+    "successful_calls": 67,
+    "prompt_tokens": 299919,
+    "completion_tokens": 32917,
+    "total_tokens": 332836,
+    "cached_tokens": 74496,
+    "by_operation": {
+      "core_generate": 9,
+      "core_repair": 6,
+      "mission_generate": 20,
+      "mission_critic": 28,
+      "mission_repair": 4
+    }
+  },
+  "gate": {
+    "passed": false,
+    "reason": "Although both R27 repair candidates reached a deterministic R27 pass, final eligibility was 5/8, two repair candidates were rejected by the critic, and one quality-fail revision exists.",
+    "balanced_30_started": false,
+    "automatic_500_started": false
+  }
+}

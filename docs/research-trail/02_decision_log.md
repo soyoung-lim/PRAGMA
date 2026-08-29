@@ -3092,3 +3092,21 @@
 - 판정: 사전 Gate 1 `R27 직접 탈락 0`을 충족하지 못했으므로 균형 30·교수자 눈검수·500을
   시작하지 않는다. 추가 prompt/repair 개정은 새 연구자 판단 없이 자동 진행하지 않는다.
 - 근거: `ITER-20260830-01`, `EVD-20260830-01`, 구현 `cd3b741`, guard `b332b4d`, 최종 Edge v103.
+
+## DEC-20260830-02 · R27 수리 맥락 보강 뒤 clean 8 Gate에서 정지
+
+- 날짜: 2026-08-30
+- 상태: 연구자 승인 마지막 sniper fix·Edge 배포·clean 8 완료, 균형 30/500 정지.
+- 문제: `_07` 잔존 두 건은 모두 최초 R27 뒤 situation repair에서 끝났다. 운영 DB에는 실패
+  미션·revision이 없고 ledger도 본문을 저장하지 않아 실제 문자열은 복원 불가했지만, 한 건은
+  수리 뒤 critic, 한 건은 수리 뒤 결정론 재위반까지 호출 순서로 확인됐다.
+- 결정: R27 v2와 다른 생성 규칙은 그대로 두고 situation repair packet에 topology 역할·동결된
+  P·D·R/source·Anchor A를 넣으며, 같은 응답의 새 X/Y/C exact collision만 차단한다. 새 `_08`
+  release를 쓰고 `_07`을 backfill하지 않는다.
+- 결과: clean 8의 최초 R27 2건은 수리 뒤 결정론 R27을 통과했으나 critic이 두 수리본을 거부해
+  미저장됐다. 첫 패스 적격 2/8, 최종 5/8이다. 별도 저장 미션 1건에 `band_mismatch`가 남고
+  quality-fail version 2 revision도 1건 확인됐다.
+- 판정: R27 topology 재논의나 추가 자동 수정을 하지 않는다. 전체 Gate는 불통과이며 균형 30·500은
+  시작하지 않는다. 실패 critic 본문을 저장하지 않는 현행 정책상 두 수리본의 critical code는
+  `확인 불가`로 남긴다.
+- 근거: `ITER-20260830-02`, `EVD-20260830-02`, 구현 `7973ef6`, Edge v104.
