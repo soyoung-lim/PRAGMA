@@ -401,6 +401,6 @@ export const SAMPLE_MISSION_V5_NATIVE: MissionV5Native = {
   provenance: {
     ...SAMPLE_MISSION_V5.provenance!,
     prompt_version: "mission_v5_mpj5_minidiscourse_v12_r27_topology",
-    content_release_id: "pragma_scope_lock_20260830_07_mjt5_dct1_r27_topology",
+    content_release_id: "pragma_scope_lock_20260830_08_mjt5_dct1_r27_repair_context",
   },
 };

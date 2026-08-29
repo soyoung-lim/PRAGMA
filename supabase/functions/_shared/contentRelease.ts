@@ -6,7 +6,7 @@
  * 새 학습설계 또는 생성 기준을 시험할 때는 기존 ID를 덮어쓰지 말고 새 ID를 만든다.
  */
 export const CURRENT_CONTENT_RELEASE = {
-  id: "pragma_scope_lock_20260830_07_mjt5_dct1_r27_topology",
+  id: "pragma_scope_lock_20260830_08_mjt5_dct1_r27_repair_context",
   lifecycle: "candidate",
   corePromptVersions: [
     "core_v13_speech_act_r_meaning_v1",

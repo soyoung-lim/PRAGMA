@@ -50,7 +50,11 @@ import {
   hskReferenceCeiling,
   type HskTokenMatch,
 } from '../_shared/hskLexicalAudit.ts'
-import { canonicalizeNativeMpj5ContextTopology } from '../_shared/missionCanonicalization.ts'
+import {
+  buildNativeMpj5SituationRepairPacket,
+  canonicalizeNativeMpj5ContextTopology,
+  isNativeMpj5SituationReplacementTopologySafe,
+} from '../_shared/missionCanonicalization.ts'
 import {
   MISSION_CANDIDATE_REFERENCES,
   applyMissionCandidateBlueprints,
@@ -2223,7 +2227,7 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
 
 const MISSION_CANDIDATE_GENERATION_PROMPT_VERSION = 'mission_candidate_band_v1_relative_minimal_contrast'
 const MISSION_CANDIDATE_CHECK_PROMPT_VERSION = 'quality_candidate_band_v1_boundary_crossing'
-const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v9_non_band_only'
+const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v10_r27_topology_context'
 
 type CandidateBandCheckResult = {
   path: string
@@ -2633,20 +2637,7 @@ function buildMissionRepairPrompt(b: MissionRepairBody): { system: string; user:
     }
   })
   const situationPackets = targets.situationTargets.map((path) => ({
-    path,
-    current_situation_ko: path === 'production_task.situation_ko'
-      ? (b.mission_content.production_task as Record<string, unknown> | undefined)?.situation_ko
-      : (missionItems[Number(path.match(/mpj_items\[(\d+)\]/)?.[1])] as Record<string, unknown> | undefined)?.situation_ko,
-    immutable_situations: [
-      ...missionItems.map((item, index) => ({
-        path: `mpj_items[${index}].situation_ko`,
-        situation_ko: (item as Record<string, unknown> | undefined)?.situation_ko,
-      })),
-      {
-        path: 'production_task.situation_ko',
-        situation_ko: (b.mission_content.production_task as Record<string, unknown> | undefined)?.situation_ko,
-      },
-    ].filter((item) => item.path !== path),
+    ...buildNativeMpj5SituationRepairPacket(b.mission_content, path),
     findings: targetFindings.filter((finding) => finding.where === path),
   }))
   const allowed = [
@@ -2660,7 +2651,9 @@ function buildMissionRepairPrompt(b: MissionRepairBody): { system: string; user:
   const system = `당신은 PRAGMA 교수자 저작 파이프라인의 국소 수리 모델입니다.
 결정론 검사 또는 critic이 지목한 대상만 고치고, 통과한 후보·문항과 DCT 코어는 절대 바꾸지 마세요.
 R27 situation 경로가 지목되면 replace_situation으로 그 문자열 하나만 다시 만드세요. 다른 필드는 반환하거나
-바꾸지 마세요. MJT3·4 Anchor A 경로라면 새 사건을 만들지 말고 packet의 MJT2 Anchor A 문자열을 그대로 씁니다.
+바꾸지 마세요. packet의 topology_role·target_context·anchor_a·role_requirement를 모두 따르세요.
+MJT3·4 Anchor A 경로라면 새 사건을 만들지 말고 packet의 MJT2 Anchor A 문자열을 그대로 씁니다.
+복수 상황을 한 번에 교체할 때 새 X/Y/C 결과끼리도 완전히 달라야 합니다.
 후보 경로가 지목되면 replace_fix_choice_candidate 또는 replace_multi_judge_candidate로 그 후보 하나만
 다시 만드세요. candidate에는 text와 note_ko만 반환하며 is_valid·accepted_band_codes·comparison_role은
 서버가 원본 그대로 동결합니다. 문항 전체 operation으로 후보 수리를 우회하지 마세요.
@@ -2734,6 +2727,7 @@ function sanitizeMissionRepairOperations(
   const candidateTargetKeys = new Set(targets.candidateTargets.map((target) =>
     `${target.itemIndex}:${target.collection}:${target.candidateIndex}`))
   const situationTargetPaths = new Set(targets.situationTargets)
+  const acceptedSituationReplacements = new Map<string, string>()
   for (const value of operations) {
     const operation = value && typeof value === 'object' && !Array.isArray(value)
       ? value as Record<string, unknown>
@@ -2749,7 +2743,13 @@ function sanitizeMissionRepairOperations(
         : path === 'production_task.situation_ko'
           ? (mission.production_task as Record<string, unknown> | undefined)?.situation_ko
           : null
-      if (situation === current) continue
+      if (situation === current || !isNativeMpj5SituationReplacementTopologySafe(
+        mission,
+        path,
+        situation,
+        acceptedSituationReplacements,
+      )) continue
+      acceptedSituationReplacements.set(path, situation)
       sanitized.push({ operation: 'replace_situation', path, situation_ko: situation })
       continue
     }

@@ -80,6 +80,8 @@ describe("prompt snapshot integrity", () => {
     expect(planned).not.toContain("[직전 실패 출력");
     const edgeSource = readFileSync(resolve(process.cwd(), "supabase/functions/generate-scenario/index.ts"), "utf8");
     expect(edgeSource).toContain("targets.situationTargets.length === 0");
+    expect(edgeSource).toContain("buildNativeMpj5SituationRepairPacket");
+    expect(edgeSource).toContain("acceptedSituationReplacements");
   });
 
   it("locks the streamlined learner-facing MPJ contract", () => {
@@ -146,7 +148,7 @@ describe("prompt snapshot integrity", () => {
       expect(releaseSource).toContain(`"${version}"`);
     }
     expect(canonicalSource).toContain("content_release_id: CURRENT_CONTENT_RELEASE_ID");
-    expect(canonicalSource).toContain("mission_item_repair_v9_non_band_only");
+    expect(canonicalSource).toContain("mission_item_repair_v10_r27_topology_context");
     expect(canonicalSource).toContain("mission_candidate_band_v1_relative_minimal_contrast");
     expect(canonicalSource).toContain("quality_candidate_band_v1_boundary_crossing");
     expect(canonicalSource).toContain("operations를 빈 배열로");
