@@ -35,10 +35,10 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
 
   const standaloneClasses = (active: boolean) =>
     [
-      "ml-3 mr-2 rounded-lg border-l-[3px] px-3 py-2 text-[14px] font-semibold whitespace-nowrap shadow-sm transition-colors",
+      "ml-3 mr-2 rounded-lg py-2 pl-4 pr-3 text-[14px] font-semibold whitespace-nowrap shadow-sm transition-colors",
       active
-        ? "border-[#15202B] bg-[#FAD338] text-[#15202B]"
-        : "border-[#D6BC40] bg-[#F7F2DF] text-[#15202B] hover:bg-[#FFF1B8]",
+        ? "bg-[#FAD338] text-[#15202B]"
+        : "bg-[#F7F2DF] text-[#15202B] hover:bg-[#FFF1B8]",
     ].join(" ");
 
   const itemClasses = (active: boolean) =>
