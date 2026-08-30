@@ -16,12 +16,12 @@ export type PromptSnapshot = {
   prompts: PromptSnapshotEntry[];
 };
 export const PROMPT_SNAPSHOT: PromptSnapshot = {
-  "generated_at": "2026-08-30T11:48:34+09:00",
-  "git_commit": "6c0e7bc",
+  "generated_at": "2026-08-30T12:46:25+09:00",
+  "git_commit": "785a399",
   "git_dirty": false,
   "edge_source": "supabase/functions/generate-scenario/index.ts",
-  "edge_source_sha256": "cb88ef8a7a7fdca4b06296feaf2013a7bc319382be990d74dcecf7f54cdada64",
-  "core_surface_hash": "6e5aee7cf1244bd9dc0f0b44d01f7e9aa35dfef008f8ff67f56ef7048060b0a1",
+  "edge_source_sha256": "cf9756bfc1d20eec253a84412c080629d5d231ab986f015d614046f144698e17",
+  "core_surface_hash": "857875fbb14dc9809b9d855c3672d7eb1e4608369baf1eb687e7fecb2816d617",
   "generation_config": {
     "model": "gpt-4.1-mini",
     "model_fallback": null,
@@ -29,7 +29,7 @@ export const PROMPT_SNAPSHOT: PromptSnapshot = {
     "response_format": "json_schema:pragma_scenario_core_v2"
   },
   "source_length_policy": {
-    "version": "effective_chars_v1",
+    "version": "effective_chars_v2_min_warning",
     "unit": "effective_chars",
     "ranges": {
       "translation": {

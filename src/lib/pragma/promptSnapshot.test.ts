@@ -34,7 +34,7 @@ describe("prompt snapshot integrity", () => {
   });
 
   it("records the versioned effective-character pilot policy", () => {
-    expect(PROMPT_SNAPSHOT.source_length_policy.version).toBe("effective_chars_v1");
+    expect(PROMPT_SNAPSHOT.source_length_policy.version).toBe("effective_chars_v2_min_warning");
     expect(PROMPT_SNAPSHOT.source_length_policy.ranges.stt_interpreting.intermediate).toEqual({
       min: 40,
       max: 60,
