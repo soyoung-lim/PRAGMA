@@ -84,6 +84,19 @@ describe("prompt snapshot integrity", () => {
     expect(edgeSource).toContain("acceptedSituationReplacements");
   });
 
+  it("records topology generation under the existing mission ledger operation", () => {
+    const edgeSource = readFileSync(resolve(process.cwd(), "supabase/functions/generate-scenario/index.ts"), "utf8");
+    const ledgerMigration = readFileSync(
+      resolve(process.cwd(), "supabase/migrations/20260825033000_mission_authoring_pipeline.sql"),
+      "utf8",
+    );
+
+    expect(edgeSource).toContain("telemetryFor('mission_generate', true, {");
+    expect(edgeSource).toContain("promptVersion: MISSION_TOPOLOGY_PROMPT_VERSION");
+    expect(edgeSource).not.toContain("telemetryFor('mission_topology', true, {");
+    expect(ledgerMigration).toContain("'mission_generate'");
+  });
+
   it("locks the streamlined learner-facing MPJ contract", () => {
     const system = prompt("mission.system").text;
     expect(system).toContain("별도의 대역 판단이나 확신도는 묻지 않습니다");

@@ -535,7 +535,6 @@ async function matchHskTokens(tokens: string[], referenceCeiling: number): Promi
 type LlmOperation =
   | 'core_generate'
   | 'core_repair'
-  | 'mission_topology'
   | 'mission_generate'
   | 'mission_repair'
   | 'item_lineage_attribution'
@@ -2359,7 +2358,9 @@ async function generateFrozenMissionTopology(args: {
     const prompt = buildMissionTopologyPrompt(args.body, allFindings)
     const response = await callOpenAI(MISSION_PRIMARY_MODEL, args.apiKey, prompt.system, prompt.user, 0.2, {
       responseFormat: MISSION_TOPOLOGY_RESPONSE_FORMAT,
-      telemetry: args.telemetryFor('mission_topology', true, {
+      // Topology is the first stage of mission generation. Keep the existing
+      // ledger operation and distinguish this subtype by its prompt version.
+      telemetry: args.telemetryFor('mission_generate', true, {
         promptVersion: MISSION_TOPOLOGY_PROMPT_VERSION,
         invocationAttempt: attempt,
       }),
