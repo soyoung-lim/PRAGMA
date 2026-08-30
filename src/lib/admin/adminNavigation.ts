@@ -44,6 +44,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     items: [
       { to: "/admin/composer", label: "15주 수업 편성·강의계획서" },
       { to: "/admin/package", label: "수업자료·교실 화면" },
+      { to: "/admin/class-responses", label: "실시간 학급 응답" },
       { to: "/admin/learners", label: "학습자 승인·관리" },
       { to: "/admin/data-backup", label: "수업 데이터 백업·복원" },
     ],

@@ -12,6 +12,14 @@
 import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 
+export interface ClassResponseCountRow {
+  item_id: number;
+  item_type: string;
+  axis: "scale" | "band" | "initial_judgment" | "correction" | "reason" | "best" | "worst";
+  choice_key: string;
+  count: number;
+}
+
 /** 집계에 필요한 최소 로그 행 형태(learner_mission_logs 부분 선택). */
 export interface ClassResponseLogRow {
   mission_id: string;
@@ -222,4 +230,82 @@ export function aggregateMissionResponses(
     });
 
   return { missionId, learners: latestByLearner.size, dissents, items };
+}
+
+const AXIS_HEADING: Record<ClassResponseCountRow["axis"], string> = {
+  scale: "적절성 판단",
+  band: "조절 정도 판단",
+  initial_judgment: "최초 적절성 판단",
+  correction: "고른 수정안",
+  reason: "고른 이유",
+  best: "BEST로 고른 초안",
+  worst: "WORST로 고른 초안",
+};
+
+const AXIS_ORDER: ClassResponseCountRow["axis"][] = [
+  "scale", "band", "initial_judgment", "correction", "reason", "best", "worst",
+];
+
+/** 서버가 반환한 익명 choice count를 기존 분포 뷰 모델로 바꾼다. */
+export function missionPatternFromCounts({
+  missionId,
+  learners,
+  dissents,
+  counts,
+  mission,
+}: {
+  missionId: string;
+  learners: number;
+  dissents: number;
+  counts: ClassResponseCountRow[];
+  mission: MissionRuntime | null;
+}): MissionPattern {
+  const bands = bandLabels(mission);
+  const mpjItems = (mission?.mpj_items ?? []) as Array<Record<string, unknown>>;
+  const itemMeta = (itemId: number) => mpjItems.find((item) => item.id === itemId) ?? null;
+  const labelFor = (row: ClassResponseCountRow) => {
+    const meta = itemMeta(row.item_id);
+    if (row.axis === "scale") return SCALE_LABELS[row.choice_key] ?? row.choice_key;
+    if (row.axis === "band") return bands.get(row.choice_key) ?? row.choice_key;
+    if (row.axis === "initial_judgment") return row.choice_key === "appropriate" ? "적절하다" : "적절하지 않다";
+    if (row.axis === "correction") {
+      const index = Number(row.choice_key);
+      const corrections = Array.isArray(meta?.corrections) ? meta.corrections as Array<{ text?: unknown }> : [];
+      const text = typeof corrections[index]?.text === "string" ? corrections[index].text as string : null;
+      return text ? `수정안 ${index + 1} · ${truncate(text)}` : `수정안 ${index + 1}`;
+    }
+    if (row.axis === "reason") {
+      const reasons = Array.isArray(meta?.reasons) ? meta.reasons as Array<{ id?: unknown; text_ko?: unknown }> : [];
+      const reason = reasons.find((candidate) => candidate.id === row.choice_key);
+      return typeof reason?.text_ko === "string" ? truncate(reason.text_ko, 60) : row.choice_key;
+    }
+    const index = Number(row.choice_key);
+    const candidates = Array.isArray(meta?.candidates) ? meta.candidates as Array<{ text?: unknown }> : [];
+    const text = typeof candidates[index]?.text === "string" ? candidates[index].text as string : null;
+    return text ? `초안 ${index + 1} · ${truncate(text, 30)}` : `초안 ${index + 1}`;
+  };
+
+  const itemIds = [...new Set(counts.map((row) => row.item_id))].sort((a, b) => a - b);
+  const items: ItemPattern[] = itemIds.map((itemId) => {
+    const rows = counts.filter((row) => row.item_id === itemId);
+    const meta = itemMeta(itemId);
+    const itemType = rows[0]?.item_type ?? "judgment";
+    const target = typeof meta?.target === "string" ? meta.target as string : null;
+    const groups = AXIS_ORDER.flatMap((axis): ItemChoiceGroup[] => {
+      const axisRows = rows.filter((row) => row.axis === axis);
+      if (axisRows.length === 0) return [];
+      const choices = axisRows
+        .map((row) => ({ key: row.choice_key, label: labelFor(row), count: row.count }))
+        .sort((a, b) => b.count - a.count);
+      return [{ heading: AXIS_HEADING[axis], total: choices.reduce((sum, choice) => sum + choice.count, 0), choices }];
+    });
+    return {
+      itemId,
+      title: `판단 ${itemId} · ${ITEM_TITLES[itemType] ?? itemType}`,
+      targetPreview: target ? truncate(target, 60) : null,
+      groups,
+    };
+  });
+
+  return { missionId, learners, dissents, items };
 }

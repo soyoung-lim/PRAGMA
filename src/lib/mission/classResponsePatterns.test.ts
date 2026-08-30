@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   aggregateMissionResponses,
+  missionPatternFromCounts,
   parseJudgmentEnvelope,
   type ClassResponseLogRow,
 } from "./classResponsePatterns";
@@ -40,6 +41,25 @@ describe("parseJudgmentEnvelope", () => {
     expect(parseJudgmentEnvelope(null)).toEqual({ responses: [], dissent: false });
     expect(parseJudgmentEnvelope("oops")).toEqual({ responses: [], dissent: false });
   });
+
+  it("서버 choice count를 같은 문항 라벨과 분포로 복원한다", () => {
+    const pattern = missionPatternFromCounts({
+      missionId: MISSION_ID,
+      learners: 6,
+      dissents: 1,
+      mission: SAMPLE_MISSION_V5_NATIVE,
+      counts: [
+        { item_id: 1, item_type: "scale4", axis: "scale", choice_key: "somewhat_appropriate", count: 4 },
+        { item_id: 1, item_type: "scale4", axis: "scale", choice_key: "very_inappropriate", count: 2 },
+      ],
+    });
+    expect(pattern.learners).toBe(6);
+    expect(pattern.items[0].groups[0].choices).toEqual([
+      { key: "somewhat_appropriate", label: "다소 적절", count: 4 },
+      { key: "very_inappropriate", label: "매우 부적절", count: 2 },
+    ]);
+  });
+
 });
 
 describe("aggregateMissionResponses", () => {
