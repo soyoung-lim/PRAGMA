@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
-import { GenerationModeTabs } from "@/components/admin/GenerationModeTabs";
 import { Button } from "@/components/ui/button";
 import { Link, useSearchParams } from "react-router-dom";
 import { addDraftScenario } from "@/lib/scenarioDrafts";
@@ -938,7 +937,6 @@ const AdminGenerator = () => {
       title="시나리오 개별 생성"
       description="한 건씩 조건을 정해 AI 생성 학습 콘텐츠의 상황과 원문을 만들고 내부 확인 대기 상태로 저장합니다."
     >
-      <GenerationModeTabs />
       {/* Helper note */}
       <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-3">
         <p className="text-[11px] leading-relaxed text-[#5B5446]">
