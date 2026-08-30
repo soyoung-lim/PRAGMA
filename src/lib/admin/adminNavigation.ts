@@ -21,7 +21,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     header: "1. 학습 콘텐츠 설계 기준",
     items: [
       { to: "/admin/corpus", label: "HSK 3.0 어휘 코퍼스" },
-      { to: "/admin/question-designer", label: "수준별 설계 기준" },
+      { to: "/admin/question-designer", label: "판단·산출 과제 설계" },
       { to: "/admin/prompt-harness", label: "생성 계약·프롬프트" },
     ],
   },
