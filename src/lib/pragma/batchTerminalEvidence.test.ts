@@ -19,6 +19,18 @@ describe("batch terminal evidence", () => {
         deterministicFailureCodes: [],
         criticVerdict: "UNKNOWN",
         criticFindingCodes: [],
+        criticFindings: [{ code: "R27", path: "mpj_items[4].situation_ko", severity: "fail", finding: "scene mismatch" }],
+        topology: {
+          firstPassResult: "fail",
+          finalResult: "pass",
+          attempts: 2,
+          regenerationCount: 1,
+          findings: [{ attempt: 1, code: "R27", path: "y.situation_ko", message: "duplicate" }],
+        },
+        initialR27Findings: [{ code: "R27", path: "mpj_items[4].situation_ko", message: "duplicate" }],
+        r27RepairAttempted: true,
+        postRepairDeterministicResult: "pass",
+        postRepairDeterministicFindings: [],
         attemptNo: 1,
         regenerationCount: 1,
         operation: "relative_boundary_candidate_fallback",
@@ -35,6 +47,11 @@ describe("batch terminal evidence", () => {
     expect(record.terminal_stage).toBe("relative_boundary");
     expect(record.regeneration_count).toBe(1);
     expect(record.boundary_fallback).toEqual({ attempted_paths: ["mpj_items[4].candidates[3]"] });
+    expect(record.topology_regeneration_count).toBe(1);
+    expect(record.topology_deterministic_finding[0]?.path).toBe("y.situation_ko");
+    expect(record.full_mission_initial_r27).toHaveLength(1);
+    expect(record.r27_repair_attempted).toBe(true);
+    expect(record.critic_finding[0]?.finding).toBe("scene mismatch");
   });
 
   it("separates core deterministic and infrastructure outcomes", () => {

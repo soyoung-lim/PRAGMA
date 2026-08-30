@@ -51,9 +51,14 @@ import {
   type HskTokenMatch,
 } from '../_shared/hskLexicalAudit.ts'
 import {
+  NATIVE_MPJ5_TOPOLOGY_MAX_ATTEMPTS,
+  applyNativeMpj5FrozenTopology,
+  buildNativeMpj5FrozenTopology,
   buildNativeMpj5SituationRepairPacket,
-  canonicalizeNativeMpj5ContextTopology,
   isNativeMpj5SituationReplacementTopologySafe,
+  validateNativeMpj5FrozenTopology,
+  type NativeMpj5FrozenTopology,
+  type NativeMpj5TopologyFinding,
 } from '../_shared/missionCanonicalization.ts'
 import {
   MISSION_CANDIDATE_REFERENCES,
@@ -201,7 +206,7 @@ interface GenInput {
   // Two-step outline → final flow. Backward compatible:
   // when `action` is absent the handler behaves exactly like the legacy
   // single-shot full-scenario generation.
-  action?: 'outline' | 'final' | 'core' | 'mission' | 'mission_repair' | 'mission_candidate_regenerate' | 'finalize_mission' | 'authentic_analyze' | 'quality_check' | 'core_quality_check' | 'feedback'
+  action?: 'outline' | 'final' | 'core' | 'mission_topology' | 'mission' | 'mission_repair' | 'mission_candidate_regenerate' | 'finalize_mission' | 'authentic_analyze' | 'quality_check' | 'core_quality_check' | 'feedback'
   outline_count?: number
   selected_outline?: { title?: string; situation?: string } | null
   // v1.4 (2026-07-23): scenario_core_v1 / mission_v1 생성. 카탈로그는 클라가 전달.
@@ -530,6 +535,7 @@ async function matchHskTokens(tokens: string[], referenceCeiling: number): Promi
 type LlmOperation =
   | 'core_generate'
   | 'core_repair'
+  | 'mission_topology'
   | 'mission_generate'
   | 'mission_repair'
   | 'item_lineage_attribution'
@@ -1458,6 +1464,8 @@ interface MissionGenBody {
       intended_band_profile: string
     }>
   }
+  frozen_topology?: NativeMpj5FrozenTopology
+  topology_evidence?: MissionTopologyEvidence
 }
 
 interface MissionRepairBody {
@@ -2206,7 +2214,7 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
     '[산출 정합] reference_alternatives(적절 산출안)가 쓰는 완화·전략은, MPJ 세트가 최소 1회 사전 노출해야 합니다.',
     `🔴 [참고안] reference_alternatives는 반드시 위 [산출 과제]의 "원문"(${srcL})을 ${tgtL}로 옮긴 것이어야 합니다 — MPJ 문항의 예문을 복사하거나 다른 상황의 문장을 넣지 마세요.`,
     nativeMpj5
-      ? '[앵커+대비] 2번 judge3·3번 fix_choice·4번 reason은 위 P/D/R을 그대로 사용하되 서로 다른 사건으로 만드세요.'
+      ? '[앵커+대비] 2번 judge3·3번 fix_choice·4번 reason은 위 P/D/R과 동일한 Anchor A 장면을 공유하세요.'
       : '[앵커+대비] 2번 fix_choice와 3번 reason은 위 P/D/R을 그대로 사용하되 서로 다른 사건으로 만드세요.',
     nativeMpj5
       ? '[앵커+대비] 5번 multi_judge는 위 P/D/R 중 정확히 한 축만 바꾼 대비 상황으로 만드세요.'
@@ -2219,6 +2227,15 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
       '[고정 contrast plan — 그대로 구현]:',
       JSON.stringify(b.contrast_plan, null, 2),
     )
+    if (b.frozen_topology) {
+      parts.push(
+        '',
+        '[서버 동결 scene topology — authoritative source]',
+        JSON.stringify(b.frozen_topology, null, 2),
+        'MJT1은 x, MJT2·3·4는 anchor, MJT5는 y 장면·관계·channel·PDR을 글자와 코드까지 그대로 사용하세요.',
+        'full-mission 응답에서 scene 값을 바꾸더라도 서버는 이 plan으로 덮어씁니다. 따라서 source·target·후보·해설을 이 동결 장면에 정확히 맞추세요.',
+      )
+    }
   }
   if (b.error_pattern_hints_ko.length) {
     parts.push(
@@ -2229,6 +2246,190 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
   }
   parts.push('', 'JSON만 반환하세요.')
   return parts.join('\n')
+}
+
+const MISSION_TOPOLOGY_PROMPT_VERSION = 'mission_scene_topology_v1_constraint_by_construction'
+
+type MissionTopologyAttemptFinding = NativeMpj5TopologyFinding & { attempt: number }
+type MissionTopologyEvidence = {
+  version: 'mission_scene_topology_evidence_v1'
+  prompt_version: typeof MISSION_TOPOLOGY_PROMPT_VERSION
+  first_pass_result: 'pass' | 'fail'
+  final_result: 'pass' | 'fail'
+  attempts: number
+  regeneration_count: number
+  findings: MissionTopologyAttemptFinding[]
+}
+
+const MISSION_TOPOLOGY_RESPONSE_FORMAT: OpenAIResponseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'pragma_mission_scene_topology',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['x', 'anchor', 'y'],
+      properties: {
+        x: { $ref: '#/$defs/scene' },
+        anchor: { $ref: '#/$defs/scene' },
+        y: { $ref: '#/$defs/scene' },
+      },
+      $defs: {
+        pdr: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['p', 'd', 'r'],
+          properties: {
+            p: { type: 'string', enum: ['speaker_lower', 'equal', 'speaker_higher'] },
+            d: { type: 'string', enum: ['close', 'acquaintance', 'distant'] },
+            r: { type: 'string', enum: ['low', 'mid', 'high'] },
+          },
+        },
+        scene: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['situation_ko', 'relation_ko', 'channel', 'pdr'],
+          properties: {
+            situation_ko: { type: 'string' },
+            relation_ko: { type: 'string' },
+            channel: { type: 'string', enum: ['email', 'messenger', 'facetoface', 'phone'] },
+            pdr: { $ref: '#/$defs/pdr' },
+          },
+        },
+      },
+    },
+  },
+}
+
+function buildMissionTopologyPrompt(
+  b: MissionGenBody,
+  findings: readonly MissionTopologyAttemptFinding[] = [],
+): { system: string; user: string } {
+  const direction = normDir(b.direction)
+  const isSpoken = b.core.source_modality === 'spoken'
+  const situationRule = isSpoken
+    ? '학습자 통역사 C의 관점에서 A·B·C 역할과 구체적 사건을 담은 한국어 정확히 2문장(A의 1인칭 금지)'
+    : '학습자 1인칭으로 상대·구체적 사건·핵심 제약을 담은 한국어 정확히 2문장'
+  const relationRule = isSpoken
+    ? '원발화자 A와 청자 B의 역할·관계만 한 줄'
+    : '학습자가 마주한 상대의 역할·관계만 한 줄'
+  const channels = isSpoken ? 'facetoface 또는 phone' : 'email 또는 messenger'
+  const system = `당신은 PRAGMA의 frozen mission scene topology 설계기입니다.
+완전한 미션·문항·후보·정답·해설은 만들지 말고 X/Anchor A/Y 세 장면만 JSON으로 만드세요.
+- X, A, Y situation_ko는 각각 ${situationRule}이며 140자 이내입니다.
+- X/A/Y와 서버가 제시하는 DCT C는 글자까지 완전히 다른 구체적 사건이어야 합니다.
+- Anchor A는 하나만 만듭니다. 이후 서버가 MJT2·3·4에 동일 객체로 복제합니다.
+- Anchor A는 DCT C와 같은 P/D/R입니다. X와 Y는 각각 Anchor에서 정확히 한 축만 바꿉니다.
+- relation_ko는 ${relationRule}이고 P/D/R과 일치해야 합니다.
+- channel은 ${channels}만 사용합니다.
+- 화행과 핵심 화용 초점은 유지하되 새 의미 판정 규칙을 만들지 마세요.
+응답은 지정 JSON 하나뿐입니다.`
+  const user = [
+    `[언어 방향] ${LANG_DIR_KO[direction]}`,
+    `[화행] ${b.speech_act_ko} (${b.speech_act})`,
+    `[화용 초점] ${b.feature.code} — ${b.feature.operational_definition}`,
+    '[서버 고정 DCT C — 변경 금지]',
+    JSON.stringify({
+      situation_ko: b.core.situation_ko,
+      relation_ko: b.core.relation_ko,
+      channel: b.core.channel ?? null,
+      pdr: b.core.pdr,
+      source_modality: b.core.source_modality,
+      source_text: b.core.source_text_ko,
+    }, null, 2),
+    ...(findings.length > 0
+      ? ['[직전 topology deterministic findings — 이 항목만 바로잡아 전체 X/A/Y를 다시 반환]', JSON.stringify(findings, null, 2)]
+      : []),
+  ].join('\n')
+  return { system, user }
+}
+
+async function generateFrozenMissionTopology(args: {
+  apiKey: string
+  body: MissionGenBody
+  telemetryFor: TelemetryFactory
+}): Promise<
+  | { ok: true; topology: NativeMpj5FrozenTopology; evidence: MissionTopologyEvidence }
+  | { ok: false; stopCode: string; error: string; evidence: MissionTopologyEvidence; providerStatus?: number }
+> {
+  const allFindings: MissionTopologyAttemptFinding[] = []
+  let firstPassResult: 'pass' | 'fail' = 'fail'
+  for (let attempt = 1; attempt <= NATIVE_MPJ5_TOPOLOGY_MAX_ATTEMPTS; attempt += 1) {
+    const prompt = buildMissionTopologyPrompt(args.body, allFindings)
+    const response = await callOpenAI(MISSION_PRIMARY_MODEL, args.apiKey, prompt.system, prompt.user, 0.2, {
+      responseFormat: MISSION_TOPOLOGY_RESPONSE_FORMAT,
+      telemetry: args.telemetryFor('mission_topology', true, {
+        promptVersion: MISSION_TOPOLOGY_PROMPT_VERSION,
+        invocationAttempt: attempt,
+      }),
+    })
+    if (!response.ok) {
+      const evidence: MissionTopologyEvidence = {
+        version: 'mission_scene_topology_evidence_v1',
+        prompt_version: MISSION_TOPOLOGY_PROMPT_VERSION,
+        first_pass_result: firstPassResult,
+        final_result: 'fail',
+        attempts: attempt,
+        regeneration_count: Math.max(0, attempt - 1),
+        findings: allFindings,
+      }
+      return {
+        ok: false,
+        stopCode: 'topology_provider_failure',
+        error: 'Topology provider 호출에 실패했습니다.',
+        evidence,
+        providerStatus: response.status,
+      }
+    }
+    let parsed: unknown
+    try {
+      parsed = parseOpenAIContent(response.raw)
+    } catch (error) {
+      const parseFinding: MissionTopologyAttemptFinding = {
+        attempt,
+        code: 'TOPOLOGY_CONTEXT',
+        path: '$',
+        message: `Topology JSON 파싱 실패: ${(error as Error).message}`,
+      }
+      allFindings.push(parseFinding)
+      if (attempt === 1) firstPassResult = 'fail'
+      continue
+    }
+    const frozen = buildNativeMpj5FrozenTopology(parsed, args.body.core)
+    const attemptFindings = frozen.findings.map((finding) => ({ ...finding, attempt }))
+    if (attempt === 1) firstPassResult = attemptFindings.length === 0 ? 'pass' : 'fail'
+    allFindings.push(...attemptFindings)
+    if (attemptFindings.length === 0) {
+      return {
+        ok: true,
+        topology: frozen.topology,
+        evidence: {
+          version: 'mission_scene_topology_evidence_v1',
+          prompt_version: MISSION_TOPOLOGY_PROMPT_VERSION,
+          first_pass_result: firstPassResult,
+          final_result: 'pass',
+          attempts: attempt,
+          regeneration_count: Math.max(0, attempt - 1),
+          findings: allFindings,
+        },
+      }
+    }
+  }
+  return {
+    ok: false,
+    stopCode: 'topology_deterministic_failure',
+    error: 'Bounded topology regeneration 뒤에도 deterministic topology를 통과하지 못했습니다.',
+    evidence: {
+      version: 'mission_scene_topology_evidence_v1',
+      prompt_version: MISSION_TOPOLOGY_PROMPT_VERSION,
+      first_pass_result: firstPassResult,
+      final_result: 'fail',
+      attempts: NATIVE_MPJ5_TOPOLOGY_MAX_ATTEMPTS,
+      regeneration_count: NATIVE_MPJ5_TOPOLOGY_MAX_ATTEMPTS - 1,
+      findings: allFindings,
+    },
+  }
 }
 
 const MISSION_CANDIDATE_GENERATION_PROMPT_VERSION = 'mission_candidate_band_v2_bounded_fallback'
@@ -3114,7 +3315,7 @@ function buildQualitySystemPrompt(
     ? '**첫인상 판단 → 맥락 대비 판단 → 판단+교정 → 주원인 선택 → 여러 초안 비교**(MPJ 5문항)'
     : '**첫인상 판단 → 판단+교정 → 주원인 선택 → 여러 초안 비교**(legacy MPJ 4문항)'
   const contextPlan = nativeMpj5
-    ? 'judge3·fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
+    ? 'judge3·fix_choice·reason은 DCT와 같은 앵커 PDR의 동일한 Anchor A 사건'
     : 'fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
   const comparisonQualityCheck = nativeMpj5
     ? `⑪ comparison_quality_mismatch — multi_judge의 네 후보가 **적정 대역 2개·조정 필요 대역
@@ -3910,6 +4111,45 @@ Deno.serve(async (req) => {
       )
     }
 
+    // ── mission_topology: current MPJ5의 X/A/Y를 먼저 bounded 생성·검증 ──
+    if (input.action === 'mission_topology') {
+      const b = input.mission
+      if (!b?.feature || !b?.core) {
+        return new Response(JSON.stringify({ error: 'mission body required' }), { status: 400, headers: jsonHeaders })
+      }
+      const inheritedFocal = Array.isArray(b.core.focal_segments)
+        ? b.core.focal_segments.filter((segment) =>
+            segment?.role === 'head' && typeof segment.text === 'string' &&
+            segment.text.trim().length > 0 && b.core.source_text_ko.includes(segment.text.trim()))
+        : []
+      if (inheritedFocal.length === 0) {
+        return new Response(JSON.stringify({ error: 'mission_topology is only available for current mission_v5' }), {
+          status: 400,
+          headers: jsonHeaders,
+        })
+      }
+      const generated = await generateFrozenMissionTopology({ apiKey, body: b, telemetryFor })
+      if (!generated.ok) {
+        return new Response(JSON.stringify({
+          error: generated.error,
+          stop_code: generated.stopCode,
+          topology_evidence: generated.evidence,
+          provider_status: generated.providerStatus ?? 'UNKNOWN',
+        }), { status: 200, headers: jsonHeaders })
+      }
+      return new Response(JSON.stringify({
+        frozen_topology: generated.topology,
+        topology_evidence: generated.evidence,
+        meta: {
+          provider: PROVIDER,
+          model: MISSION_PRIMARY_MODEL,
+          prompt_version: MISSION_TOPOLOGY_PROMPT_VERSION,
+          content_release_id: CURRENT_CONTENT_RELEASE_ID,
+          generated_at: new Date().toISOString(),
+        },
+      }), { status: 200, headers: jsonHeaders })
+    }
+
     // ── mission action: 현행 mission_v5(MPJ5), legacy core는 mission_v4(MPJ4) ──
     if (input.action === 'mission') {
       const b = input.mission
@@ -3931,6 +4171,19 @@ Deno.serve(async (req) => {
             .slice(0, 3)
         : []
       const isMiniDiscourse = inheritedFocal.some((seg) => seg.role === 'head')
+      let frozenTopology: NativeMpj5FrozenTopology | null = null
+      if (isMiniDiscourse) {
+        const topologyFindings = validateNativeMpj5FrozenTopology(b.frozen_topology, b.core)
+        if (!b.frozen_topology || topologyFindings.length > 0 || b.topology_evidence?.final_result !== 'pass') {
+          return new Response(JSON.stringify({
+            error: 'Current mission_v5 requires a valid server-frozen scene topology.',
+            stop_code: 'topology_contract_invalid',
+            topology_evidence: b.topology_evidence ?? null,
+            topology_findings: topologyFindings,
+          }), { status: 200, headers: jsonHeaders })
+        }
+        frozenTopology = b.frozen_topology
+      }
       const sys = buildMissionSystemPrompt(b.feature, b.is_response_act, isSpoken, missionDir, isMiniDiscourse)
       const usr = buildMissionUserPrompt(b, isMiniDiscourse)
       const model = MISSION_PRIMARY_MODEL
@@ -3952,8 +4205,8 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
       }
       const rawItems = Array.isArray(gen.mpj_items) ? gen.mpj_items : []
-      const canonicalItems = isMiniDiscourse
-        ? canonicalizeNativeMpj5ContextTopology(rawItems, b.core.pdr)
+      const canonicalItems = isMiniDiscourse && frozenTopology
+        ? applyNativeMpj5FrozenTopology(rawItems, frozenTopology)
         : rawItems
       let plannedItems = isMiniDiscourse
         ? applyMissionCandidateBlueprints(canonicalItems, b.feature)
@@ -4069,6 +4322,7 @@ Deno.serve(async (req) => {
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: 1,
+          ...(isMiniDiscourse && b.topology_evidence ? { scene_topology: b.topology_evidence } : {}),
           ...(bandTargetingMeta ? { band_targeting: bandTargetingMeta } : {}),
         },
       }

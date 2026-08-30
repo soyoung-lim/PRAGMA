@@ -1,11 +1,91 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  NATIVE_MPJ5_TOPOLOGY_MAX_ATTEMPTS,
+  applyNativeMpj5FrozenTopology,
+  buildNativeMpj5FrozenTopology,
   buildNativeMpj5SituationRepairPacket,
   canonicalizeNativeMpj5AnchorPdr,
   canonicalizeNativeMpj5ContextTopology,
   isNativeMpj5SituationReplacementTopologySafe,
 } from '../../../supabase/functions/_shared/missionCanonicalization'
+
+describe('native MPJ5 frozen topology', () => {
+  const core = {
+    situation_ko: '학과장에게 다음 주 발표 자료를 메일로 보낸다. 오늘 중 검토를 정중히 요청해야 한다.',
+    relation_ko: '학생과 학과장',
+    channel: 'email',
+    pdr: { p: 'speaker_lower', d: 'distant', r: 'mid' },
+    source_modality: 'written',
+  }
+  const raw = {
+    x: {
+      situation_ko: '친한 동료에게 회의 자료를 메신저로 보낸다. 내일까지 의견을 편하게 부탁한다.',
+      relation_ko: '친한 동료 사이',
+      channel: 'messenger',
+      pdr: { p: 'equal', d: 'distant', r: 'mid' },
+    },
+    anchor: {
+      situation_ko: '지도교수에게 연구 계획서를 메일로 보낸다. 이번 주 안에 검토를 정중히 부탁한다.',
+      relation_ko: '학생과 지도교수',
+      channel: 'email',
+      pdr: { p: 'equal', d: 'close', r: 'high' },
+    },
+    y: {
+      situation_ko: '회사 대표에게 계약 초안을 메일로 보낸다. 오늘 안에 승인을 매우 정중히 요청한다.',
+      relation_ko: '인턴과 회사 대표',
+      channel: 'email',
+      pdr: { p: 'speaker_lower', d: 'distant', r: 'high' },
+    },
+  }
+
+  it('server-freezes C and Anchor PDR while keeping one-axis X/Y contrasts', () => {
+    const built = buildNativeMpj5FrozenTopology(raw, core)
+
+    expect(NATIVE_MPJ5_TOPOLOGY_MAX_ATTEMPTS).toBe(2)
+    expect(built.findings).toEqual([])
+    expect(built.topology.anchor.pdr).toEqual(core.pdr)
+    expect(built.topology.c).toMatchObject({
+      situation_ko: core.situation_ko,
+      relation_ko: core.relation_ko,
+      pdr: core.pdr,
+    })
+    expect(built.topology.x.pdr).toEqual({ ...core.pdr, p: 'equal' })
+    expect(built.topology.y.pdr).toEqual({ ...core.pdr, r: 'high' })
+  })
+
+  it('overwrites only scene topology and preserves model-authored candidate content', () => {
+    const { topology } = buildNativeMpj5FrozenTopology(raw, core)
+    const items = Array.from({ length: 5 }, (_, index) => ({
+      type: `type-${index}`,
+      situation_ko: `model scene ${index}`,
+      candidates: [`candidate-${index}`],
+      feedback: { keep: index },
+    }))
+
+    const applied = applyNativeMpj5FrozenTopology(items, topology)
+
+    expect(applied.map((item) => item.situation_ko)).toEqual([
+      topology.x.situation_ko,
+      topology.anchor.situation_ko,
+      topology.anchor.situation_ko,
+      topology.anchor.situation_ko,
+      topology.y.situation_ko,
+    ])
+    expect(applied[3].candidates).toEqual(['candidate-3'])
+    expect(applied[3].feedback).toEqual({ keep: 3 })
+  })
+
+  it('rejects literal scene collisions before full-mission generation', () => {
+    const duplicate = {
+      ...raw,
+      y: { ...raw.y, situation_ko: raw.x.situation_ko },
+    }
+
+    const built = buildNativeMpj5FrozenTopology(duplicate, core)
+    expect(built.findings).toContainEqual(expect.objectContaining({ code: 'R27', path: 'y.situation_ko' }))
+  })
+})
 
 describe('canonicalizeNativeMpj5AnchorPdr', () => {
   it('copies the production PDR onto anchor items and preserves one axis for both contrasts', () => {

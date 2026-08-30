@@ -118,6 +118,7 @@ export interface PromoteResult {
 export interface PromotionTerminalEvidence {
   terminalStage:
     | "preparing"
+    | "topology"
     | "mission_generation"
     | "relative_boundary"
     | "schema"
@@ -130,6 +131,18 @@ export interface PromotionTerminalEvidence {
   deterministicFailureCodes: string[];
   criticVerdict: "pass" | "warning" | "fail" | "UNKNOWN";
   criticFindingCodes: Array<{ code: string; path: string }>;
+  criticFindings?: Array<{ code: string; path: string; severity: string; finding: string }>;
+  topology?: {
+    firstPassResult: "pass" | "fail" | "UNKNOWN";
+    finalResult: "pass" | "fail" | "UNKNOWN";
+    attempts: number;
+    regenerationCount: number;
+    findings: Array<{ attempt: number; code: string; path: string; message: string }>;
+  } | null;
+  initialR27Findings?: Array<{ code: string; path: string; message: string }>;
+  r27RepairAttempted?: boolean;
+  postRepairDeterministicResult?: "pass" | "fail" | "not_attempted" | "UNKNOWN";
+  postRepairDeterministicFindings?: Array<{ code: string; path: string; message: string }>;
   attemptNo: number;
   regenerationCount: number;
   operation: string;
@@ -150,6 +163,48 @@ function providerStatusFromError(error: unknown): number | "UNKNOWN" {
 
 function qualityFindingSummary(quality: QualityCheck | undefined) {
   return quality?.findings.map((finding) => ({ code: finding.code, path: finding.where })) ?? [];
+}
+
+function qualityFindingEvidence(quality: QualityCheck | undefined) {
+  return quality?.findings.map((finding) => ({
+    code: finding.code,
+    path: finding.where,
+    severity: finding.severity,
+    finding: finding.note_ko,
+  })) ?? [];
+}
+
+function topologyEvidence(value: unknown): PromotionTerminalEvidence["topology"] {
+  if (!isRecord(value)) return null;
+  const findings = Array.isArray(value.findings)
+    ? value.findings.filter(isRecord).map((finding) => ({
+        attempt: typeof finding.attempt === "number" ? finding.attempt : 0,
+        code: typeof finding.code === "string" ? finding.code : "UNKNOWN",
+        path: typeof finding.path === "string" ? finding.path : "UNKNOWN",
+        message: typeof finding.message === "string" ? finding.message : "UNKNOWN",
+      }))
+    : [];
+  return {
+    firstPassResult: value.first_pass_result === "pass" || value.first_pass_result === "fail"
+      ? value.first_pass_result
+      : "UNKNOWN",
+    finalResult: value.final_result === "pass" || value.final_result === "fail"
+      ? value.final_result
+      : "UNKNOWN",
+    attempts: typeof value.attempts === "number" ? value.attempts : 0,
+    regenerationCount: typeof value.regeneration_count === "number" ? value.regeneration_count : 0,
+    findings,
+  };
+}
+
+function r27FindingEvidence(violations: MissionRuleViolation[]) {
+  return violations
+    .filter((violation) => violation.id === "R27")
+    .map((violation) => ({
+      code: violation.id,
+      path: repairFindingsForRuleViolations([violation])[0]?.where ?? "UNKNOWN",
+      message: violation.message,
+    }));
 }
 
 function bandTargetingFromContent(content: Record<string, unknown>): Record<string, unknown> {
@@ -388,6 +443,12 @@ function promotionTerminal(
     deterministicFailureCodes: overrides.deterministicFailureCodes ?? [],
     criticVerdict: overrides.criticVerdict ?? "UNKNOWN",
     criticFindingCodes: overrides.criticFindingCodes ?? [],
+    criticFindings: overrides.criticFindings ?? [],
+    topology: overrides.topology ?? null,
+    initialR27Findings: overrides.initialR27Findings ?? [],
+    r27RepairAttempted: overrides.r27RepairAttempted ?? false,
+    postRepairDeterministicResult: overrides.postRepairDeterministicResult ?? "not_attempted",
+    postRepairDeterministicFindings: overrides.postRepairDeterministicFindings ?? [],
     attemptNo: overrides.attemptNo ?? 1,
     regenerationCount: overrides.regenerationCount ?? 0,
     operation: overrides.operation ?? "none",
@@ -557,7 +618,7 @@ async function repairMissionOnce(args: {
   coreContent: Record<string, unknown> | null;
 }): Promise<
   | { ok: true; missionContent: Record<string, unknown>; mission: MissionRuntime; quality: QualityCheck; check: ReturnType<typeof checkMission> }
-  | { ok: false; error: string }
+  | { ok: false; error: string; quality?: QualityCheck; check?: ReturnType<typeof checkMission> }
 > {
   const reparable = args.quality.findings.some((finding) =>
     /^(mpj_items\[\d+\]|production_task\.reference_alternatives|diagnostic_dimensions)/.test(finding.where));
@@ -606,6 +667,7 @@ async function repairMissionOnce(args: {
     return {
       ok: false,
       error: `수리된 문항이 구조검사를 통과하지 못했습니다: ${check.violations.filter((v) => v.level === "fail").map((v) => v.id).join(", ")}`,
+      check,
     };
   }
   const checked = await runQualityCheck({
@@ -619,7 +681,12 @@ async function repairMissionOnce(args: {
   });
   if (checked.ok === false) return { ok: false, error: checked.error };
   if (!canPersistRepairQuality(checked.quality)) {
-    return { ok: false, error: "수리 후보가 AI 품질점검을 다시 통과하지 못해 revision으로 저장하지 않았습니다." };
+    return {
+      ok: false,
+      error: "수리 후보가 AI 품질점검을 다시 통과하지 못해 revision으로 저장하지 않았습니다.",
+      quality: checked.quality,
+      check,
+    };
   }
   patched.quality_check = checked.quality;
   return { ok: true, missionContent: patched, mission: parsed.data, quality: checked.quality, check };
@@ -824,29 +891,81 @@ export async function promoteCore(
 
   const attempts = 1;
   options.onProgress?.({ phase: "generating", attempt: 1, maxAttempts: 1 });
+  const telemetry = {
+    scenario_id: core.scenario_id,
+    generation_run_id: core.generation_run_id ?? null,
+    generation_item_key: core.generation_item_key ?? null,
+    invocation_attempt: 1,
+  };
+  const missionRequest: Record<string, unknown> = {
+    direction,
+    learner_level: core.learner_level,
+    speech_act: core.speech_act,
+    speech_act_ko: SPEECH_ACT_UI[core.speech_act],
+    level_ko: LEVEL[core.learner_level],
+    level_policy_ko: LEVEL_POLICY[core.learner_level],
+    feature: featureForGen(feature, direction, lineageScope),
+    core: missionCore,
+    contrast_plan: buildContrastPlan(core.speech_act, feature.code),
+    error_pattern_hints_ko: errorPatternsForAct(core.speech_act, direction).map(
+      (pattern) => `${pattern.description} (예: ${pattern.approvedExample})`,
+    ),
+    is_response_act: isResponseAct(core.speech_act),
+  };
+  let frozenTopologyEvidence: PromotionTerminalEvidence["topology"] = null;
+  const currentNative = normCore?.focal_segments?.some((segment) => segment.role === "head") ?? false;
+  if (currentNative) {
+    const topologyCall = await supabase.functions.invoke("generate-scenario", {
+      body: { action: "mission_topology", telemetry, mission: missionRequest },
+    });
+    if (topologyCall.error) {
+      const providerStatus = providerStatusFromError(topologyCall.error);
+      return {
+        ok: false,
+        attempts: 0,
+        error: `Topology 생성 호출 실패: ${(topologyCall.error as { message?: string }).message ?? String(topologyCall.error)}`,
+        terminal: promotionTerminal({
+          terminalStage: "topology",
+          operation: "mission_topology",
+          operationResult: "failed",
+          infrastructureError: true,
+          providerStatus,
+          finalOutcome: "terminal_dropout",
+        }),
+      };
+    }
+    const topologyResponse = isRecord(topologyCall.data) ? topologyCall.data : {};
+    frozenTopologyEvidence = topologyEvidence(topologyResponse.topology_evidence);
+    const topologyStopCode = typeof topologyResponse.stop_code === "string" ? topologyResponse.stop_code : null;
+    const frozenTopology = isRecord(topologyResponse.frozen_topology) ? topologyResponse.frozen_topology : null;
+    if (topologyStopCode || !frozenTopology || frozenTopologyEvidence?.finalResult !== "pass") {
+      const providerStatus = typeof topologyResponse.provider_status === "number"
+        ? topologyResponse.provider_status
+        : "UNKNOWN";
+      return {
+        ok: false,
+        attempts: 0,
+        error: typeof topologyResponse.error === "string" ? topologyResponse.error : "Topology generation failed.",
+        terminal: promotionTerminal({
+          terminalStage: "topology",
+          topology: frozenTopologyEvidence,
+          regenerationCount: frozenTopologyEvidence?.regenerationCount ?? 0,
+          operation: "mission_topology_regeneration",
+          operationResult: "failed",
+          infrastructureError: topologyStopCode === "topology_provider_failure",
+          providerStatus,
+          stopCode: topologyStopCode ?? "topology_contract_invalid",
+          finalOutcome: "terminal_dropout",
+        }),
+      };
+    }
+    missionRequest.frozen_topology = frozenTopology;
+    missionRequest.topology_evidence = topologyResponse.topology_evidence;
+  }
   const { data, error } = await invokeMissionWithBackoff({
     action: "mission",
-    telemetry: {
-      scenario_id: core.scenario_id,
-      generation_run_id: core.generation_run_id ?? null,
-      generation_item_key: core.generation_item_key ?? null,
-      invocation_attempt: 1,
-    },
-    mission: {
-      direction,
-      learner_level: core.learner_level,
-      speech_act: core.speech_act,
-      speech_act_ko: SPEECH_ACT_UI[core.speech_act],
-      level_ko: LEVEL[core.learner_level],
-      level_policy_ko: LEVEL_POLICY[core.learner_level],
-      feature: featureForGen(feature, direction, lineageScope),
-      core: missionCore,
-      contrast_plan: buildContrastPlan(core.speech_act, feature.code),
-      error_pattern_hints_ko: errorPatternsForAct(core.speech_act, direction).map(
-        (pattern) => `${pattern.description} (예: ${pattern.approvedExample})`,
-      ),
-      is_response_act: isResponseAct(core.speech_act),
-    },
+    telemetry,
+    mission: missionRequest,
   });
   if (error) {
     const msg = (error as { message?: string })?.message ?? String(error);
@@ -857,6 +976,7 @@ export async function promoteCore(
       attempts,
       terminal: promotionTerminal({
         terminalStage: "mission_generation",
+        topology: frozenTopologyEvidence,
         infrastructureError: providerStatus !== "UNKNOWN",
         providerStatus,
         finalOutcome: "terminal_dropout",
@@ -882,6 +1002,7 @@ export async function promoteCore(
         terminalStage: generationResponse.stop_code.startsWith("relative_boundary")
           ? "relative_boundary"
           : "mission_generation",
+        topology: frozenTopologyEvidence,
         itemCandidatePaths: candidateResults
           .map((result) => typeof result.path === "string" ? result.path : "")
           .filter(Boolean),
@@ -909,14 +1030,22 @@ export async function promoteCore(
       ok: false,
       error: "생성된 전체 초안이 미션 스키마를 통과하지 못했습니다.",
       attempts,
-      terminal: promotionTerminal({ terminalStage: "schema", finalOutcome: "terminal_dropout" }),
+      terminal: promotionTerminal({
+        terminalStage: "schema",
+        topology: frozenTopologyEvidence,
+        finalOutcome: "terminal_dropout",
+      }),
     };
   }
   let mission = parsed.data;
   options.onProgress?.({ phase: "checking", attempt: 1, maxAttempts: 1 });
   let check = checkMission(rawContent, ctx, core.core_content ?? undefined);
   const initialViolations = check.violations.map((x) => ({ id: x.id, level: x.level, message: x.message }));
+  const initialR27Evidence = r27FindingEvidence(initialViolations);
   let repaired = false;
+  let r27RepairAttempted = false;
+  let postRepairDeterministicResult: PromotionTerminalEvidence["postRepairDeterministicResult"] = "not_attempted";
+  let postRepairDeterministicFindings: PromotionTerminalEvidence["postRepairDeterministicFindings"] = [];
   const rawProvenance = isRecord(rawContent.provenance) ? rawContent.provenance : {};
   const rawBandTargeting = isRecord(rawProvenance.band_targeting) ? rawProvenance.band_targeting : {};
   const initialCandidateCounts = normalizeCandidateRegenerationCounts(
@@ -947,12 +1076,15 @@ export async function promoteCore(
         error: "규칙검사 실패 — 저장하지 않았습니다.",
         terminal: promotionTerminal({
           terminalStage: "deterministic",
+          topology: frozenTopologyEvidence,
+          initialR27Findings: initialR27Evidence,
           deterministicFailureCodes: initialViolations.filter((violation) => violation.level === "fail").map((violation) => violation.id),
           finalOutcome: "terminal_dropout",
         }),
       };
     }
     options.onProgress?.({ phase: "repairing" });
+    r27RepairAttempted = initialR27Evidence.length > 0;
     const structuralRepair = await repairMissionOnce({
       missionContent: rawContent,
       quality: {
@@ -982,7 +1114,23 @@ export async function promoteCore(
         repairError: structuralRepair.error,
         error: `규칙검사 실패 · 문항 수리 실패 — 저장하지 않았습니다: ${structuralRepair.error}`,
         terminal: promotionTerminal({
-          terminalStage: "deterministic",
+          terminalStage: structuralRepair.quality ? "critic" : "deterministic",
+          topology: frozenTopologyEvidence,
+          initialR27Findings: initialR27Evidence,
+          r27RepairAttempted: initialR27Evidence.length > 0,
+          postRepairDeterministicResult: structuralRepair.check
+            ? structuralRepair.check.result === "fail" ? "fail" : "pass"
+            : "UNKNOWN",
+          postRepairDeterministicFindings: structuralRepair.check
+            ? r27FindingEvidence(structuralRepair.check.violations.map((violation) => ({
+                id: violation.id,
+                level: violation.level,
+                message: violation.message,
+              })))
+            : [],
+          criticVerdict: structuralRepair.quality?.verdict ?? "UNKNOWN",
+          criticFindingCodes: qualityFindingSummary(structuralRepair.quality),
+          criticFindings: qualityFindingEvidence(structuralRepair.quality),
           deterministicFailureCodes: initialViolations.filter((violation) => violation.level === "fail").map((violation) => violation.id),
           operation: "mission_item_repair",
           operationResult: "failed",
@@ -991,6 +1139,12 @@ export async function promoteCore(
       };
     }
     repaired = true;
+    postRepairDeterministicResult = "pass";
+    postRepairDeterministicFindings = r27FindingEvidence(structuralRepair.check.violations.map((violation) => ({
+      id: violation.id,
+      level: violation.level,
+      message: violation.message,
+    })));
     mission = structuralRepair.mission;
     quality = structuralRepair.quality;
     check = structuralRepair.check;
@@ -1056,9 +1210,15 @@ export async function promoteCore(
       error: `저장 실패: ${(saveErr as { message?: string }).message ?? saveErr}`,
       terminal: promotionTerminal({
         terminalStage: "saving",
+        topology: frozenTopologyEvidence,
+        initialR27Findings: initialR27Evidence,
+        r27RepairAttempted,
+        postRepairDeterministicResult,
+        postRepairDeterministicFindings,
         deterministicFailureCodes: initialViolations.filter((violation) => violation.level === "fail").map((violation) => violation.id),
         criticVerdict: quality.verdict,
         criticFindingCodes: qualityFindingSummary(quality),
+        criticFindings: qualityFindingEvidence(quality),
         operation: "save_generated_mission",
         operationResult: "failed",
         finalOutcome: "terminal_dropout",
@@ -1154,6 +1314,11 @@ export async function promoteCore(
     savedId: savedId as string,
     terminal: promotionTerminal({
       terminalStage: quality.verdict === "fail" ? "critic" : "eligible",
+      topology: frozenTopologyEvidence,
+      initialR27Findings: initialR27Evidence,
+      r27RepairAttempted,
+      postRepairDeterministicResult,
+      postRepairDeterministicFindings,
       itemCandidatePaths: quality.findings
         .map((finding) => canonicalCandidatePath(finding.where))
         .filter((path): path is string => Boolean(path)),
@@ -1162,6 +1327,7 @@ export async function promoteCore(
         .map((violation) => violation.id),
       criticVerdict: quality.verdict,
       criticFindingCodes: qualityFindingSummary(quality),
+      criticFindings: qualityFindingEvidence(quality),
       regenerationCount: candidateRegenerationCount,
       operation: boundaryFallbackAttempted
         ? "relative_boundary_candidate_fallback"

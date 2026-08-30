@@ -9,6 +9,30 @@ const PDR_VALUES = {
 
 type SituationTopologyRole = 'contrast_x' | 'anchor_a' | 'contrast_y' | 'new_event_c' | 'unknown'
 
+export const NATIVE_MPJ5_TOPOLOGY_MAX_ATTEMPTS = 2
+
+export type NativeMpj5TopologyFinding = {
+  code: 'R27' | 'R28' | 'TOPOLOGY_CONTEXT'
+  path: string
+  message: string
+}
+
+export type NativeMpj5FrozenScene = {
+  situation_ko: string
+  relation_ko: string
+  channel: string
+  pdr: Record<string, unknown>
+}
+
+export type NativeMpj5FrozenTopology = {
+  version: 'native_mpj5_scene_topology_v1'
+  source_modality: 'written' | 'spoken'
+  x: NativeMpj5FrozenScene
+  anchor: NativeMpj5FrozenScene
+  y: NativeMpj5FrozenScene
+  c: NativeMpj5FrozenScene
+}
+
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -130,6 +154,168 @@ function canonicalizeContrastPdr(
     ...anchorPdr,
     [axis]: changedValue,
   }
+}
+
+function frozenScene(value: unknown, pdr: Record<string, unknown>): NativeMpj5FrozenScene {
+  const source = record(value)
+  return {
+    situation_ko: typeof source.situation_ko === 'string' ? source.situation_ko.trim() : '',
+    relation_ko: typeof source.relation_ko === 'string' ? source.relation_ko.trim() : '',
+    channel: typeof source.channel === 'string' ? source.channel.trim() : '',
+    pdr,
+  }
+}
+
+function pdrDifferenceCount(a: Record<string, unknown>, b: Record<string, unknown>): number {
+  return PDR_AXES.reduce((count, axis) => count + Number(a[axis] !== b[axis]), 0)
+}
+
+function situationShapeValid(value: string): boolean {
+  return value.length <= 140 && (value.match(/[.!?。！？]/g) ?? []).length === 2
+}
+
+/**
+ * Converts one topology-only model response into the authoritative server plan.
+ * PDR and DCT C are copied/canonicalized by the server; the model only supplies
+ * the learner-facing X/A/Y scene wording and context labels.
+ */
+export function buildNativeMpj5FrozenTopology(
+  value: unknown,
+  core: {
+    situation_ko?: unknown
+    relation_ko?: unknown
+    channel?: unknown
+    pdr?: unknown
+    source_modality?: unknown
+  },
+): { topology: NativeMpj5FrozenTopology; findings: NativeMpj5TopologyFinding[] } {
+  const raw = record(record(value).topology ?? value)
+  const anchorPdr = record(core.pdr)
+  const sourceModality = core.source_modality === 'spoken' ? 'spoken' : 'written'
+  const topology: NativeMpj5FrozenTopology = {
+    version: 'native_mpj5_scene_topology_v1',
+    source_modality: sourceModality,
+    x: frozenScene(raw.x, canonicalizeContrastPdr(record(record(raw.x).pdr), anchorPdr)),
+    anchor: frozenScene(raw.anchor, { ...anchorPdr }),
+    y: frozenScene(raw.y, canonicalizeContrastPdr(record(record(raw.y).pdr), anchorPdr)),
+    c: {
+      situation_ko: typeof core.situation_ko === 'string' ? core.situation_ko.trim() : '',
+      relation_ko: typeof core.relation_ko === 'string' ? core.relation_ko.trim() : '',
+      channel: typeof core.channel === 'string' ? core.channel.trim() : '',
+      pdr: { ...anchorPdr },
+    },
+  }
+  return { topology, findings: validateNativeMpj5FrozenTopology(topology, core) }
+}
+
+/** Existing R27/R28 predicates only; this deliberately adds no semantic detector. */
+export function validateNativeMpj5FrozenTopology(
+  value: unknown,
+  core?: { situation_ko?: unknown; relation_ko?: unknown; pdr?: unknown; source_modality?: unknown },
+): NativeMpj5TopologyFinding[] {
+  const topology = record(value) as Partial<NativeMpj5FrozenTopology>
+  const findings: NativeMpj5TopologyFinding[] = []
+  const x = record(topology.x)
+  const anchor = record(topology.anchor)
+  const y = record(topology.y)
+  const c = record(topology.c)
+  const scenes = [
+    ['x', x],
+    ['anchor', anchor],
+    ['y', y],
+    ['c', c],
+  ] as const
+
+  for (const [slot, scene] of scenes) {
+    const situation = typeof scene.situation_ko === 'string' ? scene.situation_ko.trim() : ''
+    const relation = typeof scene.relation_ko === 'string' ? scene.relation_ko.trim() : ''
+    if (!situation || !situationShapeValid(situation)) {
+      findings.push({
+        code: 'R27',
+        path: `${slot}.situation_ko`,
+        message: `${slot.toUpperCase()} situation_ko는 140자 이내의 정확히 2문장이어야 함`,
+      })
+    }
+    if (!relation) {
+      findings.push({
+        code: 'TOPOLOGY_CONTEXT',
+        path: `${slot}.relation_ko`,
+        message: `${slot.toUpperCase()} relation_ko가 비어 있음`,
+      })
+    }
+  }
+
+  const normalized = scenes.map(([slot, scene]) => [slot, String(scene.situation_ko ?? '').trim()] as const)
+  for (let i = 0; i < normalized.length; i += 1) {
+    for (let j = i + 1; j < normalized.length; j += 1) {
+      if (!normalized[i][1] || normalized[i][1] !== normalized[j][1]) continue
+      findings.push({
+        code: 'R27',
+        path: `${normalized[j][0]}.situation_ko`,
+        message: `${normalized[i][0].toUpperCase()}와 ${normalized[j][0].toUpperCase()} situation_ko가 완전히 중복됨`,
+      })
+    }
+  }
+
+  const anchorPdr = record(anchor.pdr)
+  if (pdrDifferenceCount(record(x.pdr), anchorPdr) !== 1) {
+    findings.push({ code: 'R27', path: 'x.pdr', message: 'Contrast X는 Anchor PDR에서 정확히 한 축만 달라야 함' })
+  }
+  if (pdrDifferenceCount(record(y.pdr), anchorPdr) !== 1) {
+    findings.push({ code: 'R27', path: 'y.pdr', message: 'Contrast Y는 Anchor PDR에서 정확히 한 축만 달라야 함' })
+  }
+  if (pdrDifferenceCount(record(c.pdr), anchorPdr) !== 0) {
+    findings.push({ code: 'R27', path: 'c.pdr', message: 'New Event C는 Anchor PDR을 그대로 사용해야 함' })
+  }
+
+  const sourceModality = topology.source_modality === 'spoken' ? 'spoken' : 'written'
+  const allowedChannels = sourceModality === 'spoken'
+    ? new Set(['facetoface', 'phone'])
+    : new Set(['email', 'messenger'])
+  for (const [slot, scene] of scenes.slice(0, 3)) {
+    if (!allowedChannels.has(String(scene.channel ?? ''))) {
+      findings.push({
+        code: 'R28',
+        path: `${slot}.channel`,
+        message: `${slot.toUpperCase()} channel이 ${sourceModality} 수행 방식과 맞지 않음`,
+      })
+    }
+  }
+
+  if (core) {
+    const expectedPdr = record(core.pdr)
+    if (String(c.situation_ko ?? '').trim() !== String(core.situation_ko ?? '').trim() ||
+        String(c.relation_ko ?? '').trim() !== String(core.relation_ko ?? '').trim() ||
+        pdrDifferenceCount(record(c.pdr), expectedPdr) !== 0 ||
+        topology.source_modality !== (core.source_modality === 'spoken' ? 'spoken' : 'written')) {
+      findings.push({
+        code: 'TOPOLOGY_CONTEXT',
+        path: 'c',
+        message: 'Frozen topology의 C/core lineage가 현재 core와 일치하지 않음',
+      })
+    }
+  }
+  return findings
+}
+
+/** Applies all frozen scene/PDR fields without touching model-authored candidates or feedback. */
+export function applyNativeMpj5FrozenTopology<T>(
+  items: T[],
+  topology: NativeMpj5FrozenTopology,
+): T[] {
+  if (items.length !== 5) return items
+  const scenes = [topology.x, topology.anchor, topology.anchor, topology.anchor, topology.y]
+  return items.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return item
+    const scene = scenes[index]
+    return {
+      ...(item as Record<string, unknown>),
+      situation_ko: scene.situation_ko,
+      relation_ko: scene.relation_ko,
+      channel: scene.channel,
+      pdr: { ...scene.pdr },
+    } as T
+  })
 }
 
 /**

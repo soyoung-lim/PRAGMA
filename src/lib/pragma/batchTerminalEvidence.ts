@@ -13,6 +13,16 @@ export interface BatchTerminalEvidenceRecord {
   deterministic_failure_code: string[];
   critic_verdict: "pass" | "warning" | "fail" | "UNKNOWN";
   critic_finding_code: Array<{ code: string; path: string }>;
+  critic_finding: Array<{ code: string; path: string; severity: string; finding: string }>;
+  topology_attempt_no: number;
+  topology_first_pass_result: "pass" | "fail" | "UNKNOWN";
+  topology_final_result: "pass" | "fail" | "UNKNOWN";
+  topology_deterministic_finding: Array<{ attempt: number; code: string; path: string; message: string }>;
+  topology_regeneration_count: number;
+  full_mission_initial_r27: Array<{ code: string; path: string; message: string }>;
+  r27_repair_attempted: boolean;
+  post_repair_deterministic_result: "pass" | "fail" | "not_attempted" | "UNKNOWN";
+  post_repair_deterministic_finding: Array<{ code: string; path: string; message: string }>;
   attempt_no: number;
   replacement_no: number;
   regeneration_count: number;
@@ -51,6 +61,16 @@ export function coreTerminalEvidence(
     deterministic_failure_code: result.deterministicFailureCodes ?? [],
     critic_verdict: "UNKNOWN",
     critic_finding_code: [],
+    critic_finding: [],
+    topology_attempt_no: 0,
+    topology_first_pass_result: "UNKNOWN",
+    topology_final_result: "UNKNOWN",
+    topology_deterministic_finding: [],
+    topology_regeneration_count: 0,
+    full_mission_initial_r27: [],
+    r27_repair_attempted: false,
+    post_repair_deterministic_result: "not_attempted",
+    post_repair_deterministic_finding: [],
     attempt_no: result.reused ? 0 : 1,
     replacement_no: replacementNo,
     regeneration_count: 0,
@@ -85,6 +105,16 @@ export function missionTerminalEvidence(
       result.violations?.filter((violation) => violation.level === "fail").map((violation) => violation.id) ?? [],
     critic_verdict: terminal?.criticVerdict ?? result.qualityVerdict ?? "UNKNOWN",
     critic_finding_code: terminal?.criticFindingCodes ?? [],
+    critic_finding: terminal?.criticFindings ?? [],
+    topology_attempt_no: terminal?.topology?.attempts ?? 0,
+    topology_first_pass_result: terminal?.topology?.firstPassResult ?? "UNKNOWN",
+    topology_final_result: terminal?.topology?.finalResult ?? "UNKNOWN",
+    topology_deterministic_finding: terminal?.topology?.findings ?? [],
+    topology_regeneration_count: terminal?.topology?.regenerationCount ?? 0,
+    full_mission_initial_r27: terminal?.initialR27Findings ?? [],
+    r27_repair_attempted: terminal?.r27RepairAttempted ?? false,
+    post_repair_deterministic_result: terminal?.postRepairDeterministicResult ?? "not_attempted",
+    post_repair_deterministic_finding: terminal?.postRepairDeterministicFindings ?? [],
     attempt_no: terminal?.attemptNo ?? (result.reused ? 0 : 1),
     replacement_no: 0,
     regeneration_count: terminal?.regenerationCount ?? result.candidateRegenerationCount ?? 0,
