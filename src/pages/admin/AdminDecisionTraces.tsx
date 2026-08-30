@@ -3,6 +3,15 @@ import { AdminShell } from "@/components/AdminShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
+import {
+  buildMissionCourseIndex,
+  EMPTY_FILTERS,
+  filterMissionLogs,
+  hasActiveFilter,
+  type MissionCourseIndex,
+  type MissionLogFilters,
+} from "@/lib/mission/missionLogFilter";
 
 type MissionLog = Database["public"]["Tables"]["learner_mission_logs"]["Row"];
 type ProfileSummary = {
@@ -79,6 +88,9 @@ const Page = () => {
   const [rows, setRows] = useState<MissionLogRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [filters, setFilters] = useState<MissionLogFilters>(EMPTY_FILTERS);
+  const [courses, setCourses] = useState<Array<{ id: string; title: string }>>([]);
+  const [courseIndex, setCourseIndex] = useState<MissionCourseIndex>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -102,19 +114,129 @@ const Page = () => {
     };
   }, []);
 
+  // 교과목은 로그에 없으므로 편성표에서 파생한다. 실패해도 목록 조회는 막지 않고
+  // 교과목 필터만 비활성으로 남긴다.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const [outlinesResult, assignmentsResult] = await Promise.all([
+        supabase.from("curriculum_outlines").select("id,title").order("updated_at", { ascending: false }),
+        supabase.from("curriculum_week_scenarios").select("outline_id,scenario_id"),
+      ]);
+      if (cancelled || outlinesResult.error || assignmentsResult.error) return;
+      setCourses((outlinesResult.data ?? []) as Array<{ id: string; title: string }>);
+      setCourseIndex(
+        buildMissionCourseIndex(
+          (assignmentsResult.data ?? []) as Array<{ outline_id: string; scenario_id: string }>,
+        ),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const visibleRows = useMemo(
+    () => (rows ? filterMissionLogs(rows, filters, courseIndex) : []),
+    [rows, filters, courseIndex],
+  );
   const completedCount = useMemo(
-    () => rows?.filter((row) => row.mission_completed).length ?? 0,
+    () => visibleRows.filter((row) => row.mission_completed).length,
+    [visibleRows],
+  );
+  const speechActs = useMemo(
+    () => [...new Set((rows ?? []).map((row) => row.speech_act).filter((act): act is string => !!act))].sort(),
     [rows],
   );
   const loading = rows === null;
+  const filtered = hasActiveFilter(filters);
+  const selectClass = "h-9 rounded-md border border-border bg-white px-2 text-sm";
 
   return (
     <AdminShell
       title="학습 수행 기록"
       description="현행 학습미션의 판단, 최초 산출, 피드백 후 수정과 완료 상태를 학습자별로 확인합니다."
     >
+      {!loading && !error && rows.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-end gap-2">
+          <label className="text-xs font-medium text-muted-foreground">
+            학습자 검색
+            <input
+              type="search"
+              value={filters.query}
+              onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
+              placeholder="이름·이메일·참여자 ID"
+              aria-label="학습자 검색"
+              className="mt-1 block h-9 w-56 rounded-md border border-border bg-white px-2.5 text-sm font-normal text-foreground"
+            />
+          </label>
+          <label className="text-xs font-medium text-muted-foreground">
+            교과목
+            <select
+              aria-label="교과목 필터"
+              value={filters.courseId}
+              disabled={courses.length === 0}
+              onChange={(event) => setFilters((current) => ({ ...current, courseId: event.target.value }))}
+              className={`mt-1 block w-56 font-normal text-foreground ${selectClass}`}
+            >
+              <option value="all">전체</option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.id}>{course.title}</option>
+              ))}
+              <option value="unknown">교과목 미상</option>
+            </select>
+          </label>
+          <label className="text-xs font-medium text-muted-foreground">
+            화행
+            <select
+              aria-label="화행 필터"
+              value={filters.speechAct}
+              onChange={(event) => setFilters((current) => ({ ...current, speechAct: event.target.value }))}
+              className={`mt-1 block w-40 font-normal text-foreground ${selectClass}`}
+            >
+              <option value="all">전체</option>
+              {speechActs.map((act) => (
+                <option key={act} value={act}>{SPEECH_ACT_UI[act as SpeechActUI] ?? act}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-medium text-muted-foreground">
+            완료 여부
+            <select
+              aria-label="완료 여부 필터"
+              value={filters.completion}
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, completion: event.target.value as MissionLogFilters["completion"] }))
+              }
+              className={`mt-1 block w-32 font-normal text-foreground ${selectClass}`}
+            >
+              <option value="all">전체</option>
+              <option value="completed">완료</option>
+              <option value="in_progress">진행 중</option>
+            </select>
+          </label>
+          {filtered && (
+            <button
+              type="button"
+              onClick={() => setFilters(EMPTY_FILTERS)}
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm hover:bg-muted"
+            >
+              필터 해제
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-        <span>{loading ? "불러오는 중…" : error ? "조회 실패" : `총 ${rows.length}건`}</span>
+        <span>
+          {loading
+            ? "불러오는 중…"
+            : error
+              ? "조회 실패"
+              : filtered
+                ? `${visibleRows.length}건 표시 · 전체 ${rows.length}건`
+                : `총 ${rows.length}건`}
+        </span>
         {!loading && !error && <span>완료 {completedCount}건</span>}
       </div>
 
@@ -134,6 +256,10 @@ const Page = () => {
         <div className="rounded-xl border border-dashed border-border bg-card px-6 py-10 text-center text-sm text-muted-foreground">
           아직 학습미션 수행 기록이 없습니다.
         </div>
+      ) : visibleRows.length === 0 && !error ? (
+        <div className="rounded-xl border border-dashed border-border bg-card px-6 py-10 text-center text-sm text-muted-foreground">
+          조건에 맞는 기록이 없습니다. 필터를 바꾸거나 해제해 주세요.
+        </div>
       ) : (
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full min-w-[880px] text-sm">
@@ -149,7 +275,7 @@ const Page = () => {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
+              {visibleRows.map((row) => {
                 const open = !!expanded[row.id];
                 return (
                   <Fragment key={row.id}>
