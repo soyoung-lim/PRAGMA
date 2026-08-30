@@ -27,8 +27,8 @@ export const PACK_RELEASE_MANIFEST_DRAFT: PackReleaseManifestDraft = {
   "artifact_hash": "18cce236df6fcf9acc417e826302ace3cb7177bc804d6099f9a589b9e587ac00",
   "prompt_snapshot_hash": "b2d3ddfb1f915c80ae277c5445e7e80d9425c7ac8fe2f774276896013a14603d",
   "evidence_snapshot_hash": "f21bacee1e0a89e2a305d225547b8ab41c8bc988dc073ef051827e16b3400c18",
-  "source_commit_ref": "c81bcf1283fd7aa0883b714019f403816cedcdb1",
-  "git_dirty": true,
+  "source_commit_ref": "712891c6e791d0360109a2d8b53e3bf9544cff83",
+  "git_dirty": false,
   "source_paths": [
     "src/lib/pragma/realizationPack.ts",
     "supabase/functions/generate-scenario/index.ts",
