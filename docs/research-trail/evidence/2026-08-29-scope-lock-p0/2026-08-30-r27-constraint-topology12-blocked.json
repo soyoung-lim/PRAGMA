@@ -1,0 +1,82 @@
+{
+  "evidence_id": "EVD-20260830-06",
+  "status": "targeted_canary_completed_with_infrastructure_terminal",
+  "release_id": "pragma_scope_lock_20260830_10_r27_constraint_topology",
+  "generation_run_id": "scope-lock-pilot-20260830-10-r27-topology12",
+  "implementation_commit": "712891c",
+  "prompt_attestation_commit": "527bd45",
+  "edge": {
+    "function": "generate-scenario",
+    "version": 106,
+    "status": "ACTIVE",
+    "bundle_sha256": "11700b5090c986c59b81fcf2125304f4059b5ac72aa079dc97520706285f8169"
+  },
+  "planned_item_indexes": [0, 10, 60, 70, 80, 130, 140, 150, 190, 220, 260, 270],
+  "planned_denominator": 12,
+  "core": {
+    "initial_quota_infrastructure_failures": 12,
+    "diagnostic_quota_request": 1,
+    "first_semantic_pass_saved": 7,
+    "hard_invalid": 5,
+    "bounded_replacements": 5,
+    "final_saved": 12
+  },
+  "mission": {
+    "attempted": 12,
+    "topology_provider_attempts": 12,
+    "topology_provider_success": 0,
+    "topology_provider_http_503": 12,
+    "topology_deterministic_attempted": 0,
+    "topology_regeneration": 0,
+    "full_mission_generated": 0,
+    "full_mission_initial_r27": "not_evaluable",
+    "anchor_a_sharing": "not_evaluable_denominator_0",
+    "literal_x_a_y_c_distinct": "not_evaluable_denominator_0",
+    "r27_repair": 0,
+    "critic_calls": 0,
+    "final_eligible": 0,
+    "terminal_direct_causes": { "topology_provider_http_503": 12 }
+  },
+  "infrastructure": {
+    "provider_requests": 51,
+    "successful_calls": 26,
+    "failed_calls": 25,
+    "failed_statuses": { "429": 13, "503": 12 },
+    "ledger_recorded_requests": 39,
+    "ledger_missing_topology_requests": 12,
+    "ledger_gap_cause": "mission_topology is outside the existing llm_invocation_events operation allowlist"
+  },
+  "usage": {
+    "successful_prompt_tokens": 103609,
+    "successful_cached_tokens": 39424,
+    "successful_completion_tokens": 6567,
+    "successful_total_tokens": 110176,
+    "estimated_standard_api_cost_usd": 0.1111636,
+    "by_model": {
+      "gpt-4.1-mini-2025-04-14": { "calls": 17, "total_tokens": 67549, "estimated_cost_usd": 0.0223636 },
+      "gpt-4.1-2025-04-14": { "calls": 9, "total_tokens": 42627, "estimated_cost_usd": 0.0888 }
+    }
+  },
+  "isolation": {
+    "normal_candidate_contamination": 0,
+    "mission_content_present": 0,
+    "mission_lineage_versions": 0,
+    "reviewed_or_released": 0,
+    "course_assignments": 0,
+    "failed_revision_promoted": 0,
+    "bounded_semantic_recovery_violations": 0
+  },
+  "attribution_correction_09": {
+    "r27_first_occurrence": "12/30",
+    "r27_deterministic_terminal_dropout": "2/30",
+    "post_repair_critic_fail": "4/30",
+    "note": "The four critic failures are not R27 deterministic direct dropouts."
+  },
+  "terminal_evidence": {
+    "path": "tmp/pragma-terminal-evidence/scope-lock-pilot-20260830-10-r27-topology12.jsonl",
+    "records": 41,
+    "sha256": "adc70b3534841922f1cb09eb8046265d6ba7c40ed4e84cf0a6d2391dc5e45c87"
+  },
+  "verdict": "last_local_fix_required",
+  "next_scope": "Add bounded transient handling for topology provider 503 and record topology under an existing allowed ledger operation, then rerun only the same 12 cells."
+}

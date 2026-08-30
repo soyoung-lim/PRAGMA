@@ -3033,3 +3033,20 @@
   deterministic·critic 연결이 남은 국소 병목이며, 500으로 확대하기 전 마지막 승인 판단이 필요하다.
 - 관련: `DEC-20260830-05`, `EVD-20260830-05`,
   `docs/dev-log/2026-08-30-09-production-yield30.md`.
+
+## ITER-20260830-06 · R27 선행 topology 구현과 targeted 12 infrastructure terminal
+
+- 날짜: 2026-08-30
+- 시작 문제: frozen 구조를 알고도 `_09` mission의 40%가 최초 R27 repair에 진입했다.
+- 변경: topology-only X/A/Y 생성→결정론 검증→최대 1회 재생성→scene freeze→full mission 순서와
+  topology·최초 R27·repair 후 deterministic·exact critic terminal evidence를 구현했다.
+- 검증: 관련 36 tests와 typecheck 통과, 새 release를 Edge v106에 배포했다.
+- 실행: 최초 core 12+진단 1은 quota 429였다. 보충 후 최초 core 7, hard-invalid 5셀 1회 대체로
+  core 12/12를 저장했다. mission은 topology provider 503 12/12로 끝나 deterministic topology와
+  full mission은 미시작이다. requests 51·성공 26·110,176 token·추정 `$0.1111636`다.
+- 예상과 달랐던 점: topology용 새 telemetry operation은 DB allowlist 밖이라 12호출이 ledger에서
+  누락됐다. terminal JSONL에는 12건과 provider 503이 남았다.
+- 다음: 503 transient 처리와 기존 허용 operation으로 telemetry를 귀인하는 최소 수정 뒤 같은 12만
+  재검증한다. 균형 30·500은 시작하지 않는다.
+- 관련: `DEC-20260830-06`, `EVD-20260830-06`,
+  `docs/dev-log/2026-08-30-r27-constraint-topology12.md`.

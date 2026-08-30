@@ -3174,3 +3174,19 @@
 - 근거: `ITER-20260830-05`, `EVD-20260830-05`,
   `docs/dev-log/2026-08-30-09-production-yield30.md`, run
   `scope-lock-pilot-20260830-09-yield30`.
+
+## DEC-20260830-06 · R27을 선행 scene topology 동결로 전환
+
+- 날짜: 2026-08-30
+- 문제: `_09`에서 최초 R27이 12/30(40%)이라 bounded repair가 예외 경로가 아니었다. direct
+  cause도 deterministic 재위반 2건과 post-repair critic fail 4건으로 분리해야 한다.
+- 결정: full mission 전에 X/A/Y만 별도 생성·검증하고 C는 core에서 고정한다. 최대 최초+재생성
+  1회 뒤 통과 plan을 `X/A/A/A/Y/C`에 서버 적용한다. 기존 R27 repair는 safety net으로 유지한다.
+- 범위: R1~R33, P·D·R, candidate blueprint, critic, UI·DB는 동결하고 새 semantic detector는
+  만들지 않았다.
+- 현재 결과: 구현·36 tests·typecheck·Edge v106 배포 완료. 잔액 보충 후 core 12/12는 확보했으나
+  mission 12/12가 topology provider 503으로 끝나 full mission·R27·critic은 0건이다. 새 topology
+  operation도 기존 ledger allowlist 밖이라 12호출이 장부에서 누락됐다.
+- 판정: 구조 효과는 아직 판정할 수 없으며 **마지막 국소 수정 필요**다. transient 처리와 기존 허용
+  operation 기반 telemetry 귀인만 보완하고 동일 12를 다시 실행한다. 30·500은 금지한다.
+- 근거: 구현 `712891c`, attestation `527bd45`, `ITER-20260830-06`, `EVD-20260830-06`.
