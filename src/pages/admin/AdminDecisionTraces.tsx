@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -88,7 +89,12 @@ const Page = () => {
   const [rows, setRows] = useState<MissionLogRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [filters, setFilters] = useState<MissionLogFilters>(EMPTY_FILTERS);
+  // 학습자 승인·관리에서 「수행 기록」으로 넘어오면 ?q=… 로 검색어를 받는다.
+  const [params] = useSearchParams();
+  const [filters, setFilters] = useState<MissionLogFilters>({
+    ...EMPTY_FILTERS,
+    query: params.get("q") ?? "",
+  });
   const [courses, setCourses] = useState<Array<{ id: string; title: string }>>([]);
   const [courseIndex, setCourseIndex] = useState<MissionCourseIndex>(new Map());
 

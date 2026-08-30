@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,6 +119,13 @@ const Section = ({
 /** 소속/신분·동의는 신·구 컬럼이 공존한다 — 마법사가 쓰는 쪽을 우선하고 없으면 구 값. */
 const firstOf = <T,>(...vals: (T | null | undefined)[]) =>
   vals.find((v) => v !== null && v !== undefined) ?? null;
+
+/**
+ * 수행 기록 화면의 학습자 검색어. 그 화면은 이름·이메일·가명 참여자 ID를
+ * 부분 일치로 찾으므로, 가장 특정적인 값부터 고른다. 셋 다 없으면 링크를 걸지 않는다.
+ */
+const traceQueryFor = (row: { email: string | null; anonymous_participant_id: string | null; full_name: string | null }) =>
+  firstOf(row.email, row.anonymous_participant_id, row.full_name);
 
 const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex flex-col gap-0.5">
@@ -265,9 +273,18 @@ const Page = () => {
                       new Date(r.updated_at ?? r.created_at!).toLocaleString() : "—"}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" variant="outline" onClick={() => setSelectedId(r.id)}>
-                      상세
-                    </Button>
+                    <div className="flex justify-end gap-1.5">
+                      {traceQueryFor(r) && (
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to={`/admin/decision-traces?q=${encodeURIComponent(traceQueryFor(r)!)}`}>
+                            수행 기록
+                          </Link>
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" onClick={() => setSelectedId(r.id)}>
+                        상세
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
