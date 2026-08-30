@@ -23,6 +23,7 @@ describe("admin navigation reachability", () => {
     expect(ADMIN_PRIORITY_LINKS.map((item) => item.to)).toEqual(REQUIRED_ENTRY_PATHS);
     const allPaths = ADMIN_NAV_GROUPS.flatMap((group) => group.items).map((item) => item.to);
     expect(new Set(allPaths).size).toBe(allPaths.length);
+    expect(allPaths).not.toContain("/admin/question-designer");
     const research = ADMIN_NAV_GROUPS.find((group) => group.header === "4. 학습 결과·연구 자료");
     expect(research?.items.map((item) => item.to)).toContain("/admin/research-qa/calibration");
   });
@@ -38,6 +39,7 @@ describe("admin navigation reachability", () => {
     expect(app).toContain('to="/admin/research-qa/final-review"');
     expect(app).not.toContain('path="/admin/analytics"');
     expect(app).not.toContain('path="/admin/archive"');
+    expect(app).not.toContain('path="/admin/question-designer"');
     expect(app).not.toContain("AdminQualityOverview");
     expect(app).toContain('path="/admin/research-qa"');
     expect(app).toContain('to="/admin/research-qa/final-review"');
