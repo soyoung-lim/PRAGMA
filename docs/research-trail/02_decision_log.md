@@ -3206,3 +3206,22 @@
   X/A/Y 재생성으로 고칠 수 없고 item 70은 bounded 재생성 뒤에도 Anchor/C exact collision이 남았다.
   이 exact failure 외 규칙·validator를 재개방하지 않고 이번 단계는 정지한다.
 - 근거: 구현 `6c0e7bc`, fingerprint `fa8acc8`, `ITER-20260830-07`, `EVD-20260830-07`.
+
+## DEC-20260830-08 · 500 전 Rule Diet는 R27 C 형식·R29 minimum·R26 semantic ownership 세 곳으로 제한
+
+- 날짜: 2026-08-30
+- 상태: 읽기 전용 감사 완료, 변경·검증 실행 전.
+- 문제: R1–R33을 현행이라는 이유만으로 유지하거나 21/30 수율을 위해 일괄 완화하면 구조 하한선과
+  heuristic이 섞인다. 최신 `_09/_10` evidence를 반영해 hard gate의 실제 보호 가치를 다시 구분해야 했다.
+- 결정: R1–R33 대부분의 구조·계보 hard gate를 유지한다. P0 제안은 (1) topology에서만 hard인 C의
+  `2문장·140자`를 existing DCT warning에 정렬, (2) 미동결 R29 minimum은 warning·maximum과 focal
+  integrity는 hard, (3) R26 regex는 warning으로 두고 existing core AI critic이 산업 의미를 판정하는
+  세 변경으로 제한한다. R27 constraint-by-construction과 A=C collision hard는 유지한다.
+- taxonomy: sector 7종은 metadata 호환값으로 유지하되 실제 LOCK 500 theme mapping은 3종만 선택하므로
+  7종 균형을 연구 구인·품질 gate로 주장하지 않는다. sector 삭제/migration·새 quota는 backlog다.
+- evidence 경계: `_09` terminal에는 R29 min/max/actual과 R26 실패 본문이 없어 세 R29가 minimum인지,
+  R26이 generic인지 detector false negative인지 확정할 수 없다. 권고는 이 UNKNOWN을 숨기지 않고
+  severity 불일치·미동결 정책·semantic gate 중복과 반복 terminal에 근거한다.
+- 다음: 승인 시 세 P0만 구현→표적 tests/typecheck→실패 5셀(110/200/230/290/190) canary→동일 균형
+  30→gate→500 순서다. 자동 실행하지 않는다.
+- 근거: `ITER-20260830-08`, `EVD-20260830-08`, 기준 `8e90cc9`.

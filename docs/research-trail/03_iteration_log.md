@@ -3070,3 +3070,21 @@
   `$0.0046975`. 오염·bounded 위반·실패 revision 승격·편성은 0이며 30·500·후속 검수는 미실행이다.
 - 관련: `DEC-20260830-07`, `EVD-20260830-07`,
   `docs/dev-log/2026-08-30-r27-topology-infra-rerun.md`.
+
+## ITER-20260830-08 · 최신 production evidence 기반 R1–R33 minimum-sufficient audit
+
+- 날짜: 2026-08-30
+- 시작 문제: 이전 2026-08-25 감사 뒤 `_06/_08/_09` 균형 30과 `_10` topology runtime evidence가
+  생겼으므로, 과거 KEEP 판정을 전제하지 않고 500 전에 hard/critic/human/planner 책임을 재분리해야 했다.
+- 조사: 현행 1,265줄 규칙 정본·계약·topology validator·length policy·industry planner/critic과 네
+  release evidence를 읽기 전용 대조했다. 코드·prompt·DB·API·canary는 변경/실행하지 않았다.
+- 결과: 전면 rule redesign은 기각했다. `_10` full-mission initial R27 0/10으로 architecture 효과를
+  확인했고 A=C collision은 유지했다. 반면 C shape만 topology hard/mission warning으로 불일치했다.
+  R29은 `_08/_09` 각 3 terminal이지만 subrule 실측은 미보존이고 threshold는 TTS 미동결 파일럿이다.
+  R26은 세 run 각 1 terminal이며 regex와 core AI industry axis가 책임 중복이다.
+- 교훈: 규칙 번호는 감사 키이지 동일한 강도의 33개 독립 의미 gate가 아니다. structural/lineage는
+  fail-closed로 두되 format·length·taxonomy heuristic은 warning/critic/planner로 옮겨야 더 단순하고
+  설명 가능하다. evidence가 없는 min/generic attribution은 UNKNOWN으로 남긴다.
+- 다음: P0 세 변경과 subrule evidence 후 5셀→균형30→500의 한 경로만 제안한다.
+- 관련: `DEC-20260830-08`, `EVD-20260830-08`,
+  `docs/dev-log/2026-08-30-rule-design-diet-audit.md`.
