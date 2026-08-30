@@ -75,6 +75,19 @@ const AdminTeachingMaterials = () => {
     setActiveSection(0);
   }, [courseId, requestedWeek]);
 
+  // 화면 진입 시 첫 교과목을 기본 선택해, 빈 화면 대신 1주차 자료를 바로 보여 준다.
+  // 미션 단독 주소로 들어온 경우에는 교강사가 직접 고르도록 자동 선택하지 않는다.
+  const outlineList = outlines.data;
+  const missionParam = params.get("mission");
+  useEffect(() => {
+    if (courseId || missionParam) return;
+    const firstOutline = outlineList?.[0];
+    if (!firstOutline) return;
+    const next = new URLSearchParams(params);
+    next.set("courseId", firstOutline.id);
+    setParams(next, { replace: true });
+  }, [courseId, missionParam, outlineList, params, setParams]);
+
   const sectionCount = material?.sections.length ?? 0;
   useEffect(() => {
     if (!projectorOpen) return;
@@ -128,7 +141,7 @@ const AdminTeachingMaterials = () => {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">교과목
             <select aria-label="수업자료 교과목" value={courseId} onChange={(event) => setParams(event.target.value ? { courseId: event.target.value } : {})} className="mt-2 h-10 w-full rounded-md border bg-white px-3 font-normal">
-              <option value="">교과목 선택</option>
+              {!courseId && <option value="">교과목 선택</option>}
               {outlines.data?.map((outline) => <option key={outline.id} value={outline.id}>{outline.title}</option>)}
             </select>
           </label>
