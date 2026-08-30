@@ -3152,3 +3152,25 @@
   아니다. 새 균형 30에서 확률적 누락·실제 복구·전체 수율을 측정해야 하며 500은 별도 승인 전 금지한다.
 - 근거: `ITER-20260830-04`, `EVD-20260830-04`, 구현 `1d86bdc`, 관측성 correction `ee523b2`,
   Edge v105, run `scope-lock-pilot-20260830-09-boundary6`.
+
+## DEC-20260830-05 · `_09` 균형 30은 비용 효율을 회복했지만 R27 6/30으로 마지막 국소 수정 판정
+
+- 날짜: 2026-08-30
+- 상태: 연구자 승인 `_09` 균형 30 완료, 500·추가 수정·Claude 검수 정지.
+- 실행 경계: clean `4fa256a`와 `_09` release/fingerprint를 동결하고 `_06/_08`과 같은 정확한
+  30셀을 새 run에서 실행했다. core hard-invalid만 셀당 1회 대체, 후보 재생성은 후보당 1회,
+  R27 situation repair는 미션당 1회로 제한했다. 31번째 셀·성공분 재생성·terminal critic rescue는
+  없었다.
+- 결과: 최초 core 19, 대체 뒤 26, first-pass eligible 14/30, final eligible 19/30이다. 상대경계
+  누락 3미션·6후보는 fallback 6/6으로 회복했고 오염은 0이다. R27은 12미션에서 발생해 repair 뒤
+  6개만 적격, deterministic 재위반 2·critic 거부 4로 직접 탈락 6/30이 됐다. 별도 상대경계 결합
+  생성 1건은 provider 429 terminal이며 semantic failure와 분리했다.
+- 비용·격리: requests 238·성공 calls 221·성공 token 1.111M·추정 `$2.7793`, 적격당 `$0.1463`다.
+  current 19개는 모두 generated/warning이고 fail lineage 5개는 reviewed·released·교과목 배정으로
+  승격되지 않았다.
+- 판정: **마지막 국소 수정 필요**. `_09`는 `_06`의 19/30 수율과 비용 효율을 회복해 production
+  구조 전체 재검토 판정에서는 벗어났지만, 사전 15~20 구간이고 R27 직접 탈락 6/30이 반복돼 500
+  진행 조건은 충족하지 못했다. 후속 연구자 승인 전 수정·500·Claude 검수를 시작하지 않는다.
+- 근거: `ITER-20260830-05`, `EVD-20260830-05`,
+  `docs/dev-log/2026-08-30-09-production-yield30.md`, run
+  `scope-lock-pilot-20260830-09-yield30`.

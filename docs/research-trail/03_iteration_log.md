@@ -3011,3 +3011,25 @@
   전체 yield를 함께 재측정하는 것이 짧은 경로다. 500은 시작하지 않는다.
 - 관련: `DEC-20260830-04`, `EVD-20260830-04`,
   `docs/dev-log/2026-08-30-relative-boundary-observability-canary.md`.
+
+## ITER-20260830-05 · `_09` 균형 30 production yield와 R27 잔존 cohort
+
+- 날짜: 2026-08-30
+- 시작 문제: SET-A 6조건에서는 상대경계 누락이 재발하지 않아 runtime fallback 성공률과 전체
+  production yield를 알 수 없었다. `_08`의 10/30·비용 악화가 fallback 이후에도 유지되는지, R27과
+  상대경계 terminal을 분리해 다시 측정해야 했다.
+- 실행: 연구자 승인 조건대로 clean `4fa256a`, `_09`, 동일 `LOCK_PILOT_CORE_PLAN` 30셀을 동결했다.
+  최초 core 30 뒤 hard-invalid 11셀만 한 번 대체했고 성공분은 재생성하지 않았다. 최종 core 26개를
+  mission으로 실행한 뒤 500·Claude·추가 수정 없이 정지했다.
+- 결과: 최초 core 19·최종 core 26, first-pass 14/30·final eligible 19/30이다. 누락된 상대경계
+  후보 6개는 6/6 회복해 세 미션이 적격이 됐고 peer·상황 오염은 0이다. R27은 12미션에서 발생해
+  repair 뒤 deterministic 통과 10, 재위반 2였고, 통과 10 중 critic 적격 6·거부 4였다. 최종 R27
+  직접 탈락은 6/30이다. 별도 relative-boundary 생성 429 한 건과 core repair 429는 semantic
+  code와 분리했다.
+- 비용·상태: requests 238·성공 calls 221·1,111,385 token·추정 `$2.7793`, 적격당 `$0.1463`다.
+  fail lineage 5개는 current/공개/편성으로 승격되지 않았고 current 19개는 모두 warning이다.
+- 예상과 달랐던 점/교훈: `_08` 대비 수율과 적격당 비용은 회복됐고 fallback 실제 발동도 성공했지만,
+  R27 직접 탈락은 `_06/_08`과 같은 6/30이었다. 상대경계 구조 전체가 아니라 R27 repair 후
+  deterministic·critic 연결이 남은 국소 병목이며, 500으로 확대하기 전 마지막 승인 판단이 필요하다.
+- 관련: `DEC-20260830-05`, `EVD-20260830-05`,
+  `docs/dev-log/2026-08-30-09-production-yield30.md`.

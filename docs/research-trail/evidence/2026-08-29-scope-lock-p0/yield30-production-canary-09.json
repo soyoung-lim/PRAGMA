@@ -1,0 +1,221 @@
+{
+  "evidence_id": "EVD-20260830-05",
+  "checked_at_local_date": "2026-08-30",
+  "baseline": {
+    "source_commit": "4fa256a63550ca30009c99935667acb82a12373b",
+    "run_id": "scope-lock-pilot-20260830-09-yield30",
+    "release_id": "pragma_scope_lock_20260830_09_mjt5_dct1_boundary_fallback",
+    "core_prompt_surface_hash": "6e5aee7cf1244bd9dc0f0b44d01f7e9aa35dfef008f8ff67f56ef7048060b0a1",
+    "pack_prompt_surface_hash": "a8f5d7c6a59dfca8ef840d110b82e189d68106598454c3f9acef148ca5bfd28c",
+    "edge_generate_scenario_version": 105,
+    "raw_terminal_evidence_path": "tmp/pragma-terminal-evidence/scope-lock-pilot-20260830-09-yield30.jsonl",
+    "raw_terminal_evidence_lines": 67,
+    "raw_terminal_evidence_sha256": "5223936d5dc584881c9b67e48912a6d494eb16f5572162369cc160af56626db5"
+  },
+  "frozen_scope": {
+    "planned_cells": 30,
+    "item_indexes": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290],
+    "denominator": 30,
+    "additional_plan_cells": 0,
+    "claude_content_review_called": false,
+    "automatic_500_started": false,
+    "rules_prompts_critic_release_changed_during_run": false
+  },
+  "core": {
+    "initial_attempts": 30,
+    "initial_saved": 19,
+    "hard_invalid_replacement_targets": 11,
+    "replacement_attempts": 11,
+    "replacement_saved": 7,
+    "max_replacement_per_plan_cell": 1,
+    "final_saved": 26,
+    "final_dropouts": [
+      { "item_index": 110, "direct_cause": "R29_source_length" },
+      { "item_index": 200, "direct_cause": "R29_source_length" },
+      { "item_index": 230, "direct_cause": "R29_source_length", "infrastructure_cofactor": "both core_repair requests returned 429" },
+      { "item_index": 290, "direct_cause": "R26_industry_specificity" }
+    ]
+  },
+  "yield": {
+    "mission_attempted": 26,
+    "first_pass_eligible": 14,
+    "first_pass_rate_planned": 0.4666666667,
+    "first_pass_rate_mission_attempted": 0.5384615385,
+    "final_eligible": 19,
+    "final_rate_planned": 0.6333333333,
+    "final_rate_mission_attempted": 0.7307692308,
+    "final_rejected": 11,
+    "current_stored_verdicts": { "pass": 0, "warning": 19, "fail": 0 },
+    "current_generated": 19,
+    "needs_review": 26,
+    "archived_only": 26
+  },
+  "terminal_dropout_mutually_exclusive": {
+    "core_R29_source_length": 3,
+    "core_R26_industry_specificity": 1,
+    "R27_post_repair_deterministic_refail": 2,
+    "R27_post_repair_critic_reject": 4,
+    "relative_boundary_initial_generation_provider_429": 1,
+    "UNKNOWN": 0,
+    "sum": 11
+  },
+  "relative_boundary": {
+    "output_missing_missions": 3,
+    "output_missing_candidate_paths": 6,
+    "fallback_attempts": 6,
+    "fallback_successes": 6,
+    "fallback_success_rate": 1.0,
+    "fallback_final_eligible_missions": 3,
+    "fallback_semantic_terminal_dropouts": 0,
+    "initial_combined_generation_provider_terminal": 1,
+    "initial_combined_generation_provider_status": 429,
+    "situation_mutation_observed": 0,
+    "immutable_candidate_pollution_observed": 0,
+    "successful_fallback_scenarios": [
+      "3ac7ab26-edfb-4b3e-b124-e7a7e47e28cb",
+      "12db3392-cce6-4ab6-b384-aef94bdcb9a0",
+      "9d40fe3b-7170-4f94-89bb-01f6b40183a4"
+    ],
+    "provider_terminal_scenario": "bca904d2-c960-4d4f-a5fe-f018661bdcc5"
+  },
+  "R27_cohort": {
+    "initial_occurrence_missions": 12,
+    "situation_repair_attempts": 12,
+    "max_situation_repair_per_mission": 1,
+    "post_repair_deterministic_pass": 10,
+    "post_repair_deterministic_refail": 2,
+    "post_repair_critic_eligible": 6,
+    "post_repair_critic_reject": 4,
+    "final_eligible": 6,
+    "final_direct_dropouts": 6,
+    "deterministic_refail_scenarios": [
+      "59ee2731-e317-46f3-b272-7c3619edafc0",
+      "d1f2eafb-f98f-47e8-95d7-d8e9cba5dd35"
+    ],
+    "critic_reject_scenarios": [
+      "47d97dde-8825-466c-b792-76002aa8c658",
+      "6cc8a096-2ece-4766-9259-3d9af2797bee",
+      "d3356234-03d4-408b-8c03-915080b4e63f",
+      "a0b97313-6174-4060-934d-2ead6cad5a69"
+    ]
+  },
+  "bounded_recovery": {
+    "missions_with_candidate_regeneration": 9,
+    "candidate_regeneration_total": 20,
+    "candidate_regeneration_average_per_planned_cell": 0.6666666667,
+    "candidate_regeneration_average_per_attempted_mission": 0.7692307692,
+    "max_regeneration_per_candidate": 1,
+    "normal_candidate_pollution_observed": 0,
+    "successful_mission_regeneration_reused": 0
+  },
+  "critic_and_lineage": {
+    "stored_lineage_versions": 25,
+    "stored_fail_lineage_versions": 5,
+    "stored_warning_lineage_versions": 20,
+    "current_warning_missions": 19,
+    "current_fail_drafts": 0,
+    "unstored_post_R27_repair_critic_rejects": 4,
+    "fail_revision_current_or_eligible": 0,
+    "reviewed_or_released_lineages": 0,
+    "course_assignments": 0
+  },
+  "infrastructure": {
+    "provider_requests": 238,
+    "successful_model_calls": 221,
+    "failed_provider_requests": 17,
+    "failed_statuses": { "429": 17 },
+    "provider_reliability": 0.9285714286,
+    "failed_operations": { "core_repair": 7, "mission_generate": 10 },
+    "model_fallbacks": 0,
+    "terminal_direct_dropouts": 1,
+    "semantic_and_infrastructure_separated": true
+  },
+  "model_usage": {
+    "successful_calls": 221,
+    "prompt_tokens": 1003932,
+    "cached_input_tokens": 166656,
+    "completion_tokens": 107453,
+    "total_tokens": 1111385,
+    "by_model": {
+      "gpt-4.1-mini-2025-04-14": {
+        "successful_calls": 41,
+        "prompt_tokens": 149856,
+        "cached_input_tokens": 92800,
+        "completion_tokens": 9831,
+        "estimated_standard_api_cost_usd": 0.047832
+      },
+      "gpt-4.1-2025-04-14": {
+        "successful_calls": 96,
+        "prompt_tokens": 441873,
+        "cached_input_tokens": 22016,
+        "completion_tokens": 30605,
+        "estimated_standard_api_cost_usd": 1.095562
+      },
+      "gpt-4o-2024-08-06": {
+        "successful_calls": 84,
+        "prompt_tokens": 412203,
+        "cached_input_tokens": 51840,
+        "completion_tokens": 67017,
+        "estimated_standard_api_cost_usd": 1.6358775
+      }
+    },
+    "estimated_standard_api_cost_usd": 2.7792715,
+    "requests_per_eligible": 12.5263157895,
+    "successful_calls_per_eligible": 11.6315789474,
+    "tokens_per_eligible": 58493.9473684211,
+    "estimated_cost_per_eligible_usd": 0.1462774474,
+    "pricing_basis": "Same standard API price basis used in EVD-20260829-04 and EVD-20260830-03; estimate is not an invoice."
+  },
+  "axis_distribution": {
+    "direction": {
+      "ko_zh": { "planned": 20, "eligible": 14 },
+      "zh_ko": { "planned": 10, "eligible": 5 }
+    },
+    "level": {
+      "intermediate": { "planned": 20, "eligible": 13 },
+      "advanced": { "planned": 10, "eligible": 6 }
+    },
+    "mode": {
+      "translation": { "planned": 24, "eligible": 15 },
+      "stt_interpreting": { "planned": 6, "eligible": 4 }
+    },
+    "eligible_speech_acts": {
+      "agreement": 1,
+      "apology": 3,
+      "complaint": 2,
+      "compliment": 3,
+      "opposition": 3,
+      "proposal": 2,
+      "refusal": 1,
+      "request": 2,
+      "thanks": 2
+    }
+  },
+  "comparison": {
+    "_06": { "first_pass_eligible": 12, "final_eligible": 19, "R27_direct_dropouts": 6, "provider_requests": 224, "successful_calls": 219, "tokens": 1133961, "estimated_cost_usd": 2.9261105 },
+    "_08": { "first_pass_eligible": 5, "final_eligible": 10, "R27_direct_dropouts": 6, "provider_requests": 201, "successful_calls": 194, "tokens": 973703, "estimated_cost_usd": 2.469267 },
+    "_09": { "first_pass_eligible": 14, "final_eligible": 19, "R27_direct_dropouts": 6, "provider_requests": 238, "successful_calls": 221, "tokens": 1111385, "estimated_cost_usd": 2.7792715 },
+    "_09_per_eligible_change_percent_vs_06": { "requests": 6.25, "successful_calls": 0.9132, "tokens": -1.9909, "estimated_cost": -5.0182 },
+    "_09_per_eligible_change_percent_vs_08": { "requests": -37.68, "successful_calls": -40.0434, "tokens": -39.9263, "estimated_cost": -40.7608 }
+  },
+  "professor_eye_review_candidates_not_approved": [
+    { "scenario_id": "45ec2f58-88c7-4910-ab90-467643d2000f", "item_index": 50, "reason": "ko_zh intermediate interpreting first-pass reference" },
+    { "scenario_id": "0500a27e-5aea-44fc-822b-90b1967ba8f5", "item_index": 100, "reason": "ko_zh advanced work candidate recovery" },
+    { "scenario_id": "3ac7ab26-edfb-4b3e-b124-e7a7e47e28cb", "item_index": 20, "reason": "three-path relative-boundary fallback recovery" },
+    { "scenario_id": "9d40fe3b-7170-4f94-89bb-01f6b40183a4", "item_index": 210, "reason": "zh_ko relative-boundary fallback and fail-lineage recovery" },
+    { "scenario_id": "d551687f-bc12-4c51-a00e-420009794fca", "item_index": 270, "reason": "zh_ko R27 repair recovery" }
+  ],
+  "decision": {
+    "result": "last_local_correction_required",
+    "reasons": [
+      "final eligible 19/30 is in the preregistered 15-20 local-correction band",
+      "relative-boundary missing candidates recovered 6/6 without observed pollution",
+      "per-eligible cost recovered to the _06 baseline",
+      "R27 still directly dropped 6/30 after occurring in 12 missions"
+    ],
+    "production_structure_review_required": false,
+    "automatic_500_started": false,
+    "automatic_micro_fix_started": false,
+    "automatic_claude_review_started": false
+  }
+}
