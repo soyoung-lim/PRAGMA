@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
-import { GenerationModeTabs } from "@/components/admin/GenerationModeTabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -346,7 +345,6 @@ const AdminBatch = () => {
       title="시나리오 배치 생성"
       description="정해진 조건 조합에 따라 AI 생성 학습 콘텐츠의 상황과 원문을 여러 건 만들고 내부 확인 대기 상태로 저장합니다."
     >
-      <GenerationModeTabs />
       {/* ── 생성 설정 (코어·방향·할당량 압축) ── */}
       <section className="rounded-xl border border-[#EAE4D2] bg-white p-4">
         <div className="flex flex-wrap items-start gap-x-8 gap-y-3">

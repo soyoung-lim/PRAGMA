@@ -45,7 +45,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
     [
       "mr-2 rounded-md px-3 py-0.5 text-[13px] leading-5 whitespace-nowrap transition-colors",
       active
-        ? "bg-[#FAD338] text-[#15202B] font-medium"
+        ? "bg-muted text-foreground font-normal"
         : "text-foreground font-normal hover:bg-muted hover:text-foreground",
     ].join(" ");
 
