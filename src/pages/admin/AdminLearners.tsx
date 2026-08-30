@@ -127,6 +127,32 @@ const firstOf = <T,>(...vals: (T | null | undefined)[]) =>
 const traceQueryFor = (row: { email: string | null; anonymous_participant_id: string | null; full_name: string | null }) =>
   firstOf(row.email, row.anonymous_participant_id, row.full_name);
 
+/** 목록은 스캔용이므로 초 단위를 버리고 자리수를 고정한다. */
+const fmtUpdated = (iso: string | null | undefined) => {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
+
+/** 준비 상태를 있음/없음 텍스트 대신 한눈에 대비되는 칩으로 보여 준다. */
+const ReadyChip = ({ ready, on, off }: { ready: boolean; on: string; off: string }) => (
+  <span
+    className={[
+      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
+      ready ? "bg-[#EDE9DD] text-[#5B5446]" : "border border-dashed border-border text-muted-foreground",
+    ].join(" ")}
+  >
+    {ready ? on : off}
+  </span>
+);
+
 const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex flex-col gap-0.5">
     <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -203,24 +229,30 @@ const Page = () => {
   return (
     <AdminShell
       title="학습자 승인·관리"
-      description="학습자 프로필 조회와 승인/반려/비활성 처리를 합니다."
+      description="학습자 프로필을 확인해 승인·반려·비활성을 처리하고, 각 학습자의 수행 기록으로 바로 이동합니다."
     >
-      <div className="mb-4 flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">상태 필터</span>
-        <Select value={filter} onValueChange={(v) => setFilter(v as FilterValue)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {FILTERS.map((f) => (
-              <SelectItem key={f.value} value={f.value}>
-                {f.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="ml-auto text-xs text-muted-foreground">
-          {rows ? `${filtered.length} / ${rows.length}` : "—"}
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <label className="text-xs font-medium text-muted-foreground">
+          상태 필터
+          <Select value={filter} onValueChange={(v) => setFilter(v as FilterValue)}>
+            <SelectTrigger className="mt-1 h-9 w-[180px] bg-white font-normal text-foreground">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FILTERS.map((f) => (
+                <SelectItem key={f.value} value={f.value}>
+                  {f.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+        <span className="text-sm text-muted-foreground">
+          {rows === null
+            ? "불러오는 중…"
+            : filter === "all"
+              ? `학습자 ${rows.length}명`
+              : `${filtered.length}명 표시 · 전체 ${rows.length}명`}
         </span>
       </div>
 
@@ -228,56 +260,61 @@ const Page = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>이름</TableHead>
-              <TableHead>이메일</TableHead>
+              <TableHead className="w-[30%]">학습자</TableHead>
               <TableHead>소속/신분</TableHead>
-              <TableHead className="text-center">프로필</TableHead>
               <TableHead>상태</TableHead>
-              <TableHead className="text-center">익명 ID</TableHead>
-              <TableHead>업데이트</TableHead>
+              <TableHead>프로필 · 익명 ID</TableHead>
+              <TableHead className="text-right">업데이트</TableHead>
               <TableHead className="text-right">관리</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows === null ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                   불러오는 중…
                 </TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                   표시할 학습자가 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
               filtered.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.full_name ?? "—"}</TableCell>
-                  <TableCell>{r.email ?? "—"}</TableCell>
-                  <TableCell>{firstOf(r.affiliation, r.affiliation_or_status) ?? "—"}</TableCell>
-                  <TableCell className="text-center">
-                    {r.profile_completed ? "✓" : "✗"}
+                  <TableCell className="py-2.5">
+                    <div className="font-medium leading-tight text-foreground">{r.full_name ?? "—"}</div>
+                    <div className="mt-0.5 text-xs leading-tight text-muted-foreground">{r.email ?? "—"}</div>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {firstOf(r.affiliation, r.affiliation_or_status) ?? "—"}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_VARIANT[r.approval_status]}>
+                    <Badge variant={STATUS_VARIANT[r.approval_status]} className="whitespace-nowrap">
                       {STATUS_LABEL[r.approval_status]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center text-sm">
-                    {r.anonymous_participant_id ? "있음" : "없음"}
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      <ReadyChip ready={!!r.profile_completed} on="프로필 완료" off="프로필 미완료" />
+                      <ReadyChip ready={!!r.anonymous_participant_id} on="익명 ID" off="익명 ID 없음" />
+                    </div>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {(r.updated_at ?? r.created_at) ?
-                      new Date(r.updated_at ?? r.created_at!).toLocaleString() : "—"}
+                  <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
+                    {fmtUpdated(r.updated_at ?? r.created_at)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1.5">
+                    <div className="flex items-center justify-end gap-1.5">
                       {traceQueryFor(r) && (
-                        <Button size="sm" variant="outline" asChild>
+                        <Button
+                          size="sm"
+                          asChild
+                          className="bg-[#15202B] text-white hover:bg-[#243447]"
+                        >
                           <Link to={`/admin/decision-traces?q=${encodeURIComponent(traceQueryFor(r)!)}`}>
-                            수행 기록
+                            수행 기록 →
                           </Link>
                         </Button>
                       )}
