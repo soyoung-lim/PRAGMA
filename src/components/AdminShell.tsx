@@ -43,7 +43,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
 
   const itemClasses = (active: boolean) =>
     [
-      "mr-2 rounded-md px-3 py-0.5 text-[13px] leading-5 whitespace-nowrap transition-colors",
+      "mr-2 rounded-md px-3 py-0.5 text-[13.5px] leading-5 whitespace-nowrap transition-colors",
       active
         ? "bg-muted text-foreground font-normal"
         : "text-foreground font-normal hover:bg-muted hover:text-foreground",
@@ -89,7 +89,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
                     aria-controls={panelId}
                     onClick={() => toggleGroup(groupIndex)}
                     className={[
-                      "mr-2 flex min-h-8 items-center gap-2 px-2.5 py-1.5 text-left text-[12px] font-semibold transition-colors",
+                      "mr-2 flex min-h-8 items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] font-semibold transition-colors",
                       groupActive
                         ? "rounded-md bg-[#15202B] text-white shadow-sm"
                         : "border-b border-[#D8D3C6] bg-transparent text-[#15202B] hover:bg-[#F2F0E8]",
