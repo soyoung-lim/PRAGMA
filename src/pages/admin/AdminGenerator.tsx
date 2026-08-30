@@ -937,15 +937,6 @@ const AdminGenerator = () => {
       title="시나리오 개별 생성"
       description="한 건씩 조건을 정해 AI 생성 학습 콘텐츠의 상황과 원문을 만들고 내부 확인 대기 상태로 저장합니다."
     >
-      {/* Helper note */}
-      <div className="rounded-md border border-[#EAE4D2] bg-[#FAF7EE] px-4 py-3">
-        <p className="text-[11px] leading-relaxed text-[#5B5446]">
-          AI가 생성한 시나리오는 학생에게 바로 공개되지 않습니다.
-          <br />
-          연구자 검수 후 승인된 자료만 수업용 공개 또는 본실험 locked로 지정할 수 있습니다.
-        </p>
-      </div>
-
       {gridPrefill && (
         <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-[12px] text-amber-950">
           <div className="flex flex-wrap items-center justify-between gap-2">
