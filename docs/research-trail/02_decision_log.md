@@ -3225,3 +3225,22 @@
 - 다음: 승인 시 세 P0만 구현→표적 tests/typecheck→실패 5셀(110/200/230/290/190) canary→동일 균형
   30→gate→500 순서다. 자동 실행하지 않는다.
 - 근거: `ITER-20260830-08`, `EVD-20260830-08`, 기준 `8e90cc9`.
+
+## DEC-20260830-09 · Design Diet P0를 책임층 정렬로 확정하고 균형 30을 연다
+
+- 날짜: 2026-08-30
+- 문제: 감사안의 R27·R29 severity 분리는 현행 코드와 맞았지만, R26을 넘겨받는다고 한 core AI
+  critic은 실제로 자동 production gate가 아니라 별도 파일럿이었다. regex만 warning으로 내리면
+  semantic protection이 사라질 수 있었다.
+- 결정: R27은 C 형식만 topology hard에서 기존 DCT warning으로 돌리고 collision/PDR/new-event는
+  유지한다. R29 minimum은 warning, maximum·focal integrity는 hard로 분리한다. R26 lexical miss는
+  warning으로 기록한 뒤 그 경우에만 기존 core-quality industry 축을 1회 호출한다. 다른 critic 축은
+  gate로 올리지 않고 semantic fail과 infrastructure failure를 분리한다.
+- 결과: 관련 90 tests·typecheck와 새 `_11` fingerprint를 고정했다. historical 5셀은 core 5/5,
+  topology 최초 5/5, initial R27·repair·infra 0, final eligible 2/5다. 탈락 3건은 모두 mission critic
+  band mismatch다. P0 warning 자연발생은 각 0이라 해당 경로의 근거는 표적 테스트이며 추가 셀은
+  만들지 않았다.
+- 판정: **P0 Design Diet 검증 완료 — 균형 30 진행 가능**. quality fail을 살리지 않았고 모든 행은
+  generated/needs_review/archived_only다. 다음 자동 단계는 없으며 500·외부 검수·편성은 금지 상태다.
+- 근거: `ITER-20260830-09`, `EVD-20260830-09`, 구현 `785a399`, fingerprint `a1ceddc`, run
+  `scope-lock-pilot-20260830-11-design-diet5`.

@@ -3088,3 +3088,24 @@
 - 다음: P0 세 변경과 subrule evidence 후 5셀→균형30→500의 한 경로만 제안한다.
 - 관련: `DEC-20260830-08`, `EVD-20260830-08`,
   `docs/dev-log/2026-08-30-rule-design-diet-audit.md`.
+
+## ITER-20260830-09 · Design Diet P0 책임층 구현과 historical 5셀 검증
+
+- 날짜: 2026-08-30
+- 시작 문제: topology의 frozen C 형식, R29 minimum, R26 regex가 각각 warning/semantic 층과 겹쳤고
+  terminal evidence는 R29 subrule을 보존하지 않았다. 더구나 기존 core critic은 production gate가
+  아니어서 감사안을 그대로 구현할 수 없었다.
+- 변경: C shape만 topology hard에서 제외하고 기존 mission warning을 유지했다. R29 minimum/maximum을
+  분리하고 구조화 finding을 성공 셀까지 전달했다. R26 lexical warning이 생긴 코어에만 기존 industry
+  critic을 1회 적용해 fail은 semantic, 호출 실패는 infrastructure로 기록했다. DB/UI/prompt 내용과 다른
+  14 critic 축은 변경하지 않았다.
+- 검증/실행: 7파일 90 tests·typecheck, release `_11`·hash `857875fb…`, Edge 배포 뒤 지정 5셀만
+  실행했다. core·topology는 각각 5/5 최초 통과, full mission 5, first-pass eligible 0, final eligible 2,
+  critic fail 3, infra 0이다. candidate regeneration 합계 5·후보별 max1, 오염/상한 위반0이다.
+- 예상과 달랐던 점: 과거 실패 index를 다시 생성해도 R26/R29/R27 경계가 자연 재현되지는 않았다.
+  따라서 stochastic 재현을 위해 셀을 추가하지 않고 severity/routing은 deterministic tests, 배포 안정성은
+  paid canary로 분리해 근거화했다. 탈락 3건은 P0가 아니라 독립 band critic이 정상 차단했다.
+- 비용/격리: 46/46 success, 206,326 token, 추정 `$0.5664795`; reviewed/released/course 승격0이다.
+- 다음: 같은 LOCK 파일럿 30셀을 새 run으로 실행해 production yield를 측정한다. 자동 시작하지 않는다.
+- 관련: `DEC-20260830-09`, `EVD-20260830-09`,
+  `docs/dev-log/2026-08-30-design-diet-p0-targeted5.md`.
