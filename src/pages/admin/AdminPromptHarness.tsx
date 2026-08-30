@@ -552,7 +552,7 @@ const AdminPromptHarness = () => {
 
   return (
     <AdminShell
-      title="AI 생성 콘텐츠 품질 관리"
+      title="생성 계약·프롬프트"
       description="생성 계약과 버전이 관리되는 프롬프트, 자동 점검 규칙, 교수자 검수·승인의 관계를 확인합니다."
     >
       <HarnessOverview />

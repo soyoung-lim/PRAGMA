@@ -1024,7 +1024,7 @@ const AdminGenerator = () => {
 
           {/* 3. 목표 화행 — 3x3 카드 */}
           <div>
-            <SectionTitle n={3} label="목표 화행 · Speech Act" accent="핵심 변수" />
+            <SectionTitle n={2} label="목표 화행 · Speech Act" accent="핵심 변수" />
             <div className="mt-2 grid grid-cols-3 gap-1.5">
               {(Object.keys(SPEECH_ACT_UI) as SpeechActUI[]).map((sa) => {
                 const on = form.speech_act_ui === sa;
@@ -1067,7 +1067,7 @@ const AdminGenerator = () => {
 
           {/* 4. P-D-R 관계 조건 + 5. 예상 화용 부담도 */}
           <div className="rounded-md bg-[#FBEFD9]/40 border border-[#EAE4D2] p-3.5">
-            <SectionTitle n={4} label="P · D · R 관계 조건" accent="핵심 변수" tone="accent" />
+            <SectionTitle n={3} label="P · D · R 관계 조건" accent="핵심 변수" tone="accent" />
             <div className="mt-2 grid grid-cols-3 gap-3">
               <Field label="Power (P) · 지위" tone="accent">
                 <Select
@@ -1138,7 +1138,7 @@ const AdminGenerator = () => {
 
           {/* 6. 언어 · 학습 · 상황 조건 */}
           <div>
-            <SectionTitle n={6} label="언어 · 학습 · 상황 조건" />
+            <SectionTitle n={4} label="언어 · 학습 · 상황 조건" />
             <div className="mt-2 grid grid-cols-3 gap-3">
               <Field label="언어 방향">
                 <Select
@@ -1191,7 +1191,7 @@ const AdminGenerator = () => {
 
           {/* 7. 도메인 · 산업 · 직무 */}
           <div>
-            <SectionTitle n={7} label="도메인 · 산업 · 직무" />
+            <SectionTitle n={5} label="도메인 · 산업 · 직무" />
             <div className="mt-2 grid items-start gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="text-[12px] text-muted-foreground">도메인</label>
@@ -1288,7 +1288,7 @@ const AdminGenerator = () => {
 
           {/* 8. 개요 후보 수 */}
           <div>
-            <SectionTitle n={8} label="개요 후보 수" />
+            <SectionTitle n={6} label="개요 후보 수" />
             <div className="mt-2 flex gap-2">
               {([1, 3, 5] as const).map((n) => {
                 const on = outlineCount === n;
