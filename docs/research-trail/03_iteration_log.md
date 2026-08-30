@@ -3109,3 +3109,15 @@
 - 다음: 같은 LOCK 파일럿 30셀을 새 run으로 실행해 production yield를 측정한다. 자동 시작하지 않는다.
 - 관련: `DEC-20260830-09`, `EVD-20260830-09`,
   `docs/dev-log/2026-08-30-design-diet-p0-targeted5.md`.
+
+## ITER-20260830-10 · `_11` 동일 균형 30 production gate
+
+- 날짜: 2026-08-30
+- 실행: clean `c7becca`와 `_11` release/hash를 동결하고 동일 item `0,10,…,290`을 새 run으로 실행했다.
+  core 최초 28/30 뒤 동일 2셀 1회 대체로 30/30, first-pass 19/30, final 27/30이다.
+- 결과: topology R27 최초 5건 중 3건 회복·2건 terminal, critic direct fail 1건이다. R26 warning 3건은
+  semantic pass, R29 maximum 2건은 대체 회복, minimum 2건은 warning으로 유지됐다.
+- 운영성: provider 280/280 success, 1,348,444 tokens, `$3.5166204`; 오염·bounded 위반·승격·편성은 0이다.
+- 교훈/판정: constraint-by-construction 뒤 R27 direct dropout은 `_06/_08/_09`의 6건에서 2건으로
+  줄었고 final yield는 19/10/19에서 27로 상승했다. 사전 gate에 따라 500 production 진행 가능이다.
+- 관련: `DEC-20260830-10`, `EVD-20260830-10`, `docs/dev-log/2026-08-30-11-yield30-production-gate.md`.

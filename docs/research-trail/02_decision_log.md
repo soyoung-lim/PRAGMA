@@ -3244,3 +3244,13 @@
   generated/needs_review/archived_only다. 다음 자동 단계는 없으며 500·외부 검수·편성은 금지 상태다.
 - 근거: `ITER-20260830-09`, `EVD-20260830-09`, 구현 `785a399`, fingerprint `a1ceddc`, run
   `scope-lock-pilot-20260830-11-design-diet5`.
+
+## DEC-20260830-10 · `_11` 균형 30 통과로 500 production을 연다
+
+- 날짜: 2026-08-30
+- 결정: 동일 LOCK 30셀에서 first-pass 19/30, final eligible 27/30으로 사전 gate 21/30을 통과했다.
+  탈락은 topology R27 deterministic 2와 critic fail 1뿐이며 infrastructure·오염·bounded 위반·실패
+  revision 승격은 0이다. 따라서 frozen `_11`로 **500 production 진행 가능**으로 판정한다.
+- 경계: 이는 자동검수 production feasibility 승인이다. 500·재canary·micro-fix·Claude/교수자 검수는
+  이번 실행에서 시작하지 않았다.
+- 근거: `ITER-20260830-10`, `EVD-20260830-10`, run `scope-lock-pilot-20260830-11-yield30`.

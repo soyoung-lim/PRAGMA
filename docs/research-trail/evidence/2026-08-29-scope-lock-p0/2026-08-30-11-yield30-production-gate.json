@@ -1,0 +1,112 @@
+{
+  "evidence_id": "EVD-20260830-10",
+  "run_id": "scope-lock-pilot-20260830-11-yield30",
+  "source_commit": "c7becca",
+  "release_id": "pragma_scope_lock_20260830_11_design_diet_p0",
+  "core_surface_hash": "857875fbb14dc9809b9d855c3672d7eb1e4608369baf1eb687e7fecb2816d617",
+  "planned_cells": 30,
+  "item_indexes": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290],
+  "core": {
+    "initial_saved": 28,
+    "initial_hard_invalid": 2,
+    "replacement_attempts": 2,
+    "replacement_saved": 2,
+    "final_saved": 30,
+    "r29_maximum_precursor_items": [50, 190]
+  },
+  "yield": {
+    "first_pass_eligible": 19,
+    "final_eligible": 27,
+    "denominator": 30
+  },
+  "terminal_direct_causes": {
+    "topology_r27_deterministic": 2,
+    "mission_critic_fail": 1,
+    "core_deterministic": 0,
+    "candidate_generation": 0,
+    "infrastructure": 0,
+    "UNKNOWN": 0,
+    "sum": 3
+  },
+  "p0_rules": {
+    "r26": {
+      "lexical_warning_items": [140, 260, 290],
+      "industry_semantic_calls": 3,
+      "industry_semantic_failures": 0,
+      "terminal_direct_dropouts": 0
+    },
+    "r27": {
+      "topology_first_occurrence_items": [50, 80, 90, 170, 190],
+      "topology_regeneration_attempts": 5,
+      "topology_regeneration_success": 3,
+      "topology_terminal_items": [170, 190],
+      "full_mission_c_format_warning_items": [50],
+      "full_mission_hard_r27_repair_attempts": 0
+    },
+    "r29": {
+      "minimum_warning_items": [200, 240],
+      "maximum_hard_precursor_items": [50, 190],
+      "maximum_recovered": 2,
+      "terminal_direct_dropouts": 0,
+      "mission_reference_length_warning_subrule": "UNKNOWN/legacy warning"
+    }
+  },
+  "recovery": {
+    "candidate_regeneration_provider_requests": 41,
+    "candidate_regeneration_applied": 17,
+    "missions_with_applied_candidate_regeneration": 10,
+    "max_per_candidate": 1,
+    "relative_boundary_missions": 2,
+    "relative_boundary_paths_attempted": 5,
+    "relative_boundary_paths_succeeded": 5,
+    "normal_peer_contamination": 0,
+    "bounded_recovery_violations": 0
+  },
+  "integrity": {
+    "scenario_rows": 30,
+    "current_warning": 27,
+    "current_fail": 1,
+    "mission_missing_after_topology_terminal": 2,
+    "lineage_versions": 42,
+    "fail_lineage_versions": 9,
+    "reviewed_or_released_lineages": 0,
+    "review_status_needs_review": 30,
+    "usage_assignment_archived_only": 30,
+    "course_assignments": 0,
+    "failed_revision_eligible_reviewed_released_promotion": 0
+  },
+  "infrastructure": {
+    "provider_requests": 280,
+    "successful_calls": 280,
+    "failed_requests": 0,
+    "failed_without_tokens": 0,
+    "model_fallbacks": 0
+  },
+  "usage": {
+    "prompt_tokens": 1216525,
+    "cached_tokens": 155520,
+    "completion_tokens": 131919,
+    "total_tokens": 1348444,
+    "estimated_standard_api_cost_usd": 3.5166204,
+    "estimated_cost_per_eligible_usd": 0.1302452,
+    "pricing_basis": "Same standard API price basis used by _06/_08/_09; estimate is not an invoice."
+  },
+  "comparison": {
+    "_06": { "first_pass_eligible": 12, "final_eligible": 19, "r27_direct_dropouts": 6, "provider_requests": 224, "successful_calls": 219, "tokens": 1133961, "estimated_cost_usd": 2.9261105 },
+    "_08": { "first_pass_eligible": 5, "final_eligible": 10, "r27_direct_dropouts": 6, "provider_requests": 201, "successful_calls": 194, "tokens": 973703, "estimated_cost_usd": 2.469267 },
+    "_09": { "first_pass_eligible": 14, "final_eligible": 19, "r27_direct_dropouts": 6, "provider_requests": 238, "successful_calls": 221, "tokens": 1111385, "estimated_cost_usd": 2.7792715 },
+    "_11": { "first_pass_eligible": 19, "final_eligible": 27, "r27_direct_dropouts": 2, "provider_requests": 280, "successful_calls": 280, "tokens": 1348444, "estimated_cost_usd": 3.5166204 }
+  },
+  "raw_terminal_evidence": {
+    "path": "tmp/pragma-terminal-evidence/scope-lock-pilot-20260830-11-yield30.jsonl",
+    "lines": 62,
+    "sha256": "83b176547adec59d5b64e5e20b1a97dc0f850a32a595760b4dcb814c7edb2d7c"
+  },
+  "decision": {
+    "result": "500 production 진행 가능",
+    "automatic_500_started": false,
+    "automatic_recanary_started": false,
+    "automatic_micro_fix_started": false,
+    "automatic_claude_or_professor_review_started": false
+  }
+}
