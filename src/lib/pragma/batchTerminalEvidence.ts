@@ -11,6 +11,17 @@ export interface BatchTerminalEvidenceRecord {
   item_candidate_path: string[];
   terminal_stage: string;
   deterministic_failure_code: string[];
+  semantic_failure_code: string[];
+  rule_finding: Array<{
+    rule_id: string;
+    subrule: string;
+    severity: string;
+    actual: unknown;
+    threshold: unknown;
+    modality: string;
+    direction: string;
+    message: string;
+  }>;
   critic_verdict: "pass" | "warning" | "fail" | "UNKNOWN";
   critic_finding_code: Array<{ code: string; path: string }>;
   critic_finding: Array<{ code: string; path: string; severity: string; finding: string }>;
@@ -59,9 +70,29 @@ export function coreTerminalEvidence(
     item_candidate_path: [],
     terminal_stage: result.terminalStage ?? "UNKNOWN",
     deterministic_failure_code: result.deterministicFailureCodes ?? [],
-    critic_verdict: "UNKNOWN",
-    critic_finding_code: [],
-    critic_finding: [],
+    semantic_failure_code: result.semanticFailureCodes ?? [],
+    rule_finding: (result.ruleFindings ?? []).map((finding) => ({
+      rule_id: finding.id,
+      subrule: finding.evidence?.subrule ?? "UNKNOWN",
+      severity: finding.level,
+      actual: finding.evidence?.actual ?? "UNKNOWN",
+      threshold: finding.evidence?.threshold ?? "UNKNOWN",
+      modality: finding.evidence?.modality ?? "UNKNOWN",
+      direction: finding.evidence?.direction ?? "UNKNOWN",
+      message: finding.message,
+    })),
+    critic_verdict: result.industryCritic?.verdict ?? "UNKNOWN",
+    critic_finding_code: result.industryCritic
+      ? [{ code: "industry", path: "axes.industry" }]
+      : [],
+    critic_finding: result.industryCritic
+      ? [{
+          code: "industry",
+          path: "axes.industry",
+          severity: result.industryCritic.verdict,
+          finding: result.industryCritic.reason,
+        }]
+      : [],
     topology_attempt_no: 0,
     topology_first_pass_result: "UNKNOWN",
     topology_final_result: "UNKNOWN",
@@ -79,7 +110,7 @@ export function coreTerminalEvidence(
     infrastructure_error: result.infrastructureError ?? false,
     provider_status: result.providerStatus ?? "UNKNOWN",
     final_outcome: result.reused ? "reused" : result.ok ? "core_saved" : "terminal_dropout",
-    stop_code: "UNKNOWN",
+    stop_code: result.stopCode ?? "UNKNOWN",
     terminal_error: result.error?.slice(0, 500) ?? "UNKNOWN",
     boundary_fallback: null,
     recorded_at: recordedAt,
@@ -103,6 +134,17 @@ export function missionTerminalEvidence(
     terminal_stage: result.reused ? "mission_reused" : terminal?.terminalStage ?? "UNKNOWN",
     deterministic_failure_code: terminal?.deterministicFailureCodes ??
       result.violations?.filter((violation) => violation.level === "fail").map((violation) => violation.id) ?? [],
+    semantic_failure_code: [],
+    rule_finding: (result.violations ?? []).map((finding) => ({
+      rule_id: finding.id,
+      subrule: finding.evidence?.subrule ?? "UNKNOWN",
+      severity: finding.level,
+      actual: finding.evidence?.actual ?? "UNKNOWN",
+      threshold: finding.evidence?.threshold ?? "UNKNOWN",
+      modality: finding.evidence?.modality ?? "UNKNOWN",
+      direction: finding.evidence?.direction ?? "UNKNOWN",
+      message: finding.message,
+    })),
     critic_verdict: terminal?.criticVerdict ?? result.qualityVerdict ?? "UNKNOWN",
     critic_finding_code: terminal?.criticFindingCodes ?? [],
     critic_finding: terminal?.criticFindings ?? [],

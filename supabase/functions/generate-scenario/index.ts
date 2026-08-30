@@ -4598,7 +4598,8 @@ Deno.serve(async (req) => {
       )
     }
 
-    // ── core_quality_check: 코어 축 준수 비평 파일럿(감사 표시 전용) ──
+    // ── core_quality_check: 코어 축 준수 비평 ──
+    // standalone pilot에 더해 R26 lexical warning의 industry 축 bounded adjudication에 재사용한다.
     if (input.action === 'core_quality_check') {
       const b = input.core_quality
       if (!b?.core_content || !b.speech_act || !b.domain || !b.mode || !b.situation_seed_ko) {

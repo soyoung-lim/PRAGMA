@@ -229,11 +229,16 @@ export function validateNativeMpj5FrozenTopology(
   for (const [slot, scene] of scenes) {
     const situation = typeof scene.situation_ko === 'string' ? scene.situation_ko.trim() : ''
     const relation = typeof scene.relation_ko === 'string' ? scene.relation_ko.trim() : ''
-    if (!situation || !situationShapeValid(situation)) {
+    // C is the server-frozen DCT scene. Its two-sentence/140-char shape is an
+    // existing full-mission R27 warning, not a topology regeneration gate.
+    // Nonempty and all collision/PDR/new-event protections remain hard here.
+    if (!situation || (slot !== 'c' && !situationShapeValid(situation))) {
       findings.push({
         code: 'R27',
         path: `${slot}.situation_ko`,
-        message: `${slot.toUpperCase()} situation_ko는 140자 이내의 정확히 2문장이어야 함`,
+        message: !situation
+          ? `${slot.toUpperCase()} situation_ko가 비어 있음`
+          : `${slot.toUpperCase()} situation_ko는 140자 이내의 정확히 2문장이어야 함`,
       })
     }
     if (!relation) {

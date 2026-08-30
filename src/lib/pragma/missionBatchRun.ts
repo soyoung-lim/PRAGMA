@@ -9,6 +9,7 @@ import {
 } from "@/lib/pragma/promoteMission";
 import type { Domain, GenMode, LanguageDirection, LearnerLevel, SpeechActUI } from "@/lib/pragma/enums";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
+import type { RuleViolation } from "@/lib/pragma/missionRules";
 
 export interface MissionBatchCore extends PromotableCore {
   mission_status: string | null;
@@ -24,7 +25,7 @@ export interface MissionBatchItemResult {
   firstPassQualityVerdict?: "pass" | "warning" | "fail";
   candidateRegenerationCount?: number;
   candidateRegenerationMaxPerCandidate?: number;
-  violations?: { id: string; level: string; message: string }[];
+  violations?: RuleViolation[];
   error?: string;
   terminal?: PromotionTerminalEvidence;
 }

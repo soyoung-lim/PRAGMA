@@ -7,13 +7,14 @@ export interface CoreLengthRange {
 }
 
 /**
- * 원문 분량 정책 v1.
+ * 원문 분량 정책 v2. 범위 값은 v1과 같지만 minimum은 생성 권장선·warning,
+ * maximum은 기억/과업 부담을 막는 hard 경계로 책임을 분리한다.
  *
  * 공백·문장부호를 제외한 Unicode 문자/숫자를 세어 중국어의 쉼표 연결 장문과
  * 한국어 종결어미 차이를 같은 단위로 다룬다. 범위는 2026-08 통역 확대 파일럿의
  * 시작값이며, TTS 실측 후 새 버전으로만 조정한다(같은 버전의 값 덮어쓰기 금지).
  */
-export const CORE_LENGTH_POLICY_VERSION = 'effective_chars_v1'
+export const CORE_LENGTH_POLICY_VERSION = 'effective_chars_v2_min_warning'
 
 export const CORE_LENGTH_RANGES: Record<
   CoreLengthMode,

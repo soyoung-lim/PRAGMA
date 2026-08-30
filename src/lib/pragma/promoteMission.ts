@@ -8,7 +8,12 @@
 // 자동 기본값으로 선택하지 않는다.
 
 import { supabase } from "@/integrations/supabase/client";
-import { checkCore, checkMission, type CheckContext } from "@/lib/pragma/missionRules";
+import {
+  checkCore,
+  checkMission,
+  type CheckContext,
+  type RuleViolation,
+} from "@/lib/pragma/missionRules";
 import { getTargetFeature, DEFAULT_FEATURE_BY_ACT, type TargetFeature } from "@/lib/pragma/targetFeatures";
 import { errorPatternsForAct } from "@/lib/pragma/errorPatterns";
 import {
@@ -101,7 +106,7 @@ export interface PromoteResult {
   /** 생성된 미션(검사 통과 여부와 무관 — 눈검사용으로 항상 반환 시도). 정규화 v2 형태. */
   mission?: MissionRuntime;
   ruleResult?: "pass" | "warning" | "fail";
-  violations?: { id: string; level: string; message: string }[];
+  violations?: RuleViolation[];
   attempts?: number;
   savedId?: string;
   /** 검증②(0-n·94) 결과. 유효한 결과가 없으면 미션은 저장하지 않는다. */

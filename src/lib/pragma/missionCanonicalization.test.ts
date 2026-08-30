@@ -85,6 +85,21 @@ describe('native MPJ5 frozen topology', () => {
     const built = buildNativeMpj5FrozenTopology(duplicate, core)
     expect(built.findings).toContainEqual(expect.objectContaining({ code: 'R27', path: 'y.situation_ko' }))
   })
+
+  it('keeps C nonempty and collision hard while leaving its shape to the mission warning', () => {
+    const oneSentenceCore = { ...core, situation_ko: '학과장에게 검토를 요청하는 한 문장 장면이다.' }
+    const oneSentence = buildNativeMpj5FrozenTopology(raw, oneSentenceCore)
+    expect(oneSentence.findings).not.toContainEqual(expect.objectContaining({ path: 'c.situation_ko' }))
+
+    const colliding = buildNativeMpj5FrozenTopology({
+      ...raw,
+      anchor: { ...raw.anchor, situation_ko: core.situation_ko },
+    }, core)
+    expect(colliding.findings).toContainEqual(expect.objectContaining({ code: 'R27', path: 'c.situation_ko' }))
+
+    const empty = buildNativeMpj5FrozenTopology(raw, { ...core, situation_ko: '' })
+    expect(empty.findings).toContainEqual(expect.objectContaining({ code: 'R27', path: 'c.situation_ko' }))
+  })
 })
 
 describe('canonicalizeNativeMpj5AnchorPdr', () => {

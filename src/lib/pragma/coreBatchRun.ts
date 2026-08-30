@@ -17,11 +17,23 @@ import {
   PDR_DISTANCE_ENUM_TO_JSON,
   coreContentForHash,
 } from "@/lib/pragma/coreSchema";
-import { checkCore, coreLengthHintKo, type CheckContext } from "@/lib/pragma/missionRules";
+import {
+  checkCore,
+  coreLengthHintKo,
+  type CheckContext,
+  type RuleViolation,
+} from "@/lib/pragma/missionRules";
 import type { BatchCell } from "@/lib/pragma/batchPlan";
 import type { ThemeCode } from "@/lib/pragma/scenarioTopics";
 
 const RESPONSE_ACTS = new Set(["refusal", "opposition"]);
+
+export interface CoreIndustryCriticResult {
+  verdict: "pass" | "warning" | "fail" | "UNKNOWN";
+  reason: string;
+  model?: string;
+  promptVersion?: string;
+}
 
 export interface CoreCellResult {
   index: number;
@@ -30,13 +42,17 @@ export interface CoreCellResult {
   scenarioId?: string;
   /** 같은 run ID에서 이미 저장된 항목이라 AI 호출 없이 건너뛴 경우. */
   reused?: boolean;
-  /** 같은 세션에서 코어 비평 파일럿을 돌리기 위한 생성 응답. DB 저장 게이트에는 사용하지 않는다. */
+  /** 같은 세션에서 코어 비평 또는 증거 기록에 사용하는 생성 응답. */
   coreContent?: Record<string, unknown>;
   ruleResult?: "pass" | "warning" | "fail";
+  ruleFindings?: RuleViolation[];
   ruleFailFirst?: string;
   error?: string;
-  terminalStage?: "core_generation" | "core_deterministic" | "core_save" | "core_eligible" | "core_reused";
+  terminalStage?: "core_generation" | "core_deterministic" | "core_semantic_critic" | "core_save" | "core_eligible" | "core_reused";
   deterministicFailureCodes?: string[];
+  semanticFailureCodes?: string[];
+  industryCritic?: CoreIndustryCriticResult;
+  stopCode?: string;
   infrastructureError?: boolean;
   providerStatus?: number | "UNKNOWN";
 }
@@ -85,6 +101,77 @@ function ctxOf(cell: BatchCell): CheckContext {
     source_modality: modalityOf(mode),
     direction: cell.direction, // 0-l·89 — 데이터 방향과 요청 방향 일치 검사
     require_context_spec: true,
+  };
+}
+
+function statusOf(error: unknown): number | "UNKNOWN" {
+  const status = (error as { context?: { status?: unknown }; status?: unknown })?.context?.status ??
+    (error as { status?: unknown })?.status;
+  return typeof status === "number" ? status : "UNKNOWN";
+}
+
+/**
+ * R26 lexical miss에만 기존 core-quality industry 축을 1회 사용한다.
+ * 다른 14개 축은 이번 production gate로 승격하지 않는다.
+ */
+async function checkIndustrySemanticFit(
+  cell: BatchCell,
+  core: Record<string, unknown>,
+  runId: string,
+  itemKey: string,
+): Promise<
+  | { ok: true; result: CoreIndustryCriticResult }
+  | { ok: false; error: string; providerStatus: number | "UNKNOWN" }
+> {
+  const { data, error } = await supabase.functions.invoke("generate-scenario", {
+    body: {
+      action: "core_quality_check",
+      telemetry: {
+        generation_run_id: runId,
+        generation_item_key: itemKey,
+        invocation_attempt: 1,
+      },
+      core_quality: {
+        core_content: core,
+        direction: cell.direction,
+        speech_act: cell.speech_act_ui,
+        speech_act_ko: SPEECH_ACT_UI[cell.speech_act_ui],
+        level: LEVEL[cell.level],
+        domain: cell.domain,
+        domain_ko: DOMAIN[cell.domain],
+        industry: cell.industry,
+        mode: cell.mode,
+        pdr: {
+          p: PDR_POWER_ENUM_TO_JSON[cell.pdr_power],
+          d: PDR_DISTANCE_ENUM_TO_JSON[cell.pdr_distance],
+          r: cell.pdr_burden,
+        },
+        topic_code: cell.topic_code,
+        situation_seed_ko: cell.situation_seed_ko,
+        is_response_act: RESPONSE_ACTS.has(cell.speech_act_ui),
+        expected_context_spec:
+          (core as { context_spec?: unknown }).context_spec ?? null,
+      },
+    },
+  });
+  if (error) {
+    return { ok: false, error: error.message ?? "industry critic 호출 실패", providerStatus: statusOf(error) };
+  }
+  const check = data?.core_quality_check as Record<string, unknown> | undefined;
+  const axes = check?.axes as Record<string, unknown> | undefined;
+  const industry = axes?.industry as Record<string, unknown> | undefined;
+  const verdict = industry?.verdict;
+  if (verdict !== "pass" && verdict !== "warning" && verdict !== "fail") {
+    return { ok: false, error: data?.error ?? "industry critic 응답 축 누락", providerStatus: "UNKNOWN" };
+  }
+  return {
+    ok: true,
+    result: {
+      verdict,
+      reason: typeof industry.reason_ko === "string" ? industry.reason_ko.slice(0, 500) : "판정 근거 누락",
+      model: typeof check?.model === "string" ? check.model : undefined,
+      promptVersion: typeof check?.prompt_version === "string" ? check.prompt_version : undefined,
+    },
   };
 }
 
@@ -217,11 +304,53 @@ export async function runCoreCell(
         ok: false,
         coreContent: core,
         ruleResult: "fail",
+        ruleFindings: ruleResult.violations,
         ruleFailFirst: ruleResult.violations.find((v) => v.level === "fail")?.message,
         deterministicFailureCodes: ruleResult.violations.filter((v) => v.level === "fail").map((v) => v.id),
         terminalStage,
         error: "규칙검사 실패(저장 안 함)",
       };
+    }
+
+    const r26Warning = ruleResult.violations.find(
+      (finding) => finding.id === "R26" && finding.level === "warning",
+    );
+    let industryCritic: CoreIndustryCriticResult | undefined;
+    if (r26Warning) {
+      terminalStage = "core_semantic_critic";
+      const checked = await checkIndustrySemanticFit(cell, core, opts.runId, itemKey);
+      if ("error" in checked) {
+        return {
+          index,
+          cell,
+          ok: false,
+          coreContent: core,
+          ruleResult: "warning",
+          ruleFindings: ruleResult.violations,
+          terminalStage,
+          industryCritic: { verdict: "UNKNOWN", reason: checked.error },
+          infrastructureError: true,
+          providerStatus: checked.providerStatus,
+          stopCode: "CORE_INDUSTRY_CRITIC_INFRASTRUCTURE",
+          error: checked.error,
+        };
+      }
+      industryCritic = checked.result;
+      if (industryCritic.verdict === "fail") {
+        return {
+          index,
+          cell,
+          ok: false,
+          coreContent: core,
+          ruleResult: "warning",
+          ruleFindings: ruleResult.violations,
+          terminalStage,
+          semanticFailureCodes: ["R26_INDUSTRY_SEMANTIC"],
+          industryCritic,
+          stopCode: "CORE_INDUSTRY_CRITIC_FAIL",
+          error: "core industry semantic critic 실패(저장 안 함)",
+        };
+      }
     }
 
     // 3. save_generated_core RPC (검증 통과분만)
@@ -270,18 +399,19 @@ export async function runCoreCell(
       scenarioId: savedId as string,
       coreContent: core,
       ruleResult: ruleResult.result === "warning" ? "warning" : "pass",
+      ruleFindings: ruleResult.violations,
+      industryCritic,
       terminalStage: "core_eligible",
     };
   } catch (e) {
-    const status = (e as { context?: { status?: unknown }; status?: unknown })?.context?.status ??
-      (e as { status?: unknown })?.status;
+    const status = statusOf(e);
     return {
       index,
       cell,
       ok: false,
       terminalStage,
-      infrastructureError: typeof status === "number",
-      providerStatus: typeof status === "number" ? status : "UNKNOWN",
+      infrastructureError: status !== "UNKNOWN",
+      providerStatus: status,
       error: (e as Error).message ?? "실패",
     };
   }

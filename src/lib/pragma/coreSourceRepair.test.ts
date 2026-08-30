@@ -50,7 +50,7 @@ describe("core source discourse boundary", () => {
       coreLengthRange("beginner_intermediate", "stt_interpreting"),
     );
     expect(issue?.lengthOutOfRange).toBe(true);
-    expect(CORE_LENGTH_POLICY_VERSION).toBe("effective_chars_v1");
+    expect(CORE_LENGTH_POLICY_VERSION).toBe("effective_chars_v2_min_warning");
   });
 
   it("교정 요청은 기존 사실 보존과 중국어 문장 경계를 함께 고정한다", () => {

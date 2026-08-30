@@ -70,10 +70,19 @@ import {
 } from "../../../supabase/functions/_shared/coreSourceRepair";
 
 export type RuleLevel = "fail" | "warning";
+export interface RuleFindingEvidence {
+  subrule: string;
+  actual?: unknown;
+  threshold?: unknown;
+  modality?: string;
+  direction?: string;
+  context?: Record<string, unknown>;
+}
 export interface RuleViolation {
   id: string;
   level: RuleLevel;
   message: string;
+  evidence?: RuleFindingEvidence;
 }
 export interface RuleResult {
   ok: boolean; // fail이 하나도 없으면 true(warning은 통과)
@@ -173,8 +182,13 @@ const explicitlyRequiresSpokenScene = (situation: string) =>
         !EXPLICIT_SPOKEN_AVOIDANCE.test(sentence),
     );
 
-const add = (v: RuleViolation[], id: string, level: RuleLevel, message: string) =>
-  v.push({ id, level, message });
+const add = (
+  v: RuleViolation[],
+  id: string,
+  level: RuleLevel,
+  message: string,
+  evidence?: RuleFindingEvidence,
+) => v.push({ id, level, message, ...(evidence ? { evidence } : {}) });
 
 // ── 방향 인식 언어 검사 헬퍼(0-l·85) ───────────────────────────────────
 const LANG_KO: Record<"ko" | "zh", string> = { ko: "한국어", zh: "중국어" };
@@ -227,8 +241,8 @@ function checkDirectionMatch(v: RuleViolation[], dataDir: LanguageDirection, ctx
 }
 
 // ── R29 미니 담화형 원문 + focal segments (DEC-20260730-01) ────────────
-// 중국어 쉼표 연결 장문과 한국어 문장 경계의 비대칭을 피하기 위해 분량 하드 경계는
-// 공백·문장부호 제외 유효 글자 수로 판정한다. 2~4문장은 담화 형태를 유도하는 warning이다.
+// 중국어 쉼표 연결 장문과 한국어 문장 경계의 비대칭을 피하기 위해 maximum hard 경계는
+// 공백·문장부호 제외 유효 글자 수로 판정한다. minimum과 2~4문장은 warning이다.
 // focal_segments는 head 정확히 1 + support 0~2이고, 각 text는 source_text의
 // 정확한 부분문자열이어야 한다 — 저장·화면 강조·피드백이 같은 문자열을 본다.
 export const coreLengthHintKo = sharedCoreLengthHintKo;
@@ -249,39 +263,101 @@ function checkFocalDiscourse(
       "R29",
       "warning",
       `${label}: 미니 담화는 종결부호 기준 ${CORE_SOURCE_SENTENCE_MIN}~${CORE_SOURCE_SENTENCE_MAX}문장 권장(실측 ${sentenceCount}문장)`,
+      {
+        subrule: "sentence_count",
+        actual: sentenceCount,
+        threshold: { min: CORE_SOURCE_SENTENCE_MIN, max: CORE_SOURCE_SENTENCE_MAX },
+        modality: ctx.mode,
+        direction: ctx.direction,
+      },
     );
   }
   const effectiveChars = countCoreEffectiveChars(sourceText);
   const range = coreLengthRange(ctx.level, ctx.mode);
-  if (effectiveChars < range.min || effectiveChars > range.max) {
+  if (effectiveChars < range.min) {
+    add(
+      v,
+      "R29",
+      "warning",
+      `${label}: ${CORE_LENGTH_POLICY_VERSION} 기준 권장 최소 유효 글자 ${range.min}자 미만(공백·문장부호 제외 실측 ${effectiveChars}자)`,
+      {
+        subrule: "minimum_length",
+        actual: effectiveChars,
+        threshold: range.min,
+        modality: ctx.mode,
+        direction: ctx.direction,
+        context: { min: range.min, max: range.max, policy_version: CORE_LENGTH_POLICY_VERSION },
+      },
+    );
+  }
+  if (effectiveChars > range.max) {
     add(
       v,
       "R29",
       "fail",
-      `${label}: ${CORE_LENGTH_POLICY_VERSION} 기준 유효 글자 ${range.min}~${range.max}자여야 함(공백·문장부호 제외 실측 ${effectiveChars}자)`,
+      `${label}: ${CORE_LENGTH_POLICY_VERSION} 기준 최대 유효 글자 ${range.max}자 초과(공백·문장부호 제외 실측 ${effectiveChars}자)`,
+      {
+        subrule: "maximum_length",
+        actual: effectiveChars,
+        threshold: range.max,
+        modality: ctx.mode,
+        direction: ctx.direction,
+        context: { min: range.min, max: range.max, policy_version: CORE_LENGTH_POLICY_VERSION },
+      },
     );
   }
 
   if (!segments || segments.length === 0) {
-    add(v, "R29", "fail", `${label}: focal_segments가 없음(화용 집중 구간 미지정)`);
+    add(v, "R29", "fail", `${label}: focal_segments가 없음(화용 집중 구간 미지정)`, {
+      subrule: "focal_head",
+      actual: 0,
+      threshold: 1,
+      modality: ctx.mode,
+      direction: ctx.direction,
+    });
     return;
   }
   const heads = segments.filter((s) => s.role === "head");
   if (heads.length !== 1) {
-    add(v, "R29", "fail", `${label}: focal_segments의 head는 정확히 1개여야 함(실제 ${heads.length}개)`);
+    add(v, "R29", "fail", `${label}: focal_segments의 head는 정확히 1개여야 함(실제 ${heads.length}개)`, {
+      subrule: "focal_head",
+      actual: heads.length,
+      threshold: 1,
+      modality: ctx.mode,
+      direction: ctx.direction,
+    });
   }
-  if (segments.length - heads.length > 2) {
-    add(v, "R29", "fail", `${label}: support 구간은 최대 2개(실제 ${segments.length - heads.length}개)`);
+  const supportCount = segments.length - heads.length;
+  if (supportCount > 2) {
+    add(v, "R29", "fail", `${label}: support 구간은 최대 2개(실제 ${supportCount}개)`, {
+      subrule: "support_count",
+      actual: supportCount,
+      threshold: 2,
+      modality: ctx.mode,
+      direction: ctx.direction,
+    });
   }
   for (const seg of segments) {
     if (!sourceText.includes(seg.text)) {
-      add(v, "R29", "fail", `${label}: focal segment가 원문의 부분문자열이 아님 — "${seg.text.slice(0, 30)}"`);
+      add(v, "R29", "fail", `${label}: focal segment가 원문의 부분문자열이 아님 — "${seg.text.slice(0, 30)}"`, {
+        subrule: "substring",
+        actual: seg.text,
+        threshold: "source_text includes focal segment",
+        modality: ctx.mode,
+        direction: ctx.direction,
+      });
     }
   }
   const seen = new Set<string>();
   for (const seg of segments) {
     if (seen.has(seg.text)) {
-      add(v, "R29", "warning", `${label}: focal segment 중복 — "${seg.text.slice(0, 30)}"`);
+      add(v, "R29", "warning", `${label}: focal segment 중복 — "${seg.text.slice(0, 30)}"`, {
+        subrule: "duplicate_segment",
+        actual: seg.text,
+        threshold: "unique focal segments",
+        modality: ctx.mode,
+        direction: ctx.direction,
+      });
     }
     seen.add(seg.text);
   }
@@ -404,7 +480,8 @@ function checkCoreCommon(
   if (ctx.industry && ctx.domain !== "work") {
     add(v, "R17", "fail", `industry는 domain='work'에서만 (현재 ${ctx.domain})`);
   }
-  // R26 직장 산업이 지정되었지만 실제 장면·원문에 분야 고유 단서가 전혀 없음
+  // R26은 저렴한 lexical signal이다. miss는 warning으로 남기고, production runner가
+  // 이 warning에 한해 기존 core quality critic의 industry 축을 1회 호출한다.
   if (ctx.industry && ctx.domain === "work") {
     const evidence = INDUSTRY_EVIDENCE[ctx.industry];
     const text = [
@@ -417,8 +494,16 @@ function checkCoreCommon(
       add(
         v,
         "R26",
-        "fail",
+        "warning",
         `지정 산업 '${ctx.industry}'을 보여 주는 구체적 업무·대상·어휘가 없음`,
+        {
+          subrule: "industry_lexical_evidence",
+          actual: 0,
+          threshold: 1,
+          modality: ctx.mode,
+          direction: ctx.direction,
+          context: { industry: ctx.industry },
+        },
       );
     }
   }
@@ -1182,7 +1267,13 @@ function checkV4ContextPlan(v: RuleViolation[], m: MissionV4 | MissionV5, concis
   if (conciseCurrentNative) {
     const productionMarks = (production.match(/[.!?。！？]/g) ?? []).length;
     if (productionMarks !== 2 || production.length > 140) {
-      add(v, "R27", "warning", "production_task: learner situation이 권장 형식(140자 이내의 정확히 2문장)을 벗어남");
+      add(v, "R27", "warning", "production_task: learner situation이 권장 형식(140자 이내의 정확히 2문장)을 벗어남", {
+        subrule: "dct_scene_shape",
+        actual: { sentence_count: productionMarks, chars: production.length },
+        threshold: { sentence_count: 2, max_chars: 140 },
+        modality: m.production_task.mode,
+        direction: m.direction,
+      });
     }
   }
 }

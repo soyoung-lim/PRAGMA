@@ -67,6 +67,37 @@ describe("batch terminal evidence", () => {
     expect(itemIndexFromPlanItemKey(null)).toBe("UNKNOWN");
   });
 
+  it("preserves successful warning subrules and core industry critic attribution", () => {
+    const record = coreTerminalEvidence("run-11", {
+      index: 290,
+      cell: {} as never,
+      ok: true,
+      terminalStage: "core_eligible",
+      ruleResult: "warning",
+      ruleFindings: [{
+        id: "R26",
+        level: "warning",
+        message: "lexical miss",
+        evidence: {
+          subrule: "industry_lexical_evidence",
+          actual: 0,
+          threshold: 1,
+          modality: "translation",
+          direction: "ko_zh",
+        },
+      }],
+      industryCritic: { verdict: "pass", reason: "산업 업무가 의미적으로 드러남" },
+    });
+
+    expect(record.rule_finding[0]).toMatchObject({
+      rule_id: "R26",
+      subrule: "industry_lexical_evidence",
+      severity: "warning",
+    });
+    expect(record.critic_verdict).toBe("pass");
+    expect(record.semantic_failure_code).toEqual([]);
+  });
+
   it("records a failed optional repair without mislabelling it as no operation", () => {
     const record = missionTerminalEvidence("run-09", {
       scenarioId: "scenario-2",
