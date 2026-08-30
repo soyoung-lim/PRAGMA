@@ -36,6 +36,11 @@ function mount(weekNo = 2) {
   return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[`/admin/package?courseId=course-a&weekNo=${weekNo}`]}><AdminTeachingMaterials /></MemoryRouter></QueryClientProvider>);
 }
 
+function mountAt(entry: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[entry]}><AdminTeachingMaterials /></MemoryRouter></QueryClientProvider>);
+}
+
 describe("교과목·주차 수업자료 연결", () => {
   it("선택 거절 미션의 전체 상황과 사후 지도안을 분리하고 프로젝터에 답안을 내보내지 않는다", async () => {
     const example = REFUSAL_TEACHING_CASE;
@@ -101,5 +106,19 @@ describe("교과목·주차 수업자료 연결", () => {
     expect(screen.getByText("계획 미리보기 · 미션 0/2개 편성")).toBeInTheDocument();
     expect(mocks.missionRows).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "프로젝터 화면" })).toBeEnabled();
+  });
+
+  it("선택 없이 들어오면 첫 교과목·첫 주차를 기본으로 채워 보여 준다", async () => {
+    mountAt("/admin/package");
+    await screen.findByText("2주차 목표");
+    expect(screen.getByRole("combobox", { name: "수업자료 교과목" })).toHaveValue("course-a");
+    expect(screen.getByRole("combobox", { name: "수업자료 주차" })).toHaveValue("2");
+    expect(screen.queryByText(/교과목과 주차를 선택해 주세요/)).not.toBeInTheDocument();
+  });
+
+  it("미션 단독 주소로 들어오면 교과목을 자동 선택하지 않는다", async () => {
+    mountAt("/admin/package?mission=mission-1");
+    expect(await screen.findByText(/미션 단독 주소로 들어왔습니다/)).toBeVisible();
+    expect(screen.getByRole("combobox", { name: "수업자료 교과목" })).toHaveValue("");
   });
 });
