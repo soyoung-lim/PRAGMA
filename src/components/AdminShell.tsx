@@ -35,15 +35,15 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
 
   const standaloneClasses = (active: boolean) =>
     [
-      "rounded-md px-3 py-[6px] text-[14px] whitespace-nowrap transition-colors mr-2",
+      "ml-3 mr-2 rounded-lg border-l-[3px] px-3 py-2 text-[14px] font-semibold whitespace-nowrap shadow-sm transition-colors",
       active
-        ? "bg-[#FAD338] text-[#15202B] font-medium"
-        : "text-foreground font-normal hover:bg-muted hover:text-foreground",
+        ? "border-[#15202B] bg-[#FAD338] text-[#15202B]"
+        : "border-[#D6BC40] bg-[#F7F2DF] text-[#15202B] hover:bg-[#FFF1B8]",
     ].join(" ");
 
   const itemClasses = (active: boolean) =>
     [
-      "mr-2 rounded-md px-3 py-0.5 text-[13.5px] leading-5 whitespace-nowrap transition-colors",
+      "mr-2 rounded-md px-3 py-[3px] text-[13.5px] leading-5 whitespace-nowrap transition-colors",
       active
         ? "bg-muted text-foreground font-normal"
         : "text-foreground font-normal hover:bg-muted hover:text-foreground",
@@ -65,7 +65,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
 
       <div className={`flex gap-6 pl-5 pr-8 print:block print:p-0 ${compact ? "py-5" : "py-6"}`}>
         <aside className="hidden w-[285px] shrink-0 md:block print:hidden">
-          <nav className="flex flex-col px-1">
+          <nav className="-mt-1 flex flex-col px-1">
             <Link
               to={ADMIN_DASHBOARD_ITEM.to}
               className={standaloneClasses(pathname === ADMIN_DASHBOARD_ITEM.to)}
@@ -89,13 +89,13 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
                     aria-controls={panelId}
                     onClick={() => toggleGroup(groupIndex)}
                     className={[
-                      "mr-2 flex min-h-8 items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] font-semibold transition-colors",
+                      "mr-2 flex min-h-8 items-center gap-2 px-2.5 py-1.5 text-left text-[13.5px] font-semibold transition-colors",
                       groupActive
                         ? "rounded-md bg-[#15202B] text-white shadow-sm"
                         : "border-b border-[#D8D3C6] bg-transparent text-[#15202B] hover:bg-[#F2F0E8]",
                     ].join(" ")}
                   >
-                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FAD338] text-[10px] font-bold text-[#15202B]">
+                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FAD338] text-[11px] font-bold text-[#15202B]">
                       {groupIndex + 1}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{groupLabel}</span>
