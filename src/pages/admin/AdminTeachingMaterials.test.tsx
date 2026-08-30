@@ -122,41 +122,11 @@ describe("교과목·주차 수업자료 연결", () => {
     expect(screen.getByRole("combobox", { name: "수업자료 교과목" })).toHaveValue("");
   });
 
-  it("응답 분포는 열 때만 조회하고 익명 집계만 보여 준다", async () => {
-    const logRows = vi.fn().mockResolvedValue({
-      data: [
-        {
-          mission_id: "mission-1", profile_id: "learner-a", completed_at: "2026-08-30T10:00:00Z",
-          context_judgment: { schema_version: "mpj_response_v2", responses: [{ item_id: 1, item_type: "scale4", scale_code: "somewhat_appropriate", completed_at: "t" }], learner_dissent: null },
-        },
-        {
-          mission_id: "mission-1", profile_id: "learner-b", completed_at: "2026-08-30T10:05:00Z",
-          context_judgment: {
-            schema_version: "mpj_response_v2",
-            responses: [{ item_id: 1, item_type: "scale4", scale_code: "very_inappropriate", completed_at: "t" }],
-            learner_dissent: { kind: "learner_dissent", at: "feedback", conditions: ["p"], reason_ko: "직급 차이를 다르게 봤어요", created_at: "t" },
-          },
-        },
-      ],
-      error: null,
-    });
-    const scenarioRows = vi.fn().mockResolvedValue({
-      data: [{ scenario_id: "mission-1", mission_content: SAMPLE_MISSION_V5_NATIVE }],
-      error: null,
-    });
-    mocks.from.mockImplementation((table: string) => ({
-      select: () => ({ in: table === "learner_mission_logs" ? logRows : scenarioRows }),
-    }));
-
+  it("응답 분포를 중복 렌더링하지 않고 독립 응답 보드로 연결한다", async () => {
     mount();
     await screen.findByText("2주차 목표");
-    expect(logRows).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByText("이 주차 응답 분포"));
-    expect(await screen.findByText("응답 2명 · 이견 제기 1건")).toBeVisible();
-    expect(screen.getByText(/다소 적절/)).toBeVisible();
-    // 익명 집계만 — 학습자 식별 정보와 이견 원문은 나오지 않는다.
-    expect(screen.queryByText(/learner-a/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/직급 차이를 다르게 봤어요/)).not.toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "응답 보드 열기 →" });
+    expect(link).toHaveAttribute("href", "/admin/class-responses?courseId=course-a&weekNo=2");
+    expect(screen.queryByText("이 주차 응답 분포")).not.toBeInTheDocument();
   });
 });

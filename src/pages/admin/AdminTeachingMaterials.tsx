@@ -16,12 +16,6 @@ import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
 import { SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
 import { DEFENSE_COURSE_IDS } from "@/lib/pragma/scenarioTopics";
 import { ContentReviewPanel } from "@/components/admin/ContentReviewPanel";
-import { ClassResponsePatterns } from "@/components/admin/ClassResponsePatterns";
-import {
-  aggregateMissionResponses,
-  type ClassResponseLogRow,
-  type MissionPattern,
-} from "@/lib/mission/classResponsePatterns";
 import { supabase } from "@/integrations/supabase/client";
 
 const AdminTeachingMaterials = () => {
@@ -29,7 +23,6 @@ const AdminTeachingMaterials = () => {
   const courseId = params.get("courseId") ?? "";
   const requestedWeek = params.get("weekNo");
   const [reviewOpen, setReviewOpen] = useState(params.get("review") === "1");
-  const [patternsOpen, setPatternsOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [projectorOpen, setProjectorOpen] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
@@ -76,34 +69,8 @@ const AdminTeachingMaterials = () => {
     },
   });
 
-  // 학급 응답 분포 — 섹션을 열거나 프로젝터를 켤 때만 조회한다(익명 집계 전용).
-  const classPatterns = useQuery({
-    queryKey: ["teaching-class-patterns", courseId, week?.week_no, missionIds],
-    enabled: (patternsOpen || projectorOpen) && Boolean(week) && missionIds.length > 0,
-    queryFn: async (): Promise<MissionPattern[]> => {
-      const [logsResult, missionsResult] = await Promise.all([
-        supabase.from("learner_mission_logs")
-          .select("mission_id,profile_id,completed_at,context_judgment")
-          .in("mission_id", missionIds),
-        supabase.from("scenarios")
-          .select("scenario_id,mission_content")
-          .in("scenario_id", missionIds),
-      ]);
-      if (logsResult.error) throw new Error(logsResult.error.message);
-      if (missionsResult.error) throw new Error(missionsResult.error.message);
-      const logs = (logsResult.data ?? []) as ClassResponseLogRow[];
-      return missionIds.map((id) => {
-        const row = missionsResult.data?.find((item) => item.scenario_id === id);
-        const mission = row ? normalizeMission(row.mission_content) : null;
-        return aggregateMissionResponses(id, logs, mission?.ok ? mission.data ?? null : null);
-      });
-    },
-  });
-  const patternsWithData = (classPatterns.data ?? []).filter((pattern) => pattern.learners > 0);
-
   useEffect(() => {
     setNotesOpen(false);
-    setPatternsOpen(false);
     setProjectorOpen(false);
     setActiveSection(0);
   }, [courseId, requestedWeek]);
@@ -121,9 +88,7 @@ const AdminTeachingMaterials = () => {
     setParams(next, { replace: true });
   }, [courseId, missionParam, outlineList, params, setParams]);
 
-  // 분포 데이터가 있으면 프로젝터 마지막에 「우리 반 응답 분포」 슬라이드가 붙는다.
-  const materialSectionCount = material?.sections.length ?? 0;
-  const sectionCount = materialSectionCount + (patternsWithData.length > 0 ? 1 : 0);
+  const sectionCount = material?.sections.length ?? 0;
   useEffect(() => {
     if (!projectorOpen) return;
     const previousOverflow = document.body.style.overflow;
@@ -215,16 +180,19 @@ const AdminTeachingMaterials = () => {
           {missionNotes.isError && <p role="alert">미션 해설을 불러오지 못했습니다. 공통 수업자료는 계속 사용할 수 있습니다.</p>}
           <WeeklyInstructorNotes week={week} direction={course.outline.language_direction} missions={missionNotes.data ?? []} />
         </> : !projectorOpen && <WeeklyMaterialDocument material={material} />}
-        {!projectorOpen && <details open={patternsOpen} onToggle={(event) => setPatternsOpen(event.currentTarget.open)} className="rounded-xl border bg-white p-4">
-          <summary className="cursor-pointer font-semibold">이 주차 응답 분포</summary>
-          {patternsOpen && <div className="mt-3">
-            <p className="mb-3 text-xs text-muted-foreground">학습자 이름 없이 문항별 선택 분포와 이견 건수만 집계합니다. 프로젝터 화면 마지막 장에도 함께 나옵니다.</p>
-            {classPatterns.isFetching && <p role="status">응답 분포를 불러오는 중…</p>}
-            {classPatterns.isError && <p role="alert">응답 분포를 불러오지 못했습니다. 공통 수업자료는 계속 사용할 수 있습니다.</p>}
-            {classPatterns.isSuccess && <ClassResponsePatterns patterns={classPatterns.data} />}
-            {!missionIds.length && <p className="text-sm text-muted-foreground">이 주차에 편성된 미션이 없어 분포를 집계할 수 없습니다.</p>}
-          </div>}
-        </details>}
+        {!projectorOpen && <section className="rounded-xl border bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">실시간 학급 응답</h2>
+              <p className="mt-1 text-xs text-muted-foreground">문항별 익명 분포를 확인하고 교실 화면으로 크게 보여 줍니다.</p>
+            </div>
+            <Button variant="outline" asChild>
+              <Link to={`/admin/class-responses?courseId=${encodeURIComponent(courseId)}&weekNo=${week.week_no}`}>
+                응답 보드 열기 →
+              </Link>
+            </Button>
+          </div>
+        </section>}
         {!projectorOpen && <section className="rounded-xl border bg-white p-4">
           <h2 className="font-semibold">연결된 실습</h2>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -242,18 +210,9 @@ const AdminTeachingMaterials = () => {
                 <Button variant="outline" onClick={() => setProjectorOpen(false)}>닫기</Button>
               </div>
             </div>
-            {activeSection < materialSectionCount ? (
-              <div className="[&_.material-section]:min-h-[45vh] [&_.material-section_h2]:text-3xl [&_.material-section_p]:text-xl [&_.material-section_p]:leading-9 [&_.material-section_li]:text-xl [&_.material-section_li]:leading-9">
-                <WeeklyMaterialDocument material={material} activeSection={activeSection} />
-              </div>
-            ) : (
-              <div className="min-h-[45vh]">
-                <h2 className="text-3xl font-bold">이번 주 우리 반 응답 분포</h2>
-                <div className="mt-6">
-                  <ClassResponsePatterns patterns={patternsWithData} projector />
-                </div>
-              </div>
-            )}
+            <div className="[&_.material-section]:min-h-[45vh] [&_.material-section_h2]:text-3xl [&_.material-section_p]:text-xl [&_.material-section_p]:leading-9 [&_.material-section_li]:text-xl [&_.material-section_li]:leading-9">
+              <WeeklyMaterialDocument material={material} activeSection={activeSection} />
+            </div>
           </div>
         </div>}
       </>}
