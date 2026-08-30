@@ -84,6 +84,35 @@ interface TraceLike {
   worst_candidate_index?: unknown;
 }
 
+export type LearnerChoiceMap = Record<string, string[]>;
+
+export const learnerChoiceMapKey = (itemId: number, heading: string) => `${itemId}:${heading}`;
+
+/** 현재 학습자의 비채점 trace를 분포 막대의 choice key와 연결한다. */
+export function learnerChoiceMapFromTraces(traces: TraceLike[]): LearnerChoiceMap {
+  const choices: LearnerChoiceMap = {};
+  const add = (itemId: number, heading: string, key: string) => {
+    const mapKey = learnerChoiceMapKey(itemId, heading);
+    choices[mapKey] = [...new Set([...(choices[mapKey] ?? []), key])];
+  };
+  for (const trace of traces) {
+    const itemId = typeof trace.item_id === "number" ? trace.item_id : null;
+    if (itemId === null) continue;
+    if (typeof trace.scale_code === "string") add(itemId, "적절성 판단", trace.scale_code);
+    if (typeof trace.band_code === "string") add(itemId, "조절 정도 판단", trace.band_code);
+    if (typeof trace.initial_judgment === "string") add(itemId, "최초 적절성 판단", trace.initial_judgment);
+    if (Array.isArray(trace.correction_indexes)) {
+      for (const index of trace.correction_indexes) {
+        if (typeof index === "number") add(itemId, "고른 수정안", String(index));
+      }
+    }
+    if (typeof trace.reason_id === "string") add(itemId, "고른 이유", trace.reason_id);
+    if (typeof trace.best_candidate_index === "number") add(itemId, "BEST로 고른 초안", String(trace.best_candidate_index));
+    if (typeof trace.worst_candidate_index === "number") add(itemId, "WORST로 고른 초안", String(trace.worst_candidate_index));
+  }
+  return choices;
+}
+
 /** 봉투에서 문항 응답 배열과 이견 여부를 꺼낸다. legacy 이견 단독 형태도 읽는다. */
 export function parseJudgmentEnvelope(raw: unknown): { responses: TraceLike[]; dissent: boolean } {
   if (!raw || typeof raw !== "object") return { responses: [], dissent: false };

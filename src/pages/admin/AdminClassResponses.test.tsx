@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   logRows: vi.fn(),
   missionRow: vi.fn(),
+  releaseState: vi.fn(),
 }));
 
 vi.mock("@/lib/curriculum/api", () => ({
@@ -25,6 +26,12 @@ vi.mock("@/lib/curriculum/composer", () => ({
   listWeekAssignments: mocks.assignments,
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: mocks.from } }));
+vi.mock("@/lib/mission/classResponseRelease", () => ({
+  getAdminClassResponseRelease: mocks.releaseState,
+  closeClassResponses: vi.fn(),
+  reopenClassResponses: vi.fn(),
+  releaseClassResponses: vi.fn(),
+}));
 vi.mock("@/components/AdminShell", () => ({
   AdminShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
 }));
@@ -87,6 +94,7 @@ beforeEach(() => {
     error: null,
   });
   mocks.missionRow.mockResolvedValue({ data: { mission_content: SAMPLE_MISSION_V5_NATIVE }, error: null });
+  mocks.releaseState.mockResolvedValue({ status: "collecting", learnerCount: 0, closedAt: null, releasedAt: null, pattern: null });
   mocks.from.mockImplementation((table: string) => ({
     select: () => table === "learner_mission_logs"
       ? { eq: mocks.logRows }

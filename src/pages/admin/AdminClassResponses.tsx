@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Maximize2, RefreshCw, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
@@ -12,6 +12,12 @@ import { assembleLearnerCourse } from "@/lib/curriculum/learnerCourse";
 import { missionSituationSummary } from "@/lib/curriculum/weeklyMaterials";
 import { DEMO_CLASS_RESPONSE_PATTERN } from "@/lib/mission/classResponseDemo";
 import {
+  closeClassResponses,
+  getAdminClassResponseRelease,
+  releaseClassResponses,
+  reopenClassResponses,
+} from "@/lib/mission/classResponseRelease";
+import {
   aggregateMissionResponses,
   type ClassResponseLogRow,
   type MissionPattern,
@@ -20,6 +26,7 @@ import { normalizeMission } from "@/lib/pragma/missionSchema";
 import { supabase } from "@/integrations/supabase/client";
 
 const AdminClassResponses = () => {
+  const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
   const [demo, setDemo] = useState(false);
   const [projector, setProjector] = useState(false);
@@ -53,6 +60,13 @@ const AdminClassResponses = () => {
     ?? null;
   const missionId = selectedMission?.scenario_id ?? "";
 
+  const releaseQuery = useQuery({
+    queryKey: ["class-response-release", courseId, missionId],
+    enabled: !demo && Boolean(courseId) && Boolean(missionId),
+    queryFn: () => getAdminClassResponseRelease(courseId, missionId),
+  });
+  const releaseState = releaseQuery.data;
+
   useEffect(() => {
     if (courseId || !outlines.data?.[0]) return;
     setParams({ courseId: outlines.data[0].id }, { replace: true });
@@ -61,7 +75,7 @@ const AdminClassResponses = () => {
   const patternQuery = useQuery({
     queryKey: ["class-response-pattern", courseId, week?.week_no, missionId],
     enabled: !demo && Boolean(missionId),
-    refetchInterval: demo ? false : 5000,
+    refetchInterval: demo || (releaseState && releaseState.status !== "collecting") ? false : 5000,
     queryFn: async (): Promise<MissionPattern> => {
       const [logsResult, missionResult] = await Promise.all([
         supabase.from("learner_mission_logs")
@@ -83,7 +97,29 @@ const AdminClassResponses = () => {
     },
   });
 
-  const visiblePattern = demo ? DEMO_CLASS_RESPONSE_PATTERN : patternQuery.data ?? null;
+  const transition = useMutation({
+    mutationFn: async (action: "close" | "reopen" | "release") => {
+      if (!courseId || !missionId) return;
+      if (action === "close") {
+        if (!patternQuery.data) throw new Error("마감할 응답이 없습니다.");
+        await closeClassResponses(courseId, missionId, patternQuery.data);
+      } else if (action === "reopen") {
+        await reopenClassResponses(courseId, missionId);
+      } else {
+        await releaseClassResponses(courseId, missionId);
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["class-response-release", courseId, missionId] });
+      await queryClient.invalidateQueries({ queryKey: ["class-response-pattern", courseId, week?.week_no, missionId] });
+    },
+  });
+
+  const visiblePattern = demo
+    ? DEMO_CLASS_RESPONSE_PATTERN
+    : releaseState?.status !== "collecting" && releaseState?.pattern
+      ? releaseState.pattern
+      : patternQuery.data ?? null;
   const hasResponses = Boolean(visiblePattern && visiblePattern.learners > 0);
 
   useEffect(() => {
@@ -196,6 +232,43 @@ const AdminClassResponses = () => {
         {!demo && patternQuery.isError && <p role="alert" className="mt-5 text-sm text-destructive">응답 분포를 불러오지 못했습니다.</p>}
         {!demo && !missionId && <p className="mt-5 text-sm text-muted-foreground">이 주차에 편성된 미션이 없습니다.</p>}
         {visiblePattern && <div className="mt-5"><ClassResponsePatterns patterns={[visiblePattern]} /></div>}
+
+        {!demo && missionId && <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+          <div>
+            <p className="text-sm font-black">
+              {!releaseState || releaseState.status === "collecting"
+                ? "응답 수집 중"
+                : releaseState.status === "closed"
+                  ? `응답 마감 · ${releaseState.learnerCount}명`
+                  : `학습자 공개 완료 · ${releaseState.learnerCount}명`}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {!releaseState || releaseState.status === "collecting"
+                ? "마감하면 현재 익명 분포가 고정됩니다."
+                : releaseState.status === "closed" && releaseState.learnerCount < 5
+                  ? "5명 이상 모여야 학습자에게 공개할 수 있습니다."
+                  : releaseState.status === "closed"
+                    ? "고정된 분포를 확인한 뒤 학습자에게 공개하세요."
+                    : "마감 이후 재시도는 공개된 분포를 변경하지 않습니다."}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(!releaseState || releaseState.status === "collecting") && (
+              <Button
+                size="sm"
+                disabled={transition.isPending || !patternQuery.data?.learners}
+                onClick={() => transition.mutate("close")}
+              >응답 마감</Button>
+            )}
+            {releaseState?.status === "closed" && (
+              <>
+                <Button size="sm" variant="outline" disabled={transition.isPending} onClick={() => transition.mutate("reopen")}>응답 다시 수집</Button>
+                <Button size="sm" disabled={transition.isPending || releaseState.learnerCount < 5} onClick={() => transition.mutate("release")}>학습자에게 공개</Button>
+              </>
+            )}
+          </div>
+          {transition.isError && <p role="alert" className="w-full text-xs text-destructive">{transition.error.message}</p>}
+        </div>}
 
         {demo && <p className="mt-4 border-t border-[#E5D28A] pt-3 text-xs font-semibold text-[#6A5516]">
           DEMO · 예시 데이터 — 실제 학습자 수행 기록이 아니며 DB에 저장되지 않습니다.

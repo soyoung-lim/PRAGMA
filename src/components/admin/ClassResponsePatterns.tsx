@@ -1,7 +1,11 @@
 // 학급 응답 분포 뷰 — 문항별 선택지 분포 막대와 이견 건수.
 // 익명 집계만 표시한다. 학생 이름·개별 응답·이견 원문은 여기서 다루지 않는다.
 
-import type { MissionPattern } from "@/lib/mission/classResponsePatterns";
+import {
+  learnerChoiceMapKey,
+  type LearnerChoiceMap,
+  type MissionPattern,
+} from "@/lib/mission/classResponsePatterns";
 
 const percent = (count: number, total: number) =>
   total > 0 ? Math.round((count / total) * 100) : 0;
@@ -10,9 +14,11 @@ const percent = (count: number, total: number) =>
 export const ClassResponsePatterns = ({
   patterns,
   projector = false,
+  learnerChoices,
 }: {
   patterns: MissionPattern[];
   projector?: boolean;
+  learnerChoices?: LearnerChoiceMap;
 }) => {
   const withData = patterns.filter((pattern) => pattern.learners > 0);
   if (withData.length === 0) {
@@ -54,8 +60,9 @@ export const ClassResponsePatterns = ({
                     <ul className="mt-1.5 space-y-1.5">
                       {group.choices.map((choice) => {
                         const share = percent(choice.count, group.total);
+                        const isLearnerChoice = learnerChoices?.[learnerChoiceMapKey(item.itemId, group.heading)]?.includes(choice.key) ?? false;
                         return (
-                          <li key={choice.key} className="flex items-center gap-2">
+                          <li key={choice.key} className={`flex items-center gap-2 rounded-md ${isLearnerChoice ? "bg-[#FFF7D6] py-1 pr-2" : ""}`}>
                             <span className={projector ? "w-16 shrink-0 text-right text-lg font-semibold tabular-nums" : "w-12 shrink-0 text-right text-xs font-semibold tabular-nums"}>
                               {share}%
                             </span>
@@ -67,6 +74,7 @@ export const ClassResponsePatterns = ({
                             <span className={projector ? "min-w-0 truncate text-lg" : "min-w-0 truncate text-xs"} title={choice.label}>
                               {choice.label}
                               <span className="ml-1 text-muted-foreground">({choice.count}명)</span>
+                              {isLearnerChoice && <span className="ml-2 rounded-full bg-[#F3D248] px-2 py-0.5 text-[10px] font-black text-[#15202B]">내 선택</span>}
                             </span>
                           </li>
                         );

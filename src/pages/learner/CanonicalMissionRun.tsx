@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
+import { PeerResponsesPanel } from "@/components/learner/PeerResponsesPanel";
 import {
   CANONICAL_MISSION_PREVIEW,
   type BestWorstQuest,
@@ -33,6 +34,7 @@ import {
 } from "@/lib/mission/canonicalMissionRuntime";
 import { requestFeedback } from "@/lib/mission/missionFeedback";
 import { saveMissionAttempt, type MpjResponseTrace } from "@/lib/mission/missionLog";
+import { learnerChoiceMapFromTraces } from "@/lib/mission/classResponsePatterns";
 import { getTargetFeature } from "@/lib/pragma/targetFeatures";
 import type { RuntimeFeedback } from "@/lib/pragma/feedbackSchema";
 import LegacyMissionRun from "@/pages/learner/LegacyMissionRun";
@@ -2299,6 +2301,11 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMod
 
   const primaryDct = mission.quests.find((item): item is DctQuest => item.kind === "dct");
   const aDct = primaryDct ? responses[primaryDct.id] as DctResponse | undefined : undefined;
+  const peerCourseId = new URLSearchParams(window.location.search).get("courseId");
+  const peerChoices = useMemo(
+    () => runtime ? learnerChoiceMapFromTraces(buildRuntimeMpjTraces(runtime, responses)) : {},
+    [runtime, responses],
+  );
   const reviewedQuest = reviewIndex === null ? undefined : mission.quests[reviewIndex];
   const reviewedResponse = reviewedQuest ? responses[reviewedQuest.id] : undefined;
   const currentProgressIndex = completed ? mission.quests.length : questIndex;
@@ -2380,6 +2387,14 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMod
             </div>
             <DissentSummary dissent={aDct?.dissent} />
             <SessionPatternSummary responses={[aDct]} />
+            {runtime && !demoMode && (
+              <PeerResponsesPanel
+                courseId={peerCourseId}
+                missionId={runtime.scenario_id}
+                enabled={saveState === "saved"}
+                learnerChoices={peerChoices}
+              />
+            )}
             <CompletionActions onRestart={restart} runtime={Boolean(runtime) && !demoMode} saveState={saveState} />
           </div>
         ) : (
