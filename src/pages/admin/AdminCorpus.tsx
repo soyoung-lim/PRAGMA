@@ -195,7 +195,7 @@ const AdminCorpus = () => {
 
   return (
     <AdminShell
-      title="HSK 3.0 콘텐츠 감사 기준"
+      title="HSK 3.0 어휘 코퍼스"
       description="PRAGMA 수준에 맞는 HSK 누적 어휘 범위로 생성된 중국어를 대조하고, 확인이 필요한 단어를 교수자 검수로 연결합니다."
     >
       <div className="mx-auto max-w-[1060px] space-y-4">
