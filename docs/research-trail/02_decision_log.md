@@ -3190,3 +3190,19 @@
 - 판정: 구조 효과는 아직 판정할 수 없으며 **마지막 국소 수정 필요**다. transient 처리와 기존 허용
   operation 기반 telemetry 귀인만 보완하고 동일 12를 다시 실행한다. 30·500은 금지한다.
 - 근거: 구현 `712891c`, attestation `527bd45`, `ITER-20260830-06`, `EVD-20260830-06`.
+
+## DEC-20260830-07 · topology 합성 503은 기존 mission ledger로 귀인하고 frozen C 선행 계약을 남은 병목으로 판정
+
+- 날짜: 2026-08-30
+- 문제: `_10` targeted 12의 topology 12/12 HTTP 503이 provider 장애인지 새 경로의 systematic
+  defect인지 확인하지 않고 retry하면 원인과 비용을 가릴 수 있었다.
+- 결정: 성공 provider 응답 뒤 새 `mission_topology` 장부 insert가 DB allowlist에서 거부되어 합성
+  503이 되는 코드 경로를 원인으로 확정했다. DB 변경 없이 기존 `mission_generate`에 기록하고 topology
+  prompt version으로 subtype을 보존했다. transient 근거가 없어 retry는 추가하지 않았다.
+- 결과: 단일 probe와 동일 12 재실행에서 provider 실패는 0이다. topology 10/12, full mission 10/12,
+  최초 R27 0/10, Anchor 공유·X/A/Y/C distinct 각각 10/10, 최종 적격 8/12다. terminal direct cause는
+  topology deterministic 2·critic 2이며 서로 합산 귀인하지 않는다.
+- 판정: **Infrastructure는 해결됐지만 R27 구조 추가 수정 필요**. item 190의 frozen core C shape는
+  X/A/Y 재생성으로 고칠 수 없고 item 70은 bounded 재생성 뒤에도 Anchor/C exact collision이 남았다.
+  이 exact failure 외 규칙·validator를 재개방하지 않고 이번 단계는 정지한다.
+- 근거: 구현 `6c0e7bc`, fingerprint `fa8acc8`, `ITER-20260830-07`, `EVD-20260830-07`.

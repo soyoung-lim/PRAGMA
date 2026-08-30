@@ -3050,3 +3050,23 @@
   재검증한다. 균형 30·500은 시작하지 않는다.
 - 관련: `DEC-20260830-06`, `EVD-20260830-06`,
   `docs/dev-log/2026-08-30-r27-constraint-topology12.md`.
+
+## ITER-20260830-07 · topology ledger 교정과 동일 12 유효 runtime 재검증
+
+- 날짜: 2026-08-30
+- 시작 문제: topology 전용 operation이 기존 append-only ledger 제약 밖이어서 성공 provider 응답도
+  필수 장부 실패 뒤 합성 503이 됐고 R27 runtime 분모가 0이었다.
+- 변경: topology를 기존 `mission_generate`에 기록하되 prompt version으로 subtype을 보존했다.
+  DB schema·retry·generation/critic 계약은 동결했다. 표적 24 tests·typecheck와 topology-only probe
+  1건으로 장부·성공 경로를 확인했다.
+- 동일 12 결과: topology 최초 9/12, 1회 재생성 3, 최종 10/12, infrastructure dropout 0이다.
+  full mission 10개의 최초 R27·repair는 각각 0/10이며 Anchor 공유와 X/A/Y/C distinct는 10/10이다.
+  critic fail 2를 R27로 귀인하지 않았고 최종 적격은 8/12다.
+- 예상과 달랐던 점/교훈: full mission까지 도달하면 constraint-by-construction이 R27을 차단했지만,
+  core에서 이미 동결된 C가 topology의 정확히 2문장 규칙을 위반하면 topology regeneration은 구조상
+  이를 고칠 수 없다. 따라서 post-hoc repair 회귀나 validator 완화가 아니라 C를 freeze 전에 계약에
+  맞추는 exact seam만 남았다.
+- 비용·경계: main rerun 81/81 success·394,906 token·`$1.2078405`, 별도 probe 1,171 token·
+  `$0.0046975`. 오염·bounded 위반·실패 revision 승격·편성은 0이며 30·500·후속 검수는 미실행이다.
+- 관련: `DEC-20260830-07`, `EVD-20260830-07`,
+  `docs/dev-log/2026-08-30-r27-topology-infra-rerun.md`.
