@@ -18,13 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { APPROVAL_STATUS, type ApprovalStatus } from "@/lib/auth/constants";
@@ -78,29 +71,25 @@ type LearnerRow = {
 
 const STATUS_LABEL: Record<ApprovalStatus, string> = {
   pending_approval: "승인 대기",
-  approved: "승인됨",
-  rejected: "반려",
+  approved: "승인 완료",
+  rejected: "반려 처리",
   inactive: "비활성",
 };
 
-const STATUS_VARIANT: Record<
-  ApprovalStatus,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  pending_approval: "secondary",
-  approved: "default",
-  rejected: "destructive",
-  inactive: "outline",
+const STATUS_TONE: Record<ApprovalStatus, string> = {
+  pending_approval: "border-amber-200 bg-amber-50 text-amber-800",
+  approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  rejected: "border-rose-200 bg-rose-50 text-rose-700",
+  inactive: "border-slate-200 bg-slate-50 text-slate-600",
 };
 
-type FilterValue = ApprovalStatus | "all";
+type FilterValue = Exclude<ApprovalStatus, "inactive"> | "all";
 
 const FILTERS: { value: FilterValue; label: string }[] = [
   { value: "all", label: "전체" },
   { value: APPROVAL_STATUS.PENDING, label: STATUS_LABEL.pending_approval },
   { value: APPROVAL_STATUS.APPROVED, label: STATUS_LABEL.approved },
   { value: APPROVAL_STATUS.REJECTED, label: STATUS_LABEL.rejected },
-  { value: APPROVAL_STATUS.INACTIVE, label: STATUS_LABEL.inactive },
 ];
 
 const Section = ({
@@ -141,9 +130,6 @@ const fmtUpdated = (iso: string | null | undefined) => {
   });
 };
 
-const learnerInitial = (row: Pick<LearnerRow, "full_name" | "email">) =>
-  (row.full_name?.trim().charAt(0) || row.email?.trim().charAt(0) || "?").toUpperCase();
-
 /** 준비 상태를 있음/없음 텍스트 대신 한눈에 대비되는 칩으로 보여 준다. */
 const ReadyChip = ({ ready, on, off }: { ready: boolean; on: string; off: string }) => (
   <span
@@ -172,6 +158,8 @@ const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
 const Page = () => {
   const [rows, setRows] = useState<LearnerRow[] | null>(null);
   const [filter, setFilter] = useState<FilterValue>("all");
+  const [learnerQuery, setLearnerQuery] = useState("");
+  const [affiliationQuery, setAffiliationQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -195,9 +183,19 @@ const Page = () => {
 
   const filtered = useMemo(() => {
     if (!rows) return [];
-    if (filter === "all") return rows;
-    return rows.filter((r) => r.approval_status === filter);
-  }, [rows, filter]);
+    const learnerNeedle = learnerQuery.trim().toLocaleLowerCase("ko-KR");
+    const affiliationNeedle = affiliationQuery.trim().toLocaleLowerCase("ko-KR");
+    return rows.filter((r) => {
+      if (filter !== "all" && r.approval_status !== filter) return false;
+      const learnerText = [r.full_name, r.email, r.anonymous_participant_id]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("ko-KR");
+      const affiliationText = String(firstOf(r.affiliation, r.affiliation_or_status) ?? "")
+        .toLocaleLowerCase("ko-KR");
+      return learnerText.includes(learnerNeedle) && affiliationText.includes(affiliationNeedle);
+    });
+  }, [rows, filter, learnerQuery, affiliationQuery]);
 
   const selected = useMemo(
     () => (selectedId ? rows?.find((r) => r.id === selectedId) ?? null : null),
@@ -234,32 +232,17 @@ const Page = () => {
       title="학습자 승인·관리"
       description="학습자 프로필을 확인해 승인·반려·비활성을 처리하고, 각 학습자의 수행 기록으로 바로 이동합니다."
     >
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-4 rounded-xl border border-border bg-white px-4 py-3.5">
-        <label className="text-xs font-medium text-muted-foreground">
-          상태 필터
-          <Select value={filter} onValueChange={(v) => setFilter(v as FilterValue)}>
-            <SelectTrigger className="mt-1 h-10 w-[220px] bg-white font-normal text-foreground">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {FILTERS.map((f) => (
-                <SelectItem key={f.value} value={f.value}>
-                  {f.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
-        <span className="rounded-full bg-[#F3F0E4] px-3 py-1.5 text-sm font-semibold text-[#5B5446]">
-          {rows === null
-            ? "불러오는 중…"
-            : filter === "all"
-              ? `학습자 ${rows.length}명`
-              : `${filtered.length}명 표시 · 전체 ${rows.length}명`}
-        </span>
-      </div>
-
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_30px_rgba(21,32,43,0.05)]">
+        <div className="flex items-center justify-between border-b border-border bg-white px-5 py-3">
+          <span className="text-sm font-semibold text-[#343B42]">학습자 목록</span>
+          <span className="rounded-full bg-[#F3F0E4] px-3 py-1.5 text-sm font-semibold text-[#5B5446]">
+            {rows === null
+              ? "불러오는 중…"
+              : filter === "all" && !learnerQuery.trim() && !affiliationQuery.trim()
+                ? `학습자 ${rows.length}명`
+                : `${filtered.length}명 표시 · 전체 ${rows.length}명`}
+          </span>
+        </div>
         <Table className="min-w-[860px] table-fixed">
           <colgroup>
             <col style={{ width: "26%" }} />
@@ -271,12 +254,48 @@ const Page = () => {
           </colgroup>
           <TableHeader className="bg-[#F7F5EE]">
             <TableRow>
-              <TableHead className="h-14 px-5 text-xs font-bold text-[#5F625F]">학습자</TableHead>
-              <TableHead className="h-14 px-3 text-xs font-bold text-[#5F625F]">소속/신분</TableHead>
-              <TableHead className="h-14 px-3 text-xs font-bold text-[#5F625F]">상태</TableHead>
-              <TableHead className="h-14 px-3 text-xs font-bold text-[#5F625F]">프로필 · 익명 ID</TableHead>
-              <TableHead className="h-14 px-3 text-right text-xs font-bold text-[#5F625F]">업데이트</TableHead>
-              <TableHead className="h-14 px-5 text-right text-xs font-bold text-[#5F625F]">관리</TableHead>
+              <TableHead className="h-auto px-5 py-3 align-top text-xs font-bold text-[#5F625F]">
+                <label className="block">
+                  학습자
+                  <input
+                    aria-label="학습자 필터"
+                    value={learnerQuery}
+                    onChange={(event) => setLearnerQuery(event.target.value)}
+                    placeholder="이름·이메일 검색"
+                    className="mt-2 h-8 w-full rounded-md border border-border bg-white px-2.5 font-normal text-foreground outline-none focus:border-[#B69B2C]"
+                  />
+                </label>
+              </TableHead>
+              <TableHead className="h-auto px-3 py-3 align-top text-xs font-bold text-[#5F625F]">
+                <label className="block">
+                  소속/신분
+                  <input
+                    aria-label="소속 필터"
+                    value={affiliationQuery}
+                    onChange={(event) => setAffiliationQuery(event.target.value)}
+                    placeholder="소속 검색"
+                    className="mt-2 h-8 w-full rounded-md border border-border bg-white px-2.5 font-normal text-foreground outline-none focus:border-[#B69B2C]"
+                  />
+                </label>
+              </TableHead>
+              <TableHead className="h-auto px-3 py-3 align-top text-xs font-bold text-[#5F625F]">
+                <label className="block">
+                  상태
+                  <select
+                    aria-label="상태 필터"
+                    value={filter}
+                    onChange={(event) => setFilter(event.target.value as FilterValue)}
+                    className="mt-2 h-8 w-full rounded-md border border-border bg-white px-2 font-normal text-foreground outline-none focus:border-[#B69B2C]"
+                  >
+                    {FILTERS.map((item) => (
+                      <option key={item.value} value={item.value}>{item.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </TableHead>
+              <TableHead className="h-auto px-3 py-3 align-top text-xs font-bold text-[#5F625F]">프로필 · 익명 ID</TableHead>
+              <TableHead className="h-auto px-3 py-3 text-right align-top text-xs font-bold text-[#5F625F]">업데이트</TableHead>
+              <TableHead className="h-auto px-5 py-3 text-right align-top text-xs font-bold text-[#5F625F]">관리</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -296,21 +315,19 @@ const Page = () => {
               filtered.map((r) => (
                 <TableRow key={r.id} className="h-[88px] hover:bg-[#FBFAF5]">
                   <TableCell className="px-5 py-4">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#15202B] text-sm font-bold text-white">
-                        {learnerInitial(r)}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="truncate font-semibold leading-5 text-foreground">{r.full_name ?? "—"}</div>
-                        <div className="mt-0.5 truncate text-xs leading-5 text-muted-foreground" title={r.email ?? undefined}>{r.email ?? "—"}</div>
-                      </div>
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold leading-5 text-foreground">{r.full_name ?? "—"}</div>
+                      <div className="mt-0.5 truncate text-xs leading-5 text-muted-foreground" title={r.email ?? undefined}>{r.email ?? "—"}</div>
                     </div>
                   </TableCell>
                   <TableCell className="px-3 py-4 text-sm leading-5 text-[#343B42]">
                     {firstOf(r.affiliation, r.affiliation_or_status) ?? "—"}
                   </TableCell>
                   <TableCell className="px-3 py-4">
-                    <Badge variant={STATUS_VARIANT[r.approval_status]} className="min-w-[68px] justify-center whitespace-nowrap">
+                    <Badge
+                      variant="outline"
+                      className={`min-w-[76px] justify-center whitespace-nowrap ${STATUS_TONE[r.approval_status]}`}
+                    >
                       {STATUS_LABEL[r.approval_status]}
                     </Badge>
                   </TableCell>
@@ -371,7 +388,7 @@ const Page = () => {
                   <Field
                     label="승인 상태"
                     value={
-                      <Badge variant={STATUS_VARIANT[selected.approval_status]}>
+                      <Badge variant="outline" className={STATUS_TONE[selected.approval_status]}>
                         {STATUS_LABEL[selected.approval_status]}
                       </Badge>
                     }
