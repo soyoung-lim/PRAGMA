@@ -25,6 +25,14 @@ export const CHINESE_LEVEL_OPTIONS: CodedOption[] = [
   { code: "not_taken", label: "응시 경험 없음" },
 ];
 
+/** 수업 시작점을 고르는 기능적 자가 수준. HSK 급수와 분리해 시험 미응시자와
+ * 중국어 주 사용자를 하나의 시험 서열에 억지로 넣지 않는다. */
+export const SELF_REPORTED_LEVEL_OPTIONS: CodedOption[] = [
+  { code: "beginner", label: "입문" },
+  { code: "intermediate", label: "중급" },
+  { code: "advanced", label: "고급" },
+];
+
 /** 이 앱은 양방향(한→중·중→한)이라 학습 대상 언어가 학습자마다 다르다.
  *  중국어 모어 화자에게 "중국어를 접해 온 상황"을 묻는 것은 무의미하다 —
  *  그들의 학습 대상은 한국어다. 주 사용 언어에서 대상 언어를 도출한다.
@@ -60,6 +68,19 @@ export const exposureContextOptions = (target: TargetLanguage): CodedOption[] =>
   },
   { code: "almost_none", label: "거의 없음" },
 ];
+
+/** 프로필 입력에서는 교수자가 수업 운영에 참고할 실제 사용 맥락만 간결하게 묻는다.
+ * 기존 저장값 표시를 위해 exposureContextOptions의 전체 정본은 유지한다. */
+const PROFILE_EXPOSURE_CODES = new Set([
+  "class",
+  "work_docs",
+  "native_friends",
+  "residence",
+  "almost_none",
+]);
+
+export const profileExposureOptions = (target: TargetLanguage): CodedOption[] =>
+  exposureContextOptions(target).filter((option) => PROFILE_EXPOSURE_CODES.has(option.code));
 /** 다른 항목과 함께 고를 수 없는 배타 선택지. */
 export const EXPOSURE_EXCLUSIVE = "almost_none";
 

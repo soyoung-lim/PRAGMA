@@ -30,6 +30,10 @@ beforeEach(() => {
         email: "auraweon7@gmail.com",
         affiliation: "교강사/연구자",
         affiliation_or_status: null,
+        language_background: "ko",
+        chinese_proficiency_self_report: "advanced",
+        chinese_level: "hsk6",
+        ti_experience_level: "coursework",
         profile_completed: true,
         approval_status: "approved",
         anonymous_participant_id: "anon-a",
@@ -44,6 +48,10 @@ beforeEach(() => {
         email: "learner@example.com",
         affiliation: "대학원생(박사)",
         affiliation_or_status: null,
+        language_background: "ko",
+        chinese_proficiency_self_report: "intermediate",
+        chinese_level: "hsk5",
+        ti_experience_level: "none",
         profile_completed: false,
         approval_status: "pending_approval",
         anonymous_participant_id: null,
@@ -58,15 +66,21 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe("학습자 승인·관리 목록", () => {
-  it("정보 길이에 맞춘 고정 열 비율과 정렬된 관리 동작을 표시한다", async () => {
+describe("학습자 관리 목록", () => {
+  it("필터와 내부 메타데이터 대신 학습 배경과 관리 동작을 표시한다", async () => {
     render(<MemoryRouter><AdminLearners /></MemoryRouter>);
 
     expect(await screen.findByText("박정원")).toBeVisible();
     expect(screen.getByText("교강사/연구자")).toBeVisible();
+    expect(screen.getByText("한국어 · 고급")).toBeVisible();
+    expect(screen.getByText("HSK 6급")).toBeVisible();
+    expect(screen.getByText("1학기 이상 수업")).toBeVisible();
     expect(screen.getAllByText("승인 완료").find((node) => node.tagName === "DIV")).toHaveClass("bg-emerald-50");
-    expect(screen.getByText("프로필 완료")).toBeVisible();
-    expect(screen.getByText("익명 ID")).toBeVisible();
+    expect(screen.queryByText("학습자 목록")).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.queryByText("프로필 완료")).not.toBeInTheDocument();
+    expect(screen.queryByText("익명 ID")).not.toBeInTheDocument();
 
     const learnerCell = screen.getByText("박정원").closest("td");
     expect(learnerCell?.querySelector('[aria-hidden="true"]')).toBeNull();
@@ -74,43 +88,24 @@ describe("학습자 승인·관리 목록", () => {
     const table = screen.getByRole("table");
     expect(table).toHaveClass("table-fixed", "min-w-[860px]");
     expect(Array.from(table.querySelectorAll("col")).map((col) => col.style.width)).toEqual([
-      "26%", "14%", "9%", "18%", "13%", "20%",
+      "22%", "14%", "20%", "14%", "10%", "20%",
     ]);
-    expect(screen.getAllByRole("link", { name: "수행 기록 →" })[0]).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: "수행 기록" })[0]).toHaveAttribute(
       "href",
       "/admin/decision-traces?q=auraweon7%40gmail.com",
     );
-    expect(screen.getAllByRole("button", { name: "상세" })[0]).toBeVisible();
+    expect(screen.getAllByRole("button", { name: "프로필 보기" })[0]).toHaveClass("bg-[#15202B]");
   });
 
-  it("표 안에서 학습자·소속·세 가지 승인 상태를 필터링한다", async () => {
+  it("상세를 기본 정보·학습 배경·접힌 연구 데이터로 정리한다", async () => {
     render(<MemoryRouter><AdminLearners /></MemoryRouter>);
     expect(await screen.findByText("박정원")).toBeVisible();
 
-    const statusFilter = screen.getByRole("combobox", { name: "상태 필터" });
-    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "전체", "승인 대기", "승인 완료", "반려 처리",
-    ]);
-
-    fireEvent.change(screen.getByRole("textbox", { name: "학습자 필터" }), {
-      target: { value: "박정원" },
-    });
-    expect(screen.queryByText("임소영")).not.toBeInTheDocument();
-
-    fireEvent.change(screen.getByRole("textbox", { name: "학습자 필터" }), {
-      target: { value: "" },
-    });
-    fireEvent.change(screen.getByRole("textbox", { name: "소속 필터" }), {
-      target: { value: "대학원생" },
-    });
-    expect(screen.queryByText("박정원")).not.toBeInTheDocument();
-    expect(screen.getByText("임소영")).toBeVisible();
-
-    fireEvent.change(screen.getByRole("textbox", { name: "소속 필터" }), {
-      target: { value: "" },
-    });
-    fireEvent.change(statusFilter, { target: { value: "approved" } });
-    expect(screen.getByText("박정원")).toBeVisible();
-    expect(screen.queryByText("임소영")).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "프로필 보기" })[0]);
+    expect(screen.getByText("기본 정보")).toBeVisible();
+    expect(screen.getByText("학습 배경")).toBeVisible();
+    expect(screen.getByText("연구·데이터 관리")).toBeVisible();
+    expect(screen.queryByText(/이전 프로필/)).not.toBeInTheDocument();
+    expect(screen.queryByText("역할")).not.toBeInTheDocument();
   });
 });

@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProfile, devStubCompleteProfile } from "@/lib/auth/useProfile";
 import {
   PRIMARY_LANGUAGE_OPTIONS,
+  SELF_REPORTED_LEVEL_OPTIONS,
   CHINESE_LEVEL_OPTIONS,
-  exposureContextOptions,
+  profileExposureOptions,
   targetLanguageOf,
   TARGET_LANGUAGE_LABEL,
   EXPOSURE_EXCLUSIVE,
@@ -206,6 +207,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
 
   // Screen 2 — coded values
   const [primaryLanguage, setPrimaryLanguage] = useState("");
+  const [selfReportedLevel, setSelfReportedLevel] = useState("");
   const [chineseLevel, setChineseLevel] = useState("");
   const [exposureContexts, setExposureContexts] = useState<string[]>([]);
   const [tiExperience, setTiExperience] = useState("");
@@ -222,11 +224,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
   const targetLangLabel = TARGET_LANGUAGE_LABEL[targetLang];
 
   const step1Valid = trimmedName.length > 0 && affiliation !== "";
-  const step2Valid =
-    primaryLanguage !== "" &&
-    (!needsChineseLevel || chineseLevel !== "") &&
-    exposureContexts.length > 0 &&
-    tiExperience !== "";
+  const step2Valid = primaryLanguage !== "";
   const canSubmit = step1Valid && step2Valid && !busy;
 
   const handleSubmit = async () => {
@@ -252,10 +250,11 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
           grade_or_program: null,
           // 주 사용 언어 — 그동안 null로만 저장되던 기존 컬럼을 실제로 쓴다.
           language_background: primaryLanguage,
-          // 중국어·이중언어 사용자에게는 묻지 않았으므로 저장도 하지 않는다.
-          chinese_level: needsChineseLevel ? chineseLevel : null,
-          chinese_exposure_contexts: exposureContexts,
-          ti_experience_level: tiExperience,
+          chinese_proficiency_self_report: selfReportedLevel || null,
+          // 중국어·이중언어 사용자에게는 HSK를 묻지 않았으므로 저장도 하지 않는다.
+          chinese_level: needsChineseLevel && chineseLevel ? chineseLevel : null,
+          chinese_exposure_contexts: exposureContexts.length ? exposureContexts : null,
+          ti_experience_level: tiExperience || null,
           // Keep full_name in sync (used by other screens)
           full_name: trimmedName,
           profile_completed: true,
@@ -307,6 +306,9 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
 
       {step === 2 && (
         <div className="space-y-6">
+          <p className="rounded-md bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
+            주 사용 언어만 필수입니다. 나머지는 수업 운영 참고용이며 입력하지 않아도 학습할 수 있습니다.
+          </p>
           <Field label="주 사용 언어" required>
             <CodedRadioGroup
               name="primary_language"
@@ -320,8 +322,17 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
             />
           </Field>
 
+          <Field label="학습 시작 수준">
+            <CodedRadioGroup
+              name="self_reported_level"
+              value={selfReportedLevel}
+              onChange={setSelfReportedLevel}
+              options={SELF_REPORTED_LEVEL_OPTIONS}
+            />
+          </Field>
+
           {needsChineseLevel && (
-            <Field label="중국어 학습 수준" required>
+            <Field label="최근 HSK 급수">
               <CodedRadioGroup
                 name="chinese_level"
                 value={chineseLevel}
@@ -332,18 +343,17 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
           )}
 
           <Field
-            label={`${targetLangLabel}를 접하거나 사용해 온 상황 (복수 선택 가능)`}
-            required
+            label={`${targetLangLabel} 실제 사용 경험 (복수 선택 가능)`}
           >
             <CheckboxGroup
               value={exposureContexts}
               onChange={setExposureContexts}
-              options={exposureContextOptions(targetLang)}
+              options={profileExposureOptions(targetLang)}
               exclusive={EXPOSURE_EXCLUSIVE}
             />
           </Field>
 
-          <Field label="한중 통번역 학습·수행 경험" required>
+          <Field label="한중 통번역 학습·수행 경험">
             <CodedRadioGroup
               name="ti_experience"
               value={tiExperience}

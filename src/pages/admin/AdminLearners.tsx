@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -24,6 +25,7 @@ import { APPROVAL_STATUS, type ApprovalStatus } from "@/lib/auth/constants";
 import {
   PRIMARY_LANGUAGE_OPTIONS,
   CHINESE_LEVEL_OPTIONS,
+  SELF_REPORTED_LEVEL_OPTIONS,
   exposureContextOptions,
   targetLanguageOf,
   TARGET_LANGUAGE_LABEL,
@@ -49,6 +51,7 @@ type LearnerRow = {
   consent_anonymous_analysis: boolean | null;
   consent_email_report: boolean | null;
   academic_year_or_program: string | null;
+  grade_or_program: string | null;
   profile_completed: boolean;
   approval_status: ApprovalStatus;
   anonymous_participant_id: string | null;
@@ -83,15 +86,6 @@ const STATUS_TONE: Record<ApprovalStatus, string> = {
   inactive: "border-slate-200 bg-slate-50 text-slate-600",
 };
 
-type FilterValue = Exclude<ApprovalStatus, "inactive"> | "all";
-
-const FILTERS: { value: FilterValue; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: APPROVAL_STATUS.PENDING, label: STATUS_LABEL.pending_approval },
-  { value: APPROVAL_STATUS.APPROVED, label: STATUS_LABEL.approved },
-  { value: APPROVAL_STATUS.REJECTED, label: STATUS_LABEL.rejected },
-];
-
 const Section = ({
   title,
   children,
@@ -116,32 +110,6 @@ const firstOf = <T,>(...vals: (T | null | undefined)[]) =>
 const traceQueryFor = (row: { email: string | null; anonymous_participant_id: string | null; full_name: string | null }) =>
   firstOf(row.email, row.anonymous_participant_id, row.full_name);
 
-/** 목록은 스캔용이므로 초 단위를 버리고 자리수를 고정한다. */
-const fmtUpdated = (iso: string | null | undefined) => {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("ko-KR", {
-    timeZone: "Asia/Seoul",
-    year: "2-digit",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-};
-
-/** 준비 상태를 있음/없음 텍스트 대신 한눈에 대비되는 칩으로 보여 준다. */
-const ReadyChip = ({ ready, on, off }: { ready: boolean; on: string; off: string }) => (
-  <span
-    className={[
-      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
-      ready ? "bg-[#EDE9DD] text-[#5B5446]" : "border border-dashed border-border text-muted-foreground",
-    ].join(" ")}
-  >
-    {ready ? on : off}
-  </span>
-);
-
 const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex flex-col gap-0.5">
     <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -157,9 +125,6 @@ const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
 
 const Page = () => {
   const [rows, setRows] = useState<LearnerRow[] | null>(null);
-  const [filter, setFilter] = useState<FilterValue>("all");
-  const [learnerQuery, setLearnerQuery] = useState("");
-  const [affiliationQuery, setAffiliationQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -180,22 +145,6 @@ const Page = () => {
   useEffect(() => {
     void fetchRows();
   }, []);
-
-  const filtered = useMemo(() => {
-    if (!rows) return [];
-    const learnerNeedle = learnerQuery.trim().toLocaleLowerCase("ko-KR");
-    const affiliationNeedle = affiliationQuery.trim().toLocaleLowerCase("ko-KR");
-    return rows.filter((r) => {
-      if (filter !== "all" && r.approval_status !== filter) return false;
-      const learnerText = [r.full_name, r.email, r.anonymous_participant_id]
-        .filter(Boolean)
-        .join(" ")
-        .toLocaleLowerCase("ko-KR");
-      const affiliationText = String(firstOf(r.affiliation, r.affiliation_or_status) ?? "")
-        .toLocaleLowerCase("ko-KR");
-      return learnerText.includes(learnerNeedle) && affiliationText.includes(affiliationNeedle);
-    });
-  }, [rows, filter, learnerQuery, affiliationQuery]);
 
   const selected = useMemo(
     () => (selectedId ? rows?.find((r) => r.id === selectedId) ?? null : null),
@@ -229,73 +178,30 @@ const Page = () => {
 
   return (
     <AdminShell
-      title="학습자 승인·관리"
-      description="학습자 프로필을 확인해 승인·반려·비활성을 처리하고, 각 학습자의 수행 기록으로 바로 이동합니다."
+      title="학습자 관리"
+      description="학습자 기본 정보와 학습 배경을 확인하고 수행 기록으로 이동합니다."
     >
+      <div className="mb-2 text-right text-sm text-muted-foreground">
+        {rows === null ? "불러오는 중…" : `총 ${rows.length}명`}
+      </div>
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_30px_rgba(21,32,43,0.05)]">
-        <div className="flex items-center justify-between border-b border-border bg-white px-5 py-3">
-          <span className="text-sm font-semibold text-[#343B42]">학습자 목록</span>
-          <span className="rounded-full bg-[#F3F0E4] px-3 py-1.5 text-sm font-semibold text-[#5B5446]">
-            {rows === null
-              ? "불러오는 중…"
-              : filter === "all" && !learnerQuery.trim() && !affiliationQuery.trim()
-                ? `학습자 ${rows.length}명`
-                : `${filtered.length}명 표시 · 전체 ${rows.length}명`}
-          </span>
-        </div>
         <Table className="min-w-[860px] table-fixed">
           <colgroup>
-            <col style={{ width: "26%" }} />
+            <col style={{ width: "22%" }} />
             <col style={{ width: "14%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "18%" }} />
-            <col style={{ width: "13%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "10%" }} />
             <col style={{ width: "20%" }} />
           </colgroup>
           <TableHeader className="bg-[#F7F5EE]">
             <TableRow>
-              <TableHead className="h-auto px-5 py-3 align-top text-xs font-bold text-[#5F625F]">
-                <label className="block">
-                  학습자
-                  <input
-                    aria-label="학습자 필터"
-                    value={learnerQuery}
-                    onChange={(event) => setLearnerQuery(event.target.value)}
-                    placeholder="이름·이메일 검색"
-                    className="mt-2 h-8 w-full rounded-md border border-border bg-white px-2.5 font-normal text-foreground outline-none focus:border-[#B69B2C]"
-                  />
-                </label>
-              </TableHead>
-              <TableHead className="h-auto px-3 py-3 align-top text-xs font-bold text-[#5F625F]">
-                <label className="block">
-                  소속/신분
-                  <input
-                    aria-label="소속 필터"
-                    value={affiliationQuery}
-                    onChange={(event) => setAffiliationQuery(event.target.value)}
-                    placeholder="소속 검색"
-                    className="mt-2 h-8 w-full rounded-md border border-border bg-white px-2.5 font-normal text-foreground outline-none focus:border-[#B69B2C]"
-                  />
-                </label>
-              </TableHead>
-              <TableHead className="h-auto px-3 py-3 align-top text-xs font-bold text-[#5F625F]">
-                <label className="block">
-                  상태
-                  <select
-                    aria-label="상태 필터"
-                    value={filter}
-                    onChange={(event) => setFilter(event.target.value as FilterValue)}
-                    className="mt-2 h-8 w-full rounded-md border border-border bg-white px-2 font-normal text-foreground outline-none focus:border-[#B69B2C]"
-                  >
-                    {FILTERS.map((item) => (
-                      <option key={item.value} value={item.value}>{item.label}</option>
-                    ))}
-                  </select>
-                </label>
-              </TableHead>
-              <TableHead className="h-auto px-3 py-3 align-top text-xs font-bold text-[#5F625F]">프로필 · 익명 ID</TableHead>
-              <TableHead className="h-auto px-3 py-3 text-right align-top text-xs font-bold text-[#5F625F]">업데이트</TableHead>
-              <TableHead className="h-auto px-5 py-3 text-right align-top text-xs font-bold text-[#5F625F]">관리</TableHead>
+              <TableHead className="h-12 px-5 text-xs font-bold text-[#5F625F]">학습자</TableHead>
+              <TableHead className="h-12 px-3 text-xs font-bold text-[#5F625F]">소속/신분</TableHead>
+              <TableHead className="h-12 px-3 text-xs font-bold text-[#5F625F]">주 언어·중국어 수준</TableHead>
+              <TableHead className="h-12 px-3 text-xs font-bold text-[#5F625F]">통번역 경험</TableHead>
+              <TableHead className="h-12 px-3 text-xs font-bold text-[#5F625F]">상태</TableHead>
+              <TableHead className="h-12 px-5 text-right text-xs font-bold text-[#5F625F]">관리</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -305,14 +211,19 @@ const Page = () => {
                   불러오는 중…
                 </TableCell>
               </TableRow>
-            ) : filtered.length === 0 ? (
+            ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                   표시할 학습자가 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((r) => (
+              rows.map((r) => {
+                const primaryLanguage = labelOf(PRIMARY_LANGUAGE_OPTIONS, r.language_background);
+                const selfLevel = labelOf(SELF_REPORTED_LEVEL_OPTIONS, r.chinese_proficiency_self_report);
+                const hskLevel = labelOf(CHINESE_LEVEL_OPTIONS, r.chinese_level);
+                const languageSummary = [primaryLanguage, selfLevel].filter(Boolean).join(" · ");
+                return (
                 <TableRow key={r.id} className="h-[88px] hover:bg-[#FBFAF5]">
                   <TableCell className="px-5 py-4">
                     <div className="min-w-0">
@@ -324,6 +235,21 @@ const Page = () => {
                     {firstOf(r.affiliation, r.affiliation_or_status) ?? "—"}
                   </TableCell>
                   <TableCell className="px-3 py-4">
+                    {languageSummary || hskLevel ? (
+                      <div className="leading-5">
+                        <div className="font-medium text-[#343B42]">{languageSummary || hskLevel}</div>
+                        {languageSummary && hskLevel && (
+                          <div className="text-xs text-muted-foreground">{hskLevel}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-amber-700">학습 배경 미입력</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="px-3 py-4 text-sm text-[#343B42]">
+                    {labelOf(TI_EXPERIENCE_OPTIONS, r.ti_experience_level) ?? "—"}
+                  </TableCell>
+                  <TableCell className="px-3 py-4">
                     <Badge
                       variant="outline"
                       className={`min-w-[76px] justify-center whitespace-nowrap ${STATUS_TONE[r.approval_status]}`}
@@ -331,35 +257,32 @@ const Page = () => {
                       {STATUS_LABEL[r.approval_status]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="px-3 py-4">
-                    <div className="flex min-h-7 flex-wrap items-center gap-1.5">
-                      <ReadyChip ready={!!r.profile_completed} on="프로필 완료" off="프로필 미완료" />
-                      <ReadyChip ready={!!r.anonymous_participant_id} on="익명 ID" off="익명 ID 없음" />
-                    </div>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap px-3 py-4 text-right text-xs tabular-nums text-muted-foreground">
-                    {fmtUpdated(r.updated_at ?? r.created_at)}
-                  </TableCell>
                   <TableCell className="px-5 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        className="min-w-[88px] bg-[#15202B] text-white hover:bg-[#243447]"
+                        onClick={() => setSelectedId(r.id)}
+                      >
+                        프로필 보기
+                      </Button>
                       {traceQueryFor(r) && (
                         <Button
                           size="sm"
+                          variant="outline"
                           asChild
-                          className="min-w-[108px] bg-[#15202B] text-white hover:bg-[#243447]"
+                          className="min-w-[88px]"
                         >
                           <Link to={`/admin/decision-traces?q=${encodeURIComponent(traceQueryFor(r)!)}`}>
-                            수행 기록 →
+                            수행 기록
                           </Link>
                         </Button>
                       )}
-                      <Button size="sm" variant="outline" className="min-w-[58px]" onClick={() => setSelectedId(r.id)}>
-                        상세
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -373,18 +296,29 @@ const Page = () => {
                 <DialogTitle>
                   {selected.full_name ?? selected.email ?? "학습자 상세"}
                 </DialogTitle>
+                <DialogDescription>
+                  가입 정보와 수업 운영에 필요한 학습 배경을 확인합니다.
+                </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4">
-                <Section title="운영 정보">
+                {!selected.profile_completed && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    학습 배경 입력이 완료되지 않은 프로필입니다.
+                  </div>
+                )}
+
+                <Section title="기본 정보">
                   <Field label="이름" value={selected.full_name} />
                   <Field label="이메일" value={selected.email} />
                   <Field
                     label="소속/신분"
                     value={firstOf(selected.affiliation, selected.affiliation_or_status)}
                   />
-                  <Field label="학년/과정" value={selected.academic_year_or_program} />
-                  <Field label="역할" value={selected.role} />
+                  <Field
+                    label="학년/과정"
+                    value={firstOf(selected.grade_or_program, selected.academic_year_or_program)}
+                  />
                   <Field
                     label="승인 상태"
                     value={
@@ -393,19 +327,22 @@ const Page = () => {
                       </Badge>
                     }
                   />
-                  <Field
-                    label="프로필 완료"
-                    value={selected.profile_completed ? "완료" : "미완료"}
-                  />
                 </Section>
 
-                <Section title="연구 배경">
+                <Section title="학습 배경">
                   <Field
                     label="주 사용 언어"
                     value={labelOf(PRIMARY_LANGUAGE_OPTIONS, selected.language_background)}
                   />
                   <Field
-                    label="중국어 학습 수준"
+                    label="학습 시작 수준"
+                    value={labelOf(
+                      SELF_REPORTED_LEVEL_OPTIONS,
+                      selected.chinese_proficiency_self_report,
+                    )}
+                  />
+                  <Field
+                    label="최근 HSK 급수"
                     value={labelOf(CHINESE_LEVEL_OPTIONS, selected.chinese_level)}
                   />
                   {/* 학습 대상 언어는 주 사용 언어에서 도출된다 — 중국어 모어
@@ -425,89 +362,35 @@ const Page = () => {
                   />
                 </Section>
 
-                {/* 2026-07-26 문항 개편 이전에 수집된 값. 값이 있을 때만 보여준다 —
-                    항상 "—"인 칸이 늘어나면 관리자가 화면을 신뢰하지 않게 된다. */}
-                {(selected.business_chinese_experience ||
-                  selected.interpreting_experience ||
-                  selected.chinese_proficiency_self_report ||
-                  selected.ti_experience_modes?.length ||
-                  selected.genai_use_frequency ||
-                  selected.ai_prompting_style_for_ti ||
-                  selected.perceived_ai_ti_difficulty ||
-                  selected.perceived_business_chinese_ti_risk) && (
-                  <Section title="이전 프로필 (2026-07-26 개편 전 수집분)">
-                    {selected.business_chinese_experience && (
-                      <Field label="비즈니스 중국어 경험" value={selected.business_chinese_experience} />
-                    )}
-                    {selected.interpreting_experience && (
-                      <Field label="통번역 경험(구)" value={selected.interpreting_experience} />
-                    )}
-                    {selected.chinese_proficiency_self_report && (
-                      <Field label="중국어 자가평가" value={selected.chinese_proficiency_self_report} />
-                    )}
-                    {selected.ti_experience_modes?.length ? (
-                      <Field label="통번역 경험 모드" value={selected.ti_experience_modes.join(", ")} />
-                    ) : null}
-                    {selected.genai_use_frequency && (
-                      <Field label="GenAI 사용 빈도" value={selected.genai_use_frequency} />
-                    )}
-                    {selected.ai_prompting_style_for_ti && (
-                      <Field label="AI 프롬프팅 스타일" value={selected.ai_prompting_style_for_ti} />
-                    )}
-                    {selected.perceived_ai_ti_difficulty && (
-                      <Field label="AI 통번역 체감 난이도" value={selected.perceived_ai_ti_difficulty} />
-                    )}
-                    {selected.perceived_business_chinese_ti_risk && (
-                      <Field
-                        label="비즈니스 중국어 통번역 체감 리스크"
-                        value={selected.perceived_business_chinese_ti_risk}
-                      />
-                    )}
-                  </Section>
-                )}
-
-                <Section title="동의">
-                  <Field
-                    label="연구 활용 동의"
-                    value={
-                      firstOf(selected.consent_data_use, selected.research_use_consent)
-                        ? "예"
-                        : "아니오"
-                    }
-                  />
-                  <Field
-                    label="익명화 안내 확인"
-                    value={
-                      firstOf(
-                        selected.consent_anonymous_analysis,
-                        selected.anonymization_notice_confirmed,
-                      )
-                        ? "예"
-                        : "아니오"
-                    }
-                  />
-                  <Field
-                    label="리포트 이메일 동의"
-                    value={
-                      firstOf(selected.consent_email_report, selected.report_email_consent)
-                        ? "예"
-                        : "아니오"
-                    }
-                  />
-                </Section>
-
-                <Section title="연구 분석 식별">
-                  <Field
-                    label="anonymous_participant_id"
-                    value={
-                      selected.anonymous_participant_id ? (
-                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                          {selected.anonymous_participant_id}
-                        </code>
-                      ) : null
-                    }
-                  />
-                </Section>
+                <details className="rounded-lg border border-border bg-card">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground">
+                    연구·데이터 관리
+                  </summary>
+                  <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t border-border px-4 py-4 sm:grid-cols-2">
+                    <Field
+                      label="연구 활용 동의"
+                      value={firstOf(selected.consent_data_use, selected.research_use_consent) ? "동의" : "미동의"}
+                    />
+                    <Field
+                      label="익명화 안내 확인"
+                      value={firstOf(selected.consent_anonymous_analysis, selected.anonymization_notice_confirmed) ? "확인" : "미확인"}
+                    />
+                    <Field
+                      label="리포트 이메일 동의"
+                      value={firstOf(selected.consent_email_report, selected.report_email_consent) ? "동의" : "미동의"}
+                    />
+                    <Field
+                      label="익명 식별자"
+                      value={
+                        selected.anonymous_participant_id ? (
+                          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                            {selected.anonymous_participant_id}
+                          </code>
+                        ) : null
+                      }
+                    />
+                  </dl>
+                </details>
               </div>
 
               <DialogFooter className="flex-wrap gap-2 sm:justify-between">
