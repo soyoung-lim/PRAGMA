@@ -8,7 +8,6 @@ import {
   TARGET_LANGUAGE_LABEL,
   languageTestOptions,
   languageTestLabel,
-  EXPOSURE_EXCLUSIVE,
   TI_EXPERIENCE_OPTIONS,
   type CodedOption,
 } from "@/lib/auth/profileOptions";
@@ -30,7 +29,7 @@ const AFFILIATION_OPTIONS = [
 // 화면에서 '접하기/사용하기'로 묶지 않는다(문항 제목이 이미 그 뜻). 분석 시 코드로 묶는다.
 
 const inputCls =
-  "mt-2 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "mt-2 block w-full rounded-xl border border-[#D9D2BC] bg-white px-4 py-3 text-sm shadow-sm transition focus-visible:border-[#C8AB21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4D94E]/35";
 
 const RadioGroup = ({
   name,
@@ -47,8 +46,10 @@ const RadioGroup = ({
     {options.map((opt) => (
       <label
         key={opt}
-        className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-          value === opt ? "border-[#15202B] bg-muted/40" : "border-border"
+        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${
+          value === opt
+            ? "border-[#C8AB21] bg-[#FFF9D9] shadow-[0_0_0_1px_rgba(200,171,33,0.15)]"
+            : "border-[#DDD7C6] bg-white hover:border-[#BEB6A0] hover:bg-[#FFFEFA]"
         }`}
       >
         <input
@@ -57,7 +58,7 @@ const RadioGroup = ({
           value={opt}
           checked={value === opt}
           onChange={() => onChange(opt)}
-          className="h-4 w-4"
+          className="h-4 w-4 accent-[#15202B]"
         />
         <span>{opt}</span>
       </label>
@@ -80,8 +81,10 @@ const CodedRadioGroup = ({
     {options.map((opt) => (
       <label
         key={opt.code}
-        className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-          value === opt.code ? "border-[#15202B] bg-muted/40" : "border-border"
+        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${
+          value === opt.code
+            ? "border-[#C8AB21] bg-[#FFF9D9] shadow-[0_0_0_1px_rgba(200,171,33,0.15)]"
+            : "border-[#DDD7C6] bg-white hover:border-[#BEB6A0] hover:bg-[#FFFEFA]"
         }`}
       >
         <input
@@ -90,7 +93,7 @@ const CodedRadioGroup = ({
           value={opt.code}
           checked={value === opt.code}
           onChange={() => onChange(opt.code)}
-          className="h-4 w-4"
+          className="h-4 w-4 accent-[#15202B]"
         />
         <span>{opt.label}</span>
       </label>
@@ -125,15 +128,17 @@ const CheckboxGroup = ({
       {options.map((opt) => (
         <label
           key={opt.code}
-          className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-            value.includes(opt.code) ? "border-[#15202B] bg-muted/40" : "border-border"
+          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${
+            value.includes(opt.code)
+              ? "border-[#C8AB21] bg-[#FFF9D9] shadow-[0_0_0_1px_rgba(200,171,33,0.15)]"
+              : "border-[#DDD7C6] bg-white hover:border-[#BEB6A0] hover:bg-[#FFFEFA]"
           }`}
         >
           <input
             type="checkbox"
             checked={value.includes(opt.code)}
             onChange={() => toggle(opt.code)}
-            className="h-4 w-4"
+            className="h-4 w-4 accent-[#15202B]"
           />
           <span>{opt.label}</span>
         </label>
@@ -152,7 +157,7 @@ const Field = ({
   children: React.ReactNode;
 }) => (
   <div>
-    <label className="block text-sm font-medium">
+    <label className="block text-sm font-semibold text-[#15202B]">
       {label}{" "}
       {required ? (
         <span className="text-destructive">*</span>
@@ -165,16 +170,21 @@ const Field = ({
 );
 
 const StepIndicator = ({ step }: { step: Step }) => (
-  <div className="mb-6 flex items-center gap-2 text-xs">
+  <div className="mb-7 grid grid-cols-3 overflow-hidden rounded-xl border border-[#DDD7C6] bg-white/75 text-xs shadow-sm">
     {[1, 2, 3].map((n) => {
       const active = step === (n as Step);
       const done = step > n;
       return (
-        <div key={n} className="flex items-center gap-2">
+        <div
+          key={n}
+          className={`flex min-w-0 items-center gap-2 border-r border-[#E8E2D3] px-3 py-3 last:border-r-0 ${
+            active ? "bg-[#FFF9D9]" : ""
+          }`}
+        >
           <div
-            className={`flex h-7 w-7 items-center justify-center rounded-full border text-[12px] font-semibold ${
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[12px] font-bold ${
               active
-                ? "border-[#15202B] bg-[#15202B] text-white"
+                ? "border-[#E0C329] bg-[#F4D94E] text-[#15202B]"
                 : done
                 ? "border-[#15202B] bg-background text-[#15202B]"
                 : "border-border bg-background text-muted-foreground"
@@ -182,10 +192,9 @@ const StepIndicator = ({ step }: { step: Step }) => (
           >
             {n}
           </div>
-          <span className={active ? "font-medium" : "text-muted-foreground"}>
-            {n === 1 ? "기본 정보" : n === 2 ? "언어·학습 배경" : "기록·연구 동의"}
+          <span className={`truncate ${active ? "font-semibold text-[#15202B]" : "text-muted-foreground"}`}>
+            {n === 1 ? "나를 소개해요" : n === 2 ? "언어·학습 경험" : "학습 기록·연구 참여"}
           </span>
-          {n < 3 && <span className="text-muted-foreground">›</span>}
         </div>
       );
     })}
@@ -348,7 +357,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               value={exposureContexts}
               onChange={setExposureContexts}
               options={profileExposureOptions(targetLang)}
-              exclusive={EXPOSURE_EXCLUSIVE}
             />
           </Field>
 
@@ -365,22 +373,22 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
 
       {step === 3 && (
         <div className="space-y-6">
-          <section className="rounded-lg border border-border p-4">
+          <section className="rounded-2xl border border-[#DDD7C6] border-l-4 border-l-[#F4D94E] bg-white p-5 shadow-sm">
             <h3 className="text-sm font-semibold">학습 기록 공유 <span className="text-destructive">*</span></h3>
             <label className="mt-3 flex cursor-pointer items-start gap-3 text-sm leading-6">
               <input
                 type="checkbox"
                 checked={classRecordConsent}
                 onChange={(e) => setClassRecordConsent(e.target.checked)}
-                className="mt-1 h-4 w-4"
+                className="mt-1 h-4 w-4 accent-[#15202B]"
               />
               <span>
-                수업 운영과 피드백을 위해 담당 교수자에게 나의 학습 기록을 공유하는 데 동의합니다.
+                수업 운영을 위해 담당 교수자가 나의 학습 기록을 확인하는 데 동의합니다.
               </span>
             </label>
           </section>
 
-          <section className="rounded-lg border border-border p-4">
+          <section className="rounded-2xl border border-[#DDD7C6] border-l-4 border-l-[#F4D94E] bg-white p-5 shadow-sm">
             <h3 className="text-sm font-semibold">연구 활용 여부 <span className="text-destructive">*</span></h3>
             <p className="mt-2 text-sm leading-6 text-foreground">
               나의 익명 학습 기록을 통번역 학습 개선을 위한 연구에 활용하는 데 동의합니다.
@@ -397,7 +405,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
             <p className="mt-3 text-xs leading-5 text-muted-foreground">
               동의하지 않아도 수업 참여·성적·PRAGMA 이용에 불이익이 없으며, 언제든 철회할 수 있습니다.
             </p>
-            <details className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
+            <details className="mt-3 rounded-xl bg-[#F5F2E9] px-4 py-3 text-xs leading-5 text-muted-foreground">
               <summary className="cursor-pointer font-medium text-foreground">연구 활용 안내 보기</summary>
               <div className="mt-2 space-y-1">
                 <p>활용 대상: 미션 응답, 수정 과정 및 학습 수행 기록</p>
@@ -409,12 +417,12 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
         </div>
       )}
 
-      <div className="mt-8 flex items-center justify-between gap-3">
+      <div className="sticky bottom-0 z-10 -mx-2 mt-8 flex items-center justify-between gap-3 border-t border-[#E4DECD] bg-[#F8F6EE]/95 px-2 pb-1 pt-4 backdrop-blur">
         <button
           type="button"
           onClick={() => setStep((s) => (s > 1 ? ((s - 1) as Step) : s))}
           disabled={step === 1 || busy}
-          className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-xl border border-[#D4CEBD] bg-white px-5 py-2.5 text-sm font-semibold text-[#15202B] transition hover:bg-[#F7F4EA] disabled:cursor-not-allowed disabled:opacity-50"
         >
           이전
         </button>
@@ -424,7 +432,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
             type="button"
             onClick={() => setStep((s) => (s + 1) as Step)}
             disabled={(step === 1 && !step1Valid) || (step === 2 && !step2Valid)}
-            className="rounded-md bg-[#15202B] px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-[#15202B] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#22303E] disabled:cursor-not-allowed disabled:opacity-50"
           >
             다음
           </button>
@@ -433,7 +441,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="rounded-md bg-[#15202B] px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-[#15202B] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#22303E] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? "저장 중…" : "학습 시작하기"}
           </button>

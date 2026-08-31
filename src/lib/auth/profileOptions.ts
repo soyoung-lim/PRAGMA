@@ -22,6 +22,7 @@ export const CHINESE_LEVEL_OPTIONS: CodedOption[] = [
   { code: "hsk4", label: "HSK 4급" },
   { code: "hsk5", label: "HSK 5급" },
   { code: "hsk6", label: "HSK 6급" },
+  { code: "hsk7_9", label: "HSK 7–9급" },
   { code: "not_taken", label: "응시 경험 없음" },
 ];
 
@@ -89,7 +90,6 @@ const PROFILE_EXPOSURE_CODES = new Set([
   "work_docs",
   "native_friends",
   "residence",
-  "almost_none",
 ]);
 
 export const profileExposureOptions = (target: TargetLanguage): CodedOption[] =>

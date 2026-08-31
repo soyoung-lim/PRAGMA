@@ -33,11 +33,13 @@ describe("학습자 프로필 입력", () => {
     expect(screen.queryByText("학습 시작 수준")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "한국어" }));
     expect(screen.getByText("최근 HSK 급수").parentElement).not.toHaveTextContent("선택");
+    expect(screen.getByRole("radio", { name: "HSK 7–9급" })).toBeVisible();
+    expect(screen.queryByRole("checkbox", { name: "거의 없음" })).not.toBeInTheDocument();
 
     const next = screen.getByRole("button", { name: "다음" });
     expect(next).toBeDisabled();
     fireEvent.click(screen.getByRole("radio", { name: "응시 경험 없음" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "거의 없음" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "수업·시험" }));
     fireEvent.click(screen.getByRole("radio", { name: "없음" }));
     expect(next).toBeEnabled();
     fireEvent.click(next);
@@ -48,7 +50,7 @@ describe("학습자 프로필 입력", () => {
 
     const submit = screen.getByRole("button", { name: "학습 시작하기" });
     expect(submit).toBeDisabled();
-    fireEvent.click(screen.getByRole("checkbox", { name: /담당 교수자에게 나의 학습 기록을 공유/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /담당 교수자가 나의 학습 기록을 확인/ }));
     fireEvent.click(screen.getByRole("radio", { name: "동의하지 않습니다" }));
     expect(submit).toBeEnabled();
 
