@@ -59,6 +59,7 @@ describe("admin navigation reachability", () => {
     expect(production?.items.at(-1)?.to).toBe("/admin/review");
     expect(ADMIN_NAV_GROUPS.some((group) => group.header.includes("품질관리"))).toBe(false);
     expect(adminMobileNavValue("/admin/generator")).toBe("/admin/generator");
+    expect(adminMobileNavValue("/admin/authentic")).toBe("/admin/authentic");
     expect(adminMobileNavValue("/admin/batch")).toBe("/admin/batch");
     expect(adminMobileNavValue("/admin/decision-traces")).toBe("/admin/decision-traces");
     expect(adminMobileNavValue("/admin/export")).toBe("/admin/export");

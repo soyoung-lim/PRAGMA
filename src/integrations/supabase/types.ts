@@ -1194,6 +1194,7 @@ export type Database = {
           chinese_level: string | null
           chinese_proficiency_self_report: string | null
           consent_anonymous_analysis: boolean
+          consent_class_record_sharing: boolean | null
           consent_data_use: boolean
           consent_email_report: boolean
           created_at: string
@@ -1230,6 +1231,7 @@ export type Database = {
           chinese_level?: string | null
           chinese_proficiency_self_report?: string | null
           consent_anonymous_analysis?: boolean
+          consent_class_record_sharing?: boolean | null
           consent_data_use?: boolean
           consent_email_report?: boolean
           created_at?: string
@@ -1266,6 +1268,7 @@ export type Database = {
           chinese_level?: string | null
           chinese_proficiency_self_report?: string | null
           consent_anonymous_analysis?: boolean
+          consent_class_record_sharing?: boolean | null
           consent_data_use?: boolean
           consent_email_report?: boolean
           created_at?: string

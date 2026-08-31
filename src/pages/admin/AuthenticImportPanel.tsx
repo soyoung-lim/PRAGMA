@@ -533,6 +533,18 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
         )}
         {analysis && (
           <div className="space-y-4">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[12px] font-bold text-emerald-800">교수자가 확인한 원자료</span>
+                  {sourceRef.trim() && <span className="max-w-full truncate text-[10.5px] text-emerald-700">출처 · {sourceRef.trim()}</span>}
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-[#19372D]">
+                  {editedOriginal || analysis.source_original || "확정 원자료가 없습니다."}
+                </p>
+                <p className="mt-2 text-[10.5px] leading-4 text-emerald-700">
+                  아래의 상황·활용 방향은 AI 제안입니다. 원자료 활용과 AI 변형 설명을 확인한 뒤 교수자가 전달 여부를 결정합니다.
+                </p>
+              </div>
               {/* ③ 활용 방향 분석 — 확정된 문구가 어떤 콘텐츠가 될 수 있는가 */}
               <div className="space-y-2 rounded-xl border border-[#EAE4D2] bg-white p-4">
                 <div className="flex flex-wrap items-center gap-2 border-l-[3px] border-[#FAD338] pl-2.5">
@@ -600,7 +612,8 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
                 {items.map(({ c, i }, k) => {
                   const spanFull = items.length % 2 === 1 && k === items.length - 1;
                   const ut = asUsageType(c.usage_type);
-                  const canGen = GENERATABLE.includes(ut) && !!(c.source_text ?? "").trim();
+                  const generatableType = GENERATABLE.includes(ut);
+                  const canGen = generatableType && !!(c.source_text ?? "").trim();
                   const norm = canGen ? normalizeApply(c) : null;
                   return (
                     <div
@@ -698,11 +711,13 @@ const AuthenticImportPanel = ({ onApply }: Props) => {
                               : "bg-[#BA7517] text-white hover:bg-[#BA7517]/90",
                           ].join(" ")}
                         >
-                          {appliedIdx === i ? "✓ 생성기로 이동 중…" : "→ 이 후보로 생성기 열기"}
+                          {appliedIdx === i ? "✓ 근거와 함께 전달 중…" : "→ 이 자료로 시나리오 만들기"}
                         </Button>
                       ) : (
                         <p className="mt-auto rounded-md border border-dashed border-[#EAE4D2] bg-[#FAF7EE] px-2.5 py-1.5 text-[11px] text-muted-foreground">
-                          이 유형은 독립 미션으로 억지 변환하지 않습니다. 표현 자원·상황 배경으로만 참고하세요.
+                          {generatableType
+                            ? "근거 부족 · 생성기로 전달할 출발문이 없습니다. 원문을 수정해 다시 분석하세요."
+                            : "이 유형은 독립 미션으로 억지 변환하지 않습니다. 표현 자원·상황 배경으로만 참고하세요."}
                         </p>
                       )}
                     </div>

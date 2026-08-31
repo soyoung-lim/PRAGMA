@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Maximize2, RefreshCw, X } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { AdminShell } from "@/components/AdminShell";
 import { ClassResponsePatterns } from "@/components/admin/ClassResponsePatterns";
@@ -28,7 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 const AdminClassResponses = () => {
   const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
-  const [demo, setDemo] = useState(false);
+  const [demo, setDemo] = useState(true);
   const [projector, setProjector] = useState(false);
   const projectorRef = useRef<HTMLDivElement>(null);
   const courseId = params.get("courseId") ?? "";
@@ -121,6 +121,7 @@ const AdminClassResponses = () => {
       ? releaseState.pattern
       : patternQuery.data ?? null;
   const hasResponses = Boolean(visiblePattern && visiblePattern.learners > 0);
+  const releaseStatus = releaseState?.status ?? "collecting";
 
   useEffect(() => {
     if (!projector) return;
@@ -193,9 +194,14 @@ const AdminClassResponses = () => {
           </label>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Button size="sm" variant={!demo ? "default" : "outline"} onClick={() => setDemo(false)}>실제 데이터</Button>
-          <Button size="sm" variant={demo ? "default" : "outline"} onClick={() => setDemo(true)}>예시 데이터 보기</Button>
+          <Button size="sm" variant={!demo ? "default" : "outline"} aria-pressed={!demo} onClick={() => setDemo(false)}>실제 데이터</Button>
+          <Button size="sm" variant={demo ? "default" : "outline"} aria-pressed={demo} onClick={() => setDemo(true)}>예시 데이터 보기</Button>
           {!demo && <span className="ml-1 text-xs text-muted-foreground">5초마다 자동 갱신</span>}
+          {courseId && week && <Button size="sm" variant="ghost" className="ml-auto" asChild>
+            <Link to={`/admin/package?courseId=${encodeURIComponent(courseId)}&weekNo=${week.week_no}#weekly-material-detail`}>
+              주차 운영으로 돌아가기 →
+            </Link>
+          </Button>}
         </div>
       </section>
 
@@ -213,6 +219,20 @@ const AdminClassResponses = () => {
                   ? missionSituationSummary(selectedMission.situation_ko)
                   : "교과목·주차·미션을 선택해 주세요."}
             </p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {!demo && <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                {releaseStatus === "collecting" ? "응답 수집 중" : releaseStatus === "closed" ? "분포 고정" : "학습자 공개"}
+              </span>}
+              {visiblePattern && <>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">응답 {visiblePattern.learners}명</span>
+                <span className={[
+                  "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                  visiblePattern.dissents > 0
+                    ? "border-amber-200 bg-amber-50 text-amber-800"
+                    : "border-slate-200 bg-slate-50 text-slate-700",
+                ].join(" ")}>이견 {visiblePattern.dissents}건</span>
+              </>}
+            </div>
           </div>
           <div className="flex gap-2">
             {!demo && <Button
@@ -227,6 +247,19 @@ const AdminClassResponses = () => {
             </Button>
           </div>
         </div>
+
+        {!demo && missionId && <div aria-label="응답 공개 단계" className="mt-5 grid gap-2 rounded-lg border bg-[#FAFAF7] p-3 sm:grid-cols-3">
+          {[
+            { key: "collecting", label: "1 · 응답 수집", reached: true },
+            { key: "closed", label: "2 · 분포 고정", reached: releaseStatus === "closed" || releaseStatus === "released" },
+            { key: "released", label: "3 · 학습자 공개", reached: releaseStatus === "released" },
+          ].map((step) => <div key={step.key} className={[
+            "rounded-md border px-3 py-2 text-center text-xs font-bold",
+            step.reached
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-slate-200 bg-white text-slate-400",
+          ].join(" ")}>{step.label}</div>)}
+        </div>}
 
         {!demo && patternQuery.isPending && missionId && <p role="status" className="mt-5 text-sm">응답 분포를 불러오는 중…</p>}
         {!demo && patternQuery.isError && <p role="alert" className="mt-5 text-sm text-destructive">응답 분포를 불러오지 못했습니다.</p>}

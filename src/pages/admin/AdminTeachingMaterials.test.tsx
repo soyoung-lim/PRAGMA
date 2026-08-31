@@ -7,14 +7,27 @@ import { buildInstructorMissionGuide } from "@/lib/pragma/instructorGuide";
 import AdminTeachingMaterials from "./AdminTeachingMaterials";
 import { REFUSAL_TEACHING_CASE } from "@/lib/curriculum/refusalTeachingCase";
 
-const mocks = vi.hoisted(() => ({ outlines: vi.fn(), curriculum: vi.fn(), cores: vi.fn(), assignments: vi.fn(), from: vi.fn(), missionRows: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  outlines: vi.fn(),
+  curriculum: vi.fn(),
+  cores: vi.fn(),
+  assignments: vi.fn(),
+  from: vi.fn(),
+  missionRows: vi.fn(),
+  operationLogs: vi.fn(),
+  approvedWeekly: vi.fn(),
+}));
 vi.mock("@/lib/curriculum/api", () => ({ listCurriculumOutlines: mocks.outlines, getCurriculumOutline: mocks.curriculum }));
 vi.mock("@/lib/curriculum/composer", () => ({ listCoreScenarios: mocks.cores, listWeekAssignments: mocks.assignments }));
+vi.mock("@/lib/curriculum/courseOperations", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/curriculum/courseOperations")>();
+  return { ...actual, fetchCourseOperationLogs: mocks.operationLogs };
+});
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: mocks.from } }));
 vi.mock("@/components/AdminShell", () => ({ AdminShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main> }));
 vi.mock("@/lib/pragma/contentReviewApi", () => ({ contentReviewRequest: vi.fn().mockResolvedValue({ run: null,
   contentHash: "hash", sourceHash: "source", snapshot: { instructor_only: "PRIVATE_REVIEW_SENTINEL" }, history: [], dependencies: [], models: { openai: "test", claude: null },
-}) }));
+}), getApprovedWeeklyMaterial: mocks.approvedWeekly }));
 
 const outline = { id: "course-a", title: "주차 자료 테스트", level: "intermediate", language_direction: "ko_zh", course_mode: "translation", target_interpreting_week_count: 0, status: "published" };
 const courseWeeks = [2, 3].map((week_no) => ({ id: `week-${week_no}`, outline_id: outline.id, week_no, title: `${week_no}주차 요청`, type: "regular", can_do: [`${week_no}주차 목표`], speech_act: "request", review_released: false }));
@@ -26,6 +39,13 @@ beforeEach(() => {
   mocks.curriculum.mockResolvedValue({ outline, weeks: courseWeeks });
   mocks.assignments.mockResolvedValue([{ week_no: 2, scenario_id: "mission-1", position: 0 }]);
   mocks.cores.mockResolvedValue([{ scenario_id: "mission-1", mission_status: "reviewed", mode: "translation", situation_ko: "테스트 실습 상황입니다.", target_feature: "request_mitigation_optionality" }]);
+  mocks.operationLogs.mockResolvedValue([
+    { mission_id: "mission-1", profile_id: "learner-1", mission_completed: true, completed_at: "2026-08-31T01:00:00Z", updated_at: "2026-08-31T01:00:00Z", context_judgment: null },
+    { mission_id: "mission-1", profile_id: "learner-2", mission_completed: true, completed_at: "2026-08-31T02:00:00Z", updated_at: "2026-08-31T02:00:00Z", context_judgment: { learner_dissent: { reason_ko: "다르게 판단함" } } },
+  ]);
+  mocks.approvedWeekly.mockImplementation(async (_courseId: string, weekNo: number) => weekNo === 2
+    ? { reviewId: "review-2", contentHash: "hash-2", material: {} }
+    : null);
   mocks.from.mockReturnValue({ select: () => ({ in: mocks.missionRows }) });
   mocks.missionRows.mockResolvedValue({ data: [{ scenario_id: "mission-1", speech_act: "request", mission_status: "reviewed", mission_content: SAMPLE_MISSION_V5_NATIVE }], error: null });
 });
@@ -122,11 +142,23 @@ describe("교과목·주차 수업자료 연결", () => {
     expect(screen.getByRole("combobox", { name: "수업자료 교과목" })).toHaveValue("");
   });
 
-  it("응답 분포를 중복 렌더링하지 않고 독립 응답 보드로 연결한다", async () => {
+  it("선택 주차 상세 하단에 실시간 학급 응답 카드를 중복 표시하지 않는다", async () => {
     mount();
     await screen.findByText("2주차 목표");
-    const link = screen.getByRole("link", { name: "응답 보드 열기 →" });
-    expect(link).toHaveAttribute("href", "/admin/class-responses?courseId=course-a&weekNo=2");
-    expect(screen.queryByText("이 주차 응답 분포")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "실시간 학급 응답" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "응답 보드 열기 →" })).not.toBeInTheDocument();
+  });
+
+  it("15주 운영 현황에 확정 상태와 비채점 수행 집계를 표시한다", async () => {
+    mount();
+    expect(await screen.findByRole("heading", { name: "15주 운영 현황" })).toBeVisible();
+    expect(await screen.findByText("자료 확정")).toBeVisible();
+    expect(screen.getByText("참여 2명 · 완료 2명")).toBeVisible();
+    expect(screen.getByText("이견 1건")).toBeVisible();
+    expect(screen.getByRole("link", { name: "응답 분포" })).toHaveAttribute(
+      "href",
+      "/admin/class-responses?courseId=course-a&weekNo=2&missionId=mission-1",
+    );
+    expect(screen.getByText("확인 · 미션 2개 미배정")).toBeVisible();
   });
 });

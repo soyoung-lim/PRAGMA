@@ -22,6 +22,18 @@ export const CHINESE_LEVEL_OPTIONS: CodedOption[] = [
   { code: "hsk4", label: "HSK 4급" },
   { code: "hsk5", label: "HSK 5급" },
   { code: "hsk6", label: "HSK 6급" },
+  { code: "hsk7_9", label: "HSK 7–9급" },
+  { code: "not_taken", label: "응시 경험 없음" },
+];
+
+/** 중국어 주 사용자의 한국어 공인시험 급수. HSK와 같은 저장 컬럼을 쓰되
+ *  코드 접두어로 시험 종류를 구분한다. */
+export const TOPIK_LEVEL_OPTIONS: CodedOption[] = [
+  { code: "topik2_or_below", label: "TOPIK 2급 이하" },
+  { code: "topik3", label: "TOPIK 3급" },
+  { code: "topik4", label: "TOPIK 4급" },
+  { code: "topik5", label: "TOPIK 5급" },
+  { code: "topik6", label: "TOPIK 6급" },
   { code: "not_taken", label: "응시 경험 없음" },
 ];
 
@@ -37,6 +49,16 @@ export const TARGET_LANGUAGE_LABEL: Record<TargetLanguage, string> = {
   zh: "중국어",
   ko: "한국어",
 };
+
+export const languageTestOptions = (
+  primaryLanguage: string | null | undefined,
+): CodedOption[] =>
+  targetLanguageOf(primaryLanguage) === "ko"
+    ? TOPIK_LEVEL_OPTIONS
+    : CHINESE_LEVEL_OPTIONS;
+
+export const languageTestLabel = (primaryLanguage: string | null | undefined) =>
+  targetLanguageOf(primaryLanguage) === "ko" ? "최근 TOPIK 급수" : "최근 HSK 급수";
 
 /** 접촉·사용 상황(복수). 수용(드라마·읽을거리)도 학습 경로이므로 함께 담는다 —
  *  앱이 수용(MPJ)과 산출(DCT)로 나뉘는데 배경만 산출을 물으면 앞뒤가 안 맞는다.
@@ -60,6 +82,18 @@ export const exposureContextOptions = (target: TargetLanguage): CodedOption[] =>
   },
   { code: "almost_none", label: "거의 없음" },
 ];
+
+/** 프로필 입력에서는 교수자가 수업 운영에 참고할 실제 사용 맥락만 간결하게 묻는다.
+ * 기존 저장값 표시를 위해 exposureContextOptions의 전체 정본은 유지한다. */
+const PROFILE_EXPOSURE_CODES = new Set([
+  "class",
+  "work_docs",
+  "native_friends",
+  "residence",
+]);
+
+export const profileExposureOptions = (target: TargetLanguage): CodedOption[] =>
+  exposureContextOptions(target).filter((option) => PROFILE_EXPOSURE_CODES.has(option.code));
 /** 다른 항목과 함께 고를 수 없는 배타 선택지. */
 export const EXPOSURE_EXCLUSIVE = "almost_none";
 

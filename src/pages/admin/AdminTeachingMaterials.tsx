@@ -8,7 +8,15 @@ import { WeeklyInstructorNotes, type WeeklyMissionNotes } from "@/components/adm
 import { getCurriculumOutline, listCurriculumOutlines } from "@/lib/curriculum/api";
 import { listCoreScenarios, listWeekAssignments } from "@/lib/curriculum/composer";
 import { assembleLearnerCourse } from "@/lib/curriculum/learnerCourse";
-import { buildWeeklyCourseMaterial } from "@/lib/curriculum/weeklyMaterials";
+import {
+  buildWeeklyCourseMaterial,
+  weeklyMaterialsPath,
+} from "@/lib/curriculum/weeklyMaterials";
+import { weekRole } from "@/lib/curriculum/template";
+import {
+  fetchCourseOperationLogs,
+  summarizeCourseOperations,
+} from "@/lib/curriculum/courseOperations";
 import { buildWeeklyMaterialsHtml, weeklyMaterialsHtmlFilename } from "@/lib/pragma/instructorGuideHtml";
 import { buildInstructorMissionGuide } from "@/lib/pragma/instructorGuide";
 import { normalizeMission } from "@/lib/pragma/missionSchema";
@@ -16,7 +24,22 @@ import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
 import { SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
 import { DEFENSE_COURSE_IDS } from "@/lib/pragma/scenarioTopics";
 import { ContentReviewPanel } from "@/components/admin/ContentReviewPanel";
+import { getApprovedWeeklyMaterial } from "@/lib/pragma/contentReviewApi";
 import { supabase } from "@/integrations/supabase/client";
+
+type MaterialReviewState = "approved" | "pending" | "unavailable";
+
+const StatusChip = ({ children, tone = "neutral" }: {
+  children: React.ReactNode;
+  tone?: "good" | "attention" | "neutral";
+}) => <span className={[
+  "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+  tone === "good"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    : tone === "attention"
+      ? "border-amber-200 bg-amber-50 text-amber-800"
+      : "border-slate-200 bg-slate-50 text-slate-600",
+].join(" ")}>{children}</span>;
 
 const AdminTeachingMaterials = () => {
   const [params, setParams] = useSearchParams();
@@ -46,6 +69,32 @@ const AdminTeachingMaterials = () => {
     : course?.weeks[0];
   const material = course && week ? buildWeeklyCourseMaterial(course.outline, week) : null;
   const missionIds = week?.scenarios.map((scenario) => scenario.scenario_id) ?? [];
+  const allMissionIds = course?.weeks.flatMap((item) => item.scenarios.map((scenario) => scenario.scenario_id)) ?? [];
+
+  const operationLogs = useQuery({
+    queryKey: ["teaching-course-operation-logs", courseId, allMissionIds.join("|")],
+    enabled: Boolean(courseId) && allMissionIds.length > 0,
+    queryFn: () => fetchCourseOperationLogs(courseId, allMissionIds),
+  });
+  const operationSummaries = course
+    ? summarizeCourseOperations(course.weeks, operationLogs.data ?? [])
+    : new Map();
+
+  const weeklyReviewStates = useQuery({
+    queryKey: ["teaching-weekly-review-states", courseId, course?.weeks.map((item) => item.week_no).join("|")],
+    enabled: Boolean(courseId) && Boolean(course),
+    queryFn: async (): Promise<Map<number, MaterialReviewState>> => {
+      const states = await Promise.all((course?.weeks ?? []).map(async (item) => {
+        try {
+          const approved = await getApprovedWeeklyMaterial(courseId, item.week_no);
+          return [item.week_no, approved ? "approved" : "pending"] as const;
+        } catch {
+          return [item.week_no, "unavailable"] as const;
+        }
+      }));
+      return new Map(states);
+    },
+  });
 
   const missionNotes = useQuery({
     queryKey: ["teaching-mission-notes", courseId, week?.week_no, missionIds],
@@ -135,7 +184,7 @@ const AdminTeachingMaterials = () => {
     URL.revokeObjectURL(url);
   };
 
-  return <AdminShell title="수업자료·교실 화면" description="교과목·주차 계획과 편성된 학습 미션을 기준으로 공통 수업자료를 구성합니다.">
+  return <AdminShell title="주차별 수업 운영·교실 화면" description="15주 준비 상태를 확인하고, 선택한 주차의 수업자료·미션·학급 응답으로 바로 이동합니다.">
     <div className="max-w-[1080px] space-y-5">
       <section className="rounded-xl border bg-white p-4">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -163,8 +212,82 @@ const AdminTeachingMaterials = () => {
       {courseId && courseQuery.isPending && <p role="status">주차 계획을 불러오는 중…</p>}
       {courseQuery.isError && <p role="alert">주차 계획을 불러오지 못했습니다. 교과목 선택을 확인해 주세요.</p>}
       {course && !week && <p role="alert">해당 주차를 찾을 수 없습니다.</p>}
+      {course && <section aria-labelledby="course-operation-heading" className="rounded-xl border bg-white p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 id="course-operation-heading" className="text-lg font-black text-[#15202B]">15주 운영 현황</h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              편성·자료 확정·학습자 공개는 저장된 상태만 표시합니다. 참여·완료·이견은 점수가 아닌 실제 수행 기록의 익명 집계입니다.
+            </p>
+          </div>
+          <StatusChip tone={course.outline.status === "published" ? "good" : "attention"}>
+            {course.outline.status === "published" ? "강좌 공개" : "강좌 비공개"}
+          </StatusChip>
+        </div>
+        {operationLogs.isError && <p role="alert" className="mt-3 text-xs text-destructive">수행 현황을 불러오지 못했습니다. 편성·자료 상태는 계속 확인할 수 있습니다.</p>}
+        <div className="mt-4 divide-y rounded-lg border">
+          {course.weeks.map((item) => {
+            // 기존 수업자료와 같은 2미션 기준을 읽되 검수·생성 계약은 변경하지 않는다.
+            const expected = item.speech_act || weekRole(item.week_no) === "contextualization" ? 2 : 0;
+            const assigned = item.scenarios.length;
+            const missionsReady = expected === 0 || assigned >= expected;
+            const materialState = weeklyReviewStates.data?.get(item.week_no);
+            const operation = operationSummaries.get(item.week_no);
+            const firstMission = item.scenarios[0];
+            const selected = item.week_no === week?.week_no;
+            const issue = !missionsReady
+              ? `미션 ${expected - assigned}개 미배정`
+              : materialState === "pending"
+                ? "수업자료 검수 대기"
+                : course.outline.status !== "published"
+                  ? "강좌 비공개"
+                  : null;
+            return <article key={item.week_no} className={[
+              "grid gap-3 px-3 py-3 md:grid-cols-[minmax(180px,1fr)_minmax(320px,2fr)_auto] md:items-center",
+              selected ? "bg-[#FFFBEA]" : "bg-white",
+            ].join(" ")}>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setParams({ courseId, weekNo: String(item.week_no) })}
+                  className="text-left text-sm font-black text-[#15202B] hover:underline"
+                >{item.week_no}주차 · {item.title}</button>
+                {issue && <p className="mt-1 text-[11px] font-semibold text-amber-800">확인 · {issue}</p>}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <StatusChip tone={missionsReady ? "good" : "attention"}>
+                  {expected > 0 ? `미션 ${assigned}/${expected}` : "수업 안내"}
+                </StatusChip>
+                <StatusChip tone={materialState === "approved" ? "good" : materialState === "pending" ? "attention" : "neutral"}>
+                  {materialState === "approved" ? "자료 확정" : materialState === "pending" ? "자료 검수 대기" : "자료 상태 확인 중"}
+                </StatusChip>
+                <StatusChip tone={course.outline.status === "published" && missionsReady ? "good" : "attention"}>
+                  {course.outline.status === "published" && missionsReady ? "학습자 공개" : "공개 준비 중"}
+                </StatusChip>
+                {operation && operation.participants > 0 && <StatusChip>
+                  참여 {operation.participants}명 · 완료 {operation.completedLearners}명
+                </StatusChip>}
+                {operation && operation.dissents > 0 && <StatusChip tone="attention">이견 {operation.dissents}건</StatusChip>}
+              </div>
+              <div className="flex flex-wrap gap-1.5 md:justify-end">
+                <Button size="sm" variant="outline" asChild>
+                  <Link to={`${weeklyMaterialsPath(courseId, item.week_no)}#weekly-material-detail`}>수업자료</Link>
+                </Button>
+                {firstMission && <>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link target="_blank" rel="noreferrer" to={`/learner/practice/${firstMission.scenario_id}?courseId=${encodeURIComponent(courseId)}&weekNo=${item.week_no}`}>미션</Link>
+                  </Button>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link to={`/admin/class-responses?courseId=${encodeURIComponent(courseId)}&weekNo=${item.week_no}&missionId=${encodeURIComponent(firstMission.scenario_id)}`}>응답 분포</Link>
+                  </Button>
+                </>}
+              </div>
+            </article>;
+          })}
+        </div>
+      </section>}
       {course && week && material && <>
-        {!projectorOpen && <details open={reviewOpen} onToggle={(event) => setReviewOpen(event.currentTarget.open)} className="rounded-xl border bg-white p-4">
+        {!projectorOpen && <details id="weekly-material-detail" open={reviewOpen} onToggle={(event) => setReviewOpen(event.currentTarget.open)} className="scroll-mt-5 rounded-xl border bg-white p-4">
           <summary className="cursor-pointer font-semibold">이 주차 수업자료 검수·확정</summary>
           {reviewOpen && <ContentReviewPanel key={`${courseId}-${week.week_no}`} target={{ kind: "weekly_material", targetId: courseId, weekNo: week.week_no }} />}
         </details>}
@@ -181,22 +304,12 @@ const AdminTeachingMaterials = () => {
           <WeeklyInstructorNotes week={week} direction={course.outline.language_direction} missions={missionNotes.data ?? []} />
         </> : !projectorOpen && <WeeklyMaterialDocument material={material} />}
         {!projectorOpen && <section className="rounded-xl border bg-white p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="font-semibold">실시간 학급 응답</h2>
-              <p className="mt-1 text-xs text-muted-foreground">문항별 익명 분포를 확인하고 교실 화면으로 크게 보여 줍니다.</p>
-            </div>
-            <Button variant="outline" asChild>
-              <Link to={`/admin/class-responses?courseId=${encodeURIComponent(courseId)}&weekNo=${week.week_no}`}>
-                응답 보드 열기 →
-              </Link>
-            </Button>
-          </div>
-        </section>}
-        {!projectorOpen && <section className="rounded-xl border bg-white p-4">
           <h2 className="font-semibold">연결된 실습</h2>
           <div className="mt-3 flex flex-wrap gap-2">
-            {material.missions.map((mission) => <Button key={mission.id} variant="outline" asChild><Link target="_blank" rel="noreferrer" to={`/learner/practice/${mission.id}?courseId=${encodeURIComponent(courseId)}&weekNo=${week.week_no}`}>{mission.label} 열기 ↗</Link></Button>)}
+            {material.missions.map((mission) => <div key={mission.id} className="flex gap-1.5">
+              <Button variant="outline" asChild><Link target="_blank" rel="noreferrer" to={`/learner/practice/${mission.id}?courseId=${encodeURIComponent(courseId)}&weekNo=${week.week_no}`}>{mission.label} 열기 ↗</Link></Button>
+              <Button variant="outline" asChild><Link to={`/admin/class-responses?courseId=${encodeURIComponent(courseId)}&weekNo=${week.week_no}&missionId=${encodeURIComponent(mission.id)}`}>{mission.label} 응답</Link></Button>
+            </div>)}
             {!material.missions.length && <p className="text-sm text-muted-foreground">연결된 공개 미션이 없습니다. 미션을 사용하는 주차는 Composer에서 편성을 먼저 완료해 주세요.</p>}
           </div>
         </section>}
