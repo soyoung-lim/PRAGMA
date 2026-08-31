@@ -92,14 +92,14 @@ const Home = () => {
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
             className={cn(
-              "fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100vh-2rem)] w-[94vw] max-w-[840px] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-[22px] border border-[#DDE3EA] bg-[#F8FAFC] shadow-2xl",
+              "fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100vh-2rem)] w-[94vw] max-w-[840px] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-[22px] border border-[#D9D2BC] bg-[#F8F6EE] shadow-2xl",
               "duration-300",
               "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
               "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
             )}
           >
-            <div className="shrink-0 border-b border-[#DDE3EA] bg-white px-6 py-4 text-[#15202B] sm:px-7">
-              <div className="flex items-center gap-2.5 text-[10px] font-bold tracking-[0.2em] text-[#15202B]">
+            <div className="shrink-0 border-b border-[#2B3744] bg-[#15202B] px-6 py-4 text-white sm:px-7">
+              <div className="flex items-center gap-2.5 text-[10px] font-bold tracking-[0.2em] text-white/70">
                 <span className="h-5 w-1 rounded-full bg-[#F4D94E]" />
                 PRAGMA
               </div>
