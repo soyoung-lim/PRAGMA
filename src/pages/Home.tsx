@@ -92,25 +92,25 @@ const Home = () => {
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
             className={cn(
-              "fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100vh-2rem)] w-[94vw] max-w-[840px] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-[22px] border border-[#D9D2BC] bg-[#F8F6EE] shadow-2xl",
+              "fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100vh-2rem)] w-[94vw] max-w-[720px] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-[20px] border border-[#D9D2BC] bg-[#F8F6EE] shadow-2xl",
               "duration-300",
               "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
               "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
             )}
           >
-            <div className="shrink-0 border-b border-[#2B3744] bg-[#15202B] px-6 py-4 text-white sm:px-7">
+            <div className="shrink-0 border-b border-[#2B3744] bg-[#15202B] px-5 py-3.5 text-white sm:px-6">
               <div className="flex items-center gap-2.5 text-[10px] font-bold tracking-[0.2em] text-white/70">
-                <span className="h-5 w-1 rounded-full bg-[#F4D94E]" />
+                <span className="h-4 w-1 rounded-full bg-[#F4D94E]" />
                 PRAGMA
               </div>
-              <DialogPrimitive.Title className="mt-2 text-xl font-bold tracking-tight sm:text-[22px]">
+              <DialogPrimitive.Title className="mt-1.5 text-lg font-bold tracking-tight sm:text-xl">
                 학습자 프로필 설정
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="sr-only">
                 수업에 필요한 학습자 정보와 학습 경험을 입력합니다.
               </DialogPrimitive.Description>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
               <ProfileWizardForm
                 onCompleted={() => {
                   setProfileOpen(false);
