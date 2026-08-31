@@ -3,18 +3,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProfile, devStubCompleteProfile } from "@/lib/auth/useProfile";
 import {
   PRIMARY_LANGUAGE_OPTIONS,
-  SELF_REPORTED_LEVEL_OPTIONS,
-  CHINESE_LEVEL_OPTIONS,
   profileExposureOptions,
   targetLanguageOf,
   TARGET_LANGUAGE_LABEL,
+  languageTestOptions,
+  languageTestLabel,
   EXPOSURE_EXCLUSIVE,
   TI_EXPERIENCE_OPTIONS,
   type CodedOption,
 } from "@/lib/auth/profileOptions";
 import { toast } from "sonner";
 
-type Step = 1 | 2;
+type Step = 1 | 2 | 3;
 
 const AFFILIATION_OPTIONS = [
   "학부생",
@@ -166,7 +166,7 @@ const Field = ({
 
 const StepIndicator = ({ step }: { step: Step }) => (
   <div className="mb-6 flex items-center gap-2 text-xs">
-    {[1, 2].map((n) => {
+    {[1, 2, 3].map((n) => {
       const active = step === (n as Step);
       const done = step > n;
       return (
@@ -183,9 +183,9 @@ const StepIndicator = ({ step }: { step: Step }) => (
             {n}
           </div>
           <span className={active ? "font-medium" : "text-muted-foreground"}>
-            {n === 1 ? "기본 정보" : "학습자 배경"}
+            {n === 1 ? "기본 정보" : n === 2 ? "언어·학습 배경" : "기록·연구 동의"}
           </span>
-          {n < 2 && <span className="text-muted-foreground">›</span>}
+          {n < 3 && <span className="text-muted-foreground">›</span>}
         </div>
       );
     })}
@@ -207,25 +207,31 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
 
   // Screen 2 — coded values
   const [primaryLanguage, setPrimaryLanguage] = useState("");
-  const [selfReportedLevel, setSelfReportedLevel] = useState("");
-  const [chineseLevel, setChineseLevel] = useState("");
+  const [languageTestLevel, setLanguageTestLevel] = useState("");
   const [exposureContexts, setExposureContexts] = useState<string[]>([]);
   const [tiExperience, setTiExperience] = useState("");
+
+  // Screen 3 — 수업 운영 동의와 자발적 연구 동의를 분리한다.
+  const [classRecordConsent, setClassRecordConsent] = useState(false);
+  const [researchConsent, setResearchConsent] = useState<"yes" | "no" | "">("");
 
   const [busy, setBusy] = useState(false);
 
   const trimmedName = fullName.trim();
 
-  // 중국어·이중언어 사용자에게 HSK 급수를 묻는 것은 어색하다 → 건너뛴다.
-  const needsChineseLevel = primaryLanguage === "ko" || primaryLanguage === "other";
   // 양방향 앱이라 학습 대상 언어가 학습자마다 다르다 — 중국어 모어 화자에게는
   // 한국어 노출을 묻는다(코드는 동일, 라벨만 바뀐다).
   const targetLang = targetLanguageOf(primaryLanguage);
   const targetLangLabel = TARGET_LANGUAGE_LABEL[targetLang];
 
   const step1Valid = trimmedName.length > 0 && affiliation !== "";
-  const step2Valid = primaryLanguage !== "";
-  const canSubmit = step1Valid && step2Valid && !busy;
+  const step2Valid =
+    primaryLanguage !== "" &&
+    languageTestLevel !== "" &&
+    exposureContexts.length > 0 &&
+    tiExperience !== "";
+  const step3Valid = classRecordConsent && researchConsent !== "";
+  const canSubmit = step1Valid && step2Valid && step3Valid && !busy;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -250,11 +256,15 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
           grade_or_program: null,
           // 주 사용 언어 — 그동안 null로만 저장되던 기존 컬럼을 실제로 쓴다.
           language_background: primaryLanguage,
-          chinese_proficiency_self_report: selfReportedLevel || null,
-          // 중국어·이중언어 사용자에게는 HSK를 묻지 않았으므로 저장도 하지 않는다.
-          chinese_level: needsChineseLevel && chineseLevel ? chineseLevel : null,
-          chinese_exposure_contexts: exposureContexts.length ? exposureContexts : null,
-          ti_experience_level: tiExperience || null,
+          // 기존 물리 컬럼을 공인시험 응답 저장소로 사용한다. hsk_/topik_ 코드로 구분한다.
+          chinese_level: languageTestLevel,
+          chinese_proficiency_self_report: null,
+          chinese_exposure_contexts: exposureContexts,
+          ti_experience_level: tiExperience,
+          consent_class_record_sharing: classRecordConsent,
+          consent_data_use: researchConsent === "yes",
+          consent_anonymous_analysis: researchConsent === "yes",
+          consent_email_report: false,
           // Keep full_name in sync (used by other screens)
           full_name: trimmedName,
           profile_completed: true,
@@ -306,44 +316,33 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
 
       {step === 2 && (
         <div className="space-y-6">
-          <p className="rounded-md bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
-            주 사용 언어만 필수입니다. 나머지는 수업 운영 참고용이며 입력하지 않아도 학습할 수 있습니다.
-          </p>
           <Field label="주 사용 언어" required>
             <CodedRadioGroup
               name="primary_language"
               value={primaryLanguage}
               onChange={(v) => {
                 setPrimaryLanguage(v);
-                // 건너뛰는 문항의 이전 선택이 남지 않게 한다.
-                if (v === "zh" || v === "ko_zh") setChineseLevel("");
+                // 언어가 바뀌면 HSK/TOPIK 응답도 다시 받는다.
+                setLanguageTestLevel("");
               }}
               options={PRIMARY_LANGUAGE_OPTIONS}
             />
           </Field>
 
-          <Field label="학습 시작 수준">
+          {primaryLanguage && (
+          <Field label={languageTestLabel(primaryLanguage)} required>
             <CodedRadioGroup
-              name="self_reported_level"
-              value={selfReportedLevel}
-              onChange={setSelfReportedLevel}
-              options={SELF_REPORTED_LEVEL_OPTIONS}
+              name="language_test_level"
+              value={languageTestLevel}
+              onChange={setLanguageTestLevel}
+              options={languageTestOptions(primaryLanguage)}
             />
           </Field>
-
-          {needsChineseLevel && (
-            <Field label="최근 HSK 급수">
-              <CodedRadioGroup
-                name="chinese_level"
-                value={chineseLevel}
-                onChange={setChineseLevel}
-                options={CHINESE_LEVEL_OPTIONS}
-              />
-            </Field>
           )}
 
           <Field
             label={`${targetLangLabel} 실제 사용 경험 (복수 선택 가능)`}
+            required
           >
             <CheckboxGroup
               value={exposureContexts}
@@ -353,7 +352,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
             />
           </Field>
 
-          <Field label="한중 통번역 학습·수행 경험">
+          <Field label="한중 통번역 학습·수행 경험" required>
             <CodedRadioGroup
               name="ti_experience"
               value={tiExperience}
@@ -361,6 +360,52 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               options={TI_EXPERIENCE_OPTIONS}
             />
           </Field>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="space-y-6">
+          <section className="rounded-lg border border-border p-4">
+            <h3 className="text-sm font-semibold">학습 기록 공유 <span className="text-destructive">*</span></h3>
+            <label className="mt-3 flex cursor-pointer items-start gap-3 text-sm leading-6">
+              <input
+                type="checkbox"
+                checked={classRecordConsent}
+                onChange={(e) => setClassRecordConsent(e.target.checked)}
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                수업 운영과 피드백을 위해 담당 교수자에게 나의 학습 기록을 공유하는 데 동의합니다.
+              </span>
+            </label>
+          </section>
+
+          <section className="rounded-lg border border-border p-4">
+            <h3 className="text-sm font-semibold">연구 활용 여부 <span className="text-destructive">*</span></h3>
+            <p className="mt-2 text-sm leading-6 text-foreground">
+              나의 익명 학습 기록을 통번역 학습 개선을 위한 연구에 활용하는 데 동의합니다.
+            </p>
+            <CodedRadioGroup
+              name="research_consent"
+              value={researchConsent}
+              onChange={(value) => setResearchConsent(value as "yes" | "no")}
+              options={[
+                { code: "yes", label: "동의합니다" },
+                { code: "no", label: "동의하지 않습니다" },
+              ]}
+            />
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              동의하지 않아도 수업 참여·성적·PRAGMA 이용에 불이익이 없으며, 언제든 철회할 수 있습니다.
+            </p>
+            <details className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
+              <summary className="cursor-pointer font-medium text-foreground">연구 활용 안내 보기</summary>
+              <div className="mt-2 space-y-1">
+                <p>활용 대상: 미션 응답, 수정 과정 및 학습 수행 기록</p>
+                <p>활용 목적: 통번역 학습 활동과 피드백 방식 개선</p>
+                <p>공개 방식: 개인을 알아볼 수 없는 집계 결과와 익명 사례</p>
+              </div>
+            </details>
+          </section>
         </div>
       )}
 
@@ -374,7 +419,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
           이전
         </button>
 
-        {step < 2 ? (
+        {step < 3 ? (
           <button
             type="button"
             onClick={() => setStep((s) => (s + 1) as Step)}

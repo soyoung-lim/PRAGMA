@@ -72,7 +72,7 @@ describe("학습자 관리 목록", () => {
 
     expect(await screen.findByText("박정원")).toBeVisible();
     expect(screen.getByText("교강사/연구자")).toBeVisible();
-    expect(screen.getByText("한국어 · 고급")).toBeVisible();
+    expect(screen.getAllByText("한국어")).toHaveLength(2);
     expect(screen.getByText("HSK 6급")).toBeVisible();
     expect(screen.getByText("1학기 이상 수업")).toBeVisible();
     expect(screen.getAllByText("승인 완료").find((node) => node.tagName === "DIV")).toHaveClass("bg-emerald-50");
@@ -86,25 +86,29 @@ describe("학습자 관리 목록", () => {
     expect(learnerCell?.querySelector('[aria-hidden="true"]')).toBeNull();
 
     const table = screen.getByRole("table");
-    expect(table).toHaveClass("table-fixed", "min-w-[860px]");
+    expect(table).toHaveClass("table-fixed", "min-w-[820px]");
     expect(Array.from(table.querySelectorAll("col")).map((col) => col.style.width)).toEqual([
-      "22%", "14%", "20%", "14%", "10%", "20%",
+      "23%", "15%", "20%", "15%", "11%", "16%",
     ]);
-    expect(screen.getAllByRole("link", { name: "수행 기록" })[0]).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: "수행 기록 →" })[0]).toHaveAttribute(
       "href",
       "/admin/decision-traces?q=auraweon7%40gmail.com",
     );
-    expect(screen.getAllByRole("button", { name: "프로필 보기" })[0]).toHaveClass("bg-[#15202B]");
+    expect(screen.getByRole("button", { name: "박정원 프로필 보기" })).toHaveTextContent("박정원");
+    expect(screen.queryByRole("button", { name: "프로필 보기" })).not.toBeInTheDocument();
   });
 
   it("상세를 기본 정보·학습 배경·접힌 연구 데이터로 정리한다", async () => {
     render(<MemoryRouter><AdminLearners /></MemoryRouter>);
     expect(await screen.findByText("박정원")).toBeVisible();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "프로필 보기" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "박정원 프로필 보기" }));
     expect(screen.getByText("기본 정보")).toBeVisible();
     expect(screen.getByText("학습 배경")).toBeVisible();
+    expect(screen.queryByText("학습 시작 수준")).not.toBeInTheDocument();
     expect(screen.getByText("연구·데이터 관리")).toBeVisible();
+    fireEvent.click(screen.getByText("연구·데이터 관리"));
+    expect(screen.getByText("학습 기록 공유 동의")).toBeVisible();
     expect(screen.queryByText(/이전 프로필/)).not.toBeInTheDocument();
     expect(screen.queryByText("역할")).not.toBeInTheDocument();
   });

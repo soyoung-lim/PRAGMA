@@ -24,11 +24,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { APPROVAL_STATUS, type ApprovalStatus } from "@/lib/auth/constants";
 import {
   PRIMARY_LANGUAGE_OPTIONS,
-  CHINESE_LEVEL_OPTIONS,
-  SELF_REPORTED_LEVEL_OPTIONS,
   exposureContextOptions,
   targetLanguageOf,
   TARGET_LANGUAGE_LABEL,
+  languageTestOptions,
+  languageTestLabel,
   TI_EXPERIENCE_OPTIONS,
   labelOf,
   labelsOf,
@@ -50,6 +50,7 @@ type LearnerRow = {
   consent_data_use: boolean | null;
   consent_anonymous_analysis: boolean | null;
   consent_email_report: boolean | null;
+  consent_class_record_sharing: boolean | null;
   academic_year_or_program: string | null;
   grade_or_program: string | null;
   profile_completed: boolean;
@@ -185,20 +186,20 @@ const Page = () => {
         {rows === null ? "불러오는 중…" : `총 ${rows.length}명`}
       </div>
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_30px_rgba(21,32,43,0.05)]">
-        <Table className="min-w-[860px] table-fixed">
+        <Table className="min-w-[820px] table-fixed">
           <colgroup>
-            <col style={{ width: "22%" }} />
-            <col style={{ width: "14%" }} />
+            <col style={{ width: "23%" }} />
+            <col style={{ width: "15%" }} />
             <col style={{ width: "20%" }} />
-            <col style={{ width: "14%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "20%" }} />
+            <col style={{ width: "15%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "16%" }} />
           </colgroup>
           <TableHeader className="bg-[#F7F5EE]">
             <TableRow>
               <TableHead className="h-12 px-5 text-xs font-bold text-[#5F625F]">학습자</TableHead>
               <TableHead className="h-12 px-3 text-xs font-bold text-[#5F625F]">소속/신분</TableHead>
-              <TableHead className="h-12 px-3 text-xs font-bold text-[#5F625F]">주 언어·중국어 수준</TableHead>
+              <TableHead className="h-12 px-3 text-xs font-bold text-[#5F625F]">주 언어·공인 급수</TableHead>
               <TableHead className="h-12 px-3 text-xs font-bold text-[#5F625F]">통번역 경험</TableHead>
               <TableHead className="h-12 px-3 text-xs font-bold text-[#5F625F]">상태</TableHead>
               <TableHead className="h-12 px-5 text-right text-xs font-bold text-[#5F625F]">관리</TableHead>
@@ -220,14 +221,19 @@ const Page = () => {
             ) : (
               rows.map((r) => {
                 const primaryLanguage = labelOf(PRIMARY_LANGUAGE_OPTIONS, r.language_background);
-                const selfLevel = labelOf(SELF_REPORTED_LEVEL_OPTIONS, r.chinese_proficiency_self_report);
-                const hskLevel = labelOf(CHINESE_LEVEL_OPTIONS, r.chinese_level);
-                const languageSummary = [primaryLanguage, selfLevel].filter(Boolean).join(" · ");
+                const testLevel = labelOf(languageTestOptions(r.language_background), r.chinese_level);
                 return (
-                <TableRow key={r.id} className="h-[88px] hover:bg-[#FBFAF5]">
+                <TableRow key={r.id} className="h-[72px] hover:bg-[#FBFAF5]">
                   <TableCell className="px-5 py-4">
                     <div className="min-w-0">
-                      <div className="truncate font-semibold leading-5 text-foreground">{r.full_name ?? "—"}</div>
+                      <button
+                        type="button"
+                        aria-label={`${r.full_name ?? r.email ?? "학습자"} 프로필 보기`}
+                        onClick={() => setSelectedId(r.id)}
+                        className="block max-w-full truncate text-left font-semibold leading-5 text-foreground underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {r.full_name ?? "—"}
+                      </button>
                       <div className="mt-0.5 truncate text-xs leading-5 text-muted-foreground" title={r.email ?? undefined}>{r.email ?? "—"}</div>
                     </div>
                   </TableCell>
@@ -235,11 +241,11 @@ const Page = () => {
                     {firstOf(r.affiliation, r.affiliation_or_status) ?? "—"}
                   </TableCell>
                   <TableCell className="px-3 py-4">
-                    {languageSummary || hskLevel ? (
+                    {primaryLanguage || testLevel ? (
                       <div className="leading-5">
-                        <div className="font-medium text-[#343B42]">{languageSummary || hskLevel}</div>
-                        {languageSummary && hskLevel && (
-                          <div className="text-xs text-muted-foreground">{hskLevel}</div>
+                        <div className="font-medium text-[#343B42]">{primaryLanguage || testLevel}</div>
+                        {primaryLanguage && testLevel && (
+                          <div className="text-xs text-muted-foreground">{testLevel}</div>
                         )}
                       </div>
                     ) : (
@@ -258,27 +264,17 @@ const Page = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="px-5 py-4 text-right">
-                    <div className="flex flex-wrap items-center justify-end gap-2">
+                    {traceQueryFor(r) && (
                       <Button
                         size="sm"
-                        className="min-w-[88px] bg-[#15202B] text-white hover:bg-[#243447]"
-                        onClick={() => setSelectedId(r.id)}
+                        asChild
+                        className="whitespace-nowrap bg-[#15202B] text-white hover:bg-[#243447]"
                       >
-                        프로필 보기
+                        <Link to={`/admin/decision-traces?q=${encodeURIComponent(traceQueryFor(r)!)}`}>
+                          수행 기록 →
+                        </Link>
                       </Button>
-                      {traceQueryFor(r) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          asChild
-                          className="min-w-[88px]"
-                        >
-                          <Link to={`/admin/decision-traces?q=${encodeURIComponent(traceQueryFor(r)!)}`}>
-                            수행 기록
-                          </Link>
-                        </Button>
-                      )}
-                    </div>
+                    )}
                   </TableCell>
                 </TableRow>
                 );
@@ -335,15 +331,11 @@ const Page = () => {
                     value={labelOf(PRIMARY_LANGUAGE_OPTIONS, selected.language_background)}
                   />
                   <Field
-                    label="학습 시작 수준"
+                    label={languageTestLabel(selected.language_background)}
                     value={labelOf(
-                      SELF_REPORTED_LEVEL_OPTIONS,
-                      selected.chinese_proficiency_self_report,
+                      languageTestOptions(selected.language_background),
+                      selected.chinese_level,
                     )}
-                  />
-                  <Field
-                    label="최근 HSK 급수"
-                    value={labelOf(CHINESE_LEVEL_OPTIONS, selected.chinese_level)}
                   />
                   {/* 학습 대상 언어는 주 사용 언어에서 도출된다 — 중국어 모어
                       화자에게는 한국어 노출을 물었으므로 라벨도 그렇게 읽어야 한다. */}
@@ -367,6 +359,17 @@ const Page = () => {
                     연구·데이터 관리
                   </summary>
                   <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t border-border px-4 py-4 sm:grid-cols-2">
+                    <Field
+                      label="학습 기록 공유 동의"
+                      value={
+                        selected.consent_class_record_sharing === null ||
+                        selected.consent_class_record_sharing === undefined
+                          ? "미확인"
+                          : selected.consent_class_record_sharing
+                            ? "동의"
+                            : "미동의"
+                      }
+                    />
                     <Field
                       label="연구 활용 동의"
                       value={firstOf(selected.consent_data_use, selected.research_use_consent) ? "동의" : "미동의"}

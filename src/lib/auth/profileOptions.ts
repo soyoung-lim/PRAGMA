@@ -25,12 +25,15 @@ export const CHINESE_LEVEL_OPTIONS: CodedOption[] = [
   { code: "not_taken", label: "응시 경험 없음" },
 ];
 
-/** 수업 시작점을 고르는 기능적 자가 수준. HSK 급수와 분리해 시험 미응시자와
- * 중국어 주 사용자를 하나의 시험 서열에 억지로 넣지 않는다. */
-export const SELF_REPORTED_LEVEL_OPTIONS: CodedOption[] = [
-  { code: "beginner", label: "입문" },
-  { code: "intermediate", label: "중급" },
-  { code: "advanced", label: "고급" },
+/** 중국어 주 사용자의 한국어 공인시험 급수. HSK와 같은 저장 컬럼을 쓰되
+ *  코드 접두어로 시험 종류를 구분한다. */
+export const TOPIK_LEVEL_OPTIONS: CodedOption[] = [
+  { code: "topik2_or_below", label: "TOPIK 2급 이하" },
+  { code: "topik3", label: "TOPIK 3급" },
+  { code: "topik4", label: "TOPIK 4급" },
+  { code: "topik5", label: "TOPIK 5급" },
+  { code: "topik6", label: "TOPIK 6급" },
+  { code: "not_taken", label: "응시 경험 없음" },
 ];
 
 /** 이 앱은 양방향(한→중·중→한)이라 학습 대상 언어가 학습자마다 다르다.
@@ -45,6 +48,16 @@ export const TARGET_LANGUAGE_LABEL: Record<TargetLanguage, string> = {
   zh: "중국어",
   ko: "한국어",
 };
+
+export const languageTestOptions = (
+  primaryLanguage: string | null | undefined,
+): CodedOption[] =>
+  targetLanguageOf(primaryLanguage) === "ko"
+    ? TOPIK_LEVEL_OPTIONS
+    : CHINESE_LEVEL_OPTIONS;
+
+export const languageTestLabel = (primaryLanguage: string | null | undefined) =>
+  targetLanguageOf(primaryLanguage) === "ko" ? "최근 TOPIK 급수" : "최근 HSK 급수";
 
 /** 접촉·사용 상황(복수). 수용(드라마·읽을거리)도 학습 경로이므로 함께 담는다 —
  *  앱이 수용(MPJ)과 산출(DCT)로 나뉘는데 배경만 산출을 물으면 앞뒤가 안 맞는다.
