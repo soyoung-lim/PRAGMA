@@ -35,7 +35,7 @@ describe("InstructorMissionGuide output modes", () => {
       <InstructorMissionGuide guide={guide} displayMode="projector" activeStep={5} answersRevealed={false} />,
     );
 
-    expect(screen.getByText("MPJ·DCT 수행자료 토론")).toBeInTheDocument();
+    expect(screen.getByText("MJT·DCT 수행자료 토론")).toBeInTheDocument();
     expect(screen.getByText(/먼저 학습자의 판단과 근거/)).toBeInTheDocument();
     expect(screen.queryByText(guide.dct.alternatives[0].text)).not.toBeInTheDocument();
 

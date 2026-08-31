@@ -68,6 +68,9 @@ export async function saveMissionAttempt(input: SaveAttemptInput): Promise<SaveA
   const { data: sessionData } = await supabase.auth.getSession();
   const authUserId = sessionData.session?.user?.id;
   if (!authUserId) return { ok: false, reason: "no_auth" };
+  if (input.courseContext && !/^[0-9a-f]{64}$/.test(input.mission.provenance?.mission_content_hash ?? "")) {
+    return { ok: false, reason: "error", message: "교과목 수행의 콘텐츠 해시가 없습니다." };
+  }
 
   // profile_id(profiles.id, NOT NULL) 조회 — auth user에 매인 프로필.
   const { data: prof, error: profErr } = await supabase

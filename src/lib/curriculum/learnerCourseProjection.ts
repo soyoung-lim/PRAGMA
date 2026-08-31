@@ -2,7 +2,7 @@ import type { LearnerCourse, LearnerCourseSource, LearnerCourseWeek } from './le
 import type { ComposerCore } from './composer';
 import type { CurriculumWeekRow } from './types';
 import type { ChannelUI, Domain, PdrBurden, PdrDistance, PdrPower, SpeechActUI } from '@/lib/pragma/enums';
-import { isMissionReleasedForLearner } from '@/lib/mission/missionRelease';
+import { isReviewedMission } from '@/lib/curriculum/composerEligibility';
 import { expectedCoreModeForWeek, type CourseMode } from './courseModePolicy';
 
 export function assembleLearnerCourse({
@@ -42,12 +42,13 @@ export function assembleLearnerCourse({
       domain: (week.domain as Domain | null) ?? null,
       scenarios: (byWeek.get(week.week_no) ?? []).flatMap((assignment) => {
         const core = coreById.get(assignment.scenario_id);
-        if (!core || !isMissionReleasedForLearner(core)) return [];
+        if (!core || !isReviewedMission(core)) return [];
         // 과목 정책 변경 전 배정은 DB에 보존하되, 다른 수행모드로 실행하지 않는다.
         const expectedMode = expectedCoreModeForWeek(modePolicy, week.week_no);
         if (expectedMode && core.mode !== expectedMode) return [];
         return [
           {
+            assignment_id: assignment.id ?? "",
             scenario_id: assignment.scenario_id,
             situation_ko: core.situation_ko,
             source_text: core.source_text_ko,

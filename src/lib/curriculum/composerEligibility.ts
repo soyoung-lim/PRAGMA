@@ -1,9 +1,9 @@
 import type { ComposerCore } from "@/lib/curriculum/composer";
-import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
+import { isCurrentMissionReleasedForLearner } from "@/lib/mission/missionRelease";
 
-/** 기존 자료는 reviewed, 새 품질 게이트 자료는 released일 때만 편성할 수 있다. */
+/** 현재 LOCK release의 교수자 검수 완료 미션만 새 교과목에 편성할 수 있다. */
 export function isReviewedMission(
-  core: Pick<ComposerCore, "mission_status" | "release_gate_mode"> | null | undefined,
+  core: Pick<ComposerCore, "mission_status" | "release_gate_mode" | "content_release_id"> | null | undefined,
 ): boolean {
-  return isMissionReleasedForLearner(core);
+  return isCurrentMissionReleasedForLearner(core);
 }

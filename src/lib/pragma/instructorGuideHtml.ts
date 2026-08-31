@@ -41,11 +41,11 @@ function slide(title: string, missionLabel: string, body: string, revealable = f
 function missionSlides(mission: ExportMission) {
   const { guide } = mission;
   const missionLabel = mission.labelKo ?? "학습 미션";
-  const missionHeading = `${missionLabel} · ${guide.speechActKo} · MPJ5+DCT1`;
+  const missionHeading = `${missionLabel} · ${guide.speechActKo} · MJT5+DCT1`;
   const pdr = guide.pdrKo.map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join("");
   const mpjItems = guide.mpjItems.map((item) => `
     <article class="item">
-      <h3>MPJ${item.id} · ${escapeHtml(item.titleKo)}</h3>
+      <h3>MJT${item.id} · ${escapeHtml(item.titleKo)}</h3>
       <p class="muted">${escapeHtml(item.situationKo)}</p>
       <p class="answer"><strong>설계 의도:</strong> ${escapeHtml(item.designIntentKo)}</p>
       <ul>${item.candidates.map((candidate) => `<li><span lang="zh">${escapeHtml(candidate.text)}</span>${candidate.judgmentKo ? ` <small>${escapeHtml(candidate.judgmentKo)}</small>` : ""}<p class="answer muted">${escapeHtml(candidate.noteKo)}</p></li>`).join("")}</ul>
@@ -85,7 +85,7 @@ function missionSlides(mission: ExportMission) {
         ["조정 예시", guide.microscope.adjustmentExample],
         [guide.microscope.boundaryPromptLabelKo ?? "화행 경계 확인", guide.microscope.boundaryPromptKo],
       ])}</div>`, true),
-    slide("MPJ·DCT 수행자료 토론", missionHeading, `
+    slide("MJT·DCT 수행자료 토론", missionHeading, `
       <div class="items">${mpjItems}</div>
       <article class="item dct"><h3>DCT 직접 산출</h3><p><strong>산출 원문:</strong> ${escapeHtml(guide.dct.sourceText)}</p><div class="answer"><h3>수정 후 참고안 비교</h3><ol>${alternatives}</ol></div></article>`, true),
     slide("다른 맥락으로 재맥락화", missionHeading, `

@@ -27,14 +27,14 @@ const TIMING_PLANS: Record<InstructorGuideTimingPreset, InstructorGuideTimingPla
   30: {
     preset: 30,
     labelKo: "미션 1세트 기본 운영",
-    descriptionKo: "MPJ5+DCT1 수행 20분과 class discussion·5 POINT LESSON 10분을 운영합니다.",
+    descriptionKo: "MJT5+DCT1 수행 20분과 class discussion·5 POINT LESSON 10분을 운영합니다.",
     activities: [
       {
         id: "mission-a",
-        labelKo: "MPJ5+DCT1 미션 1세트 수행",
+        labelKo: "MJT5+DCT1 미션 1세트 수행",
         minutes: 20,
-        howKo: "학습자가 MPJ5를 판단하고 DCT 최초안→최소 피드백→수정안을 완성합니다.",
-        outputKo: "MPJ5 판단·근거와 DCT 최초안·수정안",
+        howKo: "학습자가 MJT5를 판단하고 DCT 최초안→최소 피드백→수정안을 완성합니다.",
+        outputKo: "MJT5 판단·근거와 DCT 최초안·수정안",
       },
       {
         id: "discussion-a",
@@ -59,10 +59,10 @@ const TIMING_PLANS: Record<InstructorGuideTimingPreset, InstructorGuideTimingPla
       },
       {
         id: "mission-a",
-        labelKo: "MPJ5+DCT1 미션 1세트 수행",
+        labelKo: "MJT5+DCT1 미션 1세트 수행",
         minutes: 20,
-        howKo: "MPJ5 판단과 DCT 최초안→최소 피드백→수정안을 수행합니다.",
-        outputKo: "MPJ5 판단·근거와 DCT 최초안·수정안",
+        howKo: "MJT5 판단과 DCT 최초안→최소 피드백→수정안을 수행합니다.",
+        outputKo: "MJT5 판단·근거와 DCT 최초안·수정안",
       },
       {
         id: "discussion-a",
@@ -96,7 +96,7 @@ const TIMING_PLANS: Record<InstructorGuideTimingPreset, InstructorGuideTimingPla
         id: "mission-a",
         labelKo: "미션 1 수행",
         minutes: 20,
-        howKo: "첫 번째 MPJ5+DCT1을 최초 판단부터 DCT 수정까지 수행합니다.",
+        howKo: "첫 번째 MJT5+DCT1을 최초 판단부터 DCT 수정까지 수행합니다.",
         outputKo: "미션 1 수행 결과",
       },
       {
@@ -110,7 +110,7 @@ const TIMING_PLANS: Record<InstructorGuideTimingPreset, InstructorGuideTimingPla
         id: "mission-b",
         labelKo: "미션 2 수행",
         minutes: 20,
-        howKo: "같은 화행의 두 번째 MPJ5+DCT1을 독립적으로 수행합니다.",
+        howKo: "같은 화행의 두 번째 MJT5+DCT1을 독립적으로 수행합니다.",
         outputKo: "미션 2 수행 결과",
       },
       {

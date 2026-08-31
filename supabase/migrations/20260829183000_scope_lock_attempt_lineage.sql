@@ -220,4 +220,3 @@ REVOKE ALL ON FUNCTION public.append_learner_mission_event(jsonb) FROM PUBLIC, a
 GRANT EXECUTE ON FUNCTION public.append_learner_mission_event(jsonb) TO authenticated, service_role;
 
 -- Existing rows are intentionally preserved; validation applies to future writes immediately.
-

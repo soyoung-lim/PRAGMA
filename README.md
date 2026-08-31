@@ -17,6 +17,10 @@ PRAGMA는 최적 번역을 자동으로 제시하는 번역기나 범용 LMS가 
 화행과 상황 조건을 통제해 학습 콘텐츠를 만들고, 교수자가 승인한 미션만 수업에 배치하며,
 학습자의 수행을 버전과 함께 관리합니다. 전체 순환은 **콘텐츠 생성 → 검수·승인 → 수업 배치 → 학습 수행 → 기록**입니다.
 
+대외 과업명은 **MJT(Metapragmatic Judgement Task)**와
+**DCT(Discourse Completion Task)**를 사용합니다. 코드·DB의 기존 `mpj_*` 이름은 내부 호환
+식별자이며, 현행 학습 미션의 대외 표기는 **MJT5 + DCT1**입니다.
+
 <p align="center">
   <img src="docs/screenshots/01-landing.png" alt="PRAGMA 메인 화면 — 학습자·교수자 진입" width="100%">
   <br>

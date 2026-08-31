@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 
-// 학습자 최상위 공간 — 할 것(수업) · 한 것(기록) · 쉬는 곳(라운지).
+// Scope Lock 학습자 최상위 공간 — 할 것(수업) · 한 것(기록).
 //
 // 홈 탭은 없앴다(2026-08-01). 수업 화면이 「이번 학습」 CTA와 9화행 지도를 갖게 되면서
 // 홈에 남은 것이 다른 탭으로 가는 우회 링크뿐이었고, 홈의 이월 조언은 이번 주 화행과
@@ -10,7 +10,6 @@ import { NavLink } from "react-router-dom";
 const TABS = [
   { to: "/learner/course", label: "수업", icon: "▦" },
   { to: "/learner/records", label: "기록", icon: "◷" },
-  { to: "/learner/lounge", label: "라운지", icon: "☕" },
 ];
 
 export const LearnerBottomNav = () => (

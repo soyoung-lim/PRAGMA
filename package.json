@@ -18,6 +18,7 @@
     "backup:list": "vite-node scripts/course-backup.ts list",
     "backup:export": "vite-node scripts/course-backup.ts export",
     "backup:verify": "vite-node scripts/course-backup.ts verify",
+    "content:batch": "vite-node scripts/run-lock-content-batch.ts",
     "review:bundle": "node scripts/build-content-review-domain.mjs",
     "review:db-test": "node --test scripts/content-review-db.test.mjs",
     "prebuild": "node scripts/snapshot-prompts.mjs && node scripts/build-content-review-domain.mjs --check",

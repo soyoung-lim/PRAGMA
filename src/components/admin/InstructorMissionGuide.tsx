@@ -97,7 +97,7 @@ export function InstructorMissionGuide({
               {audience === "instructor" ? "PRAGMA 교수자 수업자료" : "PRAGMA 학생 활동지"}
               {missionLabel ? ` · ${missionLabel}` : ""}
             </p>
-            <h2 className="mt-1 text-xl font-bold">{guide.speechActKo} · MPJ5+DCT1 {audience === "instructor" ? "운영안" : "활동지"}</h2>
+            <h2 className="mt-1 text-xl font-bold">{guide.speechActKo} · MJT5+DCT1 {audience === "instructor" ? "운영안" : "활동지"}</h2>
             <p className="mt-2 text-[13px] leading-5 text-[#DCE4E8]">학습목표: {guide.speechActKo} 통합 수행 · 문항 판정 초점: {guide.itemFocusKo}</p>
           </header>
           {audience === "instructor" && timingPlan && (
@@ -155,7 +155,7 @@ export function InstructorMissionGuide({
               {guide.misconceptionKo ? (
                 <p><span className="font-semibold">대표 오개념:</span> {guide.misconceptionKo}</p>
               ) : (
-                <p className="text-[#657178]">이 미션에는 구조화된 대표 오개념이 없습니다. MPJ 오답 해설 중 수업에서 다룰 한 가지를 선택하세요.</p>
+                <p className="text-[#657178]">이 미션에는 구조화된 대표 오개념이 없습니다. MJT 오답 해설 중 수업에서 다룰 한 가지를 선택하세요.</p>
               )}
               {guide.coreReasonKo && <p className="mt-2"><span className="font-semibold">판단의 핵심:</span> {guide.coreReasonKo}</p>}
               <p className="mt-3 rounded-lg bg-[#F4F1E8] px-3 py-2 text-[12px]">
@@ -183,7 +183,7 @@ export function InstructorMissionGuide({
                 </>
               ) : (
                 <p className="rounded-lg border border-[#E8D9AF] bg-[#FFF9E8] px-3 py-2 text-[#6E5B20]">
-                  MPJ1과 MPJ2에서 P·D·R 한 축만 바뀌었다고 자동 확인할 수 없습니다. 특정 축의 효과라고 단정하지 말고 두 상황의 복합 차이로 다루세요.
+                  MJT1과 MJT2에서 P·D·R 한 축만 바뀌었다고 자동 확인할 수 없습니다. 특정 축의 효과라고 단정하지 말고 두 상황의 복합 차이로 다루세요.
                 </p>
               )}
             </div>
@@ -214,11 +214,11 @@ export function InstructorMissionGuide({
           )}
         </GuideSection>
 
-        <GuideSection number={5} title="MPJ·DCT 수행자료 토론" {...sectionProps(5)}>
+        <GuideSection number={5} title="MJT·DCT 수행자료 토론" {...sectionProps(5)}>
           <div className="space-y-4">
             {guide.mpjItems.map((item) => (
               <div key={item.id} className="break-inside-avoid border-b border-[#E7E2D7] pb-4 last:border-0 last:pb-0">
-                <p className="font-semibold">MPJ{item.id} · {item.titleKo}</p>
+                <p className="font-semibold">MJT{item.id} · {item.titleKo}</p>
                 {showAnswers && <p className="mt-1 text-[12px] text-[#657178]">설계 의도: {item.designIntentKo}</p>}
                 <ul className="mt-2 space-y-1.5">
                   {item.candidates.map((candidate, index) => (
@@ -253,7 +253,7 @@ export function InstructorMissionGuide({
           <div className="mt-4 rounded-lg bg-[#F4F1E8] px-3 py-3 text-[12px]">
             <p className="font-semibold">토론 질문</p>
             <ul className="mt-1 list-disc space-y-1 pl-5">
-              <li>MPJ에서는 판단했지만 DCT에서 같은 원리를 적용하지 못했다면 어떤 상황 단서가 산출에서 사라졌는가?</li>
+              <li>MJT에서는 판단했지만 DCT에서 같은 원리를 적용하지 못했다면 어떤 상황 단서가 산출에서 사라졌는가?</li>
               <li>{guide.dct.alternatives.length > 1
                 ? "복수 허용안은 각각 상대와의 관계를 어떤 인상으로 만드는가?"
                 : "제시된 허용안과 다른 전략으로도 가능한 응답을 만든다면 관계적 인상이 어떻게 달라지는가?"}</li>
@@ -262,7 +262,7 @@ export function InstructorMissionGuide({
           </div>
           {audience === "instructor" && (
             <p className="mt-3 text-[11px] text-[#707A80] print:hidden">
-              실제 학습자 사례는 현재 자동 선별하지 않습니다. 수업에서 수집된 수행 기록 중 익명화할 MPJ·DCT 사례 1–2건을 교수자가 선택해 사용합니다.
+              실제 학습자 사례는 현재 자동 선별하지 않습니다. 수업에서 수집된 수행 기록 중 익명화할 MJT·DCT 사례 1–2건을 교수자가 선택해 사용합니다.
             </p>
           )}
         </GuideSection>

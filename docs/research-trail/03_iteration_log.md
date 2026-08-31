@@ -2910,3 +2910,277 @@
 - 예상과 달랐던 점/교훈: 입력 부담을 줄이는 것보다 실제 활용 목적이 분명한 배경 항목의 완전성이 이번 수업·연구 설계에는 더 중요했다. 다만 연구 참여는 수업 이용의 필수조건으로 만들 수 없으므로 필수 응답과 필수 동의를 구분해야 했다.
 - 검증: 관련 2 files 4 tests, typecheck, production build 통과. 브라우저 재검증·전체 회귀·운영 migration은 수행하지 않았다.
 - 관련 Decision / Evidence: `DEC-20260831-03`, `EVD-20260831-03`.
+## ITER-20260829-01 · Scope Lock P0 기반과 콘텐츠 퍼널 실행 경계
+
+- 날짜: 2026-08-29
+- 시작 문제: pre-lock reviewed 여부만으로 편성·학습이 가능했고, 교과목 수행 로그에 course/week/
+  assignment/attempt/content hash가 없어 동일-ID 수직 증거를 만들 수 없었다. 500 후보의 양방향 최소
+  수량과 60슬롯 관계도 실행 코드로 고정되지 않았다.
+- 변경: 새 LOCK release와 60슬롯 manifest, 한→중333·중→한167의 500 계획, 30파일럿/300우선/
+  200확장 및 중단·재개 runner를 추가했다. current release만 편성·실행하고 교과목 수행 tuple을 DB와
+  교수자 조회까지 연결했다. 비P0 메뉴는 비파괴 redirect했다.
+- 예상과 달랐던 점: 작업 중 Privacy PR로 main이 전진했다. 사용자 설명에 따라 병렬 비관련 작업으로
+  분리하고 확인 시점 `c43d623`을 기준점으로 고정했다. 기존 16배정은 FK상 물리 고아가 아니라 현행
+  `scenario_core_v1` 투영 밖 legacy 행이었다.
+- 검증/한계: 영향 범위 16파일 94 tests, typecheck, 정본 생성물 재생성 뒤 production build와 diff
+  check가 통과했다. 운영 계보 migration과 `generate-scenario` v91·`content-review` v9를 적용했다.
+  유료 batch·교수자 승인·실제 번역/통역 E2E·Railway 배포는 아직 수행하지 않아 콘텐츠 완성이나
+  학습효과를 주장하지 않는다.
+- 관련: `TRC-20260829-01`, `DEC-20260829-01`, `EVD-20260829-01`,
+  `docs/dev-log/2026-08-29-scope-lock-p0-foundation.md`.
+
+## ITER-20260829-02 · MJT3·MJT5 후보 격리 repair와 재-canary
+
+- 날짜: 2026-08-29
+- 시작 문제: 30파일럿 중 22개가 자동 품질 게이트에 실패했고, 실제 생성 결함과 critic
+  false positive가 섞인 상태에서 블록 repair가 정상 후보까지 바꾸었다.
+- 변경: MJT3·MJT5의 후보별 역할·대역 blueprint, 후보 경로별 repair packet, 정상 peer·metadata
+  동결, 무변경·peer 중복 교체 거부, 재검사 fail 비저장과 저장된 fail 초안의 재개 실행을 구현했다.
+  P·D·R 구조 실패 2건은 기존 앵커+한 축 대비 계약의 deterministic canonicalization으로만 교정했다.
+- 예상과 달랐던 점: 격리 장치는 정상 작동했으나 모델은 `too_indirect` 후보를 일반 완화 표지의
+  중첩으로 실현해 실제로는 within에 남겼다. critic도 한 사례에서 근거·metadata와 반대되는
+  `band_mismatch`를 생성했다. 구조 안전성과 대역 실현 안정성은 별개였다.
+- 검증/결과: 표적 27 tests·typecheck, 마지막 v8 뒤 영향 스냅샷 13 tests·typecheck가 통과했다.
+  새 canary는 코어 8/8·구조 유효 미션 8/8·자동 품질 적격 4/8이었다. 네 fail 모두
+  `band_mismatch`, critical `implausible_distractor`는 0이었다. 실패 repair의 성공 revision 저장은
+  0건이며 30과 500은 실행하지 않았다.
+- 교훈: 500 생산 가능성은 첫 패스 비율뿐 아니라 실패 후보의 국소 복구 성공률로 판정해야 한다.
+  현 구조는 오염 방지는 달성했지만 경계 후보 복구율은 게이트를 통과하지 못했다.
+- 관련: `DEC-20260829-02`, `EVD-20260829-02`,
+  `docs/dev-log/2026-08-29-scope-lock-p0-foundation.md`, 커밋 `9395126`.
+
+## ITER-20260829-03 · within-first 상대 대역 생성과 재시도 상한
+
+- 날짜: 2026-08-29
+- 시작 문제: 후보 단위 repair는 정상 peer 오염을 막았지만 lower·upper가 anchor 없이 생성되어 실제
+  대역 경계를 넘지 못했고, 같은 run 재개가 이미 시도한 후보를 다시 호출할 수 있었다.
+- 변경: MJT3 within 1개와 MJT5 within A·B를 먼저 검증하고 경계 후보를 상대적 최소대조로 생성했다.
+  band/implausible 실패는 후보 신규 생성, 단순 형식 실패는 candidate repair로 분기했다. 비대상
+  판정을 보존하고 invocation ledger로 후보당 재생성을 1회로 제한했다.
+- 예상과 달랐던 점: 최초 Edge 배포는 새 ledger operation 이름을 운영 enum이 거부했다. 새 migration을
+  만들지 않고 기존 operation과 prompt version을 재사용해 해결했다. canary 적격은 2/8에서 저장
+  성공분을 유지한 재개 뒤 6/8로 늘었지만 한 미션에 범위 안팎의 band fail이 함께 남았다.
+- 검증/결과: 표적 4파일 27 tests·typecheck, 마지막 재시도 guard의 9 tests·typecheck가 통과했다.
+  최종 pass 1·warning 5·fail 1·미생성 1, critical implausible 0, band fail 1미션/4 findings다.
+  균형 30과 500은 실행하지 않았다.
+- 교훈: 상대 anchor와 candidate isolation만으로 전체 MJT의 대역 gate를 보장할 수 없다. 승인 범위를
+  MJT3·MJT5로 유지한다면 30 진입 기준도 전체 critical 0이 아니라 범위별 처리 정책을 연구자가 먼저
+  결정해야 하며, 현재 계약에서는 기존 기준대로 정지하는 것이 맞다.
+- 관련: `DEC-20260829-03`, `EVD-20260829-03`,
+  `docs/dev-log/2026-08-29-scope-lock-p0-foundation.md`, 커밋 `f714a1f`.
+
+## ITER-20260829-04 · 균형 30 production yield와 bounded recovery 비용 측정
+
+- 날짜: 2026-08-29
+- 시작 문제: 표적 8개 결과만으로는 500개 유효 후보의 실제 생산 수율과 복구 단가를 외삽할 수
+  없었다. 개별 critical 0 대신 미리 정한 yield·오염·반복 frozen defect 기준이 필요했다.
+- 실행: `_06`을 변경하지 않고 별도 균형 30셀을 실행했다. 최초 코어 24개, hard-invalid 대체 6개 중
+  5개 회복, 최종 코어 29개를 미션으로 승격했다. API 잔액 부족 30회와 진단 1회는 충전 후 동일 run을
+  재개하고 semantic 결과와 분리했다.
+- 결과: 첫 패스 적격 12, 최종 적격 19, 탈락 11이다. 후보 재생성은 7미션·8후보, 후보당 최대 1회다.
+  최종 R27 6건이 가장 컸고 상대 경계 출력 누락 3·R18 1·core R26 1이 뒤를 이었다. 적격 19행은
+  모두 warning이고 저장 fail·repair 오염·bounded recovery 위반은 0이다.
+- 호출/비용: token-bearing 성공 호출 219회·총 1.134M token, OpenAI 표준 API 단가 추정 $2.93다.
+  충전 뒤 호출 reliability는 97.8%였다. 동일 수율의 단순 500 외삽은 약 790 계획 셀과 $77다.
+- 예상과 달랐던 점: `band_mismatch` critical보다 R27 장면 중복이 6/30으로 주된 yield 병목이었다.
+  중→한 탈락률이 50%로 한→중 30%보다 높았지만 n=10/20이라 체계적 방향 효과로 단정하지 않는다.
+  번역 37.5%와 통역 33.3%는 모드 집중을 보이지 않았다.
+- 교훈/다음 경계: candidate isolation은 생산 중 오염 방지에는 충분했지만 현재 수율로 고정 500셀은
+  약 317개만 적격이 예상된다. 사전 기준대로 R27의 한 차례 국소 보정을 검토한 뒤 새 승인 없이는
+  500을 실행하지 않는다.
+- 관련: `DEC-20260829-04`, `EVD-20260829-04`, aggregate
+  `docs/research-trail/evidence/2026-08-29-scope-lock-p0/yield30-production-canary.json`.
+
+## ITER-20260830-11 · R27 v2 topology와 표적 8 sniper 재개
+
+- 날짜: 2026-08-30
+- 시작 문제: `_06`의 주요 수율 병목 R27은 상황 비교가 필요한 MJT2·3·4까지 별도 사건으로
+  강제했다. 규칙만 완화하지 않고 생성·검사·repair를 같은 topology에 맞출 필요가 있었다.
+- 변경: MJT1 X, MJT2·3·4 A, MJT5 Y, DCT C를 생성계약과 deterministic 검사에 반영하고,
+  서버가 A의 situation·relation·channel을 MJT3·4에 복사한다. R27 finding은 해당 situation 경로
+  하나로만 수리한다. 과거 `_06`은 backfill하지 않았다.
+- 예상과 달랐던 점: 첫 실행에서 situation-only repair target이 action guard에서 누락되어 AI 호출
+  전에 빈 operations로 종료됐다. 다른 성공분을 폐기하지 않고 조건 한 줄만 보정해 동일 run을
+  재개했다. 이후 한 R27 셀은 회복됐으나 두 셀은 각각 수리 후 critic/구조검사를 통과하지 못했다.
+- 검증/결과: 표적 74 tests·typecheck·최종 snapshot 13 tests 통과. 코어 8/8, 최초 적격 3/8,
+  sniper 재개 후 누적 5/8이다. 저장 warning 5·fail 0·미저장 3, 최종 원인은 R27 2와 상대 경계
+  출력 누락 1이다. ledger 77/77 성공·381,854 token이며 실패 revision 저장은 0이다.
+- 교훈: deterministic Anchor 공유는 R27 실패를 줄였지만 X/Y의 새 사건 생성과 situation-only
+  repair의 의미 정합성을 자동으로 보장하지 않는다. Gate 1 실패 상태에서 균형 30으로 표본을 늘리면
+  원인을 희석하므로 사전 계약대로 정지한다.
+- 관련: `DEC-20260830-11`, `EVD-20260830-11`,
+  `docs/dev-log/2026-08-30-r27-topology-canary.md`.
+
+## ITER-20260830-12 · R27 repair context와 clean 8
+
+- 날짜: 2026-08-30
+- 시작 문제: `_07`에서 남은 두 건은 situation-only repair가 slot의 topology 역할·P·D·R·source·
+  Anchor를 보지 못하고, 복수 X/Y 결과끼리 중복돼도 Edge sanitizer가 막지 못했다.
+- 변경: 해당 packet과 exact topology guard만 보강했다. base prompt·candidate blueprint·대역·다른
+  R규칙·UI·DB는 동결하고 `_08`을 새로 발급했다.
+- 검증: 표적 57 tests·typecheck 통과, Edge v104 ACTIVE. 새 run에서 코어 7/8 뒤 hard-invalid 셀
+  1회 대체로 8/8을 만들고 그 8개만 실행했다. ledger 67/67 성공·332,836 token이다.
+- 결과: 첫 패스 2/8, 최종 적격 5/8. 최초 Y 중복 2건의 수리본은 결정론 R27을 통과했으나 critic
+  fail로 저장하지 않았다. 저장 6건의 topology는 정상이나 1건은 비R27 `band_mismatch` fail이고
+  fail quality revision 1건이 존재한다.
+- 교훈/경계: packet 부족과 재위반은 닫혔지만 R27 복구 뒤 전체 critic을 함께 통과하는 생산 수율은
+  확보되지 않았다. 실패 본문 비저장으로 critic code는 확인 불가다. 승인대로 여기서 정지하고
+  균형 30·500을 실행하지 않는다.
+- 관련: `DEC-20260830-12`, `EVD-20260830-12`,
+  `docs/dev-log/2026-08-30-r27-residual-clean8.md`.
+
+## ITER-20260830-13 · `_08` 균형 30과 production/representative 검수 경계
+
+- 날짜: 2026-08-30
+- 시작 문제: `_08` clean 8만으로 500 생산 수율을 판정할 수 없었고, 자동 생산 canary 도중
+  Claude를 추가하면 `_06` 비교 가능성이 깨지는 반면 최종 E2E에서 Claude를 빼면 교차검증 증거
+  사슬이 불완전해진다.
+- 설계 경계: 이번 30은 GPT-4o 생성·R1~R33·GPT-4.1 `quality_v16`·bounded recovery까지만
+  측정했다. 60 reviewed·대표12·동일-ID E2E4에는 별도 content-review의 OpenAI 검수·Claude
+  독립 검수·OpenAI adjudication·교수자 승인을 포함한다. 코드·DB·release와 생성 규칙은 바꾸지 않았다.
+- 실행: 동일 30셀에서 최초 core 23개, 실패 7셀의 허용된 1회 대체 뒤 26개를 저장·미션 시도했다.
+  provider 확인 중 한 차례 수동 중단했으나 완료된 성공·탈락 6건은 재실행하지 않고 진행 중 1건만
+  operational interruption으로 분리해 재개했다.
+- 결과: 첫 패스 5/30, 최종 10/30, 저장 warning 10·current fail 2·미저장 14다. 최종 탈락은
+  core 4, 확인된 R27 6, 상대 경계 누락 5, terminal quality fail 2, 중단 전 상세 code 확인 불가 3이다.
+  mission repair 12회는 미션당 최대 1회였고 최종 적격 5·탈락 7이었다. 후보 교체는 6미션·8후보,
+  정상 peer 오염·failed revision 적격 승격·bounded 위반은 0이다.
+- 비용: provider requests 201, 성공 model calls 194, 성공 token 973,703, 동일 단가 추정 $2.469다.
+  적격당 requests/calls/token/cost는 `_06`보다 70.5%/68.3%/63.1%/60.3% 높다. 429 7건과 수동
+  interruption은 semantic dropout과 분리했고 인프라 단독 최종 탈락은 0이다.
+- 예상과 달랐던 점/교훈: R27 repair context를 보강했지만 균형 표본에서 확인 가능한 R27 직접
+  탈락이 다시 6/30이었고 상대 경계 누락도 5건으로 늘었다. 국소 규칙 하나의 추가 보정보다 전체
+  생성·복구 단가와 실패 topology를 함께 재검토해야 하며 500을 강행할 근거가 없다.
+- 관련: `DEC-20260830-13`, `EVD-20260830-13`,
+  `docs/dev-log/2026-08-30-08-production-yield30.md`.
+
+## ITER-20260830-14 · 상대경계 bounded fallback과 terminal outcome 관측성
+
+- 날짜: 2026-08-30
+- 시작 문제: 상대경계 후보 출력 누락이 두 production canary에서 반복됐지만 미션 전체 재생성은
+  정상 후보를 오염시키고 비용을 키웠다. 동시에 계획 셀의 non-LLM terminal 원인이 호출 장부만으로는
+  복원되지 않는 구간이 있었다.
+- 변경: 누락 후보만 1회 재생성하는 Edge fallback과, 다른 recovery를 포함한 후보별 통합 횟수 상한을
+  추가했다. batch runner는 core·mission의 단계·rule·critic·repair·infra·최종 outcome을 JSONL에
+  append한다. UI·DB schema와 품질 규칙은 그대로다.
+- 검증/결과: 표적 5파일 33 tests·typecheck, Edge v105 ACTIVE. SET-A 6개는 최초 core 5개와 R29
+  replacement 1개로 6개를 만들었다. 미션 첫 패스 2·최종 적격 3, quality-fail 격리 1·R27 미저장 2다.
+  상대경계 누락과 fallback 시도는 0이라 실제 recovery 성공률은 측정할 수 없지만 직접 탈락·peer 오염·
+  situation 변경·후보별 상한 위반은 0이다.
+- 예상과 달랐던 점: 원시 JSONL 한 줄이 optional repair 실패를 `none/failed`로 기록했다. 과거 줄을
+  재작성하지 않고 이후 operation·error를 정확히 기록하는 forward correction을 추가했다.
+- 교훈/다음 경계: 표적 조건에서 반복 병목이 사라졌다고 production 수율까지 일반화할 수 없다.
+  추가 표적 생성을 반복해 누락을 억지로 유발하기보다 frozen 새 release의 균형 30에서 fallback 발동과
+  전체 yield를 함께 재측정하는 것이 짧은 경로다. 500은 시작하지 않는다.
+- 관련: `DEC-20260830-14`, `EVD-20260830-14`,
+  `docs/dev-log/2026-08-30-relative-boundary-observability-canary.md`.
+
+## ITER-20260830-15 · `_09` 균형 30 production yield와 R27 잔존 cohort
+
+- 날짜: 2026-08-30
+- 시작 문제: SET-A 6조건에서는 상대경계 누락이 재발하지 않아 runtime fallback 성공률과 전체
+  production yield를 알 수 없었다. `_08`의 10/30·비용 악화가 fallback 이후에도 유지되는지, R27과
+  상대경계 terminal을 분리해 다시 측정해야 했다.
+- 실행: 연구자 승인 조건대로 clean `4fa256a`, `_09`, 동일 `LOCK_PILOT_CORE_PLAN` 30셀을 동결했다.
+  최초 core 30 뒤 hard-invalid 11셀만 한 번 대체했고 성공분은 재생성하지 않았다. 최종 core 26개를
+  mission으로 실행한 뒤 500·Claude·추가 수정 없이 정지했다.
+- 결과: 최초 core 19·최종 core 26, first-pass 14/30·final eligible 19/30이다. 누락된 상대경계
+  후보 6개는 6/6 회복해 세 미션이 적격이 됐고 peer·상황 오염은 0이다. R27은 12미션에서 발생해
+  repair 뒤 deterministic 통과 10, 재위반 2였고, 통과 10 중 critic 적격 6·거부 4였다. 최종 R27
+  직접 탈락은 6/30이다. 별도 relative-boundary 생성 429 한 건과 core repair 429는 semantic
+  code와 분리했다.
+- 비용·상태: requests 238·성공 calls 221·1,111,385 token·추정 `$2.7793`, 적격당 `$0.1463`다.
+  fail lineage 5개는 current/공개/편성으로 승격되지 않았고 current 19개는 모두 warning이다.
+- 예상과 달랐던 점/교훈: `_08` 대비 수율과 적격당 비용은 회복됐고 fallback 실제 발동도 성공했지만,
+  R27 직접 탈락은 `_06/_08`과 같은 6/30이었다. 상대경계 구조 전체가 아니라 R27 repair 후
+  deterministic·critic 연결이 남은 국소 병목이며, 500으로 확대하기 전 마지막 승인 판단이 필요하다.
+- 관련: `DEC-20260830-15`, `EVD-20260830-15`,
+  `docs/dev-log/2026-08-30-09-production-yield30.md`.
+
+## ITER-20260830-16 · R27 선행 topology 구현과 targeted 12 infrastructure terminal
+
+- 날짜: 2026-08-30
+- 시작 문제: frozen 구조를 알고도 `_09` mission의 40%가 최초 R27 repair에 진입했다.
+- 변경: topology-only X/A/Y 생성→결정론 검증→최대 1회 재생성→scene freeze→full mission 순서와
+  topology·최초 R27·repair 후 deterministic·exact critic terminal evidence를 구현했다.
+- 검증: 관련 36 tests와 typecheck 통과, 새 release를 Edge v106에 배포했다.
+- 실행: 최초 core 12+진단 1은 quota 429였다. 보충 후 최초 core 7, hard-invalid 5셀 1회 대체로
+  core 12/12를 저장했다. mission은 topology provider 503 12/12로 끝나 deterministic topology와
+  full mission은 미시작이다. requests 51·성공 26·110,176 token·추정 `$0.1111636`다.
+- 예상과 달랐던 점: topology용 새 telemetry operation은 DB allowlist 밖이라 12호출이 ledger에서
+  누락됐다. terminal JSONL에는 12건과 provider 503이 남았다.
+- 다음: 503 transient 처리와 기존 허용 operation으로 telemetry를 귀인하는 최소 수정 뒤 같은 12만
+  재검증한다. 균형 30·500은 시작하지 않는다.
+- 관련: `DEC-20260830-16`, `EVD-20260830-16`,
+  `docs/dev-log/2026-08-30-r27-constraint-topology12.md`.
+
+## ITER-20260830-17 · topology ledger 교정과 동일 12 유효 runtime 재검증
+
+- 날짜: 2026-08-30
+- 시작 문제: topology 전용 operation이 기존 append-only ledger 제약 밖이어서 성공 provider 응답도
+  필수 장부 실패 뒤 합성 503이 됐고 R27 runtime 분모가 0이었다.
+- 변경: topology를 기존 `mission_generate`에 기록하되 prompt version으로 subtype을 보존했다.
+  DB schema·retry·generation/critic 계약은 동결했다. 표적 24 tests·typecheck와 topology-only probe
+  1건으로 장부·성공 경로를 확인했다.
+- 동일 12 결과: topology 최초 9/12, 1회 재생성 3, 최종 10/12, infrastructure dropout 0이다.
+  full mission 10개의 최초 R27·repair는 각각 0/10이며 Anchor 공유와 X/A/Y/C distinct는 10/10이다.
+  critic fail 2를 R27로 귀인하지 않았고 최종 적격은 8/12다.
+- 예상과 달랐던 점/교훈: full mission까지 도달하면 constraint-by-construction이 R27을 차단했지만,
+  core에서 이미 동결된 C가 topology의 정확히 2문장 규칙을 위반하면 topology regeneration은 구조상
+  이를 고칠 수 없다. 따라서 post-hoc repair 회귀나 validator 완화가 아니라 C를 freeze 전에 계약에
+  맞추는 exact seam만 남았다.
+- 비용·경계: main rerun 81/81 success·394,906 token·`$1.2078405`, 별도 probe 1,171 token·
+  `$0.0046975`. 오염·bounded 위반·실패 revision 승격·편성은 0이며 30·500·후속 검수는 미실행이다.
+- 관련: `DEC-20260830-17`, `EVD-20260830-17`,
+  `docs/dev-log/2026-08-30-r27-topology-infra-rerun.md`.
+
+## ITER-20260830-18 · 최신 production evidence 기반 R1–R33 minimum-sufficient audit
+
+- 날짜: 2026-08-30
+- 시작 문제: 이전 2026-08-25 감사 뒤 `_06/_08/_09` 균형 30과 `_10` topology runtime evidence가
+  생겼으므로, 과거 KEEP 판정을 전제하지 않고 500 전에 hard/critic/human/planner 책임을 재분리해야 했다.
+- 조사: 현행 1,265줄 규칙 정본·계약·topology validator·length policy·industry planner/critic과 네
+  release evidence를 읽기 전용 대조했다. 코드·prompt·DB·API·canary는 변경/실행하지 않았다.
+- 결과: 전면 rule redesign은 기각했다. `_10` full-mission initial R27 0/10으로 architecture 효과를
+  확인했고 A=C collision은 유지했다. 반면 C shape만 topology hard/mission warning으로 불일치했다.
+  R29은 `_08/_09` 각 3 terminal이지만 subrule 실측은 미보존이고 threshold는 TTS 미동결 파일럿이다.
+  R26은 세 run 각 1 terminal이며 regex와 core AI industry axis가 책임 중복이다.
+- 교훈: 규칙 번호는 감사 키이지 동일한 강도의 33개 독립 의미 gate가 아니다. structural/lineage는
+  fail-closed로 두되 format·length·taxonomy heuristic은 warning/critic/planner로 옮겨야 더 단순하고
+  설명 가능하다. evidence가 없는 min/generic attribution은 UNKNOWN으로 남긴다.
+- 다음: P0 세 변경과 subrule evidence 후 5셀→균형30→500의 한 경로만 제안한다.
+- 관련: `DEC-20260830-18`, `EVD-20260830-18`,
+  `docs/dev-log/2026-08-30-rule-design-diet-audit.md`.
+
+## ITER-20260830-19 · Design Diet P0 책임층 구현과 historical 5셀 검증
+
+- 날짜: 2026-08-30
+- 시작 문제: topology의 frozen C 형식, R29 minimum, R26 regex가 각각 warning/semantic 층과 겹쳤고
+  terminal evidence는 R29 subrule을 보존하지 않았다. 더구나 기존 core critic은 production gate가
+  아니어서 감사안을 그대로 구현할 수 없었다.
+- 변경: C shape만 topology hard에서 제외하고 기존 mission warning을 유지했다. R29 minimum/maximum을
+  분리하고 구조화 finding을 성공 셀까지 전달했다. R26 lexical warning이 생긴 코어에만 기존 industry
+  critic을 1회 적용해 fail은 semantic, 호출 실패는 infrastructure로 기록했다. DB/UI/prompt 내용과 다른
+  14 critic 축은 변경하지 않았다.
+- 검증/실행: 7파일 90 tests·typecheck, release `_11`·hash `857875fb…`, Edge 배포 뒤 지정 5셀만
+  실행했다. core·topology는 각각 5/5 최초 통과, full mission 5, first-pass eligible 0, final eligible 2,
+  critic fail 3, infra 0이다. candidate regeneration 합계 5·후보별 max1, 오염/상한 위반0이다.
+- 예상과 달랐던 점: 과거 실패 index를 다시 생성해도 R26/R29/R27 경계가 자연 재현되지는 않았다.
+  따라서 stochastic 재현을 위해 셀을 추가하지 않고 severity/routing은 deterministic tests, 배포 안정성은
+  paid canary로 분리해 근거화했다. 탈락 3건은 P0가 아니라 독립 band critic이 정상 차단했다.
+- 비용/격리: 46/46 success, 206,326 token, 추정 `$0.5664795`; reviewed/released/course 승격0이다.
+- 다음: 같은 LOCK 파일럿 30셀을 새 run으로 실행해 production yield를 측정한다. 자동 시작하지 않는다.
+- 관련: `DEC-20260830-19`, `EVD-20260830-19`,
+  `docs/dev-log/2026-08-30-design-diet-p0-targeted5.md`.
+
+## ITER-20260830-20 · `_11` 동일 균형 30 production gate
+
+- 날짜: 2026-08-30
+- 실행: clean `c7becca`와 `_11` release/hash를 동결하고 동일 item `0,10,…,290`을 새 run으로 실행했다.
+  core 최초 28/30 뒤 동일 2셀 1회 대체로 30/30, first-pass 19/30, final 27/30이다.
+- 결과: topology R27 최초 5건 중 3건 회복·2건 terminal, critic direct fail 1건이다. R26 warning 3건은
+  semantic pass, R29 maximum 2건은 대체 회복, minimum 2건은 warning으로 유지됐다.
+- 운영성: provider 280/280 success, 1,348,444 tokens, `$3.5166204`; 오염·bounded 위반·승격·편성은 0이다.
+- 교훈/판정: constraint-by-construction 뒤 R27 direct dropout은 `_06/_08/_09`의 6건에서 2건으로
+  줄었고 final yield는 19/10/19에서 27로 상승했다. 사전 gate에 따라 500 production 진행 가능이다.
+- 관련: `DEC-20260830-20`, `EVD-20260830-20`, `docs/dev-log/2026-08-30-11-yield30-production-gate.md`.

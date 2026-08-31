@@ -102,9 +102,22 @@ describe("R29 focal segments", () => {
     expect(r29(coreV3())).toHaveLength(0);
   });
 
-  it("글자 수 하한보다 짧은 한 문장 원문은 fail", () => {
+  it("글자 수 하한보다 짧은 한 문장 원문은 minimum warning", () => {
     const v = r29(coreV3({ source_text: "샘플 하나 더 보내주실 수 있을까요?", focal_segments: [{ text: "샘플 하나 더 보내주실 수 있을까요?", role: "head" }] }));
-    expect(v.some((x) => x.level === "fail")).toBe(true);
+    expect(v).toContainEqual(expect.objectContaining({
+      level: "warning",
+      evidence: expect.objectContaining({ subrule: "minimum_length", actual: 14, threshold: 60 }),
+    }));
+    expect(v.some((x) => x.level === "fail")).toBe(false);
+  });
+
+  it("글자 수 상한을 넘으면 maximum hard fail", () => {
+    const source = `${SOURCE_3} 내부 검토가 끝난 뒤에도 추가 자료의 필요성과 제출 시점을 다시 확인해 주시면 감사하겠습니다.`;
+    const v = r29(coreV3({ source_text: source }));
+    expect(v).toContainEqual(expect.objectContaining({
+      level: "fail",
+      evidence: expect.objectContaining({ subrule: "maximum_length", threshold: 85 }),
+    }));
   });
 
   it("원문에 없는 구간은 fail", () => {
@@ -162,7 +175,7 @@ describe("normalizeCore — v3 상위집합 정규화", () => {
 
   it("길이 정책 스냅샷은 정규화하되 콘텐츠 동일성 hash 입력에서는 제외한다", () => {
     const lengthPolicy = {
-      version: "effective_chars_v1",
+      version: "effective_chars_v2_min_warning",
       unit: "effective_chars" as const,
       min: 60,
       max: 85,

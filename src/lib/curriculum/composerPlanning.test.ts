@@ -24,6 +24,7 @@ import {
   type CoursePreset,
 } from "@/lib/pragma/scenarioTopics";
 import { expectedCoreModeForWeek } from "@/lib/curriculum/courseModePolicy";
+import { CURRENT_CONTENT_RELEASE_ID } from "../../../supabase/functions/_shared/contentRelease";
 
 function core(overrides: Partial<ComposerCore> & { scenario_id: string }): ComposerCore {
   return {
@@ -35,6 +36,7 @@ function core(overrides: Partial<ComposerCore> & { scenario_id: string }): Compo
     theme_code: overrides.theme_code ?? "campus_study",
     topic_code: overrides.topic_code ?? "test_topic",
     mission_status: overrides.mission_status ?? "reviewed",
+    content_release_id: overrides.content_release_id ?? CURRENT_CONTENT_RELEASE_ID,
     target_feature: overrides.target_feature ?? "request_mitigation",
     is_native_mpj5: overrides.is_native_mpj5 ?? true,
     situation_ko: overrides.situation_ko ?? `테스트 상황 ${overrides.scenario_id}`,

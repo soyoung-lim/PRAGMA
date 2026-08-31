@@ -1,0 +1,161 @@
+{
+  "evidence_id": "EVD-20260829-04",
+  "checked_at_local_date": "2026-08-29",
+  "run_id": "scope-lock-pilot-20260829-06-yield30",
+  "release_id": "pragma_scope_lock_20260829_06_mjt5_dct1_relative_band",
+  "fingerprint": {
+    "mission_prompt_version": "mission_v5_mpj5_minidiscourse_v11_relative_band",
+    "critic_prompt_version": "quality_v16_relative_band_calibration",
+    "candidate_prompt_version": "mission_candidate_band_v1_relative_minimal_contrast",
+    "non_band_repair_prompt_version": "mission_item_repair_v9_non_band_only",
+    "core_surface_hash": "6e5aee7cf1244bd9dc0f0b44d01f7e9aa35dfef008f8ff67f56ef7048060b0a1",
+    "pack_prompt_surface_hash": "72fbca18a3ec71e1dc6a86ce2dbdfcc1015348f734ed1b7ee64f8db3e4ee383e"
+  },
+  "plan": {
+    "planned_cells": 30,
+    "separate_from_targeted_canary8": true,
+    "core_initial_saved": 24,
+    "core_hard_invalid_replacement_targets": 6,
+    "core_replacement_saved": 5,
+    "core_final_saved": 29,
+    "core_final_excluded": 1,
+    "mission_attempted": 29
+  },
+  "yield": {
+    "first_pass_eligible": 12,
+    "first_pass_rate_planned": 0.4,
+    "first_pass_rate_mission_attempted": 0.4137931034,
+    "candidate_regeneration_target_missions": 7,
+    "candidate_regeneration_candidates": 8,
+    "candidate_regeneration_max_per_candidate": 1,
+    "final_eligible": 19,
+    "final_rate_planned": 0.6333333333,
+    "final_rate_mission_attempted": 0.6551724138,
+    "final_rejected": 11,
+    "final_rejected_rate_planned": 0.3666666667,
+    "stored_verdicts": {
+      "pass": 0,
+      "warning": 19,
+      "fail": 0
+    }
+  },
+  "final_failure_direct_causes": {
+    "R27_cross_item_scene_duplication": 6,
+    "relative_boundary_output_incomplete": 3,
+    "R18_MJT4_reason_band": 1,
+    "R26_core_industry_specificity": 1
+  },
+  "mjt_failure_distribution": {
+    "cross_item_scene_set_R27": 6,
+    "MJT3_MJT5_relative_boundary_stage": 3,
+    "MJT4_reason": 1,
+    "MJT2": 0,
+    "pre_mission_core": 1
+  },
+  "axis_failure_distribution": {
+    "direction": {
+      "ko_zh": { "planned": 20, "eligible": 14, "failed": 6, "failure_rate": 0.3 },
+      "zh_ko": { "planned": 10, "eligible": 5, "failed": 5, "failure_rate": 0.5 }
+    },
+    "level": {
+      "intermediate": { "planned": 20, "eligible": 12, "failed": 8, "failure_rate": 0.4 },
+      "advanced": { "planned": 10, "eligible": 7, "failed": 3, "failure_rate": 0.3 }
+    },
+    "mode": {
+      "translation": { "planned": 24, "eligible": 15, "failed": 9, "failure_rate": 0.375 },
+      "stt_interpreting": { "planned": 6, "eligible": 4, "failed": 2, "failure_rate": 0.3333333333 }
+    }
+  },
+  "warnings": {
+    "missions_with_warning_verdict": 19,
+    "finding_counts": {
+      "comparison_quality_mismatch": 33,
+      "feedback_quality_mismatch": 19,
+      "critic_grounding_failure": 12,
+      "band_mismatch": 2
+    },
+    "explicit_self_contradiction_calibrations": 1,
+    "general_warnings_counted_as_false_positive": false
+  },
+  "recovery_integrity": {
+    "repair_pollution_observed": 0,
+    "failed_revision_stored": 0,
+    "bounded_recovery_violation": 0,
+    "normal_peer_mutation_observed": 0
+  },
+  "infrastructure": {
+    "initial_unfunded_core_requests": 30,
+    "initial_unfunded_failures": 30,
+    "diagnostic_unfunded_request": 1,
+    "failure_code": "credit_balance_exhausted",
+    "all_ledger_calls_including_unfunded_and_diagnostic": 255,
+    "all_ledger_success": 219,
+    "all_ledger_failed": 36,
+    "all_ledger_reliability": 0.8588235294,
+    "funded_phase_calls": 224,
+    "funded_phase_success": 219,
+    "funded_phase_failed": 5,
+    "funded_phase_reliability": 0.9776785714,
+    "final_item_loss_directly_attributed_to_infrastructure": 0
+  },
+  "model_usage": {
+    "successful_calls": 219,
+    "successful_calls_per_eligible": 11.5263157895,
+    "funded_requests_per_eligible": 11.7894736842,
+    "prompt_tokens": 1017418,
+    "cached_input_tokens": 171264,
+    "completion_tokens": 116543,
+    "total_tokens": 1133961,
+    "total_tokens_per_eligible": 59682.1578947368,
+    "by_model": {
+      "gpt-4.1-mini-2025-04-14": {
+        "successful_calls": 36,
+        "prompt_tokens": 131625,
+        "cached_input_tokens": 73856,
+        "completion_tokens": 8293,
+        "estimated_standard_api_cost_usd": 0.043762
+      },
+      "gpt-4.1-2025-04-14": {
+        "successful_calls": 99,
+        "prompt_tokens": 435844,
+        "cached_input_tokens": 42496,
+        "completion_tokens": 32164,
+        "estimated_standard_api_cost_usd": 1.065256
+      },
+      "gpt-4o-2024-08-06": {
+        "successful_calls": 84,
+        "prompt_tokens": 449949,
+        "cached_input_tokens": 54912,
+        "completion_tokens": 76086,
+        "estimated_standard_api_cost_usd": 1.8170925
+      }
+    },
+    "estimated_standard_api_cost_usd": 2.9261105,
+    "estimated_cost_per_eligible_usd": 0.1540058158,
+    "pricing_basis": {
+      "gpt-4.1": { "input_per_million": 2.0, "cached_input_per_million": 0.5, "output_per_million": 8.0 },
+      "gpt-4.1-mini": { "input_per_million": 0.4, "cached_input_per_million": 0.1, "output_per_million": 1.6 },
+      "gpt-4o": { "input_per_million": 2.5, "cached_input_per_million": 1.25, "output_per_million": 10.0 }
+    },
+    "pricing_sources": [
+      "https://openai.com/index/gpt-4-1/",
+      "https://developers.openai.com/api/docs/models/gpt-4o"
+    ],
+    "cost_scope_note": "Token ledger multiplied by published standard API prices; not an OpenAI invoice and excludes Supabase/Edge overhead."
+  },
+  "projection_to_500_valid_candidates": {
+    "observed_yield_assumption": 0.6333333333,
+    "estimated_planned_cells_required": 790,
+    "estimated_successful_model_calls": 5763,
+    "estimated_provider_requests_at_funded_reliability": 5895,
+    "estimated_total_tokens": 29841079,
+    "estimated_standard_api_cost_usd": 77.003,
+    "expected_valid_if_only_500_cells_are_attempted": 316.7,
+    "projection_is_not_guarantee": true
+  },
+  "decision": {
+    "result": "one_additional_local_correction_required",
+    "reason": "Final eligible is 19/30 and R27 directly caused 6/30 final losses, matching the preregistered local-correction criterion.",
+    "automatic_500_started": false
+  }
+}

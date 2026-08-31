@@ -408,7 +408,7 @@ const AdminAssembly = ({ reviewMode = false }: { reviewMode?: boolean }) => {
   return (
     <AdminShell
       title={reviewMode ? "콘텐츠 검수·확정" : "학습 미션 조립"}
-      description={reviewMode ? "수업에 사용할 콘텐츠의 현재 버전을 검수하고 교수자가 최종 승인합니다. 미션을 열어 시작하세요." : "시나리오를 MPJ 5문항과 직접 산출 과제로 완성하고, 검수 가능한 학습 미션으로 저장합니다."}
+      description={reviewMode ? "수업에 사용할 콘텐츠의 현재 버전을 검수하고 교수자가 최종 승인합니다. 미션을 열어 시작하세요." : "시나리오를 MJT 5문항과 직접 산출 과제로 완성하고, 검수 가능한 학습 미션으로 저장합니다."}
     >
       <div className="max-w-[1080px]">
       {reviewMode && <section className="mb-4 space-y-3 rounded-xl border bg-white p-4 text-sm">

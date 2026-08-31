@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { SAMPLE_MISSION_V5_NATIVE } from "@/lib/mission/missionV4Sample";
 import AdminClassResponses from "./AdminClassResponses";
+import { CURRENT_CONTENT_RELEASE_ID } from "../../../supabase/functions/_shared/contentRelease";
 
 const mocks = vi.hoisted(() => ({
   outlines: vi.fn(),
@@ -64,6 +65,7 @@ beforeEach(() => {
   mocks.cores.mockResolvedValue([{
     scenario_id: "mission-1",
     mission_status: "reviewed",
+    content_release_id: CURRENT_CONTENT_RELEASE_ID,
     mode: "translation",
     situation_ko: "거래처에 자료를 다시 요청하는 상황",
     target_feature: "request_mitigation_optionality",

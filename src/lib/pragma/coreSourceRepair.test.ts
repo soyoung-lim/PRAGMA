@@ -50,7 +50,7 @@ describe("core source discourse boundary", () => {
       coreLengthRange("beginner_intermediate", "stt_interpreting"),
     );
     expect(issue?.lengthOutOfRange).toBe(true);
-    expect(CORE_LENGTH_POLICY_VERSION).toBe("effective_chars_v1");
+    expect(CORE_LENGTH_POLICY_VERSION).toBe("effective_chars_v2_min_warning");
   });
 
   it("교정 요청은 기존 사실 보존과 중국어 문장 경계를 함께 고정한다", () => {
@@ -70,8 +70,37 @@ describe("core source discourse boundary", () => {
     expect(prompt).toContain("유효 글자 37자를 목표");
     expect(prompt).toContain("현재보다 약 25자 늘리세요");
     expect(prompt).toContain("반환 직전에 source_text의 유효 글자 수를 다시 세어");
+    expect(prompt).toContain("한자·라틴문자·숫자는 각각 유효 글자 1자");
+    expect(prompt).toContain("유효 글자 37자 부근까지 확장");
     expect(prompt).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(prompt).toContain("focal_segments");
+  });
+
+  it("길이 교정문이 기존 focal segment를 보존하면 기존 표지를 안전하게 재사용한다", () => {
+    const originalFocal = [{ text: "这次我不能参加", role: "head" as const }];
+    const result = mergeValidatedCoreRepair({
+      originalOutput: {
+        source_text: "这次我不能参加。",
+        focal_segments: originalFocal,
+      },
+      repairedOutput: {
+        source_text:
+          "谢谢你的邀请，不过这次我不能参加，因为已有安排。希望以后还有机会一起交流，也请你理解我的情况。",
+        focal_segments: [{ text: "不存在的片段", role: "head" }],
+      },
+      effectiveCharRange: { min: 40, max: 60 },
+      sourceIssue: {
+        sentenceCount: 1,
+        effectiveCharCount: 7,
+        sentenceOutOfRange: true,
+        lengthOutOfRange: true,
+        message: "too short",
+      },
+      precedingTurnIssue: null,
+    });
+
+    expect(result.sourceRepairApplied).toBe(true);
+    expect(result.output.focal_segments).toEqual(originalFocal);
   });
 
   it("중→한 응답 화행의 중국어 선행 발화를 한국어 오류로 잡는다", () => {
