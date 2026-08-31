@@ -124,6 +124,12 @@ describe("실시간 학급 응답", () => {
     expect(screen.getByRole("combobox", { name: "응답 미션" })).toHaveValue("mission-1");
     expect(screen.queryByText(/private-learner/)).not.toBeInTheDocument();
     expect(screen.queryByText(/private dissent/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("응답 공개 단계")).toHaveTextContent("1 · 응답 수집");
+    expect(screen.getByText("이견 1건")).toBeVisible();
+    expect(screen.getByRole("link", { name: "주차 운영으로 돌아가기 →" })).toHaveAttribute(
+      "href",
+      "/admin/package?courseId=course-a&weekNo=2#weekly-material-detail",
+    );
   });
 
   it("예시 데이터로 전환하고 크게 볼 수 있다", async () => {

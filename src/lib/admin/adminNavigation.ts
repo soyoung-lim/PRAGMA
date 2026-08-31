@@ -27,6 +27,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
     header: "2. 학습 콘텐츠 제작",
     items: [
+      { to: "/admin/authentic", label: "원자료 분석·미션 재료" },
       { to: "/admin/generator", label: "시나리오 개별 생성" },
       { to: "/admin/batch", label: "시나리오 배치 생성" },
       { to: "/admin/library", label: "시나리오 라이브러리" },
@@ -42,7 +43,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     header: "3. 수업 운영",
     items: [
       { to: "/admin/composer", label: "15주 수업 편성·강의계획서" },
-      { to: "/admin/package", label: "수업자료·교실 화면" },
+      { to: "/admin/package", label: "주차별 수업 운영·교실 화면" },
       { to: "/admin/class-responses", label: "실시간 학급 응답" },
       { to: "/admin/learners", label: "학습자 승인·관리" },
       { to: "/admin/data-backup", label: "수업 데이터 백업·복원" },
@@ -61,7 +62,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 
 const PRIORITY_LABELS = [
   "콘텐츠 검수·확정",
-  "수업자료·교실 화면",
+  "주차별 수업 운영·교실 화면",
   "학습자 승인·관리",
   "학습 수행 기록",
   "콘텐츠 개선 후보",
