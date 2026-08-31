@@ -290,7 +290,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="mx-auto flex w-full max-w-[640px] flex-col">
       <div ref={stepTopRef}>
         <StepIndicator step={step} />
       </div>
