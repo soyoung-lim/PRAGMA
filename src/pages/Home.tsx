@@ -92,32 +92,30 @@ const Home = () => {
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
             className={cn(
-              "fixed left-[50%] top-[50%] z-50 w-[95vw] max-w-3xl translate-x-[-50%] translate-y-[-50%] overflow-hidden rounded-[22px] border border-[#D9D2BC] bg-[#F8F6EE] shadow-2xl",
+              "fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100vh-1.5rem)] w-[96vw] max-w-5xl translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-[20px] border border-[#D9D2BC] bg-[#F8F6EE] shadow-2xl",
               "duration-300",
               "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
               "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
             )}
           >
-            <div className="relative overflow-hidden bg-[#15202B] px-7 py-6 text-white sm:px-8">
-              <div className="absolute -right-16 -top-20 h-52 w-52 rounded-full border border-white/10" />
-              <div className="absolute -right-5 -top-10 h-36 w-36 rounded-full border border-[#F4D94E]/25" />
-              <div className="relative flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 text-[11px] font-semibold tracking-[0.2em] text-white/70">
-                  <span className="h-6 w-1 rounded-full bg-[#F4D94E]" />
+            <div className="shrink-0 border-b border-[#D9D2BC] bg-[#F3EDDD] px-6 py-4 text-[#1A2430] sm:px-8">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2.5 text-[10px] font-semibold tracking-[0.18em] text-[#59616B]">
+                  <span className="h-5 w-1 rounded-full bg-[#D2B438]" />
                   PRAGMA LEARNING PROFILE
                 </div>
-                <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/75">
+                <span className="rounded-full border border-[#CDC4AB] bg-white/45 px-3 py-1 text-[11px] font-medium text-[#59616B]">
                   약 3분
                 </span>
               </div>
-              <DialogPrimitive.Title className="relative mt-5 text-2xl font-bold tracking-tight">
+              <DialogPrimitive.Title className="mt-2.5 text-xl font-bold tracking-tight sm:text-[22px]">
                 나에게 맞는 한·중 통번역 학습을 시작합니다
               </DialogPrimitive.Title>
-              <DialogPrimitive.Description className="relative mt-2 text-sm leading-6 text-white/65">
+              <DialogPrimitive.Description className="mt-1 text-xs leading-5 text-[#6A7078] sm:text-[13px]">
                 입력한 정보는 학습 환경을 이해하고 적절한 수업 지원을 제공하는 데 사용됩니다.
               </DialogPrimitive.Description>
             </div>
-            <div className="max-h-[70vh] overflow-y-auto px-7 py-6 sm:px-8">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4 sm:px-8">
               <ProfileWizardForm
                 onCompleted={() => {
                   setProfileOpen(false);

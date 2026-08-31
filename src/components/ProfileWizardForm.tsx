@@ -29,7 +29,7 @@ const AFFILIATION_OPTIONS = [
 // 화면에서 '접하기/사용하기'로 묶지 않는다(문항 제목이 이미 그 뜻). 분석 시 코드로 묶는다.
 
 const inputCls =
-  "mt-2 block w-full rounded-xl border border-[#D9D2BC] bg-white px-4 py-3 text-sm shadow-sm transition focus-visible:border-[#C8AB21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4D94E]/35";
+  "mt-1.5 block w-full rounded-xl border border-[#D9D2BC] bg-white px-4 py-2.5 text-sm shadow-sm transition focus-visible:border-[#C8AB21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4D94E]/35";
 
 const RadioGroup = ({
   name,
@@ -42,11 +42,11 @@ const RadioGroup = ({
   onChange: (v: string) => void;
   options: string[];
 }) => (
-  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+  <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
     {options.map((opt) => (
       <label
         key={opt}
-        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${
+        className={`flex min-h-10 cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-sm transition ${
           value === opt
             ? "border-[#C8AB21] bg-[#FFF9D9] shadow-[0_0_0_1px_rgba(200,171,33,0.15)]"
             : "border-[#DDD7C6] bg-white hover:border-[#BEB6A0] hover:bg-[#FFFEFA]"
@@ -71,17 +71,19 @@ const CodedRadioGroup = ({
   value,
   onChange,
   options,
+  dense = false,
 }: {
   name: string;
   value: string;
   onChange: (code: string) => void;
   options: CodedOption[];
+  dense?: boolean;
 }) => (
-  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+  <div className={`mt-1.5 grid gap-1.5 sm:grid-cols-2 ${dense ? "lg:grid-cols-4" : ""}`}>
     {options.map((opt) => (
       <label
         key={opt.code}
-        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${
+        className={`flex min-h-10 cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-sm transition ${
           value === opt.code
             ? "border-[#C8AB21] bg-[#FFF9D9] shadow-[0_0_0_1px_rgba(200,171,33,0.15)]"
             : "border-[#DDD7C6] bg-white hover:border-[#BEB6A0] hover:bg-[#FFFEFA]"
@@ -106,12 +108,14 @@ const CheckboxGroup = ({
   onChange,
   options,
   exclusive,
+  dense = false,
 }: {
   value: string[];
   onChange: (codes: string[]) => void;
   options: CodedOption[];
   /** 이 코드를 고르면 나머지가 해제되고, 나머지를 고르면 이것이 해제된다. */
   exclusive?: string;
+  dense?: boolean;
 }) => {
   const toggle = (code: string) => {
     if (exclusive && code === exclusive) {
@@ -124,11 +128,11 @@ const CheckboxGroup = ({
     onChange(next);
   };
   return (
-    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+    <div className={`mt-1.5 grid gap-1.5 sm:grid-cols-2 ${dense ? "lg:grid-cols-4" : ""}`}>
       {options.map((opt) => (
         <label
           key={opt.code}
-          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${
+          className={`flex min-h-10 cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-sm transition ${
             value.includes(opt.code)
               ? "border-[#C8AB21] bg-[#FFF9D9] shadow-[0_0_0_1px_rgba(200,171,33,0.15)]"
               : "border-[#DDD7C6] bg-white hover:border-[#BEB6A0] hover:bg-[#FFFEFA]"
@@ -169,35 +173,24 @@ const Field = ({
   </div>
 );
 
+const STEP_LABEL: Record<Step, string> = {
+  1: "기본 정보",
+  2: "언어·학습 경험",
+  3: "학습 기록·연구 동의",
+};
+
 const StepIndicator = ({ step }: { step: Step }) => (
-  <div className="mb-7 grid grid-cols-3 overflow-hidden rounded-xl border border-[#DDD7C6] bg-white/75 text-xs shadow-sm">
-    {[1, 2, 3].map((n) => {
-      const active = step === (n as Step);
-      const done = step > n;
-      return (
-        <div
-          key={n}
-          className={`flex min-w-0 items-center gap-2 border-r border-[#E8E2D3] px-3 py-3 last:border-r-0 ${
-            active ? "bg-[#FFF9D9]" : ""
-          }`}
-        >
-          <div
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[12px] font-bold ${
-              active
-                ? "border-[#E0C329] bg-[#F4D94E] text-[#15202B]"
-                : done
-                ? "border-[#15202B] bg-background text-[#15202B]"
-                : "border-border bg-background text-muted-foreground"
-            }`}
-          >
-            {n}
-          </div>
-          <span className={`truncate ${active ? "font-semibold text-[#15202B]" : "text-muted-foreground"}`}>
-            {n === 1 ? "나를 소개해요" : n === 2 ? "언어·학습 경험" : "학습 기록·연구 참여"}
-          </span>
-        </div>
-      );
-    })}
+  <div className="mb-4" aria-label={`3단계 중 ${step}단계: ${STEP_LABEL[step]}`}>
+    <div className="mb-2 flex items-center justify-between gap-4 text-xs">
+      <span className="font-semibold text-[#1A2430]">{STEP_LABEL[step]}</span>
+      <span className="font-medium tabular-nums text-[#6A7078]">{step} / 3</span>
+    </div>
+    <div className="h-1 overflow-hidden rounded-full bg-[#E3DDCD]">
+      <div
+        className="h-full rounded-full bg-[#D2B438] transition-[width] duration-200"
+        style={{ width: `${(step / 3) * 100}%` }}
+      />
+    </div>
   </div>
 );
 
@@ -300,7 +293,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
       <StepIndicator step={step} />
 
       {step === 1 && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Field label="이름" required>
             <input
               type="text"
@@ -324,7 +317,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
       )}
 
       {step === 2 && (
-        <div className="space-y-6">
+        <div className="space-y-3.5">
           <Field label="주 사용 언어" required>
             <CodedRadioGroup
               name="primary_language"
@@ -335,6 +328,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
                 setLanguageTestLevel("");
               }}
               options={PRIMARY_LANGUAGE_OPTIONS}
+              dense
             />
           </Field>
 
@@ -345,6 +339,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               value={languageTestLevel}
               onChange={setLanguageTestLevel}
               options={languageTestOptions(primaryLanguage)}
+              dense
             />
           </Field>
           )}
@@ -357,6 +352,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               value={exposureContexts}
               onChange={setExposureContexts}
               options={profileExposureOptions(targetLang)}
+              dense
             />
           </Field>
 
@@ -366,14 +362,15 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               value={tiExperience}
               onChange={setTiExperience}
               options={TI_EXPERIENCE_OPTIONS}
+              dense
             />
           </Field>
         </div>
       )}
 
       {step === 3 && (
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-[#DDD7C6] border-l-4 border-l-[#F4D94E] bg-white p-5 shadow-sm">
+        <div className="space-y-4">
+          <section className="rounded-2xl border border-[#DDD7C6] border-l-4 border-l-[#D2B438] bg-white p-4 shadow-sm">
             <h3 className="text-sm font-semibold">학습 기록 공유 <span className="text-destructive">*</span></h3>
             <label className="mt-3 flex cursor-pointer items-start gap-3 text-sm leading-6">
               <input
@@ -388,7 +385,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
             </label>
           </section>
 
-          <section className="rounded-2xl border border-[#DDD7C6] border-l-4 border-l-[#F4D94E] bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-[#DDD7C6] border-l-4 border-l-[#D2B438] bg-white p-4 shadow-sm">
             <h3 className="text-sm font-semibold">연구 활용 여부 <span className="text-destructive">*</span></h3>
             <p className="mt-2 text-sm leading-6 text-foreground">
               나의 익명 학습 기록을 통번역 학습 개선을 위한 연구에 활용하는 데 동의합니다.
@@ -402,10 +399,10 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
                 { code: "no", label: "동의하지 않습니다" },
               ]}
             />
-            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
               동의하지 않아도 수업 참여·성적·PRAGMA 이용에 불이익이 없으며, 언제든 철회할 수 있습니다.
             </p>
-            <details className="mt-3 rounded-xl bg-[#F5F2E9] px-4 py-3 text-xs leading-5 text-muted-foreground">
+            <details className="mt-2 rounded-xl bg-[#F5F2E9] px-3 py-2 text-xs leading-5 text-muted-foreground">
               <summary className="cursor-pointer font-medium text-foreground">연구 활용 안내 보기</summary>
               <div className="mt-2 space-y-1">
                 <p>활용 대상: 미션 응답, 수정 과정 및 학습 수행 기록</p>
@@ -417,7 +414,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
         </div>
       )}
 
-      <div className="sticky bottom-0 z-10 -mx-2 mt-8 flex items-center justify-between gap-3 border-t border-[#E4DECD] bg-[#F8F6EE]/95 px-2 pb-1 pt-4 backdrop-blur">
+      <div className="sticky bottom-0 z-10 -mx-1 mt-4 flex items-center justify-between gap-3 border-t border-[#E4DECD] bg-[#F8F6EE]/95 px-1 pb-0.5 pt-3 backdrop-blur">
         <button
           type="button"
           onClick={() => setStep((s) => (s > 1 ? ((s - 1) as Step) : s))}

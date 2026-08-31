@@ -24,11 +24,17 @@ describe("학습자 프로필 입력", () => {
   it("모든 학습 배경에 응답한 뒤 기록 공유와 연구 활용 여부를 선택하게 한다", async () => {
     render(<ProfileWizardForm />);
 
+    expect(screen.getByText("기본 정보")).toBeVisible();
+    expect(screen.getByText("1 / 3")).toBeVisible();
+    expect(screen.queryByText("나를 소개해요")).not.toBeInTheDocument();
+
     fireEvent.change(screen.getByPlaceholderText("실명을 입력해 주세요"), {
       target: { value: "김학습" },
     });
     fireEvent.click(screen.getByRole("radio", { name: "대학원생(박사)" }));
     fireEvent.click(screen.getByRole("button", { name: "다음" }));
+
+    expect(screen.getByText("2 / 3")).toBeVisible();
 
     expect(screen.queryByText("학습 시작 수준")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "한국어" }));
