@@ -92,30 +92,25 @@ const Home = () => {
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
             className={cn(
-              "fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100vh-1.5rem)] w-[96vw] max-w-5xl translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-[20px] border border-[#D9D2BC] bg-[#F8F6EE] shadow-2xl",
+              "fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100vh-2rem)] w-[94vw] max-w-[840px] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-[22px] border border-[#E7C7AD] bg-[#FFF9F4] shadow-2xl",
               "duration-300",
               "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
               "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
             )}
           >
-            <div className="shrink-0 border-b border-[#D9D2BC] bg-[#F3EDDD] px-6 py-4 text-[#1A2430] sm:px-8">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2.5 text-[10px] font-semibold tracking-[0.18em] text-[#59616B]">
-                  <span className="h-5 w-1 rounded-full bg-[#D2B438]" />
-                  PRAGMA LEARNING PROFILE
-                </div>
-                <span className="rounded-full border border-[#CDC4AB] bg-white/45 px-3 py-1 text-[11px] font-medium text-[#59616B]">
-                  약 3분
-                </span>
+            <div className="shrink-0 border-b border-[#E7C7AD] bg-[#FFE1C7] px-6 py-4 text-[#15202B] sm:px-7">
+              <div className="flex items-center gap-2.5 text-[10px] font-bold tracking-[0.2em] text-[#7A4A32]">
+                <span className="h-5 w-1 rounded-full bg-[#E96C2D]" />
+                PRAGMA
               </div>
-              <DialogPrimitive.Title className="mt-2.5 text-xl font-bold tracking-tight sm:text-[22px]">
-                나에게 맞는 한·중 통번역 학습을 시작합니다
+              <DialogPrimitive.Title className="mt-2 text-xl font-bold tracking-tight sm:text-[22px]">
+                학습자 프로필 설정
               </DialogPrimitive.Title>
-              <DialogPrimitive.Description className="mt-1 text-xs leading-5 text-[#6A7078] sm:text-[13px]">
-                입력한 정보는 학습 환경을 이해하고 적절한 수업 지원을 제공하는 데 사용됩니다.
+              <DialogPrimitive.Description className="sr-only">
+                수업에 필요한 학습자 정보와 학습 경험을 입력합니다.
               </DialogPrimitive.Description>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4 sm:px-8">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
               <ProfileWizardForm
                 onCompleted={() => {
                   setProfileOpen(false);

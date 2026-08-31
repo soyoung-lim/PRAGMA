@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, devStubCompleteProfile } from "@/lib/auth/useProfile";
 import {
@@ -29,7 +29,7 @@ const AFFILIATION_OPTIONS = [
 // 화면에서 '접하기/사용하기'로 묶지 않는다(문항 제목이 이미 그 뜻). 분석 시 코드로 묶는다.
 
 const inputCls =
-  "mt-1.5 block w-full rounded-xl border border-[#D9D2BC] bg-white px-4 py-2.5 text-sm shadow-sm transition focus-visible:border-[#C8AB21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4D94E]/35";
+  "mt-2 block w-full rounded-xl border border-[#D9C9BC] bg-white px-4 py-3 text-sm shadow-sm transition focus-visible:border-[#E96C2D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E96C2D]/20";
 
 const RadioGroup = ({
   name,
@@ -42,14 +42,14 @@ const RadioGroup = ({
   onChange: (v: string) => void;
   options: string[];
 }) => (
-  <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+  <div className="mt-2 grid gap-2 sm:grid-cols-2">
     {options.map((opt) => (
       <label
         key={opt}
-        className={`flex min-h-10 cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-sm transition ${
+        className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-4 py-2.5 text-sm transition ${
           value === opt
-            ? "border-[#C8AB21] bg-[#FFF9D9] shadow-[0_0_0_1px_rgba(200,171,33,0.15)]"
-            : "border-[#DDD7C6] bg-white hover:border-[#BEB6A0] hover:bg-[#FFFEFA]"
+            ? "border-[#E96C2D] bg-[#FFF0E5] shadow-[0_0_0_1px_rgba(233,108,45,0.12)]"
+            : "border-[#E2D4C8] bg-white hover:border-[#E7AE87] hover:bg-[#FFF8F2]"
         }`}
       >
         <input
@@ -58,7 +58,7 @@ const RadioGroup = ({
           value={opt}
           checked={value === opt}
           onChange={() => onChange(opt)}
-          className="h-4 w-4 accent-[#15202B]"
+          className="h-4 w-4 accent-[#E96C2D]"
         />
         <span>{opt}</span>
       </label>
@@ -71,22 +71,20 @@ const CodedRadioGroup = ({
   value,
   onChange,
   options,
-  dense = false,
 }: {
   name: string;
   value: string;
   onChange: (code: string) => void;
   options: CodedOption[];
-  dense?: boolean;
 }) => (
-  <div className={`mt-1.5 grid gap-1.5 sm:grid-cols-2 ${dense ? "lg:grid-cols-4" : ""}`}>
+  <div className="mt-2 grid gap-2 sm:grid-cols-2">
     {options.map((opt) => (
       <label
         key={opt.code}
-        className={`flex min-h-10 cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-sm transition ${
+        className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-4 py-2.5 text-sm transition ${
           value === opt.code
-            ? "border-[#C8AB21] bg-[#FFF9D9] shadow-[0_0_0_1px_rgba(200,171,33,0.15)]"
-            : "border-[#DDD7C6] bg-white hover:border-[#BEB6A0] hover:bg-[#FFFEFA]"
+            ? "border-[#E96C2D] bg-[#FFF0E5] shadow-[0_0_0_1px_rgba(233,108,45,0.12)]"
+            : "border-[#E2D4C8] bg-white hover:border-[#E7AE87] hover:bg-[#FFF8F2]"
         }`}
       >
         <input
@@ -95,7 +93,7 @@ const CodedRadioGroup = ({
           value={opt.code}
           checked={value === opt.code}
           onChange={() => onChange(opt.code)}
-          className="h-4 w-4 accent-[#15202B]"
+          className="h-4 w-4 accent-[#E96C2D]"
         />
         <span>{opt.label}</span>
       </label>
@@ -108,14 +106,12 @@ const CheckboxGroup = ({
   onChange,
   options,
   exclusive,
-  dense = false,
 }: {
   value: string[];
   onChange: (codes: string[]) => void;
   options: CodedOption[];
   /** 이 코드를 고르면 나머지가 해제되고, 나머지를 고르면 이것이 해제된다. */
   exclusive?: string;
-  dense?: boolean;
 }) => {
   const toggle = (code: string) => {
     if (exclusive && code === exclusive) {
@@ -128,21 +124,21 @@ const CheckboxGroup = ({
     onChange(next);
   };
   return (
-    <div className={`mt-1.5 grid gap-1.5 sm:grid-cols-2 ${dense ? "lg:grid-cols-4" : ""}`}>
+    <div className="mt-2 grid gap-2 sm:grid-cols-2">
       {options.map((opt) => (
         <label
           key={opt.code}
-          className={`flex min-h-10 cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-sm transition ${
+          className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-4 py-2.5 text-sm transition ${
             value.includes(opt.code)
-              ? "border-[#C8AB21] bg-[#FFF9D9] shadow-[0_0_0_1px_rgba(200,171,33,0.15)]"
-              : "border-[#DDD7C6] bg-white hover:border-[#BEB6A0] hover:bg-[#FFFEFA]"
+              ? "border-[#E96C2D] bg-[#FFF0E5] shadow-[0_0_0_1px_rgba(233,108,45,0.12)]"
+              : "border-[#E2D4C8] bg-white hover:border-[#E7AE87] hover:bg-[#FFF8F2]"
           }`}
         >
           <input
             type="checkbox"
             checked={value.includes(opt.code)}
             onChange={() => toggle(opt.code)}
-            className="h-4 w-4 accent-[#15202B]"
+            className="h-4 w-4 accent-[#E96C2D]"
           />
           <span>{opt.label}</span>
         </label>
@@ -180,14 +176,14 @@ const STEP_LABEL: Record<Step, string> = {
 };
 
 const StepIndicator = ({ step }: { step: Step }) => (
-  <div className="mb-4" aria-label={`3단계 중 ${step}단계: ${STEP_LABEL[step]}`}>
-    <div className="mb-2 flex items-center justify-between gap-4 text-xs">
+  <div className="mb-6" aria-label={`3단계 중 ${step}단계: ${STEP_LABEL[step]}`}>
+    <div className="mb-2.5 flex items-center justify-between gap-4 text-xs">
       <span className="font-semibold text-[#1A2430]">{STEP_LABEL[step]}</span>
       <span className="font-medium tabular-nums text-[#6A7078]">{step} / 3</span>
     </div>
-    <div className="h-1 overflow-hidden rounded-full bg-[#E3DDCD]">
+    <div className="h-1 overflow-hidden rounded-full bg-[#F1D7C4]">
       <div
-        className="h-full rounded-full bg-[#D2B438] transition-[width] duration-200"
+        className="h-full rounded-full bg-[#E96C2D] transition-[width] duration-200"
         style={{ width: `${(step / 3) * 100}%` }}
       />
     </div>
@@ -202,6 +198,11 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
   const { profile, isDevStub, refresh } = useProfile();
 
   const [step, setStep] = useState<Step>(1);
+  const stepTopRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    stepTopRef.current?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+  }, [step]);
 
   // Screen 1
   const [fullName, setFullName] = useState("");
@@ -290,10 +291,12 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
 
   return (
     <div className="flex flex-col">
-      <StepIndicator step={step} />
+      <div ref={stepTopRef}>
+        <StepIndicator step={step} />
+      </div>
 
       {step === 1 && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <Field label="이름" required>
             <input
               type="text"
@@ -302,6 +305,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               maxLength={100}
               className={inputCls}
               placeholder="실명을 입력해 주세요"
+              autoFocus
             />
           </Field>
 
@@ -317,7 +321,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
       )}
 
       {step === 2 && (
-        <div className="space-y-3.5">
+        <div className="space-y-5">
           <Field label="주 사용 언어" required>
             <CodedRadioGroup
               name="primary_language"
@@ -328,7 +332,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
                 setLanguageTestLevel("");
               }}
               options={PRIMARY_LANGUAGE_OPTIONS}
-              dense
             />
           </Field>
 
@@ -339,7 +342,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               value={languageTestLevel}
               onChange={setLanguageTestLevel}
               options={languageTestOptions(primaryLanguage)}
-              dense
             />
           </Field>
           )}
@@ -352,7 +354,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               value={exposureContexts}
               onChange={setExposureContexts}
               options={profileExposureOptions(targetLang)}
-              dense
             />
           </Field>
 
@@ -362,7 +363,6 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
               value={tiExperience}
               onChange={setTiExperience}
               options={TI_EXPERIENCE_OPTIONS}
-              dense
             />
           </Field>
         </div>
@@ -370,14 +370,14 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
 
       {step === 3 && (
         <div className="space-y-4">
-          <section className="rounded-2xl border border-[#DDD7C6] border-l-4 border-l-[#D2B438] bg-white p-4 shadow-sm">
+          <section className="rounded-2xl border border-[#E2D4C8] border-l-4 border-l-[#E96C2D] bg-white p-5 shadow-sm">
             <h3 className="text-sm font-semibold">학습 기록 공유 <span className="text-destructive">*</span></h3>
             <label className="mt-3 flex cursor-pointer items-start gap-3 text-sm leading-6">
               <input
                 type="checkbox"
                 checked={classRecordConsent}
                 onChange={(e) => setClassRecordConsent(e.target.checked)}
-                className="mt-1 h-4 w-4 accent-[#15202B]"
+                className="mt-1 h-4 w-4 accent-[#E96C2D]"
               />
               <span>
                 수업 운영을 위해 담당 교수자가 나의 학습 기록을 확인하는 데 동의합니다.
@@ -385,7 +385,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
             </label>
           </section>
 
-          <section className="rounded-2xl border border-[#DDD7C6] border-l-4 border-l-[#D2B438] bg-white p-4 shadow-sm">
+          <section className="rounded-2xl border border-[#E2D4C8] border-l-4 border-l-[#E96C2D] bg-white p-5 shadow-sm">
             <h3 className="text-sm font-semibold">연구 활용 여부 <span className="text-destructive">*</span></h3>
             <p className="mt-2 text-sm leading-6 text-foreground">
               나의 익명 학습 기록을 통번역 학습 개선을 위한 연구에 활용하는 데 동의합니다.
@@ -402,7 +402,7 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               동의하지 않아도 수업 참여·성적·PRAGMA 이용에 불이익이 없으며, 언제든 철회할 수 있습니다.
             </p>
-            <details className="mt-2 rounded-xl bg-[#F5F2E9] px-3 py-2 text-xs leading-5 text-muted-foreground">
+            <details className="mt-2 rounded-xl bg-[#FFF3E9] px-3 py-2 text-xs leading-5 text-muted-foreground">
               <summary className="cursor-pointer font-medium text-foreground">연구 활용 안내 보기</summary>
               <div className="mt-2 space-y-1">
                 <p>활용 대상: 미션 응답, 수정 과정 및 학습 수행 기록</p>
@@ -414,12 +414,12 @@ export const ProfileWizardForm = ({ onCompleted }: Props) => {
         </div>
       )}
 
-      <div className="sticky bottom-0 z-10 -mx-1 mt-4 flex items-center justify-between gap-3 border-t border-[#E4DECD] bg-[#F8F6EE]/95 px-1 pb-0.5 pt-3 backdrop-blur">
+      <div className="sticky bottom-0 z-10 -mx-1 mt-6 flex items-center justify-between gap-3 border-t border-[#E7D7CB] bg-[#FFF9F4]/95 px-1 pb-0.5 pt-4 backdrop-blur">
         <button
           type="button"
           onClick={() => setStep((s) => (s > 1 ? ((s - 1) as Step) : s))}
           disabled={step === 1 || busy}
-          className="rounded-xl border border-[#D4CEBD] bg-white px-5 py-2.5 text-sm font-semibold text-[#15202B] transition hover:bg-[#F7F4EA] disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-xl border border-[#DCCDC1] bg-white px-5 py-2.5 text-sm font-semibold text-[#15202B] transition hover:bg-[#FFF1E6] disabled:cursor-not-allowed disabled:opacity-50"
         >
           이전
         </button>
