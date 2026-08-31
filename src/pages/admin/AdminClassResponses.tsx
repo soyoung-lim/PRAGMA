@@ -28,7 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 const AdminClassResponses = () => {
   const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
-  const [demo, setDemo] = useState(false);
+  const [demo, setDemo] = useState(true);
   const [projector, setProjector] = useState(false);
   const projectorRef = useRef<HTMLDivElement>(null);
   const courseId = params.get("courseId") ?? "";
@@ -194,8 +194,8 @@ const AdminClassResponses = () => {
           </label>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Button size="sm" variant={!demo ? "default" : "outline"} onClick={() => setDemo(false)}>실제 데이터</Button>
-          <Button size="sm" variant={demo ? "default" : "outline"} onClick={() => setDemo(true)}>예시 데이터 보기</Button>
+          <Button size="sm" variant={!demo ? "default" : "outline"} aria-pressed={!demo} onClick={() => setDemo(false)}>실제 데이터</Button>
+          <Button size="sm" variant={demo ? "default" : "outline"} aria-pressed={demo} onClick={() => setDemo(true)}>예시 데이터 보기</Button>
           {!demo && <span className="ml-1 text-xs text-muted-foreground">5초마다 자동 갱신</span>}
           {courseId && week && <Button size="sm" variant="ghost" className="ml-auto" asChild>
             <Link to={`/admin/package?courseId=${encodeURIComponent(courseId)}&weekNo=${week.week_no}#weekly-material-detail`}>

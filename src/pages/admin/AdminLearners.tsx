@@ -141,6 +141,9 @@ const fmtUpdated = (iso: string | null | undefined) => {
   });
 };
 
+const learnerInitial = (row: Pick<LearnerRow, "full_name" | "email">) =>
+  (row.full_name?.trim().charAt(0) || row.email?.trim().charAt(0) || "?").toUpperCase();
+
 /** 준비 상태를 있음/없음 텍스트 대신 한눈에 대비되는 칩으로 보여 준다. */
 const ReadyChip = ({ ready, on, off }: { ready: boolean; on: string; off: string }) => (
   <span
@@ -231,11 +234,11 @@ const Page = () => {
       title="학습자 승인·관리"
       description="학습자 프로필을 확인해 승인·반려·비활성을 처리하고, 각 학습자의 수행 기록으로 바로 이동합니다."
     >
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4 rounded-xl border border-border bg-white px-4 py-3.5">
         <label className="text-xs font-medium text-muted-foreground">
           상태 필터
           <Select value={filter} onValueChange={(v) => setFilter(v as FilterValue)}>
-            <SelectTrigger className="mt-1 h-9 w-[180px] bg-white font-normal text-foreground">
+            <SelectTrigger className="mt-1 h-10 w-[220px] bg-white font-normal text-foreground">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -247,7 +250,7 @@ const Page = () => {
             </SelectContent>
           </Select>
         </label>
-        <span className="text-sm text-muted-foreground">
+        <span className="rounded-full bg-[#F3F0E4] px-3 py-1.5 text-sm font-semibold text-[#5B5446]">
           {rows === null
             ? "불러오는 중…"
             : filter === "all"
@@ -256,16 +259,24 @@ const Page = () => {
         </span>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        <Table>
-          <TableHeader>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_30px_rgba(21,32,43,0.05)]">
+        <Table className="min-w-[860px] table-fixed">
+          <colgroup>
+            <col style={{ width: "26%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "20%" }} />
+          </colgroup>
+          <TableHeader className="bg-[#F7F5EE]">
             <TableRow>
-              <TableHead className="w-[30%]">학습자</TableHead>
-              <TableHead>소속/신분</TableHead>
-              <TableHead>상태</TableHead>
-              <TableHead>프로필 · 익명 ID</TableHead>
-              <TableHead className="text-right">업데이트</TableHead>
-              <TableHead className="text-right">관리</TableHead>
+              <TableHead className="h-14 px-5 text-xs font-bold text-[#5F625F]">학습자</TableHead>
+              <TableHead className="h-14 px-3 text-xs font-bold text-[#5F625F]">소속/신분</TableHead>
+              <TableHead className="h-14 px-3 text-xs font-bold text-[#5F625F]">상태</TableHead>
+              <TableHead className="h-14 px-3 text-xs font-bold text-[#5F625F]">프로필 · 익명 ID</TableHead>
+              <TableHead className="h-14 px-3 text-right text-xs font-bold text-[#5F625F]">업데이트</TableHead>
+              <TableHead className="h-14 px-5 text-right text-xs font-bold text-[#5F625F]">관리</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -283,42 +294,49 @@ const Page = () => {
               </TableRow>
             ) : (
               filtered.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="py-2.5">
-                    <div className="font-medium leading-tight text-foreground">{r.full_name ?? "—"}</div>
-                    <div className="mt-0.5 text-xs leading-tight text-muted-foreground">{r.email ?? "—"}</div>
+                <TableRow key={r.id} className="h-[88px] hover:bg-[#FBFAF5]">
+                  <TableCell className="px-5 py-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#15202B] text-sm font-bold text-white">
+                        {learnerInitial(r)}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold leading-5 text-foreground">{r.full_name ?? "—"}</div>
+                        <div className="mt-0.5 truncate text-xs leading-5 text-muted-foreground" title={r.email ?? undefined}>{r.email ?? "—"}</div>
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="px-3 py-4 text-sm leading-5 text-[#343B42]">
                     {firstOf(r.affiliation, r.affiliation_or_status) ?? "—"}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={STATUS_VARIANT[r.approval_status]} className="whitespace-nowrap">
+                  <TableCell className="px-3 py-4">
+                    <Badge variant={STATUS_VARIANT[r.approval_status]} className="min-w-[68px] justify-center whitespace-nowrap">
                       {STATUS_LABEL[r.approval_status]}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
+                  <TableCell className="px-3 py-4">
+                    <div className="flex min-h-7 flex-wrap items-center gap-1.5">
                       <ReadyChip ready={!!r.profile_completed} on="프로필 완료" off="프로필 미완료" />
                       <ReadyChip ready={!!r.anonymous_participant_id} on="익명 ID" off="익명 ID 없음" />
                     </div>
                   </TableCell>
-                  <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
+                  <TableCell className="whitespace-nowrap px-3 py-4 text-right text-xs tabular-nums text-muted-foreground">
                     {fmtUpdated(r.updated_at ?? r.created_at)}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1.5">
+                  <TableCell className="px-5 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
                       {traceQueryFor(r) && (
                         <Button
                           size="sm"
                           asChild
-                          className="bg-[#15202B] text-white hover:bg-[#243447]"
+                          className="min-w-[108px] bg-[#15202B] text-white hover:bg-[#243447]"
                         >
                           <Link to={`/admin/decision-traces?q=${encodeURIComponent(traceQueryFor(r)!)}`}>
                             수행 기록 →
                           </Link>
                         </Button>
                       )}
-                      <Button size="sm" variant="outline" onClick={() => setSelectedId(r.id)}>
+                      <Button size="sm" variant="outline" className="min-w-[58px]" onClick={() => setSelectedId(r.id)}>
                         상세
                       </Button>
                     </div>

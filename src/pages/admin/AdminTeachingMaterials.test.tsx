@@ -142,12 +142,11 @@ describe("교과목·주차 수업자료 연결", () => {
     expect(screen.getByRole("combobox", { name: "수업자료 교과목" })).toHaveValue("");
   });
 
-  it("응답 분포를 중복 렌더링하지 않고 독립 응답 보드로 연결한다", async () => {
+  it("선택 주차 상세 하단에 실시간 학급 응답 카드를 중복 표시하지 않는다", async () => {
     mount();
     await screen.findByText("2주차 목표");
-    const link = screen.getByRole("link", { name: "응답 보드 열기 →" });
-    expect(link).toHaveAttribute("href", "/admin/class-responses?courseId=course-a&weekNo=2&missionId=mission-1");
-    expect(screen.queryByText("이 주차 응답 분포")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "실시간 학급 응답" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "응답 보드 열기 →" })).not.toBeInTheDocument();
   });
 
   it("15주 운영 현황에 확정 상태와 비채점 수행 집계를 표시한다", async () => {

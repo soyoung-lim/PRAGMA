@@ -116,12 +116,26 @@ function mount() {
 }
 
 describe("실시간 학급 응답", () => {
-  it("교과목·주차·미션의 실제 완료 응답을 익명 집계한다", async () => {
+  it("실제 기록이 없을 때 예시 데이터를 기본으로 보여 주고 크게 볼 수 있다", async () => {
     mount();
-    expect(await screen.findByText("응답 2명 · 이견 제기 1건")).toBeVisible();
+    expect(await screen.findByText("응답 12명 · 이견 제기 2건")).toBeVisible();
+    expect(screen.getByText("DEMO · 예시 데이터")).toBeVisible();
+    expect(screen.getByRole("button", { name: "예시 데이터 보기" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("combobox", { name: "응답 교과목" })).toHaveValue("course-a");
     expect(screen.getByRole("combobox", { name: "응답 주차" })).toHaveValue("2");
     expect(screen.getByRole("combobox", { name: "응답 미션" })).toHaveValue("mission-1");
+    expect(mocks.releaseState).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "크게 보기" }));
+    expect(screen.getByRole("dialog", { name: "학급 응답 크게 보기" })).toBeVisible();
+    expect(screen.getByText("가장 많이 선택된 응답이 정답을 의미하지는 않습니다.")).toBeVisible();
+  });
+
+  it("실제 데이터를 선택하면 완료 응답을 익명 집계한다", async () => {
+    mount();
+    await screen.findByText("응답 12명 · 이견 제기 2건");
+    fireEvent.click(screen.getByRole("button", { name: "실제 데이터" }));
+    expect(await screen.findByText("응답 2명 · 이견 제기 1건")).toBeVisible();
     expect(screen.queryByText(/private-learner/)).not.toBeInTheDocument();
     expect(screen.queryByText(/private dissent/)).not.toBeInTheDocument();
     expect(screen.getByLabelText("응답 공개 단계")).toHaveTextContent("1 · 응답 수집");
@@ -130,16 +144,6 @@ describe("실시간 학급 응답", () => {
       "href",
       "/admin/package?courseId=course-a&weekNo=2#weekly-material-detail",
     );
-  });
-
-  it("예시 데이터로 전환하고 크게 볼 수 있다", async () => {
-    mount();
-    await screen.findByText("응답 2명 · 이견 제기 1건");
-    fireEvent.click(screen.getByRole("button", { name: "예시 데이터 보기" }));
-    expect(await screen.findByText("응답 12명 · 이견 제기 2건")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "크게 보기" }));
-    expect(screen.getByRole("dialog", { name: "학급 응답 크게 보기" })).toBeVisible();
-    expect(screen.getByText("가장 많이 선택된 응답이 정답을 의미하지는 않습니다.")).toBeVisible();
   });
 });
 

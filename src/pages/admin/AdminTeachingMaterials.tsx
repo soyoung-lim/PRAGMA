@@ -304,19 +304,6 @@ const AdminTeachingMaterials = () => {
           <WeeklyInstructorNotes week={week} direction={course.outline.language_direction} missions={missionNotes.data ?? []} />
         </> : !projectorOpen && <WeeklyMaterialDocument material={material} />}
         {!projectorOpen && <section className="rounded-xl border bg-white p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="font-semibold">실시간 학급 응답</h2>
-              <p className="mt-1 text-xs text-muted-foreground">문항별 익명 분포를 확인하고 교실 화면으로 크게 보여 줍니다.</p>
-            </div>
-            <Button variant="outline" asChild>
-              <Link to={`/admin/class-responses?courseId=${encodeURIComponent(courseId)}&weekNo=${week.week_no}${missionIds[0] ? `&missionId=${encodeURIComponent(missionIds[0])}` : ""}`}>
-                응답 보드 열기 →
-              </Link>
-            </Button>
-          </div>
-        </section>}
-        {!projectorOpen && <section className="rounded-xl border bg-white p-4">
           <h2 className="font-semibold">연결된 실습</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {material.missions.map((mission) => <div key={mission.id} className="flex gap-1.5">
