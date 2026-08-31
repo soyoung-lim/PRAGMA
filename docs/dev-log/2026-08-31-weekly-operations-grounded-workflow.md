@@ -39,6 +39,7 @@
 - 실제 학습자 기록이 없는 현재 시연 조건에 맞춰 `/admin/class-responses`는 DEMO 예시 데이터를 기본으로 표시한다. `실제 데이터`를 명시적으로 선택해야만 기존 응답·공개 상태 쿼리를 시작한다.
 - `/admin/learners`는 6개 열에 명시적 비율을 적용하고 학습자 식별 영역·소속·상태·프로필·업데이트·관리 동작의 패딩과 수직 정렬을 통일했다. 긴 이메일은 행 높이를 깨지 않도록 줄임 표시하고, 합성 2인 데이터로 데스크톱 화면과 가로 넘침 부재를 확인했다.
 - `/admin/learners`의 단독 상태 필터를 제거하고 표 헤더 안에 학습자·소속/신분·상태 결합 필터를 배치했다. 상태 선택지는 전체·승인 대기·승인 완료·반려 처리로 간결화하고, 불필요한 이름 이니셜 원을 삭제했으며 승인 완료 배지는 녹색 계열로 바꿔 검정색 수행 기록 CTA와 시각적으로 분리했다.
+- 학습자 표 교정 커밋 `6aa0eb2`를 원격 기능 브랜치에 푸시하고 Railway production deployment `e001e292-50f6-41d5-b66a-cce126ab6341`로 배포했다. 상태는 `SUCCESS`, image digest는 `sha256:758c01beca8cce3b4257442fd71a27ee1095cefc50a3a9af75c428095f2cdb0f`이며 운영 `/admin/learners`가 HTTP 200을 반환했다.
 - 관리자 세 화면의 표적 테스트 10개, typecheck와 production build가 통과했다. 생성·DB·평가·공개 계약은 변경하지 않았다.
 - 후속 UI 변경을 `87726c4`로 원격 기능 브랜치에 푸시하고 Railway production deployment `b87c49c8-8f7c-4380-9bfb-a57efa935d49`로 배포했다. 상태는 `SUCCESS`, image digest는 `sha256:c8f5de78e652b4657d887f192923687f052c8cfac241a7fa53d14da7fbb35f85`이며 변경된 세 관리자 경로가 모두 HTTP 200을 반환했다.
 
