@@ -24,10 +24,17 @@
 - 전체 회귀: 103 files, **628 tests 통과**, 3 files·9 tests는 기존 조건부 생성/원격 테스트로 skip.
 - `npm.cmd run typecheck` 통과.
 - `npm.cmd run build` 통과. 공용 검수 도메인 번들도 최신 상태로 확인됐다. 빌드는 CSS 구문·대형 chunk 경고를 출력했지만 실패하지 않았다.
-- 로컬 브라우저에서 관리자 메뉴, 빈 교과목 상태, `/admin/class-responses` DEMO 분포, `/admin/authentic` 4단계 흐름을 확인했다. 실제 관리자 계정의 운영 교과목 조회·DB 쓰기·배포는 수행하지 않았다.
+- 로컬 브라우저에서 관리자 메뉴, 빈 교과목 상태, `/admin/class-responses` DEMO 분포, `/admin/authentic` 4단계 흐름을 확인했다. 실제 관리자 계정의 운영 교과목 조회와 DB 쓰기는 수행하지 않았다.
+
+## 커밋·푸시·운영 배포
+
+- 기능 변경을 `dd61788934509b595ca3be98797d3f2a1f097870` (`feat(admin): connect weekly operations workflow`)으로 커밋하고 `origin/codex/judgment-production-design-2026-08-30`에 푸시했다.
+- 깨끗한 기능 커밋을 Railway `PRAGMA` production 서비스에 직접 업로드했다. deployment `9319d731-52e9-4d7c-9602-10e5e0592a3f`는 `SUCCESS`·`RUNNING`, instance `396d962b-b0c4-4911-ac92-296ac66b3197`, image digest `sha256:a882aa770124ab4d6667b44d514ba66b474562e7a6f8a6000b17afe01e9e760a`였다.
+- `https://pragma.up.railway.app/`, `/admin/package`, `/admin/class-responses`, `/admin/authentic`은 모두 HTTP 200을 반환했다. 운영 브라우저의 `/admin/authentic`은 인증 게이트에 따라 `/admin-login`으로 이동했고 로그인 화면 렌더링과 콘솔 오류 0건을 확인했다.
+- Railway 직접 업로드 메타데이터에는 commit hash가 없으므로, 배포 소스의 Git 근거는 업로드 직전 clean HEAD `dd61788`과 원격 기능 브랜치로 기록한다. 실제 관리자 인증 뒤 교과목·학습자 기록 종단과 DB 쓰기는 수행하지 않았다.
 
 ## 한계와 후속
 
 - 15주 자료 승인 확인은 현행 승인 조회를 읽기 전용으로 호출한다. 대규모 강좌 수가 생기면 배치 조회를 별도 검토한다.
 - `완료`는 현재 그 주차에 편성돼 학습자에게 열 수 있는 미션을 모두 완료한 관찰 학습자 수다. 수강 등록률·성취도·점수가 아니다.
-- 운영 배포와 실제 교과목·학습자 기록 종단 확인은 사용자 승인 후 별도 수행한다.
+- 운영 배포는 완료했다. 실제 관리자 인증 뒤 교과목·학습자 기록 종단 확인은 후속 범위다.
