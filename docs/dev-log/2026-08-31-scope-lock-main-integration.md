@@ -21,6 +21,11 @@
   전체 112개 파일 680 tests를 통과했다. 생성·원격 전용 3개 파일 9 tests는 기존 설정대로
   skip됐다. 테스트와 typecheck를 동시에 돌린 시도에서는 CPU 경합으로 UI 5초 timeout이
   발생했지만, 표준 전체 테스트를 단독 재실행하자 모두 통과했다.
+- 첫 production build는 `contentReviewDomain.ts`와 Edge용 `domain.generated.mjs`가 다르다는
+  stale-bundle 게이트에서 중단됐다. `npm run review:bundle`로 정식 생성물을 갱신한 뒤 같은
+  검사를 포함한 `npm run build`를 재실행해 통과했다. 프롬프트 스냅샷과 pack attestation은
+  깨끗한 병합 커밋 `d4d5200`을 source commit으로 기록하며, 생성 산출물 관련 3개 파일
+  33 tests도 추가로 통과했다.
 - 이번 작업에서는 DB migration 적용, Edge Function 배포, 콘텐츠 생성·승격, 기존 worktree 삭제를
   수행하지 않았다. 연구적으로 새로운 설계 결정을 추가한 작업은 아니어서 별도 decision/iteration은
   만들지 않고, 양쪽 브랜치에 이미 있던 research trail과 증거를 충돌 없이 보존했다.
