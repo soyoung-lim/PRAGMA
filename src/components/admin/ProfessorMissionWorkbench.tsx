@@ -122,7 +122,7 @@ export function ProfessorMissionWorkbench({
           {itemTexts.map((text, itemIndex) => (
             <label key={itemIndex} className="block">
               <span className="mb-1 block font-medium">
-                MPJ {itemIndex + 1} · {ITEM_LABELS[itemIndex] ?? "문항"}
+                MJT {itemIndex + 1} · {ITEM_LABELS[itemIndex] ?? "문항"}
               </span>
               <Textarea
                 className="min-h-52 font-mono text-[11px] leading-4"

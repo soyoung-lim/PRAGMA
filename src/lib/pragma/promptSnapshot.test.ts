@@ -34,7 +34,7 @@ describe("prompt snapshot integrity", () => {
   });
 
   it("records the versioned effective-character pilot policy", () => {
-    expect(PROMPT_SNAPSHOT.source_length_policy.version).toBe("effective_chars_v1");
+    expect(PROMPT_SNAPSHOT.source_length_policy.version).toBe("effective_chars_v2_min_warning");
     expect(PROMPT_SNAPSHOT.source_length_policy.ranges.stt_interpreting.intermediate).toEqual({
       min: 40,
       max: 60,
@@ -70,14 +70,31 @@ describe("prompt snapshot integrity", () => {
     expect(learnerSceneRepair.text).toContain("관찰 가능한 사실로 그대로 보존");
   });
 
-  it("prevents duplicate MPJ scenes and injects the fixed contrast plan", () => {
+  it("locks the R27 anchor topology and injects the fixed contrast plan", () => {
     expect(prompt("mission.system").text).toContain(
-      "5개 situation_ko는 서로 다른 구체적 사건",
+      "MJT2·3·4의 situation_ko는 Anchor A로 정확히 같아야",
     );
     const planned = prompt("mission.user.contrast_plan").text;
     expect(planned).toContain("[고정 contrast plan — 그대로 구현]");
     expect(planned).toContain('"mission_goal": "integrated_speech_act"');
     expect(planned).not.toContain("[직전 실패 출력");
+    const edgeSource = readFileSync(resolve(process.cwd(), "supabase/functions/generate-scenario/index.ts"), "utf8");
+    expect(edgeSource).toContain("targets.situationTargets.length === 0");
+    expect(edgeSource).toContain("buildNativeMpj5SituationRepairPacket");
+    expect(edgeSource).toContain("acceptedSituationReplacements");
+  });
+
+  it("records topology generation under the existing mission ledger operation", () => {
+    const edgeSource = readFileSync(resolve(process.cwd(), "supabase/functions/generate-scenario/index.ts"), "utf8");
+    const ledgerMigration = readFileSync(
+      resolve(process.cwd(), "supabase/migrations/20260825033000_mission_authoring_pipeline.sql"),
+      "utf8",
+    );
+
+    expect(edgeSource).toContain("telemetryFor('mission_generate', true, {");
+    expect(edgeSource).toContain("promptVersion: MISSION_TOPOLOGY_PROMPT_VERSION");
+    expect(edgeSource).not.toContain("telemetryFor('mission_topology', true, {");
+    expect(ledgerMigration).toContain("'mission_generate'");
   });
 
   it("locks the streamlined learner-facing MPJ contract", () => {
@@ -92,7 +109,13 @@ describe("prompt snapshot integrity", () => {
     expect(system).toContain("정확히 2개의 짧은 문장");
     expect(system).toContain("수정안은 정확히 3개");
     expect(system).toContain("is_valid=true는 정확히 1개");
+    expect(system).toContain("[MJT3·MJT5 서버 고정 candidate blueprint]");
+    expect(system).toContain('"candidate_role": "recommended_repair"');
+    expect(system).toContain('"candidate_role": "upper_boundary_adjustment"');
+    expect(system).toContain("비현실적 극단화");
     expect(prompt("quality.system").text).toContain("situation_ko 안에 자연스럽게 요약되어 있고, preceding_turn은 null인지");
+    expect(prompt("quality.system").text).toContain("대역 경계의 불확실성");
+    expect(prompt("quality.system").text).toContain("학습자 통역사 C의 지위를");
   });
 
   it("matches the current Edge source", () => {
@@ -138,8 +161,21 @@ describe("prompt snapshot integrity", () => {
       expect(releaseSource).toContain(`"${version}"`);
     }
     expect(canonicalSource).toContain("content_release_id: CURRENT_CONTENT_RELEASE_ID");
-    expect(canonicalSource).toContain("mission_item_repair_v4_exact_operations");
+    expect(canonicalSource).toContain("mission_item_repair_v10_r27_topology_context");
+    expect(canonicalSource).toContain("mission_candidate_band_v2_bounded_fallback");
+    expect(canonicalSource).toContain("quality_candidate_band_v1_boundary_crossing");
     expect(canonicalSource).toContain("operations를 빈 배열로");
+    expect(canonicalSource).toContain("replace_fix_choice_candidate");
+    expect(canonicalSource).toContain("replace_multi_judge_candidate");
+    expect(canonicalSource).toContain("blueprint-판정 일치");
+    expect(canonicalSource).toContain("0-based 경로의 intended_band 정본");
+    expect(canonicalSource).toContain("actionableRepairFindings");
+    expect(canonicalSource).toContain("실패 후보별 최소 수리 packet");
+    expect(canonicalSource).toContain("normalizedReplacement === normalizedOriginal");
+    expect(canonicalSource).toContain("candidateRepairBoundaryRule");
+    expect(canonicalSource).toContain("verified_within_anchor");
+    expect(canonicalSource).toContain("critic_self_contradiction_calibrated");
+    expect(canonicalSource).toContain("normalizedPeers.has(normalizedReplacement)");
     expect(canonicalSource).toContain("quality_relational_feedback_v2_zero_based_paths");
     expect(canonicalSource).toContain("선택권 존중/의견 존중");
     expect(canonicalSource).toContain("MPJ5=mpj_items[4]");
@@ -240,8 +276,10 @@ describe("prompt snapshot integrity", () => {
       expect(entry.text).toContain("MPJ 5문항");
       expect(entry.text).toContain("첫인상 판단 → 맥락 대비 판단 → 판단하고 고쳐보기 → 이유 찾기 → 여러 초안 비교");
       expect(entry.text).toContain("scale4 → judge3 → fix_choice → reason → multi_judge");
-      expect(entry.text).toContain("독립 Judge3는 DCT 앵커 맥락");
-      expect(entry.text).toContain("judge3는 DCT와 같은 앵커 P/D/R의 별도 사건");
+      expect(entry.text).toContain("Judge3가 Anchor A를 만들고 FixChoice·Reason은 같은 상황을 공유");
+      expect(entry.text).toContain("MJT1 X → MJT2 A → MJT3 A → MJT4 A → MJT5 Y → DCT C");
+      expect(entry.text).toContain("MJT2·3·4의 situation_ko는 Anchor A로 정확히 같아야");
+      expect(entry.text).not.toContain(`[장면 고유성] 5개 situation_ko는 서로 다른`);
       expect(entry.text).toContain("reason에는 accepted_band_codes·confidence를 만들지 마세요");
       expect(entry.text).toContain("정확히 4후보이며 **적정 대역 2개 + 조정 필요 대역 2개**");
       expect(entry.text).toContain("두 적정안은 같은 답의 재서술이 아니어야 합니다");

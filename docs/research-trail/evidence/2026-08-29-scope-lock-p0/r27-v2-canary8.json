@@ -1,0 +1,99 @@
+{
+  "evidence_id": "EVD-20260830-11",
+  "checked_at_local_date": "2026-08-30",
+  "run_id": "scope-lock-pilot-20260830-07-r27-canary8",
+  "release_id": "pragma_scope_lock_20260830_07_mjt5_dct1_r27_topology",
+  "mission_prompt_version": "mission_v5_mpj5_minidiscourse_v12_r27_topology",
+  "scope": {
+    "rule_changed": ["R27"],
+    "rules_frozen": ["R26", "R29", "all_other_R_rules"],
+    "candidate_blueprint_changed": false,
+    "relative_band_generation_changed": false,
+    "ui_changed": false,
+    "db_schema_changed": false
+  },
+  "source": {
+    "implementation_commit": "cd3b741",
+    "initial_attestation_commit": "fae3c7b",
+    "repair_guard_commit": "b332b4d",
+    "final_attestation_commit": "ff40238"
+  },
+  "deployment": {
+    "function": "generate-scenario",
+    "initial_version": 102,
+    "initial_sha256": "0759ab8f96eb126020867996971c2d0a5d1686f3078adcf7b2db130c5a75d33f",
+    "final_version": 103,
+    "final_sha256": "26b0c90ee535a59827145dcffd426c26fc8756f631b7de4f727b323ba0f59934",
+    "final_status": "ACTIVE"
+  },
+  "target_plan": {
+    "planned_cells": 8,
+    "prior_R27_failure_cells": [50, 90, 200, 210, 220, 280],
+    "additional_interpreting_cells": [80, 190],
+    "core_saved": 8
+  },
+  "first_execution": {
+    "first_pass_eligible": 2,
+    "final_eligible": 3,
+    "final_failed": 5,
+    "candidate_regeneration_operations": 3,
+    "direct_failure_causes": {
+      "R27": 3,
+      "relative_boundary_output_incomplete": 2
+    },
+    "failed_revision_stored": 0
+  },
+  "sniper_correction": {
+    "defect": "situation-only repair targets were omitted from the early target-presence guard",
+    "change": "include situationTargets in the existing guard; no prompt, rule, blueprint, UI or DB change",
+    "reused_successes": 3,
+    "new_final_eligible": 2,
+    "remaining_failed": 3,
+    "candidate_regeneration_operations": 3
+  },
+  "cumulative_final": {
+    "eligible": 5,
+    "eligible_rate": 0.625,
+    "stored_verdicts": { "pass": 0, "warning": 5, "fail": 0 },
+    "not_stored": 3,
+    "remaining_direct_failure_causes": {
+      "R27": 2,
+      "relative_boundary_output_incomplete": 1
+    },
+    "prior_R27_failure_cells_without_final_R27": 5,
+    "prior_R27_failure_cells_total": 6,
+    "new_R27_failure_in_additional_interpreting_cells": 1,
+    "failed_revision_stored": 0,
+    "candidate_regeneration_operations_across_both_executions": 6,
+    "candidate_regeneration_max_per_candidate_per_execution": 1
+  },
+  "ledger": {
+    "calls": 77,
+    "successful_calls": 77,
+    "failed_calls": 0,
+    "prompt_tokens": 337142,
+    "completion_tokens": 44712,
+    "total_tokens": 381854,
+    "cached_input_tokens": 72704,
+    "by_operation": {
+      "core_generate": 8,
+      "core_repair": 5,
+      "mission_generate": 30,
+      "mission_critic": 29,
+      "mission_repair": 5
+    }
+  },
+  "verification": {
+    "targeted_test_files": 6,
+    "targeted_tests_passed": 74,
+    "typecheck": "passed",
+    "final_prompt_snapshot_tests_passed": 13,
+    "prompt_snapshot_core_surface_hash": "6e5aee7cf1244bd9dc0f0b44d01f7e9aa35dfef008f8ff67f56ef7048060b0a1"
+  },
+  "gate_1": {
+    "passed": false,
+    "reason": "R27 direct failures remained in 2 of 8 cells; the preregistered requirement was zero.",
+    "balanced_30_started": false,
+    "automatic_500_started": false
+  }
+}

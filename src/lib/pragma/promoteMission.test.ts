@@ -1,22 +1,30 @@
 import { describe, expect, it } from "vitest";
 
-import { repairFindingsForRuleViolations } from "./promoteMission";
+import {
+  applyMissionRepairOperations,
+  canPersistRepairQuality,
+  candidateRetryAlreadyAttempted,
+  candidateRegenerationFindings,
+  qualityAfterCandidateRegeneration,
+  repairFindingsForRuleViolations,
+} from "./promoteMission";
 
 describe("repairFindingsForRuleViolations", () => {
-  it("keeps the first duplicate and repairs every later R27 item", () => {
-    expect(repairFindingsForRuleViolations([{
-      id: "R27",
-      level: "fail",
-      message: "v4 MPJ 문항 2·3·4의 situation_ko가 완전히 중복됨. 앵커 PDR은 유지하되 다시 만드세요",
-    }])).toEqual([
-      expect.objectContaining({
-        code: "rule_R27_duplicate_situation",
-        where: "mpj_items[2].situation_ko",
-      }),
-      expect.objectContaining({
-        code: "rule_R27_duplicate_situation",
-        where: "mpj_items[3].situation_ko",
-      }),
+  it("routes only the violating R27 situation slot", () => {
+    expect(repairFindingsForRuleViolations([
+      {
+        id: "R27",
+        level: "fail",
+        message: "문항 5: [slot:MJT5] Contrast Y situation_ko가 X 또는 A와 완전히 중복됨",
+      },
+      {
+        id: "R27",
+        level: "fail",
+        message: "production_task: [slot:DCT] New Event C situation_ko가 X/A/Y 상황을 완전히 복제함",
+      },
+    ])).toEqual([
+      expect.objectContaining({ code: "rule_R27_situation", where: "mpj_items[4].situation_ko" }),
+      expect.objectContaining({ code: "rule_R27_situation", where: "production_task.situation_ko" }),
     ]);
   });
 
@@ -43,6 +51,180 @@ describe("repairFindingsForRuleViolations", () => {
     ])).toEqual([
       expect.objectContaining({ code: "rule_R18_item", where: "mpj_items[3]" }),
       expect.objectContaining({ code: "rule_R33_diagnostics", where: "diagnostic_dimensions" }),
+    ]);
+  });
+});
+
+describe("candidate-level mission repair", () => {
+  it("replaces only the selected situation string", () => {
+    const original = {
+      mpj_items: [
+        { id: 1, type: "scale4", situation_ko: "X", target: "immutable" },
+        { id: 2, type: "judge3", situation_ko: "A" },
+      ],
+      production_task: { situation_ko: "C", source_text: "immutable source" },
+    };
+
+    const patched = applyMissionRepairOperations(original, [
+      { operation: "replace_situation", path: "mpj_items[0].situation_ko", situation_ko: "new X" },
+      { operation: "replace_situation", path: "production_task.situation_ko", situation_ko: "new C" },
+    ]);
+
+    expect(patched.mpj_items).toEqual([
+      { id: 1, type: "scale4", situation_ko: "new X", target: "immutable" },
+      { id: 2, type: "judge3", situation_ko: "A" },
+    ]);
+    expect(patched.production_task).toEqual({ situation_ko: "new C", source_text: "immutable source" });
+  });
+
+  it("allows the initial boundary call plus only one stored-draft regeneration", () => {
+    expect(candidateRetryAlreadyAttempted(1)).toBe(false);
+    expect(candidateRetryAlreadyAttempted(2)).toBe(true);
+    expect(candidateRetryAlreadyAttempted(3)).toBe(true);
+  });
+
+  it("changes only the targeted MJT3/MJT5 candidate and freezes answer metadata", () => {
+    const original = {
+      mpj_items: [
+        { id: 1, type: "scale4" },
+        { id: 2, type: "judge3" },
+        {
+          id: 3,
+          type: "fix_choice",
+          corrections: [
+            { text: "fix-a", note_ko: "a", is_valid: true },
+            { text: "fix-b", note_ko: "b", is_valid: false },
+            { text: "fix-c", note_ko: "c", is_valid: false },
+          ],
+        },
+        { id: 4, type: "reason" },
+        {
+          id: 5,
+          type: "multi_judge",
+          candidates: [
+            { text: "multi-a", note_ko: "a", accepted_band_codes: ["within_band"] },
+            { text: "multi-b", note_ko: "b", accepted_band_codes: ["too_low"] },
+            { text: "multi-c", note_ko: "c", accepted_band_codes: ["within_band"] },
+            { text: "multi-d", note_ko: "d", accepted_band_codes: ["too_high"] },
+          ],
+        },
+      ],
+      production_task: { reference_alternatives: [] },
+    };
+
+    const patched = applyMissionRepairOperations(original, [
+      {
+        operation: "replace_fix_choice_candidate",
+        item_index: 2,
+        candidate_index: 1,
+        candidate: { text: "fix-b-new", note_ko: "b-new", is_valid: true },
+      },
+      {
+        operation: "replace_multi_judge_candidate",
+        item_index: 4,
+        candidate_index: 3,
+        candidate: { text: "multi-d-new", note_ko: "d-new", accepted_band_codes: ["within_band"] },
+      },
+    ]);
+
+    const items = patched.mpj_items as Array<Record<string, unknown>>;
+    const corrections = items[2].corrections as Array<Record<string, unknown>>;
+    const candidates = items[4].candidates as Array<Record<string, unknown>>;
+    expect(corrections[1]).toEqual({ text: "fix-b-new", note_ko: "b-new", is_valid: false });
+    expect(corrections[0]).toEqual(original.mpj_items[2].corrections[0]);
+    expect(corrections[2]).toEqual(original.mpj_items[2].corrections[2]);
+    expect(candidates[3]).toEqual({
+      text: "multi-d-new",
+      note_ko: "d-new",
+      accepted_band_codes: ["too_high"],
+    });
+    expect(candidates.slice(0, 3)).toEqual(original.mpj_items[4].candidates.slice(0, 3));
+    expect(items[0]).toEqual(original.mpj_items[0]);
+  });
+
+  it("does not permit a critic-failing repair revision to be persisted", () => {
+    expect(canPersistRepairQuality({
+      verdict: "fail",
+      summary_ko: "still failing",
+      findings: [],
+      model: "critic",
+      prompt_version: "quality-test",
+      checked_at: "2026-08-29T00:00:00.000Z",
+    })).toBe(false);
+  });
+
+  it("routes only exact MJT3/MJT5 band or plausibility failures to regeneration", () => {
+    const quality = {
+      verdict: "fail" as const,
+      summary_ko: "fail",
+      findings: [
+        { code: "band_mismatch", severity: "fail" as const, where: "mpj_items[2].corrections[1]", note_ko: "band" },
+        { code: "implausible_distractor", severity: "fail" as const, where: "mpj_items[4].candidates[3].text", note_ko: "implausible" },
+        { code: "band_mismatch", severity: "fail" as const, where: "mpj_items[1].target", note_ko: "not candidate" },
+        { code: "unnatural_language", severity: "fail" as const, where: "mpj_items[2].corrections[2]", note_ko: "repair" },
+      ],
+      model: "critic",
+      prompt_version: "quality-test",
+      checked_at: "2026-08-29T00:00:00.000Z",
+    };
+    expect(candidateRegenerationFindings(quality).map((finding) => finding.where)).toEqual([
+      "mpj_items[2].corrections[1]",
+      "mpj_items[4].candidates[3].text",
+    ]);
+  });
+
+  it("removes only regenerated candidate failures and preserves uncertainty as warning", () => {
+    const quality = qualityAfterCandidateRegeneration({
+      verdict: "fail",
+      summary_ko: "before",
+      findings: [
+        { code: "band_mismatch", severity: "fail", where: "mpj_items[2].corrections[1]", note_ko: "old" },
+        { code: "feedback_quality_mismatch", severity: "warning", where: "mpj_items[0].explanation_ko", note_ko: "keep" },
+      ],
+      model: "critic",
+      prompt_version: "quality-test",
+      checked_at: "2026-08-29T00:00:00.000Z",
+    }, ["mpj_items[2].corrections[1]"], [{
+      path: "mpj_items[2].corrections[1]",
+      severity: "warning",
+      actual_band_code: "uncertain",
+      note_ko: "경계 불확실",
+    }], {
+      model: "candidate-critic",
+      promptVersion: "candidate-v1",
+      checkedAt: "2026-08-29T00:01:00.000Z",
+      missionContentHash: "hash",
+    });
+    expect(quality.verdict).toBe("warning");
+    expect(quality.findings).toEqual([
+      expect.objectContaining({ code: "feedback_quality_mismatch", note_ko: "keep" }),
+      expect.objectContaining({ code: "band_mismatch", severity: "warning", note_ko: expect.stringContaining("candidate_boundary_uncertain") }),
+    ]);
+  });
+
+  it("keeps an unrelated critical finding after the targeted candidate is resolved", () => {
+    const quality = qualityAfterCandidateRegeneration({
+      verdict: "fail",
+      summary_ko: "before",
+      findings: [
+        { code: "band_mismatch", severity: "fail", where: "mpj_items[2].corrections[1]", note_ko: "candidate" },
+        { code: "band_mismatch", severity: "fail", where: "mpj_items[1].target", note_ko: "non-target" },
+      ],
+      model: "critic",
+      prompt_version: "quality-test",
+      checked_at: "2026-08-29T00:00:00.000Z",
+    }, ["mpj_items[2].corrections[1]"], [{
+      path: "mpj_items[2].corrections[1]",
+      severity: "pass",
+    }], {
+      model: "candidate-critic",
+      promptVersion: "candidate-v1",
+      checkedAt: "2026-08-29T00:01:00.000Z",
+      missionContentHash: "hash",
+    });
+    expect(quality.verdict).toBe("fail");
+    expect(quality.findings).toEqual([
+      expect.objectContaining({ where: "mpj_items[1].target", severity: "fail" }),
     ]);
   });
 });

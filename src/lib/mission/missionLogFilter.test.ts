@@ -76,10 +76,22 @@ describe("filterMissionLogs", () => {
       .toEqual(["sample:request"]);
   });
 
+  it("신규 로그의 직접 교과목·주차 lineage를 편성표 없이 우선 사용한다", () => {
+    const direct = [log({ mission_id: "m-direct", course_id: "course-direct", week_no: 7 })];
+    expect(filterMissionLogs(direct, { ...EMPTY_FILTERS, courseId: "course-direct" }, new Map()))
+      .toHaveLength(1);
+    expect(filterMissionLogs(direct, { ...EMPTY_FILTERS, weekNo: "7" }, new Map()))
+      .toHaveLength(1);
+    expect(filterMissionLogs(direct, { ...EMPTY_FILTERS, weekNo: "8" }, new Map()))
+      .toHaveLength(0);
+    expect(filterMissionLogs(direct, { ...EMPTY_FILTERS, courseId: "unknown" }, new Map()))
+      .toHaveLength(0);
+  });
+
   it("여러 필터는 함께 적용된다", () => {
     const found = filterMissionLogs(
       rows,
-      { query: "이", completion: "in_progress", courseId: "course-b", speechAct: "refusal" },
+      { ...EMPTY_FILTERS, query: "이", completion: "in_progress", courseId: "course-b", speechAct: "refusal" },
       index,
     );
     expect(found.map((row) => row.mission_id)).toEqual(["m-2"]);
@@ -97,5 +109,6 @@ describe("hasActiveFilter", () => {
     expect(hasActiveFilter({ ...EMPTY_FILTERS, query: "  " })).toBe(false);
     expect(hasActiveFilter({ ...EMPTY_FILTERS, query: "김" })).toBe(true);
     expect(hasActiveFilter({ ...EMPTY_FILTERS, completion: "completed" })).toBe(true);
+    expect(hasActiveFilter({ ...EMPTY_FILTERS, weekNo: "7" })).toBe(true);
   });
 });

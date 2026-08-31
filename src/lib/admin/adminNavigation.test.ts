@@ -14,8 +14,6 @@ const REQUIRED_ENTRY_PATHS = [
   "/admin/package",
   "/admin/learners",
   "/admin/decision-traces",
-  "/admin/research-qa/improvements",
-  "/admin/export",
 ] as const;
 
 describe("admin navigation reachability", () => {
@@ -25,6 +23,8 @@ describe("admin navigation reachability", () => {
     expect(new Set(allPaths).size).toBe(allPaths.length);
     expect(allPaths).not.toContain("/admin/question-designer");
     expect(allPaths).not.toContain("/admin/research-qa/calibration");
+    const research = ADMIN_NAV_GROUPS.find((group) => group.header === "4. 학습 결과·연구 자료");
+    expect(research?.items.map((item) => item.to)).toEqual(["/admin/decision-traces"]);
   });
 
   it("keeps a route or compatibility route for every restored entry", () => {
@@ -62,6 +62,6 @@ describe("admin navigation reachability", () => {
     expect(adminMobileNavValue("/admin/authentic")).toBe("/admin/authentic");
     expect(adminMobileNavValue("/admin/batch")).toBe("/admin/batch");
     expect(adminMobileNavValue("/admin/decision-traces")).toBe("/admin/decision-traces");
-    expect(adminMobileNavValue("/admin/export")).toBe("/admin/export");
+    expect(adminMobileNavValue("/admin/export")).toBe("");
   });
 });

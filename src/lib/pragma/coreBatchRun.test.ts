@@ -1,9 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BatchCell } from "@/lib/pragma/batchPlan";
 import {
   coreGenerationItemKey,
   runCoreBatch,
+  runCoreCell,
 } from "@/lib/pragma/coreBatchRun";
+
+const supabaseMocks = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  rpc: vi.fn(),
+}));
+
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    functions: { invoke: supabaseMocks.invoke },
+    rpc: supabaseMocks.rpc,
+  },
+}));
 
 const cell = (overrides: Partial<BatchCell> = {}): BatchCell => ({
   speech_act_ui: "request",
@@ -24,6 +37,10 @@ const cell = (overrides: Partial<BatchCell> = {}): BatchCell => ({
 });
 
 describe("core batch resume", () => {
+  beforeEach(() => {
+    supabaseMocks.invoke.mockReset();
+    supabaseMocks.rpc.mockReset();
+  });
   it("모든 연구 축과 반복 index로 안정적인 item key를 만든다", () => {
     const base = cell();
     expect(coreGenerationItemKey(base, 0)).toBe(coreGenerationItemKey(cell(), 0));
@@ -103,5 +120,79 @@ describe("core batch resume", () => {
       "scenario-12",
       "scenario-16",
     ]);
+  });
+});
+
+describe("R26 bounded semantic adjudication", () => {
+  const genericCore = {
+    schema_version: "scenario_core_v1",
+    situation_ko: "팀원이 회사 일정 변경을 담당자에게 메신저 글로 요청한다.",
+    relation_ko: "같은 조직의 팀원과 담당자 관계",
+    source_modality: "written",
+    source_text_ko: "검토 일정을 하루 늦출 수 있을까요?",
+    preceding_turn_zh: null,
+    pdr: { p: "equal", d: "acquaintance", r: "mid" },
+    channel: "messenger",
+    context_spec: {
+      standard_situation_code: "work.schedule_change.request",
+      role_pair: { speaker_ko: "팀원", addressee_ko: "담당자" },
+      speaker_entitlement: "일정 변경을 요청할 수 있다.",
+      addressee_obligation: "요청을 검토할 수 있다.",
+      decision_authority: "담당자가 일정을 결정한다.",
+    },
+  };
+  const r26Cell = cell({ topic_code: "schedule_change" });
+
+  beforeEach(() => {
+    supabaseMocks.invoke.mockReset();
+    supabaseMocks.rpc.mockReset();
+  });
+
+  it("lexical warning 때만 industry 축을 호출하고 semantic fail은 저장하지 않는다", async () => {
+    supabaseMocks.invoke
+      .mockResolvedValueOnce({ data: { core_content: genericCore, meta: {} }, error: null })
+      .mockResolvedValueOnce({
+        data: {
+          core_quality_check: {
+            axes: { industry: { verdict: "fail", reason_ko: "지정 산업의 구체적 업무가 없다." } },
+            model: "critic",
+            prompt_version: "core_quality",
+          },
+        },
+        error: null,
+      });
+
+    const result = await runCoreCell(r26Cell, 290, { runId: "run-11" });
+
+    expect(supabaseMocks.invoke).toHaveBeenCalledTimes(2);
+    expect(supabaseMocks.rpc).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: false,
+      terminalStage: "core_semantic_critic",
+      semanticFailureCodes: ["R26_INDUSTRY_SEMANTIC"],
+      stopCode: "CORE_INDUSTRY_CRITIC_FAIL",
+      industryCritic: { verdict: "fail" },
+    });
+  });
+
+  it("industry pass이면 lexical warning을 보존하고 저장한다", async () => {
+    supabaseMocks.invoke
+      .mockResolvedValueOnce({ data: { core_content: genericCore, meta: {} }, error: null })
+      .mockResolvedValueOnce({
+        data: {
+          core_quality_check: {
+            axes: { industry: { verdict: "pass", reason_ko: "업무 대상과 행위로 산업이 드러난다." } },
+          },
+        },
+        error: null,
+      });
+    supabaseMocks.rpc.mockResolvedValue({ data: "scenario-290", error: null });
+
+    const result = await runCoreCell(r26Cell, 290, { runId: "run-11" });
+
+    expect(supabaseMocks.rpc).toHaveBeenCalledTimes(1);
+    expect(result.ok).toBe(true);
+    expect(result.ruleFindings).toContainEqual(expect.objectContaining({ id: "R26", level: "warning" }));
+    expect(result.industryCritic?.verdict).toBe("pass");
   });
 });

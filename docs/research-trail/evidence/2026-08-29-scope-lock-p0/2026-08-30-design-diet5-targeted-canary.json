@@ -1,0 +1,180 @@
+{
+  "schema_version": "pragma_design_diet_targeted_canary_v1",
+  "status": "completed_stopped_after_planned_5",
+  "date": "2026-08-30",
+  "generation_run_id": "scope-lock-pilot-20260830-11-design-diet5",
+  "denominator": 5,
+  "release": "pragma_scope_lock_20260830_11_design_diet_p0",
+  "prompt_snapshot_hash": "857875fbb14dc9809b9d855c3672d7eb1e4608369baf1eb687e7fecb2816d617",
+  "implementation_commit": "785a399",
+  "fingerprint_commit": "a1ceddc",
+  "historical_cells": [
+    { "item_index": 110, "historical_failure": "_09 R29; exact subrule UNKNOWN" },
+    { "item_index": 200, "historical_failure": "_09 R29; exact subrule UNKNOWN" },
+    { "item_index": 230, "historical_failure": "_09 R29; exact subrule UNKNOWN" },
+    { "item_index": 290, "historical_failure": "_09 R26" },
+    { "item_index": 190, "historical_failure": "_10 frozen C compound shape; sentence-count versus char-limit UNKNOWN" }
+  ],
+  "implementation": {
+    "R27": "C remains nonempty/collision/PDR/new-event hard, but its two-sentence/140-char shape no longer blocks topology regeneration; existing full-mission DCT warning remains",
+    "R29": "minimum effective chars warning; maximum, focal head, support count and substring hard; structured subrule evidence added",
+    "R26": "lexical miss warning; only that warning invokes the existing core-quality industry axis once; industry fail is semantic dropout and request failure is infrastructure dropout",
+    "unchanged": [
+      "X/A/A/A/Y/C topology",
+      "R27 collision/PDR/new-event hard gates",
+      "other R1-R33 semantics",
+      "candidate blueprint",
+      "mission critic",
+      "UI",
+      "DB schema",
+      "course/week",
+      "500-60-12-4 funnel"
+    ]
+  },
+  "verification": {
+    "targeted_tests": { "files": 7, "passed": 90, "failed": 0 },
+    "typecheck": "pass",
+    "full_suite": "not_run_unnecessary",
+    "build": "not_run_unnecessary",
+    "edge_deploy": "generate-scenario deployed successfully; exact version was not re-queried"
+  },
+  "aggregate": {
+    "planned": 5,
+    "core_first_attempt_saved": 5,
+    "core_plan_cell_replacement": 0,
+    "core_internal_repair_provider_calls": 2,
+    "full_mission_generated": 5,
+    "first_pass_eligible": 0,
+    "final_eligible": 2,
+    "R26_lexical_warning": 0,
+    "R26_core_industry_critic_calls": 0,
+    "R26_semantic_fail": 0,
+    "R27_C_format_warning": 0,
+    "R27_topology_or_collision_hard_fail": 0,
+    "topology_first_pass": 5,
+    "topology_regeneration": 0,
+    "full_mission_initial_R27": 0,
+    "R27_repair": 0,
+    "R29_minimum_warning": 0,
+    "R29_maximum_hard_fail": 0,
+    "R29_focal_support_substring_hard_fail": 0,
+    "mission_critic_warning": 2,
+    "mission_critic_fail": 3,
+    "candidate_regeneration_success_count": 5,
+    "candidate_regeneration_max_per_candidate": 1,
+    "infrastructure_dropout": 0,
+    "normal_candidate_contamination": 0,
+    "bounded_recovery_violation": 0,
+    "failed_revision_reviewed_or_released_promotion": 0,
+    "course_assignment": 0
+  },
+  "items": [
+    {
+      "item_index": 110,
+      "core": "saved first attempt",
+      "R26": "none",
+      "R27": "topology first-pass; no initial R27; no repair",
+      "R29": "no finding; effective chars 102 within 80-110",
+      "critic": "fail",
+      "terminal_direct_cause": "band_mismatch: a brief thanks target labelled insufficient was defensibly within_band",
+      "candidate_regeneration": 1,
+      "final_outcome": "quality_fail_draft"
+    },
+    {
+      "item_index": 190,
+      "core": "saved first attempt",
+      "R26": "none",
+      "R27": "topology first-pass; no C warning; no initial R27; no repair",
+      "R29": "no finding; effective chars 84 within 55-85",
+      "critic": "warning",
+      "terminal_direct_cause": "none",
+      "candidate_regeneration": 2,
+      "final_outcome": "eligible"
+    },
+    {
+      "item_index": 200,
+      "core": "saved first attempt",
+      "R26": "not applicable",
+      "R27": "topology first-pass; no initial R27; no repair",
+      "R29": "no finding; effective chars 62 within 60-85",
+      "critic": "fail",
+      "terminal_direct_cause": "band_mismatch: two corrections labelled too_direct/too_indirect were defensibly within_band",
+      "recovery_cofactor": "candidate regeneration response incomplete 1/2; not infrastructure",
+      "candidate_regeneration": 0,
+      "final_outcome": "quality_fail_draft"
+    },
+    {
+      "item_index": 230,
+      "core": "saved first attempt",
+      "R26": "not applicable",
+      "R27": "topology first-pass; no initial R27; no repair",
+      "R29": "no finding; effective chars 72 within 60-85",
+      "critic": "warning",
+      "terminal_direct_cause": "none",
+      "candidate_regeneration": 1,
+      "final_outcome": "eligible"
+    },
+    {
+      "item_index": 290,
+      "core": "saved first attempt",
+      "R26": "lexical detector passed; no core industry critic invocation",
+      "R27": "topology first-pass; no initial R27; no repair",
+      "R29": "no finding; effective chars 81 within 60-85",
+      "critic": "fail",
+      "terminal_direct_cause": "band_mismatch: four corrections/candidates labelled too_direct/too_indirect were defensibly within_band",
+      "recovery_cofactor": "relative-boundary fallback succeeded for its eligible path, other candidate regeneration response incomplete 2/3; not infrastructure",
+      "candidate_regeneration": 1,
+      "final_outcome": "quality_fail_draft"
+    }
+  ],
+  "cost": {
+    "provider_requests": 46,
+    "successful_calls": 46,
+    "total_tokens": 206326,
+    "estimated_standard_api_cost_usd": 0.5664795,
+    "by_prompt": {
+      "core_generate": { "calls": 5, "tokens": 19517, "estimated_cost_usd": 0.007178 },
+      "core_internal_repair": { "calls": 2, "tokens": 8868, "estimated_cost_usd": 0.02067 },
+      "topology": { "calls": 5, "tokens": 6168, "estimated_cost_usd": 0.025395 },
+      "full_mission": { "calls": 5, "tokens": 60406, "estimated_cost_usd": 0.2195275 },
+      "candidate_generation_and_recovery": { "calls": 11, "tokens": 24638, "estimated_cost_usd": 0.075785 },
+      "mission_critic_all_passes": { "calls": 18, "tokens": 86729, "estimated_cost_usd": 0.217924 }
+    },
+    "pricing_assumptions_usd_per_million": {
+      "gpt-4.1": { "input": 2.0, "cached_input": 0.5, "output": 8.0 },
+      "gpt-4.1-mini": { "input": 0.4, "cached_input": 0.1, "output": 1.6 },
+      "gpt-4o": { "input": 2.5, "cached_input": 1.25, "output": 10.0 }
+    }
+  },
+  "isolation": {
+    "all_rows_mission_status": "generated",
+    "all_rows_review_status": "needs_review",
+    "all_rows_usage_assignment": "archived_only",
+    "reviewed": 0,
+    "released": 0,
+    "course_assigned": 0
+  },
+  "evidence_limitations": [
+    "No R26 lexical warning, R29 minimum warning, or R27 C-format warning occurred naturally in these five new generations; their severity and R26 bounded critic routing are established by targeted deterministic tests, not a naturally triggered paid call.",
+    "Historical R29 subrules and the exact item-190 C-shape subcondition remain UNKNOWN and were not retrospectively inferred.",
+    "first_pass_eligible=0 is from the batch runner completion output; the JSONL records the final terminal state."
+  ],
+  "raw_terminal_evidence": {
+    "path": "tmp/pragma-terminal-evidence/scope-lock-pilot-20260830-11-design-diet5.jsonl",
+    "records": 10,
+    "bytes": 32793,
+    "sha256": "a3d844e0fc1d81f1269e341f629d54a61be21481a2808d876a11c75805b4aa9e"
+  },
+  "verdict": "P0 Design Diet verified; balanced 30 may proceed",
+  "stopped_without": [
+    "balanced 30",
+    "500 production",
+    "P1 R11/R28",
+    "Claude content-review",
+    "professor review",
+    "reviewed-60 selection",
+    "course/week assignment",
+    "representative E2E",
+    "additional micro-fix"
+  ]
+}

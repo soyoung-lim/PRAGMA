@@ -100,6 +100,34 @@ describe("mission rule audit regressions", () => {
     ).toBe(true);
   });
 
+  it("enforces the native R27 X-A-A-A-Y-C topology without rejecting Anchor A sharing", () => {
+    expect(violationsFor(SAMPLE_MISSION_V5_NATIVE, "R27")).toEqual([]);
+
+    const splitAnchor = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    splitAnchor.mpj_items[2].situation_ko = "다른 Anchor 사건을 새로 만들었다. 이 문장은 두 번째 설명이다.";
+    expect(violationsFor(splitAnchor, "R27")).toEqual(expect.arrayContaining([
+      expect.objectContaining({ level: "fail", message: expect.stringContaining("[slot:MJT3]") }),
+    ]));
+
+    const copiedX = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    copiedX.mpj_items[0].situation_ko = copiedX.mpj_items[1].situation_ko;
+    expect(violationsFor(copiedX, "R27")).toEqual(expect.arrayContaining([
+      expect.objectContaining({ level: "fail", message: expect.stringContaining("[slot:MJT1]") }),
+    ]));
+
+    const copiedY = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    copiedY.mpj_items[4].situation_ko = copiedY.mpj_items[0].situation_ko;
+    expect(violationsFor(copiedY, "R27")).toEqual(expect.arrayContaining([
+      expect.objectContaining({ level: "fail", message: expect.stringContaining("[slot:MJT5]") }),
+    ]));
+
+    const copiedDct = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    copiedDct.production_task.situation_ko = copiedDct.mpj_items[1].situation_ko;
+    expect(violationsFor(copiedDct, "R27")).toEqual(expect.arrayContaining([
+      expect.objectContaining({ level: "fail", message: expect.stringContaining("[slot:DCT]") }),
+    ]));
+  });
+
   it("fails when a recommended repair repeats an explicitly invalid correction", () => {
     const mission = structuredClone(SAMPLE_MISSION_V5_NATIVE);
     const fix = mission.mpj_items[2];

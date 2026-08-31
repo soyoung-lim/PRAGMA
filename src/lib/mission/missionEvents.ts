@@ -30,6 +30,11 @@ export interface AppendMissionEventInput {
   taskMode: "translation" | "interpreting";
   payload?: Record<string, unknown>;
   occurredAt?: string;
+  courseContext?: {
+    courseId: string;
+    weekNo: number;
+    assignmentId: string;
+  };
 }
 
 export type AppendMissionEventResult =
@@ -64,6 +69,9 @@ export async function appendMissionEvent(
       task_mode: input.taskMode,
       event_payload: (input.payload ?? {}) as Json,
       occurred_at: input.occurredAt ?? new Date().toISOString(),
+      course_id: input.courseContext?.courseId ?? null,
+      week_no: input.courseContext?.weekNo ?? null,
+      assignment_id: input.courseContext?.assignmentId ?? null,
     },
   });
   if (error || !data) {

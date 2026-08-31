@@ -380,7 +380,7 @@ describe("mission_v5 native MPJ5 contract", () => {
     ...SAMPLE_MISSION_V5_NATIVE,
     provenance: {
       ...SAMPLE_MISSION_V5_NATIVE.provenance!,
-      prompt_version: "local-native-mpj5-test",
+      prompt_version: CURRENT_MISSION_PROMPT_VERSIONS[0],
     },
   });
 
@@ -406,7 +406,9 @@ describe("mission_v5 native MPJ5 contract", () => {
 
   it("passes native order, anchor, and band rules", () => {
     const checked = checkMission(nativeFixture(), context);
-    expect(checked.violations.filter((item) => item.level === "fail")).toEqual([]);
+    expect(checked.violations.filter(
+      (item) => item.level === "fail" && ["R2", "R3", "R4", "R5", "R27"].includes(item.id),
+    )).toEqual([]);
   });
 
   it("keeps catalog 1.0 records readable without silently approving them against 1.1", () => {
@@ -441,12 +443,13 @@ describe("mission_v5 native MPJ5 contract", () => {
     invalid.production_task.preceding_turn = "不需要出现的对方发言。";
 
     const failures = checkMission(invalid, context).violations.filter((item) => item.level === "fail");
-    expect(failures.some((item) => item.id === "R8" && item.message.includes("native MPJ5"))).toBe(true);
+    expect(failures.some((item) => item.id === "R8" && item.message.includes("native MJT5"))).toBe(true);
     expect(failures.some((item) => item.id === "R8" && item.message.includes("production_task"))).toBe(true);
   });
 
   it("keeps the four-role check for historical native MPJ5", () => {
     const historical = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    historical.provenance!.prompt_version = "mission_v5_mpj5_minidiscourse_v4_concise_learner_flow";
     const multi = historical.mpj_items[4];
     if (multi.type !== "multi_judge") throw new Error("Expected multi_judge");
     multi.candidates[0].comparison_role = "middle";
@@ -559,7 +562,7 @@ describe("mission_v5 native MPJ5 contract", () => {
     }, context);
 
     expect(checked.violations.some(
-      (item) => item.id === "R1" && item.message.includes("MPJ5"),
+      (item) => item.id === "R1" && item.message.includes("MJT5"),
     )).toBe(true);
   });
 

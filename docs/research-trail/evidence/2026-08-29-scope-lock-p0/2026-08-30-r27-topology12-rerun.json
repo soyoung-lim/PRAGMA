@@ -1,0 +1,112 @@
+{
+  "evidence_id": "EVD-20260830-17",
+  "status": "targeted_canary_completed_after_infrastructure_fix",
+  "release_id": "pragma_scope_lock_20260830_10_r27_constraint_topology",
+  "generation_run_id": "scope-lock-pilot-20260830-10-r27-topology12",
+  "planned_item_indexes": [0, 10, 60, 70, 80, 130, 140, 150, 190, 220, 260, 270],
+  "planned_denominator": 12,
+  "root_cause": {
+    "verdict": "topology_specific_request_config",
+    "provider_transient": false,
+    "batch_or_concurrency_pressure": false,
+    "mechanism": "A successful OpenAI response was converted to synthetic HTTP 503 when required invocation-ledger insertion failed because mission_topology was outside the DB operation allowlist.",
+    "evidence": [
+      "The 12 topology calls were sequential, not a burst.",
+      "After quota replenishment, surrounding calls through the same provider routes succeeded.",
+      "Only the new topology operation was outside the existing operation constraint.",
+      "The Edge wrapper explicitly converts res.ok plus required telemetry failure to synthetic 503."
+    ]
+  },
+  "fix": {
+    "implementation_commit": "6c0e7bc",
+    "fingerprint_commit": "fa8acc8",
+    "operation": "mission_generate",
+    "subtype_prompt_version": "mission_scene_topology_v1_constraint_by_construction",
+    "database_schema_changed": false,
+    "retry_added": false,
+    "deployment": "succeeded; exact post-deploy Edge version was not re-queried",
+    "unchanged": ["R1-R33", "R27", "validator", "topology", "prompt_content", "critic", "UI", "course_structure"]
+  },
+  "verification": {
+    "targeted_tests": { "passed": 24, "failed": 0 },
+    "typecheck": "passed",
+    "full_suite": "not_run_by_scope",
+    "build": "not_run_by_scope",
+    "probe": {
+      "run_id": "scope-lock-pilot-20260830-10-r27-topology-probe1",
+      "calls": 1,
+      "http_status": 200,
+      "ledger_operation": "mission_generate",
+      "prompt_version": "mission_scene_topology_v1_constraint_by_construction",
+      "deterministic_result": "pass",
+      "total_tokens": 1171,
+      "estimated_cost_usd": 0.0046975
+    }
+  },
+  "items": [
+    { "item": 0, "core": "first_pass_saved", "topology_attempts": 1, "topology": "pass", "full_mission": true, "initial_r27": 0, "r27_repair": false, "critic": "warning", "terminal_direct_cause": "eligible", "final": "eligible" },
+    { "item": 10, "core": "first_pass_saved", "topology_attempts": 1, "topology": "pass", "full_mission": true, "initial_r27": 0, "r27_repair": false, "critic": "warning", "terminal_direct_cause": "eligible", "final": "eligible" },
+    { "item": 60, "core": "first_pass_saved", "topology_attempts": 1, "topology": "pass", "full_mission": true, "initial_r27": 0, "r27_repair": false, "critic": "warning", "terminal_direct_cause": "eligible", "final": "eligible" },
+    { "item": 70, "core": "first_pass_saved", "topology_attempts": 2, "topology": "fail", "full_mission": false, "initial_r27": "not_evaluable", "r27_repair": false, "critic": "not_reached", "terminal_direct_cause": "topology_deterministic", "exact_failure": "attempt 2: Anchor and frozen C situation_ko exact duplicate", "final": "terminal_dropout" },
+    { "item": 80, "core": "first_pass_saved", "topology_attempts": 2, "topology": "pass_after_regeneration", "full_mission": true, "initial_r27": 0, "r27_repair": false, "critic": "warning", "terminal_direct_cause": "eligible", "final": "eligible" },
+    { "item": 130, "core": "bounded_replacement_saved", "topology_attempts": 1, "topology": "pass", "full_mission": true, "initial_r27": 0, "r27_repair": false, "critic": "warning", "terminal_direct_cause": "eligible", "final": "eligible" },
+    { "item": 140, "core": "bounded_replacement_saved", "topology_attempts": 1, "topology": "pass", "full_mission": true, "initial_r27": 0, "r27_repair": false, "critic": "fail", "critic_direct_findings": ["band_mismatch at mpj_items[2].corrections[0]", "internal_inconsistency at mpj_items[2].corrections[0]"], "terminal_direct_cause": "critic", "final": "quality_fail_draft" },
+    { "item": 150, "core": "bounded_replacement_saved", "topology_attempts": 1, "topology": "pass", "full_mission": true, "initial_r27": 0, "r27_repair": false, "critic": "warning", "terminal_direct_cause": "eligible", "final": "eligible" },
+    { "item": 190, "core": "bounded_replacement_saved", "topology_attempts": 2, "topology": "fail", "full_mission": false, "initial_r27": "not_evaluable", "r27_repair": false, "critic": "not_reached", "terminal_direct_cause": "topology_deterministic", "exact_failure": "attempt 2: frozen C situation_ko is not exactly two sentences; X/A/Y regeneration cannot change C", "final": "terminal_dropout" },
+    { "item": 220, "core": "first_pass_saved", "topology_attempts": 1, "topology": "pass", "full_mission": true, "initial_r27": 0, "r27_repair": false, "critic": "warning", "terminal_direct_cause": "eligible", "final": "eligible" },
+    { "item": 260, "core": "bounded_replacement_saved", "topology_attempts": 1, "topology": "pass", "full_mission": true, "initial_r27": 0, "r27_repair": false, "critic": "warning", "terminal_direct_cause": "eligible", "final": "eligible" },
+    { "item": 270, "core": "first_pass_saved", "topology_attempts": 1, "topology": "pass", "full_mission": true, "initial_r27": 0, "r27_repair": false, "critic": "fail", "critic_direct_findings": ["implausible_distractor at mpj_items[2].corrections[1]", "implausible_distractor at mpj_items[2].corrections[2]", "band_mismatch at mpj_items[4].candidates[1]"], "terminal_direct_cause": "critic", "final": "quality_fail_draft" }
+  ],
+  "aggregate": {
+    "topology_first_pass": "9/12",
+    "topology_regeneration": "3/12",
+    "topology_success": "10/12",
+    "topology_infrastructure_dropout": "0/12",
+    "topology_deterministic_dropout": "2/12",
+    "full_mission_generated": "10/12",
+    "full_mission_initial_r27": "0/10",
+    "r27_repair": "0/10",
+    "deterministic_r27_direct_dropout_after_full_mission": "0/10",
+    "anchor_a_shared": "10/10",
+    "literal_x_a_y_c_distinct": "10/10",
+    "critic_warning": "8/10",
+    "critic_fail": "2/10",
+    "critic_direct_dropout": "2/12",
+    "final_eligible": "8/12",
+    "terminal_direct_causes": { "topology_deterministic": 2, "critic": 2, "eligible": 8 },
+    "provider_429": 0,
+    "provider_503": 0,
+    "other_infrastructure_failure": 0,
+    "normal_candidate_or_situation_contamination": 0,
+    "bounded_recovery_violation": 0,
+    "failed_revision_reviewed_or_released": 0,
+    "course_assignments": 0
+  },
+  "main_rerun_usage": {
+    "provider_requests": 81,
+    "successful_calls": 81,
+    "failed_calls": 0,
+    "successful_total_tokens": 394906,
+    "estimated_cost_usd": 1.2078405,
+    "topology_first": { "calls": 12, "total_tokens": 14380, "estimated_cost_usd": 0.0633475 },
+    "topology_regeneration": { "calls": 3, "total_tokens": 4379, "estimated_cost_usd": 0.01871 },
+    "full_mission": { "calls": 10, "total_tokens": 122134, "estimated_cost_usd": 0.47449 },
+    "mission_item_repair": { "calls": 7, "total_tokens": 35226, "estimated_cost_usd": 0.101355 }
+  },
+  "storage_isolation": {
+    "scenario_rows": 12,
+    "mission_content_present": 10,
+    "mission_status_generated": 10,
+    "mission_lineage_versions": 12,
+    "reviewed_or_released": 0,
+    "course_assignments": 0
+  },
+  "terminal_evidence": {
+    "path": "tmp/pragma-terminal-evidence/scope-lock-pilot-20260830-10-r27-topology12-rerun.jsonl",
+    "records": 12,
+    "sha256": "bdf520bedce2ab8e0d93d243de25a4d3fe444e0a60415721e357649b0f898e84"
+  },
+  "verdict": "infrastructure_resolved_but_additional_r27_structure_fix_required",
+  "exact_remaining_failure": "A frozen core C may violate the topology two-sentence shape before topology generation, and bounded X/A/Y regeneration cannot repair C. A second case retained an Anchor/C exact collision after the one allowed regeneration.",
+  "stop_boundary": "No balanced-30, 500 production, R26/R29 modification, design audit, Claude review, professor review, course assignment, representative E2E, or additional micro-fix was started."
+}

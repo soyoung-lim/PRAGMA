@@ -50,7 +50,31 @@ import {
   hskReferenceCeiling,
   type HskTokenMatch,
 } from '../_shared/hskLexicalAudit.ts'
-import { canonicalizeNativeMpj5AnchorPdr } from '../_shared/missionCanonicalization.ts'
+import {
+  NATIVE_MPJ5_TOPOLOGY_MAX_ATTEMPTS,
+  applyNativeMpj5FrozenTopology,
+  buildNativeMpj5FrozenTopology,
+  buildNativeMpj5SituationRepairPacket,
+  isNativeMpj5SituationReplacementTopologySafe,
+  validateNativeMpj5FrozenTopology,
+  type NativeMpj5FrozenTopology,
+  type NativeMpj5TopologyFinding,
+} from '../_shared/missionCanonicalization.ts'
+import {
+  MISSION_CANDIDATE_REFERENCES,
+  applyMissionCandidateBlueprints,
+  buildMissionCandidateBlueprints,
+  missionCandidateBlueprintForReference,
+  missionCandidatePath,
+  missionCandidateReferenceForPath,
+  type MissionCandidateReference,
+} from '../_shared/missionCandidateBlueprint.ts'
+import {
+  normalizeCandidateRegenerationCounts,
+  planCandidateFallback,
+  recordCandidateRegeneration,
+  type CandidateRegenerationCounts,
+} from '../_shared/missionCandidateRecovery.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -182,13 +206,14 @@ interface GenInput {
   // Two-step outline → final flow. Backward compatible:
   // when `action` is absent the handler behaves exactly like the legacy
   // single-shot full-scenario generation.
-  action?: 'outline' | 'final' | 'core' | 'mission' | 'mission_repair' | 'finalize_mission' | 'authentic_analyze' | 'quality_check' | 'core_quality_check' | 'feedback'
+  action?: 'outline' | 'final' | 'core' | 'mission_topology' | 'mission' | 'mission_repair' | 'mission_candidate_regenerate' | 'finalize_mission' | 'authentic_analyze' | 'quality_check' | 'core_quality_check' | 'feedback'
   outline_count?: number
   selected_outline?: { title?: string; situation?: string } | null
   // v1.4 (2026-07-23): scenario_core_v1 / mission_v1 생성. 카탈로그는 클라가 전달.
   core?: CoreGenBody
   mission?: MissionGenBody
   mission_repair?: MissionRepairBody
+  mission_candidate_regenerate?: MissionCandidateRegenerationBody
   finalize_mission?: FinalizeMissionBody
   // 「실제 자료에서 생성」(Authentic Source Import) — 이미지/텍스트 원자료 분석.
   authentic?: AuthenticBody
@@ -247,7 +272,11 @@ interface QualityCheckBody {
     code?: string
     learner_label?: string
     band_codes?: string[]         // 카탈로그 band_schema 코드 목록(대역 정합 판단용)
+    band_schema?: Array<{ code: string; label_ko: string }>
+    within_band_code?: string
     operational_definition?: string
+    excluded_confounds?: string[]
+    counter_rule_note?: string
   } | null
   direction?: string              // ko_zh | zh_ko
   speech_act?: string | null
@@ -1106,6 +1135,9 @@ function buildCoreUserPrompt(b: CoreGenBody): string {
     ...(rMeaningKo ? [`- 이 화행에서 R의 구체적 의미: ${rMeaningKo}`] : []),
     `- 장면 시드: ${b.situation_seed_ko}`,
     `- 원문 분량: ${lengthHintKo}`,
+    ...(src === 'zh'
+      ? ['- 중국어 길이 계수: 한자·라틴문자·숫자 각각 1개를 유효 글자 1자로 세고, 공백·문장부호는 제외합니다. 짧은 절 두 개로 끝내지 말고 반환 직전에 source_text를 직접 세어 지정 범위의 중앙값에 맞추세요.']
+      : []),
     `- 문장 경계: 쉼표로 절을 길게 잇지 말고 ${sentencePunctuation}로 위 분량의 문장 수를 명시하세요.`,
   ]
   if (b.industry) {
@@ -1286,6 +1318,7 @@ async function corePromptSnapshotHash(): Promise<string> {
     scope: 'core_generation',
     action: 'core',
     model: PRIMARY_MODEL,
+    repair_model: CRITIC_PRIMARY_MODEL,
     model_fallback: FALLBACK_MODEL,
     temperature: CORE_TEMPERATURE,
     response_format: CORE_RESPONSE_FORMAT,
@@ -1430,6 +1463,8 @@ interface MissionGenBody {
       intended_band_profile: string
     }>
   }
+  frozen_topology?: NativeMpj5FrozenTopology
+  topology_evidence?: MissionTopologyEvidence
 }
 
 interface MissionRepairBody {
@@ -1829,6 +1864,7 @@ function buildMissionSystemPrompt(
   완화·공손·선택권·호칭·종결형 등 target feature를 실현하는 화용 표현, 완성 문장과 문법 설명은 금지합니다.
   production preceding_turn에 목표어가 이미 그대로 보이면 같은 목표어를 힌트로 다시 주지 마세요.`
   const bands = f.band_schema.map((b) => `"${b.code}"(${b.label_ko})`).join(' / ')
+  const candidateBlueprints = nativeMpj5 ? buildMissionCandidateBlueprints(f) : null
   const gate1 = `🔴 게이트1(불변항 — 절대 규칙): target·모든 corrections.text·모든 candidates.text·recommended_example·reference_alternatives.text는 **먼저 각 원문의 명제·의도·화행 목적을 유지**해야 합니다. 의미나 의도가 달라진 문장은 화용 판단 후보가 될 수 없습니다. 부적절성은 오직 「${f.learner_label}」 초점의 **과소·적정·과잉 차이**로만 실현합니다. MPJ 문항에는 그 문항 source 밖의 새 사실·이유·대안·수리·보상·새 일정을 추가하지 마세요. DCT reference_alternatives만 사용자 요청서의 [사용 가능한 추가 사실] 폐쇄 목록을 사용할 수 있습니다.`
   const spokenRule = isSpoken
     ? `\n🔴 이 미션은 통역(구두 담화)입니다. source·target·모든 후보는 **실제 말로 주고받을 법한 구두체**로 작성하세요(이메일 문어체·서면 격식 표현 금지).
@@ -1855,12 +1891,21 @@ function buildMissionSystemPrompt(
   const pdrPerspectiveRule = isSpoken
     ? '- pdr.p는 **원발화자 A 기준**입니다: A가 청자 B보다 지위가 낮으면 "speaker_lower". relation_ko의 A↔B 관계와 pdr 값이 반드시 일치해야 합니다.'
     : '- pdr.p는 **화자(나) 기준**입니다: 화자가 상대(상사·교수 등)보다 지위가 낮으면 "speaker_lower". relation_ko의 관계 서술과 pdr 값이 반드시 일치해야 합니다.'
+  const anchorSituationShape = nativeMpj5
+    ? `Anchor A. ${situationShape}`
+    : situationShape
+  const sharedAnchorSituationShape = nativeMpj5
+    ? `MJT2의 Anchor A와 글자까지 같은 상황문. ${situationShape}`
+    : situationShape
+  const reasonSituationShape = nativeMpj5
+    ? sharedAnchorSituationShape
+    : `첫 문항과 다른 사건. ${situationShape}`
   const judge3Shape = nativeMpj5
     ? `,
     {
       "type": "judge3",
       "channel": "허용 channel 코드",
-      "situation_ko": "첫 장면과 다른 사건. ${situationShape}",
+      "situation_ko": "${anchorSituationShape}",
       "relation_ko": "${relationShape}",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
@@ -1876,8 +1921,11 @@ function buildMissionSystemPrompt(
     ? '**첫인상 판단 → 맥락 대비 판단 → 판단하고 고쳐보기 → 이유 찾기 → 여러 초안 비교**'
     : '**첫인상 판단 → 판단하고 고쳐보기 → 이유 찾기 → 여러 초안 비교**'
   const nativeJudgeIntro = nativeMpj5
-    ? ' 독립 Judge3는 DCT 앵커 맥락에서 첫 장면과 다른 판정을 만들고,'
+    ? ' Judge3가 Anchor A를 만들고 FixChoice·Reason은 같은 상황을 공유하며,'
     : ''
+  const fixChoiceFlow = nativeMpj5
+    ? ' FixChoice는 같은 Anchor A에서 판단을 잠근 뒤 교정안을 공개합니다.'
+    : ' FixChoice는 별도 사건에서 판단을 잠근 뒤 교정안을 공개합니다.'
   const exactOrder = nativeMpj5
     ? 'scale4 → judge3 → fix_choice → reason → multi_judge'
     : 'scale4 → fix_choice → reason → multi_judge'
@@ -1897,16 +1945,25 @@ function buildMissionSystemPrompt(
 `
     : ''
   const nativeJudgeRules = nativeMpj5
-    ? `- judge3는 DCT와 같은 앵커 P/D/R의 별도 사건이며, scale4와 달리 비적정 대역 하나를 판정하게 합니다.
-- MPJ1(scale4)↔MPJ2(judge3)는 **최소대조 한 쌍**입니다. 화행·item_focus·핵심 목표어 실현 전략은 유지하고,
+    ? `- judge3는 DCT와 같은 앵커 P/D/R의 Anchor A이며, 비적정 대역 하나를 판정하게 합니다.
+- MJT1(scale4) Contrast X↔MJT2(judge3) Anchor A는 **최소대조 한 쌍**입니다. 화행·item_focus·핵심 목표어 실현 전략은 유지하고,
   P/D/R 중 정확히 한 축만 바꿔 적절성 방향이 달라지게 하세요. 두 사건의 명제 내용은 달라도 되지만,
   explanation_ko에는 무엇이 유지되고 어떤 맥락축 하나가 바뀌었는지 구체적으로 쓰세요.
 `
     : ''
   const targetTypes = nativeMpj5 ? 'judge3·fix_choice·reason' : 'fix_choice·reason'
   const anchorContrastRule = nativeMpj5
-    ? 'judge3·fix_choice·reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건'
+    ? 'judge3가 Anchor A를 한 번 만들고 fix_choice·reason은 그 situation_ko·relation_ko를 글자까지 동일하게 공유하며, 세 문항 모두 DCT와 같은 P/D/R을 사용'
     : 'fix_choice·reason은 DCT와 같은 P/D/R이되 서로 다른 생생한 사건'
+  const contextTopologyRule = nativeMpj5
+    ? `- 🔴 [R27 v2 상황 topology] MJT1 X → MJT2 A → MJT3 A → MJT4 A → MJT5 Y → DCT C입니다.
+  MJT2에서 Anchor A 상황을 한 번 만들고 MJT3·4는 같은 사건을 다시 표현하지 말고 situation_ko·relation_ko를 정확히 복사하세요.
+  서버도 MJT2의 A를 MJT3·4에 고정합니다. MJT1 X와 MJT5 Y는 각각 A에서 P/D/R 한 축만 바꾼 별도 대비 사건이고,
+  DCT C는 Anchor P/D/R을 유지하는 새 사건입니다. X/A/Y/C는 서로 완전히 같은 상황문을 쓰지 마세요.`
+    : ''
+  const sceneUniquenessRule = nativeMpj5
+    ? '- 🔴 [R27 v2 장면 구조] MJT2·3·4의 situation_ko는 Anchor A로 정확히 같아야 하고, MJT1 X·Anchor A·MJT5 Y·DCT C는 서로 다른 구체적 사건이어야 합니다.'
+    : `- 🔴 [장면 고유성] ${itemCount}개 situation_ko는 서로 다른 구체적 사건이어야 합니다. 같은 인물·용건·대상을 둔 사실상 같은 장면이나 동일 문장을 문항 사이에 복사하지 말고, 출력 전에 모든 situation_ko를 서로 대조하세요.`
   const featureBoundaryRule = f.code === 'proposal_optionality_clarity'
     ? `🔴 제안 초점 경계: 문장이 **구체적인 대안 둘을 명시하고 어느 쪽이 좋은지 묻는다면** 선택 가능성과 방안 명료성을 모두 갖춘 적정 대역입니다. "두 가지를 생각했다"나 "정해야 한다" 같은 도입이 있어도 뒤에서 실제 대안과 의견 질문을 분명히 제시하면 too_tentative·too_directive로 붙이지 마세요. too_tentative는 행동/대안을 실제로 흐리거나 생략하고, too_directive는 결정을 확정하거나 선택을 명령하는 문장 자체로 실현하세요. 특히 원문에 구체적인 대안 둘이 이미 고정된 문항의 비적정 target·candidate는 두 대안 사실을 보존한 실제 too_directive 경계로 만들고, 적정 질문문에 too_tentative 라벨을 붙이지 마세요.`
     : ''
@@ -1918,12 +1975,19 @@ function buildMissionSystemPrompt(
 이 초점이 아닌 것(혼입 금지): ${f.excluded_confounds.join(', ')}
 깨야 할 소박한 규칙: ${f.counter_rule_note}
 ${featureBoundaryRule}
+${candidateBlueprints ? `
+[MJT3·MJT5 서버 고정 candidate blueprint]
+${JSON.stringify(candidateBlueprints, null, 2)}
+- candidate_index 순서와 intended_band·candidate_role은 서버 계약이므로 바꾸거나 재배열하지 마세요.
+- 한 번의 응답에서 모든 후보를 함께 만들되, 각 후보는 자기 blueprint의 preserve·adjustment·forbidden_extremization만 따라 표면 실현하세요.
+- 비현실적 극단화 없이, 비적정 후보도 인접한 실제 맥락 하나에서는 방어 가능한 경계 표현으로 만드세요.
+- 특정 후보의 대역을 구현할 수 없으면 다른 후보의 역할을 바꾸지 말고 해당 후보만 다시 작성하세요.` : ''}
 
 ${gate1}${spokenRule}
 
 MPJ ${itemCount}문항을 만듭니다. 학습 흐름은 ${learningFlow}입니다.
 Scale4는 종합 첫인상을 4점으로 받고 적절/부적절 방향만 채점합니다.${nativeJudgeIntro}
- FixChoice는 별도 사건에서 판단을 잠근 뒤 교정안을 공개합니다.
+${fixChoiceFlow}
 Reason 문항은 표현이 부적절하다는 전제에서 가장 큰 이유 하나를 바로 고르게 하며, 별도의 대역 판단이나 확신도는 묻지 않습니다.
 각 MPJ 문항에서 후보를 가르는 직접 채점축은 위 item_focus band 하나뿐입니다(한 문항 안의 다른 축 동시 변화 금지).
 그러나 미션 전체의 학습목표는 특정 feature 하나가 아니라 해당 화행의 통합 수행입니다.
@@ -1963,7 +2027,7 @@ ${diagnosticShape}
     {
       "type": "fix_choice",
       "channel": "허용 channel 코드",
-      "situation_ko": "${situationShape}",
+      "situation_ko": "${sharedAnchorSituationShape}",
       "relation_ko": "${relationShape}",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
@@ -1982,7 +2046,7 @@ ${diagnosticShape}
     {
       "type": "reason",
       "channel": "허용 channel 코드",
-      "situation_ko": "첫 문항과 다른 사건. ${situationShape}",
+      "situation_ko": "${reasonSituationShape}",
       "relation_ko": "${relationShape}",
       "pdr": {"p":"DCT와 같은 코드","d":"DCT와 같은 코드","r":"DCT와 같은 코드"},
       "source": "판단 대상의 실제 ${srcL} 발화",
@@ -2029,7 +2093,7 @@ ${diagnosticShape}
 
 핵심 규칙:
 - mpj_items는 **정확히 ${itemCount}개**, 순서는 ${exactOrder}.
-- 🔴 [장면 고유성] ${itemCount}개 situation_ko는 서로 다른 구체적 사건이어야 합니다. 같은 인물·용건·대상을 둔 사실상 같은 장면이나 동일 문장을 문항 사이에 복사하지 말고, 출력 전에 모든 situation_ko를 서로 대조하세요.
+${sceneUniquenessRule}
 ${nativeMpj5 ? `- diagnostic_dimensions는 **서로 다른 코드 2~6개**입니다. 각 code의 evidence_refs는 중복 없이 1개 이상이고, 전체 합집합은 MPJ/DCT 중 최소 2개 위치여야 합니다.
 - 선언한 차원은 그 근거 위치의 situation·P/D/R·preceding_turn·후보·DCT에서 실제로 관찰되어야 합니다. target_feature 이름을 바꿔 적거나 근거 없는 차원을 채우지 마세요.
 - 같은 evidence_ref가 여러 차원을 뒷받침할 수 있지만, 가능한 차원을 전부 체크하는 식의 과잉 선언은 금지합니다.` : ''}
@@ -2080,6 +2144,7 @@ ${nativeJudgeRules}- fix_choice는 **판단을 먼저 한 뒤 교정**하는 한
 - **앵커+대비**: ${anchorContrastRule},
   scale4는 해당 표현이 실제로 적절해지는 대비 P/D/R, multi_judge는 DCT P/D/R 중 정확히 한 축만 바꾼 대비 사건입니다.
 - DCT는 코어의 같은 P/D/R에서 새 장면을 쓰는 근접 전이 과제입니다. MPJ가 DCT 상황문을 그대로 복제하면 안 됩니다.
+${contextTopologyRule}
 ${sceneRules}
 - channel은 연구 축이 아니라 UI 표현용입니다. 상황과 일치시켜 번역은 email/messenger, 통역은 facetoface/phone만 사용하세요.
 - reason의 세 선택지는 target을 사실대로 기술해야 합니다. 실제 있는 요소를 "없다"고 쓰지 말고, 세 선택지 모두 표면상 검토할 가치가 있어야 하며 primary 하나만 판정의 가장 큰 원인이어야 합니다.
@@ -2148,7 +2213,7 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
     '[산출 정합] reference_alternatives(적절 산출안)가 쓰는 완화·전략은, MPJ 세트가 최소 1회 사전 노출해야 합니다.',
     `🔴 [참고안] reference_alternatives는 반드시 위 [산출 과제]의 "원문"(${srcL})을 ${tgtL}로 옮긴 것이어야 합니다 — MPJ 문항의 예문을 복사하거나 다른 상황의 문장을 넣지 마세요.`,
     nativeMpj5
-      ? '[앵커+대비] 2번 judge3·3번 fix_choice·4번 reason은 위 P/D/R을 그대로 사용하되 서로 다른 사건으로 만드세요.'
+      ? '[앵커+대비] 2번 judge3·3번 fix_choice·4번 reason은 위 P/D/R과 동일한 Anchor A 장면을 공유하세요.'
       : '[앵커+대비] 2번 fix_choice와 3번 reason은 위 P/D/R을 그대로 사용하되 서로 다른 사건으로 만드세요.',
     nativeMpj5
       ? '[앵커+대비] 5번 multi_judge는 위 P/D/R 중 정확히 한 축만 바꾼 대비 상황으로 만드세요.'
@@ -2161,6 +2226,15 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
       '[고정 contrast plan — 그대로 구현]:',
       JSON.stringify(b.contrast_plan, null, 2),
     )
+    if (b.frozen_topology) {
+      parts.push(
+        '',
+        '[서버 동결 scene topology — authoritative source]',
+        JSON.stringify(b.frozen_topology, null, 2),
+        'MJT1은 x, MJT2·3·4는 anchor, MJT5는 y 장면·관계·channel·PDR을 글자와 코드까지 그대로 사용하세요.',
+        'full-mission 응답에서 scene 값을 바꾸더라도 서버는 이 plan으로 덮어씁니다. 따라서 source·target·후보·해설을 이 동결 장면에 정확히 맞추세요.',
+      )
+    }
   }
   if (b.error_pattern_hints_ko.length) {
     parts.push(
@@ -2173,43 +2247,797 @@ function buildMissionUserPrompt(b: MissionGenBody, nativeMpj5Override?: boolean)
   return parts.join('\n')
 }
 
-const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v4_exact_operations'
+const MISSION_TOPOLOGY_PROMPT_VERSION = 'mission_scene_topology_v1_constraint_by_construction'
+
+type MissionTopologyAttemptFinding = NativeMpj5TopologyFinding & { attempt: number }
+type MissionTopologyEvidence = {
+  version: 'mission_scene_topology_evidence_v1'
+  prompt_version: typeof MISSION_TOPOLOGY_PROMPT_VERSION
+  first_pass_result: 'pass' | 'fail'
+  final_result: 'pass' | 'fail'
+  attempts: number
+  regeneration_count: number
+  findings: MissionTopologyAttemptFinding[]
+}
+
+const MISSION_TOPOLOGY_RESPONSE_FORMAT: OpenAIResponseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'pragma_mission_scene_topology',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['x', 'anchor', 'y'],
+      properties: {
+        x: { $ref: '#/$defs/scene' },
+        anchor: { $ref: '#/$defs/scene' },
+        y: { $ref: '#/$defs/scene' },
+      },
+      $defs: {
+        pdr: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['p', 'd', 'r'],
+          properties: {
+            p: { type: 'string', enum: ['speaker_lower', 'equal', 'speaker_higher'] },
+            d: { type: 'string', enum: ['close', 'acquaintance', 'distant'] },
+            r: { type: 'string', enum: ['low', 'mid', 'high'] },
+          },
+        },
+        scene: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['situation_ko', 'relation_ko', 'channel', 'pdr'],
+          properties: {
+            situation_ko: { type: 'string' },
+            relation_ko: { type: 'string' },
+            channel: { type: 'string', enum: ['email', 'messenger', 'facetoface', 'phone'] },
+            pdr: { $ref: '#/$defs/pdr' },
+          },
+        },
+      },
+    },
+  },
+}
+
+function buildMissionTopologyPrompt(
+  b: MissionGenBody,
+  findings: readonly MissionTopologyAttemptFinding[] = [],
+): { system: string; user: string } {
+  const direction = normDir(b.direction)
+  const isSpoken = b.core.source_modality === 'spoken'
+  const situationRule = isSpoken
+    ? '학습자 통역사 C의 관점에서 A·B·C 역할과 구체적 사건을 담은 한국어 정확히 2문장(A의 1인칭 금지)'
+    : '학습자 1인칭으로 상대·구체적 사건·핵심 제약을 담은 한국어 정확히 2문장'
+  const relationRule = isSpoken
+    ? '원발화자 A와 청자 B의 역할·관계만 한 줄'
+    : '학습자가 마주한 상대의 역할·관계만 한 줄'
+  const channels = isSpoken ? 'facetoface 또는 phone' : 'email 또는 messenger'
+  const system = `당신은 PRAGMA의 frozen mission scene topology 설계기입니다.
+완전한 미션·문항·후보·정답·해설은 만들지 말고 X/Anchor A/Y 세 장면만 JSON으로 만드세요.
+- X, A, Y situation_ko는 각각 ${situationRule}이며 140자 이내입니다.
+- X/A/Y와 서버가 제시하는 DCT C는 글자까지 완전히 다른 구체적 사건이어야 합니다.
+- Anchor A는 하나만 만듭니다. 이후 서버가 MJT2·3·4에 동일 객체로 복제합니다.
+- Anchor A는 DCT C와 같은 P/D/R입니다. X와 Y는 각각 Anchor에서 정확히 한 축만 바꿉니다.
+- relation_ko는 ${relationRule}이고 P/D/R과 일치해야 합니다.
+- channel은 ${channels}만 사용합니다.
+- 화행과 핵심 화용 초점은 유지하되 새 의미 판정 규칙을 만들지 마세요.
+응답은 지정 JSON 하나뿐입니다.`
+  const user = [
+    `[언어 방향] ${LANG_DIR_KO[direction]}`,
+    `[화행] ${b.speech_act_ko} (${b.speech_act})`,
+    `[화용 초점] ${b.feature.code} — ${b.feature.operational_definition}`,
+    '[서버 고정 DCT C — 변경 금지]',
+    JSON.stringify({
+      situation_ko: b.core.situation_ko,
+      relation_ko: b.core.relation_ko,
+      channel: b.core.channel ?? null,
+      pdr: b.core.pdr,
+      source_modality: b.core.source_modality,
+      source_text: b.core.source_text_ko,
+    }, null, 2),
+    ...(findings.length > 0
+      ? ['[직전 topology deterministic findings — 이 항목만 바로잡아 전체 X/A/Y를 다시 반환]', JSON.stringify(findings, null, 2)]
+      : []),
+  ].join('\n')
+  return { system, user }
+}
+
+async function generateFrozenMissionTopology(args: {
+  apiKey: string
+  body: MissionGenBody
+  telemetryFor: TelemetryFactory
+}): Promise<
+  | { ok: true; topology: NativeMpj5FrozenTopology; evidence: MissionTopologyEvidence }
+  | { ok: false; stopCode: string; error: string; evidence: MissionTopologyEvidence; providerStatus?: number }
+> {
+  const allFindings: MissionTopologyAttemptFinding[] = []
+  let firstPassResult: 'pass' | 'fail' = 'fail'
+  for (let attempt = 1; attempt <= NATIVE_MPJ5_TOPOLOGY_MAX_ATTEMPTS; attempt += 1) {
+    const prompt = buildMissionTopologyPrompt(args.body, allFindings)
+    const response = await callOpenAI(MISSION_PRIMARY_MODEL, args.apiKey, prompt.system, prompt.user, 0.2, {
+      responseFormat: MISSION_TOPOLOGY_RESPONSE_FORMAT,
+      // Topology is the first stage of mission generation. Keep the existing
+      // ledger operation and distinguish this subtype by its prompt version.
+      telemetry: args.telemetryFor('mission_generate', true, {
+        promptVersion: MISSION_TOPOLOGY_PROMPT_VERSION,
+        invocationAttempt: attempt,
+      }),
+    })
+    if (!response.ok) {
+      const evidence: MissionTopologyEvidence = {
+        version: 'mission_scene_topology_evidence_v1',
+        prompt_version: MISSION_TOPOLOGY_PROMPT_VERSION,
+        first_pass_result: firstPassResult,
+        final_result: 'fail',
+        attempts: attempt,
+        regeneration_count: Math.max(0, attempt - 1),
+        findings: allFindings,
+      }
+      return {
+        ok: false,
+        stopCode: 'topology_provider_failure',
+        error: 'Topology provider 호출에 실패했습니다.',
+        evidence,
+        providerStatus: response.status,
+      }
+    }
+    let parsed: unknown
+    try {
+      parsed = parseOpenAIContent(response.raw)
+    } catch (error) {
+      const parseFinding: MissionTopologyAttemptFinding = {
+        attempt,
+        code: 'TOPOLOGY_CONTEXT',
+        path: '$',
+        message: `Topology JSON 파싱 실패: ${(error as Error).message}`,
+      }
+      allFindings.push(parseFinding)
+      if (attempt === 1) firstPassResult = 'fail'
+      continue
+    }
+    const frozen = buildNativeMpj5FrozenTopology(parsed, args.body.core)
+    const attemptFindings = frozen.findings.map((finding) => ({ ...finding, attempt }))
+    if (attempt === 1) firstPassResult = attemptFindings.length === 0 ? 'pass' : 'fail'
+    allFindings.push(...attemptFindings)
+    if (attemptFindings.length === 0) {
+      return {
+        ok: true,
+        topology: frozen.topology,
+        evidence: {
+          version: 'mission_scene_topology_evidence_v1',
+          prompt_version: MISSION_TOPOLOGY_PROMPT_VERSION,
+          first_pass_result: firstPassResult,
+          final_result: 'pass',
+          attempts: attempt,
+          regeneration_count: Math.max(0, attempt - 1),
+          findings: allFindings,
+        },
+      }
+    }
+  }
+  return {
+    ok: false,
+    stopCode: 'topology_deterministic_failure',
+    error: 'Bounded topology regeneration 뒤에도 deterministic topology를 통과하지 못했습니다.',
+    evidence: {
+      version: 'mission_scene_topology_evidence_v1',
+      prompt_version: MISSION_TOPOLOGY_PROMPT_VERSION,
+      first_pass_result: firstPassResult,
+      final_result: 'fail',
+      attempts: NATIVE_MPJ5_TOPOLOGY_MAX_ATTEMPTS,
+      regeneration_count: NATIVE_MPJ5_TOPOLOGY_MAX_ATTEMPTS - 1,
+      findings: allFindings,
+    },
+  }
+}
+
+const MISSION_CANDIDATE_GENERATION_PROMPT_VERSION = 'mission_candidate_band_v2_bounded_fallback'
+const MISSION_CANDIDATE_CHECK_PROMPT_VERSION = 'quality_candidate_band_v1_boundary_crossing'
+const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v10_r27_topology_context'
+
+type CandidateBandCheckResult = {
+  path: string
+  severity: 'pass' | 'warning' | 'fail'
+  actual_band_code: string
+  direction_from_anchor: 'within' | 'toward_lower' | 'toward_upper' | 'uncertain'
+  boundary_crossed: boolean | null
+  semantic_defect: 'none' | 'meaning_shift' | 'intent_shift' | 'speech_act_shift' | 'unnatural' | 'focus_contamination' | 'uncertain'
+  note_ko: string
+}
+
+type TelemetryFactory = (
+  operation: LlmOperation,
+  required: boolean,
+  details?: Partial<Omit<OpenAITelemetry, 'requestGroupId' | 'operation' | 'required'>>,
+) => OpenAITelemetry
+
+function recordCandidate(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+function candidatePacket(
+  items: unknown[],
+  reference: MissionCandidateReference,
+  feature: FeatureForGen,
+): Record<string, unknown> | null {
+  const item = recordCandidate(items[reference.item_index])
+  if (!item || item.type !== reference.item_type) return null
+  const collection = Array.isArray(item[reference.collection]) ? item[reference.collection] as unknown[] : []
+  const candidate = recordCandidate(collection[reference.candidate_index])
+  const blueprint = missionCandidateBlueprintForReference(feature, reference)
+  if (!candidate || !blueprint) return null
+  const anchor = reference.anchor_candidate_index === null
+    ? null
+    : recordCandidate(collection[reference.anchor_candidate_index])
+  return {
+    path: missionCandidatePath(reference),
+    phase: reference.phase,
+    blueprint,
+    item_context: {
+      type: item.type,
+      situation_ko: item.situation_ko,
+      relation_ko: item.relation_ko,
+      pdr: item.pdr,
+      source: item.source,
+      target: item.target,
+    },
+    current_candidate: candidate,
+    verified_within_anchor: anchor,
+    immutable_peer_texts: collection
+      .filter((_, index) => index !== reference.candidate_index)
+      .map((peer) => recordCandidate(peer)?.text)
+      .filter((text): text is string => typeof text === 'string'),
+  }
+}
+
+function normalizeCandidateText(value: unknown): string {
+  return typeof value === 'string'
+    ? value.normalize('NFKC').replace(/[\p{P}\p{S}\p{Z}\s]+/gu, '').toLowerCase()
+    : ''
+}
+
+function candidateTextSnapshot(items: unknown[], excludedPath?: string): string {
+  return JSON.stringify(MISSION_CANDIDATE_REFERENCES
+    .map((reference) => {
+      const path = missionCandidatePath(reference)
+      const item = recordCandidate(items[reference.item_index])
+      const collection = item && Array.isArray(item[reference.collection])
+        ? item[reference.collection] as unknown[]
+        : []
+      return [path, recordCandidate(collection[reference.candidate_index])?.text ?? null]
+    })
+    .filter(([path]) => path !== excludedPath))
+}
+
+function applyCandidateReplacementsToItems(
+  sourceItems: unknown[],
+  operations: Array<{ path: string; candidate: Record<string, unknown> }>,
+): unknown[] {
+  const items = structuredClone(sourceItems)
+  for (const operation of operations) {
+    const reference = missionCandidateReferenceForPath(operation.path)
+    if (!reference) continue
+    const item = recordCandidate(items[reference.item_index])
+    const collection = item && Array.isArray(item[reference.collection])
+      ? [...item[reference.collection] as unknown[]]
+      : []
+    const original = recordCandidate(collection[reference.candidate_index])
+    if (!item || !original) continue
+    collection[reference.candidate_index] = {
+      ...original,
+      text: operation.candidate.text,
+      note_ko: operation.candidate.note_ko,
+    }
+    items[reference.item_index] = { ...item, [reference.collection]: collection }
+  }
+  return items
+}
+
+async function generateMissionCandidates(args: {
+  apiKey: string
+  items: unknown[]
+  references: readonly MissionCandidateReference[]
+  feature: FeatureForGen
+  direction: Direction
+  speechActKo: string
+  telemetryFor: TelemetryFactory
+  invocationAttempt: number
+}): Promise<
+  | { ok: true; operations: Array<{ path: string; candidate: Record<string, unknown> }> }
+  | {
+      ok: false
+      error: string
+      failure_kind: 'packet' | 'provider' | 'parse' | 'output_missing'
+      provider_status?: number
+      operations?: Array<{ path: string; candidate: Record<string, unknown> }>
+      missing_paths?: string[]
+    }
+> {
+  const packets = args.references
+    .map((reference) => candidatePacket(args.items, reference, args.feature))
+    .filter((packet): packet is Record<string, unknown> => Boolean(packet))
+  if (packets.length !== args.references.length) {
+    return { ok: false, failure_kind: 'packet', error: 'candidate packet 구성 실패' }
+  }
+  const system = `너는 mission_v5의 MJT3·MJT5 후보 표현만 생성한다. 전체 문항이나 metadata를 다시 쓰지 마라.
+각 packet의 blueprint가 정한 의미·발화 의도·화행 기능을 보존하고 target feature 하나만 조절한다.
+within_anchor는 해당 P·D·R에서 실제 within band인 자연스러운 후보로 만든다.
+relative_boundary는 verified_within_anchor와 의미·의도·화행 기능을 유지한 최소대조로 만들되,
+blueprint의 intended_band 방향이 실제 경계를 분명히 통과해야 한다. 단순 공손표지 중첩이나 길이 변화만으로
+경계를 구현하지 말고, 실제 발화 가능한 인접 경계 표현을 만든다. 특정 상투 표현에 의존하지 마라.
+immutable_peer_texts와 같은 문장, current_candidate와 같은 문장, 새 사실·이유·대안 추가는 금지한다.
+출력은 {"operations":[{"path":"정확한 packet path","candidate":{"text":"목표어 완전 문장","note_ko":"실제 조절 자원·관계 효과·대역 방향"}}]} JSON뿐이다.`
+  const user = `[화행] ${args.speechActKo}
+[언어 방향] ${LANG_DIR_KO[args.direction]}
+[화용 초점] ${args.feature.code}: ${args.feature.operational_definition}
+[적정 대역] ${args.feature.within_band_code}
+[대역] ${args.feature.band_schema.map((band) => `${band.code}=${band.label_ko}`).join(' | ')}
+[counter-rule] ${args.feature.counter_rule_note}
+[candidate packets]
+${JSON.stringify(packets, null, 2)}`
+  const att = await callOpenAI(MISSION_PRIMARY_MODEL, args.apiKey, system, user, 0.2, {
+    telemetry: args.telemetryFor('mission_generate', true, {
+      invocationAttempt: args.invocationAttempt,
+      promptVersion: MISSION_CANDIDATE_GENERATION_PROMPT_VERSION,
+    }),
+  })
+  if (!att.ok) {
+    return {
+      ok: false,
+      failure_kind: 'provider',
+      provider_status: att.status,
+      error: `candidate 생성 호출 실패: ${att.raw.slice(0, 300)}`,
+    }
+  }
+  let parsed: Record<string, unknown>
+  try {
+    parsed = parseOpenAIContent(att.raw) as Record<string, unknown>
+  } catch (error) {
+    return { ok: false, failure_kind: 'parse', error: `candidate 생성 파싱 실패: ${(error as Error).message}` }
+  }
+  const rawOperations = Array.isArray(parsed.operations) ? parsed.operations : []
+  const expected = new Map(args.references.map((reference) => [missionCandidatePath(reference), reference]))
+  const operations: Array<{ path: string; candidate: Record<string, unknown> }> = []
+  const used = new Set<string>()
+  for (const value of rawOperations) {
+    const operation = recordCandidate(value)
+    const path = typeof operation?.path === 'string' ? operation.path : ''
+    const reference = expected.get(path)
+    const replacement = recordCandidate(operation?.candidate)
+    if (!reference || used.has(path) || !replacement) continue
+    const text = typeof replacement.text === 'string' ? replacement.text.trim() : ''
+    const noteKo = typeof replacement.note_ko === 'string' ? replacement.note_ko.trim() : ''
+    const packet = candidatePacket(args.items, reference, args.feature)
+    const current = recordCandidate(packet?.current_candidate)
+    const peers = Array.isArray(packet?.immutable_peer_texts) ? packet?.immutable_peer_texts : []
+    const normalized = normalizeCandidateText(text)
+    if (!text || !noteKo || !normalized || normalized === normalizeCandidateText(current?.text) ||
+        peers.some((peer) => normalizeCandidateText(peer) === normalized)) continue
+    used.add(path)
+    operations.push({ path, candidate: { text, note_ko: noteKo } })
+  }
+  if (operations.length === args.references.length) return { ok: true, operations }
+  const realized = new Set(operations.map((operation) => operation.path))
+  return {
+    ok: false,
+    failure_kind: 'output_missing',
+    error: `candidate 생성 결과 누락: ${operations.length}/${args.references.length}`,
+    operations,
+    missing_paths: [...expected.keys()].filter((path) => !realized.has(path)),
+  }
+}
+
+async function checkMissionCandidates(args: {
+  apiKey: string
+  items: unknown[]
+  references: readonly MissionCandidateReference[]
+  feature: FeatureForGen
+  direction: Direction
+  speechActKo: string
+  telemetryFor: TelemetryFactory
+  invocationAttempt: number
+}): Promise<{ ok: true; results: CandidateBandCheckResult[] } | { ok: false; error: string }> {
+  const packets = args.references
+    .map((reference) => candidatePacket(args.items, reference, args.feature))
+    .filter((packet): packet is Record<string, unknown> => Boolean(packet))
+  if (packets.length !== args.references.length) return { ok: false, error: 'candidate 검사 packet 구성 실패' }
+  const system = `너는 MJT3·MJT5 후보 하나의 의미 보존과 화용 대역만 검사한다. 문장을 수정하지 마라.
+within_anchor는 해당 P·D·R에서 within인지 판정한다. relative_boundary는 verified_within_anchor 대비
+조정 방향이 보이는지와 intended_band 경계를 실제로 통과했는지를 별도로 판정한다.
+의미·발화 의도·화행 기능이 바뀌면 fail이다. 실제 대역 경계가 불확실하면 fail이 아니라 warning이며
+actual_band_code="uncertain", boundary_crossed=null로 쓴다. 공손표지 개수나 길이만으로 판정하지 마라.
+출력은 {"results":[{"path":"packet path","severity":"pass|warning|fail","actual_band_code":"정본 코드 또는 uncertain","direction_from_anchor":"within|toward_lower|toward_upper|uncertain","boundary_crossed":true|false|null,"semantic_defect":"none|meaning_shift|intent_shift|speech_act_shift|unnatural|focus_contamination|uncertain","note_ko":"근거"}]} JSON뿐이다.`
+  const user = `[화행] ${args.speechActKo}
+[언어 방향] ${LANG_DIR_KO[args.direction]}
+[화용 초점] ${args.feature.code}: ${args.feature.operational_definition}
+[대역] ${args.feature.band_schema.map((band) => `${band.code}=${band.label_ko}`).join(' | ')}
+[적정 대역] ${args.feature.within_band_code}
+[counter-rule] ${args.feature.counter_rule_note}
+[candidate packets]
+${JSON.stringify(packets, null, 2)}`
+  const att = await callOpenAI(CRITIC_PRIMARY_MODEL, args.apiKey, system, user, 0.1, {
+    telemetry: args.telemetryFor('mission_critic', true, {
+      invocationAttempt: args.invocationAttempt,
+      promptVersion: MISSION_CANDIDATE_CHECK_PROMPT_VERSION,
+    }),
+  })
+  if (!att.ok) return { ok: false, error: `candidate 검사 호출 실패: ${att.raw.slice(0, 300)}` }
+  let parsed: Record<string, unknown>
+  try {
+    parsed = parseOpenAIContent(att.raw) as Record<string, unknown>
+  } catch (error) {
+    return { ok: false, error: `candidate 검사 파싱 실패: ${(error as Error).message}` }
+  }
+  const rawResults = Array.isArray(parsed.results) ? parsed.results : []
+  const expected = new Map(args.references.map((reference) => [missionCandidatePath(reference), reference]))
+  const results: CandidateBandCheckResult[] = []
+  for (const value of rawResults) {
+    const result = recordCandidate(value)
+    const path = typeof result?.path === 'string' ? result.path : ''
+    const reference = expected.get(path)
+    const blueprint = reference ? missionCandidateBlueprintForReference(args.feature, reference) : null
+    if (!reference || !blueprint || results.some((entry) => entry.path === path)) continue
+    const actualBand = typeof result?.actual_band_code === 'string' ? result.actual_band_code : 'uncertain'
+    const semanticDefect = ['none', 'meaning_shift', 'intent_shift', 'speech_act_shift', 'unnatural', 'focus_contamination', 'uncertain']
+      .includes(String(result?.semantic_defect))
+      ? String(result?.semantic_defect) as CandidateBandCheckResult['semantic_defect']
+      : 'uncertain'
+    const uncertain = actualBand === 'uncertain' || result?.boundary_crossed === null || semanticDefect === 'uncertain'
+    const semanticFail = !['none', 'uncertain'].includes(semanticDefect)
+    const bandFail = actualBand !== 'uncertain' && actualBand !== blueprint.intended_band
+    const boundaryFail = reference.phase === 'relative_boundary' && result?.boundary_crossed === false
+    const severity: CandidateBandCheckResult['severity'] = semanticFail || bandFail || boundaryFail
+      ? 'fail'
+      : uncertain || result?.severity === 'warning' ? 'warning' : 'pass'
+    const direction = ['within', 'toward_lower', 'toward_upper', 'uncertain'].includes(String(result?.direction_from_anchor))
+      ? String(result?.direction_from_anchor) as CandidateBandCheckResult['direction_from_anchor']
+      : 'uncertain'
+    results.push({
+      path,
+      severity,
+      actual_band_code: actualBand,
+      direction_from_anchor: direction,
+      boundary_crossed: typeof result?.boundary_crossed === 'boolean' ? result.boundary_crossed : null,
+      semantic_defect: semanticDefect,
+      note_ko: typeof result?.note_ko === 'string' ? result.note_ko.slice(0, 400) : '',
+    })
+  }
+  return results.length === args.references.length
+    ? { ok: true, results }
+    : { ok: false, error: `candidate 검사 결과 누락: ${results.length}/${args.references.length}` }
+}
+
+async function realizeRelativeBandCandidates(args: {
+  apiKey: string
+  items: unknown[]
+  feature: FeatureForGen
+  direction: Direction
+  speechActKo: string
+  telemetryFor: TelemetryFactory
+}): Promise<
+  | {
+      ok: true
+      items: unknown[]
+      within_regeneration_count: number
+      candidate_regeneration_counts: CandidateRegenerationCounts
+      boundary_fallback: {
+        eligible_paths: string[]
+        attempted_paths: string[]
+        succeeded_paths: string[]
+        situation_unchanged: boolean
+        immutable_candidates_unchanged: boolean
+      }
+      warnings: CandidateBandCheckResult[]
+    }
+  | {
+      ok: false
+      stop_code: string
+      error: string
+      results?: CandidateBandCheckResult[]
+      boundary_fallback?: Record<string, unknown>
+    }
+> {
+  const withinReferences = MISSION_CANDIDATE_REFERENCES.filter((reference) => reference.phase === 'within_anchor')
+  const firstCheck = await checkMissionCandidates({ ...args, references: withinReferences, invocationAttempt: 1 })
+  if (!firstCheck.ok) return { ok: false, stop_code: 'within_candidate_check_failed', error: firstCheck.error }
+  const failedWithin = firstCheck.results
+    .filter((result) => result.severity === 'fail')
+    .map((result) => missionCandidateReferenceForPath(result.path))
+    .filter((reference): reference is MissionCandidateReference => Boolean(reference))
+  let items = args.items
+  let withinRegenerationCount = 0
+  let candidateRegenerationCounts: CandidateRegenerationCounts = {}
+  let withinResults = firstCheck.results
+  if (failedWithin.length > 0) {
+    const regenerated = await generateMissionCandidates({ ...args, items, references: failedWithin, invocationAttempt: 2 })
+    if (!regenerated.ok) return { ok: false, stop_code: 'within_candidate_regeneration_failed', error: regenerated.error, results: firstCheck.results }
+    withinRegenerationCount = regenerated.operations.length
+    candidateRegenerationCounts = recordCandidateRegeneration(
+      candidateRegenerationCounts,
+      regenerated.operations.map((operation) => operation.path),
+    )
+    items = applyCandidateReplacementsToItems(items, regenerated.operations)
+    const recheck = await checkMissionCandidates({ ...args, items, references: failedWithin, invocationAttempt: 2 })
+    if (!recheck.ok) return { ok: false, stop_code: 'within_candidate_recheck_failed', error: recheck.error, results: firstCheck.results }
+    const repeated = recheck.results.filter((result) => result.severity === 'fail')
+    if (repeated.length > 0) {
+      return {
+        ok: false,
+        stop_code: 'band_targeting_repeated_semantic_defect',
+        error: 'within 후보가 첫 regeneration 뒤에도 같은 의미·대역 결함을 반복했습니다.',
+        results: repeated,
+      }
+    }
+    const recheckedByPath = new Map(recheck.results.map((result) => [result.path, result]))
+    withinResults = firstCheck.results.map((result) => recheckedByPath.get(result.path) ?? result)
+  }
+  const boundaryReferences = MISSION_CANDIDATE_REFERENCES.filter((reference) => reference.phase === 'relative_boundary')
+  const situationSnapshot = JSON.stringify(args.items.map((value) => recordCandidate(value)?.situation_ko ?? null))
+  const boundaries = await generateMissionCandidates({ ...args, items, references: boundaryReferences, invocationAttempt: 1 })
+  let boundaryFallback = {
+    eligible_paths: [] as string[],
+    attempted_paths: [] as string[],
+    succeeded_paths: [] as string[],
+    situation_unchanged: true,
+    immutable_candidates_unchanged: true,
+  }
+  if (boundaries.ok) {
+    items = applyCandidateReplacementsToItems(items, boundaries.operations)
+  } else {
+    if (boundaries.failure_kind !== 'output_missing') {
+      return {
+        ok: false,
+        stop_code: 'relative_boundary_generation_failed',
+        error: boundaries.error,
+        results: withinResults,
+        boundary_fallback: {
+          failure_kind: boundaries.failure_kind,
+          provider_status: boundaries.provider_status ?? null,
+        },
+      }
+    }
+    const partialOperations = boundaries.operations ?? []
+    items = applyCandidateReplacementsToItems(items, partialOperations)
+    const expectedPaths = boundaryReferences.map(missionCandidatePath)
+    const fallbackPlan = planCandidateFallback(
+      expectedPaths,
+      partialOperations.map((operation) => operation.path),
+      candidateRegenerationCounts,
+    )
+    boundaryFallback.eligible_paths = fallbackPlan.eligiblePaths
+    if (fallbackPlan.exhaustedPaths.length > 0) {
+      return {
+        ok: false,
+        stop_code: 'relative_boundary_fallback_budget_exhausted',
+        error: `candidate fallback budget exhausted: ${fallbackPlan.exhaustedPaths.join(', ')}`,
+        results: withinResults,
+        boundary_fallback: { ...boundaryFallback, exhausted_paths: fallbackPlan.exhaustedPaths },
+      }
+    }
+    for (const path of fallbackPlan.eligiblePaths) {
+      const reference = missionCandidateReferenceForPath(path)
+      if (!reference) continue
+      boundaryFallback.attempted_paths.push(path)
+      const fallback = await generateMissionCandidates({
+        ...args,
+        items,
+        references: [reference],
+        invocationAttempt: 2,
+      })
+      candidateRegenerationCounts = recordCandidateRegeneration(candidateRegenerationCounts, [path])
+      if (!fallback.ok) {
+        return {
+          ok: false,
+          stop_code: 'relative_boundary_fallback_failed',
+          error: fallback.error,
+          results: withinResults,
+          boundary_fallback: {
+            ...boundaryFallback,
+            failed_path: path,
+            failure_kind: fallback.failure_kind,
+            provider_status: fallback.provider_status ?? null,
+            candidate_regeneration_counts: candidateRegenerationCounts,
+          },
+        }
+      }
+      const immutableBefore = candidateTextSnapshot(items, path)
+      items = applyCandidateReplacementsToItems(items, fallback.operations)
+      const changedPaths = fallback.operations.map((operation) => operation.path)
+      if (changedPaths.length !== 1 || changedPaths[0] !== path) {
+        boundaryFallback.immutable_candidates_unchanged = false
+      }
+      if (immutableBefore !== candidateTextSnapshot(items, path)) {
+        boundaryFallback.immutable_candidates_unchanged = false
+      }
+      boundaryFallback.succeeded_paths.push(path)
+    }
+  }
+  boundaryFallback.situation_unchanged = situationSnapshot ===
+    JSON.stringify(items.map((value) => recordCandidate(value)?.situation_ko ?? null))
+  return {
+    ok: true,
+    items,
+    within_regeneration_count: withinRegenerationCount,
+    candidate_regeneration_counts: candidateRegenerationCounts,
+    boundary_fallback: boundaryFallback,
+    warnings: withinResults.filter((result) => result.severity === 'warning'),
+  }
+}
+
+function actionableRepairFindings(findings: MissionRepairBody['findings']) {
+  const repairOnlyFindings = findings.filter((finding) =>
+    finding.code !== 'band_mismatch' && finding.code !== 'implausible_distractor')
+  const failedCandidateFindings = repairOnlyFindings.filter((finding) =>
+    finding.severity === 'fail' &&
+    /^mpj_items\[\d+\]\.(corrections|candidates)\[\d+\]/.test(finding.where))
+  return failedCandidateFindings.length > 0 ? failedCandidateFindings : repairOnlyFindings
+}
+
+interface MissionCandidateRegenerationBody extends MissionRepairBody {
+  /** 같은 후보의 첫 regeneration에서 동일 의미 결함이 반복되면 호출자가 canary를 정지한다. */
+  regeneration_attempt: 1
+}
+
+function candidateRepairBoundaryRule(intendedBand: string | undefined): string {
+  if (!intendedBand) return 'Realize the assigned band through the focal pragmatic resource only.'
+  if (/(too_indirect|too_tentative|too_ambiguous|too_obscured)/.test(intendedBand)) {
+    return 'Keep the action, participants and proposition recoverable, but make the speech-act commitment or requested action only inferable rather than clearly posed. Stacking ordinary politeness or optionality markers while keeping the act explicit is still within-band and is not enough.'
+  }
+  if (/(too_direct|too_blunt|too_pressuring|too_confrontational)/.test(intendedBand)) {
+    return 'Keep the same proposition and speech act, but reduce focal mitigation or choice enough to constrain the addressee. Do not use coercion, insult, an impossible command or a different speech act.'
+  }
+  if (/(insufficient|under_|too_brief|too_weak)/.test(intendedBand)) {
+    return 'Keep the speech act recognizable but under-realize exactly one focal resource enough to cross below the acceptable boundary; do not delete the proposition or make the sentence fragmentary.'
+  }
+  if (/(excessive|over_|too_elaborate|too_strong)/.test(intendedBand)) {
+    return 'Over-realize only the focal pragmatic resource relative to this PDR. Use redundancy or overextension without inventing a reason, promise, alternative, event or other new fact.'
+  }
+  return 'Realize the assigned non-within boundary through one focal pragmatic difference while preserving the full proposition and speech-act function.'
+}
 
 function repairTargets(findings: MissionRepairBody['findings']) {
-  const itemIndexes = [...new Set(findings.flatMap((finding) => {
-    const match = finding.where.match(/mpj_items\[(\d+)\]/)
-    return match ? [Number(match[1])] : []
-  }))].filter((index) => Number.isInteger(index) && index >= 0 && index <= 4)
+  const candidateTargets: Array<{
+    itemIndex: number
+    candidateIndex: number
+    collection: 'corrections' | 'candidates'
+  }> = []
+  const itemIndexes: number[] = []
+  const situationTargets: string[] = []
+  for (const finding of actionableRepairFindings(findings)) {
+    if (/^mpj_items\[\d+\]\.situation_ko$/.test(finding.where) ||
+        finding.where === 'production_task.situation_ko') {
+      situationTargets.push(finding.where)
+      continue
+    }
+    const candidateMatch = finding.where.match(/mpj_items\[(\d+)\]\.(corrections|candidates)\[(\d+)\]/)
+    if (candidateMatch) {
+      const itemIndex = Number(candidateMatch[1])
+      const candidateIndex = Number(candidateMatch[3])
+      const collection = candidateMatch[2] as 'corrections' | 'candidates'
+      if (Number.isInteger(itemIndex) && itemIndex >= 0 && itemIndex <= 4 &&
+          Number.isInteger(candidateIndex) && candidateIndex >= 0) {
+        candidateTargets.push({ itemIndex, candidateIndex, collection })
+      }
+      continue
+    }
+    const itemMatch = finding.where.match(/mpj_items\[(\d+)\]/)
+    if (itemMatch) itemIndexes.push(Number(itemMatch[1]))
+  }
+  const uniqueCandidateTargets = [...new Map(candidateTargets.map((target) => [
+    `${target.itemIndex}:${target.collection}:${target.candidateIndex}`,
+    target,
+  ])).values()]
+  const uniqueItemIndexes = [...new Set(itemIndexes)]
+    .filter((index) => Number.isInteger(index) && index >= 0 && index <= 4)
   const productionReferences = findings.some((finding) =>
     finding.where.startsWith('production_task.reference_alternatives'))
   const diagnosticDimensions = findings.some((finding) =>
     finding.where.startsWith('diagnostic_dimensions'))
-  return { itemIndexes, productionReferences, diagnosticDimensions }
+  return {
+    itemIndexes: uniqueItemIndexes,
+    candidateTargets: uniqueCandidateTargets,
+    situationTargets: [...new Set(situationTargets)],
+    productionReferences,
+    diagnosticDimensions,
+  }
 }
 
 function buildMissionRepairPrompt(b: MissionRepairBody): { system: string; user: string } {
   const targets = repairTargets(b.findings)
+  const targetFindings = actionableRepairFindings(b.findings)
+  const candidateBlueprints = buildMissionCandidateBlueprints(b.feature)
+  const missionItems = Array.isArray(b.mission_content.mpj_items) ? b.mission_content.mpj_items : []
+  const candidatePackets = targets.candidateTargets.map((target) => {
+    const rawItem = missionItems[target.itemIndex]
+    const item = rawItem && typeof rawItem === 'object' && !Array.isArray(rawItem)
+      ? rawItem as Record<string, unknown>
+      : {}
+    const collection = Array.isArray(item[target.collection]) ? item[target.collection] as unknown[] : []
+    const blueprint = target.collection === 'corrections'
+      ? candidateBlueprints.fix_choice[target.candidateIndex]
+      : candidateBlueprints.multi_judge[target.candidateIndex]
+    const path = `mpj_items[${target.itemIndex}].${target.collection}[${target.candidateIndex}]`
+    return {
+      path,
+      operation: target.collection === 'corrections'
+        ? 'replace_fix_choice_candidate'
+        : 'replace_multi_judge_candidate',
+      item_index: target.itemIndex,
+      candidate_index: target.candidateIndex,
+      blueprint,
+      repair_boundary_rule: candidateRepairBoundaryRule(blueprint?.intended_band),
+      item_context: {
+        type: item.type,
+        situation_ko: item.situation_ko,
+        relation_ko: item.relation_ko,
+        pdr: item.pdr,
+        source: item.source,
+        target: item.target,
+      },
+      current_candidate: collection[target.candidateIndex],
+      immutable_peer_texts: collection
+        .filter((_, index) => index !== target.candidateIndex)
+        .map((candidate) => candidate && typeof candidate === 'object' && !Array.isArray(candidate)
+          ? (candidate as Record<string, unknown>).text
+          : null),
+      findings: targetFindings.filter((finding) => finding.where === path),
+    }
+  })
+  const situationPackets = targets.situationTargets.map((path) => ({
+    ...buildNativeMpj5SituationRepairPacket(b.mission_content, path),
+    findings: targetFindings.filter((finding) => finding.where === path),
+  }))
   const allowed = [
+    ...targets.situationTargets.map((path) => `replace_situation:${path}`),
     ...targets.itemIndexes.map((index) => `replace_item_block:${index}`),
+    ...targets.candidateTargets.map((target) =>
+      `${target.collection === 'corrections' ? 'replace_fix_choice_candidate' : 'replace_multi_judge_candidate'}:${target.itemIndex}:${target.candidateIndex}`),
     ...(targets.productionReferences ? ['replace_reference_alternatives'] : []),
     ...(targets.diagnosticDimensions ? ['replace_diagnostic_dimensions'] : []),
   ]
   const system = `당신은 PRAGMA 교수자 저작 파이프라인의 국소 수리 모델입니다.
-결정론 검사 또는 critic이 지목한 문항만 고치고, 통과한 문항과 DCT 코어는 절대 바꾸지 마세요.
-허용 operation은 replace_item_block, replace_reference_alternatives,
-replace_diagnostic_dimensions뿐입니다. replace_item_block은 item_index와 완전한 item을,
-나머지는 각각 reference_alternatives 또는 diagnostic_dimensions를 반환합니다.
+결정론 검사 또는 critic이 지목한 대상만 고치고, 통과한 후보·문항과 DCT 코어는 절대 바꾸지 마세요.
+R27 situation 경로가 지목되면 replace_situation으로 그 문자열 하나만 다시 만드세요. 다른 필드는 반환하거나
+바꾸지 마세요. packet의 topology_role·target_context·anchor_a·role_requirement를 모두 따르세요.
+MJT3·4 Anchor A 경로라면 새 사건을 만들지 말고 packet의 MJT2 Anchor A 문자열을 그대로 씁니다.
+복수 상황을 한 번에 교체할 때 새 X/Y/C 결과끼리도 완전히 달라야 합니다.
+후보 경로가 지목되면 replace_fix_choice_candidate 또는 replace_multi_judge_candidate로 그 후보 하나만
+다시 만드세요. candidate에는 text와 note_ko만 반환하며 is_valid·accepted_band_codes·comparison_role은
+서버가 원본 그대로 동결합니다. 문항 전체 operation으로 후보 수리를 우회하지 마세요.
+허용 operation은 replace_situation, replace_fix_choice_candidate, replace_multi_judge_candidate, replace_item_block,
+replace_reference_alternatives, replace_diagnostic_dimensions입니다. replace_item_block은 item_index와 완전한
+item을, 나머지는 각각 지정 후보 또는 reference_alternatives·diagnostic_dimensions를 반환합니다.
 문항의 id·type·item_focus·axis_feature·source·PDR·preceding_turn은 원본을 유지합니다.
 원문의 행위자·사건·시간·수량·대안·핵심 명제·화행 목적을 유지하고, 문제로 지목된 화용 표현·
-후보·해설만 고치세요. 단, rule_R27_duplicate_situation은 동결된 source와 PDR에 맞게
-situation_ko만 다른 문항·DCT와 구별되는 구체적 장면으로 다시 쓰세요. 다른 문항을 더 좋게
+후보·해설만 고치세요. 단, rule_R27_situation은 동결된 source와 PDR에 맞게
+지목된 situation_ko만 topology 역할에 맞는 구체적 장면으로 다시 쓰세요. 다른 문항을 더 좋게
 쓰려는 변경은 금지합니다.
 모든 교체 문항의 explanation_ko와 note_ko는 **현재 상황 단서 → 실제 표현 자원·기능 → 관계적
 효과 → 유지/조정 한 지점**을 연결하고 한 화용 차이만 설명하세요. multi_judge의 적정안 2개는
 서로 다른 실제 화용 자원과 관계적 효과를 가져야 하며 숨은 우열을 만들지 마세요.
 허용 대상이 하나 이상이면 지목된 각 대상의 operation을 반드시 반환하고 operations를 빈 배열로
-끝내지 마세요. 한 후보 결함도 정답 키·후보·note·explanation이 일치하는 완전한 item block으로 고치세요.
-각 operation 객체는 아래 세 형태 중 하나를 **키 이름까지 정확히** 따르세요.
+끝내지 마세요. 후보 수리는 원문의 명제·발화 의도·화행 기능을 유지하고 고정 blueprint의
+intended_band만 표면 실현하세요. 비현실적 극단화·의미 소실·다른 화행으로의 변경은 금지합니다.
+band_mismatch 후보는 이전 표현을 방어하거나 가볍게 바꿔 쓰지 말고, **동결된 intended_band의
+경계를 실제로 넘는 서로 다른 표면 실현**으로 교체하세요. non-within 후보는 초점 자원 하나의
+부족·과잉이 현재 P·D·R에서 분명하되 인접 실제 맥락에서는 방어 가능해야 합니다. 원문에 없는
+이유·약속·대안·새 일정을 추가해 경계를 만들지 마세요. note_ko에는 교체 문장에 실제 존재하는
+초점 자원과 그것이 intended_band를 만드는 이유를 구체적으로 적으세요.
+교체 text는 현재 후보와 정규화 후 동일하면 무효입니다. non-within blueprint인데 note_ko에서
+"적절하다/적정하다"고 결론 내리거나, 현재 후보가 사실상 within이라는 finding을 note_ko에
+그대로 복사하지 마세요. finding은 **왜 이전 후보를 버려야 하는지**에만 사용하고 새 후보의
+목표 대역은 오직 blueprint로 결정하세요.
+immutable_peer_texts와 정규화 후 같은 문장도 무효입니다. packet의 repair_boundary_rule을
+실제 문장 기능으로 구현하고, 일반적인 공손·완화 표지를 단순 중첩한 것을 경계 밖 표현으로
+오인하지 마세요.
+각 operation 객체는 아래 여섯 형태 중 하나를 **키 이름까지 정확히** 따르세요.
+- {"operation":"replace_situation","path":"mpj_items[4].situation_ko 또는 production_task.situation_ko","situation_ko":"한국어 정확히 2문장"}
+- {"operation":"replace_fix_choice_candidate","item_index":2,"candidate_index":1,"candidate":{"text":"완전한 후보 문장","note_ko":"표현 자원·관계 효과·조정 방향"}}
+- {"operation":"replace_multi_judge_candidate","item_index":4,"candidate_index":3,"candidate":{"text":"완전한 후보 문장","note_ko":"표현 자원·관계 효과·조정 방향"}}
 - {"operation":"replace_item_block","item_index":4,"item":{원본과 같은 type의 완전한 문항 객체}}
 - {"operation":"replace_reference_alternatives","reference_alternatives":[완전한 대안 객체들]}
 - {"operation":"replace_diagnostic_dimensions","diagnostic_dimensions":[완전한 차원 객체들]}
@@ -2218,11 +3046,17 @@ op·action·index·replacement 같은 다른 키 이름이나 수정된 필드�
   const user = [
     `[화행] ${b.speech_act_ko} (${b.speech_act})`,
     `[문항 판정 초점] ${b.feature.code} — ${b.feature.operational_definition}`,
+    `[counter-rule·반례] ${b.feature.counter_rule_note}`,
+    '[서버 고정 candidate blueprint]',
+    JSON.stringify(candidateBlueprints, null, 2),
     `[허용 대상] ${allowed.length ? allowed.join(', ') : '(자동 수리 가능 대상 없음)'}`,
     '[검사 findings]',
-    JSON.stringify(b.findings, null, 2),
-    '[동결된 전체 미션]',
-    JSON.stringify(b.mission_content, null, 2),
+    JSON.stringify(targetFindings, null, 2),
+    ...(candidatePackets.length > 0
+      ? ['[실패 후보별 최소 수리 packet — 여기에 없는 문항은 immutable]', JSON.stringify(candidatePackets, null, 2)]
+      : situationPackets.length > 0
+        ? ['[실패 상황별 최소 수리 packet — path 밖의 상황은 immutable]', JSON.stringify(situationPackets, null, 2)]
+        : ['[동결된 전체 미션]', JSON.stringify(b.mission_content, null, 2)]),
   ].join('\n')
   return { system, user }
 }
@@ -2241,11 +3075,76 @@ function sanitizeMissionRepairOperations(
     ? parsed.operations
     : Array.isArray(parsed.repairs) ? parsed.repairs : []
   const sanitized: Array<Record<string, unknown>> = []
+  const candidateTargetKeys = new Set(targets.candidateTargets.map((target) =>
+    `${target.itemIndex}:${target.collection}:${target.candidateIndex}`))
+  const situationTargetPaths = new Set(targets.situationTargets)
+  const acceptedSituationReplacements = new Map<string, string>()
   for (const value of operations) {
     const operation = value && typeof value === 'object' && !Array.isArray(value)
       ? value as Record<string, unknown>
       : {}
     const operationName = operation.operation ?? operation.op ?? operation.action
+    if (operationName === 'replace_situation') {
+      const path = String(operation.path ?? '')
+      const situation = typeof operation.situation_ko === 'string' ? operation.situation_ko.trim() : ''
+      if (!situationTargetPaths.has(path) || !situation) continue
+      const itemMatch = path.match(/^mpj_items\[(\d+)\]\.situation_ko$/)
+      const current = itemMatch
+        ? (items[Number(itemMatch[1])] as Record<string, unknown> | undefined)?.situation_ko
+        : path === 'production_task.situation_ko'
+          ? (mission.production_task as Record<string, unknown> | undefined)?.situation_ko
+          : null
+      if (situation === current || !isNativeMpj5SituationReplacementTopologySafe(
+        mission,
+        path,
+        situation,
+        acceptedSituationReplacements,
+      )) continue
+      acceptedSituationReplacements.set(path, situation)
+      sanitized.push({ operation: 'replace_situation', path, situation_ko: situation })
+      continue
+    }
+    if (operationName === 'replace_fix_choice_candidate' || operationName === 'replace_multi_judge_candidate') {
+      const itemIndex = Number(operation.item_index ?? operation.itemIndex)
+      const candidateIndex = Number(operation.candidate_index ?? operation.candidateIndex)
+      const collection = operationName === 'replace_fix_choice_candidate' ? 'corrections' : 'candidates'
+      if (!candidateTargetKeys.has(`${itemIndex}:${collection}:${candidateIndex}`)) continue
+      const originalItem = items[itemIndex]
+      if (!originalItem || typeof originalItem !== 'object' || Array.isArray(originalItem)) continue
+      const itemRecord = originalItem as Record<string, unknown>
+      const originalCandidates = Array.isArray(itemRecord[collection]) ? itemRecord[collection] as unknown[] : []
+      const originalCandidate = originalCandidates[candidateIndex]
+      const replacement = operation.candidate ?? operation.replacement
+      if (!originalCandidate || typeof originalCandidate !== 'object' || Array.isArray(originalCandidate) ||
+          !replacement || typeof replacement !== 'object' || Array.isArray(replacement)) continue
+      const frozenCandidate = originalCandidate as Record<string, unknown>
+      const replacementCandidate = replacement as Record<string, unknown>
+      if (typeof replacementCandidate.text !== 'string' || !replacementCandidate.text.trim() ||
+          typeof replacementCandidate.note_ko !== 'string' || !replacementCandidate.note_ko.trim()) continue
+      const normalizedOriginal = String(frozenCandidate.text ?? '')
+        .normalize('NFKC').replace(/[\p{P}\p{S}\p{Z}\s]+/gu, '').toLowerCase()
+      const normalizedReplacement = replacementCandidate.text
+        .normalize('NFKC').replace(/[\p{P}\p{S}\p{Z}\s]+/gu, '').toLowerCase()
+      if (!normalizedReplacement || normalizedReplacement === normalizedOriginal) continue
+      const normalizedPeers = new Set(originalCandidates
+        .filter((_, index) => index !== candidateIndex)
+        .map((candidate) => candidate && typeof candidate === 'object' && !Array.isArray(candidate)
+          ? String((candidate as Record<string, unknown>).text ?? '')
+              .normalize('NFKC').replace(/[\p{P}\p{S}\p{Z}\s]+/gu, '').toLowerCase()
+          : ''))
+      if (normalizedPeers.has(normalizedReplacement)) continue
+      sanitized.push({
+        operation: operationName,
+        item_index: itemIndex,
+        candidate_index: candidateIndex,
+        candidate: {
+          ...frozenCandidate,
+          text: replacementCandidate.text,
+          note_ko: replacementCandidate.note_ko,
+        },
+      })
+      continue
+    }
     if (operationName === 'replace_item_block') {
       const index = Number(operation.item_index ?? operation.itemIndex ?? operation.index)
       if (!targets.itemIndexes.includes(index)) continue
@@ -2295,7 +3194,7 @@ function sanitizeMissionRepairOperations(
       })
     }
   }
-  return sanitized.slice(0, targets.itemIndexes.length + 2)
+  return sanitized.slice(0, targets.situationTargets.length + targets.itemIndexes.length + targets.candidateTargets.length + 2)
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -2417,7 +3316,7 @@ function buildQualitySystemPrompt(
     ? '**첫인상 판단 → 맥락 대비 판단 → 판단+교정 → 주원인 선택 → 여러 초안 비교**(MPJ 5문항)'
     : '**첫인상 판단 → 판단+교정 → 주원인 선택 → 여러 초안 비교**(legacy MPJ 4문항)'
   const contextPlan = nativeMpj5
-    ? 'judge3·fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
+    ? 'judge3·fix_choice·reason은 DCT와 같은 앵커 PDR의 동일한 Anchor A 사건'
     : 'fix_choice·reason은 DCT와 같은 앵커 PDR의 서로 다른 사건'
   const comparisonQualityCheck = nativeMpj5
     ? `⑪ comparison_quality_mismatch — multi_judge의 네 후보가 **적정 대역 2개·조정 필요 대역
@@ -2475,6 +3374,18 @@ function buildQualitySystemPrompt(
    적절성의 긍정 증거로 쓰지 마라. 친밀도·권력·부담과 화행 목적에 비해 감사·사과·호칭·완화가
    과도하면 더 좋은 답이 아니라 과잉 관계조정일 수 있다.
 ${featureBoundaryAudit}
+6. **대역 경계의 불확실성** — 실제 문장이 적정 대역인지 비적정 대역인지는 명확하지만 비적정
+   세부 대역의 어느 쪽인지 경계적인 경우에는 학습 오도 근거가 확인되지 않는 한 fail로 올리지 말고
+   warning으로 남겨라. 아래에 전달된 counter-rule·반례를 우선 적용하고, 표현 표지 하나만으로
+   대역을 결정하지 마라.
+7. **P·D·R 관점** — 번역의 P는 학습자 화자 기준이고, 통역의 P는 원발화자 A와 청자 B의
+   관계에서 A 기준이다. 학습자 통역사 C의 지위를 A 또는 B의 지위로 바꾸어 읽지 마라.
+8. **blueprint-판정 일치** — 아래 심사 요청의 candidate blueprint는 후보별 서버 고정 정답
+   역할이다. band_mismatch는 실제 표현이 그 intended_band와 다를 때만 보고하라. 네 근거가
+   "실제 표현도 intended_band다"라고 결론 내리면 같은 후보에 band_mismatch를 만들지 마라.
+   MJT3 lower/upper는 within 수정안, MJT5 lower는 within A·upper는 within B와 비교해 **조정 방향이
+   보이는지**와 **실제 대역 경계를 통과했는지**를 별도로 판단하라. 방향은 보이지만 경계 통과가
+   불확실하면 warning이다. finding의 0-based 경로·인용·실제 metadata를 최종 출력 전에 대조하라.
 
 [검사 항목]
 ① gate1_violation — 판정 후보(target·corrections·candidates·recommended·reference)가
@@ -2552,6 +3463,10 @@ MPJ1~5의 feedback_quality와 MPJ5 comparison_quality를 별도로 끝까지 확
       "severity": "warning" | "fail",
       "where": "현재 mission_content에 실제 존재하는 정확한 위치 경로 (예: mpj_items[2].corrections[1])",
       "evidence_excerpt": "where가 가리키는 현재 값에서 그대로 복사한 짧은 부분문자열",
+      "intended_band_code": "band_mismatch 후보의 blueprint 대역 코드, 그 밖에는 빈 문자열",
+      "actual_band_code": "실제 판정 대역 코드 | uncertain",
+      "direction_from_within": "within | toward_lower | toward_upper | uncertain",
+      "boundary_crossed": true | false | null,
       "note_ko": "무엇이 왜 문제인지 1~2문장. 대안 문장을 쓰지 말 것."
     }
   ]
@@ -2871,6 +3786,15 @@ function buildQualityUserPrompt(b: QualityCheckBody): string {
   const missionContentHash = provenance && typeof provenance === 'object' && !Array.isArray(provenance)
     ? String((provenance as Record<string, unknown>).mission_content_hash ?? '')
     : ''
+  const bandSchema = Array.isArray(f.band_schema) && f.band_schema.length
+    ? f.band_schema.map((band) => `${band.code}=${band.label_ko}`).join(' | ')
+    : bands
+  const candidateBlueprints = Array.isArray(f.band_schema) && f.band_schema.length && f.within_band_code
+    ? buildMissionCandidateBlueprints({
+        band_schema: f.band_schema,
+        within_band_code: f.within_band_code,
+      })
+    : null
   return `[대상 버전]
 - mission_content_hash: ${missionContentHash || '(없음)'}
 
@@ -2878,7 +3802,13 @@ function buildQualityUserPrompt(b: QualityCheckBody): string {
 - code: ${f.code ?? '(없음)'}
 - 학습자 라벨: ${f.learner_label ?? '(없음)'}
 - 조작적 정의: ${f.operational_definition ?? '(없음)'}
-- 이 초점의 대역 코드: ${bands}
+- 이 초점의 대역 정본: ${bandSchema}
+- 적정 대역: ${f.within_band_code ?? '(전달되지 않음)'}
+- counter-rule·반례: ${f.counter_rule_note ?? '(전달되지 않음)'}
+- 이 초점에서 제외할 축: ${Array.isArray(f.excluded_confounds) ? f.excluded_confounds.join(' / ') : '(전달되지 않음)'}
+
+[서버 고정 candidate blueprint — 0-based 경로의 intended_band 정본]
+${candidateBlueprints ? JSON.stringify(candidateBlueprints, null, 2) : '(전달되지 않음)'}
 
 [심사 대상 mission_content]
 ${JSON.stringify(b.mission_content, null, 2)}`
@@ -3044,7 +3974,7 @@ Deno.serve(async (req) => {
           bilingualSceneIssue: null,
           learnerSceneIssue: initialLearnerSceneIssue,
         })
-        const repairModel = model
+        const repairModel = CRITIC_PRIMARY_MODEL
         const repairAttempt = await callOpenAI(repairModel, apiKey, sys, repairUser, 0.2, {
           responseFormat: CORE_STRUCTURED_RESPONSE_FORMAT,
           telemetry: telemetryFor('core_repair', true, {
@@ -3182,6 +4112,45 @@ Deno.serve(async (req) => {
       )
     }
 
+    // ── mission_topology: current MPJ5의 X/A/Y를 먼저 bounded 생성·검증 ──
+    if (input.action === 'mission_topology') {
+      const b = input.mission
+      if (!b?.feature || !b?.core) {
+        return new Response(JSON.stringify({ error: 'mission body required' }), { status: 400, headers: jsonHeaders })
+      }
+      const inheritedFocal = Array.isArray(b.core.focal_segments)
+        ? b.core.focal_segments.filter((segment) =>
+            segment?.role === 'head' && typeof segment.text === 'string' &&
+            segment.text.trim().length > 0 && b.core.source_text_ko.includes(segment.text.trim()))
+        : []
+      if (inheritedFocal.length === 0) {
+        return new Response(JSON.stringify({ error: 'mission_topology is only available for current mission_v5' }), {
+          status: 400,
+          headers: jsonHeaders,
+        })
+      }
+      const generated = await generateFrozenMissionTopology({ apiKey, body: b, telemetryFor })
+      if (!generated.ok) {
+        return new Response(JSON.stringify({
+          error: generated.error,
+          stop_code: generated.stopCode,
+          topology_evidence: generated.evidence,
+          provider_status: generated.providerStatus ?? 'UNKNOWN',
+        }), { status: 200, headers: jsonHeaders })
+      }
+      return new Response(JSON.stringify({
+        frozen_topology: generated.topology,
+        topology_evidence: generated.evidence,
+        meta: {
+          provider: PROVIDER,
+          model: MISSION_PRIMARY_MODEL,
+          prompt_version: MISSION_TOPOLOGY_PROMPT_VERSION,
+          content_release_id: CURRENT_CONTENT_RELEASE_ID,
+          generated_at: new Date().toISOString(),
+        },
+      }), { status: 200, headers: jsonHeaders })
+    }
+
     // ── mission action: 현행 mission_v5(MPJ5), legacy core는 mission_v4(MPJ4) ──
     if (input.action === 'mission') {
       const b = input.mission
@@ -3203,6 +4172,19 @@ Deno.serve(async (req) => {
             .slice(0, 3)
         : []
       const isMiniDiscourse = inheritedFocal.some((seg) => seg.role === 'head')
+      let frozenTopology: NativeMpj5FrozenTopology | null = null
+      if (isMiniDiscourse) {
+        const topologyFindings = validateNativeMpj5FrozenTopology(b.frozen_topology, b.core)
+        if (!b.frozen_topology || topologyFindings.length > 0 || b.topology_evidence?.final_result !== 'pass') {
+          return new Response(JSON.stringify({
+            error: 'Current mission_v5 requires a valid server-frozen scene topology.',
+            stop_code: 'topology_contract_invalid',
+            topology_evidence: b.topology_evidence ?? null,
+            topology_findings: topologyFindings,
+          }), { status: 200, headers: jsonHeaders })
+        }
+        frozenTopology = b.frozen_topology
+      }
       const sys = buildMissionSystemPrompt(b.feature, b.is_response_act, isSpoken, missionDir, isMiniDiscourse)
       const usr = buildMissionUserPrompt(b, isMiniDiscourse)
       const model = MISSION_PRIMARY_MODEL
@@ -3224,11 +4206,44 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: '파싱 실패', detail: (e as Error).message }), { status: 502, headers: jsonHeaders })
       }
       const rawItems = Array.isArray(gen.mpj_items) ? gen.mpj_items : []
-      const canonicalItems = isMiniDiscourse
-        ? canonicalizeNativeMpj5AnchorPdr(rawItems, b.core.pdr)
+      const canonicalItems = isMiniDiscourse && frozenTopology
+        ? applyNativeMpj5FrozenTopology(rawItems, frozenTopology)
         : rawItems
+      let plannedItems = isMiniDiscourse
+        ? applyMissionCandidateBlueprints(canonicalItems, b.feature)
+        : canonicalItems
+      let bandTargetingMeta: Record<string, unknown> | null = null
+      if (isMiniDiscourse) {
+        const targeted = await realizeRelativeBandCandidates({
+          apiKey,
+          items: plannedItems,
+          feature: b.feature,
+          direction: missionDir,
+          speechActKo: b.speech_act_ko,
+          telemetryFor,
+        })
+        if (!targeted.ok) {
+          return new Response(
+            JSON.stringify({
+              error: targeted.error,
+              stop_code: targeted.stop_code,
+              candidate_results: targeted.results ?? [],
+              boundary_fallback: targeted.boundary_fallback ?? null,
+            }),
+            { status: 200, headers: jsonHeaders },
+          )
+        }
+        plannedItems = targeted.items as Record<string, unknown>[]
+        bandTargetingMeta = {
+          version: 'relative_band_targeting_v2_bounded_fallback',
+          within_regeneration_count: targeted.within_regeneration_count,
+          candidate_regeneration_counts: targeted.candidate_regeneration_counts,
+          boundary_fallback: targeted.boundary_fallback,
+          within_warnings: targeted.warnings,
+        }
+      }
       // 위치·문항 초점은 서버가 강제한다. axis_feature는 역사 직렬화 호환용이다.
-      const mpj_items = canonicalItems.map((it: Record<string, unknown>, i: number) => ({
+      const mpj_items = plannedItems.map((it: Record<string, unknown>, i: number) => ({
         ...it,
         id: i + 1,
         item_focus: b.feature.code,
@@ -3308,6 +4323,8 @@ Deno.serve(async (req) => {
           mission_content_hash: contentHash,
           generated_at: genAt,
           generation_attempt: 1,
+          ...(isMiniDiscourse && b.topology_evidence ? { scene_topology: b.topology_evidence } : {}),
+          ...(bandTargetingMeta ? { band_targeting: bandTargetingMeta } : {}),
         },
       }
       return new Response(
@@ -3316,14 +4333,96 @@ Deno.serve(async (req) => {
       )
     }
 
-    // ── mission_repair: critic이 지목한 문항 block만 한 번 교체 ──
+    // ── mission_candidate_regenerate: band/현실성 fail 후보를 within 최소대조에서 새로 생성 ──
+    if (input.action === 'mission_candidate_regenerate') {
+      const b = input.mission_candidate_regenerate
+      if (!b?.mission_content || !b.feature || !Array.isArray(b.findings) || b.regeneration_attempt !== 1) {
+        return new Response(JSON.stringify({ error: 'mission_candidate_regenerate body required' }), { status: 400, headers: jsonHeaders })
+      }
+      const missionItems = Array.isArray(b.mission_content.mpj_items) ? b.mission_content.mpj_items : []
+      const references = [...new Map(
+        b.findings
+          .filter((finding) => finding.severity === 'fail' &&
+            (finding.code === 'band_mismatch' || finding.code === 'implausible_distractor'))
+          .map((finding) => missionCandidateReferenceForPath(finding.where))
+          .filter((reference): reference is MissionCandidateReference => Boolean(reference))
+          .map((reference) => [missionCandidatePath(reference), reference]),
+      ).values()]
+      if (references.length === 0) {
+        return new Response(JSON.stringify({ operations: [], candidate_checks: [] }), { status: 200, headers: jsonHeaders })
+      }
+      const direction = normDir(b.direction)
+      const generated = await generateMissionCandidates({
+        apiKey,
+        items: missionItems,
+        references,
+        feature: b.feature,
+        direction,
+        speechActKo: b.speech_act_ko,
+        telemetryFor,
+        invocationAttempt: 1,
+      })
+      if (!generated.ok) {
+        return new Response(JSON.stringify({ error: generated.error, stop_code: 'candidate_regeneration_failed' }), { status: 200, headers: jsonHeaders })
+      }
+      const replacedItems = applyCandidateReplacementsToItems(missionItems, generated.operations)
+      const checked = await checkMissionCandidates({
+        apiKey,
+        items: replacedItems,
+        references,
+        feature: b.feature,
+        direction,
+        speechActKo: b.speech_act_ko,
+        telemetryFor,
+        invocationAttempt: 1,
+      })
+      if (!checked.ok) {
+        return new Response(JSON.stringify({ error: checked.error, stop_code: 'candidate_regeneration_check_failed' }), { status: 200, headers: jsonHeaders })
+      }
+      const repeated = checked.results.filter((result) => result.severity === 'fail')
+      if (repeated.length > 0) {
+        return new Response(JSON.stringify({
+          error: '후보가 첫 regeneration 뒤에도 같은 의미·대역 결함을 반복했습니다.',
+          stop_code: 'band_targeting_repeated_semantic_defect',
+          operations: [],
+          candidate_checks: checked.results,
+        }), { status: 200, headers: jsonHeaders })
+      }
+      const operations = generated.operations.map((operation) => {
+        const reference = missionCandidateReferenceForPath(operation.path)!
+        return {
+          operation: reference.item_type === 'fix_choice'
+            ? 'replace_fix_choice_candidate'
+            : 'replace_multi_judge_candidate',
+          item_index: reference.item_index,
+          candidate_index: reference.candidate_index,
+          candidate: operation.candidate,
+        }
+      })
+      return new Response(JSON.stringify({
+        operations,
+        candidate_checks: checked.results,
+        meta: {
+          provider: PROVIDER,
+          model: MISSION_PRIMARY_MODEL,
+          prompt_version: MISSION_CANDIDATE_GENERATION_PROMPT_VERSION,
+          critic_model: CRITIC_PRIMARY_MODEL,
+          critic_prompt_version: MISSION_CANDIDATE_CHECK_PROMPT_VERSION,
+          generated_at: new Date().toISOString(),
+        },
+      }), { status: 200, headers: jsonHeaders })
+    }
+
+    // ── mission_repair: band 외 단순 형식·표현 결함의 후보/문항만 한 번 교체 ──
     if (input.action === 'mission_repair') {
       const b = input.mission_repair
       if (!b?.mission_content || !b.feature || !Array.isArray(b.findings)) {
         return new Response(JSON.stringify({ error: 'mission_repair body required' }), { status: 400, headers: jsonHeaders })
       }
       const targets = repairTargets(b.findings)
-      if (targets.itemIndexes.length === 0 && !targets.productionReferences && !targets.diagnosticDimensions) {
+      if (targets.itemIndexes.length === 0 && targets.candidateTargets.length === 0 &&
+          targets.situationTargets.length === 0 &&
+          !targets.productionReferences && !targets.diagnosticDimensions) {
         return new Response(JSON.stringify({ operations: [] }), { status: 200, headers: jsonHeaders })
       }
       const prompt = buildMissionRepairPrompt(b)
@@ -3499,7 +4598,8 @@ Deno.serve(async (req) => {
       )
     }
 
-    // ── core_quality_check: 코어 축 준수 비평 파일럿(감사 표시 전용) ──
+    // ── core_quality_check: 코어 축 준수 비평 ──
+    // standalone pilot에 더해 R26 lexical warning의 industry 축 bounded adjudication에 재사용한다.
     if (input.action === 'core_quality_check') {
       const b = input.core_quality
       if (!b?.core_content || !b.speech_act || !b.domain || !b.mode || !b.situation_seed_ko) {
@@ -3657,15 +4757,39 @@ Deno.serve(async (req) => {
           return
         }
         const code = typeof f.code === 'string' && CODES.includes(f.code) ? f.code : 'internal_inconsistency'
+        let severity: 'warning' | 'fail' = f.severity === 'fail' ? 'fail' : 'warning'
+        let calibrationPrefix = ''
+        if (code === 'band_mismatch') {
+          const reference = missionCandidateReferenceForPath(grounding.where)
+          const blueprint = reference && Array.isArray(b.feature?.band_schema) && b.feature?.within_band_code
+            ? missionCandidateBlueprintForReference({
+                band_schema: b.feature.band_schema,
+                within_band_code: b.feature.within_band_code,
+              }, reference)
+            : null
+          const actualBand = typeof f.actual_band_code === 'string' ? f.actual_band_code : ''
+          const directionFromWithin = typeof f.direction_from_within === 'string' ? f.direction_from_within : ''
+          const explicitSelfContradiction = Boolean(blueprint && actualBand === blueprint.intended_band)
+          const explicitlyUncertain = actualBand === 'uncertain' ||
+            (reference?.phase === 'relative_boundary' &&
+              (f.boundary_crossed === null || directionFromWithin === 'uncertain'))
+          if (explicitSelfContradiction) {
+            severity = 'warning'
+            calibrationPrefix = '[critic_self_contradiction_calibrated] '
+          } else if (explicitlyUncertain) {
+            severity = 'warning'
+            calibrationPrefix = '[critic_boundary_uncertain] '
+          }
+        }
         const findingKey = `${code}\u0000${grounding.where}\u0000${grounding.evidenceExcerpt}`
         if (findingKeys.has(findingKey)) return
         findingKeys.add(findingKey)
         groundedFindings.push({
           code,
-          severity: f.severity === 'fail' ? 'fail' : 'warning',
+          severity,
           where: grounding.where.slice(0, 120),
           evidence_excerpt: grounding.evidenceExcerpt,
-          note_ko: typeof f.note_ko === 'string' ? f.note_ko.slice(0, 400) : '',
+          note_ko: `${calibrationPrefix}${typeof f.note_ko === 'string' ? f.note_ko : ''}`.slice(0, 400),
         })
       })
       const isolatedGroundingFailures = groundingFailures.slice(0, 5).map((reason) => ({

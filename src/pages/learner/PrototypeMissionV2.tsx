@@ -277,7 +277,7 @@ const PrototypeMissionV2 = () => {
                 </li>
               </ul>
               <p className="mt-2 text-[11.5px] text-muted-foreground">
-                목표는 6~8분입니다. MPJ 6문항은 쇼케이스용이고 실제 미션은 3~4문항입니다.
+                목표는 6~8분입니다. MJT 6문항은 쇼케이스용이고 실제 미션은 3~4문항입니다.
               </p>
             </div>
           </div>

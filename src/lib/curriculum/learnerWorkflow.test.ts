@@ -19,7 +19,7 @@ describe("learnerWorkflow", () => {
   it("현행 네이티브 MPJ는 5문항이다", () => {
     expect(MPJ_ITEM_COUNT).toBe(5);
     const judge = learnerWorkflowSteps().find((step) => step.key === "judge");
-    expect(judge?.aside).toBe("MPJ 5");
+    expect(judge?.aside).toBe("MJT 5");
     expect(judge?.detail).toContain("5번");
   });
 
@@ -27,7 +27,7 @@ describe("learnerWorkflow", () => {
     const judge = learnerWorkflowSteps({ mpjCount: 5 }).find(
       (step) => step.key === "judge",
     );
-    expect(judge?.aside).toBe("MPJ 5");
+    expect(judge?.aside).toBe("MJT 5");
   });
 
   it("통역 미션이면 산출 단계 이름만 바뀐다", () => {

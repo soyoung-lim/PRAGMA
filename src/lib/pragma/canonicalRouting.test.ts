@@ -86,16 +86,17 @@ describe("canonical document routing", () => {
     }
   });
 
-  it("keeps native mission_v5 MPJ5 canonical and separates deployed current from legacy rows", () => {
+  it("uses MJT5 externally while preserving the internal mpj response identifier", () => {
     const manifest = readFileSync(join(ROOT, "docs/CANONICAL.md"), "utf8");
     const contract = readFileSync(join(ROOT, CURRENT_CANONICALS[0]), "utf8");
 
-    expect(manifest).toContain("최신 승인 학습설계는 **MPJ5 + DCT1**");
-    expect(manifest).toContain("현행 소스의 `mission_v5` 생성·검사·러너 계약도 승인된 **MPJ5 + DCT1**");
+    expect(manifest).toContain("MJT(Metapragmatic Judgement Task)");
+    expect(manifest).toContain("최신 승인 학습설계는 **MJT5 + DCT1**");
+    expect(manifest).toContain("현행 소스의 `mission_v5` 생성·검사·러너 계약도 승인된 **MJT5 + DCT1**");
     expect(manifest).toContain("운영 DB·Edge·Railway에 반영됐다");
-    expect(manifest).toContain("과거 `mission_v5` MPJ4 행은 legacy 구현으로 읽기 호환");
-    expect(contract).toContain("최신 승인 학습설계와 현행 소스 계약: **네이티브 MPJ5 + DCT1**");
-    expect(contract).toContain("현행 소스의 `mission_v5`는 네이티브 MPJ5+DCT1");
+    expect(manifest).toContain("과거 `mission_v5` MJT4 행은 legacy 구현으로 읽기 호환");
+    expect(contract).toContain("최신 승인 학습설계와 현행 소스 계약: **네이티브 MJT5 + DCT1**");
+    expect(contract).toContain("현행 소스의 `mission_v5`는 네이티브 MJT5+DCT1");
     expect(contract).toContain("mpj_response_v2");
   });
 
@@ -103,8 +104,8 @@ describe("canonical document routing", () => {
     for (const relativePath of PUBLIC_MISSION_EXPLANATION_SCREENS) {
       const content = readFileSync(join(ROOT, relativePath), "utf8");
       expect(content, `${relativePath} must import the canonical count`).toContain("MPJ_ITEM_COUNT");
-      expect(content, `${relativePath} must not hardcode current MPJ5 copy`).not.toMatch(
-        /MPJ\s*5|다섯\s*(가지\s*)?(예시|문항)|5개\s*(예시|문항)/,
+      expect(content, `${relativePath} must not hardcode current MJT5 copy`).not.toMatch(
+        /MJT\s*5|다섯\s*(가지\s*)?(예시|문항)|5개\s*(예시|문항)/,
       );
     }
   });
