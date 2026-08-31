@@ -92,15 +92,15 @@ const Home = () => {
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
             className={cn(
-              "fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100vh-2rem)] w-[94vw] max-w-[840px] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-[22px] border border-[#E7C7AD] bg-[#FFF9F4] shadow-2xl",
+              "fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100vh-2rem)] w-[94vw] max-w-[840px] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-[22px] border border-[#DDE3EA] bg-[#F8FAFC] shadow-2xl",
               "duration-300",
               "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
               "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
             )}
           >
-            <div className="shrink-0 border-b border-[#E7C7AD] bg-[#FFE1C7] px-6 py-4 text-[#15202B] sm:px-7">
-              <div className="flex items-center gap-2.5 text-[10px] font-bold tracking-[0.2em] text-[#7A4A32]">
-                <span className="h-5 w-1 rounded-full bg-[#E96C2D]" />
+            <div className="shrink-0 border-b border-[#DDE3EA] bg-white px-6 py-4 text-[#15202B] sm:px-7">
+              <div className="flex items-center gap-2.5 text-[10px] font-bold tracking-[0.2em] text-[#15202B]">
+                <span className="h-5 w-1 rounded-full bg-[#F4D94E]" />
                 PRAGMA
               </div>
               <DialogPrimitive.Title className="mt-2 text-xl font-bold tracking-tight sm:text-[22px]">
