@@ -36,6 +36,8 @@ export interface MissionLessonPoint {
 export interface ChoiceOption {
   id: string;
   label: string;
+  /** 판정 대역을 정답처럼 보이게 하지 않고 경계를 같은 밀도로 설명하는 보조 문구. */
+  description?: string;
 }
 
 export interface ScaleQuest extends QuestBase {
@@ -149,9 +151,9 @@ const APPROPRIATENESS_4: ChoiceOption[] = [
 ];
 
 const DIRECTNESS_3: ChoiceOption[] = [
-  { id: "too_direct", label: "너무 직접적" },
-  { id: "appropriate", label: "알맞음" },
-  { id: "too_indirect", label: "지나치게 우회적" },
+  { id: "too_direct", label: "너무 직접적", description: "상황에 비해 단정적" },
+  { id: "appropriate", label: "현재 상황에 맞음", description: "관계·거리·부담에 맞는 조절" },
+  { id: "too_indirect", label: "지나치게 우회적", description: "요청 의도가 흐려짐" },
 ];
 
 export interface CanonicalMissionViewModel {
@@ -282,9 +284,9 @@ export const CANONICAL_MISSION_PREVIEW: CanonicalMissionViewModel = {
       targetHighlights: ["喂"],
       prompt: "이 상황에서 이 표현은 어떻게 들리나요?",
       judgmentOptions: [
-        { id: "rude", label: "무례함" },
-        { id: "appropriate", label: "알맞음" },
-        { id: "over_polite", label: "지나치게 공손함" },
+        { id: "rude", label: "무례함", description: "상황에 필요한 대인 배려가 부족함" },
+        { id: "appropriate", label: "현재 상황에 맞음", description: "관계·거리·부담에 맞는 조절" },
+        { id: "over_polite", label: "지나치게 공손함", description: "상황에 비해 격식이 높음" },
       ],
       referenceJudgment: "rude",
       corrections: [

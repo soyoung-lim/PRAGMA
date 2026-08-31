@@ -533,7 +533,10 @@ function OptionButton({ option, value, disabled, answered = false, acceptedIds =
       className={`${optionBase} ${optionState(answered, picked, accepted)} disabled:cursor-default`}
     >
       <span className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-        <span>{option.label}</span>
+        <span className="flex min-w-0 flex-col items-start">
+          <span>{option.label}</span>
+          {option.description && <span className="mt-0.5 text-left text-xs font-normal leading-5 opacity-70">{option.description}</span>}
+        </span>
         {answered && (
           <span className="flex shrink-0 flex-wrap items-center gap-1.5">
             {picked && <span className={`inline-flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-[10px] font-black ${accepted ? "border-[#15202B] text-[#15202B]" : "border-[#C86E68] text-[#8B3531]"}`}>{accepted ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}내 선택</span>}
@@ -580,7 +583,7 @@ export function MissionDissentPanel({ onSubmit }: { onSubmit: (dissent: DissentR
   if (sent) {
     return (
       <div className="rounded-xl border border-[#CFE4D8] bg-[#F2FAF6] px-4 py-3 text-[12.5px] leading-5 text-[#2E7D5B]">
-        의견을 남겼습니다. 판정은 그대로 유지되며 이 미션의 응답 요약에만 포함됩니다.
+        이의 제기를 남겼습니다. AI 참고 판정과 나의 판단을 함께 수행 기록에 저장합니다.
       </div>
     );
   }
@@ -592,15 +595,15 @@ export function MissionDissentPanel({ onSubmit }: { onSubmit: (dissent: DissentR
         onClick={() => setOpen(true)}
         className="w-full rounded-xl border border-dashed border-[#B9C4CE] bg-white px-4 py-3 text-left text-[12.5px] text-[#3B4A57] transition hover:bg-[#F7F9FA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-2"
       >
-        피드백과 다르게 본 부분이 있다면 <b>의견 남기기 →</b>
+        AI 참고 판정과 다르게 본 부분이 있다면 <b>이의 제기하기 →</b>
       </button>
     );
   }
 
   return (
     <section className="rounded-xl border border-[#B9C4CE] bg-white px-4 py-4" aria-labelledby="mission-dissent-heading">
-      <h3 id="mission-dissent-heading" className="text-sm font-black">피드백과 다르게 본 부분</h3>
-      <p className="mt-1 break-keep text-xs leading-5 text-[#687387]">해당하는 항목만 선택해 주세요. 이 의견은 판정을 바꾸지 않습니다.</p>
+      <h3 id="mission-dissent-heading" className="text-sm font-black">AI 참고 판정에 대한 이의 제기</h3>
+      <p className="mt-1 break-keep text-xs leading-5 text-[#687387]">AI 참고 판정은 그대로 보존됩니다. 다르게 판단한 조건이나 이유를 남기면 최종안을 유지하거나 수정할 때 함께 기록됩니다.</p>
       <div className="mt-3 grid gap-2">
         {DISSENT_CONDITIONS.map((condition) => {
           const selected = picked.includes(condition.code);
@@ -625,9 +628,9 @@ export function MissionDissentPanel({ onSubmit }: { onSubmit: (dissent: DissentR
             onSubmit({ conditions: picked, reason: reason.trim() });
             setSent(true);
           }}
-        >
-          의견 남기기
-        </Button>
+          >
+            이의 제기 남기기
+          </Button>
         <Button variant="outline" onClick={() => setOpen(false)}>닫기</Button>
       </div>
     </section>
@@ -1475,8 +1478,17 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
     ? evaluation.feedback
     : "원문의 의미와 의도를 유지하면서, 관계와 상황에도 맞는 표현을 사용했습니다.";
   const revisionValidation = validateDraft(revised);
-  const canConfirm = devMode || (revisionValidation.valid && (!needsChange || reflected));
-  const actionHint = devMode ? undefined : revisionValidation.hint ?? (needsChange && !reflected ? "피드백을 반영해 한 곳 이상 수정해 주세요." : undefined);
+  const canConfirmRevision = devMode || (revisionValidation.valid && (!needsChange || reflected));
+  const canRetainWithDissent = Boolean(dissent);
+  const actionHint = devMode ? undefined : revisionValidation.hint ?? (needsChange && !reflected && !canRetainWithDissent ? "피드백을 반영해 한 곳 이상 수정하거나, 이의 제기에 근거를 남겨 첫 번역을 유지해 주세요." : undefined);
+  const retainFirstResponse = () => onDone({
+    first,
+    revised: first.trim(),
+    reflected: false,
+    evaluation,
+    runtimeFeedback,
+    dissent,
+  });
   if (!isMeaningfulDraft(first)) {
     return (
       <section className={`${panel} p-5 sm:p-6`}>
@@ -1546,13 +1558,22 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
                 <div className="mt-3"><DctContextReview quest={quest} first={first} /></div>
               </section>
               <ActionBar hint={actionHint}>
-                <Button className={`h-12 ${actionButton}`} disabled={!canConfirm} onClick={() => onDone({ first, revised: revised.trim(), reflected, evaluation, runtimeFeedback, dissent })}>{reflected ? "수정안 확정하기" : needsChange ? "피드백을 반영해 수정해 주세요" : "이 번역으로 확정하기"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                <div className="grid gap-2">
+                  <Button className={`h-12 ${actionButton}`} disabled={!canConfirmRevision} onClick={() => onDone({ first, revised: revised.trim(), reflected, evaluation, runtimeFeedback, dissent })}>{reflected ? "수정안 확정하기" : needsChange ? "피드백을 반영해 수정해 주세요" : "이 번역으로 확정하기"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                  {needsChange && !reflected && canRetainWithDissent && (
+                    <Button variant="outline" className="h-11 w-full" onClick={retainFirstResponse}>수정하지 않고 첫 번역 유지하기</Button>
+                  )}
+                </div>
               </ActionBar>
             </>
           ) : (
             <ActionBar>
               {needsChange ? (
-                <Button className="h-12 w-full" onClick={() => setRevisionOpen(true)}>한 번 다듬어보기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                <div className="grid gap-2">
+                  <Button className="h-12 w-full" onClick={() => setRevisionOpen(true)}>한 번 다듬어보기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                  <Button variant="outline" className="h-11 w-full" disabled={!canRetainWithDissent} onClick={retainFirstResponse}>내 번역을 유지하고 확정하기</Button>
+                  {!canRetainWithDissent && <p className="px-1 text-center text-[11px] leading-5 text-[#6D7788]">첫 번역을 유지하려면 위의 이의 제기에 판단 근거를 남겨 주세요.</p>}
+                </div>
               ) : (
                 <div className="grid gap-2">
                   <Button className="h-12 w-full" onClick={() => onDone({ first, revised: first.trim(), reflected: false, evaluation, runtimeFeedback, dissent })}>이 번역으로 확정하기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
@@ -1819,6 +1840,7 @@ export function CompletionRecord({ label, response, alternatives = [] }: {
   if (!response || !isMeaningfulDraft(response.first)) return null;
   const evaluation = response.evaluation;
   const needsAttention = evaluation?.criteria.filter((criterion) => criterion.level !== "very_good") ?? [];
+  const retainedAgainstFeedback = Boolean(response.dissent && !response.reflected && needsAttention.length > 0);
   return (
     <article className={`${panel} overflow-hidden`}>
       <div className="border-b border-[#E3DFD4] bg-[#F8F6EF] px-5 py-4">
@@ -1853,7 +1875,7 @@ export function CompletionRecord({ label, response, alternatives = [] }: {
             <p className="font-zh mt-2 text-[17px] leading-8">{response.revised}</p>
           </div>
         ) : (
-          <p className="flex items-center gap-1.5 text-xs font-bold text-[#286247]"><Check className="h-3.5 w-3.5" />첫 번역을 최종안으로 확정했습니다.</p>
+          <p className="flex items-center gap-1.5 text-xs font-bold text-[#286247]"><Check className="h-3.5 w-3.5" />{retainedAgainstFeedback ? "AI 참고 판정과 다르게 보고 첫 번역을 최종안으로 유지했습니다." : "첫 번역을 최종안으로 확정했습니다."}</p>
         )}
         {alternatives.length > 0 && (
           <div className="border-t border-[#E5E1D8] pt-5">
@@ -1879,7 +1901,7 @@ function DissentSummary({ dissent }: { dissent?: DissentResponse }) {
   return (
     <section className="rounded-2xl border border-[#CFE4D8] bg-[#F2FAF6] p-5 sm:p-6">
       <p className="text-xs font-black text-[#2E7D5B]">내가 다르게 본 부분</p>
-      <h2 className="mt-1 text-base font-black">판정은 유지하고 의견을 함께 남겼습니다.</h2>
+      <h2 className="mt-1 text-base font-black">AI 참고 판정과 나의 판단 근거를 함께 기록했습니다.</h2>
       {labels.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {labels.map((label) => <span key={label} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-[#356B55]">{label}</span>)}
@@ -2305,7 +2327,10 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMod
           emitMissionEvent("revision_submitted", { revised_response: finalResponse.revised });
         }
         if (finalResponse.dissent) {
-          emitMissionEvent("learner_dissent_submitted", { dissent: finalResponse.dissent });
+          emitMissionEvent("learner_dissent_submitted", {
+            dissent: finalResponse.dissent,
+            final_decision: finalResponse.reflected ? "revised_response" : "retained_first_response",
+          });
         }
         setSaveState("saving");
         void saveMissionAttempt({
@@ -2328,6 +2353,7 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMod
                   at: "feedback" as const,
                   conditions: finalResponse.dissent.conditions,
                   reason_ko: finalResponse.dissent.reason,
+                  final_decision: finalResponse.reflected ? "revised_response" as const : "retained_first_response" as const,
                   created_at: new Date().toISOString(),
                 },
               }

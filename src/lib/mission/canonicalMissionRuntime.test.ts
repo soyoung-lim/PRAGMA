@@ -47,6 +47,12 @@ describe("canonical mission runtime bridge", () => {
     expect(view.quests[2].corrections).toHaveLength(3);
     expect(view.quests[2].corrections.filter((candidate) => candidate.valid)).toHaveLength(1);
     expect(view.quests[1].source).toBe(view.quests[2].source);
+    if (view.quests[1].kind !== "scale") throw new Error("Expected contrast scale quest");
+    expect(view.quests[1].options).toEqual([
+      { id: "too_direct", label: "너무 직접적", description: "상황에 비해 단정적" },
+      { id: "within_band", label: "현재 상황에 맞음", description: "관계·거리·부담에 맞는 조절" },
+      { id: "too_indirect", label: "지나치게 우회적", description: "요청이 흐려짐" },
+    ]);
     expect(view.quests[5].source).toBe(SAMPLE_MISSION_V5.production_task.source_text);
     expect(view.lessonPoints.every((point) => point.text.includes("「"))).toBe(true);
     expect(view.lessonPoints.every((point) => point.text.length <= 56)).toBe(true);
