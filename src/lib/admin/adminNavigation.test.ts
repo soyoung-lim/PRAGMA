@@ -25,9 +25,22 @@ describe("admin navigation reachability", () => {
     expect(new Set(allPaths).size).toBe(allPaths.length);
     expect(allPaths).not.toContain("/admin/question-designer");
     expect(allPaths).not.toContain("/admin/research-qa/calibration");
-    const operations = ADMIN_NAV_GROUPS.find((group) => group.header === "3. 수업 운영");
-    expect(operations?.items.at(-1)?.to).toBe("/admin/data-backup");
-    const research = ADMIN_NAV_GROUPS.find((group) => group.header === "4. 학습 결과·연구 자료");
+    expect(ADMIN_NAV_GROUPS.map((group) => group.header)).toEqual([
+      "1. 콘텐츠 설계·생성 기준",
+      "2. 학습 콘텐츠 제작",
+      "3. 강의 준비·운영",
+      "4. 학습 기록·연구 자료",
+    ]);
+    const operations = ADMIN_NAV_GROUPS.find((group) => group.header === "3. 강의 준비·운영");
+    expect(operations?.items.map((item) => item.to)).toEqual([
+      "/admin/composer",
+      "/admin/learners",
+      "/admin/package",
+      "/admin/class-responses",
+      "/admin/data-backup",
+    ]);
+    expect(operations?.items.at(-1)?.separated).toBe(true);
+    const research = ADMIN_NAV_GROUPS.find((group) => group.header === "4. 학습 기록·연구 자료");
     expect(research?.items.map((item) => item.to)).toEqual([
       "/admin/decision-traces",
       "/admin/export",
@@ -53,6 +66,9 @@ describe("admin navigation reachability", () => {
     expect(app).not.toContain("AdminQualityOverview");
     expect(app).toContain('path="/admin/research-qa"');
     expect(app).toContain('to="/admin/research-qa/final-review"');
+
+    const shell = readFileSync(resolve(process.cwd(), "src/components/AdminShell.tsx"), "utf8");
+    expect(shell).toContain("item.separated");
 
     const missionLogs = readFileSync(
       resolve(process.cwd(), "src/pages/admin/AdminDecisionTraces.tsx"),

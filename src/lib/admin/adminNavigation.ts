@@ -2,6 +2,7 @@ export type AdminNavItem = {
   to: string;
   label: string;
   pending?: boolean;
+  separated?: boolean;
   activePaths?: readonly string[];
 };
 
@@ -18,7 +19,7 @@ export const ADMIN_DASHBOARD_ITEM: AdminNavItem = {
 // 관리자 메뉴·모바일 선택기·대시보드 바로가기가 함께 쓰는 단일 정본이다.
 export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
-    header: "1. 학습 콘텐츠 설계 기준",
+    header: "1. 콘텐츠 설계·생성 기준",
     items: [
       { to: "/admin/corpus", label: "HSK 3.0 어휘 코퍼스" },
       { to: "/admin/prompt-harness", label: "생성 계약·프롬프트" },
@@ -40,17 +41,21 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     ],
   },
   {
-    header: "3. 수업 운영",
+    header: "3. 강의 준비·운영",
     items: [
       { to: "/admin/composer", label: "15주 수업 편성·강의계획서" },
+      { to: "/admin/learners", label: "학습자 승인·관리" },
       { to: "/admin/package", label: "주차별 수업 운영·교실 화면" },
       { to: "/admin/class-responses", label: "실시간 학급 응답" },
-      { to: "/admin/learners", label: "학습자 승인·관리" },
-      { to: "/admin/data-backup", label: "수업 데이터 백업·복원" },
+      {
+        to: "/admin/data-backup",
+        label: "수업 데이터 백업·복원",
+        separated: true,
+      },
     ],
   },
   {
-    header: "4. 학습 결과·연구 자료",
+    header: "4. 학습 기록·연구 자료",
     items: [
       { to: "/admin/decision-traces", label: "학습 수행 기록" },
       { to: "/admin/export", label: "연구 데이터 내보내기" },
