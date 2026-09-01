@@ -3369,6 +3369,7 @@
 - 대체 범위: `DEC-20260829-01`의 비P0 비노출 중 백업·export 두 항목만 대체한다. Scope Lock의
   콘텐츠 생산·release·계보·500/60/12/4 계약과 개선 후보·calibration 비노출은 변경하지 않는다.
 - 한계: 이번 결정은 라우트·정보구조 복원이며 운영 복원 성공이나 연구 데이터 export 결과의
-  증거가 아니다. DB schema·RPC·RLS·프롬프트·운영 데이터·배포는 변경하지 않았다.
+  증거가 아니다. DB schema·RPC·RLS·프롬프트·운영 데이터는 변경하지 않았고, 프런트만 Railway에
+  배포했다. 실제 복원·export RPC는 실행하지 않았다.
 - 근거: `ITER-20260901-02`, `EVD-20260901-02`,
   `docs/dev-log/2026-09-01-admin-safety-export-restoration.md`.

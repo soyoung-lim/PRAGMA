@@ -41,7 +41,13 @@
 - 로컬 브라우저에서 `/admin/dashboard`의 16개 링크와 정정 문구,
   `/admin/data-backup`의 독립 URL·빈 상태·업로드·비활성 복원·복원 전 자동 백업,
   `/admin/export`의 독립 URL·기간·JSON/JSONL·가명화·동의 필터·연구자 사후 판단 안내를 확인했다.
-- 복원 버튼, export 다운로드, 운영 DB 쓰기, 운영 배포는 실행하지 않았다.
+- 복원 버튼, export 다운로드와 운영 DB 쓰기는 실행하지 않았다.
+- 사용자 승인 뒤 구현 커밋 `297b6c5`를 `origin/main`에 fast-forward 푸시했다. Railway 배포
+  `f347eb79-d73d-4462-9b74-1755636affd6`와 GitHub Actions
+  `33479675812`의 typecheck·tests·production build가 모두 성공했다.
+- 로그인된 운영 브라우저에서 `/admin/dashboard`의 16개 링크와 정정 문구,
+  `/admin/data-backup`의 실제 교과목·15주·7개 배정 및 복원 전 자동 백업 안내,
+  `/admin/export`의 동의·가명화 필터와 JSON/JSONL 진입점을 읽기 전용으로 재확인했다.
 
 ## 범위와 후속
 
@@ -49,7 +55,7 @@
   `/admin/research-qa/final-review`의 귀속은 변경하지 않았다.
 - build 산출물에는 DEV 전용 세 화면의 chunk가 실제로 남는다. 그러나 명시적 DEV 라우트가 있어
   이번 복원이나 PR #33에 섞어 삭제하지 않고 별도 제품·번들 정리 판단으로 남겼다.
-- 운영 Railway는 이 로컬 변경을 아직 포함하지 않는다. 실제 운영 복원 canary와 연구 export RPC
-  호출은 배포 승인 뒤 관리자 세션에서 별도로 확인해야 한다.
+- Railway 운영 프런트에는 구현 커밋 `297b6c5`가 반영됐다. 이번 canary는 관리자 도달성·표시
+  상태까지만 확인했으며, 실제 복원과 연구 export RPC 호출은 운영 데이터를 변경하거나 파일을
+  생성하므로 별도 실행 판단 전까지 수행하지 않았다.
 - 관련 기록: `DEC-20260901-02`, `ITER-20260901-02`, `EVD-20260901-02`.
-
