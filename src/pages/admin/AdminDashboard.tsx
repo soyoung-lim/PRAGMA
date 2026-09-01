@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import {
-  Activity,
-  ArrowRight,
-  BookOpenCheck,
-  CalendarDays,
-  CircleCheckBig,
-  Database,
-  ShieldCheck,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,14 +54,6 @@ type DashboardMetricKey =
   | "learners"
   | "records";
 
-type Accent = "gold" | "navy" | "green";
-
-const ACCENT_STYLES: Record<Accent, { bar: string; icon: string }> = {
-  gold: { bar: "bg-[#D6B632]", icon: "bg-[#FFF5BE] text-[#796713]" },
-  navy: { bar: "bg-[#49667E]", icon: "bg-[#EAF0F4] text-[#334E63]" },
-  green: { bar: "bg-[#4E9C73]", icon: "bg-[#E8F5ED] text-[#317253]" },
-};
-
 function dashboardMetricValues(snapshot: DashboardSnapshot): Record<DashboardMetricKey, number> {
   return {
     core: snapshot.content.coreCount,
@@ -89,92 +71,86 @@ function dashboardMetricValues(snapshot: DashboardSnapshot): Record<DashboardMet
   };
 }
 
-const SectionHeader = ({
+const PanelHeader = ({
   title,
   description,
-  meta,
+  action,
 }: {
   title: string;
   description?: string;
-  meta?: ReactNode;
+  action?: ReactNode;
 }) => (
-  <div className="mb-2 mt-6">
+  <div className="mb-2 mt-7 rounded-r-md border-l-4 border-[#D6BE42] bg-[#F3F0E5] px-3 py-1.5">
     <div className="flex flex-wrap items-center gap-2">
-      <h2 className="text-base font-semibold">{title}</h2>
-      {meta}
+      <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-[#1B2A36]">{title}</h2>
+      {action}
     </div>
-    {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
+    {description && <p className="mt-0.5 text-[11px] text-muted-foreground">{description}</p>}
   </div>
 );
 
-const MetricCard = ({
+const SummaryMetric = ({
   to,
   label,
   value,
   unit,
-  definition,
+  description,
   error,
-  icon: Icon,
-  accent,
   changed = false,
 }: {
   to: string;
   label: string;
-  value: number | string | null;
+  value: number | null;
   unit: string;
-  definition: string;
+  description: string;
   error: string | null;
-  icon: LucideIcon;
-  accent: Accent;
   changed?: boolean;
 }) => (
   <Link
     to={to}
     className={[
-      "group relative flex min-h-[112px] flex-col overflow-hidden rounded-lg border bg-card p-4 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
-      "motion-safe:transition-all motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[#D6B84A] hover:shadow-md",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8AA2F]",
-      changed ? "border-[#D6B84A] bg-[#FFFBE8] ring-2 ring-[#F4D85E]/35" : "border-border",
+      "group flex min-h-[98px] flex-col rounded-lg border bg-card p-3 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
+      "motion-safe:transition-all motion-safe:duration-200 hover:border-[#C9B54E] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8AA2F]",
+      changed ? "border-[#D6B84A] bg-[#FFFBE8] ring-2 ring-[#F4D85E]/30" : "border-border",
     ].join(" ")}
   >
-    <span aria-hidden className={["absolute inset-x-0 top-0 h-0.5", ACCENT_STYLES[accent].bar].join(" ")} />
-    <div className="flex items-start justify-between gap-2">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <span className={["rounded-md p-1.5 motion-safe:transition-transform group-hover:scale-105", ACCENT_STYLES[accent].icon].join(" ")}>
-        <Icon aria-hidden className="h-3.5 w-3.5" />
-      </span>
-    </div>
-    <div className="mt-2 flex items-end gap-1.5">
+    <span className="text-xs font-medium text-muted-foreground group-hover:text-[#273B4A]">{label}</span>
+    <div className="mt-1.5 flex items-end gap-1.5">
       {value === null && !error ? (
-        <span aria-label="불러오는 중" className="h-7 w-16 rounded bg-muted motion-safe:animate-pulse" />
+        <span aria-label="불러오는 중" className="h-7 w-14 rounded bg-muted motion-safe:animate-pulse" />
       ) : (
-        <span className="text-[28px] font-semibold leading-none tabular-nums">
-          {error ? <span className="text-base font-normal text-destructive">확인 필요</span> : value}
+        <span className="text-[27px] font-semibold leading-none tracking-[-0.025em] text-[#15202B] tabular-nums">
+          {error ? <span className="text-sm font-normal text-destructive">확인 필요</span> : value}
         </span>
       )}
-      {!error && value !== null && <span className="pb-0.5 text-xs text-muted-foreground">{unit}</span>}
+      {!error && value !== null && <span className="pb-0.5 text-[11px] text-muted-foreground">{unit}</span>}
     </div>
-    <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{definition}</p>
+    <span className="mt-auto pt-1.5 text-[11px] leading-4 text-muted-foreground">{description}</span>
   </Link>
 );
 
-const REVIEW_STAGE_DEFINITIONS: Record<DashboardReviewQueueStage, string> = {
-  rules: "규칙 검사 필요",
-  openai: "1차 검수 대기",
-  claude: "교차검수 대기",
+const REVIEW_STAGE_DISPLAY_LABELS: Record<DashboardReviewQueueStage, string> = {
+  rules: "규칙 기반 점검",
+  openai: "AI 1차 검토",
+  claude: "AI 교차 검토",
+  adjudication: "검토 결과 정리",
+  professor: "교수자 최종 승인",
+};
+
+const REVIEW_STAGE_DESCRIPTIONS: Record<DashboardReviewQueueStage, string> = {
+  rules: "자동 규칙 점검 필요",
+  openai: "1차 검토 대기",
+  claude: "독립 교차검토 대기",
   adjudication: "지적별 판정 대기",
   professor: "최종 승인 대기",
 };
 
-const REVIEW_STAGE_CARDS = CONTENT_REVIEW_STEPS.map((stage, index) => ({
+const REVIEW_STAGE_ITEMS = CONTENT_REVIEW_STEPS.map((stage, index) => ({
   ...stage,
   step: index + 1,
-  definition: REVIEW_STAGE_DEFINITIONS[stage.key],
+  displayLabel: REVIEW_STAGE_DISPLAY_LABELS[stage.key],
+  description: REVIEW_STAGE_DESCRIPTIONS[stage.key],
 }));
-
-const REVIEW_STAGE_LABELS = Object.fromEntries(
-  REVIEW_STAGE_CARDS.map((stage) => [stage.key, stage.label]),
-) as Record<DashboardReviewQueueStage, string>;
 
 const ReviewPipeline = ({
   review,
@@ -188,53 +164,89 @@ const ReviewPipeline = ({
   changedKeys: ReadonlySet<DashboardMetricKey>;
 }) => (
   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 xl:gap-8">
-    {REVIEW_STAGE_CARDS.map((stage) => {
-      const value = review?.[stage.key] ?? null;
-      const active = dominant === stage.key;
-      const changed = changedKeys.has(`review.${stage.key}`);
-      return (
-        <div key={stage.key} className="relative min-w-0">
-          {stage.step < REVIEW_STAGE_CARDS.length && (
-            <ArrowRight
-              aria-hidden
-              className="absolute -right-[26px] top-1/2 z-20 hidden h-5 w-5 -translate-y-1/2 text-[#71838F] xl:block"
-            />
-          )}
-          <Link
-            to="/admin/review"
-            className={[
-              "group relative z-10 block h-full min-h-[112px] overflow-hidden rounded-lg border bg-card p-3.5 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
-              "motion-safe:transition-all motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[#6D879B] hover:shadow-md",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49667E]",
-              active ? "border-[#D6B84A] bg-[#FFFBE8] shadow-sm" : "border-border",
-              changed ? "ring-2 ring-[#F4D85E]/40" : "",
-            ].join(" ")}
-          >
-            <div className="flex items-center gap-2">
-              <span className={[
-                "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                active ? "bg-[#FAD338] text-[#15202B]" : "bg-[#EAF0F4] text-[#3D5A70]",
-              ].join(" ")}>
-                {stage.step}
-              </span>
-              <span className="text-xs font-semibold text-[#33414D]">{stage.label}</span>
-            </div>
-            <div className="mt-2 flex items-end gap-1.5">
-              {value === null && !error ? (
-                <span aria-label="불러오는 중" className="h-7 w-12 rounded bg-muted motion-safe:animate-pulse" />
-              ) : (
-                <span className="text-[27px] font-semibold leading-none tabular-nums">
-                  {error ? <span className="text-sm font-normal text-destructive">확인 필요</span> : value}
+      {REVIEW_STAGE_ITEMS.map((stage) => {
+        const value = review?.[stage.key] ?? null;
+        const active = dominant === stage.key;
+        const changed = changedKeys.has(`review.${stage.key}`);
+        return (
+          <div key={stage.key} className="relative min-w-0">
+            <Link
+              to="/admin/review"
+              className={[
+                "group flex min-h-[98px] flex-col rounded-lg border bg-card p-3 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
+                "motion-safe:transition-all motion-safe:duration-200 hover:border-[#C9B54E] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8AA2F]",
+                active ? "border-[#D6B84A] bg-[#FFFBE8]" : "border-border",
+                changed ? "ring-2 ring-[#F4D85E]/35" : "",
+              ].join(" ")}
+            >
+              <div className="flex items-center gap-2">
+                <span className={[
+                  "inline-flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold tabular-nums",
+                  active ? "bg-[#F1D54A] text-[#293641]" : "bg-[#EEF1F2] text-[#63727C]",
+                ].join(" ")}>
+                  {stage.step}
                 </span>
-              )}
-              {!error && value !== null && <span className="pb-0.5 text-[11px] text-muted-foreground">개</span>}
-            </div>
-            <p className="mt-1.5 text-[11px] text-muted-foreground">{stage.definition}</p>
-          </Link>
-        </div>
-      );
-    })}
+                <span className="text-xs font-semibold leading-4 text-[#3F4E59]">{stage.displayLabel}</span>
+              </div>
+              <div className="mt-1.5 flex items-end gap-1.5">
+                {value === null && !error ? (
+                  <span aria-label="불러오는 중" className="h-7 w-12 rounded bg-muted motion-safe:animate-pulse" />
+                ) : (
+                  <span className="text-[27px] font-semibold leading-none tracking-[-0.025em] text-[#15202B] tabular-nums">
+                    {error ? <span className="text-xs font-normal text-destructive">확인 필요</span> : value}
+                  </span>
+                )}
+                {!error && value !== null && <span className="pb-0.5 text-[11px] text-muted-foreground">개</span>}
+              </div>
+              <span className="mt-auto pt-1.5 text-[11px] text-muted-foreground">{stage.description}</span>
+            </Link>
+            {stage.step < REVIEW_STAGE_ITEMS.length && (
+              <ArrowRight aria-hidden className="absolute -right-[26px] top-1/2 hidden h-5 w-5 -translate-y-1/2 text-[#81909A] xl:block" />
+            )}
+          </div>
+        );
+      })}
   </div>
+);
+
+const OperationMetric = ({
+  to,
+  label,
+  value,
+  unit,
+  description,
+  error,
+  changed = false,
+}: {
+  to: string;
+  label: string;
+  value: number | null;
+  unit: string;
+  description: string;
+  error: string | null;
+  changed?: boolean;
+}) => (
+  <Link
+    to={to}
+    className={[
+      "group flex min-h-[98px] flex-col rounded-lg border bg-card p-3 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
+      "motion-safe:transition-all motion-safe:duration-200 hover:border-[#789184] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4E8063]",
+      changed ? "border-[#75A488] bg-[#F3FAF5] ring-2 ring-[#8FC7A4]/30" : "border-border",
+    ].join(" ")}
+  >
+    <span className="text-xs font-medium text-muted-foreground group-hover:text-[#273B4A]">{label}</span>
+    {value === null && !error ? (
+      <span aria-label="불러오는 중" className="mt-1.5 h-7 w-16 rounded bg-muted motion-safe:animate-pulse" />
+    ) : (
+      <span className="mt-1.5 flex items-end gap-1.5">
+        <span className="text-[27px] font-semibold leading-none tracking-[-0.025em] text-[#15202B] tabular-nums">
+          {error ? <span className="text-sm font-normal text-destructive">확인 필요</span> : value}
+        </span>
+        {!error && value !== null && <span className="pb-0.5 text-[11px] text-muted-foreground">{unit}</span>}
+      </span>
+    )}
+    <span className="mt-auto pt-1.5 text-[11px] leading-4 text-muted-foreground">{description}</span>
+  </Link>
 );
 
 const LiveDatabaseStatus = ({ delayed }: { delayed: boolean }) => (
@@ -248,7 +260,7 @@ const LiveDatabaseStatus = ({ delayed }: { delayed: boolean }) => (
     ].join(" ")}
   >
     <span className="relative flex h-2 w-2" aria-hidden>
-      {!delayed && <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 motion-safe:animate-ping" />}
+      {!delayed && <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-50 motion-safe:animate-ping" />}
       <span className={["relative inline-flex h-2 w-2 rounded-full", delayed ? "bg-amber-500" : "bg-emerald-500"].join(" ")} />
     </span>
     {delayed ? "갱신 지연" : "DB 실시간"}
@@ -434,18 +446,52 @@ const AdminDashboard = () => {
         </p>
       )}
 
-      <SectionHeader title="콘텐츠 준비 현황" meta={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />} />
+      <PanelHeader
+        title="콘텐츠 준비 현황"
+        action={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />}
+      />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard to="/admin/library" label="시나리오 코어" value={snapshot?.content.coreCount ?? null} unit="개" definition="현행 시나리오 코어" error={displayError} icon={Database} accent="gold" changed={changedKeys.has("core")} />
-        <MetricCard to="/admin/assembly" label="생성된 학습 미션" value={snapshot?.content.generatedMissionCount ?? null} unit="개" definition="미션 본문 저장 완료" error={displayError} icon={BookOpenCheck} accent="gold" changed={changedKeys.has("mission")} />
-        <MetricCard to="/admin/review" label="현행 검수 대상" value={snapshot?.content.reviewTargetCount ?? null} unit="개" definition="검수 대기" error={displayError} icon={ShieldCheck} accent="gold" changed={changedKeys.has("reviewTarget")} />
-        <MetricCard to="/admin/review" label="교수자 승인 완료" value={snapshot?.content.professorFinalizedCount ?? null} unit="개" definition="5단계 검수 완료" error={displayError} icon={CircleCheckBig} accent="gold" changed={changedKeys.has("finalized")} />
+        <SummaryMetric
+          to="/admin/library"
+          label="시나리오 원안"
+          value={snapshot?.content.coreCount ?? null}
+          unit="개"
+          description="학습 미션 제작의 기본 자료"
+          error={displayError}
+          changed={changedKeys.has("core")}
+        />
+        <SummaryMetric
+          to="/admin/assembly"
+          label="학습 미션 생성 완료"
+          value={snapshot?.content.generatedMissionCount ?? null}
+          unit="개"
+          description="생성·저장된 학습 미션"
+          error={displayError}
+          changed={changedKeys.has("mission")}
+        />
+        <SummaryMetric
+          to="/admin/review"
+          label="검수 대기 미션"
+          value={snapshot?.content.reviewTargetCount ?? null}
+          unit="개"
+          description="5단계 검수 진행 대상"
+          error={displayError}
+          changed={changedKeys.has("reviewTarget")}
+        />
+        <SummaryMetric
+          to="/admin/review"
+          label="교수자 승인 완료"
+          value={snapshot?.content.professorFinalizedCount ?? null}
+          unit="개"
+          description="수업 사용 최종 승인"
+          error={displayError}
+          changed={changedKeys.has("finalized")}
+        />
       </div>
 
-      <SectionHeader
+      <PanelHeader
         title="콘텐츠 검수 진행 현황"
-        description={`검수 대상 ${snapshot ? `${snapshot.content.reviewTargetCount}개` : "…"} · 다음 처리 단계 기준${dominantReviewStage && snapshot ? ` · 현재 집중 ${REVIEW_STAGE_LABELS[dominantReviewStage]} ${snapshot.review[dominantReviewStage]}개` : ""}`}
-        meta={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />}
+        action={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />}
       />
       <ReviewPipeline
         review={snapshot?.review ?? null}
@@ -454,11 +500,38 @@ const AdminDashboard = () => {
         changedKeys={changedKeys}
       />
 
-      <SectionHeader title="수업·학습 현황" meta={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />} />
-      <div className="mx-auto grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:w-3/4">
-        <MetricCard to="/admin/composer" label="수업 편성" value={snapshot?.assignments.missionCount ?? null} unit="개 미션" definition={snapshot ? `${snapshot.assignments.weekCount}개 주차 · 총 ${snapshot.assignments.assignmentCount}건 편성` : "편성 현황"} error={displayError} icon={CalendarDays} accent="green" changed={changedKeys.has("assignments")} />
-        <MetricCard to="/admin/learners" label="승인 학습자" value={snapshot?.approvedLearnerCount ?? null} unit="명" definition="수업 참여 승인 완료" error={displayError} icon={Users} accent="green" changed={changedKeys.has("learners")} />
-        <MetricCard to="/admin/decision-traces" label="학습자 수행 기록" value={snapshot?.learnerRecordCount ?? null} unit="건" definition="저장된 미션 수행 로그" error={displayError} icon={Activity} accent="green" changed={changedKeys.has("records")} />
+      <PanelHeader
+        title="수업·학습 현황"
+        action={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />}
+      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <OperationMetric
+          to="/admin/composer"
+          label="수업 편성 미션"
+          value={snapshot?.assignments.missionCount ?? null}
+          unit="개 미션"
+          description={snapshot ? `${snapshot.assignments.weekCount}개 주차 · ${snapshot.assignments.assignmentCount}건 배정` : "편성 현황"}
+          error={displayError}
+          changed={changedKeys.has("assignments")}
+        />
+        <OperationMetric
+          to="/admin/learners"
+          label="수업 참여 승인"
+          value={snapshot?.approvedLearnerCount ?? null}
+          unit="명"
+          description="승인된 학습자"
+          error={displayError}
+          changed={changedKeys.has("learners")}
+        />
+        <OperationMetric
+          to="/admin/decision-traces"
+          label="학습 수행 기록"
+          value={snapshot?.learnerRecordCount ?? null}
+          unit="건"
+          description="누적 학습 수행 기록"
+          error={displayError}
+          changed={changedKeys.has("records")}
+        />
       </div>
 
       {isAdmin && (
