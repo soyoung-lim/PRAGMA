@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DASHBOARD_REVIEW_CRITERIA_VERSION,
+  dominantDashboardReviewStage,
   isDashboardReviewTarget,
   nextDashboardReviewStage,
   summarizeDashboardAssignments,
@@ -19,7 +20,8 @@ const mission = (
   content_format: "scenario_core_v1",
   review_status: "needs_review",
   mission_status: "generated",
-  mission_content: { unit: { id }, quality_check: { verdict: "pass" } },
+  mission_schema_version: "mission_v5",
+  authoring_stage: null,
   updated_at: "2026-09-01T09:00:00.000Z",
   ...patch,
 });
@@ -43,16 +45,16 @@ const run = (
 describe("admin dashboard metrics", () => {
   it("separates cores, generated missions, review targets, and five-stage finalization", () => {
     const rows = [
-      mission("core-only", { mission_status: null, mission_content: null }),
+      mission("core-only", { mission_status: null, mission_schema_version: null }),
       mission("pending"),
       mission("revision", { review_status: "revise_required" }),
       mission("finalized", {
         mission_status: "reviewed",
-        mission_content: { authoring: { stage: "professor_finalized" } },
+        authoring_stage: "professor_finalized",
       }),
       mission("legacy-reviewed", {
         mission_status: "reviewed",
-        mission_content: { authoring: { stage: "legacy" } },
+        authoring_stage: "legacy",
       }),
       mission("legacy-format", { content_format: "legacy_v1" }),
     ];
@@ -85,12 +87,13 @@ describe("admin dashboard metrics", () => {
     const counts = summarizeDashboardReviewStages(rows, runs);
     expect(counts).toEqual({ rules: 2, openai: 1, claude: 1, adjudication: 1, professor: 1 });
     expect(Object.values(counts).reduce((sum, value) => sum + value, 0)).toBe(rows.length);
+    expect(dominantDashboardReviewStage(counts)).toBe("rules");
+    expect(dominantDashboardReviewStage({ rules: 0, openai: 0, claude: 0, adjudication: 0, professor: 0 })).toBeNull();
   });
 
-  it("returns edited content to R inspection and ignores the generation critic", () => {
+  it("returns edited content to R inspection instead of reusing a stale run", () => {
     const row = mission("edited", {
       updated_at: "2026-09-01T11:00:00.000Z",
-      mission_content: { quality_check: { verdict: "pass" } },
     });
     const stale = run("edited", {
       created_at: "2026-09-01T10:00:00.000Z",

@@ -8,7 +8,8 @@ export type DashboardScenarioRow = {
   content_format: string;
   review_status: string | null;
   mission_status: string | null;
-  mission_content: unknown;
+  mission_schema_version: string | null;
+  authoring_stage: string | null;
   updated_at: string | null;
 };
 
@@ -51,13 +52,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function hasMissionContent(value: unknown): boolean {
-  return isRecord(value) && Object.keys(value).length > 0;
+function hasMissionContent(row: DashboardScenarioRow): boolean {
+  return Boolean(row.mission_schema_version);
 }
 
-function isProfessorFinalized(value: unknown): boolean {
-  if (!isRecord(value) || !isRecord(value.authoring)) return false;
-  return value.authoring.stage === "professor_finalized";
+function isProfessorFinalized(row: DashboardScenarioRow): boolean {
+  return row.authoring_stage === "professor_finalized";
 }
 
 /** `/admin/review`의 기본 「미션 생성됨(검수 대기)」 분모와 같은 조건이다. */
@@ -65,7 +65,7 @@ export function isDashboardReviewTarget(row: DashboardScenarioRow): boolean {
   return row.content_format === "scenario_core_v1"
     && row.review_status !== "revise_required"
     && row.mission_status === "generated"
-    && hasMissionContent(row.mission_content);
+    && hasMissionContent(row);
 }
 
 export function summarizeDashboardContent(rows: readonly DashboardScenarioRow[]) {
@@ -74,12 +74,12 @@ export function summarizeDashboardContent(rows: readonly DashboardScenarioRow[])
     coreCount: currentCoreRows.length,
     generatedMissionCount: currentCoreRows.filter(
       (row) => ["generated", "reviewed", "released"].includes(row.mission_status ?? "")
-        && hasMissionContent(row.mission_content),
+        && hasMissionContent(row),
     ).length,
     reviewTargetCount: currentCoreRows.filter(isDashboardReviewTarget).length,
     professorFinalizedCount: currentCoreRows.filter(
       (row) => ["reviewed", "released"].includes(row.mission_status ?? "")
-        && isProfessorFinalized(row.mission_content),
+        && isProfessorFinalized(row),
     ).length,
   };
 }
@@ -137,6 +137,20 @@ export function summarizeDashboardReviewStages(
     counts[nextDashboardReviewStage(row, runs)] += 1;
   }
   return counts;
+}
+
+export function dominantDashboardReviewStage(
+  counts: DashboardReviewStageCounts,
+): DashboardReviewQueueStage | null {
+  let dominant: DashboardReviewQueueStage | null = null;
+  let highest = 0;
+  for (const stage of REVIEW_QUEUE_STAGES) {
+    if (counts[stage] > highest) {
+      dominant = stage;
+      highest = counts[stage];
+    }
+  }
+  return dominant;
 }
 
 export function summarizeDashboardAssignments(rows: readonly DashboardAssignmentRow[]) {
