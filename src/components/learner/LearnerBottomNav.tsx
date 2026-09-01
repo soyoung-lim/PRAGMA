@@ -1,19 +1,24 @@
+import { BookOpen, Compass, History } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
-// Scope Lock 학습자 최상위 공간 — 할 것(수업) · 한 것(기록).
+// 학습자 최상위 공간 — 필수 학습(수업) · 회고(기록) · 부가 탐색(라운지).
 //
 // 홈 탭은 없앴다(2026-08-01). 수업 화면이 「이번 학습」 CTA와 9화행 지도를 갖게 되면서
 // 홈에 남은 것이 다른 탭으로 가는 우회 링크뿐이었고, 홈의 이월 조언은 이번 주 화행과
 // 무관한 지난 화행을 나란히 보여 오히려 오해를 만들었다. 이월은 관련 미션 직전에서
 // 회수한다(latestFocusCarryOver는 그 용도로 남겨 둔다).
-// 셀프 연습은 실제 기능이 생기기 전까지 탭이나 자리표시자로 노출하지 않는다.
+// 라운지는 점수·진행률·수행 기록과 분리된 정적 선택 활동만 제공한다.
 const TABS = [
-  { to: "/learner/course", label: "수업", icon: "▦" },
-  { to: "/learner/records", label: "기록", icon: "◷" },
+  { to: "/learner/course", label: "수업", icon: BookOpen },
+  { to: "/learner/records", label: "기록", icon: History },
+  { to: "/learner/lounge", label: "라운지", icon: Compass },
 ];
 
-export const LearnerBottomNav = () => (
-  <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[#EAE4D2] bg-white/95 backdrop-blur">
+export const LearnerBottomNav = ({ tone = "default" }: { tone?: "default" | "lounge" }) => (
+  <nav className={[
+    "fixed inset-x-0 bottom-0 z-50 border-t backdrop-blur",
+    tone === "lounge" ? "border-[#DCD5E4] bg-[#FCFAFD]/95" : "border-[#EAE4D2] bg-white/95",
+  ].join(" ")}>
     <div className="mx-auto flex max-w-3xl">
       {TABS.map((t) => (
         <NavLink
@@ -22,7 +27,9 @@ export const LearnerBottomNav = () => (
           className={({ isActive }) =>
             [
               "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[13px] font-bold",
-              isActive ? "text-[#15202B]" : "text-muted-foreground",
+              isActive
+                ? tone === "lounge" ? "text-[#4F4160]" : "text-[#15202B]"
+                : tone === "lounge" ? "text-[#837A8E]" : "text-muted-foreground",
             ].join(" ")
           }
         >
@@ -31,10 +38,10 @@ export const LearnerBottomNav = () => (
               <span
                 className={[
                   "flex h-7 w-11 items-center justify-center rounded-full text-[16px]",
-                  isActive ? "bg-[#FAD338]" : "",
+                  isActive ? tone === "lounge" ? "bg-[#DCCFF0]" : "bg-[#FAD338]" : "",
                 ].join(" ")}
               >
-                {t.icon}
+                <t.icon className="h-[17px] w-[17px]" aria-hidden />
               </span>
               {t.label}
             </>

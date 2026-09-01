@@ -27,10 +27,7 @@ export const HomeBrand = () => {
         pulse ? "scale-[0.98] opacity-90" : "scale-100 opacity-100",
       ].join(" ")}
     >
-      <span
-        aria-hidden
-        className="inline-block h-[15px] w-[5px] translate-y-[1px] rounded-full bg-[#FAD338]"
-      />
+      <span aria-hidden className="inline-block h-[15px] w-[5px] translate-y-[1px] rounded-full bg-[#FAD338]" />
       {/* 제품명은 로고타입처럼 — 자간을 넓혀 문장이 아니라 '마크'로 읽히게 한다. */}
       <span className="text-[16px] font-bold tracking-[0.18em] sm:text-[17px]">PRAGMA</span>
       {/* 공식 설명어(= 논문 제목의 앞부분). 좁은 화면에서는 제품명만 남긴다. */}
