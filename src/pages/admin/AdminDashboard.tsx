@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Link } from "react-router-dom";
 import {
   Activity,
+  ArrowRight,
   BookOpenCheck,
   CalendarDays,
   CircleCheckBig,
@@ -130,7 +131,7 @@ const MetricCard = ({
   <Link
     to={to}
     className={[
-      "group relative flex min-h-[116px] flex-col overflow-hidden rounded-lg border bg-card p-4 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
+      "group relative flex min-h-[112px] flex-col overflow-hidden rounded-lg border bg-card p-4 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
       "motion-safe:transition-all motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[#D6B84A] hover:shadow-md",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8AA2F]",
       changed ? "border-[#D6B84A] bg-[#FFFBE8] ring-2 ring-[#F4D85E]/35" : "border-border",
@@ -186,45 +187,51 @@ const ReviewPipeline = ({
   error: string | null;
   changedKeys: ReadonlySet<DashboardMetricKey>;
 }) => (
-  <div className="relative grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-    <span aria-hidden className="absolute left-[9%] right-[9%] top-[29px] hidden h-0.5 bg-gradient-to-r from-[#D6B632] via-[#49667E] to-[#4E9C73] opacity-45 xl:block" />
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 xl:gap-8">
     {REVIEW_STAGE_CARDS.map((stage) => {
       const value = review?.[stage.key] ?? null;
       const active = dominant === stage.key;
       const changed = changedKeys.has(`review.${stage.key}`);
       return (
-        <Link
-          key={stage.key}
-          to="/admin/review"
-          className={[
-            "group relative z-10 min-h-[112px] overflow-hidden rounded-lg border bg-card p-3.5 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
-            "motion-safe:transition-all motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[#6D879B] hover:shadow-md",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49667E]",
-            active ? "border-[#D6B84A] bg-[#FFFBE8] shadow-sm" : "border-border",
-            changed ? "ring-2 ring-[#F4D85E]/40" : "",
-          ].join(" ")}
-        >
-          <div className="flex items-center gap-2">
-            <span className={[
-              "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-              active ? "bg-[#FAD338] text-[#15202B]" : "bg-[#EAF0F4] text-[#3D5A70]",
-            ].join(" ")}>
-              {stage.step}
-            </span>
-            <span className="text-xs font-semibold text-[#33414D]">{stage.label}</span>
-          </div>
-          <div className="mt-2 flex items-end gap-1.5">
-            {value === null && !error ? (
-              <span aria-label="불러오는 중" className="h-7 w-12 rounded bg-muted motion-safe:animate-pulse" />
-            ) : (
-              <span className="text-[27px] font-semibold leading-none tabular-nums">
-                {error ? <span className="text-sm font-normal text-destructive">확인 필요</span> : value}
+        <div key={stage.key} className="relative min-w-0">
+          {stage.step < REVIEW_STAGE_CARDS.length && (
+            <ArrowRight
+              aria-hidden
+              className="absolute -right-[26px] top-1/2 z-20 hidden h-5 w-5 -translate-y-1/2 text-[#71838F] xl:block"
+            />
+          )}
+          <Link
+            to="/admin/review"
+            className={[
+              "group relative z-10 block h-full min-h-[112px] overflow-hidden rounded-lg border bg-card p-3.5 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
+              "motion-safe:transition-all motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[#6D879B] hover:shadow-md",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49667E]",
+              active ? "border-[#D6B84A] bg-[#FFFBE8] shadow-sm" : "border-border",
+              changed ? "ring-2 ring-[#F4D85E]/40" : "",
+            ].join(" ")}
+          >
+            <div className="flex items-center gap-2">
+              <span className={[
+                "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                active ? "bg-[#FAD338] text-[#15202B]" : "bg-[#EAF0F4] text-[#3D5A70]",
+              ].join(" ")}>
+                {stage.step}
               </span>
-            )}
-            {!error && value !== null && <span className="pb-0.5 text-[11px] text-muted-foreground">개</span>}
-          </div>
-          <p className="mt-1.5 text-[11px] text-muted-foreground">{stage.definition}</p>
-        </Link>
+              <span className="text-xs font-semibold text-[#33414D]">{stage.label}</span>
+            </div>
+            <div className="mt-2 flex items-end gap-1.5">
+              {value === null && !error ? (
+                <span aria-label="불러오는 중" className="h-7 w-12 rounded bg-muted motion-safe:animate-pulse" />
+              ) : (
+                <span className="text-[27px] font-semibold leading-none tabular-nums">
+                  {error ? <span className="text-sm font-normal text-destructive">확인 필요</span> : value}
+                </span>
+              )}
+              {!error && value !== null && <span className="pb-0.5 text-[11px] text-muted-foreground">개</span>}
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">{stage.definition}</p>
+          </Link>
+        </div>
       );
     })}
   </div>
@@ -428,7 +435,7 @@ const AdminDashboard = () => {
       )}
 
       <SectionHeader title="콘텐츠 준비 현황" meta={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />} />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard to="/admin/library" label="시나리오 코어" value={snapshot?.content.coreCount ?? null} unit="개" definition="현행 시나리오 코어" error={displayError} icon={Database} accent="gold" changed={changedKeys.has("core")} />
         <MetricCard to="/admin/assembly" label="생성된 학습 미션" value={snapshot?.content.generatedMissionCount ?? null} unit="개" definition="미션 본문 저장 완료" error={displayError} icon={BookOpenCheck} accent="gold" changed={changedKeys.has("mission")} />
         <MetricCard to="/admin/review" label="현행 검수 대상" value={snapshot?.content.reviewTargetCount ?? null} unit="개" definition="검수 대기" error={displayError} icon={ShieldCheck} accent="gold" changed={changedKeys.has("reviewTarget")} />
@@ -448,7 +455,7 @@ const AdminDashboard = () => {
       />
 
       <SectionHeader title="수업·학습 현황" meta={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />} />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mx-auto grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:w-3/4">
         <MetricCard to="/admin/composer" label="수업 편성" value={snapshot?.assignments.missionCount ?? null} unit="개 미션" definition={snapshot ? `${snapshot.assignments.weekCount}개 주차 · 총 ${snapshot.assignments.assignmentCount}건 편성` : "편성 현황"} error={displayError} icon={CalendarDays} accent="green" changed={changedKeys.has("assignments")} />
         <MetricCard to="/admin/learners" label="승인 학습자" value={snapshot?.approvedLearnerCount ?? null} unit="명" definition="수업 참여 승인 완료" error={displayError} icon={Users} accent="green" changed={changedKeys.has("learners")} />
         <MetricCard to="/admin/decision-traces" label="학습자 수행 기록" value={snapshot?.learnerRecordCount ?? null} unit="건" definition="저장된 미션 수행 로그" error={displayError} icon={Activity} accent="green" changed={changedKeys.has("records")} />
