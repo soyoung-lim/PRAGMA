@@ -3389,3 +3389,27 @@
   독립 기능 경계도 유지한다.
 - 관련: `ITER-20260901-03`, `EVD-20260901-03`,
   `docs/dev-log/2026-09-01-admin-ia-wording-order.md`.
+
+## DEC-20260901-04 · 생성 증거와 5단계 품질 검수 거버넌스를 분리
+
+- 날짜: 2026-09-01
+- 문제: 한 관리자 화면이 콘텐츠 생성용 계약·개발 프롬프트, 생성·저장 선행 critic, 콘텐츠 승인용
+  R/AI 검수와 학습자 runtime 프롬프트까지 함께 보여 주어 개발 프롬프트와 운영 프롬프트의 목적·
+  시점·책임 경계가 흐려졌다. 기존 단계명도 실제 5단계 저장·승인 흐름을 일관되게 설명하지 못했다.
+- 대안: 한 화면 안의 탭으로 유지하는 안, 생성과 콘텐츠 검수를 분리하되 생성 pre-gate를 여섯째
+  검사 단계처럼 넣는 안, 두 화면으로 분리하고 pre-gate를 5단계 밖에 두는 안을 검토했다.
+- 결정: `/admin/prompt-harness`는 `생성 계약·개발 프롬프트`, `/admin/review-criteria`는
+  `검수 기준·운영 프롬프트`로 분리한다. 품질 검사는 정확히
+  `R 검사 → OpenAI 1차 → Claude 교차 → OpenAI 정리 → 교수자 최종 승인`의 5단계로 고정한다.
+  콘텐츠 생성과 `R + production quality critic` 생성·저장 gate는 이 다섯 단계의 선행 과정이다.
+- 책임 경계: OpenAI 1차와 Claude는 서로의 결과를 보지 않는다. OpenAI 정리는 Claude finding을
+  수용·보완·기각할 뿐 전면 재검수나 자동 수정·승인이 아니다. 교수자만 finding별 결정·근거를
+  입력하고 최종 승인할 수 있다.
+- 규칙 표면: R1–R33의 33개 번호와 R1c를 typed catalog로 노출하고 R22 retired를 보존한다. 재감사로
+  확인한 R26은 lexical miss warning 뒤 해당 industry critic만 1회 호출하는 승인된 현행 동작에
+  정본 표기를 맞춘다. 검사 로직·threshold는 바꾸지 않는다.
+- 완료 경계: 이번 결정의 구현·로컬 화면·전체 회귀는 운영 E2E 완료 증거가 아니다. 동일 mission ID·
+  review run·content hash로 1–4단계를 실행하고 연구자가 교수자 판단을 직접 입력한 뒤 승인·편성 가능·
+  편성 전 learner 비공개까지 확인해야 운영 종단이 완료된다.
+- 관련: `ITER-20260901-04`, `EVD-20260901-04`,
+  `docs/dev-log/2026-09-01-admin-review-governance.md`.

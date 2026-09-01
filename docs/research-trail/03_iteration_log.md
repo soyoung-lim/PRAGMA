@@ -3236,3 +3236,23 @@
   선택값을 코드·회귀 테스트로 확인했으며 좁은 뷰포트 실기기 캡처는 하지 않았다.
 - 관련: `DEC-20260901-03`, `EVD-20260901-03`,
   `docs/dev-log/2026-09-01-admin-ia-wording-order.md`.
+
+## ITER-20260901-04 · 생성·검수 증거 분리와 5단계 관리자 표면 정렬
+
+- 날짜: 2026-09-01
+- 시작 문제: 생성 계약, 생성·저장 critic, 콘텐츠 승인용 AI 검수, 학습자 runtime 프롬프트가 한
+  화면에서 섞였고 R 규칙 전체 카탈로그와 모델 간 입력 격리는 관리자 화면에서 확인할 수 없었다.
+- 변경: 생성 화면은 core·mission·generation-side review·authoring prompt만 남기고, 새 검수 기준
+  화면에 선행 gate, 정확한 5단계, typed R catalog, 실제 공용 운영 prompt, 교수자 최종 권한과 접힌
+  learner runtime을 배치했다. 콘텐츠 검수 패널의 단계 용어를 같은 정본 상수로 정렬했다.
+- 발견과 보정: 생성계약의 R26 `fail` 표기가 코드·`DEC-20260830-19`의 warning+bounded semantic gate와
+  달랐다. 규칙 로직을 바꾸지 않고 계약·카탈로그를 현행에 맞췄다. 백업 메뉴의 전용 구분선은 실제
+  운영 캡처 피드백에 따라 제거했다.
+- 검증: typecheck, 표적 6파일 31 tests, 환경 적용 전체 115파일 689 tests·9 skip, review bundle
+  268,570자, production build 1,962 modules가 통과했다. localhost 데스크톱·390×844 모바일과
+  console error 0건을 확인했다. 운영에서는 213개 대기·완료 0개와 첫 후보의 기존 generation critic
+  결과만 읽었으며 유료 검수·교수자 승인·편성은 실행하지 않았다.
+- 다음: 배포 뒤 대표 mission 1건을 같은 mission/review/content identity로 추적하고 교수자 단계에서
+  연구자가 직접 판단한 뒤 승인·편성·비공개 경계를 확인한다.
+- 관련: `DEC-20260901-04`, `EVD-20260901-04`,
+  `docs/dev-log/2026-09-01-admin-review-governance.md`.
