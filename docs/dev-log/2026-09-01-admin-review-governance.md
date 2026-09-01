@@ -83,17 +83,30 @@
 
 - DB schema·migration·RLS, R 규칙 로직·threshold, provider 호출 순서·모델, 자동 수정·자동 승인,
   교수자 결정 의미, 학습자 공개 조건은 변경하지 않았다.
-- 운영 유료 호출·교수자 승인·수업 편성·learner 공개·Railway 배포는 수행하지 않았다.
+- 운영 유료 호출·교수자 승인·수업 편성·learner 공개는 수행하지 않았다.
 
-## 로컬 커밋 상태
+## 커밋·배포
 
 - 백업 메뉴 구분선 제거: `27966c4` (`fix(admin): remove backup navigation separator`).
 - 생성·검수 거버넌스 화면 분리: `7ed39a4`
   (`feat(admin): separate generation and review governance screens`).
-- 두 커밋은 현재 기능 브랜치에만 있으며 원격 push·main 병합·운영 배포는 하지 않았다.
+- 정본·검증 기록 `154b65f`, clean provenance 스냅샷 `ce0f53e`까지 기능 브랜치
+  `codex/admin-ia-wording-order-2026-09-01`에 push했다. main 병합은 하지 않았다.
+- `content-review`를 Supabase Edge **v10**으로 배포했다. status `ACTIVE`, `verify_jwt=true`,
+  bundle SHA-256은 `4c35e958ba29622c5bddb5e58520dac532a892d552f7130b663c6815aa568628`다.
+- clean `ce0f53e` worktree를 Railway production에 직접 업로드했다. deployment
+  `9ba77b08-e18f-455a-8cae-2357fc5688b0`은 `SUCCESS`, instance
+  `da2f4a22-0450-49ed-adf2-921f48171e5a`는 `RUNNING`, image digest는
+  `sha256:a8da5472825945c0b67b614a44d77210dffc10aa2c418f636b9c5da538e57254`다.
+- 로그인 운영 화면에서 `/admin/review-criteria`의 정확한 5개 단계·R22 retired·선행 gate와
+  `/admin/prompt-harness`의 생성 전용 제목·검수 화면 링크·runtime 비노출을 확인했다.
+  `/admin/review`는 새 단계명을 표시하고 213개 대기·0개 완료 상태를 유지했다. 사이드바의 백업
+  구분선 제거와 browser console error 0건도 확인했다.
+- Railway는 기존 `railway.json`의 2026-12-01 지원 종료 예정과 `.railway/railway.ts` 이전을 다시
+  안내했다. 현 배포는 성공했으며 설정 이전은 이번 범위에 포함하지 않았다.
 
 ## [논문 영향 3줄]
 
-1. 바뀐 수치: 관리자 직접 링크 16개(대시보드 포함 17개), 품질 검사 5단계, 전체 689 tests 통과·9 skip, 운영 E2E 미완료.
-2. 바뀐 화면: `/admin/prompt-harness` 생성 전용 정리, `/admin/review-criteria` 신규, `/admin/review` 단계 용어, 백업 메뉴 구분선 제거.
-3. 바뀐 프롬프트·계약: 검수 프롬프트 내용·판정 로직은 불변, 공용 상수 노출과 R26 현행 판정·5단계 서술 정렬. 새 동결본 발행은 하지 않음.
+1. 바뀐 수치: 관리자 직접 링크 16개(대시보드 포함 17개), 품질 검사 5단계, 전체 689 tests 통과·9 skip, Edge v10·Railway SUCCESS, 운영 E2E 미완료.
+2. 바뀐 화면: 운영 `/admin/prompt-harness` 생성 전용 정리, `/admin/review-criteria` 신규, `/admin/review` 단계 용어, 백업 메뉴 구분선 제거.
+3. 바뀐 프롬프트·계약: 운영 검수 프롬프트 내용·판정 로직은 불변, 공용 상수 노출과 R26 현행 판정·5단계 서술 정렬. 새 동결본 발행은 하지 않음.

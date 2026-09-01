@@ -3250,9 +3250,12 @@
   운영 캡처 피드백에 따라 제거했다.
 - 검증: typecheck, 표적 6파일 31 tests, 환경 적용 전체 115파일 689 tests·9 skip, review bundle
   268,570자, production build 1,962 modules가 통과했다. localhost 데스크톱·390×844 모바일과
-  console error 0건을 확인했다. 운영에서는 213개 대기·완료 0개와 첫 후보의 기존 generation critic
-  결과만 읽었으며 유료 검수·교수자 승인·편성은 실행하지 않았다.
-- 다음: 배포 뒤 대표 mission 1건을 같은 mission/review/content identity로 추적하고 교수자 단계에서
+  console error 0건을 확인했다. 기능 브랜치를 `ce0f53e`까지 push하고 content-review Edge v10
+  `ACTIVE`, Railway `9ba77b08-e18f-455a-8cae-2357fc5688b0` `SUCCESS`·instance `RUNNING`을
+  확인했다. 로그인 운영 화면은 새 두 프롬프트 화면과 정확한 5단계를 오류 없이 표시했다. 운영에서는
+  213개 대기·완료 0개와 첫 후보의 기존 generation critic 결과만 읽었으며 유료 검수·교수자 승인·
+  편성은 실행하지 않았다.
+- 다음: 대표 mission 1건을 같은 mission/review/content identity로 추적하고 교수자 단계에서
   연구자가 직접 판단한 뒤 승인·편성·비공개 경계를 확인한다.
 - 관련: `DEC-20260901-04`, `EVD-20260901-04`,
   `docs/dev-log/2026-09-01-admin-review-governance.md`.
