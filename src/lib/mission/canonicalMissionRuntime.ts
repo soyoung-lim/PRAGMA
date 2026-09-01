@@ -265,6 +265,24 @@ function assertBand(code: string, options: ChoiceOption[]): string {
   return code;
 }
 
+function bandChoiceOption(
+  band: { code: string; label_ko: string },
+  withinBandCode: string,
+  index: number,
+): ChoiceOption {
+  const matched = band.label_ko.match(/^(.+?)(?:\s*\(([^)]+)\))?$/);
+  const shortLabel = matched?.[1]?.trim() || band.label_ko;
+  const boundaryDescription = matched?.[2]?.trim();
+  const isWithinBand = band.code === withinBandCode;
+  return {
+    id: band.code,
+    label: isWithinBand ? "현재 상황에 맞음" : shortLabel,
+    description: isWithinBand
+      ? "관계·거리·부담에 맞는 조절"
+      : boundaryDescription ?? (index === 0 ? "상황 기준보다 조절이 부족함" : "상황 기준보다 조절이 과함"),
+  };
+}
+
 function runtimeFeedbackMode(pdr: Pdr): DctQuest["feedback"]["mode"] {
   return pdr.p === "speaker_lower" || pdr.d === "distant" || pdr.r === "high"
     ? "needs_mitigation"
@@ -288,10 +306,9 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
   if (!feature || feature.speech_act !== runnable.speech_act) {
     throw new UnsupportedCanonicalMissionRuntimeError("미션 화행과 화용 초점 카탈로그가 맞지 않습니다.");
   }
-  const bandOptions: ChoiceOption[] = feature.band_schema.map((band) => ({
-    id: band.code,
-    label: band.label_ko.replace(/\s*\([^)]*\)\s*$/, ""),
-  }));
+  const bandOptions: ChoiceOption[] = feature.band_schema.map((band, index) => (
+    bandChoiceOption(band, feature.within_band_code, index)
+  ));
 
   const common = (index: number, item: RuntimeMpjCommon) => ({
     id: `A${index + 1}`,

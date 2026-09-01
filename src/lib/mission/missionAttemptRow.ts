@@ -28,8 +28,8 @@ export interface SaveAttemptInput {
   /** 번역 산출에서 내용 어휘 힌트를 열람했는지 남기는 비채점 수행 trace. */
   productionSupport?: ProductionSupportTrace;
   /**
-   * 학습자 이견 기록(0-r·104). 판정을 바꾸지 않는다 — 결함 문항 발견과
-   * 채점키 캘리브레이션 보조 자료로만 쓴다. 남기지 않으면 undefined.
+   * 학습자 이견 기록(0-r·104). AI 참고 판정을 덮어쓰지 않고 학습자의 최종 산출 결정과
+   * 결함 문항 발견·채점키 캘리브레이션 근거를 함께 남긴다. 남기지 않으면 undefined.
    */
   contextJudgment?: LearnerDissent;
 }
@@ -85,6 +85,8 @@ export interface LearnerDissent extends Record<string, Json | undefined> {
   conditions: string[];
   /** 한 줄 이유(선택) */
   reason_ko: string;
+  /** AI 참고 판정을 보존한 채 학습자가 선택한 최종 산출 결정. 과거 행은 값이 없을 수 있다. */
+  final_decision?: "retained_first_response" | "revised_response";
   created_at: string;
 }
 

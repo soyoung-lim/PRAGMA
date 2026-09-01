@@ -307,6 +307,7 @@ describe("mission attempt row", () => {
         at: "feedback",
         conditions: ["relationship", "experience"],
         reason_ko: "실제 거래처에서는 이 정도 표현도 사용했습니다.",
+        final_decision: "retained_first_response",
         created_at: "2026-08-23T01:04:00.000Z",
       },
     }, "profile-1", "user-1", "2026-08-23T01:05:00.000Z");
@@ -331,6 +332,7 @@ describe("mission attempt row", () => {
         learner_dissent: {
           kind: "learner_dissent",
           conditions: ["relationship", "experience"],
+          final_decision: "retained_first_response",
         },
       },
     });

@@ -10,14 +10,14 @@ import { CompletionActions, CompletionRecord, DctFeedbackView, MissionDissentPan
 afterEach(() => vi.useRealTimers());
 
 describe("CanonicalMissionRun completion connections", () => {
-  it("collects optional dissent without changing the judgment", () => {
+  it("collects a learner challenge while preserving the AI reference judgment", () => {
     const onSubmit = vi.fn();
     render(<MissionDissentPanel onSubmit={onSubmit} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /피드백과 다르게 본 부분이 있다면/ }));
-    expect(screen.getByRole("heading", { name: "피드백과 다르게 본 부분" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /이의 제기하기/ }));
+    expect(screen.getByRole("heading", { name: "AI 참고 판정에 대한 이의 제기" })).toBeInTheDocument();
 
-    const submit = screen.getByRole("button", { name: "의견 남기기" });
+    const submit = screen.getByRole("button", { name: "이의 제기 남기기" });
     expect(submit).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "관계·친밀도에 대한 다른 판단" }));
@@ -30,7 +30,43 @@ describe("CanonicalMissionRun completion connections", () => {
       conditions: ["relationship"],
       reason: "초면보다 이미 아는 사이에 가깝다고 보았습니다.",
     });
-    expect(screen.getByText(/판정은 그대로 유지되며/)).toBeInTheDocument();
+    expect(screen.getByText(/AI 참고 판정과 나의 판단을 함께/)).toBeInTheDocument();
+  });
+
+  it("lets the learner retain the first response after recording a challenge to revision feedback", () => {
+    vi.useFakeTimers();
+    const quest = CANONICAL_MISSION_PREVIEW.quests.find(
+      (candidate): candidate is DctFeedbackQuest => candidate.kind === "dct_feedback",
+    );
+    if (!quest) throw new Error("DCT feedback fixture is missing");
+    const first = "你必须改时间。";
+    const onDone = vi.fn();
+
+    render(<DctFeedbackView quest={quest} response={{ first, revised: first, reflected: false }} onDone={onDone} />);
+    act(() => vi.advanceTimersByTime(1300));
+
+    const retain = screen.getByRole("button", { name: "내 번역을 유지하고 확정하기" });
+    expect(retain).toBeDisabled();
+    expect(screen.getByText(/첫 번역을 유지하려면/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /이의 제기하기/ }));
+    fireEvent.click(screen.getByRole("button", { name: "관계·친밀도에 대한 다른 판단" }));
+    fireEvent.change(screen.getByPlaceholderText("한 줄 이유 (선택)"), {
+      target: { value: "이미 합의된 일정이라 더 직접적으로 말해도 된다고 판단했습니다." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "이의 제기 남기기" }));
+
+    expect(retain).toBeEnabled();
+    fireEvent.click(retain);
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({
+      first,
+      revised: first,
+      reflected: false,
+      dissent: {
+        conditions: ["relationship"],
+        reason: "이미 합의된 일정이라 더 직접적으로 말해도 된다고 판단했습니다.",
+      },
+    }));
   });
 
   it("links the preview completion to learner records without claiming persistence", () => {
