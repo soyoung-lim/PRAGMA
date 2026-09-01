@@ -12,12 +12,11 @@ import {
 interface AdminShellProps {
   title: string;
   description?: string;
-  headerMeta?: ReactNode;
   children?: ReactNode;
   compact?: boolean;
 }
 
-export const AdminShell = ({ title, description, headerMeta, children, compact = false }: AdminShellProps) => {
+export const AdminShell = ({ title, description, children, compact = false }: AdminShellProps) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const mobileNavValue = adminMobileNavValue(pathname);
@@ -168,22 +167,19 @@ export const AdminShell = ({ title, description, headerMeta, children, compact =
             </select>
           </div>
 
-          <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-stretch gap-3">
-              <span
-                aria-hidden
-                className="mt-1 w-[5px] shrink-0 self-stretch rounded-sm bg-[#FAD338]"
-              />
-              <div>
-                <h1 className="text-2xl font-bold leading-tight text-foreground sm:text-3xl">
-                  {title}
-                </h1>
-                {description && (
-                  <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-                )}
-              </div>
+          <div className="flex items-stretch gap-3 print:hidden">
+            <span
+              aria-hidden
+              className="mt-1 w-[5px] shrink-0 self-stretch rounded-sm bg-[#FAD338]"
+            />
+            <div>
+              <h1 className="text-2xl font-bold leading-tight text-foreground sm:text-3xl">
+                {title}
+              </h1>
+              {description && (
+                <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+              )}
             </div>
-            {headerMeta && <div className="shrink-0 sm:pt-0.5">{headerMeta}</div>}
           </div>
           <div className="mt-6 print:mt-0">{children}</div>
         </main>

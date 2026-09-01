@@ -33,11 +33,10 @@ const run = (
   target_id: targetId,
   kind: "mission",
   criteria_version: DASHBOARD_REVIEW_CRITERIA_VERSION,
-  rules: { verdict: "pass" },
-  openai_review: null,
-  claude_review: null,
-  adjudication: null,
-  approved_at: null,
+  rules_verdict: "pass",
+  openai_response_id: null,
+  claude_response_id: null,
+  adjudication_response_id: null,
   created_at: "2026-09-01T10:00:00.000Z",
   ...patch,
 });
@@ -73,14 +72,14 @@ describe("admin dashboard metrics", () => {
     const rows = ["rules", "rule-fail", "openai", "claude", "adjudication", "professor"]
       .map((id) => mission(id));
     const runs = [
-      run("rule-fail", { rules: { verdict: "fail" } }),
+      run("rule-fail", { rules_verdict: "fail" }),
       run("openai"),
-      run("claude", { openai_review: { result: {} } }),
-      run("adjudication", { openai_review: { result: {} }, claude_review: { result: {} } }),
+      run("claude", { openai_response_id: "openai-response" }),
+      run("adjudication", { openai_response_id: "openai-response", claude_response_id: "claude-response" }),
       run("professor", {
-        openai_review: { result: {} },
-        claude_review: { result: {} },
-        adjudication: { result: {} },
+        openai_response_id: "openai-response",
+        claude_response_id: "claude-response",
+        adjudication_response_id: "adjudication-response",
       }),
     ];
 
@@ -97,9 +96,9 @@ describe("admin dashboard metrics", () => {
     });
     const stale = run("edited", {
       created_at: "2026-09-01T10:00:00.000Z",
-      openai_review: { result: {} },
-      claude_review: { result: {} },
-      adjudication: { result: {} },
+      openai_response_id: "openai-response",
+      claude_response_id: "claude-response",
+      adjudication_response_id: "adjudication-response",
     });
     expect(nextDashboardReviewStage(row, [stale])).toBe("rules");
   });

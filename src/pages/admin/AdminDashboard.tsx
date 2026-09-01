@@ -6,7 +6,6 @@ import {
   CalendarDays,
   CircleCheckBig,
   Database,
-  RefreshCw,
   ShieldCheck,
   Users,
   type LucideIcon,
@@ -38,6 +37,7 @@ import {
   type DashboardReviewStageCounts,
   type DashboardScenarioRow,
 } from "@/lib/admin/adminDashboardMetrics";
+import { CONTENT_REVIEW_STEPS } from "../../../supabase/functions/_shared/contentReview";
 import { toast } from "sonner";
 
 // content_review_runs는 2026-08-27 migration 이후 생성 타입을 아직 재발행하지 않았다.
@@ -98,7 +98,7 @@ const SectionHeader = ({
   meta?: ReactNode;
 }) => (
   <div className="mb-2 mt-6">
-    <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <h2 className="text-base font-semibold">{title}</h2>
       {meta}
     </div>
@@ -157,13 +157,19 @@ const MetricCard = ({
   </Link>
 );
 
-const REVIEW_STAGE_CARDS = [
-  { key: "rules", step: 1, label: "R 검사", definition: "규칙 검사 필요" },
-  { key: "openai", step: 2, label: "OpenAI 1차", definition: "1차 검수 대기" },
-  { key: "claude", step: 3, label: "Claude 교차", definition: "교차검수 대기" },
-  { key: "adjudication", step: 4, label: "OpenAI 정리", definition: "지적별 판정 대기" },
-  { key: "professor", step: 5, label: "교수자 최종 승인", definition: "최종 승인 대기" },
-] as const;
+const REVIEW_STAGE_DEFINITIONS: Record<DashboardReviewQueueStage, string> = {
+  rules: "규칙 검사 필요",
+  openai: "1차 검수 대기",
+  claude: "교차검수 대기",
+  adjudication: "지적별 판정 대기",
+  professor: "최종 승인 대기",
+};
+
+const REVIEW_STAGE_CARDS = CONTENT_REVIEW_STEPS.map((stage, index) => ({
+  ...stage,
+  step: index + 1,
+  definition: REVIEW_STAGE_DEFINITIONS[stage.key],
+}));
 
 const REVIEW_STAGE_LABELS = Object.fromEntries(
   REVIEW_STAGE_CARDS.map((stage) => [stage.key, stage.label]),
@@ -224,49 +230,23 @@ const ReviewPipeline = ({
   </div>
 );
 
-const LiveDatabaseStatus = ({
-  lastUpdatedAt,
-  refreshing,
-  delayed,
-  onRefresh,
-}: {
-  lastUpdatedAt: Date | null;
-  refreshing: boolean;
-  delayed: boolean;
-  onRefresh: () => void;
-}) => {
-  const timeLabel = lastUpdatedAt?.toLocaleTimeString("ko-KR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-  return (
-    <div
-      aria-live="polite"
-      title="화면이 열려 있을 때 30초마다 운영 DB를 다시 확인합니다."
-      className={[
-        "inline-flex h-9 items-center gap-2 rounded-full border bg-white px-3 text-[11px] shadow-sm",
-        delayed ? "border-amber-200 text-amber-800" : "border-emerald-200 text-emerald-700",
-      ].join(" ")}
-    >
-      <span className="relative flex h-2 w-2">
-        {!delayed && <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 motion-safe:animate-ping" />}
-        <span className={["relative inline-flex h-2 w-2 rounded-full", delayed ? "bg-amber-500" : "bg-emerald-500"].join(" ")} />
-      </span>
-      <span className="font-semibold">{delayed ? "갱신 지연" : "LIVE · 운영 DB"}</span>
-      <span className="text-muted-foreground">{timeLabel ? `${timeLabel} 갱신` : "연결 중"}</span>
-      <button
-        type="button"
-        aria-label="운영 현황 새로고침"
-        onClick={onRefresh}
-        disabled={refreshing}
-        className="-mr-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60"
-      >
-        <RefreshCw aria-hidden className={["h-3.5 w-3.5", refreshing ? "motion-safe:animate-spin" : ""].join(" ")} />
-      </button>
-    </div>
-  );
-};
+const LiveDatabaseStatus = ({ delayed }: { delayed: boolean }) => (
+  <span
+    aria-live="polite"
+    className={[
+      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
+      delayed
+        ? "border-amber-200 bg-amber-50 text-amber-800"
+        : "border-emerald-200 bg-emerald-50 text-emerald-700",
+    ].join(" ")}
+  >
+    <span className="relative flex h-2 w-2" aria-hidden>
+      {!delayed && <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 motion-safe:animate-ping" />}
+      <span className={["relative inline-flex h-2 w-2 rounded-full", delayed ? "bg-amber-500" : "bg-emerald-500"].join(" ")} />
+    </span>
+    {delayed ? "갱신 지연" : "DB 실시간"}
+  </span>
+);
 
 const DASHBOARD_PAGE_SIZE = 1000;
 
@@ -293,8 +273,6 @@ const AdminDashboard = () => {
   const [resetting, setResetting] = useState(false);
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
-  const [refreshing, setRefreshing] = useState(true);
   const [changedKeys, setChangedKeys] = useState<Set<DashboardMetricKey>>(() => new Set());
   const mountedRef = useRef(false);
   const refreshInFlightRef = useRef(false);
@@ -317,7 +295,6 @@ const AdminDashboard = () => {
   const refreshDashboard = useCallback(async () => {
     if (refreshInFlightRef.current) return;
     refreshInFlightRef.current = true;
-    if (mountedRef.current) setRefreshing(true);
 
     try {
       const [scenarioRows, reviewRows, assignmentRows, learnerResult, learnerRecordResult] = await Promise.all([
@@ -329,7 +306,7 @@ const AdminDashboard = () => {
           .range(from, to)),
         fetchAllDashboardRows<DashboardReviewRunRow>("검수 이력", (from, to) => db
           .from("content_review_runs")
-          .select("target_id,kind,criteria_version,rules,openai_review,claude_review,adjudication,approved_at,created_at")
+          .select("target_id,kind,criteria_version,rules_verdict:rules->>verdict,openai_response_id:openai_review->>response_id,claude_response_id:claude_review->>response_id,adjudication_response_id:adjudication->>response_id,created_at")
           .eq("kind", "mission")
           .eq("criteria_version", DASHBOARD_REVIEW_CRITERIA_VERSION)
           .order("created_at", { ascending: false })
@@ -378,7 +355,6 @@ const AdminDashboard = () => {
       }
       previousMetricsRef.current = nextMetrics;
       setSnapshot(next);
-      setLastUpdatedAt(new Date());
       setDashboardError(null);
     } catch (cause) {
       console.error("[dashboard] metrics failed:", cause);
@@ -387,7 +363,6 @@ const AdminDashboard = () => {
       }
     } finally {
       refreshInFlightRef.current = false;
-      if (mountedRef.current) setRefreshing(false);
     }
   }, []);
 
@@ -445,14 +420,6 @@ const AdminDashboard = () => {
     <AdminShell
       title="운영 대시보드"
       description="콘텐츠 준비, 검수, 수업 현황을 한눈에 확인합니다."
-      headerMeta={(
-        <LiveDatabaseStatus
-          lastUpdatedAt={lastUpdatedAt}
-          refreshing={refreshing}
-          delayed={Boolean(dashboardError)}
-          onRefresh={() => void refreshDashboard()}
-        />
-      )}
     >
       {displayError && (
         <p role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -460,23 +427,18 @@ const AdminDashboard = () => {
         </p>
       )}
 
-      <SectionHeader title="콘텐츠 준비 현황" />
+      <SectionHeader title="콘텐츠 준비 현황" meta={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard to="/admin/library" label="시나리오 코어" value={snapshot?.content.coreCount ?? null} unit="개" definition="현행 시나리오 코어" error={displayError} icon={Database} accent="gold" changed={changedKeys.has("core")} />
         <MetricCard to="/admin/assembly" label="생성된 학습 미션" value={snapshot?.content.generatedMissionCount ?? null} unit="개" definition="미션 본문 저장 완료" error={displayError} icon={BookOpenCheck} accent="gold" changed={changedKeys.has("mission")} />
         <MetricCard to="/admin/review" label="현행 검수 대상" value={snapshot?.content.reviewTargetCount ?? null} unit="개" definition="검수 대기" error={displayError} icon={ShieldCheck} accent="gold" changed={changedKeys.has("reviewTarget")} />
-        <MetricCard to="/admin/review" label="5단계 최종 승인" value={snapshot?.content.professorFinalizedCount ?? null} unit="개" definition="교수자 승인 완료" error={displayError} icon={CircleCheckBig} accent="gold" changed={changedKeys.has("finalized")} />
+        <MetricCard to="/admin/review" label="교수자 승인 완료" value={snapshot?.content.professorFinalizedCount ?? null} unit="개" definition="5단계 검수 완료" error={displayError} icon={CircleCheckBig} accent="gold" changed={changedKeys.has("finalized")} />
       </div>
 
       <SectionHeader
         title="콘텐츠 검수 진행 현황"
-        description={`검수 대상 ${snapshot ? `${snapshot.content.reviewTargetCount}개` : "…"} · 다음 처리 단계 기준`}
-        meta={dominantReviewStage && snapshot ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E5CC57] bg-[#FFF8D7] px-2.5 py-1 text-[11px] font-medium text-[#6F5E15]">
-            <Activity aria-hidden className="h-3.5 w-3.5" />
-            현재 집중 · {REVIEW_STAGE_LABELS[dominantReviewStage]} {snapshot.review[dominantReviewStage]}개
-          </span>
-        ) : undefined}
+        description={`검수 대상 ${snapshot ? `${snapshot.content.reviewTargetCount}개` : "…"} · 다음 처리 단계 기준${dominantReviewStage && snapshot ? ` · 현재 집중 ${REVIEW_STAGE_LABELS[dominantReviewStage]} ${snapshot.review[dominantReviewStage]}개` : ""}`}
+        meta={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />}
       />
       <ReviewPipeline
         review={snapshot?.review ?? null}
@@ -485,7 +447,7 @@ const AdminDashboard = () => {
         changedKeys={changedKeys}
       />
 
-      <SectionHeader title="수업·학습 현황" />
+      <SectionHeader title="수업·학습 현황" meta={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard to="/admin/composer" label="수업 편성" value={snapshot?.assignments.missionCount ?? null} unit="개 미션" definition={snapshot ? `${snapshot.assignments.weekCount}개 주차 · 총 ${snapshot.assignments.assignmentCount}건 편성` : "편성 현황"} error={displayError} icon={CalendarDays} accent="green" changed={changedKeys.has("assignments")} />
         <MetricCard to="/admin/learners" label="승인 학습자" value={snapshot?.approvedLearnerCount ?? null} unit="명" definition="수업 참여 승인 완료" error={displayError} icon={Users} accent="green" changed={changedKeys.has("learners")} />

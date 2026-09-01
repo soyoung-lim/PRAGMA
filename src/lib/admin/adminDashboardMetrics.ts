@@ -17,11 +17,10 @@ export type DashboardReviewRunRow = {
   target_id: string;
   kind: string;
   criteria_version: string;
-  rules: unknown;
-  openai_review: unknown | null;
-  claude_review: unknown | null;
-  adjudication: unknown | null;
-  approved_at: string | null;
+  rules_verdict: string | null;
+  openai_response_id: string | null;
+  claude_response_id: string | null;
+  adjudication_response_id: string | null;
   created_at: string;
 };
 
@@ -47,10 +46,6 @@ const REVIEW_QUEUE_STAGES: readonly DashboardReviewQueueStage[] = [
   "adjudication",
   "professor",
 ];
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
 
 function hasMissionContent(row: DashboardScenarioRow): boolean {
   return Boolean(row.mission_schema_version);
@@ -84,12 +79,6 @@ export function summarizeDashboardContent(rows: readonly DashboardScenarioRow[])
   };
 }
 
-function rulesVerdict(run: DashboardReviewRunRow): string | null {
-  return isRecord(run.rules) && typeof run.rules.verdict === "string"
-    ? run.rules.verdict
-    : null;
-}
-
 function runIsCurrentForRow(run: DashboardReviewRunRow, row: DashboardScenarioRow): boolean {
   if (!row.updated_at) return true;
   const runTime = Date.parse(run.created_at);
@@ -118,10 +107,10 @@ export function nextDashboardReviewStage(
     )
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
 
-  if (!run || rulesVerdict(run) === "fail") return "rules";
-  if (!run.openai_review) return "openai";
-  if (!run.claude_review) return "claude";
-  if (!run.adjudication) return "adjudication";
+  if (!run || run.rules_verdict === "fail") return "rules";
+  if (!run.openai_response_id) return "openai";
+  if (!run.claude_response_id) return "claude";
+  if (!run.adjudication_response_id) return "adjudication";
   // generated 상태인데 승인 run이 남은 비정상 경우도 교수자 작업대에서 확인해야 한다.
   return "professor";
 }
