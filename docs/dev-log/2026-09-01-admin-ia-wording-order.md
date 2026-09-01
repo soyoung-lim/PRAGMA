@@ -43,3 +43,16 @@
 - 모바일 선택기는 데스크톱과 같은 `ADMIN_NAV_GROUPS`를 `optgroup`·`option`으로 순회하고,
   표적 테스트에서 변경된 정본 배열과 각 모바일 선택값을 확인했다. 현재 인앱 브라우저는 좁은
   뷰포트 전환을 지원하지 않아 모바일 실기기 시각 캡처는 하지 않았다.
+
+## 커밋·배포
+
+- 구현 커밋 `6fb9322`를 원격 `codex/admin-ia-wording-order-2026-09-01` 브랜치에 푸시했다.
+- clean `6fb9322` worktree를 Railway `PRAGMA` production 서비스에 직접 업로드했다. deployment
+  `bedb03df-1699-456b-b1e3-100042981139`는 `SUCCESS`, instance
+  `2d13410d-ced5-479a-ba35-1200ddaa0402`는 `RUNNING`, image digest는
+  `sha256:8260b68dd6b8bb85d80c9141ce76513bc9b2768f32b8dcdb62eb6800651636de`다.
+- 로그인된 운영 `/admin/dashboard`에서 새 그룹명 세 개, 강의 그룹 5항목의 정확한 순서, 백업 앞
+  구분선과 실제 DB 대시보드 렌더링을 읽기 전용으로 확인했다.
+- **후속 개선:** Railway가 `railway.json`의 2026-12-01 지원 종료 예정과
+  `.railway/railway.ts` 이전을 안내했다. 현 배포는 성공했으며 설정 이전은 이번 IA 변경 범위에
+  포함하지 않았다.
