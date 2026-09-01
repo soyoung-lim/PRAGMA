@@ -43,7 +43,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
 
   const itemClasses = (active: boolean) =>
     [
-      "block rounded-md px-3 py-[3px] text-[13.5px] leading-5 whitespace-nowrap transition-colors",
+      "mr-2 rounded-md px-3 py-[3px] text-[13.5px] leading-5 whitespace-nowrap transition-colors",
       active
         ? "bg-muted text-foreground font-normal"
         : "text-foreground font-normal hover:bg-muted hover:text-foreground",
@@ -117,22 +117,18 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
                     ].join(" ")}
                   >
                     {group.items.map((item) => (
-                      <div
+                      <Link
                         key={item.to}
-                        className={item.separated ? "mr-2 mt-2 border-t border-[#e5e1d8] pt-2" : "mr-2"}
+                        to={item.to}
+                        className={itemClasses(adminNavItemIsActive(item, pathname))}
                       >
-                        <Link
-                          to={item.to}
-                          className={itemClasses(adminNavItemIsActive(item, pathname))}
-                        >
-                          {item.label}
-                          {item.pending && (
-                            <span className="ml-1.5 rounded-full bg-[#EDE9DD] px-1.5 py-[1px] align-middle text-[10px] font-normal text-[#8a857c]">
-                              준비 중
-                            </span>
-                          )}
-                        </Link>
-                      </div>
+                        {item.label}
+                        {item.pending && (
+                          <span className="ml-1.5 rounded-full bg-[#EDE9DD] px-1.5 py-[1px] align-middle text-[10px] font-normal text-[#8a857c]">
+                            준비 중
+                          </span>
+                        )}
+                      </Link>
                     ))}
                   </div>
                 </div>

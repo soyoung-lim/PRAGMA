@@ -2,7 +2,6 @@ export type AdminNavItem = {
   to: string;
   label: string;
   pending?: boolean;
-  separated?: boolean;
   activePaths?: readonly string[];
 };
 
@@ -47,11 +46,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       { to: "/admin/learners", label: "학습자 승인·관리" },
       { to: "/admin/package", label: "주차별 수업 운영·교실 화면" },
       { to: "/admin/class-responses", label: "실시간 학급 응답" },
-      {
-        to: "/admin/data-backup",
-        label: "수업 데이터 백업·복원",
-        separated: true,
-      },
+      { to: "/admin/data-backup", label: "수업 데이터 백업·복원" },
     ],
   },
   {

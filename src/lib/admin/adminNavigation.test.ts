@@ -39,7 +39,6 @@ describe("admin navigation reachability", () => {
       "/admin/class-responses",
       "/admin/data-backup",
     ]);
-    expect(operations?.items.at(-1)?.separated).toBe(true);
     const research = ADMIN_NAV_GROUPS.find((group) => group.header === "4. 학습 기록·연구 자료");
     expect(research?.items.map((item) => item.to)).toEqual([
       "/admin/decision-traces",
@@ -68,7 +67,7 @@ describe("admin navigation reachability", () => {
     expect(app).toContain('to="/admin/research-qa/final-review"');
 
     const shell = readFileSync(resolve(process.cwd(), "src/components/AdminShell.tsx"), "utf8");
-    expect(shell).toContain("item.separated");
+    expect(shell).not.toContain("item.separated");
 
     const missionLogs = readFileSync(
       resolve(process.cwd(), "src/pages/admin/AdminDecisionTraces.tsx"),
