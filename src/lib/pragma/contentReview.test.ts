@@ -2,7 +2,7 @@ import { webcrypto } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SAMPLE_MISSION_V5_NATIVE } from "@/lib/mission/missionV4Sample";
 import { buildContentReviewDomain } from "./contentReviewDomain";
-import { buildReviewPrompt, instructionalMission, materializeReviewEvidence, nextReviewStage, professorDecisionsComplete, reviewHash, validateAdjudication, validateReviewResult,
+import { buildReviewPrompt, CONTENT_REVIEW_PROMPT_SURFACE, CONTENT_REVIEW_STEPS, instructionalMission, materializeReviewEvidence, nextReviewStage, professorDecisionsComplete, reviewHash, validateAdjudication, validateReviewResult,
   type ContentReviewRun, type ReviewResult } from "../../../supabase/functions/_shared/contentReview";
 import { callContentReviewer } from "../../../supabase/functions/_shared/contentReviewProvider";
 import { REFUSAL_TEACHING_CASE } from "@/lib/curriculum/refusalTeachingCase";
@@ -24,6 +24,17 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("current content five-stage review", () => {
+  it("names exactly five quality stages and keeps generation outside the sequence", () => {
+    expect(CONTENT_REVIEW_STEPS.map((step) => step.label)).toEqual([
+      "R 검사",
+      "OpenAI 1차",
+      "Claude 교차",
+      "OpenAI 정리",
+      "교수자 최종 승인",
+    ]);
+    expect(JSON.stringify(CONTENT_REVIEW_PROMPT_SURFACE)).not.toContain("콘텐츠 생성 단계");
+  });
+
   it("keeps Claude independent and excludes OpenAI's first judgment from adjudication", () => {
     const independent = buildReviewPrompt("claude", snapshot, run());
     expect(independent.user).not.toContain("OPENAI_PRIVATE_VERDICT");

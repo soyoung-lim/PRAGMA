@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
           source_hash: state.sourceHash, content_hash: state.contentHash, criteria_version: CONTENT_REVIEW_VERSION,
           snapshot: state.snapshot, rules: state.rules, created_by: user.user.id,
         }, { onConflict: "kind,target_id,week_no,source_hash,content_hash,criteria_version", ignoreDuplicates: true });
-        if (error) throw new Error(`규칙 검사 저장 실패: ${error.message}`);
+        if (error) throw new Error(`R 검사 저장 실패: ${error.message}`);
       }
       return json(await inspect());
     }

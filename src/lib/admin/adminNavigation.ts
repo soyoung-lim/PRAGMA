@@ -21,7 +21,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     header: "1. 콘텐츠 설계·생성 기준",
     items: [
       { to: "/admin/corpus", label: "HSK 3.0 어휘 코퍼스" },
-      { to: "/admin/prompt-harness", label: "생성 계약·프롬프트" },
+      { to: "/admin/prompt-harness", label: "생성 계약·개발 프롬프트" },
     ],
   },
   {
@@ -32,6 +32,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       { to: "/admin/batch", label: "시나리오 배치 생성" },
       { to: "/admin/library", label: "시나리오 라이브러리" },
       { to: "/admin/assembly", label: "학습 미션 조립" },
+      { to: "/admin/review-criteria", label: "검수 기준·운영 프롬프트" },
       {
         to: "/admin/review",
         label: "콘텐츠 검수·확정",

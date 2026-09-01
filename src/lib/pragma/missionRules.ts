@@ -68,6 +68,7 @@ import {
   coreLearnerSceneIssue,
   countCoreSourceSentences,
 } from "../../../supabase/functions/_shared/coreSourceRepair";
+import type { MissionRuleId } from "@/lib/pragma/missionRuleCatalog";
 
 export type RuleLevel = "fail" | "warning";
 export interface RuleFindingEvidence {
@@ -79,7 +80,7 @@ export interface RuleFindingEvidence {
   context?: Record<string, unknown>;
 }
 export interface RuleViolation {
-  id: string;
+  id: MissionRuleId;
   level: RuleLevel;
   message: string;
   evidence?: RuleFindingEvidence;
@@ -94,8 +95,6 @@ export interface RuleResult {
  * 번호는 연구·운영 기록의 감사 키이므로 재사용하지 않는다.
  * R22의 수준·HSK 휴리스틱은 2026-08-09부터 별도 비차단 lexical audit가 담당한다.
  */
-export const RETIRED_MISSION_RULE_IDS = ["R22"] as const;
-
 /** 검사 맥락 — 요청한 셀 조건과 카탈로그. */
 export interface CheckContext {
   speech_act: SpeechActUI;
@@ -184,7 +183,7 @@ const explicitlyRequiresSpokenScene = (situation: string) =>
 
 const add = (
   v: RuleViolation[],
-  id: string,
+  id: MissionRuleId,
   level: RuleLevel,
   message: string,
   evidence?: RuleFindingEvidence,

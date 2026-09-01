@@ -31,6 +31,23 @@ describe("admin navigation reachability", () => {
       "3. 강의 준비·운영",
       "4. 학습 기록·연구 자료",
     ]);
+    // Sixteen sidebar items plus the standalone dashboard link = seventeen.
+    expect(ADMIN_NAV_GROUPS.flatMap((group) => group.items)).toHaveLength(16);
+    const standards = ADMIN_NAV_GROUPS.find((group) => group.header === "1. 콘텐츠 설계·생성 기준");
+    expect(standards?.items.map((item) => item.label)).toEqual([
+      "HSK 3.0 어휘 코퍼스",
+      "생성 계약·개발 프롬프트",
+    ]);
+    const production = ADMIN_NAV_GROUPS.find((group) => group.header === "2. 학습 콘텐츠 제작");
+    expect(production?.items.map((item) => item.to)).toEqual([
+      "/admin/authentic",
+      "/admin/generator",
+      "/admin/batch",
+      "/admin/library",
+      "/admin/assembly",
+      "/admin/review-criteria",
+      "/admin/review",
+    ]);
     const operations = ADMIN_NAV_GROUPS.find((group) => group.header === "3. 강의 준비·운영");
     expect(operations?.items.map((item) => item.to)).toEqual([
       "/admin/composer",
@@ -52,6 +69,8 @@ describe("admin navigation reachability", () => {
       expect(app, `missing route ${path}`).toContain(`path="${path}"`);
     }
     expect(app).toContain('path="/admin/review"');
+    expect(app).toContain('path="/admin/review-criteria"');
+    expect(app).toContain('const AdminReviewCriteria = lazy(() => import("./pages/admin/AdminReviewCriteria.tsx"))');
     expect(app).toContain('const AdminExport = lazy(() => import("./pages/admin/AdminExport.tsx"))');
     expect(app).toContain('const AdminDataBackup = lazy(() => import("./pages/admin/AdminDataBackup.tsx"))');
     expect(app).toContain('path="/admin/export" element={<RequireAdmin><AdminExport />');
@@ -86,6 +105,7 @@ describe("admin navigation reachability", () => {
 
   it("keeps the mobile selector on the canonical target for compatibility paths", () => {
     expect(adminMobileNavValue("/admin/review")).toBe("/admin/review");
+    expect(adminMobileNavValue("/admin/review-criteria")).toBe("/admin/review-criteria");
     expect(adminMobileNavValue("/admin/research-qa/releases")).toBe("/admin/review");
     expect(adminMobileNavValue("/admin/research-qa/calibration")).toBe("");
     const production = ADMIN_NAV_GROUPS.find((group) => group.header === "2. 학습 콘텐츠 제작");

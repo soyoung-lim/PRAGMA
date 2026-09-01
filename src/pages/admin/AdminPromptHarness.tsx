@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowRight, ChevronDown, ChevronRight, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { PROMPT_SNAPSHOT, type PromptSnapshotEntry } from "@/lib/pragma/promptSnapshot.generated";
+import { GENERATION_PROMPT_GROUPS } from "@/lib/pragma/promptGovernance";
 
 type PromptTemplate = {
   id: string;
@@ -141,11 +142,10 @@ const CARD_DISPLAY: Record<
 const SNAPSHOT_GROUP_LABEL: Record<string, string> = {
   core: "시나리오 생성 (500개 라이브러리)",
   mission: "미션 승격 (MJT + 산출 과제)",
-  review: "프롬프트 통제 기반 검토",
-  runtime: "학습자 실행 중 피드백",
+  review: "생성·저장 선행 품질 critic·근거 귀속",
   authoring: "실제 자료 활용",
 };
-const HARNESS_SECTION_ORDER = ["core", "mission", "review", "runtime", "authoring"];
+const HARNESS_SECTION_ORDER = GENERATION_PROMPT_GROUPS;
 
 /** 배치가 실제로 사용한 지문 — scenarios 행에서 집계(계약 provenance). */
 type UsedHashRow = { hash: string | null; count: number; first: string; last: string };
@@ -158,54 +158,40 @@ function HarnessOverview() {
     >
       <div className="max-w-[48rem]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8A7621]">
-          품질관리 구조
+          제작 정본
         </p>
         <h2 id="harness-overview-title" className="mt-1 text-[18px] font-bold text-[#26333B]">
-          자동 점검은 두 방식으로, 최종 권한은 교수자에게 둡니다
+          생성 계약과 개발 프롬프트를 확인합니다
         </h2>
         <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
-          품질 점검 자동화는 규칙 기반 검사와 프롬프트 통제 기반 검토를 함께 사용합니다. 두 방식은
-          조정 후보와 근거를 제공하며, 콘텐츠 공개 여부는 교수자가 검수·승인합니다.
+          코어 생성·미션 승격·생성 중 교정과 근거 귀속에 실제로 쓰이는 지시문을 코드 지문과 함께
+          보여 줍니다. 생성이 끝난 콘텐츠의 5단계 품질 검사는 별도 화면에서 관리합니다.
         </p>
       </div>
 
-      <div className="mt-4 grid gap-2 md:grid-cols-3">
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
         <div className="rounded-lg border border-[#E5DEC9] bg-[#FBFAF6] p-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold text-[#6D5C1F]">자동 점검 ①</span>
-            <Badge variant="outline" className="bg-white font-normal">재현 가능</Badge>
+            <span className="text-[11px] font-semibold text-[#6D5C1F]">개발 프롬프트</span>
+            <Badge variant="outline" className="bg-white font-normal">생성</Badge>
           </div>
-          <h3 className="mt-2 text-[14px] font-bold">규칙 기반 검사</h3>
+          <h3 className="mt-2 text-[14px] font-bold">콘텐츠 생성·승격</h3>
           <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-            같은 입력에는 같은 결과를 냅니다. HSK 어휘 참고 범위 점검과 R1–R29 규칙이
-            여기에 속합니다.
+            시나리오 코어, MJT5+DCT1 미션과 생성 중 제한된 교정 요청을 관리합니다. 생성 결과는
+            저장 전에 R 검사와 production quality critic을 통과해야 합니다.
           </p>
-          <Link to="/admin/corpus" className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-[#6D5C1F] hover:text-[#15202B]">
-            HSK 기준·최근 결과 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-          </Link>
         </div>
         <div className="rounded-lg border border-[#D8E0E5] bg-[#F7FAFB] p-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold text-[#3F6172]">자동 점검 ②</span>
-            <Badge variant="outline" className="bg-white font-normal">문맥 검토</Badge>
+            <span className="text-[11px] font-semibold text-[#3F6172]">운영 검수</span>
+            <Badge variant="outline" className="bg-white font-normal">별도 화면</Badge>
           </div>
-          <h3 className="mt-2 text-[14px] font-bold">프롬프트 통제 기반 검토</h3>
+          <h3 className="mt-2 text-[14px] font-bold">5단계 품질 검사</h3>
           <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-            생성과 분리된 AI가 버전이 관리되는 지시문에 따라 의미·자연성·후보 자격을 검토합니다.
+            R 검사 → OpenAI 1차 → Claude 교차 → OpenAI 정리 → 교수자 최종 승인을 분리해 확인합니다.
           </p>
-        </div>
-        <div className="rounded-lg border border-[#E1DDD4] bg-[#FAF9F7] p-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold text-[#6D675D]">운영 결정</span>
-            <Badge variant="outline" className="bg-white font-normal">최종 권한</Badge>
-          </div>
-          <h3 className="mt-2 text-[14px] font-bold">교수자 검수·승인</h3>
-          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-            자동 검사 근거를 보고 더 쉽게 또는 더 도전적으로 조정할지와 학습자 공개 여부를
-            결정합니다.
-          </p>
-          <Link to="/admin/review" className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-[#5F5A50] hover:text-[#15202B]">
-            통합 검수·승인 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          <Link to="/admin/review-criteria" className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-[#3F6172] hover:text-[#15202B]">
+            검수 기준·운영 프롬프트 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </Link>
         </div>
       </div>
@@ -552,8 +538,8 @@ const AdminPromptHarness = () => {
 
   return (
     <AdminShell
-      title="생성 계약·프롬프트"
-      description="생성 계약과 버전이 관리되는 프롬프트, 자동 점검 규칙, 교수자 검수·승인의 관계를 확인합니다."
+      title="생성 계약·개발 프롬프트"
+      description="콘텐츠 생성·미션 승격에 쓰이는 계약, 실제 프롬프트, 모델 설정과 저장 지문을 확인합니다."
     >
       <HarnessOverview />
 

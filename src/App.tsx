@@ -25,6 +25,7 @@ const AdminClassResponses = lazy(() => import("./pages/admin/AdminClassResponses
 const AdminBatch = lazy(() => import("./pages/admin/AdminBatch.tsx"));
 const AdminBrowser = lazy(() => import("./pages/admin/AdminBrowser.tsx"));
 const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.tsx"));
+const AdminReviewCriteria = lazy(() => import("./pages/admin/AdminReviewCriteria.tsx"));
 const AdminComposer = lazy(() => import("./pages/admin/AdminComposer.tsx"));
 const AdminLearners = lazy(() => import("./pages/admin/AdminLearners.tsx"));
 const AdminExport = lazy(() => import("./pages/admin/AdminExport.tsx"));
@@ -274,6 +275,7 @@ const App = () => (
           <Route path="/admin/curriculum" element={<Navigate to="/admin/composer" replace />} />
           <Route path="/admin/composer" element={<RequireAdmin><AdminComposer /></RequireAdmin>} />
           <Route path="/admin/prompt-harness" element={<RequireAdmin><AdminPromptHarness /></RequireAdmin>} />
+          <Route path="/admin/review-criteria" element={<RequireAdmin><AdminReviewCriteria /></RequireAdmin>} />
           <Route path="/admin/review" element={<RequireAdmin><AdminAssembly key="review" reviewMode /></RequireAdmin>} />
           <Route path="/admin/cross-vendor" element={<RequireAdmin><Navigate to="/admin/review" replace /></RequireAdmin>} />
           <Route path="/admin/learners" element={<RequireAdmin><AdminLearners /></RequireAdmin>} />

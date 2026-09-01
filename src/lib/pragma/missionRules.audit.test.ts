@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { SAMPLE_MISSION_V5_NATIVE } from "@/lib/mission/missionV4Sample";
+import { RETIRED_MISSION_RULE_IDS } from "@/lib/pragma/missionRuleCatalog";
 import {
-  RETIRED_MISSION_RULE_IDS,
   checkCore,
   checkMission,
   type CheckContext,
