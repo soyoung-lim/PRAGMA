@@ -1,0 +1,148 @@
+import { CONTENT_REVIEW_VERSION } from "../../../supabase/functions/_shared/contentReview";
+
+export const DASHBOARD_ROW_CAP = 4000;
+export const DASHBOARD_REVIEW_CRITERIA_VERSION = CONTENT_REVIEW_VERSION;
+
+export type DashboardScenarioRow = {
+  scenario_id: string;
+  content_format: string;
+  review_status: string | null;
+  mission_status: string | null;
+  mission_content: unknown;
+  updated_at: string | null;
+};
+
+export type DashboardReviewRunRow = {
+  target_id: string;
+  kind: string;
+  criteria_version: string;
+  rules: unknown;
+  openai_review: unknown | null;
+  claude_review: unknown | null;
+  adjudication: unknown | null;
+  approved_at: string | null;
+  created_at: string;
+};
+
+export type DashboardAssignmentRow = {
+  outline_id: string;
+  week_no: number;
+  scenario_id: string;
+};
+
+export type DashboardReviewQueueStage =
+  | "rules"
+  | "openai"
+  | "claude"
+  | "adjudication"
+  | "professor";
+
+export type DashboardReviewStageCounts = Record<DashboardReviewQueueStage, number>;
+
+const REVIEW_QUEUE_STAGES: readonly DashboardReviewQueueStage[] = [
+  "rules",
+  "openai",
+  "claude",
+  "adjudication",
+  "professor",
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasMissionContent(value: unknown): boolean {
+  return isRecord(value) && Object.keys(value).length > 0;
+}
+
+function isProfessorFinalized(value: unknown): boolean {
+  if (!isRecord(value) || !isRecord(value.authoring)) return false;
+  return value.authoring.stage === "professor_finalized";
+}
+
+/** `/admin/review`의 기본 「미션 생성됨(검수 대기)」 분모와 같은 조건이다. */
+export function isDashboardReviewTarget(row: DashboardScenarioRow): boolean {
+  return row.content_format === "scenario_core_v1"
+    && row.review_status !== "revise_required"
+    && row.mission_status === "generated"
+    && hasMissionContent(row.mission_content);
+}
+
+export function summarizeDashboardContent(rows: readonly DashboardScenarioRow[]) {
+  const currentCoreRows = rows.filter((row) => row.content_format === "scenario_core_v1");
+  return {
+    coreCount: currentCoreRows.length,
+    generatedMissionCount: currentCoreRows.filter(
+      (row) => ["generated", "reviewed", "released"].includes(row.mission_status ?? "")
+        && hasMissionContent(row.mission_content),
+    ).length,
+    reviewTargetCount: currentCoreRows.filter(isDashboardReviewTarget).length,
+    professorFinalizedCount: currentCoreRows.filter(
+      (row) => ["reviewed", "released"].includes(row.mission_status ?? "")
+        && isProfessorFinalized(row.mission_content),
+    ).length,
+  };
+}
+
+function rulesVerdict(run: DashboardReviewRunRow): string | null {
+  return isRecord(run.rules) && typeof run.rules.verdict === "string"
+    ? run.rules.verdict
+    : null;
+}
+
+function runIsCurrentForRow(run: DashboardReviewRunRow, row: DashboardScenarioRow): boolean {
+  if (!row.updated_at) return true;
+  const runTime = Date.parse(run.created_at);
+  const rowTime = Date.parse(row.updated_at);
+  if (!Number.isFinite(runTime) || !Number.isFinite(rowTime)) return false;
+  return runTime >= rowTime;
+}
+
+/**
+ * 현재 generated 미션이 다음에 처리해야 할 단계를 하나만 반환한다.
+ *
+ * 생성 시 저장된 `mission_content.quality_check`(production quality critic)는 의도적으로
+ * 읽지 않는다. 콘텐츠가 마지막 검수 run 뒤 수정됐다면 과거 결과를 재사용하지 않고 R 검사로
+ * 되돌린다. R fail도 원본 수정 뒤 R을 다시 확인해야 하므로 rules에 남긴다.
+ */
+export function nextDashboardReviewStage(
+  row: DashboardScenarioRow,
+  runs: readonly DashboardReviewRunRow[],
+): DashboardReviewQueueStage {
+  const run = runs
+    .filter(
+      (candidate) => candidate.kind === "mission"
+        && candidate.criteria_version === DASHBOARD_REVIEW_CRITERIA_VERSION
+        && candidate.target_id === row.scenario_id
+        && runIsCurrentForRow(candidate, row),
+    )
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+
+  if (!run || rulesVerdict(run) === "fail") return "rules";
+  if (!run.openai_review) return "openai";
+  if (!run.claude_review) return "claude";
+  if (!run.adjudication) return "adjudication";
+  // generated 상태인데 승인 run이 남은 비정상 경우도 교수자 작업대에서 확인해야 한다.
+  return "professor";
+}
+
+export function summarizeDashboardReviewStages(
+  rows: readonly DashboardScenarioRow[],
+  runs: readonly DashboardReviewRunRow[],
+): DashboardReviewStageCounts {
+  const counts = Object.fromEntries(
+    REVIEW_QUEUE_STAGES.map((stage) => [stage, 0]),
+  ) as DashboardReviewStageCounts;
+  for (const row of rows.filter(isDashboardReviewTarget)) {
+    counts[nextDashboardReviewStage(row, runs)] += 1;
+  }
+  return counts;
+}
+
+export function summarizeDashboardAssignments(rows: readonly DashboardAssignmentRow[]) {
+  return {
+    assignmentCount: rows.length,
+    missionCount: new Set(rows.map((row) => row.scenario_id)).size,
+    weekCount: new Set(rows.map((row) => `${row.outline_id}:${row.week_no}`)).size,
+  };
+}

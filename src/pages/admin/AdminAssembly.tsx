@@ -216,11 +216,12 @@ const AdminAssembly = ({ reviewMode = false }: { reviewMode?: boolean }) => {
     return [...set];
   }, [rows]);
 
-  const filtered = useMemo(
+  // 상태 카드의 숫자는 현재 선택 상태를 다시 적용하면 선택하지 않은 카드가 모두 0이 된다.
+  // 화행·수준·생성 계열 등의 공통 필터만 적용한 동일 분모에서 상태별 수를 계산한다.
+  const stateDenominator = useMemo(
     () =>
       rows.filter(
         (r) =>
-          (fState === "all" || stateOf(r) === fState) &&
           (fAct === "all" || r.speech_act === fAct) &&
           (fLevel === "all" || r.learner_level === fLevel) &&
           (fMode === "all" || r.mode === fMode) &&
@@ -228,15 +229,20 @@ const AdminAssembly = ({ reviewMode = false }: { reviewMode?: boolean }) => {
           (fRun === "all" || r.generation_run_id === fRun) &&
           (fHash === "all" || (r.prompt_snapshot_hash ?? "null") === fHash),
       ),
-    [rows, fState, fAct, fLevel, fMode, fDirection, fRun, fHash, stateOf],
+    [rows, fAct, fLevel, fMode, fDirection, fRun, fHash],
   );
 
-  // 계기판 — 필터 적용 결과 기준, 상호 배타.
+  const filtered = useMemo(
+    () => stateDenominator.filter((row) => fState === "all" || stateOf(row) === fState),
+    [stateDenominator, fState, stateOf],
+  );
+
+  // 계기판 — 상태 외 공통 필터 적용 결과 기준, 상호 배타.
   const dash = useMemo(() => {
     const d: Record<AssemblyState, number> = { core_only: 0, generated: 0, reviewed: 0, failed: 0 };
-    for (const r of filtered) d[stateOf(r)] += 1;
+    for (const r of stateDenominator) d[stateOf(r)] += 1;
     return d;
-  }, [filtered, stateOf]);
+  }, [stateDenominator, stateOf]);
 
   const setStatus = (id: string, status: string) =>
     setRows((prev) => prev.map((r) => (r.scenario_id === id ? { ...r, mission_status: status } : r)));
@@ -438,12 +444,17 @@ const AdminAssembly = ({ reviewMode = false }: { reviewMode?: boolean }) => {
             >
               <span className="absolute inset-x-0 top-0 h-1 bg-[#18232D]" />
               <div className="text-[22px] font-bold tabular-nums text-[#182229]">{dash[s]}</div>
-              <div className="mt-0.5 text-[12px] font-medium text-[#46515A]">{STATE_KO[s]}</div>
+              <div className="mt-0.5 text-[12px] font-medium text-[#46515A]">
+                {reviewMode && s === "reviewed" ? "검토 완료(호환 포함)" : STATE_KO[s]}
+              </div>
             </button>
           ))}
         </div>
         <p className="mt-2.5 text-[11px] text-muted-foreground">
-          카드를 선택하면 해당 상태만 표시합니다. 「이번 조립 실패」는 현재 작업 중 발생한 결과입니다.
+          카드를 선택하면 해당 상태만 표시합니다.
+          {reviewMode
+            ? " 「검토 완료(호환 포함)」는 과거 reviewed·released 이력을 포함하며, 대시보드의 현행 5단계 최종 승인 수와 분모가 다릅니다."
+            : " 「이번 조립 실패」는 현재 작업 중 발생한 결과입니다."}
         </p>
         {rows.length >= ROW_CAP && (
           <p className="mt-2 rounded-md border border-[#FCD34D] bg-[#FEF3C7] px-3 py-2 text-[12px] text-[#92400E]">
@@ -522,7 +533,7 @@ const AdminAssembly = ({ reviewMode = false }: { reviewMode?: boolean }) => {
                 <li key={r.scenario_id} className="rounded-lg border border-[#E7E2D7] bg-[#FBFAF6] px-5 py-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={["rounded-md border px-2 py-0.5 text-[11px]", STATE_TONE[st]].join(" ")}>
-                      {STATE_KO[st]}
+                      {reviewMode && st === "reviewed" ? "검토 완료(호환 포함)" : STATE_KO[st]}
                     </span>
                     <AxisBadge label="화행" value={SPEECH_ACT_UI[r.speech_act]} />
                     <AxisBadge label="수준" value={LEVEL[r.learner_level]} />
