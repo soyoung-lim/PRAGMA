@@ -27,7 +27,9 @@ const AdminBrowser = lazy(() => import("./pages/admin/AdminBrowser.tsx"));
 const AdminPromptHarness = lazy(() => import("./pages/admin/AdminPromptHarness.tsx"));
 const AdminComposer = lazy(() => import("./pages/admin/AdminComposer.tsx"));
 const AdminLearners = lazy(() => import("./pages/admin/AdminLearners.tsx"));
+const AdminExport = lazy(() => import("./pages/admin/AdminExport.tsx"));
 const AdminDecisionTraces = lazy(() => import("./pages/admin/AdminDecisionTraces.tsx"));
+const AdminDataBackup = lazy(() => import("./pages/admin/AdminDataBackup.tsx"));
 const AdminGoldCalibration = lazy(() => import("./pages/admin/AdminGoldCalibration.tsx"));
 const AdminMissionRelease = lazy(() => import("./pages/admin/AdminFinalApproval.tsx"));
 const AdminFinalCorpusReview = lazy(() => import("./pages/admin/AdminFinalCorpusReview.tsx"));
@@ -277,8 +279,8 @@ const App = () => (
           <Route path="/admin/learners" element={<RequireAdmin><AdminLearners /></RequireAdmin>} />
           <Route path="/admin/decision-traces" element={<RequireAdmin><AdminDecisionTraces /></RequireAdmin>} />
           {/* 레거시 폐기(2026-07-30): /admin/reports — 미사용 화면 삭제(사용자 결정). */}
-          <Route path="/admin/export" element={<RequireAdmin><Navigate to="/admin/decision-traces" replace /></RequireAdmin>} />
-          <Route path="/admin/data-backup" element={<RequireAdmin><Navigate to="/admin/composer" replace /></RequireAdmin>} />
+          <Route path="/admin/export" element={<RequireAdmin><AdminExport /></RequireAdmin>} />
+          <Route path="/admin/data-backup" element={<RequireAdmin><AdminDataBackup /></RequireAdmin>} />
           <Route path="/admin/research-qa" element={<RequireAdmin><Navigate to="/admin/review" replace /></RequireAdmin>} />
           <Route path="/admin/research-qa/calibration" element={<RequireAdmin><Navigate to="/admin/review" replace /></RequireAdmin>} />
           <Route path="/admin/research-qa/expert-reviews" element={<Navigate to="/admin/research-qa/final-review" replace />} />
