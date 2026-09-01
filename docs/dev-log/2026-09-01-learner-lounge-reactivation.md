@@ -54,11 +54,11 @@
 
 ## 검증
 
-- 라운지·하단 내비게이션 표적 4파일: **13 tests 통과**.
+- 라운지·하단 내비게이션 표적 4파일: **14 tests 통과**.
 - 전체 회귀: **116 files 통과·3 skipped, 692 tests 통과·9 skipped**.
 - `npm.cmd run typecheck`: 통과.
 - 변경 파일 ESLint: 통과.
-- `npm.cmd run build`: 통과, Vite **1,961 modules** 변환. 기존 전역 CSS 구문 경고와 500 kB
+- 최종 `npm.cmd run build`: 통과, Vite **1,962 modules** 변환. 기존 전역 CSS 구문 경고와 500 kB
   청크 경고는 남았으나 라운지 허브·모듈·카탈로그는 별도 지연 로드 청크로 생성됐다.
 - 로컬 브라우저 1280×720에서 허브의 중앙 정렬·수량 문구 제거, 세 모듈의 선택 전후 단일 화면,
   `春运`·`发表` 첫 사례와 하단 `수업 | 기록 | 라운지` 순서를 확인했다.
@@ -70,9 +70,17 @@
 ## 범위와 남은 판정
 
 - 생성 프롬프트·생성 계약·DB schema·연구 로그는 변경하지 않았다.
-- 운영 배포·Git 커밋은 수행하지 않았다.
-- **확인 필요:** 30개 사례는 출처 확인 상태이며, 운영 배포 전 연구자가 내용과 번역 해석을 최종
-  판정해야 한다. 이번 구현은 라운지의 학습효과나 문화 해석의 보편성을 입증하지 않는다.
+- 기능 커밋 `07f7a9d`를 `codex/learner-lounge-30-2026-09-01`에 푸시했다. 같은 커밋의 추적
+  파일 764개만 분리해 Railway production에 직접 배포했고 deployment
+  `9bed411c-5508-4a09-8426-d16403a5efc2`의 `SUCCESS`·instance `RUNNING`을 확인했다.
+  공개 URL은 `https://pragma.up.railway.app`이며 비로그인 라운지 직접 접근은 기존 정책대로
+  `/student-login?next=%2Flearner%2Flounge`로 이동했다.
+- 첫 worktree 전체 업로드 시도는 로컬 `node_modules` 탐색으로 지연되어 중단했고, 그 잔여 시도
+  `ad863e05-d1dc-486e-953c-a0b68961c25a`는 `FAILED`로 끝났다. 정리된 소스 배포가 이를 대체하며
+  운영 active deployment는 성공 상태다.
+- **확인 필요:** 30개 사례는 운영에 반영됐지만 상태는 계속 `source_checked`다. 배포 승인을
+  사례별 `researcher_approved` 판정으로 소급하지 않는다. 이번 구현은 라운지의 학습효과나 문화
+  해석의 보편성을 입증하지 않는다.
 
 ## 관련 기록
 
