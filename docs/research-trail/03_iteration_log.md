@@ -3201,7 +3201,7 @@
   확인해야 한다.
 - 관련: `DEC-20260901-01`, `TRC-20260901-01`, `EVD-20260901-01`.
 
-## ITER-20260901-02 · 구 라운지 동결에서 독립형 3모듈 정적 라운지로 전환
+## ITER-20260901-03 · 구 라운지 동결에서 독립형 3모듈 정적 라운지로 전환
 
 - 날짜: 2026-09-01
 - 시작 문제: 2026-08-29 Scope Lock 뒤 학습자 하단은 2탭만 남아 시각·정보 구조가 비어
@@ -3227,5 +3227,44 @@
   `SUCCESS`, instance는 `RUNNING`이다. 비로그인 직접 접근은 기존 로그인 gate로 이동한다.
 - 한계/다음: 운영 반영 후에도 30개는 모두 `source_checked`이며 사례별 연구자 최종 승인은
   미완이다. 실제 이용성·학습효과·문화 해석의 일반화는 이번 반복의 증거가 아니다.
-- 관련: `DEC-20260901-02`, `TRC-20260901-02`, `EVD-20260901-02`,
+- 관련: `DEC-20260901-03`, `TRC-20260901-03`, `EVD-20260901-03`,
   `docs/dev-log/2026-09-01-learner-lounge-reactivation.md`.
+
+## ITER-20260901-02 · 관리자 IA 감사 뒤 백업·연구 export 도달성 복원
+
+- 날짜: 2026-09-01
+- 시작 문제: 운영 화면에서 백업·export 메뉴가 사라지고 구 URL도 다른 화면으로 이동했다.
+  Scope Lock 기록은 있었지만 앞선 운영 안전·연구자료 유지 결정과 정본의 17개 링크 기술이
+  실제 14개 링크와 충돌했다.
+- 변경: 기존 컴포넌트·API를 새로 만들지 않고 두 lazy import·RequireAdmin 라우트·공유 메뉴를
+  복원했다. 대시보드의 package 미구현 오해 문구와 export의 하드코딩 계획 인원·자동/사람 판단
+  경계를 정정하고, 관리자 정본을 16개 링크에 맞췄다.
+- 검증: 표적 4파일 42 tests, typecheck, 변경 5파일 ESLint, 검수 bundle check, 1,959 modules
+  production build가 통과했다. 로컬 브라우저에서 대시보드·백업·export의 URL, 메뉴 선택, 빈 상태,
+  안전 백업, JSON/JSONL, 동의·가명화 안내를 확인했다.
+- 예상과 달랐던 점: DEV 전용 세 관리자 화면은 운영에서 리다이렉트되지만 production build에 별도
+  chunk로 남았다. 명시적 DEV 라우트가 있어 즉시 dead code로 삭제하지 않고 별도 판단으로 분리했다.
+- 완료 경계: 구현 커밋 `297b6c5`를 main에 반영했고 Railway 배포
+  `f347eb79-d73d-4462-9b74-1755636affd6` 성공 뒤 로그인 운영 화면의 도달성·표시 상태를
+  확인했다. 실제 복원·다운로드·DB 쓰기는 하지 않았으므로 화면 복원과 데이터 동작 완료를 같은
+  증거로 말하지 않는다.
+- 관련: `DEC-20260901-02`, `EVD-20260901-02`,
+  `docs/dev-log/2026-09-01-admin-safety-export-restoration.md`.
+
+## ITER-20260902-01 · 라운지 main 계보 복구와 production source hard gate
+
+- 날짜: 2026-09-02
+- 시작 문제: 라운지 feature commit은 보존돼 있었지만 main과 PR에 없었다. feature branch 직접
+  production 배포 뒤 main 배포가 이어지면서 하단 탭과 active route가 다시 사라졌다.
+- 변경: 최신 main의 관리자 복원과 라운지를 clean worktree에서 병합했다. production route 회귀
+  테스트, Railway production의 GitHub main source hard gate, 여러 기능 커밋의 main ancestry 검사,
+  CI policy test와 공통 작업 규칙을 추가했다.
+- 검증: source policy 5 tests, 표적 6파일 19 tests, 전체 117 files·697 tests, typecheck, 변경 파일
+  ESLint, 1,967-module production build가 통과했다. 로컬 DB 계약 테스트는 `@electric-sql/pglite`
+  미설치로 시작 전 중단돼 `npm ci`를 수행하는 원격 CI 확인 대상으로 넘겼다.
+- 교훈: production에 현재 보이는 화면은 정본 포함의 증거가 아니다. 기능 commit의 main ancestry,
+  CI 결과, 배포 commit SHA와 운영 smoke가 모두 연결돼야 완료다. 이 구분은 여러 병렬 변경의
+  누락 여부에도 동일하게 적용한다.
+- 완료 경계: main 병합·원격 CI·Railway 배포·운영 화면 확인 전까지 복구 완료로 기록하지 않는다.
+- 관련: `DEC-20260902-09`, `TRC-20260901-03`,
+  `docs/dev-log/2026-09-02-lounge-main-restoration-and-release-guard.md`.

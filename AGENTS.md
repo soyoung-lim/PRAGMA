@@ -31,6 +31,28 @@ Yes라면 구현한다. No라면 지금은 하지 않는다.
 
 **논문에서 방어 가능하고 실제 수업에 사용할 수 있는 완결된 PRAGMA를 가장 짧은 경로로 만든다.**
 
+## 운영 배포 정본 원칙
+
+운영 웹앱의 유일한 코드 정본은 GitHub `origin/main`이다. 기능 브랜치를 Railway production에
+직접 올려 일시적으로 확인하는 방식은 금지한다. preview·staging이 필요하면 production과 분리된
+환경을 사용한다.
+
+1. 기능 브랜치의 커밋이 `origin/main`의 조상이 되기 전에는 구현·배포 완료로 보고하지 않는다.
+2. 운영 배포는 GitHub `main` 트리거만 사용한다. `railway up` 등 소스 직접 업로드는 production에
+   사용하지 않는다. production build는 `scripts/verify-production-source.mjs`가 GitHub 저장소·브랜치·
+   커밋 메타데이터를 검증하며, CLI 업로드나 비-main 소스를 거부해야 한다.
+3. 병렬 작업 여러 개를 한 번에 출시할 때는 포함돼야 할 기능 커밋 SHA를 모두 명시하고, 최신
+   원격 ref를 받은 뒤 `npm run release:lineage -- <sha> [sha ...]`로 각 커밋이 `origin/main`에
+   포함됐는지 확인한다. 하나라도 누락되면 배포하지 않는다.
+4. 통합은 최신 `origin/main`에서 만든 clean worktree에서 수행한다. dirty 기본 작업공간이나 upstream이
+   사라진 브랜치를 통합·배포 기준으로 사용하지 않는다.
+5. PR/통합 브랜치에서 typecheck·전체 테스트·production build를 통과시킨 뒤 main에 반영한다.
+   Railway의 **Wait for CI**를 켜서 GitHub Actions 성공 전 운영 배포가 시작되지 않게 유지한다.
+6. 배포 완료 보고에는 `요청 기능 커밋 → main 포함 → CI 성공 → Railway 배포 SHA → 운영 smoke`를
+   구분해 기록한다. Railway에서 잠시 보였다는 사실만으로 main 통합 완료를 주장하지 않는다.
+7. 운영에 이미 포함된 핵심 화면·라우트·메뉴는 회귀 테스트를 유지한다. 의도적으로 제거할 때는
+   해당 테스트와 정본 문서, decision log를 같은 변경에서 갱신한다.
+
 ## 현재 작업 인수인계 · Claude Code와 Codex 공통
 
 - 기존 작업을 이어갈 때 가장 먼저 `docs/CANONICAL.md`, 최근 관련 `docs/dev-log/`,

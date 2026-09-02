@@ -9,12 +9,12 @@ import {
   type MissionEventExportFormat,
 } from "@/lib/mission/missionEventExport";
 
-const PendingBadge = () => (
+const ConsentBadge = () => (
   <Badge
     variant="outline"
-    className="border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+    className="border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-50"
   >
-    준비 중
+    동의 기반
   </Badge>
 );
 
@@ -50,8 +50,8 @@ const Page = () => {
       이 화면은 수업 전 문항 품질 검증 4단계에 포함되지 않습니다. 학기 중 쌓인 수행기록을 학기 종료 후 연구자료로 준비할 때 사용합니다.
     </div>
     <div className="mb-3 flex items-center gap-3">
-      <h2 className="text-base font-semibold">현재 데이터 수집 준비 상태</h2>
-      <PendingBadge />
+      <h2 className="text-base font-semibold">내보내기 범위와 상태</h2>
+      <ConsentBadge />
     </div>
 
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -61,10 +61,10 @@ const Page = () => {
           <tbody>
             {[
               ["학습자의 판단·수정 과정 저장", "가능"],
-              ["관리자가 개인별 기록 확인", "가능"],
+              ["관리자가 개인별 기록 확인", "학습 수행 기록에서 확인"],
               ["미션 수행 과정 저장", "가능"],
-              ["여러 학습자 결과 비교", "자료가 쌓이면 시작"],
-              ["예정 참여자", "9월 학부 수업 약 40명"],
+              ["동의·가명화 필터", "내보낼 때 자동 적용"],
+              ["여러 학습자 결과 비교", "이 화면에서는 제공하지 않음"],
             ].map(([label, value]) => (
               <tr key={label} className="border-b border-border/50 last:border-0">
                 <td className="py-2 pr-4 text-muted-foreground">{label}</td>
@@ -78,11 +78,11 @@ const Page = () => {
       <div className="rounded-xl border border-border bg-card p-5">
         <h3 className="mb-3 text-sm font-semibold">어떤 학습자 기록을 연구에 포함하나</h3>
         <p className="text-sm leading-6 text-muted-foreground">
-          학습 수행기록을 연구자료로 사용하는 데 동의했고 필수 활동을 완료했으며, 분석에 필요한 응답이 남아 있는지 확인한 뒤
-          포함 대상을 정합니다.
+          내보낼 때는 데이터 이용·가명 분석 동의와 동의 버전이 유효한 기록만 자동으로 포함합니다.
+          필수 활동 완료·응답 누락 여부 같은 분석 포함 기준은 내보낸 뒤 연구자가 별도로 확인합니다.
         </p>
         <div className="mt-4 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-5 text-center text-xs text-muted-foreground">
-          실제 수업이 시작되면 포함·제외 기준과 빠진 응답 현황이 여기에 표시됩니다.
+          이 화면은 파일 준비만 담당하며 포함·제외 판정이나 집단 비교 결과를 자동으로 만들지 않습니다.
         </div>
       </div>
     </div>

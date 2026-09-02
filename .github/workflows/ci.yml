@@ -42,6 +42,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Verify production release policy
+        run: npm run release:policy-test
+
       - name: Check content approval boundary (local PostgreSQL)
         run: npm run review:db-test
 
