@@ -3269,6 +3269,8 @@
   누락 여부에도 동일하게 적용한다.
 - 완료 경계: `main@6979ba1`, GitHub Actions 성공, GitHub-triggered Railway deployment
   `2c25b9b2-677a-419e-b073-760d99fe75ab` 성공, 운영 `/learner/lounge`의 로그인 복귀 목적지
-  보존, Railway production branch=`main`·Wait for CI 활성화를 확인해 복구를 완료로 판정했다.
+  보존, Railway production branch=`main`·Wait for CI 활성화, GitHub ruleset `Protect main
+  production`(ID `22112671`)의 PR·필수 CI·삭제/force-push 차단·bypass 없음 적용을 확인해 복구와
+  재발 방지 조치를 완료로 판정했다.
 - 관련: `DEC-20260902-09`, `TRC-20260901-03`,
   `EVD-20260902-07`, `docs/dev-log/2026-09-02-lounge-main-restoration-and-release-guard.md`.
