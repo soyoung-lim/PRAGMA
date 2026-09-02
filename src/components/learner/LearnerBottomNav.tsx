@@ -14,11 +14,8 @@ const TABS = [
   { to: "/learner/lounge", label: "라운지", icon: Compass },
 ];
 
-export const LearnerBottomNav = ({ tone = "default" }: { tone?: "default" | "lounge" }) => (
-  <nav className={[
-    "fixed inset-x-0 bottom-0 z-50 border-t backdrop-blur",
-    tone === "lounge" ? "border-[#DCD5E4] bg-[#FCFAFD]/95" : "border-[#EAE4D2] bg-white/95",
-  ].join(" ")}>
+export const LearnerBottomNav = () => (
+  <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[#EAE4D2] bg-white/95 backdrop-blur">
     <div className="mx-auto flex max-w-3xl">
       {TABS.map((t) => (
         <NavLink
@@ -27,9 +24,7 @@ export const LearnerBottomNav = ({ tone = "default" }: { tone?: "default" | "lou
           className={({ isActive }) =>
             [
               "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[13px] font-bold",
-              isActive
-                ? tone === "lounge" ? "text-[#4F4160]" : "text-[#15202B]"
-                : tone === "lounge" ? "text-[#837A8E]" : "text-muted-foreground",
+              isActive ? "text-[#15202B]" : "text-muted-foreground",
             ].join(" ")
           }
         >
@@ -38,7 +33,7 @@ export const LearnerBottomNav = ({ tone = "default" }: { tone?: "default" | "lou
               <span
                 className={[
                   "flex h-7 w-11 items-center justify-center rounded-full text-[16px]",
-                  isActive ? tone === "lounge" ? "bg-[#DCCFF0]" : "bg-[#FAD338]" : "",
+                  isActive ? "bg-[#FAD338]" : "",
                 ].join(" ")}
               >
                 <t.icon className="h-[17px] w-[17px]" aria-hidden />
