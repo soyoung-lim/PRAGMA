@@ -25,12 +25,25 @@
 - 로컬 브라우저 기본 데스크톱 viewport에서 수업·라운지를 연속 비교했다. 배경, 시작선, 제목 위계,
   카드 표면과 노란 활성 탭이 공통 언어로 정렬되고 모듈별 색 포인트가 유지되는 것을 확인했다.
 
+## 배포와 운영 확인
+
+- 기능·기록 커밋 `ea7b0f6`을 `codex/lounge-visual-harmonization-2026-09-03`에 push했다.
+- PR #58의 필수 CI `Typecheck, tests, and production build`가 성공한 뒤 main merge
+  `6ca1596`으로 반영했다.
+- Railway GitHub App이 main merge SHA로 생성한 GitHub deployment `6227076386`의 production
+  상태가 `success`인 것을 확인했다. feature branch 직접 배포나 CLI 업로드는 하지 않았다.
+- 운영 `/learner/lounge`는 비로그인 상태에서
+  `/student-login?next=%2Flearner%2Flounge`로 이동해 복귀 목적지를 보존했다.
+- 운영 entry가 새 `LoungeHub-DOBEQ3Uc.js`를 제공하며 공통 노란 제목선·중립 흰 카드 class를
+  포함하고 기존 차가운 라운지 캔버스 class는 포함하지 않는 것을 확인했다. 운영 브라우저가
+  비로그인 상태라 로그인 뒤 실제 허브 화면은 이번 smoke에서 다시 열지 않았다.
+
 ## 범위
 
-- localhost 구현과 검증만 수행했다. 원격 push, PR, main 병합, Railway 배포는 하지 않았다.
 - DB, Edge Function, 생성 프롬프트, 연구 로그와 학습 수행 데이터는 변경하지 않았다.
 
 ## 관련 기록
 
 - `DEC-20260903-01`
 - `ITER-20260903-01`
+- `EVD-20260903-01`
