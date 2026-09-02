@@ -3421,12 +3421,16 @@
   출시할 때는 요청 커밋 SHA 전부의 main ancestry를 검사한다. 핵심 production route와 메뉴는 CI
   회귀 테스트로 고정하며, CI 성공·main 포함·Railway SHA·운영 smoke를 서로 다른 완료 조건으로
   기록한다.
-- 운영 설정: Railway source branch는 main으로 유지하고 **Wait for CI**를 활성화해야 한다.
-  preview가 필요하면 production과 분리된 환경을 사용한다.
+- 운영 설정: GitHub ruleset `Protect main production`으로 main에 PR과 필수 status check
+  `Typecheck, tests, and production build`를 요구하고 branch 삭제·force push를 차단하며 bypass
+  actor를 두지 않는다. 1인 운영을 위해 approving review 수는 0으로 둔다. Railway source branch는
+  main으로 유지하고 **Wait for CI**를 활성화해야 한다. preview가 필요하면 production과 분리된
+  환경을 사용한다.
 - 범위: 라운지의 3모듈·30개·비기록 설계, 관리자 백업·export, DB·Edge·생성 프롬프트·학습 데이터는
   변경하지 않는다. 이번 결정은 배포 계보와 회귀 방지 절차를 강화한다.
 - 적용 확인: `main@6979ba1`의 GitHub Actions `33630950660`과 GitHub-triggered Railway
   deployment `2c25b9b2-677a-419e-b073-760d99fe75ab`이 성공했다. Railway production의
-  source branch=`main`, Wait for CI=`enabled`도 확인했다.
+  source branch=`main`, Wait for CI=`enabled`도 확인했다. GitHub ruleset ID `22112671`은
+  default branch 대상·active·bypass 없음과 위 PR·CI·삭제·force push 제한을 API로 확인했다.
 - 근거: `ITER-20260902-01`, `EVD-20260902-07`,
   `docs/dev-log/2026-09-02-lounge-main-restoration-and-release-guard.md`.

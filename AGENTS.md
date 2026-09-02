@@ -47,6 +47,9 @@ Yes라면 구현한다. No라면 지금은 하지 않는다.
 4. 통합은 최신 `origin/main`에서 만든 clean worktree에서 수행한다. dirty 기본 작업공간이나 upstream이
    사라진 브랜치를 통합·배포 기준으로 사용하지 않는다.
 5. PR/통합 브랜치에서 typecheck·전체 테스트·production build를 통과시킨 뒤 main에 반영한다.
+   GitHub ruleset `Protect main production`을 active로 유지해 main 변경에는 PR과 필수 status check
+   `Typecheck, tests, and production build`를 요구하고, main 삭제·force push를 차단하며 bypass actor를
+   두지 않는다. 1인 운영을 위해 approving review 수는 0으로 두되 PR·CI는 생략하지 않는다.
    Railway의 **Wait for CI**를 켜서 GitHub Actions 성공 전 운영 배포가 시작되지 않게 유지한다.
 6. 배포 완료 보고에는 `요청 기능 커밋 → main 포함 → CI 성공 → Railway 배포 SHA → 운영 smoke`를
    구분해 기록한다. Railway에서 잠시 보였다는 사실만으로 main 통합 완료를 주장하지 않는다.

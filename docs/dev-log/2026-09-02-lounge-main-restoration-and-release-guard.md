@@ -57,6 +57,10 @@
 - Railway source repo=`sylim-research/PRAGMA`, production branch=`main`, auto deploy를 확인하고
   **Wait for CI**를 활성화했다. 이후 production build 자체도 GitHub main metadata가 없으면
   실패하므로 direct CLI·feature branch 운영 배포가 이중으로 차단된다.
+- GitHub ruleset `Protect main production`(ID `22112671`)을 default branch에 active로 적용했다.
+  main 변경은 PR과 status check `Typecheck, tests, and production build` 성공이 필요하고, branch
+  삭제·non-fast-forward(force push)는 차단된다. bypass actor는 없으며 1인 운영에 맞춰 approving
+  review 수는 0으로 유지한다.
 
 ## 관련 기록
 
