@@ -3260,11 +3260,15 @@
   테스트, Railway production의 GitHub main source hard gate, 여러 기능 커밋의 main ancestry 검사,
   CI policy test와 공통 작업 규칙을 추가했다.
 - 검증: source policy 5 tests, 표적 6파일 19 tests, 전체 117 files·697 tests, typecheck, 변경 파일
-  ESLint, 1,967-module production build가 통과했다. 로컬 DB 계약 테스트는 `@electric-sql/pglite`
-  미설치로 시작 전 중단돼 `npm ci`를 수행하는 원격 CI 확인 대상으로 넘겼다.
+  ESLint, 1,967-module production build가 통과했다. 최초 로컬 DB 계약 테스트는 의존성 미설치로
+  중단됐지만 clean worktree `npm ci` 뒤 5 tests가 통과했고 GitHub Actions `33630950660`도
+  성공했다. `release:lineage`는 라운지 `07f7a9d`와 관리자 복원 `297b6c5`가 모두 main에 있음을
+  확인했다.
 - 교훈: production에 현재 보이는 화면은 정본 포함의 증거가 아니다. 기능 commit의 main ancestry,
   CI 결과, 배포 commit SHA와 운영 smoke가 모두 연결돼야 완료다. 이 구분은 여러 병렬 변경의
   누락 여부에도 동일하게 적용한다.
-- 완료 경계: main 병합·원격 CI·Railway 배포·운영 화면 확인 전까지 복구 완료로 기록하지 않는다.
+- 완료 경계: `main@6979ba1`, GitHub Actions 성공, GitHub-triggered Railway deployment
+  `2c25b9b2-677a-419e-b073-760d99fe75ab` 성공, 운영 `/learner/lounge`의 로그인 복귀 목적지
+  보존, Railway production branch=`main`·Wait for CI 활성화를 확인해 복구를 완료로 판정했다.
 - 관련: `DEC-20260902-09`, `TRC-20260901-03`,
-  `docs/dev-log/2026-09-02-lounge-main-restoration-and-release-guard.md`.
+  `EVD-20260902-07`, `docs/dev-log/2026-09-02-lounge-main-restoration-and-release-guard.md`.

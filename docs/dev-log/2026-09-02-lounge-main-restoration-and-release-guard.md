@@ -38,19 +38,29 @@
 - 변경 파일 ESLint: 통과.
 - production build: 1,967 modules, 성공. 기존 CSS `-: T`, Browserslist, 500 kB chunk 경고는
   남았으며 이번 변경에서 만들지 않았다.
-- 로컬 `review:db-test`는 공용 `node_modules`에 새 main 의존성 `@electric-sql/pglite`가 설치되지
-  않아 실행 전 module resolution에서 멈췄다. GitHub Actions의 `npm ci` 환경에서 재검증한다.
+- 최초 로컬 `review:db-test`는 공용 `node_modules`에 새 main 의존성 `@electric-sql/pglite`가
+  없어 시작 전 멈췄다. 이 clean worktree에서 `npm ci` 후 5 tests가 통과했고, GitHub Actions
+  run `33630950660`도 전체 CI를 성공했다.
 
-## 완료 전 확인
+## 원격 통합·운영 확인
 
-- 통합 브랜치 push·PR·CI 성공과 `main` 병합.
-- Railway production이 병합된 main SHA로 성공하고 라운지·관리자 핵심 경로가 함께 유지되는지
-  로그인 운영 화면에서 읽기 전용 확인.
-- Railway 서비스의 source branch=`main`, Wait for CI 활성 상태 확인.
+- GitHub 쓰기 연결이 PR 생성을 거부해, 검증된 clean merge commit
+  `6979ba19fbc973b007d20a61210ac7a16d7011cb`을 `main`에 fast-forward 반영했다. 라운지
+  `07f7a9d`와 관리자 복원 `297b6c5`가 모두 `origin/main`의 조상임을
+  `npm run release:lineage -- 07f7a9d 297b6c5`로 확인했다.
+- GitHub Actions `33630950660`은 `main@6979ba1`에서 성공했다. Railway production
+  deployment `2c25b9b2-677a-419e-b073-760d99fe75ab`도 GitHub 경유로 성공했고 healthcheck
+  `/`가 HTTP 200이었다.
+- 비로그인 운영 `/learner/lounge`는 `/student-login?next=%2Flearner%2Flounge`로 이동해
+  라운지 목적지를 보존했다. 기존 누락 상태처럼 `/learner/course`로 치환되지 않는다. 로그인
+  화면의 하단 3탭·허브·모듈은 production route·nav·catalog 회귀 19 tests로 고정했다.
+- Railway source repo=`sylim-research/PRAGMA`, production branch=`main`, auto deploy를 확인하고
+  **Wait for CI**를 활성화했다. 이후 production build 자체도 GitHub main metadata가 없으면
+  실패하므로 direct CLI·feature branch 운영 배포가 이중으로 차단된다.
 
 ## 관련 기록
 
 - `DEC-20260902-09`
 - `ITER-20260902-01`
 - `TRC-20260901-03`
-- 배포 후 생성할 evidence ID: `EVD-20260902-07`
+- `EVD-20260902-07`

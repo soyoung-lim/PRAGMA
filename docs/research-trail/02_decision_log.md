@@ -3425,4 +3425,8 @@
   preview가 필요하면 production과 분리된 환경을 사용한다.
 - 범위: 라운지의 3모듈·30개·비기록 설계, 관리자 백업·export, DB·Edge·생성 프롬프트·학습 데이터는
   변경하지 않는다. 이번 결정은 배포 계보와 회귀 방지 절차를 강화한다.
-- 근거: `ITER-20260902-01`, `docs/dev-log/2026-09-02-lounge-main-restoration-and-release-guard.md`.
+- 적용 확인: `main@6979ba1`의 GitHub Actions `33630950660`과 GitHub-triggered Railway
+  deployment `2c25b9b2-677a-419e-b073-760d99fe75ab`이 성공했다. Railway production의
+  source branch=`main`, Wait for CI=`enabled`도 확인했다.
+- 근거: `ITER-20260902-01`, `EVD-20260902-07`,
+  `docs/dev-log/2026-09-02-lounge-main-restoration-and-release-guard.md`.
