@@ -79,6 +79,11 @@ describe("prompt snapshot integrity", () => {
     const quality = prompt("quality.system.zh_ko").text;
     const coreQuality = prompt("core_quality.system.zh_ko").text;
     const feedback = prompt("feedback.system.zh_ko").text;
+    const spokenLegacy = prompt("legacy.individual.system.zh_ko.spoken").text;
+    const spokenCore = prompt("core.user.spoken.zh_ko").text;
+    const spokenMission = prompt("mission.system.zh_ko.spoken").text;
+    const spokenQuality = prompt("quality.system.zh_ko.spoken").text;
+    const spokenFeedback = prompt("feedback.system.zh_ko.spoken").text;
 
     expect(individual).toContain("중→한 비즈니스 번역 교육용 시나리오");
     expect(individual).toContain("중국어(source) → 한국어(target)");
@@ -91,8 +96,8 @@ describe("prompt snapshot integrity", () => {
     expect(outline).toContain("중→한 비즈니스 번역 교육용 시나리오");
     expect(outline).toContain("지정 화행의 원문을 상대에게 보내려는 1인칭 발신 장면");
 
-    expect(coreSystem).toContain("[중→한 번역 역할·원문 계약]");
-    expect(coreSystem).toContain("제3자 번역자가 아니라 자기 발신 상황의 화자");
+    expect(coreSystem).toContain("[중→한 방향 역할·원문 계약]");
+    expect(coreSystem).toContain("중국어 원발화자 A, 한국어 청자 B, 학습자 통역사 C");
     expect(coreUser).toContain("중→한 원문 계약");
     expect(coreUser).toContain("다른 화행 사건이나 목적을 대신 만들지 마세요");
 
@@ -117,6 +122,20 @@ describe("prompt snapshot integrity", () => {
     expect(feedback).toContain("불필요한 주어 반복, 명사화·직역 결합");
     expect(feedback).toContain("존댓말·감사·사과·완화 표현이 많거나 답이 길다는 이유만으로");
     expect(feedback).not.toContain("[통역 전사 경계]");
+
+    expect(spokenLegacy).toContain("중→한 비즈니스 통역 교육용 시나리오");
+    expect(spokenLegacy).toContain("중국어(source) → 한국어(target)");
+    expect(spokenLegacy).toContain("A=중국어 원발화자, B=한국어 청자, C=학습자 통역사");
+    expect(spokenLegacy).toContain("한국어 후보 통역문");
+    expect(spokenLegacy).not.toContain("자기 발신 상황의 화자");
+    expect(spokenCore).toContain("A는 중국어 원발화자, B는 한국어 청자, C는 학습자 통역사");
+    expect(spokenCore).toContain("기능적으로 등가 재현");
+    expect(spokenMission).toContain("A=중국어 원발화자, B=한국어 청자, C=학습자 통역사");
+    expect(spokenMission).not.toContain("[중→한 번역 정식 계약]");
+    expect(spokenQuality).toContain("A=원발화자, B=청자, C=학습자 통역사");
+    expect(spokenQuality).not.toContain("중→한 번역 역할·등가 원칙");
+    expect(spokenFeedback).toContain("[통역 전사 경계]");
+    expect(spokenFeedback).not.toContain("[중→한 번역 피드백 경계]");
   });
 
   it("locks the R27 anchor topology and injects the fixed contrast plan", () => {
@@ -210,9 +229,9 @@ describe("prompt snapshot integrity", () => {
       expect(releaseSource).toContain(`"${version}"`);
     }
     expect(canonicalSource).toContain("content_release_id: CURRENT_CONTENT_RELEASE_ID");
-    expect(canonicalSource).toContain("mission_item_repair_v11_zhko_translation");
-    expect(canonicalSource).toContain("mission_candidate_band_v3_zhko_translation");
-    expect(canonicalSource).toContain("quality_candidate_band_v2_zhko_translation");
+    expect(canonicalSource).toContain("mission_item_repair_v12_zhko_bidirectional");
+    expect(canonicalSource).toContain("mission_candidate_band_v4_zhko_bidirectional");
+    expect(canonicalSource).toContain("quality_candidate_band_v3_zhko_bidirectional");
     expect(canonicalSource).toContain("operations를 빈 배열로");
     expect(canonicalSource).toContain("replace_fix_choice_candidate");
     expect(canonicalSource).toContain("replace_multi_judge_candidate");
@@ -303,7 +322,7 @@ describe("prompt snapshot integrity", () => {
     expect(prompt("core.user.source_repair").text).toContain("유효 글자 수를 반드시");
     expect(prompt("core.user.source_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(critic.text).toContain("국소적 두 턴만 본다");
-    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v14_zhko_translation_role_v1");
+    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v15_zhko_bidirectional_roles_v1");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {
     const mission = prompt("mission.system");

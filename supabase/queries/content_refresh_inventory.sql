@@ -5,7 +5,7 @@
 -- 함께 보여 준다. 이 파일에는 쓰기 문장을 넣지 않는다.
 
 WITH settings AS (
-  SELECT 'pragma_zhko_translation_candidate_20260904_01'::text AS current_release_id
+  SELECT 'pragma_zhko_bidirectional_candidate_20260904_02'::text AS current_release_id
 ),
 generated_scenarios AS (
   SELECT

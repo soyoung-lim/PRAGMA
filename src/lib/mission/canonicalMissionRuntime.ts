@@ -56,8 +56,16 @@ const LESSON_LABELS = [
 ] as const;
 
 const DIRECTION_RUNTIME = {
-  ko_zh: { label: "한국어 → 중국어", targetLanguage: "중국어" },
-  zh_ko: { label: "중국어 → 한국어", targetLanguage: "한국어" },
+  ko_zh: {
+    label: "한국어 → 중국어",
+    sourceLanguage: { code: "ko", label: "한국어", badge: "KO" },
+    targetLanguage: { code: "zh", label: "중국어", badge: "ZH" },
+  },
+  zh_ko: {
+    label: "중국어 → 한국어",
+    sourceLanguage: { code: "zh", label: "중국어", badge: "ZH" },
+    targetLanguage: { code: "ko", label: "한국어", badge: "KO" },
+  },
 } as const;
 
 type RuntimeMpjCommon = {
@@ -298,10 +306,8 @@ function runtimeFeedbackMode(pdr: Pdr): DctQuest["feedback"]["mode"] {
 export function adaptRunnableMissionToCanonical(runnable: RunnableMission): CanonicalMissionViewModel {
   const { mission } = runnable;
   const isNativeMpj5 = mission.schema_version === "mission_v5" && mission.mpj_items.length === 5;
-  if (mission.production_task.mode !== "translation") {
-    throw new UnsupportedCanonicalMissionRuntimeError("정본 실행기는 현재 번역 미션만 지원합니다.");
-  }
   const directionRuntime = DIRECTION_RUNTIME[mission.direction];
+  const activityMode = mission.production_task.mode;
   if (!runnable.speech_act) {
     throw new UnsupportedCanonicalMissionRuntimeError("화행 정보가 없는 미션은 정본 실행기에 연결할 수 없습니다.");
   }
@@ -689,11 +695,14 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       kind: "dct",
       context: dctContext,
       source: task.source_text,
-      prompt: `이 말을 ${directionRuntime.targetLanguage}로 옮겨 보세요.`,
-      vocabularyHints: (task.vocabulary_hints ?? []).filter(
+      prompt: activityMode === "interpreting"
+        ? `원발화를 듣고 ${directionRuntime.targetLanguage.label}로 통역해 보세요.`
+        : `이 말을 ${directionRuntime.targetLanguage.label}로 옮겨 보세요.`,
+      replayLimit: activityMode === "interpreting" ? task.replay_limit ?? 2 : undefined,
+      vocabularyHints: activityMode === "translation" ? (task.vocabulary_hints ?? []).filter(
         (hint): hint is { source: string; target: string } =>
           typeof hint.source === "string" && typeof hint.target === "string",
-      ),
+      ) : [],
       referenceAnswer,
       requestParts,
       feedback,
@@ -724,8 +733,10 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       : runnable.learner_level === "advanced"
         ? "advanced"
         : "intermediate",
-    activityMode: "translation",
+    activityMode,
     direction: directionRuntime.label,
+    sourceLanguage: directionRuntime.sourceLanguage,
+    targetLanguage: directionRuntime.targetLanguage,
     contrast: {
       before: contrastBefore,
       after: contrastAfter,

@@ -361,6 +361,8 @@ function buildSystemPrompt(
   const tgtL = LANG_KO[tgt]
   const shortDirection = direction === 'zh_ko' ? '중→한' : '한→중'
   const modeLabel = isSpoken ? '통역' : '번역'
+  const sourceKind = isSpoken ? '원발화' : '원문'
+  const outputKind = isSpoken ? '후보 통역문' : '후보 번역문'
   const domainDesc =
     domain === 'daily'
       ? `일상생활(친구·이웃·가족·상점·동호회 등) 상황의 ${shortDirection} ${modeLabel} 교육용 시나리오`
@@ -372,26 +374,32 @@ function buildSystemPrompt(
     ? '실제 비즈니스 현장 실무자 관점의 코멘트 (한국어)'
     : '실제 그 상황을 자주 겪는 생활 경험자 관점의 코멘트 (한국어)'
   const learnerInterference = direction === 'zh_ko'
-    ? '중국어 원문 형식의 간섭과 중→한 학습자의 전형적 오류'
+    ? isSpoken
+      ? '중국어 원발화의 의미·화용적 힘과 중→한 통역 학습자의 전형적 오류'
+      : '중국어 원문 형식의 간섭과 중→한 학습자의 전형적 오류'
     : '한국어 모어 학습자의 전형적 오류·간섭'
   const domainRule = isWork
     ? `- 시나리오의 배경·등장인물·관계는 반드시 도메인 '직장'을 따르고, [생성 요청]에 '산업 분야'가 있으면 그 산업의 구체적 업무 상황으로 작성하세요. 다른 산업(예: 마케팅 일반)으로 대체하지 마세요.`
     : `- [중요] 이 시나리오는 업무·비즈니스 시나리오가 아닙니다. 회사·직장·동료·거래처·마케팅·협업·프로젝트 등 업무 소재를 절대 사용하지 마세요. 등장인물·관계·소재는 반드시 [생성 요청]의 '도메인' 설명을 따르세요.`
-  const zhKoQualityRule = direction === 'zh_ko' && !isSpoken
-    ? `- 이 번역의 학습자는 제3자 번역자가 아니라 자기 발신 상황의 화자입니다. source_text는 학습자가 상대에게 보낼 중국어 원문이고 candidate_text는 그 원문의 명제·화행·태도·화용적 힘을 보존한 한국어 실현이어야 합니다.
+  const modeRoleRule = isSpoken
+    ? `- 통역의 참여자는 A=${srcL} 원발화자, B=${tgtL} 청자, C=학습자 통역사입니다. 세 사람을 분리하고 학습자를 A/B 또는 화행의 당사자로 만들지 마세요.
+- source_text는 A가 실제로 말할 구두 원발화이고 candidate_text는 C가 B에게 전달할 ${tgtL} 통역안입니다. C는 A의 명제·화행 목적·태도·화용적 힘을 기능적으로 등가 재현하고 자의적으로 더 공손하거나 더 좋은 말로 고치지 마세요.
+- situation은 C의 통역이 필요한 장면으로 쓰고 P·D·R은 A↔B 관계를 따릅니다. 이메일·메신저 작성 장면이나 자기 발화를 스스로 통역하는 장면을 만들지 마세요.`
+    : direction === 'zh_ko'
+      ? `- 이 번역의 학습자는 제3자 번역자가 아니라 자기 발신 상황의 화자입니다. source_text는 학습자가 상대에게 보낼 중국어 원문이고 candidate_text는 그 원문의 명제·화행·태도·화용적 힘을 보존한 한국어 실현이어야 합니다.
 - candidate_text는 실제 관계·채널·장르에서 자연스러운 한국어 담화로 쓰세요. 중국어 어순을 옮긴 번역투, 불필요한 주어 반복, 과잉 존대·사과·감사 누적을 우수성으로 취급하지 마세요.
 - 더 길거나 더 공손한 한국어를 자동으로 더 좋은 후보로 판정하지 마세요. 지정 화행이 아닌 다른 화행으로 사건이나 중심 목적을 바꾸면 실패입니다.`
-    : ''
+      : ''
   return `당신은 ${domainDesc}를 설계하는 전문가입니다.
 출력은 반드시 아래 JSON 스키마만, 마크다운·설명·주석 없이 그대로 반환합니다.
 
 {
   "title": "한국어 시나리오 제목",
-  "source_text": "학습자가 ${tgtL}로 번역할 ${srcL} 원문 (${sourceDesc}, 3~6문장)",
+  "source_text": "학습자가 ${tgtL}로 ${modeLabel}할 ${srcL} ${sourceKind} (${sourceDesc}, 3~6문장)",
   "situation": "상황 카드용 배경 설명 (한국어, 2~3문장, 발신자·수신자·목적·관계 명시)",
   "candidates": [
     {
-      "candidate_text": "${tgtL} 후보 번역문",
+      "candidate_text": "${tgtL} ${outputKind}",
       "directness_level": 1,
       "appropriateness_label": "appropriate",
       "failed_challenge": [],
@@ -416,7 +424,7 @@ function buildSystemPrompt(
 - 이번 MVP는 pragmalinguistic(형식-기능 매핑) 중심. 문화·관습 차이는 rationale 서술로만 언급.
 ${domainRule}
 - 언어 방향: ${srcL}(source) → ${tgtL}(target). source_text는 반드시 ${srcL}, candidate_text는 반드시 ${tgtL}.
-${zhKoQualityRule}
+${modeRoleRule}
 - 위 JSON 외 어떤 텍스트도 출력하지 마세요.`
 }
 
@@ -428,6 +436,9 @@ function buildOutlineSystemPrompt(
   direction: Direction = 'ko_zh',
   isSpoken = false,
 ): string {
+  const { src, tgt } = DIR_LANGS[direction]
+  const srcL = LANG_KO[src]
+  const tgtL = LANG_KO[tgt]
   const shortDirection = direction === 'zh_ko' ? '중→한' : '한→중'
   const modeLabel = isSpoken ? '통역' : '번역'
   const domainDesc =
@@ -436,9 +447,9 @@ function buildOutlineSystemPrompt(
       : domain === 'school'
         ? `대학·학업(교수·조교·동기·유학생·학사 업무 등) 상황의 ${shortDirection} ${modeLabel} 교육용 시나리오`
         : `${shortDirection} 비즈니스 ${modeLabel} 교육용 시나리오`
-  const translationRoleRule = !isSpoken
-    ? '- 번역 학습자는 제3자 번역자가 아니라 자기 발신 상황의 화자입니다. 각 개요는 학습자가 지정 화행의 원문을 상대에게 보내려는 1인칭 발신 장면으로 설계하세요.'
-    : ''
+  const roleRule = isSpoken
+    ? `- 통역 개요는 A=${srcL} 원발화자, B=${tgtL} 청자, C=학습자 통역사의 서로 다른 세 참여자를 고정하고, C의 통역이 필요한 구두 장면으로 설계하세요. P·D·R은 A↔B 관계이며 자기 발화 통역은 금지합니다.`
+    : '- 번역 학습자는 제3자 번역자가 아니라 자기 발신 상황의 화자입니다. 각 개요는 학습자가 지정 화행의 원문을 상대에게 보내려는 1인칭 발신 장면으로 설계하세요.'
   return `당신은 ${domainDesc}를 설계하는 전문가입니다.
 출력은 반드시 아래 JSON만, 마크다운·설명·주석 없이 그대로 반환합니다.
 
@@ -453,7 +464,7 @@ function buildOutlineSystemPrompt(
 - 각 항목은 title과 situation만 포함하고, 후보 번역·피드백·원문은 생성하지 마세요.
 - 개요끼리 상황·소재·인물이 뚜렷이 달라야 합니다.
 - [생성 요청]의 화행·도메인·P·D·R 조건에 모두 부합해야 합니다.
-${translationRoleRule}
+${roleRule}
 - 위 JSON 외 어떤 텍스트도 출력하지 마세요.`
 }
 
@@ -1036,10 +1047,10 @@ function buildCoreSystemPrompt(direction: Direction): string {
   const srcL = LANG_KO[src] // 원문 언어
   const tgtL = LANG_KO[tgt] // 산출(옮길) 언어
   const sentencePunctuation = src === 'zh' ? '중국어 종결부호(。！？)' : '한국어 종결부호(.?!)'
-  const zhKoTranslationContract = direction === 'zh_ko'
+  const zhKoDirectionContract = direction === 'zh_ko'
     ? `
-[중→한 번역 역할·원문 계약]
-- 번역 셀의 학습자는 제3자 번역자가 아니라 자기 발신 상황의 화자다. 학습자가 중국어로 작성한 원문을 특정 상대에게 보낼 자연스러운 한국어로 옮기는 과제이며, A/B/C 통역 구조를 만들지 않는다.
+[중→한 방향 역할·원문 계약]
+- 번역 셀이면 학습자는 자기 발신 상황의 화자이고 A/B/C 구조를 만들지 않는다. 통역 셀이면 중국어 원발화자 A, 한국어 청자 B, 학습자 통역사 C를 서로 다른 참여자로 유지한다.
 - source_text의 중심 화행은 [생성 요청]의 지정 화행과 정확히 같아야 한다. 다른 화행의 사건으로 바꾸거나, 중심 화행보다 초대·거절·감사 등 다른 목적을 더 두드러지게 만들지 않는다.
 - downstream 한국어 후보가 보존해야 할 명제·화행 목적·태도·화용적 힘이 source_text에 분명히 드러나야 한다. 단, 특정 한국어 존대형이나 완화 표현을 정답처럼 역산해 원문에 누적하지 않는다.
 `
@@ -1081,7 +1092,7 @@ function buildCoreSystemPrompt(direction: Direction): string {
 - 중심 목적과 무관한 요소(서두 인사, 별개 용건의 감사·설명)는 **넣지 않는다.**
 - 각 text는 source_text에서 **그대로 복사한 연속된 문자열**이어야 한다. 요약·재작성·
   띄어쓰기 변경·부호 생략 금지. 복사한 문자열이 source_text에 없으면 실패다.
-${zhKoTranslationContract}
+${zhKoDirectionContract}
 
 [학생용 장면 정보 — situation_ko가 분명히 할 요소] (계약 0-r·107)
 학습자마다 다른 장면을 상상하면 판단 차이가 언어 감각이 아니라 상상의 차이에서 생긴다.
@@ -2496,9 +2507,9 @@ async function generateFrozenMissionTopology(args: {
   }
 }
 
-const MISSION_CANDIDATE_GENERATION_PROMPT_VERSION = 'mission_candidate_band_v3_zhko_translation'
-const MISSION_CANDIDATE_CHECK_PROMPT_VERSION = 'quality_candidate_band_v2_zhko_translation'
-const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v11_zhko_translation'
+const MISSION_CANDIDATE_GENERATION_PROMPT_VERSION = 'mission_candidate_band_v4_zhko_bidirectional'
+const MISSION_CANDIDATE_CHECK_PROMPT_VERSION = 'quality_candidate_band_v3_zhko_bidirectional'
+const MISSION_ITEM_REPAIR_PROMPT_VERSION = 'mission_item_repair_v12_zhko_bidirectional'
 
 type CandidateBandCheckResult = {
   path: string
@@ -2626,9 +2637,9 @@ async function generateMissionCandidates(args: {
   if (packets.length !== args.references.length) {
     return { ok: false, failure_kind: 'packet', error: 'candidate packet 구성 실패' }
   }
-  const zhKoTranslationRule = args.direction === 'zh_ko'
+  const zhKoDirectionRule = args.direction === 'zh_ko'
     ? `
-중→한 번역에서는 중국어 원문의 명제·화행 목적·태도·화용적 힘을 보존하면서 실제 관계·채널·장르에 자연스러운 한국어 후보를 만든다. 중국어 어순·불필요한 주어 반복·명사화·직역 결합을 남기지 말고, 존대·사과·감사 표지의 누적이나 길이 증가로 대역을 구현하지 마라.`
+중→한 산출에서는 중국어 원문의 명제·화행 목적·태도·화용적 힘을 보존하면서 실제 관계·채널·장르에 자연스러운 한국어 후보를 만든다. 중국어 어순·불필요한 주어 반복·명사화·직역 결합을 남기지 말고, 존대·사과·감사 표지의 누적이나 길이 증가로 대역을 구현하지 마라.`
     : ''
   const system = `너는 mission_v5의 MJT3·MJT5 후보 표현만 생성한다. 전체 문항이나 metadata를 다시 쓰지 마라.
 각 packet의 blueprint가 정한 의미·발화 의도·화행 기능을 보존하고 target feature 하나만 조절한다.
@@ -2637,7 +2648,7 @@ relative_boundary는 verified_within_anchor와 의미·의도·화행 기능을 
 blueprint의 intended_band 방향이 실제 경계를 분명히 통과해야 한다. 단순 공손표지 중첩이나 길이 변화만으로
 경계를 구현하지 말고, 실제 발화 가능한 인접 경계 표현을 만든다. 특정 상투 표현에 의존하지 마라.
 immutable_peer_texts와 같은 문장, current_candidate와 같은 문장, 새 사실·이유·대안 추가는 금지한다.
-${zhKoTranslationRule}
+${zhKoDirectionRule}
 출력은 {"operations":[{"path":"정확한 packet path","candidate":{"text":"목표어 완전 문장","note_ko":"실제 조절 자원·관계 효과·대역 방향"}}]} JSON뿐이다.`
   const user = `[화행] ${args.speechActKo}
 [언어 방향] ${LANG_DIR_KO[args.direction]}
@@ -2713,16 +2724,16 @@ async function checkMissionCandidates(args: {
     .map((reference) => candidatePacket(args.items, reference, args.feature))
     .filter((packet): packet is Record<string, unknown> => Boolean(packet))
   if (packets.length !== args.references.length) return { ok: false, error: 'candidate 검사 packet 구성 실패' }
-  const zhKoTranslationRule = args.direction === 'zh_ko'
+  const zhKoDirectionRule = args.direction === 'zh_ko'
     ? `
-중→한 번역 후보는 중국어 원문의 명제·화행 목적·태도·화용적 힘을 보존하고 실제 한국어 담화로 자연스러워야 한다. 다른 화행으로 바뀌면 speech_act_shift, 번역투면 unnatural로 판정한다. 존대 표지 수나 길이를 적정성의 긍정 증거로 쓰지 마라.`
+중→한 산출 후보는 중국어 원문의 명제·화행 목적·태도·화용적 힘을 보존하고 실제 한국어 담화로 자연스러워야 한다. 다른 화행으로 바뀌면 speech_act_shift, 번역투면 unnatural로 판정한다. 존대 표지 수나 길이를 적정성의 긍정 증거로 쓰지 마라.`
     : ''
   const system = `너는 MJT3·MJT5 후보 하나의 의미 보존과 화용 대역만 검사한다. 문장을 수정하지 마라.
 within_anchor는 해당 P·D·R에서 within인지 판정한다. relative_boundary는 verified_within_anchor 대비
 조정 방향이 보이는지와 intended_band 경계를 실제로 통과했는지를 별도로 판정한다.
 의미·발화 의도·화행 기능이 바뀌면 fail이다. 실제 대역 경계가 불확실하면 fail이 아니라 warning이며
 actual_band_code="uncertain", boundary_crossed=null로 쓴다. 공손표지 개수나 길이만으로 판정하지 마라.
-${zhKoTranslationRule}
+${zhKoDirectionRule}
 출력은 {"results":[{"path":"packet path","severity":"pass|warning|fail","actual_band_code":"정본 코드 또는 uncertain","direction_from_anchor":"within|toward_lower|toward_upper|uncertain","boundary_crossed":true|false|null,"semantic_defect":"none|meaning_shift|intent_shift|speech_act_shift|unnatural|focus_contamination|uncertain","note_ko":"근거"}]} JSON뿐이다.`
   const user = `[화행] ${args.speechActKo}
 [언어 방향] ${LANG_DIR_KO[args.direction]}
@@ -3021,6 +3032,10 @@ function repairTargets(findings: MissionRepairBody['findings']) {
 
 function buildMissionRepairPrompt(b: MissionRepairBody): { system: string; user: string } {
   const direction = normDir(b.direction)
+  const productionTask = b.mission_content.production_task && typeof b.mission_content.production_task === 'object' && !Array.isArray(b.mission_content.production_task)
+    ? b.mission_content.production_task as Record<string, unknown>
+    : {}
+  const isSpoken = productionTask.mode === 'interpreting' || productionTask.source_modality === 'spoken'
   const targets = repairTargets(b.findings)
   const targetFindings = actionableRepairFindings(b.findings)
   const candidateBlueprints = buildMissionCandidateBlueprints(b.feature)
@@ -3073,7 +3088,7 @@ function buildMissionRepairPrompt(b: MissionRepairBody): { system: string; user:
     ...(targets.productionReferences ? ['replace_reference_alternatives'] : []),
     ...(targets.diagnosticDimensions ? ['replace_diagnostic_dimensions'] : []),
   ]
-  const zhKoTranslationRule = direction === 'zh_ko'
+  const zhKoTranslationRule = direction === 'zh_ko' && !isSpoken
     ? `
 중→한 번역 수리에서도 학습자는 자기 발신 상황의 화자다. 중국어 원문의 명제·화행 목적·태도·화용적 힘과 요청된 화행을 유지하고, 한국어 번역투만 자연스러운 관계·채널·장르 실현으로 고친다. 일반 문법 교정, 과잉 존대·사과·감사 누적, 장문화로 수리 범위를 넓히지 마라.`
     : ''

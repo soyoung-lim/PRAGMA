@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { LearnerJourneyShell } from "@/components/learner/LearnerJourneyShell";
 import { PeerResponsesPanel } from "@/components/learner/PeerResponsesPanel";
+import { InterpretingConsole } from "@/components/mission/InterpretingConsole";
 import {
   CANONICAL_MISSION_PREVIEW,
   type BestWorstQuest,
@@ -179,6 +180,7 @@ function buildSceneIntroConfig(mission: CanonicalMissionViewModel): SceneIntroCo
         `채널은 ${context.channel}이고, 부담은 ${context.pdr.r}입니다.`,
       ].join(" ")
     : "상대와 관계, 채널, 부탁의 크기를 차례로 확인합니다.";
+  const outputName = mission.activityMode === "interpreting" ? "통역" : "번역";
 
   return {
     missionLabel: mission.metaLabel ?? "이번 미션",
@@ -198,8 +200,8 @@ function buildSceneIntroConfig(mission: CanonicalMissionViewModel): SceneIntroCo
       },
       {
         eyebrow: "03 · 당신의 선택",
-        title: `어떤 중국어 ${mission.speechAct} 표현이 이 장면에 어울릴까요?`,
-        body: "먼저 다섯 장면의 번역안을 비교하며 판단 기준을 찾아봅니다. 그다음 이 장면으로 돌아와 직접 번역합니다.",
+        title: `어떤 ${mission.targetLanguage.label} ${mission.speechAct} 표현이 이 장면에 어울릴까요?`,
+        body: `먼저 다섯 장면의 ${outputName}안을 비교하며 판단 기준을 찾아봅니다. 그다음 이 장면으로 돌아와 직접 ${outputName}합니다.`,
         action: "5개 장면으로 감 잡기",
         tone: "green",
       },
@@ -227,10 +229,16 @@ type DraftValidation = {
   hint?: string;
 };
 
-function validateDraft(value: string): DraftValidation {
+function validateDraft(value: string, targetLanguage = "중국어", outputName = "번역"): DraftValidation {
   const compact = normalize(value);
-  if (compact.length === 0 || compact.startsWith(normalize("중국어 번역을 작성"))) {
-    return { valid: false, hint: "중국어 번역안을 작성해 주세요." };
+  if (compact.length === 0 || compact.startsWith(normalize(`${targetLanguage} ${outputName}`))) {
+    return { valid: false, hint: `${targetLanguage} ${outputName}안을 작성해 주세요.` };
+  }
+  if (targetLanguage === "한국어") {
+    const hangulCount = value.match(/\p{Script=Hangul}/gu)?.length ?? 0;
+    if (hangulCount === 0) return { valid: false, hint: "한국어 문장으로 작성해 주세요." };
+    if (hangulCount < 4) return { valid: false, hint: "조금 더 완전한 한국어 문장으로 작성해 주세요." };
+    return { valid: true };
   }
   const hanCount = value.match(/\p{Script=Han}/gu)?.length ?? 0;
   if (hanCount === 0) {
@@ -242,8 +250,8 @@ function validateDraft(value: string): DraftValidation {
   return { valid: true };
 }
 
-function isMeaningfulDraft(value: string) {
-  return validateDraft(value).valid;
+function isMeaningfulDraft(value: string, targetLanguage = "중국어", outputName = "번역") {
+  return validateDraft(value, targetLanguage, outputName).valid;
 }
 
 const NEXT_ACTION_LABEL: Record<string, string> = {
@@ -477,21 +485,25 @@ function LanguagePair({ source, target, targetHighlights = [] }: {
   target?: string;
   targetHighlights?: string[];
 }) {
+  const mission = useCanonicalMission();
+  const outputName = mission.activityMode === "interpreting" ? "통역안" : "번역안";
+  const sourceFont = mission.sourceLanguage.code === "zh" ? "font-zh" : "";
+  const targetFont = mission.targetLanguage.code === "zh" ? "font-zh" : "";
   return (
     <section className="overflow-hidden rounded-2xl border border-[#C9D0DA] bg-white shadow-sm">
       <div className="flex items-start gap-4 bg-[#FBF8EE] px-4 py-3 sm:px-5">
-        <span className="mt-0.5 inline-flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg border border-[#E4CB50] bg-[#FFF7D1] px-3 text-sm font-black text-[#142033]">KO</span>
+        <span className="mt-0.5 inline-flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg border border-[#E4CB50] bg-[#FFF7D1] px-3 text-sm font-black text-[#142033]">{mission.sourceLanguage.badge}</span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-bold text-[#697386]">내가 전하려는 말</p>
-          <p className="mt-0.5 break-keep text-[17px] font-normal leading-8 text-[#101B2B]">{source}</p>
+          <p className="text-[11px] font-bold text-[#697386]">원문</p>
+          <p className={`${sourceFont} mt-0.5 break-keep text-[17px] font-normal leading-8 text-[#101B2B]`}>{source}</p>
         </div>
       </div>
       {target && (
         <div className="flex items-start gap-4 border-t border-dashed border-[#D8D4C8] px-4 py-3 sm:px-5">
-          <span className="mt-0.5 inline-flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg bg-[#15202B] px-3 text-sm font-black text-white">ZH</span>
+          <span className="mt-0.5 inline-flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg bg-[#15202B] px-3 text-sm font-black text-white">{mission.targetLanguage.badge}</span>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold text-[#697386]">중국어 번역안</p>
-            <p className="font-zh mt-0.5 text-[16.5px] font-normal leading-8 text-[#101B2B]">
+            <p className="text-[11px] font-bold text-[#697386]">{mission.targetLanguage.label} {outputName}</p>
+            <p className={`${targetFont} mt-0.5 text-[16.5px] font-normal leading-8 text-[#101B2B]`}>
               <HighlightedText text={target} highlights={targetHighlights} target />
             </p>
           </div>
@@ -674,6 +686,8 @@ function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
   onDone: (response: QuestResponse) => void;
   devAutofill?: boolean;
 }) {
+  const mission = useCanonicalMission();
+  const targetFont = mission.targetLanguage.code === "zh" ? "font-zh" : "";
   const linkedJudgment = quest.judgmentQuestId
     ? (responses[quest.judgmentQuestId] as QuestResponse | undefined)?.pick as string | undefined
     : undefined;
@@ -737,7 +751,7 @@ function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
                   return (
                     <button key={correction.id} type="button" disabled={answered} aria-pressed={picked} onClick={() => setCorrectionId(correction.id)} className={`${optionBase} ${state} disabled:cursor-default`}>
                       <span className="flex items-start justify-between gap-3">
-                        <span className="font-zh text-[16.5px] font-normal leading-7">{correction.text}</span>
+                        <span className={`${targetFont} text-[16.5px] font-normal leading-7`}>{correction.text}</span>
                         {answered && (
                           <span className="flex shrink-0 flex-wrap justify-end gap-1.5">
                             {picked && <span className="rounded-full border border-[#15202B] bg-white px-2 py-0.5 text-[10px] font-black text-[#15202B]">내 선택</span>}
@@ -890,6 +904,8 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
 }
 
 function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWorstQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
+  const mission = useCanonicalMission();
+  const targetFont = mission.targetLanguage.code === "zh" ? "font-zh" : "";
   const [best, setBest] = useState<string | null>(() => devAutofill ? quest.bestId : null);
   const [worst, setWorst] = useState<string | null>(() => devAutofill ? quest.worstId : null);
   const [answered, setAnswered] = useState(false);
@@ -905,8 +921,8 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
           </p>
         )}
         <div className="mt-3 flex items-center gap-3">
-          <span className="inline-flex h-8 min-w-11 items-center justify-center rounded-lg bg-[#15202B] px-2.5 text-xs font-black text-white">ZH</span>
-          <span className="text-sm font-bold text-[#5D6980]">번역 후보</span>
+          <span className="inline-flex h-8 min-w-11 items-center justify-center rounded-lg bg-[#15202B] px-2.5 text-xs font-black text-white">{mission.targetLanguage.badge}</span>
+          <span className="text-sm font-bold text-[#5D6980]">산출 후보</span>
         </div>
         <div className="mt-2 grid gap-2">
           {order.map((candidate) => {
@@ -929,7 +945,7 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
                 {answered ? (
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_max-content] sm:items-start sm:gap-4">
                     <div className="min-w-0">
-                      <p className="font-zh text-[17px] leading-7">{candidate.text}</p>
+                      <p className={`${targetFont} text-[17px] leading-7`}>{candidate.text}</p>
                       <p className="mt-1 break-keep text-[13px] leading-5 text-[#536075]">{candidate.note}</p>
                     </div>
                     <div className="flex flex-nowrap gap-1.5 whitespace-nowrap sm:justify-end">
@@ -941,7 +957,7 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
                 ) : (
                   // 좁은 화면에서는 후보 문장이 3~4자마다 끊기지 않도록 버튼을 아래로 내린다.
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                    <p className="min-w-0 font-zh text-[17px] leading-7">{candidate.text}</p>
+                    <p className={`${targetFont} min-w-0 text-[17px] leading-7`}>{candidate.text}</p>
                     <div className="flex shrink-0 gap-2">
                     <button type="button" disabled={worstPicked} onClick={() => setBest(candidate.id)} className={`h-9 flex-1 rounded-lg border px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1 disabled:opacity-50 sm:flex-none ${bestPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8] hover:bg-[#F8F7F2]"}`}>알맞음</button>
                     <button type="button" disabled={bestPicked} onClick={() => setWorst(candidate.id)} className={`h-9 flex-1 rounded-lg border px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#15202B] focus-visible:ring-offset-1 disabled:opacity-50 sm:flex-none ${worstPicked ? "border-[#15202B] bg-[#15202B] text-white" : "border-[#D8D4C8] hover:bg-[#F8F7F2]"}`}>조정 필요</button>
@@ -957,7 +973,7 @@ function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWors
         {!answered ? (
           <Button className={`h-12 ${actionButton}`} disabled={!best || !worst || best === worst} onClick={() => setAnswered(true)}>두 표현 확인하기</Button>
         ) : (
-          <Button className="h-12 w-full" onClick={() => onDone({ best, worst })}>다음: 번역 실습 <ChevronRight className="ml-1 h-4 w-4" /></Button>
+          <Button className="h-12 w-full" onClick={() => onDone({ best, worst })}>다음: 직접 산출 <ChevronRight className="ml-1 h-4 w-4" /></Button>
         )}
       </ActionBar>
     </QuestScaffold>
@@ -974,13 +990,14 @@ function isOverMitigated(text: string) {
 }
 
 function VocabularyHints({ quest }: { quest: DctQuest }) {
-  const supportLevel = useCanonicalMission().supportLevel;
+  const mission = useCanonicalMission();
+  const supportLevel = mission.supportLevel;
   if (supportLevel === "advanced" || quest.vocabularyHints.length === 0) return null;
   const chips = (
     <div className="flex flex-wrap gap-2">
       {quest.vocabularyHints.map((hint) => (
         <span key={hint.source} className="rounded-full border border-[#D8D4C8] bg-[#FAF8F2] px-3 py-1.5 text-xs">
-          <b>{hint.source}</b> · <span className="font-zh">{hint.target}</span>
+          <b>{hint.source}</b> · <span className={mission.targetLanguage.code === "zh" ? "font-zh" : ""}>{hint.target}</span>
         </span>
       ))}
     </div>
@@ -1002,20 +1019,23 @@ function sourceAlignedRows(source: string) {
 }
 
 function DctDraftCard({ quest, value, onChange }: { quest: DctQuest; value: string; onChange: (value: string) => void }) {
+  const mission = useCanonicalMission();
+  const sourceFont = mission.sourceLanguage.code === "zh" ? "font-zh" : "";
+  const targetFont = mission.targetLanguage.code === "zh" ? "font-zh" : "";
   return (
     <section className={`${panel} overflow-hidden`}>
       <div className="flex items-start gap-4 bg-[#FBF8EE] px-4 py-3 sm:px-5">
-        <span className="mt-0.5 inline-flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg border border-[#E4CB50] bg-[#FFF7D1] px-3 text-sm font-black text-[#142033]">KO</span>
+        <span className="mt-0.5 inline-flex h-9 min-w-12 shrink-0 items-center justify-center rounded-lg border border-[#E4CB50] bg-[#FFF7D1] px-3 text-sm font-black text-[#142033]">{mission.sourceLanguage.badge}</span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-bold text-[#697386]">내가 전하려는 말</p>
-          <p className="mt-0.5 break-keep text-[17px] leading-8">{quest.source}</p>
+          <p className="text-[11px] font-bold text-[#697386]">{mission.sourceLanguage.label} 원문</p>
+          <p className={`${sourceFont} mt-0.5 break-keep text-[17px] leading-8`}>{quest.source}</p>
         </div>
       </div>
       <div className="border-t border-dashed border-[#D8D4C8] px-4 py-3 sm:px-5">
         <div className="flex items-center gap-4">
-          <span className="inline-flex h-9 min-w-12 items-center justify-center rounded-lg bg-[#15202B] px-3 text-sm font-black text-white">ZH</span>
+          <span className="inline-flex h-9 min-w-12 items-center justify-center rounded-lg bg-[#15202B] px-3 text-sm font-black text-white">{mission.targetLanguage.badge}</span>
           <div>
-            <p className="text-[11px] font-bold text-[#697386]">중국어 번역안</p>
+            <p className="text-[11px] font-bold text-[#697386]">{mission.targetLanguage.label} 번역안</p>
             <p className="mt-0.5 text-sm font-bold">{quest.prompt}</p>
           </div>
         </div>
@@ -1024,8 +1044,8 @@ function DctDraftCard({ quest, value, onChange }: { quest: DctQuest; value: stri
           value={value}
           onChange={(event) => onChange(event.target.value)}
           rows={sourceAlignedRows(quest.source)}
-          className="font-zh mt-3 resize-y bg-white text-[16.5px] leading-8"
-          placeholder="중국어 번역을 작성하세요."
+          className={`${targetFont} mt-3 resize-y bg-white text-[16.5px] leading-8`}
+          placeholder={`${mission.targetLanguage.label} 번역을 작성하세요.`}
         />
         <VocabularyHints quest={quest} />
       </div>
@@ -1169,6 +1189,8 @@ function evaluationFromRuntimeFeedback(
   feedback: RuntimeFeedback,
 ): DctEvaluation {
   const feature = getTargetFeature(runtime.mission.unit.target_feature);
+  const targetLanguage = runtime.mission.direction === "zh_ko" ? "한국어" : "중국어";
+  const outputName = runtime.mission.production_task.mode === "interpreting" ? "통역" : "번역";
   const pragmaticOk = Boolean(
     feature && feedback.verdicts.pragmatic_appropriateness.band_code === feature.within_band_code,
   );
@@ -1193,7 +1215,7 @@ function evaluationFromRuntimeFeedback(
     {
       key: "language",
       label: "문법 정확성",
-      question: "중국어 표현이 자연스러운가요?",
+      question: `${targetLanguage} 표현이 자연스러운가요?`,
       level: grammarLevel,
       body: grammarNote?.explanation_ko || (grammarLevel === "very_good"
         ? "의미 이해를 막는 문법 문제는 확인되지 않았습니다."
@@ -1220,7 +1242,7 @@ function evaluationFromRuntimeFeedback(
         : undefined;
   return {
     criteria,
-    headline: allGood ? "아주 좋습니다. 이 번역으로 충분합니다." : "피드백을 확인하고 한 번 다듬어 보세요.",
+    headline: allGood ? `아주 좋습니다. 이 ${outputName}으로 충분합니다.` : "피드백을 확인하고 한 번 다듬어 보세요.",
     body: primary.body,
     highlights: grammarNote?.anchor_text ? [grammarNote.anchor_text] : [],
     feedback: primary.body,
@@ -1230,20 +1252,25 @@ function evaluationFromRuntimeFeedback(
   };
 }
 
-function unavailableRuntimeEvaluation(quest: DctFeedbackQuest, message: string): DctEvaluation {
+function unavailableRuntimeEvaluation(
+  quest: DctFeedbackQuest,
+  message: string,
+  targetLanguage = "중국어",
+  outputName = "번역",
+): DctEvaluation {
   const body = `자동 피드백을 불러오지 못했습니다. 참고 표현과 원문을 비교해 직접 다듬어 주세요. (${message})`;
   return {
     available: false,
     criteria: [
       { key: "meaning", label: "의미 전달", question: "뜻이 제대로 전달됐나요?", level: "recommend", body },
-      { key: "language", label: "문법 정확성", question: "중국어 표현이 자연스러운가요?", level: "recommend", body },
+      { key: "language", label: "문법 정확성", question: `${targetLanguage} 표현이 자연스러운가요?`, level: "recommend", body },
       { key: "pragmatics", label: "화용 적절성", question: "이 관계와 상황에 잘 맞나요?", level: "recommend", body },
     ],
     headline: "자동 피드백을 불러오지 못했습니다.",
     body,
     highlights: [],
     feedback: body,
-    action: "참고 표현을 복사하지 말고, 내 번역에서 한 곳을 직접 점검해 보세요.",
+    action: `참고 표현을 복사하지 말고, 내 ${outputName}에서 한 곳을 직접 점검해 보세요.`,
     example: quest.referenceAnswer,
     takeaway: "판정이 불가능했던 수행은 점수로 해석하지 않습니다.",
   };
@@ -1322,9 +1349,23 @@ function DctDraftView({ quest, onDone, devMode = false, devAutofill = false, dev
   devAutofill?: boolean;
   devDraft?: string;
 }) {
+  const mission = useCanonicalMission();
   const [draft, setDraft] = useState(() => devAutofill ? devDraft : "");
-  const validation = validateDraft(draft);
+  const validation = validateDraft(draft, mission.targetLanguage.label);
   const canSubmit = devMode || validation.valid;
+  if (mission.activityMode === "interpreting") {
+    return (
+      <QuestScaffold quest={quest}>
+        <InterpretingConsole
+          sourceText={quest.source}
+          sourceLanguage={mission.sourceLanguage}
+          targetLanguage={mission.targetLanguage}
+          replayLimit={quest.replayLimit}
+          onSubmit={(transcript) => onDone({ first: transcript, revised: transcript, reflected: false })}
+        />
+      </QuestScaffold>
+    );
+  }
   return (
     <QuestScaffold quest={quest}>
       <DctDraftCard quest={quest} value={draft} onChange={setDraft} />
@@ -1359,13 +1400,16 @@ function FeedbackLoading() {
 }
 
 function StudentAnswerCard({ text, highlights = [] }: { text: string; highlights?: string[] }) {
+  const mission = useCanonicalMission();
+  const outputName = mission.activityMode === "interpreting" ? "통역" : "번역";
+  const targetFont = mission.targetLanguage.code === "zh" ? "font-zh" : "";
   return (
     <section className="rounded-2xl bg-[#15202B] p-5 text-white shadow-[0_12px_28px_rgba(21,32,43,0.12)] sm:p-6">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-black text-[#F0D44F]">내 번역</p>
-        <span className="inline-flex h-8 min-w-11 items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 text-xs font-black text-white/90">ZH</span>
+        <p className="text-sm font-black text-[#F0D44F]">내 {outputName}</p>
+        <span className="inline-flex h-8 min-w-11 items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 text-xs font-black text-white/90">{mission.targetLanguage.badge}</span>
       </div>
-      <p className="font-zh mt-4 whitespace-pre-wrap text-[17px] leading-8 text-white sm:text-[18px]">
+      <p className={`${targetFont} mt-4 whitespace-pre-wrap text-[17px] leading-8 text-white sm:text-[18px]`}>
         <HighlightedText text={text} highlights={highlights} target />
       </p>
     </section>
@@ -1373,6 +1417,10 @@ function StudentAnswerCard({ text, highlights = [] }: { text: string; highlights
 }
 
 function DctContextReview({ quest, first }: { quest: DctFeedbackQuest; first: string }) {
+  const mission = useCanonicalMission();
+  const outputName = mission.activityMode === "interpreting" ? "통역" : "번역";
+  const sourceFont = mission.sourceLanguage.code === "zh" ? "font-zh" : "";
+  const targetFont = mission.targetLanguage.code === "zh" ? "font-zh" : "";
   return (
     <details className="group rounded-xl border border-[#DDD8CB] bg-[#FAF9F5]">
       <summary className="cursor-pointer list-none px-4 py-3 sm:px-5">
@@ -1395,12 +1443,12 @@ function DctContextReview({ quest, first }: { quest: DctFeedbackQuest; first: st
           <p className="mt-1 text-sm leading-6">{quest.context.situation}</p>
         </div>
         <div>
-          <p className="text-[11px] font-black text-[#707A8B]">한국어 원문</p>
-          <p className="mt-1 text-sm font-bold leading-6">{quest.source}</p>
+          <p className="text-[11px] font-black text-[#707A8B]">{mission.sourceLanguage.label} 원문</p>
+          <p className={`${sourceFont} mt-1 text-sm font-bold leading-6`}>{quest.source}</p>
         </div>
         <div>
-          <p className="text-[11px] font-black text-[#707A8B]">내 첫 번역</p>
-          <p className="font-zh mt-1 text-[15px] leading-7">{first}</p>
+          <p className="text-[11px] font-black text-[#707A8B]">내 첫 {outputName}</p>
+          <p className={`${targetFont} mt-1 text-[15px] leading-7`}>{first}</p>
         </div>
       </div>
     </details>
@@ -1416,6 +1464,9 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
   devAutofill?: boolean;
 }) {
   const runtime = useRuntimeMission();
+  const mission = useCanonicalMission();
+  const outputName = mission.activityMode === "interpreting" ? "통역" : "번역";
+  const targetFont = mission.targetLanguage.code === "zh" ? "font-zh" : "";
   const first = response?.first ?? "";
   const [ready, setReady] = useState(false);
   const previewEvaluation = useMemo(() => evaluateDct(quest, first), [first, quest]);
@@ -1436,7 +1487,12 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
           setEvaluation(evaluationFromRuntimeFeedback(runtime, quest, result.feedback));
         } else {
           setRuntimeFeedback(undefined);
-          setEvaluation(unavailableRuntimeEvaluation(quest, result.error ?? "알 수 없는 오류"));
+          setEvaluation(unavailableRuntimeEvaluation(
+            quest,
+            result.error ?? "알 수 없는 오류",
+            mission.targetLanguage.label,
+            outputName,
+          ));
         }
         setReady(true);
       });
@@ -1444,7 +1500,7 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
     }
     const timer = window.setTimeout(() => setReady(true), 1250);
     return () => window.clearTimeout(timer);
-  }, [first, previewEvaluation, quest, runtime]);
+  }, [first, mission.targetLanguage.label, outputName, previewEvaluation, quest, runtime]);
   useEffect(() => {
     if (!revisionOpen) return;
     const timer = window.setTimeout(() => revisionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
@@ -1477,10 +1533,10 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
   const overallBody = feedbackUnavailable || needsChange
     ? evaluation.feedback
     : "원문의 의미와 의도를 유지하면서, 관계와 상황에도 맞는 표현을 사용했습니다.";
-  const revisionValidation = validateDraft(revised);
+  const revisionValidation = validateDraft(revised, mission.targetLanguage.label, outputName);
   const canConfirmRevision = devMode || (revisionValidation.valid && (!needsChange || reflected));
   const canRetainWithDissent = Boolean(dissent);
-  const actionHint = devMode ? undefined : revisionValidation.hint ?? (needsChange && !reflected && !canRetainWithDissent ? "피드백을 반영해 한 곳 이상 수정하거나, 이의 제기에 근거를 남겨 첫 번역을 유지해 주세요." : undefined);
+  const actionHint = devMode ? undefined : revisionValidation.hint ?? (needsChange && !reflected && !canRetainWithDissent ? `피드백을 반영해 한 곳 이상 수정하거나, 이의 제기에 근거를 남겨 첫 ${outputName}을 유지해 주세요.` : undefined);
   const retainFirstResponse = () => onDone({
     first,
     revised: first.trim(),
@@ -1489,11 +1545,11 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
     runtimeFeedback,
     dissent,
   });
-  if (!isMeaningfulDraft(first)) {
+  if (!isMeaningfulDraft(first, mission.targetLanguage.label, outputName)) {
     return (
       <section className={`${panel} p-5 sm:p-6`}>
-        <h2 className="text-lg font-black">분석할 번역이 없습니다.</h2>
-        <p className="mt-2 text-sm leading-6 text-[#5B6678]">번역 실습 단계에서 중국어 답안을 먼저 작성해 주세요.</p>
+        <h2 className="text-lg font-black">분석할 {outputName}이 없습니다.</h2>
+        <p className="mt-2 text-sm leading-6 text-[#5B6678]">{outputName} 실습 단계에서 {mission.targetLanguage.label} 답안을 먼저 제출해 주세요.</p>
       </section>
     );
   }
@@ -1501,7 +1557,7 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
     <div className="space-y-3">
       <div className="px-1">
         <p className="text-xs font-bold text-[#776727]">{progressLabel(quest)}</p>
-        <h1 className="mt-1 text-xl font-black">번역 피드백</h1>
+        <h1 className="mt-1 text-xl font-black">{outputName} 피드백</h1>
       </div>
       <StudentAnswerCard text={first} highlights={ready ? evaluation.highlights : []} />
       {!ready ? <FeedbackLoading /> : (
@@ -1554,14 +1610,14 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
                     {evaluation.action && <p className="mt-1 text-sm leading-6 text-[#566175]"><RichLine text={evaluation.action} /></p>}
                   </div>
                 )}
-                <Textarea id={`${quest.id}-revise`} value={revised} onChange={(event) => setRevised(event.target.value)} rows={sourceAlignedRows(quest.source)} className="font-zh mt-4 resize-y bg-white text-[16.5px] leading-8" />
+                <Textarea id={`${quest.id}-revise`} value={revised} onChange={(event) => setRevised(event.target.value)} rows={sourceAlignedRows(quest.source)} className={`${targetFont} mt-4 resize-y bg-white text-[16.5px] leading-8`} />
                 <div className="mt-3"><DctContextReview quest={quest} first={first} /></div>
               </section>
               <ActionBar hint={actionHint}>
                 <div className="grid gap-2">
-                  <Button className={`h-12 ${actionButton}`} disabled={!canConfirmRevision} onClick={() => onDone({ first, revised: revised.trim(), reflected, evaluation, runtimeFeedback, dissent })}>{reflected ? "수정안 확정하기" : needsChange ? "피드백을 반영해 수정해 주세요" : "이 번역으로 확정하기"} <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                  <Button className={`h-12 ${actionButton}`} disabled={!canConfirmRevision} onClick={() => onDone({ first, revised: revised.trim(), reflected, evaluation, runtimeFeedback, dissent })}>{reflected ? "수정안 확정하기" : needsChange ? "피드백을 반영해 수정해 주세요" : `이 ${outputName}으로 확정하기`} <ChevronRight className="ml-1 h-4 w-4" /></Button>
                   {needsChange && !reflected && canRetainWithDissent && (
-                    <Button variant="outline" className="h-11 w-full" onClick={retainFirstResponse}>수정하지 않고 첫 번역 유지하기</Button>
+                    <Button variant="outline" className="h-11 w-full" onClick={retainFirstResponse}>수정하지 않고 첫 {outputName} 유지하기</Button>
                   )}
                 </div>
               </ActionBar>
@@ -1571,12 +1627,12 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
               {needsChange ? (
                 <div className="grid gap-2">
                   <Button className="h-12 w-full" onClick={() => setRevisionOpen(true)}>한 번 다듬어보기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
-                  <Button variant="outline" className="h-11 w-full" disabled={!canRetainWithDissent} onClick={retainFirstResponse}>내 번역을 유지하고 확정하기</Button>
-                  {!canRetainWithDissent && <p className="px-1 text-center text-[11px] leading-5 text-[#6D7788]">첫 번역을 유지하려면 위의 이의 제기에 판단 근거를 남겨 주세요.</p>}
+                  <Button variant="outline" className="h-11 w-full" disabled={!canRetainWithDissent} onClick={retainFirstResponse}>내 {outputName}을 유지하고 확정하기</Button>
+                  {!canRetainWithDissent && <p className="px-1 text-center text-[11px] leading-5 text-[#6D7788]">첫 {outputName}을 유지하려면 위의 이의 제기에 판단 근거를 남겨 주세요.</p>}
                 </div>
               ) : (
                 <div className="grid gap-2">
-                  <Button className="h-12 w-full" onClick={() => onDone({ first, revised: first.trim(), reflected: false, evaluation, runtimeFeedback, dissent })}>이 번역으로 확정하기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                  <Button className="h-12 w-full" onClick={() => onDone({ first, revised: first.trim(), reflected: false, evaluation, runtimeFeedback, dissent })}>이 {outputName}으로 확정하기 <ChevronRight className="ml-1 h-4 w-4" /></Button>
                   <Button variant="outline" className="h-11 w-full" onClick={() => setRevisionOpen(true)}>다른 표현도 시도해보기</Button>
                 </div>
               )}
@@ -1618,7 +1674,7 @@ const PROGRESS_LABELS: Record<string, string> = {
   A3: "판단하고 고쳐보기",
   A4: "이유 찾기",
   A5: "여러 초안 비교",
-  "A-DCT": "내 번역 작성",
+  "A-DCT": "내 산출 작성",
   "A-FEEDBACK": "피드백 확인",
 };
 
@@ -1648,19 +1704,19 @@ function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = f
   const quests = useCanonicalMission().quests;
   const macroIndex = macroProgressIndex(activeIndex, completed, revisionOpen, sceneIntroStep);
   const detail = completed
-    ? { phase: "미션 완료", activity: "내 번역 돌아보기" }
+    ? { phase: "미션 완료", activity: "내 산출 돌아보기" }
       : reviewIndex !== null
       ? { phase: "기록 검토", activity: progressLabel(quests[reviewIndex]) }
       : sceneIntroStep !== null
         ? { phase: "장면 이해", activity: sceneIntroConfig.slides[sceneIntroStep].eyebrow.replace(/^\d+ · /, "") }
       : mpjRecapOpen
-        ? { phase: "직접 산출", activity: "번역 전 정리" }
+        ? { phase: "직접 산출", activity: "산출 전 정리" }
       : activeIndex <= 4
         ? { phase: `표현 판단 · ${activeIndex + 1}/5`, activity: progressLabel(quests[activeIndex]) }
         : activeIndex === 5
           ? { phase: "직접 산출", activity: progressLabel(quests[activeIndex]) }
           : revisionOpen
-            ? { phase: "다듬기", activity: "내 번역 수정" }
+            ? { phase: "다듬기", activity: "내 산출 수정" }
             : { phase: "피드백", activity: progressLabel(quests[activeIndex]) };
   return (
     <section className="sticky top-16 z-30 border-b border-[#DDD8CC] bg-[#FBFAF6] px-3 py-2.5 sm:px-4" aria-label="미션 학습 흐름">
@@ -1715,8 +1771,8 @@ function MpjLessonBridge({ lessonPoints, onContinue }: {
   onContinue: () => void;
 }) {
   return (
-    <section className="rounded-2xl border border-[#DED9CD] bg-[#FCFBF7] px-5 py-6 shadow-[0_10px_28px_rgba(21,32,43,0.05)] sm:px-8 sm:py-7" aria-label="직접 번역 전 5 POINT LESSON">
-      <p className="text-[11px] font-black tracking-[0.12em] text-[#8A7419]">직접 번역하기 전에</p>
+    <section className="rounded-2xl border border-[#DED9CD] bg-[#FCFBF7] px-5 py-6 shadow-[0_10px_28px_rgba(21,32,43,0.05)] sm:px-8 sm:py-7" aria-label="직접 산출 전 5 POINT LESSON">
+      <p className="text-[11px] font-black tracking-[0.12em] text-[#8A7419]">직접 산출하기 전에</p>
       <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
         <h1 className="break-keep text-2xl font-black tracking-[-0.03em] text-[#15202B]">문항별 핵심 5가지</h1>
         <span className="text-[10px] font-black tracking-[0.14em] text-[#8B94A1]">5 POINT LESSON</span>
@@ -1737,7 +1793,7 @@ function MpjLessonBridge({ lessonPoints, onContinue }: {
 
       <div className="mt-5 flex justify-end">
         <Button type="button" className="h-11 px-5 font-black" onClick={onContinue}>
-          직접 번역해 보기 <ChevronRight className="ml-1 h-4 w-4" />
+          직접 산출해 보기 <ChevronRight className="ml-1 h-4 w-4" />
         </Button>
       </div>
     </section>
@@ -1788,6 +1844,9 @@ function CompletedQuestReview({ quest, response }: {
   quest: MissionQuest;
   response: QuestResponse | DctResponse;
 }) {
+  const mission = useCanonicalMission();
+  const outputName = mission.activityMode === "interpreting" ? "통역" : "번역";
+  const targetFont = mission.targetLanguage.code === "zh" ? "font-zh" : "";
   const dct = quest.kind === "dct" ? response as DctResponse : undefined;
   const feedbackResponse = quest.kind === "dct_feedback" ? response as DctResponse : undefined;
   return (
@@ -1816,10 +1875,10 @@ function CompletedQuestReview({ quest, response }: {
                 </div>
               ))}
             </div>
-            <div><p className="text-xs font-bold text-[#677287]">최종 번역</p><p className="font-zh mt-1 text-[17px] leading-8">{feedbackResponse.revised}</p></div>
+            <div><p className="text-xs font-bold text-[#677287]">최종 {outputName}</p><p className={`${targetFont} mt-1 text-[17px] leading-8`}>{feedbackResponse.revised}</p></div>
           </div>
         ) : dct ? (
-          <div><p className="text-xs font-bold text-[#677287]">내 첫 번역</p><p className="font-zh mt-1 text-[17px] leading-8">{dct.first}</p></div>
+          <div><p className="text-xs font-bold text-[#677287]">내 첫 {outputName}</p><p className={`${targetFont} mt-1 text-[17px] leading-8`}>{dct.first}</p></div>
         ) : (
           <>
             <p className="text-xs font-bold text-[#677287]">내가 고른 답</p>
@@ -1837,7 +1896,10 @@ export function CompletionRecord({ label, response, alternatives = [] }: {
   response?: DctResponse;
   alternatives?: DctQuest["feedback"]["alternatives"];
 }) {
-  if (!response || !isMeaningfulDraft(response.first)) return null;
+  const mission = useCanonicalMission();
+  const outputName = mission.activityMode === "interpreting" ? "통역" : "번역";
+  const targetFont = mission.targetLanguage.code === "zh" ? "font-zh" : "";
+  if (!response || !isMeaningfulDraft(response.first, mission.targetLanguage.label, outputName)) return null;
   const evaluation = response.evaluation;
   const needsAttention = evaluation?.criteria.filter((criterion) => criterion.level !== "very_good") ?? [];
   const retainedAgainstFeedback = Boolean(response.dissent && !response.reflected && needsAttention.length > 0);
@@ -1849,15 +1911,15 @@ export function CompletionRecord({ label, response, alternatives = [] }: {
       <div className="space-y-5 p-5">
         {/* 수정 전 = 중립 박스, 수정 후 = 강조 박스. 두 덩어리로 묶어야 전·후가 한눈에 대비된다. */}
         <div className="rounded-xl border border-[#E5E1D8] bg-[#FAF9F5] p-4">
-          <p className="text-[11px] font-bold text-[#7A8495]">내가 실제로 쓴 중국어</p>
-          <p className="font-zh mt-2 text-[17px] leading-8"><HighlightedText text={response.first} highlights={evaluation?.highlights} target /></p>
+          <p className="text-[11px] font-bold text-[#7A8495]">내가 실제로 한 {mission.targetLanguage.label} {outputName}</p>
+          <p className={`${targetFont} mt-2 text-[17px] leading-8`}><HighlightedText text={response.first} highlights={evaluation?.highlights} target /></p>
         </div>
         {evaluation && needsAttention.length > 0 ? (
           <div className="rounded-xl border border-[#DDD8CB] border-l-4 border-l-[#E0C43C] bg-[#FAF9F5] p-4">
             <p className="text-xs font-black text-[#725B12]">수정이 필요했던 부분</p>
             {evaluation.highlights.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-2">
-                {evaluation.highlights.map((highlight) => <span key={highlight} className="font-zh rounded-md bg-[#FFF5C8] px-2.5 py-1.5 text-[15px] underline decoration-[#C9A90E] decoration-2 underline-offset-4">{highlight}</span>)}
+                {evaluation.highlights.map((highlight) => <span key={highlight} className={`${targetFont} rounded-md bg-[#FFF5C8] px-2.5 py-1.5 text-[15px] underline decoration-[#C9A90E] decoration-2 underline-offset-4`}>{highlight}</span>)}
               </div>
             ) : <p className="mt-2 text-sm">표현의 문제가 아니라 원문의 핵심 내용이 빠졌습니다.</p>}
             <p className="mt-3 text-xs font-black text-[#725B12]">왜 고쳤나요?</p>
@@ -1871,11 +1933,11 @@ export function CompletionRecord({ label, response, alternatives = [] }: {
         ) : null}
         {response.reflected ? (
           <div className="rounded-xl border-2 border-[#9CC7B0] bg-[#F4FAF6] p-4 shadow-sm">
-            <p className="flex items-center gap-1.5 text-xs font-black text-[#245E44]"><Check className="h-3.5 w-3.5" />피드백을 반영한 최종 번역</p>
-            <p className="font-zh mt-2 text-[17px] leading-8">{response.revised}</p>
+            <p className="flex items-center gap-1.5 text-xs font-black text-[#245E44]"><Check className="h-3.5 w-3.5" />피드백을 반영한 최종 {outputName}</p>
+            <p className={`${targetFont} mt-2 text-[17px] leading-8`}>{response.revised}</p>
           </div>
         ) : (
-          <p className="flex items-center gap-1.5 text-xs font-bold text-[#286247]"><Check className="h-3.5 w-3.5" />{retainedAgainstFeedback ? "AI 참고 판정과 다르게 보고 첫 번역을 최종안으로 유지했습니다." : "첫 번역을 최종안으로 확정했습니다."}</p>
+          <p className="flex items-center gap-1.5 text-xs font-bold text-[#286247]"><Check className="h-3.5 w-3.5" />{retainedAgainstFeedback ? `AI 참고 판정과 다르게 보고 첫 ${outputName}을 최종안으로 유지했습니다.` : `첫 ${outputName}을 최종안으로 확정했습니다.`}</p>
         )}
         {alternatives.length > 0 && (
           <div className="border-t border-[#E5E1D8] pt-5">
@@ -1883,7 +1945,7 @@ export function CompletionRecord({ label, response, alternatives = [] }: {
             <div className="mt-3 space-y-3">
               {alternatives.map((alternative) => (
                 <div key={alternative.text} className="rounded-xl bg-[#F8F7F2] p-4">
-                  <p className="font-zh text-[16px] leading-7">{alternative.text}</p>
+                  <p className={`${targetFont} text-[16px] leading-7`}>{alternative.text}</p>
                   <p className="mt-1.5 text-xs leading-5 text-[#667185]">{alternative.note}</p>
                 </div>
               ))}
@@ -1962,19 +2024,19 @@ function SessionPatternSummary({ responses }: { responses: Array<DctResponse | u
     .filter((response): response is DctResponse => Boolean(
       response?.evaluation
       && response.evaluation.available !== false
-      && isMeaningfulDraft(response.first),
+      && isMeaningfulDraft(response.first, mission.targetLanguage.label, mission.activityMode === "interpreting" ? "통역" : "번역"),
     ))
     .map((response) => response.evaluation as DctEvaluation);
   if (evaluations.length === 0) return null;
   const observations = [
     { key: "meaning", label: "의미 전달", good: "핵심 의미를 빠뜨리지 않은 답안", next: "원문의 핵심 의미와 조건을 빠뜨리지 않았는지 확인해 보세요." },
-    { key: "language", label: "문법 정확성", good: "문법상 큰 문제가 없었던 답안", next: "중국어 문장이 완결되었는지 다시 읽어 보세요." },
+    { key: "language", label: "문법 정확성", good: "문법상 큰 문제가 없었던 답안", next: `${mission.targetLanguage.label} 문장이 자연스러운지 다시 확인해 보세요.` },
     { key: "pragmatics", label: "화용 적절성", good: "관계와 상황에 맞는 표현을 사용한 답안", next: `${mission.speechAct}의 상황과 부담에 맞게 표현의 무게를 조절했는지 확인해 보세요.` },
   ] as const;
   return (
     <section className={`${panel} p-5 sm:p-6`}>
       <h2 className="text-base font-black">이번 미션에서 확인한 점</h2>
-      <p className="mt-1 break-keep text-xs leading-5 text-[#6A7485]">이번 번역에서 실제로 확인된 결과만 정리했습니다.</p>
+      <p className="mt-1 break-keep text-xs leading-5 text-[#6A7485]">이번 산출에서 실제로 확인된 결과만 정리했습니다.</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {observations.map((observation) => {
           const strongCount = evaluations.filter((evaluation) => evaluation.criteria.find((criterion) => criterion.key === observation.key)?.level === "very_good").length;
@@ -2481,11 +2543,11 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMod
             <Progress activeIndex={currentProgressIndex} completed revisionOpen={feedbackRevisionOpen} />
             <section className="rounded-2xl bg-[#15202B] px-6 py-7 text-white sm:px-8">
               <p className="text-xs font-bold text-[#F3D248]">미션 완료</p>
-              <h1 className="mt-2 text-2xl font-black">이번 미션에서 완성한 내 번역</h1>
+              <h1 className="mt-2 text-2xl font-black">이번 미션에서 완성한 내 {mission.activityMode === "interpreting" ? "통역" : "번역"}</h1>
             </section>
             <div className="space-y-4">
               <CompletionRecord
-                label={primaryDct?.title ?? "번역 실습"}
+                label={primaryDct?.title ?? `${mission.activityMode === "interpreting" ? "통역" : "번역"} 실습`}
                 response={aDct}
                 alternatives={primaryDct?.feedback.alternatives}
               />
