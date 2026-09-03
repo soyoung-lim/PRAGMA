@@ -55,6 +55,11 @@ const LESSON_LABELS = [
   "여러 초안 비교",
 ] as const;
 
+const DIRECTION_RUNTIME = {
+  ko_zh: { label: "한국어 → 중국어", targetLanguage: "중국어" },
+  zh_ko: { label: "중국어 → 한국어", targetLanguage: "한국어" },
+} as const;
+
 type RuntimeMpjCommon = {
   type: string;
   situation_ko: string;
@@ -293,12 +298,10 @@ function runtimeFeedbackMode(pdr: Pdr): DctQuest["feedback"]["mode"] {
 export function adaptRunnableMissionToCanonical(runnable: RunnableMission): CanonicalMissionViewModel {
   const { mission } = runnable;
   const isNativeMpj5 = mission.schema_version === "mission_v5" && mission.mpj_items.length === 5;
-  if (mission.direction !== "ko_zh") {
-    throw new UnsupportedCanonicalMissionRuntimeError("정본 실행기의 첫 실데이터 연결은 한→중 미션만 지원합니다.");
-  }
   if (mission.production_task.mode !== "translation") {
-    throw new UnsupportedCanonicalMissionRuntimeError("정본 실행기의 첫 실데이터 연결은 번역 미션만 지원합니다.");
+    throw new UnsupportedCanonicalMissionRuntimeError("정본 실행기는 현재 번역 미션만 지원합니다.");
   }
+  const directionRuntime = DIRECTION_RUNTIME[mission.direction];
   if (!runnable.speech_act) {
     throw new UnsupportedCanonicalMissionRuntimeError("화행 정보가 없는 미션은 정본 실행기에 연결할 수 없습니다.");
   }
@@ -686,7 +689,7 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
       kind: "dct",
       context: dctContext,
       source: task.source_text,
-      prompt: "이 말을 중국어로 옮겨 보세요.",
+      prompt: `이 말을 ${directionRuntime.targetLanguage}로 옮겨 보세요.`,
       vocabularyHints: (task.vocabulary_hints ?? []).filter(
         (hint): hint is { source: string; target: string } =>
           typeof hint.source === "string" && typeof hint.target === "string",
@@ -722,7 +725,7 @@ export function adaptRunnableMissionToCanonical(runnable: RunnableMission): Cano
         ? "advanced"
         : "intermediate",
     activityMode: "translation",
-    direction: "한국어 → 중국어",
+    direction: directionRuntime.label,
     contrast: {
       before: contrastBefore,
       after: contrastAfter,

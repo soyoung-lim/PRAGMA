@@ -70,6 +70,55 @@ describe("prompt snapshot integrity", () => {
     expect(learnerSceneRepair.text).toContain("관찰 가능한 사실로 그대로 보존");
   });
 
+  it("locks zh_ko translation across individual, outline, core, mission, quality, and feedback prompts", () => {
+    const individual = prompt("legacy.individual.system.zh_ko").text;
+    const outline = prompt("legacy.outline.system.zh_ko").text;
+    const coreSystem = prompt("core.system.zh_ko").text;
+    const coreUser = prompt("core.user.written.zh_ko").text;
+    const mission = prompt("mission.system.zh_ko").text;
+    const quality = prompt("quality.system.zh_ko").text;
+    const coreQuality = prompt("core_quality.system.zh_ko").text;
+    const feedback = prompt("feedback.system.zh_ko").text;
+
+    expect(individual).toContain("중→한 비즈니스 번역 교육용 시나리오");
+    expect(individual).toContain("중국어(source) → 한국어(target)");
+    expect(individual).toContain("자기 발신 상황의 화자");
+    expect(individual).toContain("명제·화행·태도·화용적 힘을 보존");
+    expect(individual).toContain("번역투");
+    expect(individual).toContain("중국어 원문 형식의 간섭과 중→한 학습자의 전형적 오류");
+    expect(individual).not.toContain("한국어(source) → 중국어(target)");
+
+    expect(outline).toContain("중→한 비즈니스 번역 교육용 시나리오");
+    expect(outline).toContain("지정 화행의 원문을 상대에게 보내려는 1인칭 발신 장면");
+
+    expect(coreSystem).toContain("[중→한 번역 역할·원문 계약]");
+    expect(coreSystem).toContain("제3자 번역자가 아니라 자기 발신 상황의 화자");
+    expect(coreUser).toContain("중→한 원문 계약");
+    expect(coreUser).toContain("다른 화행 사건이나 목적을 대신 만들지 마세요");
+
+    expect(mission).toContain("[중→한 번역 정식 계약]");
+    expect(mission).toContain("MPJ1~5와 DCT의 모든 source는 사용자 요청서의 지정 화행");
+    expect(mission).toContain("중국어 원문의 **명제·화행 목적·태도·화용적 힘**을 보존");
+    expect(mission).toContain("중국어 어순·주어 반복·명사화·직역 결합");
+    expect(mission).toContain("더 길거나 더 격식적이거나 더 공손한 번역을 자동으로 상위 대역에 두지");
+    expect(mission).toContain("scale4 → judge3 → fix_choice → reason → multi_judge");
+    expect(mission).toContain("MJT1 X → MJT2 A → MJT3 A → MJT4 A → MJT5 Y → DCT C");
+
+    expect(quality).toContain("중→한 번역 역할·등가 원칙");
+    expect(quality).toContain("기존 gate1_violation·unnatural_language·internal_inconsistency·band_mismatch");
+    expect(quality).toContain("중국어 어순·불필요한 주어 반복·명사화·직역 결합");
+    expect(quality).toContain("존댓말 종결형·감사·사과·호칭·완화어");
+    expect(quality).toContain("note_ko 문장을 한국어 correction 자체로 오인하지 마라");
+    expect(coreQuality).toContain("자기 발신 상황의 화자");
+    expect(coreQuality).toContain("다른 화행 사건으로 바뀌거나 보조 화행이 중심 목적을 대체");
+
+    expect(feedback).toContain("[중→한 번역 피드백 경계]");
+    expect(feedback).toContain("중국어 원문의 명제·참여자·화행 목적·명시된 태도");
+    expect(feedback).toContain("불필요한 주어 반복, 명사화·직역 결합");
+    expect(feedback).toContain("존댓말·감사·사과·완화 표현이 많거나 답이 길다는 이유만으로");
+    expect(feedback).not.toContain("[통역 전사 경계]");
+  });
+
   it("locks the R27 anchor topology and injects the fixed contrast plan", () => {
     expect(prompt("mission.system").text).toContain(
       "MJT2·3·4의 situation_ko는 Anchor A로 정확히 같아야",
@@ -161,9 +210,9 @@ describe("prompt snapshot integrity", () => {
       expect(releaseSource).toContain(`"${version}"`);
     }
     expect(canonicalSource).toContain("content_release_id: CURRENT_CONTENT_RELEASE_ID");
-    expect(canonicalSource).toContain("mission_item_repair_v10_r27_topology_context");
-    expect(canonicalSource).toContain("mission_candidate_band_v2_bounded_fallback");
-    expect(canonicalSource).toContain("quality_candidate_band_v1_boundary_crossing");
+    expect(canonicalSource).toContain("mission_item_repair_v11_zhko_translation");
+    expect(canonicalSource).toContain("mission_candidate_band_v3_zhko_translation");
+    expect(canonicalSource).toContain("quality_candidate_band_v2_zhko_translation");
     expect(canonicalSource).toContain("operations를 빈 배열로");
     expect(canonicalSource).toContain("replace_fix_choice_candidate");
     expect(canonicalSource).toContain("replace_multi_judge_candidate");
@@ -176,7 +225,7 @@ describe("prompt snapshot integrity", () => {
     expect(canonicalSource).toContain("verified_within_anchor");
     expect(canonicalSource).toContain("critic_self_contradiction_calibrated");
     expect(canonicalSource).toContain("normalizedPeers.has(normalizedReplacement)");
-    expect(canonicalSource).toContain("quality_relational_feedback_v2_zero_based_paths");
+    expect(canonicalSource).toContain("quality_relational_feedback_v3_directional_target");
     expect(canonicalSource).toContain("선택권 존중/의견 존중");
     expect(canonicalSource).toContain("MPJ5=mpj_items[4]");
     expect(canonicalSource).toContain("canRepairSituation");
@@ -254,7 +303,7 @@ describe("prompt snapshot integrity", () => {
     expect(prompt("core.user.source_repair").text).toContain("유효 글자 수를 반드시");
     expect(prompt("core.user.source_repair").text).toContain("인물·관계·상황·사실·화행 목적은 그대로 보존");
     expect(critic.text).toContain("국소적 두 턴만 본다");
-    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v13_speech_act_r_meaning_v1");
+    expect(CURRENT_CORE_PROMPT_VERSIONS).toContain("core_v14_zhko_translation_role_v1");
   });
   it("locks propositional supportive moves to server-authorized facts", () => {
     const mission = prompt("mission.system");
