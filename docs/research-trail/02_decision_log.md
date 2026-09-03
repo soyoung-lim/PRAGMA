@@ -3464,7 +3464,8 @@
 - 결정: 최신 main에서 `AdminDashboard.tsx`, `adminDashboardMetrics.ts`, 해당 test만 이식한다.
   라우트·공통 셸·사이드바·다른 화면·DB·Edge·프롬프트는 main 상태를 유지한다. production 반영은
   직접 feature 배포가 아니라 PR 필수 CI를 통과한 main merge만 사용한다.
-- 결과 경계: 구현 커밋 `d06abf4`는 로컬 main 후보이며 아직 push·PR·main merge·Railway 배포
-  증거가 아니다. 현행 DB 읽기 전용 화면과 회귀 검증만 완료했다.
+- 결과 경계: 구현 `d06abf4`와 기록 `8916fc0`은 PR #60의 필수 CI 성공 뒤 main merge
+  `4e6c019`로 반영됐다. main CI와 merge SHA 기반 Railway deployment `6249045157`이 성공했고,
+  로그인 운영 화면에서 신형 구조와 실시간 수치를 읽기 전용으로 확인했다.
 - 근거: `ITER-20260904-01`, `EVD-20260904-01`, `DEC-20260902-09`,
   `docs/dev-log/2026-09-04-admin-dashboard-main-restoration.md`.
