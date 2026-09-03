@@ -536,7 +536,7 @@ export function canPersistRepairQuality(quality: QualityCheck): boolean {
 
 const CANDIDATE_REGENERATION_CODES = new Set(["band_mismatch", "implausible_distractor"]);
 const CANDIDATE_PATH = /^mpj_items\[(2|4)\]\.(corrections|candidates)\[(\d+)\](?:\.|$)/;
-const CANDIDATE_GENERATION_PROMPT_VERSION = "mission_candidate_band_v2_bounded_fallback";
+const CANDIDATE_GENERATION_PROMPT_VERSION = "mission_candidate_band_v4_zhko_bidirectional";
 
 /** attempt=1 중 첫 1건은 최초 boundary 생성이고, 두 번째부터는 이미 후보 regeneration을 실행한 흔적이다. */
 export function candidateRetryAlreadyAttempted(attemptOneSuccessfulCalls: number): boolean {
@@ -795,7 +795,7 @@ async function regenerateMissionCandidatesOnce(args: {
   const meta = isRecord(response.meta) ? response.meta : {};
   const quality = qualityAfterCandidateRegeneration(args.quality, resolvedPaths, checks, {
     model: typeof meta.critic_model === "string" ? meta.critic_model : "candidate_band_critic",
-    promptVersion: typeof meta.critic_prompt_version === "string" ? meta.critic_prompt_version : "quality_candidate_band_v1_boundary_crossing",
+    promptVersion: typeof meta.critic_prompt_version === "string" ? meta.critic_prompt_version : "quality_candidate_band_v3_zhko_bidirectional",
     checkedAt: typeof meta.generated_at === "string" ? meta.generated_at : new Date().toISOString(),
     missionContentHash: contentHash,
   });

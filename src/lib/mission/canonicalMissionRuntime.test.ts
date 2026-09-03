@@ -111,6 +111,68 @@ describe("canonical mission runtime bridge", () => {
     expect(view.quests[4].candidates.filter((candidate) => candidate.role === "worst")).toHaveLength(1);
   });
 
+  it("runs a zh_ko translation with a Korean DCT target without changing the MPJ5 flow", () => {
+    const mission = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    mission.direction = "zh_ko";
+    mission.production_task.source_text = "方便的话，请把修改意见发给我。";
+    mission.production_task.reference_alternatives = [
+      { text: "괜찮으시면 수정 의견을 보내 주세요.", note_ko: "요청의 선택 가능성을 유지한다." },
+    ];
+
+    const view = adaptRunnableMissionToCanonical({
+      ...runnable(),
+      direction: "zh_ko",
+      mission,
+    });
+
+    expect(view.direction).toBe("중국어 → 한국어");
+    expect(view.sourceLanguage).toEqual({ code: "zh", label: "중국어", badge: "ZH" });
+    expect(view.targetLanguage).toEqual({ code: "ko", label: "한국어", badge: "KO" });
+    expect(view.quests.map((quest) => quest.kind)).toEqual([
+      "scale",
+      "scale",
+      "fix_choice",
+      "reason",
+      "best_worst",
+      "dct",
+      "dct_feedback",
+    ]);
+    expect(view.quests[5]).toMatchObject({
+      kind: "dct",
+      source: "方便的话，请把修改意见发给我。",
+      prompt: "이 말을 한국어로 옮겨 보세요.",
+      referenceAnswer: "괜찮으시면 수정 의견을 보내 주세요.",
+    });
+  });
+
+  it("runs zh_ko interpreting with Chinese TTS input and Korean STT output metadata", () => {
+    const mission = structuredClone(SAMPLE_MISSION_V5_NATIVE);
+    mission.direction = "zh_ko";
+    mission.production_task.mode = "interpreting";
+    mission.production_task.source_modality = "spoken";
+    mission.production_task.source_text = "方便的话，请把修改意见发给我。";
+    mission.production_task.replay_limit = 2;
+    mission.production_task.reference_alternatives = [
+      { text: "괜찮으시면 수정 의견을 보내 주세요.", note_ko: "요청의 선택 가능성을 유지한다." },
+    ];
+
+    const view = adaptRunnableMissionToCanonical({
+      ...runnable(),
+      direction: "zh_ko",
+      mission,
+    });
+
+    expect(view.activityMode).toBe("interpreting");
+    expect(view.sourceLanguage.code).toBe("zh");
+    expect(view.targetLanguage.code).toBe("ko");
+    expect(view.quests[5]).toMatchObject({
+      kind: "dct",
+      prompt: "원발화를 듣고 한국어로 통역해 보세요.",
+      replayLimit: 2,
+      vocabularyHints: [],
+    });
+  });
+
   it("maps the current contrast plan to two acceptable and two adjustment-needed choices", () => {
     const current = structuredClone(SAMPLE_MISSION_V5_NATIVE) as typeof SAMPLE_MISSION_V5_NATIVE & {
       contrast_plan: {

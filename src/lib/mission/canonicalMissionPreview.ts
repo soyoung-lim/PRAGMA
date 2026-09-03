@@ -101,6 +101,7 @@ export interface BestWorstQuest extends QuestBase {
 export interface DctQuest extends QuestBase {
   kind: "dct";
   prompt: string;
+  replayLimit?: number;
   vocabularyHints: Array<{ source: string; target: string }>;
   referenceAnswer: string;
   requestParts: {
@@ -165,6 +166,8 @@ export interface CanonicalMissionViewModel {
   supportLevel: "beginner" | "intermediate" | "advanced";
   activityMode: "translation" | "interpreting";
   direction: string;
+  sourceLanguage: { code: "ko" | "zh"; label: string; badge: "KO" | "ZH" };
+  targetLanguage: { code: "ko" | "zh"; label: string; badge: "KO" | "ZH" };
   contrast: {
     before: string;
     after: string;
@@ -183,6 +186,8 @@ export const CANONICAL_MISSION_PREVIEW: CanonicalMissionViewModel = {
   supportLevel: "intermediate",
   activityMode: "translation",
   direction: "한국어 → 중국어",
+  sourceLanguage: { code: "ko", label: "한국어", badge: "KO" },
+  targetLanguage: { code: "zh", label: "중국어", badge: "ZH" },
   contrast: {
     before: "초면의 인턴십 담당자에게 면접 일정 조정 요청",
     after: "같은 담당자에게 안내 파일 재전송 요청",
