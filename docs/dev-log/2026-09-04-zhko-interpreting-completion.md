@@ -28,13 +28,17 @@
 - 정본 런타임·통역 UI·프롬프트 표적: **3 files, 24 tests 통과**. 통역 UI는 렌더링뿐 아니라
   중국어 TTS 요청 → 녹음 → 한국어 STT → 전사 확인 → 확정 전사 제출까지 모의 상호작용으로 검증했다.
 - `npm.cmd run typecheck`: 통과.
-- 전체 회귀검사: **118 files 통과, 3 files 스킵 / 702 tests 통과, 9 tests 스킵**.
+- 최신 main 통합 뒤 전체 회귀검사: **119 files 통과, 3 files 스킵 / 706 tests 통과,
+  9 tests 스킵**.
 - `npm.cmd run prompts:verify`: 결정성 스냅샷 2종 통과. 프롬프트 스냅샷은 34종이며
   core surface hash `a73b79367c7f…`를 확인했다.
 - 변경 파일 ESLint: 오류 0, 기존 `CanonicalMissionRun.tsx`의 fast-refresh·hook 경고 4건.
 - Edge 검수 번들을 재생성한 뒤 `npm.cmd run build`: 통과. production source·프롬프트·검수 번들
   사전 검증과 Vite **1,968 modules** 변환을 완료했다. 기존 CSS 구문·500 kB 청크 경고는 남아 있다.
 - `git diff --check`: 공백 오류 없음(CRLF 변환 안내만 있음).
+- 최신 main `859f8a7`을 병합하고 대시보드 기록 `-01`, 중→한 번역 `-02`, 중→한 통역
+  `-03`으로 연구 기록 ID를 충돌 없이 정렬했다. 기능 코드 충돌은 없었고 신형 대시보드도
+  전체 회귀에 포함됐다.
 
 ## 운영·데이터 경계
 
@@ -44,5 +48,5 @@
 
 ## 관련 기록
 
-- `DEC-20260904-02`
-- `ITER-20260904-02`
+- `DEC-20260904-03`
+- `ITER-20260904-03`
