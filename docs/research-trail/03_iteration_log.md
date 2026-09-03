@@ -3310,7 +3310,8 @@
   전체 테스트의 10개 suite 시작 실패는 환경 주입 후 모두 해소됐다.
 - 교훈: 화면이 한 번 production에 보였다는 사실은 main 계보 통합의 증거가 아니다. 복구 시에도
   feature branch 전체를 병합하지 말고 기능의 최소 폐쇄 단위와 현행 main 회귀를 함께 검증해야 한다.
-- 완료 경계: 로컬 main 후보와 구현 커밋까지만 완료했다. push·PR·main merge·필수 CI·Railway
-  배포·운영 smoke는 후속 승인 뒤 별도 증거로 기록한다.
+- 완료 경계: PR #60 필수 CI `33782520987` 성공, main merge `4e6c019`, main CI
+  `33783769542` 성공, merge SHA 기반 Railway deployment `6249045157` success와 로그인 운영
+  대시보드의 신형 구조·실시간 수치를 확인했다. DB 쓰기와 다른 기능 변경은 수행하지 않았다.
 - 관련: `DEC-20260904-01`, `EVD-20260904-01`,
   `docs/dev-log/2026-09-04-admin-dashboard-main-restoration.md`.

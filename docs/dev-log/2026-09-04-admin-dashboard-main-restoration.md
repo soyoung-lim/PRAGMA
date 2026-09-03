@@ -44,11 +44,17 @@
   시작 단계에서 실패했다. 루트 `.env`를 값 출력 없이 테스트 프로세스에만 주입해 재실행했고
   위 전체 결과로 통과했다.
 
-## 배포 경계
+## main 병합·배포와 운영 확인
 
-- 현재 결과는 최신 main 기반의 로컬 clean 후보와 구현 커밋 `d06abf4`다.
-- 아직 원격 push, PR, main 병합, Railway 배포는 실행하지 않았다. `DEC-20260902-09`에 따라
-  production은 PR 필수 CI를 통과한 main merge만 소스로 사용해야 한다.
+- 구현 `d06abf4`와 기록 `8916fc0`을 원격 브랜치에 push하고 PR #60을 만들었다. PR 필수 CI
+  `33782520987`이 성공한 뒤 main merge `4e6c019`로 반영했다.
+- main post-merge CI `33783769542`도 typecheck, 전체 tests, production source policy,
+  로컬 PostgreSQL 승인 경계와 production build를 모두 통과했다.
+- Railway GitHub App이 main merge SHA `4e6c019`로 만든 production deployment record
+  `6249045157`의 상태가 `success`임을 확인했다. feature branch 직접 배포는 하지 않았다.
+- 로그인 운영 `/admin/dashboard`에서 신형 세 영역, 정확히 3개의 `DB 실시간` 태그와 현재 값
+  `1,624 / 236 / 214 / 2`, `213 / 0 / 0 / 0 / 1`, `16 / 2 / 63`을 DOM과 화면으로
+  재확인했다. 운영 데이터 쓰기는 하지 않았다.
 
 ## 연구 기록
 
