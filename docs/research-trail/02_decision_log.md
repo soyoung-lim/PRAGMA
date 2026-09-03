@@ -3451,3 +3451,20 @@
   Railway production source로 사용했다.
 - 근거: `ITER-20260903-01`, `EVD-20260903-01`,
   `docs/dev-log/2026-09-03-lounge-visual-harmonization.md`.
+
+## DEC-20260904-01 · 신형 관리자 대시보드는 세 파일만 최신 main에 국소 이식
+
+- 날짜: 2026-09-04
+- 문제: 신형 대시보드는 feature branch와 당시 운영 배포에는 있었지만 main 계보에 없어서,
+  다음 정상 main 배포가 구형 화면을 다시 제공했다. 반면 원 feature branch 전체 병합은 현재
+  main과 무관한 관리자 IA·검수·문서 변경까지 함께 가져와 다른 기능을 흔들 위험이 있었다.
+- 대안: feature branch 전체 병합, 대시보드 화면만 복사, 화면과 집계 helper·회귀 테스트를
+  하나의 최소 단위로 이식하는 안을 검토했다. 화면만 복사하면 집계 계약과 검증이 빠지고, 전체
+  병합은 범위가 과도하므로 세 번째 안을 채택했다.
+- 결정: 최신 main에서 `AdminDashboard.tsx`, `adminDashboardMetrics.ts`, 해당 test만 이식한다.
+  라우트·공통 셸·사이드바·다른 화면·DB·Edge·프롬프트는 main 상태를 유지한다. production 반영은
+  직접 feature 배포가 아니라 PR 필수 CI를 통과한 main merge만 사용한다.
+- 결과 경계: 구현 커밋 `d06abf4`는 로컬 main 후보이며 아직 push·PR·main merge·Railway 배포
+  증거가 아니다. 현행 DB 읽기 전용 화면과 회귀 검증만 완료했다.
+- 근거: `ITER-20260904-01`, `EVD-20260904-01`, `DEC-20260902-09`,
+  `docs/dev-log/2026-09-04-admin-dashboard-main-restoration.md`.
