@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import { AdminShell } from "@/components/AdminShell";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,216 +15,399 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { isMissionReleasedForLearner } from "@/lib/mission/missionRelease";
+import {
+  DASHBOARD_ROW_CAP,
+  DASHBOARD_REVIEW_CRITERIA_VERSION,
+  dominantDashboardReviewStage,
+  summarizeDashboardAssignments,
+  summarizeDashboardContent,
+  summarizeDashboardReviewStages,
+  type DashboardAssignmentRow,
+  type DashboardReviewRunRow,
+  type DashboardReviewQueueStage,
+  type DashboardReviewStageCounts,
+  type DashboardScenarioRow,
+} from "@/lib/admin/adminDashboardMetrics";
+import { CONTENT_REVIEW_STEPS } from "../../../supabase/functions/_shared/contentReview";
 import { toast } from "sonner";
-import { missionQualityVerdict } from "@/lib/pragma/adminReviewQueue";
-import { ADMIN_PRIORITY_LINKS } from "@/lib/admin/adminNavigation";
 
-type CountState = { value: number | null; error: string | null; loading: boolean };
-const initial: CountState = { value: null, error: null, loading: true };
-
-// content_format·mission_status 컬럼과 curriculum_week_scenarios는 아직 생성 타입(types.ts)에
-// 없다 — AdminBrowser·composer.ts와 동일한 우회. types 재생성 시 함께 정리한다.
+// content_review_runs는 2026-08-27 migration 이후 생성 타입을 아직 재발행하지 않았다.
+// 이 화면의 예외는 조회 전용이며 선택 컬럼을 DashboardReviewRunRow로 즉시 좁힌다.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as unknown as { from: (t: string) => any };
+const db = supabase as unknown as { from: (table: string) => any };
 
-const LiveBadge = () => (
-  <Badge
-    variant="outline"
-    className="gap-1.5 whitespace-nowrap border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-50"
-  >
-    <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-    DB 실시간
-  </Badge>
-);
-// 카드마다 「DB 실시간」을 반복하면 라벨과 배지가 서로 밀어내 두 줄로 접힌다
-// (좁은 5열에서 "시나리오 코/어", "DB 실시/간"). 실시간 여부는 섹션 헤더가 이미
-// 말하므로, 카드 배지는 **그 섹션의 기본과 다를 때만** 단다(미가동 등).
-const StatCard = ({
-  label,
-  state,
-  badge,
-  note,
-}: {
-  label: string;
-  state: CountState;
-  badge?: React.ReactNode;
-  note?: string;
-}) => (
-  <div className="flex flex-col rounded-xl border border-border bg-card p-5">
-    {/* 라벨은 항상 한 줄 전체를 쓴다 — 배지를 옆에 두면 좁은 열에서 라벨이 잘린다 */}
-    <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
-    <p className="mt-3 text-[30px] font-semibold leading-none tabular-nums">
-      {state.loading ? (
-        <span className="text-muted-foreground">…</span>
-      ) : state.error ? (
-        <span className="text-base font-normal text-destructive">확인 필요</span>
-      ) : (
-        state.value ?? 0
-      )}
-    </p>
-    {/* note와 배지를 같은 줄에 둔다. note가 없는 카드도 높이를 유지해 행이 어긋나지 않게. */}
-    <div className="mt-2 flex min-h-[22px] items-center justify-between gap-2">
-      <span className="truncate text-[11px] text-muted-foreground">{note ?? ""}</span>
-      {badge && <span className="shrink-0">{badge}</span>}
-    </div>
-    {state.error && <p className="mt-1 text-[11px] text-destructive">{state.error}</p>}
-  </div>
-);
+type DashboardSnapshot = {
+  content: ReturnType<typeof summarizeDashboardContent>;
+  review: DashboardReviewStageCounts;
+  assignments: ReturnType<typeof summarizeDashboardAssignments>;
+  approvedLearnerCount: number;
+  learnerRecordCount: number;
+};
 
-const SectionHeader = ({
+type DashboardMetricKey =
+  | "core"
+  | "mission"
+  | "reviewTarget"
+  | "finalized"
+  | `review.${DashboardReviewQueueStage}`
+  | "assignments"
+  | "learners"
+  | "records";
+
+function dashboardMetricValues(snapshot: DashboardSnapshot): Record<DashboardMetricKey, number> {
+  return {
+    core: snapshot.content.coreCount,
+    mission: snapshot.content.generatedMissionCount,
+    reviewTarget: snapshot.content.reviewTargetCount,
+    finalized: snapshot.content.professorFinalizedCount,
+    "review.rules": snapshot.review.rules,
+    "review.openai": snapshot.review.openai,
+    "review.claude": snapshot.review.claude,
+    "review.adjudication": snapshot.review.adjudication,
+    "review.professor": snapshot.review.professor,
+    assignments: snapshot.assignments.missionCount,
+    learners: snapshot.approvedLearnerCount,
+    records: snapshot.learnerRecordCount,
+  };
+}
+
+const PanelHeader = ({
   title,
-  badge,
+  description,
+  action,
 }: {
   title: string;
-  badge: React.ReactNode;
+  description?: string;
+  action?: ReactNode;
 }) => (
-  <div className="mb-3 mt-8 flex items-center gap-3">
-    <h2 className="text-base font-semibold">{title}</h2>
-    {badge}
+  <div className="mb-2 mt-7 rounded-r-md border-l-4 border-[#D6BE42] bg-[#F3F0E5] px-3 py-1.5">
+    <div className="flex flex-wrap items-center gap-2">
+      <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-[#1B2A36]">{title}</h2>
+      {action}
+    </div>
+    {description && <p className="mt-0.5 text-[11px] text-muted-foreground">{description}</p>}
   </div>
 );
+
+const SummaryMetric = ({
+  to,
+  label,
+  value,
+  unit,
+  description,
+  error,
+  changed = false,
+}: {
+  to: string;
+  label: string;
+  value: number | null;
+  unit: string;
+  description: string;
+  error: string | null;
+  changed?: boolean;
+}) => (
+  <Link
+    to={to}
+    className={[
+      "group flex min-h-[98px] flex-col rounded-lg border bg-card p-3 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
+      "motion-safe:transition-all motion-safe:duration-200 hover:border-[#C9B54E] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8AA2F]",
+      changed ? "border-[#D6B84A] bg-[#FFFBE8] ring-2 ring-[#F4D85E]/30" : "border-border",
+    ].join(" ")}
+  >
+    <span className="text-xs font-medium text-muted-foreground group-hover:text-[#273B4A]">{label}</span>
+    <div className="mt-1.5 flex items-end gap-1.5">
+      {value === null && !error ? (
+        <span aria-label="불러오는 중" className="h-7 w-14 rounded bg-muted motion-safe:animate-pulse" />
+      ) : (
+        <span className="text-[27px] font-semibold leading-none tracking-[-0.025em] text-[#15202B] tabular-nums">
+          {error ? <span className="text-sm font-normal text-destructive">확인 필요</span> : value}
+        </span>
+      )}
+      {!error && value !== null && <span className="pb-0.5 text-[11px] text-muted-foreground">{unit}</span>}
+    </div>
+    <span className="mt-auto pt-1.5 text-[11px] leading-4 text-muted-foreground">{description}</span>
+  </Link>
+);
+
+const REVIEW_STAGE_DISPLAY_LABELS: Record<DashboardReviewQueueStage, string> = {
+  rules: "규칙 기반 점검",
+  openai: "AI 1차 검토",
+  claude: "AI 교차 검토",
+  adjudication: "검토 결과 정리",
+  professor: "교수자 최종 승인",
+};
+
+const REVIEW_STAGE_DESCRIPTIONS: Record<DashboardReviewQueueStage, string> = {
+  rules: "자동 규칙 점검 필요",
+  openai: "1차 검토 대기",
+  claude: "독립 교차검토 대기",
+  adjudication: "지적별 판정 대기",
+  professor: "최종 승인 대기",
+};
+
+const REVIEW_STAGE_ITEMS = CONTENT_REVIEW_STEPS.map((stage, index) => ({
+  ...stage,
+  step: index + 1,
+  displayLabel: REVIEW_STAGE_DISPLAY_LABELS[stage.key],
+  description: REVIEW_STAGE_DESCRIPTIONS[stage.key],
+}));
+
+const ReviewPipeline = ({
+  review,
+  dominant,
+  error,
+  changedKeys,
+}: {
+  review: DashboardReviewStageCounts | null;
+  dominant: DashboardReviewQueueStage | null;
+  error: string | null;
+  changedKeys: ReadonlySet<DashboardMetricKey>;
+}) => (
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 xl:gap-8">
+      {REVIEW_STAGE_ITEMS.map((stage) => {
+        const value = review?.[stage.key] ?? null;
+        const active = dominant === stage.key;
+        const changed = changedKeys.has(`review.${stage.key}`);
+        return (
+          <div key={stage.key} className="relative min-w-0">
+            <Link
+              to="/admin/review"
+              className={[
+                "group flex min-h-[98px] flex-col rounded-lg border bg-card p-3 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
+                "motion-safe:transition-all motion-safe:duration-200 hover:border-[#C9B54E] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8AA2F]",
+                active ? "border-[#D6B84A] bg-[#FFFBE8]" : "border-border",
+                changed ? "ring-2 ring-[#F4D85E]/35" : "",
+              ].join(" ")}
+            >
+              <div className="flex items-center gap-2">
+                <span className={[
+                  "inline-flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold tabular-nums",
+                  active ? "bg-[#F1D54A] text-[#293641]" : "bg-[#EEF1F2] text-[#63727C]",
+                ].join(" ")}>
+                  {stage.step}
+                </span>
+                <span className="text-xs font-semibold leading-4 text-[#3F4E59]">{stage.displayLabel}</span>
+              </div>
+              <div className="mt-1.5 flex items-end gap-1.5">
+                {value === null && !error ? (
+                  <span aria-label="불러오는 중" className="h-7 w-12 rounded bg-muted motion-safe:animate-pulse" />
+                ) : (
+                  <span className="text-[27px] font-semibold leading-none tracking-[-0.025em] text-[#15202B] tabular-nums">
+                    {error ? <span className="text-xs font-normal text-destructive">확인 필요</span> : value}
+                  </span>
+                )}
+                {!error && value !== null && <span className="pb-0.5 text-[11px] text-muted-foreground">개</span>}
+              </div>
+              <span className="mt-auto pt-1.5 text-[11px] text-muted-foreground">{stage.description}</span>
+            </Link>
+            {stage.step < REVIEW_STAGE_ITEMS.length && (
+              <ArrowRight aria-hidden className="absolute -right-[26px] top-1/2 hidden h-5 w-5 -translate-y-1/2 text-[#81909A] xl:block" />
+            )}
+          </div>
+        );
+      })}
+  </div>
+);
+
+const OperationMetric = ({
+  to,
+  label,
+  value,
+  unit,
+  description,
+  error,
+  changed = false,
+}: {
+  to: string;
+  label: string;
+  value: number | null;
+  unit: string;
+  description: string;
+  error: string | null;
+  changed?: boolean;
+}) => (
+  <Link
+    to={to}
+    className={[
+      "group flex min-h-[98px] flex-col rounded-lg border bg-card p-3 shadow-[0_1px_2px_rgba(21,32,43,0.04)]",
+      "motion-safe:transition-all motion-safe:duration-200 hover:border-[#789184] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4E8063]",
+      changed ? "border-[#75A488] bg-[#F3FAF5] ring-2 ring-[#8FC7A4]/30" : "border-border",
+    ].join(" ")}
+  >
+    <span className="text-xs font-medium text-muted-foreground group-hover:text-[#273B4A]">{label}</span>
+    {value === null && !error ? (
+      <span aria-label="불러오는 중" className="mt-1.5 h-7 w-16 rounded bg-muted motion-safe:animate-pulse" />
+    ) : (
+      <span className="mt-1.5 flex items-end gap-1.5">
+        <span className="text-[27px] font-semibold leading-none tracking-[-0.025em] text-[#15202B] tabular-nums">
+          {error ? <span className="text-sm font-normal text-destructive">확인 필요</span> : value}
+        </span>
+        {!error && value !== null && <span className="pb-0.5 text-[11px] text-muted-foreground">{unit}</span>}
+      </span>
+    )}
+    <span className="mt-auto pt-1.5 text-[11px] leading-4 text-muted-foreground">{description}</span>
+  </Link>
+);
+
+const LiveDatabaseStatus = ({ delayed }: { delayed: boolean }) => (
+  <span
+    aria-live="polite"
+    className={[
+      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
+      delayed
+        ? "border-amber-200 bg-amber-50 text-amber-800"
+        : "border-emerald-200 bg-emerald-50 text-emerald-700",
+    ].join(" ")}
+  >
+    <span className="relative flex h-2 w-2" aria-hidden>
+      {!delayed && <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-50 motion-safe:animate-ping" />}
+      <span className={["relative inline-flex h-2 w-2 rounded-full", delayed ? "bg-amber-500" : "bg-emerald-500"].join(" ")} />
+    </span>
+    {delayed ? "갱신 지연" : "DB 실시간"}
+  </span>
+);
+
+const DASHBOARD_PAGE_SIZE = 1000;
+
+async function fetchAllDashboardRows<T>(
+  label: string,
+  queryPage: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; from <= DASHBOARD_ROW_CAP; from += DASHBOARD_PAGE_SIZE) {
+    const { data, error } = await queryPage(from, from + DASHBOARD_PAGE_SIZE - 1);
+    if (error) throw new Error(`${label} 집계 실패: ${error.message}`);
+    const page = (data ?? []) as T[];
+    if (from === DASHBOARD_ROW_CAP && page.length > 0) {
+      throw new Error(`${label} 집계가 안전 조회 상한 ${DASHBOARD_ROW_CAP}건을 초과했습니다.`);
+    }
+    rows.push(...page);
+    if (page.length < DASHBOARD_PAGE_SIZE) return rows;
+  }
+  return rows;
+}
 
 const AdminDashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [resetting, setResetting] = useState(false);
-
-  const [total, setTotal] = useState<CountState>(initial);
-  const [pending, setPending] = useState<CountState>(initial);
-  const [approved, setApproved] = useState<CountState>(initial);
-  const [traces, setTraces] = useState<CountState>(initial);
-
-  // 분리 계수 (생성계약 0-g·46 → 0-q·101) — 코어·미션·검수·검토·실행가능을 한 숫자로 합치지 않는다.
-  const [coreN, setCoreN] = useState<CountState>(initial);
-  const [legacyN, setLegacyN] = useState<CountState>(initial);
-  const [missionGenN, setMissionGenN] = useState<CountState>(initial);
-  const [aiCheckN, setAiCheckN] = useState<CountState>(initial);
-  const [reviewedN, setReviewedN] = useState<CountState>(initial);
-  const [runnableN, setRunnableN] = useState<CountState>(initial);
+  const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [changedKeys, setChangedKeys] = useState<Set<DashboardMetricKey>>(() => new Set());
+  const mountedRef = useRef(false);
+  const refreshInFlightRef = useRef(false);
+  const previousMetricsRef = useRef<Record<DashboardMetricKey, number> | null>(null);
+  const changeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    (async () => {
+    let active = true;
+
+    void (async () => {
       const { data } = await supabase.rpc("is_admin");
-      setIsAdmin(Boolean(data));
+      if (active) setIsAdmin(Boolean(data));
     })();
 
-    const load = async (
-      set: (s: CountState) => void,
-      run: () => PromiseLike<{ count: number | null; error: unknown }>,
-      label: string,
-    ) => {
-      try {
-        const { count, error } = await run();
-        if (error) throw error;
-        set({ value: count ?? 0, error: null, loading: false });
-      } catch (e) {
-        const msg = (e as Error)?.message ?? String(e);
-        console.error(`[dashboard] ${label} count failed:`, e);
-        set({ value: null, error: msg, loading: false });
-      }
+    return () => {
+      active = false;
     };
-
-    load(setTotal, () =>
-      supabase.from("scenarios").select("*", { count: "exact", head: true }),
-      "scenarios.total",
-    );
-    load(setPending, () =>
-      supabase
-        .from("scenarios")
-        .select("*", { count: "exact", head: true })
-        .eq("content_format", "scenario_core_v1")
-        .eq("review_status", "needs_review"),
-      "scenarios.core_needs_review",
-    );
-    load(setApproved, () =>
-      supabase
-        .from("scenarios")
-        .select("*", { count: "exact", head: true })
-        .eq("content_format", "scenario_core_v1")
-        .eq("review_status", "approved"),
-      "scenarios.core_approved",
-    );
-    // 학습자 수행 = mission_v4·v5 실행 로그(learner_mission_logs). 예전에는 프로토타입
-    // 시절 트레이서인 decision_traces를 세어, 실제 수행이 쌓여도 0으로 표시됐다.
-    // head:true는 권한 거부를 삼키고 0을 돌려주므로 본문 응답으로 받는다.
-    load(setTraces, () =>
-      db.from("learner_mission_logs").select("id", { count: "exact" }),
-      "learner_mission_logs.total",
-    );
-
-    // head:true 카운트는 권한 거부(401)를 삼키고 0을 돌려준다 — 보고용 수치가 "0건"으로
-    // 조용히 거짓말하지 않도록 분리 계수는 본문 응답을 받아 실패가 드러나게 한다.
-    load(setCoreN, () =>
-      db
-        .from("scenarios")
-        .select("scenario_id", { count: "exact" })
-        .eq("content_format", "scenario_core_v1"),
-      "scenarios.core_v1",
-    );
-    load(setLegacyN, () =>
-      db
-        .from("scenarios")
-        .select("scenario_id", { count: "exact" })
-        .eq("content_format", "legacy_v1"),
-      "scenarios.legacy_v1",
-    );
-    load(setMissionGenN, () =>
-      db
-        .from("scenarios")
-        .select("scenario_id", { count: "exact" })
-        .eq("mission_status", "generated"),
-      "scenarios.mission_pending",
-    );
-    load(
-      setAiCheckN,
-      async () => {
-        const { data, error } = await db
-          .from("scenarios")
-          .select("mission_content")
-          .eq("mission_status", "generated");
-        const count = error
-          ? null
-          : ((data ?? []) as { mission_content: unknown }[]).filter(
-              (row) => missionQualityVerdict(row.mission_content) === "pass",
-            ).length;
-        return { count, error };
-      },
-      "scenarios.mission_ai_pass_pending",
-    );
-    load(setReviewedN, () =>
-      db
-        .from("scenarios")
-        .select("scenario_id", { count: "exact" })
-        .eq("mission_status", "reviewed"),
-      "scenarios.mission_reviewed",
-    );
-
-    // 실행 가능 = authoritative released 또는 legacy reviewed ∩ 주차 배정.
-    (async () => {
-      try {
-        const [rev, asg] = await Promise.all([
-          db.from("scenarios").select("scenario_id,mission_status,release_gate_mode").in("mission_status", ["reviewed", "released"]),
-          db.from("curriculum_week_scenarios").select("scenario_id"),
-        ]);
-        if (rev.error) throw rev.error;
-        if (asg.error) throw asg.error;
-        const assigned = new Set(
-          ((asg.data ?? []) as { scenario_id: string }[]).map((r) => r.scenario_id),
-        );
-        const n = ((rev.data ?? []) as { scenario_id: string; mission_status: string; release_gate_mode: string | null }[]).filter((r) =>
-          assigned.has(r.scenario_id) && isMissionReleasedForLearner(r),
-        ).length;
-        setRunnableN({ value: n, error: null, loading: false });
-      } catch (e) {
-        console.error("[dashboard] runnable count failed:", e);
-        setRunnableN({
-          value: null,
-          error: (e as { message?: string })?.message ?? "조회 실패",
-          loading: false,
-        });
-      }
-    })();
   }, []);
+
+  const refreshDashboard = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
+
+    try {
+      const [scenarioRows, reviewRows, assignmentRows, learnerResult, learnerRecordResult] = await Promise.all([
+        fetchAllDashboardRows<DashboardScenarioRow>("시나리오", (from, to) => db
+          .from("scenarios")
+          .select("scenario_id,content_format,review_status,mission_status,updated_at,mission_schema_version:mission_content->>schema_version,authoring_stage:mission_content->authoring->>stage")
+          .eq("content_format", "scenario_core_v1")
+          .order("scenario_id", { ascending: true })
+          .range(from, to)),
+        fetchAllDashboardRows<DashboardReviewRunRow>("검수 이력", (from, to) => db
+          .from("content_review_runs")
+          .select("target_id,kind,criteria_version,rules_verdict:rules->>verdict,openai_response_id:openai_review->>response_id,claude_response_id:claude_review->>response_id,adjudication_response_id:adjudication->>response_id,created_at")
+          .eq("kind", "mission")
+          .eq("criteria_version", DASHBOARD_REVIEW_CRITERIA_VERSION)
+          .order("created_at", { ascending: false })
+          .range(from, to)),
+        fetchAllDashboardRows<DashboardAssignmentRow>("수업 편성", (from, to) => db
+          .from("curriculum_week_scenarios")
+          .select("outline_id,week_no,scenario_id")
+          .order("outline_id", { ascending: true })
+          .order("week_no", { ascending: true })
+          .order("scenario_id", { ascending: true })
+          .range(from, to)),
+        db.from("profiles").select("id", { count: "exact" }).eq("role", "learner").eq("approval_status", "approved").limit(1),
+        db.from("learner_mission_logs").select("id", { count: "exact" }).limit(1),
+      ]);
+
+      const results = [
+        ["승인 학습자", learnerResult],
+        ["학습 수행", learnerRecordResult],
+      ] as const;
+      for (const [label, result] of results) {
+        if (result.error) throw new Error(`${label} 집계 실패: ${result.error.message}`);
+      }
+
+      const next: DashboardSnapshot = {
+        content: summarizeDashboardContent(scenarioRows),
+        review: summarizeDashboardReviewStages(scenarioRows, reviewRows),
+        assignments: summarizeDashboardAssignments(assignmentRows),
+        approvedLearnerCount: learnerResult.count ?? 0,
+        learnerRecordCount: learnerRecordResult.count ?? 0,
+      };
+      if (!mountedRef.current) return;
+
+      const nextMetrics = dashboardMetricValues(next);
+      const previous = previousMetricsRef.current;
+      if (previous) {
+        const changed = new Set(
+          (Object.keys(nextMetrics) as DashboardMetricKey[]).filter(
+            (key) => previous[key] !== nextMetrics[key],
+          ),
+        );
+        setChangedKeys(changed);
+        if (changeTimerRef.current) window.clearTimeout(changeTimerRef.current);
+        if (changed.size > 0) {
+          changeTimerRef.current = window.setTimeout(() => setChangedKeys(new Set()), 900);
+        }
+      }
+      previousMetricsRef.current = nextMetrics;
+      setSnapshot(next);
+      setDashboardError(null);
+    } catch (cause) {
+      console.error("[dashboard] metrics failed:", cause);
+      if (mountedRef.current) {
+        setDashboardError(cause instanceof Error ? cause.message : "대시보드 조회 실패");
+      }
+    } finally {
+      refreshInFlightRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    void refreshDashboard();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshDashboard();
+    }, 30_000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refreshDashboard();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      mountedRef.current = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (changeTimerRef.current) window.clearTimeout(changeTimerRef.current);
+    };
+  }, [refreshDashboard]);
+
+  const dominantReviewStage = useMemo(
+    () => snapshot ? dominantDashboardReviewStage(snapshot.review) : null,
+    [snapshot],
+  );
+  const displayError = snapshot ? null : dashboardError;
 
   const handleReset = async () => {
     setResetting(true);
@@ -244,113 +427,121 @@ const AdminDashboard = () => {
       console.log("[reset-profile] updated rows:", data);
       toast.success("초기화됨. 로그아웃 후 다시 로그인하면 프로필 설정부터 시작합니다.");
       window.dispatchEvent(new Event("profile-changed"));
-    } catch (e) {
-      console.error("[reset-profile] failed:", e);
-      toast.error("초기화 실패: " + (e as Error).message);
+    } catch (cause) {
+      console.error("[reset-profile] failed:", cause);
+      toast.error(`초기화 실패: ${(cause as Error).message}`);
     } finally {
       setResetting(false);
     }
   };
 
-  const approvedN = approved.value ?? 0;
-
   return (
     <AdminShell
       title="운영 대시보드"
-      description="콘텐츠 생성부터 검수·편성·학습자 실행까지, 지금 확인하고 처리할 운영 현황을 보여줍니다."
+      description="콘텐츠 준비, 검수, 수업 현황을 한눈에 확인합니다."
     >
-      {/* Row 0: 분리 계수 — 단계별 수량을 한 숫자로 합치지 않는다 (0-g·46 → 0-q·101) */}
-      <SectionHeader title="콘텐츠 단계별 현황" badge={<LiveBadge />} />
-      {/* 다섯 숫자가 같은 모집단의 순차 감소로 읽히면 안 된다 — ①은 코어, ②~⑤는
-          미션이라 집계 단위가 다르다. AI 점검을 최종 관문처럼 보이게 하지 않도록
-          교수자 검토를 별도 단계로 적는다. (문구만 변경, 질의·상태값은 불변) */}
-      <p className="mb-3 text-xs text-muted-foreground">
-        ①은 시나리오 코어 수, ②~⑤는 학습 미션 수입니다. 생성된 미션은 AI 품질 점검과
-        교수자 검토를 거쳐 수업에 배치됩니다.
-      </p>
-      {/* 1024~1280에서 5열이면 카드가 140px까지 좁아져 라벨이 잘린다 — 그 구간은 3열로. */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <StatCard label="① 시나리오 코어" state={coreN} note="검색·편성 단위" />
-        <StatCard label="② 미션 생성 완료" state={missionGenN} note="교수자 검토 대기" />
-        <StatCard
-          label="③ AI 점검 통과·대기"
-          state={aiCheckN}
-          note="② 중 점검 통과분"
+      {displayError && (
+        <p role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          운영 지표를 처음 불러오지 못했습니다. {displayError}
+        </p>
+      )}
+
+      <PanelHeader
+        title="콘텐츠 준비 현황"
+        action={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />}
+      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryMetric
+          to="/admin/library"
+          label="시나리오 원안"
+          value={snapshot?.content.coreCount ?? null}
+          unit="개"
+          description="학습 미션 제작의 기본 자료"
+          error={displayError}
+          changed={changedKeys.has("core")}
         />
-        <StatCard label="④ 교수자 검토 완료" state={reviewedN} note="검토 통과" />
-        <StatCard label="⑤ 수업 배치 가능" state={runnableN} note="검토 통과 + 주차 배정" />
-      </div>
-      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-        <p>
-          <span className="font-medium text-foreground">
-            수업 배치 가능 수는 교수자 검토를 마치고 실제 주차에 배정된 미션만 집계합니다.
-          </span>{" "}
-          ③은 ②의 부분집합입니다.
-        </p>
-        <p>
-          <span className="font-medium text-foreground">
-            &ldquo;500&rdquo;의 단위 = ① 시나리오 코어
-          </span>{" "}
-          — 교강사가 15주를 편성할 때 고르는 검색 단위입니다.
-        </p>
-        <p>
-          구버전 형식 시나리오 {legacyN.loading ? "…" : (legacyN.value ?? 0)}건은 위 집계에서
-          제외됩니다. 주차별 수업 운영·교실 화면은 별도 메뉴에서 실제 편성 데이터를 기준으로
-          제공합니다.
-        </p>
-      </div>
-
-      {/* Row 1: 운영 현황 */}
-      <SectionHeader title="운영 현황" badge={<LiveBadge />} />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="전체 시나리오" state={total} note="구버전 포함 총계" />
-        <StatCard label="코어 상태·대기" state={pending} note="학습자 실행 게이트 아님" />
-        <StatCard label="코어 승인 상태" state={approved} note="신규 미션 승인과 별개" />
-        <StatCard label="학습자 수행 기록" state={traces} note="미션 실행 로그" />
-      </div>
-      <p className="mt-2 text-xs text-muted-foreground">
-        코어 승인 상태 {approvedN}건 · 현재 누적 테스트·회귀 자료를 본 콘텐츠 수로 해석하지
-        마세요. 학습자 실행 게이트는 위의 「④ 교수자 검토 완료」와 「⑤ 수업 배치 가능」입니다.
-      </p>
-
-      <SectionHeader title="주요 화면 바로가기" badge={<Badge variant="outline">운영·연구</Badge>} />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {ADMIN_PRIORITY_LINKS.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-[#D6B84A] hover:bg-[#FFFDF4]"
-          >
-            <p className="text-sm font-semibold">{item.label.replace(/^3\.\s*/, "")}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {item.pending ? "준비 중인 화면 열기" : "화면 열기"}
-            </p>
-          </Link>
-        ))}
+        <SummaryMetric
+          to="/admin/assembly"
+          label="학습 미션 생성 완료"
+          value={snapshot?.content.generatedMissionCount ?? null}
+          unit="개"
+          description="생성·저장된 학습 미션"
+          error={displayError}
+          changed={changedKeys.has("mission")}
+        />
+        <SummaryMetric
+          to="/admin/review"
+          label="검수 대기 미션"
+          value={snapshot?.content.reviewTargetCount ?? null}
+          unit="개"
+          description="5단계 검수 진행 대상"
+          error={displayError}
+          changed={changedKeys.has("reviewTarget")}
+        />
+        <SummaryMetric
+          to="/admin/review"
+          label="교수자 승인 완료"
+          value={snapshot?.content.professorFinalizedCount ?? null}
+          unit="개"
+          description="수업 사용 최종 승인"
+          error={displayError}
+          changed={changedKeys.has("finalized")}
+        />
       </div>
 
-      {/* Bottom: dev/test tools */}
+      <PanelHeader
+        title="콘텐츠 검수 진행 현황"
+        action={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />}
+      />
+      <ReviewPipeline
+        review={snapshot?.review ?? null}
+        dominant={dominantReviewStage}
+        error={displayError}
+        changedKeys={changedKeys}
+      />
+
+      <PanelHeader
+        title="수업·학습 현황"
+        action={<LiveDatabaseStatus delayed={Boolean(dashboardError)} />}
+      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <OperationMetric
+          to="/admin/composer"
+          label="수업 편성 미션"
+          value={snapshot?.assignments.missionCount ?? null}
+          unit="개 미션"
+          description={snapshot ? `${snapshot.assignments.weekCount}개 주차 · ${snapshot.assignments.assignmentCount}건 배정` : "편성 현황"}
+          error={displayError}
+          changed={changedKeys.has("assignments")}
+        />
+        <OperationMetric
+          to="/admin/learners"
+          label="수업 참여 승인"
+          value={snapshot?.approvedLearnerCount ?? null}
+          unit="명"
+          description="승인된 학습자"
+          error={displayError}
+          changed={changedKeys.has("learners")}
+        />
+        <OperationMetric
+          to="/admin/decision-traces"
+          label="학습 수행 기록"
+          value={snapshot?.learnerRecordCount ?? null}
+          unit="건"
+          description="누적 학습 수행 기록"
+          error={displayError}
+          changed={changedKeys.has("records")}
+        />
+      </div>
+
       {isAdmin && (
-        <div className="mt-10 flex items-center justify-between rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3">
-          <div className="text-sm">
-            <p className="font-medium">개발/테스트 도구</p>
-            <p className="text-xs text-muted-foreground">
-              내 프로필을 미완료 상태로 되돌려 신규 온보딩 플로우를 재현합니다.
-            </p>
-          </div>
+        <div className="mt-4 flex justify-end">
           <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" disabled={resetting}>
-                내 프로필 초기화 (테스트용)
-              </Button>
-            </AlertDialogTrigger>
+            <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="text-xs text-muted-foreground" disabled={resetting}>프로필 초기화 테스트</Button></AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>내 프로필을 초기화하시겠습니까?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  내 프로필을 미완료 상태로 되돌립니다. 다음 로그인 때 프로필 설정 화면부터 다시
-                  시작합니다. 계속할까요?
-                </AlertDialogDescription>
+                <AlertDialogDescription>내 프로필을 미완료 상태로 되돌립니다. 다음 로그인 때 프로필 설정 화면부터 다시 시작합니다. 계속할까요?</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>취소</AlertDialogCancel>
