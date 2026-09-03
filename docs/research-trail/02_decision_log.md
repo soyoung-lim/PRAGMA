@@ -3469,11 +3469,14 @@
 - 불변 경계: MPJ5+DCT1의 `scale4 → judge3 → fix_choice → reason → multi_judge`와
   `X → A → A → A → Y → C` 토폴로지는 바꾸지 않는다. 기존 결함 코드·승인·편성 게이트도 유지한다.
 - 적용 범위: legacy·코어·미션·후보 재생성/검사·국소 수리·품질검사·피드백 프롬프트, 정본 런타임,
-  릴리스 버전·스냅샷·검수 번들, 생성 계약·학습자 구조 정본을 동기화했다. DB schema·운영 데이터·
-  배포는 변경하지 않았다.
+  릴리스 버전·스냅샷·검수 번들, 생성 계약·학습자 구조 정본을 동기화했다. DB schema·운영 데이터는
+  변경하지 않았다.
 - 한계: 중→한 realization/item-lineage 근거 pack과 main 병합 뒤 실제 생성 미션의 전문가 검수는
   별도 단계다. 새 실데이터를 만들 경우 승인·편성하지 않고 `generated/review-pending`에 둔다.
-- 근거: `ITER-20260904-02`,
+- 운영 반영: PR #62·main CI를 통과한 merge `33513230`을 Railway production에 배포했고,
+  `generate-scenario` v109와 `content-review` v11을 활성화했다. 운영 프롬프트 화면에서 중→한
+  생성·검수·피드백 표면을 읽기 전용으로 확인했으며 실제 콘텐츠 생성은 하지 않았다.
+- 근거: `ITER-20260904-02`, `EVD-20260904-02`,
   `docs/dev-log/2026-09-04-zhko-translation-lock.md`.
 - 후속: 이 결정의 중→한 **통역 제외** 범위는 사용자 확인 뒤 `DEC-20260904-03`으로 대체했다.
   자기 발신 번역 역할과 화행 등가 원칙은 그대로 유지한다.
@@ -3493,7 +3496,10 @@
   수행한다. 원발화 텍스트는 숨기고 음성은 저장하지 않으며 통역에는 어휘 힌트를 주지 않는다.
 - 불변 경계: MPJ5+DCT1 topology, P·D·R=A↔B, 의미·화행 목적·태도·화용적 힘의 기능적 등가,
   기존 결함 코드와 승인·편성 게이트는 바꾸지 않는다. DB schema와 운영 데이터도 변경하지 않는다.
-- 근거: `ITER-20260904-03`,
+- 운영 반영: PR #62·main CI를 통과한 merge `33513230`을 Railway production에 배포했다.
+  `generate-scenario` v109와 `content-review` v11을 활성화했고, 변경 없는 `tts` v9·`stt` v4는
+  재배포하지 않은 채 ACTIVE 상태를 확인했다. 실제 마이크·음성 API 종단 호출은 수행하지 않았다.
+- 근거: `ITER-20260904-03`, `EVD-20260904-03`,
   `docs/dev-log/2026-09-04-zhko-interpreting-completion.md`.
 ## DEC-20260904-01 · 신형 관리자 대시보드는 세 파일만 최신 main에 국소 이식
 

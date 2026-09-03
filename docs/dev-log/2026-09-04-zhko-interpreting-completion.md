@@ -42,11 +42,22 @@
 
 ## 운영·데이터 경계
 
-- DB schema·운영 데이터, 미션 승인·편성·배정, Edge/Railway 배포는 변경하지 않았다.
-- 실제 마이크 권한, 중국어 TTS, 한국어 STT 제공자 호출을 잇는 브라우저 smoke는 main 병합과
-  Edge 배포 뒤 확인해야 한다.
+- 기능 커밋 `751df63`을 포함한 PR #62의 필수 CI `33785965918`을 통과했고, main merge
+  `33513230a444b6655473f22cf6a74d30f70416c1`와 main CI `33786152166`의 성공을 확인했다.
+- Railway production deployment `6249462223`은 위 merge SHA를 source로 사용해 `success`가
+  됐다. 통역 계약이 포함된 `generate-scenario`는 Edge v109, 방향별 피드백이 포함된
+  `content-review`는 v11이며 둘 다 `ACTIVE`·`verify_jwt=true`다.
+- `tts` v9와 `stt` v4는 이번 코드 변경 대상이 아니어서 재배포하지 않았고 기존 `ACTIVE`·
+  `verify_jwt=true` 상태를 확인했다. 프런트 정본 런타임이 이 기존 함수를 호출하도록 연결됐다.
+- 로그인된 운영 `/admin/prompt-harness`에서 중→한 통역 코어·미션 승격·품질검사·학습자 피드백
+  표면을 읽기 전용으로 확인했다. DB schema·운영 데이터, 미션 승인·편성·배정은 변경하지 않았다.
+- 실제 마이크 권한과 중국어 TTS·한국어 STT 제공자 호출을 잇는 종단 smoke는 유료 호출과 배정된
+  중→한 통역 미션이 필요하므로 실행하지 않았다. 대신 모의 상호작용 24 tests와 운영 함수 활성
+  상태를 배포 근거로 남긴다.
 
 ## 관련 기록
 
 - `DEC-20260904-03`
 - `ITER-20260904-03`
+- `TRC-20260904-01`
+- `EVD-20260904-03`

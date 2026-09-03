@@ -45,9 +45,17 @@
 
 ## 운영·데이터 경계
 
-- DB 삭제·수정, 실데이터 생성, 미션 승인·편성·학습자 배정, Edge/Railway 배포를 하지 않았다.
-- 따라서 실제 관리자 조립 화면에서 새 중→한 미션 1건을 생성해 `generated/review-pending`으로
-  보존하는 smoke는 main 병합과 Edge 배포 뒤 별도 확인이 필요하다.
+- 기능 커밋 `65f6bd2`와 통역 연결 커밋 `751df63`을 최신 main에 통합한 뒤 PR #62의 필수 CI
+  `33785965918`을 통과했고, main merge `33513230a444b6655473f22cf6a74d30f70416c1`와 main CI
+  `33786152166`의 성공을 확인했다.
+- Railway production deployment `6249462223`은 위 merge SHA를 정확한 source로 사용해
+  `success`가 됐다. Supabase Edge는 변경된 `generate-scenario`를 v109,
+  `content-review`를 v11로 배포했고 둘 다 `ACTIVE`·`verify_jwt=true`를 확인했다.
+- 로그인된 운영 `/admin/prompt-harness`에서 중→한 코어·번역 미션 승격·품질검사·학습자 피드백
+  표면과 core surface hash `a73b79367c7f…`를 읽기 전용으로 확인했다. 대시보드도 신형 세 섹션을
+  유지했고 구형 `콘텐츠 단계별 현황`은 나타나지 않았다.
+- DB 삭제·수정, 실데이터 생성, 미션 승인·편성·학습자 배정은 하지 않았다. 따라서 새 중→한 미션
+  1건의 실제 모델 생성과 전문가 검수는 이번 배포의 증거가 아니라 후속 콘텐츠 검증 과제다.
 - 중→한 realization/item-lineage 근거 pack은 이번 범위에서 만들지 않았다. 현재 코드는 적용할
   정본 pack이 없을 때 허위 lineage를 붙이지 않으며, 이는 생성·수행 경로와 분리된 후속 콘텐츠
   검증 과제다.
@@ -56,3 +64,5 @@
 
 - `DEC-20260904-02`
 - `ITER-20260904-02`
+- `TRC-20260904-01`
+- `EVD-20260904-02`
