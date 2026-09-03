@@ -3293,3 +3293,24 @@
   목적지와 새 lounge chunk 제공을 확인했다. 운영 로그인 뒤 허브 실화면은 재확인하지 않았다.
 - 관련: `DEC-20260903-01`, `EVD-20260903-01`,
   `docs/dev-log/2026-09-03-lounge-visual-harmonization.md`.
+
+## ITER-20260904-01 · 관리자 대시보드만 최신 main에 복구
+
+- 날짜: 2026-09-04
+- 시작 문제: localhost에서 확인한 신형 대시보드가 main에 없었고, main 기반 production에는
+  구형 화면이 표시됐다. 원 feature branch 전체 diff에는 대시보드 밖 변경이 섞여 있었다.
+- 변경: `origin/main@473e418`에서 격리 worktree를 만들고 신형 최종본 `658287c`의 대시보드
+  화면·집계 helper·전용 test 세 파일만 이식해 `d06abf4`로 커밋했다. 현재 main의 사이드바,
+  라우트, 라운지, 배포 guard와 중→한 번역·통역 작업은 그대로 두었다.
+- 검증: helper 4 tests, 전체 118 files·701 tests pass와 3 files·9 tests skip, typecheck,
+  변경 파일 ESLint, 1,967-module production build가 통과했다. localhost 로그인 세션에서 세
+  섹션·세 `DB 실시간` 태그, 현재 DB 수치와 검수 합계 일치를 DOM·시각으로 확인했다.
+- 예상과 달랐던 점: 전날 캡처보다 코어·생성·검수 대상이 각각 1개 증가했다. 화면이 운영 DB를
+  읽는 결과이며 검수 5단계 합계도 새 대상 수와 일치해 코드 회귀로 보지 않았다. `.env` 없는 첫
+  전체 테스트의 10개 suite 시작 실패는 환경 주입 후 모두 해소됐다.
+- 교훈: 화면이 한 번 production에 보였다는 사실은 main 계보 통합의 증거가 아니다. 복구 시에도
+  feature branch 전체를 병합하지 말고 기능의 최소 폐쇄 단위와 현행 main 회귀를 함께 검증해야 한다.
+- 완료 경계: 로컬 main 후보와 구현 커밋까지만 완료했다. push·PR·main merge·필수 CI·Railway
+  배포·운영 smoke는 후속 승인 뒤 별도 증거로 기록한다.
+- 관련: `DEC-20260904-01`, `EVD-20260904-01`,
+  `docs/dev-log/2026-09-04-admin-dashboard-main-restoration.md`.
