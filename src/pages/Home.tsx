@@ -5,6 +5,7 @@ import { useProfile } from "@/lib/auth/useProfile";
 import { HomeBrand } from "@/components/HomeBrand";
 import { ProfileWizardForm } from "@/components/ProfileWizardForm";
 import { cn } from "@/lib/utils";
+import { APP_ROLE } from "@/lib/auth/constants";
 
 // /home = 프로필 관문 전용 화면. 프로필을 마친 학습자는 아래에서 /learner/course으로
 // 리디렉트되므로, 이 페이지 본문은 **미완료 학습자에게만** 보인다.
@@ -37,6 +38,10 @@ const Home = () => {
 
   if (!session && !isDevStub) {
     return <Navigate to="/student-login" replace />;
+  }
+
+  if (profile?.role === APP_ROLE.ADMIN) {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   if (profile?.profile_completed) {

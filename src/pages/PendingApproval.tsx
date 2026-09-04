@@ -1,7 +1,7 @@
 import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, IS_DEV, devStubApproveCurrent, devStubSignOut } from "@/lib/auth/useProfile";
-import { APPROVAL_STATUS } from "@/lib/auth/constants";
+import { APPROVAL_STATUS, APP_ROLE } from "@/lib/auth/constants";
 import { HomeBrand } from "@/components/HomeBrand";
 
 const PendingApproval = () => {
@@ -18,6 +18,10 @@ const PendingApproval = () => {
 
   if (!session && !isDevStub) {
     return <Navigate to="/student-login" replace />;
+  }
+
+  if (profile?.role === APP_ROLE.ADMIN) {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   if (profile?.approval_status === APPROVAL_STATUS.APPROVED) {
