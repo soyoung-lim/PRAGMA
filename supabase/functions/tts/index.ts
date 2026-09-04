@@ -1,8 +1,17 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 
+// ko 기본 voice는 기존 값을 유지한다.
+// zh는 같은 영어권 voice를 쓰면 중국어 원발화가 영어 화자 음색으로 재생되므로
+// 기본 제공자를 OpenAI(tts-1-hd)로 돌린다. 중국어 ElevenLabs voice를 확보하면
+// `ELEVENLABS_VOICE_ID_ZH`만 설정해 코드 변경 없이 되돌릴 수 있다.
 const DEFAULT_VOICE_BY_LANG: Record<'ko' | 'zh', string> = {
   ko: '21m00Tcm4TlvDq8ikWAM',
   zh: '21m00Tcm4TlvDq8ikWAM',
+}
+
+const zhElevenLabsVoiceOverride = () => {
+  const value = Deno.env.get('ELEVENLABS_VOICE_ID_ZH')?.trim()
+  return value && value.length > 0 ? value : null
 }
 
 const FREE_TIER_VOICE_IDS = ['EXAVITQu4vr4xnSDxMaL', '9BWtsMINqrJLrRacOk9x'] as const
@@ -186,33 +195,48 @@ Deno.serve(async (req) => {
     }
 
     const language = lang === 'zh' ? 'zh' : 'ko'
-    const requestedVoiceId = typeof voiceId === 'string' && voiceId.trim().length > 0
-      ? voiceId.trim()
-      : DEFAULT_VOICE_BY_LANG[language]
+    const zhVoiceOverride = language === 'zh' ? zhElevenLabsVoiceOverride() : null
+    const requestedVoiceId = zhVoiceOverride
+      ?? (typeof voiceId === 'string' && voiceId.trim().length > 0
+        ? voiceId.trim()
+        : DEFAULT_VOICE_BY_LANG[language])
 
     const fallbackVoiceId = FREE_TIER_VOICE_IDS.find((candidate) => candidate !== requestedVoiceId) ?? FREE_TIER_VOICE_IDS[0]
 
     const apiKey = Deno.env.get('ELEVENLABS_API_KEY')
-    if (!apiKey) {
-      const openAiKey = Deno.env.get('OPENAI_API_KEY')
-      if (!openAiKey) {
-        return new Response(JSON.stringify({ error: 'TTS provider key not configured' }), {
-          status: 500,
-          headers: jsonHeaders,
+    const openAiKey = Deno.env.get('OPENAI_API_KEY')
+
+    // 중국어는 전용 ElevenLabs voice(`ELEVENLABS_VOICE_ID_ZH`)가 지정된 경우에만 ElevenLabs를
+    // 쓰고, 그 외에는 OpenAI를 1순위로 둔다. 기본 voice가 영어 화자라 중국어 원발화가 영어
+    // 음색으로 재생되기 때문이다. ElevenLabs 키가 없으면 언어와 무관하게 OpenAI를 쓴다.
+    const preferOpenAi = !apiKey || (language === 'zh' && !zhVoiceOverride)
+
+    if (preferOpenAi && openAiKey) {
+      const openAiAttempt = await requestOpenAiAudio(text, language, openAiKey)
+      if (openAiAttempt.ok) {
+        return new Response(openAiAttempt.audio, {
+          status: 200,
+          headers: audioHeaders(
+            requestedVoiceId,
+            openAiAttempt.voice,
+            false,
+            'openai',
+            openAiAttempt.model,
+          ),
         })
       }
 
-      const openAiAttempt = await requestOpenAiAudio(text, language, openAiKey)
-      if (!openAiAttempt.ok) {
-        const parsed = (() => {
-          try {
-            return JSON.parse(openAiAttempt.rawError) as {
-              error?: { code?: string; message?: string; type?: string }
-            }
-          } catch {
-            return null
+      const parsed = (() => {
+        try {
+          return JSON.parse(openAiAttempt.rawError) as {
+            error?: { code?: string; message?: string; type?: string }
           }
-        })()
+        } catch {
+          return null
+        }
+      })()
+
+      if (!apiKey) {
         return new Response(JSON.stringify({
           error: '고품질 음성 생성에 실패했습니다.',
           providerStatus: openAiAttempt.status,
@@ -224,15 +248,17 @@ Deno.serve(async (req) => {
         })
       }
 
-      return new Response(openAiAttempt.audio, {
-        status: 200,
-        headers: audioHeaders(
-          requestedVoiceId,
-          openAiAttempt.voice,
-          false,
-          'openai',
-          openAiAttempt.model,
-        ),
+      // ElevenLabs 키가 있으면 아래 경로에서 한 번 더 시도한다.
+      console.warn('OpenAI TTS failed; falling back to ElevenLabs', {
+        status: openAiAttempt.status,
+        code: parsed?.error?.code ?? parsed?.error?.type ?? 'unknown',
+      })
+    }
+
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: 'TTS provider key not configured' }), {
+        status: 500,
+        headers: jsonHeaders,
       })
     }
 
