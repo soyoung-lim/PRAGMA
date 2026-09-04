@@ -30,11 +30,11 @@ describe("learnerAccessRedirect", () => {
     })).toBeNull();
   });
 
-  it("관리자는 학습자 승인 상태와 무관하게 관리자 대시보드로 돌려보낸다", () => {
+  it("관리자는 학습자 승인 상태와 무관하게 운영 검수 화면을 열람할 수 있다", () => {
     expect(learnerAccessRedirect({
       role: "admin",
       profile_completed: true,
       approval_status: "pending_approval",
-    })).toBe("/admin/dashboard");
+    })).toBeNull();
   });
 });

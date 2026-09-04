@@ -55,10 +55,12 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <HomeBrand />
           <Link
-            to="/"
+            to="/learner/course"
+            target="_blank"
+            rel="noreferrer"
             className="text-sm text-[#8899A6] transition-colors hover:text-[#F1EFE8]"
           >
-            시작 화면 ↗
+            학습자 수업 열기 ↗
           </Link>
         </div>
       </header>
