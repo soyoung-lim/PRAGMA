@@ -557,20 +557,20 @@ export const COURSE_PRESETS: CoursePreset[] = [
   {
     outline_id: "a10c5b2e-7c5a-4f0c-9f4a-6d61cf6b8e21",
     preset_code: "ko_zh_business_communication",
-    label: "AI 한중 비즈니스 커뮤니케이션",
+    label: "AI 한중 비즈니스 통번역 실습",
     target_level: "advanced",
     language_direction: "ko_zh",
     primary_domain: "work",
     included_themes: ["career_workplace", "commerce_customer", "digital_content"],
     course_mode: "mixed",
-    target_interpreting_week_count: 2,
+    target_interpreting_week_count: 6,
     repetition_principle:
-      "직장·고객·플랫폼 맥락에서 권한관계와 공식성을 판단하고 고부담 화행에 다시 적용한다.",
+      "직장·고객·플랫폼 맥락의 화용 판단을 전반부 번역에서 익히고 후반부 통역 상황에 다시 적용한다.",
   },
   {
     outline_id: "c3f9a2d7-6e84-4f61-a953-2b7d9c0e4a12",
     preset_code: "zh_ko_practical_translation",
-    label: "AI 중한 실전 번역",
+    label: "AI 중한 실전 통번역",
     target_level: "intermediate",
     language_direction: "zh_ko",
     primary_domain: "daily",
@@ -581,10 +581,10 @@ export const COURSE_PRESETS: CoursePreset[] = [
       "campus_study",
       "daily_living",
     ],
-    course_mode: "translation",
-    target_interpreting_week_count: 0,
+    course_mode: "mixed",
+    target_interpreting_week_count: 3,
     repetition_principle:
-      "여러 생활 영역의 중국어 원문을 한국어 독자와 상황에 맞게 조정하는 화용 번역을 반복한다.",
+      "여러 생활 영역의 중국어 원문을 한국어 독자와 상황에 맞게 조정하고 후반부 통역 상황에 다시 적용한다.",
   },
 ];
 

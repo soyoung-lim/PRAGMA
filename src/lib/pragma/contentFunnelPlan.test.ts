@@ -32,9 +32,10 @@ describe("Scope Lock 500–60–12–4 manifest", () => {
   it("derives the direction and mode floors from the 60-slot manifest", () => {
     expect(DIRECTION_MINIMUMS).toEqual({ ko_zh: 333, zh_ko: 167 });
     expect(VALID_LOCK_CANDIDATE_QUOTAS).toEqual([
-      { direction: "ko_zh", mode: "stt_interpreting", minimum: 100 },
-      { direction: "ko_zh", mode: "translation", minimum: 233 },
-      { direction: "zh_ko", mode: "translation", minimum: 167 },
+      { direction: "ko_zh", mode: "stt_interpreting", minimum: 166 },
+      { direction: "ko_zh", mode: "translation", minimum: 167 },
+      { direction: "zh_ko", mode: "stt_interpreting", minimum: 33 },
+      { direction: "zh_ko", mode: "translation", minimum: 134 },
     ]);
   });
 
@@ -53,9 +54,11 @@ describe("Scope Lock 500–60–12–4 manifest", () => {
     for (const preset of COURSE_PRESETS) {
       const slots = COURSE_SLOT_MANIFEST.filter((slot) => slot.outline_id === preset.outline_id);
       expect(new Set(slots.map((slot) => slot.direction))).toEqual(new Set([preset.language_direction]));
-      if (preset.language_direction === "zh_ko") {
-        expect(new Set(slots.map((slot) => slot.mode))).toEqual(new Set(["translation"]));
-      }
+      expect(new Set(slots.map((slot) => slot.mode))).toEqual(
+        preset.course_mode === "mixed"
+          ? new Set(["translation", "stt_interpreting"])
+          : new Set([preset.course_mode === "interpreting" ? "stt_interpreting" : "translation"]),
+      );
     }
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MIXED_INTERPRETING_WEEK_PRESETS,
   courseModePolicyFromLegacyRatio,
   expectedCoreModeForWeek,
   interpretingTargetWeekNumbers,
@@ -8,6 +9,10 @@ import {
 } from "@/lib/curriculum/courseModePolicy";
 
 describe("강좌 수행 모드 정책", () => {
+  it("현행 혼합 강좌의 9/3·6/6 빠른 선택값만 노출한다", () => {
+    expect(MIXED_INTERPRETING_WEEK_PRESETS).toEqual([3, 6]);
+  });
+
   it("전용 강좌와 혼합 n/12의 허용 범위를 고정한다", () => {
     expect(isCourseModePolicyValid({ courseMode: "translation", interpretingWeekCount: 0 })).toBe(true);
     expect(isCourseModePolicyValid({ courseMode: "interpreting", interpretingWeekCount: 12 })).toBe(true);

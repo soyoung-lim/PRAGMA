@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { IS_DEV, useProfile } from "@/lib/auth/useProfile";
 import { loginPathFor } from "@/lib/auth/loginReturn";
+import { learnerAccessRedirect } from "@/lib/auth/learnerAccess";
 
 type Props = {
   children: React.ReactNode;
@@ -8,8 +9,8 @@ type Props = {
   allowDevMissionPreview?: boolean;
 };
 
-// Gate semantics (Sprint 1B-1a): login + profile_completed only.
-// approval_status is no longer checked here.
+// 학습 경로는 로그인, 프로필 작성 완료, 교수자 승인을 모두 요구한다.
+// DEV의 명시적 미션 검토 링크만 아래에서 별도로 우회한다.
 export const RequireApproved = ({ children, allowDevMissionPreview = false }: Props) => {
   const location = useLocation();
   const { loading, session, profile, isDevStub } = useProfile();
@@ -38,9 +39,8 @@ export const RequireApproved = ({ children, allowDevMissionPreview = false }: Pr
     return <Navigate to={loginPathFor(`${location.pathname}${location.search}${location.hash}`)} replace />;
   }
 
-  if (!profile || !profile.profile_completed) {
-    return <Navigate to="/home" replace />;
-  }
+  const accessRedirect = learnerAccessRedirect(profile);
+  if (accessRedirect) return <Navigate to={accessRedirect} replace />;
 
   return <>{children}</>;
 };

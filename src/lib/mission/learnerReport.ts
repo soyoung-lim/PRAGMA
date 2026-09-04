@@ -78,27 +78,29 @@ const FRIENDLY_BAND_LABEL: Record<string, Record<string, string>> = {
   },
 };
 
+// 누적 AI 피드백은 처방이나 진단으로 확대하지 않고, 다음 수행에서 스스로
+// 점검할 수 있는 중립적인 회고 질문 한 문장으로만 환류한다.
 const NEXT_STEP_BY_FEATURE: Record<string, string> = {
   request_mitigation_optionality:
-    "‘麻烦您’ 외에도 ‘가능하다면…’이라고 먼저 말하거나, 가능한지를 묻는 다른 방식도 시도해 볼 수 있어요.",
+    "이번 관계와 부담에서 요청의 분명함과 상대의 선택 여지는 어떻게 균형을 이루었나요?",
   refusal_softening:
-    "거절은 분명히 하면서, 이유나 다른 방법 가운데 하나를 덧붙이는 방식도 시도해 볼 수 있어요.",
+    "거절 의사는 분명하면서도 관계를 불필요하게 해치지 않는 표현이었나요?",
   gratitude_calibration:
-    "받은 도움의 크기에 따라 감사 표현의 세기를 다르게 조절해 볼 수도 있어요.",
+    "받은 도움의 크기와 관계에 비추어 감사 표현의 강도는 알맞았나요?",
   apology_accountability_repair:
-    "사과 표현을 늘리는 대신 내 책임이나 상대가 받은 영향을 하나 밝혀 보는 방식도 있어요.",
+    "이번 사과는 책임과 상대가 받은 영향, 이후의 수리를 어떻게 드러냈나요?",
   proposal_optionality_clarity:
-    "제안의 핵심을 분명히 하면서 상대가 고를 수 있는 여지를 남기는 방식도 시도해 볼 수 있어요.",
+    "제안의 핵심과 상대가 선택할 수 있는 여지가 함께 드러났나요?",
   invitation_choice_commitment:
-    "초대 의도를 분명히 하면서 상대가 부담 없이 답할 수 있는 표현도 선택해 볼 수 있어요.",
+    "초대 의도는 분명하되 상대가 부담 없이 답할 수 있었나요?",
   opposition_stance_mitigation:
-    "반대 입장을 분명히 하면서 먼저 동의할 수 있는 지점을 하나 짚는 방식도 있어요.",
+    "반대 입장과 관계를 고려한 완화가 각각 충분히 드러났나요?",
   compliment_grounding_sensitivity:
-    "칭찬의 세기를 높이는 대신 좋았던 근거를 하나 구체적으로 말해 볼 수도 있어요.",
+    "칭찬의 강도와 구체적인 근거는 이번 관계와 장면에 알맞았나요?",
   compliment_response_uptake:
-    "칭찬을 바로 밀어내는 대신 먼저 고맙다고 받아들이는 방식도 시도해 볼 수 있어요.",
+    "상대의 칭찬을 자연스럽게 받아들이면서도 나의 태도를 유지했나요?",
   complaint_problem_accountability:
-    "감정의 세기를 높이는 대신 문제와 실제 영향을 하나씩 말해 보는 방식도 있어요.",
+    "문제와 실제 영향, 상대에게 바라는 조치가 구분되어 드러났나요?",
 };
 
 const EXPRESSION_COPY: Record<string, string> = {
@@ -382,11 +384,11 @@ function headlineOf(
 
 function nextStepOf(primary: PrimaryCohortReport | null): string {
   if (!primary) {
-    return "다음 수행에서는 첫 문장을 쓴 뒤, 상대가 어떻게 받아들일지 한 번 점검해 보세요.";
+    return "이 표현을 상대가 어떻게 받아들일지 설명할 수 있나요?";
   }
   return (
     NEXT_STEP_BY_FEATURE[primary.featureKey] ??
-    `다음 수행에서는 ‘${primary.featureLabel}’${josa(primary.featureLabel, "를")} 한 번 의식하고 표현을 다시 읽어 보세요.`
+    `이번 표현에서 ‘${primary.featureLabel}’${josa(primary.featureLabel, "이")} 어떻게 드러났나요?`
   );
 }
 
@@ -398,9 +400,9 @@ export interface FocusCarryOver {
 }
 
 /**
- * 다음 수행에서 다시 살펴볼 한 가지 — 가장 최근 수행의 초점을 그대로 잇는다.
+ * 다음 수행에서 다시 생각해 볼 질문 — 가장 최근 수행의 초점을 그대로 잇는다.
  *
- * ⚠️ 저장된 개별 피드백을 해석한 문장이 아니라 **초점별 고정 조언**이다. 화면에서는
+ * ⚠️ 저장된 개별 피드백을 해석한 문장이 아니라 **요소별 고정 회고 질문**이다. 화면에서는
  * 반드시 어느 수행·어느 초점에서 왔는지 함께 보여, 개인화된 피드백 해석으로 읽히지
  * 않게 한다. (누적 리포트의 nextStep은 최근 수행이 아니라 가장 큰 비교 집단을 쓰므로
  * 이월 표시에는 쓰지 않는다.)

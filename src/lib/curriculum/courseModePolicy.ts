@@ -8,7 +8,8 @@ export const TARGET_SPEECH_ACT_WEEK_NOS = [2, 3, 4, 5, 6, 9, 10, 11, 12] as cons
 /** OT·중간·기말을 제외한 실제 학습 12주. 수행모드 비중의 유일한 분모다. */
 export const ACTUAL_LEARNING_WEEK_NOS = [2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14] as const;
 export const ACTUAL_LEARNING_WEEK_COUNT = ACTUAL_LEARNING_WEEK_NOS.length;
-export const MIXED_INTERPRETING_WEEK_PRESETS = [2, 6] as const;
+/** 현행 세 표준 강좌가 사용하는 혼합 모드 빠른 선택값(9/3, 6/6). */
+export const MIXED_INTERPRETING_WEEK_PRESETS = [3, 6] as const;
 
 export interface CourseModePolicy {
   courseMode: CourseMode;

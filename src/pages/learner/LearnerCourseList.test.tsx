@@ -55,9 +55,8 @@ describe("LearnerCourseList", () => {
     expect(list.getByText("중국어 → 한국어")).toBeInTheDocument();
     expect(list.queryByText("영역")).not.toBeInTheDocument();
     expect(list.getAllByText("|")).toHaveLength(3);
-    expect(list.getByText("번역 6주 · 통역 6주")).toBeInTheDocument();
-    expect(list.getByText("번역 12주 · 통역 없음")).toBeInTheDocument();
-    expect(list.getByText("번역 10주 · 통역 2주")).toBeInTheDocument();
+    expect(list.getAllByText("번역 6주 · 통역 6주")).toHaveLength(2);
+    expect(list.getByText("번역 9주 · 통역 3주")).toBeInTheDocument();
     expect(list.getByText("대학생활, 유학·교류, 대인관계, 일상생활")).toBeInTheDocument();
     expect(list.getByText("콘텐츠·SNS, 취업·직장, 거래·고객응대, 대학생활 등")).toBeInTheDocument();
     expect(list.getByText("취업·직장, 거래·고객응대, 콘텐츠·SNS")).toBeInTheDocument();
