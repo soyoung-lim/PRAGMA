@@ -21,7 +21,7 @@ const PendingApproval = () => {
   }
 
   if (profile?.role === APP_ROLE.ADMIN) {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to="/learner/course" replace />;
   }
 
   if (profile?.approval_status === APPROVAL_STATUS.APPROVED) {

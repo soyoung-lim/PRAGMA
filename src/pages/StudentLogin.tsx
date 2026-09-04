@@ -38,7 +38,7 @@ const StudentLogin = () => {
   // 이미 인증된 학습자는 다시 Google 인증을 요구하지 않는다. 명시적 next가 있으면
   // 요청 화면으로 복귀하고, RequireApproved가 프로필 미완료 사용자를 /home으로 보낸다.
   if (!loading && session && profile?.role === APP_ROLE.ADMIN) {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to="/learner/course" replace />;
   }
 
   if (!loading && (session || isDevStub)) {
