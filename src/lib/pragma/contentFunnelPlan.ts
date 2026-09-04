@@ -204,18 +204,36 @@ function largestRemainderQuotas(
     counts.set(key, current);
   }
 
-  const raw = [...counts.values()].map((cell) => {
-    const exact = (cell.slots / slots.length) * target;
-    return { ...cell, exact, minimum: Math.floor(exact), remainder: exact - Math.floor(exact) };
-  });
-  let unallocated = target - raw.reduce((sum, cell) => sum + cell.minimum, 0);
-  raw.sort((left, right) => right.remainder - left.remainder || left.direction.localeCompare(right.direction));
-  for (const cell of raw) {
-    if (unallocated <= 0) break;
-    cell.minimum += 1;
-    unallocated -= 1;
-  }
-  return raw
+  const apportion = <T extends { slots: number }>(cells: T[], subtotal: number) => {
+    const slotTotal = cells.reduce((sum, cell) => sum + cell.slots, 0);
+    const raw = cells.map((cell) => {
+      const exact = (cell.slots / slotTotal) * subtotal;
+      return { ...cell, minimum: Math.floor(exact), remainder: exact - Math.floor(exact) };
+    });
+    let unallocated = subtotal - raw.reduce((sum, cell) => sum + cell.minimum, 0);
+    raw.sort((left, right) => right.remainder - left.remainder);
+    for (const cell of raw) {
+      if (unallocated <= 0) break;
+      cell.minimum += 1;
+      unallocated -= 1;
+    }
+    return raw;
+  };
+
+  // 500개의 333/167 언어방향 경계를 먼저 보존한 뒤 각 방향 안에서 수행모드를 배분한다.
+  // 한 번에 4개 셀을 반올림하면 동률 잔여치 때문에 방향 총계가 334/166으로 바뀔 수 있다.
+  const directionCells = (["ko_zh", "zh_ko"] as const).map((direction) => ({
+    direction,
+    slots: [...counts.values()]
+      .filter((cell) => cell.direction === direction)
+      .reduce((sum, cell) => sum + cell.slots, 0),
+  }));
+  const directionMinimums = apportion(directionCells, target);
+  const quotas = directionMinimums.flatMap((directionCell) => apportion(
+    [...counts.values()].filter((cell) => cell.direction === directionCell.direction),
+    directionCell.minimum,
+  ));
+  return quotas
     .map(({ direction, mode, minimum }) => ({ direction, mode, minimum }))
     .sort((left, right) =>
       left.direction.localeCompare(right.direction) || left.mode.localeCompare(right.mode),
@@ -316,9 +334,10 @@ const EXPANSION_MODE_TARGETS: ReadonlyArray<{
 }> = [
   { outlineId: COURSE_PRESETS[0].outline_id, mode: "translation", count: 34 },
   { outlineId: COURSE_PRESETS[0].outline_id, mode: "stt_interpreting", count: 33 },
-  { outlineId: COURSE_PRESETS[1].outline_id, mode: "translation", count: 59 },
-  { outlineId: COURSE_PRESETS[1].outline_id, mode: "stt_interpreting", count: 7 },
-  { outlineId: COURSE_PRESETS[2].outline_id, mode: "translation", count: 67 },
+  { outlineId: COURSE_PRESETS[1].outline_id, mode: "translation", count: 33 },
+  { outlineId: COURSE_PRESETS[1].outline_id, mode: "stt_interpreting", count: 33 },
+  { outlineId: COURSE_PRESETS[2].outline_id, mode: "translation", count: 54 },
+  { outlineId: COURSE_PRESETS[2].outline_id, mode: "stt_interpreting", count: 13 },
 ] as const;
 
 const expansionItems: LockCorePlanItem[] = [];

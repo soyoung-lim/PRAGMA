@@ -1071,18 +1071,12 @@ const FEEDBACK_LEVEL_CARD_STYLE: Record<FeedbackLevel, string> = {
   required: "border-[#D79A94] bg-[#FFF7F5]",
 };
 
-const FEEDBACK_LEVEL_PRIORITY: Record<FeedbackLevel, number> = {
-  very_good: 0,
-  recommend: 1,
-  required: 2,
-};
-
-function primaryFeedbackCriterion(criteria: FeedbackCriterion[]) {
-  return criteria.reduce((primary, criterion) => (
-    FEEDBACK_LEVEL_PRIORITY[criterion.level] > FEEDBACK_LEVEL_PRIORITY[primary.level]
-      ? criterion
-      : primary
-  ));
+/**
+ * 학습자에게는 의미 → 언어 → 화용의 고정 우선순위로 한 항목만 보여 준다.
+ * 세 기준의 판정은 저장·연구용 구조에 그대로 보존한다.
+ */
+export function primaryFeedbackCriterion(criteria: FeedbackCriterion[]) {
+  return criteria.find((criterion) => criterion.level !== "very_good") ?? criteria[0];
 }
 
 function collectHighlights(text: string, expressions: string[]) {
@@ -1227,7 +1221,7 @@ function evaluationFromRuntimeFeedback(
       question: "이 관계와 상황에 잘 맞나요?",
       level: pragmaticLevel,
       body: feedback.blocks.feature_ko || (pragmaticOk
-        ? "이번 화용 초점의 적정 범위에 들어갑니다."
+        ? "이번 목표 화용 요소의 적정 범위에 들어갑니다."
         : "관계와 상황에 맞게 표현의 정도를 다시 조절해 보세요."),
     },
   ];
@@ -1382,7 +1376,7 @@ function FeedbackLoading() {
       <div className="flex items-center justify-between bg-[#F8F7F2] px-5 py-4">
         <div>
           <p className="text-xs font-black text-[#596579]">AI 피드백 준비 중</p>
-          <p className="mt-1 text-base font-black">답안을 세 기준으로 살펴보고 있습니다</p>
+          <p className="mt-1 text-base font-black">답안에서 먼저 살펴볼 한 가지를 찾고 있습니다</p>
         </div>
         <LoaderCircle className="h-6 w-6 animate-spin text-[#C6A521]" />
       </div>
@@ -1513,23 +1507,16 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
   const feedbackUnavailable = evaluation.available === false;
   const needsChange = feedbackNeedsRevision(evaluation);
   const primaryCriterion = primaryFeedbackCriterion(evaluation.criteria);
-  const stableCount = evaluation.criteria.filter((criterion) => criterion.level === "very_good").length;
-  const recommendCount = evaluation.criteria.filter((criterion) => criterion.level === "recommend").length;
-  const requiredCount = evaluation.criteria.filter((criterion) => criterion.level === "required").length;
   const overallHeadline = feedbackUnavailable
     ? "자동 피드백을 확인하지 못했습니다."
-    : requiredCount > 0
+    : primaryCriterion.level === "required"
       ? "다시 살펴봐야 합니다."
-      : recommendCount > 0
+      : primaryCriterion.level === "recommend"
         ? "한 가지만 고치면 됩니다."
         : "이대로 확정해도 좋습니다.";
   const overallBadge = feedbackUnavailable
     ? "판정 보류"
-    : requiredCount > 0
-      ? `${requiredCount}개 수정 필요${recommendCount > 0 ? ` · ${recommendCount}개 보완` : ""}`
-      : recommendCount > 0
-        ? `${stableCount}개 안정 · ${recommendCount}개 보완`
-        : "세 기준 안정";
+    : `${primaryCriterion.label} · ${FEEDBACK_LEVEL_LABEL[primaryCriterion.level]}`;
   const overallBody = feedbackUnavailable || needsChange
     ? evaluation.feedback
     : "원문의 의미와 의도를 유지하면서, 관계와 상황에도 맞는 표현을 사용했습니다.";
@@ -1577,16 +1564,14 @@ export function DctFeedbackView({ quest, response, onDone, onRevisionStateChange
               <p className="mt-4 text-sm leading-6 text-[#4F5B6E]">{overallBody}</p>
             </div>
 
-            <div className="grid gap-3 border-t border-[#E6E1D6] p-4 sm:grid-cols-3 sm:p-5">
-              {evaluation.criteria.map((criterion) => (
-                <article key={criterion.key} className={`rounded-xl border p-4 ${FEEDBACK_LEVEL_CARD_STYLE[criterion.level]}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-xs font-black text-[#4F5B6E]">{criterion.label}</h3>
-                    <span className={`rounded-full px-2 py-1 text-[10px] font-black ${FEEDBACK_LEVEL_STYLE[criterion.level]}`}>{FEEDBACK_LEVEL_LABEL[criterion.level]}</span>
-                  </div>
-                  <p className="mt-4 text-sm font-black leading-6">{criterion.body}</p>
-                </article>
-              ))}
+            <div className="border-t border-[#E6E1D6] p-4 sm:p-5">
+              <article className={`rounded-xl border p-4 ${FEEDBACK_LEVEL_CARD_STYLE[primaryCriterion.level]}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-xs font-black text-[#4F5B6E]">먼저 확인할 한 가지 · {primaryCriterion.label}</h3>
+                  <span className={`rounded-full px-2 py-1 text-[10px] font-black ${FEEDBACK_LEVEL_STYLE[primaryCriterion.level]}`}>{FEEDBACK_LEVEL_LABEL[primaryCriterion.level]}</span>
+                </div>
+                <p className="mt-4 text-sm font-black leading-6">{primaryCriterion.body}</p>
+              </article>
             </div>
 
             <p className="border-t border-[#EEEAE1] px-5 py-3 text-[11px] leading-5 text-[#6D7788]">AI가 생성한 참고 피드백입니다. 상황에 따라 다른 판단도 가능합니다.</p>
@@ -1866,15 +1851,16 @@ function CompletedQuestReview({ quest, response }: {
       <section className={`${panel} p-4 sm:p-5`}>
         {feedbackResponse ? (
           <div className="space-y-4">
-            <p className="text-xs font-bold text-[#677287]">세 기준 결과</p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {feedbackResponse.evaluation?.criteria.map((criterion) => (
-                <div key={criterion.key} className="rounded-xl border border-[#E2DED3] p-3">
+            <p className="text-xs font-bold text-[#677287]">원포인트 피드백 결과</p>
+            {feedbackResponse.evaluation && (() => {
+              const criterion = primaryFeedbackCriterion(feedbackResponse.evaluation.criteria);
+              return (
+                <div className="rounded-xl border border-[#E2DED3] p-3">
                   <p className="text-xs font-black">{criterion.label}</p>
                   <span className={`mt-2 inline-block rounded-full px-2 py-1 text-[10px] font-black ${FEEDBACK_LEVEL_STYLE[criterion.level]}`}>{FEEDBACK_LEVEL_LABEL[criterion.level]}</span>
                 </div>
-              ))}
-            </div>
+              );
+            })()}
             <div><p className="text-xs font-bold text-[#677287]">최종 {outputName}</p><p className={`${targetFont} mt-1 text-[17px] leading-8`}>{feedbackResponse.revised}</p></div>
           </div>
         ) : dct ? (
@@ -2028,26 +2014,17 @@ function SessionPatternSummary({ responses }: { responses: Array<DctResponse | u
     ))
     .map((response) => response.evaluation as DctEvaluation);
   if (evaluations.length === 0) return null;
-  const observations = [
-    { key: "meaning", label: "의미 전달", good: "핵심 의미를 빠뜨리지 않은 답안", next: "원문의 핵심 의미와 조건을 빠뜨리지 않았는지 확인해 보세요." },
-    { key: "language", label: "문법 정확성", good: "문법상 큰 문제가 없었던 답안", next: `${mission.targetLanguage.label} 문장이 자연스러운지 다시 확인해 보세요.` },
-    { key: "pragmatics", label: "화용 적절성", good: "관계와 상황에 맞는 표현을 사용한 답안", next: `${mission.speechAct}의 상황과 부담에 맞게 표현의 무게를 조절했는지 확인해 보세요.` },
-  ] as const;
+  const primaryCriteria = evaluations.map((evaluation) => primaryFeedbackCriterion(evaluation.criteria));
+  const primary = primaryCriteria.find((criterion) => criterion.level !== "very_good") ?? primaryCriteria[0];
+  if (!primary) return null;
   return (
     <section className={`${panel} p-5 sm:p-6`}>
-      <h2 className="text-base font-black">이번 미션에서 확인한 점</h2>
-      <p className="mt-1 break-keep text-xs leading-5 text-[#6A7485]">이번 산출에서 실제로 확인된 결과만 정리했습니다.</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        {observations.map((observation) => {
-          const strongCount = evaluations.filter((evaluation) => evaluation.criteria.find((criterion) => criterion.key === observation.key)?.level === "very_good").length;
-          return (
-            <article key={observation.key} className="rounded-xl bg-[#F7F6F1] p-4">
-              <p className="text-xs font-black text-[#596579]">{observation.label}</p>
-              <p className="mt-2 break-keep text-sm font-black">{strongCount === evaluations.length ? observation.good : observation.next}</p>
-            </article>
-          );
-        })}
-      </div>
+      <h2 className="text-base font-black">이번 미션의 원포인트 피드백</h2>
+      <p className="mt-1 break-keep text-xs leading-5 text-[#6A7485]">세 기준은 내부 기록에 보존하고, 학습 화면에는 우선순위가 가장 높은 한 항목만 제시합니다.</p>
+      <article className="mt-4 rounded-xl bg-[#F7F6F1] p-4">
+        <p className="text-xs font-black text-[#596579]">{primary.label}</p>
+        <p className="mt-2 break-keep text-sm font-black">{primary.body}</p>
+      </article>
     </section>
   );
 }

@@ -277,20 +277,15 @@ const LearnerRecords = () => {
               <article className="flex flex-col justify-between rounded-2xl border border-[#E4E0D7] bg-white p-3.5 shadow-[0_4px_14px_rgba(23,33,43,0.04)] lg:col-span-4">
                 <div className="border-l-4 border-[#73C58C] pl-3">
                   <span className="inline-flex rounded-full bg-[#EAF2FF] px-2.5 py-1 text-[10.5px] font-semibold text-[#2E74B5]">
-                    다음 미션에서 해볼 일
+                    다음 미션에서 생각해 볼 질문
                   </span>
                   <p className="mt-2.5 text-[14px] font-bold leading-relaxed text-[#27323C]">
                     {report.nextStep}
                   </p>
-                  {primary?.featureKey === "request_mitigation_optionality" && (
-                    <p className="mt-1.5 text-[10.5px] text-muted-foreground">
-                      예: 如果方便的话… / 能不能…
-                    </p>
-                  )}
                 </div>
                 <Button asChild size="sm" className="mt-4 w-full bg-[#17212B] text-white hover:bg-[#293743]">
                   <Link to="/learner/course">
-                    다음 미션에서 시도하기
+                    수업으로 돌아가기
                     <ArrowRight size={14} className="ml-1.5" aria-hidden />
                   </Link>
                 </Button>

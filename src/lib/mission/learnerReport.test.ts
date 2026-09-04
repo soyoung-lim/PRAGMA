@@ -65,7 +65,7 @@ describe("latestFocusCarryOver", () => {
 
     expect(carry?.featureKey).toBe("refusal_softening");
     expect(carry?.speechActLabel).toBe("거절");
-    expect(carry?.advice).toContain("거절은 분명히 하면서");
+    expect(carry?.advice).toBe("거절 의사는 분명하면서도 관계를 불필요하게 해치지 않는 표현이었나요?");
   });
 
   it("초점이 없는 기록은 건너뛴다", () => {
@@ -115,7 +115,7 @@ describe("buildLearnerReport", () => {
     });
     expect(report.headline).toContain("최근에는 “가능하다면…” 표현을 써보기도 했어요");
     expect(report.nextStep).toBe(
-      "‘麻烦您’ 외에도 ‘가능하다면…’이라고 먼저 말하거나, 가능한지를 묻는 다른 방식도 시도해 볼 수 있어요.",
+      "이번 관계와 부담에서 요청의 분명함과 상대의 선택 여지는 어떻게 균형을 이루었나요?",
     );
     expect(report.correctionNotes).toHaveLength(13);
     expect(report.correctionNotes[0]).toMatchObject({

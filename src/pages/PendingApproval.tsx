@@ -21,7 +21,7 @@ const PendingApproval = () => {
   }
 
   if (profile?.approval_status === APPROVAL_STATUS.APPROVED) {
-    return <Navigate to="/scenario" replace />;
+    return <Navigate to="/learner/course" replace />;
   }
 
   const handleSignOut = async () => {
