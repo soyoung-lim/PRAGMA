@@ -58,7 +58,7 @@ export const AdminShell = ({ title, description, children, compact = false }: Ad
             to="/"
             className="text-sm text-[#8899A6] transition-colors hover:text-[#F1EFE8]"
           >
-            학습자 수업 열기 ↗
+            시작 화면 ↗
           </Link>
         </div>
       </header>

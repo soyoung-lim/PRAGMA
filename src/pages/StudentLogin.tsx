@@ -6,10 +6,11 @@ import { useProfile } from "@/lib/auth/useProfile";
 import { safeLoginReturnPath } from "@/lib/auth/loginReturn";
 import { GraduationCap } from "lucide-react";
 import { toast } from "sonner";
+import { APP_ROLE } from "@/lib/auth/constants";
 
 const StudentLogin = () => {
   const [busy, setBusy] = useState(false);
-  const { loading, session, isDevStub } = useProfile();
+  const { loading, session, profile, isDevStub } = useProfile();
   const location = useLocation();
   const requestedPath = new URLSearchParams(location.search).get("next");
   const afterLoginPath = safeLoginReturnPath(requestedPath);
@@ -36,6 +37,10 @@ const StudentLogin = () => {
 
   // 이미 인증된 학습자는 다시 Google 인증을 요구하지 않는다. 명시적 next가 있으면
   // 요청 화면으로 복귀하고, RequireApproved가 프로필 미완료 사용자를 /home으로 보낸다.
+  if (!loading && session && profile?.role === APP_ROLE.ADMIN) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
   if (!loading && (session || isDevStub)) {
     return <Navigate to={requestedPath ? afterLoginPath : "/home"} replace />;
   }
