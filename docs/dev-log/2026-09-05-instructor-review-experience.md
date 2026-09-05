@@ -39,6 +39,8 @@
 - 고정 테스트 미션의 로컬 브라우저에서 장면·문항·참고 판정/해설을 확인했다. 자동화 테스트는
   DCT 로컬 제출과 학습 기록 미저장을 검증한다. 실제 교수자 인증·운영 DB 저장·유료 AI 및
   음성 API를 포함한 종단 검증은 수행하지 않았다.
+  추가로 미리보기의 수정 요청 → 확인 전환과 승인 대기 표시를 확인했다. 이 시연의 저장은
+  로컬 메모리이며 운영 DB 저장 증거가 아니다.
 - 샌드박스의 esbuild 상위 폴더 접근 실패는 해당 명령의 실행 권한으로 해결했다. Vite 보안 설정을
   완화하지 않았다. worktree 안에 의존성을 별도로 설치했고 임시 미리보기는 `.tmp/`에 두었다.
 
@@ -48,6 +50,22 @@
 `docs/operations/AI_CROSS_REVIEW_PROTOCOL.md`의 DB migration 검토 기준에 따라 승인 경계만
 독립 검토한다. 운영 적용 순서는 검토 결과 반영 → DB migration → content-review Edge →
 필수 CI를 통과한 main 웹앱 배포다. 실제 콘텐츠의 최종 승인은 교수자가 수행한다.
+
+기능 커밋은 `3b7f0dcc56d7852baf51a4ba936f688cd51d39b9`이다. 해당 clean commit을 대상으로
+Claude Code를 Read/Grep/Glob만 허용한 읽기 전용 모드로 호출했으나, OAuth access token invalid
+인증 오류(401)로 종료되어 독립 검토 결과는 확보하지 못했다. 코드 검토 실패와 구분하며,
+재인증 전 동일 요청을 반복하지 않았다. 운영 반영은 진행하지 않았다.
+
+재개할 독립 검토의 질문은 다음 세 가지로 한정한다.
+
+1. 새 SQL과 기존 승인 RPC에서 관리자 외 기록 변경 또는 저장된 미완료/수정/보류의 승인 우회가 가능한가?
+2. `expectedVersion`, 현재 source/content hash, 큐 종료 후 재조회가 변경 전 기록을 새 콘텐츠에 적용하는가?
+3. `CanonicalReviewStage`와 체험 저장 경로가 교수자 최종 행동 없이 승인 또는 학습 수행 기록을 만드는가?
+
+대상: 새 migration, `scripts/content-review-db.test.mjs`, `ContentReviewPanel.tsx`,
+`InstructorReviewExperience.tsx`, `reviewPreparation.ts`/`reviewPreparationQueue.ts`,
+`contentReviewApi.ts`, `content-review/index.ts`와 직접 연결된 기존 승인 함수만 읽는다.
+전체 테스트·설계 검토를 반복하지 않고 배포 차단 결함과 운영 미확인 사항을 구분한다.
 
 관리자 구조·생성계약 정본, `DEC-20260905-02`, `ITER-20260905-02`, `EVD-20260905-02`를 갱신했다.
 논문 본문은 수정하지 않았다. 논문에는 체험 감수와 연속 실행의 구현을 기술할 수 있으나,
