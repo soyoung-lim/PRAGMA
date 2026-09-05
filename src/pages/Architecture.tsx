@@ -46,7 +46,7 @@ const Node = ({
     }`}
   >
     <div className="flex items-start justify-between gap-2">
-      <div className="text-[13px] font-bold leading-[1.3] text-[#15202B]">{title}</div>
+      <div className="break-keep text-[13px] font-bold leading-[1.3] text-[#15202B]">{title}</div>
       {status && (
         <span
           className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9.5px] font-semibold leading-none ${
@@ -57,7 +57,7 @@ const Node = ({
         </span>
       )}
     </div>
-    <div className="mt-0.5 text-[11px] leading-[1.35] text-muted-foreground">{desc}</div>
+    <div className="mt-0.5 break-keep text-[11px] leading-[1.35] text-muted-foreground">{desc}</div>
   </div>
 );
 
@@ -79,7 +79,7 @@ const LaneHeader = ({
       </span>
       <h2 className="text-[15.5px] font-extrabold leading-tight tracking-[-0.025em] text-[#15202B]">{title}</h2>
     </div>
-    <p className="mt-1 pl-7 text-[11px] leading-[1.35] text-muted-foreground">{desc}</p>
+    <p className="mt-1 break-keep pl-7 text-[11px] leading-[1.35] text-muted-foreground">{desc}</p>
   </div>
 );
 
@@ -93,7 +93,7 @@ const Mark = ({ children }: { children: React.ReactNode }) => (
 // 연결자는 타이핑한 글리프(↓·→)가 아니라 아이콘으로 둔다 — 글리프는 폰트마다
 // 굵기·baseline이 달라 도식 안에서 혼자 손글씨처럼 보인다.
 const Down = () => (
-  <div className="grid h-4 place-items-center" aria-hidden>
+  <div className="grid h-4 shrink-0 place-items-center" aria-hidden>
     <ChevronDown size={13} strokeWidth={2.25} className="text-[#8996A3]" />
   </div>
 );
@@ -192,12 +192,9 @@ const Architecture = () => (
       </div>
     </header>
 
-    {/* 하단 여백: 레인은 flex-1이라 pb만큼 세 열이 함께 조금 줄고, 그만큼 환류
-        화살표가 화면 안쪽으로 들어온다. 다만 ①레인 자연 높이가 약 573px이라
-        세로가 짧은 화면에서는 이 압축분이 그대로 넘침이 된다(1280×720 실측 -13px).
-        그래서 세로 900px 이상일 때만 준다 — 1920×1080 캡처에서는 여백이 생기고
-        작은 노트북에서는 이전과 동일하다. */}
-    <div className="mx-auto max-w-[1024px] px-6 pb-0 pt-3 [@media(min-height:900px)]:pb-5 lg:flex lg:h-[calc(100dvh-66px)] lg:flex-col lg:pt-4">
+    {/* 뷰포트는 최소 높이만 정한다. 짧은 화면에서도 레인과 환류 경로가
+        내용의 자연 높이 아래로 이어져 카드 밖 넘침과 화살표 겹침을 막는다. */}
+    <div className="mx-auto max-w-[1024px] px-6 pb-5 pt-3 lg:flex lg:min-h-[calc(100dvh-66px)] lg:flex-col lg:pt-4">
       {/* 세 레인을 한 문장으로 — 강조한 세 마디가 그대로 ①②③ 제목이다.
           밑줄 2px 대신 글자 아래쪽을 덮는 반투명 형광펜을 쓴다(랜딩 후크와 같은 어법).
           문장 자체는 굵기를 낮춰, 강조가 세 마디에만 남게 한다. */}
@@ -207,9 +204,9 @@ const Architecture = () => (
       </p>
 
       {/* 3레인 */}
-      <div className="grid grid-cols-1 items-start lg:min-h-0 lg:flex-1 lg:grid-cols-[243px_44px_393px_44px_251px] lg:items-stretch">
+      <div className="grid grid-cols-1 items-start lg:flex-1 lg:grid-cols-[243px_44px_393px_44px_251px] lg:items-stretch">
         {/* ① 콘텐츠 생성·품질 검증 */}
-        <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:justify-between">
+        <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4 lg:flex lg:flex-col lg:justify-between">
           <LaneHeader
             lane="supply"
             num="1"
@@ -221,9 +218,9 @@ const Architecture = () => (
           <Down />
           <Node lane="supply" title="AI 학습 콘텐츠 신규 생성" desc="확정 규칙으로 정식 문항 504개 생성" />
           <Down />
-          <Node lane="supply" title="1. 기준답안 연구 책임자 판정" desc={`9화행 × 5개 = ${FINAL_GOLD_POPULATION_COUNT}개 · 시스템 운영 게이트 설정`} />
+          <Node lane="supply" title="1. 준거 사례 연구 책임자 판정" desc={`9화행 × 5개 = ${FINAL_GOLD_POPULATION_COUNT}개 · 시스템 운영 게이트 설정`} />
           <Down />
-          <Node lane="supply" title="2. 기준답안 자동 회귀 점검" desc="연구자 확정 기준답안으로 품질 점검 자동화의 작동 조건 확인" />
+          <Node lane="supply" title="2. 준거 사례 자동 회귀 점검" desc="연구자 확정 준거 사례로 품질 점검 자동화의 작동 조건 확인" />
           <Down />
           <Node lane="supply" title="3. 콘텐츠 자동 점검·교수자 검수" desc="504개 전량 자동 점검 · 교수자는 경고 문항을 우선 확인하고 최종 승인" />
           <Down />
@@ -238,7 +235,7 @@ const Architecture = () => (
         <Handoff label="교수자 승인분" />
 
         {/* ② 학습자 워크플로우 */}
-        <section className="rounded-[13px] border border-[#D3D1C7] bg-card px-3.5 pb-4 pt-4 shadow-[0_8px_20px_-18px_rgba(21,32,43,.55)] lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:justify-between">
+        <section className="rounded-[13px] border border-[#D3D1C7] bg-card px-3.5 pb-4 pt-4 shadow-[0_8px_20px_-18px_rgba(21,32,43,.55)] lg:flex lg:flex-col lg:justify-between">
           <LaneHeader
             lane="learn"
             num="2"
@@ -266,7 +263,7 @@ const Architecture = () => (
             <span className="inline-block rounded-[5px] bg-[#FDF1C4] px-[7px] py-0.5 text-[10px] font-bold tracking-[0.07em] text-[#8A6D00]">
               한 미션의 흐름 · 매 미션 반복
             </span>
-            <div className="mt-2 flex flex-wrap items-center gap-[5px] lg:flex-nowrap lg:justify-center lg:gap-0.5 xl:gap-1">
+            <div className="mt-2 flex flex-wrap items-center gap-[5px] lg:justify-center lg:gap-0.5 xl:gap-1">
               {[`감각 익히기(MJT ${MPJ_ITEM_COUNT})`, "직접 표현하기", "피드백 확인", "한 곳 다듬기"].map((step, i) => (
                 <span key={step} className="contents">
                   {i > 0 && <ChevronRight size={9} strokeWidth={2.25} className="shrink-0 text-[#D6B84A]" />}
@@ -295,7 +292,7 @@ const Architecture = () => (
         <Handoff label="동의한 수행기록" />
 
         {/* ③ 학습 기록·연구자료 */}
-        <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:justify-between">
+        <section className="rounded-[13px] border border-border bg-card px-3.5 pb-4 pt-4 lg:flex lg:flex-col lg:justify-between">
           <LaneHeader
             lane="res"
             num="3"
