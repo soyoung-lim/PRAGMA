@@ -3546,3 +3546,13 @@
   `docs/dev-log/2026-09-05-instructor-review-experience.md`. 사용자 승인과 독립 검토 후 PR #70/main
   `9bdb07e`, migration `20260905150000`, `content-review` v12, Railway main 자동 배포로 운영에
   반영했다. 관리자 API의 실제 조회·구버전 거부를 확인했으며 유료 AI·음성 종단은 미수행이다.
+
+## DEC-20260905-03 · 공개 체험과 실제 학습 데이터 분리
+
+- 날짜: 2026-09-05
+- 문제: 심사용 대표 미션 주소가 로그인·교수자 승인 경로로 이동해 처음 방문하는 독자가 바로 확인하기 어려웠다.
+- 대안: 기존 승인 게이트 해제, 시연 영상 제공, 번들 예시를 기존 학습 실행기에 연결하는 방식을 검토했다.
+- 결정: 공개 /demo/mission은 번들 예시만 사용하며 runtime과 scenarioId를 전달하지 않는다. 실제 수업의 인증·승인·데이터 접근 조건은 유지한다.
+- 근거: 기존 실행기의 runtime 유무와 demoMode에 따른 API·저장 경계를 재사용할 수 있고, 현행 판단·산출 화면을 보여줄 수 있다. 예시 피드백·서버 비저장을 사용자에게 명시한다.
+- 검증: 공개 예시 테스트에서 장면 도입 뒤 판단 화면 진입 및 미션 조회·AI 피드백·서버 저장·이벤트 호출 부재를 확인했다. 공개 예시의 학습효과·내용 타당화·운영 전체 검증을 주장하지 않는다.
+- 관련: `docs/dev-log/2026-09-05-github-defense-presentation.md`, `src/pages/PublicMissionDemo.tsx`, `src/pages/PublicMissionDemo.test.tsx`.

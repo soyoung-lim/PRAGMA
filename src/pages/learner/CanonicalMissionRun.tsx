@@ -2226,7 +2226,7 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMod
   mission: CanonicalMissionViewModel;
   runtime?: RunnableMission;
   isDevPreview: boolean;
-  /** 디펜스 시연은 실제 미션·피드백을 쓰되 학습자 수행 로그는 만들지 않는다. */
+  /** 시연에서는 학습자 수행 로그를 만들지 않는다. 공개 예시는 runtime도 전달하지 않는다. */
   demoMode?: boolean;
   courseContext?: MissionCourseLocation | null;
 }) {
@@ -2525,8 +2525,8 @@ export function CanonicalMissionRunner({ mission, runtime, isDevPreview, demoMod
       <div className="mx-auto max-w-3xl">
         {demoMode && (
           <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-[#E3D08F] bg-[#FFF8E1] px-4 py-2.5 text-xs text-[#6B5518]" role="status">
-            <span className="font-black">디펜스 대표 미션 시연</span>
-            <span className="text-right font-semibold">실제 미션 실행 · 수행 기록 저장 안 됨</span>
+            <span className="font-black">대표 미션 체험</span>
+            <span className="text-right font-semibold">{runtime ? "실제 미션 실행 · 수행 기록 저장 안 됨" : "공개 예시 · 예시 피드백 · 서버에 답안 저장 안 됨"}</span>
           </div>
         )}
         {sceneIntroStep !== null ? (
