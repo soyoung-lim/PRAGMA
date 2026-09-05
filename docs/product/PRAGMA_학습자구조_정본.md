@@ -415,7 +415,10 @@ Can-do는 상황·참여자·목적·수행·모드·상황 적절성 기준을 
 ```
 
 구 `decoder` 경로는 `decode`로, `theater`·`meme` 경로는 라운지 허브로 안전하게 돌린다.
-구 `LoungeHome`·`LoungeCorner`·`mockLounge` 소스는 이력 확인을 위해 삭제하지 않는다.
+구 라운지 소스는 현행 실행 경로에서 사용하지 않아 제거하고, 이력 확인은 삭제 전 커밋 `82c3abee5333079864f039ef5ef006cacc6c5987`에 보존한다:
+[LoungeHome](https://github.com/sylim-research/PRAGMA/blob/82c3abee5333079864f039ef5ef006cacc6c5987/src/pages/learner/LoungeHome.tsx) ·
+[LoungeCorner](https://github.com/sylim-research/PRAGMA/blob/82c3abee5333079864f039ef5ef006cacc6c5987/src/pages/learner/LoungeCorner.tsx) ·
+[mockLounge](https://github.com/sylim-research/PRAGMA/blob/82c3abee5333079864f039ef5ef006cacc6c5987/src/lib/lounge/mockLounge.ts).
 
 | 모듈 | 정적 사례 | 판단 초점 |
 |---|---:|---|
