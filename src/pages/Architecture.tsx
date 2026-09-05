@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown, ChevronRight, PlayCircle, RotateCcw } from "lucide-react";
 import { MPJ_ITEM_COUNT } from "@/lib/curriculum/learnerWorkflow";
+import { FINAL_GOLD_POPULATION_COUNT } from "@/lib/pragma/goldProtocol";
+import { IS_DEMO } from "@/lib/auth/useProfile";
 import { REPRESENTATIVE_MISSION_PATH } from "@/lib/demo/representativeMission";
 
 // 심사 설명용 read-only 화면. 현재 런타임 흐름과 연구자료 처리 경계를 요약한다.
@@ -171,7 +173,7 @@ const Architecture = () => (
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {(
+          {IS_DEMO && (
             <Link
               to={REPRESENTATIVE_MISSION_PATH}
               className="inline-flex items-center gap-1.5 rounded-lg border border-[#FAD338] bg-[#FAD338] px-3 py-1.5 text-[12px] font-semibold text-[#15202B] transition-colors hover:bg-[#F5C400]"
@@ -209,18 +211,18 @@ const Architecture = () => (
             lane="supply"
             num="1"
             title="콘텐츠 생성·품질 검증"
-            desc="규칙 확정 → 학습 콘텐츠 생성 → 점검·승인"
+            desc="규칙 확정 → 504개 생성 목표 → 4단계 승인"
           />
 
           <Node lane="supply" title="표현 규칙·생성계약 확정" desc="9개 화행의 목표 요소·판정 대역·근거 고정" />
           <Down />
-          <Node lane="supply" title="AI 학습 콘텐츠 신규 생성" desc="확정 규칙과 생성 조건으로 콘텐츠 후보 생성" />
+          <Node lane="supply" title="AI 학습 콘텐츠 신규 생성" desc="확정 규칙으로 정식 문항 504개 생성 목표" />
           <Down />
-          <Node lane="supply" title="1. 준거 사례 연구 책임자 판정" desc="준거 사례와 판정 근거로 점검 조건 설정" />
+          <Node lane="supply" title="1. 준거 사례 연구 책임자 판정" desc={`9화행 × 5개 = ${FINAL_GOLD_POPULATION_COUNT}개 계획 · 시스템 운영 게이트 설정`} />
           <Down />
           <Node lane="supply" title="2. 준거 사례 자동 회귀 점검" desc="연구자 확정 준거 사례로 품질 점검 자동화의 작동 조건 확인" />
           <Down />
-          <Node lane="supply" title="3. 콘텐츠 자동 점검·교수자 검수" desc="생성 콘텐츠 자동 점검 · 교수자는 검토 근거를 확인하고 최종 승인" />
+          <Node lane="supply" title="3. 콘텐츠 자동 점검·교수자 검수" desc="생성 문항 전량 자동 점검 · 교수자는 경고 문항을 우선 확인하고 최종 승인" />
           <Down />
           <Node
             lane="supply"
@@ -277,12 +279,13 @@ const Architecture = () => (
           </div>
 
           <Down />
-          <Node lane="learn" title="다음 미션 수행" desc="같은 화행의 새로운 상황에서 판단·산출·수정 반복" />
+          <Node lane="learn" title="상황 바꿔보기" desc="같은 화행의 새로운 상황에서 다음 미션 수행" />
           <Down />
           <Node
             lane="learn"
             title="수행·의사결정 기록"
             desc="판단·선택·근거·최초안·수정안을 맥락·버전과 함께 저장"
+            status="수업 운영"
           />
         </section>
 

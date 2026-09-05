@@ -6,12 +6,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { seedIfEmpty } from "./lib/learningSessions";
+import { IS_DEMO } from "./lib/auth/useProfile";
+import { REPRESENTATIVE_MISSION_SCENARIO_ID } from "./lib/demo/representativeMission";
 
 const RequireApproved = lazy(() => import("./components/RequireApproved"));
 const RequireAdmin = lazy(() => import("./components/RequireAdmin"));
 const Index = lazy(() => import("./pages/Index.tsx"));
 const Architecture = lazy(() => import("./pages/Architecture.tsx"));
-const PublicMissionDemo = lazy(() => import("./pages/PublicMissionDemo"));
 const Privacy = lazy(() => import("./pages/Privacy.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const AdminCorpus = lazy(() => import("./pages/admin/AdminCorpus.tsx"));
@@ -83,8 +84,15 @@ const App = () => (
           <Route path="/architecture" element={<Architecture />} />
           {/* Google OAuth 동의 화면이 요구하는 공개 링크 — 비로그인 접근을 유지한다. */}
           <Route path="/privacy" element={<Privacy />} />
-          {/* 공개 예시만 사용한다. 실제 학습 경로의 로그인·승인 조건은 유지한다. */}
-          <Route path="/demo/mission" element={<PublicMissionDemo />} />
+          {/* 디펜스용 단일 진입점 — 실제 승인 미션 실행기를 재사용하되 수행 로그는 저장하지 않는다. */}
+          <Route
+            path="/demo/mission"
+            element={
+              IS_DEMO
+                ? <RequireApproved><CanonicalMissionRun scenarioId={REPRESENTATIVE_MISSION_SCENARIO_ID} demoMode /></RequireApproved>
+                : <Navigate to="/" replace />
+            }
+          />
           <Route path="/student-login" element={<StudentLogin />} />
           {/* 폐기된 콘텐츠 전문가 검수 주소는 현행 품질관리 흐름으로 연결한다. */}
           <Route path="/expert-login" element={<Navigate to="/admin/research-qa/final-review" replace />} />
