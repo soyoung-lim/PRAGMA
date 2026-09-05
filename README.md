@@ -132,28 +132,30 @@ PRAGMA는 결과물뿐 아니라 결과가 만들어지고 검토된 조건을 �
 
 ## 기술 스택
 
-| 영역 | 현재 구성 |
-|---|---|
-| 프론트엔드 | React 18.3, Vite 5.4, TypeScript 5.8, React Router 6.30 |
-| UI | Tailwind CSS 3.4, Radix UI·shadcn/ui 계열 컴포넌트 |
-| 상태·데이터 | TanStack Query 5, Zod 3 |
-| 백엔드 | Supabase JS 2.106, Postgres, Auth, RLS, Edge Functions |
-| AI 콘텐츠 | OpenAI Chat Completions: `gpt-4.1-mini`, `gpt-4o`, `gpt-4.1` |
-| 학습자 피드백 | `gpt-4.1-mini`, 가용성 대체 `gpt-4o-mini` |
-| AI 검토(콘텐츠) | 규칙 검사 → OpenAI `gpt-4.1` 검토 → Anthropic Claude 검토(`CLAUDE_AUDIT_MODEL`, claude-opus-5 계열) → OpenAI `gpt-4.1` 지적별 재검토. 생성 모델과 다른 계열의 모델이 교차 검토하며, 어느 단계도 승인 권한이 없음 |
-| 음성 | OpenAI `gpt-4o-transcribe`, ElevenLabs `eleven_multilingual_v2`, OpenAI TTS 대체 경로 |
-| 배포 | Railway 정적 프론트엔드 + Supabase 백엔드 |
-| 검증 | Vitest 3, Testing Library, Playwright, ESLint, TypeScript |
+<table>
+  <thead>
+    <tr><th width="170" align="left">영역</th><th align="left">현재 구성</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>프론트엔드</td><td>React 18.3, Vite 5.4, TypeScript 5.8, React Router 6.30</td></tr>
+    <tr><td>UI</td><td>Tailwind CSS 3.4, Radix UI·shadcn/ui 계열 컴포넌트</td></tr>
+    <tr><td>상태·데이터</td><td>TanStack Query 5, Zod 3</td></tr>
+    <tr><td>백엔드</td><td>Supabase JS 2.106, Postgres, Auth, RLS, Edge Functions</td></tr>
+    <tr><td>AI 콘텐츠</td><td>OpenAI Chat Completions: <code>gpt-4.1-mini</code>, <code>gpt-4o</code>, <code>gpt-4.1</code></td></tr>
+    <tr><td>학습자 피드백</td><td><code>gpt-4.1-mini</code>, 가용성 대체 <code>gpt-4o-mini</code></td></tr>
+    <tr>
+      <td>AI 검토(콘텐츠)</td>
+      <td>규칙 검사 → OpenAI <code>gpt-4.1</code> 검토<br>
+        → Anthropic Claude 검토(<code>CLAUDE_AUDIT_MODEL</code>, claude-opus-5 계열)<br>
+        → OpenAI <code>gpt-4.1</code> 지적별 재검토</td>
+    </tr>
+    <tr><td>음성</td><td>OpenAI <code>gpt-4o-transcribe</code>, ElevenLabs <code>eleven_multilingual_v2</code>, OpenAI TTS 대체 경로</td></tr>
+    <tr><td>배포</td><td>Railway 정적 프론트엔드 + Supabase 백엔드</td></tr>
+    <tr><td>검증</td><td>Vitest 3, Testing Library, Playwright, ESLint, TypeScript</td></tr>
+  </tbody>
+</table>
 
-## 개발 현황
-
-| 구분 | 내용 |
-|---|---|
-| 구현 완료 | 학습자·교수자 워크플로우, 15주 강좌 편성, 학습 수행 기록 저장 |
-| 구현 완료 | 콘텐츠 품질 관리 절차 — 규칙 기반 검사, 복수 AI 모델 교차 검토, 교수자 승인 |
-| 진행 중 | 정식 학습 문항 대량 생성과 내부 점검 |
-| 계획 | 관련 분야 전문가 3인 형성평가 — 초안 완성 후 실시하고 결과를 논문 최종 확정 전에 반영 |
-| 계획 | 학습 수행 데이터 수집과 생성 조건별 품질 분석 |
+AI 검토는 생성 모델과 다른 계열의 모델이 교차 검토하며, 어느 단계도 승인 권한이 없습니다.
 
 ## 연구 정보
 
