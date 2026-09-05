@@ -1,0 +1,391 @@
+{
+  "measuredAt": "2026-09-05T14:06:46.808Z",
+  "baseCommit": "1802382",
+  "release": "pragma_zhko_bidirectional_candidate_20260904_02",
+  "totalScenarios": 1708,
+  "currentCoreRows": 50,
+  "currentMissionRows": 31,
+  "currentNativeMjt5Rows": 31,
+  "currentMissionStatus": {
+    "generated": 31
+  },
+  "currentNativeCoverage": {
+    "ko_zh/stt_interpreting/complaint": 4,
+    "zh_ko/translation/refusal": 1,
+    "ko_zh/translation/agreement": 2,
+    "ko_zh/stt_interpreting/apology": 4,
+    "ko_zh/translation/compliment": 1,
+    "ko_zh/stt_interpreting/opposition": 2,
+    "ko_zh/stt_interpreting/request": 5,
+    "zh_ko/translation/proposal": 1,
+    "ko_zh/translation/refusal": 1,
+    "zh_ko/stt_interpreting/request": 1,
+    "ko_zh/stt_interpreting/proposal": 2,
+    "zh_ko/translation/opposition": 1,
+    "zh_ko/translation/request": 1,
+    "ko_zh/translation/request": 1,
+    "ko_zh/translation/thanks": 1,
+    "zh_ko/translation/agreement": 1,
+    "zh_ko/translation/apology": 1,
+    "zh_ko/translation/compliment": 1
+  },
+  "currentReleased": 0,
+  "coreMissionReleaseMismatch": [],
+  "courses": [
+    {
+      "id": "915fec24-cc38-4b00-a2a0-c3628abcd3f7",
+      "title": "AI 한중 화용 통번역 실습",
+      "status": "published",
+      "language_direction": "ko_zh",
+      "course_mode": "mixed",
+      "weeks": 15,
+      "assignments": 16,
+      "assignmentStatus": {
+        "previous-release": 16
+      },
+      "runnableAssignments": 0
+    },
+    {
+      "id": "c3f9a2d7-6e84-4f61-a953-2b7d9c0e4a12",
+      "title": "AI 중한 실전 통번역",
+      "status": "published",
+      "language_direction": "zh_ko",
+      "course_mode": "mixed",
+      "weeks": 15,
+      "assignments": 0,
+      "assignmentStatus": {},
+      "runnableAssignments": 0
+    },
+    {
+      "id": "a10c5b2e-7c5a-4f0c-9f4a-6d61cf6b8e21",
+      "title": "AI 한중 비즈니스 통번역 실습",
+      "status": "published",
+      "language_direction": "ko_zh",
+      "course_mode": "mixed",
+      "weeks": 15,
+      "assignments": 0,
+      "assignmentStatus": {},
+      "runnableAssignments": 0
+    }
+  ],
+  "reviewRowCount": 4,
+  "completedLogCountAllVersions": 63,
+  "validation": {
+    "total": 31,
+    "schemaPass": 31,
+    "runtimePass": 31,
+    "rules": {
+      "warning": 31
+    },
+    "withReviewHistory": 1,
+    "warningMissionCounts": {
+      "R5": 29,
+      "R19": 31,
+      "R27": 3,
+      "R29": 6
+    }
+  },
+  "courseFitBeforeApproval": [
+    {
+      "courseId": "915fec24-cc38-4b00-a2a0-c3628abcd3f7",
+      "title": "AI 한중 화용 통번역 실습",
+      "weeks": [
+        {
+          "week": 2,
+          "act": "request",
+          "mode": "translation",
+          "candidateCount": 0,
+          "distinctUpToTwo": 0,
+          "candidateIds": []
+        },
+        {
+          "week": 3,
+          "act": "thanks",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "2f898edd-aabf-4d63-849a-99a1f9cb3925"
+          ]
+        },
+        {
+          "week": 4,
+          "act": "compliment",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "68ec12d5-f4dc-4cbb-9378-b4dc533c8bcb"
+          ]
+        },
+        {
+          "week": 5,
+          "act": "agreement",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "d79406d7-1ae9-4e35-938a-1faf71d63170"
+          ]
+        },
+        {
+          "week": 6,
+          "act": "refusal",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "3a5fc056-6051-4372-a72c-9dee04e8de6e"
+          ]
+        },
+        {
+          "week": 9,
+          "act": "apology",
+          "mode": "stt_interpreting",
+          "candidateCount": 3,
+          "distinctUpToTwo": 2,
+          "candidateIds": [
+            "432ec4e7-93de-46dc-88ee-71a3a54e2932",
+            "4a2bc65a-566e-47c6-bb36-8fc62061fc6e",
+            "792b9bc4-5057-4867-bfc6-8ebfca7c6380"
+          ]
+        },
+        {
+          "week": 10,
+          "act": "proposal",
+          "mode": "stt_interpreting",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "b89d0612-1ae3-4a40-8444-7c3030fdbec0"
+          ]
+        },
+        {
+          "week": 11,
+          "act": "opposition",
+          "mode": "stt_interpreting",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "1fea5ef8-ce47-440e-b621-a20d71f9cdf5"
+          ]
+        },
+        {
+          "week": 12,
+          "act": "complaint",
+          "mode": "stt_interpreting",
+          "candidateCount": 0,
+          "distinctUpToTwo": 0,
+          "candidateIds": []
+        }
+      ]
+    },
+    {
+      "courseId": "a10c5b2e-7c5a-4f0c-9f4a-6d61cf6b8e21",
+      "title": "AI 한중 비즈니스 통번역 실습",
+      "weeks": [
+        {
+          "week": 2,
+          "act": "request",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "6b674da6-f545-43cb-8cda-ad5f27711450"
+          ]
+        },
+        {
+          "week": 3,
+          "act": "thanks",
+          "mode": "translation",
+          "candidateCount": 0,
+          "distinctUpToTwo": 0,
+          "candidateIds": []
+        },
+        {
+          "week": 4,
+          "act": "compliment",
+          "mode": "translation",
+          "candidateCount": 0,
+          "distinctUpToTwo": 0,
+          "candidateIds": []
+        },
+        {
+          "week": 5,
+          "act": "agreement",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "043c3b60-e962-4a59-a76b-df73ecad2719"
+          ]
+        },
+        {
+          "week": 6,
+          "act": "refusal",
+          "mode": "translation",
+          "candidateCount": 0,
+          "distinctUpToTwo": 0,
+          "candidateIds": []
+        },
+        {
+          "week": 9,
+          "act": "apology",
+          "mode": "stt_interpreting",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "a7324771-df41-45ac-b9d8-fdedfe3889db"
+          ]
+        },
+        {
+          "week": 10,
+          "act": "proposal",
+          "mode": "stt_interpreting",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "ed03b044-883c-4849-8808-2f7a5bfa339c"
+          ]
+        },
+        {
+          "week": 11,
+          "act": "opposition",
+          "mode": "stt_interpreting",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "3926454b-9958-47ff-a822-b5e293890a6c"
+          ]
+        },
+        {
+          "week": 12,
+          "act": "complaint",
+          "mode": "stt_interpreting",
+          "candidateCount": 4,
+          "distinctUpToTwo": 2,
+          "candidateIds": [
+            "56638a92-7f22-46dd-a05a-2557612ebb7e",
+            "7b501deb-59f3-4e5c-9151-9877a9884d2d",
+            "92be4b13-f0b3-4d86-af46-4aa124b2ec89",
+            "c7463dd7-10f2-4de2-ad5f-2cb214ff136f"
+          ]
+        }
+      ]
+    },
+    {
+      "courseId": "c3f9a2d7-6e84-4f61-a953-2b7d9c0e4a12",
+      "title": "AI 중한 실전 통번역",
+      "weeks": [
+        {
+          "week": 2,
+          "act": "request",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "7e2e8765-bffb-4ccf-a240-54a67378642f"
+          ]
+        },
+        {
+          "week": 3,
+          "act": "thanks",
+          "mode": "translation",
+          "candidateCount": 0,
+          "distinctUpToTwo": 0,
+          "candidateIds": []
+        },
+        {
+          "week": 4,
+          "act": "compliment",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "70aada0b-8bd4-45a4-b5af-98090775da5d"
+          ]
+        },
+        {
+          "week": 5,
+          "act": "agreement",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "3ad21afe-0675-40b8-85d8-fce0982e293e"
+          ]
+        },
+        {
+          "week": 6,
+          "act": "refusal",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "ea0976f1-14dc-46e5-ab10-bb39de00aa65"
+          ]
+        },
+        {
+          "week": 9,
+          "act": "apology",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "82ad389f-843f-4410-ab2e-72d1c47ce54d"
+          ]
+        },
+        {
+          "week": 10,
+          "act": "proposal",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "b7cb5073-5e3e-4f6c-a332-a2efe448d1b7"
+          ]
+        },
+        {
+          "week": 11,
+          "act": "opposition",
+          "mode": "translation",
+          "candidateCount": 1,
+          "distinctUpToTwo": 1,
+          "candidateIds": [
+            "76028b74-9e04-476e-ae7e-396cdad7423e"
+          ]
+        },
+        {
+          "week": 12,
+          "act": "complaint",
+          "mode": "stt_interpreting",
+          "candidateCount": 0,
+          "distinctUpToTwo": 0,
+          "candidateIds": []
+        }
+      ]
+    }
+  ],
+  "currentReviewInspection": {
+    "target": "492fd2ab-47c0-48ff-8c4d-34248f561615",
+    "sourceHash": "acaa056ba89931dca7e8b3f3f78a9591b483b3b0388296553a2ed649dcf8350c",
+    "contentHash": "2e83b7cad9b131f820ffa04c2c6c577fb5723ed1d1062f094a49ac95b5fb8dfc",
+    "currentReviewId": "575db851-c9df-44eb-b23b-fd72da23e317",
+    "rules": "warning",
+    "models": {
+      "openai": "gpt-4.1",
+      "claude": "claude-opus-5"
+    },
+    "openai": true,
+    "claude": true,
+    "adjudication": true,
+    "approved": false,
+    "experience": false,
+    "historyRows": 1
+  },
+  "limits": [
+    "Read-only admin API inspection; no content approval, assignment change, paid AI call, or learner submission.",
+    "Schema/runtime conversion and local mocked UI are not authenticated learner end-to-end completion.",
+    "Candidate fit is before professor approval and does not establish instructional validity."
+  ]
+}
