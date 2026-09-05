@@ -26,7 +26,6 @@ import {
 import { getPublishedCourse, type LearnerCourse } from "@/lib/curriculum/learnerCourse";
 import { getSessions, type LearningSession } from "@/lib/learningSessions";
 import { COURSE_WEEKS } from "@/lib/mission/mockLearnerCourse";
-import { getProgress } from "@/lib/mission/learnerState";
 import { SPEECH_ACT_UI, type SpeechActUI } from "@/lib/pragma/enums";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -154,50 +153,59 @@ const panel = "rounded-2xl border border-[#E4DFD0] bg-white shadow-[0_8px_24px_r
 
 const LearnerRecords = () => {
   const navigate = useNavigate();
-  const progress = useMemo(() => getProgress(), []);
   const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
   const localRecords = useMemo(
-    () => (import.meta.env.DEV || isLocalHost ? getSessions().map(localRecord) : []),
+    () => (isLocalHost ? getSessions().map(localRecord) : []),
     [isLocalHost],
   );
   const [remoteRecords, setRemoteRecords] = useState<ReportRecord[] | null>(null);
+  const [recordsError, setRecordsError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [course, setCourse] = useState<LearnerCourse | null>(null);
   const [selectedAct, setSelectedAct] = useState<SpeechActUI>("request");
   const [showEvidence, setShowEvidence] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setRemoteRecords(null);
+    setRecordsError(false);
     void (async () => {
-      const [{ data: auth }, courseResult] = await Promise.all([
-        supabase.auth.getSession(),
-        getPublishedCourse().catch(() => null),
-      ]);
-      if (!cancelled) setCourse(courseResult);
-      const userId = auth.session?.user?.id;
-      if (!userId) {
-        if (!cancelled) setRemoteRecords([]);
-        return;
-      }
-      const { data, error } = await supabase
-        .from("learner_mission_logs")
-        .select(
-          "id,speech_act,task_type,first_response,revised_response,revision_target_selected,completed_at,created_at",
-        )
-        .eq("auth_user_id", userId)
-        .eq("mission_completed", true)
-        .order("completed_at", { ascending: false, nullsFirst: false });
-      if (!cancelled) {
-        setRemoteRecords(error ? [] : ((data ?? []) as MissionLogRecord[]).map(missionLogRecord));
+      try {
+        const [{ data: auth, error: authError }, courseResult] = await Promise.all([
+          supabase.auth.getSession(),
+          getPublishedCourse().catch(() => null),
+        ]);
+        if (authError) throw authError;
+        if (!cancelled) setCourse(courseResult);
+        const userId = auth.session?.user?.id;
+        if (!userId) {
+          if (!cancelled) setRemoteRecords([]);
+          return;
+        }
+        const { data, error } = await supabase
+          .from("learner_mission_logs")
+          .select(
+            "id,speech_act,task_type,first_response,revised_response,revision_target_selected,completed_at,created_at",
+          )
+          .eq("auth_user_id", userId)
+          .eq("mission_completed", true)
+          .order("completed_at", { ascending: false, nullsFirst: false });
+        if (error) throw error;
+        if (!cancelled) {
+          setRemoteRecords(((data ?? []) as MissionLogRecord[]).map(missionLogRecord));
+        }
+      } catch {
+        if (!cancelled) setRecordsError(true);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadAttempt]);
 
-  const records = remoteRecords?.length ? remoteRecords : localRecords;
-  const usingLocalPreview = isLocalHost && remoteRecords !== null && remoteRecords.length === 0 && localRecords.length > 0;
-  const completedCount = records.length || progress.practiceCount;
+  const usingLocalPreview = isLocalHost && !recordsError && remoteRecords !== null && remoteRecords.length === 0 && localRecords.length > 0;
+  const records = usingLocalPreview ? localRecords : remoteRecords ?? [];
+  const completedCount = records.length;
   const revisions = records.filter(changed);
   const actsCovered = new Set(records.flatMap((record) => (record.speechAct ? [record.speechAct] : [])));
   const translationCount = records.filter((record) => record.taskType === "translation").length;
@@ -238,6 +246,30 @@ const LearnerRecords = () => {
       evidence: `비교 가능한 기록 ${selectedRecords.length}건`,
     };
   }, [marker, selectedAct, selectedRecords.length, selectedRevisions, selectedWeek, signature.next]);
+
+  if (recordsError || remoteRecords === null) {
+    return (
+      <LearnerJourneyShell
+        missionLayout
+        headerRight={<span className="text-[12px] font-semibold text-[#B9C4CE]">학습 리포트</span>}
+      >
+        <div className="pb-24">
+          <h1 className="text-[27px] font-bold tracking-[-0.025em] sm:text-[30px]">나의 통번역 학습 프로필</h1>
+          <div className={`${panel} mt-5 p-5`} role={recordsError ? "alert" : "status"}>
+            <p className="text-[13px] text-muted-foreground">
+              {recordsError ? "학습 기록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." : "학습 기록을 불러오는 중…"}
+            </p>
+            {recordsError && (
+              <button type="button" className="mt-3 text-[13px] font-semibold underline underline-offset-4" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>
+                다시 불러오기
+              </button>
+            )}
+          </div>
+        </div>
+        <LearnerBottomNav />
+      </LearnerJourneyShell>
+    );
+  }
 
   return (
     <LearnerJourneyShell
