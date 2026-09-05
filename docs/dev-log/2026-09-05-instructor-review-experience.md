@@ -80,6 +80,35 @@ Codex는 미확인으로 남은 `is_admin()`의 기존 profiles/role 조회와 W
 `docs/research-trail/evidence/2026-09-05-instructor-review-independent-review.md`에 보존했다.
 독립 검토 장애는 해소됐고 PR·DB migration·Edge·운영 배포는 아직 적용하지 않았다.
 
+### 사용자 승인 후 운영 반영 완료
+
+- 사용자가 DB·Edge·PR·CI·운영 배포를 승인했다. 최신 `origin/main`은 최초 기준 `beb936d`와
+  같아 코드 통합이나 로컬 전체 테스트를 반복하지 않았다.
+- DB dry-run은 `20260905150000_instructor_review_experience.sql` 한 개만 제시했다.
+  `--skip-vault`로 해당 migration만 적용했고 seed·role·기존 콘텐츠는 수정하지 않았다.
+- 운영 SQL smoke에서 migration 이력·새 열 3개·활성 승인 트리거를 확인했다. 비관리자 역할로
+  RPC를 호출하면 `Only admins can save instructor experience`가 반환되고 트랜잭션은 rollback했다.
+  변경 전후 `content_review_runs` 4건/승인 0건, 새 체험 기록 0건을 확인했다. 이는 이 테이블의
+  건수이며 전체 미션이나 기존 방식의 교수자 승인 건수로 일반화하지 않는다.
+- `content-review` 한 개를 Management API로 배포했다. v12 ACTIVE, `verify_jwt=true`,
+  function ID `db156415-aa6c-4ddd-a06c-4182dda69bce`를 확인했다.
+- PR #70의 필수 CI `33949554036` 성공 후 정확한 head `6a72dad`를 병합했다.
+  main merge `9bdb07ec33c1d194e693370ec02d4fe31500c154`, main CI `33950298349` 성공.
+  `release:lineage`로 기능 `3b7f0dc`와 검토 기록 `6a72dad`의 main 포함을 확인했다.
+- Railway deployment `43054b3b-ae27-4cbc-ba94-2ce95a95d0a5`는 위 main SHA로 SUCCESS다.
+  image digest: `sha256:8cc62c2e37bb08c3ec39c4d959aca6f516a2cdc83d992071dce6f4c0bd5413bf`.
+  production 직접 업로드나 CI 우회는 사용하지 않았다.
+- 설정된 관리자 자격으로 실제 인증·역할 확인 후 미션 `492fd2ab-47c0-48ff-8c4d-34248f561615`의
+  현재 스냅샷(MJT5, hash prefix `2e83b7cad9b1`)을 조회했다. 저장된 현재 검수 행에 대한 의도적
+  구버전 `rules` 요청은 409, 존재하지 않는 대상의 체험 RPC 호출은 버전/대상 불일치로 거부됐다.
+  새 감수·승인 기록이나 유료 AI 호출을 만들지 않았고, 검증용 로그인 세션만 local sign-out했다.
+- 운영 `/admin/review` HTTP 200과 실제 제공 중인 새 번들의 체험·연속 실행 UI를 확인했다.
+  브라우저에서는 정상 관리자 로그인 게이트를 확인했다. 로그인 후 브라우저의 실저장 동작·유료
+  AI 연속 호출·실제 음성 API 종단은 실행하지 않았으며 로컬 fixture 검증과 구분한다.
+- 도구의 샌드박스 네트워크/자체 설정 파일 제한은 해당 명령의 실행 권한으로 해결했다.
+  GitHub 인증은 샌드박스 밖에서 정상으로 확인됐으며 재로그인은 필요하지 않았다.
+- 설계·독립 검토와 충돌 확인이 끝난 시점에 Astra Medium으로 낮춰도 된다고 사용자에게 알렸다.
+
 관리자 구조·생성계약 정본, `DEC-20260905-02`, `ITER-20260905-02`, `EVD-20260905-02`를 갱신했다.
 논문 본문은 수정하지 않았다. 논문에는 체험 감수와 연속 실행의 구현을 기술할 수 있으나,
 표본 승인·완전 자동화·검수 시간 감소를 입증한 것으로 서술할 수 없다.
