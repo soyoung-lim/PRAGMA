@@ -244,13 +244,13 @@ const LearnerRecords = () => {
       missionLayout
       headerRight={<span className="text-[12px] font-semibold text-[#B9C4CE]">학습 리포트</span>}
     >
-      <div className="pb-16">
-        <header className="flex flex-wrap items-end justify-between gap-3">
+      <div className="pb-24">
+        <header className="flex flex-wrap items-end justify-between gap-5">
           <div>
-            <p className="text-[11.5px] font-semibold text-[#857653]">
+            <p className="text-[12px] font-semibold text-[#857653]">
               {course?.outline.title ?? "한·중 통번역 화용 학습"} · {course?.outline.week_count ?? 15}주 과정
             </p>
-            <h1 className="mt-0.5 text-[24px] font-bold tracking-[-0.025em] sm:text-[26px]">
+            <h1 className="mt-1 text-[27px] font-bold tracking-[-0.025em] sm:text-[30px]">
               나의 통번역 학습 프로필
             </h1>
           </div>
@@ -261,145 +261,155 @@ const LearnerRecords = () => {
           )}
         </header>
 
-        <section className={`${panel} mt-[8px] grid grid-cols-2 divide-x divide-y divide-[#EEE9DC] overflow-hidden sm:grid-cols-4 sm:divide-y-0`} aria-label="수업 이수 범위">
+        <section className={`${panel} mt-5 grid grid-cols-2 divide-x divide-y divide-[#EEE9DC] overflow-hidden sm:grid-cols-4 sm:divide-y-0`} aria-label="수업 이수 범위">
           {[
             [String(completedCount), "완료 학습 기록"],
             [String(revisions.length), "표현 수정 기록"],
             [`${actsCovered.size}/9`, "수행 화행"],
             [`${translationCount} · ${interpretingCount}`, "번역 · 통역"],
           ].map(([value, label]) => (
-            <div key={label} className="px-4 py-2">
-              <div className="text-[18px] font-bold leading-none text-[#15202B]">{value}</div>
-              <div className="mt-1 text-[11.5px] font-medium text-muted-foreground">{label}</div>
+            <div key={label} className="px-5 py-4">
+              <div className="text-[23px] font-bold leading-none text-[#15202B]">{value}</div>
+              <div className="mt-2 text-[12.5px] font-medium text-muted-foreground">{label}</div>
             </div>
           ))}
         </section>
 
-        <div className="mt-[8px] grid gap-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(250px,.68fr)]">
-          <section className={`${panel} border-l-4 border-l-[#70A17E] p-3`} aria-live="polite">
+        <section className={`${panel} mt-5 p-5 sm:p-6`}>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[12px] font-semibold text-[#857653]">1–15주 수업 이력</p>
+              <h2 className="mt-1 text-[19px] font-bold">9개 화행 학습 지도</h2>
+            </div>
+            <span className="text-[12.5px] font-medium text-muted-foreground">{actsCovered.size}/9 화행 수행</span>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-3" aria-label="화행별 학습 이력">
+            {ACTS.map((act) => {
+              const count = records.filter((record) => record.speechAct === act).length;
+              const week = actWeek(act, course);
+              const active = selectedAct === act;
+              return (
+                <button
+                  key={act}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => {
+                    setSelectedAct(act);
+                    setShowEvidence(false);
+                  }}
+                  className={[
+                    "relative min-h-[84px] min-w-0 rounded-xl border px-4 py-3 text-left transition-all",
+                    active
+                      ? "border-[#15202B] bg-[#F6F8FC] ring-2 ring-[#15202B] ring-offset-1"
+                      : count >= 2
+                        ? "border-[#CFE1D4] bg-[#EEF6F0] hover:-translate-y-0.5 hover:border-[#78A485]"
+                        : count === 1
+                          ? "border-[#D8E0F0] bg-[#F1F4FA] hover:-translate-y-0.5 hover:border-[#7A91B9]"
+                          : "border-[#E6E2D8] bg-[#F4F2EC] text-[#777368] hover:border-[#BDB6A5]",
+                  ].join(" ")}
+                >
+                  <span
+                    className={[
+                      "absolute right-3 top-3 h-2.5 w-2.5 rounded-full",
+                      count >= 2 ? "bg-[#5D9270]" : count === 1 ? "bg-[#6580AF]" : "bg-[#D9D4C7]",
+                    ].join(" ")}
+                    aria-hidden
+                  />
+                  <span className="block pr-5 text-[16px] font-bold">{SPEECH_ACT_UI[act]}</span>
+                  <span className="mt-2 block text-[12px] text-muted-foreground">
+                    {week ? `${week}주차` : "주차 미정"} · {count ? `${count}건 수행` : "수행 전"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[11.5px] text-muted-foreground">
+            <span>초록 · 반복 관찰</span><span>파랑 · 첫 수행</span><span>회색 · 수행 전</span>
+          </div>
+        </section>
+
+        <section className={`${panel} mt-5 border-l-4 border-l-[#70A17E] p-5 sm:p-6`} aria-live="polite">
             <div className="flex items-center justify-between gap-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF6F0] px-2.5 py-1 text-[11.5px] font-semibold text-[#426C50]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF6F0] px-3 py-1.5 text-[12px] font-semibold text-[#426C50]">
                 <Sparkles className="h-3.5 w-3.5" /> 최근 수행의 선택 패턴
               </span>
-              <span className="text-[11.5px] text-muted-foreground">{insight.evidence}</span>
+              <span className="text-[12px] text-muted-foreground">{insight.evidence}</span>
             </div>
-            <h2 className="mt-[7px] text-[18px] font-bold leading-snug sm:text-[20px]">{insight.title}</h2>
-            <p className="mt-[4px] text-[12.5px] leading-relaxed text-muted-foreground">{insight.body}</p>
-            <div className="mt-[7px] flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] font-medium text-[#5C6A7A]">
-              <span className="inline-flex items-center gap-1"><MessageCircleMore className="h-3.5 w-3.5" />{SPEECH_ACT_UI[selectedAct]}</span>
-              <span className="inline-flex items-center gap-1"><Languages className="h-3.5 w-3.5" />한↔중</span>
-              <span className="inline-flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" />{selectedWeek ? `${selectedWeek}주차` : "수업 기록"}</span>
+            <h2 className="mt-4 text-[22px] font-bold leading-snug sm:text-[24px]">{insight.title}</h2>
+            <p className="mt-2 text-[14px] leading-7 text-muted-foreground">{insight.body}</p>
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] font-medium text-[#5C6A7A]">
+              <span className="inline-flex items-center gap-1.5"><MessageCircleMore className="h-4 w-4" />{SPEECH_ACT_UI[selectedAct]}</span>
+              <span className="inline-flex items-center gap-1.5"><Languages className="h-4 w-4" />한↔중</span>
+              <span className="inline-flex items-center gap-1.5"><BookOpen className="h-4 w-4" />{selectedWeek ? `${selectedWeek}주차` : "수업 기록"}</span>
             </div>
             <button
               type="button"
               onClick={() => setShowEvidence((value) => !value)}
-              className="mt-[7px] rounded-lg border border-[#D8D2C2] px-3 py-1 text-[11.5px] font-semibold hover:bg-[#FAF8F2]"
+              className="mt-4 rounded-lg border border-[#D8D2C2] px-3.5 py-2 text-[12px] font-semibold hover:bg-[#FAF8F2]"
             >
               {showEvidence ? "근거 접기" : "근거 기록"}
             </button>
             {showEvidence && (
-              <p className="mt-[6px] rounded-lg bg-[#F7F5EE] px-3 py-1.5 text-[11.5px] leading-relaxed text-[#5C665F]">
+              <p className="mt-3 rounded-lg bg-[#F7F5EE] px-4 py-3 text-[12.5px] leading-relaxed text-[#5C665F]">
                 {selectedRecords.length
                   ? `${SPEECH_ACT_UI[selectedAct]} 수행 ${selectedRecords.length}건 · 실제 수정 ${selectedRevisions}건${marker?.count ? ` · “${marker.marker}” 포함 ${marker.count}건` : ""}`
                   : "해당 화행의 완료 기록이 없어 패턴을 산출하지 않았습니다."}
               </p>
             )}
-          </section>
+        </section>
 
-          <aside className={`${panel} bg-gradient-to-br from-white to-[#F1F4FA] p-3`}>
-            <p className="flex items-center gap-1.5 text-[11.5px] font-semibold text-[#6C7480]">
+        <aside className={`${panel} mt-4 bg-gradient-to-br from-white to-[#F1F4FA] p-5 sm:p-6`}>
+          <div className="grid gap-5 sm:grid-cols-[minmax(220px,.7fr)_minmax(0,1.3fr)] sm:items-center">
+            <div>
+              <p className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6C7480]">
               <Fingerprint className="h-4 w-4" /> 화용 시그니처 · 현재 기록
-            </p>
-            <h2 className="mt-[6px] text-[18px] font-bold leading-tight">
-              {selectedRecords.length >= 2 ? signature.name : "패턴 형성 중"}
-              <span className="mt-0.5 block text-[15px] font-semibold text-[#405164]">
-                {selectedRecords.length >= 2 ? signature.qualifier : `${SPEECH_ACT_UI[selectedAct]} 근거 ${selectedRecords.length}건`}
-              </span>
-            </h2>
-            <div className="mt-[8px] space-y-1.5 text-[11.5px] text-[#485663]">
-              <p className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0" />관찰 범위 · {SPEECH_ACT_UI[selectedAct]} {selectedRecords.length}건</p>
-              <p className="flex gap-2"><RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0" />재검토 경로 · 수정 {selectedRevisions}건</p>
-              <p className="flex gap-2"><Target className="mt-0.5 h-3.5 w-3.5 shrink-0" />다음 초점 · {ACT_FOCUS[selectedAct]}</p>
+              </p>
+              <h2 className="mt-3 text-[22px] font-bold leading-tight">
+                {selectedRecords.length >= 2 ? signature.name : "패턴 형성 중"}
+                <span className="mt-1 block text-[16px] font-semibold text-[#405164]">
+                  {selectedRecords.length >= 2 ? signature.qualifier : `${SPEECH_ACT_UI[selectedAct]} 근거 ${selectedRecords.length}건`}
+                </span>
+              </h2>
             </div>
-          </aside>
-        </div>
+            <div className="space-y-3 text-[13px] text-[#485663]">
+              <p className="flex gap-3 rounded-xl bg-white/70 px-4 py-3"><Check className="mt-0.5 h-4 w-4 shrink-0" />관찰 범위 · {SPEECH_ACT_UI[selectedAct]} {selectedRecords.length}건</p>
+              <p className="flex gap-3 rounded-xl bg-white/70 px-4 py-3"><RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />재검토 경로 · 수정 {selectedRevisions}건</p>
+              <p className="flex gap-3 rounded-xl bg-white/70 px-4 py-3"><Target className="mt-0.5 h-4 w-4 shrink-0" />다음 초점 · {ACT_FOCUS[selectedAct]}</p>
+            </div>
+          </div>
+        </aside>
 
-        <div className="mt-[8px] grid gap-2 lg:grid-cols-[minmax(440px,.9fr)_minmax(0,1.1fr)]">
-          <section className={`${panel} p-[10px]`}>
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[14px] font-bold">9개 화행 학습 이력</h2>
-              <span className="text-[11.5px] text-muted-foreground">{actsCovered.size}/9 화행 수행</span>
-            </div>
-            <div className="mt-[7px] grid grid-cols-3 gap-1.5 lg:grid-cols-5" aria-label="화행별 학습 이력">
-              {ACTS.map((act) => {
-                const count = records.filter((record) => record.speechAct === act).length;
-                const week = actWeek(act, course);
-                const active = selectedAct === act;
-                return (
-                  <button
-                    key={act}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => {
-                      setSelectedAct(act);
-                      setShowEvidence(false);
-                    }}
-                    className={[
-                      "min-w-0 rounded-lg border px-2 py-1.5 text-left transition-colors",
-                      active
-                        ? "border-[#15202B] bg-[#F6F8FC] ring-1 ring-[#15202B]"
-                        : count >= 2
-                          ? "border-[#CFE1D4] bg-[#EEF6F0] hover:border-[#78A485]"
-                          : count === 1
-                            ? "border-[#D8E0F0] bg-[#F1F4FA] hover:border-[#7A91B9]"
-                            : "border-[#E6E2D8] bg-[#F4F2EC] text-[#777368] hover:border-[#BDB6A5]",
-                    ].join(" ")}
-                  >
-                    <span className="block truncate text-[12.5px] font-semibold">{SPEECH_ACT_UI[act]}</span>
-                    <span className="mt-0.5 block truncate text-[10.5px] text-muted-foreground">
-                      {count ? `${count}건 수행` : week ? `${week}주차` : "수업 예정"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-[6px] flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-muted-foreground">
-              <span>초록 · 반복 관찰</span><span>파랑 · 첫 수행</span><span>회색 · 수행 전</span>
-            </div>
-          </section>
-
-          <section className={`${panel} p-[10px]`}>
-            <p className="text-[11.5px] font-semibold text-[#857653]">수업 확장 연습 · 선택 사항</p>
-            <h2 className="mt-1 text-[14px] font-bold">{SPEECH_ACT_UI[selectedAct]} 표현을 한 번 더 비교해 보세요.</h2>
-            <div className="mt-[7px] grid gap-2 sm:grid-cols-2">
+        <section className={`${panel} mt-4 p-5 sm:p-6`}>
+            <p className="text-[12px] font-semibold text-[#857653]">수업 확장 연습 · 선택 사항</p>
+            <h2 className="mt-1.5 text-[18px] font-bold">{SPEECH_ACT_UI[selectedAct]} 표현을 한 번 더 비교해 보세요.</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => navigate("/scenario")}
-                className="flex min-h-[52px] items-center justify-between gap-3 rounded-xl bg-[#15202B] px-3.5 py-2 text-left text-white hover:bg-[#22303C]"
+                className="flex min-h-[72px] items-center justify-between gap-4 rounded-xl bg-[#15202B] px-5 py-3.5 text-left text-white hover:bg-[#22303C]"
               >
-                <span><strong className="block text-[12.5px]">동일 조건 재확인</strong><span className="mt-0.5 block text-[11px] text-[#B9C4CE]">다른 표현으로 다시 구성</span></span>
+                <span><strong className="block text-[14px]">동일 조건 재확인</strong><span className="mt-1 block text-[12px] text-[#B9C4CE]">다른 표현으로 다시 구성</span></span>
                 <ArrowRight className="h-4 w-4 shrink-0" />
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/scenario?mode=transfer")}
-                className="flex min-h-[52px] items-center justify-between gap-3 rounded-xl border border-[#D8D2C2] px-3.5 py-2 text-left hover:bg-[#FAF8F2]"
+                className="flex min-h-[72px] items-center justify-between gap-4 rounded-xl border border-[#D8D2C2] px-5 py-3.5 text-left hover:bg-[#FAF8F2]"
               >
-                <span><strong className="block text-[12.5px]">조건 간 비교</strong><span className="mt-0.5 block text-[11px] text-muted-foreground">상대·매체를 바꾸어 확인</span></span>
+                <span><strong className="block text-[14px]">조건 간 비교</strong><span className="mt-1 block text-[12px] text-muted-foreground">상대·매체를 바꾸어 확인</span></span>
                 <Search className="h-4 w-4 shrink-0" />
               </button>
             </div>
-            <p className="mt-[6px] text-[10.5px] text-muted-foreground">정규 수업 미션과 별개이며, 학습 기록을 더 비교하고 싶을 때 선택합니다.</p>
-          </section>
-        </div>
+            <p className="mt-3 text-[11.5px] text-muted-foreground">정규 수업 미션과 별개이며, 학습 기록을 더 비교하고 싶을 때 선택합니다.</p>
+        </section>
 
-        <section className={`${panel} mt-[8px] p-[10px]`}>
+        <section className={`${panel} mt-4 p-5 sm:p-6`}>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-1.5 text-[14px] font-bold"><FilePenLine className="h-4 w-4" />최근 수정 노트</h2>
+            <h2 className="flex items-center gap-2 text-[18px] font-bold"><FilePenLine className="h-5 w-5" />최근 수정 노트</h2>
             {revisions.length > 0 && (
               <Dialog>
                 <DialogTrigger asChild>
-                  <button type="button" className="text-[11.5px] font-semibold text-[#4F6070] hover:underline">전체 수정 노트 →</button>
+                  <button type="button" className="text-[12px] font-semibold text-[#4F6070] hover:underline">전체 수정 노트 →</button>
                 </DialogTrigger>
                 <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto bg-[#FAF8F2]">
                   <DialogHeader>
@@ -426,10 +436,10 @@ const LearnerRecords = () => {
             )}
           </div>
           {latestRevision ? (
-            <div className="mt-[4px] grid gap-2 text-[11.5px] sm:grid-cols-[minmax(0,1.15fr)_minmax(170px,.8fr)_minmax(0,1.15fr)] sm:divide-x sm:divide-[#EEE9DC]">
-              <div className="min-w-0 sm:pr-3"><strong className="text-[10.5px] text-muted-foreground">최초 표현</strong><p className="mt-1 truncate font-zh" title={latestRevision.firstResponse}>{latestRevision.firstResponse || "기록 없음"}</p></div>
-              <div className="min-w-0 sm:px-3"><strong className="text-[10.5px] text-muted-foreground">재검토 지점</strong><p className="mt-1 truncate" title={focusLabel(latestRevision)}>{focusLabel(latestRevision)}</p></div>
-              <div className="min-w-0 sm:pl-3"><strong className="text-[10.5px] text-muted-foreground">최종 선택</strong><p className="mt-1 truncate font-zh" title={latestRevision.revisedResponse}>{latestRevision.revisedResponse || "기록 없음"}</p></div>
+            <div className="mt-4 grid gap-4 text-[13px] sm:grid-cols-[minmax(0,1.15fr)_minmax(170px,.8fr)_minmax(0,1.15fr)] sm:divide-x sm:divide-[#EEE9DC]">
+              <div className="min-w-0 sm:pr-4"><strong className="text-[11.5px] text-muted-foreground">최초 표현</strong><p className="mt-2 truncate font-zh" title={latestRevision.firstResponse}>{latestRevision.firstResponse || "기록 없음"}</p></div>
+              <div className="min-w-0 sm:px-4"><strong className="text-[11.5px] text-muted-foreground">재검토 지점</strong><p className="mt-2 truncate" title={focusLabel(latestRevision)}>{focusLabel(latestRevision)}</p></div>
+              <div className="min-w-0 sm:pl-4"><strong className="text-[11.5px] text-muted-foreground">최종 선택</strong><p className="mt-2 truncate font-zh" title={latestRevision.revisedResponse}>{latestRevision.revisedResponse || "기록 없음"}</p></div>
             </div>
           ) : (
             <p className="mt-2 text-[12px] text-muted-foreground">최초 표현과 최종 선택이 달라진 기록이 아직 없습니다.</p>
