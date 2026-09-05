@@ -3419,3 +3419,11 @@
   현행 조건의 첫 수업용 미션 두 건 확보와 인증 학습자 종단 확인이 남았다.
 - 관련: EVD-20260905-05,
   `docs/dev-log/2026-09-05-operational-flow-audit-and-report-records.md`.
+
+### ITER-20260905-03 운영 반영 확인
+
+사용자 승인 후 기능 `1241a8d`를 PR #79로 병합했다. PR CI `33972276467`와 main CI
+`33972444473`가 성공했고 main `dc632f1` 기반 Railway 연동 deployment `6282164954`가
+success였다. 운영 리포트 번들의 로딩·오류·재시도와 mock 횟수 fallback 부재를 확인했다.
+DB·Edge·콘텐츠 승인·편성은 변경하지 않았고 실제 학습자 수행·저장 종단은 여전히 별도다.
+세부 시각과 SHA는 해당 dev-log의 사용자 승인 후 운영 반영 절에 보존한다.
