@@ -88,8 +88,11 @@ describe("LearnerCourseList", () => {
     expect(selectedThemes).toEqual(["daily_living", "relationship_social", "international_exchange", "campus_study"]);
   });
 
-  it("removes 기반 from legacy standard titles but preserves custom names and source data", () => {
-    const legacyCourses = courses.map((course) => ({ ...course, title: course.title.replace(/^AI /, "AI 기반 ") }));
+  it("normalizes previous standard titles but preserves custom names and source data", () => {
+    const legacyCourses = courses.map((course) => ({
+      ...course,
+      title: `${course.title.replace(/^AI /, "AI 기반 ")}${course.language_direction === "ko_zh" ? " 실습" : ""}`,
+    }));
     mockCourses(legacyCourses);
     renderCourses();
 
