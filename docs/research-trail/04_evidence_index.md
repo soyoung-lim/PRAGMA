@@ -177,3 +177,8 @@
 | EVD-20260905-04 | 구 라운지 소스의 Git 이력 보존 | 사용자 코드 정리 요청에 따라 현행에서 참조하지 않는 LoungeHome·LoungeCorner·mockLounge를 제거하고 삭제 전 커밋 82c3abee5333079864f039ef5ef006cacc6c5987의 파일별 링크를 학습자 정본 8.2에 남겼다. 기존 EVD-20260801-01 등 과거 구현 증거는 당시 커밋에서 계속 확인한다. 현행 LoungeHub·LoungeModulePage와 30개 정적 사례의 설계는 변경하지 않는다 | `docs/product/PRAGMA_학습자구조_정본.md` 8.2; `docs/dev-log/2026-09-05-dead-code-cleanup.md`; 보존 커밋 `82c3abee5333079864f039ef5ef006cacc6c5987` | EVD-20260801-01 | 2026-09-05 |
 
 | EVD-20260905-05 | 현행 운영 연결 실측·리포트 기록 경계 로컬 수정 | origin/main 1802382 기준 관리자 읽기 조회에서 현행 코어 50·native MJT5 미션 31·승인 0·실행 가능 편성 0을 확인했다. 미션 31개 형식·러너 변환 성공과 규칙 fail 0은 교육적 승인·학습자 종단 증거가 아니다. 리포트의 로컬 mock 횟수 대체와 조회 실패 은폐를 수정했고 전체 733 pass·9 skip, typecheck·변경 파일 ESLint·production build와 모의 브라우저 오류/재시도/0건 표시가 통과했다. main 병합·운영 배포·콘텐츠 승인·편성·실제 학습 수행은 미수행이다 | `docs/dev-log/2026-09-05-operational-flow-audit-and-report-records.md`; `docs/research-trail/evidence/2026-09-05-operational-flow-audit.json`; `src/pages/learner/LearnerRecords.test.tsx` | ITER-20260905-03 | 2026-09-05 |
+
+EVD-20260905-05 후속 배포: 사용자 승인 후 PR #79, 기능 `1241a8d` → main `dc632f1` 포함,
+PR CI `33972276467`·main CI `33972444473` 성공, Railway 연동 deployment `6282164954`
+success와 운영 리포트 번들 HTTP 200·수정 코드 제공을 확인했다. 해당 dev-log의 운영 반영 절을
+참조한다. 이 후속 증거는 앞선 로컬 수정의 운영 반영 경계를 갱신하며 실제 학습자 종단은 포함하지 않는다.

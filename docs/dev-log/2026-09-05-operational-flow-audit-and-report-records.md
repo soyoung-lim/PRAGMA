@@ -81,3 +81,19 @@
 
 근거: `docs/research-trail/evidence/2026-09-05-operational-flow-audit.json`.
 원문 없는 집계·상태·후보 ID만 보존하며 실제 미션 본문과 인증 정보·학습자 응답은 포함하지 않는다.
+
+## 사용자 승인 후 운영 반영 · 2026-09-05
+
+- 사용자가 필요한 커밋·푸시·배포를 승인했다. 기능 `1241a8d64e17035666dcd5fe156689d06cd30d9c`를
+  푸시하고 PR #79의 필수 CI `33972276467` 성공 뒤 정확한 head를 main에 병합했다.
+- main merge `dc632f14863ea158dddf601242bc5da5f00a220f`, main CI `33972444473` 성공.
+  `release:lineage`로 기능 커밋의 origin/main 포함을 확인했다.
+- Railway 연동 GitHub deployment `6282164954` (`PRAGMA / production`)는 위 main SHA이며,
+  2026-09-05 14:41:41 UTC에 `success` 상태가 됐다. production 직접 업로드·CI 우회는 없었다.
+- 14:42:52 UTC 운영 홈·`/learner/records`·실제 `LearnerRecords-IE2aUSli.js` 응답이 모두 HTTP 200이었다.
+  홈이 제공한 `index-CHxk3jM5.js`에서 연결된 번들을 찾아 로딩·오류·재시도 문구, 본인·완료행
+  필터 유지, `practiceCount` fallback 부재를 확인했다. 인증 학습자 실저장은 이번 smoke에 포함하지 않았다.
+- DB migration·Edge 함수·프롬프트 변경이 없어 해당 배포는 필요하지 않았다. 콘텐츠 생성·승인·
+  편성도 변경하지 않았다. 앞선 운영 데이터 실측은 조회 당시의 값이며 배포 시점에 재집계한 값이 아니다.
+- 이 절은 앞선 로컬 완료 경계를 갱신하는 배포 이력이다. 뒤따르는 기록 전용 커밋은 이 배포 증거를
+  보존하며 기능 변경이나 별도의 학습자 종단 완료를 주장하지 않는다.
