@@ -2,7 +2,7 @@
 
 ## 현재 작업 인수인계 · Claude Code와 Codex 공통
 
-- 기존 작업을 이어갈 때 가장 먼저 `docs/handoff/ACTIVE_HANDOFF.md`를 읽는다.
+- 기존 작업을 이어갈 때 먼저 `docs/CANONICAL.md`와 최근 관련 `docs/dev-log/`를 읽는다.
 - 문서에 적힌 작업공간·branch·HEAD를 실제 Git 상태와 대조한 뒤 수정한다.
 - 다른 worktree에 있다면 그곳을 최신 상태라고 가정하거나 사용자 변경을 정리하지 않는다.
 - Claude Code와 Codex가 같은 worktree를 동시에 편집하지 않는다.
@@ -17,7 +17,7 @@
   - `docs/product/PRAGMA_관리자구조_정본.md`
 - `docs/contracts/history/`와 `docs/product/history/`는 역사 자료이며 현재 구현 근거로 사용하지 않는다. 현행 문서와 코드·테스트가 충돌하면 근거를 함께 보고한다.
 - 논문 작업공간을 함께 다룰 수 있으면 `C:\PRAGMA_THESIS_LOCAL\01_정본\00_정본목록.md`와 위 세 경로의 일치 여부도 대조하고, 불일치하면 추측으로 선택하지 않는다.
-- 현행 `mission_v5`는 **MPJ4 + DCT1**이다. 이름의 5는 스키마 버전이며 문항 수가 아니다. `mission_v1/v2`의 5문항 구조만 읽기 호환용 legacy다.
+- 현행 `mission_v5`는 **MJT5 + DCT1**이다. 이름의 5는 스키마 버전이며 문항 수가 아니다. 과거 MJT4 행은 읽기 호환용 legacy이며, 현재 계약은 `docs/CANONICAL.md`를 따른다.
 - PRAGMA는 연구용 검사 도구가 아니라 **교육 우선형 학습 플랫폼이면서 연구 가능한 데이터를 남기는 시스템**이다.
 - “연구 가능”을 사전–사후 인과 효과 검증의 의무로 해석하지 않는다. 현재 기본 연구 수준은 기술적·탐색적·질적 연구다.
 - 데이터 순도를 이유로 교육적으로 타당한 힌트나 스캐폴딩을 제거하지 않는다.

@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ArrowRight, GraduationCap, Network, Play, SlidersHorizontal } from "lucide-react";
 import { HomeBrand } from "@/components/HomeBrand";
 import { ensureSession } from "@/lib/tracking";
-import { IS_DEMO } from "@/lib/auth/useProfile";
 import { REPRESENTATIVE_MISSION_PATH } from "@/lib/demo/representativeMission";
 
 // 화살표는 hover에서 진행 방향으로 살짝 미끄러진다. 카드가 통째로 떠오르는 동작은
@@ -129,8 +128,8 @@ const Landing = () => {
         </section>
 
         {/* 디펜스 진입점. 설명(/architecture)과 실제 실행(/demo/mission)을 나란히 두되
-            학습자·교수자 두 주 경로보다 작게 유지한다. 실증 시작 전에는 감춘다. */}
-        {IS_DEMO && (
+            학습자·교수자 두 주 경로보다 작게 유지한다. 공개 예시는 로그인이 필요 없다. */}
+        {(
           <section className="mt-6 flex flex-wrap items-center justify-center gap-3" aria-label="디펜스 시연">
             <Link
               to="/architecture"
@@ -145,7 +144,7 @@ const Landing = () => {
               className={defenseLink}
             >
               <Play aria-hidden size={16} strokeWidth={1.6} className="fill-[#3E4C57] text-[#3E4C57]" />
-              대표 미션 시연
+              대표 미션 체험
               <ArrowRight aria-hidden size={14} strokeWidth={2} className={`text-[#5C6A7A] ${arrow}`} />
             </Link>
           </section>
