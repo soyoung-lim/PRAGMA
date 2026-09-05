@@ -28,7 +28,7 @@ PRAGMA는 최적 번역을 자동으로 제시하는 번역기나 범용 LMS가 
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/02-architecture.png" alt="PRAGMA 통합 워크플로우 개요" width="100%">
+  <img src="docs/screenshots/02-architecture.png?v=20260905-layout2" alt="PRAGMA 통합 워크플로우 개요" width="100%">
   <br>
   <sub><b>통합 워크플로우</b> · 콘텐츠 생성 → 검수·승인 → 수업 배치 → 학습 수행 → 기록</sub>
 </p>
