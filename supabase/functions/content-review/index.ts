@@ -23,7 +23,9 @@ Deno.serve(async (req) => {
     if (roleError || isAdmin !== true) return json({ error: "관리자만 콘텐츠 검수를 사용할 수 있습니다." }, 403);
     const rawBody = await req.text();
     if (rawBody.length > 4000) return json({ error: "요청이 너무 큽니다." }, 413);
-    const { action, target } = JSON.parse(rawBody) as { action: string; target: ReviewTarget };
+    const { action, target, expectedVersion } = JSON.parse(rawBody) as {
+      action: string; target: ReviewTarget; expectedVersion?: { contentHash: string; sourceHash: string };
+    };
     if (!["inspect", "rules", "openai", "claude", "adjudication"].includes(action)
       || !target || !["mission", "weekly_material"].includes(target.kind) || !uuid.test(target.targetId)
       || (target.kind === "weekly_material" && (!Number.isInteger(target.weekNo) || target.weekNo! < 1 || target.weekNo! > 15))) {
@@ -61,6 +63,9 @@ Deno.serve(async (req) => {
     };
     const state = await inspect();
     if (action === "inspect") return json(state);
+    if (expectedVersion && (expectedVersion.contentHash !== state.contentHash || expectedVersion.sourceHash !== state.sourceHash)) {
+      return json({ error: "검토 시작 후 콘텐츠가 변경되었습니다. 새 버전을 확인하고 다시 시작하세요." }, 409);
+    }
     if (action === "rules") {
       if (!state.run) {
         const { error } = await db.from("content_review_runs").upsert({ kind: target.kind, target_id: target.targetId, week_no: weekNo,

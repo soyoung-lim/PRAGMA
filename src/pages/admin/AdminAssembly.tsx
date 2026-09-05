@@ -51,6 +51,7 @@ import type { ContentReviewApproval } from "@/lib/pragma/contentReviewApi";
 import { CONTENT_REVIEW_STEPS } from "../../../supabase/functions/_shared/contentReview";
 import type { MissionRuntime } from "@/lib/pragma/missionSchema";
 import { toast } from "sonner";
+import { startReviewPreparation, useReviewPreparationQueue } from "@/lib/pragma/reviewPreparationQueue";
 
 interface CoreRow {
   scenario_id: string;
@@ -159,6 +160,9 @@ const AdminAssembly = ({ reviewMode = false }: { reviewMode?: boolean }) => {
   const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<Record<string, { mission: MissionRuntime; warnings: string[] }>>({});
   const [openId, setOpenId] = useState<string | null>(null);
+  const [reviewSelection, setReviewSelection] = useState<Set<string>>(new Set());
+  const reviewQueue = useReviewPreparationQueue();
+  useEffect(() => { setReviewSelection(new Set()); }, [fState, fAct, fLevel, fMode, fDirection, fRun, fHash]);
 
   const loadRows = useCallback(async () => {
     setLoading(true);
@@ -498,6 +502,18 @@ const AdminAssembly = ({ reviewMode = false }: { reviewMode?: boolean }) => {
         </div>
       ) : (
         <section className="mt-4 space-y-2">
+          {reviewMode && <div className="space-y-2 rounded-xl border border-[#D8D3C4] bg-white p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button size="sm" variant="outline" disabled={reviewQueue.active} onClick={() => setReviewSelection(new Set(visible.filter((row) => stateOf(row) === "generated").map((row) => row.scenario_id)))}>표시된 검수 대기 미션 선택</Button>
+              <Button size="sm" variant="ghost" disabled={reviewQueue.active || !reviewSelection.size} onClick={() => setReviewSelection(new Set())}>선택 해제</Button>
+              <Button disabled={reviewQueue.active || !reviewSelection.size || Boolean(busy)} onClick={() => void startReviewPreparation(
+                filtered.filter((row) => reviewSelection.has(row.scenario_id) && stateOf(row) === "generated").map((row) => ({
+                  target: { kind: "mission" as const, targetId: row.scenario_id },
+                  label: `${SPEECH_ACT_UI[row.speech_act]} · ${row.scenario_id.slice(0, 8)}`,
+                })))}>선택 {reviewSelection.size}건 AI 검토 · 유료</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">선택한 미션의 규칙 검사 → OpenAI → Claude → 재검토를 이어서 실행합니다. 미션당 최대 3회 유료 호출, 완료 단계 재사용, 오류는 자동 재시도 없이 보류합니다. 교수자 최종 승인은 포함하지 않습니다.</p>
+          </div>}
           <div className="flex items-baseline justify-between px-1">
             <div>
               <h3 className="text-[15px] font-bold text-[#202B33]">{reviewMode ? "미션 검수 대기열" : "조립 큐"}</h3>
@@ -573,9 +589,17 @@ const AdminAssembly = ({ reviewMode = false }: { reviewMode?: boolean }) => {
                         </>
                       )}
                       {(st === "generated" || st === "reviewed") && (
+                        <>
+                        {reviewMode && st === "generated" && <label className="mr-2 flex items-center gap-2 text-xs">
+                          <input type="checkbox" aria-label={`AI 검토 선택 ${r.scenario_id}`} disabled={reviewQueue.active}
+                            checked={reviewSelection.has(r.scenario_id)} onChange={(event) => setReviewSelection((current) => {
+                              const next = new Set(current); if (event.target.checked) next.add(r.scenario_id); else next.delete(r.scenario_id); return next;
+                            })} />AI 검토 선택
+                        </label>}
                         <Button size="sm" variant="ghost" onClick={() => togglePreview(r)}>
-                          {openId === r.scenario_id ? "미션 접기 ▴" : reviewMode ? "원본·5단계 검수 열기 ▾" : "미션 보기 ▾"}
+                          {openId === r.scenario_id ? "미션 접기 ▴" : reviewMode ? "학생 화면으로 감수하기 ▾" : "미션 보기 ▾"}
                         </Button>
+                        </>
                       )}
                       {st === "reviewed" && (
                         <>
@@ -597,10 +621,10 @@ const AdminAssembly = ({ reviewMode = false }: { reviewMode?: boolean }) => {
                   </div>
                   {openId === r.scenario_id && preview[r.scenario_id] && (
                     <>
-                      <MissionPreview
+                      {!reviewMode && <MissionPreview
                         mission={preview[r.scenario_id].mission}
                         warnings={preview[r.scenario_id].warnings}
-                      />
+                      />}
                       {st === "generated" && (
                         <ProfessorMissionWorkbench
                           scenarioId={r.scenario_id}
@@ -611,7 +635,7 @@ const AdminAssembly = ({ reviewMode = false }: { reviewMode?: boolean }) => {
                           onReview={(overrides, approval) => onReview(r, overrides, approval)}
                         />
                       )}
-                      {reviewMode && st === "reviewed" && <ContentReviewPanel target={{ kind: "mission", targetId: r.scenario_id }} historicalApproval />}
+                      {reviewMode && st === "reviewed" && <ContentReviewPanel experiential target={{ kind: "mission", targetId: r.scenario_id }} historicalApproval />}
                     </>
                   )}
                 </li>

@@ -105,8 +105,36 @@ before(async () => {
     const line = migration.slice(0, Number(error.position)).split('\n').length;
     throw new Error(`QA migration line ${line}: ${error.message}`);
   }
+  await db.exec(await sqlFile('20260905150000_instructor_review_experience.sql'));
 });
 after(async () => { await db.close(); });
+
+const experience = (status = 'checked') => ({ version: 'instructor_experience_v1', active_seconds: 45,
+  decisions: ['scene','mjt-0','mjt-1','mjt-2','mjt-3','mjt-4','recap','dct'].map((section, index) => ({ section, status: index === 0 ? status : 'checked', note: '' })) });
+const saveExperience = (r, value) => scalar('select save_instructor_experience($1,$2,$3)', [r.id, hash, value]);
+
+test('instructor experience is version-bound, admin-only, and blocks approval until holds are resolved', async () => {
+  const m = await mission(); const r = await review(m.id);
+  await learner(() => assert.rejects(saveExperience(r, experience()), /Only admins/));
+  await admin(() => assert.rejects(saveExperience(r, { ...experience(), decisions: [experience().decisions[0], experience().decisions[0]] }), /Invalid/));
+  await admin(() => saveExperience(r, experience('revision_required')));
+  await assert.rejects(finalize(m, r), /revision or defer/);
+  assert.equal(await scalar('select mission_status from scenarios where scenario_id = $1', [m.id]), 'generated');
+  await assert.rejects(db.query('update content_review_runs set instructor_experience = null where id = $1', [r.id]), /Keep instructor experience/);
+  await admin(() => saveExperience(r, { ...experience(), decisions: experience().decisions.slice(1) }));
+  await assert.rejects(finalize(m, r), /Complete instructor experience/);
+  await admin(() => saveExperience(r, experience()));
+  assert.equal(await finalize(m, r), m.id);
+  assert.equal(await scalar('select instructor_experience_by from content_review_runs where id = $1', [r.id]), adminId);
+  await admin(() => assert.rejects(saveExperience(r, experience()), /immutable/));
+});
+
+test('changed source cannot reuse instructor observations and legacy approved evidence is unchanged', async () => {
+  const m = await mission(); const r = await review(m.id);
+  await db.query(`update scenarios set core_content = '{"situation_ko":"new source"}' where scenario_id = $1`, [m.id]);
+  await admin(() => assert.rejects(saveExperience(r, experience()), /Content changed/));
+  assert.equal(await scalar('select mission_status from scenarios where scenario_id = $1', [legacy.id]), 'reviewed');
+});
 
 test('admin writes and the old RPC cannot bypass QA; historical approved content is preserved', async () => {
   const m = await mission();
