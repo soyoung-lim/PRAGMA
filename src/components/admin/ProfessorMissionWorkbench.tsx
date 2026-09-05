@@ -87,9 +87,9 @@ export function ProfessorMissionWorkbench({
     <section className="mt-3 rounded-xl border border-[#D7DDE0] bg-white p-3.5 text-[12px]">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h4 className="font-semibold text-[#233542]">교수자 문항 검수</h4>
+          <h4 className="font-semibold text-[#233542]">교수자 체험 감수</h4>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            학습목표는 화행입니다. 아래 편집은 지목된 문항 block과 DCT 참고안만 바꿉니다.
+            학생에게 제시할 화면과 참고 판정을 확인하고, 필요한 부분에 수정 요청을 남기세요.
           </p>
         </div>
       </div>
@@ -146,7 +146,7 @@ export function ProfessorMissionWorkbench({
           </Button>
         </div>
       </details>
-      <ContentReviewPanel target={{ kind: "mission", targetId: scenarioId }}
+      <ContentReviewPanel experiential target={{ kind: "mission", targetId: scenarioId }}
         refreshKey={mission.provenance?.mission_content_hash ?? "draft"}
         approvalDisabled={busy || !canReview || dirty}
         onApprove={(approval) => onReview(overrides, approval)} />

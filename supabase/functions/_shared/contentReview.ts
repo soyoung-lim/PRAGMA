@@ -50,7 +50,15 @@ export type ContentReviewRun = {
   approved_at: string | null; approved_by: string | null; professor_note: string | null;
   openai_fail_override: string | null;
   professor_decisions: ProfessorFindingDecision[];
+  instructor_experience?: InstructorExperience | null;
+  instructor_experience_by?: string | null;
+  instructor_experience_at?: string | null;
   created_at: string;
+};
+export type InstructorExperience = {
+  version: "instructor_experience_v1";
+  active_seconds: number;
+  decisions: Array<{ section: string; status: "checked" | "revision_required" | "defer"; note: string }>;
 };
 export type ReviewInspection = {
   run: ContentReviewRun | null; contentHash: string; sourceHash: string;

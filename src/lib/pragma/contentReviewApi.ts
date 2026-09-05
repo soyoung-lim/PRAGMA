@@ -1,10 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { ProfessorFindingDecision, ReviewInspection, ReviewTarget } from "../../../supabase/functions/_shared/contentReview";
+import type { InstructorExperience, ProfessorFindingDecision, ReviewInspection, ReviewTarget } from "../../../supabase/functions/_shared/contentReview";
 import type { WeeklyCourseMaterial } from "@/lib/curriculum/weeklyMaterials";
+import type { ReviewVersion } from "./reviewPreparation";
 export type ContentReviewApproval = { reviewId: string; contentHash: string; professorNote: string; openaiFailOverride?: string };
 
-export async function contentReviewRequest(target: ReviewTarget, action = "inspect"): Promise<ReviewInspection> {
-  const { data, error } = await supabase.functions.invoke("content-review", { body: { target, action } });
+export async function contentReviewRequest(target: ReviewTarget, action = "inspect", expectedVersion?: ReviewVersion): Promise<ReviewInspection> {
+  const { data, error } = await supabase.functions.invoke("content-review", { body: { target, action, ...(expectedVersion ? { expectedVersion } : {}) } });
   if (error) {
     let message = "검수 서비스를 사용할 수 없습니다. 관리자 로그인과 content-review Edge·DB 배포 상태를 확인하세요.";
     if (error.context instanceof Response) {
@@ -36,6 +37,13 @@ export async function getApprovedWeeklyMaterial(outlineId: string, weekNo: numbe
 export async function saveProfessorDecisions(reviewId: string, contentHash: string, decisions: ProfessorFindingDecision[]): Promise<void> {
   const { error } = await (supabase as any).rpc("save_content_review_decisions", {
     p_review_id: reviewId, p_content_hash: contentHash, p_decisions: decisions,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function saveInstructorExperience(reviewId: string, contentHash: string, experience: InstructorExperience): Promise<void> {
+  const { error } = await (supabase as any).rpc("save_instructor_experience", {
+    p_review_id: reviewId, p_content_hash: contentHash, p_experience: experience,
   });
   if (error) throw new Error(error.message);
 }

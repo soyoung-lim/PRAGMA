@@ -3,17 +3,21 @@ import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { approveContentReview, contentReviewRequest, saveProfessorDecisions, type ContentReviewApproval } from "@/lib/pragma/contentReviewApi";
+import { approveContentReview, contentReviewRequest, saveProfessorDecisions, saveInstructorExperience, type ContentReviewApproval } from "@/lib/pragma/contentReviewApi";
+import { InstructorReviewExperience } from "./InstructorReviewExperience";
+import { experienceComplete } from "@/lib/pragma/instructorExperience";
+import { reviewTargetKey, startReviewPreparation, useReviewPreparationQueue } from "@/lib/pragma/reviewPreparationQueue";
 import { CONTENT_REVIEW_STEPS, PROFESSOR_DECISION_LABELS, nextReviewStage, professorDecisionsComplete,
-  type ModelReview, type ProfessorFindingDecision, type ReviewResult, type ReviewTarget } from "../../../supabase/functions/_shared/contentReview";
+  type InstructorExperience, type ModelReview, type ProfessorFindingDecision, type ReviewResult, type ReviewTarget } from "../../../supabase/functions/_shared/contentReview";
 
 const verdictLabel = { pass: "지적 없음", warning: "확인 필요", fail: "수정 검토 필요" };
 const decisionLabel = { accept: "수용", refine: "보완", reject: "기각" };
 type ProfessorDecisionDraft = { decision: ProfessorFindingDecision["decision"] | ""; rationale_ko: string };
 
-export function ContentReviewPanel({ target, onApprove, approvalDisabled = false, refreshKey = "", historicalApproval = false }: {
+export function ContentReviewPanel({ target, onApprove, approvalDisabled = false, refreshKey = "", historicalApproval = false, experiential = false }: {
   target: ReviewTarget; onApprove?: (approval: ContentReviewApproval) => Promise<void>;
   approvalDisabled?: boolean; refreshKey?: string; historicalApproval?: boolean;
+  experiential?: boolean;
 }) {
   const queryClient = useQueryClient();
   const key = ["content-review", target.kind, target.targetId, target.weekNo ?? 0, refreshKey];
@@ -25,6 +29,15 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
   const [openaiFailOverride, setOpenaiFailOverride] = useState("");
   const [openaiFailConfirmed, setOpenaiFailConfirmed] = useState(false);
   const [decisionDrafts, setDecisionDrafts] = useState<Record<string, ProfessorDecisionDraft>>({});
+  const [experienceReady, setExperienceReady] = useState(false);
+  const queue = useReviewPreparationQueue();
+  const queued = queue.entries.find((entry) => reviewTargetKey(entry.target) === reviewTargetKey(target));
+  const queuedStatus = queued?.status;
+  useEffect(() => {
+    if (queuedStatus && queuedStatus !== "waiting" && queuedStatus !== "running") {
+      void queryClient.invalidateQueries({ queryKey: ["content-review", target.kind, target.targetId, target.weekNo ?? 0, refreshKey], exact: true });
+    }
+  }, [queuedStatus, queryClient, target.kind, target.targetId, target.weekNo, refreshKey]);
   const state = query.data;
   const run = state?.run ?? null;
   const savedDecisionsJson = JSON.stringify(run?.professor_decisions ?? []);
@@ -58,7 +71,16 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
   const dependencyBlocked = state?.dependencies.some((item) => !item.approved);
   const hasOpenaiFail = run?.openai_review?.result.verdict === "fail";
   const openaiFailClear = !hasOpenaiFail || (openaiFailConfirmed && openaiFailOverride.trim().length >= 10);
-  const ready = Boolean(state && next === "professor" && decisionsClear && openaiFailClear && !dependencyBlocked && !blocked && !approvalDisabled);
+  const experienceClear = (!experiential || (experienceReady && experienceComplete(run?.instructor_experience))) && (!run?.instructor_experience || experienceComplete(run.instructor_experience));
+  const ready = Boolean(state && next === "professor" && decisionsClear && openaiFailClear && experienceClear && !dependencyBlocked && !blocked && !approvalDisabled);
+  const saveExperience = async (experience: InstructorExperience) => {
+    if (!state) return;
+    setConfirmed(false);
+    const current = run ? state : await contentReviewRequest(target, "rules", state);
+    if (!current.run || current.contentHash !== state.contentHash || current.sourceHash !== state.sourceHash) throw new Error("콘텐츠가 변경되었습니다. 결과를 새로고침하세요.");
+    await saveInstructorExperience(current.run.id, current.contentHash, experience);
+    await query.refetch();
+  };
   const saveDecisions = async () => {
     if (!run || !state || next !== "professor" || !professorDecisionsComplete(findings, draftDecisions)) return;
     setBusy(true); setError(null);
@@ -78,7 +100,7 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
         await (onApprove ?? approveContentReview)(approval);
         await query.refetch();
       } else if (next !== "approved") {
-        const result = await contentReviewRequest(target, next);
+        const result = await contentReviewRequest(target, next, state);
         queryClient.setQueryData(key, result);
       }
     } catch (cause) { setError(cause instanceof Error ? cause.message : "검수 처리 실패"); }
@@ -101,13 +123,20 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
     {query.isPending && <p role="status">저장된 콘텐츠와 검수 이력을 확인하는 중…</p>}
     {query.isError && <p role="alert" className="text-red-800">{query.error.message}</p>}
     {state && <>
+      {experiential && target.kind === "mission" && <InstructorReviewExperience key={`${target.targetId}-${state.contentHash}-${state.sourceHash}`}
+        inspection={state} onSave={saveExperience} onReady={setExperienceReady} disabled={busy || approvalDisabled} />}
+      {next !== "approved" && next !== "professor" && <div className="rounded-lg border bg-[#FCFBF6] p-3">
+        <Button disabled={busy || query.isFetching || queue.active || Boolean(locked) || blocked || approvalDisabled}
+          onClick={() => void startReviewPreparation([{ target, label: target.kind === "mission" ? `미션 ${target.targetId.slice(0, 8)}` : `${target.weekNo}주차 자료` }])}>남은 AI 검토 한 번에 실행 · 유료</Button>
+        <p className="mt-2 text-xs text-muted-foreground">규칙 검사 후 아직 완료되지 않은 AI 단계만 순서대로 실행합니다. 최대 3회 유료 호출이며, 실패한 단계는 자동 재시도하지 않습니다.</p>
+      </div>}
       <p className="text-xs text-muted-foreground">버전 {state.contentHash.slice(0, 12)} · 규칙 검사는 무료, AI 단계는 각각 유료 호출 1회입니다. 성공한 단계는 재호출하지 않습니다.</p>
       {!run && <p className="rounded-lg bg-amber-50 p-3">{state.history.length ? "내용 또는 기준이 달라져 재검토가 필요합니다. 이전 결과는 아래 이력에 보존됩니다." : historicalApproval ? "기존 교수자 승인은 유지됩니다. 이 버전의 5단계 검수 기록은 아직 없습니다." : "이 버전은 아직 검수하지 않았습니다. 규칙 검사부터 시작하세요."}</p>}
       {run && <>
         <ReviewFindings title="1. 규칙 검사" result={run.rules} />
         {run.openai_review && <ReviewFindings title="2. OpenAI 품질 점검" result={run.openai_review.result} metadata={run.openai_review} />}
-        {run.claude_review && <div className="space-y-3 rounded-lg border p-3">
-          <h4 className="font-semibold">Claude 독립 검토 · OpenAI 지적별 판정 · 교수자 결정</h4>
+        {run.claude_review && <details open={!experiential || undefined} className="space-y-3 rounded-lg border p-3">
+          <summary className="cursor-pointer font-semibold">Claude 독립 검토 · OpenAI 지적별 판정 · 교수자 결정 ({findings.length}건)</summary>
           <p>{run.claude_review.result.summary_ko}</p>
           <p className="text-xs text-muted-foreground">{run.claude_review.model} · {run.claude_review.checked_at}</p>
           {!run.claude_review.result.findings.length && <p>Claude 지적 없음. OpenAI 지적별 판정 단계도 별도로 기록합니다.</p>}
@@ -150,7 +179,7 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
             <p className="text-xs">{decisionsDirty ? "저장하지 않은 판단이 있습니다." : professorDecisionsComplete(findings, run.professor_decisions) ? "교수자 판단이 현재 버전에 저장되어 있습니다." : "모든 지적의 결정과 근거를 입력한 뒤 저장하세요."}</p>
             <p className="text-xs">판단 저장은 승인이 아닙니다. ‘수정 필요’·‘판단 보류’가 남으면 최종 확정할 수 없습니다. 수정한 콘텐츠는 새 버전으로 1~4단계를 다시 거칩니다.</p>
           </>}
-        </div>}
+        </details>}
       </>}
       {state.dependencies.length > 0 && <div className="rounded-lg border p-3"><h4 className="font-semibold">재사용 미션 해설</h4>
         <p className="mt-1 text-xs">주차 자료 승인 전 연결 미션의 현재 버전 검수도 완료해야 합니다. 같은 해설을 출력 형식별로 중복 검토하지 않습니다.</p>
@@ -163,6 +192,7 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
         <h4 className="font-semibold">5. 교수자 최종 확정</h4>
         <p className="text-xs">원본·OpenAI 품질 점검·Claude 지적과 판정을 모두 확인하세요. Claude 지적별 결정을 저장하고, 전체 수업 사용 근거도 남깁니다.</p>
         {!decisionsClear && <p className="text-amber-800">지적별 교수자 판단을 저장하고 수정 필요·판단 보류를 해결해야 최종 확정할 수 있습니다.</p>}
+        {!experienceClear && <p className="text-amber-800">체험 감수의 장면·문항·참고 표현을 확인하고 수정 요청·보류·미저장 기록을 해결해야 최종 확정할 수 있습니다.</p>}
         {onApprove && <p className="text-xs text-muted-foreground">미션 승인 시 기존 근거 귀속·최종화 API가 추가 실행됩니다.</p>}
         {hasOpenaiFail && <div className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3">
           <p className="font-semibold">OpenAI 1차 점검에 중대 지적이 있습니다.</p>
@@ -177,7 +207,7 @@ export function ContentReviewPanel({ target, onApprove, approvalDisabled = false
         <label className="flex gap-2 text-xs"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />현재 원본·OpenAI·Claude·재검토 결과를 확인했습니다.</label>
         {approvalDisabled && <p className="text-amber-800">저장하지 않은 수정 또는 기존 결함의 교수자 판단 근거를 먼저 확인하세요.</p>}
       </div>}
-      {next !== "approved" && <Button disabled={busy || query.isFetching || Boolean(locked) || blocked || (next === "claude" && !state.models.claude)
+      {next !== "approved" && <Button disabled={busy || query.isFetching || queue.active || Boolean(locked) || blocked || (next === "claude" && !state.models.claude)
         || (next === "professor" && (!ready || !confirmed || note.trim().length < 10))} onClick={() => void runNext()}>
         {busy ? "처리 중…" : next === "rules" ? "규칙 검사 시작 · 무료" : next === "professor" ? "교수자 승인·확정" : `${CONTENT_REVIEW_STEPS[stepIndex].label} 실행 · 유료`}
       </Button>}

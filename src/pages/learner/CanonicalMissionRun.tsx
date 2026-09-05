@@ -649,9 +649,9 @@ export function MissionDissentPanel({ onSubmit }: { onSubmit: (dissent: DissentR
   );
 }
 
-function ScaleView({ quest, onDone, devAutofill = false }: { quest: ScaleQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
-  const [pick, setPick] = useState<string | null>(() => devAutofill ? quest.referenceAnswer : null);
-  const [answered, setAnswered] = useState(false);
+function ScaleView({ quest, onDone, devAutofill = false, revealAnswers = false }: { quest: ScaleQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean; revealAnswers?: boolean }) {
+  const [pick, setPick] = useState<string | null>(() => devAutofill || revealAnswers ? quest.referenceAnswer : null);
+  const [answered, setAnswered] = useState(revealAnswers);
   const acceptedIds = quest.acceptedAnswers ?? [quest.referenceAnswer];
   const acceptedLabel = quest.options
     .filter((option) => acceptedIds.includes(option.id))
@@ -680,24 +680,25 @@ function ScaleView({ quest, onDone, devAutofill = false }: { quest: ScaleQuest; 
   );
 }
 
-function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
+function FixChoiceView({ quest, responses, onDone, devAutofill = false, revealAnswers = false }: {
   quest: FixChoiceQuest;
   responses: Record<string, QuestResponse | DctResponse>;
   onDone: (response: QuestResponse) => void;
   devAutofill?: boolean;
+  revealAnswers?: boolean;
 }) {
   const mission = useCanonicalMission();
   const targetFont = mission.targetLanguage.code === "zh" ? "font-zh" : "";
   const linkedJudgment = quest.judgmentQuestId
     ? (responses[quest.judgmentQuestId] as QuestResponse | undefined)?.pick as string | undefined
     : undefined;
-  const [judgment, setJudgment] = useState<string | null>(() => linkedJudgment ?? (devAutofill ? quest.referenceJudgment : null));
-  const [locked, setLocked] = useState(Boolean(linkedJudgment) || devAutofill);
-  const [correctionId, setCorrectionId] = useState<string | null>(() => devAutofill
+  const [judgment, setJudgment] = useState<string | null>(() => revealAnswers ? quest.referenceJudgment : linkedJudgment ?? (devAutofill ? quest.referenceJudgment : null));
+  const [locked, setLocked] = useState(Boolean(linkedJudgment) || devAutofill || revealAnswers);
+  const [correctionId, setCorrectionId] = useState<string | null>(() => devAutofill || revealAnswers
     ? (quest.corrections.find((option) => option.valid)?.id ?? null)
     : null
   );
-  const [answered, setAnswered] = useState(false);
+  const [answered, setAnswered] = useState(revealAnswers);
   const order = useMemo(() => shuffle(quest.corrections), [quest.corrections]);
   const referenceLabel = quest.judgmentOptions.find((option) => option.id === quest.referenceJudgment)?.label;
   const judgmentLabel = quest.judgmentOptions.find((option) => option.id === judgment)?.label;
@@ -782,17 +783,17 @@ function FixChoiceView({ quest, responses, onDone, devAutofill = false }: {
   );
 }
 
-export function ReasonView({ quest, onDone, devAutofill = false }: { quest: ReasonQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
+export function ReasonView({ quest, onDone, devAutofill = false, revealAnswers = false }: { quest: ReasonQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean; revealAnswers?: boolean }) {
   const acceptedReasonIds = quest.acceptedReasonIds ?? [quest.acceptedReasonId];
   const judgmentOptions = [
     { id: "appropriate", label: "적절하다" },
     { id: "inappropriate", label: "적절하지 않다" },
   ];
-  const [judgment, setJudgment] = useState<string | null>(() => devAutofill ? quest.referenceJudgment : null);
-  const [judgmentLocked, setJudgmentLocked] = useState(false);
-  const [reasonPhase, setReasonPhase] = useState(false);
-  const [reasonId, setReasonId] = useState<string | null>(() => devAutofill ? quest.acceptedReasonId : null);
-  const [answered, setAnswered] = useState(false);
+  const [judgment, setJudgment] = useState<string | null>(() => devAutofill || revealAnswers ? quest.referenceJudgment : null);
+  const [judgmentLocked, setJudgmentLocked] = useState(revealAnswers);
+  const [reasonPhase, setReasonPhase] = useState(revealAnswers);
+  const [reasonId, setReasonId] = useState<string | null>(() => devAutofill || revealAnswers ? quest.acceptedReasonId : null);
+  const [answered, setAnswered] = useState(revealAnswers);
   const reasonOrder = useMemo(() => shuffle(quest.reasons), [quest.reasons]);
   const selectedReason = quest.reasons.find((reason) => reason.id === reasonId);
   const acceptedReason = quest.reasons.find((reason) => acceptedReasonIds.includes(reason.id));
@@ -903,12 +904,12 @@ export function ReasonView({ quest, onDone, devAutofill = false }: { quest: Reas
   );
 }
 
-function BestWorstView({ quest, onDone, devAutofill = false }: { quest: BestWorstQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean }) {
+function BestWorstView({ quest, onDone, devAutofill = false, revealAnswers = false }: { quest: BestWorstQuest; onDone: (response: QuestResponse) => void; devAutofill?: boolean; revealAnswers?: boolean }) {
   const mission = useCanonicalMission();
   const targetFont = mission.targetLanguage.code === "zh" ? "font-zh" : "";
-  const [best, setBest] = useState<string | null>(() => devAutofill ? quest.bestId : null);
-  const [worst, setWorst] = useState<string | null>(() => devAutofill ? quest.worstId : null);
-  const [answered, setAnswered] = useState(false);
+  const [best, setBest] = useState<string | null>(() => devAutofill || revealAnswers ? quest.bestId : null);
+  const [worst, setWorst] = useState<string | null>(() => devAutofill || revealAnswers ? quest.worstId : null);
+  const [answered, setAnswered] = useState(revealAnswers);
   const order = useMemo(() => shuffle(quest.candidates), [quest.candidates]);
   return (
     <QuestScaffold quest={quest}>
@@ -1734,7 +1735,7 @@ function Progress({ activeIndex, completed, reviewIndex = null, revisionOpen = f
   );
 }
 
-function QuestRenderer({ quest, responses, onDone, onRevisionStateChange, devMode = false, devAutofill = false, devDraft = "" }: {
+function QuestRenderer({ quest, responses, onDone, onRevisionStateChange, devMode = false, devAutofill = false, devDraft = "", revealAnswers = false }: {
   quest: MissionQuest;
   responses: Record<string, QuestResponse | DctResponse>;
   onDone: (response: QuestResponse | DctResponse) => void;
@@ -1742,13 +1743,48 @@ function QuestRenderer({ quest, responses, onDone, onRevisionStateChange, devMod
   devMode?: boolean;
   devAutofill?: boolean;
   devDraft?: string;
+  revealAnswers?: boolean;
 }) {
-  if (quest.kind === "scale") return <ScaleView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
-  if (quest.kind === "fix_choice") return <FixChoiceView quest={quest} responses={responses} onDone={onDone} devAutofill={devAutofill} />;
-  if (quest.kind === "reason") return <ReasonView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
-  if (quest.kind === "best_worst") return <BestWorstView quest={quest} onDone={onDone} devAutofill={devAutofill} />;
+  if (quest.kind === "scale") return <ScaleView quest={quest} onDone={onDone} devAutofill={devAutofill} revealAnswers={revealAnswers} />;
+  if (quest.kind === "fix_choice") return <FixChoiceView quest={quest} responses={responses} onDone={onDone} devAutofill={devAutofill} revealAnswers={revealAnswers} />;
+  if (quest.kind === "reason") return <ReasonView quest={quest} onDone={onDone} devAutofill={devAutofill} revealAnswers={revealAnswers} />;
+  if (quest.kind === "best_worst") return <BestWorstView quest={quest} onDone={onDone} devAutofill={devAutofill} revealAnswers={revealAnswers} />;
   if (quest.kind === "dct_feedback") return <DctFeedbackView quest={quest} response={responses[quest.dctId] as DctResponse | undefined} onDone={onDone} onRevisionStateChange={onRevisionStateChange} devMode={devMode} devAutofill={devAutofill} />;
   return <DctDraftView quest={quest} onDone={onDone} devMode={devMode} devAutofill={devAutofill} devDraft={devDraft} />;
+}
+
+/** Admin-only host uses the same learner components, without the attempt runner.
+ * No learner events, answer storage, or synthetic/live DCT feedback is produced.
+ */
+export function CanonicalReviewStage({ mission, section, revealAnswers, onNext }: {
+  mission: CanonicalMissionViewModel; section: string; revealAnswers: boolean; onNext: () => void;
+}) {
+  const [sceneStep, setSceneStep] = useState(0);
+  const [responses, setResponses] = useState<Record<string, QuestResponse | DctResponse>>({});
+  const quest = section === "dct" ? mission.quests.find((item) => item.kind === "dct")
+    : section.startsWith("mjt-") ? mission.quests[Number(section.slice(4))] : undefined;
+  return <RuntimeMissionContext.Provider value={null}><CanonicalMissionContext.Provider value={mission}>
+    <div className="space-y-5">
+      {section === "scene" ? <SceneIntroFlow config={buildSceneIntroConfig(mission)} step={sceneStep}
+        onNext={() => sceneStep < 2 ? setSceneStep(sceneStep + 1) : onNext()} onPrevious={() => setSceneStep(Math.max(0, sceneStep - 1))} onSelect={setSceneStep} />
+        : section === "recap" ? <MpjLessonBridge lessonPoints={mission.lessonPoints} onContinue={onNext} />
+        : quest && quest.kind !== "dct_feedback" ? <>
+          <QuestRenderer key={`${quest.id}-${revealAnswers}`} quest={quest} responses={responses} revealAnswers={revealAnswers}
+            onDone={(response) => {
+              setResponses((current) => ({ ...current, [quest.id]: response }));
+              if (quest.kind !== "dct") onNext();
+            }} />
+          {quest.kind === "dct" && (revealAnswers || responses[quest.id]) && <section className={`${panel} space-y-3 p-5`}>
+            <h3 className="font-bold">DCT 참고 표현·해설</h3>
+            <p className="text-sm text-muted-foreground">정적 콘텐츠 감수입니다. 이 화면의 제출은 학습 기록이나 AI 피드백 요청을 만들지 않습니다.</p>
+            {!quest.feedback.alternatives.length && <p className="whitespace-pre-wrap text-lg">{quest.referenceAnswer}</p>}
+            {quest.feedback.alternatives.map((alternative, index) => <div key={index} className="border-t pt-3">
+              <p className="whitespace-pre-wrap text-lg">{alternative.text}</p><p className="mt-1 text-sm">{alternative.note}</p>
+            </div>)}
+          </section>}
+        </> : <p role="alert">이 문항을 학습자 화면으로 표시할 수 없습니다.</p>}
+    </div>
+  </CanonicalMissionContext.Provider></RuntimeMissionContext.Provider>;
 }
 
 function MpjLessonBridge({ lessonPoints, onContinue }: {
