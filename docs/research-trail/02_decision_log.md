@@ -3543,4 +3543,6 @@
 - 후속 범위: 샘플링·lot 합격 규칙·자동 공개는 파일럿과 별도 정책으로 다룬다. 이번 단계에서
   새로운 위험 층·표본률·검수 시간 절감 수치나 학습효과를 확정하지 않는다.
 - 근거/상태: `ITER-20260905-02`, `EVD-20260905-02`,
-  `docs/dev-log/2026-09-05-instructor-review-experience.md`. 로컬 구현이며 운영 반영 전이다.
+  `docs/dev-log/2026-09-05-instructor-review-experience.md`. 사용자 승인과 독립 검토 후 PR #70/main
+  `9bdb07e`, migration `20260905150000`, `content-review` v12, Railway main 자동 배포로 운영에
+  반영했다. 관리자 API의 실제 조회·구버전 거부를 확인했으며 유료 AI·음성 종단은 미수행이다.
