@@ -1,71 +1,164 @@
 <p align="center">
-  <img src="docs/brand/banner.svg" alt="PRAGMA — AI 기반 한·중 통번역 학습 워크플로우" width="100%">
+  <img src="docs/brand/banner.svg" alt="PRAGMA — AI 기반 한·중 통번역 학습 워크플로우 개발 연구" width="100%">
 </p>
 
-[![Demo](https://img.shields.io/badge/demo-PRAGMA-2ea44f?style=flat-square)](https://pragma.up.railway.app/demo/mission)
-[![CI](https://github.com/sylim-research/PRAGMA/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sylim-research/PRAGMA/actions/workflows/ci.yml)
-![Research](https://img.shields.io/badge/research-DDR-blue?style=flat-square)
+[![Live](https://img.shields.io/badge/live-pragma.up.railway.app-2ea44f?style=flat-square)](https://pragma.up.railway.app)
+![Status](https://img.shields.io/badge/status-research_in_progress-blue?style=flat-square)
+![Stack](https://img.shields.io/badge/React_18-TypeScript-3178c6?style=flat-square)
+![Backend](https://img.shields.io/badge/Supabase-PostgreSQL-3ecf8e?style=flat-square)
 
-**표현을 판단하고, 직접 번역·통역하고, 피드백을 검토하는 한·중 화용 학습 웹앱입니다.**
-교수자의 콘텐츠 생성·검수·수업 편성과 학습자의 수행·기록을 하나의 흐름으로 연결합니다.
-박사학위논문 「AI 기반 한·중 통번역 학습 워크플로우 개발 연구」의 설계·개발 산출물입니다.
+**같은 뜻이라도 상황과 관계에 따라 적절한 표현은 달라집니다.**
 
-**[대표 미션 체험](https://pragma.up.railway.app/demo/mission) · [기술 구조](#기술-구조) · [검증 근거](#검증-근거)**
+PRAGMA는 이 **화용적 적절성**을 한·중 통번역 학습의 중심 과제로 다루는 수업 연계형 연구 플랫폼입니다.
+학습자는 표현 후보를 비교해 판단하고, 직접 번역·통역한 뒤, 피드백을 검토해 수정합니다.
+그 과정 전체가 판단 근거·최초안·수정안과 함께 기록됩니다.
 
-대표 미션은 로그인 없이 공개 예시로 체험할 수 있습니다. 예시 피드백을 사용하며 답안은 서버에 저장하지 않습니다. 실제 수업은 로그인·교수자 승인 후 이용합니다.
+PRAGMA는 최적 번역을 자동으로 제시하는 번역기나 범용 LMS가 아닙니다.
+화행과 상황 조건을 통제해 학습 콘텐츠를 만들고, 교수자가 승인한 미션만 수업에 배치하며,
+학습자의 수행을 버전과 함께 관리합니다. 전체 순환은 **콘텐츠 생성 → 검수·승인 → 수업 배치 → 학습 수행 → 기록**입니다.
 
-## 구현한 것
+대외 과업명은 **MJT**(Metapragmatic Judgment Task)와
+**DCT**(Discourse Completion Task)를 사용합니다. 코드·DB의 기존 `mpj_*` 이름은 내부 호환
+식별자이며, 현행 학습 미션의 대외 표기는 **MJT5 + DCT1**입니다.
 
-| 기능 | 구현 |
+<p align="center">
+  <img src="docs/screenshots/01-landing.png" alt="PRAGMA 메인 화면 — 학습자·교수자 진입" width="100%">
+  <br>
+  <sub><b>메인 화면</b> · 학습자·교수자 진입</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/02-architecture.png?v=20260905-minimal" alt="PRAGMA 통합 워크플로우 개요" width="100%">
+  <br>
+  <sub><b>통합 워크플로우</b> · 콘텐츠 생성 → 검수·승인 → 수업 배치 → 학습 수행 → 기록</sub>
+</p>
+
+<br>
+
+## 연구 설계와 시스템 구현
+
+| 설계 원칙 | 시스템 구현 |
 |---|---|
-| 콘텐츠 파이프라인 | 조건별 생성 → 규칙 검사·복수 AI 검토 → 교수자 최종 승인 |
-| 수업·학습 흐름 | 15주 강좌 편성 → MJT 5개 판단 과제 → DCT형 통번역 산출 → 피드백 검토·수정 |
-| 수행 추적 | 생성 조건·콘텐츠 판본·검토 결과·최초안·수정안·학습자 이견 기록 |
+| **판단 선행 설계** | 적절성 판단(MJT 5문항) → 번역·통역 산출 → 피드백 검토 → 표적 수정 |
+| **생성·승인 권한 분리** | AI 생성·자동 검사는 후보 제안까지 — 수업 배치는 교수자 승인 콘텐츠만 |
+| **수행 과정 기록** | 판단 · 선택 근거 · 최초안 · 수정안을 맥락·버전과 함께 저장 |
+| **생성 조건 추적** | 프롬프트 스냅숏·해시 고정, 규칙 검사·스키마의 결정성 CI 검증(생성 결과의 재현을 보장하지 않음) |
 
-승인된 미션만 수업에 배치합니다. 학습자는 피드백에 따라 수정하거나, 근거를 남기고 최초안을 유지할 수 있습니다.
+학습 내용은 다음 조건의 조합으로 구성합니다.
 
-## 기술 구조
+| 학습 구인 | 구성 |
+|---|---|
+| 목표 화행 | 요청 · 거절 · 사과 · 감사와 대응 · 불만 제기 · 칭찬과 대응 · 초대와 권유 · 제안과 조언 · 반대와 이견 (9개) |
+| 상황 변수 | 상대적 권력(P) · 사회적 거리(D) · 행위 부담도(R) 각 3수준 |
+| 수행 방식 | 한→중 · 중→한 × 번역 · 통역 |
+| 지원 수준 | 입문 · 중급 · 고급 |
 
-```mermaid
-flowchart LR
-  UI[학습자·교수자 화면<br/>React · TypeScript] --> AUTH[Supabase Auth]
-  UI --> EDGE[Supabase Edge Functions]
-  UI --> DB[(PostgreSQL · RLS)]
-  EDGE --> AI[OpenAI · Anthropic<br/>생성·검토·피드백]
-  EDGE --> VOICE[OpenAI · ElevenLabs<br/>음성 처리]
-  EDGE --> DB
+<br>
+
+## 핵심 워크플로우
+
+### 콘텐츠 생성·검수
+
+```text
+화행·수준·수행 방식·언어 방향·P/D/R·주제 조건
+→ 시나리오 코어 생성
+→ 선택 코어를 Full Mission으로 조립
+→ 규칙 기반 검사
+→ 프롬프트 통제 기반 AI 검토
+→ 교수자 검수·승인
+→ 15주 강좌의 주차에 배치
 ```
 
-| 영역 | 구성 |
+- 시나리오 코어는 상황·관계·원문·선행 발화와 생성 조건을 담고, 판단 문항이나 참고안은 포함하지 않습니다.
+- 선택한 코어만 완전한 학습 미션으로 조립합니다. 신규 미션은 생성 직후 검수 대기 상태이며, 교수자가 공개 가능하다고 판단한 뒤에만 승인 상태가 됩니다.
+- 규칙 검사와 AI 검토에는 승인 권한이 없습니다. AI 모델 간 독립 검토 결과도 읽기 전용 결함 탐지 자료이며, 이견은 연구자 판단으로 넘깁니다.
+- 프롬프트·스키마·콘텐츠의 세대가 바뀌면 판본을 분리해 구세대 콘텐츠와 섞지 않습니다.
+
+### 학습자 수행
+
+공식 학습 경로는 교강사가 게시한 15주 수업입니다.
+
+```text
+수업·주차 선택
+→ 도입 장면과 Can-do·예습 자료
+→ 표현 감각 익히기(MJT 5문항)
+→ 직접 번역하기 또는 직접 통역하기(DCT 1회)
+→ 의미적 충실성·언어적 정확성·화용적 적절성 피드백
+→ 필요 시 한 번 다듬기
+→ 최초안·수정안·판단 기록 확인
+```
+
+현행 학습 미션은 **MJT5 + DCT1**입니다. 피드백과 수정은 독립 미션이 아니라 DCT 뒤에 이어지는 단계입니다.
+
+1. **첫인상 판단** — 표현을 4점 척도로 판단하고 적절/부적절 방향을 비교합니다.
+2. **맥락 대비 판단** — 같은 화행을 조건이 다른 장면에 놓고 과소·적정·과잉을 판단합니다.
+3. **판단하고 고쳐보기** — 부적절 여부를 판단한 뒤 수정안 3개 중 권장안 1개를 고릅니다.
+4. **이유 찾기** — 해당 표현이 상황에 맞지 않는 가장 큰 이유 하나를 고릅니다.
+5. **여러 초안 비교** — 여러 초안을 한 화면에서 비교해 BEST와 WORST를 하나씩 고릅니다.
+6. **직접 산출(DCT)** — 같은 화용 초점의 새 사건을 직접 번역하거나 통역합니다.
+
+AI 피드백은 의미적 충실성, 언어적 정확성, 화용적 적절성의 세 영역을 분리합니다. 수정이 권고되면 수정안을 확정하거나, 이의 제기에 근거를 남기고 최초안을 최종안으로 유지할 수 있습니다. AI 피드백과 다르다는 이유만으로 점수나 화용 능력 지표를 만들지 않으며, 학습자는 이견을 남길 수 있습니다.
+
+※ 과제 명칭은 대외적으로 **MJT**(메타화용적 판단 과제)·**DCT**(담화완성과제)를 사용합니다. PRAGMA의 DCT는 자유 산출형 담화완성과제의 형식을 참고한 **DCT형 통번역 산출 과제**로, 출발텍스트의 핵심 의미와 화행 목적을 목표어로 재실현하는 통번역 과제이며 일반 DCT와 동일한 과제로 간주하지 않습니다. 코드·DB의 내부 식별자는 개발 이력 보존을 위해 당시 명칭 `mpj*`를 유지합니다.
+
+### 교수자 운영
+
+관리자 화면은 콘텐츠 CRUD가 아니라 생성부터 수업 배치까지의 게이트를 운영합니다.
+
+- 실제자료 분석과 콘텐츠 후보 추출, 조건을 지정한 코어 생성과 승인된 배치 실행
+- 셀·상태별 라이브러리 탐색과 코어→미션 조립
+- 규칙 검사·AI 검토 근거를 포함한 교수자 검수와 `reviewed` 승인
+- 강좌 설정, AI 자동 편성, 주차별 조정을 통합한 15주 교과목 설계
+- 학습자 접근·참여 상태와 수행·의사결정 기록 조회, 프롬프트 지문·AI 독립 검토 결과의 읽기 전용 확인
+
+<br>
+
+## 연구 추적 구조
+
+PRAGMA는 결과물뿐 아니라 결과가 만들어지고 검토된 조건을 연결해 남깁니다.
+
+| 단계 | 남기는 핵심 기록 |
 |---|---|
-| 프론트엔드 | React · TypeScript · Vite · Tailwind CSS / Railway 호스팅 |
-| 데이터·권한 | Supabase PostgreSQL · Auth · Row Level Security |
-| 생성·검토 | OpenAI 생성·검토 + Anthropic 교차 검토 / 승인 권한은 교수자에게 유지 |
-| 검증·배포 | Vitest · TypeScript · DB 승인 경계 검사 · GitHub Actions / main 기반 배포 |
+| 콘텐츠 생성 | generation run, 생성 조건, model/provider, schema·prompt version |
+| 프롬프트 | Edge 실행 정본의 snapshot과 hash, 저장 콘텐츠와의 지문 일치 여부 |
+| 자동 점검 | 결정론적 검사와 프롬프트 통제 기반 검토 |
+| 검수·승인 | 생성 상태와 교수자 검수·승인 상태의 분리 |
+| 학습 수행 | MJT 선택 기록, 최초 산출, 피드백 스냅숏, 수정 산출, 학습자 이견 |
+| 설계 연구 | 설계 추적, 결정, 반복 개발, 증거 색인 |
 
-프롬프트·콘텐츠 판본과 검토 결과를 연결해 추적합니다.
-프롬프트 해시는 동일한 AI 산출물의 재생성을 보장하지 않습니다.
+> 학습 기록은 수업 운영을 위한 것이며, 별도 동의 없이 연구 자료로 사용하지 않습니다.
 
-## 검증 근거
+<br>
 
-**2026-09-05 main 기준:** 자동 테스트 **727개 통과·9개 건너뜀**, 배포 정책 검사 **5개**,
-로컬 PostgreSQL 승인 경계 검사 **7개** 통과. 타입 검사·운영 빌드도 통과했습니다.
-[해당 CI 결과](https://github.com/sylim-research/PRAGMA/actions/runs/33953180630)
+## 기술 스택
 
-- [현행 설계·구현 정본](docs/CANONICAL.md)
-- [설계 결정 기록](docs/research-trail/02_decision_log.md) · [검증 근거 색인](docs/research-trail/04_evidence_index.md)
-- [기술 안내·로컬 실행](docs/TECHNICAL_OVERVIEW.md) · [코드·의존성](package.json) · [자동 검증 설정](.github/workflows/ci.yml)
+| 영역 | 현재 구성 |
+|---|---|
+| 프론트엔드 | React 18.3, Vite 5.4, TypeScript 5.8, React Router 6.30 |
+| UI | Tailwind CSS 3.4, Radix UI·shadcn/ui 계열 컴포넌트 |
+| 상태·데이터 | TanStack Query 5, Zod 3 |
+| 백엔드 | Supabase JS 2.106, Postgres, Auth, RLS, Edge Functions |
+| AI 콘텐츠 | OpenAI Chat Completions: `gpt-4.1-mini`, `gpt-4o`, `gpt-4.1` |
+| 학습자 피드백 | `gpt-4.1-mini`, 가용성 대체 `gpt-4o-mini` |
+| AI 검토(콘텐츠) | 규칙 검사 → OpenAI `gpt-4.1` 검토 → Anthropic Claude 검토(`CLAUDE_AUDIT_MODEL`, claude-opus-5 계열) → OpenAI `gpt-4.1` 지적별 재검토. 생성 모델과 다른 계열의 모델이 교차 검토하며, 어느 단계도 승인 권한이 없음 |
+| 음성 | OpenAI `gpt-4o-transcribe`, ElevenLabs `eleven_multilingual_v2`, OpenAI TTS 대체 경로 |
+| 배포 | Railway 정적 프론트엔드 + Supabase 백엔드 |
+| 검증 | Vitest 3, Testing Library, Playwright, ESLint, TypeScript |
 
-콘텐츠 생성·내부 점검은 진행 중이며, 관련 분야 전문가 3인의 형성평가는 계획 단계입니다.
-자동 테스트 결과를 학습효과 또는 전문가 평가 결과로 해석하지 않습니다.
+## 개발 현황
 
-<details>
-<summary>메인 화면 보기</summary>
+| 구분 | 내용 |
+|---|---|
+| 구현 완료 | 학습자·교수자 워크플로우, 15주 강좌 편성, 학습 수행 기록 저장 |
+| 구현 완료 | 콘텐츠 품질 관리 절차 — 규칙 기반 검사, 복수 AI 모델 교차 검토, 교수자 승인 |
+| 진행 중 | 정식 학습 문항 대량 생성과 내부 점검 |
+| 계획 | 관련 분야 전문가 3인 형성평가 — 초안 완성 후 실시하고 결과를 논문 최종 확정 전에 반영 |
+| 계획 | 학습 수행 데이터 수집과 생성 조건별 품질 분석 |
 
-![PRAGMA 메인 화면](docs/screenshots/01-landing.png)
+## 연구 정보
 
-</details>
+이 저장소는 박사학위논문 「AI 기반 한·중 통번역 학습 워크플로우 개발 연구」의 설계·개발 산출물입니다.
 
-[소프트웨어 인용](CITATION.cff) · [공개·이용 범위](LICENSE)
+---
 
 Copyright (c) 2026 Soyoung Lim
